@@ -1,0 +1,528 @@
+package tui
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
+	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/dev-helpers/go/tt/internal/storage"
+)
+
+// DashboardModel represents the dashboard view.
+type DashboardModel struct {
+	config       *config.Config
+	projects     []*models.Project
+	cursor       int
+	width        int
+	height       int
+	showArchived bool
+
+	// Search state
+	searchMode  bool
+	searchInput textinput.Model
+	searchQuery string
+
+	// Context filter state
+	filterContext string   // Empty string means "all contexts"
+	contexts      []string // Dynamically discovered contexts from projects
+
+	// Confirmation state
+	confirmAction string          // "delete" when confirming deletion
+	deleteTarget  *models.Project // project to delete
+}
+
+// NewDashboardModel creates a new dashboard model.
+func NewDashboardModel(cfg *config.Config) *DashboardModel {
+	searchInput := textinput.New()
+	searchInput.Placeholder = "Search projects..."
+	searchInput.CharLimit = 100
+	searchInput.Width = 40
+
+	m := &DashboardModel{
+		config:      cfg,
+		cursor:      0,
+		searchMode:  false,
+		searchInput: searchInput,
+		searchQuery: "",
+	}
+	m.loadProjects()
+	return m
+}
+
+func (m *DashboardModel) loadProjects() {
+	if m.showArchived {
+		m.projects = m.config.GetArchivedProjects()
+	} else {
+		m.projects = m.config.GetActiveProjects()
+	}
+	for _, p := range m.projects {
+		storage.LoadProject(p)
+	}
+	m.contexts = m.getAllContexts()
+}
+
+// getAllContexts returns a sorted list of unique contexts from loaded projects.
+func (m *DashboardModel) getAllContexts() []string {
+	contextSet := make(map[string]bool)
+	for _, p := range m.projects {
+		if p.Context != "" {
+			contextSet[p.Context] = true
+		}
+	}
+	contexts := make([]string, 0, len(contextSet))
+	for ctx := range contextSet {
+		contexts = append(contexts, ctx)
+	}
+	sort.Strings(contexts)
+	return contexts
+}
+
+func (m *DashboardModel) matchesFilters(p *models.Project) bool {
+	// Apply context filter first
+	if m.filterContext != "" && p.Context != m.filterContext {
+		return false
+	}
+
+	// Then apply search filter
+	if m.searchQuery == "" {
+		return true
+	}
+	query := strings.ToLower(m.searchQuery)
+
+	if strings.Contains(strings.ToLower(p.Name), query) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(p.Context), query) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(p.Description), query) {
+		return true
+	}
+	return false
+}
+
+func (m *DashboardModel) visibleProjects() []*models.Project {
+	if m.searchQuery == "" && m.filterContext == "" {
+		return m.projects
+	}
+	var visible []*models.Project
+	for _, p := range m.projects {
+		if m.matchesFilters(p) {
+			visible = append(visible, p)
+		}
+	}
+	return visible
+}
+
+// HasActiveSearch returns true if search mode is active or a search filter is applied.
+func (m *DashboardModel) HasActiveSearch() bool {
+	return m.searchMode || m.searchQuery != ""
+}
+
+// Refresh reloads the dashboard data.
+func (m *DashboardModel) Refresh(cfg *config.Config) {
+	m.config = cfg
+	m.loadProjects()
+}
+
+// SetSize sets the dashboard dimensions.
+func (m *DashboardModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
+
+func (m *DashboardModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	visible := m.visibleProjects()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// Handle confirmation mode
+		if m.confirmAction != "" {
+			switch msg.String() {
+			case "y", "Y":
+				if m.confirmAction == "delete" && m.deleteTarget != nil {
+					project := m.deleteTarget
+					m.confirmAction = ""
+					m.deleteTarget = nil
+					return m, m.deleteProject(project)
+				}
+			case "n", "N", "esc":
+				m.confirmAction = ""
+				m.deleteTarget = nil
+				return m, nil
+			}
+			return m, nil
+		}
+
+		// Handle search mode
+		if m.searchMode {
+			switch msg.String() {
+			case "esc":
+				m.searchMode = false
+				m.searchInput.Blur()
+				m.searchInput.SetValue("")
+				m.searchQuery = ""
+				return m, nil
+			case "enter":
+				m.searchMode = false
+				m.searchInput.Blur()
+				m.searchQuery = m.searchInput.Value()
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.searchInput, cmd = m.searchInput.Update(msg)
+				m.searchQuery = m.searchInput.Value()
+				// Reset cursor if out of bounds
+				visible = m.visibleProjects()
+				if m.cursor >= len(visible) {
+					if len(visible) > 0 {
+						m.cursor = len(visible) - 1
+					} else {
+						m.cursor = 0
+					}
+				}
+				return m, cmd
+			}
+		}
+
+		switch msg.String() {
+		case "/":
+			m.searchMode = true
+			m.searchInput.Focus()
+			return m, textinput.Blink
+		case "esc":
+			// Clear filters if active
+			if m.filterContext != "" || m.searchQuery != "" {
+				m.filterContext = ""
+				m.searchQuery = ""
+				m.searchInput.SetValue("")
+				return m, nil
+			}
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "down", "j":
+			if m.cursor < len(visible)-1 {
+				m.cursor++
+			}
+		case "enter":
+			if len(visible) > 0 && m.cursor < len(visible) {
+				return m, func() tea.Msg {
+					return SelectProjectMsg{Project: visible[m.cursor]}
+				}
+			}
+		case "?", "h":
+			return m, func() tea.Msg {
+				return ShowHelpMsg{
+					SourceView: ViewDashboard,
+					ViewName:   "Dashboard",
+					Items:      m.GetHelpItems(),
+				}
+			}
+		case "r":
+			m.loadProjects()
+		case "n":
+			return m, func() tea.Msg {
+				return CreateProjectMsg{}
+			}
+		case "a":
+			m.showArchived = !m.showArchived
+			m.cursor = 0
+			m.loadProjects()
+		case ",":
+			return m, func() tea.Msg {
+				return SettingsMsg{}
+			}
+		case "D":
+			if len(visible) > 0 && m.cursor < len(visible) {
+				m.confirmAction = "delete"
+				m.deleteTarget = visible[m.cursor]
+			}
+		case "e":
+			if len(visible) > 0 && m.cursor < len(visible) {
+				return m, func() tea.Msg {
+					return EditProjectMsg{Project: visible[m.cursor]}
+				}
+			}
+		case "c":
+			// Cycle context filter: all -> contexts[0] -> contexts[1] -> ... -> all
+			if len(m.contexts) == 0 {
+				m.filterContext = ""
+			} else if m.filterContext == "" {
+				m.filterContext = m.contexts[0]
+			} else {
+				found := false
+				for i, ctx := range m.contexts {
+					if ctx == m.filterContext {
+						if i+1 < len(m.contexts) {
+							m.filterContext = m.contexts[i+1]
+						} else {
+							m.filterContext = "" // back to all
+						}
+						found = true
+						break
+					}
+				}
+				if !found {
+					m.filterContext = ""
+				}
+			}
+			// Reset cursor if out of bounds after filter change
+			visible = m.visibleProjects()
+			if m.cursor >= len(visible) {
+				if len(visible) > 0 {
+					m.cursor = len(visible) - 1
+				} else {
+					m.cursor = 0
+				}
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
+	return func() tea.Msg {
+		// Check if project already exists in trash
+		if storage.TrashEntryExists(project.Slug, m.config.DataDir) {
+			return ErrorMsg{Err: fmt.Errorf("project '%s' already exists in trash", project.Slug)}
+		}
+
+		// Move project directory to trash
+		if err := storage.MoveProjectToTrash(project, m.config.DataDir); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to move project to trash: %w", err)}
+		}
+
+		return ProjectDeletedMsg{Project: project}
+	}
+}
+
+func (m *DashboardModel) View() string {
+	var b strings.Builder
+
+	// Title
+	title := "tt - Task Tracker"
+	if m.showArchived {
+		title = "tt - Archived Projects"
+	}
+	b.WriteString(TitleStyle.Render(title))
+	b.WriteString("\n")
+
+	// Confirmation prompt
+	if m.confirmAction == "delete" && m.deleteTarget != nil {
+		b.WriteString("\n")
+		b.WriteString(ConfirmStyle.Render(fmt.Sprintf("Delete project '%s'? (y/n)", m.deleteTarget.Name)))
+		b.WriteString("\n\n")
+	}
+
+	// Search bar
+	if m.searchMode {
+		b.WriteString(SubtitleStyle.Render("Search: "))
+		b.WriteString(m.searchInput.View())
+		b.WriteString("\n")
+	} else if m.searchQuery != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.searchQuery)))
+		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
+		b.WriteString("\n")
+	}
+
+	// Context filter
+	if m.filterContext != "" {
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[context: %s]", m.filterContext)))
+		b.WriteString(" ")
+		b.WriteString(HelpStyle.Render("(c to cycle, Esc to clear)"))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	visible := m.visibleProjects()
+
+	if len(m.projects) == 0 {
+		if m.showArchived {
+			b.WriteString(MutedStyle.Render("No archived projects."))
+		} else {
+			b.WriteString(MutedStyle.Render("No projects yet. Create one with: tt project new <name>"))
+		}
+		b.WriteString("\n")
+	} else if len(visible) == 0 {
+		b.WriteString(MutedStyle.Render("No projects match your filters."))
+		b.WriteString("\n")
+	} else {
+		// Projects header
+		b.WriteString(SubtitleStyle.Render("PROJECTS"))
+		b.WriteString("\n")
+
+		// Project list
+		for i, p := range visible {
+			cursor := "  "
+			style := NormalStyle
+			if i == m.cursor {
+				cursor = "> "
+				style = BoldStyle.Foreground(ColorPrimary)
+			}
+
+			// Calculate stats
+			total := p.CountTasks()
+			active := p.CountActiveTasks()
+			done := p.CountCompletedTasks()
+
+			progress := 0.0
+			if total > 0 {
+				progress = float64(done) / float64(total) * 100
+			}
+
+			// Format line
+			name := style.Render(p.Name)
+			context := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
+			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
+			progressBar := RenderProgressBar(progress, 10)
+
+			line := fmt.Sprintf("%s%s %s  %s  %s", cursor, name, context, stats, progressBar)
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+
+		// Current project details (only show when not searching)
+		if m.searchQuery == "" && m.config.CurrentProject != "" {
+			current := m.config.GetCurrentProject()
+			if current != nil {
+				b.WriteString("\n")
+				b.WriteString(SubtitleStyle.Render(fmt.Sprintf("CURRENT: %s", current.Name)))
+				b.WriteString("\n")
+
+				m.renderRecentTasks(&b, current)
+				m.renderStats(&b, current)
+			}
+		}
+	}
+
+	// Help hint
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("Press ? for help"))
+
+	return b.String()
+}
+
+func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.Project) {
+	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
+	if len(recentTasks) == 0 {
+		b.WriteString(MutedStyle.Render("No tasks yet."))
+		b.WriteString("\n")
+		return
+	}
+
+	b.WriteString("\n")
+	b.WriteString(BoldStyle.Render("Recent Tasks"))
+	b.WriteString("\n")
+
+	for _, task := range recentTasks {
+		typeStyle := GetTypeStyle(string(task.Type))
+		statusStyle := GetStatusStyle(string(task.Status))
+
+		line := fmt.Sprintf("  %s %s %s %s  %s",
+			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
+			typeStyle.Render(task.Type.Icon()),
+			statusStyle.Render(task.Status.Icon()),
+			truncate(task.Title, 40),
+			MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
+
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+}
+
+func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project) {
+	if len(project.Tasks) == 0 {
+		return
+	}
+
+	b.WriteString("\n")
+
+	// Count by type
+	typeCounts := make(map[models.TaskType]int)
+	statusCounts := make(map[models.TaskStatus]int)
+
+	for _, task := range project.Tasks {
+		typeCounts[task.Type]++
+		statusCounts[task.Status]++
+	}
+
+	// Type stats
+	var typeStats []string
+	for _, tt := range models.AllTaskTypes() {
+		if count := typeCounts[tt]; count > 0 {
+			style := GetTypeStyle(string(tt))
+			typeStats = append(typeStats, style.Render(fmt.Sprintf("%s:%d", tt.Icon(), count)))
+		}
+	}
+
+	// Status stats
+	var statusStats []string
+	for _, s := range models.AllTaskStatuses() {
+		if count := statusCounts[s]; count > 0 {
+			style := GetStatusStyle(string(s))
+			statusStats = append(statusStats, style.Render(fmt.Sprintf("%s:%d", s.Icon(), count)))
+		}
+	}
+
+	b.WriteString(MutedStyle.Render("Types: "))
+	b.WriteString(strings.Join(typeStats, " "))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("Status: "))
+	b.WriteString(strings.Join(statusStats, " "))
+	b.WriteString("\n")
+
+	// Overdue count
+	overdueCount := 0
+	today := time.Now().Truncate(24 * time.Hour)
+	for _, task := range project.Tasks {
+		if task.DueDate != nil && !task.Status.IsComplete() && task.DueDate.Before(today) {
+			overdueCount++
+		}
+	}
+	if overdueCount > 0 {
+		b.WriteString(OverdueStyle.Render(fmt.Sprintf("Overdue: %d", overdueCount)))
+		b.WriteString("\n")
+	}
+}
+
+// GetHelpItems returns the help items for the dashboard view.
+func (m *DashboardModel) GetHelpItems() []HelpItem {
+	toggleDesc := "Show archived"
+	if m.showArchived {
+		toggleDesc = "Show active"
+	}
+
+	return []HelpItem{
+		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
+		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
+		{Key: "Enter", Description: "Select project", Category: "Navigation"},
+		{Key: "/", Description: "Search projects", Category: "Navigation"},
+		{Key: "c", Description: "Filter by context", Category: "Filters"},
+		{Key: "n", Description: "New project", Category: "Actions"},
+		{Key: "e", Description: "Edit project", Category: "Actions"},
+		{Key: "D", Description: "Delete project", Category: "Actions"},
+		{Key: "a", Description: toggleDesc, Category: "Actions"},
+		{Key: "r", Description: "Refresh", Category: "Actions"},
+		{Key: ",", Description: "Settings", Category: "Actions"},
+		{Key: "?", Description: "Toggle help", Category: "Actions"},
+	}
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
