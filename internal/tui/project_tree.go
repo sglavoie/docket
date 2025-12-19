@@ -277,6 +277,45 @@ func isDueThisWeek(task *models.Task) bool {
 	return !dueDay.Before(today) && dueDay.Before(weekEnd)
 }
 
+// formatDueDate returns a styled due date string for inline display.
+func formatDueDate(task *models.Task) string {
+	if task.DueDate == nil || task.Status.IsComplete() {
+		return ""
+	}
+
+	now := time.Now()
+	today := now.Truncate(24 * time.Hour)
+	dueDay := task.DueDate.Truncate(24 * time.Hour)
+
+	var dateStr string
+	var style lipgloss.Style
+
+	switch {
+	case dueDay.Before(today):
+		// Overdue
+		dateStr = task.DueDate.Format("Jan 2")
+		style = OverdueStyle
+	case dueDay.Equal(today):
+		// Due today
+		dateStr = "Today"
+		style = DueTodayStyle
+	case dueDay.Equal(today.AddDate(0, 0, 1)):
+		// Due tomorrow
+		dateStr = "Tomorrow"
+		style = DueDateStyle
+	default:
+		// Future date - show as "Jan 2" or "Jan 2 '06" if different year
+		if task.DueDate.Year() != now.Year() {
+			dateStr = task.DueDate.Format("Jan 2 '06")
+		} else {
+			dateStr = task.DueDate.Format("Jan 2")
+		}
+		style = DueDateStyle
+	}
+
+	return style.Render("📅 " + dateStr)
+}
+
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
 func (m *ProjectTreeModel) HasActiveSearch() bool {
 	return m.searchMode || m.searchQuery != ""
@@ -1284,7 +1323,7 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
 	if task.Status == models.StatusCancelled {
 		titleStyle = CancelledStyle
 	}
-	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-20))
+	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-35))
 
 	// Progress for parent tasks
 	progress := ""
@@ -1293,14 +1332,29 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
 		progress = MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct))
 	}
 
-	// Priority, overdue, and dependency indicators
+	// Priority, due date, and dependency indicators
 	indicators := ""
-	if task.Priority <= 2 {
-		indicators += lipgloss.NewStyle().Foreground(ColorWarning).Render("!")
+
+	// Priority indicator with level number (all levels shown)
+	switch task.Priority {
+	case 1:
+		indicators += PriorityHighStyle.Render("!1") + " "
+	case 2:
+		indicators += PriorityMediumStyle.Render("!2") + " "
+	case 3:
+		indicators += PriorityLowStyle.Render("!3") + " "
+	case 4:
+		indicators += PriorityLowStyle.Render("!4") + " "
+	case 5:
+		indicators += PriorityLowStyle.Render("!5") + " "
 	}
-	if isOverdue(task) {
-		indicators += OverdueStyle.Render("⚠")
+
+	// Due date display (includes overdue styling internally)
+	if dueStr := formatDueDate(task); dueStr != "" {
+		indicators += dueStr + " "
 	}
+
+	// Dependency indicator
 	if len(task.DependsOn) > 0 {
 		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn)))
 	}

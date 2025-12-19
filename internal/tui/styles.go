@@ -59,6 +59,23 @@ var (
 	DependencyStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary)
 
+	// Priority styles
+	PriorityHighStyle = lipgloss.NewStyle().
+				Foreground(ColorError) // Red for priority 1
+
+	PriorityMediumStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning) // Orange for priority 2
+
+	PriorityLowStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted) // Dimmed gray for priority 3-5
+
+	// Due date styles
+	DueDateStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted) // Gray for normal due dates
+
+	DueTodayStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning) // Orange for tasks due today
+
 	// BlockedByDepsStyle is used for tasks with incomplete dependencies
 	// Uses red background to create a visual "outline" effect on the status icon
 	BlockedByDepsStyle = lipgloss.NewStyle().
