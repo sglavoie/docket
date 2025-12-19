@@ -33,6 +33,7 @@ const (
 	ViewDependencySelector
 	ViewFilter
 	ViewTaskJumper
+	ViewProjectPreview
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -60,6 +61,7 @@ type AppModel struct {
 	dependencySelector *DependencySelectorModel
 	filterView         *FilterViewModel
 	taskJumper         *TaskJumperModel
+	projectPreview     *ProjectPreviewModel
 
 	// Current project context
 	currentProject *models.Project
@@ -529,6 +531,18 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		return m, nil
 
+	case ShowProjectPreviewMsg:
+		if msg.Project != nil {
+			m.projectPreview = NewProjectPreviewModel(msg.Project)
+			m.projectPreview.SetSize(m.width, m.height-2)
+			m.pushView(ViewProjectPreview)
+		}
+		return m, nil
+
+	case CloseProjectPreviewMsg:
+		m.popView()
+		return m, nil
+
 	case SetDueDateMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.dateInput = NewDateInputModel(msg.Task, msg.Project)
@@ -697,6 +711,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.taskJumper = newModel.(*TaskJumperModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewProjectPreview:
+		if m.projectPreview != nil {
+			newModel, cmd := m.projectPreview.Update(msg)
+			m.projectPreview = newModel.(*ProjectPreviewModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -766,6 +787,10 @@ func (m *AppModel) View() string {
 		if m.taskJumper != nil {
 			content = m.taskJumper.View()
 		}
+	case ViewProjectPreview:
+		if m.projectPreview != nil {
+			content = m.projectPreview.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -810,6 +835,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filters"
 	case ViewTaskJumper:
 		status = "Jump to Task"
+	case ViewProjectPreview:
+		status = "Project Preview"
 	}
 
 	help := "q: quit | esc: back"

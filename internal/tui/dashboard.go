@@ -254,6 +254,12 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return EditProjectMsg{Project: visible[m.cursor]}
 				}
 			}
+		case "p":
+			if len(visible) > 0 && m.cursor < len(visible) {
+				return m, func() tea.Msg {
+					return ShowProjectPreviewMsg{Project: visible[m.cursor]}
+				}
+			}
 		case "c":
 			// Cycle context filter: all -> contexts[0] -> contexts[1] -> ... -> all
 			if len(m.contexts) == 0 {
@@ -512,6 +518,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "c", Description: "Filter by context", Category: "Filters"},
 		{Key: "n", Description: "New project", Category: "Actions"},
 		{Key: "e", Description: "Edit project", Category: "Actions"},
+		{Key: "p", Description: "Preview project", Category: "Actions"},
 		{Key: "D", Description: "Delete project", Category: "Actions"},
 		{Key: "a", Description: toggleDesc, Category: "Actions"},
 		{Key: "r", Description: "Refresh", Category: "Actions"},
