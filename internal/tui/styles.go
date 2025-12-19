@@ -211,6 +211,28 @@ var (
 
 	FilterClearStyle = lipgloss.NewStyle().
 				Foreground(ColorError)
+
+	// Task jumper styles
+	TaskJumperTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary).
+				MarginBottom(1)
+
+	TaskJumperListStyle = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder(), false, true, false, false).
+				BorderForeground(ColorBorder)
+
+	TaskJumperPreviewStyle = lipgloss.NewStyle().
+				Padding(0, 1)
+
+	TaskJumperSelectedStyle = lipgloss.NewStyle().
+				Background(ColorBackground).
+				Foreground(ColorPrimary).
+				Bold(true)
+
+	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(ColorPrimary)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

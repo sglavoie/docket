@@ -708,6 +708,11 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Items:      m.GetHelpItems(),
 				}
 			}
+		case "g":
+			// Jump to task (fuzzy finder)
+			return m, func() tea.Msg {
+				return ShowTaskJumperMsg{Project: m.project}
+			}
 		case "ctrl+f":
 			return m, func() tea.Msg {
 				return ShowFilterMsg{ProjectTree: m}
@@ -1370,6 +1375,43 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "r", Description: "Refresh", Category: "Other"},
 		{Key: "R", Description: "View with glow", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
+		{Key: "g", Description: "Jump to task", Category: "Navigation"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
+	}
+}
+
+// NavigateToTask expands parent nodes and positions cursor on the given task.
+func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
+	if task == nil {
+		return
+	}
+
+	// Expand all ancestors
+	m.expandAncestors(task)
+	m.updateVisibility()
+
+	// Find the task in visible nodes and set cursor
+	visible := m.visibleNodes()
+	for i, node := range visible {
+		if node.Task.ID == task.ID {
+			m.cursor = i
+			return
+		}
+	}
+}
+
+// expandAncestors marks all ancestor nodes as expanded.
+func (m *ProjectTreeModel) expandAncestors(task *models.Task) {
+	// Walk up the parent chain
+	current := task.Parent
+	for current != nil {
+		// Find the node for this parent and expand it
+		for _, node := range m.nodes {
+			if node.Task.ID == current.ID {
+				node.Expanded = true
+				break
+			}
+		}
+		current = current.Parent
 	}
 }

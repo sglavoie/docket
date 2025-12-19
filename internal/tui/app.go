@@ -32,6 +32,7 @@ const (
 	ViewDateInput
 	ViewDependencySelector
 	ViewFilter
+	ViewTaskJumper
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -58,6 +59,7 @@ type AppModel struct {
 	dateInput          *DateInputModel
 	dependencySelector *DependencySelectorModel
 	filterView         *FilterViewModel
+	taskJumper         *TaskJumperModel
 
 	// Current project context
 	currentProject *models.Project
@@ -200,6 +202,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Don't intercept - let task detail handle its search
 			} else if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 				// Don't intercept - let help view handle its search
+			} else if m.currentView() == ViewTaskJumper && m.taskJumper != nil {
+				// Don't intercept - task jumper handles its own closing
 			} else if m.currentView() != ViewDashboard {
 				m.popView()
 				return m, nil
@@ -505,6 +509,26 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		return m, nil
 
+	case ShowTaskJumperMsg:
+		if msg.Project != nil {
+			m.taskJumper = NewTaskJumperModel(msg.Project)
+			m.taskJumper.SetSize(m.width, m.height-2)
+			m.pushView(ViewTaskJumper)
+			return m, m.taskJumper.Init()
+		}
+		return m, nil
+
+	case TaskJumperSelectMsg:
+		m.popView()
+		if msg.Task != nil && m.projectTree != nil {
+			m.projectTree.NavigateToTask(msg.Task)
+		}
+		return m, nil
+
+	case CloseTaskJumperMsg:
+		m.popView()
+		return m, nil
+
 	case SetDueDateMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.dateInput = NewDateInputModel(msg.Task, msg.Project)
@@ -666,6 +690,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filterView = newModel.(*FilterViewModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewTaskJumper:
+		if m.taskJumper != nil {
+			newModel, cmd := m.taskJumper.Update(msg)
+			m.taskJumper = newModel.(*TaskJumperModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -731,6 +762,10 @@ func (m *AppModel) View() string {
 		if m.filterView != nil {
 			content = m.filterView.View()
 		}
+	case ViewTaskJumper:
+		if m.taskJumper != nil {
+			content = m.taskJumper.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -773,6 +808,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Set Due Date"
 	case ViewFilter:
 		status = "Filters"
+	case ViewTaskJumper:
+		status = "Jump to Task"
 	}
 
 	help := "q: quit | esc: back"
