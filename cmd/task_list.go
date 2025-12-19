@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
 )
 

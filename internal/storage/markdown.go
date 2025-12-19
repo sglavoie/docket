@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // getChildrenInOrder returns tasks that are children of the given parent ID,

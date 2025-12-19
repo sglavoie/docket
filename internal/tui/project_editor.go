@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // ProjectEditorModel handles editing an existing project via TUI.

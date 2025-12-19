@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func TestParseTasksMarkdown_Empty(t *testing.T) {

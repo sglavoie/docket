@@ -7,9 +7,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TaskEditorModel handles editing an existing task via TUI.

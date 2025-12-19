@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
 )
 

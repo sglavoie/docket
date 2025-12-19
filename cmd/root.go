@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

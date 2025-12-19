@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // SettingsModel handles the settings view in the TUI.

@@ -8,9 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // ProjectCreatorModel handles creating a new project via TUI.

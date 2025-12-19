@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var (

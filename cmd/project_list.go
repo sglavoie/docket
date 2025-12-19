@@ -5,8 +5,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 

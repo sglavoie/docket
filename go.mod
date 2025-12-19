@@ -1,4 +1,4 @@
-module github.com/sglavoie/dev-helpers/go/tt
+module github.com/sglavoie/tt
 
 go 1.24.2
 

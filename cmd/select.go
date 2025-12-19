@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/config"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/storage"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui"
 	"github.com/spf13/cobra"
 )
 

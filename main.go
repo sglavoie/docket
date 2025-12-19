@@ -1,6 +1,6 @@
 package main
 
-import "github.com/sglavoie/dev-helpers/go/tt/cmd"
+import "github.com/sglavoie/tt/cmd"
 
 func main() {
 	cmd.Execute()

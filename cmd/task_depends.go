@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sglavoie/dev-helpers/go/tt/internal/models"
-	"github.com/sglavoie/dev-helpers/go/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui"
 	"github.com/spf13/cobra"
 )
 
