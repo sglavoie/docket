@@ -57,7 +57,9 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 	descInput.Placeholder = "Description (optional)"
 	descInput.CharLimit = 5000
 	descInput.SetWidth(50)
-	descInput.SetHeight(3)
+	descInput.SetHeight(4)
+	descInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	descInput.ShowLineNumbers = false
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
