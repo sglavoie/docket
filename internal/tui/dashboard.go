@@ -296,6 +296,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
 			}
+		case "ctrl+t":
+			return m, func() tea.Msg {
+				return ShowGlobalTagManagerMsg{}
+			}
 		}
 	}
 
@@ -524,6 +528,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},
 		{Key: "/", Description: "Search projects", Category: "Navigation"},
 		{Key: "Ctrl+D", Description: "Due date overview", Category: "Navigation"},
+		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},
 		{Key: "c", Description: "Filter by context", Category: "Filters"},
 		{Key: "n", Description: "New project", Category: "Actions"},
 		{Key: "e", Description: "Edit project", Category: "Actions"},

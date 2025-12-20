@@ -36,6 +36,7 @@ const (
 	ViewProjectPreview
 	ViewDueDateOverview
 	ViewTagManager
+	ViewGlobalTagManager
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -66,6 +67,7 @@ type AppModel struct {
 	projectPreview     *ProjectPreviewModel
 	dueDateOverview    *DueDateOverviewModel
 	tagManager         *TagManagerModel
+	globalTagManager   *GlobalTagManagerModel
 
 	// Current project context
 	currentProject *models.Project
@@ -579,6 +581,34 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case ShowGlobalTagManagerMsg:
+		m.globalTagManager = NewGlobalTagManagerModel(m.config)
+		m.globalTagManager.SetSize(m.width, m.height-2)
+		m.pushView(ViewGlobalTagManager)
+		return m, nil
+
+	case CloseGlobalTagManagerMsg:
+		m.popView()
+		return m, nil
+
+	case GlobalTagRenamedMsg:
+		m.popView()
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		return m, nil
+
+	case GlobalTagNavigateMsg:
+		m.popView()
+		m.currentProject = msg.Project
+		storage.LoadProject(msg.Project)
+		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
+		m.projectTree.filterTag = msg.Tag
+		m.projectTree.updateVisibility()
+		m.projectTree.SetSize(m.width, m.height-2)
+		m.pushView(ViewProjectTree)
+		return m, nil
+
 	case DueDateOverviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
@@ -778,6 +808,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tagManager = newModel.(*TagManagerModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewGlobalTagManager:
+		if m.globalTagManager != nil {
+			newModel, cmd := m.globalTagManager.Update(msg)
+			m.globalTagManager = newModel.(*GlobalTagManagerModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -859,6 +896,10 @@ func (m *AppModel) View() string {
 		if m.tagManager != nil {
 			content = m.tagManager.View()
 		}
+	case ViewGlobalTagManager:
+		if m.globalTagManager != nil {
+			content = m.globalTagManager.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -909,6 +950,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Due Dates"
 	case ViewTagManager:
 		status = "Tag Manager"
+	case ViewGlobalTagManager:
+		status = "Global Tags"
 	}
 
 	help := "q: quit | esc: back"
