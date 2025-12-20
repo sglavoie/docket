@@ -198,8 +198,12 @@ func (m *HelpViewModel) renderContent() string {
 	}
 
 	// Calculate column widths
+	// Each column: keyWidth + separator(2) + descWidth
+	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
 	keyWidth := 12
-	descWidth := (m.width - keyWidth - 8) / 2 // Space for 2 columns with padding
+	columnGap := 4
+	columnOverhead := keyWidth + 2 // key + separator
+	descWidth := (m.width - 2*columnOverhead - columnGap) / 2
 	if descWidth < 20 {
 		descWidth = 20
 	}
@@ -210,7 +214,8 @@ func (m *HelpViewModel) renderContent() string {
 		Foreground(ColorSecondary)
 
 	descStyle := lipgloss.NewStyle().
-		Width(descWidth)
+		Width(descWidth).
+		MaxWidth(descWidth)
 
 	// Render each category
 	for i, category := range categoryOrder {
