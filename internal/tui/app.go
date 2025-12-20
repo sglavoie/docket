@@ -73,8 +73,9 @@ type AppModel struct {
 	currentProject *models.Project
 
 	// State
-	err      error
-	quitting bool
+	err           error
+	quitting      bool
+	statusMessage string // Temporary status message (auto-clears after timeout)
 }
 
 // NewAppModel creates a new TUI application model.
@@ -181,7 +182,27 @@ type (
 		TasksBefore int
 		TasksAfter  int
 	}
+
+	// Clipboard messages
+	CopyTaskTitleMsg    struct{ Task *models.Task }
+	CopyTaskDetailsMsg  struct{ Task *models.Task }
+	CopyTasksTitleMsg   struct{ Tasks []*models.Task }
+	CopyTasksDetailsMsg struct{ Tasks []*models.Task }
+	TaskCopiedMsg       struct {
+		Count      int
+		FullDetail bool
+	}
+
+	// Status message
+	StatusClearMsg struct{}
 )
+
+// statusTimeout returns a command that clears the status message after the given duration.
+func statusTimeout(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg {
+		return StatusClearMsg{}
+	})
+}
 
 func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
@@ -686,6 +707,82 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.projectTree.SetSize(m.width, m.height-2)
 		}
 		return m, nil
+
+	case CopyTaskTitleMsg:
+		if msg.Task == nil {
+			return m, nil
+		}
+		_, err := external.CopyTaskTitle(msg.Task)
+		if err != nil {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
+			}
+		}
+		return m, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, FullDetail: false}
+		}
+
+	case CopyTaskDetailsMsg:
+		if msg.Task == nil {
+			return m, nil
+		}
+		_, err := external.CopyTaskDetails(msg.Task)
+		if err != nil {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
+			}
+		}
+		return m, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, FullDetail: true}
+		}
+
+	case CopyTasksTitleMsg:
+		if len(msg.Tasks) == 0 {
+			return m, nil
+		}
+		_, err := external.CopyTaskTitles(msg.Tasks)
+		if err != nil {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
+			}
+		}
+		count := len(msg.Tasks)
+		return m, func() tea.Msg {
+			return TaskCopiedMsg{Count: count, FullDetail: false}
+		}
+
+	case CopyTasksDetailsMsg:
+		if len(msg.Tasks) == 0 {
+			return m, nil
+		}
+		_, err := external.CopyTasksDetails(msg.Tasks)
+		if err != nil {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
+			}
+		}
+		count := len(msg.Tasks)
+		return m, func() tea.Msg {
+			return TaskCopiedMsg{Count: count, FullDetail: true}
+		}
+
+	case TaskCopiedMsg:
+		var what string
+		if msg.FullDetail {
+			what = "full details"
+		} else {
+			what = "title"
+		}
+		if msg.Count == 1 {
+			m.statusMessage = fmt.Sprintf("Copied %s to clipboard", what)
+		} else {
+			m.statusMessage = fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count)
+		}
+		return m, statusTimeout(2 * time.Second)
+
+	case StatusClearMsg:
+		m.statusMessage = ""
+		return m, nil
 	}
 
 	// Delegate to current view
@@ -911,6 +1008,17 @@ func (m *AppModel) View() string {
 }
 
 func (m *AppModel) renderStatusBar() string {
+	// Show temporary status message if present
+	if m.statusMessage != "" {
+		msg := SuccessStyle.Render("✓ " + m.statusMessage)
+		gap := m.width - lipgloss.Width(msg)
+		if gap < 0 {
+			gap = 0
+		}
+		spacer := lipgloss.NewStyle().Width(gap).Render("")
+		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+	}
+
 	var status string
 
 	switch m.currentView() {

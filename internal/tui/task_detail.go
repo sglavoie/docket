@@ -215,6 +215,16 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return GlowViewMsg{Task: m.task}
 			}
+		case "y":
+			// Yank (copy) task title to clipboard
+			return m, func() tea.Msg {
+				return CopyTaskTitleMsg{Task: m.task}
+			}
+		case "Y":
+			// Yank (copy) full task details to clipboard
+			return m, func() tea.Msg {
+				return CopyTaskDetailsMsg{Task: m.task}
+			}
 		case "ctrl+o":
 			// Edit description in external editor
 			return m, func() tea.Msg {
@@ -611,6 +621,10 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		// View
 		{Key: "R", Description: "View with glow", Category: "View"},
 		{Key: "?", Description: "Toggle help", Category: "View"},
+
+		// Clipboard
+		{Key: "y", Description: "Copy title", Category: "Clipboard"},
+		{Key: "Y", Description: "Copy full details", Category: "Clipboard"},
 
 		// Other
 		{Key: "z", Description: "Undo last change", Category: "Other"},

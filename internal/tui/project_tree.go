@@ -928,6 +928,36 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return GlowViewMsg{Task: task}
 				}
 			}
+		case "y":
+			// Yank (copy) task title to clipboard
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				tasks := m.getSelectedTasks()
+				m.clearSelection()
+				return m, func() tea.Msg {
+					return CopyTasksTitleMsg{Tasks: tasks}
+				}
+			}
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				return m, func() tea.Msg {
+					return CopyTaskTitleMsg{Task: task}
+				}
+			}
+		case "Y":
+			// Yank (copy) full task details to clipboard
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				tasks := m.getSelectedTasks()
+				m.clearSelection()
+				return m, func() tea.Msg {
+					return CopyTasksDetailsMsg{Tasks: tasks}
+				}
+			}
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				return m, func() tea.Msg {
+					return CopyTaskDetailsMsg{Task: task}
+				}
+			}
 		case "ctrl+o":
 			// Edit description in external editor
 			if len(visible) > 0 && m.cursor < len(visible) {
@@ -1883,6 +1913,10 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Project
 		{Key: "A", Description: archiveDesc + " (normal mode)", Category: "Project"},
+
+		// Clipboard
+		{Key: "y", Description: "Copy title", Category: "Clipboard"},
+		{Key: "Y", Description: "Copy full details", Category: "Clipboard"},
 
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
