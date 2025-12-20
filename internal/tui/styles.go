@@ -265,6 +265,18 @@ var (
 			Background(ColorBackground).
 			Foreground(ColorPrimary).
 			Bold(true)
+
+	// Multi-select styles
+	SelectionStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary)
+
+	SelectionCheckStyle = lipgloss.NewStyle().
+				Foreground(ColorSuccess).
+				Bold(true)
+
+	SelectionCountStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning).
+				Bold(true)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

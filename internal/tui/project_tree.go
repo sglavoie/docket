@@ -92,8 +92,16 @@ type ProjectTreeModel struct {
 	searchQuery string
 
 	// Confirmation state for destructive actions
-	confirmAction string       // "", "archive", "unarchive", "delete"
+	confirmAction string       // "", "archive", "unarchive", "delete", "bulk-delete"
 	deleteTarget  *models.Task // Task to delete when confirmAction="delete"
+
+	// Multi-select state
+	multiSelectMode bool
+	selectedTasks   map[string]bool // task IDs currently selected
+
+	// Tag input for bulk tagging
+	tagInputMode bool
+	tagInput     textinput.Model
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -102,6 +110,11 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	searchInput.Placeholder = "Search tasks..."
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
+
+	tagInput := textinput.New()
+	tagInput.Placeholder = "Enter tag name..."
+	tagInput.CharLimit = 50
+	tagInput.Width = 30
 
 	m := &ProjectTreeModel{
 		project:        project,
@@ -118,6 +131,8 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		searchMode:     false,
 		searchInput:    searchInput,
 		searchQuery:    "",
+		selectedTasks:  make(map[string]bool),
+		tagInput:       tagInput,
 	}
 	m.buildTree()
 	return m
@@ -328,6 +343,55 @@ func (m *ProjectTreeModel) HasActiveSearch() bool {
 	return m.searchMode || m.searchQuery != ""
 }
 
+// toggleSelection toggles the selection state of a single task.
+func (m *ProjectTreeModel) toggleSelection(task *models.Task) {
+	if m.selectedTasks[task.ID] {
+		delete(m.selectedTasks, task.ID)
+	} else {
+		m.selectedTasks[task.ID] = true
+	}
+}
+
+// clearSelection exits multi-select mode and clears all selections.
+func (m *ProjectTreeModel) clearSelection() {
+	m.multiSelectMode = false
+	m.selectedTasks = make(map[string]bool)
+}
+
+// getSelectedTasks returns a slice of selected tasks from the project.
+func (m *ProjectTreeModel) getSelectedTasks() []*models.Task {
+	var tasks []*models.Task
+	for _, task := range m.project.Tasks {
+		if m.selectedTasks[task.ID] {
+			tasks = append(tasks, task)
+		}
+	}
+	return tasks
+}
+
+// selectAllVisible adds all currently visible tasks to the selection.
+func (m *ProjectTreeModel) selectAllVisible() {
+	for _, node := range m.visibleNodes() {
+		m.selectedTasks[node.Task.ID] = true
+	}
+}
+
+// pruneInvisibleSelections removes selected tasks that are no longer visible.
+func (m *ProjectTreeModel) pruneInvisibleSelections() {
+	if !m.multiSelectMode {
+		return
+	}
+	visibleIDs := make(map[string]bool)
+	for _, node := range m.visibleNodes() {
+		visibleIDs[node.Task.ID] = true
+	}
+	for id := range m.selectedTasks {
+		if !visibleIDs[id] {
+			delete(m.selectedTasks, id)
+		}
+	}
+}
+
 func (m *ProjectTreeModel) visibleNodes() []*TreeNode {
 	var visible []*TreeNode
 	for _, node := range m.nodes {
@@ -504,6 +568,9 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if m.confirmAction == "delete" {
 					m.confirmAction = ""
 					return m, m.deleteTask()
+				} else if m.confirmAction == "bulk-delete" {
+					m.confirmAction = ""
+					return m, m.bulkDeleteTasks()
 				}
 			case "n", "N", "esc":
 				m.confirmAction = ""
@@ -546,6 +613,32 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Handle tag input mode for bulk tagging
+		if m.tagInputMode {
+			switch msg.String() {
+			case "esc":
+				m.tagInputMode = false
+				m.tagInput.Blur()
+				m.tagInput.SetValue("")
+				return m, nil
+			case "enter":
+				tag := strings.TrimSpace(m.tagInput.Value())
+				m.tagInputMode = false
+				m.tagInput.Blur()
+				m.tagInput.SetValue("")
+				if tag == "" {
+					return m, nil // Don't clear selection or save on empty tag
+				}
+				m.applyBulkTag(tag)
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			default:
+				var cmd tea.Cmd
+				m.tagInput, cmd = m.tagInput.Update(msg)
+				return m, cmd
+			}
+		}
+
 		switch msg.String() {
 		case "/":
 			if m.confirmAction == "" {
@@ -554,6 +647,11 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, textinput.Blink
 			}
 		case "esc":
+			// Exit multi-select mode if active
+			if m.multiSelectMode {
+				m.clearSelection()
+				return m, nil
+			}
 			// Clear search filter if active
 			if m.searchQuery != "" {
 				m.searchQuery = ""
@@ -571,11 +669,28 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(visible) > 0 && m.cursor < len(visible) {
+				m.clearSelection()
 				return m, func() tea.Msg {
 					return SelectTaskMsg{Task: visible[m.cursor].Task}
 				}
 			}
-		case " ", "tab":
+		case " ":
+			// In multi-select mode, toggle selection
+			if m.multiSelectMode {
+				if len(visible) > 0 && m.cursor < len(visible) {
+					m.toggleSelection(visible[m.cursor].Task)
+				}
+				return m, nil
+			}
+			// Normal mode: toggle expand/collapse
+			if len(visible) > 0 && m.cursor < len(visible) {
+				node := visible[m.cursor]
+				if len(node.Task.Children) > 0 {
+					node.Expanded = !node.Expanded
+					m.updateVisibility()
+				}
+			}
+		case "tab":
 			// Toggle expand/collapse
 			if len(visible) > 0 && m.cursor < len(visible) {
 				node := visible[m.cursor]
@@ -583,6 +698,24 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					node.Expanded = !node.Expanded
 					m.updateVisibility()
 				}
+			}
+		case "v":
+			// Toggle multi-select mode
+			if m.multiSelectMode {
+				m.clearSelection()
+			} else {
+				m.multiSelectMode = true
+				// Select current task when entering multi-select
+				if len(visible) > 0 && m.cursor < len(visible) {
+					m.toggleSelection(visible[m.cursor].Task)
+				}
+			}
+			return m, nil
+		case "a":
+			// Select all visible (only in multi-select mode)
+			if m.multiSelectMode {
+				m.selectAllVisible()
+				return m, nil
 			}
 		case "E":
 			// Expand all
@@ -602,6 +735,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle show completed
 			m.showCompleted = !m.showCompleted
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		// Filter controls
@@ -613,6 +747,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.filterPriority = 0 // all
 			}
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		case "t":
@@ -638,6 +773,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		case "S":
@@ -663,9 +799,16 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		case "T":
+			// In multi-select mode, open tag input for bulk tagging
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				m.tagInputMode = true
+				m.tagInput.Focus()
+				return m, textinput.Blink
+			}
 			// Cycle tag filter
 			tags := m.getAllTags()
 			if len(tags) == 0 {
@@ -690,12 +833,14 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		case "u":
 			// Cycle due date filter: all → overdue → today → this week → no due date → all
 			m.filterDueDate = (m.filterDueDate + 1) % 5
 			m.updateVisibility()
+			m.pruneInvisibleSelections()
 			m.clampCursor()
 
 		// Sort controls
@@ -768,6 +913,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			// Reload project
+			m.clearSelection()
 			storage.LoadProject(m.project)
 			m.buildTree()
 		case "R":
@@ -787,6 +933,13 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "A":
+			// In multi-select mode, deselect all visible
+			if m.multiSelectMode {
+				for _, node := range m.visibleNodes() {
+					delete(m.selectedTasks, node.Task.ID)
+				}
+				return m, nil
+			}
 			// Archive/unarchive project
 			if m.project.Archived {
 				m.confirmAction = "unarchive"
@@ -797,6 +950,15 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Task status changes
 		case "s":
 			// Start task (in_progress)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					if task.Status == models.StatusTodo || task.Status == models.StatusBlocked {
+						task.Start()
+					}
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				if task.Status == models.StatusTodo || task.Status == models.StatusBlocked {
@@ -806,6 +968,33 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "m":
 			// Mark complete (done)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				var skippedIDs []string
+				completedCount := 0
+				for _, task := range m.getSelectedTasks() {
+					if task.Status.IsActive() {
+						if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+							skippedIDs = append(skippedIDs, fmt.Sprintf("#%d", task.ShortID))
+							continue
+						}
+						task.Complete()
+						completedCount++
+					}
+				}
+				m.clearSelection()
+				if len(skippedIDs) > 0 {
+					var msg string
+					if completedCount == 0 {
+						msg = fmt.Sprintf("no tasks completed: %s have incomplete dependencies", strings.Join(skippedIDs, ", "))
+					} else {
+						msg = fmt.Sprintf("completed %d, skipped %s (incomplete dependencies)", completedCount, strings.Join(skippedIDs, ", "))
+					}
+					return m, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("%s", msg)}
+					})
+				}
+				return m, m.saveAndRefresh()
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				if task.Status.IsActive() {
@@ -826,6 +1015,15 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "b":
 			// Block task
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					if task.Status.IsActive() && task.Status != models.StatusBlocked {
+						task.Block()
+					}
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				if task.Status.IsActive() && task.Status != models.StatusBlocked {
@@ -835,6 +1033,15 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "x":
 			// Cancel task
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					if task.Status.IsActive() {
+						task.Cancel()
+					}
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				if task.Status.IsActive() {
@@ -844,6 +1051,15 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "o":
 			// Reopen task (back to todo)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					if task.Status != models.StatusTodo {
+						task.Reopen()
+					}
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				if task.Status != models.StatusTodo {
@@ -975,6 +1191,10 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "D":
 			// Delete task (requires confirmation)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				m.confirmAction = "bulk-delete"
+				return m, nil
+			}
 			if len(visible) > 0 && m.cursor < len(visible) {
 				m.confirmAction = "delete"
 				m.deleteTarget = visible[m.cursor].Task
@@ -1126,6 +1346,76 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	}
 }
 
+// bulkDeleteTasks removes all selected tasks and their children from the project.
+func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
+	return func() tea.Msg {
+		if len(m.selectedTasks) == 0 {
+			return nil
+		}
+
+		// Create backup before deleting for undo support
+		if err := storage.BackupProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		// Collect all IDs to delete (selected tasks and their descendants)
+		idsToDelete := make(map[string]bool)
+		var collectIDs func(t *models.Task)
+		collectIDs = func(t *models.Task) {
+			idsToDelete[t.ID] = true
+			for _, child := range t.Children {
+				collectIDs(child)
+			}
+		}
+
+		for _, task := range m.project.Tasks {
+			if m.selectedTasks[task.ID] {
+				collectIDs(task)
+			}
+		}
+
+		// Filter out deleted tasks
+		var remaining []*models.Task
+		for _, t := range m.project.Tasks {
+			if !idsToDelete[t.ID] {
+				// Clear parent reference if parent was deleted
+				if t.ParentID != nil && idsToDelete[*t.ParentID] {
+					t.ParentID = nil
+				}
+				remaining = append(remaining, t)
+			}
+		}
+		m.project.Tasks = remaining
+
+		if err := storage.SaveProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		m.clearSelection()
+		storage.LoadProject(m.project)
+		m.buildTree()
+		m.clampCursor()
+		return treeRefreshMsg{}
+	}
+}
+
+// applyBulkTag adds a tag to all selected tasks.
+func (m *ProjectTreeModel) applyBulkTag(tag string) {
+	for _, task := range m.getSelectedTasks() {
+		// Add tag if not already present
+		hasTag := false
+		for _, t := range task.Tags {
+			if t == tag {
+				hasTag = true
+				break
+			}
+		}
+		if !hasTag {
+			task.Tags = append(task.Tags, tag)
+		}
+	}
+}
+
 func (m *ProjectTreeModel) View() string {
 	var b strings.Builder
 
@@ -1155,6 +1445,22 @@ func (m *ProjectTreeModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Multi-select mode indicator
+	if m.multiSelectMode {
+		count := len(m.selectedTasks)
+		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
+		b.WriteString(" ")
+		b.WriteString(MutedStyle.Render("Space: toggle | a: all | v/Esc: exit | s/m/b/x/o: status | D: delete | T: tag"))
+		b.WriteString("\n")
+	}
+
+	// Tag input prompt
+	if m.tagInputMode {
+		b.WriteString(SubtitleStyle.Render("Add tag: "))
+		b.WriteString(m.tagInput.View())
+		b.WriteString("\n")
+	}
+
 	// Confirmation prompt
 	if m.confirmAction != "" {
 		var prompt string
@@ -1164,6 +1470,16 @@ func (m *ProjectTreeModel) View() string {
 				prompt = fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title, childCount)
 			} else {
 				prompt = fmt.Sprintf("Delete task #%d '%s'? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title)
+			}
+		} else if m.confirmAction == "bulk-delete" {
+			totalChildren := 0
+			for _, task := range m.getSelectedTasks() {
+				totalChildren += task.CountChildren()
+			}
+			if totalChildren > 0 {
+				prompt = fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren)
+			} else {
+				prompt = fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks))
 			}
 		} else {
 			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", m.confirmAction)
@@ -1227,7 +1543,8 @@ func (m *ProjectTreeModel) View() string {
 		// Render visible tasks
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
-			line := m.renderNode(node, i == m.cursor)
+			inSelection := m.selectedTasks[node.Task.ID]
+			line := m.renderNode(node, i == m.cursor, inSelection)
 			b.WriteString(line)
 			b.WriteString("\n")
 		}
@@ -1303,7 +1620,7 @@ func (m *ProjectTreeModel) View() string {
 	return b.String()
 }
 
-func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
+func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection bool) string {
 	task := node.Task
 
 	// Build indent
@@ -1316,6 +1633,16 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
 			expandIcon = "▼ "
 		} else {
 			expandIcon = "▶ "
+		}
+	}
+
+	// Selection checkbox (only in multi-select mode)
+	checkbox := ""
+	if m.multiSelectMode {
+		if inSelection {
+			checkbox = SelectionCheckStyle.Render("[x]") + " "
+		} else {
+			checkbox = MutedStyle.Render("[ ]") + " "
 		}
 	}
 
@@ -1345,10 +1672,13 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
 	if selected {
 		titleStyle = BoldStyle.Foreground(ColorPrimary)
 	}
+	if inSelection && !selected {
+		titleStyle = SelectionStyle
+	}
 	if task.Status == models.StatusCancelled {
 		titleStyle = CancelledStyle
 	}
-	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-35))
+	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-40))
 
 	// Progress for parent tasks
 	progress := ""
@@ -1384,8 +1714,8 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool) string {
 		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn)))
 	}
 
-	return fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
-		cursor, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
+		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
 }
 
 // GetHelpItems returns the help items for the project tree view.
@@ -1399,7 +1729,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Navigation
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "View task details", Category: "Navigation"},
-		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
+		{Key: "Space/Tab", Description: "Expand/collapse", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
 		{Key: "c", Description: "Collapse all", Category: "Navigation"},
 
@@ -1447,8 +1777,13 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "4", Description: "Sort by status", Category: "Sort"},
 		{Key: "0", Description: "Reset sort", Category: "Sort"},
 
+		// Multi-select
+		{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select"},
+		{Key: "a", Description: "Select all visible (in multi-select)", Category: "Multi-select"},
+		{Key: "A", Description: "Deselect all (in multi-select)", Category: "Multi-select"},
+
 		// Project
-		{Key: "A", Description: archiveDesc, Category: "Project"},
+		{Key: "A", Description: archiveDesc + " (normal mode)", Category: "Project"},
 
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
