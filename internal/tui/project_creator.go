@@ -38,12 +38,20 @@ func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *Projec
 	nameInput.CharLimit = 100
 	nameInput.Width = 40
 
+	// Build contexts list: start with default context, then add others
+	contexts := []string{cfg.DefaultContext}
+	for _, ctx := range cfg.GetAllContexts() {
+		if ctx != cfg.DefaultContext {
+			contexts = append(contexts, ctx)
+		}
+	}
+
 	return &ProjectCreatorModel{
 		config:        cfg,
 		configManager: manager,
 		nameInput:     nameInput,
 		contextCursor: 0,
-		contexts:      []string{"personal", "work"},
+		contexts:      contexts,
 		focusIndex:    0,
 		width:         80,
 		height:        24,
