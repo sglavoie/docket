@@ -209,7 +209,7 @@ func TestParseTasksMarkdown_Dates(t *testing.T) {
 
 	task := tasks[0]
 
-	expectedCreated, _ := time.Parse("2006-01-02", "2024-01-15")
+	expectedCreated, _ := time.ParseInLocation("2006-01-02", "2024-01-15", time.Local)
 	if !task.CreatedAt.Equal(expectedCreated) {
 		t.Errorf("expected CreatedAt %v, got %v", expectedCreated, task.CreatedAt)
 	}
@@ -217,7 +217,7 @@ func TestParseTasksMarkdown_Dates(t *testing.T) {
 	if task.CompletedAt == nil {
 		t.Error("expected CompletedAt to be set")
 	} else {
-		expectedCompleted, _ := time.Parse("2006-01-02", "2024-01-20")
+		expectedCompleted, _ := time.ParseInLocation("2006-01-02", "2024-01-20", time.Local)
 		if !task.CompletedAt.Equal(expectedCompleted) {
 			t.Errorf("expected CompletedAt %v, got %v", expectedCompleted, *task.CompletedAt)
 		}
@@ -226,7 +226,7 @@ func TestParseTasksMarkdown_Dates(t *testing.T) {
 	if task.DueDate == nil {
 		t.Error("expected DueDate to be set")
 	} else {
-		expectedDue, _ := time.Parse("2006-01-02", "2024-02-01")
+		expectedDue, _ := time.ParseInLocation("2006-01-02", "2024-02-01", time.Local)
 		if !task.DueDate.Equal(expectedDue) {
 			t.Errorf("expected DueDate %v, got %v", expectedDue, *task.DueDate)
 		}

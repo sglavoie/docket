@@ -139,19 +139,19 @@ func parseMetadata(task *models.Task, metaStr string) {
 				}
 			}
 		case "created":
-			if t, err := time.Parse("2006-01-02", value); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.CreatedAt = t
 			}
 		case "updated":
-			if t, err := time.Parse("2006-01-02", value); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.UpdatedAt = t
 			}
 		case "completed":
-			if t, err := time.Parse("2006-01-02", value); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.CompletedAt = &t
 			}
 		case "due":
-			if t, err := time.Parse("2006-01-02", value); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.DueDate = &t
 			}
 		case "depends":

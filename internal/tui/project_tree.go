@@ -251,8 +251,10 @@ func isOverdue(task *models.Task) bool {
 	if task.DueDate == nil || task.Status.IsComplete() {
 		return false
 	}
-	today := time.Now().Truncate(24 * time.Hour)
-	return task.DueDate.Before(today)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	return dueDay.Before(today)
 }
 
 // isDueToday returns true if the task is due today.
@@ -260,8 +262,9 @@ func isDueToday(task *models.Task) bool {
 	if task.DueDate == nil {
 		return false
 	}
-	today := time.Now().Truncate(24 * time.Hour)
-	dueDay := task.DueDate.Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 	return dueDay.Equal(today)
 }
 
@@ -271,9 +274,9 @@ func isDueThisWeek(task *models.Task) bool {
 		return false
 	}
 	now := time.Now()
-	today := now.Truncate(24 * time.Hour)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	weekEnd := today.AddDate(0, 0, 7)
-	dueDay := task.DueDate.Truncate(24 * time.Hour)
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 	return !dueDay.Before(today) && dueDay.Before(weekEnd)
 }
 
@@ -284,8 +287,8 @@ func formatDueDate(task *models.Task) string {
 	}
 
 	now := time.Now()
-	today := now.Truncate(24 * time.Hour)
-	dueDay := task.DueDate.Truncate(24 * time.Hour)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 
 	var dateStr string
 	var style lipgloss.Style

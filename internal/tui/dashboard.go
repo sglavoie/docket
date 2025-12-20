@@ -495,10 +495,14 @@ func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project
 
 	// Overdue count
 	overdueCount := 0
-	today := time.Now().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	for _, task := range project.Tasks {
-		if task.DueDate != nil && !task.Status.IsComplete() && task.DueDate.Before(today) {
-			overdueCount++
+		if task.DueDate != nil && !task.Status.IsComplete() {
+			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+			if dueDay.Before(today) {
+				overdueCount++
+			}
 		}
 	}
 	if overdueCount > 0 {

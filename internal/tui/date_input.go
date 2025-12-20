@@ -169,17 +169,17 @@ func ParseDate(input string) (time.Time, error) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	// Exact date: YYYY-MM-DD
-	if date, err := time.Parse("2006-01-02", input); err == nil {
+	if date, err := time.ParseInLocation("2006-01-02", input, time.Local); err == nil {
 		return date, nil
 	}
 
 	// Exact date: MM/DD/YYYY
-	if date, err := time.Parse("01/02/2006", input); err == nil {
+	if date, err := time.ParseInLocation("01/02/2006", input, time.Local); err == nil {
 		return date, nil
 	}
 
 	// Exact date: DD.MM.YYYY (European format)
-	if date, err := time.Parse("02.01.2006", input); err == nil {
+	if date, err := time.ParseInLocation("02.01.2006", input, time.Local); err == nil {
 		return date, nil
 	}
 
