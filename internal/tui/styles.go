@@ -250,6 +250,21 @@ var (
 	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().
 					Bold(true).
 					Foreground(ColorPrimary)
+
+	// Due date overview styles
+	DueDateOverviewTitleStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(ColorPrimary)
+
+	DueDateGroupHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorSecondary).
+				MarginTop(1)
+
+	SelectedStyle = lipgloss.NewStyle().
+			Background(ColorBackground).
+			Foreground(ColorPrimary).
+			Bold(true)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

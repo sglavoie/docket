@@ -34,6 +34,7 @@ const (
 	ViewFilter
 	ViewTaskJumper
 	ViewProjectPreview
+	ViewDueDateOverview
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -62,6 +63,7 @@ type AppModel struct {
 	filterView         *FilterViewModel
 	taskJumper         *TaskJumperModel
 	projectPreview     *ProjectPreviewModel
+	dueDateOverview    *DueDateOverviewModel
 
 	// Current project context
 	currentProject *models.Project
@@ -543,6 +545,26 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		return m, nil
 
+	case ShowDueDateOverviewMsg:
+		m.dueDateOverview = NewDueDateOverviewModel(m.config)
+		m.dueDateOverview.SetSize(m.width, m.height-2)
+		m.pushView(ViewDueDateOverview)
+		return m, nil
+
+	case CloseDueDateOverviewMsg:
+		m.popView()
+		return m, nil
+
+	case DueDateOverviewSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.currentProject = msg.Project
+			m.taskDetail = NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager)
+			m.taskDetail.SetSize(m.width, m.height-2)
+			m.pushView(ViewTaskDetail)
+		}
+		return m, nil
+
 	case SetDueDateMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.dateInput = NewDateInputModel(msg.Task, msg.Project)
@@ -718,6 +740,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.projectPreview = newModel.(*ProjectPreviewModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewDueDateOverview:
+		if m.dueDateOverview != nil {
+			newModel, cmd := m.dueDateOverview.Update(msg)
+			m.dueDateOverview = newModel.(*DueDateOverviewModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -791,6 +820,10 @@ func (m *AppModel) View() string {
 		if m.projectPreview != nil {
 			content = m.projectPreview.View()
 		}
+	case ViewDueDateOverview:
+		if m.dueDateOverview != nil {
+			content = m.dueDateOverview.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -837,6 +870,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Jump to Task"
 	case ViewProjectPreview:
 		status = "Project Preview"
+	case ViewDueDateOverview:
+		status = "Due Dates"
 	}
 
 	help := "q: quit | esc: back"
