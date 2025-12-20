@@ -52,6 +52,10 @@ func (s SortField) String() string {
 	}
 }
 
+// treeRefreshMsg signals the tree should rebuild itself.
+// This is an internal message that preserves filter state.
+type treeRefreshMsg struct{}
+
 // TreeNode represents a node in the task tree.
 type TreeNode struct {
 	Task     *models.Task
@@ -483,6 +487,9 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	visible := m.visibleNodes()
 
 	switch msg := msg.(type) {
+	case treeRefreshMsg:
+		m.buildTree()
+		return m, nil
 	case tea.KeyMsg:
 		// Handle confirmation prompts first
 		if m.confirmAction != "" {
@@ -898,6 +905,9 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if siblingIdx > 0 {
 					m.project.MoveTaskUp(task)
+					if m.cursor > 0 {
+						m.cursor--
+					}
 					return m, m.saveAndRefresh()
 				}
 			}
@@ -915,6 +925,9 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if siblingIdx >= 0 && siblingIdx < len(siblings)-1 {
 					m.project.MoveTaskDown(task)
+					if m.cursor < len(visible)-1 {
+						m.cursor++
+					}
 					return m, m.saveAndRefresh()
 				}
 			}
@@ -1060,8 +1073,7 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 		storage.LoadProject(m.project)
-		m.buildTree()
-		return TaskStatusChangedMsg{Task: nil}
+		return treeRefreshMsg{}
 	}
 }
 
