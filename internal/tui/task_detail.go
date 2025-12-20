@@ -269,6 +269,44 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.task.Reopen()
 				return m, m.saveAndRefresh()
 			}
+		case "`":
+			// Cycle status forward: todo -> in_progress -> done -> todo
+			// Skips blocked and cancelled (require explicit intent)
+			switch m.task.Status {
+			case models.StatusTodo:
+				m.task.Start()
+				return m, m.saveAndRefresh()
+			case models.StatusInProgress:
+				if incompleteDeps := m.project.GetIncompleteDependencies(m.task); len(incompleteDeps) > 0 {
+					depNames := make([]string, len(incompleteDeps))
+					for i, dep := range incompleteDeps {
+						depNames[i] = fmt.Sprintf("#%d", dep.ShortID)
+					}
+					return m, func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+							len(incompleteDeps), strings.Join(depNames, ", "))}
+					}
+				}
+				m.task.Complete()
+				return m, m.saveAndRefresh()
+			case models.StatusDone:
+				m.task.Reopen()
+				return m, m.saveAndRefresh()
+			}
+		case "~":
+			// Cycle status backward: todo -> done -> in_progress -> todo
+			// Skips blocked and cancelled (require explicit intent)
+			switch m.task.Status {
+			case models.StatusTodo:
+				m.task.Complete()
+				return m, m.saveAndRefresh()
+			case models.StatusInProgress:
+				m.task.Reopen()
+				return m, m.saveAndRefresh()
+			case models.StatusDone:
+				m.task.Start()
+				return m, m.saveAndRefresh()
+			}
 		case "z":
 			// Undo last operation
 			return m, m.performUndo()

@@ -1071,6 +1071,98 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.saveAndRefresh()
 				}
 			}
+		case "`":
+			// Cycle status forward: todo -> in_progress -> done -> todo
+			// Skips blocked and cancelled (require explicit intent)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				var skippedIDs []string
+				cycledCount := 0
+				for _, task := range m.getSelectedTasks() {
+					switch task.Status {
+					case models.StatusTodo:
+						task.Start()
+						cycledCount++
+					case models.StatusInProgress:
+						if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+							skippedIDs = append(skippedIDs, fmt.Sprintf("#%d", task.ShortID))
+							continue
+						}
+						task.Complete()
+						cycledCount++
+					case models.StatusDone:
+						task.Reopen()
+						cycledCount++
+					}
+				}
+				m.clearSelection()
+				if len(skippedIDs) > 0 {
+					var msg string
+					if cycledCount == 0 {
+						msg = fmt.Sprintf("no tasks cycled: %s have incomplete dependencies", strings.Join(skippedIDs, ", "))
+					} else {
+						msg = fmt.Sprintf("cycled %d, skipped %s (incomplete dependencies)", cycledCount, strings.Join(skippedIDs, ", "))
+					}
+					return m, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("%s", msg)}
+					})
+				}
+				return m, m.saveAndRefresh()
+			}
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				switch task.Status {
+				case models.StatusTodo:
+					task.Start()
+					return m, m.saveAndRefresh()
+				case models.StatusInProgress:
+					if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+						depNames := make([]string, len(incompleteDeps))
+						for i, dep := range incompleteDeps {
+							depNames[i] = fmt.Sprintf("#%d", dep.ShortID)
+						}
+						return m, func() tea.Msg {
+							return ErrorMsg{Err: fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+								len(incompleteDeps), strings.Join(depNames, ", "))}
+						}
+					}
+					task.Complete()
+					return m, m.saveAndRefresh()
+				case models.StatusDone:
+					task.Reopen()
+					return m, m.saveAndRefresh()
+				}
+			}
+		case "~":
+			// Cycle status backward: todo -> done -> in_progress -> todo
+			// Skips blocked and cancelled (require explicit intent)
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					switch task.Status {
+					case models.StatusTodo:
+						task.Complete()
+					case models.StatusInProgress:
+						task.Reopen()
+					case models.StatusDone:
+						task.Start()
+					}
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				switch task.Status {
+				case models.StatusTodo:
+					task.Complete()
+					return m, m.saveAndRefresh()
+				case models.StatusInProgress:
+					task.Reopen()
+					return m, m.saveAndRefresh()
+				case models.StatusDone:
+					task.Start()
+					return m, m.saveAndRefresh()
+				}
+			}
 
 		// Task type changes
 		case "h":
@@ -1743,6 +1835,8 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "b", Description: "Block task", Category: "Status Changes"},
 		{Key: "x", Description: "Cancel task", Category: "Status Changes"},
 		{Key: "o", Description: "Reopen (todo)", Category: "Status Changes"},
+		{Key: "`", Description: "Cycle status forward", Category: "Status Changes"},
+		{Key: "~", Description: "Cycle status backward", Category: "Status Changes"},
 
 		// Type Changes
 		{Key: "h", Description: "Promote type", Category: "Type Changes"},
