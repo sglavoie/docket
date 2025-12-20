@@ -79,7 +79,7 @@ type ProjectTreeModel struct {
 	filterType     models.TaskType
 	filterStatus   models.TaskStatus // filter by specific status
 	filterPriority int               // 0=all, 1=high only (<=2)
-	filterTag      string            // filter by tag name
+	filterTags     map[string]bool   // filter by tag names (AND logic)
 	filterDueDate  DueDateFilter     // filter by due date
 
 	// Sort options
@@ -125,7 +125,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		filterType:     "",
 		filterStatus:   "",
 		filterPriority: 0,
-		filterTag:      "",
+		filterTags:     make(map[string]bool),
 		sortField:      SortByDefault,
 		sortAscending:  true,
 		searchMode:     false,
@@ -206,9 +206,14 @@ func (m *ProjectTreeModel) updateVisibility() {
 			visible = false
 		}
 
-		// Apply tag filter
-		if visible && m.filterTag != "" && !node.Task.HasTag(m.filterTag) {
-			visible = false
+		// Apply tag filter (AND logic: task must have ALL selected tags)
+		if visible && len(m.filterTags) > 0 {
+			for tag := range m.filterTags {
+				if !node.Task.HasTag(tag) {
+					visible = false
+					break
+				}
+			}
 		}
 
 		// Apply due date filter
@@ -809,32 +814,10 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.tagInput.Focus()
 				return m, textinput.Blink
 			}
-			// Cycle tag filter
-			tags := m.getAllTags()
-			if len(tags) == 0 {
-				m.filterTag = ""
-			} else if m.filterTag == "" {
-				m.filterTag = tags[0]
-			} else {
-				found := false
-				for i, tag := range tags {
-					if tag == m.filterTag {
-						if i+1 < len(tags) {
-							m.filterTag = tags[i+1]
-						} else {
-							m.filterTag = "" // back to all
-						}
-						found = true
-						break
-					}
-				}
-				if !found {
-					m.filterTag = ""
-				}
+			// Open tag filter selector popup
+			return m, func() tea.Msg {
+				return ShowTagFilterSelectorMsg{ProjectTree: m}
 			}
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
 
 		case "u":
 			// Cycle due date filter: all → overdue → today → this week → no due date → all
@@ -1699,8 +1682,13 @@ func (m *ProjectTreeModel) View() string {
 	if m.filterPriority == 1 {
 		filters = append(filters, "priority: high")
 	}
-	if m.filterTag != "" {
-		filters = append(filters, fmt.Sprintf("tag: %s", m.filterTag))
+	if len(m.filterTags) > 0 {
+		tags := make([]string, 0, len(m.filterTags))
+		for tag := range m.filterTags {
+			tags = append(tags, tag)
+		}
+		sort.Strings(tags)
+		filters = append(filters, fmt.Sprintf("tags: %s", strings.Join(tags, ", ")))
 	}
 	if m.filterDueDate != DueDateAll {
 		var dueName string

@@ -37,6 +37,7 @@ const (
 	ViewDueDateOverview
 	ViewTagManager
 	ViewGlobalTagManager
+	ViewTagFilterSelector
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -68,6 +69,7 @@ type AppModel struct {
 	dueDateOverview    *DueDateOverviewModel
 	tagManager         *TagManagerModel
 	globalTagManager   *GlobalTagManagerModel
+	tagFilterSelector  *TagFilterSelectorModel
 
 	// Current project context
 	currentProject *models.Project
@@ -592,6 +594,27 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		return m, nil
 
+	case ShowTagFilterSelectorMsg:
+		if msg.ProjectTree != nil {
+			m.tagFilterSelector = NewTagFilterSelectorModel(msg.ProjectTree)
+			m.tagFilterSelector.SetSize(m.width, m.height-2)
+			m.pushView(ViewTagFilterSelector)
+		}
+		return m, nil
+
+	case TagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Cancelled && m.projectTree != nil {
+			// Apply selected tags filter
+			m.projectTree.filterTags = make(map[string]bool)
+			for _, tag := range msg.SelectedTags {
+				m.projectTree.filterTags[tag] = true
+			}
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
+		}
+		return m, nil
+
 	case TagRenamedMsg:
 		// Close the tag manager and refresh project tree
 		m.popView()
@@ -624,7 +647,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentProject = msg.Project
 		storage.LoadProject(msg.Project)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
-		m.projectTree.filterTag = msg.Tag
+		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
 		m.projectTree.SetSize(m.width, m.height-2)
 		m.pushView(ViewProjectTree)
@@ -912,6 +935,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.globalTagManager = newModel.(*GlobalTagManagerModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewTagFilterSelector:
+		if m.tagFilterSelector != nil {
+			newModel, cmd := m.tagFilterSelector.Update(msg)
+			m.tagFilterSelector = newModel.(*TagFilterSelectorModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -997,6 +1027,10 @@ func (m *AppModel) View() string {
 		if m.globalTagManager != nil {
 			content = m.globalTagManager.View()
 		}
+	case ViewTagFilterSelector:
+		if m.tagFilterSelector != nil {
+			content = m.tagFilterSelector.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -1060,6 +1094,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Tag Manager"
 	case ViewGlobalTagManager:
 		status = "Global Tags"
+	case ViewTagFilterSelector:
+		status = "Filter by Tags"
 	}
 
 	help := "q: quit | esc: back"

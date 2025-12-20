@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -107,10 +108,15 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.projectTree.filterTag != "" {
+	if len(m.projectTree.filterTags) > 0 {
+		tags := make([]string, 0, len(m.projectTree.filterTags))
+		for tag := range m.projectTree.filterTags {
+			tags = append(tags, tag)
+		}
+		sort.Strings(tags)
 		m.items = append(m.items, FilterItem{
-			Name:       "Tag",
-			Value:      m.projectTree.filterTag,
+			Name:       "Tags",
+			Value:      strings.Join(tags, ", "),
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterTagFilter,
 		})
@@ -168,7 +174,7 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 	case FilterPriorityFilter:
 		m.projectTree.filterPriority = 0
 	case FilterTagFilter:
-		m.projectTree.filterTag = ""
+		m.projectTree.filterTags = make(map[string]bool)
 	case FilterDueDateFilter:
 		m.projectTree.filterDueDate = DueDateAll
 	case FilterSearchFilter:
@@ -186,7 +192,7 @@ func (m *FilterViewModel) clearAllFilters() {
 	m.projectTree.filterType = ""
 	m.projectTree.filterStatus = ""
 	m.projectTree.filterPriority = 0
-	m.projectTree.filterTag = ""
+	m.projectTree.filterTags = make(map[string]bool)
 	m.projectTree.filterDueDate = DueDateAll
 	m.projectTree.searchQuery = ""
 	m.projectTree.searchInput.SetValue("")
