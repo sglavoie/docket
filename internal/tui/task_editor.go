@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
@@ -27,7 +28,7 @@ type TaskEditorModel struct {
 	originalPriority int
 
 	// Form fields
-	titleInput textinput.Model
+	titleInput textarea.Model
 	tagsInput  textinput.Model
 
 	// Selectable fields
@@ -49,11 +50,14 @@ type TaskEditorModel struct {
 
 // NewTaskEditorModel creates a new task editor.
 func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.Config, manager *config.Manager) *TaskEditorModel {
-	titleInput := textinput.New()
+	titleInput := textarea.New()
 	titleInput.SetValue(task.Title)
 	titleInput.Focus()
 	titleInput.CharLimit = 200
-	titleInput.Width = 50
+	titleInput.SetWidth(50)
+	titleInput.SetHeight(2)
+	titleInput.ShowLineNumbers = false
+	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	tagsStr := strings.Join(task.Tags, ", ")
 	tagsInput := textinput.New()
@@ -154,7 +158,9 @@ func (m *TaskEditorModel) isDescendant(candidate, task *models.Task) bool {
 
 // checkChanges detects if any field has been modified.
 func (m *TaskEditorModel) checkChanges() bool {
-	if strings.TrimSpace(m.titleInput.Value()) != m.originalTitle {
+	// Normalize title by replacing newlines with spaces (same as saveTask)
+	currentTitle := strings.TrimSpace(strings.ReplaceAll(m.titleInput.Value(), "\n", " "))
+	if currentTitle != m.originalTitle {
 		return true
 	}
 	if strings.TrimSpace(m.tagsInput.Value()) != m.originalTags {
@@ -183,12 +189,12 @@ func (m *TaskEditorModel) checkChanges() bool {
 func (m *TaskEditorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.titleInput.Width = min(width-20, 50)
+	m.titleInput.SetWidth(min(width-20, 50))
 	m.tagsInput.Width = min(width-20, 50)
 }
 
 func (m *TaskEditorModel) Init() tea.Cmd {
-	return textinput.Blink
+	return textarea.Blink
 }
 
 func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -318,7 +324,9 @@ func (m *TaskEditorModel) focusCurrentField() {
 
 func (m *TaskEditorModel) saveTask() tea.Cmd {
 	return func() tea.Msg {
-		title := strings.TrimSpace(m.titleInput.Value())
+		// Replace newlines with spaces since titles should be single logical lines
+		title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
+		title = strings.TrimSpace(title)
 		if title == "" {
 			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
 		}
@@ -373,12 +381,12 @@ func (m *TaskEditorModel) View() string {
 	}
 	b.WriteString("\n\n")
 
-	// Title input
-	titleLabel := "Title: "
+	// Title input (textarea spans 2 lines)
+	titleLabel := "Title:\n"
 	if m.focusIndex == 0 {
-		titleLabel = FieldLabelFocusedStyle.Render("Title: ")
+		titleLabel = FieldLabelFocusedStyle.Render("Title:\n")
 	} else {
-		titleLabel = FieldLabelStyle.Render("Title: ")
+		titleLabel = FieldLabelStyle.Render("Title:\n")
 	}
 	b.WriteString(titleLabel)
 	b.WriteString(m.titleInput.View())

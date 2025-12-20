@@ -20,7 +20,7 @@ type TaskCreatorModel struct {
 	configManager *config.Manager
 
 	// Form fields
-	titleInput textinput.Model
+	titleInput textarea.Model
 	descInput  textarea.Model
 	tagsInput  textinput.Model
 
@@ -42,11 +42,14 @@ type TaskCreatorModel struct {
 
 // NewTaskCreatorModel creates a new task creator.
 func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *config.Manager, suggestedParent *models.Task) *TaskCreatorModel {
-	titleInput := textinput.New()
+	titleInput := textarea.New()
 	titleInput.Placeholder = "Task title"
 	titleInput.Focus()
 	titleInput.CharLimit = 200
-	titleInput.Width = 50
+	titleInput.SetWidth(50)
+	titleInput.SetHeight(2)
+	titleInput.ShowLineNumbers = false
+	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	tagsInput := textinput.New()
 	tagsInput.Placeholder = "tag1, tag2, tag3"
@@ -128,13 +131,13 @@ func (m *TaskCreatorModel) updateValidParents() {
 func (m *TaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.titleInput.Width = min(width-20, 50)
+	m.titleInput.SetWidth(min(width-20, 50))
 	m.tagsInput.Width = min(width-20, 50)
 	m.descInput.SetWidth(min(width-20, 60))
 }
 
 func (m *TaskCreatorModel) Init() tea.Cmd {
-	return textinput.Blink
+	return textarea.Blink
 }
 
 func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -266,7 +269,9 @@ func (m *TaskCreatorModel) focusCurrentField() {
 
 func (m *TaskCreatorModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		title := strings.TrimSpace(m.titleInput.Value())
+		// Replace newlines with spaces since titles should be single logical lines
+		title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
+		title = strings.TrimSpace(title)
 		if title == "" {
 			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
 		}
@@ -322,12 +327,12 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString(TitleStyle.Render("Create New Task"))
 	b.WriteString("\n\n")
 
-	// Title input
-	titleLabel := "Title: "
+	// Title input (textarea spans 2 lines)
+	titleLabel := "Title:\n"
 	if m.focusIndex == 0 {
-		titleLabel = FieldLabelFocusedStyle.Render("Title: ")
+		titleLabel = FieldLabelFocusedStyle.Render("Title:\n")
 	} else {
-		titleLabel = FieldLabelStyle.Render("Title: ")
+		titleLabel = FieldLabelStyle.Render("Title:\n")
 	}
 	b.WriteString(titleLabel)
 	b.WriteString(m.titleInput.View())
