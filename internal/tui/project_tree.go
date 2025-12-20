@@ -1172,12 +1172,22 @@ func (m *ProjectTreeModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Stats
-	stats := fmt.Sprintf("%d tasks, %d active, %d done",
-		m.project.CountTasks(),
-		m.project.CountActiveTasks(),
-		m.project.CountCompletedTasks())
-	b.WriteString(MutedStyle.Render(stats))
+	// Stats by status
+	statusCounts := make(map[models.TaskStatus]int)
+	for _, task := range m.project.Tasks {
+		statusCounts[task.Status]++
+	}
+
+	var statusStats []string
+	for _, s := range models.AllTaskStatuses() {
+		if count := statusCounts[s]; count > 0 {
+			style := GetStatusStyle(string(s))
+			statusStats = append(statusStats, style.Render(fmt.Sprintf("%s:%d", s.Icon(), count)))
+		}
+	}
+
+	b.WriteString(MutedStyle.Render("Tasks: "))
+	b.WriteString(strings.Join(statusStats, " "))
 	b.WriteString("\n\n")
 
 	visible := m.visibleNodes()
