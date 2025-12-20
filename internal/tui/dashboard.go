@@ -261,36 +261,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "c":
-			// Cycle context filter: all -> contexts[0] -> contexts[1] -> ... -> all
-			if len(m.contexts) == 0 {
-				m.filterContext = ""
-			} else if m.filterContext == "" {
-				m.filterContext = m.contexts[0]
-			} else {
-				found := false
-				for i, ctx := range m.contexts {
-					if ctx == m.filterContext {
-						if i+1 < len(m.contexts) {
-							m.filterContext = m.contexts[i+1]
-						} else {
-							m.filterContext = "" // back to all
-						}
-						found = true
-						break
-					}
-				}
-				if !found {
-					m.filterContext = ""
-				}
-			}
-			// Reset cursor if out of bounds after filter change
-			visible = m.visibleProjects()
-			if m.cursor >= len(visible) {
-				if len(visible) > 0 {
-					m.cursor = len(visible) - 1
-				} else {
-					m.cursor = 0
-				}
+			// Open context picker popup
+			return m, func() tea.Msg {
+				return ShowContextPickerMsg{Dashboard: m}
 			}
 		case "ctrl+d":
 			return m, func() tea.Msg {

@@ -38,6 +38,7 @@ const (
 	ViewTagManager
 	ViewGlobalTagManager
 	ViewTagFilterSelector
+	ViewContextPicker
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -70,6 +71,7 @@ type AppModel struct {
 	tagManager         *TagManagerModel
 	globalTagManager   *GlobalTagManagerModel
 	tagFilterSelector  *TagFilterSelectorModel
+	contextPicker      *ContextPickerModel
 
 	// Current project context
 	currentProject *models.Project
@@ -624,6 +626,30 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case ShowContextPickerMsg:
+		if msg.Dashboard != nil {
+			m.contextPicker = NewContextPickerModel(msg.Dashboard)
+			m.contextPicker.SetSize(m.width, m.height-2)
+			m.pushView(ViewContextPicker)
+		}
+		return m, nil
+
+	case ContextPickerDoneMsg:
+		m.popView()
+		if !msg.Cancelled && m.dashboard != nil {
+			m.dashboard.filterContext = msg.SelectedContext
+			// Reset cursor if out of bounds after filter change
+			visible := m.dashboard.visibleProjects()
+			if m.dashboard.cursor >= len(visible) {
+				if len(visible) > 0 {
+					m.dashboard.cursor = len(visible) - 1
+				} else {
+					m.dashboard.cursor = 0
+				}
+			}
+		}
+		return m, nil
+
 	case TagRenamedMsg:
 		// Close the tag manager and refresh project tree
 		m.popView()
@@ -951,6 +977,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tagFilterSelector = newModel.(*TagFilterSelectorModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewContextPicker:
+		if m.contextPicker != nil {
+			newModel, cmd := m.contextPicker.Update(msg)
+			m.contextPicker = newModel.(*ContextPickerModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -1040,6 +1073,10 @@ func (m *AppModel) View() string {
 		if m.tagFilterSelector != nil {
 			content = m.tagFilterSelector.View()
 		}
+	case ViewContextPicker:
+		if m.contextPicker != nil {
+			content = m.contextPicker.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -1105,6 +1142,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Tags"
 	case ViewTagFilterSelector:
 		status = "Filter by Tags"
+	case ViewContextPicker:
+		status = "Filter by Context"
 	}
 
 	help := "q: quit | esc: back"
