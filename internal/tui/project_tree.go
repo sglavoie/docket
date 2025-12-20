@@ -942,11 +942,11 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "ctrl+o":
-			// Edit description in external editor
+			// Edit title and description in external editor
 			if len(visible) > 0 && m.cursor < len(visible) {
 				task := visible[m.cursor].Task
 				return m, func() tea.Msg {
-					return EditDescriptionMsg{Task: task, Project: m.project}
+					return EditTaskContentMsg{Task: task, Project: m.project}
 				}
 			}
 		case "A":

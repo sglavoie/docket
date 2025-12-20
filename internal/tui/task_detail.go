@@ -226,9 +226,9 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return CopyTaskDetailsMsg{Task: m.task}
 			}
 		case "ctrl+o":
-			// Edit description in external editor
+			// Edit title and description in external editor
 			return m, func() tea.Msg {
-				return EditDescriptionMsg{Task: m.task, Project: m.project}
+				return EditTaskContentMsg{Task: m.task, Project: m.project}
 			}
 
 		// Edit task

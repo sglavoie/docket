@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -12,8 +13,8 @@ import (
 
 var taskEditCmd = &cobra.Command{
 	Use:   "edit [id]",
-	Short: "Edit a task's description",
-	Long: `Edit a task's description in an external editor.
+	Short: "Edit a task's title and description",
+	Long: `Edit a task's title and description in an external editor.
 
 If no ID is specified, opens an interactive selector.
 
@@ -95,15 +96,18 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse modified content
-	newDesc := parseEditedContent(modified, task)
+	newTitle, newDesc := parseEditedContent(modified, task)
 
 	// Check if changed
-	if newDesc == task.Description {
+	titleChanged := newTitle != task.Title
+	descChanged := newDesc != task.Description
+	if !titleChanged && !descChanged {
 		fmt.Println("No changes made.")
 		return nil
 	}
 
 	// Update task
+	task.Title = newTitle
 	task.Description = newDesc
 
 	// Save
@@ -121,30 +125,49 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 
 // buildEditContent creates the content shown in the editor.
 func buildEditContent(task *models.Task) string {
-	header := fmt.Sprintf("# %s #%d: %s\n\n", task.Type.HeadingPrefix(), task.ShortID, task.Title)
-	header += "<!-- Edit the description below. Lines starting with # or <!-- are ignored. -->\n\n"
-	return header + task.Description
+	content := fmt.Sprintf("# %s\n\n", task.Title)
+	content += "<!-- Edit the title above and description below. -->\n\n"
+	content += task.Description
+	return content
 }
 
-// parseEditedContent extracts the description from edited content.
-func parseEditedContent(content string, task *models.Task) string {
+// parseEditedContent extracts the title and description from edited content.
+func parseEditedContent(content string, task *models.Task) (title, description string) {
 	lines := splitLines(content)
 	var descLines []string
+	title = task.Title // Default to original title
 	inDescription := false
+	foundComment := false
 
 	for _, line := range lines {
-		// Skip header line
-		if !inDescription {
-			if line == "" || line[0] == '#' || (len(line) >= 4 && line[:4] == "<!--") {
-				if line == "" && len(descLines) == 0 {
-					inDescription = true
-				}
-				continue
-			}
-			inDescription = true
+		// Already in description section
+		if inDescription {
+			descLines = append(descLines, line)
+			continue
 		}
 
-		descLines = append(descLines, line)
+		// Look for title line (first # line)
+		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
+			title = strings.TrimSpace(line[2:])
+			continue
+		}
+
+		// Look for the HTML comment marker
+		if len(line) >= 4 && line[:4] == "<!--" {
+			foundComment = true
+			continue
+		}
+
+		// After comment, skip empty lines until description starts
+		if foundComment && line == "" {
+			continue
+		}
+
+		// Start of description content
+		if foundComment {
+			inDescription = true
+			descLines = append(descLines, line)
+		}
 	}
 
 	// Trim trailing empty lines
@@ -152,7 +175,12 @@ func parseEditedContent(content string, task *models.Task) string {
 		descLines = descLines[:len(descLines)-1]
 	}
 
-	return joinLines(descLines)
+	// If title was cleared, keep the original
+	if title == "" {
+		title = task.Title
+	}
+
+	return title, joinLines(descLines)
 }
 
 func splitLines(s string) []string {

@@ -149,13 +149,14 @@ type (
 	TaskStatusChangedMsg struct{ Task *models.Task }
 
 	// External editor messages
-	EditDescriptionMsg struct {
+	EditTaskContentMsg struct {
 		Task    *models.Task
 		Project *models.Project
 	}
-	DescriptionEditedMsg struct {
+	TaskContentEditedMsg struct {
 		Task           *models.Task
 		Project        *models.Project
+		NewTitle       string
 		NewDescription string
 		Err            error
 	}
@@ -389,21 +390,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case EditDescriptionMsg:
-		// Launch external editor for task description
+	case EditTaskContentMsg:
+		// Launch external editor for task title and description
 		if msg.Task == nil {
 			return m, nil
 		}
 
-		// Create temp file with description content
-		tmpFile, err := os.CreateTemp("", "tt-desc-*.md")
+		// Create temp file with title and description content
+		tmpFile, err := os.CreateTemp("", "tt-edit-*.md")
 		if err != nil {
 			return m, func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("failed to create temp file: %w", err)}
 			}
 		}
 		tmpPath := tmpFile.Name()
-		tmpFile.WriteString(msg.Task.Description)
+		content := fmt.Sprintf("# %s\n\n<!-- Edit the title above and description below. -->\n\n%s", msg.Task.Title, msg.Task.Description)
+		tmpFile.WriteString(content)
 		tmpFile.Close()
 
 		// Build editor command
@@ -424,21 +426,23 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.ExecProcess(c, func(err error) tea.Msg {
 			if err != nil {
 				os.Remove(tmpPath)
-				return DescriptionEditedMsg{Task: task, Project: project, Err: err}
+				return TaskContentEditedMsg{Task: task, Project: project, Err: err}
 			}
 			content, readErr := os.ReadFile(tmpPath)
 			os.Remove(tmpPath)
 			if readErr != nil {
-				return DescriptionEditedMsg{Task: task, Project: project, Err: readErr}
+				return TaskContentEditedMsg{Task: task, Project: project, Err: readErr}
 			}
-			return DescriptionEditedMsg{
+			newTitle, newDesc := parseTaskContent(string(content), task)
+			return TaskContentEditedMsg{
 				Task:           task,
 				Project:        project,
-				NewDescription: strings.TrimSpace(string(content)),
+				NewTitle:       newTitle,
+				NewDescription: newDesc,
 			}
 		})
 
-	case DescriptionEditedMsg:
+	case TaskContentEditedMsg:
 		// Handle result from external editor
 		if msg.Err != nil {
 			return m, func() tea.Msg {
@@ -446,22 +450,27 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Update task description if changed
-		if msg.Task != nil && msg.NewDescription != msg.Task.Description {
-			msg.Task.Description = msg.NewDescription
-			msg.Task.UpdatedAt = time.Now()
+		// Update task title and description if changed
+		if msg.Task != nil {
+			titleChanged := msg.NewTitle != msg.Task.Title
+			descChanged := msg.NewDescription != msg.Task.Description
+			if titleChanged || descChanged {
+				msg.Task.Title = msg.NewTitle
+				msg.Task.Description = msg.NewDescription
+				msg.Task.UpdatedAt = time.Now()
 
-			// Save project
-			if msg.Project != nil {
-				// Create backup before saving for undo support
-				if err := storage.BackupProject(msg.Project); err != nil {
-					return m, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+				// Save project
+				if msg.Project != nil {
+					// Create backup before saving for undo support
+					if err := storage.BackupProject(msg.Project); err != nil {
+						return m, func() tea.Msg {
+							return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+						}
 					}
-				}
-				if err := storage.SaveProject(msg.Project); err != nil {
-					return m, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+					if err := storage.SaveProject(msg.Project); err != nil {
+						return m, func() tea.Msg {
+							return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+						}
 					}
 				}
 			}
@@ -1120,4 +1129,56 @@ func RunApp(cfg *config.Config, manager *config.Manager) error {
 
 	_, err := p.Run()
 	return err
+}
+
+// parseTaskContent extracts the title and description from edited content.
+func parseTaskContent(content string, task *models.Task) (title, description string) {
+	lines := strings.Split(content, "\n")
+	var descLines []string
+	title = task.Title // Default to original title
+	inDescription := false
+	foundComment := false
+
+	for _, line := range lines {
+		// Already in description section
+		if inDescription {
+			descLines = append(descLines, line)
+			continue
+		}
+
+		// Look for title line (first # line)
+		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
+			title = strings.TrimSpace(line[2:])
+			continue
+		}
+
+		// Look for the HTML comment marker
+		if len(line) >= 4 && line[:4] == "<!--" {
+			foundComment = true
+			continue
+		}
+
+		// After comment, skip empty lines until description starts
+		if foundComment && line == "" {
+			continue
+		}
+
+		// Start of description content
+		if foundComment {
+			inDescription = true
+			descLines = append(descLines, line)
+		}
+	}
+
+	// Trim trailing empty lines
+	for len(descLines) > 0 && descLines[len(descLines)-1] == "" {
+		descLines = descLines[:len(descLines)-1]
+	}
+
+	// If title was cleared, keep the original
+	if title == "" {
+		title = task.Title
+	}
+
+	return title, strings.Join(descLines, "\n")
 }
