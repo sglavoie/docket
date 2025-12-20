@@ -277,6 +277,25 @@ var (
 	SelectionCountStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning).
 				Bold(true)
+
+	// Tag manager styles
+	TagManagerBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary).
+				Padding(1, 2)
+
+	TagManagerItemStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted)
+
+	TagManagerItemSelectedStyle = lipgloss.NewStyle().
+					Foreground(ColorPrimary).
+					Bold(true)
+
+	TagManagerCountStyle = lipgloss.NewStyle().
+				Foreground(ColorSecondary)
+
+	TagManagerErrorStyle = lipgloss.NewStyle().
+				Foreground(ColorError)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

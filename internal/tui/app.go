@@ -35,6 +35,7 @@ const (
 	ViewTaskJumper
 	ViewProjectPreview
 	ViewDueDateOverview
+	ViewTagManager
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -64,6 +65,7 @@ type AppModel struct {
 	taskJumper         *TaskJumperModel
 	projectPreview     *ProjectPreviewModel
 	dueDateOverview    *DueDateOverviewModel
+	tagManager         *TagManagerModel
 
 	// Current project context
 	currentProject *models.Project
@@ -555,6 +557,28 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		return m, nil
 
+	case ShowTagManagerMsg:
+		if msg.ProjectTree != nil {
+			m.tagManager = NewTagManagerModel(msg.ProjectTree)
+			m.tagManager.SetSize(m.width, m.height-2)
+			m.pushView(ViewTagManager)
+		}
+		return m, nil
+
+	case CloseTagManagerMsg:
+		m.popView()
+		return m, nil
+
+	case TagRenamedMsg:
+		// Close the tag manager and refresh project tree
+		m.popView()
+		if m.projectTree != nil && m.currentProject != nil {
+			storage.LoadProject(m.currentProject)
+			m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
+			m.projectTree.SetSize(m.width, m.height-2)
+		}
+		return m, nil
+
 	case DueDateOverviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
@@ -747,6 +771,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.dueDateOverview = newModel.(*DueDateOverviewModel)
 			cmds = append(cmds, cmd)
 		}
+
+	case ViewTagManager:
+		if m.tagManager != nil {
+			newModel, cmd := m.tagManager.Update(msg)
+			m.tagManager = newModel.(*TagManagerModel)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -824,6 +855,10 @@ func (m *AppModel) View() string {
 		if m.dueDateOverview != nil {
 			content = m.dueDateOverview.View()
 		}
+	case ViewTagManager:
+		if m.tagManager != nil {
+			content = m.tagManager.View()
+		}
 	default:
 		content = "Unknown view"
 	}
@@ -872,6 +907,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Project Preview"
 	case ViewDueDateOverview:
 		status = "Due Dates"
+	case ViewTagManager:
+		status = "Tag Manager"
 	}
 
 	help := "q: quit | esc: back"

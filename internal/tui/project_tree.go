@@ -911,6 +911,10 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowFilterMsg{ProjectTree: m}
 			}
+		case "ctrl+t":
+			return m, func() tea.Msg {
+				return ShowTagManagerMsg{ProjectTree: m}
+			}
 		case "r":
 			// Reload project
 			m.clearSelection()
@@ -1769,6 +1773,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "T", Description: "Filter by tag", Category: "Filters"},
 		{Key: "u", Description: "Filter by due date", Category: "Filters"},
 		{Key: "ctrl+F", Description: "Filter summary", Category: "Filters"},
+		{Key: "ctrl+T", Description: "Tag manager", Category: "Filters"},
 
 		// Sort
 		{Key: "1", Description: "Sort by priority", Category: "Sort"},
