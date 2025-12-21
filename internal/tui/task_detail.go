@@ -387,10 +387,6 @@ func (m *TaskDetailModel) View() string {
 
 	b.WriteString(m.renderFormattedView())
 
-	// Help hint
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Press ? for help"))
-
 	// Count lines for scrolling
 	content := b.String()
 	m.lineCount = strings.Count(content, "\n")

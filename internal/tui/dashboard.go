@@ -394,10 +394,6 @@ func (m *DashboardModel) View() string {
 		}
 	}
 
-	// Help hint
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Press ? for help"))
-
 	return b.String()
 }
 

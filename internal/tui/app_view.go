@@ -163,7 +163,7 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filter by Context"
 	}
 
-	help := "ctrl+c: quit | esc: back"
+	help := "Press ? for help"
 
 	left := StatusBarStyle.Render(status)
 	right := HelpStyle.Render(help)

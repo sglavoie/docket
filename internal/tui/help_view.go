@@ -293,7 +293,7 @@ func (m *HelpViewModel) View() string {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("? close | / filter | j/k scroll | g/G top/bottom%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("ctrl+c | esc: back | ? close | / filter | j/k scroll | g/G top/bottom%s", scrollPercent))
 	b.WriteString(footer)
 
 	return b.String()

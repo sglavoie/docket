@@ -211,9 +211,6 @@ func (m *ProjectTreeModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Help hint
-	b.WriteString(MutedStyle.Render("Press ? for help"))
-
 	return b.String()
 }
 
