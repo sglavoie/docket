@@ -65,6 +65,10 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 		if project.HasCircularDependency(task.ID, t.ID) {
 			continue
 		}
+		// Skip completed tasks unless they're already a dependency
+		if t.IsComplete() && !task.HasDependency(t.ID) {
+			continue
+		}
 		candidates = append(candidates, t)
 	}
 
