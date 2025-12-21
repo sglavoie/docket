@@ -305,7 +305,12 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Dependency indicator
 	if len(task.DependsOn) > 0 {
-		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn)))
+		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
+	}
+
+	// Reverse dependency indicator (tasks that depend on this task)
+	if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
+		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy)))
 	}
 
 	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
