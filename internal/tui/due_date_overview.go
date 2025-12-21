@@ -182,7 +182,7 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "esc", "q":
+		case "esc":
 			return m, func() tea.Msg {
 				return CloseDueDateOverviewMsg{}
 			}

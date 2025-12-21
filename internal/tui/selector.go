@@ -201,7 +201,7 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			switch msg.String() {
-			case "ctrl+c", "esc", "q":
+			case "ctrl+c", "esc":
 				m.done = true
 				m.cancelled = true
 				m.err = fmt.Errorf("cancelled")

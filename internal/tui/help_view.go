@@ -118,7 +118,7 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "?", "q":
+		case "?":
 			return m, func() tea.Msg {
 				return CloseHelpMsg{}
 			}

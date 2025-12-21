@@ -20,14 +20,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
-		case "q":
-			// Quit only from dashboard, go back from other views
-			if m.currentView() == ViewDashboard {
-				m.quitting = true
-				return m, tea.Quit
-			}
-			m.popView()
-			return m, nil
 		case "esc":
 			// Let views handle esc if they have an active search
 			if m.currentView() == ViewProjectTree && m.projectTree != nil && m.projectTree.HasActiveSearch() {
