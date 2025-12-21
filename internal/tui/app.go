@@ -29,6 +29,9 @@ const (
 	ViewTagManager
 	ViewGlobalTagManager
 	ViewTagFilterSelector
+	ViewSectionFilterSelector
+	ViewSectionPicker
+	ViewSectionManager
 	ViewContextPicker
 )
 
@@ -43,26 +46,29 @@ type AppModel struct {
 	height    int
 
 	// View models
-	dashboard          *DashboardModel
-	projectList        *ProjectListModel
-	projectTree        *ProjectTreeModel
-	taskDetail         *TaskDetailModel
-	projectCreator     *ProjectCreatorModel
-	projectEditor      *ProjectEditorModel
-	taskCreator        *TaskCreatorModel
-	taskEditor         *TaskEditorModel
-	settings           *SettingsModel
-	helpView           *HelpViewModel
-	dateInput          *DateInputModel
-	dependencySelector *DependencySelectorModel
-	filterView         *FilterViewModel
-	taskJumper         *TaskJumperModel
-	projectPreview     *ProjectPreviewModel
-	dueDateOverview    *DueDateOverviewModel
-	tagManager         *TagManagerModel
-	globalTagManager   *GlobalTagManagerModel
-	tagFilterSelector  *TagFilterSelectorModel
-	contextPicker      *ContextPickerModel
+	dashboard             *DashboardModel
+	projectList           *ProjectListModel
+	projectTree           *ProjectTreeModel
+	taskDetail            *TaskDetailModel
+	projectCreator        *ProjectCreatorModel
+	projectEditor         *ProjectEditorModel
+	taskCreator           *TaskCreatorModel
+	taskEditor            *TaskEditorModel
+	settings              *SettingsModel
+	helpView              *HelpViewModel
+	dateInput             *DateInputModel
+	dependencySelector    *DependencySelectorModel
+	filterView            *FilterViewModel
+	taskJumper            *TaskJumperModel
+	projectPreview        *ProjectPreviewModel
+	dueDateOverview       *DueDateOverviewModel
+	tagManager            *TagManagerModel
+	globalTagManager      *GlobalTagManagerModel
+	tagFilterSelector     *TagFilterSelectorModel
+	sectionFilterSelector *SectionFilterSelectorModel
+	sectionPicker         *SectionPickerModel
+	sectionManager        *SectionManagerModel
+	contextPicker         *ContextPickerModel
 
 	// Current project context
 	currentProject *models.Project

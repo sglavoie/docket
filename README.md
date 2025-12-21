@@ -6,6 +6,8 @@ A CLI-first project and task management tool with a TUI built on BubbleTea. Desi
 
 tt supports hierarchical task management with five task types that follow a parent-child relationship. Epics can contain stories, tasks, bugs, and ideas. Stories can contain tasks and bugs. Tasks, bugs, and ideas are leaf nodes that cannot have children.
 
+Tasks can be organized into sections for workflow management. Sections like "Backlog", "Active", "Review", and "Done" help categorize tasks by their current stage. New tasks default to the Backlog section and are automatically moved out when started, completed, or cancelled.
+
 All data is stored in human-readable markdown files, making it easy to view and edit tasks with any text editor or render them beautifully with glow.
 
 ## Installation
@@ -75,6 +77,7 @@ tt task start <id>              # Mark task as in progress
 tt task block <id>              # Mark task as blocked
 tt task cancel <id>             # Cancel a task
 tt task reopen <id>             # Reopen a completed task
+tt task section <id> <section>  # Assign task to a section
 ```
 
 Task add flags:
@@ -88,6 +91,7 @@ Task add flags:
 --parent <id>       Add as child of another task
 --priority <1-5>    Set priority (1=highest, default=3)
 --tags <t1,t2>      Add tags
+--section <name>    Set section (default: Backlog)
 ```
 
 Task list flags:
@@ -99,6 +103,17 @@ Task list flags:
 --tag <tag>         Filter by tag
 --all               Show all tasks including completed
 --tree              Show hierarchical tree view
+```
+
+### Section Commands
+
+Sections organize tasks into workflow stages. Every project starts with a Backlog section.
+
+```bash
+tt section add <name>           # Add a section to the project
+tt section list                 # List all sections with task counts
+tt section remove <name>        # Remove a section (Backlog protected)
+tt section rename <old> <new>   # Rename a section
 ```
 
 ### Selection Commands
@@ -120,7 +135,7 @@ The TUI provides a visual interface with keyboard navigation.
 
 Dashboard view shows all projects with task counts and progress bars. Use j/k or arrow keys to navigate, Enter to select a project.
 
-Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space or tab to toggle expansion, e to expand all, c to collapse all, d to toggle completed tasks, and Enter to view task details.
+Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space or tab to toggle expansion, e to expand all, c to collapse all, d to toggle completed tasks, and Enter to view task details. Press N to filter by sections, Ctrl+N to assign a section to the selected task, and Ctrl+S to open the section manager for adding, renaming, or removing sections.
 
 Task detail view shows full task information including metadata, description, and subtasks.
 
@@ -187,9 +202,10 @@ Tasks are stored in human-readable markdown. Each project has a `tasks.md` file 
 
 ```markdown
 # Project: My Project
+<!-- sections: Backlog;Active;Review;Done -->
 
 ## Epic: User Authentication
-<!-- id: uuid, status: in_progress, priority: 1, tags: backend -->
+<!-- id: uuid, status: in_progress, priority: 1, tags: backend, section: Active -->
 
 Build complete auth flow.
 

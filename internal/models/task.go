@@ -16,6 +16,9 @@ const (
 	StatusCancelled  TaskStatus = "cancelled"
 )
 
+// SectionBacklog is the default section for new tasks awaiting triage.
+const SectionBacklog = "Backlog"
+
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
 	return []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCancelled}
@@ -80,6 +83,7 @@ type Task struct {
 	Priority    int        `json:"priority"`
 	ParentID    *string    `json:"parent_id,omitempty"`
 	Tags        []string   `json:"tags,omitempty"`
+	Section     string     `json:"section,omitempty"` // Section for organizing tasks (e.g., "Backlog", "Active")
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
@@ -104,6 +108,7 @@ func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
 		Status:    StatusTodo,
 		Priority:  3, // Medium priority
 		Tags:      []string{},
+		Section:   SectionBacklog,
 		DependsOn: []string{},
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -127,17 +132,27 @@ func (t *Task) IsComplete() bool {
 }
 
 // Complete marks the task as done and sets the completion time.
+// If the task is in the Backlog section, it is automatically moved out (auto-triage).
 func (t *Task) Complete() {
 	now := time.Now()
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
+	// Auto-triage: move out of Backlog when completing
+	if t.Section == SectionBacklog {
+		t.Section = ""
+	}
 }
 
 // Start marks the task as in progress.
+// If the task is in the Backlog section, it is automatically moved out (auto-triage).
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
+	// Auto-triage: move out of Backlog when starting
+	if t.Section == SectionBacklog {
+		t.Section = ""
+	}
 }
 
 // Block marks the task as blocked.
@@ -147,11 +162,16 @@ func (t *Task) Block() {
 }
 
 // Cancel marks the task as cancelled.
+// If the task is in the Backlog section, it is automatically moved out (auto-triage).
 func (t *Task) Cancel() {
 	now := time.Now()
 	t.Status = StatusCancelled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
+	// Auto-triage: move out of Backlog when cancelling
+	if t.Section == SectionBacklog {
+		t.Section = ""
+	}
 }
 
 // Reopen sets the task back to todo status.

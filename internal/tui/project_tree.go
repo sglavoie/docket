@@ -73,6 +73,7 @@ type ProjectTreeModel struct {
 	filterStatus   models.TaskStatus // filter by specific status
 	filterPriority int               // 0=all, 1=high only (<=2)
 	filterTags     map[string]bool   // filter by tag names (AND logic)
+	filterSections map[string]bool   // filter by section names (OR logic)
 	filterDueDate  DueDateFilter     // filter by due date
 
 	// Sort options
@@ -119,6 +120,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		filterStatus:   "",
 		filterPriority: 0,
 		filterTags:     make(map[string]bool),
+		filterSections: make(map[string]bool),
 		sortField:      SortByDefault,
 		sortAscending:  true,
 		searchMode:     false,

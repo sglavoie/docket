@@ -90,6 +90,18 @@ func (m *AppModel) View() string {
 		if m.tagFilterSelector != nil {
 			content = m.tagFilterSelector.View()
 		}
+	case ViewSectionFilterSelector:
+		if m.sectionFilterSelector != nil {
+			content = m.sectionFilterSelector.View()
+		}
+	case ViewSectionPicker:
+		if m.sectionPicker != nil {
+			content = m.sectionPicker.View()
+		}
+	case ViewSectionManager:
+		if m.sectionManager != nil {
+			content = m.sectionManager.View()
+		}
 	case ViewContextPicker:
 		if m.contextPicker != nil {
 			content = m.contextPicker.View()
@@ -159,6 +171,12 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Tags"
 	case ViewTagFilterSelector:
 		status = "Filter by Tags"
+	case ViewSectionFilterSelector:
+		status = "Filter by Sections"
+	case ViewSectionPicker:
+		status = "Assign Section"
+	case ViewSectionManager:
+		status = "Section Manager"
 	case ViewContextPicker:
 		status = "Filter by Context"
 	}

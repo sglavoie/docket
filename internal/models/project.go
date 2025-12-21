@@ -19,9 +19,10 @@ type Project struct {
 	Archived    bool       `json:"archived"`
 	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
 
-	// Computed fields (not persisted in config)
-	Tasks       []*Task `json:"-"`
-	NextShortID int     `json:"-"`
+	// Computed fields (not persisted in config, stored in tasks.md)
+	Tasks       []*Task  `json:"-"`
+	NextShortID int      `json:"-"`
+	Sections    []string `json:"-"` // Project-level section definitions
 }
 
 // NewProject creates a new project with default values.
@@ -38,6 +39,7 @@ func NewProject(id, name, path string) *Project {
 		Archived:    false,
 		Tasks:       []*Task{},
 		NextShortID: 1,
+		Sections:    []string{SectionBacklog},
 	}
 }
 
@@ -492,4 +494,135 @@ func (p *Project) GetIncompleteDependencies(task *Task) []*Task {
 		}
 	}
 	return incomplete
+}
+
+// GetSections returns the project's sections, ensuring Backlog is always first.
+func (p *Project) GetSections() []string {
+	if len(p.Sections) == 0 {
+		return []string{SectionBacklog}
+	}
+	// Ensure Backlog is first
+	hasBacklog := false
+	for _, s := range p.Sections {
+		if s == SectionBacklog {
+			hasBacklog = true
+			break
+		}
+	}
+	if !hasBacklog {
+		return append([]string{SectionBacklog}, p.Sections...)
+	}
+	// If Backlog exists but isn't first, reorder
+	if p.Sections[0] != SectionBacklog {
+		sections := make([]string, 0, len(p.Sections))
+		sections = append(sections, SectionBacklog)
+		for _, s := range p.Sections {
+			if s != SectionBacklog {
+				sections = append(sections, s)
+			}
+		}
+		return sections
+	}
+	return p.Sections
+}
+
+// HasSection returns true if the section exists in the project.
+func (p *Project) HasSection(name string) bool {
+	for _, s := range p.Sections {
+		if s == name {
+			return true
+		}
+	}
+	return false
+}
+
+// EnsureSection adds a section if it does not already exist.
+func (p *Project) EnsureSection(name string) {
+	if name == "" {
+		return
+	}
+	if !p.HasSection(name) {
+		p.Sections = append(p.Sections, name)
+		p.UpdatedAt = time.Now()
+	}
+}
+
+// RemoveSection removes a section from the project.
+// Returns false if trying to remove the Backlog section or if section doesn't exist.
+// Tasks in the removed section will have their section cleared.
+func (p *Project) RemoveSection(name string) bool {
+	if name == SectionBacklog {
+		return false // Cannot remove Backlog
+	}
+	for i, s := range p.Sections {
+		if s == name {
+			p.Sections = append(p.Sections[:i], p.Sections[i+1:]...)
+			// Clear section from tasks that had this section
+			for _, task := range p.Tasks {
+				if task.Section == name {
+					task.Section = ""
+					task.UpdatedAt = time.Now()
+				}
+			}
+			p.UpdatedAt = time.Now()
+			return true
+		}
+	}
+	return false
+}
+
+// RenameSection renames a section and updates all tasks with that section.
+// Returns false if trying to rename Backlog or if the section doesn't exist.
+func (p *Project) RenameSection(oldName, newName string) bool {
+	if oldName == SectionBacklog || newName == "" {
+		return false
+	}
+	if p.HasSection(newName) {
+		return false // New name already exists
+	}
+	for i, s := range p.Sections {
+		if s == oldName {
+			p.Sections[i] = newName
+			// Update tasks with this section
+			for _, task := range p.Tasks {
+				if task.Section == oldName {
+					task.Section = newName
+					task.UpdatedAt = time.Now()
+				}
+			}
+			p.UpdatedAt = time.Now()
+			return true
+		}
+	}
+	return false
+}
+
+// GetTasksBySection returns tasks filtered by section.
+// When filtering by Backlog, tasks with empty section are also included.
+func (p *Project) GetTasksBySection(section string) []*Task {
+	var result []*Task
+	for _, task := range p.Tasks {
+		taskSection := task.Section
+		if taskSection == "" {
+			taskSection = SectionBacklog
+		}
+		if taskSection == section {
+			result = append(result, task)
+		}
+	}
+	return result
+}
+
+// CountTasksBySection returns the number of tasks in each section.
+// Tasks with empty section are counted as Backlog.
+func (p *Project) CountTasksBySection() map[string]int {
+	counts := make(map[string]int)
+	for _, task := range p.Tasks {
+		section := task.Section
+		if section == "" {
+			section = SectionBacklog
+		}
+		counts[section]++
+	}
+	return counts
 }

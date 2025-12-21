@@ -173,6 +173,14 @@ func (m *ProjectTreeModel) View() string {
 		sort.Strings(tags)
 		filters = append(filters, fmt.Sprintf("tags: %s", strings.Join(tags, ", ")))
 	}
+	if len(m.filterSections) > 0 {
+		sections := make([]string, 0, len(m.filterSections))
+		for section := range m.filterSections {
+			sections = append(sections, section)
+		}
+		sort.Strings(sections)
+		filters = append(filters, fmt.Sprintf("sections: %s", strings.Join(sections, ", ")))
+	}
 	if m.filterDueDate != DueDateAll {
 		var dueName string
 		switch m.filterDueDate {
@@ -310,7 +318,12 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Reverse dependency indicator (tasks that depend on this task)
 	if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
-		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy)))
+		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
+	}
+
+	// Section indicator (only show if not empty and not Backlog)
+	if task.Section != "" && task.Section != models.SectionBacklog {
+		indicators += SectionBadgeStyle.Render("[" + task.Section + "]")
 	}
 
 	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
@@ -357,6 +370,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "n", Description: "Add new task", Category: "Task Operations"},
 		{Key: "e", Description: "Edit task", Category: "Task Operations"},
 		{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations"},
+		{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations"},
 		{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations"},
 		{Key: "B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
@@ -368,9 +382,11 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "t", Description: "Filter by type", Category: "Filters"},
 		{Key: "S", Description: "Filter by status", Category: "Filters"},
 		{Key: "T", Description: "Filter by tag", Category: "Filters"},
+		{Key: "N", Description: "Filter by section", Category: "Filters"},
 		{Key: "u", Description: "Filter by due date", Category: "Filters"},
 		{Key: "ctrl+F", Description: "Filter summary", Category: "Filters"},
 		{Key: "ctrl+T", Description: "Tag manager", Category: "Filters"},
+		{Key: "ctrl+S", Description: "Section manager", Category: "Filters"},
 
 		// Sort
 		{Key: "1", Description: "Sort by priority", Category: "Sort"},

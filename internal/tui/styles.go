@@ -296,6 +296,11 @@ var (
 
 	TagManagerErrorStyle = lipgloss.NewStyle().
 				Foreground(ColorError)
+
+	// Section badge style for tree view
+	SectionBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("245")). // Gray text
+				Background(lipgloss.Color("236"))  // Dark gray background
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

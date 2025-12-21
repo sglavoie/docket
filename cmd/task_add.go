@@ -10,14 +10,15 @@ import (
 )
 
 var (
-	taskTypeFlag   string
-	taskParentFlag string
-	taskPriority   int
-	taskTags       []string
-	isEpic         bool
-	isStory        bool
-	isBug          bool
-	isIdea         bool
+	taskTypeFlag    string
+	taskParentFlag  string
+	taskPriority    int
+	taskTags        []string
+	taskSectionFlag string
+	isEpic          bool
+	isStory         bool
+	isBug           bool
+	isIdea          bool
 )
 
 var taskAddCmd = &cobra.Command{
@@ -52,6 +53,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isStory, "story", false, "create a story")
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
+	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: Backlog)")
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
@@ -97,6 +99,12 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	// Add tags
 	for _, tag := range taskTags {
 		task.AddTag(tag)
+	}
+
+	// Handle section (defaults to Backlog from NewTask)
+	if taskSectionFlag != "" {
+		project.EnsureSection(taskSectionFlag)
+		task.Section = taskSectionFlag
 	}
 
 	// Handle parent

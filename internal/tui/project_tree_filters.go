@@ -87,6 +87,13 @@ func (m *ProjectTreeModel) updateVisibility() {
 			}
 		}
 
+		// Apply section filter (OR logic: task must be in ANY selected section)
+		if visible && len(m.filterSections) > 0 {
+			if !m.filterSections[node.Task.Section] {
+				visible = false
+			}
+		}
+
 		// Apply due date filter
 		if visible && m.filterDueDate != DueDateAll {
 			switch m.filterDueDate {

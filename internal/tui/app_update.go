@@ -420,6 +420,92 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case ShowSectionFilterSelectorMsg:
+		if msg.ProjectTree != nil {
+			m.sectionFilterSelector = NewSectionFilterSelectorModel(msg.ProjectTree)
+			m.sectionFilterSelector.SetSize(m.width, m.height-2)
+			m.pushView(ViewSectionFilterSelector)
+		}
+		return m, nil
+
+	case SectionFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Cancelled && m.projectTree != nil {
+			// Apply selected sections filter
+			m.projectTree.filterSections = make(map[string]bool)
+			for _, section := range msg.SelectedSections {
+				m.projectTree.filterSections[section] = true
+			}
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
+		}
+		return m, nil
+
+	case ShowSectionPickerMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.sectionPicker = NewSectionPickerModel(msg.Task, msg.Project)
+			m.sectionPicker.SetSize(m.width, m.height-2)
+			m.pushView(ViewSectionPicker)
+		}
+		return m, nil
+
+	case SectionPickerDoneMsg:
+		m.popView()
+		if !msg.Cancelled && msg.Task != nil && msg.Project != nil {
+			// Update task section
+			msg.Task.Section = msg.Section
+			msg.Task.UpdatedAt = time.Now()
+
+			// Ensure section exists in project
+			if msg.Section != "" {
+				msg.Project.EnsureSection(msg.Section)
+			}
+
+			// Create backup before saving for undo support
+			if err := storage.BackupProject(msg.Project); err != nil {
+				return m, func() tea.Msg {
+					return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+				}
+			}
+
+			// Save project
+			if err := storage.SaveProject(msg.Project); err != nil {
+				return m, func() tea.Msg {
+					return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+				}
+			}
+
+			// Reload and refresh project tree
+			storage.LoadProject(msg.Project)
+			if m.projectTree != nil && m.currentProject != nil {
+				m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
+				m.projectTree.SetSize(m.width, m.height-2)
+			}
+		}
+		return m, nil
+
+	case ShowSectionManagerMsg:
+		if msg.ProjectTree != nil {
+			m.sectionManager = NewSectionManagerModel(msg.ProjectTree)
+			m.sectionManager.SetSize(m.width, m.height-2)
+			m.pushView(ViewSectionManager)
+		}
+		return m, nil
+
+	case CloseSectionManagerMsg:
+		m.popView()
+		return m, nil
+
+	case SectionRenamedMsg, SectionAddedMsg, SectionRemovedMsg:
+		// Close the section manager and refresh project tree
+		m.popView()
+		if m.projectTree != nil && m.currentProject != nil {
+			storage.LoadProject(m.currentProject)
+			m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
+			m.projectTree.SetSize(m.width, m.height-2)
+		}
+		return m, nil
+
 	case ShowContextPickerMsg:
 		if msg.Dashboard != nil {
 			m.contextPicker = NewContextPickerModel(msg.Dashboard)
@@ -769,6 +855,27 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.tagFilterSelector != nil {
 			newModel, cmd := m.tagFilterSelector.Update(msg)
 			m.tagFilterSelector = newModel.(*TagFilterSelectorModel)
+			cmds = append(cmds, cmd)
+		}
+
+	case ViewSectionFilterSelector:
+		if m.sectionFilterSelector != nil {
+			newModel, cmd := m.sectionFilterSelector.Update(msg)
+			m.sectionFilterSelector = newModel.(*SectionFilterSelectorModel)
+			cmds = append(cmds, cmd)
+		}
+
+	case ViewSectionPicker:
+		if m.sectionPicker != nil {
+			newModel, cmd := m.sectionPicker.Update(msg)
+			m.sectionPicker = newModel.(*SectionPickerModel)
+			cmds = append(cmds, cmd)
+		}
+
+	case ViewSectionManager:
+		if m.sectionManager != nil {
+			newModel, cmd := m.sectionManager.Update(msg)
+			m.sectionManager = newModel.(*SectionManagerModel)
 			cmds = append(cmds, cmd)
 		}
 

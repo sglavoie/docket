@@ -21,6 +21,9 @@ var (
 
 	// Matches project title like "# Project: Name"
 	projectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)
+
+	// Matches sections metadata like "<!-- sections: Backlog;Active;Done -->"
+	sectionsRegex = regexp.MustCompile(`^<!--\s*sections:\s*(.+?)\s*-->$`)
 )
 
 // ParsedTask represents a task parsed from markdown with its raw data.
@@ -30,15 +33,34 @@ type ParsedTask struct {
 	RawContent string // The description content between this task and the next
 }
 
+// ParseResult contains the results of parsing a tasks.md file.
+type ParseResult struct {
+	ProjectName string
+	Tasks       []*models.Task
+	Sections    []string
+}
+
 // ParseTasksMarkdown parses a tasks.md file content into tasks.
 // Returns the project name and a slice of tasks.
 func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		return "", nil, err
+	}
+	return result.ProjectName, result.Tasks, nil
+}
+
+// ParseTasksMarkdownWithSections parses a tasks.md file content into tasks and sections.
+// Returns a ParseResult containing the project name, tasks, and sections.
+func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	var projectName string
+	var sections []string
 	var tasks []*models.Task
 	var currentTask *ParsedTask
 	var descBuilder strings.Builder
 	var nextShortID int = 1
+	var foundFirstTask bool
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -49,8 +71,23 @@ func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
 			continue
 		}
 
+		// Check for sections metadata (only before first task)
+		if !foundFirstTask {
+			if matches := sectionsRegex.FindStringSubmatch(line); matches != nil {
+				sectionList := strings.Split(matches[1], ";")
+				for _, s := range sectionList {
+					s = strings.TrimSpace(s)
+					if s != "" {
+						sections = append(sections, s)
+					}
+				}
+				continue
+			}
+		}
+
 		// Check for task heading
 		if matches := headingRegex.FindStringSubmatch(line); matches != nil {
+			foundFirstTask = true
 			// Save previous task's description
 			if currentTask != nil {
 				currentTask.Task.Description = strings.TrimSpace(descBuilder.String())
@@ -97,13 +134,22 @@ func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return "", nil, fmt.Errorf("error reading markdown: %w", err)
+		return nil, fmt.Errorf("error reading markdown: %w", err)
 	}
 
 	// Build parent-child relationships based on heading levels
 	buildHierarchy(tasks, content)
 
-	return projectName, tasks, nil
+	// Default to Backlog section if none specified
+	if len(sections) == 0 {
+		sections = []string{models.SectionBacklog}
+	}
+
+	return &ParseResult{
+		ProjectName: projectName,
+		Tasks:       tasks,
+		Sections:    sections,
+	}, nil
 }
 
 // parseMetadata parses the metadata string and sets task fields.
@@ -162,6 +208,8 @@ func parseMetadata(task *models.Task, metaStr string) {
 					task.DependsOn = append(task.DependsOn, dep)
 				}
 			}
+		case "section":
+			task.Section = value
 		}
 	}
 }

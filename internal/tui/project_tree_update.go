@@ -277,6 +277,18 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return ShowTagFilterSelectorMsg{ProjectTree: m}
 			}
 
+		case "N":
+			// Open section filter selector popup
+			return m, func() tea.Msg {
+				return ShowSectionFilterSelectorMsg{ProjectTree: m}
+			}
+
+		case "ctrl+s":
+			// Open section manager
+			return m, func() tea.Msg {
+				return ShowSectionManagerMsg{ProjectTree: m}
+			}
+
 		case "u":
 			// Cycle due date filter: all → overdue → today → this week → no due date → all
 			m.filterDueDate = (m.filterDueDate + 1) % 5
@@ -772,6 +784,14 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				task := visible[m.cursor].Task
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: task, Project: m.project}
+				}
+			}
+		case "ctrl+n":
+			// Assign task to section
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				return m, func() tea.Msg {
+					return ShowSectionPickerMsg{Task: task, Project: m.project}
 				}
 			}
 		case "B":

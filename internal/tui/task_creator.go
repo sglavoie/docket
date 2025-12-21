@@ -25,16 +25,19 @@ type TaskCreatorModel struct {
 	tagsInput  textinput.Model
 
 	// Selectable fields
-	taskType     models.TaskType
-	typeCursor   int
-	types        []models.TaskType
-	parentID     *string
-	parentCursor int
-	validParents []*models.Task
-	priority     int
+	taskType      models.TaskType
+	typeCursor    int
+	types         []models.TaskType
+	parentID      *string
+	parentCursor  int
+	validParents  []*models.Task
+	priority      int
+	section       string
+	sectionCursor int
+	sections      []string
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=tags, 5=description
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=tags, 6=description
 	width      int
 	height     int
 	err        error
@@ -72,6 +75,9 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		models.TaskTypeIdea,
 	}
 
+	// Get available sections from project
+	sections := project.GetSections()
+
 	m := &TaskCreatorModel{
 		project:       project,
 		config:        cfg,
@@ -85,6 +91,9 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		parentID:      nil,
 		parentCursor:  0,
 		priority:      3,
+		section:       models.SectionBacklog,
+		sectionCursor: 0,
+		sections:      sections,
 		focusIndex:    0,
 		width:         80,
 		height:        24,
@@ -157,9 +166,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Move focus
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 6
+				m.focusIndex = (m.focusIndex + 1) % 7
 			} else {
-				m.focusIndex = (m.focusIndex + 5) % 6
+				m.focusIndex = (m.focusIndex + 6) % 7
 			}
 
 			// Focus new field
@@ -167,13 +176,13 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			if m.focusIndex == 5 {
+			if m.focusIndex == 6 {
 				// In description, allow newlines
 				m.descInput, cmd = m.descInput.Update(msg)
 				return m, cmd
 			}
 			// Move to next field or submit if on last navigable field
-			if m.focusIndex < 5 {
+			if m.focusIndex < 6 {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -205,6 +214,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.priority > 1 {
 					m.priority--
 				}
+			case 4: // Section selector
+				if m.sectionCursor > 0 {
+					m.sectionCursor--
+					m.section = m.sections[m.sectionCursor]
+				}
 			}
 
 		case "right", "l":
@@ -228,6 +242,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.priority < 5 {
 					m.priority++
 				}
+			case 4: // Section selector
+				if m.sectionCursor < len(m.sections)-1 {
+					m.sectionCursor++
+					m.section = m.sections[m.sectionCursor]
+				}
 			}
 		}
 	}
@@ -236,9 +255,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput, cmd = m.titleInput.Update(msg)
-	case 4:
-		m.tagsInput, cmd = m.tagsInput.Update(msg)
 	case 5:
+		m.tagsInput, cmd = m.tagsInput.Update(msg)
+	case 6:
 		m.descInput, cmd = m.descInput.Update(msg)
 	}
 
@@ -249,9 +268,9 @@ func (m *TaskCreatorModel) blurCurrentField() {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput.Blur()
-	case 4:
-		m.tagsInput.Blur()
 	case 5:
+		m.tagsInput.Blur()
+	case 6:
 		m.descInput.Blur()
 	}
 }
@@ -260,9 +279,9 @@ func (m *TaskCreatorModel) focusCurrentField() {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput.Focus()
-	case 4:
-		m.tagsInput.Focus()
 	case 5:
+		m.tagsInput.Focus()
+	case 6:
 		m.descInput.Focus()
 	}
 }
@@ -286,6 +305,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			Status:      models.StatusTodo,
 			Priority:    m.priority,
 			ParentID:    m.parentID,
+			Section:     m.section,
 		}
 
 		// Parse and set tags
@@ -429,9 +449,30 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString(MutedStyle.Render(" (1=highest)"))
 	b.WriteString("\n\n")
 
+	// Section selector
+	sectionLabel := "Section: "
+	if m.focusIndex == 4 {
+		sectionLabel = FieldLabelFocusedStyle.Render("Section: ")
+	} else {
+		sectionLabel = FieldLabelStyle.Render("Section: ")
+	}
+	b.WriteString(sectionLabel)
+	for i, s := range m.sections {
+		if i == m.sectionCursor {
+			if m.focusIndex == 4 {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", s)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", s)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", s)))
+		}
+	}
+	b.WriteString("\n\n")
+
 	// Tags input
 	tagsLabel := "Tags: "
-	if m.focusIndex == 4 {
+	if m.focusIndex == 5 {
 		tagsLabel = FieldLabelFocusedStyle.Render("Tags: ")
 	} else {
 		tagsLabel = FieldLabelStyle.Render("Tags: ")
@@ -442,7 +483,7 @@ func (m *TaskCreatorModel) View() string {
 
 	// Description textarea
 	descLabel := "Description:\n"
-	if m.focusIndex == 5 {
+	if m.focusIndex == 6 {
 		descLabel = FieldLabelFocusedStyle.Render("Description:\n")
 	} else {
 		descLabel = FieldLabelStyle.Render("Description:\n")

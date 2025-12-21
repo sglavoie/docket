@@ -35,22 +35,24 @@ func LoadProject(project *models.Project) error {
 		// No tasks file yet, initialize empty
 		project.Tasks = []*models.Task{}
 		project.NextShortID = 1
+		project.Sections = []string{models.SectionBacklog}
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("failed to read tasks file: %w", err)
 	}
 
-	_, tasks, err := ParseTasksMarkdown(string(content))
+	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
 		return fmt.Errorf("failed to parse tasks: %w", err)
 	}
 
-	project.Tasks = tasks
+	project.Tasks = result.Tasks
+	project.Sections = result.Sections
 
 	// Determine next short ID
 	maxShortID := 0
-	for _, task := range tasks {
+	for _, task := range result.Tasks {
 		if task.ShortID > maxShortID {
 			maxShortID = task.ShortID
 		}
@@ -69,7 +71,7 @@ func SaveProject(project *models.Project) error {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	content := WriteTasksMarkdown(project.Name, project.Tasks)
+	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections())
 
 	tasksPath := filepath.Join(project.Path, tasksFileName)
 	if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
@@ -82,9 +84,21 @@ func SaveProject(project *models.Project) error {
 // WriteTasksMarkdown generates markdown content from tasks.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
+	return WriteTasksMarkdownWithSections(projectName, tasks, nil)
+}
+
+// WriteTasksMarkdownWithSections generates markdown content from tasks and sections.
+// Tasks are written in their slice order, preserving user-defined ordering.
+func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string) string {
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("# Project: %s\n\n", projectName))
+	b.WriteString(fmt.Sprintf("# Project: %s\n", projectName))
+
+	// Write sections metadata if present
+	if len(sections) > 0 {
+		b.WriteString(fmt.Sprintf("<!-- sections: %s -->\n", strings.Join(sections, ";")))
+	}
+	b.WriteString("\n")
 
 	// Collect root tasks in slice order (preserving user order)
 	var rootTasks []*models.Task
@@ -144,6 +158,10 @@ func writeMetadata(task *models.Task) string {
 
 	if len(task.Tags) > 0 {
 		parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
+	}
+
+	if task.Section != "" {
+		parts = append(parts, fmt.Sprintf("section: %s", task.Section))
 	}
 
 	if !task.CreatedAt.IsZero() {
