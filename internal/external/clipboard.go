@@ -30,19 +30,19 @@ func CopyTaskTitles(tasks []*models.Task) (string, error) {
 	return text, clipboard.WriteAll(text)
 }
 
-// CopyTaskDetails copies full task details (markdown format) to the clipboard.
+// CopyTaskDetails copies task description to the clipboard.
 // Returns the copied text and any error.
 func CopyTaskDetails(task *models.Task) (string, error) {
-	text := FormatTaskAsMarkdown(task)
+	text := task.Description
 	return text, clipboard.WriteAll(text)
 }
 
-// CopyTasksDetails copies full details for multiple tasks to the clipboard.
+// CopyTasksDetails copies descriptions for multiple tasks to the clipboard.
 // Returns the copied text and any error.
 func CopyTasksDetails(tasks []*models.Task) (string, error) {
 	var parts []string
 	for _, task := range tasks {
-		parts = append(parts, FormatTaskAsMarkdown(task))
+		parts = append(parts, task.Description)
 	}
 	text := strings.Join(parts, "\n---\n\n")
 	return text, clipboard.WriteAll(text)

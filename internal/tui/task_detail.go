@@ -624,7 +624,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 
 		// Clipboard
 		{Key: "y", Description: "Copy title", Category: "Clipboard"},
-		{Key: "Y", Description: "Copy full details", Category: "Clipboard"},
+		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
 
 		// Other
 		{Key: "z", Description: "Undo last change", Category: "Other"},

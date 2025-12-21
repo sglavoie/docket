@@ -621,7 +621,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TaskCopiedMsg:
 		var what string
 		if msg.FullDetail {
-			what = "full details"
+			what = "description"
 		} else {
 			what = "title"
 		}
