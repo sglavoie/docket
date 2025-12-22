@@ -18,8 +18,8 @@ type Project struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Archived    bool       `json:"archived"`
 	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
-	Active      bool       `json:"active"`
-	ActiveAt    *time.Time `json:"active_at,omitempty"`
+	Pinned      bool       `json:"pinned"`
+	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks       []*Task  `json:"-"`
@@ -72,27 +72,27 @@ func (p *Project) Unarchive() {
 	p.UpdatedAt = time.Now()
 }
 
-// SetActive marks the project as actively being worked on.
-func (p *Project) SetActive() {
+// Pin marks the project as pinned to appear at the top of lists.
+func (p *Project) Pin() {
 	now := time.Now()
-	p.Active = true
-	p.ActiveAt = &now
+	p.Pinned = true
+	p.PinnedAt = &now
 	p.UpdatedAt = now
 }
 
-// SetInactive removes the active status.
-func (p *Project) SetInactive() {
-	p.Active = false
-	p.ActiveAt = nil
+// Unpin removes the pinned status.
+func (p *Project) Unpin() {
+	p.Pinned = false
+	p.PinnedAt = nil
 	p.UpdatedAt = time.Now()
 }
 
-// ToggleActive toggles the active status.
-func (p *Project) ToggleActive() {
-	if p.Active {
-		p.SetInactive()
+// TogglePinned toggles the pinned status.
+func (p *Project) TogglePinned() {
+	if p.Pinned {
+		p.Unpin()
 	} else {
-		p.SetActive()
+		p.Pin()
 	}
 }
 

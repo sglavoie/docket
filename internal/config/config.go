@@ -185,7 +185,18 @@ func sortProjectsByName(projects []*models.Project) {
 	})
 }
 
-// GetActiveProjects returns non-archived projects sorted alphabetically.
+// sortProjectsWithPinnedFirst sorts projects with pinned ones first, then non-pinned.
+// Each group is sorted alphabetically by name (case-insensitive).
+func sortProjectsWithPinnedFirst(projects []*models.Project) {
+	sort.Slice(projects, func(i, j int) bool {
+		if projects[i].Pinned != projects[j].Pinned {
+			return projects[i].Pinned
+		}
+		return strings.ToLower(projects[i].Name) < strings.ToLower(projects[j].Name)
+	})
+}
+
+// GetActiveProjects returns non-archived projects sorted with pinned first, then alphabetically.
 func (c *Config) GetActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range c.Projects {
@@ -193,7 +204,7 @@ func (c *Config) GetActiveProjects() []*models.Project {
 			active = append(active, p)
 		}
 	}
-	sortProjectsByName(active)
+	sortProjectsWithPinnedFirst(active)
 	return active
 }
 

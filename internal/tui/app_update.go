@@ -110,19 +110,19 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case ProjectActiveToggledMsg:
-		// Save config with updated active status
+	case ProjectPinnedToggledMsg:
+		// Save config with updated pinned status
 		if err := m.configManager.Save(m.config); err != nil {
 			m.err = err
 			return m, nil
 		}
-		// Refresh dashboard to reflect active status change
+		// Refresh dashboard to reflect pinned status change
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		statusMsg := "Marked as active"
-		if !msg.Project.Active {
-			statusMsg = "Marked as inactive"
+		statusMsg := "Pinned"
+		if !msg.Project.Pinned {
+			statusMsg = "Unpinned"
 		}
 		m.statusMessage = statusMsg
 		return m, statusTimeout(2 * time.Second)

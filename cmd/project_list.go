@@ -56,14 +56,14 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 
-	headers := table.Row{"", "Name", "Context", "Tasks", "In Progress", "Done", "Active"}
+	headers := table.Row{"", "Name", "Context", "Tasks", "In Progress", "Done"}
 	if showArchived {
 		headers = append(headers, "Archived")
 	}
 	t.AppendHeader(headers)
 
 	currentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
-	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true)
+	pinnedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true)
 
 	for _, p := range projects {
 		if err := storage.LoadProject(p); err != nil {
@@ -73,17 +73,14 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		// Current project indicator
 		indicator := " "
 		name := p.Name
+		if p.Pinned {
+			name = "📌 " + name
+		}
 		if p.ID == cfg.CurrentProject {
 			indicator = "*"
-			name = currentStyle.Render(p.Name)
-		} else if p.Active {
-			name = activeStyle.Render(p.Name)
-		}
-
-		// Active status indicator
-		activeIndicator := ""
-		if p.Active {
-			activeIndicator = "yes"
+			name = currentStyle.Render(name)
+		} else if p.Pinned {
+			name = pinnedStyle.Render(name)
 		}
 
 		row := table.Row{
@@ -93,7 +90,6 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			p.CountTasks(),
 			p.CountActiveTasks(),
 			p.CountCompletedTasks(),
-			activeIndicator,
 		}
 
 		if showArchived {

@@ -273,10 +273,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
 			}
-		case "A":
+		case "P":
 			if len(visible) > 0 && m.cursor < len(visible) {
 				project := visible[m.cursor]
-				return m, m.toggleProjectActive(project)
+				return m, m.toggleProjectPinned(project)
 			}
 		}
 	}
@@ -300,10 +300,10 @@ func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 	}
 }
 
-func (m *DashboardModel) toggleProjectActive(project *models.Project) tea.Cmd {
+func (m *DashboardModel) toggleProjectPinned(project *models.Project) tea.Cmd {
 	return func() tea.Msg {
-		project.ToggleActive()
-		return ProjectActiveToggledMsg{Project: project}
+		project.TogglePinned()
+		return ProjectPinnedToggledMsg{Project: project}
 	}
 }
 
@@ -368,13 +368,13 @@ func (m *DashboardModel) View() string {
 			style := NormalStyle
 			if i == m.cursor {
 				cursor = "> "
-				if p.Active {
+				if p.Pinned {
 					style = BoldStyle.Foreground(ColorSuccess)
 				} else {
 					style = BoldStyle.Foreground(ColorPrimary)
 				}
-			} else if p.Active {
-				style = ActiveProjectStyle
+			} else if p.Pinned {
+				style = PinnedProjectStyle
 			}
 
 			// Calculate stats
@@ -521,7 +521,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "e", Description: "Edit project", Category: "Actions"},
 		{Key: "p", Description: "Preview project", Category: "Actions"},
 		{Key: "D", Description: "Delete project", Category: "Actions"},
-		{Key: "A", Description: "Toggle active", Category: "Actions"},
+		{Key: "P", Description: "Toggle pinned", Category: "Actions"},
 		{Key: "a", Description: toggleDesc, Category: "Actions"},
 		{Key: "r", Description: "Refresh", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},

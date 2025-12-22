@@ -17,7 +17,7 @@ type (
 	CreateProjectMsg        struct{}
 	ProjectCreatedMsg       struct{ Project *models.Project }
 	ProjectArchivedMsg      struct{ Project *models.Project }
-	ProjectActiveToggledMsg struct{ Project *models.Project }
+	ProjectPinnedToggledMsg struct{ Project *models.Project }
 	ProjectDeletedMsg       struct{ Project *models.Project }
 	ProjectRestoredMsg      struct{ Project *models.Project }
 	EditProjectMsg          struct{ Project *models.Project }

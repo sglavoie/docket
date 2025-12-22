@@ -302,8 +302,8 @@ var (
 				Foreground(lipgloss.Color("245")). // Gray text
 				Background(lipgloss.Color("236"))  // Dark gray background
 
-	// Active project style
-	ActiveProjectStyle = lipgloss.NewStyle().
+	// Pinned project style
+	PinnedProjectStyle = lipgloss.NewStyle().
 				Foreground(ColorSuccess).
 				Bold(true)
 )
