@@ -411,7 +411,11 @@ func (m *DashboardModel) View() string {
 			}
 
 			// Format line
-			name := style.Render(p.Name)
+			currentMarker := ""
+			if p.ID == m.config.CurrentProject {
+				currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
+			}
+			name := style.Render(p.Name) + currentMarker
 			context := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
 			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
 			progressBar := RenderProgressBar(progress, 10)
@@ -426,9 +430,6 @@ func (m *DashboardModel) View() string {
 			current := m.config.GetCurrentProject()
 			if current != nil {
 				b.WriteString("\n")
-				b.WriteString(SubtitleStyle.Render(fmt.Sprintf("CURRENT: %s", current.Name)))
-				b.WriteString("\n")
-
 				m.renderRecentTasks(&b, current)
 				m.renderStats(&b, current)
 			}
@@ -533,6 +534,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 	}
 
 	return []HelpItem{
+		{Key: "*", Description: "Current project", Category: "Legend"},
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},

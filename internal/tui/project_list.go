@@ -117,7 +117,11 @@ func (m *ProjectListModel) View() string {
 				style = BoldStyle.Foreground(ColorPrimary)
 			}
 
-			name := style.Render(fmt.Sprintf("%-20s", truncate(p.Name, 20)))
+			nameStr := truncate(p.Name, 20)
+			if p.ID == m.config.CurrentProject {
+				nameStr += " *"
+			}
+			name := style.Render(fmt.Sprintf("%-20s", nameStr))
 			context := MutedStyle.Render(fmt.Sprintf("%-10s", p.Context))
 			total := fmt.Sprintf("%8d", p.CountTasks())
 			active := fmt.Sprintf("%8d", p.CountActiveTasks())
