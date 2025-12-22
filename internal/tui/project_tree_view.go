@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -272,7 +273,13 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	// Title
 	titleStyle := NormalStyle
 	if selected {
-		titleStyle = BoldStyle.Foreground(ColorPrimary)
+		if task.Pinned {
+			titleStyle = BoldStyle.Foreground(ColorSuccess)
+		} else {
+			titleStyle = BoldStyle.Foreground(ColorPrimary)
+		}
+	} else if task.Pinned {
+		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	}
 	if inSelection && !selected {
 		titleStyle = SelectionStyle
@@ -372,6 +379,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations"},
 		{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations"},
 		{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations"},
+		{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations"},
 		{Key: "B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 

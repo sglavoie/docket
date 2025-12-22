@@ -89,6 +89,8 @@ type Task struct {
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	DueDate     *time.Time `json:"due_date,omitempty"`
 	DependsOn   []string   `json:"depends_on,omitempty"` // IDs of tasks this task depends on
+	Pinned      bool       `json:"pinned,omitempty"`     // Whether the task is pinned
+	PinnedAt    *time.Time `json:"pinned_at,omitempty"`  // When the task was pinned
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
@@ -472,5 +474,29 @@ func (t *Task) ClearDependencies() {
 	if len(t.DependsOn) > 0 {
 		t.DependsOn = []string{}
 		t.UpdatedAt = time.Now()
+	}
+}
+
+// Pin marks the task as pinned.
+func (t *Task) Pin() {
+	now := time.Now()
+	t.Pinned = true
+	t.PinnedAt = &now
+	t.UpdatedAt = now
+}
+
+// Unpin removes the pinned status.
+func (t *Task) Unpin() {
+	t.Pinned = false
+	t.PinnedAt = nil
+	t.UpdatedAt = time.Now()
+}
+
+// TogglePinned toggles the pinned status.
+func (t *Task) TogglePinned() {
+	if t.Pinned {
+		t.Unpin()
+	} else {
+		t.Pin()
 	}
 }

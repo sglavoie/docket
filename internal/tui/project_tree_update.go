@@ -805,6 +805,20 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "z":
 			// Undo last operation
 			return m, m.performUndo()
+		case "ctrl+p":
+			// Pin/unpin task
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				for _, task := range m.getSelectedTasks() {
+					task.TogglePinned()
+				}
+				m.clearSelection()
+				return m, m.saveAndRefresh()
+			}
+			if len(visible) > 0 && m.cursor < len(visible) {
+				task := visible[m.cursor].Task
+				task.TogglePinned()
+				return m, m.saveAndRefresh()
+			}
 		}
 	}
 

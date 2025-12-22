@@ -180,6 +180,10 @@ func writeMetadata(task *models.Task) string {
 		parts = append(parts, fmt.Sprintf("depends: %s", strings.Join(task.DependsOn, ";")))
 	}
 
+	if task.Pinned {
+		parts = append(parts, "pinned: true")
+	}
+
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
 }
 

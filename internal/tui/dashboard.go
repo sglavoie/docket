@@ -273,7 +273,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
 			}
-		case "P":
+		case "ctrl+p":
 			if len(visible) > 0 && m.cursor < len(visible) {
 				project := visible[m.cursor]
 				return m, m.toggleProjectPinned(project)
@@ -521,7 +521,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "e", Description: "Edit project", Category: "Actions"},
 		{Key: "p", Description: "Preview project", Category: "Actions"},
 		{Key: "D", Description: "Delete project", Category: "Actions"},
-		{Key: "P", Description: "Toggle pinned", Category: "Actions"},
+		{Key: "Ctrl+P", Description: "Toggle pinned", Category: "Actions"},
 		{Key: "a", Description: toggleDesc, Category: "Actions"},
 		{Key: "r", Description: "Refresh", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},
