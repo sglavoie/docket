@@ -311,6 +311,10 @@ var (
 	PinnedNumberStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning).
 				Bold(true)
+
+	// Unsaved changes indicator style
+	UnsavedChangesStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("226")) // Yellow
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

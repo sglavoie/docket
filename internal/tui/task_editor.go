@@ -377,7 +377,7 @@ func (m *TaskEditorModel) View() string {
 	b.WriteString(TitleStyle.Render(fmt.Sprintf("Edit Task #%d", m.task.ShortID)))
 	if m.hasChanges {
 		b.WriteString(" ")
-		b.WriteString(MutedStyle.Render("(unsaved changes)"))
+		b.WriteString(UnsavedChangesStyle.Render("(unsaved changes)"))
 	}
 	b.WriteString("\n\n")
 

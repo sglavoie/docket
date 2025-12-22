@@ -279,7 +279,7 @@ func (m *ProjectEditorModel) View() string {
 	b.WriteString(TitleStyle.Render(fmt.Sprintf("Edit Project: %s", m.originalName)))
 	if m.hasChanges {
 		b.WriteString(" ")
-		b.WriteString(MutedStyle.Render("(unsaved changes)"))
+		b.WriteString(UnsavedChangesStyle.Render("(unsaved changes)"))
 	}
 	b.WriteString("\n\n")
 
