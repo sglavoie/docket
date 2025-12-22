@@ -419,7 +419,9 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "r", Description: "Refresh", Category: "Other"},
 		{Key: "R", Description: "View with glow", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
-		{Key: "g", Description: "Jump to task", Category: "Navigation"},
+		{Key: "\\", Description: "Jump to task", Category: "Navigation"},
+		{Key: "g", Description: "Go to first", Category: "Navigation"},
+		{Key: "G", Description: "Go to last", Category: "Navigation"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
 	}
 }

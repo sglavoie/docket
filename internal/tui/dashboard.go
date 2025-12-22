@@ -293,6 +293,14 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		case "g":
+			// Go to first item (Vim-style)
+			m.cursor = 0
+		case "G":
+			// Go to last item (Vim-style)
+			if len(visible) > 0 {
+				m.cursor = len(visible) - 1
+			}
 		}
 	}
 
@@ -539,6 +547,8 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},
 		{Key: "1-9", Description: "Quick select pinned", Category: "Navigation"},
+		{Key: "g", Description: "Go to first", Category: "Navigation"},
+		{Key: "G", Description: "Go to last", Category: "Navigation"},
 		{Key: "/", Description: "Search projects", Category: "Navigation"},
 		{Key: "Ctrl+D", Description: "Due date overview", Category: "Navigation"},
 		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},

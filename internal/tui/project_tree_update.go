@@ -355,10 +355,18 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Items:      m.GetHelpItems(),
 				}
 			}
-		case "g":
+		case "\\":
 			// Jump to task (fuzzy finder)
 			return m, func() tea.Msg {
 				return ShowTaskJumperMsg{Project: m.project}
+			}
+		case "g":
+			// Go to first item (Vim-style)
+			m.cursor = 0
+		case "G":
+			// Go to last item (Vim-style)
+			if len(visible) > 0 {
+				m.cursor = len(visible) - 1
 			}
 		case "ctrl+f":
 			return m, func() tea.Msg {
