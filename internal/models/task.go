@@ -183,12 +183,30 @@ func (t *Task) Reopen() {
 	t.UpdatedAt = time.Now()
 }
 
+// sliceContains returns true if the slice contains the value.
+func sliceContains(slice []string, value string) bool {
+	for _, s := range slice {
+		if s == value {
+			return true
+		}
+	}
+	return false
+}
+
+// sliceRemove returns a new slice with the value removed (if present).
+func sliceRemove(slice []string, value string) ([]string, bool) {
+	for i, s := range slice {
+		if s == value {
+			return append(slice[:i], slice[i+1:]...), true
+		}
+	}
+	return slice, false
+}
+
 // AddTag adds a tag if not already present.
 func (t *Task) AddTag(tag string) {
-	for _, existing := range t.Tags {
-		if existing == tag {
-			return
-		}
+	if sliceContains(t.Tags, tag) {
+		return
 	}
 	t.Tags = append(t.Tags, tag)
 	t.UpdatedAt = time.Now()
@@ -196,23 +214,15 @@ func (t *Task) AddTag(tag string) {
 
 // RemoveTag removes a tag if present.
 func (t *Task) RemoveTag(tag string) {
-	for i, existing := range t.Tags {
-		if existing == tag {
-			t.Tags = append(t.Tags[:i], t.Tags[i+1:]...)
-			t.UpdatedAt = time.Now()
-			return
-		}
+	if newTags, removed := sliceRemove(t.Tags, tag); removed {
+		t.Tags = newTags
+		t.UpdatedAt = time.Now()
 	}
 }
 
 // HasTag returns true if the task has the given tag.
 func (t *Task) HasTag(tag string) bool {
-	for _, existing := range t.Tags {
-		if existing == tag {
-			return true
-		}
-	}
-	return false
+	return sliceContains(t.Tags, tag)
 }
 
 // GetProgress returns the completion percentage based on children.
@@ -439,10 +449,8 @@ func (t *Task) CycleLeafType(left bool) error {
 
 // AddDependency adds a dependency on another task if not already present.
 func (t *Task) AddDependency(blockerID string) {
-	for _, existing := range t.DependsOn {
-		if existing == blockerID {
-			return
-		}
+	if sliceContains(t.DependsOn, blockerID) {
+		return
 	}
 	t.DependsOn = append(t.DependsOn, blockerID)
 	t.UpdatedAt = time.Now()
@@ -450,23 +458,15 @@ func (t *Task) AddDependency(blockerID string) {
 
 // RemoveDependency removes a dependency if present.
 func (t *Task) RemoveDependency(blockerID string) {
-	for i, existing := range t.DependsOn {
-		if existing == blockerID {
-			t.DependsOn = append(t.DependsOn[:i], t.DependsOn[i+1:]...)
-			t.UpdatedAt = time.Now()
-			return
-		}
+	if newDeps, removed := sliceRemove(t.DependsOn, blockerID); removed {
+		t.DependsOn = newDeps
+		t.UpdatedAt = time.Now()
 	}
 }
 
 // HasDependency returns true if the task depends on the given task ID.
 func (t *Task) HasDependency(blockerID string) bool {
-	for _, existing := range t.DependsOn {
-		if existing == blockerID {
-			return true
-		}
-	}
-	return false
+	return sliceContains(t.DependsOn, blockerID)
 }
 
 // ClearDependencies removes all dependencies.

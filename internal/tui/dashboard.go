@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -15,17 +14,11 @@ import (
 
 // DashboardModel represents the dashboard view.
 type DashboardModel struct {
+	BaseSearchableView
 	config       *config.Config
 	projects     []*models.Project
 	cursor       int
-	width        int
-	height       int
 	showArchived bool
-
-	// Search state
-	searchMode  bool
-	searchInput textinput.Model
-	searchQuery string
 
 	// Context filter state
 	filterContext string   // Empty string means "all contexts"
@@ -38,18 +31,11 @@ type DashboardModel struct {
 
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(cfg *config.Config) *DashboardModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Search projects..."
-	searchInput.CharLimit = 100
-	searchInput.Width = 40
-
 	m := &DashboardModel{
-		config:      cfg,
-		cursor:      0,
-		searchMode:  false,
-		searchInput: searchInput,
-		searchQuery: "",
+		config: cfg,
+		cursor: 0,
 	}
+	m.InitSearchInput("Search projects...", 100, 40)
 	m.loadProjects()
 	return m
 }
@@ -89,10 +75,10 @@ func (m *DashboardModel) matchesFilters(p *models.Project) bool {
 	}
 
 	// Then apply search filter
-	if m.searchQuery == "" {
+	if m.SearchQuery() == "" {
 		return true
 	}
-	query := strings.ToLower(m.searchQuery)
+	query := strings.ToLower(m.SearchQuery())
 
 	if strings.Contains(strings.ToLower(p.Name), query) {
 		return true
@@ -107,7 +93,7 @@ func (m *DashboardModel) matchesFilters(p *models.Project) bool {
 }
 
 func (m *DashboardModel) visibleProjects() []*models.Project {
-	if m.searchQuery == "" && m.filterContext == "" {
+	if m.SearchQuery() == "" && m.filterContext == "" {
 		return m.projects
 	}
 	var visible []*models.Project
@@ -121,7 +107,7 @@ func (m *DashboardModel) visibleProjects() []*models.Project {
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
 func (m *DashboardModel) HasActiveSearch() bool {
-	return m.searchMode || m.searchQuery != ""
+	return m.IsSearchMode() || m.SearchQuery() != ""
 }
 
 // Refresh reloads the dashboard data.
@@ -164,47 +150,26 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle search mode
-		if m.searchMode {
-			switch msg.String() {
-			case "esc":
-				m.searchMode = false
-				m.searchInput.Blur()
-				m.searchInput.SetValue("")
-				m.searchQuery = ""
-				return m, nil
-			case "enter":
-				m.searchMode = false
-				m.searchInput.Blur()
-				m.searchQuery = m.searchInput.Value()
-				return m, nil
-			default:
-				var cmd tea.Cmd
-				m.searchInput, cmd = m.searchInput.Update(msg)
-				m.searchQuery = m.searchInput.Value()
-				// Reset cursor if out of bounds
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
 				visible = m.visibleProjects()
-				if m.cursor >= len(visible) {
-					if len(visible) > 0 {
-						m.cursor = len(visible) - 1
-					} else {
-						m.cursor = 0
-					}
-				}
+				m.cursor = ClampCursor(m.cursor, len(visible))
+			}
+			if handled {
 				return m, cmd
 			}
+			return m, cmd
 		}
 
 		switch msg.String() {
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 		case "esc":
 			// Clear filters if active
-			if m.filterContext != "" || m.searchQuery != "" {
+			if m.filterContext != "" || m.SearchQuery() != "" {
 				m.filterContext = ""
-				m.searchQuery = ""
-				m.searchInput.SetValue("")
+				m.ClearSearch()
 				return m, nil
 			}
 		case "up", "k":
@@ -216,7 +181,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "enter":
-			if len(visible) > 0 && m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				return m, func() tea.Msg {
 					return SelectProjectMsg{Project: visible[m.cursor]}
 				}
@@ -244,18 +209,18 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return SettingsMsg{}
 			}
 		case "D":
-			if len(visible) > 0 && m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				m.confirmAction = "delete"
 				m.deleteTarget = visible[m.cursor]
 			}
 		case "e":
-			if len(visible) > 0 && m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				return m, func() tea.Msg {
 					return EditProjectMsg{Project: visible[m.cursor]}
 				}
 			}
 		case "p":
-			if len(visible) > 0 && m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				return m, func() tea.Msg {
 					return ShowProjectPreviewMsg{Project: visible[m.cursor]}
 				}
@@ -274,7 +239,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return ShowGlobalTagManagerMsg{}
 			}
 		case "ctrl+p":
-			if len(visible) > 0 && m.cursor < len(visible) {
+			if CursorInBounds(m.cursor, len(visible)) {
 				project := visible[m.cursor]
 				return m, m.toggleProjectPinned(project)
 			}
@@ -349,12 +314,12 @@ func (m *DashboardModel) View() string {
 	}
 
 	// Search bar
-	if m.searchMode {
+	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
-		b.WriteString(m.searchInput.View())
+		b.WriteString(m.SearchInputView())
 		b.WriteString("\n")
-	} else if m.searchQuery != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.searchQuery)))
+	} else if m.SearchQuery() != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
 		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
 		b.WriteString("\n")
 	}
@@ -434,7 +399,7 @@ func (m *DashboardModel) View() string {
 		}
 
 		// Current project details (only show when not searching)
-		if m.searchQuery == "" && m.config.CurrentProject != "" {
+		if m.SearchQuery() == "" && m.config.CurrentProject != "" {
 			current := m.config.GetCurrentProject()
 			if current != nil {
 				b.WriteString("\n")

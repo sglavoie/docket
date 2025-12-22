@@ -1,0 +1,22 @@
+package tui
+
+// CursorInBounds returns true if cursor is valid for the given slice length.
+// Use this to guard operations that require a valid selection.
+func CursorInBounds(cursor, length int) bool {
+	return length > 0 && cursor >= 0 && cursor < length
+}
+
+// ClampCursor ensures cursor is within [0, length-1] range.
+// Returns 0 if length is 0.
+func ClampCursor(cursor, length int) int {
+	if length == 0 {
+		return 0
+	}
+	if cursor < 0 {
+		return 0
+	}
+	if cursor >= length {
+		return length - 1
+	}
+	return cursor
+}

@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -34,10 +33,9 @@ func init() {
 }
 
 func runProjectList(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	cfg, _, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	var projects = cfg.GetActiveProjects()

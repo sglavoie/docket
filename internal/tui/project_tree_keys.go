@@ -1,0 +1,821 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// handleNavigationKeys handles j/k, g/G, arrow keys, and page navigation.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+		return true, nil
+	case "down", "j":
+		if m.cursor < len(visible)-1 {
+			m.cursor++
+		}
+		return true, nil
+	case "g":
+		m.cursor = 0
+		return true, nil
+	case "G":
+		if len(visible) > 0 {
+			m.cursor = len(visible) - 1
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleStatusKeys handles s, m, b, x, o - status change operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleStatusKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "s":
+		return m.handleStartTask(visible)
+	case "m":
+		return m.handleCompleteTask(visible)
+	case "b":
+		return m.handleBlockTask(visible)
+	case "x":
+		return m.handleCancelTask(visible)
+	case "o":
+		return m.handleReopenTask(visible)
+	case "`":
+		return m.handleCycleStatusForward(visible)
+	case "~":
+		return m.handleCycleStatusBackward(visible)
+	}
+	return false, nil
+}
+
+// handleStartTask starts a task (in_progress).
+func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		for _, task := range m.getSelectedTasks() {
+			if task.Status == models.StatusTodo || task.Status == models.StatusBlocked {
+				task.Start()
+			}
+		}
+		m.clearSelection()
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		if task.Status == models.StatusTodo || task.Status == models.StatusBlocked {
+			task.Start()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleCompleteTask marks a task as complete (done).
+func (m *ProjectTreeModel) handleCompleteTask(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		var skippedIDs []string
+		completedCount := 0
+		for _, task := range m.getSelectedTasks() {
+			if task.Status.IsActive() {
+				if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+					skippedIDs = append(skippedIDs, fmt.Sprintf("#%d", task.ShortID))
+					continue
+				}
+				task.Complete()
+				completedCount++
+			}
+		}
+		m.clearSelection()
+		if len(skippedIDs) > 0 {
+			var msg string
+			if completedCount == 0 {
+				msg = fmt.Sprintf("no tasks completed: %s have incomplete dependencies", strings.Join(skippedIDs, ", "))
+			} else {
+				msg = fmt.Sprintf("completed %d, skipped %s (incomplete dependencies)", completedCount, strings.Join(skippedIDs, ", "))
+			}
+			return true, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("%s", msg)}
+			})
+		}
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		if task.Status.IsActive() {
+			if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+				depNames := make([]string, len(incompleteDeps))
+				for i, dep := range incompleteDeps {
+					depNames[i] = fmt.Sprintf("#%d", dep.ShortID)
+				}
+				return true, func() tea.Msg {
+					return ErrorMsg{Err: fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+						len(incompleteDeps), strings.Join(depNames, ", "))}
+				}
+			}
+			task.Complete()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleBlockTask blocks a task.
+func (m *ProjectTreeModel) handleBlockTask(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		for _, task := range m.getSelectedTasks() {
+			if task.Status.IsActive() && task.Status != models.StatusBlocked {
+				task.Block()
+			}
+		}
+		m.clearSelection()
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		if task.Status.IsActive() && task.Status != models.StatusBlocked {
+			task.Block()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleCancelTask cancels a task.
+func (m *ProjectTreeModel) handleCancelTask(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		for _, task := range m.getSelectedTasks() {
+			if task.Status.IsActive() {
+				task.Cancel()
+			}
+		}
+		m.clearSelection()
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		if task.Status.IsActive() {
+			task.Cancel()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleReopenTask reopens a task (back to todo).
+func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		for _, task := range m.getSelectedTasks() {
+			if task.Status != models.StatusTodo {
+				task.Reopen()
+			}
+		}
+		m.clearSelection()
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		if task.Status != models.StatusTodo {
+			task.Reopen()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleCycleStatusForward cycles status: todo -> in_progress -> done -> todo.
+func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		var skippedIDs []string
+		cycledCount := 0
+		for _, task := range m.getSelectedTasks() {
+			switch task.Status {
+			case models.StatusTodo:
+				task.Start()
+				cycledCount++
+			case models.StatusInProgress:
+				if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+					skippedIDs = append(skippedIDs, fmt.Sprintf("#%d", task.ShortID))
+					continue
+				}
+				task.Complete()
+				cycledCount++
+			case models.StatusDone:
+				task.Reopen()
+				cycledCount++
+			}
+		}
+		m.clearSelection()
+		if len(skippedIDs) > 0 {
+			var msg string
+			if cycledCount == 0 {
+				msg = fmt.Sprintf("no tasks cycled: %s have incomplete dependencies", strings.Join(skippedIDs, ", "))
+			} else {
+				msg = fmt.Sprintf("cycled %d, skipped %s (incomplete dependencies)", cycledCount, strings.Join(skippedIDs, ", "))
+			}
+			return true, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("%s", msg)}
+			})
+		}
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		switch task.Status {
+		case models.StatusTodo:
+			task.Start()
+			return true, m.saveAndRefresh()
+		case models.StatusInProgress:
+			if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+				depNames := make([]string, len(incompleteDeps))
+				for i, dep := range incompleteDeps {
+					depNames[i] = fmt.Sprintf("#%d", dep.ShortID)
+				}
+				return true, func() tea.Msg {
+					return ErrorMsg{Err: fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+						len(incompleteDeps), strings.Join(depNames, ", "))}
+				}
+			}
+			task.Complete()
+			return true, m.saveAndRefresh()
+		case models.StatusDone:
+			task.Reopen()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleCycleStatusBackward cycles status backward: todo -> done -> in_progress -> todo.
+func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		for _, task := range m.getSelectedTasks() {
+			switch task.Status {
+			case models.StatusTodo:
+				task.Complete()
+			case models.StatusInProgress:
+				task.Reopen()
+			case models.StatusDone:
+				task.Start()
+			}
+		}
+		m.clearSelection()
+		return true, m.saveAndRefresh()
+	}
+	if CursorInBounds(m.cursor, len(visible)) {
+		task := visible[m.cursor].Task
+		switch task.Status {
+		case models.StatusTodo:
+			task.Complete()
+			return true, m.saveAndRefresh()
+		case models.StatusInProgress:
+			task.Reopen()
+			return true, m.saveAndRefresh()
+		case models.StatusDone:
+			task.Start()
+			return true, m.saveAndRefresh()
+		}
+	}
+	return true, nil
+}
+
+// handleTypeKeys handles h, l, H, L - type change operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "h":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanPromote(); ok {
+				task.Promote()
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "l":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanDemote(); ok {
+				task.Demote()
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "H":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanCycleLeafType(true); ok {
+				task.CycleLeafType(true)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "L":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanCycleLeafType(false); ok {
+				task.CycleLeafType(false)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleMovementKeys handles K, J, left, right - task movement operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "K":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			siblings := m.project.GetSiblings(task)
+			siblingIdx := m.project.FindSiblingIndex(task)
+			if siblingIdx > 0 {
+				siblingAbove := siblings[siblingIdx-1]
+				if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+					return true, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
+					}
+				}
+				m.project.MoveTaskUp(task)
+				if m.cursor > 0 {
+					m.cursor--
+				}
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "J":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			siblings := m.project.GetSiblings(task)
+			siblingIdx := m.project.FindSiblingIndex(task)
+			if siblingIdx >= 0 && siblingIdx < len(siblings)-1 {
+				siblingBelow := siblings[siblingIdx+1]
+				if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+					return true, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
+					}
+				}
+				m.project.MoveTaskDown(task)
+				if m.cursor < len(visible)-1 {
+					m.cursor++
+				}
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "right":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			targetParent := m.project.GetTaskAbove(task)
+			if targetParent != nil {
+				if ok, _ := task.CanIndent(targetParent); ok {
+					m.project.IndentTask(task)
+					return true, m.saveAndRefresh()
+				}
+			}
+		}
+		return true, nil
+	case "left":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanOutdent(); ok {
+				m.project.OutdentTask(task)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleSelectionKeys handles v, a, space - selection operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case " ":
+		if m.multiSelectMode {
+			if CursorInBounds(m.cursor, len(visible)) {
+				m.toggleSelection(visible[m.cursor].Task)
+			}
+			return true, nil
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			node := visible[m.cursor]
+			if len(node.Task.Children) > 0 {
+				node.Expanded = !node.Expanded
+				m.updateVisibility()
+			}
+		}
+		return true, nil
+	case "tab":
+		if CursorInBounds(m.cursor, len(visible)) {
+			node := visible[m.cursor]
+			if len(node.Task.Children) > 0 {
+				node.Expanded = !node.Expanded
+				m.updateVisibility()
+			}
+		}
+		return true, nil
+	case "v":
+		if m.multiSelectMode {
+			m.clearSelection()
+		} else {
+			m.multiSelectMode = true
+			if CursorInBounds(m.cursor, len(visible)) {
+				m.toggleSelection(visible[m.cursor].Task)
+			}
+		}
+		return true, nil
+	case "a":
+		if m.multiSelectMode {
+			m.selectAllVisible()
+			return true, nil
+		}
+		return false, nil
+	case "A":
+		if m.multiSelectMode {
+			for _, node := range m.visibleNodes() {
+				delete(m.selectedTasks, node.Task.ID)
+			}
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, nil
+}
+
+// handleFilterKeys handles d, P, t, S, T, N, u - filter operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
+	switch key {
+	case "d":
+		m.showCompleted = !m.showCompleted
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "P":
+		if m.filterPriority == 0 {
+			m.filterPriority = 1
+		} else {
+			m.filterPriority = 0
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "t":
+		types := models.AllTaskTypes()
+		if m.filterType == "" {
+			m.filterType = types[0]
+		} else {
+			found := false
+			for i, t := range types {
+				if t == m.filterType {
+					if i+1 < len(types) {
+						m.filterType = types[i+1]
+					} else {
+						m.filterType = ""
+					}
+					found = true
+					break
+				}
+			}
+			if !found {
+				m.filterType = ""
+			}
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "S":
+		statuses := models.AllTaskStatuses()
+		if m.filterStatus == "" {
+			m.filterStatus = statuses[0]
+		} else {
+			found := false
+			for i, s := range statuses {
+				if s == m.filterStatus {
+					if i+1 < len(statuses) {
+						m.filterStatus = statuses[i+1]
+					} else {
+						m.filterStatus = ""
+					}
+					found = true
+					break
+				}
+			}
+			if !found {
+				m.filterStatus = ""
+			}
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "T":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			m.tagInputMode = true
+			m.tagInput.Focus()
+			return true, textinput.Blink
+		}
+		return true, func() tea.Msg {
+			return ShowTagFilterSelectorMsg{ProjectTree: m}
+		}
+
+	case "N":
+		return true, func() tea.Msg {
+			return ShowSectionFilterSelectorMsg{ProjectTree: m}
+		}
+
+	case "u":
+		m.filterDueDate = (m.filterDueDate + 1) % 5
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleSortKeys handles 1, 2, 3, 4, 0 - sort operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
+	switch key {
+	case "1":
+		if m.sortField == SortByPriority {
+			m.sortAscending = !m.sortAscending
+		} else {
+			m.sortField = SortByPriority
+			m.sortAscending = true
+		}
+		m.sortNodes()
+		m.updateVisibility()
+		return true, nil
+
+	case "2":
+		if m.sortField == SortByDueDate {
+			m.sortAscending = !m.sortAscending
+		} else {
+			m.sortField = SortByDueDate
+			m.sortAscending = true
+		}
+		m.sortNodes()
+		m.updateVisibility()
+		return true, nil
+
+	case "3":
+		if m.sortField == SortByCreatedAt {
+			m.sortAscending = !m.sortAscending
+		} else {
+			m.sortField = SortByCreatedAt
+			m.sortAscending = true
+		}
+		m.sortNodes()
+		m.updateVisibility()
+		return true, nil
+
+	case "4":
+		if m.sortField == SortByStatus {
+			m.sortAscending = !m.sortAscending
+		} else {
+			m.sortField = SortByStatus
+			m.sortAscending = true
+		}
+		m.sortNodes()
+		m.updateVisibility()
+		return true, nil
+
+	case "0":
+		m.sortField = SortByDefault
+		m.sortAscending = true
+		m.buildTree()
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleActionKeys handles n, e, D, ctrl+d, ctrl+n, B, z, ctrl+p, and other action keys.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "enter":
+		if CursorInBounds(m.cursor, len(visible)) {
+			m.clearSelection()
+			return true, func() tea.Msg {
+				return SelectTaskMsg{Task: visible[m.cursor].Task}
+			}
+		}
+		return true, nil
+
+	case "n":
+		if CursorInBounds(m.cursor, len(visible)) {
+			return true, func() tea.Msg {
+				return CreateTaskMsg{ParentTask: visible[m.cursor].Task}
+			}
+		}
+		return true, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: nil}
+		}
+
+	case "e":
+		if CursorInBounds(m.cursor, len(visible)) {
+			return true, func() tea.Msg {
+				return EditTaskMsg{Task: visible[m.cursor].Task}
+			}
+		}
+		return true, nil
+
+	case "D":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			m.confirmAction = "bulk-delete"
+			return true, nil
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			m.confirmAction = "delete"
+			m.deleteTarget = visible[m.cursor].Task
+		}
+		return true, nil
+
+	case "ctrl+d":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return SetDueDateMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "ctrl+n":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowSectionPickerMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "B":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ManageDependenciesMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "z":
+		return true, m.performUndo()
+
+	case "ctrl+p":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			for _, task := range m.getSelectedTasks() {
+				task.TogglePinned()
+			}
+			m.clearSelection()
+			return true, m.saveAndRefresh()
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.TogglePinned()
+			return true, m.saveAndRefresh()
+		}
+		return true, nil
+
+	case "ctrl+o":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return EditTaskContentMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "y":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			m.clearSelection()
+			return true, func() tea.Msg {
+				return CopyTasksTitleMsg{Tasks: tasks}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return CopyTaskTitleMsg{Task: task}
+			}
+		}
+		return true, nil
+
+	case "Y":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			m.clearSelection()
+			return true, func() tea.Msg {
+				return CopyTasksDetailsMsg{Tasks: tasks}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return CopyTaskDetailsMsg{Task: task}
+			}
+		}
+		return true, nil
+
+	case "R":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			}
+		}
+		return true, nil
+
+	case "E":
+		for _, node := range m.nodes {
+			node.Expanded = true
+		}
+		m.updateVisibility()
+		return true, nil
+
+	case "c":
+		for _, node := range m.nodes {
+			if node.Level > 0 {
+				node.Expanded = false
+			}
+		}
+		m.updateVisibility()
+		return true, nil
+
+	case "?":
+		return true, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewProjectTree,
+				ViewName:   "Project Tree",
+				Items:      m.GetHelpItems(),
+			}
+		}
+
+	case "\\":
+		return true, func() tea.Msg {
+			return ShowTaskJumperMsg{Project: m.project}
+		}
+
+	case "ctrl+f":
+		return true, func() tea.Msg {
+			return ShowFilterMsg{ProjectTree: m}
+		}
+
+	case "ctrl+t":
+		return true, func() tea.Msg {
+			return ShowTagManagerMsg{ProjectTree: m}
+		}
+
+	case "ctrl+s":
+		return true, func() tea.Msg {
+			return ShowSectionManagerMsg{ProjectTree: m}
+		}
+
+	case "r":
+		m.clearSelection()
+		storage.LoadProject(m.project)
+		m.buildTree()
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleArchiveKey handles A - archive/unarchive project (requires special handling for multi-select deselect).
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleArchiveKey(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode {
+		for _, node := range m.visibleNodes() {
+			delete(m.selectedTasks, node.Task.ID)
+		}
+		return true, nil
+	}
+	if m.project.Archived {
+		m.confirmAction = "unarchive"
+	} else {
+		m.confirmAction = "archive"
+	}
+	return true, nil
+}

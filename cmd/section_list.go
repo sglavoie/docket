@@ -4,9 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -30,19 +28,9 @@ func init() {
 }
 
 func runSectionList(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return fmt.Errorf("no project selected. Use 'tt select' to choose a project")
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
 	sections := project.GetSections()

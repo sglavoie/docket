@@ -13,6 +13,9 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// formFactory is a shared factory instance for resizing form fields.
+var formFactory = DefaultFormFieldFactory()
+
 // TaskCreatorModel handles creating a new task via TUI.
 type TaskCreatorModel struct {
 	project       *models.Project
@@ -45,27 +48,17 @@ type TaskCreatorModel struct {
 
 // NewTaskCreatorModel creates a new task creator.
 func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *config.Manager, suggestedParent *models.Task) *TaskCreatorModel {
-	titleInput := textarea.New()
-	titleInput.Placeholder = "Task title"
-	titleInput.Focus()
-	titleInput.CharLimit = 200
-	titleInput.SetWidth(50)
-	titleInput.SetHeight(2)
-	titleInput.ShowLineNumbers = false
+	factory := DefaultFormFieldFactory()
+
+	titleInput := factory.NewTitleInputFocused("Task title")
 	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
-	tagsInput := textinput.New()
-	tagsInput.Placeholder = "tag1, tag2, tag3"
-	tagsInput.CharLimit = 200
-	tagsInput.Width = 50
+	tagsInput := factory.NewTextInput("tag1, tag2, tag3")
 
-	descInput := textarea.New()
-	descInput.Placeholder = "Description (optional)"
-	descInput.CharLimit = 5000
-	descInput.SetWidth(50)
+	descInput := factory.NewDescriptionInput("Description (optional)")
 	descInput.SetHeight(4)
+	descInput.CharLimit = 5000
 	descInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
-	descInput.ShowLineNumbers = false
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -140,9 +133,9 @@ func (m *TaskCreatorModel) updateValidParents() {
 func (m *TaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.titleInput.SetWidth(min(width-20, 50))
-	m.tagsInput.Width = min(width-20, 50)
-	m.descInput.SetWidth(min(width-20, 60))
+	formFactory.ResizeTextarea(&m.titleInput, width)
+	formFactory.ResizeTextInput(&m.tagsInput, width)
+	formFactory.ResizeTextarea(&m.descInput, width)
 }
 
 func (m *TaskCreatorModel) Init() tea.Cmd {

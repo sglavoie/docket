@@ -32,11 +32,9 @@ type ProjectCreatorModel struct {
 
 // NewProjectCreatorModel creates a new project creator.
 func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *ProjectCreatorModel {
-	nameInput := textinput.New()
-	nameInput.Placeholder = "Project name"
-	nameInput.Focus()
+	factory := DefaultFormFieldFactory()
+	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
-	nameInput.Width = 40
 
 	// Build contexts list: start with default context, then add others
 	contexts := []string{cfg.DefaultContext}
@@ -62,6 +60,7 @@ func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *Projec
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	formFactory.ResizeTextInput(&m.nameInput, width)
 }
 
 func (m *ProjectCreatorModel) Init() tea.Cmd {

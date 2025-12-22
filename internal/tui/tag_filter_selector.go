@@ -5,22 +5,18 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 // TagFilterSelectorModel allows selecting multiple tags to filter by.
 type TagFilterSelectorModel struct {
+	BaseSearchableView
 	projectTree *ProjectTreeModel
 	tags        []TagInfo
 	filtered    []TagInfo
 	selected    map[string]bool
 	cursor      int
-	width       int
-	height      int
-	searchMode  bool
-	searchInput textinput.Model
 }
 
 // ShowTagFilterSelectorMsg is sent to open the tag filter selector.
@@ -36,17 +32,12 @@ type TagFilterSelectorDoneMsg struct {
 
 // NewTagFilterSelectorModel creates a new tag filter selector.
 func NewTagFilterSelectorModel(pt *ProjectTreeModel) *TagFilterSelectorModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter..."
-	searchInput.CharLimit = 50
-	searchInput.Width = 30
-
 	m := &TagFilterSelectorModel{
 		projectTree: pt,
 		selected:    make(map[string]bool),
 		cursor:      0,
-		searchInput: searchInput,
 	}
+	m.InitSearchInput("Type to filter...", 50, 30)
 	m.buildTagList()
 
 	// Pre-select currently filtered tags
@@ -116,8 +107,15 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			return m.handleSearchMode(msg)
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterTagList(m.SearchQuery())
+			}
+			if handled {
+				return m, cmd
+			}
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -171,9 +169,7 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 
 		case "c":
 			// Clear all selections
@@ -183,32 +179,6 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// handleSearchMode handles keyboard input while in search mode.
-func (m *TagFilterSelectorModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.searchInput.SetValue("")
-		m.filterTagList("")
-		return m, nil
-
-	case "enter":
-		m.searchMode = false
-		m.searchInput.Blur()
-		return m, nil
-
-	default:
-		oldVal := m.searchInput.Value()
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		if oldVal != m.searchInput.Value() {
-			m.filterTagList(m.searchInput.Value())
-		}
-		return m, cmd
-	}
 }
 
 // View renders the tag filter selector.
@@ -230,9 +200,9 @@ func (m *TagFilterSelectorModel) View() string {
 	content.WriteString(titleStyle.Render("Filter by Tags"))
 	content.WriteString("\n\n")
 
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString("Filter: ")
-		content.WriteString(m.searchInput.View())
+		content.WriteString(m.SearchInputView())
 		content.WriteString("\n\n")
 	}
 
@@ -309,7 +279,7 @@ func (m *TagFilterSelectorModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString(MutedStyle.Render("enter done | esc clear"))
 	} else if len(m.filtered) > 0 {
 		content.WriteString(MutedStyle.Render("space toggle | / search | c clear | enter apply | esc cancel"))

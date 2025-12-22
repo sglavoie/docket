@@ -59,13 +59,12 @@ type TreeNode struct {
 
 // ProjectTreeModel represents the project tree view.
 type ProjectTreeModel struct {
+	BaseSearchableView
 	project       *models.Project
 	config        *config.Config
 	configManager *config.Manager
 	nodes         []*TreeNode
 	cursor        int
-	width         int
-	height        int
 
 	// Filter options
 	showCompleted  bool
@@ -79,11 +78,6 @@ type ProjectTreeModel struct {
 	// Sort options
 	sortField     SortField // current sort field
 	sortAscending bool      // sort direction
-
-	// Search state
-	searchMode  bool
-	searchInput textinput.Model
-	searchQuery string
 
 	// Confirmation state for destructive actions
 	confirmAction string       // "", "archive", "unarchive", "delete", "bulk-delete"
@@ -100,11 +94,6 @@ type ProjectTreeModel struct {
 
 // NewProjectTreeModel creates a new project tree model.
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Search tasks..."
-	searchInput.CharLimit = 100
-	searchInput.Width = 40
-
 	tagInput := textinput.New()
 	tagInput.Placeholder = "Enter tag name..."
 	tagInput.CharLimit = 50
@@ -123,19 +112,17 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		filterSections: make(map[string]bool),
 		sortField:      SortByDefault,
 		sortAscending:  true,
-		searchMode:     false,
-		searchInput:    searchInput,
-		searchQuery:    "",
 		selectedTasks:  make(map[string]bool),
 		tagInput:       tagInput,
 	}
+	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
 	return m
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
 func (m *ProjectTreeModel) HasActiveSearch() bool {
-	return m.searchMode || m.searchQuery != ""
+	return m.IsSearchMode() || m.SearchQuery() != ""
 }
 
 // clampCursor ensures the cursor is within valid bounds.

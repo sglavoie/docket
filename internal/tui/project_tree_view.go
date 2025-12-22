@@ -28,12 +28,12 @@ func (m *ProjectTreeModel) View() string {
 	b.WriteString("\n")
 
 	// Search bar
-	if m.searchMode {
+	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
-		b.WriteString(m.searchInput.View())
+		b.WriteString(m.SearchInputView())
 		b.WriteString("\n")
-	} else if m.searchQuery != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.searchQuery)))
+	} else if m.SearchQuery() != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
 		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
 		b.WriteString("\n")
 	}
@@ -196,8 +196,8 @@ func (m *ProjectTreeModel) View() string {
 		}
 		filters = append(filters, fmt.Sprintf("due: %s", dueName))
 	}
-	if m.searchQuery != "" {
-		filters = append(filters, fmt.Sprintf("search: \"%s\"", m.searchQuery))
+	if m.SearchQuery() != "" {
+		filters = append(filters, fmt.Sprintf("search: \"%s\"", m.SearchQuery()))
 	}
 
 	// Build status line

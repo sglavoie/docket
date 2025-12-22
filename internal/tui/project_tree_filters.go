@@ -109,7 +109,7 @@ func (m *ProjectTreeModel) updateVisibility() {
 		}
 
 		// Apply search filter
-		if visible && m.searchQuery != "" {
+		if visible && m.SearchQuery() != "" {
 			if !m.matchesSearch(node.Task) && !m.hasMatchingDescendant(node.Task) {
 				visible = false
 			}
@@ -120,10 +120,10 @@ func (m *ProjectTreeModel) updateVisibility() {
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	if m.searchQuery == "" {
+	if m.SearchQuery() == "" {
 		return true
 	}
-	query := strings.ToLower(m.searchQuery)
+	query := strings.ToLower(m.SearchQuery())
 
 	if strings.Contains(strings.ToLower(task.Title), query) {
 		return true

@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
@@ -19,15 +18,12 @@ type SectionInfo struct {
 
 // SectionFilterSelectorModel allows selecting multiple sections to filter by.
 type SectionFilterSelectorModel struct {
+	BaseSearchableView
 	projectTree *ProjectTreeModel
 	sections    []SectionInfo
 	filtered    []SectionInfo
 	selected    map[string]bool
 	cursor      int
-	width       int
-	height      int
-	searchMode  bool
-	searchInput textinput.Model
 }
 
 // ShowSectionFilterSelectorMsg is sent to open the section filter selector.
@@ -43,17 +39,12 @@ type SectionFilterSelectorDoneMsg struct {
 
 // NewSectionFilterSelectorModel creates a new section filter selector.
 func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter..."
-	searchInput.CharLimit = 50
-	searchInput.Width = 30
-
 	m := &SectionFilterSelectorModel{
 		projectTree: pt,
 		selected:    make(map[string]bool),
 		cursor:      0,
-		searchInput: searchInput,
 	}
+	m.InitSearchInput("Type to filter...", 50, 30)
 	m.buildSectionList()
 
 	// Pre-select currently filtered sections
@@ -143,8 +134,15 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			return m.handleSearchMode(msg)
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterSectionList(m.SearchQuery())
+			}
+			if handled {
+				return m, cmd
+			}
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -198,9 +196,7 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 
 		case "c":
 			// Clear all selections
@@ -210,32 +206,6 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// handleSearchMode handles keyboard input while in search mode.
-func (m *SectionFilterSelectorModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.searchInput.SetValue("")
-		m.filterSectionList("")
-		return m, nil
-
-	case "enter":
-		m.searchMode = false
-		m.searchInput.Blur()
-		return m, nil
-
-	default:
-		oldVal := m.searchInput.Value()
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		if oldVal != m.searchInput.Value() {
-			m.filterSectionList(m.searchInput.Value())
-		}
-		return m, cmd
-	}
 }
 
 // View renders the section filter selector.
@@ -257,9 +227,9 @@ func (m *SectionFilterSelectorModel) View() string {
 	content.WriteString(titleStyle.Render("Filter by Sections"))
 	content.WriteString("\n\n")
 
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString("Filter: ")
-		content.WriteString(m.searchInput.View())
+		content.WriteString(m.SearchInputView())
 		content.WriteString("\n\n")
 	}
 
@@ -336,7 +306,7 @@ func (m *SectionFilterSelectorModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString(MutedStyle.Render("enter done | esc clear"))
 	} else if len(m.filtered) > 0 {
 		content.WriteString(MutedStyle.Render("space toggle | / search | c clear | enter apply | esc cancel"))

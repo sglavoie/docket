@@ -245,6 +245,17 @@ func (p *Project) GetSiblings(task *Task) []*Task {
 	return siblings
 }
 
+// FindSiblingIndex returns the index of task among its siblings, or -1 if not found.
+func (p *Project) FindSiblingIndex(task *Task) int {
+	siblings := p.GetSiblings(task)
+	for i, s := range siblings {
+		if s.ID == task.ID {
+			return i
+		}
+	}
+	return -1
+}
+
 // findTaskIndex returns the index of the task in the Tasks slice, or -1 if not found.
 func (p *Project) findTaskIndex(task *Task) int {
 	for i, t := range p.Tasks {
@@ -297,17 +308,9 @@ func (p *Project) MoveTaskUp(task *Task) error {
 		return nil // No siblings to swap with
 	}
 
-	// Find position among siblings
-	var siblingIdx int = -1
-	for i, s := range siblings {
-		if s.ID == task.ID {
-			siblingIdx = i
-			break
-		}
-	}
-
+	siblingIdx := p.FindSiblingIndex(task)
 	if siblingIdx <= 0 {
-		return nil // Already at top
+		return nil // Already at top or not found
 	}
 
 	// Get the sibling above
@@ -343,17 +346,9 @@ func (p *Project) MoveTaskDown(task *Task) error {
 		return nil // No siblings to swap with
 	}
 
-	// Find position among siblings
-	var siblingIdx int = -1
-	for i, s := range siblings {
-		if s.ID == task.ID {
-			siblingIdx = i
-			break
-		}
-	}
-
+	siblingIdx := p.FindSiblingIndex(task)
 	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
-		return nil // Already at bottom
+		return nil // Already at bottom or not found
 	}
 
 	// Get the sibling below

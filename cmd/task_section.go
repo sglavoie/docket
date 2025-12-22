@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -37,19 +36,9 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 	sectionName := args[1]
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return fmt.Errorf("no project selected. Use 'tt select' to choose a project")
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
 	task := project.GetTaskByShortID(taskID)

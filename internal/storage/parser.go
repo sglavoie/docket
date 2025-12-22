@@ -58,7 +58,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var projectName string
 	var sections []string
 	sectionColors := make(map[string]string)
-	var tasks []*models.Task
+	var parsedTasks []*ParsedTask
 	var currentTask *ParsedTask
 	var descBuilder strings.Builder
 	var nextShortID int = 1
@@ -106,7 +106,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 			// Save previous task's description
 			if currentTask != nil {
 				currentTask.Task.Description = strings.TrimSpace(descBuilder.String())
-				tasks = append(tasks, currentTask.Task)
+				parsedTasks = append(parsedTasks, currentTask)
 			}
 
 			level := len(matches[1]) // Number of # characters
@@ -145,15 +145,15 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Don't forget the last task
 	if currentTask != nil {
 		currentTask.Task.Description = strings.TrimSpace(descBuilder.String())
-		tasks = append(tasks, currentTask.Task)
+		parsedTasks = append(parsedTasks, currentTask)
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading markdown: %w", err)
 	}
 
-	// Build parent-child relationships based on heading levels
-	buildHierarchy(tasks, content)
+	// Build parent-child relationships using levels captured during initial parse
+	tasks := buildHierarchy(parsedTasks)
 
 	// Default to Backlog section if none specified
 	if len(sections) == 0 {
@@ -258,31 +258,24 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 
 // buildHierarchy establishes parent-child relationships based on heading levels.
 // Tasks at level N+1 that follow a task at level N become children of that task.
-func buildHierarchy(tasks []*models.Task, content string) {
-	// Re-parse to get levels
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	taskIndex := 0
-	levels := make([]int, len(tasks))
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if matches := headingRegex.FindStringSubmatch(line); matches != nil {
-			if taskIndex < len(tasks) {
-				levels[taskIndex] = len(matches[1])
-				taskIndex++
-			}
-		}
+// Uses the levels already captured in ParsedTask during initial parsing.
+func buildHierarchy(parsedTasks []*ParsedTask) []*models.Task {
+	tasks := make([]*models.Task, len(parsedTasks))
+	for i, pt := range parsedTasks {
+		tasks[i] = pt.Task
 	}
 
 	// Build hierarchy using a stack
 	// Stack tracks the most recent task at each level
 	levelStack := make(map[int]*models.Task)
 
-	for i, task := range tasks {
-		level := levels[i]
+	for i, pt := range parsedTasks {
+		task := tasks[i]
+		level := pt.Level
 
 		// If task already has an explicit parent ID from metadata, skip
 		if task.ParentID != nil {
+			levelStack[level] = task
 			continue
 		}
 
@@ -305,4 +298,6 @@ func buildHierarchy(tasks []*models.Task, content string) {
 			delete(levelStack, l)
 		}
 	}
+
+	return tasks
 }

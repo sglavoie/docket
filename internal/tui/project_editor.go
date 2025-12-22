@@ -41,23 +41,17 @@ type ProjectEditorModel struct {
 
 // NewProjectEditorModel creates a new project editor.
 func NewProjectEditorModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectEditorModel {
-	nameInput := textinput.New()
-	nameInput.SetValue(project.Name)
+	factory := DefaultFormFieldFactory()
+
+	nameInput := factory.NewTextInputWithValue(project.Name, "")
 	nameInput.Focus()
 	nameInput.CharLimit = 100
-	nameInput.Width = 50
 
-	descriptionInput := textinput.New()
-	descriptionInput.SetValue(project.Description)
-	descriptionInput.Placeholder = "Project description (optional)"
+	descriptionInput := factory.NewTextInputWithValue(project.Description, "Project description (optional)")
 	descriptionInput.CharLimit = 500
-	descriptionInput.Width = 50
 
-	contextInput := textinput.New()
-	contextInput.SetValue(project.Context)
-	contextInput.Placeholder = "e.g., personal, work"
+	contextInput := factory.NewTextInputWithValue(project.Context, "e.g., personal, work")
 	contextInput.CharLimit = 50
-	contextInput.Width = 30
 
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
@@ -107,9 +101,9 @@ func (m *ProjectEditorModel) checkChanges() bool {
 func (m *ProjectEditorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.nameInput.Width = min(width-20, 50)
-	m.descriptionInput.Width = min(width-20, 50)
-	m.contextInput.Width = min(width-20, 30)
+	formFactory.ResizeTextInput(&m.nameInput, width)
+	formFactory.ResizeTextInput(&m.descriptionInput, width)
+	formFactory.ResizeTextInput(&m.contextInput, width)
 }
 
 func (m *ProjectEditorModel) Init() tea.Cmd {

@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
@@ -37,19 +36,9 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot remove the Backlog section")
 	}
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return fmt.Errorf("no project selected. Use 'tt select' to choose a project")
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
 	if !project.HasSection(sectionName) {

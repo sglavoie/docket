@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -90,20 +88,9 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 }
 
 func runQuickAdd(cmd *cobra.Command, args []string) error {
-	// Load config and get current project
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	project, _, _, err := getCurrentProject()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return fmt.Errorf("no current project selected. Select one with: tt select")
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return fmt.Errorf("failed to load project: %w", err)
+		return err
 	}
 
 	// Parse input with inline metadata
@@ -115,21 +102,9 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType := models.TaskTypeTask
-	if addIsEpic {
-		taskType = models.TaskTypeEpic
-	} else if addIsStory {
-		taskType = models.TaskTypeStory
-	} else if addIsBug {
-		taskType = models.TaskTypeBug
-	} else if addIsIdea {
-		taskType = models.TaskTypeIdea
-	} else if addTypeFlag != "" {
-		t, ok := models.ParseTaskType(addTypeFlag)
-		if !ok {
-			return fmt.Errorf("invalid task type: %s", addTypeFlag)
-		}
-		taskType = t
+	taskType, err := parseTaskTypeFlags(addIsEpic, addIsStory, addIsBug, addIsIdea, addTypeFlag)
+	if err != nil {
+		return err
 	}
 
 	// Determine priority: explicit flag > inline > default
@@ -177,7 +152,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	project.Tasks = append(project.Tasks, task)
 
 	// Save
-	if err := storage.SaveProject(project); err != nil {
+	if err := saveProject(project); err != nil {
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 

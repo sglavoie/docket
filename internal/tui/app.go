@@ -123,3 +123,30 @@ func (m *AppModel) popView() {
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
 	}
 }
+
+// Sizable is implemented by views that can be resized.
+type Sizable interface {
+	SetSize(width, height int)
+}
+
+// initView sets dimensions on a view and pushes it onto the view stack.
+func (m *AppModel) initView(viewType ViewType, view Sizable) {
+	view.SetSize(m.width, m.height-2)
+	m.pushView(viewType)
+}
+
+// refreshProjectTree recreates the project tree view with current project.
+// Does nothing if currentProject is nil.
+func (m *AppModel) refreshProjectTree() {
+	if m.currentProject == nil {
+		return
+	}
+	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
+	m.projectTree.SetSize(m.width, m.height-2)
+}
+
+// refreshProjectTreeWith recreates the project tree view with the given project.
+func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
+	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
+	m.projectTree.SetSize(m.width, m.height-2)
+}

@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -21,37 +18,22 @@ func init() {
 	rootCmd.AddCommand(taskCmd)
 }
 
-// getCurrentProject loads and returns the current project.
+// getCurrentProject is an alias for LoadCurrentProject for internal package use.
 func getCurrentProject() (*models.Project, *config.Config, *config.Manager, error) {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	project := cfg.GetCurrentProject()
-	if project == nil {
-		return nil, nil, nil, fmt.Errorf("no current project selected. Select one with: tt select")
-	}
-
-	if err := storage.LoadProject(project); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to load project: %w", err)
-	}
-
-	return project, cfg, configManager, nil
+	return LoadCurrentProject()
 }
 
-// saveProject saves the project's tasks, creating a backup first.
-// It also reorders root tasks so uncompleted tasks appear before completed tasks.
+// saveProject is an alias for SaveProjectWithBackup for internal package use.
 func saveProject(project *models.Project) error {
-	// Check for auto-unblocking before save
-	project.CheckAndAutoUnblock()
+	return SaveProjectWithBackup(project)
+}
 
-	// Reorder root tasks so uncompleted tasks appear before completed tasks
-	project.ReorderRootTasksByCompletion()
+// findTask is an alias for FindTaskByIdentifier for internal package use.
+func findTask(project *models.Project, identifier string) *models.Task {
+	return FindTaskByIdentifier(project, identifier)
+}
 
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
-	}
-	return storage.SaveProject(project)
+// parseTaskTypeFlags is an alias for ParseTaskTypeFlags for internal package use.
+func parseTaskTypeFlags(epic, story, bug, idea bool, typeFlag string) (models.TaskType, error) {
+	return ParseTaskTypeFlags(epic, story, bug, idea, typeFlag)
 }

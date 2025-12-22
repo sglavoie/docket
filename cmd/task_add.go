@@ -68,21 +68,9 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType := models.TaskTypeTask
-	if isEpic {
-		taskType = models.TaskTypeEpic
-	} else if isStory {
-		taskType = models.TaskTypeStory
-	} else if isBug {
-		taskType = models.TaskTypeBug
-	} else if isIdea {
-		taskType = models.TaskTypeIdea
-	} else if taskTypeFlag != "" {
-		t, ok := models.ParseTaskType(taskTypeFlag)
-		if !ok {
-			return fmt.Errorf("invalid task type: %s", taskTypeFlag)
-		}
-		taskType = t
+	taskType, err := parseTaskTypeFlags(isEpic, isStory, isBug, isIdea, taskTypeFlag)
+	if err != nil {
+		return err
 	}
 
 	// Validate priority
@@ -130,31 +118,5 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Created %s #%d: %s\n", taskType.HeadingPrefix(), shortID, title)
-	return nil
-}
-
-// findTask finds a task by ID, short ID, or title prefix.
-func findTask(project *models.Project, identifier string) *models.Task {
-	// Try as short ID first
-	var shortID int
-	if _, err := fmt.Sscanf(identifier, "%d", &shortID); err == nil {
-		if task := project.GetTaskByShortID(shortID); task != nil {
-			return task
-		}
-	}
-
-	// Try as UUID
-	if task := project.GetTaskByID(identifier); task != nil {
-		return task
-	}
-
-	// Try as title prefix
-	identifier = strings.ToLower(identifier)
-	for _, task := range project.Tasks {
-		if strings.HasPrefix(strings.ToLower(task.Title), identifier) {
-			return task
-		}
-	}
-
 	return nil
 }

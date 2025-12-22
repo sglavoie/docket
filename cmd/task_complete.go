@@ -126,11 +126,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		var candidates []*models.Task
 		for _, t := range project.Tasks {
 			switch action {
-			case "complete", "start", "block":
-				if t.Status.IsActive() {
-					candidates = append(candidates, t)
-				}
-			case "cancel":
+			case "complete", "start", "block", "cancel":
 				if t.Status.IsActive() {
 					candidates = append(candidates, t)
 				}

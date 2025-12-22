@@ -102,13 +102,7 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 
 	// Check if can move up
 	siblings := project.GetSiblings(task)
-	var siblingIdx int = -1
-	for i, s := range siblings {
-		if s.ID == task.ID {
-			siblingIdx = i
-			break
-		}
-	}
+	siblingIdx := project.FindSiblingIndex(task)
 	if siblingIdx <= 0 {
 		fmt.Println("Task is already at the top of its siblings")
 		return nil
@@ -149,13 +143,7 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 
 	// Check if can move down
 	siblings := project.GetSiblings(task)
-	var siblingIdx int = -1
-	for i, s := range siblings {
-		if s.ID == task.ID {
-			siblingIdx = i
-			break
-		}
-	}
+	siblingIdx := project.FindSiblingIndex(task)
 	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
 		fmt.Println("Task is already at the bottom of its siblings")
 		return nil

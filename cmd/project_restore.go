@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Note: config import kept for listTrashedProjects function signature
+
 var projectRestoreCmd = &cobra.Command{
 	Use:   "restore [slug]",
 	Short: "Restore a deleted project from trash",
@@ -32,10 +34,9 @@ func init() {
 }
 
 func runProjectRestore(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	// If no args, list trashed projects

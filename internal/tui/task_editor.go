@@ -50,21 +50,14 @@ type TaskEditorModel struct {
 
 // NewTaskEditorModel creates a new task editor.
 func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.Config, manager *config.Manager) *TaskEditorModel {
-	titleInput := textarea.New()
-	titleInput.SetValue(task.Title)
+	factory := DefaultFormFieldFactory()
+
+	titleInput := factory.NewTitleInputWithValue(task.Title)
 	titleInput.Focus()
-	titleInput.CharLimit = 200
-	titleInput.SetWidth(50)
-	titleInput.SetHeight(2)
-	titleInput.ShowLineNumbers = false
 	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	tagsStr := strings.Join(task.Tags, ", ")
-	tagsInput := textinput.New()
-	tagsInput.SetValue(tagsStr)
-	tagsInput.Placeholder = "tag1, tag2, tag3"
-	tagsInput.CharLimit = 200
-	tagsInput.Width = 50
+	tagsInput := factory.NewTextInputWithValue(tagsStr, "tag1, tag2, tag3")
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -189,8 +182,8 @@ func (m *TaskEditorModel) checkChanges() bool {
 func (m *TaskEditorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.titleInput.SetWidth(min(width-20, 50))
-	m.tagsInput.Width = min(width-20, 50)
+	formFactory.ResizeTextarea(&m.titleInput, width)
+	formFactory.ResizeTextInput(&m.tagsInput, width)
 }
 
 func (m *TaskEditorModel) Init() tea.Cmd {

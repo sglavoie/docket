@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
 )
@@ -40,10 +39,9 @@ func init() {
 }
 
 func runProjectArchive(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	project := cfg.GetProject(args[0])
@@ -71,10 +69,9 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 }
 
 func runProjectUnarchive(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	var project *models.Project
