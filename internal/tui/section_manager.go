@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -14,6 +15,8 @@ import (
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
 	projectTree   *ProjectTreeModel
+	config        *config.Config
+	configManager *config.Manager
 	sections      []SectionInfo
 	cursor        int
 	width         int
@@ -58,7 +61,7 @@ type SectionColorChangedMsg struct {
 }
 
 // NewSectionManagerModel creates a new section manager model.
-func NewSectionManagerModel(pt *ProjectTreeModel) *SectionManagerModel {
+func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *config.Manager) *SectionManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new section name"
 	renameInput.CharLimit = 50
@@ -70,10 +73,12 @@ func NewSectionManagerModel(pt *ProjectTreeModel) *SectionManagerModel {
 	addInput.Width = 30
 
 	m := &SectionManagerModel{
-		projectTree: pt,
-		cursor:      0,
-		renameInput: renameInput,
-		addInput:    addInput,
+		projectTree:   pt,
+		config:        cfg,
+		configManager: mgr,
+		cursor:        0,
+		renameInput:   renameInput,
+		addInput:      addInput,
 	}
 	m.buildSectionList()
 	return m
@@ -122,6 +127,11 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 
 		m.projectTree.project.EnsureSection(name)
 
+		// Apply global color if one exists for this section name
+		if globalColor := m.config.GetGlobalSectionColor(name); globalColor != "gray" {
+			m.projectTree.project.SetSectionColor(name, globalColor)
+		}
+
 		if err := storage.BackupProject(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
@@ -153,6 +163,11 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 
 		if !m.projectTree.project.RenameSection(oldName, newName) {
 			return ErrorMsg{Err: fmt.Errorf("failed to rename section")}
+		}
+
+		// Apply global color if one exists for the new section name
+		if globalColor := m.config.GetGlobalSectionColor(newName); globalColor != "gray" {
+			m.projectTree.project.SetSectionColor(newName, globalColor)
 		}
 
 		if err := storage.BackupProject(m.projectTree.project); err != nil {
@@ -198,9 +213,35 @@ func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 	}
 }
 
-// setSectionColor sets the color for the current section.
+// setSectionColor sets the color for the current section globally and propagates to all projects.
 func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea.Cmd {
 	return func() tea.Msg {
+		// Update global registry
+		m.config.SetGlobalSectionColor(sectionName, colorName)
+
+		// Save config first
+		if err := m.configManager.Save(m.config); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+		}
+
+		// Propagate to all projects that have this section
+		for _, proj := range m.config.Projects {
+			// Load project data
+			if err := storage.LoadProject(proj); err != nil {
+				continue // Skip projects that can't be loaded
+			}
+
+			// Check if project has this section
+			if proj.HasSection(sectionName) {
+				proj.SetSectionColor(sectionName, colorName)
+				// Save project to persist the color in tasks.md
+				if err := storage.SaveProject(proj); err != nil {
+					continue // Log error but continue with other projects
+				}
+			}
+		}
+
+		// Also update the current project in memory
 		m.projectTree.project.SetSectionColor(sectionName, colorName)
 
 		if err := storage.BackupProject(m.projectTree.project); err != nil {

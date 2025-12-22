@@ -484,3 +484,215 @@ func TestConfigManager_RestoreConfigFromBackup_NoBackup(t *testing.T) {
 		t.Error("RestoreConfigFromBackup should fail when no backup exists")
 	}
 }
+
+func TestConfig_GetGlobalSectionColor(t *testing.T) {
+	cfg := NewConfig()
+
+	// Default should be gray for unknown sections
+	if color := cfg.GetGlobalSectionColor("Unknown"); color != "gray" {
+		t.Errorf("expected gray for unknown section, got %s", color)
+	}
+
+	// Set a color and retrieve it
+	cfg.SetGlobalSectionColor("Active", "green")
+	if color := cfg.GetGlobalSectionColor("Active"); color != "green" {
+		t.Errorf("expected green, got %s", color)
+	}
+
+	// Empty string in map should return gray
+	cfg.SectionColors["Empty"] = ""
+	if color := cfg.GetGlobalSectionColor("Empty"); color != "gray" {
+		t.Errorf("expected gray for empty string color, got %s", color)
+	}
+}
+
+func TestConfig_SetGlobalSectionColor(t *testing.T) {
+	cfg := NewConfig()
+
+	cfg.SetGlobalSectionColor("Active", "green")
+	cfg.SetGlobalSectionColor("Done", "blue")
+
+	if cfg.SectionColors["Active"] != "green" {
+		t.Errorf("expected Active to be green")
+	}
+	if cfg.SectionColors["Done"] != "blue" {
+		t.Errorf("expected Done to be blue")
+	}
+
+	// Overwrite existing color
+	cfg.SetGlobalSectionColor("Active", "red")
+	if cfg.SectionColors["Active"] != "red" {
+		t.Errorf("expected Active to be red after overwrite")
+	}
+}
+
+func TestConfig_SetGlobalSectionColor_NilMap(t *testing.T) {
+	cfg := &Config{}
+	cfg.SectionColors = nil
+
+	// Should initialize map and set color without panicking
+	cfg.SetGlobalSectionColor("Active", "green")
+
+	if cfg.SectionColors == nil {
+		t.Error("SectionColors should be initialized")
+	}
+	if cfg.SectionColors["Active"] != "green" {
+		t.Errorf("expected Active to be green")
+	}
+}
+
+func TestConfig_MigrateProjectSectionColors(t *testing.T) {
+	cfg := NewConfig()
+
+	// Set an existing global color
+	cfg.SetGlobalSectionColor("Active", "blue")
+
+	// Project colors to migrate
+	projectColors := map[string]string{
+		"Active": "green",  // Should NOT overwrite global (first-seen wins for global)
+		"Review": "yellow", // Should be added
+		"Done":   "gray",   // Should NOT be added (gray is default)
+		"Empty":  "",       // Should NOT be added (empty string)
+	}
+
+	cfg.MigrateProjectSectionColors(projectColors)
+
+	// Active should still be blue (global wins)
+	if color := cfg.GetGlobalSectionColor("Active"); color != "blue" {
+		t.Errorf("expected Active to remain blue, got %s", color)
+	}
+
+	// Review should be added
+	if color := cfg.GetGlobalSectionColor("Review"); color != "yellow" {
+		t.Errorf("expected Review to be yellow, got %s", color)
+	}
+
+	// Done should be gray (default, not added)
+	if _, exists := cfg.SectionColors["Done"]; exists {
+		t.Error("Done should not be added to global registry (gray is default)")
+	}
+
+	// Empty should not be added
+	if _, exists := cfg.SectionColors["Empty"]; exists {
+		t.Error("Empty should not be added to global registry")
+	}
+}
+
+func TestConfig_MigrateProjectSectionColors_NilInput(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SetGlobalSectionColor("Active", "green")
+
+	// Should not panic with nil input
+	cfg.MigrateProjectSectionColors(nil)
+
+	// Existing color should remain
+	if color := cfg.GetGlobalSectionColor("Active"); color != "green" {
+		t.Errorf("expected Active to remain green, got %s", color)
+	}
+}
+
+func TestConfig_ApplyGlobalColorsToProject(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SetGlobalSectionColor("Active", "green")
+	cfg.SetGlobalSectionColor("Done", "blue")
+
+	project := models.NewProject("test", "Test", "/tmp/test")
+	project.Sections = []string{"Backlog", "Active", "Done", "Review"}
+
+	cfg.ApplyGlobalColorsToProject(project)
+
+	// Active and Done should have global colors
+	if project.SectionColors["Active"] != "green" {
+		t.Errorf("expected Active to be green, got %s", project.SectionColors["Active"])
+	}
+	if project.SectionColors["Done"] != "blue" {
+		t.Errorf("expected Done to be blue, got %s", project.SectionColors["Done"])
+	}
+
+	// Backlog and Review should not have colors (no global color set)
+	if _, exists := project.SectionColors["Backlog"]; exists {
+		t.Error("Backlog should not have a color (no global color)")
+	}
+	if _, exists := project.SectionColors["Review"]; exists {
+		t.Error("Review should not have a color (no global color)")
+	}
+}
+
+func TestConfig_ApplyGlobalColorsToProject_NilProjectColors(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SetGlobalSectionColor("Active", "green")
+
+	project := models.NewProject("test", "Test", "/tmp/test")
+	project.SectionColors = nil
+	project.Sections = []string{"Active"}
+
+	// Should initialize map and apply colors without panicking
+	cfg.ApplyGlobalColorsToProject(project)
+
+	if project.SectionColors == nil {
+		t.Error("SectionColors should be initialized")
+	}
+	if project.SectionColors["Active"] != "green" {
+		t.Errorf("expected Active to be green")
+	}
+}
+
+func TestConfig_SectionColorsPersistedInJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	manager := NewManager(configPath)
+	cfg, _ := manager.LoadOrCreate()
+
+	// Set some section colors
+	cfg.SetGlobalSectionColor("Active", "green")
+	cfg.SetGlobalSectionColor("Done", "blue")
+
+	// Save and reload
+	if err := manager.Save(cfg); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	loaded, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Colors should persist
+	if loaded.GetGlobalSectionColor("Active") != "green" {
+		t.Errorf("expected Active to be green after reload")
+	}
+	if loaded.GetGlobalSectionColor("Done") != "blue" {
+		t.Errorf("expected Done to be blue after reload")
+	}
+}
+
+func TestConfig_NewConfigHasSectionColors(t *testing.T) {
+	cfg := NewConfig()
+
+	if cfg.SectionColors == nil {
+		t.Error("NewConfig should initialize SectionColors map")
+	}
+}
+
+func TestConfig_LoadInitializesSectionColors(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// Write config without section_colors field
+	content := `{"editor": "vim"}`
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// SectionColors should be initialized
+	if cfg.SectionColors == nil {
+		t.Error("SectionColors should be initialized on load")
+	}
+}

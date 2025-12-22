@@ -61,6 +61,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SelectProjectMsg:
 		m.currentProject = msg.Project
+		// Migrate any project-specific colors to global registry (first-seen wins)
+		m.config.MigrateProjectSectionColors(msg.Project.SectionColors)
+		// Apply global colors back to project
+		m.config.ApplyGlobalColorsToProject(msg.Project)
+		// Save config if migration added new colors
+		m.configManager.Save(m.config)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
 		m.projectTree.SetSize(m.width, m.height-2)
 		m.pushView(ViewProjectTree)
@@ -476,6 +482,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Ensure section exists in project
 			if msg.Section != "" {
 				msg.Project.EnsureSection(msg.Section)
+				// Apply global color if one exists for this section
+				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
+					msg.Project.SetSectionColor(msg.Section, globalColor)
+				}
 			}
 
 			// Create backup before saving for undo support
@@ -494,6 +504,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Reload and refresh project tree
 			storage.LoadProject(msg.Project)
+			// Apply global colors to ensure consistency
+			m.config.ApplyGlobalColorsToProject(msg.Project)
 			if m.projectTree != nil && m.currentProject != nil {
 				m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 				m.projectTree.SetSize(m.width, m.height-2)
@@ -503,7 +515,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ShowSectionManagerMsg:
 		if msg.ProjectTree != nil {
-			m.sectionManager = NewSectionManagerModel(msg.ProjectTree)
+			m.sectionManager = NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager)
 			m.sectionManager.SetSize(m.width, m.height-2)
 			m.pushView(ViewSectionManager)
 		}
@@ -518,6 +530,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		if m.projectTree != nil && m.currentProject != nil {
 			storage.LoadProject(m.currentProject)
+			// Apply global colors to ensure consistency
+			m.config.ApplyGlobalColorsToProject(m.currentProject)
 			m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 			m.projectTree.SetSize(m.width, m.height-2)
 		}
@@ -552,6 +566,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		if m.projectTree != nil && m.currentProject != nil {
 			storage.LoadProject(m.currentProject)
+			// Apply global colors to ensure consistency
+			m.config.ApplyGlobalColorsToProject(m.currentProject)
 			m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 			m.projectTree.SetSize(m.width, m.height-2)
 		}
@@ -578,6 +594,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.popView()
 		m.currentProject = msg.Project
 		storage.LoadProject(msg.Project)
+		// Apply global colors to ensure consistency
+		m.config.ApplyGlobalColorsToProject(msg.Project)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
 		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
