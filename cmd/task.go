@@ -42,7 +42,14 @@ func getCurrentProject() (*models.Project, *config.Config, *config.Manager, erro
 }
 
 // saveProject saves the project's tasks, creating a backup first.
+// It also reorders root tasks so uncompleted tasks appear before completed tasks.
 func saveProject(project *models.Project) error {
+	// Check for auto-unblocking before save
+	project.CheckAndAutoUnblock()
+
+	// Reorder root tasks so uncompleted tasks appear before completed tasks
+	project.ReorderRootTasksByCompletion()
+
 	if err := storage.BackupProject(project); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}

@@ -287,6 +287,7 @@ func (p *Project) GetTaskAbove(task *Task) *Task {
 }
 
 // MoveTaskUp swaps the task with its previous sibling in the Tasks slice.
+// For root tasks, completed tasks cannot move above uncompleted tasks.
 // Returns an error if the task cannot be moved up.
 func (p *Project) MoveTaskUp(task *Task) error {
 	siblings := p.GetSiblings(task)
@@ -310,6 +311,12 @@ func (p *Project) MoveTaskUp(task *Task) error {
 	// Get the sibling above
 	siblingAbove := siblings[siblingIdx-1]
 
+	// For root tasks, enforce completion boundary:
+	// A completed root task cannot move above an uncompleted root task
+	if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+		return nil // Cannot cross completion boundary
+	}
+
 	// Find their positions in the main Tasks slice
 	taskIdx := p.findTaskIndex(task)
 	aboveIdx := p.findTaskIndex(siblingAbove)
@@ -326,6 +333,7 @@ func (p *Project) MoveTaskUp(task *Task) error {
 }
 
 // MoveTaskDown swaps the task with its next sibling in the Tasks slice.
+// For root tasks, uncompleted tasks cannot move below completed tasks.
 // Returns an error if the task cannot be moved down.
 func (p *Project) MoveTaskDown(task *Task) error {
 	siblings := p.GetSiblings(task)
@@ -348,6 +356,12 @@ func (p *Project) MoveTaskDown(task *Task) error {
 
 	// Get the sibling below
 	siblingBelow := siblings[siblingIdx+1]
+
+	// For root tasks, enforce completion boundary:
+	// An uncompleted root task cannot move below a completed root task
+	if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+		return nil // Cannot cross completion boundary
+	}
 
 	// Find their positions in the main Tasks slice
 	taskIdx := p.findTaskIndex(task)
@@ -492,6 +506,75 @@ func (p *Project) CheckAndAutoUnblock() {
 			task.UpdatedAt = time.Now()
 		}
 	}
+}
+
+// ReorderRootTasksByCompletion reorganizes the Tasks slice so that uncompleted
+// root tasks appear before completed root tasks. Child tasks move with their
+// parent root task. The relative order within each group is preserved.
+func (p *Project) ReorderRootTasksByCompletion() {
+	if len(p.Tasks) == 0 {
+		return
+	}
+
+	// Build the tree to ensure parent-child relationships are set
+	p.BuildTaskTree()
+
+	// Collect root tasks with their subtrees (all descendants)
+	type rootSubtree struct {
+		root  *Task
+		tasks []*Task // root + all descendants in original slice order
+	}
+
+	// Collect all descendants of a root task
+	var collectDescendants func(task *Task, collected map[string]bool)
+	collectDescendants = func(task *Task, collected map[string]bool) {
+		collected[task.ID] = true
+		for _, child := range task.Children {
+			collectDescendants(child, collected)
+		}
+	}
+
+	// Process each root task
+	var uncompletedSubtrees []rootSubtree
+	var completedSubtrees []rootSubtree
+	processedTasks := make(map[string]bool)
+
+	for _, task := range p.Tasks {
+		if !task.IsRoot() || processedTasks[task.ID] {
+			continue
+		}
+
+		// Collect all task IDs in this subtree
+		subtreeIDs := make(map[string]bool)
+		collectDescendants(task, subtreeIDs)
+
+		// Gather tasks in original slice order
+		var subtreeTasks []*Task
+		for _, t := range p.Tasks {
+			if subtreeIDs[t.ID] {
+				subtreeTasks = append(subtreeTasks, t)
+				processedTasks[t.ID] = true
+			}
+		}
+
+		subtree := rootSubtree{root: task, tasks: subtreeTasks}
+		if task.IsComplete() {
+			completedSubtrees = append(completedSubtrees, subtree)
+		} else {
+			uncompletedSubtrees = append(uncompletedSubtrees, subtree)
+		}
+	}
+
+	// Rebuild the Tasks slice: uncompleted subtrees first, then completed
+	newTasks := make([]*Task, 0, len(p.Tasks))
+	for _, subtree := range uncompletedSubtrees {
+		newTasks = append(newTasks, subtree.tasks...)
+	}
+	for _, subtree := range completedSubtrees {
+		newTasks = append(newTasks, subtree.tasks...)
+	}
+
+	p.Tasks = newTasks
 }
 
 // HasIncompleteDependencies returns true if the task has any dependencies

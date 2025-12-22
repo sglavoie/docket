@@ -114,6 +114,13 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Check completion boundary for root tasks
+	siblingAbove := siblings[siblingIdx-1]
+	if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+		fmt.Println("Cannot move completed task above uncompleted task")
+		return nil
+	}
+
 	if err := project.MoveTaskUp(task); err != nil {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
@@ -151,6 +158,13 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 	}
 	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
 		fmt.Println("Task is already at the bottom of its siblings")
+		return nil
+	}
+
+	// Check completion boundary for root tasks
+	siblingBelow := siblings[siblingIdx+1]
+	if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+		fmt.Println("Cannot move uncompleted task below completed task")
 		return nil
 	}
 

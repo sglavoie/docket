@@ -699,6 +699,13 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if siblingIdx > 0 {
+					// Check completion boundary for root tasks
+					siblingAbove := siblings[siblingIdx-1]
+					if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+						return m, func() tea.Msg {
+							return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
+						}
+					}
 					m.project.MoveTaskUp(task)
 					if m.cursor > 0 {
 						m.cursor--
@@ -719,6 +726,13 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				if siblingIdx >= 0 && siblingIdx < len(siblings)-1 {
+					// Check completion boundary for root tasks
+					siblingBelow := siblings[siblingIdx+1]
+					if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+						return m, func() tea.Msg {
+							return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
+						}
+					}
 					m.project.MoveTaskDown(task)
 					if m.cursor < len(visible)-1 {
 						m.cursor++

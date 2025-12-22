@@ -81,6 +81,9 @@ type (
 
 	// Status message
 	StatusClearMsg struct{}
+
+	// Move blocked message (when task can't move due to completion boundary)
+	MoveBlockedMsg struct{ Reason string }
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

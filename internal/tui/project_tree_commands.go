@@ -68,6 +68,9 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		// Check for auto-unblocking before save
 		m.project.CheckAndAutoUnblock()
 
+		// Reorder root tasks so uncompleted tasks appear before completed tasks
+		m.project.ReorderRootTasksByCompletion()
+
 		// Create backup before saving for undo support
 		if err := storage.BackupProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}

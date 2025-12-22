@@ -738,6 +738,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StatusClearMsg:
 		m.statusMessage = ""
 		return m, nil
+
+	case MoveBlockedMsg:
+		m.statusMessage = msg.Reason
+		return m, statusTimeout(2 * time.Second)
 	}
 
 	// Delegate to current view
