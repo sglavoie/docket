@@ -278,6 +278,21 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				project := visible[m.cursor]
 				return m, m.toggleProjectPinned(project)
 			}
+		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			// Quick select pinned project by number
+			n := int(msg.String()[0] - '0')
+			pinnedCount := 0
+			for _, p := range visible {
+				if p.Pinned {
+					pinnedCount++
+					if pinnedCount == n {
+						project := p // capture for closure
+						return m, func() tea.Msg {
+							return SelectProjectMsg{Project: project}
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -363,9 +378,17 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n")
 
 		// Project list
+		pinnedNum := 0
 		for i, p := range visible {
 			cursor := "  "
 			style := NormalStyle
+			numberPrefix := "  " // Two spaces to align with numbered items
+			if p.Pinned {
+				pinnedNum++
+				if pinnedNum <= 9 {
+					numberPrefix = PinnedNumberStyle.Render(fmt.Sprintf("%d", pinnedNum)) + " "
+				}
+			}
 			if i == m.cursor {
 				cursor = "> "
 				if p.Pinned {
@@ -393,7 +416,7 @@ func (m *DashboardModel) View() string {
 			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
 			progressBar := RenderProgressBar(progress, 10)
 
-			line := fmt.Sprintf("%s%s %s  %s  %s", cursor, name, context, stats, progressBar)
+			line := fmt.Sprintf("%s%s%s %s  %s  %s", numberPrefix, cursor, name, context, stats, progressBar)
 			b.WriteString(line)
 			b.WriteString("\n")
 		}
@@ -513,6 +536,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},
+		{Key: "1-9", Description: "Quick select pinned", Category: "Navigation"},
 		{Key: "/", Description: "Search projects", Category: "Navigation"},
 		{Key: "Ctrl+D", Description: "Due date overview", Category: "Navigation"},
 		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},

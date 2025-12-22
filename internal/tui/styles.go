@@ -306,6 +306,11 @@ var (
 	PinnedProjectStyle = lipgloss.NewStyle().
 				Foreground(ColorSuccess).
 				Bold(true)
+
+	// Pinned project number shortcut style
+	PinnedNumberStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning).
+				Bold(true)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.
