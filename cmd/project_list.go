@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -41,6 +43,9 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	var projects = cfg.GetActiveProjects()
 	if showArchived {
 		projects = cfg.Projects
+		sort.Slice(projects, func(i, j int) bool {
+			return strings.ToLower(projects[i].Name) < strings.ToLower(projects[j].Name)
+		})
 	}
 
 	if len(projects) == 0 {

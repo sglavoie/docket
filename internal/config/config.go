@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -177,7 +178,14 @@ func (c *Config) RemoveProject(id string) bool {
 	return false
 }
 
-// GetActiveProjects returns non-archived projects.
+// sortProjectsByName sorts projects alphabetically by name (case-insensitive).
+func sortProjectsByName(projects []*models.Project) {
+	sort.Slice(projects, func(i, j int) bool {
+		return strings.ToLower(projects[i].Name) < strings.ToLower(projects[j].Name)
+	})
+}
+
+// GetActiveProjects returns non-archived projects sorted alphabetically.
 func (c *Config) GetActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range c.Projects {
@@ -185,10 +193,11 @@ func (c *Config) GetActiveProjects() []*models.Project {
 			active = append(active, p)
 		}
 	}
+	sortProjectsByName(active)
 	return active
 }
 
-// GetArchivedProjects returns archived projects.
+// GetArchivedProjects returns archived projects sorted alphabetically.
 func (c *Config) GetArchivedProjects() []*models.Project {
 	var archived []*models.Project
 	for _, p := range c.Projects {
@@ -196,6 +205,7 @@ func (c *Config) GetArchivedProjects() []*models.Project {
 			archived = append(archived, p)
 		}
 	}
+	sortProjectsByName(archived)
 	return archived
 }
 
