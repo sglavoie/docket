@@ -181,7 +181,18 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filter by Context"
 	}
 
-	help := "Press ? for help"
+	// Hide help text in editor/creator/settings views where ? doesn't apply
+	currentView := m.currentView()
+	showHelp := currentView != ViewTaskCreator &&
+		currentView != ViewTaskEditor &&
+		currentView != ViewProjectCreator &&
+		currentView != ViewProjectEditor &&
+		currentView != ViewSettings
+
+	help := ""
+	if showHelp {
+		help = "Press ? for help"
+	}
 
 	left := StatusBarStyle.Render(status)
 	right := HelpStyle.Render(help)
