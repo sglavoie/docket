@@ -49,6 +49,7 @@ func LoadProject(project *models.Project) error {
 
 	project.Tasks = result.Tasks
 	project.Sections = result.Sections
+	project.SectionColors = result.SectionColors
 
 	// Determine next short ID
 	maxShortID := 0
@@ -71,7 +72,7 @@ func SaveProject(project *models.Project) error {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections())
+	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
 
 	tasksPath := filepath.Join(project.Path, tasksFileName)
 	if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
@@ -84,19 +85,32 @@ func SaveProject(project *models.Project) error {
 // WriteTasksMarkdown generates markdown content from tasks.
 // Tasks are written in their slice order, preserving user-defined ordering.
 func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
-	return WriteTasksMarkdownWithSections(projectName, tasks, nil)
+	return WriteTasksMarkdownWithSections(projectName, tasks, nil, nil)
 }
 
 // WriteTasksMarkdownWithSections generates markdown content from tasks and sections.
 // Tasks are written in their slice order, preserving user-defined ordering.
-func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string) string {
+func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string) string {
 	var b strings.Builder
 
 	b.WriteString(fmt.Sprintf("# Project: %s\n", projectName))
 
-	// Write sections metadata if present
+	// Write sections metadata with optional colors
+	// Format: "<!-- sections: Backlog;Active:green;Done:blue -->"
 	if len(sections) > 0 {
-		b.WriteString(fmt.Sprintf("<!-- sections: %s -->\n", strings.Join(sections, ";")))
+		var sectionParts []string
+		for _, name := range sections {
+			if sectionColors != nil {
+				if color, ok := sectionColors[name]; ok && color != "" && color != "gray" {
+					sectionParts = append(sectionParts, name+":"+color)
+				} else {
+					sectionParts = append(sectionParts, name)
+				}
+			} else {
+				sectionParts = append(sectionParts, name)
+			}
+		}
+		b.WriteString(fmt.Sprintf("<!-- sections: %s -->\n", strings.Join(sectionParts, ";")))
 	}
 	b.WriteString("\n")
 

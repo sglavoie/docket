@@ -330,7 +330,9 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Section indicator (only show if not empty and not Backlog)
 	if task.Section != "" && task.Section != models.SectionBacklog {
-		indicators += SectionBadgeStyle.Render("[" + task.Section + "]")
+		sectionColor := m.project.GetSectionColor(task.Section)
+		badgeStyle := GetSectionColorStyle(sectionColor)
+		indicators += badgeStyle.Render("[" + task.Section + "]")
 	}
 
 	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",

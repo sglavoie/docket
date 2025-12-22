@@ -368,3 +368,54 @@ func RenderProgressBar(percent float64, width int) string {
 
 	return bar
 }
+
+// SectionColorEntry represents a color in the section color palette.
+type SectionColorEntry struct {
+	Name  string
+	Color lipgloss.Color
+}
+
+// SectionColorPalette defines the available colors for sections.
+var SectionColorPalette = []SectionColorEntry{
+	{"gray", lipgloss.Color("245")},
+	{"red", lipgloss.Color("196")},
+	{"orange", lipgloss.Color("208")},
+	{"yellow", lipgloss.Color("220")},
+	{"green", lipgloss.Color("42")},
+	{"cyan", lipgloss.Color("44")},
+	{"blue", lipgloss.Color("33")},
+	{"purple", lipgloss.Color("135")},
+	{"magenta", lipgloss.Color("198")},
+	{"white", lipgloss.Color("255")},
+}
+
+// GetSectionColorStyle returns a style for a section badge given a color name.
+func GetSectionColorStyle(colorName string) lipgloss.Style {
+	for _, pc := range SectionColorPalette {
+		if pc.Name == colorName {
+			return lipgloss.NewStyle().
+				Foreground(pc.Color).
+				Background(lipgloss.Color("236")) // Dark background
+		}
+	}
+	// Default to gray
+	return SectionBadgeStyle
+}
+
+// GetSectionColorIndex returns the index of a color name in the palette.
+func GetSectionColorIndex(colorName string) int {
+	for i, pc := range SectionColorPalette {
+		if pc.Name == colorName {
+			return i
+		}
+	}
+	return 0 // Default to gray
+}
+
+// GetSectionColorByIndex returns the color name at the given palette index.
+func GetSectionColorByIndex(index int) string {
+	if index < 0 || index >= len(SectionColorPalette) {
+		return "gray"
+	}
+	return SectionColorPalette[index].Name
+}

@@ -694,7 +694,7 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}
 
-	content := WriteTasksMarkdownWithSections("Test Project", tasks, sections)
+	content := WriteTasksMarkdownWithSections("Test Project", tasks, sections, nil)
 
 	// Check project header
 	if !strings.Contains(content, "# Project: Test Project") {
@@ -716,14 +716,14 @@ func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
 	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
 	tasks := []*models.Task{task}
 
-	content := WriteTasksMarkdownWithSections("Test Project", tasks, nil)
+	content := WriteTasksMarkdownWithSections("Test Project", tasks, nil, nil)
 
 	// Should not contain sections line when nil
 	if strings.Contains(content, "<!-- sections:") {
 		t.Error("content should not contain sections metadata when sections is nil")
 	}
 
-	content = WriteTasksMarkdownWithSections("Test Project", tasks, []string{})
+	content = WriteTasksMarkdownWithSections("Test Project", tasks, []string{}, nil)
 
 	// Should not contain sections line when empty
 	if strings.Contains(content, "<!-- sections:") {
@@ -743,7 +743,7 @@ func TestSectionsRoundTrip(t *testing.T) {
 	sections := []string{"Backlog", "Active", "Review", "Done"}
 
 	// Write to markdown
-	content := WriteTasksMarkdownWithSections("Round Trip Test", tasks, sections)
+	content := WriteTasksMarkdownWithSections("Round Trip Test", tasks, sections, nil)
 
 	// Parse back
 	result, err := ParseTasksMarkdownWithSections(content)
@@ -779,5 +779,48 @@ func TestSectionsRoundTrip(t *testing.T) {
 	}
 	if result.Tasks[2].Section != "Done" {
 		t.Errorf("task3 section should be Done, got %s", result.Tasks[2].Section)
+	}
+}
+
+func TestSectionColorsRoundTrip(t *testing.T) {
+	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	task.Section = "Active"
+	tasks := []*models.Task{task}
+	sections := []string{"Backlog", "Active", "Done"}
+	colors := map[string]string{
+		"Active": "green",
+		"Done":   "blue",
+	}
+
+	// Write to markdown with colors
+	content := WriteTasksMarkdownWithSections("Color Test", tasks, sections, colors)
+
+	// Check that colors are in the output
+	if !strings.Contains(content, "Active:green") {
+		t.Error("content should contain Active:green")
+	}
+	if !strings.Contains(content, "Done:blue") {
+		t.Error("content should contain Done:blue")
+	}
+	// Backlog should not have a color (default gray is not written)
+	if strings.Contains(content, "Backlog:") {
+		t.Error("Backlog should not have a color suffix")
+	}
+
+	// Parse back
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	// Check section colors
+	if result.SectionColors["Active"] != "green" {
+		t.Errorf("Active color should be green, got %s", result.SectionColors["Active"])
+	}
+	if result.SectionColors["Done"] != "blue" {
+		t.Errorf("Done color should be blue, got %s", result.SectionColors["Done"])
+	}
+	if _, ok := result.SectionColors["Backlog"]; ok {
+		t.Error("Backlog should not have a color in the map")
 	}
 }

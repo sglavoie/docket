@@ -13,16 +13,18 @@ import (
 
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
-	projectTree *ProjectTreeModel
-	sections    []SectionInfo
-	cursor      int
-	width       int
-	height      int
-	renameMode  bool
-	renameInput textinput.Model
-	addMode     bool
-	addInput    textinput.Model
-	errorMsg    string
+	projectTree   *ProjectTreeModel
+	sections      []SectionInfo
+	cursor        int
+	width         int
+	height        int
+	renameMode    bool
+	renameInput   textinput.Model
+	addMode       bool
+	addInput      textinput.Model
+	errorMsg      string
+	colorPickMode bool
+	colorCursor   int // Index in SectionColorPalette
 }
 
 // ShowSectionManagerMsg is sent to open the section manager view.
@@ -47,6 +49,12 @@ type SectionAddedMsg struct {
 // SectionRemovedMsg is sent after a section has been removed.
 type SectionRemovedMsg struct {
 	Name string
+}
+
+// SectionColorChangedMsg is sent after a section's color has been changed.
+type SectionColorChangedMsg struct {
+	SectionName string
+	ColorName   string
 }
 
 // NewSectionManagerModel creates a new section manager model.
@@ -190,6 +198,22 @@ func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 	}
 }
 
+// setSectionColor sets the color for the current section.
+func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea.Cmd {
+	return func() tea.Msg {
+		m.projectTree.project.SetSectionColor(sectionName, colorName)
+
+		if err := storage.BackupProject(m.projectTree.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+		if err := storage.SaveProject(m.projectTree.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return SectionColorChangedMsg{SectionName: sectionName, ColorName: colorName}
+	}
+}
+
 // Init initializes the model.
 func (m *SectionManagerModel) Init() tea.Cmd {
 	return nil
@@ -208,10 +232,17 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return CloseSectionManagerMsg{}
 		}
 
+	case SectionColorChangedMsg:
+		// Rebuild section list to show updated colors, stay in manager
+		m.buildSectionList()
+		m.colorPickMode = false
+		return m, nil
+
 	case ErrorMsg:
 		m.errorMsg = msg.Err.Error()
 		m.renameMode = false
 		m.addMode = false
+		m.colorPickMode = false
 		m.renameInput.SetValue("")
 		m.addInput.SetValue("")
 		return m, nil
@@ -220,6 +251,9 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear error on any key press
 		m.errorMsg = ""
 
+		if m.colorPickMode {
+			return m.handleColorPickMode(msg)
+		}
 		if m.renameMode {
 			return m.handleRenameMode(msg)
 		}
@@ -287,6 +321,17 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.removeSection(section.Name)
 			}
 			return m, nil
+
+		case "c":
+			if len(m.sections) > 0 && m.cursor < len(m.sections) {
+				section := m.sections[m.cursor]
+				m.colorPickMode = true
+				// Initialize cursor to current color
+				currentColor := m.projectTree.project.GetSectionColor(section.Name)
+				m.colorCursor = GetSectionColorIndex(currentColor)
+				return m, nil
+			}
+			return m, nil
 		}
 	}
 
@@ -344,6 +389,53 @@ func (m *SectionManagerModel) handleAddMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 }
 
+// handleColorPickMode handles keyboard input while in color pick mode.
+func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	paletteLen := len(SectionColorPalette)
+
+	switch msg.String() {
+	case "esc", "q":
+		m.colorPickMode = false
+		return m, nil
+
+	case "enter":
+		// Confirm color selection
+		if len(m.sections) > 0 && m.cursor < len(m.sections) {
+			sectionName := m.sections[m.cursor].Name
+			colorName := GetSectionColorByIndex(m.colorCursor)
+			m.colorPickMode = false
+			return m, m.setSectionColor(sectionName, colorName)
+		}
+		m.colorPickMode = false
+		return m, nil
+
+	case "c":
+		// Quick cycle to next color
+		m.colorCursor = (m.colorCursor + 1) % paletteLen
+		return m, nil
+
+	case "h", "left":
+		m.colorCursor = (m.colorCursor - 1 + paletteLen) % paletteLen
+		return m, nil
+
+	case "l", "right":
+		m.colorCursor = (m.colorCursor + 1) % paletteLen
+		return m, nil
+
+	case "j", "down":
+		// Jump forward 5 colors (half the palette)
+		m.colorCursor = (m.colorCursor + 5) % paletteLen
+		return m, nil
+
+	case "k", "up":
+		// Jump backward 5 colors
+		m.colorCursor = (m.colorCursor - 5 + paletteLen) % paletteLen
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // View renders the section manager view.
 func (m *SectionManagerModel) View() string {
 	var b strings.Builder
@@ -389,18 +481,46 @@ func (m *SectionManagerModel) View() string {
 				content.WriteString(m.renameInput.View())
 				content.WriteString("\n")
 			} else {
+				// Get section color and render swatch
+				sectionColor := m.projectTree.project.GetSectionColor(section.Name)
+				colorStyle := GetSectionColorStyle(sectionColor)
+				colorSwatch := colorStyle.Render("█") + " "
+
 				// Mark Backlog specially
 				displayName := section.Name
 				if section.Name == models.SectionBacklog {
 					displayName = section.Name + " (default)"
 				}
-				line := fmt.Sprintf("%s%s ", cursor, displayName)
+				line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, displayName)
 				content.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", section.TaskCount)
 				content.WriteString(TagManagerCountStyle.Render(countStr))
 				content.WriteString("\n")
 			}
 		}
+	}
+
+	// Show color picker when in color pick mode
+	if m.colorPickMode {
+		content.WriteString("\n")
+		content.WriteString(MutedStyle.Render("Select color:"))
+		content.WriteString("\n")
+
+		for i, pc := range SectionColorPalette {
+			style := lipgloss.NewStyle().Foreground(pc.Color)
+			swatch := " █ "
+			if i == m.colorCursor {
+				// Highlight selected color with brackets
+				swatch = "[█]"
+				style = style.Bold(true)
+			}
+			content.WriteString(style.Render(swatch))
+		}
+		content.WriteString("\n")
+		// Show selected color name
+		selectedColor := SectionColorPalette[m.colorCursor]
+		content.WriteString(MutedStyle.Render(selectedColor.Name))
+		content.WriteString("\n")
 	}
 
 	// Error message
@@ -412,12 +532,14 @@ func (m *SectionManagerModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.renameMode {
+	if m.colorPickMode {
+		content.WriteString(MutedStyle.Render("h/l nav | c cycle | enter confirm | esc cancel"))
+	} else if m.renameMode {
 		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
 	} else if m.addMode {
 		content.WriteString(MutedStyle.Render("enter add | esc cancel"))
 	} else if len(m.sections) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | a add | r rename | d del | q close"))
+		content.WriteString(MutedStyle.Render("j/k nav | enter filter | a add | r rename | c color | d del | q close"))
 	} else {
 		content.WriteString(MutedStyle.Render("a add | q close"))
 	}

@@ -22,26 +22,28 @@ type Project struct {
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
-	Tasks       []*Task  `json:"-"`
-	NextShortID int      `json:"-"`
-	Sections    []string `json:"-"` // Project-level section definitions
+	Tasks         []*Task           `json:"-"`
+	NextShortID   int               `json:"-"`
+	Sections      []string          `json:"-"` // Project-level section definitions
+	SectionColors map[string]string `json:"-"` // Section name -> color name mapping
 }
 
 // NewProject creates a new project with default values.
 func NewProject(id, name, path string) *Project {
 	now := time.Now()
 	return &Project{
-		ID:          id,
-		Slug:        Slugify(name),
-		Name:        name,
-		Context:     "personal",
-		Path:        path,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		Archived:    false,
-		Tasks:       []*Task{},
-		NextShortID: 1,
-		Sections:    []string{SectionBacklog},
+		ID:            id,
+		Slug:          Slugify(name),
+		Name:          name,
+		Context:       "personal",
+		Path:          path,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Archived:      false,
+		Tasks:         []*Task{},
+		NextShortID:   1,
+		Sections:      []string{SectionBacklog},
+		SectionColors: make(map[string]string),
 	}
 }
 
@@ -673,6 +675,10 @@ func (p *Project) RemoveSection(name string) bool {
 					task.UpdatedAt = time.Now()
 				}
 			}
+			// Remove color mapping
+			if p.SectionColors != nil {
+				delete(p.SectionColors, name)
+			}
 			p.UpdatedAt = time.Now()
 			return true
 		}
@@ -697,6 +703,13 @@ func (p *Project) RenameSection(oldName, newName string) bool {
 				if task.Section == oldName {
 					task.Section = newName
 					task.UpdatedAt = time.Now()
+				}
+			}
+			// Rename color mapping
+			if p.SectionColors != nil {
+				if color, exists := p.SectionColors[oldName]; exists {
+					delete(p.SectionColors, oldName)
+					p.SectionColors[newName] = color
 				}
 			}
 			p.UpdatedAt = time.Now()
@@ -734,4 +747,24 @@ func (p *Project) CountTasksBySection() map[string]int {
 		counts[section]++
 	}
 	return counts
+}
+
+// GetSectionColor returns the color for a section, defaulting to "gray".
+func (p *Project) GetSectionColor(section string) string {
+	if p.SectionColors == nil {
+		return "gray"
+	}
+	if color, ok := p.SectionColors[section]; ok && color != "" {
+		return color
+	}
+	return "gray"
+}
+
+// SetSectionColor sets the color for a section.
+func (p *Project) SetSectionColor(section, color string) {
+	if p.SectionColors == nil {
+		p.SectionColors = make(map[string]string)
+	}
+	p.SectionColors[section] = color
+	p.UpdatedAt = time.Now()
 }

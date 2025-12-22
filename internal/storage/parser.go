@@ -35,9 +35,10 @@ type ParsedTask struct {
 
 // ParseResult contains the results of parsing a tasks.md file.
 type ParseResult struct {
-	ProjectName string
-	Tasks       []*models.Task
-	Sections    []string
+	ProjectName   string
+	Tasks         []*models.Task
+	Sections      []string
+	SectionColors map[string]string
 }
 
 // ParseTasksMarkdown parses a tasks.md file content into tasks.
@@ -56,6 +57,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	var projectName string
 	var sections []string
+	sectionColors := make(map[string]string)
 	var tasks []*models.Task
 	var currentTask *ParsedTask
 	var descBuilder strings.Builder
@@ -72,13 +74,26 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 
 		// Check for sections metadata (only before first task)
+		// Format: "<!-- sections: Backlog;Active:green;Done:blue -->"
 		if !foundFirstTask {
 			if matches := sectionsRegex.FindStringSubmatch(line); matches != nil {
 				sectionList := strings.Split(matches[1], ";")
 				for _, s := range sectionList {
 					s = strings.TrimSpace(s)
-					if s != "" {
-						sections = append(sections, s)
+					if s == "" {
+						continue
+					}
+					// Parse "SectionName:color" or just "SectionName"
+					parts := strings.SplitN(s, ":", 2)
+					name := strings.TrimSpace(parts[0])
+					if name != "" {
+						sections = append(sections, name)
+						if len(parts) == 2 {
+							color := strings.TrimSpace(parts[1])
+							if color != "" {
+								sectionColors[name] = color
+							}
+						}
 					}
 				}
 				continue
@@ -146,9 +161,10 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	return &ParseResult{
-		ProjectName: projectName,
-		Tasks:       tasks,
-		Sections:    sections,
+		ProjectName:   projectName,
+		Tasks:         tasks,
+		Sections:      sections,
+		SectionColors: sectionColors,
 	}, nil
 }
 
