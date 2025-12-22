@@ -9,18 +9,19 @@ import (
 
 // Messages for navigation
 type (
-	SelectProjectMsg   struct{ Project *models.Project }
-	SelectTaskMsg      struct{ Task *models.Task }
-	BackMsg            struct{}
-	RefreshMsg         struct{}
-	ErrorMsg           struct{ Err error }
-	CreateProjectMsg   struct{}
-	ProjectCreatedMsg  struct{ Project *models.Project }
-	ProjectArchivedMsg struct{ Project *models.Project }
-	ProjectDeletedMsg  struct{ Project *models.Project }
-	ProjectRestoredMsg struct{ Project *models.Project }
-	EditProjectMsg     struct{ Project *models.Project }
-	ProjectUpdatedMsg  struct{ Project *models.Project }
+	SelectProjectMsg        struct{ Project *models.Project }
+	SelectTaskMsg           struct{ Task *models.Task }
+	BackMsg                 struct{}
+	RefreshMsg              struct{}
+	ErrorMsg                struct{ Err error }
+	CreateProjectMsg        struct{}
+	ProjectCreatedMsg       struct{ Project *models.Project }
+	ProjectArchivedMsg      struct{ Project *models.Project }
+	ProjectActiveToggledMsg struct{ Project *models.Project }
+	ProjectDeletedMsg       struct{ Project *models.Project }
+	ProjectRestoredMsg      struct{ Project *models.Project }
+	EditProjectMsg          struct{ Project *models.Project }
+	ProjectUpdatedMsg       struct{ Project *models.Project }
 
 	// Task management messages
 	CreateTaskMsg        struct{ ParentTask *models.Task }

@@ -301,6 +301,11 @@ var (
 	SectionBadgeStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("245")). // Gray text
 				Background(lipgloss.Color("236"))  // Dark gray background
+
+	// Active project style
+	ActiveProjectStyle = lipgloss.NewStyle().
+				Foreground(ColorSuccess).
+				Bold(true)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

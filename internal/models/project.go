@@ -18,6 +18,8 @@ type Project struct {
 	UpdatedAt   time.Time  `json:"updated_at"`
 	Archived    bool       `json:"archived"`
 	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
+	Active      bool       `json:"active"`
+	ActiveAt    *time.Time `json:"active_at,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks       []*Task  `json:"-"`
@@ -68,6 +70,30 @@ func (p *Project) Unarchive() {
 	p.Archived = false
 	p.ArchivedAt = nil
 	p.UpdatedAt = time.Now()
+}
+
+// SetActive marks the project as actively being worked on.
+func (p *Project) SetActive() {
+	now := time.Now()
+	p.Active = true
+	p.ActiveAt = &now
+	p.UpdatedAt = now
+}
+
+// SetInactive removes the active status.
+func (p *Project) SetInactive() {
+	p.Active = false
+	p.ActiveAt = nil
+	p.UpdatedAt = time.Now()
+}
+
+// ToggleActive toggles the active status.
+func (p *Project) ToggleActive() {
+	if p.Active {
+		p.SetInactive()
+	} else {
+		p.SetActive()
+	}
 }
 
 // GetRootTasks returns tasks that have no parent.

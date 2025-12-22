@@ -110,6 +110,23 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case ProjectActiveToggledMsg:
+		// Save config with updated active status
+		if err := m.configManager.Save(m.config); err != nil {
+			m.err = err
+			return m, nil
+		}
+		// Refresh dashboard to reflect active status change
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		statusMsg := "Marked as active"
+		if !msg.Project.Active {
+			statusMsg = "Marked as inactive"
+		}
+		m.statusMessage = statusMsg
+		return m, statusTimeout(2 * time.Second)
+
 	case ProjectDeletedMsg:
 		// Remove project from config and refresh dashboard
 		m.config.RemoveProject(msg.Project.ID)

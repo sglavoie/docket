@@ -51,13 +51,14 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 
-	headers := table.Row{"", "Name", "Context", "Tasks", "Active", "Done"}
+	headers := table.Row{"", "Name", "Context", "Tasks", "In Progress", "Done", "Active"}
 	if showArchived {
 		headers = append(headers, "Archived")
 	}
 	t.AppendHeader(headers)
 
 	currentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
+	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true)
 
 	for _, p := range projects {
 		if err := storage.LoadProject(p); err != nil {
@@ -70,6 +71,14 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		if p.ID == cfg.CurrentProject {
 			indicator = "*"
 			name = currentStyle.Render(p.Name)
+		} else if p.Active {
+			name = activeStyle.Render(p.Name)
+		}
+
+		// Active status indicator
+		activeIndicator := ""
+		if p.Active {
+			activeIndicator = "yes"
 		}
 
 		row := table.Row{
@@ -79,6 +88,7 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			p.CountTasks(),
 			p.CountActiveTasks(),
 			p.CountCompletedTasks(),
+			activeIndicator,
 		}
 
 		if showArchived {
