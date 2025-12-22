@@ -7,6 +7,7 @@
 	lint \
 	test \
 	tidy \
+	tt \
 	vet
 
 BINARY_NAME=tt
@@ -26,6 +27,8 @@ install: build ## Install the binary to ~/.local/bin
 	@mkdir -p $(INSTALL_DIR)
 	cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "✅ Installed to $(INSTALL_DIR)/$(BINARY_NAME)"
+
+tt: install
 
 test: ## Run tests
 	@echo "🧪 Running tests..."

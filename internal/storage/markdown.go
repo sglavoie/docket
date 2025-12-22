@@ -179,11 +179,15 @@ func writeMetadata(task *models.Task) string {
 	}
 
 	if !task.CreatedAt.IsZero() {
-		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format("2006-01-02")))
+		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format("2006-01-02 15:04")))
+	}
+
+	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
+		parts = append(parts, fmt.Sprintf("updated: %s", task.UpdatedAt.Format("2006-01-02 15:04")))
 	}
 
 	if task.CompletedAt != nil {
-		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format("2006-01-02")))
+		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format("2006-01-02 15:04")))
 	}
 
 	if task.DueDate != nil {

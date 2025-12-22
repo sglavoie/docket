@@ -196,7 +196,49 @@ func TestParseTasksMarkdown_Dates(t *testing.T) {
 	content := `# Project: Test
 
 ## Task: Dated Task
-<!-- id: t1, status: done, priority: 3, created: 2024-01-15, completed: 2024-01-20, due: 2024-02-01 -->
+<!-- id: t1, status: done, priority: 3, created: 2024-01-15 14:30, completed: 2024-01-20 09:45, due: 2024-02-01 -->
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+
+	task := tasks[0]
+
+	expectedCreated, _ := time.ParseInLocation("2006-01-02 15:04", "2024-01-15 14:30", time.Local)
+	if !task.CreatedAt.Equal(expectedCreated) {
+		t.Errorf("expected CreatedAt %v, got %v", expectedCreated, task.CreatedAt)
+	}
+
+	if task.CompletedAt == nil {
+		t.Error("expected CompletedAt to be set")
+	} else {
+		expectedCompleted, _ := time.ParseInLocation("2006-01-02 15:04", "2024-01-20 09:45", time.Local)
+		if !task.CompletedAt.Equal(expectedCompleted) {
+			t.Errorf("expected CompletedAt %v, got %v", expectedCompleted, *task.CompletedAt)
+		}
+	}
+
+	if task.DueDate == nil {
+		t.Error("expected DueDate to be set")
+	} else {
+		expectedDue, _ := time.ParseInLocation("2006-01-02", "2024-02-01", time.Local)
+		if !task.DueDate.Equal(expectedDue) {
+			t.Errorf("expected DueDate %v, got %v", expectedDue, *task.DueDate)
+		}
+	}
+}
+
+func TestParseTasksMarkdown_DatesBackwardsCompatibility(t *testing.T) {
+	// Test that date-only format (without time) still parses correctly
+	content := `# Project: Test
+
+## Task: Legacy Dated Task
+<!-- id: t1, status: done, priority: 3, created: 2024-01-15, completed: 2024-01-20 -->
 `
 	_, tasks, err := ParseTasksMarkdown(content)
 	if err != nil {
@@ -220,15 +262,6 @@ func TestParseTasksMarkdown_Dates(t *testing.T) {
 		expectedCompleted, _ := time.ParseInLocation("2006-01-02", "2024-01-20", time.Local)
 		if !task.CompletedAt.Equal(expectedCompleted) {
 			t.Errorf("expected CompletedAt %v, got %v", expectedCompleted, *task.CompletedAt)
-		}
-	}
-
-	if task.DueDate == nil {
-		t.Error("expected DueDate to be set")
-	} else {
-		expectedDue, _ := time.ParseInLocation("2006-01-02", "2024-02-01", time.Local)
-		if !task.DueDate.Equal(expectedDue) {
-			t.Errorf("expected DueDate %v, got %v", expectedDue, *task.DueDate)
 		}
 	}
 }

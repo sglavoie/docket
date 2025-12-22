@@ -201,15 +201,21 @@ func parseMetadata(task *models.Task, metaStr string) {
 				}
 			}
 		case "created":
-			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
+				task.CreatedAt = t
+			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.CreatedAt = t
 			}
 		case "updated":
-			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
+				task.UpdatedAt = t
+			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.UpdatedAt = t
 			}
 		case "completed":
-			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
+				task.CompletedAt = &t
+			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
 				task.CompletedAt = &t
 			}
 		case "due":

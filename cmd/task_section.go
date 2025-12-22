@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
@@ -63,6 +64,7 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 	oldSection := task.Section
 	task.Section = sectionName
+	task.UpdatedAt = time.Now()
 
 	if err := storage.SaveProject(project); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)

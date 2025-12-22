@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -109,6 +110,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// Update task
 	task.Title = newTitle
 	task.Description = newDesc
+	task.UpdatedAt = time.Now()
 
 	// Save
 	if err := storage.SaveProject(project); err != nil {

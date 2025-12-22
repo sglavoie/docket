@@ -61,6 +61,10 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 
 	b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format("2006-01-02 15:04")))
 
+	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
+		b.WriteString(fmt.Sprintf("| Updated | %s |\n", task.UpdatedAt.Format("2006-01-02 15:04")))
+	}
+
 	if task.CompletedAt != nil {
 		b.WriteString(fmt.Sprintf("| Completed | %s |\n", task.CompletedAt.Format("2006-01-02 15:04")))
 	}
