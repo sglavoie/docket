@@ -627,9 +627,9 @@ func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// handleActionKeys handles n, e, D, ctrl+d, ctrl+n, B, z, ctrl+p, and other action keys.
+// handleTaskCRUDKeys handles enter, n, e, D - task create/read/update/delete operations.
 // Returns true if the key was handled.
-func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "enter":
 		if CursorInBounds(m.cursor, len(visible)) {
@@ -668,61 +668,14 @@ func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bo
 			m.deleteTarget = visible[m.cursor].Task
 		}
 		return true, nil
+	}
+	return false, nil
+}
 
-	case "ctrl+d":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return SetDueDateMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "ctrl+n":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowSectionPickerMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "B":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ManageDependenciesMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "z":
-		return true, m.performUndo()
-
-	case "ctrl+p":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			for _, task := range m.getSelectedTasks() {
-				task.TogglePinned()
-			}
-			m.clearSelection()
-			return true, m.saveAndRefresh()
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			task.TogglePinned()
-			return true, m.saveAndRefresh()
-		}
-		return true, nil
-
-	case "ctrl+o":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
+// handleClipboardKeys handles y, Y - clipboard operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleClipboardKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
 	case "y":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			tasks := m.getSelectedTasks()
@@ -754,16 +707,14 @@ func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bo
 			}
 		}
 		return true, nil
+	}
+	return false, nil
+}
 
-	case "R":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return GlowViewMsg{Task: task}
-			}
-		}
-		return true, nil
-
+// handleExpandCollapseKeys handles E, c - expand/collapse all operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleExpandCollapseKeys(key string) (bool, tea.Cmd) {
+	switch key {
 	case "E":
 		for _, node := range m.nodes {
 			node.Expanded = true
@@ -778,6 +729,105 @@ func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bo
 			}
 		}
 		m.updateVisibility()
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleFilterOverlayKeys handles ctrl+f, ctrl+t, ctrl+s - filter/manager overlay operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
+	switch key {
+	case "ctrl+f":
+		return true, func() tea.Msg {
+			return ShowFilterMsg{ProjectTree: m}
+		}
+
+	case "ctrl+t":
+		return true, func() tea.Msg {
+			return ShowTagManagerMsg{ProjectTree: m}
+		}
+
+	case "ctrl+s":
+		return true, func() tea.Msg {
+			return ShowSectionManagerMsg{ProjectTree: m}
+		}
+	}
+	return false, nil
+}
+
+// handleTaskAttributeKeys handles ctrl+d, ctrl+n, B, ctrl+p, ctrl+o - task attribute modification.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "ctrl+d":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return SetDueDateMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "ctrl+n":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowSectionPickerMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "B":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ManageDependenciesMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "ctrl+p":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			for _, task := range m.getSelectedTasks() {
+				task.TogglePinned()
+			}
+			m.clearSelection()
+			return true, m.saveAndRefresh()
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.TogglePinned()
+			return true, m.saveAndRefresh()
+		}
+		return true, nil
+
+	case "ctrl+o":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return EditTaskContentMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleMiscActionKeys handles z, R, ?, \, r - miscellaneous action operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "z":
+		return true, m.performUndo()
+
+	case "R":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			}
+		}
 		return true, nil
 
 	case "?":
@@ -794,26 +844,35 @@ func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bo
 			return ShowTaskJumperMsg{Project: m.project}
 		}
 
-	case "ctrl+f":
-		return true, func() tea.Msg {
-			return ShowFilterMsg{ProjectTree: m}
-		}
-
-	case "ctrl+t":
-		return true, func() tea.Msg {
-			return ShowTagManagerMsg{ProjectTree: m}
-		}
-
-	case "ctrl+s":
-		return true, func() tea.Msg {
-			return ShowSectionManagerMsg{ProjectTree: m}
-		}
-
 	case "r":
 		m.clearSelection()
 		storage.LoadProject(m.project)
 		m.buildTree()
 		return true, nil
+	}
+	return false, nil
+}
+
+// handleActionKeys routes action keys to specialized sub-handlers.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	if handled, cmd := m.handleTaskCRUDKeys(key, visible); handled {
+		return handled, cmd
+	}
+	if handled, cmd := m.handleClipboardKeys(key, visible); handled {
+		return handled, cmd
+	}
+	if handled, cmd := m.handleExpandCollapseKeys(key); handled {
+		return handled, cmd
+	}
+	if handled, cmd := m.handleFilterOverlayKeys(key); handled {
+		return handled, cmd
+	}
+	if handled, cmd := m.handleTaskAttributeKeys(key, visible); handled {
+		return handled, cmd
+	}
+	if handled, cmd := m.handleMiscActionKeys(key, visible); handled {
+		return handled, cmd
 	}
 	return false, nil
 }
