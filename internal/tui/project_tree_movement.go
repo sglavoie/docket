@@ -1,0 +1,119 @@
+package tui
+
+import tea "github.com/charmbracelet/bubbletea"
+
+// handleTypeKeys handles h, l, H, L - type change operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "h":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanPromote(); ok {
+				task.Promote()
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "l":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanDemote(); ok {
+				task.Demote()
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "H":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanCycleLeafType(true); ok {
+				task.CycleLeafType(true)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "L":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanCycleLeafType(false); ok {
+				task.CycleLeafType(false)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+// handleMovementKeys handles K, J, left, right - task movement operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "K":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			siblings := m.project.GetSiblings(task)
+			siblingIdx := m.project.FindSiblingIndex(task)
+			if siblingIdx > 0 {
+				siblingAbove := siblings[siblingIdx-1]
+				if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
+					return true, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
+					}
+				}
+				m.project.MoveTaskUp(task)
+				if m.cursor > 0 {
+					m.cursor--
+				}
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "J":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			siblings := m.project.GetSiblings(task)
+			siblingIdx := m.project.FindSiblingIndex(task)
+			if siblingIdx >= 0 && siblingIdx < len(siblings)-1 {
+				siblingBelow := siblings[siblingIdx+1]
+				if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
+					return true, func() tea.Msg {
+						return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
+					}
+				}
+				m.project.MoveTaskDown(task)
+				if m.cursor < len(visible)-1 {
+					m.cursor++
+				}
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	case "right":
+		if CursorInBounds(m.cursor, len(visible)) && m.cursor > 0 {
+			task := visible[m.cursor].Task
+			// Walk up from the visually-above task to find a valid parent
+			candidate := visible[m.cursor-1].Task
+			for candidate != nil {
+				if ok, _ := task.CanIndent(candidate); ok {
+					task.ParentID = &candidate.ID
+					m.project.BuildTaskTree()
+					return true, m.saveAndRefresh()
+				}
+				candidate = candidate.Parent
+			}
+		}
+		return true, nil
+	case "left":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if ok, _ := task.CanOutdent(); ok {
+				m.project.OutdentTask(task)
+				return true, m.saveAndRefresh()
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}

@@ -270,3 +270,25 @@ func (m *ProjectTreeModel) getAllTags() []string {
 	sort.Strings(tags)
 	return tags
 }
+
+// cycleFilter cycles through filter values, returning the next value in the sequence.
+// When current is the zero value, returns the first value. When current is the last value,
+// returns the zero value. If current is not found, returns the zero value.
+func cycleFilter[T comparable](current T, values []T) T {
+	var zero T
+	if current == zero {
+		if len(values) > 0 {
+			return values[0]
+		}
+		return zero
+	}
+	for i, v := range values {
+		if v == current {
+			if i+1 < len(values) {
+				return values[i+1]
+			}
+			return zero
+		}
+	}
+	return zero
+}

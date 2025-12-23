@@ -1,9 +1,12 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // ViewType represents the different views in the TUI.
@@ -214,6 +217,22 @@ func (m *AppModel) saveProjectTreeState() {
 	m.configManager.Save(m.config)
 }
 
+// switchToProject handles switching to a different project, loading it and creating the tree view.
+// It saves current state, loads the project from storage, applies colors, and creates the tree.
+// Pass restoreState=false to skip restoring saved filter/sort state (e.g., when applying custom filters).
+func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
+	m.saveProjectTreeState()
+	m.currentProject = project
+	storage.LoadProject(project)
+	m.config.ApplyGlobalColorsToProject(project)
+	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
+	m.projectTree.SetSize(m.width, m.height-2)
+	if restoreState {
+		m.restoreProjectTreeState()
+	}
+	m.views.Register(ViewProjectTree, m.projectTree)
+}
+
 // restoreProjectTreeState applies saved filter/sort state to the current project tree.
 func (m *AppModel) restoreProjectTreeState() {
 	if m.projectTree == nil || m.currentProject == nil {
@@ -260,4 +279,11 @@ func (m *AppModel) restoreProjectTreeState() {
 
 	m.projectTree.updateVisibility()
 	m.projectTree.clampCursor()
+}
+
+// errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.
+func errorCmd(format string, args ...any) tea.Cmd {
+	return func() tea.Msg {
+		return ErrorMsg{Err: fmt.Errorf(format, args...)}
+	}
 }

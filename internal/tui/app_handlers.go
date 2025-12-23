@@ -167,14 +167,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			msg.Task.DependsOn = msg.NewDepsOn
 			msg.Task.UpdatedAt = time.Now()
 			if err := storage.BackupProject(msg.Project); err != nil {
-				return true, func() tea.Msg {
-					return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-				}
+				return true, errorCmd("failed to create backup: %w", err)
 			}
 			if err := storage.SaveProject(msg.Project); err != nil {
-				return true, func() tea.Msg {
-					return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-				}
+				return true, errorCmd("failed to save: %w", err)
 			}
 			storage.LoadProject(msg.Project)
 			m.refreshProjectTree()
@@ -240,9 +236,7 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 
 	tmpFile, err := os.CreateTemp("", "tt-edit-*.md")
 	if err != nil {
-		return true, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to create temp file: %w", err)}
-		}
+		return true, errorCmd("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	content := fmt.Sprintf("# %s\n\n<!-- Edit the title above and description below. -->\n\n%s", msg.Task.Title, msg.Task.Description)
@@ -286,9 +280,7 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 // handleTaskContentEdited handles result from external editor.
 func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.Cmd) {
 	if msg.Err != nil {
-		return true, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", msg.Err)}
-		}
+		return true, errorCmd("editor failed: %w", msg.Err)
 	}
 
 	if msg.Task != nil {
@@ -301,14 +293,10 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 
 			if msg.Project != nil {
 				if err := storage.BackupProject(msg.Project); err != nil {
-					return true, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-					}
+					return true, errorCmd("failed to create backup: %w", err)
 				}
 				if err := storage.SaveProject(msg.Project); err != nil {
-					return true, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-					}
+					return true, errorCmd("failed to save: %w", err)
 				}
 			}
 		}
@@ -461,12 +449,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlobalSearchSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.saveProjectTreeState()
-			m.currentProject = msg.Project
-			storage.LoadProject(msg.Project)
-			m.config.ApplyGlobalColorsToProject(msg.Project)
-			m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
-			m.restoreProjectTreeState()
+			m.switchToProject(msg.Project, true)
 			m.projectTree.NavigateToTask(msg.Task)
 			m.showView(ViewProjectTree, m.projectTree)
 		}
@@ -484,9 +467,7 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	content := external.FormatTaskAsMarkdown(msg.Task)
 	tmpFile, err := os.CreateTemp("", "tt-glow-*.md")
 	if err != nil {
-		return true, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to create temp file: %w", err)}
-		}
+		return true, errorCmd("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	tmpFile.WriteString(content)
@@ -556,12 +537,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case GlobalTagNavigateMsg:
 		m.popView()
-		m.saveProjectTreeState()
-		m.currentProject = msg.Project
-		storage.LoadProject(msg.Project)
-		m.config.ApplyGlobalColorsToProject(msg.Project)
-		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
-		// Don't restore state - intentionally navigate with specific tag filter
+		m.switchToProject(msg.Project, false) // Don't restore state - apply specific tag filter
 		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
@@ -612,14 +588,10 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 
 			if err := storage.BackupProject(msg.Project); err != nil {
-				return true, func() tea.Msg {
-					return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-				}
+				return true, errorCmd("failed to create backup: %w", err)
 			}
 			if err := storage.SaveProject(msg.Project); err != nil {
-				return true, func() tea.Msg {
-					return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-				}
+				return true, errorCmd("failed to save: %w", err)
 			}
 
 			storage.LoadProject(msg.Project)
@@ -656,9 +628,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTaskTitle(msg.Task)
 		if err != nil {
-			return true, func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
-			}
+			return true, errorCmd("copy failed: %w", err)
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, FullDetail: false}
@@ -674,9 +644,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTaskDetails(msg.Task)
 		if err != nil {
-			return true, func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
-			}
+			return true, errorCmd("copy failed: %w", err)
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, FullDetail: true}
@@ -688,9 +656,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTaskTitles(msg.Tasks)
 		if err != nil {
-			return true, func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
-			}
+			return true, errorCmd("copy failed: %w", err)
 		}
 		count := len(msg.Tasks)
 		return true, func() tea.Msg {
@@ -714,9 +680,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTasksDetails(msg.Tasks)
 		if err != nil {
-			return true, func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("copy failed: %w", err)}
-			}
+			return true, errorCmd("copy failed: %w", err)
 		}
 		count := len(msg.Tasks)
 		return true, func() tea.Msg {
@@ -744,11 +708,6 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 // Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
 	if m.projectTree != nil && m.currentProject != nil {
-		m.saveProjectTreeState()
-		storage.LoadProject(m.currentProject)
-		m.config.ApplyGlobalColorsToProject(m.currentProject)
-		m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
-		m.projectTree.SetSize(m.width, m.height-2)
-		m.restoreProjectTreeState()
+		m.switchToProject(m.currentProject, true)
 	}
 }
