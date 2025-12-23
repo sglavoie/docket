@@ -273,11 +273,15 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	// Title
 	titleStyle := NormalStyle
 	if selected {
-		if task.Pinned {
+		if task.Active {
+			titleStyle = BoldStyle.Foreground(lipgloss.Color("226")) // Bright yellow
+		} else if task.Pinned {
 			titleStyle = BoldStyle.Foreground(ColorSuccess)
 		} else {
 			titleStyle = BoldStyle.Foreground(ColorPrimary)
 		}
+	} else if task.Active {
+		titleStyle = ActiveStyle
 	} else if task.Pinned {
 		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	}
@@ -382,6 +386,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations"},
 		{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations"},
 		{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations"},
+		{Key: "*", Description: "Toggle active flag", Category: "Task Operations"},
 		{Key: "B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 

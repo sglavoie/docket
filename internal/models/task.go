@@ -91,6 +91,7 @@ type Task struct {
 	DependsOn   []string   `json:"depends_on,omitempty"` // IDs of tasks this task depends on
 	Pinned      bool       `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`  // When the task was pinned
+	Active      bool       `json:"active,omitempty"`     // Whether the task is flagged as active
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
@@ -498,5 +499,26 @@ func (t *Task) TogglePinned() {
 		t.Unpin()
 	} else {
 		t.Pin()
+	}
+}
+
+// Activate marks the task as active.
+func (t *Task) Activate() {
+	t.Active = true
+	t.UpdatedAt = time.Now()
+}
+
+// Deactivate removes the active status.
+func (t *Task) Deactivate() {
+	t.Active = false
+	t.UpdatedAt = time.Now()
+}
+
+// ToggleActive toggles the active status.
+func (t *Task) ToggleActive() {
+	if t.Active {
+		t.Deactivate()
+	} else {
+		t.Activate()
 	}
 }

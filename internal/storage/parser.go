@@ -258,6 +258,8 @@ func parseMetadata(task *models.Task, metaStr string) {
 			task.Section = value
 		case "pinned":
 			task.Pinned = value == "true"
+		case "active":
+			task.Active = value == "true"
 		}
 	}
 }

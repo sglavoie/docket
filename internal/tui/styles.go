@@ -315,6 +315,10 @@ var (
 	// Unsaved changes indicator style
 	UnsavedChangesStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("226")) // Yellow
+
+	// Active task style (yellow to make it pop out)
+	ActiveStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("226")) // Bright yellow
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

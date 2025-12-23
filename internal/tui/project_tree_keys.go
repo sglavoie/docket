@@ -803,6 +803,21 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
+	case "*":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			for _, task := range m.getSelectedTasks() {
+				task.ToggleActive()
+			}
+			m.clearSelection()
+			return true, m.saveAndRefresh()
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.ToggleActive()
+			return true, m.saveAndRefresh()
+		}
+		return true, nil
+
 	case "ctrl+o":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
