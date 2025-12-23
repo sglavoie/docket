@@ -2,12 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
 // SelectorItem represents an item that can be selected.
@@ -106,8 +108,12 @@ func (m *SelectorModel) filterItems(query string) {
 	if query == "" {
 		m.filteredItems = m.items
 	} else {
-		var filtered []SelectorItem
-		queryTerms := strings.Fields(strings.ToLower(query))
+		// Score each item and collect matches
+		type scoredItem struct {
+			item  SelectorItem
+			score int
+		}
+		var scored []scoredItem
 
 		for _, item := range m.items {
 			var textBuilder strings.Builder
@@ -115,23 +121,26 @@ func (m *SelectorModel) filterItems(query string) {
 				if i > 0 {
 					textBuilder.WriteString(" ")
 				}
-				textBuilder.WriteString(strings.ToLower(col))
+				textBuilder.WriteString(col)
 			}
 			searchableText := textBuilder.String()
 
-			allTermsMatch := true
-			for _, term := range queryTerms {
-				if !strings.Contains(searchableText, term) {
-					allTermsMatch = false
-					break
-				}
-			}
-
-			if allTermsMatch {
-				filtered = append(filtered, item)
+			score := fuzzy.ScoreTerms(searchableText, query)
+			if score > 0 {
+				scored = append(scored, scoredItem{item: item, score: score})
 			}
 		}
-		m.filteredItems = filtered
+
+		// Sort by score descending (best matches first)
+		sort.Slice(scored, func(i, j int) bool {
+			return scored[i].score > scored[j].score
+		})
+
+		// Extract sorted results
+		m.filteredItems = make([]SelectorItem, len(scored))
+		for i, s := range scored {
+			m.filteredItems[i] = s.item
+		}
 	}
 
 	m.rebuildTable()

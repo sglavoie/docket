@@ -2,11 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -55,8 +57,8 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Calculate split pane widths: ~40% for list, ~60% for preview
-	m.listWidth = width * 40 / 100
+	// Calculate split pane widths: 50/50
+	m.listWidth = width * 50 / 100
 	if m.listWidth < 30 {
 		m.listWidth = 30
 	}
@@ -130,7 +132,7 @@ func (m *TaskJumperModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // filterTasks filters tasks based on the current search query.
 func (m *TaskJumperModel) filterTasks() {
-	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
+	query := strings.TrimSpace(m.searchInput.Value())
 
 	if query == "" {
 		m.filtered = m.tasks
@@ -138,13 +140,30 @@ func (m *TaskJumperModel) filterTasks() {
 		return
 	}
 
-	var filtered []*models.Task
+	// Score each task and collect matches
+	type scoredTask struct {
+		task  *models.Task
+		score int
+	}
+	var scored []scoredTask
+
 	for _, task := range m.tasks {
-		if m.matchesQuery(task, query) {
-			filtered = append(filtered, task)
+		score := m.scoreTask(task, query)
+		if score > 0 {
+			scored = append(scored, scoredTask{task: task, score: score})
 		}
 	}
-	m.filtered = filtered
+
+	// Sort by score descending (best matches first)
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	// Extract sorted results
+	m.filtered = make([]*models.Task, len(scored))
+	for i, s := range scored {
+		m.filtered[i] = s.task
+	}
 
 	// Reset cursor if out of bounds
 	if m.cursor >= len(m.filtered) {
@@ -155,17 +174,18 @@ func (m *TaskJumperModel) filterTasks() {
 	}
 }
 
-// matchesQuery checks if a task matches the search query.
-func (m *TaskJumperModel) matchesQuery(task *models.Task, query string) bool {
-	// Build searchable text
-	searchable := strings.ToLower(fmt.Sprintf("#%d %s %s %s",
+// scoreTask returns a fuzzy match score for a task against the query.
+// Returns 0 if no match, higher scores indicate better matches.
+func (m *TaskJumperModel) scoreTask(task *models.Task, query string) int {
+	// Build searchable text combining multiple fields
+	searchable := fmt.Sprintf("#%d %s %s %s",
 		task.ShortID,
 		task.Title,
 		task.Description[:min(len(task.Description), 200)],
 		strings.Join(task.Tags, " "),
-	))
+	)
 
-	return strings.Contains(searchable, query)
+	return fuzzy.ScoreTerms(searchable, query)
 }
 
 func (m *TaskJumperModel) View() string {
@@ -248,7 +268,8 @@ func (m *TaskJumperModel) renderTaskList() string {
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
 		// Title (truncated)
-		maxTitleLen := m.listWidth - 16 // Account for cursor, icons, ID
+		// Account for: cursor(2) + icons(4) + spaces(3) + ID(5) = 14
+		maxTitleLen := m.listWidth - 14
 		if maxTitleLen < 10 {
 			maxTitleLen = 10
 		}

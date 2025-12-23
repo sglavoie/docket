@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -78,15 +79,15 @@ func (m *DashboardModel) matchesFilters(p *models.Project) bool {
 	if m.SearchQuery() == "" {
 		return true
 	}
-	query := strings.ToLower(m.SearchQuery())
+	query := strings.TrimSpace(m.SearchQuery())
 
-	if strings.Contains(strings.ToLower(p.Name), query) {
+	if fuzzy.MatchTerms(p.Name, query) {
 		return true
 	}
-	if strings.Contains(strings.ToLower(p.Context), query) {
+	if fuzzy.MatchTerms(p.Context, query) {
 		return true
 	}
-	if strings.Contains(strings.ToLower(p.Description), query) {
+	if fuzzy.MatchTerms(p.Description, query) {
 		return true
 	}
 	return false

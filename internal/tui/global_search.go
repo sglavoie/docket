@@ -2,12 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -82,8 +84,8 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Calculate split pane widths: ~40% for list, ~60% for preview
-	m.listWidth = width * 40 / 100
+	// Calculate split pane widths: 50/50
+	m.listWidth = width * 50 / 100
 	if m.listWidth < 30 {
 		m.listWidth = 30
 	}
@@ -161,7 +163,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // filterTasks filters tasks based on the current search query.
 func (m *GlobalSearchModel) filterTasks() {
-	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
+	query := strings.TrimSpace(m.searchInput.Value())
 
 	// Empty query shows no results
 	if query == "" {
@@ -170,13 +172,30 @@ func (m *GlobalSearchModel) filterTasks() {
 		return
 	}
 
-	var filtered []searchResult
+	// Score each task and collect matches
+	type scoredResult struct {
+		result searchResult
+		score  int
+	}
+	var scored []scoredResult
+
 	for _, result := range m.allTasks {
-		if m.matchesQuery(result.Task, query) {
-			filtered = append(filtered, result)
+		score := m.scoreTask(result.Task, query)
+		if score > 0 {
+			scored = append(scored, scoredResult{result: result, score: score})
 		}
 	}
-	m.filtered = filtered
+
+	// Sort by score descending (best matches first)
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	// Extract sorted results
+	m.filtered = make([]searchResult, len(scored))
+	for i, s := range scored {
+		m.filtered[i] = s.result
+	}
 
 	// Reset cursor if out of bounds
 	if m.cursor >= len(m.filtered) {
@@ -187,15 +206,23 @@ func (m *GlobalSearchModel) filterTasks() {
 	}
 }
 
-// matchesQuery checks if a task matches the search query.
-func (m *GlobalSearchModel) matchesQuery(task *models.Task, query string) bool {
-	if strings.Contains(strings.ToLower(task.Title), query) {
-		return true
+// scoreTask returns a fuzzy match score for a task against the query.
+// Returns 0 if no match, higher scores indicate better matches.
+func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) int {
+	// Score against title (weighted higher)
+	titleScore := fuzzy.ScoreTerms(task.Title, query)
+	if titleScore > 0 {
+		titleScore *= 2 // Title matches are more important
 	}
-	if strings.Contains(strings.ToLower(task.Description), query) {
-		return true
+
+	// Score against description
+	descScore := fuzzy.ScoreTerms(task.Description, query)
+
+	// Return the best score
+	if titleScore > descScore {
+		return titleScore
 	}
-	return false
+	return descScore
 }
 
 func (m *GlobalSearchModel) View() string {
@@ -297,7 +324,8 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
 		// Title (truncated)
-		maxTitleLen := m.listWidth - 28 // Account for cursor, icons, ID, project
+		// Account for: cursor(2) + icons(4) + spaces(4) + ID(5) + project(12) = ~27
+		maxTitleLen := m.listWidth - 24
 		if maxTitleLen < 10 {
 			maxTitleLen = 10
 		}

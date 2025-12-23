@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -123,17 +124,20 @@ func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
 	if m.SearchQuery() == "" {
 		return true
 	}
-	query := strings.ToLower(m.SearchQuery())
+	query := strings.TrimSpace(m.SearchQuery())
 
-	if strings.Contains(strings.ToLower(task.Title), query) {
+	// Check title
+	if fuzzy.MatchTerms(task.Title, query) {
 		return true
 	}
+	// Check tags
 	for _, tag := range task.Tags {
-		if strings.Contains(strings.ToLower(tag), query) {
+		if fuzzy.MatchTerms(tag, query) {
 			return true
 		}
 	}
-	if strings.Contains(strings.ToLower(task.Description), query) {
+	// Check description
+	if fuzzy.MatchTerms(task.Description, query) {
 		return true
 	}
 	return false

@@ -87,13 +87,15 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Search"
 	}
 
-	// Hide help text in editor/creator/settings views where ? doesn't apply
+	// Hide help text in editor/creator/settings/search views where ? doesn't apply
 	currentView := m.currentView()
 	showHelp := currentView != ViewTaskCreator &&
 		currentView != ViewTaskEditor &&
 		currentView != ViewProjectCreator &&
 		currentView != ViewProjectEditor &&
-		currentView != ViewSettings
+		currentView != ViewSettings &&
+		currentView != ViewTaskJumper &&
+		currentView != ViewGlobalSearch
 
 	help := ""
 	if showHelp {
