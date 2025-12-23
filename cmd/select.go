@@ -48,12 +48,14 @@ func runSelect(cmd *cobra.Command, args []string) error {
 		}
 
 		// Build selector items
+		headers := []string{"Project", "Context", "Tasks", "Active"}
 		items := make([]tui.SelectorItem, len(projects))
 		for i, p := range projects {
 			if err := storage.LoadProject(p); err == nil {
 				items[i] = tui.SelectorItem{
-					ID:   p.ID,
-					Data: p,
+					ID:      p.ID,
+					Data:    p,
+					Headers: headers,
 					Columns: []string{
 						p.Name,
 						p.Context,

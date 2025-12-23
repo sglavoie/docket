@@ -163,11 +163,13 @@ func selectDependency(project *models.Project, task *models.Task) (*models.Task,
 		return nil, fmt.Errorf("no tasks available to add as dependencies")
 	}
 
+	headers := []string{"ID", "Type", "Status", "Title"}
 	items := make([]tui.SelectorItem, len(candidates))
 	for i, t := range candidates {
 		items[i] = tui.SelectorItem{
-			ID:   t.ID,
-			Data: t,
+			ID:      t.ID,
+			Data:    t,
+			Headers: headers,
 			Columns: []string{
 				fmt.Sprintf("#%d", t.ShortID),
 				t.Type.Icon(),

@@ -17,6 +17,7 @@ type SelectorItem struct {
 	ID      string
 	Data    any
 	Columns []string
+	Headers []string // Column header names (only first item's headers are used)
 }
 
 // SelectorModel is the BubbleTea model for selection.
@@ -49,8 +50,12 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 		baseWidth := 70 / columnCount
 		columns = make([]table.Column, columnCount)
 		for i := range columnCount {
+			title := fmt.Sprintf("Col %d", i+1) // fallback
+			if len(items[0].Headers) > i {
+				title = items[0].Headers[i]
+			}
 			columns[i] = table.Column{
-				Title: fmt.Sprintf("Col %d", i+1),
+				Title: title,
 				Width: baseWidth,
 			}
 		}
