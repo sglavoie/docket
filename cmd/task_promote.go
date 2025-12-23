@@ -88,7 +88,7 @@ func runTaskCycle(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskType(args []string, action string, update func(*models.Task) error) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 	var task *models.Task
 
 	if len(args) > 0 {
-		task = findTask(project, args[0])
+		task = FindTaskByIdentifier(project, args[0])
 		if task == nil {
 			return fmt.Errorf("task '%s' not found", args[0])
 		}
@@ -156,7 +156,7 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 	}
 
 	// Save
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

@@ -87,7 +87,7 @@ func init() {
 }
 
 func runTaskMoveUp(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -128,7 +128,7 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskMoveDown(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -169,7 +169,7 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskIndent(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func runTaskIndent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to indent task: %w", err)
 	}
 
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -210,7 +210,7 @@ func runTaskIndent(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskOutdent(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to outdent task: %w", err)
 	}
 
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -255,7 +255,7 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 // selectTaskForMove finds a task by ID or presents an interactive selector.
 func selectTaskForMove(project *models.Project, args []string, action string) (*models.Task, error) {
 	if len(args) > 0 {
-		task := findTask(project, args[0])
+		task := FindTaskByIdentifier(project, args[0])
 		if task == nil {
 			return nil, fmt.Errorf("task '%s' not found", args[0])
 		}

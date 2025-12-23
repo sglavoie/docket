@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -155,6 +156,18 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Build parent-child relationships using levels captured during initial parse
 	tasks := buildHierarchy(parsedTasks)
 
+	// Validate parent references - clear any that reference non-existent tasks
+	taskByID := make(map[string]bool, len(tasks))
+	for _, t := range tasks {
+		taskByID[t.ID] = true
+	}
+	for _, t := range tasks {
+		if t.ParentID != nil && !taskByID[*t.ParentID] {
+			log.Printf("warning: task %s references non-existent parent %s, clearing parent reference", t.ID, *t.ParentID)
+			t.ParentID = nil
+		}
+	}
+
 	// Default to Backlog section if none specified
 	if len(sections) == 0 {
 		sections = []string{models.SectionBacklog}
@@ -166,6 +179,18 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		Sections:      sections,
 		SectionColors: sectionColors,
 	}, nil
+}
+
+// parseTimeField attempts to parse a time value in datetime or date-only format.
+// Returns the parsed time and true if successful, zero time and false otherwise.
+func parseTimeField(value string) (time.Time, bool) {
+	if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
 }
 
 // parseMetadata parses the metadata string and sets task fields.
@@ -187,7 +212,12 @@ func parseMetadata(task *models.Task, metaStr string) {
 				task.Status = status
 			}
 		case "priority":
-			if p, err := strconv.Atoi(value); err == nil && p >= 1 && p <= 5 {
+			p, err := strconv.Atoi(value)
+			if err != nil {
+				log.Printf("warning: invalid priority '%s' for task, using default", value)
+			} else if p < 1 || p > 5 {
+				log.Printf("warning: priority %d out of range (1-5) for task, using default", p)
+			} else {
 				task.Priority = p
 			}
 		case "parent":
@@ -201,21 +231,15 @@ func parseMetadata(task *models.Task, metaStr string) {
 				}
 			}
 		case "created":
-			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
-				task.CreatedAt = t
-			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, ok := parseTimeField(value); ok {
 				task.CreatedAt = t
 			}
 		case "updated":
-			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
-				task.UpdatedAt = t
-			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, ok := parseTimeField(value); ok {
 				task.UpdatedAt = t
 			}
 		case "completed":
-			if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
-				task.CompletedAt = &t
-			} else if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, ok := parseTimeField(value); ok {
 				task.CompletedAt = &t
 			}
 		case "due":

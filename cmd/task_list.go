@@ -48,7 +48,7 @@ func init() {
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}

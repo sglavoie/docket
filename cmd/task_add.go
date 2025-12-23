@@ -57,7 +57,7 @@ func init() {
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType, err := parseTaskTypeFlags(isEpic, isStory, isBug, isIdea, taskTypeFlag)
+	taskType, err := ParseTaskTypeFlags(isEpic, isStory, isBug, isIdea, taskTypeFlag)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	// Handle parent
 	if taskParentFlag != "" {
-		parent := findTask(project, taskParentFlag)
+		parent := FindTaskByIdentifier(project, taskParentFlag)
 		if parent == nil {
 			return fmt.Errorf("parent task '%s' not found", taskParentFlag)
 		}
@@ -113,7 +113,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	project.Tasks = append(project.Tasks, task)
 
 	// Save
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 

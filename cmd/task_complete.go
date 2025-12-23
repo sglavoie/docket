@@ -109,7 +109,7 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 	var task *models.Task
 
 	if len(args) > 0 {
-		task = findTask(project, args[0])
+		task = FindTaskByIdentifier(project, args[0])
 		if task == nil {
 			return fmt.Errorf("task '%s' not found", args[0])
 		}
@@ -185,7 +185,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 	}
 
 	// Save
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

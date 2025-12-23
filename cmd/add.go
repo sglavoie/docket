@@ -88,7 +88,7 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 }
 
 func runQuickAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := getCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType, err := parseTaskTypeFlags(addIsEpic, addIsStory, addIsBug, addIsIdea, addTypeFlag)
+	taskType, err := ParseTaskTypeFlags(addIsEpic, addIsStory, addIsBug, addIsIdea, addTypeFlag)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 
 	// Handle parent
 	if addParentFlag != "" {
-		parent := findTask(project, addParentFlag)
+		parent := FindTaskByIdentifier(project, addParentFlag)
 		if parent == nil {
 			return fmt.Errorf("parent task '%s' not found", addParentFlag)
 		}
@@ -152,7 +152,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	project.Tasks = append(project.Tasks, task)
 
 	// Save
-	if err := saveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 

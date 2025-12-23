@@ -256,6 +256,12 @@ func RestoreFromBackup(project *models.Project) error {
 		return fmt.Errorf("failed to read backup file: %w", err)
 	}
 
+	// Validate backup content is valid markdown before restoring
+	_, err = ParseTasksMarkdownWithSections(string(backupContent))
+	if err != nil {
+		return fmt.Errorf("backup file is invalid: %w", err)
+	}
+
 	// Read current content (may not exist if tasks were deleted)
 	currentContent, err := os.ReadFile(tasksPath)
 	if os.IsNotExist(err) {

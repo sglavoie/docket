@@ -41,7 +41,7 @@ func init() {
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
-	project, cfg, _, err := getCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	var task *models.Task
 
 	if len(args) > 0 {
-		task = findTask(project, args[0])
+		task = FindTaskByIdentifier(project, args[0])
 		if task == nil {
 			return fmt.Errorf("task '%s' not found", args[0])
 		}
