@@ -83,6 +83,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Section Manager"
 	case ViewContextPicker:
 		status = "Filter by Context"
+	case ViewGlobalSearch:
+		status = "Global Search"
 	}
 
 	// Hide help text in editor/creator/settings views where ? doesn't apply

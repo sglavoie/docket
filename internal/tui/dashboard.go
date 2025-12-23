@@ -163,8 +163,12 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "/":
+		case "\\":
 			return m, m.ActivateSearch()
+		case "/":
+			return m, func() tea.Msg {
+				return ShowGlobalSearchMsg{}
+			}
 		case "esc":
 			// Clear filters if active
 			if m.filterContext != "" || m.SearchQuery() != "" {
@@ -326,7 +330,7 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n")
 	} else if m.SearchQuery() != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
-		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
+		b.WriteString(HelpStyle.Render("(\\ to edit, Esc to clear)"))
 		b.WriteString("\n")
 	}
 
@@ -520,7 +524,8 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "1-9", Description: "Quick select pinned", Category: "Navigation"},
 		{Key: "g", Description: "Go to first", Category: "Navigation"},
 		{Key: "G", Description: "Go to last", Category: "Navigation"},
-		{Key: "/", Description: "Search projects", Category: "Navigation"},
+		{Key: "/", Description: "Global search", Category: "Navigation"},
+		{Key: "\\", Description: "Search projects", Category: "Navigation"},
 		{Key: "Ctrl+D", Description: "Due date overview", Category: "Navigation"},
 		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},
 		{Key: "c", Description: "Filter by context", Category: "Filters"},

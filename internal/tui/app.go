@@ -32,6 +32,7 @@ const (
 	ViewSectionPicker
 	ViewSectionManager
 	ViewContextPicker
+	ViewGlobalSearch
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -48,10 +49,11 @@ type AppModel struct {
 	views *ViewRegistry
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	dashboard   *DashboardModel
-	projectTree *ProjectTreeModel
-	helpView    *HelpViewModel
-	taskJumper  *TaskJumperModel
+	dashboard    *DashboardModel
+	projectTree  *ProjectTreeModel
+	helpView     *HelpViewModel
+	taskJumper   *TaskJumperModel
+	globalSearch *GlobalSearchModel
 
 	// Current project context
 	currentProject *models.Project

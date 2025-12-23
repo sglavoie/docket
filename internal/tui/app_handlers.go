@@ -396,6 +396,27 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case MoveBlockedMsg:
 		m.statusMessage = msg.Reason
 		return true, statusTimeout(2 * time.Second)
+
+	case ShowGlobalSearchMsg:
+		m.globalSearch = NewGlobalSearchModel(m.config)
+		m.showView(ViewGlobalSearch, m.globalSearch)
+		return true, m.globalSearch.Init()
+
+	case CloseGlobalSearchMsg:
+		m.popView()
+		return true, nil
+
+	case GlobalSearchSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.currentProject = msg.Project
+			storage.LoadProject(msg.Project)
+			m.config.ApplyGlobalColorsToProject(msg.Project)
+			m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.showView(ViewProjectTree, m.projectTree)
+		}
+		return true, nil
 	}
 	return false, nil
 }
