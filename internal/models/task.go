@@ -141,6 +141,7 @@ func (t *Task) Complete() {
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
+	t.Active = false
 	// Auto-triage: move out of Backlog when completing
 	if t.Section == SectionBacklog {
 		t.Section = ""
