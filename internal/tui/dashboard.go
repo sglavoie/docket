@@ -243,6 +243,12 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				project := visible[m.cursor]
 				return m, m.toggleProjectPinned(project)
 			}
+		case "s":
+			if CursorInBounds(m.cursor, len(visible)) {
+				return m, func() tea.Msg {
+					return SetCurrentProjectMsg{Project: visible[m.cursor]}
+				}
+			}
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			// Quick select pinned project by number
 			n := int(msg.String()[0] - '0')
@@ -521,6 +527,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "n", Description: "New project", Category: "Actions"},
 		{Key: "e", Description: "Edit project", Category: "Actions"},
 		{Key: "p", Description: "Preview project", Category: "Actions"},
+		{Key: "s", Description: "Set as current", Category: "Actions"},
 		{Key: "D", Description: "Delete project", Category: "Actions"},
 		{Key: "Ctrl+P", Description: "Toggle pinned", Category: "Actions"},
 		{Key: "a", Description: toggleDesc, Category: "Actions"},

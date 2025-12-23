@@ -22,6 +22,7 @@ type (
 	ProjectRestoredMsg      struct{ Project *models.Project }
 	EditProjectMsg          struct{ Project *models.Project }
 	ProjectUpdatedMsg       struct{ Project *models.Project }
+	SetCurrentProjectMsg    struct{ Project *models.Project }
 
 	// Task management messages
 	CreateTaskMsg        struct{ ParentTask *models.Task }

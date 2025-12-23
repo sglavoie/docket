@@ -85,6 +85,18 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		return true, nil
+
+	case SetCurrentProjectMsg:
+		m.config.CurrentProject = msg.Project.ID
+		if err := m.configManager.Save(m.config); err != nil {
+			m.err = err
+			return true, nil
+		}
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		m.statusMessage = fmt.Sprintf("Set current: %s", msg.Project.Name)
+		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
 }
