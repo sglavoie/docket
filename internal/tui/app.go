@@ -123,21 +123,26 @@ func (m *AppModel) initView(viewType ViewType, view Sizable) {
 }
 
 // refreshProjectTree recreates the project tree view with current project.
-// Does nothing if currentProject is nil.
+// Preserves filter/sort state across the refresh.
 func (m *AppModel) refreshProjectTree() {
 	if m.currentProject == nil {
 		return
 	}
+	m.saveProjectTreeState()
 	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
+	m.restoreProjectTreeState()
 }
 
 // refreshProjectTreeWith recreates the project tree view with the given project.
+// Preserves filter/sort state across the refresh.
 func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
+	m.saveProjectTreeState()
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
+	m.restoreProjectTreeState()
 }
 
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
@@ -146,4 +151,82 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 	view.SetSize(m.width, m.height-2)
 	m.views.Register(viewType, view)
 	m.pushView(viewType)
+}
+
+// saveProjectTreeState persists the current project tree filter/sort state to config.
+func (m *AppModel) saveProjectTreeState() {
+	if m.projectTree == nil || m.currentProject == nil {
+		return
+	}
+
+	var filterTags []string
+	for tag := range m.projectTree.filterTags {
+		filterTags = append(filterTags, tag)
+	}
+	var filterSections []string
+	for section := range m.projectTree.filterSections {
+		filterSections = append(filterSections, section)
+	}
+
+	state := config.ProjectViewState{
+		FilterType:     string(m.projectTree.filterType),
+		FilterStatus:   string(m.projectTree.filterStatus),
+		FilterPriority: m.projectTree.filterPriority,
+		FilterTags:     filterTags,
+		FilterSections: filterSections,
+		FilterDueDate:  int(m.projectTree.filterDueDate),
+		SortField:      int(m.projectTree.sortField),
+		SortAscending:  m.projectTree.sortAscending,
+		ShowCompleted:  m.projectTree.showCompleted,
+	}
+	m.config.SetProjectViewState(m.currentProject.ID, state)
+	m.configManager.Save(m.config)
+}
+
+// restoreProjectTreeState applies saved filter/sort state to the current project tree.
+func (m *AppModel) restoreProjectTreeState() {
+	if m.projectTree == nil || m.currentProject == nil {
+		return
+	}
+	state, exists := m.config.GetProjectViewState(m.currentProject.ID)
+	if !exists {
+		return
+	}
+
+	m.projectTree.filterType = models.TaskType(state.FilterType)
+	m.projectTree.filterStatus = models.TaskStatus(state.FilterStatus)
+	m.projectTree.filterPriority = state.FilterPriority
+	m.projectTree.filterDueDate = DueDateFilter(state.FilterDueDate)
+	m.projectTree.sortField = SortField(state.SortField)
+	m.projectTree.sortAscending = state.SortAscending
+	m.projectTree.showCompleted = state.ShowCompleted
+
+	// Restore tags - validate they still exist
+	m.projectTree.filterTags = make(map[string]bool)
+	existingTags := m.projectTree.getAllTags()
+	tagSet := make(map[string]bool)
+	for _, t := range existingTags {
+		tagSet[t] = true
+	}
+	for _, tag := range state.FilterTags {
+		if tagSet[tag] {
+			m.projectTree.filterTags[tag] = true
+		}
+	}
+
+	// Restore sections - validate they still exist
+	m.projectTree.filterSections = make(map[string]bool)
+	existingSections := m.currentProject.GetSections()
+	sectionSet := make(map[string]bool)
+	for _, s := range existingSections {
+		sectionSet[s] = true
+	}
+	for _, section := range state.FilterSections {
+		if sectionSet[section] {
+			m.projectTree.filterSections[section] = true
+		}
+	}
+
+	m.projectTree.updateVisibility()
+	m.projectTree.clampCursor()
 }

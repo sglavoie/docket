@@ -16,11 +16,13 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
+		m.saveProjectTreeState()
 		m.currentProject = msg.Project
 		m.config.MigrateProjectSectionColors(msg.Project.SectionColors)
 		m.config.ApplyGlobalColorsToProject(msg.Project)
 		m.configManager.Save(m.config)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
+		m.restoreProjectTreeState()
 		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil
 
@@ -409,10 +411,12 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlobalSearchSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
+			m.saveProjectTreeState()
 			m.currentProject = msg.Project
 			storage.LoadProject(msg.Project)
 			m.config.ApplyGlobalColorsToProject(msg.Project)
 			m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
+			m.restoreProjectTreeState()
 			m.projectTree.NavigateToTask(msg.Task)
 			m.showView(ViewProjectTree, m.projectTree)
 		}
@@ -502,10 +506,12 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case GlobalTagNavigateMsg:
 		m.popView()
+		m.saveProjectTreeState()
 		m.currentProject = msg.Project
 		storage.LoadProject(msg.Project)
 		m.config.ApplyGlobalColorsToProject(msg.Project)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
+		// Don't restore state - intentionally navigate with specific tag filter
 		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
@@ -670,11 +676,14 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.
+// Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
 	if m.projectTree != nil && m.currentProject != nil {
+		m.saveProjectTreeState()
 		storage.LoadProject(m.currentProject)
 		m.config.ApplyGlobalColorsToProject(m.currentProject)
 		m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 		m.projectTree.SetSize(m.width, m.height-2)
+		m.restoreProjectTreeState()
 	}
 }

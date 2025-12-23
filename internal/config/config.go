@@ -11,30 +11,45 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// ProjectViewState holds filter/sort state for a project's tree view.
+type ProjectViewState struct {
+	FilterType     string   `json:"filter_type,omitempty"`
+	FilterStatus   string   `json:"filter_status,omitempty"`
+	FilterPriority int      `json:"filter_priority,omitempty"`
+	FilterTags     []string `json:"filter_tags,omitempty"`
+	FilterSections []string `json:"filter_sections,omitempty"`
+	FilterDueDate  int      `json:"filter_due_date,omitempty"`
+	SortField      int      `json:"sort_field,omitempty"`
+	SortAscending  bool     `json:"sort_ascending"`
+	ShowCompleted  bool     `json:"show_completed"`
+}
+
 // Config holds the application configuration.
 type Config struct {
-	DataDir        string            `json:"data_dir"`
-	CurrentProject string            `json:"current_project,omitempty"`
-	Editor         string            `json:"editor"`
-	DefaultContext string            `json:"default_context"`
-	FzfEnabled     bool              `json:"fzf_enabled"`
-	GlowEnabled    bool              `json:"glow_enabled"`
-	Projects       []*models.Project `json:"projects"`
-	SectionColors  map[string]string `json:"section_colors,omitempty"` // Global section color registry
+	DataDir           string                      `json:"data_dir"`
+	CurrentProject    string                      `json:"current_project,omitempty"`
+	Editor            string                      `json:"editor"`
+	DefaultContext    string                      `json:"default_context"`
+	FzfEnabled        bool                        `json:"fzf_enabled"`
+	GlowEnabled       bool                        `json:"glow_enabled"`
+	Projects          []*models.Project           `json:"projects"`
+	SectionColors     map[string]string           `json:"section_colors,omitempty"`      // Global section color registry
+	ProjectViewStates map[string]ProjectViewState `json:"project_view_states,omitempty"` // Per-project filter/sort state
 }
 
 // NewConfig creates a new configuration with default values.
 func NewConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	return &Config{
-		DataDir:        filepath.Join(homeDir, ".tt-data"),
-		CurrentProject: "",
-		Editor:         "code",
-		DefaultContext: "personal",
-		FzfEnabled:     true,
-		GlowEnabled:    true,
-		Projects:       []*models.Project{},
-		SectionColors:  make(map[string]string),
+		DataDir:           filepath.Join(homeDir, ".tt-data"),
+		CurrentProject:    "",
+		Editor:            "code",
+		DefaultContext:    "personal",
+		FzfEnabled:        true,
+		GlowEnabled:       true,
+		Projects:          []*models.Project{},
+		SectionColors:     make(map[string]string),
+		ProjectViewStates: make(map[string]ProjectViewState),
 	}
 }
 
@@ -95,6 +110,9 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	if config.SectionColors == nil {
 		config.SectionColors = make(map[string]string)
+	}
+	if config.ProjectViewStates == nil {
+		config.ProjectViewStates = make(map[string]ProjectViewState)
 	}
 
 	return &config, nil
@@ -374,4 +392,21 @@ func (c *Config) ApplyGlobalColorsToProject(project *models.Project) {
 			project.SectionColors[section] = globalColor
 		}
 	}
+}
+
+// GetProjectViewState returns the saved view state for a project.
+func (c *Config) GetProjectViewState(projectID string) (ProjectViewState, bool) {
+	if c.ProjectViewStates == nil {
+		return ProjectViewState{}, false
+	}
+	state, exists := c.ProjectViewStates[projectID]
+	return state, exists
+}
+
+// SetProjectViewState saves the view state for a project.
+func (c *Config) SetProjectViewState(projectID string, state ProjectViewState) {
+	if c.ProjectViewStates == nil {
+		c.ProjectViewStates = make(map[string]ProjectViewState)
+	}
+	c.ProjectViewStates[projectID] = state
 }
