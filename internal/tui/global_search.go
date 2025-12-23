@@ -228,13 +228,9 @@ func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) int {
 func (m *GlobalSearchModel) View() string {
 	var b strings.Builder
 
-	// Title
-	b.WriteString(TaskJumperTitleStyle.Render("Global Search"))
-	b.WriteString("\n")
-
 	// Search input
 	b.WriteString(m.searchInput.View())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Handle edge cases
 	if len(m.allTasks) == 0 {
@@ -264,14 +260,18 @@ func (m *GlobalSearchModel) View() string {
 	previewContent := m.renderPreview()
 
 	// Apply styles and join horizontally
+	// Use both Height (pads short content) and MaxHeight (truncates long content)
+	paneHeight := m.height - 5 // Account for input, newline, footer, status bar
 	listPane := TaskJumperListStyle.
 		Width(m.listWidth).
-		Height(m.height - 6). // Account for title, input, footer
+		Height(paneHeight).
+		MaxHeight(paneHeight).
 		Render(listContent)
 
 	previewPane := TaskJumperPreviewStyle.
 		Width(m.previewWidth).
-		Height(m.height - 6).
+		Height(paneHeight).
+		MaxHeight(paneHeight).
 		Render(previewContent)
 
 	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
@@ -291,7 +291,7 @@ func (m *GlobalSearchModel) renderTaskList() string {
 	}
 
 	var b strings.Builder
-	maxVisible := m.height - 8 // Account for chrome
+	maxVisible := m.height - 7 // Account for chrome
 
 	// Calculate scroll offset to keep cursor visible
 	scrollOffset := 0
