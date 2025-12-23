@@ -618,6 +618,10 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task == nil {
 			return true, nil
 		}
+		if msg.Task.Description == "" {
+			m.statusMessage = "No description to copy"
+			return true, statusTimeout(2 * time.Second)
+		}
 		_, err := external.CopyTaskDetails(msg.Task)
 		if err != nil {
 			return true, func() tea.Msg {
@@ -646,6 +650,17 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CopyTasksDetailsMsg:
 		if len(msg.Tasks) == 0 {
 			return true, nil
+		}
+		hasDescription := false
+		for _, task := range msg.Tasks {
+			if task.Description != "" {
+				hasDescription = true
+				break
+			}
+		}
+		if !hasDescription {
+			m.statusMessage = "No descriptions to copy"
+			return true, statusTimeout(2 * time.Second)
 		}
 		_, err := external.CopyTasksDetails(msg.Tasks)
 		if err != nil {
