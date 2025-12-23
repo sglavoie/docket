@@ -645,24 +645,28 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		return true, nil
 
 	case "n":
-		if CursorInBounds(m.cursor, len(visible)) {
-			return true, func() tea.Msg {
-				return CreateTaskMsg{ParentTask: visible[m.cursor].Task}
-			}
+		var parentTask *models.Task
+		if m.focusedTask != nil {
+			// In focus mode, default to focused task as parent
+			parentTask = m.focusedTask
+		} else if CursorInBounds(m.cursor, len(visible)) {
+			parentTask = visible[m.cursor].Task
 		}
 		return true, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: nil}
+			return CreateTaskMsg{ParentTask: parentTask}
 		}
 
 	case "O":
 		// Create a new note (Shift+O)
-		if CursorInBounds(m.cursor, len(visible)) {
-			return true, func() tea.Msg {
-				return CreateNoteMsg{ParentTask: visible[m.cursor].Task}
-			}
+		var parentTask *models.Task
+		if m.focusedTask != nil {
+			// In focus mode, default to focused task as parent
+			parentTask = m.focusedTask
+		} else if CursorInBounds(m.cursor, len(visible)) {
+			parentTask = visible[m.cursor].Task
 		}
 		return true, func() tea.Msg {
-			return CreateNoteMsg{ParentTask: nil}
+			return CreateNoteMsg{ParentTask: parentTask}
 		}
 
 	case "e":
@@ -922,4 +926,22 @@ func (m *ProjectTreeModel) handleArchiveKey(visible []*TreeNode) (bool, tea.Cmd)
 		m.confirmAction = "archive"
 	}
 	return true, nil
+}
+
+// handleFocusKeys handles f - focus mode operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleFocusKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	if key == "f" {
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			// Only allow focus on tasks that can have children (epics, stories)
+			if task.Type.CanHaveChildren() {
+				m.focusedTask = task
+				m.cursor = 0 // Reset cursor to top
+				m.buildTree()
+			}
+		}
+		return true, nil
+	}
+	return false, nil
 }

@@ -90,6 +90,9 @@ type ProjectTreeModel struct {
 	// Tag input for bulk tagging
 	tagInputMode bool
 	tagInput     textinput.Model
+
+	// Focus mode state
+	focusedTask *models.Task // When non-nil, only show this task and descendants
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -123,6 +126,11 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
 func (m *ProjectTreeModel) HasActiveSearch() bool {
 	return m.IsSearchMode() || m.SearchQuery() != ""
+}
+
+// IsFocusMode returns true if the view is focused on a subtree.
+func (m *ProjectTreeModel) IsFocusMode() bool {
+	return m.focusedTask != nil
 }
 
 // clampCursor ensures the cursor is within valid bounds.

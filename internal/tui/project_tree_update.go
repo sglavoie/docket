@@ -111,10 +111,16 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, m.ActivateSearch()
 	}
 
-	// Special case for esc (exit multi-select or clear search)
+	// Special case for esc (exit multi-select, focus mode, or clear search)
 	if key == "esc" {
 		if m.multiSelectMode {
 			m.clearSelection()
+			return m, nil
+		}
+		if m.focusedTask != nil {
+			m.focusedTask = nil
+			m.buildTree()
+			m.clampCursor()
 			return m, nil
 		}
 		if m.SearchQuery() != "" {
@@ -152,6 +158,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, cmd
 	}
 	if handled, cmd := m.handleSortKeys(key); handled {
+		return m, cmd
+	}
+	if handled, cmd := m.handleFocusKeys(key, visible); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleActionKeys(key, visible); handled {

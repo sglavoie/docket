@@ -131,21 +131,49 @@ func (m *AppModel) refreshProjectTree() {
 	if m.currentProject == nil {
 		return
 	}
+	// Save focus state (transient, not persisted to config)
+	var focusedTaskID string
+	if m.projectTree != nil && m.projectTree.focusedTask != nil {
+		focusedTaskID = m.projectTree.focusedTask.ID
+	}
+
 	m.saveProjectTreeState()
 	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
 	m.restoreProjectTreeState()
+
+	// Restore focus state if the task still exists
+	if focusedTaskID != "" {
+		if task := m.currentProject.GetTaskByID(focusedTaskID); task != nil {
+			m.projectTree.focusedTask = task
+			m.projectTree.buildTree()
+		}
+	}
 }
 
 // refreshProjectTreeWith recreates the project tree view with the given project.
 // Preserves filter/sort state across the refresh.
 func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
+	// Save focus state (transient, not persisted to config)
+	var focusedTaskID string
+	if m.projectTree != nil && m.projectTree.focusedTask != nil {
+		focusedTaskID = m.projectTree.focusedTask.ID
+	}
+
 	m.saveProjectTreeState()
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
 	m.restoreProjectTreeState()
+
+	// Restore focus state if the task still exists
+	if focusedTaskID != "" {
+		if task := project.GetTaskByID(focusedTaskID); task != nil {
+			m.projectTree.focusedTask = task
+			m.projectTree.buildTree()
+		}
+	}
 }
 
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.

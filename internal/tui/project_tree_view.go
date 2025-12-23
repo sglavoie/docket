@@ -38,6 +38,15 @@ func (m *ProjectTreeModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Focus mode indicator
+	if m.focusedTask != nil {
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, truncate(m.focusedTask.Title, 40))
+		b.WriteString(FocusModeStyle.Render(focusIndicator))
+		b.WriteString(" ")
+		b.WriteString(HelpStyle.Render("(Esc to exit)"))
+		b.WriteString("\n")
+	}
+
 	// Multi-select mode indicator
 	if m.multiSelectMode {
 		count := len(m.selectedTasks)
@@ -378,6 +387,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "Space/Tab", Description: "Expand/collapse", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
 		{Key: "c", Description: "Collapse all", Category: "Navigation"},
+		{Key: "f", Description: "Focus on subtree", Category: "Navigation"},
 
 		// Status Changes
 		{Key: "s", Description: "Start (in progress)", Category: "Status Changes"},

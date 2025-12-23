@@ -208,6 +208,12 @@ var (
 	HelpFilterActiveStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning)
 
+	// Focus mode style
+	FocusModeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("33")).
+			Bold(true).
+			Background(lipgloss.Color("236"))
+
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

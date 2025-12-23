@@ -19,8 +19,14 @@ func (m *ProjectTreeModel) buildTree() {
 
 	m.nodes = []*TreeNode{}
 
-	// Get root tasks
-	rootTasks := m.project.GetRootTasks()
+	// Get root tasks - either the focused task or actual root tasks
+	var rootTasks []*models.Task
+	if m.focusedTask != nil {
+		// In focus mode, the focused task is the only "root"
+		rootTasks = []*models.Task{m.focusedTask}
+	} else {
+		rootTasks = m.project.GetRootTasks()
+	}
 
 	// Build nodes recursively
 	for _, task := range rootTasks {

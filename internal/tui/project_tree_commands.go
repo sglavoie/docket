@@ -110,6 +110,11 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 		}
 		collectIDs(task)
 
+		// Exit focus mode if focused task is being deleted
+		if m.focusedTask != nil && idsToDelete[m.focusedTask.ID] {
+			m.focusedTask = nil
+		}
+
 		// Filter out deleted tasks
 		var remaining []*models.Task
 		for _, t := range m.project.Tasks {
@@ -159,6 +164,11 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 			if m.selectedTasks[task.ID] {
 				collectIDs(task)
 			}
+		}
+
+		// Exit focus mode if focused task is being deleted
+		if m.focusedTask != nil && idsToDelete[m.focusedTask.ID] {
+			m.focusedTask = nil
 		}
 
 		// Filter out deleted tasks
