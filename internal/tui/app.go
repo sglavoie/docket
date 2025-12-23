@@ -17,6 +17,7 @@ const (
 	ViewProjectEditor
 	ViewTaskCreator
 	ViewTaskEditor
+	ViewNoteCreator
 	ViewSettings
 	ViewHelp
 	ViewDateInput
@@ -34,6 +35,7 @@ const (
 	ViewSectionManager
 	ViewContextPicker
 	ViewGlobalSearch
+	ViewParentSelector
 )
 
 // AppModel is the main TUI model with a view stack.

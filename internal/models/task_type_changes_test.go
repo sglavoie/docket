@@ -165,7 +165,7 @@ func TestTaskCanDemote(t *testing.T) {
 				return story
 			},
 			allowed: false,
-			reason:  "task cannot have children",
+			reason:  "task cannot be child of task",
 		},
 		{
 			name: "epic with idea children cannot demote",

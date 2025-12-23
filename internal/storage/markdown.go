@@ -167,11 +167,15 @@ func writeMetadata(task *models.Task) string {
 	if task.ID != "" {
 		parts = append(parts, fmt.Sprintf("id: %s", task.ID))
 	}
-	parts = append(parts, fmt.Sprintf("status: %s", task.Status))
-	parts = append(parts, fmt.Sprintf("priority: %d", task.Priority))
 
-	if len(task.Tags) > 0 {
-		parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
+	// Notes don't have status, priority, or tags
+	if !task.IsNote() {
+		parts = append(parts, fmt.Sprintf("status: %s", task.Status))
+		parts = append(parts, fmt.Sprintf("priority: %d", task.Priority))
+
+		if len(task.Tags) > 0 {
+			parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
+		}
 	}
 
 	if task.Section != "" {

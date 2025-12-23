@@ -98,6 +98,9 @@ var (
 	IdeaStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("214")) // Orange
 
+	NoteStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("248")) // Gray
+
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -352,6 +355,8 @@ func GetTypeStyle(taskType string) lipgloss.Style {
 		return BugStyle
 	case "idea":
 		return IdeaStyle
+	case "note":
+		return NoteStyle
 	default:
 		return NormalStyle
 	}

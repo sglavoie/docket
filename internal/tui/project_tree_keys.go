@@ -651,6 +651,17 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return CreateTaskMsg{ParentTask: nil}
 		}
 
+	case "O":
+		// Create a new note (Shift+O)
+		if CursorInBounds(m.cursor, len(visible)) {
+			return true, func() tea.Msg {
+				return CreateNoteMsg{ParentTask: visible[m.cursor].Task}
+			}
+		}
+		return true, func() tea.Msg {
+			return CreateNoteMsg{ParentTask: nil}
+		}
+
 	case "e":
 		if CursorInBounds(m.cursor, len(visible)) {
 			return true, func() tea.Msg {

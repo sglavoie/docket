@@ -19,6 +19,7 @@ var (
 	isStory         bool
 	isBug           bool
 	isIdea          bool
+	isNote          bool
 )
 
 var taskAddCmd = &cobra.Command{
@@ -53,6 +54,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isStory, "story", false, "create a story")
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
+	taskAddCmd.Flags().BoolVar(&isNote, "note", false, "create a note")
 	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: Backlog)")
 }
 
@@ -68,7 +70,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType, err := ParseTaskTypeFlags(isEpic, isStory, isBug, isIdea, taskTypeFlag)
+	taskType, err := ParseTaskTypeFlags(isEpic, isStory, isBug, isIdea, isNote, taskTypeFlag)
 	if err != nil {
 		return err
 	}

@@ -25,6 +25,7 @@ type (
 
 	// Task management messages
 	CreateTaskMsg        struct{ ParentTask *models.Task }
+	CreateNoteMsg        struct{ ParentTask *models.Task }
 	EditTaskMsg          struct{ Task *models.Task }
 	TaskCreatedMsg       struct{ Task *models.Task }
 	TaskUpdatedMsg       struct{ Task *models.Task }
@@ -96,6 +97,19 @@ type (
 
 	// Move blocked message (when task can't move due to completion boundary)
 	MoveBlockedMsg struct{ Reason string }
+
+	// Parent selector messages
+	OpenParentSelectorMsg struct {
+		ValidParents []*models.Task
+		CurrentID    *string  // Pre-select current parent
+		AllowNone    bool     // Whether "None" is valid option
+		Source       ViewType // Which view opened it
+	}
+	ParentSelectedMsg struct {
+		ParentID *string  // nil means "None"
+		Source   ViewType // Which view to send result to
+	}
+	CloseParentSelectorMsg struct{}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

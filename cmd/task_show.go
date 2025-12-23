@@ -147,18 +147,23 @@ func displayTaskDetail(task *models.Task) {
 		fmt.Println(task.Description)
 	}
 
-	// Children summary
-	if len(task.Children) > 0 {
+	// Children summary (exclude notes from progress)
+	if task.HasProgressChildren() {
 		fmt.Println()
+		total := 0
 		completed := 0
 		for _, child := range task.Children {
+			if child.IsNote() {
+				continue
+			}
+			total++
 			if child.IsComplete() {
 				completed++
 			}
 		}
 		fmt.Printf("%s %d/%d completed (%.0f%%)\n",
 			labelStyle.Render("Subtasks:"),
-			completed, len(task.Children),
+			completed, total,
 			task.GetProgress())
 	}
 }

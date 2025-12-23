@@ -265,7 +265,13 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	}
 
 	typeIcon := typeStyle.Render(task.Type.Icon())
-	statusIcon := statusStyle.Render(task.Status.Icon())
+	var statusIcon string
+	if task.IsNote() {
+		// Notes show a neutral dot instead of status icon
+		statusIcon = MutedStyle.Render("·")
+	} else {
+		statusIcon = statusStyle.Render(task.Status.Icon())
+	}
 
 	// Task ID
 	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
@@ -293,9 +299,9 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	}
 	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-40))
 
-	// Progress for parent tasks
+	// Progress for parent tasks (only show if has non-note children)
 	progress := ""
-	if len(task.Children) > 0 {
+	if task.HasProgressChildren() {
 		pct := task.GetProgress()
 		progress = MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct))
 	}
@@ -303,18 +309,20 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	// Priority, due date, and dependency indicators
 	indicators := ""
 
-	// Priority indicator with level number (all levels shown)
-	switch task.Priority {
-	case 1:
-		indicators += PriorityHighStyle.Render("!1") + " "
-	case 2:
-		indicators += PriorityMediumStyle.Render("!2") + " "
-	case 3:
-		indicators += PriorityLowStyle.Render("!3") + " "
-	case 4:
-		indicators += PriorityLowStyle.Render("!4") + " "
-	case 5:
-		indicators += PriorityLowStyle.Render("!5") + " "
+	// Priority indicator with level number (skip for notes)
+	if !task.IsNote() {
+		switch task.Priority {
+		case 1:
+			indicators += PriorityHighStyle.Render("!1") + " "
+		case 2:
+			indicators += PriorityMediumStyle.Render("!2") + " "
+		case 3:
+			indicators += PriorityLowStyle.Render("!3") + " "
+		case 4:
+			indicators += PriorityLowStyle.Render("!4") + " "
+		case 5:
+			indicators += PriorityLowStyle.Render("!5") + " "
+		}
 	}
 
 	// Due date display (includes overdue styling internally)
@@ -394,6 +402,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Task Operations
 		{Key: "n", Description: "Add new task", Category: "Task Operations"},
+		{Key: "O", Description: "Add new note", Category: "Task Operations"},
 		{Key: "e", Description: "Edit task", Category: "Task Operations"},
 		{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations"},
 		{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations"},

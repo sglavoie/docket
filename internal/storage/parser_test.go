@@ -857,3 +857,90 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 		t.Error("Backlog should not have a color in the map")
 	}
 }
+
+func TestParseTasksMarkdown_Note(t *testing.T) {
+	content := `# Project: Test Project
+
+## Note: My Meeting Notes
+<!-- id: note1, section: Backlog, created: 2024-01-15 10:30 -->
+
+Discussion points from standup.
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+
+	note := tasks[0]
+	if note.ID != "note1" {
+		t.Errorf("expected ID 'note1', got '%s'", note.ID)
+	}
+	if note.Type != models.TaskTypeNote {
+		t.Errorf("expected Type 'note', got '%s'", note.Type)
+	}
+	if note.Title != "My Meeting Notes" {
+		t.Errorf("expected Title 'My Meeting Notes', got '%s'", note.Title)
+	}
+	if note.Description != "Discussion points from standup." {
+		t.Errorf("expected Description 'Discussion points from standup.', got '%s'", note.Description)
+	}
+}
+
+func TestWriteTasksMarkdown_Note(t *testing.T) {
+	note := models.NewTask("note-id", 1, models.TaskTypeNote, "My Note")
+	note.Description = "Note content here."
+
+	tasks := []*models.Task{note}
+	content := WriteTasksMarkdown("Test", tasks)
+
+	// Notes should not have status or priority in metadata
+	if strings.Contains(content, "status:") {
+		t.Error("Note should not have status in metadata")
+	}
+	if strings.Contains(content, "priority:") {
+		t.Error("Note should not have priority in metadata")
+	}
+	// Should have the heading
+	if !strings.Contains(content, "## Note: My Note") {
+		t.Error("Note should have proper heading")
+	}
+	// Should have id
+	if !strings.Contains(content, "id: note-id") {
+		t.Error("Note should have id in metadata")
+	}
+}
+
+func TestRoundTrip_Note(t *testing.T) {
+	// Create a note
+	note := models.NewTask("note-abc", 1, models.TaskTypeNote, "Test Note")
+	note.Description = "This is a test note."
+	note.Section = "Active"
+
+	tasks := []*models.Task{note}
+	content := WriteTasksMarkdown("Test Project", tasks)
+
+	// Parse it back
+	_, parsed, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+
+	if len(parsed) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(parsed))
+	}
+
+	parsedNote := parsed[0]
+	if parsedNote.Type != models.TaskTypeNote {
+		t.Errorf("expected Type 'note', got '%s'", parsedNote.Type)
+	}
+	if parsedNote.ID != "note-abc" {
+		t.Errorf("expected ID 'note-abc', got '%s'", parsedNote.ID)
+	}
+	if parsedNote.Title != "Test Note" {
+		t.Errorf("expected Title 'Test Note', got '%s'", parsedNote.Title)
+	}
+}

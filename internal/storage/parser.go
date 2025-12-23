@@ -15,7 +15,7 @@ import (
 
 var (
 	// Matches headings like "## Epic: Title" or "### Story: Title"
-	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea):\s*(.+)$`)
+	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note):\s*(.+)$`)
 
 	// Matches metadata comments like "<!-- id: uuid, status: todo, priority: 1 -->"
 	metadataRegex = regexp.MustCompile(`^<!--\s*(.+?)\s*-->$`)

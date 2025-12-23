@@ -282,3 +282,55 @@ func TestCanOutdentInvalidHierarchy(t *testing.T) {
 		t.Error("task under story should be able to outdent to root")
 	}
 }
+
+func TestProgressExcludesNotes(t *testing.T) {
+	parent := NewTask("parent", 1, TaskTypeTask, "Parent Task")
+	task1 := NewTask("task1", 2, TaskTypeNote, "Note 1")
+	task2 := NewTask("task2", 3, TaskTypeNote, "Note 2")
+
+	parent.AddChild(task1)
+	parent.AddChild(task2)
+
+	// Parent has only notes, progress should be 0 (no completable children)
+	if parent.GetProgress() != 0 {
+		t.Errorf("expected 0 progress with only notes, got %f", parent.GetProgress())
+	}
+
+	// HasProgressChildren should return false with only notes
+	if parent.HasProgressChildren() {
+		t.Error("parent with only notes should not have progress children")
+	}
+}
+
+func TestProgressExcludesNotesWithMixedChildren(t *testing.T) {
+	parent := NewTask("parent", 1, TaskTypeEpic, "Parent Epic")
+	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	task2 := NewTask("task2", 3, TaskTypeTask, "Task 2")
+	note1 := NewTask("note1", 4, TaskTypeNote, "Note 1")
+
+	parent.AddChild(task1)
+	parent.AddChild(task2)
+	parent.AddChild(note1)
+
+	// HasProgressChildren should return true with mixed children
+	if !parent.HasProgressChildren() {
+		t.Error("parent with tasks and notes should have progress children")
+	}
+
+	// 0% complete (0/2 tasks, note excluded)
+	if parent.GetProgress() != 0 {
+		t.Errorf("expected 0 progress with no complete tasks, got %f", parent.GetProgress())
+	}
+
+	// 50% complete (1/2 tasks)
+	task1.Complete()
+	if parent.GetProgress() != 50 {
+		t.Errorf("expected 50 progress with 1/2 tasks complete, got %f", parent.GetProgress())
+	}
+
+	// 100% complete (2/2 tasks, note doesn't affect it)
+	task2.Complete()
+	if parent.GetProgress() != 100 {
+		t.Errorf("expected 100 progress with 2/2 tasks complete, got %f", parent.GetProgress())
+	}
+}

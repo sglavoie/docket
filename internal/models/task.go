@@ -134,6 +134,11 @@ func (t *Task) IsComplete() bool {
 	return t.Status.IsComplete()
 }
 
+// IsNote returns true if this is a Note type task.
+func (t *Task) IsNote() bool {
+	return t.Type == TaskTypeNote
+}
+
 // Complete marks the task as done and sets the completion time.
 // If the task is in the Backlog section, it is automatically moved out (auto-triage).
 func (t *Task) Complete() {
@@ -230,6 +235,7 @@ func (t *Task) HasTag(tag string) bool {
 // GetProgress returns the completion percentage based on children.
 // For leaf tasks, returns 100 if complete, 0 otherwise.
 // For parent tasks, returns percentage of completed children.
+// Notes are excluded from progress calculation as they are not completable items.
 func (t *Task) GetProgress() float64 {
 	if len(t.Children) == 0 {
 		if t.IsComplete() {
@@ -238,13 +244,21 @@ func (t *Task) GetProgress() float64 {
 		return 0.0
 	}
 
+	total := 0
 	completed := 0
 	for _, child := range t.Children {
+		if child.IsNote() {
+			continue
+		}
+		total++
 		if child.IsComplete() {
 			completed++
 		}
 	}
-	return float64(completed) / float64(len(t.Children)) * 100.0
+	if total == 0 {
+		return 0.0
+	}
+	return float64(completed) / float64(total) * 100.0
 }
 
 // CountChildren returns the total number of descendants.
@@ -266,6 +280,17 @@ func (t *Task) CountCompletedChildren() int {
 		count += child.CountCompletedChildren()
 	}
 	return count
+}
+
+// HasProgressChildren returns true if the task has non-note children.
+// Used to determine whether to display progress indicators.
+func (t *Task) HasProgressChildren() bool {
+	for _, child := range t.Children {
+		if !child.IsNote() {
+			return true
+		}
+	}
+	return false
 }
 
 // CanAddChild returns true if the given task type can be added as a child.

@@ -85,20 +85,31 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	// Children summary
 	if len(task.Children) > 0 {
 		b.WriteString("## Subtasks\n\n")
-		completed := 0
-		for _, child := range task.Children {
-			if child.IsComplete() {
-				completed++
-			}
-		}
-		b.WriteString(fmt.Sprintf("Progress: %d/%d completed (%.0f%%)\n\n",
-			completed, len(task.Children), task.GetProgress()))
 
-		// List children
+		// Progress line (exclude notes)
+		if task.HasProgressChildren() {
+			total := 0
+			completed := 0
+			for _, child := range task.Children {
+				if child.IsNote() {
+					continue
+				}
+				total++
+				if child.IsComplete() {
+					completed++
+				}
+			}
+			b.WriteString(fmt.Sprintf("Progress: %d/%d completed (%.0f%%)\n\n",
+				completed, total, task.GetProgress()))
+		}
+
+		// List all children (including notes)
 		for _, child := range task.Children {
 			checkbox := "[ ]"
 			if child.IsComplete() {
 				checkbox = "[x]"
+			} else if child.IsNote() {
+				checkbox = "[·]"
 			}
 			b.WriteString(fmt.Sprintf("- %s %s #%d: %s\n",
 				checkbox, child.Type.Icon(), child.ShortID, child.Title))

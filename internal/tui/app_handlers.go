@@ -113,6 +113,12 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case CreateNoteMsg:
+		if m.currentProject != nil {
+			m.showView(ViewNoteCreator, NewNoteCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask))
+		}
+		return true, nil
+
 	case EditTaskMsg:
 		if m.currentProject != nil && msg.Task != nil {
 			m.showView(ViewTaskEditor, NewTaskEditorModel(m.currentProject, msg.Task, m.config, m.configManager))
@@ -204,6 +210,20 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.showView(ViewDependencyViewer, NewDependencyViewerModel(msg.Task, msg.Project))
 		}
 		return true, nil
+
+	case OpenParentSelectorMsg:
+		m.showView(ViewParentSelector, NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source))
+		return true, nil
+
+	case CloseParentSelectorMsg:
+		m.popView()
+		return true, nil
+
+	case ParentSelectedMsg:
+		// Pop the parent selector view
+		m.popView()
+		// Forward the message directly to the underlying view (note/task creator)
+		return true, m.delegateToCurrentView(msg)
 
 	case UndoCompletedMsg:
 		m.refreshProjectTree()

@@ -66,6 +66,7 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		models.TaskTypeEpic,
 		models.TaskTypeBug,
 		models.TaskTypeIdea,
+		models.TaskTypeNote,
 	}
 
 	// Get available sections from project
@@ -146,6 +147,24 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case ParentSelectedMsg:
+		// Handle parent selection from modal
+		if msg.Source == ViewTaskCreator {
+			m.parentID = msg.ParentID
+			// Update cursor position to match
+			if msg.ParentID == nil {
+				m.parentCursor = 0
+			} else {
+				for i, p := range m.validParents {
+					if p.ID == *msg.ParentID {
+						m.parentCursor = i + 1
+						break
+					}
+				}
+			}
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -186,6 +205,19 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Submit form
 			return m, m.createTask()
 
+		case "/":
+			// Open parent selector modal when on parent field
+			if m.focusIndex == 2 {
+				return m, func() tea.Msg {
+					return OpenParentSelectorMsg{
+						ValidParents: m.validParents,
+						CurrentID:    m.parentID,
+						AllowNone:    true,
+						Source:       ViewTaskCreator,
+					}
+				}
+			}
+
 		case "left", "h":
 			switch m.focusIndex {
 			case 1: // Type selector
@@ -225,11 +257,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2: // Parent selector
 				if m.parentCursor < len(m.validParents) {
 					m.parentCursor++
-					if m.parentCursor == 0 {
-						m.parentID = nil
-					} else {
-						m.parentID = &m.validParents[m.parentCursor-1].ID
-					}
+					m.parentID = &m.validParents[m.parentCursor-1].ID
 				}
 			case 3: // Priority
 				if m.priority < 5 {
@@ -496,6 +524,7 @@ func (m *TaskCreatorModel) View() string {
 		BoldStyle.Render("Controls") + "\n" +
 			"  Tab/Shift+Tab  Switch field\n" +
 			"  Left/Right     Select option\n" +
+			"  /              Search parents\n" +
 			"  Ctrl+S         Create task\n" +
 			"  Esc            Cancel",
 	)
