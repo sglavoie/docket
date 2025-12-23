@@ -60,9 +60,6 @@ func (m *AppModel) handleEscKey() bool {
 	if m.currentView() == ViewDashboard && m.dashboard != nil && m.dashboard.HasActiveSearch() {
 		return false
 	}
-	if m.currentView() == ViewTaskDetail && m.taskDetail != nil && m.taskDetail.HasActiveSearch() {
-		return false
-	}
 	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 		return false
 	}
@@ -97,10 +94,6 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewProjectTree:
 		if v := m.views.Get(ViewProjectTree); v != nil {
 			m.projectTree = v.(*ProjectTreeModel)
-		}
-	case ViewTaskDetail:
-		if v := m.views.Get(ViewTaskDetail); v != nil {
-			m.taskDetail = v.(*TaskDetailModel)
 		}
 	case ViewHelp:
 		if v := m.views.Get(ViewHelp); v != nil {

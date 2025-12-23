@@ -369,15 +369,10 @@ func TrashEntryExists(slug, dataDir string) bool {
 }
 
 // MoveProjectToTrash moves a project directory to the trash folder.
-// Returns an error if a project with the same slug already exists in trash.
+// Callers should use PurgeFromTrash first if a same-slug entry might exist.
 func MoveProjectToTrash(project *models.Project, dataDir string) error {
 	trashDir := GetTrashDir(dataDir)
 	trashPath := filepath.Join(trashDir, project.Slug)
-
-	// Check if trash entry already exists
-	if TrashEntryExists(project.Slug, dataDir) {
-		return fmt.Errorf("project '%s' already exists in trash; restore or permanently delete it first", project.Slug)
-	}
 
 	// Create trash directory if needed
 	if err := os.MkdirAll(trashDir, 0755); err != nil {
@@ -390,6 +385,16 @@ func MoveProjectToTrash(project *models.Project, dataDir string) error {
 	}
 
 	return nil
+}
+
+// PurgeFromTrash permanently deletes a project from the trash.
+// Returns nil if the project doesn't exist in trash.
+func PurgeFromTrash(slug, dataDir string) error {
+	if !TrashEntryExists(slug, dataDir) {
+		return nil
+	}
+	trashPath := filepath.Join(GetTrashDir(dataDir), slug)
+	return os.RemoveAll(trashPath)
 }
 
 // RestoreProjectFromTrash moves a project directory from trash back to the data directory.

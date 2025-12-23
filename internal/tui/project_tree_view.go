@@ -349,7 +349,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
 		// Navigation
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
-		{Key: "Enter", Description: "View task details", Category: "Navigation"},
+		{Key: "Enter", Description: "View task (glow)", Category: "Navigation"},
 		{Key: "Space/Tab", Description: "Expand/collapse", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
 		{Key: "c", Description: "Collapse all", Category: "Navigation"},
@@ -419,7 +419,6 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
-		{Key: "R", Description: "View with glow", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
 		{Key: "\\", Description: "Jump to task", Category: "Navigation"},
 		{Key: "g", Description: "Go to first", Category: "Navigation"},

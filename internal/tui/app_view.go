@@ -47,8 +47,6 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			status = "Project"
 		}
-	case ViewTaskDetail:
-		status = "Task Details"
 	case ViewProjectCreator:
 		status = "New Project"
 	case ViewProjectEditor:

@@ -10,7 +10,6 @@ import (
 // Messages for navigation
 type (
 	SelectProjectMsg        struct{ Project *models.Project }
-	SelectTaskMsg           struct{ Task *models.Task }
 	BackMsg                 struct{}
 	RefreshMsg              struct{}
 	ErrorMsg                struct{ Err error }

@@ -633,9 +633,10 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 	switch key {
 	case "enter":
 		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
 			m.clearSelection()
 			return true, func() tea.Msg {
-				return SelectTaskMsg{Task: visible[m.cursor].Task}
+				return GlowViewMsg{Task: task}
 			}
 		}
 		return true, nil
@@ -820,15 +821,6 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 	switch key {
 	case "z":
 		return true, m.performUndo()
-
-	case "R":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return GlowViewMsg{Task: task}
-			}
-		}
-		return true, nil
 
 	case "?":
 		return true, func() tea.Msg {

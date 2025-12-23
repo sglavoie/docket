@@ -280,9 +280,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 	return func() tea.Msg {
-		// Check if project already exists in trash
-		if storage.TrashEntryExists(project.Slug, m.config.DataDir) {
-			return ErrorMsg{Err: fmt.Errorf("project '%s' already exists in trash", project.Slug)}
+		// Purge any existing trash entry with same slug
+		if err := storage.PurgeFromTrash(project.Slug, m.config.DataDir); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to purge old trash entry: %w", err)}
 		}
 
 		// Move project directory to trash

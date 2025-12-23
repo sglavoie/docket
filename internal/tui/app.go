@@ -13,7 +13,6 @@ const (
 	ViewDashboard ViewType = iota
 	ViewProjectList
 	ViewProjectTree
-	ViewTaskDetail
 	ViewProjectCreator
 	ViewProjectEditor
 	ViewTaskCreator
@@ -51,7 +50,6 @@ type AppModel struct {
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	dashboard   *DashboardModel
 	projectTree *ProjectTreeModel
-	taskDetail  *TaskDetailModel
 	helpView    *HelpViewModel
 	taskJumper  *TaskJumperModel
 

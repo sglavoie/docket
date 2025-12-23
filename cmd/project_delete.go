@@ -37,9 +37,9 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("project '%s' not found", args[0])
 	}
 
-	// Check if project already exists in trash
-	if storage.TrashEntryExists(project.Slug, cfg.DataDir) {
-		return fmt.Errorf("project '%s' already exists in trash; restore or permanently delete it first", project.Slug)
+	// Purge any existing trash entry with same slug
+	if err := storage.PurgeFromTrash(project.Slug, cfg.DataDir); err != nil {
+		return fmt.Errorf("failed to purge old trash entry: %w", err)
 	}
 
 	// Backup config before making changes

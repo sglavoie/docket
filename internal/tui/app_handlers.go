@@ -105,11 +105,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case SelectTaskMsg:
-		m.taskDetail = NewTaskDetailModel(msg.Task, m.currentProject, m.config, m.configManager)
-		m.showView(ViewTaskDetail, m.taskDetail)
-		return true, nil
-
 	case CreateTaskMsg:
 		if m.currentProject != nil {
 			m.showView(ViewTaskCreator, NewTaskCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask))
@@ -179,9 +174,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case UndoCompletedMsg:
-		if m.currentView() == ViewTaskDetail {
-			m.popView()
-		}
 		m.refreshProjectTree()
 		return true, nil
 	}
@@ -367,8 +359,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
 			m.currentProject = msg.Project
-			m.taskDetail = NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager)
-			m.showView(ViewTaskDetail, m.taskDetail)
+			return true, func() tea.Msg {
+				return GlowViewMsg{Task: msg.Task}
+			}
 		}
 		return true, nil
 

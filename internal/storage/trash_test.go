@@ -70,7 +70,7 @@ func TestMoveProjectToTrash_AlreadyExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
 	projectDir := filepath.Join(dataDir, "my-project")
-	trashDir := filepath.Join(dataDir, ".trash", "my-project")
+	trashPath := filepath.Join(dataDir, ".trash", "my-project")
 
 	// Create project directory
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
@@ -78,7 +78,7 @@ func TestMoveProjectToTrash_AlreadyExists(t *testing.T) {
 	}
 
 	// Create existing trash entry
-	if err := os.MkdirAll(trashDir, 0755); err != nil {
+	if err := os.MkdirAll(trashPath, 0755); err != nil {
 		t.Fatalf("failed to create trash dir: %v", err)
 	}
 
@@ -89,10 +89,94 @@ func TestMoveProjectToTrash_AlreadyExists(t *testing.T) {
 		Path: projectDir,
 	}
 
-	// Move should fail when trash entry already exists
+	// Move should fail when trash entry already exists (callers should purge first)
 	err := MoveProjectToTrash(project, dataDir)
 	if err == nil {
 		t.Error("expected error when trash entry already exists")
+	}
+}
+
+func TestPurgeFromTrash(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "tt-data")
+	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+
+	// Create trash entry with content
+	if err := os.MkdirAll(trashPath, 0755); err != nil {
+		t.Fatalf("failed to create trash dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(trashPath, "tasks.md"), []byte("# Test"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	// Purge should succeed
+	if err := PurgeFromTrash("my-project", dataDir); err != nil {
+		t.Fatalf("PurgeFromTrash failed: %v", err)
+	}
+
+	// Trash entry should no longer exist
+	if TrashEntryExists("my-project", dataDir) {
+		t.Error("trash entry should be removed after purge")
+	}
+}
+
+func TestPurgeFromTrash_NotExists(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "tt-data")
+
+	// Purge non-existent entry should succeed (no-op)
+	if err := PurgeFromTrash("non-existent", dataDir); err != nil {
+		t.Errorf("PurgeFromTrash should not error for non-existent entry: %v", err)
+	}
+}
+
+func TestPurgeAndMoveRoundTrip(t *testing.T) {
+	tmpDir := t.TempDir()
+	dataDir := filepath.Join(tmpDir, "tt-data")
+	projectDir := filepath.Join(dataDir, "my-project")
+	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+
+	// Create old trash entry (simulating a previously deleted project)
+	if err := os.MkdirAll(trashPath, 0755); err != nil {
+		t.Fatalf("failed to create old trash entry: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(trashPath, "tasks.md"), []byte("# Old Project"), 0644); err != nil {
+		t.Fatalf("failed to write old tasks.md: %v", err)
+	}
+
+	// Create new project with same slug
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		t.Fatalf("failed to create project dir: %v", err)
+	}
+	newContent := "# New Project\n"
+	if err := os.WriteFile(filepath.Join(projectDir, "tasks.md"), []byte(newContent), 0644); err != nil {
+		t.Fatalf("failed to write new tasks.md: %v", err)
+	}
+
+	project := &models.Project{
+		ID:   "new-id",
+		Slug: "my-project",
+		Name: "New Project",
+		Path: projectDir,
+	}
+
+	// Purge old trash entry
+	if err := PurgeFromTrash(project.Slug, dataDir); err != nil {
+		t.Fatalf("PurgeFromTrash failed: %v", err)
+	}
+
+	// Move new project to trash
+	if err := MoveProjectToTrash(project, dataDir); err != nil {
+		t.Fatalf("MoveProjectToTrash failed: %v", err)
+	}
+
+	// Verify new content is in trash
+	content, err := os.ReadFile(filepath.Join(trashPath, "tasks.md"))
+	if err != nil {
+		t.Fatalf("failed to read trashed tasks.md: %v", err)
+	}
+	if string(content) != newContent {
+		t.Errorf("expected new content in trash, got: %s", string(content))
 	}
 }
 

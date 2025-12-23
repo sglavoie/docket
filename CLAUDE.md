@@ -61,4 +61,4 @@ Description here.
 
 ### TUI Navigation Model
 
-The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`, selecting a task pushes `ViewTaskDetail`. Pressing q/esc pops views until reaching dashboard where q quits.
+The TUI uses a view stack pattern. Selecting a project pushes `ViewProjectTree`. Pressing Enter on a task opens glow for viewing. Pressing q/esc pops views until reaching dashboard where q quits.
