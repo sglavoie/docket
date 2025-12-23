@@ -95,7 +95,8 @@ func (m *AppModel) renderStatusBar() string {
 		currentView != ViewProjectEditor &&
 		currentView != ViewSettings &&
 		currentView != ViewTaskJumper &&
-		currentView != ViewGlobalSearch
+		currentView != ViewGlobalSearch &&
+		currentView != ViewDependencyViewer
 
 	help := ""
 	if showHelp {

@@ -783,6 +783,15 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			return true, func() tea.Msg {
+				return ShowDependencyViewerMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
+
+	case "ctrl+b":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
 				return ManageDependenciesMsg{Task: task, Project: m.project}
 			}
 		}

@@ -324,7 +324,20 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Dependency indicator
 	if len(task.DependsOn) > 0 {
-		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
+		// Check if all dependencies are completed
+		blockingTasks := m.project.GetBlockingTasks(task)
+		allCompleted := true
+		for _, dep := range blockingTasks {
+			if !dep.IsComplete() {
+				allCompleted = false
+				break
+			}
+		}
+		depStyle := DependencyStyle
+		if allCompleted {
+			depStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+		}
+		indicators += depStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
 	}
 
 	// Reverse dependency indicator (tasks that depend on this task)
@@ -387,7 +400,8 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations"},
 		{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations"},
 		{Key: "*", Description: "Toggle active flag", Category: "Task Operations"},
-		{Key: "B", Description: "Manage dependencies", Category: "Task Operations"},
+		{Key: "B", Description: "View dependencies", Category: "Task Operations"},
+		{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 
 		// Filters

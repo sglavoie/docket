@@ -21,6 +21,7 @@ const (
 	ViewHelp
 	ViewDateInput
 	ViewDependencySelector
+	ViewDependencyViewer
 	ViewFilter
 	ViewTaskJumper
 	ViewProjectPreview

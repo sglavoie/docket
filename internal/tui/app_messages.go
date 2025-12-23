@@ -63,6 +63,18 @@ type (
 		Project *models.Project
 	}
 
+	// Dependency viewer messages
+	ShowDependencyViewerMsg struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+	CloseDependencyViewerMsg    struct{}
+	DependencyViewerSelectMsg   struct{ Task *models.Task }
+	DependencyViewerViewDepsMsg struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+
 	// Undo message
 	UndoCompletedMsg struct {
 		TasksBefore int

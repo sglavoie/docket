@@ -175,6 +175,36 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowDependencyViewerMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewDependencyViewer, NewDependencyViewerModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case CloseDependencyViewerMsg:
+		m.popView()
+		return true, nil
+
+	case DependencyViewerSelectMsg:
+		m.popView()
+		if msg.Task != nil && m.projectTree != nil {
+			// If the task is completed and we're hiding completed tasks,
+			// toggle the filter so the task becomes visible
+			if msg.Task.IsComplete() && !m.projectTree.showCompleted {
+				m.projectTree.showCompleted = true
+			}
+			m.projectTree.NavigateToTask(msg.Task)
+		}
+		return true, nil
+
+	case DependencyViewerViewDepsMsg:
+		// Replace current view with new dependency viewer for selected task
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewDependencyViewer, NewDependencyViewerModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
 	case UndoCompletedMsg:
 		m.refreshProjectTree()
 		return true, nil
