@@ -96,6 +96,12 @@ func (m *DependencySelectorModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+// SetSize updates the view dimensions.
+func (m *DependencySelectorModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
+
 func (m *DependencySelectorModel) filterCandidates(query string) {
 	if query == "" {
 		m.filtered = m.candidates

@@ -45,30 +45,15 @@ type AppModel struct {
 	width     int
 	height    int
 
-	// View models
-	dashboard             *DashboardModel
-	projectList           *ProjectListModel
-	projectTree           *ProjectTreeModel
-	taskDetail            *TaskDetailModel
-	projectCreator        *ProjectCreatorModel
-	projectEditor         *ProjectEditorModel
-	taskCreator           *TaskCreatorModel
-	taskEditor            *TaskEditorModel
-	settings              *SettingsModel
-	helpView              *HelpViewModel
-	dateInput             *DateInputModel
-	dependencySelector    *DependencySelectorModel
-	filterView            *FilterViewModel
-	taskJumper            *TaskJumperModel
-	projectPreview        *ProjectPreviewModel
-	dueDateOverview       *DueDateOverviewModel
-	tagManager            *TagManagerModel
-	globalTagManager      *GlobalTagManagerModel
-	tagFilterSelector     *TagFilterSelectorModel
-	sectionFilterSelector *SectionFilterSelectorModel
-	sectionPicker         *SectionPickerModel
-	sectionManager        *SectionManagerModel
-	contextPicker         *ContextPickerModel
+	// View registry for centralized view management
+	views *ViewRegistry
+
+	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
+	dashboard   *DashboardModel
+	projectTree *ProjectTreeModel
+	taskDetail  *TaskDetailModel
+	helpView    *HelpViewModel
+	taskJumper  *TaskJumperModel
 
 	// Current project context
 	currentProject *models.Project
@@ -87,10 +72,12 @@ func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
 		viewStack:     []ViewType{ViewDashboard},
 		width:         80,
 		height:        24,
+		views:         NewViewRegistry(),
 	}
 
-	// Initialize dashboard
+	// Initialize dashboard and register it
 	app.dashboard = NewDashboardModel(cfg)
+	app.views.Register(ViewDashboard, app.dashboard)
 
 	// Load current project if set
 	if current := cfg.GetCurrentProject(); current != nil {
@@ -143,10 +130,12 @@ func (m *AppModel) refreshProjectTree() {
 	}
 	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
+	m.views.Register(ViewProjectTree, m.projectTree)
 }
 
 // refreshProjectTreeWith recreates the project tree view with the given project.
 func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
+	m.views.Register(ViewProjectTree, m.projectTree)
 }
