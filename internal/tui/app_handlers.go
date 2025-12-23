@@ -21,16 +21,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.config.ApplyGlobalColorsToProject(msg.Project)
 		m.configManager.Save(m.config)
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
-		m.projectTree.SetSize(m.width, m.height-2)
-		m.views.Register(ViewProjectTree, m.projectTree)
-		m.pushView(ViewProjectTree)
+		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil
 
 	case CreateProjectMsg:
-		projectCreator := NewProjectCreatorModel(m.config, m.configManager)
-		projectCreator.SetSize(m.width, m.height-2)
-		m.views.Register(ViewProjectCreator, projectCreator)
-		m.pushView(ViewProjectCreator)
+		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.config, m.configManager))
 		return true, nil
 
 	case ProjectCreatedMsg:
@@ -80,10 +75,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case EditProjectMsg:
 		if msg.Project != nil {
-			projectEditor := NewProjectEditorModel(msg.Project, m.config, m.configManager)
-			projectEditor.SetSize(m.width, m.height-2)
-			m.views.Register(ViewProjectEditor, projectEditor)
-			m.pushView(ViewProjectEditor)
+			m.showView(ViewProjectEditor, NewProjectEditorModel(msg.Project, m.config, m.configManager))
 		}
 		return true, nil
 
@@ -103,26 +95,18 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SelectTaskMsg:
 		m.taskDetail = NewTaskDetailModel(msg.Task, m.currentProject, m.config, m.configManager)
-		m.taskDetail.SetSize(m.width, m.height-2)
-		m.views.Register(ViewTaskDetail, m.taskDetail)
-		m.pushView(ViewTaskDetail)
+		m.showView(ViewTaskDetail, m.taskDetail)
 		return true, nil
 
 	case CreateTaskMsg:
 		if m.currentProject != nil {
-			taskCreator := NewTaskCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask)
-			taskCreator.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskCreator, taskCreator)
-			m.pushView(ViewTaskCreator)
+			m.showView(ViewTaskCreator, NewTaskCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask))
 		}
 		return true, nil
 
 	case EditTaskMsg:
 		if m.currentProject != nil && msg.Task != nil {
-			taskEditor := NewTaskEditorModel(m.currentProject, msg.Task, m.config, m.configManager)
-			taskEditor.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskEditor, taskEditor)
-			m.pushView(ViewTaskEditor)
+			m.showView(ViewTaskEditor, NewTaskEditorModel(m.currentProject, msg.Task, m.config, m.configManager))
 		}
 		return true, nil
 
@@ -147,10 +131,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case SetDueDateMsg:
 		if msg.Task != nil && msg.Project != nil {
-			dateInput := NewDateInputModel(msg.Task, msg.Project)
-			dateInput.SetSize(m.width, m.height-2)
-			m.views.Register(ViewDateInput, dateInput)
-			m.pushView(ViewDateInput)
+			m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project))
 		}
 		return true, nil
 
@@ -161,10 +142,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ManageDependenciesMsg:
 		if msg.Task != nil && msg.Project != nil {
-			dependencySelector := NewDependencySelectorModel(msg.Task, msg.Project)
-			dependencySelector.SetSize(m.width, m.height-2)
-			m.views.Register(ViewDependencySelector, dependencySelector)
-			m.pushView(ViewDependencySelector)
+			m.showView(ViewDependencySelector, NewDependencySelectorModel(msg.Task, msg.Project))
 		}
 		return true, nil
 
@@ -307,10 +285,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case SettingsMsg:
-		settings := NewSettingsModel(m.config, m.configManager)
-		settings.SetSize(m.width, m.height-2)
-		m.views.Register(ViewSettings, settings)
-		m.pushView(ViewSettings)
+		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 		return true, nil
 
 	case SettingsSavedMsg:
@@ -322,9 +297,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
-		m.helpView.SetSize(m.width, m.height-2)
-		m.views.Register(ViewHelp, m.helpView)
-		m.pushView(ViewHelp)
+		m.showView(ViewHelp, m.helpView)
 		return true, nil
 
 	case CloseHelpMsg:
@@ -333,10 +306,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowFilterMsg:
 		if msg.ProjectTree != nil {
-			filterView := NewFilterViewModel(msg.ProjectTree)
-			filterView.SetSize(m.width, m.height-2)
-			m.views.Register(ViewFilter, filterView)
-			m.pushView(ViewFilter)
+			m.showView(ViewFilter, NewFilterViewModel(msg.ProjectTree))
 		}
 		return true, nil
 
@@ -347,9 +317,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowTaskJumperMsg:
 		if msg.Project != nil {
 			m.taskJumper = NewTaskJumperModel(msg.Project)
-			m.taskJumper.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskJumper, m.taskJumper)
-			m.pushView(ViewTaskJumper)
+			m.showView(ViewTaskJumper, m.taskJumper)
 			return true, m.taskJumper.Init()
 		}
 		return true, nil
@@ -367,10 +335,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowProjectPreviewMsg:
 		if msg.Project != nil {
-			projectPreview := NewProjectPreviewModel(msg.Project)
-			projectPreview.SetSize(m.width, m.height-2)
-			m.views.Register(ViewProjectPreview, projectPreview)
-			m.pushView(ViewProjectPreview)
+			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project))
 		}
 		return true, nil
 
@@ -379,10 +344,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowDueDateOverviewMsg:
-		dueDateOverview := NewDueDateOverviewModel(m.config)
-		dueDateOverview.SetSize(m.width, m.height-2)
-		m.views.Register(ViewDueDateOverview, dueDateOverview)
-		m.pushView(ViewDueDateOverview)
+		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config))
 		return true, nil
 
 	case CloseDueDateOverviewMsg:
@@ -394,9 +356,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task != nil && msg.Project != nil {
 			m.currentProject = msg.Project
 			m.taskDetail = NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager)
-			m.taskDetail.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskDetail, m.taskDetail)
-			m.pushView(ViewTaskDetail)
+			m.showView(ViewTaskDetail, m.taskDetail)
 		}
 		return true, nil
 
@@ -405,10 +365,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowContextPickerMsg:
 		if msg.Dashboard != nil {
-			contextPicker := NewContextPickerModel(msg.Dashboard)
-			contextPicker.SetSize(m.width, m.height-2)
-			m.views.Register(ViewContextPicker, contextPicker)
-			m.pushView(ViewContextPicker)
+			m.showView(ViewContextPicker, NewContextPickerModel(msg.Dashboard))
 		}
 		return true, nil
 
@@ -471,10 +428,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowTagManagerMsg:
 		if msg.ProjectTree != nil {
-			tagManager := NewTagManagerModel(msg.ProjectTree)
-			tagManager.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTagManager, tagManager)
-			m.pushView(ViewTagManager)
+			m.showView(ViewTagManager, NewTagManagerModel(msg.ProjectTree))
 		}
 		return true, nil
 
@@ -484,10 +438,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTagFilterSelectorMsg:
 		if msg.ProjectTree != nil {
-			tagFilterSelector := NewTagFilterSelectorModel(msg.ProjectTree)
-			tagFilterSelector.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTagFilterSelector, tagFilterSelector)
-			m.pushView(ViewTagFilterSelector)
+			m.showView(ViewTagFilterSelector, NewTagFilterSelectorModel(msg.ProjectTree))
 		}
 		return true, nil
 
@@ -509,10 +460,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowGlobalTagManagerMsg:
-		globalTagManager := NewGlobalTagManagerModel(m.config)
-		globalTagManager.SetSize(m.width, m.height-2)
-		m.views.Register(ViewGlobalTagManager, globalTagManager)
-		m.pushView(ViewGlobalTagManager)
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config))
 		return true, nil
 
 	case CloseGlobalTagManagerMsg:
@@ -534,9 +482,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
 		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
-		m.projectTree.SetSize(m.width, m.height-2)
-		m.views.Register(ViewProjectTree, m.projectTree)
-		m.pushView(ViewProjectTree)
+		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil
 	}
 	return false, nil
@@ -548,10 +494,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowSectionFilterSelectorMsg:
 		if msg.ProjectTree != nil {
-			sectionFilterSelector := NewSectionFilterSelectorModel(msg.ProjectTree)
-			sectionFilterSelector.SetSize(m.width, m.height-2)
-			m.views.Register(ViewSectionFilterSelector, sectionFilterSelector)
-			m.pushView(ViewSectionFilterSelector)
+			m.showView(ViewSectionFilterSelector, NewSectionFilterSelectorModel(msg.ProjectTree))
 		}
 		return true, nil
 
@@ -569,10 +512,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowSectionPickerMsg:
 		if msg.Task != nil && msg.Project != nil {
-			sectionPicker := NewSectionPickerModel(msg.Task, msg.Project)
-			sectionPicker.SetSize(m.width, m.height-2)
-			m.views.Register(ViewSectionPicker, sectionPicker)
-			m.pushView(ViewSectionPicker)
+			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Task, msg.Project))
 		}
 		return true, nil
 
@@ -608,10 +548,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowSectionManagerMsg:
 		if msg.ProjectTree != nil {
-			sectionManager := NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager)
-			sectionManager.SetSize(m.width, m.height-2)
-			m.views.Register(ViewSectionManager, sectionManager)
-			m.pushView(ViewSectionManager)
+			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager))
 		}
 		return true, nil
 

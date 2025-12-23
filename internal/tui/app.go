@@ -139,3 +139,11 @@ func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
 }
+
+// showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
+// This consolidates the common pattern used by Show*Msg handlers.
+func (m *AppModel) showView(viewType ViewType, view View) {
+	view.SetSize(m.width, m.height-2)
+	m.views.Register(viewType, view)
+	m.pushView(viewType)
+}
