@@ -391,14 +391,17 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 	case "right":
-		if CursorInBounds(m.cursor, len(visible)) {
+		if CursorInBounds(m.cursor, len(visible)) && m.cursor > 0 {
 			task := visible[m.cursor].Task
-			targetParent := m.project.GetTaskAbove(task)
-			if targetParent != nil {
-				if ok, _ := task.CanIndent(targetParent); ok {
-					m.project.IndentTask(task)
+			// Walk up from the visually-above task to find a valid parent
+			candidate := visible[m.cursor-1].Task
+			for candidate != nil {
+				if ok, _ := task.CanIndent(candidate); ok {
+					task.ParentID = &candidate.ID
+					m.project.BuildTaskTree()
 					return true, m.saveAndRefresh()
 				}
+				candidate = candidate.Parent
 			}
 		}
 		return true, nil

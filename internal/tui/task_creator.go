@@ -93,9 +93,17 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		height:        24,
 	}
 
-	// Set initial parent if suggested and valid
-	if suggestedParent != nil && suggestedParent.CanAddChild(m.taskType) {
-		m.parentID = &suggestedParent.ID
+	// Set initial parent by finding nearest valid ancestor
+	if suggestedParent != nil {
+		// Walk up the parent chain to find a task that can accept this child type
+		candidate := suggestedParent
+		for candidate != nil {
+			if candidate.CanAddChild(m.taskType) {
+				m.parentID = &candidate.ID
+				break
+			}
+			candidate = candidate.Parent
+		}
 	}
 
 	m.updateValidParents()

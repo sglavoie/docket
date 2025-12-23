@@ -11,6 +11,12 @@ import (
 )
 
 func (m *ProjectTreeModel) buildTree() {
+	// Preserve expanded state before rebuilding
+	expandedState := make(map[string]bool)
+	for _, node := range m.nodes {
+		expandedState[node.Task.ID] = node.Expanded
+	}
+
 	m.nodes = []*TreeNode{}
 
 	// Get root tasks
@@ -18,14 +24,21 @@ func (m *ProjectTreeModel) buildTree() {
 
 	// Build nodes recursively
 	for _, task := range rootTasks {
-		m.addTaskNode(task, 0, true)
+		m.addTaskNode(task, 0, expandedState)
 	}
 
 	m.sortNodes()
 	m.updateVisibility()
 }
 
-func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expanded bool) {
+func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expandedState map[string]bool) {
+	// Use preserved state if available, otherwise default to expanded
+	// This ensures newly-parented tasks (that just gained children) show their children
+	expanded, hasState := expandedState[task.ID]
+	if !hasState {
+		expanded = true
+	}
+
 	node := &TreeNode{
 		Task:     task,
 		Level:    level,
@@ -36,7 +49,7 @@ func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expanded bo
 
 	// Add children
 	for _, child := range task.Children {
-		m.addTaskNode(child, level+1, false)
+		m.addTaskNode(child, level+1, expandedState)
 	}
 }
 

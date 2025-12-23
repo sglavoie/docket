@@ -61,9 +61,17 @@ func NewNoteCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		height:        24,
 	}
 
-	// Set initial parent if suggested and valid
-	if suggestedParent != nil && suggestedParent.CanAddChild(models.TaskTypeNote) {
-		m.parentID = &suggestedParent.ID
+	// Set initial parent by finding nearest valid ancestor
+	if suggestedParent != nil {
+		// Walk up the parent chain to find a task that can accept notes
+		candidate := suggestedParent
+		for candidate != nil {
+			if candidate.CanAddChild(models.TaskTypeNote) {
+				m.parentID = &candidate.ID
+				break
+			}
+			candidate = candidate.Parent
+		}
 	}
 
 	m.updateValidParents()
