@@ -13,12 +13,9 @@ import (
 
 // SectionPickerModel allows selecting a single section to assign to a task.
 type SectionPickerModel struct {
-	BaseSearchableView
-	task     *models.Task
-	project  *models.Project
-	sections []SectionInfo
-	filtered []SectionInfo
-	cursor   int
+	*BasePicker[SectionInfo]
+	task    *models.Task
+	project *models.Project
 }
 
 // ShowSectionPickerMsg is sent to open the section picker for assignment.
@@ -37,38 +34,39 @@ type SectionPickerDoneMsg struct {
 
 // NewSectionPickerModel creates a new section picker for task assignment.
 func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionPickerModel {
-	m := &SectionPickerModel{
-		task:    task,
-		project: project,
-		cursor:  0,
-	}
-	m.InitSearchInput("Type to filter...", 50, 30)
-	m.buildSectionList()
+	sections := buildSectionPickerList(project)
+
+	picker := NewBasePicker(sections, PickerConfig{
+		Title:          "Assign Section",
+		EmptyMessage:   "No sections in project",
+		NoMatchMessage: "No matching sections",
+		MultiSelect:    false,
+		ShowCounts:     true,
+	})
 
 	// Pre-select current section
-	for i, s := range m.filtered {
-		if s.Name == task.Section {
-			m.cursor = i
-			break
-		}
-	}
+	picker.SetCursorToID(task.Section)
 
-	return m
+	return &SectionPickerModel{
+		BasePicker: picker,
+		task:       task,
+		project:    project,
+	}
 }
 
-// buildSectionList builds a sorted list of sections with counts.
-func (m *SectionPickerModel) buildSectionList() {
+// buildSectionPickerList builds a sorted list of sections with counts for assignment.
+func buildSectionPickerList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
 	// Count tasks per section
-	for _, task := range m.project.Tasks {
+	for _, task := range project.Tasks {
 		if task.Section != "" {
 			sectionCounts[task.Section]++
 		}
 	}
 
 	// Include all project-defined sections, even if empty
-	for _, section := range m.project.GetSections() {
+	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {
 			sectionCounts[section] = 0
 		}
@@ -76,58 +74,35 @@ func (m *SectionPickerModel) buildSectionList() {
 
 	// Add special "No Section" option
 	sectionCounts[""] = 0
-	for _, task := range m.project.Tasks {
+	for _, task := range project.Tasks {
 		if task.Section == "" {
 			sectionCounts[""]++
 		}
 	}
 
-	m.sections = make([]SectionInfo, 0, len(sectionCounts))
+	sections := make([]SectionInfo, 0, len(sectionCounts))
 	for name, count := range sectionCounts {
-		m.sections = append(m.sections, SectionInfo{Name: name, TaskCount: count})
+		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
 	}
 
 	// Sort: Backlog first, then alphabetically, with empty last
-	sort.Slice(m.sections, func(i, j int) bool {
-		if m.sections[i].Name == "" {
+	sort.Slice(sections, func(i, j int) bool {
+		if sections[i].Name == "" {
 			return false
 		}
-		if m.sections[j].Name == "" {
+		if sections[j].Name == "" {
 			return true
 		}
-		if m.sections[i].Name == models.SectionBacklog {
+		if sections[i].Name == models.SectionBacklog {
 			return true
 		}
-		if m.sections[j].Name == models.SectionBacklog {
+		if sections[j].Name == models.SectionBacklog {
 			return false
 		}
-		return m.sections[i].Name < m.sections[j].Name
+		return sections[i].Name < sections[j].Name
 	})
 
-	m.filtered = m.sections
-}
-
-// filterSectionList filters the section list by search query.
-func (m *SectionPickerModel) filterSectionList(query string) {
-	if query == "" {
-		m.filtered = m.sections
-	} else {
-		var filtered []SectionInfo
-		queryLower := strings.ToLower(query)
-		for _, section := range m.sections {
-			name := section.Name
-			if name == "" {
-				name = "(no section)"
-			}
-			if strings.Contains(strings.ToLower(name), queryLower) {
-				filtered = append(filtered, section)
-			}
-		}
-		m.filtered = filtered
-	}
-	if m.cursor >= len(m.filtered) {
-		m.cursor = 0
-	}
+	return sections
 }
 
 // Init initializes the model.
@@ -143,17 +118,6 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.IsSearchMode() {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.filterSectionList(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
-		}
-
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
@@ -165,9 +129,8 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			// Select the current section
-			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				section := m.filtered[m.cursor].Name
+			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
+				section := m.Filtered[m.Cursor].Name
 				return m, func() tea.Msg {
 					return SectionPickerDoneMsg{
 						Task:      m.task,
@@ -185,16 +148,11 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "j", "down":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
-			return m, nil
-
-		case "k", "up":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
-			return m, nil
-
-		case "/":
-			return m, m.ActivateSearch()
+		default:
+			handled, cmd := m.HandleKeyMsg(msg)
+			if handled {
+				return m, cmd
+			}
 		}
 	}
 
@@ -203,28 +161,22 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the section picker.
 func (m *SectionPickerModel) View() string {
-	// Calculate box width
 	boxWidth := 50
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
 	}
 
-	// Build content
 	var content strings.Builder
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Assign Section"))
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	content.WriteString(titleStyle.Render(m.Config.Title))
 	content.WriteString("\n")
 	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))))
 	content.WriteString("\n\n")
 
-	if m.IsSearchMode() {
-		content.WriteString("Filter: ")
-		content.WriteString(m.SearchInputView())
-		content.WriteString("\n\n")
-	}
+	// Search bar
+	content.WriteString(m.RenderSearchBar())
 
 	// Current section
 	currentSection := m.task.Section
@@ -234,75 +186,16 @@ func (m *SectionPickerModel) View() string {
 	content.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentSection)))
 	content.WriteString("\n\n")
 
-	if len(m.filtered) == 0 {
-		if len(m.sections) == 0 {
-			content.WriteString(MutedStyle.Render("No sections in project"))
-		} else {
-			content.WriteString(MutedStyle.Render("No matching sections"))
-		}
-		content.WriteString("\n")
-	} else {
-		// Show list
-		maxVisible := 12
-		if m.Height() > 0 {
-			maxVisible = m.Height() - 16
-		}
-		if maxVisible < 5 {
-			maxVisible = 5
-		}
-
-		start := 0
-		if m.cursor >= maxVisible {
-			start = m.cursor - maxVisible + 1
-		}
-		end := start + maxVisible
-		if end > len(m.filtered) {
-			end = len(m.filtered)
-		}
-
-		for i := start; i < end; i++ {
-			section := m.filtered[i]
-
-			// Display name
-			displayName := section.Name
-			if displayName == "" {
-				displayName = "(no section)"
-			}
-
-			// Cursor indicator
-			cursor := "  "
-			if i == m.cursor {
-				cursor = "> "
-			}
-
-			// Build line
-			line := fmt.Sprintf("%s%s ", cursor, displayName)
-			countStr := fmt.Sprintf("(%d)", section.TaskCount)
-
-			if i == m.cursor {
-				content.WriteString(TagManagerItemSelectedStyle.Render(line))
-			} else {
-				content.WriteString(TagManagerItemStyle.Render(line))
-			}
-			content.WriteString(TagManagerCountStyle.Render(countStr))
-			content.WriteString("\n")
-		}
-
-		if len(m.filtered) > maxVisible {
-			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.filtered)-maxVisible)))
-			content.WriteString("\n")
-		}
+	// List
+	maxVisible := 12
+	if m.Height() > 0 {
+		maxVisible = m.Height() - 16
 	}
+	content.WriteString(m.RenderList(maxVisible))
 
-	// Footer hint
+	// Footer
 	content.WriteString("\n")
-	if m.IsSearchMode() {
-		content.WriteString(MutedStyle.Render("enter done | esc clear"))
-	} else if len(m.filtered) > 0 {
-		content.WriteString(MutedStyle.Render("enter select | / search | esc cancel"))
-	} else {
-		content.WriteString(MutedStyle.Render("esc cancel"))
-	}
+	content.WriteString(m.RenderFooter())
 
 	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }

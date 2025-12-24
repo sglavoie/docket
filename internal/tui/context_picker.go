@@ -17,11 +17,8 @@ type ContextInfo struct {
 
 // ContextPickerModel allows selecting a single context to filter by.
 type ContextPickerModel struct {
-	BaseSearchableView
+	*BasePicker[ContextInfo]
 	dashboard *DashboardModel
-	contexts  []ContextInfo // All contexts (first entry is "All Contexts")
-	filtered  []ContextInfo
-	cursor    int
 }
 
 // ShowContextPickerMsg is sent to open the context picker.
@@ -37,42 +34,43 @@ type ContextPickerDoneMsg struct {
 
 // NewContextPickerModel creates a new context picker.
 func NewContextPickerModel(dashboard *DashboardModel) *ContextPickerModel {
-	m := &ContextPickerModel{
-		dashboard: dashboard,
-		cursor:    0,
-	}
-	m.InitSearchInput("Type to filter...", 50, 30)
-	m.buildContextList()
+	contexts := buildContextList(dashboard)
+
+	picker := NewBasePicker(contexts, PickerConfig{
+		Title:          "Filter by Context",
+		EmptyMessage:   "No contexts available",
+		NoMatchMessage: "No matching contexts",
+		MultiSelect:    false,
+		ShowCounts:     true,
+	})
 
 	// Position cursor on currently filtered context
 	if dashboard.filterContext != "" {
-		for i, ctx := range m.contexts {
-			if ctx.Name == dashboard.filterContext {
-				m.cursor = i
-				break
-			}
-		}
+		picker.SetCursorToID(dashboard.filterContext)
 	}
 
-	return m
+	return &ContextPickerModel{
+		BasePicker: picker,
+		dashboard:  dashboard,
+	}
 }
 
 // buildContextList gathers unique contexts from projects with counts.
-func (m *ContextPickerModel) buildContextList() {
+func buildContextList(dashboard *DashboardModel) []ContextInfo {
 	contextCounts := make(map[string]int)
-	for _, p := range m.dashboard.projects {
+	for _, p := range dashboard.projects {
 		if p.Context != "" {
 			contextCounts[p.Context]++
 		}
 	}
 
 	// Build sorted list
-	m.contexts = make([]ContextInfo, 0, len(contextCounts)+1)
+	contexts := make([]ContextInfo, 0, len(contextCounts)+1)
 
 	// Add "All Contexts" option first (empty string value)
-	m.contexts = append(m.contexts, ContextInfo{
+	contexts = append(contexts, ContextInfo{
 		Name:         "",
-		ProjectCount: len(m.dashboard.projects),
+		ProjectCount: len(dashboard.projects),
 	})
 
 	// Add actual contexts sorted alphabetically
@@ -83,37 +81,13 @@ func (m *ContextPickerModel) buildContextList() {
 	sort.Strings(names)
 
 	for _, name := range names {
-		m.contexts = append(m.contexts, ContextInfo{
+		contexts = append(contexts, ContextInfo{
 			Name:         name,
 			ProjectCount: contextCounts[name],
 		})
 	}
 
-	m.filtered = m.contexts
-}
-
-// filterContextList filters contexts by search query.
-func (m *ContextPickerModel) filterContextList(query string) {
-	if query == "" {
-		m.filtered = m.contexts
-	} else {
-		var filtered []ContextInfo
-		queryLower := strings.ToLower(query)
-		for _, ctx := range m.contexts {
-			// Always include "All Contexts" option, or match by name
-			displayName := ctx.Name
-			if displayName == "" {
-				displayName = "all contexts"
-			}
-			if strings.Contains(strings.ToLower(displayName), queryLower) {
-				filtered = append(filtered, ctx)
-			}
-		}
-		m.filtered = filtered
-	}
-	if m.cursor >= len(m.filtered) {
-		m.cursor = 0
-	}
+	return contexts
 }
 
 // Init initializes the model.
@@ -129,17 +103,6 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.IsSearchMode() {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.filterContextList(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
-		}
-
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
@@ -147,9 +110,8 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			// Select and close
-			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				selected := m.filtered[m.cursor]
+			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
+				selected := m.Filtered[m.Cursor]
 				return m, func() tea.Msg {
 					return ContextPickerDoneMsg{
 						SelectedContext: selected.Name,
@@ -159,16 +121,11 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case "j", "down":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
-			return m, nil
-
-		case "k", "up":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
-			return m, nil
-
-		case "/":
-			return m, m.ActivateSearch()
+		default:
+			handled, cmd := m.HandleKeyMsg(msg)
+			if handled {
+				return m, cmd
+			}
 		}
 	}
 
@@ -177,40 +134,44 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the context picker.
 func (m *ContextPickerModel) View() string {
-	// Calculate box width
 	boxWidth := 50
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
 	}
 
-	// Build content
+	// Current filter indicator
+	var headerContent string
+	if m.dashboard.filterContext != "" {
+		headerContent = MutedStyle.Render(fmt.Sprintf("Current: %s", m.dashboard.filterContext))
+	} else {
+		headerContent = MutedStyle.Render("Current: All Contexts")
+	}
+
+	// Custom render since context picker has special highlighting for active filter
+	return m.renderContextPicker(boxWidth, headerContent)
+}
+
+// renderContextPicker renders the context picker with custom active highlighting.
+func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent string) string {
 	var content strings.Builder
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Filter by Context"))
+	// Title
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
+	content.WriteString(titleStyle.Render(m.Config.Title))
 	content.WriteString("\n\n")
 
-	if m.IsSearchMode() {
-		content.WriteString("Filter: ")
-		content.WriteString(m.SearchInputView())
-		content.WriteString("\n\n")
-	}
+	// Search bar
+	content.WriteString(m.RenderSearchBar())
 
-	// Current filter indicator
-	if m.dashboard.filterContext != "" {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", m.dashboard.filterContext)))
-	} else {
-		content.WriteString(MutedStyle.Render("Current: All Contexts"))
-	}
+	// Header
+	content.WriteString(headerContent)
 	content.WriteString("\n\n")
 
-	if len(m.filtered) == 0 {
-		content.WriteString(MutedStyle.Render("No matching contexts"))
+	// List
+	if len(m.Filtered) == 0 {
+		content.WriteString(MutedStyle.Render(m.Config.NoMatchMessage))
 		content.WriteString("\n")
 	} else {
-		// Show list
 		maxVisible := 15
 		if m.Height() > 0 {
 			maxVisible = m.Height() - 14
@@ -220,28 +181,25 @@ func (m *ContextPickerModel) View() string {
 		}
 
 		start := 0
-		if m.cursor >= maxVisible {
-			start = m.cursor - maxVisible + 1
+		if m.Cursor >= maxVisible {
+			start = m.Cursor - maxVisible + 1
 		}
 		end := start + maxVisible
-		if end > len(m.filtered) {
-			end = len(m.filtered)
+		if end > len(m.Filtered) {
+			end = len(m.Filtered)
 		}
 
 		for i := start; i < end; i++ {
-			ctx := m.filtered[i]
+			ctx := m.Filtered[i]
 
 			// Cursor indicator
 			cursor := "  "
-			if i == m.cursor {
+			if i == m.Cursor {
 				cursor = "> "
 			}
 
 			// Display name
-			displayName := ctx.Name
-			if displayName == "" {
-				displayName = "All Contexts"
-			}
+			displayName := ctx.DisplayText()
 
 			// Check if this is the currently active filter
 			isActive := ctx.Name == m.dashboard.filterContext
@@ -250,7 +208,7 @@ func (m *ContextPickerModel) View() string {
 			line := fmt.Sprintf("%s%s ", cursor, displayName)
 			countStr := fmt.Sprintf("(%d)", ctx.ProjectCount)
 
-			if i == m.cursor {
+			if i == m.Cursor {
 				content.WriteString(TagManagerItemSelectedStyle.Render(line))
 			} else if isActive {
 				content.WriteString(lipgloss.NewStyle().Foreground(ColorPrimary).Render(line))
@@ -261,21 +219,15 @@ func (m *ContextPickerModel) View() string {
 			content.WriteString("\n")
 		}
 
-		if len(m.filtered) > maxVisible {
-			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.filtered)-maxVisible)))
+		if len(m.Filtered) > maxVisible {
+			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.Filtered)-maxVisible)))
 			content.WriteString("\n")
 		}
 	}
 
-	// Footer hint
+	// Footer
 	content.WriteString("\n")
-	if m.IsSearchMode() {
-		content.WriteString(MutedStyle.Render("enter done | esc clear"))
-	} else if len(m.filtered) > 0 {
-		content.WriteString(MutedStyle.Render("/ search | enter select | esc cancel"))
-	} else {
-		content.WriteString(MutedStyle.Render("esc cancel"))
-	}
+	content.WriteString(m.RenderFooter())
 
 	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }

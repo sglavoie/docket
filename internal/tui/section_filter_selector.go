@@ -3,10 +3,8 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -18,12 +16,8 @@ type SectionInfo struct {
 
 // SectionFilterSelectorModel allows selecting multiple sections to filter by.
 type SectionFilterSelectorModel struct {
-	BaseSearchableView
+	*BasePicker[SectionInfo]
 	projectTree *ProjectTreeModel
-	sections    []SectionInfo
-	filtered    []SectionInfo
-	selected    map[string]bool
-	cursor      int
 }
 
 // ShowSectionFilterSelectorMsg is sent to open the section filter selector.
@@ -39,35 +33,40 @@ type SectionFilterSelectorDoneMsg struct {
 
 // NewSectionFilterSelectorModel creates a new section filter selector.
 func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorModel {
-	m := &SectionFilterSelectorModel{
-		projectTree: pt,
-		selected:    make(map[string]bool),
-		cursor:      0,
-	}
-	m.InitSearchInput("Type to filter...", 50, 30)
-	m.buildSectionList()
+	sections := buildSectionList(pt.project)
+
+	picker := NewBasePicker(sections, PickerConfig{
+		Title:          "Filter by Sections",
+		EmptyMessage:   "No sections in project",
+		NoMatchMessage: "No matching sections",
+		MultiSelect:    true,
+		ShowCounts:     true,
+	})
 
 	// Pre-select currently filtered sections
 	for section := range pt.filterSections {
-		m.selected[section] = true
+		picker.PreSelectByID(section)
 	}
 
-	return m
+	return &SectionFilterSelectorModel{
+		BasePicker:  picker,
+		projectTree: pt,
+	}
 }
 
 // buildSectionList scans all tasks and builds a sorted list of sections with counts.
-func (m *SectionFilterSelectorModel) buildSectionList() {
+func buildSectionList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
 	// Count tasks per section
-	for _, task := range m.projectTree.project.Tasks {
+	for _, task := range project.Tasks {
 		if task.Section != "" {
 			sectionCounts[task.Section]++
 		}
 	}
 
 	// Include all project-defined sections, even if empty
-	for _, section := range m.projectTree.project.GetSections() {
+	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {
 			// Skip empty Backlog
 			if section == models.SectionBacklog {
@@ -77,42 +76,23 @@ func (m *SectionFilterSelectorModel) buildSectionList() {
 		}
 	}
 
-	m.sections = make([]SectionInfo, 0, len(sectionCounts))
+	sections := make([]SectionInfo, 0, len(sectionCounts))
 	for name, count := range sectionCounts {
-		m.sections = append(m.sections, SectionInfo{Name: name, TaskCount: count})
+		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
 	}
 
 	// Sort: Backlog first (if present), then alphabetically
-	sort.Slice(m.sections, func(i, j int) bool {
-		if m.sections[i].Name == models.SectionBacklog {
+	sort.Slice(sections, func(i, j int) bool {
+		if sections[i].Name == models.SectionBacklog {
 			return true
 		}
-		if m.sections[j].Name == models.SectionBacklog {
+		if sections[j].Name == models.SectionBacklog {
 			return false
 		}
-		return m.sections[i].Name < m.sections[j].Name
+		return sections[i].Name < sections[j].Name
 	})
 
-	m.filtered = m.sections
-}
-
-// filterSectionList filters the section list by search query.
-func (m *SectionFilterSelectorModel) filterSectionList(query string) {
-	if query == "" {
-		m.filtered = m.sections
-	} else {
-		var filtered []SectionInfo
-		queryLower := strings.ToLower(query)
-		for _, section := range m.sections {
-			if strings.Contains(strings.ToLower(section.Name), queryLower) {
-				filtered = append(filtered, section)
-			}
-		}
-		m.filtered = filtered
-	}
-	if m.cursor >= len(m.filtered) {
-		m.cursor = 0
-	}
+	return sections
 }
 
 // Init initializes the model.
@@ -128,17 +108,6 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.IsSearchMode() {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.filterSectionList(m.SearchQuery())
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
-		}
-
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
@@ -146,11 +115,7 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			// Confirm selection
-			var selectedSections []string
-			for section := range m.selected {
-				selectedSections = append(selectedSections, section)
-			}
+			selectedSections := m.SelectedIDs()
 			sort.Strings(selectedSections)
 			return m, func() tea.Msg {
 				return SectionFilterSelectorDoneMsg{
@@ -159,33 +124,11 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "j", "down":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
-			return m, nil
-
-		case "k", "up":
-			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
-			return m, nil
-
-		case " ":
-			// Toggle selection
-			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				section := m.filtered[m.cursor]
-				if m.selected[section.Name] {
-					delete(m.selected, section.Name)
-				} else {
-					m.selected[section.Name] = true
-				}
+		default:
+			handled, cmd := m.HandleKeyMsg(msg)
+			if handled {
+				return m, cmd
 			}
-			return m, nil
-
-		case "/":
-			return m, m.ActivateSearch()
-
-		case "c":
-			// Clear all selections
-			m.selected = make(map[string]bool)
-			return m, nil
 		}
 	}
 
@@ -194,107 +137,14 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the section filter selector.
 func (m *SectionFilterSelectorModel) View() string {
-	// Calculate box width
-	boxWidth := 50
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
-	// Build content
-	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Filter by Sections"))
-	content.WriteString("\n\n")
-
-	if m.IsSearchMode() {
-		content.WriteString("Filter: ")
-		content.WriteString(m.SearchInputView())
-		content.WriteString("\n\n")
-	}
-
-	// Selection count
-	selectedCount := len(m.selected)
+	// Selection count header
+	selectedCount := len(m.Selected)
+	var headerContent string
 	if selectedCount == 0 {
-		content.WriteString(MutedStyle.Render("No sections selected (showing all)"))
+		headerContent = MutedStyle.Render("No sections selected (showing all)")
 	} else {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("%d section%s selected", selectedCount, pluralize(selectedCount, "", "s"))))
-	}
-	content.WriteString("\n\n")
-
-	if len(m.filtered) == 0 {
-		if len(m.sections) == 0 {
-			content.WriteString(MutedStyle.Render("No sections in project"))
-		} else {
-			content.WriteString(MutedStyle.Render("No matching sections"))
-		}
-		content.WriteString("\n")
-	} else {
-		// Show list with checkboxes
-		maxVisible := 15
-		if m.Height() > 0 {
-			maxVisible = m.Height() - 14
-		}
-		if maxVisible < 5 {
-			maxVisible = 5
-		}
-
-		start := 0
-		if m.cursor >= maxVisible {
-			start = m.cursor - maxVisible + 1
-		}
-		end := start + maxVisible
-		if end > len(m.filtered) {
-			end = len(m.filtered)
-		}
-
-		for i := start; i < end; i++ {
-			section := m.filtered[i]
-
-			// Checkbox
-			checkbox := "[ ]"
-			checkStyle := MutedStyle
-			if m.selected[section.Name] {
-				checkbox = "[x]"
-				checkStyle = SelectionCheckStyle
-			}
-
-			// Cursor indicator
-			cursor := "  "
-			if i == m.cursor {
-				cursor = "> "
-			}
-
-			// Build line
-			line := fmt.Sprintf("%s%s %s ", cursor, checkStyle.Render(checkbox), section.Name)
-			countStr := fmt.Sprintf("(%d)", section.TaskCount)
-
-			if i == m.cursor {
-				content.WriteString(TagManagerItemSelectedStyle.Render(line))
-			} else {
-				content.WriteString(TagManagerItemStyle.Render(line))
-			}
-			content.WriteString(TagManagerCountStyle.Render(countStr))
-			content.WriteString("\n")
-		}
-
-		if len(m.filtered) > maxVisible {
-			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.filtered)-maxVisible)))
-			content.WriteString("\n")
-		}
+		headerContent = MutedStyle.Render(fmt.Sprintf("%d section%s selected", selectedCount, pluralize(selectedCount, "", "s")))
 	}
 
-	// Footer hint
-	content.WriteString("\n")
-	if m.IsSearchMode() {
-		content.WriteString(MutedStyle.Render("enter done | esc clear"))
-	} else if len(m.filtered) > 0 {
-		content.WriteString(MutedStyle.Render("space toggle | / search | c clear | enter apply | esc cancel"))
-	} else {
-		content.WriteString(MutedStyle.Render("enter apply | esc cancel"))
-	}
-
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	return m.RenderInBox(m.Config.Title, headerContent, 0)
 }
