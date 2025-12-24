@@ -47,25 +47,12 @@ func runSelect(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no projects available. Create one with: tt project new <name>")
 		}
 
-		// Build selector items
-		headers := []string{"Project", "Context", "Tasks", "Active"}
-		items := make([]tui.SelectorItem, len(projects))
-		for i, p := range projects {
-			if err := storage.LoadProject(p); err == nil {
-				items[i] = tui.SelectorItem{
-					ID:      p.ID,
-					Data:    p,
-					Headers: headers,
-					Columns: []string{
-						p.Name,
-						p.Context,
-						fmt.Sprintf("%d tasks", p.CountTasks()),
-						fmt.Sprintf("%d active", p.CountActiveTasks()),
-					},
-				}
-			}
+		// Load projects to get task counts
+		for _, p := range projects {
+			storage.LoadProject(p)
 		}
 
+		items := ProjectsToSelectorItems(projects, true)
 		selected, err := tui.RunSelector("Select project:", items)
 		if err != nil {
 			return err

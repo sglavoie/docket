@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui"
 )
 
 // LoadConfig loads the configuration file.
@@ -105,4 +106,54 @@ func ParseTaskTypeFlags(epic, story, bug, idea, note bool, typeFlag string) (mod
 		return t, nil
 	}
 	return models.TaskTypeTask, nil
+}
+
+// TasksToSelectorItems converts tasks to selector items with standard columns.
+func TasksToSelectorItems(tasks []*models.Task) []tui.SelectorItem {
+	headers := []string{"ID", "Type", "Status", "Title"}
+	items := make([]tui.SelectorItem, len(tasks))
+	for i, t := range tasks {
+		items[i] = tui.SelectorItem{
+			ID:      t.ID,
+			Data:    t,
+			Headers: headers,
+			Columns: []string{
+				fmt.Sprintf("#%d", t.ShortID),
+				t.Type.Icon(),
+				t.Status.Icon(),
+				t.Title,
+			},
+		}
+	}
+	return items
+}
+
+// ProjectsToSelectorItems converts projects to selector items.
+// If includeActive is true, includes the "Active" column.
+func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []tui.SelectorItem {
+	var headers []string
+	if includeActive {
+		headers = []string{"Project", "Context", "Tasks", "Active"}
+	} else {
+		headers = []string{"Project", "Context", "Tasks"}
+	}
+
+	items := make([]tui.SelectorItem, len(projects))
+	for i, p := range projects {
+		columns := []string{
+			p.Name,
+			p.Context,
+			fmt.Sprintf("%d tasks", p.CountTasks()),
+		}
+		if includeActive {
+			columns = append(columns, fmt.Sprintf("%d active", p.CountActiveTasks()))
+		}
+		items[i] = tui.SelectorItem{
+			ID:      p.ID,
+			Data:    p,
+			Headers: headers,
+			Columns: columns,
+		}
+	}
+	return items
 }

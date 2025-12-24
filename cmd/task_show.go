@@ -57,22 +57,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no tasks available")
 		}
 
-		headers := []string{"ID", "Type", "Status", "Title"}
-		items := make([]tui.SelectorItem, len(activeTasks))
-		for i, t := range activeTasks {
-			items[i] = tui.SelectorItem{
-				ID:      t.ID,
-				Data:    t,
-				Headers: headers,
-				Columns: []string{
-					fmt.Sprintf("#%d", t.ShortID),
-					t.Type.Icon(),
-					t.Status.Icon(),
-					t.Title,
-				},
-			}
-		}
-
+		items := TasksToSelectorItems(activeTasks)
 		selected, err := tui.RunSelector("Select task:", items)
 		if err != nil {
 			return err

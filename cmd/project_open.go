@@ -63,22 +63,11 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 			}
 			project = selected
 		} else {
-			headers := []string{"Project", "Context", "Tasks"}
-			items := make([]tui.SelectorItem, len(projects))
-			for i, p := range projects {
+			for _, p := range projects {
 				storage.LoadProject(p)
-				items[i] = tui.SelectorItem{
-					ID:      p.ID,
-					Data:    p,
-					Headers: headers,
-					Columns: []string{
-						p.Name,
-						p.Context,
-						fmt.Sprintf("%d tasks", p.CountTasks()),
-					},
-				}
 			}
 
+			items := ProjectsToSelectorItems(projects, false)
 			selected, err := tui.RunSelector("Open project:", items)
 			if err != nil {
 				return err

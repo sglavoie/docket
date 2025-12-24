@@ -300,22 +300,7 @@ func selectTaskForMove(project *models.Project, args []string, action string) (*
 		return nil, fmt.Errorf("no tasks available for this action")
 	}
 
-	headers := []string{"ID", "Type", "Status", "Title"}
-	items := make([]tui.SelectorItem, len(candidates))
-	for i, t := range candidates {
-		items[i] = tui.SelectorItem{
-			ID:      t.ID,
-			Data:    t,
-			Headers: headers,
-			Columns: []string{
-				fmt.Sprintf("#%d", t.ShortID),
-				t.Type.Icon(),
-				t.Status.Icon(),
-				t.Title,
-			},
-		}
-	}
-
+	items := TasksToSelectorItems(candidates)
 	prompt := fmt.Sprintf("Select task to move %s:", action)
 	selected, err := tui.RunSelector(prompt, items)
 	if err != nil {

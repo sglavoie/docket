@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskStatus represents the current state of a task.
@@ -190,29 +192,9 @@ func (t *Task) Reopen() {
 	t.UpdatedAt = time.Now()
 }
 
-// sliceContains returns true if the slice contains the value.
-func sliceContains(slice []string, value string) bool {
-	for _, s := range slice {
-		if s == value {
-			return true
-		}
-	}
-	return false
-}
-
-// sliceRemove returns a new slice with the value removed (if present).
-func sliceRemove(slice []string, value string) ([]string, bool) {
-	for i, s := range slice {
-		if s == value {
-			return append(slice[:i], slice[i+1:]...), true
-		}
-	}
-	return slice, false
-}
-
 // AddTag adds a tag if not already present.
 func (t *Task) AddTag(tag string) {
-	if sliceContains(t.Tags, tag) {
+	if util.SliceContains(t.Tags, tag) {
 		return
 	}
 	t.Tags = append(t.Tags, tag)
@@ -221,7 +203,7 @@ func (t *Task) AddTag(tag string) {
 
 // RemoveTag removes a tag if present.
 func (t *Task) RemoveTag(tag string) {
-	if newTags, removed := sliceRemove(t.Tags, tag); removed {
+	if newTags, removed := util.SliceRemove(t.Tags, tag); removed {
 		t.Tags = newTags
 		t.UpdatedAt = time.Now()
 	}
@@ -229,7 +211,7 @@ func (t *Task) RemoveTag(tag string) {
 
 // HasTag returns true if the task has the given tag.
 func (t *Task) HasTag(tag string) bool {
-	return sliceContains(t.Tags, tag)
+	return util.SliceContains(t.Tags, tag)
 }
 
 // GetProgress returns the completion percentage based on children.
@@ -476,7 +458,7 @@ func (t *Task) CycleLeafType(left bool) error {
 
 // AddDependency adds a dependency on another task if not already present.
 func (t *Task) AddDependency(blockerID string) {
-	if sliceContains(t.DependsOn, blockerID) {
+	if util.SliceContains(t.DependsOn, blockerID) {
 		return
 	}
 	t.DependsOn = append(t.DependsOn, blockerID)
@@ -485,7 +467,7 @@ func (t *Task) AddDependency(blockerID string) {
 
 // RemoveDependency removes a dependency if present.
 func (t *Task) RemoveDependency(blockerID string) {
-	if newDeps, removed := sliceRemove(t.DependsOn, blockerID); removed {
+	if newDeps, removed := util.SliceRemove(t.DependsOn, blockerID); removed {
 		t.DependsOn = newDeps
 		t.UpdatedAt = time.Now()
 	}
@@ -493,7 +475,7 @@ func (t *Task) RemoveDependency(blockerID string) {
 
 // HasDependency returns true if the task depends on the given task ID.
 func (t *Task) HasDependency(blockerID string) bool {
-	return sliceContains(t.DependsOn, blockerID)
+	return util.SliceContains(t.DependsOn, blockerID)
 }
 
 // ClearDependencies removes all dependencies.
