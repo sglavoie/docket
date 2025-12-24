@@ -332,7 +332,7 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 	return false, nil
 }
 
-// handleMiscActionKeys handles z, R, ?, \, r - miscellaneous action operations.
+// handleMiscActionKeys handles z, R, ?, \, r, p - miscellaneous action operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
@@ -358,6 +358,11 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		storage.LoadProject(m.project)
 		m.buildTree()
 		return true, nil
+
+	case "p":
+		return true, func() tea.Msg {
+			return ShowPriorityViewMsg{Project: m.project}
+		}
 	}
 	return false, nil
 }

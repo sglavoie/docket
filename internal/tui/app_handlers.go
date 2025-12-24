@@ -454,6 +454,16 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.showView(ViewProjectTree, m.projectTree)
 		}
 		return true, nil
+
+	case ShowPriorityViewMsg:
+		if msg.Project != nil {
+			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project))
+		}
+		return true, nil
+
+	case ClosePriorityViewMsg:
+		m.popView()
+		return true, nil
 	}
 	return false, nil
 }

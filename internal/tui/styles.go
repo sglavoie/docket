@@ -328,6 +328,21 @@ var (
 	// Active task style (yellow to make it pop out)
 	ActiveStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("226")) // Bright yellow
+
+	// Priority view styles
+	PriorityViewTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary)
+
+	PriorityGroupHeaderStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(ColorSecondary).
+					MarginTop(1)
+
+	PriorityWaitingHeaderStyle = lipgloss.NewStyle().
+					Foreground(ColorMuted).
+					Italic(true).
+					MarginTop(1)
 )
 
 // GetStatusStyle returns the appropriate style for a task status.

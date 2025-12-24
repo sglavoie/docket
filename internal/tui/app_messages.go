@@ -110,6 +110,12 @@ type (
 		Source   ViewType // Which view to send result to
 	}
 	CloseParentSelectorMsg struct{}
+
+	// Priority view messages
+	ShowPriorityViewMsg struct {
+		Project *models.Project
+	}
+	ClosePriorityViewMsg struct{}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

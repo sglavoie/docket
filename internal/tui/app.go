@@ -39,6 +39,7 @@ const (
 	ViewContextPicker
 	ViewGlobalSearch
 	ViewParentSelector
+	ViewPriorityView
 )
 
 // AppModel is the main TUI model with a view stack.

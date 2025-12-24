@@ -1,0 +1,669 @@
+package tui
+
+import (
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// Helper to create a task with a due date relative to today.
+func newTestTaskWithDueDate(title string, daysOffset int) *models.Task {
+	task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+	due := time.Now().AddDate(0, 0, daysOffset)
+	task.DueDate = &due
+	return task
+}
+
+// Helper to create a test project for priority view tests.
+func newTestPriorityProject() *models.Project {
+	project := models.NewProject(uuid.New().String(), "Priority Test", "")
+	return project
+}
+
+func TestComputeUrgencyScore(t *testing.T) {
+	project := newTestPriorityProject()
+	m := NewPriorityViewModel(project)
+
+	tests := []struct {
+		name    string
+		task    *models.Task
+		wantMin int // minimum expected score
+		wantMax int // maximum expected score
+	}{
+		{
+			name: "priority 1 base score",
+			task: func() *models.Task {
+				task := models.NewTask("1", 1, models.TaskTypeTask, "High priority")
+				task.Priority = 1
+				return task
+			}(),
+			wantMin: 5000,
+			wantMax: 5000,
+		},
+		{
+			name: "priority 5 base score",
+			task: func() *models.Task {
+				task := models.NewTask("2", 2, models.TaskTypeTask, "Low priority")
+				task.Priority = 5
+				return task
+			}(),
+			wantMin: 1000,
+			wantMax: 1000,
+		},
+		{
+			name: "priority 3 base score",
+			task: func() *models.Task {
+				task := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+				task.Priority = 3
+				return task
+			}(),
+			wantMin: 3000,
+			wantMax: 3000,
+		},
+		{
+			name: "in progress bonus",
+			task: func() *models.Task {
+				task := models.NewTask("4", 4, models.TaskTypeTask, "In progress task")
+				task.Priority = 3
+				task.Status = models.StatusInProgress
+				return task
+			}(),
+			wantMin: 3500, // 3000 + 500
+			wantMax: 3500,
+		},
+		{
+			name: "active flag bonus",
+			task: func() *models.Task {
+				task := models.NewTask("5", 5, models.TaskTypeTask, "Active task")
+				task.Priority = 3
+				task.Active = true
+				return task
+			}(),
+			wantMin: 3200, // 3000 + 200
+			wantMax: 3200,
+		},
+		{
+			name: "combined bonuses",
+			task: func() *models.Task {
+				task := models.NewTask("6", 6, models.TaskTypeTask, "Active in progress")
+				task.Priority = 1
+				task.Status = models.StatusInProgress
+				task.Active = true
+				return task
+			}(),
+			wantMin: 5700, // 5000 + 500 + 200
+			wantMax: 5700,
+		},
+		{
+			name: "overdue adds points",
+			task: func() *models.Task {
+				task := newTestTaskWithDueDate("Overdue task", -2)
+				task.Priority = 3
+				return task
+			}(),
+			wantMin: 3100, // 3000 + 100 (2 days * 50)
+			wantMax: 3100,
+		},
+		{
+			name: "future due subtracts points",
+			task: func() *models.Task {
+				task := newTestTaskWithDueDate("Future task", 2)
+				task.Priority = 3
+				return task
+			}(),
+			wantMin: 2900, // 3000 - 100 (2 days * 50)
+			wantMax: 2900,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := m.computeUrgencyScore(tt.task)
+			if got < tt.wantMin || got > tt.wantMax {
+				t.Errorf("computeUrgencyScore() = %d, want between %d and %d", got, tt.wantMin, tt.wantMax)
+			}
+		})
+	}
+}
+
+func TestCategorizeByDueDate(t *testing.T) {
+	project := newTestPriorityProject()
+	m := NewPriorityViewModel(project)
+
+	tests := []struct {
+		name       string
+		daysOffset *int // nil means no due date
+		want       PriorityGroup
+	}{
+		{"overdue yesterday", intPtr(-1), PriorityGroupOverdue},
+		{"overdue 10 days ago", intPtr(-10), PriorityGroupOverdue},
+		{"due today", intPtr(0), PriorityGroupToday},
+		{"due tomorrow", intPtr(1), PriorityGroupThisWeek},
+		{"due in 3 days", intPtr(3), PriorityGroupThisWeek},
+		{"due in 6 days", intPtr(6), PriorityGroupThisWeek},
+		{"due in 7 days", intPtr(7), PriorityGroupLater},
+		{"due in 14 days", intPtr(14), PriorityGroupLater},
+		{"no due date", nil, PriorityGroupBacklog},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			if tt.daysOffset != nil {
+				due := time.Now().AddDate(0, 0, *tt.daysOffset)
+				task.DueDate = &due
+			}
+			got := m.categorizeByDueDate(task)
+			if got != tt.want {
+				t.Errorf("categorizeByDueDate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func intPtr(i int) *int {
+	return &i
+}
+
+func TestLoadActionableTasks(t *testing.T) {
+	t.Run("filters out completed tasks", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add completed tasks
+		done := models.NewTask("1", 1, models.TaskTypeTask, "Done task")
+		done.Status = models.StatusDone
+		cancelled := models.NewTask("2", 2, models.TaskTypeTask, "Cancelled task")
+		cancelled.Status = models.StatusCancelled
+
+		// Add active task
+		active := models.NewTask("3", 3, models.TaskTypeTask, "Active task")
+		active.Status = models.StatusTodo
+
+		project.Tasks = []*models.Task{done, cancelled, active}
+
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 1 {
+			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
+		}
+	})
+
+	t.Run("separates blocked tasks to waitingOn", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add blocked task
+		blocked := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		blocked.Status = models.StatusBlocked
+
+		// Add active task
+		active := models.NewTask("2", 2, models.TaskTypeTask, "Active task")
+		active.Status = models.StatusTodo
+
+		project.Tasks = []*models.Task{blocked, active}
+
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 1 {
+			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
+		}
+		if len(m.waitingOn) != 1 {
+			t.Errorf("expected 1 waiting task, got %d", len(m.waitingOn))
+		}
+	})
+
+	t.Run("tasks with incomplete dependencies go to waitingOn", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add blocker task
+		blocker := models.NewTask("1", 1, models.TaskTypeTask, "Blocker")
+		blocker.Status = models.StatusTodo
+
+		// Add dependent task
+		dependent := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		dependent.Status = models.StatusTodo
+		dependent.DependsOn = []string{blocker.ID}
+
+		project.Tasks = []*models.Task{blocker, dependent}
+
+		m := NewPriorityViewModel(project)
+
+		// Blocker should be actionable, dependent should be waiting
+		if m.totalTasks != 1 {
+			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
+		}
+		if len(m.waitingOn) != 1 {
+			t.Errorf("expected 1 waiting task, got %d", len(m.waitingOn))
+		}
+	})
+
+	t.Run("sorts tasks by urgency within groups", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add tasks with different priorities (no due dates -> backlog)
+		low := models.NewTask("1", 1, models.TaskTypeTask, "Low priority")
+		low.Priority = 5
+
+		high := models.NewTask("2", 2, models.TaskTypeTask, "High priority")
+		high.Priority = 1
+
+		medium := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+		medium.Priority = 3
+
+		project.Tasks = []*models.Task{low, high, medium}
+
+		m := NewPriorityViewModel(project)
+
+		if len(m.backlog) != 3 {
+			t.Fatalf("expected 3 backlog tasks, got %d", len(m.backlog))
+		}
+
+		// Should be sorted high to low urgency
+		if m.backlog[0].Task.Priority != 1 {
+			t.Errorf("expected first task to have priority 1, got %d", m.backlog[0].Task.Priority)
+		}
+		if m.backlog[1].Task.Priority != 3 {
+			t.Errorf("expected second task to have priority 3, got %d", m.backlog[1].Task.Priority)
+		}
+		if m.backlog[2].Task.Priority != 5 {
+			t.Errorf("expected third task to have priority 5, got %d", m.backlog[2].Task.Priority)
+		}
+	})
+
+	t.Run("totalTasks excludes waitingOn", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add 2 active tasks
+		active1 := models.NewTask("1", 1, models.TaskTypeTask, "Active 1")
+		active2 := models.NewTask("2", 2, models.TaskTypeTask, "Active 2")
+
+		// Add 1 blocked task
+		blocked := models.NewTask("3", 3, models.TaskTypeTask, "Blocked")
+		blocked.Status = models.StatusBlocked
+
+		project.Tasks = []*models.Task{active1, active2, blocked}
+
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 2 {
+			t.Errorf("expected totalTasks=2 (excluding waitingOn), got %d", m.totalTasks)
+		}
+	})
+}
+
+func TestGetTaskAtCursor(t *testing.T) {
+	t.Run("returns correct task across groups", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add tasks to different groups
+		overdue := newTestTaskWithDueDate("Overdue", -1)
+		today := newTestTaskWithDueDate("Today", 0)
+		thisWeek := newTestTaskWithDueDate("This week", 3)
+
+		project.Tasks = []*models.Task{overdue, today, thisWeek}
+
+		m := NewPriorityViewModel(project)
+
+		// Cursor 0 -> overdue[0]
+		m.cursor = 0
+		task := m.getTaskAtCursor()
+		if task == nil || task.Task.Title != "Overdue" {
+			t.Errorf("cursor 0: expected 'Overdue', got %v", task)
+		}
+
+		// Cursor 1 -> today[0]
+		m.cursor = 1
+		task = m.getTaskAtCursor()
+		if task == nil || task.Task.Title != "Today" {
+			t.Errorf("cursor 1: expected 'Today', got %v", task)
+		}
+
+		// Cursor 2 -> thisWeek[0]
+		m.cursor = 2
+		task = m.getTaskAtCursor()
+		if task == nil || task.Task.Title != "This week" {
+			t.Errorf("cursor 2: expected 'This week', got %v", task)
+		}
+	})
+
+	t.Run("returns nil for out of bounds cursor", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Only task")
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+
+		m.cursor = 10
+		if got := m.getTaskAtCursor(); got != nil {
+			t.Errorf("expected nil for out of bounds cursor, got %v", got)
+		}
+	})
+
+	t.Run("returns nil for empty project", func(t *testing.T) {
+		project := newTestPriorityProject()
+		m := NewPriorityViewModel(project)
+
+		if got := m.getTaskAtCursor(); got != nil {
+			t.Errorf("expected nil for empty project, got %v", got)
+		}
+	})
+}
+
+func TestPriorityViewClampCursor(t *testing.T) {
+	tests := []struct {
+		name       string
+		totalTasks int
+		cursor     int
+		wantCursor int
+	}{
+		{"cursor exceeds total", 5, 10, 4},
+		{"cursor at total", 5, 5, 4},
+		{"cursor negative", 5, -1, 0},
+		{"cursor within bounds", 5, 2, 2},
+		{"empty project", 0, 5, 0},
+		{"empty project negative", 0, -1, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			project := newTestPriorityProject()
+
+			// Add tasks to match totalTasks
+			for i := 0; i < tt.totalTasks; i++ {
+				task := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, "Task")
+				project.Tasks = append(project.Tasks, task)
+			}
+
+			m := NewPriorityViewModel(project)
+			m.cursor = tt.cursor
+			m.clampCursor()
+
+			if m.cursor != tt.wantCursor {
+				t.Errorf("clampCursor() cursor = %d, want %d", m.cursor, tt.wantCursor)
+			}
+		})
+	}
+}
+
+func TestFormatRelativeDue(t *testing.T) {
+	project := newTestPriorityProject()
+	m := NewPriorityViewModel(project)
+
+	tests := []struct {
+		name       string
+		daysOffset *int
+		wantMatch  string // partial match expected
+	}{
+		{"nil due date", nil, ""},
+		{"yesterday", intPtr(-1), "yesterday"},
+		{"2 days ago", intPtr(-2), "days ago"},
+		{"10 days ago", intPtr(-10), "days ago"},
+		{"today", intPtr(0), "today"},
+		{"tomorrow", intPtr(1), "tomorrow"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			if tt.daysOffset != nil {
+				due := time.Now().AddDate(0, 0, *tt.daysOffset)
+				task.DueDate = &due
+			}
+
+			got := m.formatRelativeDue(task)
+			if tt.wantMatch == "" {
+				if got != "" {
+					t.Errorf("formatRelativeDue() = %q, want empty", got)
+				}
+			} else if got != tt.wantMatch && !contains(got, tt.wantMatch) {
+				t.Errorf("formatRelativeDue() = %q, want to contain %q", got, tt.wantMatch)
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGetParentTitle(t *testing.T) {
+	t.Run("no parent returns empty", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Orphan task")
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+		got := m.getParentTitle(task)
+
+		if got != "" {
+			t.Errorf("getParentTitle() = %q, want empty", got)
+		}
+	})
+
+	t.Run("valid parent returns title", func(t *testing.T) {
+		project := newTestPriorityProject()
+		parent := models.NewTask("1", 1, models.TaskTypeEpic, "Parent Epic")
+		child := models.NewTask("2", 2, models.TaskTypeTask, "Child Task")
+		child.ParentID = &parent.ID
+
+		project.Tasks = []*models.Task{parent, child}
+		project.BuildTaskTree()
+
+		m := NewPriorityViewModel(project)
+		got := m.getParentTitle(child)
+
+		if got != "Parent Epic" {
+			t.Errorf("getParentTitle() = %q, want 'Parent Epic'", got)
+		}
+	})
+
+	t.Run("missing parent returns empty", func(t *testing.T) {
+		project := newTestPriorityProject()
+		child := models.NewTask("1", 1, models.TaskTypeTask, "Orphan with invalid parent")
+		invalidID := "non-existent-id"
+		child.ParentID = &invalidID
+
+		project.Tasks = []*models.Task{child}
+
+		m := NewPriorityViewModel(project)
+		got := m.getParentTitle(child)
+
+		if got != "" {
+			t.Errorf("getParentTitle() = %q, want empty", got)
+		}
+	})
+}
+
+func TestGetBlockingReason(t *testing.T) {
+	t.Run("explicitly blocked returns blocked", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		task.Status = models.StatusBlocked
+
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+		got := m.getBlockingReason(task)
+
+		if got != "(blocked)" {
+			t.Errorf("getBlockingReason() = %q, want '(blocked)'", got)
+		}
+	})
+
+	t.Run("incomplete dependency shows dependency title", func(t *testing.T) {
+		project := newTestPriorityProject()
+		blocker := models.NewTask("1", 1, models.TaskTypeTask, "Blocker Task")
+		blocker.Status = models.StatusTodo
+
+		dependent := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		dependent.DependsOn = []string{blocker.ID}
+
+		project.Tasks = []*models.Task{blocker, dependent}
+
+		m := NewPriorityViewModel(project)
+		got := m.getBlockingReason(dependent)
+
+		if got != "← Blocker Task" {
+			t.Errorf("getBlockingReason() = %q, want '← Blocker Task'", got)
+		}
+	})
+}
+
+func TestEdgeCases(t *testing.T) {
+	t.Run("empty project", func(t *testing.T) {
+		project := newTestPriorityProject()
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 0 {
+			t.Errorf("expected 0 total tasks for empty project, got %d", m.totalTasks)
+		}
+		if len(m.overdue) != 0 || len(m.today) != 0 || len(m.thisWeek) != 0 ||
+			len(m.later) != 0 || len(m.backlog) != 0 || len(m.waitingOn) != 0 {
+			t.Error("expected all groups to be empty for empty project")
+		}
+	})
+
+	t.Run("all tasks completed", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		done1 := models.NewTask("1", 1, models.TaskTypeTask, "Done 1")
+		done1.Status = models.StatusDone
+		done2 := models.NewTask("2", 2, models.TaskTypeTask, "Done 2")
+		done2.Status = models.StatusCancelled
+
+		project.Tasks = []*models.Task{done1, done2}
+
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 0 {
+			t.Errorf("expected 0 total tasks when all completed, got %d", m.totalTasks)
+		}
+	})
+
+	t.Run("all tasks blocked", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		blocked1 := models.NewTask("1", 1, models.TaskTypeTask, "Blocked 1")
+		blocked1.Status = models.StatusBlocked
+		blocked2 := models.NewTask("2", 2, models.TaskTypeTask, "Blocked 2")
+		blocked2.Status = models.StatusBlocked
+
+		project.Tasks = []*models.Task{blocked1, blocked2}
+
+		m := NewPriorityViewModel(project)
+
+		if m.totalTasks != 0 {
+			t.Errorf("expected 0 actionable tasks when all blocked, got %d", m.totalTasks)
+		}
+		if len(m.waitingOn) != 2 {
+			t.Errorf("expected 2 waiting tasks, got %d", len(m.waitingOn))
+		}
+	})
+}
+
+func TestHasActiveSearch(t *testing.T) {
+	project := newTestPriorityProject()
+	m := NewPriorityViewModel(project)
+
+	if m.HasActiveSearch() {
+		t.Error("HasActiveSearch() should return false for priority view")
+	}
+}
+
+func TestWaitingOnCollapsed(t *testing.T) {
+	project := newTestPriorityProject()
+	m := NewPriorityViewModel(project)
+
+	// Should start collapsed
+	if !m.waitingOnCollapsed {
+		t.Error("waitingOnCollapsed should be true by default")
+	}
+
+	// Toggle
+	m.waitingOnCollapsed = false
+	if m.waitingOnCollapsed {
+		t.Error("waitingOnCollapsed should be false after toggle")
+	}
+}
+
+func TestChangeTaskPriority(t *testing.T) {
+	t.Run("changes priority of selected task", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task.Priority = 3 // Default medium priority
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+		m.cursor = 0
+
+		// Change priority to 1 (highest)
+		m.changeTaskPriority(1)
+
+		if task.Priority != 1 {
+			t.Errorf("expected priority 1, got %d", task.Priority)
+		}
+	})
+
+	t.Run("does nothing when priority unchanged", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task.Priority = 2
+		originalUpdatedAt := task.UpdatedAt
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+		m.cursor = 0
+
+		// Try to set same priority
+		m.changeTaskPriority(2)
+
+		if task.Priority != 2 {
+			t.Errorf("expected priority 2, got %d", task.Priority)
+		}
+		if !task.UpdatedAt.Equal(originalUpdatedAt) {
+			t.Error("UpdatedAt should not change when priority is unchanged")
+		}
+	})
+
+	t.Run("does nothing when no task at cursor", func(t *testing.T) {
+		project := newTestPriorityProject()
+		m := NewPriorityViewModel(project)
+
+		// Should not panic with empty project
+		result, _ := m.changeTaskPriority(1)
+		if result == nil {
+			t.Error("expected non-nil result")
+		}
+	})
+
+	t.Run("updates UpdatedAt timestamp", func(t *testing.T) {
+		project := newTestPriorityProject()
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task.Priority = 3
+		originalUpdatedAt := task.UpdatedAt
+		project.Tasks = []*models.Task{task}
+
+		m := NewPriorityViewModel(project)
+		m.cursor = 0
+
+		// Small delay to ensure time difference
+		time.Sleep(time.Millisecond)
+
+		m.changeTaskPriority(1)
+
+		if !task.UpdatedAt.After(originalUpdatedAt) {
+			t.Error("UpdatedAt should be updated after priority change")
+		}
+	})
+}
