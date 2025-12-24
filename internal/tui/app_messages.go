@@ -116,6 +116,12 @@ type (
 		Project *models.Project
 	}
 	ClosePriorityViewMsg struct{}
+
+	// Quick capture messages
+	ShowQuickCaptureMsg struct {
+		Project *models.Project
+	}
+	CloseQuickCaptureMsg struct{}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

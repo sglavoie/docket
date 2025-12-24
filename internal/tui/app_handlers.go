@@ -464,6 +464,16 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ClosePriorityViewMsg:
 		m.popView()
 		return true, nil
+
+	case ShowQuickCaptureMsg:
+		if msg.Project != nil {
+			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project))
+		}
+		return true, nil
+
+	case CloseQuickCaptureMsg:
+		m.popView()
+		return true, nil
 	}
 	return false, nil
 }

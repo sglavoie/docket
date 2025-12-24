@@ -21,6 +21,9 @@ const (
 // SectionBacklog is the default section for new tasks awaiting triage.
 const SectionBacklog = "Backlog"
 
+// SectionInbox is the section for quick-captured tasks awaiting triage.
+const SectionInbox = "Inbox"
+
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
 	return []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCancelled}
