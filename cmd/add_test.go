@@ -82,6 +82,41 @@ func TestParseInlineMetadata(t *testing.T) {
 			wantPriority: 0,
 			wantTags:     []string{"code_review"},
 		},
+		{
+			name:         "priority 0 is invalid",
+			input:        "!0 not matched",
+			wantTitle:    "!0 not matched",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
+			name:         "priority 6 is invalid",
+			input:        "!6 out of range",
+			wantTitle:    "!6 out of range",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
+			name:         "multiple spaces normalized",
+			input:        "Multiple   spaces   here",
+			wantTitle:    "Multiple spaces here",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
+			name:         "empty input",
+			input:        "",
+			wantTitle:    "",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
+		{
+			name:         "hash without word not a tag",
+			input:        "Fix bug # comment",
+			wantTitle:    "Fix bug # comment",
+			wantPriority: 0,
+			wantTags:     nil,
+		},
 	}
 
 	for _, tt := range tests {
