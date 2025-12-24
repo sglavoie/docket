@@ -136,6 +136,11 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return ShowQuickCaptureMsg{Project: m.project}
 		}
 
+	case "I":
+		return true, func() tea.Msg {
+			return ShowBulkCaptureMsg{Project: m.project}
+		}
+
 	case "O":
 		// Create a new note (Shift+O)
 		var parentTask *models.Task

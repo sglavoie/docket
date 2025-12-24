@@ -41,6 +41,7 @@ const (
 	ViewParentSelector
 	ViewPriorityView
 	ViewQuickCapture
+	ViewBulkCapture
 )
 
 // AppModel is the main TUI model with a view stack.

@@ -474,6 +474,16 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseQuickCaptureMsg:
 		m.popView()
 		return true, nil
+
+	case ShowBulkCaptureMsg:
+		if msg.Project != nil {
+			m.showView(ViewBulkCapture, NewBulkCaptureModel(msg.Project))
+		}
+		return true, nil
+
+	case CloseBulkCaptureMsg:
+		m.popView()
+		return true, nil
 	}
 	return false, nil
 }

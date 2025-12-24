@@ -414,6 +414,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Task Operations
 		{Key: "n", Description: "Add new task", Category: "Task Operations"},
 		{Key: "i", Description: "Quick capture", Category: "Task Operations"},
+		{Key: "I", Description: "Bulk capture", Category: "Task Operations"},
 		{Key: "O", Description: "Add new note", Category: "Task Operations"},
 		{Key: "e", Description: "Edit task", Category: "Task Operations"},
 		{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations"},

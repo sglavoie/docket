@@ -122,6 +122,12 @@ type (
 		Project *models.Project
 	}
 	CloseQuickCaptureMsg struct{}
+
+	// Bulk capture messages
+	ShowBulkCaptureMsg struct {
+		Project *models.Project
+	}
+	CloseBulkCaptureMsg struct{}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.
