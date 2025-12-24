@@ -139,21 +139,11 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "j", "down":
-			if len(m.filtered) > 0 {
-				m.cursor++
-				if m.cursor >= len(m.filtered) {
-					m.cursor = 0
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
 			return m, nil
 
 		case "k", "up":
-			if len(m.filtered) > 0 {
-				m.cursor--
-				if m.cursor < 0 {
-					m.cursor = len(m.filtered) - 1
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
 			return m, nil
 
 		case " ":
@@ -183,12 +173,10 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the tag filter selector.
 func (m *TagFilterSelectorModel) View() string {
-	var b strings.Builder
-
 	// Calculate box width
 	boxWidth := 50
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
+	if m.Width() > 0 && m.Width() < boxWidth+10 {
+		boxWidth = m.Width() - 10
 	}
 
 	// Build content
@@ -225,8 +213,8 @@ func (m *TagFilterSelectorModel) View() string {
 	} else {
 		// Show list with checkboxes
 		maxVisible := 15
-		if m.height > 0 {
-			maxVisible = m.height - 14
+		if m.Height() > 0 {
+			maxVisible = m.Height() - 14
 		}
 		if maxVisible < 5 {
 			maxVisible = 5
@@ -287,32 +275,5 @@ func (m *TagFilterSelectorModel) View() string {
 		content.WriteString(MutedStyle.Render("enter apply | esc cancel"))
 	}
 
-	// Apply box styling
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
-	}
-
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }

@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
@@ -14,15 +13,12 @@ import (
 
 // SectionPickerModel allows selecting a single section to assign to a task.
 type SectionPickerModel struct {
-	task        *models.Task
-	project     *models.Project
-	sections    []SectionInfo
-	filtered    []SectionInfo
-	cursor      int
-	width       int
-	height      int
-	searchMode  bool
-	searchInput textinput.Model
+	BaseSearchableView
+	task     *models.Task
+	project  *models.Project
+	sections []SectionInfo
+	filtered []SectionInfo
+	cursor   int
 }
 
 // ShowSectionPickerMsg is sent to open the section picker for assignment.
@@ -41,17 +37,12 @@ type SectionPickerDoneMsg struct {
 
 // NewSectionPickerModel creates a new section picker for task assignment.
 func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionPickerModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter..."
-	searchInput.CharLimit = 50
-	searchInput.Width = 30
-
 	m := &SectionPickerModel{
-		task:        task,
-		project:     project,
-		cursor:      0,
-		searchInput: searchInput,
+		task:    task,
+		project: project,
+		cursor:  0,
 	}
+	m.InitSearchInput("Type to filter...", 50, 30)
 	m.buildSectionList()
 
 	// Pre-select current section
@@ -63,12 +54,6 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 	}
 
 	return m
-}
-
-// SetSize sets the view dimensions.
-func (m *SectionPickerModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
 }
 
 // buildSectionList builds a sorted list of sections with counts.
@@ -158,8 +143,15 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			return m.handleSearchMode(msg)
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterSectionList(m.SearchQuery())
+			}
+			if handled {
+				return m, cmd
+			}
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -194,67 +186,27 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "j", "down":
-			if len(m.filtered) > 0 {
-				m.cursor++
-				if m.cursor >= len(m.filtered) {
-					m.cursor = 0
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
 			return m, nil
 
 		case "k", "up":
-			if len(m.filtered) > 0 {
-				m.cursor--
-				if m.cursor < 0 {
-					m.cursor = len(m.filtered) - 1
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
 			return m, nil
 
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 		}
 	}
 
 	return m, nil
 }
 
-// handleSearchMode handles keyboard input while in search mode.
-func (m *SectionPickerModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.searchInput.SetValue("")
-		m.filterSectionList("")
-		return m, nil
-
-	case "enter":
-		m.searchMode = false
-		m.searchInput.Blur()
-		return m, nil
-
-	default:
-		oldVal := m.searchInput.Value()
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		if oldVal != m.searchInput.Value() {
-			m.filterSectionList(m.searchInput.Value())
-		}
-		return m, cmd
-	}
-}
-
 // View renders the section picker.
 func (m *SectionPickerModel) View() string {
-	var b strings.Builder
-
 	// Calculate box width
 	boxWidth := 50
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
+	if m.Width() > 0 && m.Width() < boxWidth+10 {
+		boxWidth = m.Width() - 10
 	}
 
 	// Build content
@@ -268,9 +220,9 @@ func (m *SectionPickerModel) View() string {
 	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))))
 	content.WriteString("\n\n")
 
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString("Filter: ")
-		content.WriteString(m.searchInput.View())
+		content.WriteString(m.SearchInputView())
 		content.WriteString("\n\n")
 	}
 
@@ -292,8 +244,8 @@ func (m *SectionPickerModel) View() string {
 	} else {
 		// Show list
 		maxVisible := 12
-		if m.height > 0 {
-			maxVisible = m.height - 16
+		if m.Height() > 0 {
+			maxVisible = m.Height() - 16
 		}
 		if maxVisible < 5 {
 			maxVisible = 5
@@ -344,7 +296,7 @@ func (m *SectionPickerModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString(MutedStyle.Render("enter done | esc clear"))
 	} else if len(m.filtered) > 0 {
 		content.WriteString(MutedStyle.Render("enter select | / search | esc cancel"))
@@ -352,32 +304,5 @@ func (m *SectionPickerModel) View() string {
 		content.WriteString(MutedStyle.Render("esc cancel"))
 	}
 
-	// Apply box styling
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
-	}
-
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }

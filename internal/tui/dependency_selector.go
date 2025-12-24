@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
@@ -12,6 +11,7 @@ import (
 
 // DependencySelectorModel allows toggling dependencies for a task.
 type DependencySelectorModel struct {
+	BaseSearchableView
 	task           *models.Task
 	project        *models.Project
 	candidates     []*models.Task
@@ -19,10 +19,6 @@ type DependencySelectorModel struct {
 	cursor         int
 	done           bool
 	cancelled      bool
-	searchMode     bool
-	searchInput    textinput.Model
-	width          int
-	height         int
 	originalDepsOn map[string]bool // Original dependencies
 	currentDepsOn  map[string]bool // Current selection
 }
@@ -37,10 +33,11 @@ type DependencySelectorDoneMsg struct {
 
 // NewDependencySelectorModel creates a new dependency selector.
 func NewDependencySelectorModel(task *models.Task, project *models.Project) *DependencySelectorModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter..."
-	searchInput.CharLimit = 50
-	searchInput.Width = 40
+	m := &DependencySelectorModel{
+		task:    task,
+		project: project,
+	}
+	m.InitSearchInput("Type to filter...", 50, 40)
 
 	// Build candidate list (all tasks except self and descendants)
 	descendants := make(map[string]bool)
@@ -80,26 +77,17 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 		currentDepsOn[depID] = true
 	}
 
-	return &DependencySelectorModel{
-		task:           task,
-		project:        project,
-		candidates:     candidates,
-		filtered:       candidates,
-		cursor:         0,
-		searchInput:    searchInput,
-		originalDepsOn: originalDepsOn,
-		currentDepsOn:  currentDepsOn,
-	}
+	m.candidates = candidates
+	m.filtered = candidates
+	m.cursor = 0
+	m.originalDepsOn = originalDepsOn
+	m.currentDepsOn = currentDepsOn
+
+	return m
 }
 
 func (m *DependencySelectorModel) Init() tea.Cmd {
-	return textinput.Blink
-}
-
-// SetSize updates the view dimensions.
-func (m *DependencySelectorModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	return nil
 }
 
 func (m *DependencySelectorModel) filterCandidates(query string) {
@@ -122,34 +110,20 @@ func (m *DependencySelectorModel) filterCandidates(query string) {
 }
 
 func (m *DependencySelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			switch msg.String() {
-			case "esc":
-				m.searchMode = false
-				m.searchInput.Blur()
-				m.searchInput.SetValue("")
-				m.filterCandidates("")
-				return m, nil
-			case "enter":
-				m.searchMode = false
-				m.searchInput.Blur()
-				return m, nil
-			default:
-				oldVal := m.searchInput.Value()
-				m.searchInput, cmd = m.searchInput.Update(msg)
-				if oldVal != m.searchInput.Value() {
-					m.filterCandidates(m.searchInput.Value())
-				}
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterCandidates(m.SearchQuery())
+			}
+			if handled {
 				return m, cmd
 			}
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -198,9 +172,7 @@ func (m *DependencySelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 		}
 	}
 
@@ -226,9 +198,9 @@ func (m *DependencySelectorModel) View() string {
 	b.WriteString(titleStyle.Render(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title)))
 	b.WriteString("\n\n")
 
-	if m.searchMode {
+	if m.IsSearchMode() {
 		b.WriteString("Filter: ")
-		b.WriteString(m.searchInput.View())
+		b.WriteString(m.SearchInputView())
 		b.WriteString("\n\n")
 	}
 
@@ -246,8 +218,8 @@ func (m *DependencySelectorModel) View() string {
 	} else {
 		// Show list with checkboxes
 		maxVisible := 15
-		if m.height > 0 {
-			maxVisible = m.height - 12
+		if m.Height() > 0 {
+			maxVisible = m.Height() - 12
 		}
 		if maxVisible < 5 {
 			maxVisible = 5

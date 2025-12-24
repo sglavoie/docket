@@ -122,7 +122,7 @@ func buildEditContent(task *models.Task) string {
 
 // parseEditedContent extracts the title and description from edited content.
 func parseEditedContent(content string, task *models.Task) (title, description string) {
-	lines := splitLines(content)
+	lines := strings.Split(content, "\n")
 	var descLines []string
 	title = task.Title // Default to original title
 	inDescription := false
@@ -169,33 +169,5 @@ func parseEditedContent(content string, task *models.Task) (title, description s
 		title = task.Title
 	}
 
-	return title, joinLines(descLines)
-}
-
-func splitLines(s string) []string {
-	var lines []string
-	current := ""
-	for _, c := range s {
-		if c == '\n' {
-			lines = append(lines, current)
-			current = ""
-		} else {
-			current += string(c)
-		}
-	}
-	if current != "" {
-		lines = append(lines, current)
-	}
-	return lines
-}
-
-func joinLines(lines []string) string {
-	result := ""
-	for i, line := range lines {
-		if i > 0 {
-			result += "\n"
-		}
-		result += line
-	}
-	return result
+	return title, strings.Join(descLines, "\n")
 }

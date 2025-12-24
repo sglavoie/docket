@@ -1,8 +1,11 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // BaseView provides common functionality for TUI views.
@@ -168,4 +171,42 @@ func (v *BaseSearchableView) HandleSearchInput(msg tea.KeyMsg) (handled bool, cm
 		}
 		return false, cmd, valueChanged
 	}
+}
+
+// WrapCursor wraps a cursor position within list bounds.
+// delta is typically 1 (down) or -1 (up).
+func WrapCursor(current, listLen, delta int) int {
+	if listLen == 0 {
+		return 0
+	}
+	result := current + delta
+	if result < 0 {
+		return listLen - 1
+	}
+	if result >= listLen {
+		return 0
+	}
+	return result
+}
+
+// RenderCenteredBox renders content in a centered box with the given style.
+func RenderCenteredBox(content string, boxWidth, viewWidth, viewHeight int, style lipgloss.Style) string {
+	box := style.Width(boxWidth).Render(content)
+
+	boxHeight := lipgloss.Height(box)
+	topPadding := max((viewHeight-boxHeight)/2, 0)
+	leftPadding := max((viewWidth-lipgloss.Width(box))/2, 0)
+
+	var b strings.Builder
+	for i := 0; i < topPadding; i++ {
+		b.WriteString("\n")
+	}
+
+	padding := strings.Repeat(" ", leftPadding)
+	for _, line := range strings.Split(box, "\n") {
+		b.WriteString(padding)
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+	return b.String()
 }

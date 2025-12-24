@@ -5,7 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,14 +17,11 @@ type ContextInfo struct {
 
 // ContextPickerModel allows selecting a single context to filter by.
 type ContextPickerModel struct {
-	dashboard   *DashboardModel
-	contexts    []ContextInfo // All contexts (first entry is "All Contexts")
-	filtered    []ContextInfo
-	cursor      int
-	width       int
-	height      int
-	searchMode  bool
-	searchInput textinput.Model
+	BaseSearchableView
+	dashboard *DashboardModel
+	contexts  []ContextInfo // All contexts (first entry is "All Contexts")
+	filtered  []ContextInfo
+	cursor    int
 }
 
 // ShowContextPickerMsg is sent to open the context picker.
@@ -41,16 +37,11 @@ type ContextPickerDoneMsg struct {
 
 // NewContextPickerModel creates a new context picker.
 func NewContextPickerModel(dashboard *DashboardModel) *ContextPickerModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter..."
-	searchInput.CharLimit = 50
-	searchInput.Width = 30
-
 	m := &ContextPickerModel{
-		dashboard:   dashboard,
-		cursor:      0,
-		searchInput: searchInput,
+		dashboard: dashboard,
+		cursor:    0,
 	}
+	m.InitSearchInput("Type to filter...", 50, 30)
 	m.buildContextList()
 
 	// Position cursor on currently filtered context
@@ -64,12 +55,6 @@ func NewContextPickerModel(dashboard *DashboardModel) *ContextPickerModel {
 	}
 
 	return m
-}
-
-// SetSize sets the view dimensions.
-func (m *ContextPickerModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
 }
 
 // buildContextList gathers unique contexts from projects with counts.
@@ -144,8 +129,15 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searchMode {
-			return m.handleSearchMode(msg)
+		if m.IsSearchMode() {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterContextList(m.SearchQuery())
+			}
+			if handled {
+				return m, cmd
+			}
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -168,67 +160,27 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "j", "down":
-			if len(m.filtered) > 0 {
-				m.cursor++
-				if m.cursor >= len(m.filtered) {
-					m.cursor = 0
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), 1)
 			return m, nil
 
 		case "k", "up":
-			if len(m.filtered) > 0 {
-				m.cursor--
-				if m.cursor < 0 {
-					m.cursor = len(m.filtered) - 1
-				}
-			}
+			m.cursor = WrapCursor(m.cursor, len(m.filtered), -1)
 			return m, nil
 
 		case "/":
-			m.searchMode = true
-			m.searchInput.Focus()
-			return m, textinput.Blink
+			return m, m.ActivateSearch()
 		}
 	}
 
 	return m, nil
 }
 
-// handleSearchMode handles keyboard input while in search mode.
-func (m *ContextPickerModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.searchInput.SetValue("")
-		m.filterContextList("")
-		return m, nil
-
-	case "enter":
-		m.searchMode = false
-		m.searchInput.Blur()
-		return m, nil
-
-	default:
-		oldVal := m.searchInput.Value()
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		if oldVal != m.searchInput.Value() {
-			m.filterContextList(m.searchInput.Value())
-		}
-		return m, cmd
-	}
-}
-
 // View renders the context picker.
 func (m *ContextPickerModel) View() string {
-	var b strings.Builder
-
 	// Calculate box width
 	boxWidth := 50
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
+	if m.Width() > 0 && m.Width() < boxWidth+10 {
+		boxWidth = m.Width() - 10
 	}
 
 	// Build content
@@ -240,9 +192,9 @@ func (m *ContextPickerModel) View() string {
 	content.WriteString(titleStyle.Render("Filter by Context"))
 	content.WriteString("\n\n")
 
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString("Filter: ")
-		content.WriteString(m.searchInput.View())
+		content.WriteString(m.SearchInputView())
 		content.WriteString("\n\n")
 	}
 
@@ -260,8 +212,8 @@ func (m *ContextPickerModel) View() string {
 	} else {
 		// Show list
 		maxVisible := 15
-		if m.height > 0 {
-			maxVisible = m.height - 14
+		if m.Height() > 0 {
+			maxVisible = m.Height() - 14
 		}
 		if maxVisible < 5 {
 			maxVisible = 5
@@ -317,7 +269,7 @@ func (m *ContextPickerModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.searchMode {
+	if m.IsSearchMode() {
 		content.WriteString(MutedStyle.Render("enter done | esc clear"))
 	} else if len(m.filtered) > 0 {
 		content.WriteString(MutedStyle.Render("/ search | enter select | esc cancel"))
@@ -325,32 +277,5 @@ func (m *ContextPickerModel) View() string {
 		content.WriteString(MutedStyle.Render("esc cancel"))
 	}
 
-	// Apply box styling
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
-	}
-
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }
