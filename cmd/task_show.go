@@ -63,7 +63,10 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		task = selected.Data.(*models.Task)
+		task, err = GetTaskFromSelector(selected)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Use glow if available and enabled

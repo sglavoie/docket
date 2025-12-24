@@ -128,6 +128,26 @@ func TasksToSelectorItems(tasks []*models.Task) []tui.SelectorItem {
 	return items
 }
 
+// GetTaskFromSelector safely extracts a Task from a SelectorItem.
+// Returns an error if the data is not a *models.Task.
+func GetTaskFromSelector(item *tui.SelectorItem) (*models.Task, error) {
+	task, ok := item.Data.(*models.Task)
+	if !ok {
+		return nil, fmt.Errorf("internal error: expected Task, got %T", item.Data)
+	}
+	return task, nil
+}
+
+// GetProjectFromSelector safely extracts a Project from a SelectorItem.
+// Returns an error if the data is not a *models.Project.
+func GetProjectFromSelector(item *tui.SelectorItem) (*models.Project, error) {
+	project, ok := item.Data.(*models.Project)
+	if !ok {
+		return nil, fmt.Errorf("internal error: expected Project, got %T", item.Data)
+	}
+	return project, nil
+}
+
 // ProjectsToSelectorItems converts projects to selector items.
 // If includeActive is true, includes the "Active" column.
 func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []tui.SelectorItem {

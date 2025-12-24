@@ -3,7 +3,6 @@ package storage
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -35,12 +34,20 @@ type ParsedTask struct {
 	RawContent string // The description content between this task and the next
 }
 
+// ParseWarning represents a non-fatal issue found during parsing.
+type ParseWarning struct {
+	TaskID  string // ID of the task with the issue (may be empty for global warnings)
+	Field   string // Which field had the issue (e.g., "priority", "parent")
+	Message string // Human-readable description of the issue
+}
+
 // ParseResult contains the results of parsing a tasks.md file.
 type ParseResult struct {
 	ProjectName   string
 	Tasks         []*models.Task
 	Sections      []string
 	SectionColors map[string]string
+	Warnings      []ParseWarning // Non-fatal issues found during parsing
 }
 
 // ParseTasksMarkdown parses a tasks.md file content into tasks.
@@ -65,6 +72,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var descBuilder strings.Builder
 	var nextShortID int = 1
 	var foundFirstTask bool
+	var metadataWarnings []ParseWarning
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -132,7 +140,12 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		// Check for metadata comment
 		if currentTask != nil && currentTask.Task.ID == "" {
 			if matches := metadataRegex.FindStringSubmatch(line); matches != nil {
-				parseMetadata(currentTask.Task, matches[1])
+				warnings := parseMetadata(currentTask.Task, matches[1])
+				// Add task ID to warnings now that we have it
+				for i := range warnings {
+					warnings[i].TaskID = currentTask.Task.ID
+				}
+				metadataWarnings = append(metadataWarnings, warnings...)
 				continue
 			}
 		}
@@ -164,7 +177,11 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 	for _, t := range tasks {
 		if t.ParentID != nil && !taskByID[*t.ParentID] {
-			log.Printf("warning: task %s references non-existent parent %s, clearing parent reference", t.ID, *t.ParentID)
+			metadataWarnings = append(metadataWarnings, ParseWarning{
+				TaskID:  t.ID,
+				Field:   "parent",
+				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference", t.ID, *t.ParentID),
+			})
 			t.ParentID = nil
 		}
 	}
@@ -179,6 +196,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		Tasks:         tasks,
 		Sections:      sections,
 		SectionColors: sectionColors,
+		Warnings:      metadataWarnings,
 	}, nil
 }
 
@@ -195,7 +213,9 @@ func parseTimeField(value string) (time.Time, bool) {
 }
 
 // parseMetadata parses the metadata string and sets task fields.
-func parseMetadata(task *models.Task, metaStr string) {
+// Returns any warnings encountered during parsing.
+func parseMetadata(task *models.Task, metaStr string) []ParseWarning {
+	var warnings []ParseWarning
 	pairs := strings.Split(metaStr, ",")
 	for _, pair := range pairs {
 		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
@@ -215,9 +235,15 @@ func parseMetadata(task *models.Task, metaStr string) {
 		case "priority":
 			p, err := strconv.Atoi(value)
 			if err != nil {
-				log.Printf("warning: invalid priority '%s' for task, using default", value)
+				warnings = append(warnings, ParseWarning{
+					Field:   "priority",
+					Message: fmt.Sprintf("invalid priority '%s', using default", value),
+				})
 			} else if p < 1 || p > 5 {
-				log.Printf("warning: priority %d out of range (1-5) for task, using default", p)
+				warnings = append(warnings, ParseWarning{
+					Field:   "priority",
+					Message: fmt.Sprintf("priority %d out of range (1-5), using default", p),
+				})
 			} else {
 				task.Priority = p
 			}
@@ -263,6 +289,7 @@ func parseMetadata(task *models.Task, metaStr string) {
 			task.Active = value == "true"
 		}
 	}
+	return warnings
 }
 
 // ParseProjectNameFromFile reads a tasks.md file and extracts the project name.

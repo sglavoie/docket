@@ -5,56 +5,78 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
+type ParentPickerItem struct {
+	Task  *models.Task
+	score int // Cached score for current query
+}
+
+// FilterText returns searchable text for parent filtering.
+func (p ParentPickerItem) FilterText() string {
+	return fmt.Sprintf("#%d %s %s", p.Task.ShortID, p.Task.Type.HeadingPrefix(), p.Task.Title)
+}
+
+// DisplayText returns the task title for display.
+func (p ParentPickerItem) DisplayText() string {
+	return p.Task.Title
+}
+
+// CountValue returns 0 as parents don't have a count.
+func (p ParentPickerItem) CountValue() int {
+	return 0
+}
+
+// ItemID returns the task ID as its unique identifier.
+func (p ParentPickerItem) ItemID() string {
+	return p.Task.ID
+}
+
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
 type ParentSelectorModel struct {
-	validParents []*models.Task // All valid parent candidates
-	filtered     []*models.Task // Tasks matching current query
-	cursor       int            // Currently selected index (0 = None if allowNone)
-	allowNone    bool           // Whether "None" is a valid option
-	currentID    *string        // Currently selected parent ID (for pre-selection)
-	source       ViewType       // Which view opened this selector
-
-	// Input for filtering
-	searchInput textinput.Model
-
-	// Dimensions
-	width  int
-	height int
+	*BasePicker[ParentPickerItem]
+	allItems  []ParentPickerItem // All valid parent candidates
+	allowNone bool               // Whether "None" is a valid option
+	currentID *string            // Currently selected parent ID (for pre-selection)
+	source    ViewType           // Which view opened this selector
 }
 
 // NewParentSelectorModel creates a new parent selector.
 func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source ViewType) *ParentSelectorModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Type to filter parents..."
-	searchInput.CharLimit = 100
-	searchInput.Width = 40
-	searchInput.Focus()
+	items := make([]ParentPickerItem, len(validParents))
+	for i, t := range validParents {
+		items[i] = ParentPickerItem{Task: t}
+	}
+
+	picker := NewBasePicker(items, PickerConfig{
+		Title:          "Select Parent",
+		EmptyMessage:   "No valid parents available",
+		NoMatchMessage: "No matching parents",
+		MultiSelect:    false,
+		ShowCounts:     false,
+	})
 
 	m := &ParentSelectorModel{
-		validParents: validParents,
-		allowNone:    allowNone,
-		currentID:    currentID,
-		source:       source,
-		searchInput:  searchInput,
-		cursor:       0,
+		BasePicker: picker,
+		allItems:   items,
+		allowNone:  allowNone,
+		currentID:  currentID,
+		source:     source,
 	}
-	m.filtered = validParents
 
 	// Pre-select current parent if set
 	if currentID != nil {
-		for i, p := range validParents {
-			if p.ID == *currentID {
+		for i, item := range items {
+			if item.Task.ID == *currentID {
 				if allowNone {
-					m.cursor = i + 1 // +1 to account for "None" option
+					m.Cursor = i + 1 // +1 to account for "None" option
 				} else {
-					m.cursor = i
+					m.Cursor = i
 				}
 				break
 			}
@@ -69,15 +91,8 @@ func (m *ParentSelectorModel) HasActiveSearch() bool {
 	return true
 }
 
-// SetSize sets the view dimensions.
-func (m *ParentSelectorModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-	m.searchInput.Width = width - 4
-}
-
 func (m *ParentSelectorModel) Init() tea.Cmd {
-	return textinput.Blink
+	return m.ActivateSearch()
 }
 
 func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -89,51 +104,116 @@ func (m *ParentSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if m.IsSearchMode() && m.SearchQuery() != "" {
+				m.ClearSearch()
+				m.fuzzyFilter("")
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return CloseParentSelectorMsg{}
 			}
+
 		case "enter":
 			return m, m.selectCurrent()
+
 		case "up", "ctrl+k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.moveCursor(-1)
 			return m, nil
+
 		case "down", "ctrl+j":
-			maxCursor := len(m.filtered)
-			if !m.allowNone {
-				maxCursor--
-			}
-			if m.cursor < maxCursor {
-				m.cursor++
-			}
+			m.moveCursor(1)
 			return m, nil
+
 		case "ctrl+u":
-			m.cursor -= 10
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
+			m.moveCursor(-10)
 			return m, nil
+
 		case "ctrl+d":
-			maxCursor := len(m.filtered)
-			if !m.allowNone {
-				maxCursor--
-			}
-			m.cursor += 10
-			if m.cursor > maxCursor {
-				m.cursor = maxCursor
-			}
+			m.moveCursor(10)
 			return m, nil
+
 		default:
-			// Update search input
-			var cmd tea.Cmd
-			m.searchInput, cmd = m.searchInput.Update(msg)
-			m.filterParents()
-			return m, cmd
+			// Handle search input
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.fuzzyFilter(m.SearchQuery())
+			}
+			if handled {
+				return m, cmd
+			}
 		}
 	}
 
 	return m, nil
+}
+
+// moveCursor moves the cursor by delta, accounting for the "None" option.
+func (m *ParentSelectorModel) moveCursor(delta int) {
+	maxCursor := len(m.Filtered)
+	if !m.allowNone {
+		maxCursor--
+	}
+	if maxCursor < 0 {
+		maxCursor = 0
+	}
+
+	m.Cursor += delta
+	if m.Cursor < 0 {
+		m.Cursor = 0
+	}
+	if m.Cursor > maxCursor {
+		m.Cursor = maxCursor
+	}
+}
+
+// fuzzyFilter filters parents using fuzzy scoring instead of substring matching.
+func (m *ParentSelectorModel) fuzzyFilter(query string) {
+	query = strings.TrimSpace(query)
+
+	if query == "" {
+		m.Filtered = m.allItems
+		m.Cursor = 0
+		return
+	}
+
+	// Score each parent and collect matches
+	type scoredItem struct {
+		item  ParentPickerItem
+		score int
+	}
+	var scored []scoredItem
+
+	for _, item := range m.allItems {
+		score := fuzzy.ScoreTerms(item.FilterText(), query)
+		if score > 0 {
+			scored = append(scored, scoredItem{item: item, score: score})
+		}
+	}
+
+	// Sort by score descending (best matches first)
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	// Extract sorted results
+	m.Filtered = make([]ParentPickerItem, len(scored))
+	for i, s := range scored {
+		m.Filtered[i] = s.item
+	}
+
+	// Reset cursor if out of bounds
+	maxCursor := len(m.Filtered)
+	if m.allowNone {
+		// cursor 0 is "None", so max is len(filtered)
+	} else if maxCursor > 0 {
+		maxCursor--
+	}
+	if m.Cursor > maxCursor {
+		m.Cursor = maxCursor
+	}
+	if m.Cursor < 0 {
+		m.Cursor = 0
+	}
 }
 
 // selectCurrent returns a command with the selected parent.
@@ -142,15 +222,15 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 		var parentID *string
 
 		if m.allowNone {
-			if m.cursor == 0 {
+			if m.Cursor == 0 {
 				// "None" selected
 				parentID = nil
-			} else if m.cursor-1 < len(m.filtered) {
-				parentID = &m.filtered[m.cursor-1].ID
+			} else if m.Cursor-1 < len(m.Filtered) {
+				parentID = &m.Filtered[m.Cursor-1].Task.ID
 			}
 		} else {
-			if m.cursor < len(m.filtered) {
-				parentID = &m.filtered[m.cursor].ID
+			if m.Cursor < len(m.Filtered) {
+				parentID = &m.Filtered[m.Cursor].Task.ID
 			}
 		}
 
@@ -161,66 +241,6 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 	}
 }
 
-// filterParents filters parents based on the current search query.
-func (m *ParentSelectorModel) filterParents() {
-	query := strings.TrimSpace(m.searchInput.Value())
-
-	if query == "" {
-		m.filtered = m.validParents
-		m.cursor = 0
-		return
-	}
-
-	// Score each parent and collect matches
-	type scoredTask struct {
-		task  *models.Task
-		score int
-	}
-	var scored []scoredTask
-
-	for _, task := range m.validParents {
-		score := m.scoreParent(task, query)
-		if score > 0 {
-			scored = append(scored, scoredTask{task: task, score: score})
-		}
-	}
-
-	// Sort by score descending (best matches first)
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	// Extract sorted results
-	m.filtered = make([]*models.Task, len(scored))
-	for i, s := range scored {
-		m.filtered[i] = s.task
-	}
-
-	// Reset cursor if out of bounds
-	maxCursor := len(m.filtered)
-	if m.allowNone {
-		// cursor 0 is "None", so max is len(filtered)
-	} else {
-		maxCursor--
-	}
-	if m.cursor > maxCursor {
-		m.cursor = maxCursor
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-}
-
-// scoreParent returns a fuzzy match score for a parent task.
-func (m *ParentSelectorModel) scoreParent(task *models.Task, query string) int {
-	searchable := fmt.Sprintf("#%d %s %s",
-		task.ShortID,
-		task.Type.HeadingPrefix(),
-		task.Title,
-	)
-	return fuzzy.ScoreTerms(searchable, query)
-}
-
 func (m *ParentSelectorModel) View() string {
 	var b strings.Builder
 
@@ -229,7 +249,7 @@ func (m *ParentSelectorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Search input
-	b.WriteString(m.searchInput.View())
+	b.WriteString(m.SearchInputView())
 	b.WriteString("\n\n")
 
 	// Render the list
@@ -247,13 +267,13 @@ func (m *ParentSelectorModel) View() string {
 func (m *ParentSelectorModel) renderList() string {
 	var b strings.Builder
 
-	maxVisible := m.height - 10 // Account for title, input, footer
+	maxVisible := m.Height() - 10 // Account for title, input, footer
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
 
 	// Calculate total items (including "None" if allowed)
-	totalItems := len(m.filtered)
+	totalItems := len(m.Filtered)
 	if m.allowNone {
 		totalItems++
 	}
@@ -264,8 +284,8 @@ func (m *ParentSelectorModel) renderList() string {
 
 	// Calculate scroll offset to keep cursor visible
 	scrollOffset := 0
-	if m.cursor >= maxVisible {
-		scrollOffset = m.cursor - maxVisible + 1
+	if m.Cursor >= maxVisible {
+		scrollOffset = m.Cursor - maxVisible + 1
 	}
 
 	itemIndex := 0
@@ -274,11 +294,11 @@ func (m *ParentSelectorModel) renderList() string {
 	if m.allowNone {
 		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
 			cursor := "  "
-			if m.cursor == 0 {
+			if m.Cursor == 0 {
 				cursor = "> "
 			}
 			line := fmt.Sprintf("%s%s", cursor, "(None)")
-			if m.cursor == 0 {
+			if m.Cursor == 0 {
 				line = SelectorOptionSelectedStyle.Render(line)
 			} else {
 				line = MutedStyle.Render(line)
@@ -290,7 +310,7 @@ func (m *ParentSelectorModel) renderList() string {
 	}
 
 	// Render parent tasks
-	for i, task := range m.filtered {
+	for i, item := range m.Filtered {
 		cursorIdx := i
 		if m.allowNone {
 			cursorIdx = i + 1
@@ -298,28 +318,28 @@ func (m *ParentSelectorModel) renderList() string {
 
 		if itemIndex >= scrollOffset && itemIndex < scrollOffset+maxVisible {
 			cursor := "  "
-			if m.cursor == cursorIdx {
+			if m.Cursor == cursorIdx {
 				cursor = "> "
 			}
 
 			// Type icon
-			typeStyle := GetTypeStyle(string(task.Type))
-			typeIcon := typeStyle.Render(task.Type.Icon())
+			typeStyle := GetTypeStyle(string(item.Task.Type))
+			typeIcon := typeStyle.Render(item.Task.Type.Icon())
 
 			// Short ID
-			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
+			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
 			// Title (truncated)
-			maxTitleLen := m.width - 20
+			maxTitleLen := m.Width() - 20
 			if maxTitleLen < 10 {
 				maxTitleLen = 10
 			}
-			title := util.Truncate(task.Title, maxTitleLen)
+			title := util.Truncate(item.Task.Title, maxTitleLen)
 
 			// Build line
 			line := fmt.Sprintf("%s%s %s %s", cursor, typeIcon, shortID, title)
 
-			if m.cursor == cursorIdx {
+			if m.Cursor == cursorIdx {
 				line = BoldStyle.Foreground(ColorPrimary).Render(line)
 			}
 

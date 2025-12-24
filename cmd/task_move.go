@@ -307,5 +307,5 @@ func selectTaskForMove(project *models.Project, args []string, action string) (*
 		return nil, err
 	}
 
-	return selected.Data.(*models.Task), nil
+	return GetTaskFromSelector(selected)
 }

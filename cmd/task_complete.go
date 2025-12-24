@@ -148,7 +148,10 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 			return err
 		}
 
-		task = selected.Data.(*models.Task)
+		task, err = GetTaskFromSelector(selected)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Block completion if task has incomplete dependencies

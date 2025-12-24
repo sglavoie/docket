@@ -169,5 +169,5 @@ func selectDependency(project *models.Project, task *models.Task) (*models.Task,
 		return nil, err
 	}
 
-	return selected.Data.(*models.Task), nil
+	return GetTaskFromSelector(selected)
 }

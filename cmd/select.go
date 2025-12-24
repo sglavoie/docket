@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -49,7 +50,9 @@ func runSelect(cmd *cobra.Command, args []string) error {
 
 		// Load projects to get task counts
 		for _, p := range projects {
-			storage.LoadProject(p)
+			if err := storage.LoadProject(p); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to load project %s: %v\n", p.Name, err)
+			}
 		}
 
 		items := ProjectsToSelectorItems(projects, true)
@@ -58,7 +61,10 @@ func runSelect(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		project = selected.Data.(*models.Project)
+		project, err = GetProjectFromSelector(selected)
+		if err != nil {
+			return err
+		}
 	}
 
 	cfg.CurrentProject = project.ID

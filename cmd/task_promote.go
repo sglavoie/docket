@@ -131,7 +131,10 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 			return err
 		}
 
-		task = selected.Data.(*models.Task)
+		task, err = GetTaskFromSelector(selected)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Record old type for output

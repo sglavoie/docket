@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -55,7 +56,9 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 		// Use fzf if available
 		if cfg.FzfEnabled && external.FzfAvailable() {
 			for _, p := range projects {
-				storage.LoadProject(p)
+				if err := storage.LoadProject(p); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to load project %s: %v\n", p.Name, err)
+				}
 			}
 			selected, err := external.FzfSelectProject(projects, "Open project:")
 			if err != nil {
@@ -64,7 +67,9 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 			project = selected
 		} else {
 			for _, p := range projects {
-				storage.LoadProject(p)
+				if err := storage.LoadProject(p); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to load project %s: %v\n", p.Name, err)
+				}
 			}
 
 			items := ProjectsToSelectorItems(projects, false)
@@ -72,7 +77,10 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			project = selected.Data.(*models.Project)
+			project, err = GetProjectFromSelector(selected)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
