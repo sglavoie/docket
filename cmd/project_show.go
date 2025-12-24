@@ -7,6 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -68,10 +69,10 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s %s\n", labelStyle.Render("Slug:"), project.Slug)
 	fmt.Printf("%s %s\n", labelStyle.Render("Context:"), project.Context)
 	fmt.Printf("%s %s\n", labelStyle.Render("Path:"), project.Path)
-	fmt.Printf("%s %s\n", labelStyle.Render("Created:"), project.CreatedAt.Format("2006-01-02"))
+	fmt.Printf("%s %s\n", labelStyle.Render("Created:"), project.CreatedAt.Format(util.DateFormat))
 
 	if project.Archived {
-		fmt.Printf("%s %s\n", labelStyle.Render("Archived:"), project.ArchivedAt.Format("2006-01-02"))
+		fmt.Printf("%s %s\n", labelStyle.Render("Archived:"), project.ArchivedAt.Format(util.DateFormat))
 	}
 
 	fmt.Println()

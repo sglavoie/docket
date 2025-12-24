@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskJumperModel provides fuzzy-find navigation to tasks.
@@ -273,7 +274,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 		if maxTitleLen < 10 {
 			maxTitleLen = 10
 		}
-		title := truncate(task.Title, maxTitleLen)
+		title := util.Truncate(task.Title, maxTitleLen)
 
 		// Build line
 		line := fmt.Sprintf("%s%s %s %s %s", cursor, typeIcon, statusIcon, shortID, title)
@@ -344,7 +345,7 @@ func (m *TaskJumperModel) renderPreview() string {
 	if task.DueDate != nil {
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Due:"),
-			task.DueDate.Format("2006-01-02")))
+			task.DueDate.Format(util.DateFormat)))
 	}
 
 	// Parent reference
@@ -352,7 +353,7 @@ func (m *TaskJumperModel) renderPreview() string {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(truncate(parentRef, m.previewWidth-10))))
+			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10))))
 	}
 
 	// Description (truncated)

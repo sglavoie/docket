@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // SectionPickerModel allows selecting a single section to assign to a task.
@@ -264,7 +265,7 @@ func (m *SectionPickerModel) View() string {
 		Foreground(ColorPrimary)
 	content.WriteString(titleStyle.Render("Assign Section"))
 	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, truncate(m.task.Title, 30))))
+	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))))
 	content.WriteString("\n\n")
 
 	if m.searchMode {

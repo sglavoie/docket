@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // GlowAvailable checks if glow is installed and available.
@@ -59,18 +60,18 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 		b.WriteString(fmt.Sprintf("| Tags | %s |\n", strings.Join(task.Tags, ", ")))
 	}
 
-	b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format("2006-01-02 15:04")))
+	b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format(util.DateTimeFormat)))
 
 	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
-		b.WriteString(fmt.Sprintf("| Updated | %s |\n", task.UpdatedAt.Format("2006-01-02 15:04")))
+		b.WriteString(fmt.Sprintf("| Updated | %s |\n", task.UpdatedAt.Format(util.DateTimeFormat)))
 	}
 
 	if task.CompletedAt != nil {
-		b.WriteString(fmt.Sprintf("| Completed | %s |\n", task.CompletedAt.Format("2006-01-02 15:04")))
+		b.WriteString(fmt.Sprintf("| Completed | %s |\n", task.CompletedAt.Format(util.DateTimeFormat)))
 	}
 
 	if task.DueDate != nil {
-		b.WriteString(fmt.Sprintf("| Due | %s |\n", task.DueDate.Format("2006-01-02")))
+		b.WriteString(fmt.Sprintf("| Due | %s |\n", task.DueDate.Format(util.DateFormat)))
 	}
 
 	b.WriteString("\n")

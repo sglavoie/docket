@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
@@ -313,7 +314,7 @@ func (m *ParentSelectorModel) renderList() string {
 			if maxTitleLen < 10 {
 				maxTitleLen = 10
 			}
-			title := truncate(task.Title, maxTitleLen)
+			title := util.Truncate(task.Title, maxTitleLen)
 
 			// Build line
 			line := fmt.Sprintf("%s%s %s %s", cursor, typeIcon, shortID, title)

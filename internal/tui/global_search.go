@@ -12,20 +12,15 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
-
-// searchResult holds a task and its parent project for display.
-type searchResult struct {
-	Task    *models.Task
-	Project *models.Project
-}
 
 // GlobalSearchModel provides global search across all projects.
 type GlobalSearchModel struct {
 	config   *config.Config
 	projects []*models.Project
-	allTasks []searchResult // flattened list of all tasks with project refs
-	filtered []searchResult // tasks matching current query
+	allTasks []models.SearchResult // flattened list of all tasks with project refs
+	filtered []models.SearchResult // tasks matching current query
 	cursor   int
 
 	// Input for filtering
@@ -49,13 +44,13 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	projects := cfg.GetActiveProjects()
 
 	// Load all tasks from all projects
-	var allTasks []searchResult
+	var allTasks []models.SearchResult
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
 			continue
 		}
 		for _, task := range project.Tasks {
-			allTasks = append(allTasks, searchResult{
+			allTasks = append(allTasks, models.SearchResult{
 				Task:    task,
 				Project: project,
 			})
@@ -174,7 +169,7 @@ func (m *GlobalSearchModel) filterTasks() {
 
 	// Score each task and collect matches
 	type scoredResult struct {
-		result searchResult
+		result models.SearchResult
 		score  int
 	}
 	var scored []scoredResult
@@ -192,7 +187,7 @@ func (m *GlobalSearchModel) filterTasks() {
 	})
 
 	// Extract sorted results
-	m.filtered = make([]searchResult, len(scored))
+	m.filtered = make([]models.SearchResult, len(scored))
 	for i, s := range scored {
 		m.filtered[i] = s.result
 	}
@@ -318,7 +313,7 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		statusIcon := statusStyle.Render(task.Status.Icon())
 
 		// Project name (truncated)
-		projectName := MutedStyle.Render(fmt.Sprintf("[%s]", truncate(result.Project.Slug, 10)))
+		projectName := MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(result.Project.Slug, 10)))
 
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
@@ -329,7 +324,7 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		if maxTitleLen < 10 {
 			maxTitleLen = 10
 		}
-		title := truncate(task.Title, maxTitleLen)
+		title := util.Truncate(task.Title, maxTitleLen)
 
 		// Build line
 		line := fmt.Sprintf("%s%s %s %s %s %s", cursor, typeIcon, statusIcon, shortID, projectName, title)
@@ -407,7 +402,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 	if task.DueDate != nil {
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Due:"),
-			task.DueDate.Format("2006-01-02")))
+			task.DueDate.Format(util.DateFormat)))
 	}
 
 	// Parent reference
@@ -415,7 +410,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(truncate(parentRef, m.previewWidth-10))))
+			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10))))
 	}
 
 	// Description (truncated)

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // ProjectListModel represents the project list view.
@@ -117,7 +118,7 @@ func (m *ProjectListModel) View() string {
 				style = BoldStyle.Foreground(ColorPrimary)
 			}
 
-			nameStr := truncate(p.Name, 20)
+			nameStr := util.Truncate(p.Name, 20)
 			if p.ID == m.config.CurrentProject {
 				nameStr += " *"
 			}

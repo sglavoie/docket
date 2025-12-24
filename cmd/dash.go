@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -119,7 +120,7 @@ func displayRecentTasks(project *models.Project) {
 			task.ShortID,
 			task.Type.Icon(),
 			task.Status.Icon(),
-			truncate(task.Title, 40),
+			util.Truncate(task.Title, 40),
 			storage.FormatRelativeTime(task.UpdatedAt),
 		})
 	}
@@ -162,13 +163,6 @@ func displayTaskStats(project *models.Project) {
 	statStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 	fmt.Println(statStyle.Render(fmt.Sprintf("Types: %s", joinStrings(typeStats, " "))))
 	fmt.Println(statStyle.Render(fmt.Sprintf("Status: %s", joinStrings(statusStats, " "))))
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
 }
 
 func joinStrings(strs []string, sep string) string {

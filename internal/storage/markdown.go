@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // getChildrenInOrder returns tasks that are children of the given parent ID,
@@ -183,19 +184,19 @@ func writeMetadata(task *models.Task) string {
 	}
 
 	if !task.CreatedAt.IsZero() {
-		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format("2006-01-02 15:04")))
+		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format(util.DateTimeFormat)))
 	}
 
 	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
-		parts = append(parts, fmt.Sprintf("updated: %s", task.UpdatedAt.Format("2006-01-02 15:04")))
+		parts = append(parts, fmt.Sprintf("updated: %s", task.UpdatedAt.Format(util.DateTimeFormat)))
 	}
 
 	if task.CompletedAt != nil {
-		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format("2006-01-02 15:04")))
+		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format(util.DateTimeFormat)))
 	}
 
 	if task.DueDate != nil {
-		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format("2006-01-02")))
+		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
 	}
 
 	if len(task.DependsOn) > 0 {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // formFactory is a shared factory instance for resizing form fields.
@@ -439,7 +440,7 @@ func (m *TaskCreatorModel) View() string {
 
 	for i := startIdx; i < len(m.validParents) && i < startIdx+maxShow+1; i++ {
 		p := m.validParents[i]
-		display := truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 20)
+		display := util.Truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 20)
 		if m.parentCursor == i+1 {
 			if m.focusIndex == 2 {
 				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf(" [%s]", display)))

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DashboardModel represents the dashboard view.
@@ -443,7 +444,7 @@ func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.P
 			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 			typeStyle.Render(task.Type.Icon()),
 			statusStyle.Render(task.Status.Icon()),
-			truncate(task.Title, 40),
+			util.Truncate(task.Title, 40),
 			MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
 
 		b.WriteString(line)
@@ -541,11 +542,4 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: ",", Description: "Settings", Category: "Actions"},
 		{Key: "?", Description: "Toggle help", Category: "Actions"},
 	}
-}
-
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
 }

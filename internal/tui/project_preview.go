@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // ShowProjectPreviewMsg is sent to show the project preview.
@@ -116,12 +117,12 @@ func (m *ProjectPreviewModel) renderContent() string {
 	// Timestamps
 	b.WriteString(BoldStyle.Render("Timestamps"))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  Created: %s\n", p.CreatedAt.Format("2006-01-02 15:04")))
-	b.WriteString(fmt.Sprintf("  Updated: %s\n", p.UpdatedAt.Format("2006-01-02 15:04")))
+	b.WriteString(fmt.Sprintf("  Created: %s\n", p.CreatedAt.Format(util.DateTimeFormat)))
+	b.WriteString(fmt.Sprintf("  Updated: %s\n", p.UpdatedAt.Format(util.DateTimeFormat)))
 
 	// Archived status
 	if p.Archived && p.ArchivedAt != nil {
-		b.WriteString(OverdueStyle.Render(fmt.Sprintf("  Archived: %s", p.ArchivedAt.Format("2006-01-02 15:04"))))
+		b.WriteString(OverdueStyle.Render(fmt.Sprintf("  Archived: %s", p.ArchivedAt.Format(util.DateTimeFormat))))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
@@ -203,7 +204,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 					MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 					typeStyle.Render(task.Type.Icon()),
 					statusStyle.Render(task.Status.Icon()),
-					truncate(task.Title, 40),
+					util.Truncate(task.Title, 40),
 					MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
 
 				b.WriteString(line)

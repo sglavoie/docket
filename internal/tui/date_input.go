@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DateInputModel handles setting a due date for a task.
@@ -34,7 +35,7 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 
 	// Pre-fill with current due date if set
 	if task.DueDate != nil {
-		input.SetValue(task.DueDate.Format("2006-01-02"))
+		input.SetValue(task.DueDate.Format(util.DateFormat))
 	}
 
 	return &DateInputModel{
@@ -169,7 +170,7 @@ func ParseDate(input string) (time.Time, error) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	// Exact date: YYYY-MM-DD
-	if date, err := time.ParseInLocation("2006-01-02", input, time.Local); err == nil {
+	if date, err := time.ParseInLocation(util.DateFormat, input, time.Local); err == nil {
 		return date, nil
 	}
 

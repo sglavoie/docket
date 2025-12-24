@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DueDateTask wraps a task with its parent project for cross-project display.
@@ -346,7 +347,7 @@ func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isOverdue bool, is
 	dateStr := m.formatDueDate(dt.Task, isOverdue)
 
 	// Project name in brackets
-	projectName := truncate(dt.Project.Name, 15)
+	projectName := util.Truncate(dt.Project.Name, 15)
 	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
 
 	// Task type icon
@@ -357,7 +358,7 @@ func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isOverdue bool, is
 	if maxTitleLen < 10 {
 		maxTitleLen = 10
 	}
-	title := truncate(dt.Task.Title, maxTitleLen)
+	title := util.Truncate(dt.Task.Title, maxTitleLen)
 
 	line := fmt.Sprintf("%s%s %s %s %s", cursor, dateStr, projectStr, typeIcon, title)
 

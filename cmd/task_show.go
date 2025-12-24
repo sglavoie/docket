@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -122,7 +123,7 @@ func displayTaskDetail(task *models.Task) {
 
 	fmt.Printf("%s %s\n",
 		labelStyle.Render("Created:"),
-		valueStyle.Render(task.CreatedAt.Format("2006-01-02 15:04")))
+		valueStyle.Render(task.CreatedAt.Format(util.DateTimeFormat)))
 
 	fmt.Printf("%s %s\n",
 		labelStyle.Render("Updated:"),
@@ -131,13 +132,13 @@ func displayTaskDetail(task *models.Task) {
 	if task.CompletedAt != nil {
 		fmt.Printf("%s %s\n",
 			labelStyle.Render("Completed:"),
-			valueStyle.Render(task.CompletedAt.Format("2006-01-02 15:04")))
+			valueStyle.Render(task.CompletedAt.Format(util.DateTimeFormat)))
 	}
 
 	if task.DueDate != nil {
 		fmt.Printf("%s %s\n",
 			labelStyle.Render("Due:"),
-			valueStyle.Render(task.DueDate.Format("2006-01-02")))
+			valueStyle.Render(task.DueDate.Format(util.DateFormat)))
 	}
 
 	// Description

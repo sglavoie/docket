@@ -5,18 +5,6 @@ import (
 	"testing"
 )
 
-// matchesSearchQuery checks if a task matches the search query.
-// This is the same logic used in cmd/search.go and internal/tui/global_search.go.
-func matchesSearchQuery(task *Task, queryLower string) bool {
-	if strings.Contains(strings.ToLower(task.Title), queryLower) {
-		return true
-	}
-	if strings.Contains(strings.ToLower(task.Description), queryLower) {
-		return true
-	}
-	return false
-}
-
 func TestMatchesSearchQuery_TitleMatch(t *testing.T) {
 	task := &Task{
 		Title:       "Implement user authentication",
@@ -38,7 +26,7 @@ func TestMatchesSearchQuery_TitleMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(tt.query))
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
 			if result != tt.expected {
 				t.Errorf("matchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
 			}
@@ -67,7 +55,7 @@ func TestMatchesSearchQuery_DescriptionMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(tt.query))
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
 			if result != tt.expected {
 				t.Errorf("matchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
 			}
@@ -81,7 +69,7 @@ func TestMatchesSearchQuery_EmptyQuery(t *testing.T) {
 		Description: "Some description",
 	}
 
-	result := matchesSearchQuery(task, "")
+	result := task.MatchesSearchQuery("")
 	if !result {
 		t.Errorf("matchesSearchQuery with empty query should match all tasks")
 	}
@@ -103,7 +91,7 @@ func TestMatchesSearchQuery_EmptyTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(tt.query))
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
 			if result != tt.expected {
 				t.Errorf("matchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
 			}
@@ -129,7 +117,7 @@ func TestMatchesSearchQuery_SpecialCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(tt.query))
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
 			if result != tt.expected {
 				t.Errorf("matchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
 			}
@@ -156,7 +144,7 @@ func TestMatchesSearchQuery_PartialMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(tt.query))
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
 			if result != tt.expected {
 				t.Errorf("matchesSearchQuery(%q) = %v, want %v", tt.query, result, tt.expected)
 			}
@@ -175,7 +163,7 @@ func TestSearchAcrossTasks(t *testing.T) {
 	query := strings.ToLower("auth")
 	var matches []*Task
 	for _, task := range tasks {
-		if matchesSearchQuery(task, query) {
+		if task.MatchesSearchQuery(query) {
 			matches = append(matches, task)
 		}
 	}
@@ -214,9 +202,9 @@ func TestSearchCaseInsensitive(t *testing.T) {
 
 	for _, query := range queries {
 		t.Run(query, func(t *testing.T) {
-			result := matchesSearchQuery(task, strings.ToLower(query))
+			result := task.MatchesSearchQuery(strings.ToLower(query))
 			if !result {
-				t.Errorf("matchesSearchQuery(%q) should match (case-insensitive)", query)
+				t.Errorf("MatchesSearchQuery(%q) should match (case-insensitive)", query)
 			}
 		})
 	}

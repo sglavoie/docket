@@ -7,6 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -38,12 +39,6 @@ func init() {
 	searchCmd.Flags().IntVarP(&searchLimit, "limit", "l", 0, "limit number of results (0 = no limit)")
 }
 
-// searchResult holds a task and its parent project for display.
-type searchResult struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
 func runSearch(cmd *cobra.Command, args []string) error {
 	query := strings.TrimSpace(args[0])
 	if query == "" {
@@ -68,7 +63,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	var results []searchResult
+	var results []models.SearchResult
 	queryLower := strings.ToLower(query)
 
 	for _, project := range projects {
@@ -77,8 +72,8 @@ func runSearch(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, task := range project.Tasks {
-			if matchesSearchQuery(task, queryLower) {
-				results = append(results, searchResult{
+			if task.MatchesSearchQuery(queryLower) {
+				results = append(results, models.SearchResult{
 					Task:    task,
 					Project: project,
 				})
@@ -103,18 +98,7 @@ func runSearch(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// matchesSearchQuery checks if a task matches the search query.
-func matchesSearchQuery(task *models.Task, queryLower string) bool {
-	if strings.Contains(strings.ToLower(task.Title), queryLower) {
-		return true
-	}
-	if strings.Contains(strings.ToLower(task.Description), queryLower) {
-		return true
-	}
-	return false
-}
-
-func displaySearchResults(results []searchResult, query string) {
+func displaySearchResults(results []models.SearchResult, query string) {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Project", "ID", "Type", "Status", "Title"})
@@ -125,7 +109,7 @@ func displaySearchResults(results []searchResult, query string) {
 			r.Task.ShortID,
 			r.Task.Type.Icon(),
 			r.Task.Status.Icon(),
-			truncate(r.Task.Title, 40),
+			util.Truncate(r.Task.Title, 40),
 		})
 	}
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 var (
@@ -184,10 +185,10 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 // parseTimeField attempts to parse a time value in datetime or date-only format.
 // Returns the parsed time and true if successful, zero time and false otherwise.
 func parseTimeField(value string) (time.Time, bool) {
-	if t, err := time.ParseInLocation("2006-01-02 15:04", value, time.Local); err == nil {
+	if t, err := time.ParseInLocation(util.DateTimeFormat, value, time.Local); err == nil {
 		return t, true
 	}
-	if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+	if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
 		return t, true
 	}
 	return time.Time{}, false
@@ -243,7 +244,7 @@ func parseMetadata(task *models.Task, metaStr string) {
 				task.CompletedAt = &t
 			}
 		case "due":
-			if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
 				task.DueDate = &t
 			}
 		case "depends":

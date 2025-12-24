@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectTreeModel) View() string {
@@ -22,7 +23,7 @@ func (m *ProjectTreeModel) View() string {
 		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))
 		if m.project.ArchivedAt != nil {
 			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", m.project.ArchivedAt.Format("2006-01-02"))))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", m.project.ArchivedAt.Format(util.DateFormat))))
 		}
 	}
 	b.WriteString("\n")
@@ -40,7 +41,7 @@ func (m *ProjectTreeModel) View() string {
 
 	// Focus mode indicator
 	if m.focusedTask != nil {
-		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, truncate(m.focusedTask.Title, 40))
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, 40))
 		b.WriteString(FocusModeStyle.Render(focusIndicator))
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(Esc to exit)"))
@@ -306,7 +307,7 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	if task.Status == models.StatusCancelled {
 		titleStyle = CancelledStyle
 	}
-	title := titleStyle.Render(truncate(task.Title, m.width-node.Level*2-40))
+	title := titleStyle.Render(util.Truncate(task.Title, m.width-node.Level*2-40))
 
 	// Progress for parent tasks (only show if has non-note children)
 	progress := ""
