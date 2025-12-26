@@ -44,6 +44,10 @@ func (m *AppModel) renderStatusBar() string {
 	case ViewProjectTree:
 		if m.currentProject != nil {
 			status = fmt.Sprintf("Project: %s", m.currentProject.Name)
+			// Add sidebar focus indicator if sidebar is focused
+			if m.projectTree != nil && m.projectTree.sidebarFocused {
+				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
+			}
 		} else {
 			status = "Project"
 		}

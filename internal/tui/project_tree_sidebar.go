@@ -76,25 +76,41 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	b.WriteString(sectionStyle.Render(task.Section))
 	b.WriteString("\n\n")
 
-	// Dependencies
+	// Dependencies (with cursor if sidebar focused)
 	if len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0 {
 		b.WriteString(SidebarSectionHeaderStyle.Render("Dependencies"))
 		b.WriteString("\n")
 
 		// Blocked by (tasks this depends on)
 		if len(task.DependsOn) > 0 {
-			b.WriteString(MutedStyle.Render("Blocked by:"))
+			blockedByHeader := "Blocked by:"
+			if m.sidebarFocused && m.sidebarDependencySection == 0 {
+				blockedByHeader = BoldStyle.Underline(true).Render(blockedByHeader)
+			}
+			b.WriteString(MutedStyle.Render(blockedByHeader))
 			b.WriteString("\n")
-			for _, depID := range task.DependsOn {
-				if dep := m.project.GetTaskByID(depID); dep != nil {
-					depStatus := GetStatusStyle(string(dep.Status))
-					depLine := fmt.Sprintf("  #%-4d %s %s",
-						dep.ShortID,
-						depStatus.Render(dep.Status.Icon()),
-						util.Truncate(dep.Title, width-15))
-					b.WriteString(depLine)
-					b.WriteString("\n")
+
+			blockingTasks := m.project.GetBlockingTasks(task)
+			for i, dep := range blockingTasks {
+				depStatus := GetStatusStyle(string(dep.Status))
+
+				cursor := "  "
+				if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+					cursor = "> "
 				}
+
+				depLine := fmt.Sprintf("%s#%-4d %s %s",
+					cursor,
+					dep.ShortID,
+					depStatus.Render(dep.Status.Icon()),
+					util.Truncate(dep.Title, width-15))
+
+				if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+					depLine = BoldStyle.Render(depLine)
+				}
+
+				b.WriteString(depLine)
+				b.WriteString("\n")
 			}
 		}
 
@@ -104,14 +120,32 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 			if len(task.DependsOn) > 0 {
 				b.WriteString("\n")
 			}
-			b.WriteString(MutedStyle.Render("Blocking:"))
+
+			blockingHeader := "Blocking:"
+			if m.sidebarFocused && m.sidebarDependencySection == 1 {
+				blockingHeader = BoldStyle.Underline(true).Render(blockingHeader)
+			}
+			b.WriteString(MutedStyle.Render(blockingHeader))
 			b.WriteString("\n")
-			for _, blocked := range blockedBy {
+
+			for i, blocked := range blockedBy {
 				blockStatus := GetStatusStyle(string(blocked.Status))
-				blockLine := fmt.Sprintf("  #%-4d %s %s",
+
+				cursor := "  "
+				if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+					cursor = "> "
+				}
+
+				blockLine := fmt.Sprintf("%s#%-4d %s %s",
+					cursor,
 					blocked.ShortID,
 					blockStatus.Render(blocked.Status.Icon()),
 					util.Truncate(blocked.Title, width-15))
+
+				if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+					blockLine = BoldStyle.Render(blockLine)
+				}
+
 				b.WriteString(blockLine)
 				b.WriteString("\n")
 			}
@@ -151,12 +185,41 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 		b.WriteString(MutedStyle.Render("No description"))
 	}
 
+	// Sidebar focus help hint
+	if m.sidebarFocused && m.hasDependencies(task) {
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("j/k: navigate | h/l: switch section | Enter: jump | Esc: back to tree"))
+	} else if m.sidebarFocused {
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("j/k: scroll | Esc: back to tree"))
+	}
+
 	content := b.String()
 
-	return SidebarStyle.
+	// Render without height constraint first to preserve all styling
+	rendered := SidebarStyle.
 		Width(width).
-		Height(height).
 		Render(content)
+
+	// Now manually truncate rendered lines to fit height
+	// SidebarStyle has padding (2 lines total), border (2 lines total) = 4 lines overhead
+	availableHeight := height - 4
+	if availableHeight < 1 {
+		availableHeight = 1
+	}
+
+	lines := strings.Split(rendered, "\n")
+	if len(lines) > availableHeight {
+		// Keep content from the start (header), truncate from the end
+		lines = lines[:availableHeight]
+	}
+
+	// Pad to exact height if needed
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // formatPriorityBadge returns a styled priority badge.

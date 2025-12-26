@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -105,6 +106,19 @@ func (m *ProjectTreeModel) handleTagInputMode(msg tea.KeyMsg) (tea.Model, tea.Cm
 // handleKeyMsg dispatches key messages to appropriate handlers.
 func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Get selected task for sidebar navigation
+	var selectedTask *models.Task
+	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+		selectedTask = visible[m.cursor].Task
+	}
+
+	// Sidebar keys have priority when sidebar is focused
+	if m.sidebarFocused {
+		if handled, cmd := m.handleSidebarKeys(key, selectedTask); handled {
+			return m, cmd
+		}
+	}
 
 	// Special case for search activation
 	if key == "/" && m.confirmAction == "" {

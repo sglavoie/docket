@@ -727,10 +727,20 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "View task (glow)", Category: "Navigation"},
 		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
-		{Key: "Tab", Description: "Toggle sidebar", Category: "Navigation"},
+		{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
 		{Key: "c", Description: "Collapse all", Category: "Navigation"},
 		{Key: "f", Description: "Focus on subtree", Category: "Navigation"},
+		{Key: "g", Description: "Go to first", Category: "Navigation"},
+		{Key: "G", Description: "Go to last", Category: "Navigation"},
+		{Key: "\\", Description: "Jump to task", Category: "Navigation"},
+		{Key: "p", Description: "Priority view", Category: "Navigation"},
+
+		// Sidebar
+		{Key: "j/k (sidebar)", Description: "Scroll/navigate dependencies", Category: "Sidebar"},
+		{Key: "h/l (sidebar)", Description: "Switch dependency section", Category: "Sidebar"},
+		{Key: "Enter (sidebar)", Description: "Jump to dependency", Category: "Sidebar"},
+		{Key: "Esc (sidebar)", Description: "Return focus to tree", Category: "Sidebar"},
 
 		// Status Changes
 		{Key: "s", Description: "Start (in progress)", Category: "Status Changes"},
@@ -803,10 +813,6 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
-		{Key: "\\", Description: "Jump to task", Category: "Navigation"},
-		{Key: "g", Description: "Go to first", Category: "Navigation"},
-		{Key: "G", Description: "Go to last", Category: "Navigation"},
-		{Key: "p", Description: "Priority view", Category: "Navigation"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
 	}
 }

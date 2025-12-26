@@ -95,9 +95,11 @@ type ProjectTreeModel struct {
 	focusedTask *models.Task // When non-nil, only show this task and descendants
 
 	// Sidebar state
-	sidebarEnabled bool // Toggle sidebar on/off
-	sidebarFocused bool // When true, sidebar has focus for scrolling
-	sidebarScroll  int  // Scroll offset for sidebar content
+	sidebarEnabled           bool // Toggle sidebar on/off
+	sidebarFocused           bool // When true, sidebar has focus for scrolling
+	sidebarScroll            int  // Scroll offset for sidebar content
+	sidebarDependencyCursor  int  // Cursor position within active dependency section
+	sidebarDependencySection int  // 0 = "Blocked by", 1 = "Blocking"
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -108,23 +110,25 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	tagInput.Width = 30
 
 	m := &ProjectTreeModel{
-		project:        project,
-		config:         cfg,
-		configManager:  manager,
-		cursor:         0,
-		showCompleted:  false,
-		filterType:     "",
-		filterStatus:   "",
-		filterPriority: 0,
-		filterTags:     make(map[string]bool),
-		filterSections: make(map[string]bool),
-		sortField:      SortByDefault,
-		sortAscending:  true,
-		selectedTasks:  make(map[string]bool),
-		tagInput:       tagInput,
-		sidebarEnabled: true, // Sidebar on by default
-		sidebarFocused: false,
-		sidebarScroll:  0,
+		project:                  project,
+		config:                   cfg,
+		configManager:            manager,
+		cursor:                   0,
+		showCompleted:            false,
+		filterType:               "",
+		filterStatus:             "",
+		filterPriority:           0,
+		filterTags:               make(map[string]bool),
+		filterSections:           make(map[string]bool),
+		sortField:                SortByDefault,
+		sortAscending:            true,
+		selectedTasks:            make(map[string]bool),
+		tagInput:                 tagInput,
+		sidebarEnabled:           true, // Sidebar on by default
+		sidebarFocused:           false,
+		sidebarScroll:            0,
+		sidebarDependencyCursor:  0,
+		sidebarDependencySection: 0,
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

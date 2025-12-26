@@ -53,9 +53,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleEscKey handles the escape key for view navigation.
 // Returns true if the key was handled (should not propagate to views).
 func (m *AppModel) handleEscKey() bool {
-	// Let views handle esc if they have an active search or focus mode
+	// Let views handle esc if they have an active search, focus mode, or sidebar focus
 	if m.currentView() == ViewProjectTree && m.projectTree != nil &&
-		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode()) {
+		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused) {
 		return false
 	}
 	if m.currentView() == ViewDashboard && m.dashboard != nil && m.dashboard.HasActiveSearch() {

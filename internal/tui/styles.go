@@ -470,4 +470,8 @@ var (
 			Foreground(ColorSecondary).
 			Background(ColorBackground).
 			Padding(0, 1)
+
+	SidebarFocusBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("226")). // Bright yellow like ActiveStyle
+				Bold(true)
 )
