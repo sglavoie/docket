@@ -93,6 +93,11 @@ type ProjectTreeModel struct {
 
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
+
+	// Sidebar state
+	sidebarEnabled bool // Toggle sidebar on/off
+	sidebarFocused bool // When true, sidebar has focus for scrolling
+	sidebarScroll  int  // Scroll offset for sidebar content
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -117,6 +122,9 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		sortAscending:  true,
 		selectedTasks:  make(map[string]bool),
 		tagInput:       tagInput,
+		sidebarEnabled: true, // Sidebar on by default
+		sidebarFocused: false,
+		sidebarScroll:  0,
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

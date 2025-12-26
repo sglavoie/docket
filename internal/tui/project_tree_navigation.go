@@ -48,13 +48,8 @@ func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) 
 		}
 		return true, nil
 	case "tab":
-		if CursorInBounds(m.cursor, len(visible)) {
-			node := visible[m.cursor]
-			if len(node.Task.Children) > 0 {
-				node.Expanded = !node.Expanded
-				m.updateVisibility()
-			}
-		}
+		// Tab now toggles sidebar (Space still does expand/collapse)
+		m.sidebarEnabled = !m.sidebarEnabled
 		return true, nil
 	case "v":
 		if m.multiSelectMode {

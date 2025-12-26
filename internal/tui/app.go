@@ -215,6 +215,7 @@ func (m *AppModel) saveProjectTreeState() {
 		SortField:      int(m.projectTree.sortField),
 		SortAscending:  m.projectTree.sortAscending,
 		ShowCompleted:  m.projectTree.showCompleted,
+		SidebarEnabled: m.projectTree.sidebarEnabled,
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	m.configManager.Save(m.config)
@@ -253,6 +254,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.sortField = SortField(state.SortField)
 	m.projectTree.sortAscending = state.SortAscending
 	m.projectTree.showCompleted = state.ShowCompleted
+	m.projectTree.sidebarEnabled = state.SidebarEnabled
 
 	// Restore tags - validate they still exist
 	m.projectTree.filterTags = make(map[string]bool)

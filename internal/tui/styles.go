@@ -449,3 +449,25 @@ func GetSectionColorByIndex(index int) string {
 	}
 	return SectionColorPalette[index].Name
 }
+
+// Sidebar styles
+var (
+	SidebarStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(1)
+
+	SidebarHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary)
+
+	SidebarSectionHeaderStyle = lipgloss.NewStyle().
+					Bold(true).
+					Foreground(ColorSecondary).
+					Underline(true)
+
+	TagStyle = lipgloss.NewStyle().
+			Foreground(ColorSecondary).
+			Background(ColorBackground).
+			Padding(0, 1)
+)

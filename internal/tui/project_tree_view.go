@@ -11,6 +11,17 @@ import (
 )
 
 func (m *ProjectTreeModel) View() string {
+	// If sidebar is enabled, render split-pane layout
+	if m.sidebarEnabled {
+		return m.renderWithSidebar()
+	}
+
+	// Otherwise, render traditional full-width view
+	return m.renderFullWidth()
+}
+
+// renderFullWidth renders the traditional full-width tree view (sidebar disabled).
+func (m *ProjectTreeModel) renderFullWidth() string {
 	var b strings.Builder
 
 	// Title
@@ -233,6 +244,341 @@ func (m *ProjectTreeModel) View() string {
 	return b.String()
 }
 
+// renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
+func (m *ProjectTreeModel) renderWithSidebar() string {
+	// Calculate widths: 55% tree, remainder for sidebar
+	treeWidth := (m.width * 55) / 100
+
+	// Ensure minimum width for tree
+	if treeWidth < 35 {
+		treeWidth = 35
+	}
+
+	// Sidebar always takes all remaining space
+	sidebarWidth := m.width - treeWidth
+
+	// Ensure minimum width for sidebar
+	if sidebarWidth < 25 {
+		sidebarWidth = 25
+		// If sidebar needs more space, reduce tree width
+		treeWidth = m.width - sidebarWidth
+	}
+
+	// Render tree content (reuse most of renderFullWidth logic)
+	treeContent := m.renderTreeContent(treeWidth)
+
+	// Get currently selected task
+	visible := m.visibleNodes()
+	var selectedTask *models.Task
+	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+		selectedTask = visible[m.cursor].Task
+	}
+
+	// Render sidebar
+	// Note: SidebarStyle has border (2 chars) + padding (2 chars) = 4 chars overhead
+	// lipgloss .Width() sets CONTENT width, so subtract overhead to get desired total width
+	// Add 1 to account for rounding to ensure we use full width
+	sidebarContent := m.renderSidebar(selectedTask, sidebarWidth-3, m.height-2)
+
+	// Apply width constraint to tree to ensure it fills its allocated space
+	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
+
+	// Join horizontally
+	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, sidebarContent)
+}
+
+// renderTreeContent renders just the tree portion (for split-pane layout).
+func (m *ProjectTreeModel) renderTreeContent(width int) string {
+	var b strings.Builder
+
+	// Title
+	title := fmt.Sprintf("%s - Tasks", m.project.Name)
+	b.WriteString(TitleStyle.Render(title))
+
+	// Show archived badge
+	if m.project.Archived {
+		b.WriteString(" ")
+		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))
+		if m.project.ArchivedAt != nil {
+			b.WriteString(" ")
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", m.project.ArchivedAt.Format(util.DateFormat))))
+		}
+	}
+	b.WriteString("\n")
+
+	// Search bar
+	if m.IsSearchMode() {
+		b.WriteString(SubtitleStyle.Render("Search: "))
+		b.WriteString(m.SearchInputView())
+		b.WriteString("\n")
+	} else if m.SearchQuery() != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
+		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
+		b.WriteString("\n")
+	}
+
+	// Focus mode indicator
+	if m.focusedTask != nil {
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, 40))
+		b.WriteString(FocusModeStyle.Render(focusIndicator))
+		b.WriteString(" ")
+		b.WriteString(HelpStyle.Render("(Esc to exit)"))
+		b.WriteString("\n")
+	}
+
+	// Multi-select mode indicator
+	if m.multiSelectMode {
+		count := len(m.selectedTasks)
+		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
+		b.WriteString("\n")
+	}
+
+	// Tag input prompt
+	if m.tagInputMode {
+		b.WriteString(SubtitleStyle.Render("Add tag: "))
+		b.WriteString(m.tagInput.View())
+		b.WriteString("\n")
+	}
+
+	// Confirmation prompt
+	if m.confirmAction != "" {
+		var prompt string
+		if m.confirmAction == "delete" && m.deleteTarget != nil {
+			childCount := m.deleteTarget.CountChildren()
+			if childCount > 0 {
+				prompt = fmt.Sprintf("Delete #%d and %d children? (y/n)", m.deleteTarget.ShortID, childCount)
+			} else {
+				prompt = fmt.Sprintf("Delete #%d? (y/n)", m.deleteTarget.ShortID)
+			}
+		} else if m.confirmAction == "bulk-delete" {
+			totalChildren := 0
+			for _, task := range m.getSelectedTasks() {
+				totalChildren += task.CountChildren()
+			}
+			if totalChildren > 0 {
+				prompt = fmt.Sprintf("Delete %d tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren)
+			} else {
+				prompt = fmt.Sprintf("Delete %d tasks? (y/n)", len(m.selectedTasks))
+			}
+		} else {
+			prompt = fmt.Sprintf("%s project? (y/n)", m.confirmAction)
+		}
+		b.WriteString(ConfirmStyle.Render(prompt))
+		b.WriteString("\n")
+	}
+
+	// Stats by status (compact for narrower width)
+	statusCounts := make(map[models.TaskStatus]int)
+	for _, task := range m.project.Tasks {
+		statusCounts[task.Status]++
+	}
+
+	var statusStats []string
+	for _, s := range models.AllTaskStatuses() {
+		if count := statusCounts[s]; count > 0 {
+			style := GetStatusStyle(string(s))
+			statusStats = append(statusStats, style.Render(fmt.Sprintf("%s:%d", s.Icon(), count)))
+		}
+	}
+
+	b.WriteString(MutedStyle.Render("Tasks: "))
+	b.WriteString(strings.Join(statusStats, " "))
+	b.WriteString("\n\n")
+
+	visible := m.visibleNodes()
+
+	if len(visible) == 0 {
+		if len(m.project.Tasks) == 0 {
+			b.WriteString(MutedStyle.Render("No tasks yet."))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks match filters."))
+		}
+		b.WriteString("\n")
+	} else {
+		// Calculate available height for task list
+		availableHeight := m.height - 8
+
+		// Determine visible range
+		startIdx := 0
+		endIdx := len(visible)
+
+		if len(visible) > availableHeight {
+			// Center cursor in view
+			halfView := availableHeight / 2
+			startIdx = m.cursor - halfView
+			if startIdx < 0 {
+				startIdx = 0
+			}
+			endIdx = startIdx + availableHeight
+			if endIdx > len(visible) {
+				endIdx = len(visible)
+				startIdx = endIdx - availableHeight
+				if startIdx < 0 {
+					startIdx = 0
+				}
+			}
+		}
+
+		// Render visible tasks (with adjusted width)
+		for i := startIdx; i < endIdx; i++ {
+			node := visible[i]
+			inSelection := m.selectedTasks[node.Task.ID]
+			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, width)
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+
+		// Scroll indicator
+		if len(visible) > availableHeight {
+			scrollInfo := fmt.Sprintf("%d-%d/%d", startIdx+1, endIdx, len(visible))
+			b.WriteString("\n")
+			b.WriteString(MutedStyle.Render(scrollInfo))
+			b.WriteString("\n")
+		}
+	}
+
+	// Filter status (compact)
+	b.WriteString("\n")
+	var filters []string
+	if !m.showCompleted {
+		filters = append(filters, "!done")
+	}
+	if m.filterType != "" {
+		filters = append(filters, string(m.filterType))
+	}
+	if m.filterPriority == 1 {
+		filters = append(filters, "!high")
+	}
+	if len(m.filterTags) > 0 {
+		filters = append(filters, fmt.Sprintf("%d tags", len(m.filterTags)))
+	}
+
+	if len(filters) > 0 {
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", strings.Join(filters, ","))))
+		b.WriteString(" ")
+	}
+	if m.sortField != SortByDefault {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("sort:%s", m.sortField)))
+	}
+
+	return b.String()
+}
+
+// renderNodeWithWidth is like renderNode but accepts a custom width for truncation.
+func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, inSelection bool, maxWidth int) string {
+	task := node.Task
+
+	// Build indent
+	indent := strings.Repeat(TreeIndent, node.Level)
+
+	// Expand/collapse indicator
+	expandIcon := "  "
+	if len(task.Children) > 0 {
+		if node.Expanded {
+			expandIcon = "▼ "
+		} else {
+			expandIcon = "▶ "
+		}
+	}
+
+	// Selection checkbox (only in multi-select mode)
+	checkbox := ""
+	if m.multiSelectMode {
+		if inSelection {
+			checkbox = SelectionCheckStyle.Render("[x]") + " "
+		} else {
+			checkbox = MutedStyle.Render("[ ]") + " "
+		}
+	}
+
+	// Cursor
+	cursor := "  "
+	if selected {
+		cursor = "> "
+	}
+
+	// Type and status icons with colors
+	typeStyle := GetTypeStyle(string(task.Type))
+	statusStyle := GetStatusStyle(string(task.Status))
+
+	// Override status style if task has incomplete dependencies
+	if m.project.HasIncompleteDependencies(task) {
+		statusStyle = BlockedByDepsStyle
+	}
+
+	typeIcon := typeStyle.Render(task.Type.Icon())
+	var statusIcon string
+	if task.IsNote() {
+		statusIcon = MutedStyle.Render("·")
+	} else {
+		statusIcon = statusStyle.Render(task.Status.Icon())
+	}
+
+	// Task ID
+	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
+
+	// Title
+	titleStyle := NormalStyle
+	if selected {
+		if task.Active {
+			titleStyle = BoldStyle.Foreground(lipgloss.Color("226"))
+		} else if task.Pinned {
+			titleStyle = BoldStyle.Foreground(ColorSuccess)
+		} else {
+			titleStyle = BoldStyle.Foreground(ColorPrimary)
+		}
+	} else if task.Active {
+		titleStyle = ActiveStyle
+	} else if task.Pinned {
+		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	}
+	if inSelection && !selected {
+		titleStyle = SelectionStyle
+	}
+	if task.Status == models.StatusCancelled {
+		titleStyle = CancelledStyle
+	}
+
+	// Calculate available width for title
+	usedWidth := len(cursor) + len(checkbox) + node.Level*2 + len(expandIcon) + 15
+	availableTitleWidth := maxWidth - usedWidth
+	if availableTitleWidth < 10 {
+		availableTitleWidth = 10
+	}
+	title := titleStyle.Render(util.Truncate(task.Title, availableTitleWidth))
+
+	// Progress for parent tasks
+	progress := ""
+	if task.HasProgressChildren() {
+		pct := task.GetProgress()
+		progress = MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct))
+	}
+
+	// Priority, due date, and dependency indicators (compact)
+	indicators := ""
+
+	// Priority indicator (compact)
+	if !task.IsNote() && task.Priority <= 2 {
+		indicators += formatPriorityBadge(task.Priority) + " "
+	}
+
+	// Due date display (compact)
+	if dueStr := formatDueDate(task); dueStr != "" {
+		indicators += dueStr + " "
+	}
+
+	// Dependency indicators (compact)
+	if len(task.DependsOn) > 0 {
+		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
+	}
+	if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
+		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
+	}
+
+	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
+		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+}
+
 func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection bool) string {
 	task := node.Task
 
@@ -363,12 +709,7 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
 	}
 
-	// Section indicator (only show if not empty and not Backlog)
-	if task.Section != "" && task.Section != models.SectionBacklog {
-		sectionColor := m.project.GetSectionColor(task.Section)
-		badgeStyle := GetSectionColorStyle(sectionColor)
-		indicators += badgeStyle.Render("[" + task.Section + "]")
-	}
+	// Section is no longer displayed in tree line (moved to sidebar)
 
 	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
 		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
@@ -385,7 +726,8 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Navigation
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "View task (glow)", Category: "Navigation"},
-		{Key: "Space/Tab", Description: "Expand/collapse", Category: "Navigation"},
+		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
+		{Key: "Tab", Description: "Toggle sidebar", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
 		{Key: "c", Description: "Collapse all", Category: "Navigation"},
 		{Key: "f", Description: "Focus on subtree", Category: "Navigation"},

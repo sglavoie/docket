@@ -22,6 +22,7 @@ type ProjectViewState struct {
 	SortField      int      `json:"sort_field,omitempty"`
 	SortAscending  bool     `json:"sort_ascending"`
 	ShowCompleted  bool     `json:"show_completed"`
+	SidebarEnabled bool     `json:"sidebar_enabled"` // Sidebar toggle state per project
 }
 
 // Config holds the application configuration.
