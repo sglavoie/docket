@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -58,6 +59,8 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	tagsStr := strings.Join(task.Tags, ", ")
+	// DEBUG: Log task tags when editor opens
+	fmt.Fprintf(os.Stderr, "[TaskEditor] Opening editor for task %s, tags: %v, tagsStr: %q\n", task.ID, task.Tags, tagsStr)
 	tagsInput := factory.NewTextInputWithValue(tagsStr, "tag1, tag2, tag3")
 
 	types := []models.TaskType{
@@ -336,6 +339,8 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 		// Parse and set tags
 		m.task.Tags = nil
 		tagsStr := strings.TrimSpace(m.tagsInput.Value())
+		// DEBUG: Log tags being saved
+		fmt.Fprintf(os.Stderr, "[TaskEditor] Saving task %s, input tagsStr: %q\n", m.task.ID, tagsStr)
 		if tagsStr != "" {
 			tags := strings.Split(tagsStr, ",")
 			for _, tag := range tags {
@@ -344,6 +349,30 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 					m.task.AddTag(tag)
 				}
 			}
+		}
+		// DEBUG: Log final tags after parsing
+		fmt.Fprintf(os.Stderr, "[TaskEditor] Task %s final tags: %v\n", m.task.ID, m.task.Tags)
+
+		// DEBUG: Verify task is in project
+		foundInProject := false
+		for _, t := range m.project.Tasks {
+			if t.ID == m.task.ID {
+				foundInProject = true
+				fmt.Fprintf(os.Stderr, "[TaskEditor] Found task in project.Tasks, tags: %v\n", t.Tags)
+				fmt.Fprintf(os.Stderr, "[TaskEditor] m.task pointer: %p, project task pointer: %p, SAME: %v\n", m.task, t, m.task == t)
+				// FIX: Update the actual task in the project
+				t.Tags = m.task.Tags
+				t.Title = m.task.Title
+				t.Type = m.task.Type
+				t.Priority = m.task.Priority
+				t.ParentID = m.task.ParentID
+				t.UpdatedAt = m.task.UpdatedAt
+				fmt.Fprintf(os.Stderr, "[TaskEditor] Copied changes to project task, tags now: %v\n", t.Tags)
+				break
+			}
+		}
+		if !foundInProject {
+			fmt.Fprintf(os.Stderr, "[TaskEditor] WARNING: Task %s NOT found in project.Tasks!\n", m.task.ID)
 		}
 
 		// Rebuild task tree
@@ -359,8 +388,14 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
-		// Reload to rebuild tree properly
-		storage.LoadProject(m.project)
+		// DEBUG: Log after save
+		fmt.Fprintf(os.Stderr, "[TaskEditor] After SaveProject, checking task in project again...\n")
+		for _, t := range m.project.Tasks {
+			if t.ID == m.task.ID {
+				fmt.Fprintf(os.Stderr, "[TaskEditor] Task %s in project now has tags: %v\n", t.ID, t.Tags)
+				break
+			}
+		}
 
 		return TaskUpdatedMsg{Task: m.task}
 	}

@@ -10,6 +10,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle global key messages first
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Clear temporary status message on any keypress
+		m.statusMessage = ""
+
 		switch msg.String() {
 		case "ctrl+c":
 			m.quitting = true
@@ -40,6 +43,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if handled, cmd := m.handleSectionMessages(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleInboxMessages(msg); handled {
+		return m, cmd
+	}
 	if handled, cmd := m.handleClipboardMessages(msg); handled {
 		return m, cmd
 	}
@@ -66,6 +72,11 @@ func (m *AppModel) handleEscKey() bool {
 	}
 	if m.currentView() == ViewTaskJumper && m.taskJumper != nil {
 		return false
+	}
+	if m.currentView() == ViewTagSelector {
+		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
+			return false
+		}
 	}
 	if m.currentView() != ViewDashboard {
 		m.popView()
@@ -103,6 +114,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewTaskJumper:
 		if v := m.views.Get(ViewTaskJumper); v != nil {
 			m.taskJumper = v.(*TaskJumperModel)
+		}
+	case ViewInboxProcessor:
+		if v := m.views.Get(ViewInboxProcessor); v != nil {
+			m.inboxProcessor = v.(*InboxProcessorModel)
 		}
 	}
 

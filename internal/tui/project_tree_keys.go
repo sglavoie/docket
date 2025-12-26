@@ -373,6 +373,17 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		return true, func() tea.Msg {
 			return ShowPriorityViewMsg{Project: m.project}
 		}
+
+	case "w":
+		// Open inbox processor workflow
+		inboxTasks := m.getInboxTasksForProcessing()
+		if len(inboxTasks) > 0 {
+			return true, func() tea.Msg {
+				return ShowInboxProcessorMsg{Project: m.project}
+			}
+		}
+		// No tasks in inbox - do nothing
+		return true, nil
 	}
 	return false, nil
 }

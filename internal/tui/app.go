@@ -42,6 +42,8 @@ const (
 	ViewPriorityView
 	ViewQuickCapture
 	ViewBulkCapture
+	ViewInboxProcessor
+	ViewTagSelector
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -58,11 +60,12 @@ type AppModel struct {
 	views *ViewRegistry
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	dashboard    *DashboardModel
-	projectTree  *ProjectTreeModel
-	helpView     *HelpViewModel
-	taskJumper   *TaskJumperModel
-	globalSearch *GlobalSearchModel
+	dashboard      *DashboardModel
+	projectTree    *ProjectTreeModel
+	helpView       *HelpViewModel
+	taskJumper     *TaskJumperModel
+	globalSearch   *GlobalSearchModel
+	inboxProcessor *InboxProcessorModel
 
 	// Current project context
 	currentProject *models.Project

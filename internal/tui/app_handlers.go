@@ -127,8 +127,20 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TaskCreatedMsg, TaskUpdatedMsg:
 		m.popView()
+		// Reload current project to get fresh task references after save
+		if m.currentProject != nil {
+			storage.LoadProject(m.currentProject)
+		}
 		m.refreshProjectTree()
-		return true, nil
+		// Delegate to current view (e.g., inbox processor) so it can reload its state
+		cmd := m.views.Update(m.currentView(), msg)
+		// Keep typed pointer in sync if it's the inbox processor
+		if m.currentView() == ViewInboxProcessor {
+			if v := m.views.Get(ViewInboxProcessor); v != nil {
+				m.inboxProcessor = v.(*InboxProcessorModel)
+			}
+		}
+		return true, cmd
 
 	case TaskDeletedMsg:
 		m.refreshProjectTree()
@@ -526,6 +538,22 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseTagManagerMsg:
 		m.popView()
 		return true, nil
+
+	case ShowTagSelectorMsg:
+		selector := NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
+		m.showView(ViewTagSelector, selector)
+		return true, nil
+
+	case TagSelectorDoneMsg:
+		m.popView()
+		if msg.Cancelled {
+			return true, nil
+		}
+		cmd := m.views.Update(m.currentView(), msg)
+		if v := m.views.Get(ViewInboxProcessor); v != nil {
+			m.inboxProcessor = v.(*InboxProcessorModel)
+		}
+		return true, cmd
 
 	case ShowTagFilterSelectorMsg:
 		if msg.ProjectTree != nil {

@@ -27,6 +27,8 @@ type TagManagerModel struct {
 	renameMode   bool
 	renameInput  textinput.Model
 	renameTarget string
+	addTagMode   bool
+	addTagInput  textinput.Model
 	errorMsg     string
 }
 
@@ -51,10 +53,16 @@ func NewTagManagerModel(pt *ProjectTreeModel) *TagManagerModel {
 	renameInput.CharLimit = 50
 	renameInput.Width = 30
 
+	addTagInput := textinput.New()
+	addTagInput.Placeholder = "tag name"
+	addTagInput.CharLimit = 50
+	addTagInput.Width = 30
+
 	m := &TagManagerModel{
 		projectTree: pt,
 		cursor:      0,
 		renameInput: renameInput,
+		addTagInput: addTagInput,
 	}
 	m.buildTagList()
 	return m
@@ -160,6 +168,10 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleRenameMode(msg)
 		}
 
+		if m.addTagMode {
+			return m.handleAddTagMode(msg)
+		}
+
 		switch msg.String() {
 		case "q", "esc", "ctrl+t":
 			return m, func() tea.Msg {
@@ -211,6 +223,13 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+
+		case "a":
+			// Enter add tag mode
+			m.addTagMode = true
+			m.addTagInput.SetValue("")
+			m.addTagInput.Focus()
+			return m, textinput.Blink
 		}
 	}
 
@@ -243,6 +262,59 @@ func (m *TagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 }
 
+// handleAddTagMode handles keyboard input while in add tag mode.
+func (m *TagManagerModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.addTagMode = false
+		m.addTagInput.SetValue("")
+		m.addTagInput.Blur()
+		return m, nil
+
+	case "enter":
+		tagName := strings.TrimSpace(m.addTagInput.Value())
+		if tagName == "" {
+			m.errorMsg = "Tag name cannot be empty"
+			return m, nil
+		}
+
+		// Check for duplicate (case-sensitive)
+		for _, tag := range m.tags {
+			if tag.Name == tagName {
+				m.errorMsg = fmt.Sprintf("Tag '%s' already exists", tagName)
+				return m, nil
+			}
+		}
+
+		// Add the new tag to the list
+		m.tags = append(m.tags, TagInfo{Name: tagName, TaskCount: 0})
+
+		// Re-sort tags
+		sort.Slice(m.tags, func(i, j int) bool {
+			return m.tags[i].Name < m.tags[j].Name
+		})
+
+		// Find and select the newly added tag
+		for i, tag := range m.tags {
+			if tag.Name == tagName {
+				m.cursor = i
+				break
+			}
+		}
+
+		// Exit add mode
+		m.addTagMode = false
+		m.addTagInput.SetValue("")
+		m.addTagInput.Blur()
+		return m, nil
+
+	default:
+		var cmd tea.Cmd
+		m.addTagInput, cmd = m.addTagInput.Update(msg)
+		return m, cmd
+	}
+}
+
 // View renders the tag manager view.
 func (m *TagManagerModel) View() string {
 	var b strings.Builder
@@ -261,6 +333,14 @@ func (m *TagManagerModel) View() string {
 		Foreground(ColorPrimary)
 	content.WriteString(titleStyle.Render("Tag Manager"))
 	content.WriteString("\n\n")
+
+	// Show add tag input if in add mode
+	if m.addTagMode {
+		content.WriteString(MutedStyle.Render("Add new tag:"))
+		content.WriteString("\n")
+		content.WriteString(m.addTagInput.View())
+		content.WriteString("\n\n")
+	}
 
 	if len(m.tags) == 0 {
 		content.WriteString(MutedStyle.Render("No tags in project"))
@@ -299,12 +379,14 @@ func (m *TagManagerModel) View() string {
 
 	// Footer hint
 	content.WriteString("\n")
-	if m.renameMode {
+	if m.addTagMode {
+		content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
+	} else if m.renameMode {
 		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
 	} else if len(m.tags) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | r rename | d del | q close"))
+		content.WriteString(MutedStyle.Render("j/k nav | enter filter | a add | r rename | d del | q close"))
 	} else {
-		content.WriteString(MutedStyle.Render("q close"))
+		content.WriteString(MutedStyle.Render("a add tag | q close"))
 	}
 
 	// Apply box styling

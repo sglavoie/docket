@@ -145,6 +145,17 @@ func (m *ProjectTreeModel) IsFocusMode() bool {
 	return m.focusedTask != nil
 }
 
+// getInboxTasksForProcessing returns root tasks in the Inbox section.
+func (m *ProjectTreeModel) getInboxTasksForProcessing() []*models.Task {
+	var tasks []*models.Task
+	for _, task := range m.project.Tasks {
+		if task.Section == models.SectionInbox && task.IsRoot() {
+			tasks = append(tasks, task)
+		}
+	}
+	return tasks
+}
+
 // clampCursor ensures the cursor is within valid bounds.
 func (m *ProjectTreeModel) clampCursor() {
 	visible := m.visibleNodes()
