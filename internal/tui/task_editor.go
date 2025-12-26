@@ -2,12 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -31,7 +29,7 @@ type TaskEditorModel struct {
 
 	// Form fields
 	titleInput textarea.Model
-	tagsInput  textinput.Model
+	tags       []string
 
 	// Selectable fields
 	taskType     models.TaskType
@@ -58,10 +56,8 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 	titleInput.Focus()
 	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
-	tagsStr := strings.Join(task.Tags, ", ")
-	// DEBUG: Log task tags when editor opens
-	fmt.Fprintf(os.Stderr, "[TaskEditor] Opening editor for task %s, tags: %v, tagsStr: %q\n", task.ID, task.Tags, tagsStr)
-	tagsInput := factory.NewTextInputWithValue(tagsStr, "tag1, tag2, tag3")
+	// Copy tags slice
+	tags := append([]string{}, task.Tags...)
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -86,12 +82,12 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		config:           cfg,
 		configManager:    manager,
 		originalTitle:    task.Title,
-		originalTags:     tagsStr,
+		originalTags:     strings.Join(task.Tags, ", "),
 		originalType:     task.Type,
 		originalParentID: task.ParentID,
 		originalPriority: task.Priority,
 		titleInput:       titleInput,
-		tagsInput:        tagsInput,
+		tags:             tags,
 		taskType:         task.Type,
 		typeCursor:       typeCursor,
 		types:            types,
@@ -161,7 +157,7 @@ func (m *TaskEditorModel) checkChanges() bool {
 	if currentTitle != m.originalTitle {
 		return true
 	}
-	if strings.TrimSpace(m.tagsInput.Value()) != m.originalTags {
+	if strings.Join(m.tags, ", ") != m.originalTags {
 		return true
 	}
 	if m.taskType != m.originalType {
@@ -188,7 +184,6 @@ func (m *TaskEditorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	formFactory.ResizeTextarea(&m.titleInput, width)
-	formFactory.ResizeTextInput(&m.tagsInput, width)
 }
 
 func (m *TaskEditorModel) Init() tea.Cmd {
@@ -199,6 +194,13 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case TagSelectorDoneMsg:
+		if !msg.Cancelled {
+			m.tags = msg.SelectedTags
+			m.hasChanges = m.checkChanges()
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -210,11 +212,11 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (5 fields: title, type, parent, priority, tags)
+			// Move focus (4 fields: title, type, parent, priority)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 5
+				m.focusIndex = (m.focusIndex + 1) % 4
 			} else {
-				m.focusIndex = (m.focusIndex + 4) % 5
+				m.focusIndex = (m.focusIndex + 3) % 4
 			}
 
 			// Focus new field
@@ -222,8 +224,8 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			// Move to next field
-			if m.focusIndex < 4 {
+			// Move to next field (only 4 focusable fields: 0-3)
+			if m.focusIndex < 3 {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -239,6 +241,16 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			// Save changes
 			return m, m.saveTask()
+
+		case "ctrl+t":
+			// Open tag selector
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        m.task,
+					Project:     m.project,
+					CurrentTags: m.tags,
+				}
+			}
 
 		case "left", "h":
 			switch m.focusIndex {
@@ -292,8 +304,6 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput, cmd = m.titleInput.Update(msg)
-	case 4:
-		m.tagsInput, cmd = m.tagsInput.Update(msg)
 	}
 
 	// Check for changes
@@ -303,20 +313,14 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskEditorModel) blurCurrentField() {
-	switch m.focusIndex {
-	case 0:
+	if m.focusIndex == 0 {
 		m.titleInput.Blur()
-	case 4:
-		m.tagsInput.Blur()
 	}
 }
 
 func (m *TaskEditorModel) focusCurrentField() {
-	switch m.focusIndex {
-	case 0:
+	if m.focusIndex == 0 {
 		m.titleInput.Focus()
-	case 4:
-		m.tagsInput.Focus()
 	}
 }
 
@@ -336,43 +340,20 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 		m.task.ParentID = m.parentID
 		m.task.UpdatedAt = time.Now()
 
-		// Parse and set tags
-		m.task.Tags = nil
-		tagsStr := strings.TrimSpace(m.tagsInput.Value())
-		// DEBUG: Log tags being saved
-		fmt.Fprintf(os.Stderr, "[TaskEditor] Saving task %s, input tagsStr: %q\n", m.task.ID, tagsStr)
-		if tagsStr != "" {
-			tags := strings.Split(tagsStr, ",")
-			for _, tag := range tags {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					m.task.AddTag(tag)
-				}
-			}
-		}
-		// DEBUG: Log final tags after parsing
-		fmt.Fprintf(os.Stderr, "[TaskEditor] Task %s final tags: %v\n", m.task.ID, m.task.Tags)
+		// Set tags from the selector
+		m.task.Tags = append([]string{}, m.tags...)
 
-		// DEBUG: Verify task is in project
-		foundInProject := false
+		// Update the actual task in the project
 		for _, t := range m.project.Tasks {
 			if t.ID == m.task.ID {
-				foundInProject = true
-				fmt.Fprintf(os.Stderr, "[TaskEditor] Found task in project.Tasks, tags: %v\n", t.Tags)
-				fmt.Fprintf(os.Stderr, "[TaskEditor] m.task pointer: %p, project task pointer: %p, SAME: %v\n", m.task, t, m.task == t)
-				// FIX: Update the actual task in the project
 				t.Tags = m.task.Tags
 				t.Title = m.task.Title
 				t.Type = m.task.Type
 				t.Priority = m.task.Priority
 				t.ParentID = m.task.ParentID
 				t.UpdatedAt = m.task.UpdatedAt
-				fmt.Fprintf(os.Stderr, "[TaskEditor] Copied changes to project task, tags now: %v\n", t.Tags)
 				break
 			}
-		}
-		if !foundInProject {
-			fmt.Fprintf(os.Stderr, "[TaskEditor] WARNING: Task %s NOT found in project.Tasks!\n", m.task.ID)
 		}
 
 		// Rebuild task tree
@@ -386,15 +367,6 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 		// Save project
 		if err := storage.SaveProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// DEBUG: Log after save
-		fmt.Fprintf(os.Stderr, "[TaskEditor] After SaveProject, checking task in project again...\n")
-		for _, t := range m.project.Tasks {
-			if t.ID == m.task.ID {
-				fmt.Fprintf(os.Stderr, "[TaskEditor] Task %s in project now has tags: %v\n", t.ID, t.Tags)
-				break
-			}
 		}
 
 		return TaskUpdatedMsg{Task: m.task}
@@ -513,15 +485,15 @@ func (m *TaskEditorModel) View() string {
 	b.WriteString(MutedStyle.Render(" (1=highest)"))
 	b.WriteString("\n\n")
 
-	// Tags input
-	tagsLabel := "Tags: "
-	if m.focusIndex == 4 {
-		tagsLabel = FieldLabelFocusedStyle.Render("Tags: ")
+	// Tags display (read-only, edited via Ctrl+T)
+	b.WriteString(FieldLabelStyle.Render("Tags: "))
+	if len(m.tags) == 0 {
+		b.WriteString(MutedStyle.Render("(none)"))
 	} else {
-		tagsLabel = FieldLabelStyle.Render("Tags: ")
+		b.WriteString(strings.Join(m.tags, ", "))
 	}
-	b.WriteString(tagsLabel)
-	b.WriteString(m.tagsInput.View())
+	b.WriteString("  ")
+	b.WriteString(HelpStyle.Render("Press Ctrl+T to edit"))
 	b.WriteString("\n\n")
 
 	// Description preview (edited via external editor)
@@ -548,6 +520,7 @@ func (m *TaskEditorModel) View() string {
 		BoldStyle.Render("Controls") + "\n" +
 			"  Tab/Shift+Tab  Switch field\n" +
 			"  Left/Right     Select option\n" +
+			"  Ctrl+T         Edit tags\n" +
 			"  Ctrl+O         Edit description\n" +
 			"  Ctrl+S         Save changes\n" +
 			"  Esc            Cancel",
