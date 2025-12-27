@@ -440,6 +440,16 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return ShowTaskJumperMsg{Project: m.project}
 		}
 
+	case "[":
+		return true, func() tea.Msg {
+			return ShowScratchpadMsg{Project: m.project}
+		}
+
+	case "]":
+		return true, func() tea.Msg {
+			return EditScratchpadMsg{Project: m.project}
+		}
+
 	case "r":
 		m.clearSelection()
 		storage.LoadProject(m.project)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -460,6 +461,19 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlowViewMsg:
 		return m.handleGlowView(msg)
 
+	case ShowScratchpadMsg:
+		return m.handleShowScratchpad(msg)
+
+	case EditScratchpadMsg:
+		return m.handleEditScratchpad(msg)
+
+	case ScratchpadEditedMsg:
+		if msg.Err != nil {
+			return true, errorCmd("scratchpad edit failed: %w", msg.Err)
+		}
+		m.refreshProjectTree()
+		return true, nil
+
 	case ShowContextPickerMsg:
 		if msg.Dashboard != nil {
 			m.showView(ViewContextPicker, NewContextPickerModel(msg.Dashboard))
@@ -562,6 +576,84 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
 		}
 		return nil
+	})
+}
+
+// handleShowScratchpad opens the project scratchpad in glow pager.
+func (m *AppModel) handleShowScratchpad(msg ShowScratchpadMsg) (bool, tea.Cmd) {
+	if msg.Project == nil {
+		return true, nil
+	}
+
+	content, err := storage.LoadScratchpad(msg.Project)
+	if err != nil {
+		return true, errorCmd("failed to load scratchpad: %w", err)
+	}
+
+	if content == "" || strings.TrimSpace(content) == strings.TrimSpace(storage.DefaultScratchpadTemplate) {
+		m.statusMessage = "Scratchpad is empty. Press ] to edit."
+		return true, statusTimeout(3 * time.Second)
+	}
+
+	if !external.GlowAvailable() {
+		// Fallback: just show a message
+		m.statusMessage = "Scratchpad exists but glow not available"
+		return true, statusTimeout(3 * time.Second)
+	}
+
+	// Add header for nicer display
+	displayContent := fmt.Sprintf("# Scratchpad: %s\n\n%s", msg.Project.Name, content)
+
+	tmpFile, err := os.CreateTemp("", "tt-scratchpad-*.md")
+	if err != nil {
+		return true, errorCmd("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.WriteString(displayContent)
+	tmpFile.Close()
+
+	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
+	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+		os.Remove(tmpPath)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
+		}
+		return nil
+	})
+}
+
+// handleEditScratchpad opens the project scratchpad in an external editor.
+func (m *AppModel) handleEditScratchpad(msg EditScratchpadMsg) (bool, tea.Cmd) {
+	if msg.Project == nil {
+		return true, nil
+	}
+
+	scratchpadPath, err := storage.EnsureScratchpadFile(msg.Project)
+	if err != nil {
+		return true, errorCmd("failed to create scratchpad: %w", err)
+	}
+
+	editor := m.config.Editor
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "code"
+	}
+
+	var c *exec.Cmd
+	if editor == "code" {
+		c = exec.Command(editor, "--wait", scratchpadPath)
+	} else {
+		c = exec.Command(editor, scratchpadPath)
+	}
+
+	project := msg.Project
+	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			return ScratchpadEditedMsg{Project: project, Err: err}
+		}
+		return ScratchpadEditedMsg{Project: project, Err: nil}
 	})
 }
 

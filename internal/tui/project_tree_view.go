@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -129,6 +130,10 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	if inboxCount > 0 {
 		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
+		b.WriteString(" ")
+	}
+	if storage.ScratchpadExists(m.project) {
+		b.WriteString(MutedStyle.Render("[Scratchpad]"))
 		b.WriteString(" ")
 	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
@@ -409,6 +414,10 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	if inboxCount > 0 {
 		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
+		b.WriteString(" ")
+	}
+	if storage.ScratchpadExists(m.project) {
+		b.WriteString(MutedStyle.Render("[Scratchpad]"))
 		b.WriteString(" ")
 	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
@@ -863,6 +872,10 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "F5", Description: "Tag filter selector", Category: "Filter Bar"},
 		{Key: "F6", Description: "Section filter selector", Category: "Filter Bar"},
 		{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar"},
+
+		// Scratchpad
+		{Key: "[", Description: "View scratchpad", Category: "Scratchpad"},
+		{Key: "]", Description: "Edit scratchpad", Category: "Scratchpad"},
 
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},

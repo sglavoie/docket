@@ -48,6 +48,18 @@ type (
 	// Glow view message
 	GlowViewMsg struct{ Task *models.Task }
 
+	// Scratchpad messages
+	ShowScratchpadMsg struct {
+		Project *models.Project
+	}
+	EditScratchpadMsg struct {
+		Project *models.Project
+	}
+	ScratchpadEditedMsg struct {
+		Project *models.Project
+		Err     error
+	}
+
 	// Settings messages
 	SettingsMsg      struct{}
 	SettingsSavedMsg struct{}
