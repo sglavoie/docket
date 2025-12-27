@@ -38,6 +38,7 @@ type Config struct {
 	Projects          []*models.Project           `json:"projects"`
 	SectionColors     map[string]string           `json:"section_colors,omitempty"`      // Global section color registry
 	ProjectViewStates map[string]ProjectViewState `json:"project_view_states,omitempty"` // Per-project filter/sort state
+	CycleProjects     []string                    `json:"cycle_projects,omitempty"`      // Project IDs for quick cycling with ` and ~
 }
 
 // NewConfig creates a new configuration with default values.
@@ -419,4 +420,32 @@ func (c *Config) SetProjectViewState(projectID string, state ProjectViewState) {
 		c.ProjectViewStates = make(map[string]ProjectViewState)
 	}
 	c.ProjectViewStates[projectID] = state
+}
+
+// GetCycleProjects returns active projects that are in the cycle list, in order.
+// Filters out archived projects and projects that no longer exist.
+func (c *Config) GetCycleProjects() []*models.Project {
+	var projects []*models.Project
+	for _, id := range c.CycleProjects {
+		if p := c.GetProject(id); p != nil && !p.Archived {
+			projects = append(projects, p)
+		}
+	}
+	return projects
+}
+
+// SetCycleProjects sets the list of project IDs for quick cycling.
+func (c *Config) SetCycleProjects(ids []string) {
+	c.CycleProjects = ids
+}
+
+// GetCycleProjectIndex returns the index of a project in the cycle list, or -1 if not found.
+func (c *Config) GetCycleProjectIndex(projectID string) int {
+	cycleProjects := c.GetCycleProjects()
+	for i, p := range cycleProjects {
+		if p.ID == projectID {
+			return i
+		}
+	}
+	return -1
 }

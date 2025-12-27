@@ -44,6 +44,16 @@ func (m *AppModel) renderStatusBar() string {
 	case ViewProjectTree:
 		if m.currentProject != nil {
 			status = fmt.Sprintf("Project: %s", m.currentProject.Name)
+			// Add cycle position indicator if project is in cycle list
+			cycleProjects := m.config.GetCycleProjects()
+			if len(cycleProjects) > 0 {
+				for i, p := range cycleProjects {
+					if p.ID == m.currentProject.ID {
+						status += fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
+						break
+					}
+				}
+			}
 			// Add sidebar focus indicator if sidebar is focused
 			if m.projectTree != nil && m.projectTree.sidebarFocused {
 				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")

@@ -764,8 +764,11 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "b", Description: "Block task", Category: "Status Changes"},
 		{Key: "x", Description: "Cancel task", Category: "Status Changes"},
 		{Key: "o", Description: "Reopen (todo)", Category: "Status Changes"},
-		{Key: "`", Description: "Cycle status forward", Category: "Status Changes"},
-		{Key: "~", Description: "Cycle status backward", Category: "Status Changes"},
+
+		// Project Cycling
+		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
+		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
+		{Key: "C", Description: "Configure project cycle", Category: "Project Cycling"},
 
 		// Type Changes
 		{Key: "h", Description: "Promote type", Category: "Type Changes"},

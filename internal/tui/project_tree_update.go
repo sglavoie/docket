@@ -155,6 +155,16 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		}
 	}
 
+	// Project cycling keys (emit messages to app level)
+	switch key {
+	case "`":
+		return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
+	case "~":
+		return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }
+	case "C":
+		return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
+	}
+
 	// Try each handler group
 	if handled, cmd := m.handleNavigationKeys(key, visible); handled {
 		return m, cmd

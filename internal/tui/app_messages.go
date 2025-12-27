@@ -145,6 +145,11 @@ type (
 	CommentAddedMsg      struct{ Task *models.Task }
 	CommentDeletedMsg    struct{ Task *models.Task }
 	CommentEditedMsg     struct{ Task *models.Task }
+
+	// Project cycling messages
+	CycleProjectMsg struct {
+		Forward bool // true = next, false = previous
+	}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

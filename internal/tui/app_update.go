@@ -49,6 +49,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if handled, cmd := m.handleClipboardMessages(msg); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleProjectCycleMessages(msg); handled {
+		return m, cmd
+	}
 
 	// Delegate to current view
 	cmds = append(cmds, m.delegateToCurrentView(msg))

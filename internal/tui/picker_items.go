@@ -114,3 +114,29 @@ func WrapTasks(tasks []*models.Task) []TaskPickerItem {
 	}
 	return items
 }
+
+// ProjectInfo holds project data for picker display.
+type ProjectInfo struct {
+	Project   *models.Project
+	TaskCount int
+}
+
+// FilterText returns searchable text for project filtering.
+func (p ProjectInfo) FilterText() string {
+	return p.Project.Name + " " + p.Project.Context
+}
+
+// DisplayText returns the project name for display.
+func (p ProjectInfo) DisplayText() string {
+	return p.Project.Name
+}
+
+// CountValue returns the task count for this project.
+func (p ProjectInfo) CountValue() int {
+	return p.TaskCount
+}
+
+// ItemID returns the project ID as its unique identifier.
+func (p ProjectInfo) ItemID() string {
+	return p.Project.ID
+}
