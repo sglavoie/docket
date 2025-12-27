@@ -119,6 +119,18 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 	}
 
+	// Count inbox items (same criteria as inbox processor)
+	var inboxCount int
+	for _, task := range m.project.Tasks {
+		if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() {
+			inboxCount++
+		}
+	}
+
+	if inboxCount > 0 {
+		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
+		b.WriteString(" ")
+	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
 	b.WriteString(strings.Join(statusStats, " "))
 	b.WriteString("\n\n")
@@ -387,6 +399,18 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 	}
 
+	// Count inbox items (same criteria as inbox processor)
+	var inboxCount int
+	for _, task := range m.project.Tasks {
+		if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() {
+			inboxCount++
+		}
+	}
+
+	if inboxCount > 0 {
+		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
+		b.WriteString(" ")
+	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
 	b.WriteString(strings.Join(statusStats, " "))
 	b.WriteString("\n\n")
