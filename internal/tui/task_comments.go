@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -23,6 +25,20 @@ type TaskCommentsModel struct {
 	addMode   bool
 	textInput textarea.Model
 
+	// Edit mode
+	editMode      bool
+	editIndex     int
+	editTextInput textarea.Model
+
+	// Delete confirmation
+	confirmDelete bool
+
+	// Expanded view mode (show full comment)
+	expandedView bool
+
+	// Editor config
+	editor string
+
 	// Dimensions
 	width  int
 	height int
@@ -39,13 +55,27 @@ func NewTaskCommentsModel(task *models.Task, project *models.Project) *TaskComme
 	ti.SetHeight(4)
 	ti.ShowLineNumbers = false
 
+	editTi := textarea.New()
+	editTi.Placeholder = "Edit comment text..."
+	editTi.CharLimit = 2000
+	editTi.SetHeight(6)
+	editTi.ShowLineNumbers = false
+
 	return &TaskCommentsModel{
-		task:      task,
-		project:   project,
-		cursor:    0,
-		addMode:   false,
-		textInput: ti,
+		task:          task,
+		project:       project,
+		cursor:        0,
+		addMode:       false,
+		textInput:     ti,
+		editTextInput: editTi,
 	}
+}
+
+// NewTaskCommentsModelWithEditor creates a task comments viewer with editor config.
+func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, editor string) *TaskCommentsModel {
+	m := NewTaskCommentsModel(task, project)
+	m.editor = editor
+	return m
 }
 
 func (m *TaskCommentsModel) Init() tea.Cmd {
@@ -57,12 +87,65 @@ func (m *TaskCommentsModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.textInput.SetWidth(width - 4)
+	m.editTextInput.SetWidth(width - 4)
 }
 
 func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	// Handle add mode differently
+	// Handle expanded view mode
+	if m.expandedView {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc", "enter", "q":
+				m.expandedView = false
+				return m, nil
+			case "j", "down":
+				// Allow scrolling in expanded view (future enhancement)
+				return m, nil
+			case "k", "up":
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	// Handle delete confirmation mode
+	if m.confirmDelete {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDelete = false
+				return m, m.executeDelete()
+			case "n", "N", "esc":
+				m.confirmDelete = false
+				m.err = nil
+				return m, nil
+			}
+		}
+		return m, nil
+	}
+
+	// Handle edit mode
+	if m.editMode {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				m.editMode = false
+				m.editTextInput.Reset()
+				return m, nil
+			case "ctrl+s":
+				return m, m.saveEditedComment()
+			}
+		}
+		m.editTextInput, cmd = m.editTextInput.Update(msg)
+		return m, cmd
+	}
+
+	// Handle add mode
 	if m.addMode {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -114,10 +197,30 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textInput.Focus()
 			return m, textarea.Blink
 
-		case "d", "x":
-			// Delete selected comment
+		case "e":
+			// Edit selected comment
 			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
-				return m, m.deleteComment()
+				return m, m.startEditComment()
+			}
+
+		case "E":
+			// Edit in external editor
+			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+				return m, m.editInExternalEditor()
+			}
+
+		case "d", "x":
+			// Request delete confirmation
+			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+				m.confirmDelete = true
+				return m, nil
+			}
+
+		case "enter":
+			// Expand selected comment to view full text
+			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+				m.expandedView = true
+				return m, nil
 			}
 		}
 	}
@@ -156,7 +259,7 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	}
 }
 
-func (m *TaskCommentsModel) deleteComment() tea.Cmd {
+func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	return func() tea.Msg {
 		if !m.task.RemoveComment(m.cursor) {
 			return ErrorMsg{Err: fmt.Errorf("failed to remove comment")}
@@ -180,6 +283,159 @@ func (m *TaskCommentsModel) deleteComment() tea.Cmd {
 	}
 }
 
+func (m *TaskCommentsModel) startEditComment() tea.Cmd {
+	comment := m.task.Comments[m.cursor]
+	m.editMode = true
+	m.editIndex = m.cursor
+	m.editTextInput.SetValue(comment.Text)
+	m.editTextInput.Focus()
+	return textarea.Blink
+}
+
+func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
+	return func() tea.Msg {
+		text := strings.TrimSpace(m.editTextInput.Value())
+		if text == "" {
+			m.err = fmt.Errorf("comment text cannot be empty")
+			return nil
+		}
+
+		// Update the comment text (preserve timestamp)
+		m.task.Comments[m.editIndex].Text = text
+
+		// Create backup before saving
+		if err := storage.BackupProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		if err := storage.SaveProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		// Reset edit mode
+		m.editMode = false
+		m.editTextInput.Reset()
+		m.err = nil
+
+		return CommentEditedMsg{Task: m.task}
+	}
+}
+
+func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
+	comment := m.task.Comments[m.cursor]
+	editIndex := m.cursor
+
+	// Create temp file content
+	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n", editIndex, m.task.ShortID, m.task.Title)
+	content += "<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n"
+	content += comment.Text
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "tt-comment-*.md")
+	if err != nil {
+		m.err = fmt.Errorf("failed to create temp file: %w", err)
+		return nil
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.WriteString(content)
+	tmpFile.Close()
+
+	// Determine editor
+	editor := m.editor
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "code"
+	}
+
+	// Build command
+	var c *exec.Cmd
+	if editor == "code" {
+		c = exec.Command(editor, "--wait", tmpPath)
+	} else {
+		c = exec.Command(editor, tmpPath)
+	}
+
+	task := m.task
+	project := m.project
+
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			os.Remove(tmpPath)
+			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
+		}
+
+		// Read modified content
+		modified, readErr := os.ReadFile(tmpPath)
+		os.Remove(tmpPath)
+		if readErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
+		}
+
+		// Parse the edited content
+		newText := parseEditedCommentContent(string(modified))
+		if newText == "" {
+			return ErrorMsg{Err: fmt.Errorf("comment text cannot be empty")}
+		}
+
+		// Check if changed
+		if newText == comment.Text {
+			return nil // No changes
+		}
+
+		// Update comment (preserve timestamp)
+		task.Comments[editIndex].Text = newText
+
+		// Create backup before saving
+		if err := storage.BackupProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		if err := storage.SaveProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return CommentEditedMsg{Task: task}
+	})
+}
+
+// parseEditedCommentContent extracts the comment text from edited content.
+func parseEditedCommentContent(content string) string {
+	lines := strings.Split(content, "\n")
+	var textLines []string
+	foundComment := false
+
+	for _, line := range lines {
+		// Already collecting text
+		if foundComment {
+			textLines = append(textLines, line)
+			continue
+		}
+
+		// Skip title line
+		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
+			continue
+		}
+
+		// Look for the HTML comment marker
+		if len(line) >= 4 && line[:4] == "<!--" {
+			foundComment = true
+			continue
+		}
+	}
+
+	// Trim leading and trailing empty lines
+	for len(textLines) > 0 && textLines[0] == "" {
+		textLines = textLines[1:]
+	}
+	for len(textLines) > 0 && textLines[len(textLines)-1] == "" {
+		textLines = textLines[:len(textLines)-1]
+	}
+
+	return strings.Join(textLines, "\n")
+}
+
 func (m *TaskCommentsModel) View() string {
 	var b strings.Builder
 
@@ -193,6 +449,54 @@ func (m *TaskCommentsModel) View() string {
 	b.WriteString(countStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
 	b.WriteString("\n\n")
 
+	// Expanded view mode - show full comment
+	if m.expandedView && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+		comment := m.task.Comments[m.cursor]
+		relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
+		timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
+
+		b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Comment [%d]", m.cursor)))
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(timestamp))
+		b.WriteString("\n\n")
+
+		// Show full comment text with word wrapping
+		maxLen := m.width - 4
+		if maxLen < 40 {
+			maxLen = 40
+		}
+		lines := strings.Split(comment.Text, "\n")
+		for _, line := range lines {
+			// Word wrap long lines
+			for len(line) > maxLen {
+				b.WriteString(line[:maxLen])
+				b.WriteString("\n")
+				line = line[maxLen:]
+			}
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+
+		b.WriteString("\n")
+		b.WriteString(HelpStyle.Render("Enter/Esc: close expanded view"))
+		return b.String()
+	}
+
+	// Edit mode input
+	if m.editMode {
+		comment := m.task.Comments[m.editIndex]
+		relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
+		b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Created: %s (%s)", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)))
+		b.WriteString("\n\n")
+		b.WriteString(m.editTextInput.View())
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("Ctrl+S: save | Esc: cancel"))
+		b.WriteString("\n")
+		return b.String()
+	}
+
 	// Add mode input
 	if m.addMode {
 		b.WriteString(FieldLabelFocusedStyle.Render("Add Comment:"))
@@ -200,6 +504,25 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Ctrl+S: save | Esc: cancel"))
+		b.WriteString("\n")
+		return b.String()
+	}
+
+	// Delete confirmation
+	if m.confirmDelete && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+		comment := m.task.Comments[m.cursor]
+		preview := comment.Text
+		if len(preview) > 50 {
+			preview = preview[:47] + "..."
+		}
+		preview = strings.ReplaceAll(preview, "\n", " ")
+
+		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		b.WriteString(warningStyle.Render(fmt.Sprintf("Delete comment [%d]?", m.cursor)))
+		b.WriteString("\n\n")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", preview)))
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("y: confirm delete | n/Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
@@ -268,7 +591,7 @@ func (m *TaskCommentsModel) View() string {
 			for j, line := range lines {
 				if j > 1 { // Show first 2 lines
 					remaining := len(lines) - 2
-					entry.WriteString(fmt.Sprintf("      ... (%d more lines)\n", remaining))
+					entry.WriteString(fmt.Sprintf("      ... (%d more lines, press Enter to expand)\n", remaining))
 					break
 				}
 				if len(line) > maxLen {
@@ -296,7 +619,7 @@ func (m *TaskCommentsModel) View() string {
 
 	// Help footer
 	helpStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	b.WriteString(helpStyle.Render("a/n: add | d/x: delete | j/k: navigate | g/G: top/bottom | Esc: close"))
+	b.WriteString(helpStyle.Render("a/n: add | e: edit | E: external editor | d/x: delete | Enter: expand | Esc: close"))
 
 	return b.String()
 }

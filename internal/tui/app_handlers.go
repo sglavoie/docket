@@ -256,7 +256,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTaskCommentsMsg:
 		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewTaskComments, NewTaskCommentsModel(msg.Task, msg.Project))
+			m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(msg.Task, msg.Project, m.config.Editor))
 		}
 		return true, nil
 
@@ -270,6 +270,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CommentDeletedMsg:
 		m.statusMessage = "Comment deleted"
+		return true, statusTimeout(2 * time.Second)
+
+	case CommentEditedMsg:
+		m.statusMessage = "Comment updated"
 		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
