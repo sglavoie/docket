@@ -135,6 +135,16 @@ type (
 		Project *models.Project
 	}
 	CloseBulkCaptureMsg struct{}
+
+	// Task comments messages
+	ShowTaskCommentsMsg struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+	CloseTaskCommentsMsg struct{}
+	CommentAddedMsg      struct {
+		Task *models.Task
+	}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

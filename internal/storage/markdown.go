@@ -151,6 +151,12 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 		b.WriteString("\n")
 	}
 
+	// Write comments block if task has comments
+	if len(task.Comments) > 0 {
+		b.WriteString("\n")
+		b.WriteString(writeComments(task))
+	}
+
 	// Get children in their original slice order (not sorted by type)
 	children := getChildrenInOrder(task.ID, allTasks)
 
@@ -212,6 +218,25 @@ func writeMetadata(task *models.Task) string {
 	}
 
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
+}
+
+// writeComments generates the comments block for a task.
+func writeComments(task *models.Task) string {
+	if len(task.Comments) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("<!-- COMMENTS -->\n")
+
+	for _, comment := range task.Comments {
+		b.WriteString(fmt.Sprintf("<!-- comment: %s -->\n", comment.CreatedAt.Format(util.DateTimeFormat)))
+		b.WriteString(comment.Text)
+		b.WriteString("\n")
+	}
+
+	b.WriteString("<!-- /COMMENTS -->\n")
+	return b.String()
 }
 
 // GetTasksFilePath returns the path to a project's tasks.md file.

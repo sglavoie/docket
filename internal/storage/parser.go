@@ -25,6 +25,15 @@ var (
 
 	// Matches sections metadata like "<!-- sections: Backlog;Active;Done -->"
 	sectionsRegex = regexp.MustCompile(`^<!--\s*sections:\s*(.+?)\s*-->$`)
+
+	// Matches comment start marker like "<!-- COMMENTS -->"
+	commentsStartRegex = regexp.MustCompile(`^<!--\s*COMMENTS\s*-->$`)
+
+	// Matches comment end marker like "<!-- /COMMENTS -->"
+	commentsEndRegex = regexp.MustCompile(`^<!--\s*/COMMENTS\s*-->$`)
+
+	// Matches individual comment header like "<!-- comment: 2025-12-27 10:30 -->"
+	commentHeaderRegex = regexp.MustCompile(`^<!--\s*comment:\s*(.+?)\s*-->$`)
 )
 
 // ParsedTask represents a task parsed from markdown with its raw data.
@@ -170,6 +179,11 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Build parent-child relationships using levels captured during initial parse
 	tasks := buildHierarchy(parsedTasks)
 
+	// Extract comments from task descriptions
+	for _, t := range tasks {
+		extractCommentsFromDescription(t)
+	}
+
 	// Validate parent references - clear any that reference non-existent tasks
 	taskByID := make(map[string]bool, len(tasks))
 	for _, t := range tasks {
@@ -308,6 +322,89 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("project name not found in file")
+}
+
+// extractCommentsFromDescription parses the COMMENTS block from task description.
+// It extracts comments and returns the cleaned description (without the comments block).
+func extractCommentsFromDescription(task *models.Task) {
+	if task.Description == "" {
+		return
+	}
+
+	lines := strings.Split(task.Description, "\n")
+	var cleanDesc strings.Builder
+	var inCommentsBlock bool
+	var currentCommentText strings.Builder
+	var currentCommentTime time.Time
+	var hasCurrentComment bool
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Check for comments block start
+		if commentsStartRegex.MatchString(trimmed) {
+			inCommentsBlock = true
+			continue
+		}
+
+		// Check for comments block end
+		if commentsEndRegex.MatchString(trimmed) {
+			// Save any pending comment
+			if hasCurrentComment {
+				text := strings.TrimSpace(currentCommentText.String())
+				if text != "" {
+					task.Comments = append(task.Comments, &models.Comment{
+						Text:      text,
+						CreatedAt: currentCommentTime,
+					})
+				}
+			}
+			inCommentsBlock = false
+			hasCurrentComment = false
+			currentCommentText.Reset()
+			continue
+		}
+
+		if inCommentsBlock {
+			// Check for new comment header
+			if matches := commentHeaderRegex.FindStringSubmatch(trimmed); matches != nil {
+				// Save previous comment if exists
+				if hasCurrentComment {
+					text := strings.TrimSpace(currentCommentText.String())
+					if text != "" {
+						task.Comments = append(task.Comments, &models.Comment{
+							Text:      text,
+							CreatedAt: currentCommentTime,
+						})
+					}
+				}
+				// Start new comment
+				if t, ok := parseTimeField(matches[1]); ok {
+					currentCommentTime = t
+				} else {
+					currentCommentTime = time.Time{}
+				}
+				hasCurrentComment = true
+				currentCommentText.Reset()
+				continue
+			}
+
+			// Accumulate comment text
+			if hasCurrentComment {
+				if currentCommentText.Len() > 0 {
+					currentCommentText.WriteString("\n")
+				}
+				currentCommentText.WriteString(line)
+			}
+		} else {
+			// Normal description content
+			cleanDesc.WriteString(line)
+			cleanDesc.WriteString("\n")
+		}
+	}
+
+	// Update description with cleaned version (without comments block)
+	task.Description = strings.TrimSpace(cleanDesc.String())
 }
 
 // buildHierarchy establishes parent-child relationships based on heading levels.

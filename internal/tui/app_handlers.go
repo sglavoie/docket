@@ -253,6 +253,20 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case UndoCompletedMsg:
 		m.refreshProjectTree()
 		return true, nil
+
+	case ShowTaskCommentsMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewTaskComments, NewTaskCommentsModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case CloseTaskCommentsMsg:
+		m.popView()
+		return true, nil
+
+	case CommentAddedMsg:
+		m.statusMessage = "Comment added"
+		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
 }

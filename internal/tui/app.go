@@ -45,6 +45,7 @@ const (
 	ViewInboxProcessor
 	ViewTagSelector
 	ViewUndoHistory
+	ViewTaskComments
 )
 
 // AppModel is the main TUI model with a view stack.

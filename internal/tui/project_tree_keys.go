@@ -346,6 +346,15 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 			}
 		}
 		return true, nil
+
+	case "C":
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowTaskCommentsMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }

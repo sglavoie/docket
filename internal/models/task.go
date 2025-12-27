@@ -7,6 +7,12 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// Comment represents a timestamped note on a task.
+type Comment struct {
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // TaskStatus represents the current state of a task.
 type TaskStatus string
 
@@ -97,6 +103,7 @@ type Task struct {
 	Pinned      bool       `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`  // When the task was pinned
 	Active      bool       `json:"active,omitempty"`     // Whether the task is flagged as active
+	Comments    []*Comment `json:"comments,omitempty"`   // Timestamped comments/notes
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
@@ -532,4 +539,38 @@ func (t *Task) ToggleActive() {
 	} else {
 		t.Activate()
 	}
+}
+
+// AddComment adds a new timestamped comment to the task.
+func (t *Task) AddComment(text string) {
+	comment := &Comment{
+		Text:      text,
+		CreatedAt: time.Now(),
+	}
+	t.Comments = append(t.Comments, comment)
+	t.UpdatedAt = time.Now()
+}
+
+// RemoveComment removes the comment at the given index.
+// Returns true if a comment was removed.
+func (t *Task) RemoveComment(index int) bool {
+	if index < 0 || index >= len(t.Comments) {
+		return false
+	}
+	t.Comments = append(t.Comments[:index], t.Comments[index+1:]...)
+	t.UpdatedAt = time.Now()
+	return true
+}
+
+// ClearComments removes all comments from the task.
+func (t *Task) ClearComments() {
+	if len(t.Comments) > 0 {
+		t.Comments = []*Comment{}
+		t.UpdatedAt = time.Now()
+	}
+}
+
+// CommentCount returns the number of comments on the task.
+func (t *Task) CommentCount() int {
+	return len(t.Comments)
 }
