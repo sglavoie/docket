@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // DiffLineKind represents the type of a diff line.
@@ -105,71 +106,87 @@ func RenderDiffLines(lines []DiffLine, width int) string {
 	return b.String()
 }
 
-// ComputeContextualDiff computes a diff with surrounding context lines.
-// This provides a more readable diff by showing unchanged lines around changes.
+// ComputeContextualDiff computes a diff with surrounding context lines using Myers algorithm.
+// When contextLines > 0, only shows changed lines plus the specified number of surrounding context lines.
 func ComputeContextualDiff(oldContent, newContent string, contextLines int) []DiffLine {
-	oldLines := strings.Split(oldContent, "\n")
-	newLines := strings.Split(newContent, "\n")
+	dmp := diffmatchpatch.New()
 
-	// Use a simple LCS-based approach for better diffs
-	// For now, use a simpler unified diff approach
+	// Use line-based diffing for better results
+	// Step 1: Convert lines to characters for efficient diffing
+	chars1, chars2, lineArray := dmp.DiffLinesToChars(oldContent, newContent)
 
+	// Step 2: Compute diff on the encoded strings (Myers algorithm)
+	diffs := dmp.DiffMain(chars1, chars2, false)
+
+	// Step 3: Convert back to lines
+	diffs = dmp.DiffCharsToLines(diffs, lineArray)
+
+	// Step 4: Convert to DiffLine format
 	var result []DiffLine
-	oldIdx, newIdx := 0, 0
+	for _, d := range diffs {
+		// Each diff.Text may contain multiple lines (ending with \n)
+		text := strings.TrimSuffix(d.Text, "\n")
+		if text == "" && d.Text == "" {
+			continue
+		}
+		lines := strings.Split(text, "\n")
 
-	for oldIdx < len(oldLines) || newIdx < len(newLines) {
-		if oldIdx >= len(oldLines) {
-			// Remaining lines in new are additions
-			result = append(result, DiffLine{Kind: DiffAdd, Content: newLines[newIdx]})
-			newIdx++
-		} else if newIdx >= len(newLines) {
-			// Remaining lines in old are removals
-			result = append(result, DiffLine{Kind: DiffRemove, Content: oldLines[oldIdx]})
-			oldIdx++
-		} else if oldLines[oldIdx] == newLines[newIdx] {
-			// Lines match - context
-			result = append(result, DiffLine{Kind: DiffContext, Content: oldLines[oldIdx]})
-			oldIdx++
-			newIdx++
-		} else {
-			// Lines differ - check if it's a removal, addition, or modification
-			// Look ahead to see if old line appears later in new
-			foundInNew := -1
-			for i := newIdx; i < len(newLines) && i < newIdx+10; i++ {
-				if oldLines[oldIdx] == newLines[i] {
-					foundInNew = i
-					break
-				}
-			}
+		var kind DiffLineKind
+		switch d.Type {
+		case diffmatchpatch.DiffEqual:
+			kind = DiffContext
+		case diffmatchpatch.DiffInsert:
+			kind = DiffAdd
+		case diffmatchpatch.DiffDelete:
+			kind = DiffRemove
+		}
 
-			// Look ahead to see if new line appears later in old
-			foundInOld := -1
-			for i := oldIdx; i < len(oldLines) && i < oldIdx+10; i++ {
-				if newLines[newIdx] == oldLines[i] {
-					foundInOld = i
-					break
-				}
-			}
+		for _, line := range lines {
+			result = append(result, DiffLine{Kind: kind, Content: line})
+		}
+	}
 
-			if foundInNew >= 0 && (foundInOld < 0 || foundInNew-newIdx <= foundInOld-oldIdx) {
-				// New lines were added before the match
-				for newIdx < foundInNew {
-					result = append(result, DiffLine{Kind: DiffAdd, Content: newLines[newIdx]})
-					newIdx++
-				}
-			} else if foundInOld >= 0 {
-				// Old lines were removed before the match
-				for oldIdx < foundInOld {
-					result = append(result, DiffLine{Kind: DiffRemove, Content: oldLines[oldIdx]})
-					oldIdx++
-				}
-			} else {
-				// No match found - treat as removal then addition
-				result = append(result, DiffLine{Kind: DiffRemove, Content: oldLines[oldIdx]})
-				oldIdx++
-				result = append(result, DiffLine{Kind: DiffAdd, Content: newLines[newIdx]})
-				newIdx++
+	// Apply context filtering if requested
+	if contextLines > 0 {
+		result = filterWithContext(result, contextLines)
+	}
+
+	return result
+}
+
+// filterWithContext filters diff lines to show only changes plus surrounding context.
+// This produces output similar to unified diff format.
+func filterWithContext(lines []DiffLine, contextLines int) []DiffLine {
+	if len(lines) == 0 {
+		return lines
+	}
+
+	// First pass: mark which lines should be included
+	include := make([]bool, len(lines))
+
+	// Mark all non-context lines and their surrounding context
+	for i, line := range lines {
+		if line.Kind != DiffContext {
+			// Include this line and surrounding context
+			start := i - contextLines
+			if start < 0 {
+				start = 0
 			}
+			end := i + contextLines + 1
+			if end > len(lines) {
+				end = len(lines)
+			}
+			for j := start; j < end; j++ {
+				include[j] = true
+			}
+		}
+	}
+
+	// Second pass: build filtered result
+	var result []DiffLine
+	for i, line := range lines {
+		if include[i] {
+			result = append(result, line)
 		}
 	}
 
