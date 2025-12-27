@@ -388,6 +388,14 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "5":
 		return m.changeTaskPriority(5)
 
+	case "e":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			return m, func() tea.Msg {
+				return EditTaskMsg{Task: pt.Task}
+			}
+		}
+		return m, nil
+
 	case "?":
 		return m, func() tea.Msg {
 			return ShowHelpMsg{
@@ -544,7 +552,7 @@ func (m *PriorityViewModel) View() string {
 	b.WriteString("\n\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter view • s start • m done • 1-5 priority • ? help • q close")
+	footer := HelpStyle.Render("↑/↓ navigate • Enter view • e edit • s start • m done • 1-5 priority • ? help • q close")
 	b.WriteString(footer)
 
 	return b.String()
@@ -757,6 +765,7 @@ func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 		{Category: "Navigation", Key: "g/G", Description: "Jump to top/bottom"},
 		{Category: "Navigation", Key: "Ctrl+u/d", Description: "Page up/down"},
 		{Category: "Actions", Key: "Enter", Description: "View task details"},
+		{Category: "Actions", Key: "e", Description: "Edit task"},
 		{Category: "Actions", Key: "s", Description: "Start task (in progress)"},
 		{Category: "Actions", Key: "m", Description: "Mark task complete"},
 		{Category: "Actions", Key: "b", Description: "Block task"},
