@@ -9,6 +9,59 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+// handleFilterBarKeys handles F, F1-F7 - filter bar toggle and quick filter operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
+	switch key {
+	case "F":
+		m.filterBarEnabled = !m.filterBarEnabled
+		return true, nil
+	case "f1":
+		m.showCompleted = !m.showCompleted
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	case "f2":
+		if m.filterPriority == 0 {
+			m.filterPriority = 1
+		} else {
+			m.filterPriority = 0
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	case "f3":
+		m.filterType = cycleFilter(m.filterType, models.AllTaskTypes())
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	case "f4":
+		m.filterStatus = cycleFilter(m.filterStatus, models.AllTaskStatuses())
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	case "f5":
+		return true, func() tea.Msg {
+			return ShowTagFilterSelectorMsg{ProjectTree: m}
+		}
+	case "f6":
+		return true, func() tea.Msg {
+			return ShowSectionFilterSelectorMsg{ProjectTree: m}
+		}
+	case "f7":
+		m.filterDueDate = (m.filterDueDate + 1) % 5
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+	}
+	return false, nil
+}
+
 // handleFilterKeys handles d, P, t, S, T, N, u - filter operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {

@@ -104,6 +104,10 @@ type ProjectTreeModel struct {
 	// Undo context for the next save operation
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
 	pendingUndoContext string // Additional context (e.g., task title)
+
+	// Filter bar state
+	filterBarEnabled bool           // Toggle filter bar visibility
+	filterCounts     map[string]int // Cached task counts per filter category
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -133,6 +137,8 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		sidebarScroll:            0,
 		sidebarDependencyCursor:  0,
 		sidebarDependencySection: 0,
+		filterBarEnabled:         true, // Filter bar on by default
+		filterCounts:             make(map[string]int),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

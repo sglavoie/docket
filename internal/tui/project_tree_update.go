@@ -171,6 +171,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	if handled, cmd := m.handleSelectionKeys(key, visible); handled {
 		return m, cmd
 	}
+	if handled, cmd := m.handleFilterBarKeys(key); handled {
+		return m, cmd
+	}
 	if handled, cmd := m.handleFilterKeys(key); handled {
 		return m, cmd
 	}

@@ -35,6 +35,7 @@ func (m *ProjectTreeModel) buildTree() {
 
 	m.sortNodes()
 	m.updateVisibility()
+	m.calculateFilterCounts()
 }
 
 func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expandedState map[string]bool) {
@@ -291,4 +292,42 @@ func cycleFilter[T comparable](current T, values []T) T {
 		}
 	}
 	return zero
+}
+
+// calculateFilterCounts calculates task counts for each filter category.
+// This enables the filter bar to show how many tasks match each filter.
+func (m *ProjectTreeModel) calculateFilterCounts() {
+	m.filterCounts = make(map[string]int)
+	for _, task := range m.project.Tasks {
+		// Count completed tasks
+		if task.IsComplete() {
+			m.filterCounts["completed"]++
+		}
+		// Count high priority tasks (priority 1-2)
+		if task.Priority <= 2 {
+			m.filterCounts["highPriority"]++
+		}
+		// Count by type
+		m.filterCounts["type:"+string(task.Type)]++
+		// Count by status
+		m.filterCounts["status:"+string(task.Status)]++
+		// Count by due date category
+		if isOverdue(task) {
+			m.filterCounts["overdue"]++
+		}
+		if isDueToday(task) {
+			m.filterCounts["today"]++
+		}
+		if isDueThisWeek(task) {
+			m.filterCounts["thisWeek"]++
+		}
+		// Count by section
+		if task.Section != "" {
+			m.filterCounts["section:"+task.Section]++
+		}
+		// Count by tag
+		for _, tag := range task.Tags {
+			m.filterCounts["tag:"+tag]++
+		}
+	}
 }

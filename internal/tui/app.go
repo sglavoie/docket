@@ -211,16 +211,17 @@ func (m *AppModel) saveProjectTreeState() {
 	}
 
 	state := config.ProjectViewState{
-		FilterType:     string(m.projectTree.filterType),
-		FilterStatus:   string(m.projectTree.filterStatus),
-		FilterPriority: m.projectTree.filterPriority,
-		FilterTags:     filterTags,
-		FilterSections: filterSections,
-		FilterDueDate:  int(m.projectTree.filterDueDate),
-		SortField:      int(m.projectTree.sortField),
-		SortAscending:  m.projectTree.sortAscending,
-		ShowCompleted:  m.projectTree.showCompleted,
-		SidebarEnabled: m.projectTree.sidebarEnabled,
+		FilterType:       string(m.projectTree.filterType),
+		FilterStatus:     string(m.projectTree.filterStatus),
+		FilterPriority:   m.projectTree.filterPriority,
+		FilterTags:       filterTags,
+		FilterSections:   filterSections,
+		FilterDueDate:    int(m.projectTree.filterDueDate),
+		SortField:        int(m.projectTree.sortField),
+		SortAscending:    m.projectTree.sortAscending,
+		ShowCompleted:    m.projectTree.showCompleted,
+		SidebarEnabled:   m.projectTree.sidebarEnabled,
+		FilterBarEnabled: m.projectTree.filterBarEnabled,
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	m.configManager.Save(m.config)
@@ -260,6 +261,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.sortAscending = state.SortAscending
 	m.projectTree.showCompleted = state.ShowCompleted
 	m.projectTree.sidebarEnabled = state.SidebarEnabled
+	m.projectTree.filterBarEnabled = state.FilterBarEnabled
 
 	// Restore tags - validate they still exist
 	m.projectTree.filterTags = make(map[string]bool)

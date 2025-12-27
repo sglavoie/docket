@@ -13,16 +13,17 @@ import (
 
 // ProjectViewState holds filter/sort state for a project's tree view.
 type ProjectViewState struct {
-	FilterType     string   `json:"filter_type,omitempty"`
-	FilterStatus   string   `json:"filter_status,omitempty"`
-	FilterPriority int      `json:"filter_priority,omitempty"`
-	FilterTags     []string `json:"filter_tags,omitempty"`
-	FilterSections []string `json:"filter_sections,omitempty"`
-	FilterDueDate  int      `json:"filter_due_date,omitempty"`
-	SortField      int      `json:"sort_field,omitempty"`
-	SortAscending  bool     `json:"sort_ascending"`
-	ShowCompleted  bool     `json:"show_completed"`
-	SidebarEnabled bool     `json:"sidebar_enabled"` // Sidebar toggle state per project
+	FilterType       string   `json:"filter_type,omitempty"`
+	FilterStatus     string   `json:"filter_status,omitempty"`
+	FilterPriority   int      `json:"filter_priority,omitempty"`
+	FilterTags       []string `json:"filter_tags,omitempty"`
+	FilterSections   []string `json:"filter_sections,omitempty"`
+	FilterDueDate    int      `json:"filter_due_date,omitempty"`
+	SortField        int      `json:"sort_field,omitempty"`
+	SortAscending    bool     `json:"sort_ascending"`
+	ShowCompleted    bool     `json:"show_completed"`
+	SidebarEnabled   bool     `json:"sidebar_enabled"`    // Sidebar toggle state per project
+	FilterBarEnabled bool     `json:"filter_bar_enabled"` // Filter bar toggle state per project
 }
 
 // Config holds the application configuration.

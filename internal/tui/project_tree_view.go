@@ -39,6 +39,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 	b.WriteString("\n")
 
+	// Filter bar
+	b.WriteString(m.renderFilterBar())
+
 	// Search bar
 	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
@@ -305,6 +308,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 	}
 	b.WriteString("\n")
+
+	// Filter bar
+	b.WriteString(m.renderFilterBar())
 
 	// Search bar
 	if m.IsSearchMode() {
@@ -821,12 +827,114 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "y", Description: "Copy title", Category: "Clipboard"},
 		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
 
+		// Filter Bar
+		{Key: "F", Description: "Toggle filter bar", Category: "Filter Bar"},
+		{Key: "F1", Description: "Toggle completed filter", Category: "Filter Bar"},
+		{Key: "F2", Description: "Toggle high priority filter", Category: "Filter Bar"},
+		{Key: "F3", Description: "Cycle type filter", Category: "Filter Bar"},
+		{Key: "F4", Description: "Cycle status filter", Category: "Filter Bar"},
+		{Key: "F5", Description: "Tag filter selector", Category: "Filter Bar"},
+		{Key: "F6", Description: "Section filter selector", Category: "Filter Bar"},
+		{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar"},
+
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
 		{Key: "ctrl+Z", Description: "Undo history", Category: "Other"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
 	}
+}
+
+// renderFilterBar renders the filter toggle bar with task counts.
+func (m *ProjectTreeModel) renderFilterBar() string {
+	if !m.filterBarEnabled {
+		return ""
+	}
+
+	var badges []string
+
+	// F1: Completed (toggle hiding completed tasks)
+	count := m.filterCounts["completed"]
+	active := !m.showCompleted // Active when hiding completed
+	badges = append(badges, m.renderFilterBadge("F1", "Done", count, active))
+
+	// F2: High Priority
+	count = m.filterCounts["highPriority"]
+	active = m.filterPriority == 1
+	badges = append(badges, m.renderFilterBadge("F2", "!Hi", count, active))
+
+	// F3: Type (show current type if filtered)
+	typeName := "Type"
+	if m.filterType != "" {
+		typeName = string(m.filterType)
+		count = m.filterCounts["type:"+string(m.filterType)]
+	} else {
+		count = len(m.project.Tasks)
+	}
+	active = m.filterType != ""
+	badges = append(badges, m.renderFilterBadge("F3", typeName, count, active))
+
+	// F4: Status (show current status if filtered)
+	statusName := "Status"
+	if m.filterStatus != "" {
+		statusName = string(m.filterStatus)
+		count = m.filterCounts["status:"+string(m.filterStatus)]
+	} else {
+		count = len(m.project.Tasks)
+	}
+	active = m.filterStatus != ""
+	badges = append(badges, m.renderFilterBadge("F4", statusName, count, active))
+
+	// F5: Tags (show count of selected tags)
+	tagCount := len(m.filterTags)
+	if tagCount > 0 {
+		badges = append(badges, m.renderFilterBadge("F5", fmt.Sprintf("#%dtag", tagCount), tagCount, true))
+	} else {
+		badges = append(badges, m.renderFilterBadge("F5", "Tags", 0, false))
+	}
+
+	// F6: Section (show count of selected sections)
+	sectionCount := len(m.filterSections)
+	if sectionCount > 0 {
+		badges = append(badges, m.renderFilterBadge("F6", fmt.Sprintf("@%dsec", sectionCount), sectionCount, true))
+	} else {
+		badges = append(badges, m.renderFilterBadge("F6", "Sect", 0, false))
+	}
+
+	// F7: Due Date
+	dueName := "Due"
+	switch m.filterDueDate {
+	case DueDateOverdue:
+		dueName = "Ovrd"
+		count = m.filterCounts["overdue"]
+	case DueDateToday:
+		dueName = "Today"
+		count = m.filterCounts["today"]
+	case DueDateThisWeek:
+		dueName = "Week"
+		count = m.filterCounts["thisWeek"]
+	default:
+		count = 0
+	}
+	active = m.filterDueDate != DueDateAll
+	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
+
+	return MutedStyle.Render("Filters: ") + strings.Join(badges, " ") + "\n"
+}
+
+// renderFilterBadge renders a single filter badge with key, name, count, and active state.
+func (m *ProjectTreeModel) renderFilterBadge(key, name string, count int, active bool) string {
+	var countStr string
+	if count > 0 {
+		countStr = fmt.Sprintf("[%d]", count)
+	}
+
+	label := fmt.Sprintf("%s:%s%s", key, name, countStr)
+
+	if active {
+		return FilterBadgeStyle.Render(label)
+	}
+	return MutedStyle.Render(label)
 }
 
 // NavigateToTask expands parent nodes and positions cursor on the given task.
