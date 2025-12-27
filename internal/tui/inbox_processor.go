@@ -226,6 +226,14 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 	case "z":
 		return m, m.undoLastAction()
+
+	case "enter":
+		if task := m.getCurrentTask(); task != nil {
+			return m, func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			}
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -500,6 +508,7 @@ func (m *InboxProcessorModel) reloadProject() tea.Cmd {
 // GetHelpItems returns help items for the inbox processor view.
 func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
+		{Key: "enter", Description: "View task details", Category: "Navigation"},
 		{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation"},
 		{Key: "←/→ or h/l", Description: "Navigate to previous/next task", Category: "Navigation"},
 		{Key: "q", Description: "Quit inbox processing", Category: "Navigation"},
