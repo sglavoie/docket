@@ -97,6 +97,26 @@ func TestComputeUrgencyScore(t *testing.T) {
 			wantMax: 5700,
 		},
 		{
+			name: "bug type bonus",
+			task: func() *models.Task {
+				task := models.NewTask("7", 7, models.TaskTypeBug, "Bug task")
+				task.Priority = 3
+				return task
+			}(),
+			wantMin: 3100, // 3000 + 100 (bug bonus)
+			wantMax: 3100,
+		},
+		{
+			name: "bug outranks task at same priority",
+			task: func() *models.Task {
+				task := models.NewTask("8", 8, models.TaskTypeBug, "Bug at priority 3")
+				task.Priority = 3
+				return task
+			}(),
+			wantMin: 3100, // Bug: 3000 + 100 > Task: 3000
+			wantMax: 3100,
+		},
+		{
 			name: "overdue adds points",
 			task: func() *models.Task {
 				task := newTestTaskWithDueDate("Overdue task", -2)
@@ -268,6 +288,61 @@ func TestLoadActionableTasks(t *testing.T) {
 		}
 		if m.backlog[2].Task.Priority != 5 {
 			t.Errorf("expected third task to have priority 5, got %d", m.backlog[2].Task.Priority)
+		}
+	})
+
+	t.Run("bugs rank higher than tasks at same priority", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Add a task and a bug with the same priority (no due dates -> backlog)
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Regular task")
+		task.Priority = 3
+
+		bug := models.NewTask("2", 2, models.TaskTypeBug, "Bug task")
+		bug.Priority = 3
+
+		// Add task first to ensure sorting changes the order
+		project.Tasks = []*models.Task{task, bug}
+
+		m := NewPriorityViewModel(project)
+
+		if len(m.backlog) != 2 {
+			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
+		}
+
+		// Bug should appear first due to +100 bonus
+		if m.backlog[0].Task.Type != models.TaskTypeBug {
+			t.Errorf("expected bug to be first, got %s", m.backlog[0].Task.Type)
+		}
+		if m.backlog[1].Task.Type != models.TaskTypeTask {
+			t.Errorf("expected task to be second, got %s", m.backlog[1].Task.Type)
+		}
+	})
+
+	t.Run("higher priority task still outranks lower priority bug", func(t *testing.T) {
+		project := newTestPriorityProject()
+
+		// Priority 2 task should beat priority 3 bug
+		task := models.NewTask("1", 1, models.TaskTypeTask, "Priority 2 task")
+		task.Priority = 2
+
+		bug := models.NewTask("2", 2, models.TaskTypeBug, "Priority 3 bug")
+		bug.Priority = 3
+
+		project.Tasks = []*models.Task{bug, task}
+
+		m := NewPriorityViewModel(project)
+
+		if len(m.backlog) != 2 {
+			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
+		}
+
+		// Priority 2 task (4000 points) should outrank priority 3 bug (3100 points)
+		if m.backlog[0].Task.Priority != 2 {
+			t.Errorf("expected priority 2 task to be first, got priority %d", m.backlog[0].Task.Priority)
+		}
+		if m.backlog[1].Task.Priority != 3 {
+			t.Errorf("expected priority 3 bug to be second, got priority %d", m.backlog[1].Task.Priority)
 		}
 	})
 

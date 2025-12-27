@@ -146,6 +146,11 @@ func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
 	priorityWeight := (6 - task.Priority) * 1000
 	score += priorityWeight
 
+	// Bug type bonus: Bugs at the same priority rank higher
+	if task.Type == models.TaskTypeBug {
+		score += 100
+	}
+
 	// Due date proximity: overdue adds points, future subtracts
 	if task.DueDate != nil {
 		now := time.Now()
