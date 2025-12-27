@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskCommentsModel displays and manages comments for a task.
@@ -374,7 +375,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		}
 
 		// Parse the edited content
-		newText := parseEditedCommentContent(string(modified))
+		newText := util.ParseEditedCommentContent(string(modified))
 		if newText == "" {
 			return ErrorMsg{Err: fmt.Errorf("comment text cannot be empty")}
 		}
@@ -398,42 +399,6 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 		return CommentEditedMsg{Task: task}
 	})
-}
-
-// parseEditedCommentContent extracts the comment text from edited content.
-func parseEditedCommentContent(content string) string {
-	lines := strings.Split(content, "\n")
-	var textLines []string
-	foundComment := false
-
-	for _, line := range lines {
-		// Already collecting text
-		if foundComment {
-			textLines = append(textLines, line)
-			continue
-		}
-
-		// Skip title line
-		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
-			continue
-		}
-
-		// Look for the HTML comment marker
-		if len(line) >= 4 && line[:4] == "<!--" {
-			foundComment = true
-			continue
-		}
-	}
-
-	// Trim leading and trailing empty lines
-	for len(textLines) > 0 && textLines[0] == "" {
-		textLines = textLines[1:]
-	}
-	for len(textLines) > 0 && textLines[len(textLines)-1] == "" {
-		textLines = textLines[:len(textLines)-1]
-	}
-
-	return strings.Join(textLines, "\n")
 }
 
 func (m *TaskCommentsModel) View() string {

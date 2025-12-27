@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -77,7 +77,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Parse modified content
-	newText := parseEditedCommentContent(modified)
+	newText := util.ParseEditedCommentContent(modified)
 
 	// Check if changed
 	if newText == comment.Text {
@@ -100,40 +100,4 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Updated comment %d on #%d: %s\n", index, task.ShortID, task.Title)
 	return nil
-}
-
-// parseEditedCommentContent extracts the comment text from edited content.
-func parseEditedCommentContent(content string) string {
-	lines := strings.Split(content, "\n")
-	var textLines []string
-	foundComment := false
-
-	for _, line := range lines {
-		// Already collecting text
-		if foundComment {
-			textLines = append(textLines, line)
-			continue
-		}
-
-		// Skip title line
-		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
-			continue
-		}
-
-		// Look for the HTML comment marker
-		if len(line) >= 4 && line[:4] == "<!--" {
-			foundComment = true
-			continue
-		}
-	}
-
-	// Trim leading and trailing empty lines
-	for len(textLines) > 0 && textLines[0] == "" {
-		textLines = textLines[1:]
-	}
-	for len(textLines) > 0 && textLines[len(textLines)-1] == "" {
-		textLines = textLines[:len(textLines)-1]
-	}
-
-	return strings.Join(textLines, "\n")
 }
