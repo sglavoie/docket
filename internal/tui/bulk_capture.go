@@ -179,6 +179,7 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 			// Prepend all new tasks at once (newest first)
 			m.project.Tasks = append(newTasks, m.project.Tasks...)
 			m.project.BuildTaskTree()
+			m.project.ReorderRootTasksByCompletion()
 
 			// Update created count
 			m.created += len(validResults)

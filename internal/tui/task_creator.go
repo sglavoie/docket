@@ -353,6 +353,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		// Add task to project
 		m.project.Tasks = append(m.project.Tasks, task)
 		m.project.BuildTaskTree()
+		m.project.ReorderRootTasksByCompletion()
 
 		// Create backup before saving for undo support
 		if err := storage.BackupProject(m.project); err != nil {

@@ -223,6 +223,7 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 		// Add to project at the beginning so it's prominently visible
 		m.project.Tasks = append([]*models.Task{task}, m.project.Tasks...)
 		m.project.BuildTaskTree()
+		m.project.ReorderRootTasksByCompletion()
 
 		// Backup and save
 		if err := storage.BackupProject(m.project); err != nil {
