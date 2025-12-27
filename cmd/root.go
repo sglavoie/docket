@@ -13,6 +13,11 @@ import (
 var (
 	configPath string
 	verbose    bool
+
+	// Build information, populated via ldflags
+	Version   = "dev"
+	GitCommit = ""
+	BuildTime = ""
 )
 
 var rootCmd = &cobra.Command{
@@ -48,6 +53,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file path (default: ~/.tt.json)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.Flags().Bool("version", false, "show version information")
 
 	viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
@@ -68,6 +74,12 @@ func IsVerbose() bool {
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
+	showVersion, _ := cmd.Flags().GetBool("version")
+	if showVersion {
+		printVersion()
+		return nil
+	}
+
 	configManager := config.NewManager(GetConfigPath())
 	cfg, err := configManager.LoadOrCreate()
 	if err != nil {
@@ -75,4 +87,12 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	return tui.RunApp(cfg, configManager)
+}
+
+func printVersion() {
+	if GitCommit == "" && BuildTime == "" {
+		fmt.Printf("tt version %s\n", Version)
+		return
+	}
+	fmt.Printf("tt version %s (commit: %s, built: %s)\n", Version, GitCommit, BuildTime)
 }

@@ -13,13 +13,19 @@
 BINARY_NAME=tt
 INSTALL_DIR=$(HOME)/.local/bin
 
+# Build information
+VERSION ?= dev
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+LDFLAGS := -ldflags "-X github.com/sglavoie/tt/cmd.Version=$(VERSION) -X github.com/sglavoie/tt/cmd.GitCommit=$(GIT_COMMIT) -X github.com/sglavoie/tt/cmd.BuildTime=$(BUILD_TIME)"
+
 help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary in the current directory
 	@echo "🔨 Building $(BINARY_NAME)..."
-	go build -o $(BINARY_NAME) .
+	go build $(LDFLAGS) -o $(BINARY_NAME) .
 	@echo "✅ Built $(BINARY_NAME)"
 
 install: build ## Install the binary to ~/.local/bin
