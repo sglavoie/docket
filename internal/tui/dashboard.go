@@ -244,7 +244,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
 			}
-		case "C":
+		case "@":
 			return m, func() tea.Msg {
 				return ShowProjectCycleManagerMsg{}
 			}
@@ -540,7 +540,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},
 		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
 		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
-		{Key: "C", Description: "Configure project cycle", Category: "Project Cycling"},
+		{Key: "@", Description: "Configure project cycle", Category: "Project Cycling"},
 		{Key: "c", Description: "Filter by context", Category: "Filters"},
 		{Key: "n", Description: "New project", Category: "Actions"},
 		{Key: "e", Description: "Edit project", Category: "Actions"},

@@ -161,7 +161,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
 	case "~":
 		return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }
-	case "C":
+	case "@":
 		return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
 	}
 

@@ -801,7 +801,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Project Cycling
 		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
 		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
-		{Key: "C", Description: "Configure project cycle", Category: "Project Cycling"},
+		{Key: "@", Description: "Configure project cycle", Category: "Project Cycling"},
 
 		// Type Changes
 		{Key: "h", Description: "Promote type", Category: "Type Changes"},
