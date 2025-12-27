@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -11,6 +12,10 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowInboxProcessorMsg:
 		processor := NewInboxProcessorModel(msg.Project, m.config, m.configManager)
+		if len(processor.inboxTasks) == 0 {
+			m.statusMessage = "No inbox items to process"
+			return true, statusTimeout(2 * time.Second)
+		}
 		m.showView(ViewInboxProcessor, processor)
 		return true, nil
 

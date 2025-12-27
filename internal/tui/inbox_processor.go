@@ -74,7 +74,7 @@ func NewInboxProcessorModel(project *models.Project, cfg *config.Config, manager
 func getInboxTasksForModel(project *models.Project) []*models.Task {
 	var tasks []*models.Task
 	for _, task := range project.Tasks {
-		if task.Section == models.SectionInbox && task.IsRoot() {
+		if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() {
 			tasks = append(tasks, task)
 		}
 	}
