@@ -310,14 +310,6 @@ func (m *DashboardModel) toggleProjectPinned(project *models.Project) tea.Cmd {
 func (m *DashboardModel) View() string {
 	var b strings.Builder
 
-	// Title
-	title := "tt - Task Tracker"
-	if m.showArchived {
-		title = "tt - Archived Projects"
-	}
-	b.WriteString(TitleStyle.Render(title))
-	b.WriteString("\n")
-
 	// Confirmation prompt
 	if m.confirmAction == "delete" && m.deleteTarget != nil {
 		b.WriteString("\n")
@@ -359,7 +351,11 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n")
 	} else {
 		// Projects header
-		b.WriteString(SubtitleStyle.Render("PROJECTS"))
+		if m.showArchived {
+			b.WriteString(SubtitleStyle.Render("ARCHIVED PROJECTS"))
+		} else {
+			b.WriteString(SubtitleStyle.Render("PROJECTS"))
+		}
 		b.WriteString("\n")
 
 		// Project list
