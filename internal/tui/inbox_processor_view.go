@@ -103,7 +103,7 @@ func (m *InboxProcessorModel) renderOperationsPanel() string {
 func (m *InboxProcessorModel) renderFooter() string {
 	controls := []string{
 		"n: Skip to next",
-		"←/→: Navigate",
+		"j/k/←/→: Navigate",
 		"z: Undo",
 		"q: Quit",
 	}
