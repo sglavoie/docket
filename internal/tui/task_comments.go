@@ -176,7 +176,7 @@ func (m *TaskCommentsModel) deleteComment() tea.Cmd {
 			m.cursor--
 		}
 
-		return nil
+		return CommentDeletedMsg{Task: m.task}
 	}
 }
 

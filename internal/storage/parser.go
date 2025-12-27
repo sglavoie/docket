@@ -354,7 +354,7 @@ func extractCommentsFromDescription(task *models.Task) {
 				text := strings.TrimSpace(currentCommentText.String())
 				if text != "" {
 					task.Comments = append(task.Comments, &models.Comment{
-						Text:      text,
+						Text:      unescapeCommentText(text),
 						CreatedAt: currentCommentTime,
 					})
 				}
@@ -373,7 +373,7 @@ func extractCommentsFromDescription(task *models.Task) {
 					text := strings.TrimSpace(currentCommentText.String())
 					if text != "" {
 						task.Comments = append(task.Comments, &models.Comment{
-							Text:      text,
+							Text:      unescapeCommentText(text),
 							CreatedAt: currentCommentTime,
 						})
 					}

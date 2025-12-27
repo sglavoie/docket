@@ -142,9 +142,8 @@ type (
 		Project *models.Project
 	}
 	CloseTaskCommentsMsg struct{}
-	CommentAddedMsg      struct {
-		Task *models.Task
-	}
+	CommentAddedMsg      struct{ Task *models.Task }
+	CommentDeletedMsg    struct{ Task *models.Task }
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

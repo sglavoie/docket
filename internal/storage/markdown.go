@@ -231,12 +231,29 @@ func writeComments(task *models.Task) string {
 
 	for _, comment := range task.Comments {
 		b.WriteString(fmt.Sprintf("<!-- comment: %s -->\n", comment.CreatedAt.Format(util.DateTimeFormat)))
-		b.WriteString(comment.Text)
+		// Escape HTML comment markers to prevent parser corruption
+		escapedText := escapeCommentText(comment.Text)
+		b.WriteString(escapedText)
 		b.WriteString("\n")
 	}
 
 	b.WriteString("<!-- /COMMENTS -->\n")
 	return b.String()
+}
+
+// escapeCommentText escapes HTML comment markers in comment text
+// to prevent parser corruption when the text contains <!-- or -->.
+func escapeCommentText(text string) string {
+	text = strings.ReplaceAll(text, "<!--", "&lt;!--")
+	text = strings.ReplaceAll(text, "-->", "--&gt;")
+	return text
+}
+
+// unescapeCommentText reverses the escaping done by escapeCommentText.
+func unescapeCommentText(text string) string {
+	text = strings.ReplaceAll(text, "&lt;!--", "<!--")
+	text = strings.ReplaceAll(text, "--&gt;", "-->")
+	return text
 }
 
 // GetTasksFilePath returns the path to a project's tasks.md file.

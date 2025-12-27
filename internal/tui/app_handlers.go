@@ -267,6 +267,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CommentAddedMsg:
 		m.statusMessage = "Comment added"
 		return true, statusTimeout(2 * time.Second)
+
+	case CommentDeletedMsg:
+		m.statusMessage = "Comment deleted"
+		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
 }
