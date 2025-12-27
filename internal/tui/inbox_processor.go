@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -130,10 +129,6 @@ func (m *InboxProcessorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Rebuild inbox tasks to get fresh task references after reload
 		m.inboxTasks = getInboxTasksForModel(m.project)
-		// DEBUG: Log current task after rebuild
-		if task := m.getCurrentTask(); task != nil {
-			fmt.Fprintf(os.Stderr, "[InboxProcessor] After reload, current task %s tags: %v\n", task.ID, task.Tags)
-		}
 		// Verify currentIndex is still valid
 		if m.currentIndex >= len(m.inboxTasks) {
 			m.currentIndex = len(m.inboxTasks) - 1

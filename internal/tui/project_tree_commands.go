@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
@@ -97,10 +96,8 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 
 		// Record undo snapshot before saving (if undo is enabled and action is set)
 		if undoDepth > 0 && action != "" {
-			if err := storage.RecordUndoSnapshot(m.project, action, context, undoDepth); err != nil {
-				// Log error but don't fail the save
-				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
-			}
+			// Ignore errors - undo snapshot failures shouldn't block normal operation
+			_ = storage.RecordUndoSnapshot(m.project, action, context, undoDepth)
 		}
 
 		// Create backup before saving for legacy undo support
@@ -134,10 +131,9 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 
 		// Record undo snapshot before deleting
 		if undoDepth > 0 {
-			if err := storage.RecordUndoSnapshot(m.project, "Delete Task",
-				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
-			}
+			// Ignore errors - undo snapshot failures shouldn't block normal operation
+			_ = storage.RecordUndoSnapshot(m.project, "Delete Task",
+				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth)
 		}
 
 		// Create backup before deleting for undo support
@@ -200,10 +196,9 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 
 		// Record undo snapshot before deleting
 		if undoDepth > 0 {
-			if err := storage.RecordUndoSnapshot(m.project, "Delete Tasks",
-				fmt.Sprintf("%d tasks", taskCount), undoDepth); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
-			}
+			// Ignore errors - undo snapshot failures shouldn't block normal operation
+			_ = storage.RecordUndoSnapshot(m.project, "Delete Tasks",
+				fmt.Sprintf("%d tasks", taskCount), undoDepth)
 		}
 
 		// Create backup before deleting for undo support
