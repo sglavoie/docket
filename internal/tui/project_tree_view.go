@@ -813,6 +813,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Other
 		{Key: "r", Description: "Refresh", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
+		{Key: "ctrl+Z", Description: "Undo history", Category: "Other"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
 	}
 }

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
@@ -62,8 +63,31 @@ func (m *ProjectTreeModel) performUndo() tea.Cmd {
 	}
 }
 
+// setUndoContext sets the action context for the next save operation.
+func (m *ProjectTreeModel) setUndoContext(action, context string) {
+	m.pendingUndoAction = action
+	m.pendingUndoContext = context
+}
+
+// clearUndoContext clears the pending undo context.
+func (m *ProjectTreeModel) clearUndoContext() {
+	m.pendingUndoAction = ""
+	m.pendingUndoContext = ""
+}
+
 // saveAndRefresh saves the project and refreshes the tree view.
 func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
+	// Capture undo context before returning the command
+	action := m.pendingUndoAction
+	context := m.pendingUndoContext
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+
+	// Clear the context for next operation
+	m.clearUndoContext()
+
 	return func() tea.Msg {
 		// Check for auto-unblocking before save
 		m.project.CheckAndAutoUnblock()
@@ -71,7 +95,15 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		// Reorder root tasks so uncompleted tasks appear before completed tasks
 		m.project.ReorderRootTasksByCompletion()
 
-		// Create backup before saving for undo support
+		// Record undo snapshot before saving (if undo is enabled and action is set)
+		if undoDepth > 0 && action != "" {
+			if err := storage.RecordUndoSnapshot(m.project, action, context, undoDepth); err != nil {
+				// Log error but don't fail the save
+				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
+			}
+		}
+
+		// Create backup before saving for legacy undo support
 		if err := storage.BackupProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
@@ -86,6 +118,12 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 
 // deleteTask removes a task and its children from the project.
 func (m *ProjectTreeModel) deleteTask() tea.Cmd {
+	// Capture config value before returning command
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+
 	return func() tea.Msg {
 		if m.deleteTarget == nil {
 			return nil
@@ -93,6 +131,14 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 
 		task := m.deleteTarget
 		m.deleteTarget = nil
+
+		// Record undo snapshot before deleting
+		if undoDepth > 0 {
+			if err := storage.RecordUndoSnapshot(m.project, "Delete Task",
+				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
+			}
+		}
 
 		// Create backup before deleting for undo support
 		if err := storage.BackupProject(m.project); err != nil {
@@ -140,9 +186,24 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 
 // bulkDeleteTasks removes all selected tasks and their children from the project.
 func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
+	// Capture config value and count before returning command
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+	taskCount := len(m.selectedTasks)
+
 	return func() tea.Msg {
-		if len(m.selectedTasks) == 0 {
+		if taskCount == 0 {
 			return nil
+		}
+
+		// Record undo snapshot before deleting
+		if undoDepth > 0 {
+			if err := storage.RecordUndoSnapshot(m.project, "Delete Tasks",
+				fmt.Sprintf("%d tasks", taskCount), undoDepth); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", err)
+			}
 		}
 
 		// Create backup before deleting for undo support

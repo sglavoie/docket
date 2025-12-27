@@ -76,10 +76,17 @@ type (
 		Project *models.Project
 	}
 
-	// Undo message
+	// Undo messages
 	UndoCompletedMsg struct {
 		TasksBefore int
 		TasksAfter  int
+	}
+	ShowUndoHistoryMsg struct {
+		Project *models.Project
+	}
+	CloseUndoHistoryMsg struct{}
+	UndoPerformedMsg    struct {
+		Action string
 	}
 
 	// Clipboard messages

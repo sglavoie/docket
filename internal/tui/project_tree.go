@@ -100,6 +100,10 @@ type ProjectTreeModel struct {
 	sidebarScroll            int  // Scroll offset for sidebar content
 	sidebarDependencyCursor  int  // Cursor position within active dependency section
 	sidebarDependencySection int  // 0 = "Blocked by", 1 = "Blocking"
+
+	// Undo context for the next save operation
+	pendingUndoAction  string // Action description (e.g., "Complete Task")
+	pendingUndoContext string // Additional context (e.g., task title)
 }
 
 // NewProjectTreeModel creates a new project tree model.

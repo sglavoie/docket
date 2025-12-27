@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -17,12 +18,13 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput   textinput.Model
-	contextInput  textinput.Model
-	contexts      []string
-	contextCursor int // -1 for custom mode, 0+ for selecting from list
+	editorInput    textinput.Model
+	contextInput   textinput.Model
+	undoDepthInput textinput.Model
+	contexts       []string
+	contextCursor  int // -1 for custom mode, 0+ for selecting from list
 
-	focusIndex    int // 0=editor, 1=context
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth
 	validationErr string
 
 	width  int
@@ -44,6 +46,16 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	contextInput.Width = 30
 	contextInput.SetValue(cfg.DefaultContext)
 
+	undoDepthInput := textinput.New()
+	undoDepthInput.Placeholder = "50"
+	undoDepthInput.CharLimit = 4
+	undoDepthInput.Width = 10
+	undoDepthValue := 50
+	if cfg.UndoHistoryDepth != nil {
+		undoDepthValue = *cfg.UndoHistoryDepth
+	}
+	undoDepthInput.SetValue(strconv.Itoa(undoDepthValue))
+
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
 
@@ -57,15 +69,16 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:        cfg,
-		configManager: manager,
-		editorInput:   editorInput,
-		contextInput:  contextInput,
-		contexts:      contexts,
-		contextCursor: contextCursor,
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		config:         cfg,
+		configManager:  manager,
+		editorInput:    editorInput,
+		contextInput:   contextInput,
+		undoDepthInput: undoDepthInput,
+		contexts:       contexts,
+		contextCursor:  contextCursor,
+		focusIndex:     0,
+		width:          80,
+		height:         24,
 	}
 }
 
@@ -92,24 +105,30 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "tab", "shift+tab":
 			// Blur current field
-			if m.focusIndex == 0 {
+			switch m.focusIndex {
+			case 0:
 				m.editorInput.Blur()
-			} else {
+			case 1:
 				m.contextInput.Blur()
+			case 2:
+				m.undoDepthInput.Blur()
 			}
 
 			// Move focus
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 2
+				m.focusIndex = (m.focusIndex + 1) % 3
 			} else {
-				m.focusIndex = (m.focusIndex + 1) % 2
+				m.focusIndex = (m.focusIndex + 2) % 3 // +2 is -1 mod 3
 			}
 
 			// Focus new field
-			if m.focusIndex == 0 {
+			switch m.focusIndex {
+			case 0:
 				m.editorInput.Focus()
-			} else {
+			case 1:
 				m.contextInput.Focus()
+			case 2:
+				m.undoDepthInput.Focus()
 			}
 			return m, nil
 
@@ -119,6 +138,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if err := m.validateContext(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+			if err := m.validateUndoDepth(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}
@@ -149,9 +172,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Update the focused input
-	if m.focusIndex == 0 {
+	switch m.focusIndex {
+	case 0:
 		m.editorInput, cmd = m.editorInput.Update(msg)
-	} else {
+	case 1:
 		oldValue := m.contextInput.Value()
 		m.contextInput, cmd = m.contextInput.Update(msg)
 		// If user typed something, switch to custom mode
@@ -165,17 +189,26 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case 2:
+		m.undoDepthInput, cmd = m.undoDepthInput.Update(msg)
 	}
 
 	// Validate on each keystroke
-	if m.focusIndex == 0 {
+	switch m.focusIndex {
+	case 0:
 		if err := m.validateEditor(); err != nil {
 			m.validationErr = err.Error()
 		} else {
 			m.validationErr = ""
 		}
-	} else {
+	case 1:
 		if err := m.validateContext(); err != nil {
+			m.validationErr = err.Error()
+		} else {
+			m.validationErr = ""
+		}
+	case 2:
+		if err := m.validateUndoDepth(); err != nil {
 			m.validationErr = err.Error()
 		} else {
 			m.validationErr = ""
@@ -228,13 +261,37 @@ func (m *SettingsModel) validateContext() error {
 	return nil
 }
 
+func (m *SettingsModel) validateUndoDepth() error {
+	value := strings.TrimSpace(m.undoDepthInput.Value())
+	if value == "" {
+		return fmt.Errorf("undo history depth is required")
+	}
+
+	depth, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("must be a number")
+	}
+
+	if depth < 0 {
+		return fmt.Errorf("must be 0 or greater")
+	}
+
+	if depth > 1000 {
+		return fmt.Errorf("maximum is 1000")
+	}
+
+	return nil
+}
+
 func (m *SettingsModel) saveSettings() tea.Cmd {
 	return func() tea.Msg {
 		editor := strings.TrimSpace(m.editorInput.Value())
 		context := strings.TrimSpace(m.contextInput.Value())
+		undoDepth, _ := strconv.Atoi(strings.TrimSpace(m.undoDepthInput.Value()))
 
 		m.config.Editor = editor
 		m.config.DefaultContext = context
+		m.config.UndoHistoryDepth = &undoDepth
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
@@ -306,6 +363,30 @@ func (m *SettingsModel) View() string {
 	if m.focusIndex == 1 && m.validationErr != "" {
 		errStyle := lipgloss.NewStyle().Foreground(ColorError)
 		b.WriteString("                 ")
+		b.WriteString(errStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+
+	// Undo history depth input
+	undoLabel := "Undo History Depth: "
+	if m.focusIndex == 2 {
+		undoLabel = BoldStyle.Foreground(ColorPrimary).Render("Undo History Depth: ")
+	} else {
+		undoLabel = MutedStyle.Render("Undo History Depth: ")
+	}
+	b.WriteString(undoLabel)
+	b.WriteString(m.undoDepthInput.View())
+	b.WriteString("\n")
+	b.WriteString("                    ")
+	b.WriteString(MutedStyle.Render("(0 to disable, max 1000)"))
+	b.WriteString("\n")
+
+	// Validation error for undo depth
+	if m.focusIndex == 2 && m.validationErr != "" {
+		errStyle := lipgloss.NewStyle().Foreground(ColorError)
+		b.WriteString("                    ")
 		b.WriteString(errStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}

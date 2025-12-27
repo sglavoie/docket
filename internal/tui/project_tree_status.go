@@ -25,20 +25,27 @@ func (m *ProjectTreeModel) handleStatusChange(
 	visible []*TreeNode,
 	predicate statusPredicate,
 	action statusAction,
+	undoAction string,
 ) (bool, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		count := 0
 		for _, task := range m.getSelectedTasks() {
 			if predicate(task) {
 				action(task)
+				count++
 			}
 		}
 		m.clearSelection()
+		if count > 0 {
+			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", count))
+		}
 		return true, m.saveAndRefresh()
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
 		task := visible[m.cursor].Task
 		if predicate(task) {
 			action(task)
+			m.setUndoContext(undoAction, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		}
 	}
@@ -55,6 +62,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	validator statusValidator,
 	action statusAction,
 	actionVerb string,
+	undoAction string,
 ) (bool, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		var skippedIDs []string
@@ -71,6 +79,9 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 			actionCount++
 		}
 		m.clearSelection()
+		if actionCount > 0 {
+			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", actionCount))
+		}
 		if len(skippedIDs) > 0 {
 			var msg string
 			if actionCount == 0 {
@@ -93,6 +104,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 				}
 			}
 			action(task)
+			m.setUndoContext(undoAction, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		}
 	}
@@ -128,6 +140,7 @@ func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) 
 			return t.Status == models.StatusTodo || t.Status == models.StatusBlocked
 		},
 		func(t *models.Task) { t.Start() },
+		"Start Task",
 	)
 }
 
@@ -149,6 +162,7 @@ func (m *ProjectTreeModel) handleCompleteTask(visible []*TreeNode) (bool, tea.Cm
 		},
 		func(t *models.Task) { t.Complete() },
 		"completed",
+		"Complete Task",
 	)
 }
 
@@ -159,6 +173,7 @@ func (m *ProjectTreeModel) handleBlockTask(visible []*TreeNode) (bool, tea.Cmd) 
 			return t.Status.IsActive() && t.Status != models.StatusBlocked
 		},
 		func(t *models.Task) { t.Block() },
+		"Block Task",
 	)
 }
 
@@ -167,6 +182,7 @@ func (m *ProjectTreeModel) handleCancelTask(visible []*TreeNode) (bool, tea.Cmd)
 	return m.handleStatusChange(visible,
 		func(t *models.Task) bool { return t.Status.IsActive() },
 		func(t *models.Task) { t.Cancel() },
+		"Cancel Task",
 	)
 }
 
@@ -175,6 +191,7 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 	return m.handleStatusChange(visible,
 		func(t *models.Task) bool { return t.Status != models.StatusTodo },
 		func(t *models.Task) { t.Reopen() },
+		"Reopen Task",
 	)
 }
 
@@ -201,6 +218,9 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 			}
 		}
 		m.clearSelection()
+		if cycledCount > 0 {
+			m.setUndoContext("Cycle Status", fmt.Sprintf("%d tasks", cycledCount))
+		}
 		if len(skippedIDs) > 0 {
 			var msg string
 			if cycledCount == 0 {
@@ -219,6 +239,7 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 		switch task.Status {
 		case models.StatusTodo:
 			task.Start()
+			m.setUndoContext("Start Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		case models.StatusInProgress:
 			if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
@@ -232,9 +253,11 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 				}
 			}
 			task.Complete()
+			m.setUndoContext("Complete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		case models.StatusDone:
 			task.Reopen()
+			m.setUndoContext("Reopen Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		}
 	}
@@ -244,17 +267,24 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 // handleCycleStatusBackward cycles status backward: todo -> done -> in_progress -> todo.
 func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		count := 0
 		for _, task := range m.getSelectedTasks() {
 			switch task.Status {
 			case models.StatusTodo:
 				task.Complete()
+				count++
 			case models.StatusInProgress:
 				task.Reopen()
+				count++
 			case models.StatusDone:
 				task.Start()
+				count++
 			}
 		}
 		m.clearSelection()
+		if count > 0 {
+			m.setUndoContext("Cycle Status", fmt.Sprintf("%d tasks", count))
+		}
 		return true, m.saveAndRefresh()
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
@@ -262,12 +292,15 @@ func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool,
 		switch task.Status {
 		case models.StatusTodo:
 			task.Complete()
+			m.setUndoContext("Complete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		case models.StatusInProgress:
 			task.Reopen()
+			m.setUndoContext("Reopen Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		case models.StatusDone:
 			task.Start()
+			m.setUndoContext("Start Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 			return true, m.saveAndRefresh()
 		}
 	}

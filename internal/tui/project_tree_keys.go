@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
@@ -302,30 +304,36 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 
 	case "ctrl+p":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			count := len(m.selectedTasks)
 			for _, task := range m.getSelectedTasks() {
 				task.TogglePinned()
 			}
 			m.clearSelection()
+			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
 			return true, m.saveAndRefresh()
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			task.TogglePinned()
+			m.setUndoContext("Toggle Pin", task.Title)
 			return true, m.saveAndRefresh()
 		}
 		return true, nil
 
 	case "*":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			count := len(m.selectedTasks)
 			for _, task := range m.getSelectedTasks() {
 				task.ToggleActive()
 			}
 			m.clearSelection()
+			m.setUndoContext("Toggle Active", fmt.Sprintf("%d tasks", count))
 			return true, m.saveAndRefresh()
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			task.ToggleActive()
+			m.setUndoContext("Toggle Active", task.Title)
 			return true, m.saveAndRefresh()
 		}
 		return true, nil
@@ -347,7 +355,14 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "z":
+		// Quick single-step undo using legacy backup
 		return true, m.performUndo()
+
+	case "ctrl+z":
+		// Open undo history view
+		return true, func() tea.Msg {
+			return ShowUndoHistoryMsg{Project: m.project}
+		}
 
 	case "?":
 		return true, func() tea.Msg {

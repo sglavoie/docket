@@ -219,6 +219,23 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowUndoHistoryMsg:
+		if msg.Project != nil {
+			m.showView(ViewUndoHistory, NewUndoHistoryModel(msg.Project))
+		}
+		return true, nil
+
+	case CloseUndoHistoryMsg:
+		m.popView()
+		return true, nil
+
+	case UndoPerformedMsg:
+		// Pop the undo history view, refresh project tree, show status
+		m.popView()
+		m.refreshProjectTree()
+		m.statusMessage = fmt.Sprintf("Undid: %s", msg.Action)
+		return true, nil
+
 	case OpenParentSelectorMsg:
 		m.showView(ViewParentSelector, NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source))
 		return true, nil

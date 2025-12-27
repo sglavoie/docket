@@ -11,6 +11,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanPromote(); ok {
 				task.Promote()
+				m.setUndoContext("Promote Task", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -20,6 +21,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanDemote(); ok {
 				task.Demote()
+				m.setUndoContext("Demote Task", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -29,6 +31,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(true); ok {
 				task.CycleLeafType(true)
+				m.setUndoContext("Change Type", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -38,6 +41,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(false); ok {
 				task.CycleLeafType(false)
+				m.setUndoContext("Change Type", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -66,6 +70,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 				if m.cursor > 0 {
 					m.cursor--
 				}
+				m.setUndoContext("Move Up", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -86,6 +91,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 				if m.cursor < len(visible)-1 {
 					m.cursor++
 				}
+				m.setUndoContext("Move Down", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}
@@ -99,6 +105,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 				if ok, _ := task.CanIndent(candidate); ok {
 					task.ParentID = &candidate.ID
 					m.project.BuildTaskTree()
+					m.setUndoContext("Indent", task.Title)
 					return true, m.saveAndRefresh()
 				}
 				candidate = candidate.Parent
@@ -110,6 +117,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanOutdent(); ok {
 				m.project.OutdentTask(task)
+				m.setUndoContext("Outdent", task.Title)
 				return true, m.saveAndRefresh()
 			}
 		}

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -94,7 +95,9 @@ func (m *ProjectTreeModel) handleTagInputMode(msg tea.KeyMsg) (tea.Model, tea.Cm
 			return m, nil
 		}
 		m.applyBulkTag(tag)
+		count := len(m.selectedTasks)
 		m.clearSelection()
+		m.setUndoContext("Add Tag", fmt.Sprintf("'%s' to %d tasks", tag, count))
 		return m, m.saveAndRefresh()
 	default:
 		var cmd tea.Cmd

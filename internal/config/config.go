@@ -33,6 +33,7 @@ type Config struct {
 	DefaultContext    string                      `json:"default_context"`
 	FzfEnabled        bool                        `json:"fzf_enabled"`
 	GlowEnabled       bool                        `json:"glow_enabled"`
+	UndoHistoryDepth  *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
 	Projects          []*models.Project           `json:"projects"`
 	SectionColors     map[string]string           `json:"section_colors,omitempty"`      // Global section color registry
 	ProjectViewStates map[string]ProjectViewState `json:"project_view_states,omitempty"` // Per-project filter/sort state
@@ -41,6 +42,7 @@ type Config struct {
 // NewConfig creates a new configuration with default values.
 func NewConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
+	defaultUndoDepth := 50
 	return &Config{
 		DataDir:           filepath.Join(homeDir, ".tt-data"),
 		CurrentProject:    "",
@@ -48,6 +50,7 @@ func NewConfig() *Config {
 		DefaultContext:    "personal",
 		FzfEnabled:        true,
 		GlowEnabled:       true,
+		UndoHistoryDepth:  &defaultUndoDepth,
 		Projects:          []*models.Project{},
 		SectionColors:     make(map[string]string),
 		ProjectViewStates: make(map[string]ProjectViewState),
@@ -114,6 +117,11 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	if config.ProjectViewStates == nil {
 		config.ProjectViewStates = make(map[string]ProjectViewState)
+	}
+	if config.UndoHistoryDepth == nil {
+		// Default for existing configs that don't have this field
+		defaultUndoDepth := 50
+		config.UndoHistoryDepth = &defaultUndoDepth
 	}
 
 	return &config, nil
