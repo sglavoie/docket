@@ -496,7 +496,8 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 	b.WriteString("\n")
 
 	// Calculate visible range
-	visibleEntries := height - 2 // Header and padding
+	// Each entry takes 2 lines (action text + timestamp), header takes 1 line
+	visibleEntries := (height - 2) / 2
 	if visibleEntries < 1 {
 		visibleEntries = 1
 	}
