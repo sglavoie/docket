@@ -202,6 +202,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "r":
 			m.loadProjects()
+		case "R":
+			return m, func() tea.Msg {
+				return ToggleRecentTasksMsg{}
+			}
 		case "n":
 			return m, func() tea.Msg {
 				return CreateProjectMsg{}
@@ -330,14 +334,17 @@ func (m *DashboardModel) View() string {
 	}
 
 	// Search bar
+	chromeHeight := 0
 	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
 		b.WriteString(m.SearchInputView())
 		b.WriteString("\n")
+		chromeHeight++
 	} else if m.SearchQuery() != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
 		b.WriteString(HelpStyle.Render("(\\ to edit, Esc to clear)"))
 		b.WriteString("\n")
+		chromeHeight++
 	}
 
 	// Context filter
@@ -346,8 +353,10 @@ func (m *DashboardModel) View() string {
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(c to cycle, Esc to clear)"))
 		b.WriteString("\n")
+		chromeHeight++
 	}
 	b.WriteString("\n")
+	chromeHeight++ // separator line
 
 	visible := m.visibleProjects()
 
@@ -369,10 +378,64 @@ func (m *DashboardModel) View() string {
 			b.WriteString(SubtitleStyle.Render("PROJECTS"))
 		}
 		b.WriteString("\n")
+		chromeHeight++ // header line
 
-		// Project list
+		// Calculate space for bottom section (Recent Tasks + Stats)
+		bottomHeight := 0
+		showRecentTasks := m.config.GetShowRecentTasks()
+		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
+			current := m.config.GetCurrentProject()
+			if current != nil && len(current.Tasks) > 0 {
+				// Recent Tasks: 2 blank lines + header + up to 5 tasks = ~8 lines
+				// Stats: types line + status line + optional overdue = ~3 lines
+				bottomHeight = 12
+			}
+		}
+
+		// Calculate max visible projects
+		// Reserve space for scroll indicators (up to 2 lines if both needed)
+		scrollIndicatorSpace := 2
+		maxVisible := m.height - chromeHeight - bottomHeight - scrollIndicatorSpace
+		if maxVisible < 3 {
+			maxVisible = 3 // minimum visible projects
+		}
+
+		// Calculate scroll offset to keep cursor visible
+		scrollOffset := 0
+		if m.cursor >= maxVisible {
+			scrollOffset = m.cursor - maxVisible + 1
+		}
+
+		// Ensure we don't scroll past the end
+		if scrollOffset > len(visible)-maxVisible {
+			scrollOffset = len(visible) - maxVisible
+		}
+		if scrollOffset < 0 {
+			scrollOffset = 0
+		}
+
+		// Show scroll-up indicator
+		if scrollOffset > 0 {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↑ %d more above", scrollOffset)))
+			b.WriteString("\n")
+		}
+
+		// Project list (windowed)
+		end := scrollOffset + maxVisible
+		if end > len(visible) {
+			end = len(visible)
+		}
+
 		pinnedNum := 0
-		for i, p := range visible {
+		// Count pinned projects before scroll offset for correct numbering
+		for i := 0; i < scrollOffset; i++ {
+			if visible[i].Pinned {
+				pinnedNum++
+			}
+		}
+
+		for i := scrollOffset; i < end; i++ {
+			p := visible[i]
 			cursor := "  "
 			style := NormalStyle
 			numberPrefix := "  " // Two spaces to align with numbered items
@@ -418,8 +481,14 @@ func (m *DashboardModel) View() string {
 			b.WriteString("\n")
 		}
 
-		// Current project details (only show when not searching)
-		if m.SearchQuery() == "" && m.config.CurrentProject != "" {
+		// Show scroll-down indicator
+		if remaining := len(visible) - end; remaining > 0 {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↓ %d more below", remaining)))
+			b.WriteString("\n")
+		}
+
+		// Current project details (only show when not searching and toggle is on)
+		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
 			current := m.config.GetCurrentProject()
 			if current != nil {
 				b.WriteString("\n")
@@ -521,9 +590,14 @@ func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project
 
 // GetHelpItems returns the help items for the dashboard view.
 func (m *DashboardModel) GetHelpItems() []HelpItem {
-	toggleDesc := "Show archived"
+	toggleArchiveDesc := "Show archived"
 	if m.showArchived {
-		toggleDesc = "Show active"
+		toggleArchiveDesc = "Show active"
+	}
+
+	toggleRecentDesc := "Hide Recent Tasks"
+	if !m.config.GetShowRecentTasks() {
+		toggleRecentDesc = "Show Recent Tasks"
 	}
 
 	return []HelpItem{
@@ -548,7 +622,8 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "s", Description: "Set as current", Category: "Actions"},
 		{Key: "D", Description: "Delete project", Category: "Actions"},
 		{Key: "Ctrl+P", Description: "Toggle pinned", Category: "Actions"},
-		{Key: "a", Description: toggleDesc, Category: "Actions"},
+		{Key: "a", Description: toggleArchiveDesc, Category: "Actions"},
+		{Key: "R", Description: toggleRecentDesc, Category: "Actions"},
 		{Key: "r", Description: "Refresh", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},
 		{Key: "?", Description: "Toggle help", Category: "Actions"},

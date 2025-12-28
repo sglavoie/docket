@@ -162,6 +162,9 @@ type (
 	CycleProjectMsg struct {
 		Forward bool // true = next, false = previous
 	}
+
+	// Dashboard toggle messages
+	ToggleRecentTasksMsg struct{}
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

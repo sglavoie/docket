@@ -39,6 +39,7 @@ type Config struct {
 	SectionColors     map[string]string           `json:"section_colors,omitempty"`      // Global section color registry
 	ProjectViewStates map[string]ProjectViewState `json:"project_view_states,omitempty"` // Per-project filter/sort state
 	CycleProjects     []string                    `json:"cycle_projects,omitempty"`      // Project IDs for quick cycling with ` and ~
+	ShowRecentTasks   *bool                       `json:"show_recent_tasks,omitempty"`   // Show Recent Tasks section on dashboard (default: true)
 }
 
 // NewConfig creates a new configuration with default values.
@@ -448,4 +449,18 @@ func (c *Config) GetCycleProjectIndex(projectID string) int {
 		}
 	}
 	return -1
+}
+
+// GetShowRecentTasks returns whether to show the Recent Tasks section on dashboard.
+// Defaults to true if not set.
+func (c *Config) GetShowRecentTasks() bool {
+	if c.ShowRecentTasks == nil {
+		return true
+	}
+	return *c.ShowRecentTasks
+}
+
+// SetShowRecentTasks sets whether to show the Recent Tasks section on dashboard.
+func (c *Config) SetShowRecentTasks(show bool) {
+	c.ShowRecentTasks = &show
 }
