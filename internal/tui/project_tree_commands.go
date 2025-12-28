@@ -109,6 +109,7 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 		storage.LoadProject(m.project)
+		m.buildTree()
 		return treeRefreshMsg{}
 	}
 }

@@ -912,6 +912,11 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseProjectCycleManagerMsg:
 		m.popView()
+		// Rebuild project tree since buildProjectInfoList() reloads all projects,
+		// which replaces task objects and invalidates the tree's task pointers
+		if m.projectTree != nil {
+			m.projectTree.buildTree()
+		}
 		if msg.Changed {
 			count := len(m.config.CycleProjects)
 			if count == 0 {

@@ -54,7 +54,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// Delegate to current view
-	cmds = append(cmds, m.delegateToCurrentView(msg))
+	cmd := m.delegateToCurrentView(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -82,7 +83,13 @@ func (m *AppModel) handleEscKey() bool {
 		}
 	}
 	if m.currentView() != ViewDashboard {
+		closingView := m.currentView()
 		m.popView()
+		// Rebuild project tree when closing ProjectCycleManager since it reloads
+		// all projects in buildProjectInfoList(), invalidating tree's task pointers
+		if closingView == ViewProjectCycleManager && m.projectTree != nil {
+			m.projectTree.buildTree()
+		}
 		return true
 	}
 	return false
