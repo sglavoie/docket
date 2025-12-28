@@ -15,6 +15,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "ctrl+c":
+			m.saveProjectTreeState()
 			m.quitting = true
 			return m, tea.Quit
 		case "esc":
