@@ -14,6 +14,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case treeRefreshMsg:
 		m.buildTree()
+		m.clampCursor()
 		return m, nil
 
 	case tea.KeyMsg:
