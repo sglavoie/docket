@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -135,6 +136,91 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 	m.updateVisibility()
 }
 
+// handleViewModeKeys handles V, A, B, I - view mode and task section operations.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleViewModeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	switch key {
+	case "V":
+		// Cycle through views: Active -> Inbox -> Backlog -> Active
+		m.viewMode = (m.viewMode + 1) % 3
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "A":
+		// Send task(s) to Active view (clear section)
+		return m.sendTasksToActive(visible)
+
+	case "B":
+		// Send task(s) to Backlog
+		return m.sendTasksToSection(models.SectionBacklog, visible)
+
+	case "I":
+		// Send task(s) to Inbox
+		return m.sendTasksToSection(models.SectionInbox, visible)
+	}
+	return false, nil
+}
+
+// sendTasksToActive moves selected tasks or cursor task to the Active view (clears section).
+func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		count := 0
+		for id := range m.selectedTasks {
+			if task := m.project.GetTaskByID(id); task != nil {
+				task.Section = ""
+				task.UpdatedAt = time.Now()
+				count++
+			}
+		}
+		m.clearSelection()
+		m.pendingUndoAction = "Move to Active"
+		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
+		return true, m.saveAndRefresh()
+	}
+
+	// Single task mode
+	if !CursorInBounds(m.cursor, len(visible)) {
+		return false, nil
+	}
+	task := visible[m.cursor].Task
+	task.Section = ""
+	task.UpdatedAt = time.Now()
+	m.pendingUndoAction = "Move to Active"
+	m.pendingUndoContext = task.Title
+	return true, m.saveAndRefresh()
+}
+
+// sendTasksToSection moves selected tasks or cursor task to the specified section.
+func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNode) (bool, tea.Cmd) {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		count := 0
+		for id := range m.selectedTasks {
+			if task := m.project.GetTaskByID(id); task != nil {
+				task.Section = section
+				task.UpdatedAt = time.Now()
+				count++
+			}
+		}
+		m.clearSelection()
+		m.pendingUndoAction = "Move to " + section
+		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
+		return true, m.saveAndRefresh()
+	}
+
+	// Single task mode
+	if !CursorInBounds(m.cursor, len(visible)) {
+		return false, nil
+	}
+	task := visible[m.cursor].Task
+	task.Section = section
+	task.UpdatedAt = time.Now()
+	m.pendingUndoAction = "Move to " + section
+	m.pendingUndoContext = task.Title
+	return true, m.saveAndRefresh()
+}
+
 // handleSortKeys handles 1, 2, 3, 4, 0 - sort operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
@@ -191,7 +277,7 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return ShowQuickCaptureMsg{Project: m.project}
 		}
 
-	case "I":
+	case "ctrl+i":
 		return true, func() tea.Msg {
 			return ShowBulkCaptureMsg{Project: m.project}
 		}
@@ -337,7 +423,7 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
-	case "B":
+	case "R":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			return true, func() tea.Msg {
@@ -450,7 +536,7 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return EditScratchpadMsg{Project: m.project}
 		}
 
-	case "r":
+	case "ctrl+r":
 		m.clearSelection()
 		storage.LoadProject(m.project)
 		m.buildTree()

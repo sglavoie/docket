@@ -223,6 +223,7 @@ func (m *AppModel) saveProjectTreeState() {
 		ShowCompleted:    m.projectTree.showCompleted,
 		SidebarEnabled:   m.projectTree.sidebarEnabled,
 		FilterBarEnabled: m.projectTree.filterBarEnabled,
+		ViewMode:         int(m.projectTree.viewMode),
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	m.configManager.Save(m.config)
@@ -263,6 +264,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.showCompleted = state.ShowCompleted
 	m.projectTree.sidebarEnabled = state.SidebarEnabled
 	m.projectTree.filterBarEnabled = state.FilterBarEnabled
+	m.projectTree.viewMode = ViewMode(state.ViewMode)
 
 	// Restore tags - validate they still exist
 	m.projectTree.filterTags = make(map[string]bool)

@@ -991,10 +991,16 @@ func TestProjectGetTasksBySection(t *testing.T) {
 		t.Errorf("expected 1 done task, got %d", len(done))
 	}
 
-	// Empty section tasks are now treated as Backlog
+	// Empty section represents Active view, query with empty string
+	activeView := project.GetTasksBySection("")
+	if len(activeView) != 1 {
+		t.Errorf("expected 1 task with empty section (Active view), got %d", len(activeView))
+	}
+
+	// Backlog section should be empty since task4 has empty section
 	backlog := project.GetTasksBySection(SectionBacklog)
-	if len(backlog) != 1 {
-		t.Errorf("expected 1 task in Backlog (empty section), got %d", len(backlog))
+	if len(backlog) != 0 {
+		t.Errorf("expected 0 tasks in Backlog, got %d", len(backlog))
 	}
 
 	nonexistent := project.GetTasksBySection("Nonexistent")
@@ -1025,12 +1031,9 @@ func TestProjectCountTasksBySection(t *testing.T) {
 	if counts["Done"] != 1 {
 		t.Errorf("expected 1 Done task, got %d", counts["Done"])
 	}
-	// Empty section tasks are now counted as Backlog
-	if counts[SectionBacklog] != 1 {
-		t.Errorf("expected 1 Backlog task (from empty section), got %d", counts[SectionBacklog])
-	}
-	if _, exists := counts[""]; exists {
-		t.Error("empty section should not be in counts (should be counted as Backlog)")
+	// Empty section tasks represent Active view and are counted separately
+	if counts[""] != 1 {
+		t.Errorf("expected 1 empty section task (Active view), got %d", counts[""])
 	}
 }
 

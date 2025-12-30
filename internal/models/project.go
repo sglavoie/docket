@@ -715,15 +715,10 @@ func (p *Project) RenameSection(oldName, newName string) bool {
 }
 
 // GetTasksBySection returns tasks filtered by section.
-// When filtering by Backlog, tasks with empty section are also included.
 func (p *Project) GetTasksBySection(section string) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
-		taskSection := task.Section
-		if taskSection == "" {
-			taskSection = SectionBacklog
-		}
-		if taskSection == section {
+		if task.Section == section {
 			result = append(result, task)
 		}
 	}
@@ -731,15 +726,11 @@ func (p *Project) GetTasksBySection(section string) []*Task {
 }
 
 // CountTasksBySection returns the number of tasks in each section.
-// Tasks with empty section are counted as Backlog.
+// Tasks with empty section are counted separately (representing Active view).
 func (p *Project) CountTasksBySection() map[string]int {
 	counts := make(map[string]int)
 	for _, task := range p.Tasks {
-		section := task.Section
-		if section == "" {
-			section = SectionBacklog
-		}
-		counts[section]++
+		counts[task.Section]++
 	}
 	return counts
 }

@@ -126,8 +126,8 @@ func TestTaskSectionAssignment(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
 
-	// Default section should be Backlog
-	testutil.AssertEqual(t, task.Section, models.SectionBacklog)
+	// Default section should be empty (Active view)
+	testutil.AssertEqual(t, task.Section, "")
 
 	// Assign to custom section
 	task.Section = "Active"
@@ -166,7 +166,7 @@ func TestNewTaskDefaults(t *testing.T) {
 	testutil.AssertEqual(t, task.Title, "Test Title")
 	testutil.AssertEqual(t, task.Status, models.StatusTodo)
 	testutil.AssertEqual(t, task.Priority, 3)
-	testutil.AssertEqual(t, task.Section, models.SectionBacklog)
+	testutil.AssertEqual(t, task.Section, "") // Empty section = Active view
 	testutil.AssertEqual(t, task.Description, "")
 
 	if task.ParentID != nil {

@@ -2,19 +2,21 @@ package models
 
 import "testing"
 
-func TestNewTaskHasBacklogSection(t *testing.T) {
+func TestNewTaskHasEmptySection(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 
-	if task.Section != SectionBacklog {
-		t.Errorf("expected new task section to be Backlog, got %s", task.Section)
+	// New tasks start in Active view (empty section)
+	if task.Section != "" {
+		t.Errorf("expected new task section to be empty (Active view), got %s", task.Section)
 	}
 }
 
 func TestTaskCompleteAutoTriageFromBacklog(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionBacklog // Explicitly place in Backlog
 
 	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should start in Backlog, got %s", task.Section)
+		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
 	}
 
 	task.Complete()
@@ -40,9 +42,10 @@ func TestTaskCompletePreservesNonBacklogSection(t *testing.T) {
 
 func TestTaskStartAutoTriageFromBacklog(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionBacklog // Explicitly place in Backlog
 
 	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should start in Backlog, got %s", task.Section)
+		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
 	}
 
 	task.Start()
@@ -68,9 +71,10 @@ func TestTaskStartPreservesNonBacklogSection(t *testing.T) {
 
 func TestTaskCancelAutoTriageFromBacklog(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionBacklog // Explicitly place in Backlog
 
 	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should start in Backlog, got %s", task.Section)
+		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
 	}
 
 	task.Cancel()
@@ -96,9 +100,10 @@ func TestTaskCancelPreservesNonBacklogSection(t *testing.T) {
 
 func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionBacklog // Explicitly place in Backlog
 
 	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should start in Backlog, got %s", task.Section)
+		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
 	}
 
 	task.Block()

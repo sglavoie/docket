@@ -148,12 +148,14 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		}
 	}
 
-	// Special case for A key (archive or deselect all)
-	if key == "A" {
-		handled, cmd := m.handleArchiveKey(visible)
-		if handled {
-			return m, cmd
+	// Special case for ctrl+a (archive project)
+	if key == "ctrl+a" {
+		if m.project.Archived {
+			m.confirmAction = "unarchive"
+		} else {
+			m.confirmAction = "archive"
 		}
+		return m, nil
 	}
 
 	// Project cycling keys (emit messages to app level)
@@ -189,6 +191,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, cmd
 	}
 	if handled, cmd := m.handleSortKeys(key); handled {
+		return m, cmd
+	}
+	if handled, cmd := m.handleViewModeKeys(key, visible); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleFocusKeys(key, visible); handled {

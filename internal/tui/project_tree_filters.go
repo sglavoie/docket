@@ -79,6 +79,27 @@ func (m *ProjectTreeModel) updateVisibility() {
 			}
 		}
 
+		// Apply view mode filter (base filter before all others)
+		if visible {
+			switch m.viewMode {
+			case ViewModeActive:
+				// Hide Inbox and Backlog tasks
+				if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+					visible = false
+				}
+			case ViewModeInbox:
+				// Only show Inbox tasks
+				if node.Task.Section != models.SectionInbox {
+					visible = false
+				}
+			case ViewModeBacklog:
+				// Only show Backlog tasks
+				if node.Task.Section != models.SectionBacklog {
+					visible = false
+				}
+			}
+		}
+
 		// Apply filters
 		if visible && !m.showCompleted && node.Task.IsComplete() {
 			visible = false

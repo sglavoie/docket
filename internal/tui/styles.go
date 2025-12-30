@@ -214,6 +214,25 @@ var (
 			Bold(true).
 			Background(lipgloss.Color("236"))
 
+	// View mode styles
+	ViewModeActiveStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("34")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
+	ViewModeInboxStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("33")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
+	ViewModeBacklogStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("241")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

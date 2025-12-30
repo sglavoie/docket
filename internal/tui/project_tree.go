@@ -29,6 +29,27 @@ const (
 	DueDateNone                          // tasks with no due date
 )
 
+// ViewMode represents the view mode filter for the project tree.
+type ViewMode int
+
+const (
+	ViewModeActive  ViewMode = iota // Tasks not in Inbox or Backlog sections
+	ViewModeInbox                   // Only Inbox section tasks
+	ViewModeBacklog                 // Only Backlog section tasks
+)
+
+// String returns the display name for a view mode.
+func (v ViewMode) String() string {
+	switch v {
+	case ViewModeInbox:
+		return "Inbox"
+	case ViewModeBacklog:
+		return "Backlog"
+	default:
+		return "Active"
+	}
+}
+
 // String returns the display name for a sort field.
 func (s SortField) String() string {
 	switch s {
@@ -65,6 +86,9 @@ type ProjectTreeModel struct {
 	configManager *config.Manager
 	nodes         []*TreeNode
 	cursor        int
+
+	// View mode (Active, Inbox, or Backlog)
+	viewMode ViewMode
 
 	// Filter options
 	showCompleted  bool

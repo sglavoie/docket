@@ -120,18 +120,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 	}
 
-	// Count inbox items (same criteria as inbox processor)
-	var inboxCount int
-	for _, task := range m.project.Tasks {
-		if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() {
-			inboxCount++
-		}
-	}
-
-	if inboxCount > 0 {
-		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
-		b.WriteString(" ")
-	}
 	if storage.ScratchpadExists(m.project) {
 		b.WriteString(MutedStyle.Render("[Scratchpad]"))
 		b.WriteString(" ")
@@ -404,18 +392,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 	}
 
-	// Count inbox items (same criteria as inbox processor)
-	var inboxCount int
-	for _, task := range m.project.Tasks {
-		if task.Section == models.SectionInbox && task.IsRoot() && !task.IsComplete() {
-			inboxCount++
-		}
-	}
-
-	if inboxCount > 0 {
-		b.WriteString(InProgressStyle.Render(fmt.Sprintf("Inbox: %d", inboxCount)))
-		b.WriteString(" ")
-	}
 	if storage.ScratchpadExists(m.project) {
 		b.WriteString(MutedStyle.Render("[Scratchpad]"))
 		b.WriteString(" ")
@@ -818,7 +794,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Task Operations
 		{Key: "n", Description: "Add new task", Category: "Task Operations"},
 		{Key: "i", Description: "Quick capture", Category: "Task Operations"},
-		{Key: "I", Description: "Bulk capture", Category: "Task Operations"},
+		{Key: "ctrl+I", Description: "Bulk capture", Category: "Task Operations"},
 		{Key: "O", Description: "Add new note", Category: "Task Operations"},
 		{Key: "e", Description: "Edit task", Category: "Task Operations"},
 		{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations"},
@@ -826,10 +802,17 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations"},
 		{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations"},
 		{Key: "*", Description: "Toggle active flag", Category: "Task Operations"},
-		{Key: "B", Description: "View dependencies", Category: "Task Operations"},
+		{Key: "R", Description: "View dependencies", Category: "Task Operations"},
 		{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "C", Description: "View/add comments", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
+
+		// Views
+		{Key: "V", Description: "Cycle view (Active/Inbox/Backlog)", Category: "Views"},
+		{Key: "A", Description: "Send task(s) to Active", Category: "Views"},
+		{Key: "B", Description: "Send task(s) to Backlog", Category: "Views"},
+		{Key: "I", Description: "Send task(s) to Inbox", Category: "Views"},
+		{Key: "w", Description: "Inbox processor", Category: "Views"},
 
 		// Filters
 		{Key: "/", Description: "Search tasks", Category: "Filters"},
@@ -854,10 +837,9 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Multi-select
 		{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select"},
 		{Key: "a", Description: "Select all visible (in multi-select)", Category: "Multi-select"},
-		{Key: "A", Description: "Deselect all (in multi-select)", Category: "Multi-select"},
 
 		// Project
-		{Key: "A", Description: archiveDesc + " (normal mode)", Category: "Project"},
+		{Key: "ctrl+A", Description: archiveDesc, Category: "Project"},
 
 		// Clipboard
 		{Key: "y", Description: "Copy title", Category: "Clipboard"},
@@ -878,7 +860,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "]", Description: "Edit scratchpad", Category: "Scratchpad"},
 
 		// Other
-		{Key: "r", Description: "Refresh", Category: "Other"},
+		{Key: "ctrl+R", Description: "Refresh", Category: "Other"},
 		{Key: "z", Description: "Undo last change", Category: "Other"},
 		{Key: "ctrl+Z", Description: "Undo history", Category: "Other"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
@@ -886,12 +868,64 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 }
 
 // renderFilterBar renders the filter toggle bar with task counts.
-func (m *ProjectTreeModel) renderFilterBar() string {
-	if !m.filterBarEnabled {
-		return ""
+// renderViewModeIndicator returns a styled indicator for the current view mode with counts.
+func (m *ProjectTreeModel) renderViewModeIndicator() string {
+	// Count inbox, backlog, and active items (incomplete only)
+	var inboxCount, backlogCount, activeCount int
+	for _, task := range m.project.Tasks {
+		if task.IsComplete() {
+			continue
+		}
+		if task.Section == models.SectionInbox && task.IsRoot() {
+			inboxCount++
+		} else if task.Section == models.SectionBacklog && task.IsRoot() {
+			backlogCount++
+		} else if task.Section != models.SectionInbox && task.Section != models.SectionBacklog {
+			activeCount++
+		}
 	}
 
+	// Build indicator for each view with counts
+	var parts []string
+
+	// Active view
+	activeLabel := fmt.Sprintf("Active[%d]", activeCount)
+	if m.viewMode == ViewModeActive {
+		parts = append(parts, ViewModeActiveStyle.Render(activeLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(activeLabel))
+	}
+
+	// Inbox view
+	inboxLabel := fmt.Sprintf("Inbox[%d]", inboxCount)
+	if m.viewMode == ViewModeInbox {
+		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(inboxLabel))
+	}
+
+	// Backlog view
+	backlogLabel := fmt.Sprintf("Backlog[%d]", backlogCount)
+	if m.viewMode == ViewModeBacklog {
+		parts = append(parts, ViewModeBacklogStyle.Render(backlogLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(backlogLabel))
+	}
+
+	return strings.Join(parts, " ")
+}
+
+func (m *ProjectTreeModel) renderFilterBar() string {
 	var badges []string
+
+	// View mode indicator (always shown first, even when filter bar is disabled)
+	badges = append(badges, m.renderViewModeIndicator())
+
+	if !m.filterBarEnabled {
+		// When filter bar is disabled, just show view mode indicator with hints
+		hints := MutedStyle.Render(" V:view A:active B:backlog I:inbox")
+		return strings.Join(badges, " ") + hints + "\n"
+	}
 
 	// F1: Completed (toggle hiding completed tasks)
 	count := m.filterCounts["completed"]
@@ -959,7 +993,10 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	active = m.filterDueDate != DueDateAll
 	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
 
-	return MutedStyle.Render("Filters: ") + strings.Join(badges, " ") + "\n"
+	// Add keybinding hints at the end
+	hints := MutedStyle.Render(" V:view A:active B:backlog I:inbox")
+
+	return strings.Join(badges, " ") + hints + "\n"
 }
 
 // renderFilterBadge renders a single filter badge with key, name, count, and active state.
