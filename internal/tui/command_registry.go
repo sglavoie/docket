@@ -75,3 +75,25 @@ func (r *CommandRegistry) GetByName(name string) (Command, bool) {
 	}
 	return Command{}, false
 }
+
+// GetForView returns all commands available for the specified view.
+// Returns global commands (those with empty Views slice) plus commands
+// that explicitly include the given view in their Views slice.
+func (r *CommandRegistry) GetForView(view ViewType) []Command {
+	result := []Command{}
+	for _, cmd := range r.commands {
+		if len(cmd.Views) == 0 {
+			// Global command - available in all views
+			result = append(result, cmd)
+		} else {
+			// Check if this view is in the command's Views list
+			for _, v := range cmd.Views {
+				if v == view {
+					result = append(result, cmd)
+					break
+				}
+			}
+		}
+	}
+	return result
+}

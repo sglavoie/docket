@@ -112,6 +112,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
 
 // registerGlobalCommands registers commands that are available from any view.
 func (m *AppModel) registerGlobalCommands() {
+	// Global commands (available in all views)
 	globalCommands := []Command{
 		{
 			Name:        "help",
@@ -144,9 +145,394 @@ func (m *AppModel) registerGlobalCommands() {
 				return ShowGlobalSearchMsg{}
 			},
 		},
+		{
+			Name:        "settings",
+			Description: "Open application settings",
+			Shortcut:    ",",
+			Category:    CategoryNavigation,
+			Handler: func() tea.Msg {
+				return SettingsMsg{}
+			},
+		},
+		{
+			Name:        "back",
+			Description: "Go back to previous view",
+			Shortcut:    "esc",
+			Category:    CategoryNavigation,
+			Handler: func() tea.Msg {
+				return BackMsg{}
+			},
+		},
 	}
 
+	// Filter and search commands (ProjectTree view)
+	filterCommands := []Command{
+		{
+			Name:        "filter by tag",
+			Description: "Open tag filter selector",
+			Shortcut:    "T",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return ShowTagFilterSelectorMsg{ProjectTree: m.projectTree}
+			},
+		},
+		{
+			Name:        "filter by section",
+			Description: "Open section filter selector",
+			Shortcut:    "N",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return ShowSectionFilterSelectorMsg{ProjectTree: m.projectTree}
+			},
+		},
+		{
+			Name:        "toggle completed",
+			Description: "Show/hide completed tasks",
+			Shortcut:    "d",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.showCompleted = !m.projectTree.showCompleted
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "toggle high priority",
+			Description: "Filter high priority tasks only",
+			Shortcut:    "P",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					if m.projectTree.filterPriority == 0 {
+						m.projectTree.filterPriority = 1
+					} else {
+						m.projectTree.filterPriority = 0
+					}
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "clear filters",
+			Description: "Reset all task filters",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.showCompleted = false
+					m.projectTree.filterType = ""
+					m.projectTree.filterStatus = ""
+					m.projectTree.filterPriority = 0
+					m.projectTree.filterTags = make(map[string]bool)
+					m.projectTree.filterSections = make(map[string]bool)
+					m.projectTree.filterDueDate = 0
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "jump to task",
+			Description: "Jump to task by ID or name",
+			Shortcut:    "\\",
+			Category:    CategorySearch,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowTaskJumperMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "tag manager",
+			Description: "Manage project tags",
+			Shortcut:    "ctrl+t",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return ShowTagManagerMsg{ProjectTree: m.projectTree}
+			},
+		},
+		{
+			Name:        "global tag manager",
+			Description: "Manage tags across all projects",
+			Shortcut:    "ctrl+t",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDashboard},
+			Handler: func() tea.Msg {
+				return ShowGlobalTagManagerMsg{}
+			},
+		},
+		{
+			Name:        "section manager",
+			Description: "Manage project sections",
+			Shortcut:    "ctrl+s",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return ShowSectionManagerMsg{ProjectTree: m.projectTree}
+			},
+		},
+		{
+			Name:        "search projects",
+			Description: "Filter projects by name",
+			Shortcut:    "\\",
+			Category:    CategorySearch,
+			Views:       []ViewType{ViewDashboard},
+			Handler: func() tea.Msg {
+				if m.dashboard != nil {
+					return m.dashboard.ActivateSearch()
+				}
+				return nil
+			},
+		},
+	}
+
+	// View commands
+	viewCommands := []Command{
+		{
+			Name:        "due date overview",
+			Description: "View tasks by due date",
+			Shortcut:    "ctrl+d",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree, ViewDashboard},
+			Handler: func() tea.Msg {
+				return ShowDueDateOverviewMsg{}
+			},
+		},
+		{
+			Name:        "priority view",
+			Description: "View tasks by priority",
+			Shortcut:    "p",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowPriorityViewMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "inbox processor",
+			Description: "Process inbox items one by one",
+			Shortcut:    "w",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowInboxProcessorMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "undo history",
+			Description: "View and restore from undo history",
+			Shortcut:    "ctrl+z",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowUndoHistoryMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "toggle filter bar",
+			Description: "Show/hide the filter bar",
+			Shortcut:    "F",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filterBarEnabled = !m.projectTree.filterBarEnabled
+				}
+				return nil
+			},
+		},
+	}
+
+	// Navigation commands
+	navCommands := []Command{
+		{
+			Name:        "dashboard",
+			Description: "Go to dashboard",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewProjectTree, ViewProjectList},
+			Handler: func() tea.Msg {
+				return BackMsg{}
+			},
+		},
+		{
+			Name:        "project cycle",
+			Description: "Configure project cycle",
+			Shortcut:    "@",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Handler: func() tea.Msg {
+				return ShowProjectCycleManagerMsg{}
+			},
+		},
+		{
+			Name:        "next project",
+			Description: "Switch to next project in cycle",
+			Shortcut:    "`",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Handler: func() tea.Msg {
+				return CycleProjectMsg{Forward: true}
+			},
+		},
+		{
+			Name:        "previous project",
+			Description: "Switch to previous project in cycle",
+			Shortcut:    "~",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Handler: func() tea.Msg {
+				return CycleProjectMsg{Forward: false}
+			},
+		},
+	}
+
+	// Task commands (ProjectTree view) - only message-based commands that work through handlers
+	taskCommands := []Command{
+		{
+			Name:        "new task",
+			Description: "Create a new task",
+			Shortcut:    "n",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return CreateTaskMsg{}
+			},
+		},
+		{
+			Name:        "new note",
+			Description: "Create a new note",
+			Shortcut:    "O",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				return CreateNoteMsg{}
+			},
+		},
+		{
+			Name:        "quick capture",
+			Description: "Quick capture a single task",
+			Shortcut:    "i",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowQuickCaptureMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "bulk capture",
+			Description: "Bulk capture multiple tasks",
+			Shortcut:    "ctrl+i",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowBulkCaptureMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "expand all",
+			Description: "Expand all tasks in tree",
+			Shortcut:    "E",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					for _, node := range m.projectTree.nodes {
+						node.Expanded = true
+					}
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "collapse all",
+			Description: "Collapse all tasks in tree",
+			Shortcut:    "c",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					for _, node := range m.projectTree.nodes {
+						if node.Level > 0 {
+							node.Expanded = false
+						}
+					}
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+	}
+
+	// Project commands (Dashboard view)
+	projectCommands := []Command{
+		{
+			Name:        "new project",
+			Description: "Create a new project",
+			Shortcut:    "n",
+			Category:    CategoryProjects,
+			Views:       []ViewType{ViewDashboard},
+			Handler: func() tea.Msg {
+				return CreateProjectMsg{}
+			},
+		},
+		{
+			Name:        "filter by context",
+			Description: "Filter projects by context",
+			Shortcut:    "c",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewDashboard},
+			Handler: func() tea.Msg {
+				if m.dashboard != nil {
+					return ShowContextPickerMsg{Dashboard: m.dashboard}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "toggle recent tasks",
+			Description: "Show/hide recent tasks section",
+			Shortcut:    "R",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Handler: func() tea.Msg {
+				return ToggleRecentTasksMsg{}
+			},
+		},
+	}
+
+	// Register all command batches
 	m.commandRegistry.RegisterBatch(globalCommands)
+	m.commandRegistry.RegisterBatch(filterCommands)
+	m.commandRegistry.RegisterBatch(viewCommands)
+	m.commandRegistry.RegisterBatch(navCommands)
+	m.commandRegistry.RegisterBatch(taskCommands)
+	m.commandRegistry.RegisterBatch(projectCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

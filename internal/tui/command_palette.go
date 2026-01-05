@@ -60,6 +60,9 @@ type CommandPaletteModel struct {
 	config   *config.Config
 	registry *CommandRegistry
 
+	// Current view context for filtering commands
+	currentView ViewType
+
 	// Input for filtering
 	searchInput textinput.Model
 
@@ -76,7 +79,8 @@ type CommandPaletteModel struct {
 }
 
 // NewCommandPaletteModel creates a new command palette model.
-func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry) *CommandPaletteModel {
+// The currentView parameter determines which commands are shown (context-aware filtering).
+func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search commands, tasks, projects..."
 	searchInput.CharLimit = 100
@@ -86,6 +90,7 @@ func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry) *Comm
 	m := &CommandPaletteModel{
 		config:      cfg,
 		registry:    registry,
+		currentView: currentView,
 		searchInput: searchInput,
 		cursor:      0,
 	}
@@ -111,11 +116,12 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 // loadAllItems aggregates commands, tasks, projects, tags, and sections into PaletteItems.
 // This follows the lazy loading pattern from GlobalSearchModel, loading all searchable
 // items when the palette opens rather than maintaining a persistent index.
+// Commands are filtered by the current view context (only showing relevant commands).
 func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	var items []PaletteItem
 
-	// Load commands from registry
-	for _, cmd := range m.registry.GetAll() {
+	// Load commands from registry (filtered by current view)
+	for _, cmd := range m.registry.GetForView(m.currentView) {
 		cmdCopy := cmd // Copy loop variable to avoid pointer aliasing
 		items = append(items, PaletteItem{
 			Name:        cmdCopy.Name,
