@@ -53,6 +53,15 @@ type CommandPaletteItem struct {
 	Command Command
 }
 
+// PaletteAction represents an inline action that can be performed on a palette item.
+// When a user presses Tab on a non-command item, a submenu of available actions is shown.
+type PaletteAction struct {
+	Name    string         // Display name (e.g., "Complete", "Edit")
+	Icon    string         // Visual indicator
+	KeyHint string         // Keyboard shortcut hint (e.g., "m" for complete)
+	Handler func() tea.Msg // Returns message when the action is selected
+}
+
 // CommandPaletteModel provides a fullscreen fuzzy search palette for commands.
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
@@ -72,6 +81,12 @@ type CommandPaletteModel struct {
 
 	// Navigation state
 	cursor int
+
+	// Action mode state - when true, showing inline actions for selected item
+	actionMode       bool
+	actionCursor     int
+	availableActions []PaletteAction
+	actionItem       PaletteItem // The item whose actions are being shown
 
 	// Dimensions
 	width  int
@@ -304,50 +319,128 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
-			return m, func() tea.Msg {
-				return CloseCommandPaletteMsg{}
-			}
-		case "enter":
-			if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-				return m.executeItem(m.filteredItems[m.cursor])
-			}
-			return m, nil
-		case "up", "ctrl+k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-			return m, nil
-		case "down", "ctrl+j":
-			if m.cursor < len(m.filteredItems)-1 {
-				m.cursor++
-			}
-			return m, nil
-		case "ctrl+u":
-			m.cursor -= 10
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
-			return m, nil
-		case "ctrl+d":
-			m.cursor += 10
-			if m.cursor >= len(m.filteredItems) {
-				m.cursor = len(m.filteredItems) - 1
-			}
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
-			return m, nil
-		default:
-			// Update search input and filter items
-			var cmd tea.Cmd
-			m.searchInput, cmd = m.searchInput.Update(msg)
-			m.filterItems()
-			return m, cmd
+		// Handle action mode separately
+		if m.actionMode {
+			return m.updateActionMode(msg)
 		}
+		return m.updateSearchMode(msg)
 	}
 	return m, nil
+}
+
+// updateSearchMode handles key events in search mode (the default mode).
+func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		return m, func() tea.Msg {
+			return CloseCommandPaletteMsg{}
+		}
+	case "enter":
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			return m.executeItem(m.filteredItems[m.cursor])
+		}
+		return m, nil
+	case "tab":
+		// Enter action mode for non-command items
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor]
+			if item.Category != ItemCategoryCommands {
+				actions := m.getActionsForItem(item)
+				if len(actions) > 0 {
+					m.actionMode = true
+					m.actionCursor = 0
+					m.availableActions = actions
+					m.actionItem = item
+					return m, nil
+				}
+			}
+		}
+		return m, nil
+	case "up", "ctrl+k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+		return m, nil
+	case "down", "ctrl+j":
+		if m.cursor < len(m.filteredItems)-1 {
+			m.cursor++
+		}
+		return m, nil
+	case "ctrl+u":
+		m.cursor -= 10
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		return m, nil
+	case "ctrl+d":
+		m.cursor += 10
+		if m.cursor >= len(m.filteredItems) {
+			m.cursor = len(m.filteredItems) - 1
+		}
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		return m, nil
+	default:
+		// Update search input and filter items
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.filterItems()
+		return m, cmd
+	}
+}
+
+// updateActionMode handles key events when showing inline actions for an item.
+func (m *CommandPaletteModel) updateActionMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	switch key {
+	case "esc", "tab":
+		// Exit action mode, return to search
+		m.actionMode = false
+		m.availableActions = nil
+		return m, nil
+	case "enter":
+		// Execute the selected action
+		if m.actionCursor < len(m.availableActions) {
+			action := m.availableActions[m.actionCursor]
+			if action.Handler != nil {
+				handler := action.Handler
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: handler()}
+				}
+			}
+		}
+		return m, nil
+	case "up", "ctrl+k":
+		if m.actionCursor > 0 {
+			m.actionCursor--
+		}
+		return m, nil
+	case "down", "ctrl+j":
+		if m.actionCursor < len(m.availableActions)-1 {
+			m.actionCursor++
+		}
+		return m, nil
+	default:
+		// Check if the key matches an action's KeyHint for quick execution
+		for _, action := range m.availableActions {
+			if action.KeyHint == key && action.Handler != nil {
+				handler := action.Handler
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: handler()}
+				}
+			}
+		}
+		// Any other key exits action mode and processes as search input
+		m.actionMode = false
+		m.availableActions = nil
+		// Process the key as search input
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.filterItems()
+		return m, cmd
+	}
 }
 
 // executeItem handles selection of an item from the palette.
@@ -429,17 +522,249 @@ func (m *CommandPaletteModel) findProjectWithSection(section string) *models.Pro
 	return nil
 }
 
+// getActionsForItem returns the available inline actions for a palette item.
+// Commands have no inline actions (Enter executes them directly).
+func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteAction {
+	switch item.Category {
+	case ItemCategoryTasks:
+		return m.getTaskActions(item)
+	case ItemCategoryProjects:
+		return m.getProjectActions(item)
+	case ItemCategoryTags:
+		return m.getTagActions(item)
+	case ItemCategorySections:
+		return m.getSectionActions(item)
+	default:
+		return nil
+	}
+}
+
+// getTaskActions returns inline actions for a task item.
+func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
+	if item.Task == nil || item.Project == nil {
+		return nil
+	}
+	task := item.Task
+	project := item.Project
+
+	actions := []PaletteAction{
+		{
+			Name:    "Go to task",
+			Icon:    "→",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return GlobalSearchSelectMsg{Task: task, Project: project}
+			},
+		},
+		{
+			Name:    "View",
+			Icon:    "👁",
+			KeyHint: "v",
+			Handler: func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			},
+		},
+		{
+			Name:    "Edit",
+			Icon:    "✏",
+			KeyHint: "e",
+			Handler: func() tea.Msg {
+				return EditTaskMsg{Task: task}
+			},
+		},
+	}
+
+	// Add status-based actions
+	if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+		actions = append(actions, PaletteAction{
+			Name:    "Complete",
+			Icon:    "✓",
+			KeyHint: "m",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "complete"}
+			},
+		})
+	}
+
+	if task.Status == models.StatusTodo {
+		actions = append(actions, PaletteAction{
+			Name:    "Start",
+			Icon:    "▶",
+			KeyHint: "s",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "start"}
+			},
+		})
+	}
+
+	if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+		actions = append(actions, PaletteAction{
+			Name:    "Reopen",
+			Icon:    "↺",
+			KeyHint: "r",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "reopen"}
+			},
+		})
+	}
+
+	// Add due date action
+	actions = append(actions, PaletteAction{
+		Name:    "Set due date",
+		Icon:    "📅",
+		KeyHint: "d",
+		Handler: func() tea.Msg {
+			return SetDueDateMsg{Task: task, Project: project}
+		},
+	})
+
+	// Add subtask action for non-leaf types
+	if task.Type == models.TaskTypeEpic || task.Type == models.TaskTypeStory {
+		actions = append(actions, PaletteAction{
+			Name:    "Add subtask",
+			Icon:    "+",
+			KeyHint: "a",
+			Handler: func() tea.Msg {
+				return CreateTaskMsg{ParentTask: task}
+			},
+		})
+	}
+
+	return actions
+}
+
+// getProjectActions returns inline actions for a project item.
+func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteAction {
+	if item.Project == nil {
+		return nil
+	}
+	project := item.Project
+
+	actions := []PaletteAction{
+		{
+			Name:    "Open",
+			Icon:    "→",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return SelectProjectMsg{Project: project}
+			},
+		},
+		{
+			Name:    "Edit",
+			Icon:    "✏",
+			KeyHint: "e",
+			Handler: func() tea.Msg {
+				return EditProjectMsg{Project: project}
+			},
+		},
+	}
+
+	if project.Archived {
+		actions = append(actions, PaletteAction{
+			Name:    "Restore",
+			Icon:    "↺",
+			KeyHint: "r",
+			Handler: func() tea.Msg {
+				return ProjectRestoredMsg{Project: project}
+			},
+		})
+	} else {
+		actions = append(actions, PaletteAction{
+			Name:    "Archive",
+			Icon:    "📦",
+			KeyHint: "x",
+			Handler: func() tea.Msg {
+				return ProjectArchivedMsg{Project: project}
+			},
+		})
+	}
+
+	return actions
+}
+
+// getTagActions returns inline actions for a tag item.
+func (m *CommandPaletteModel) getTagActions(item PaletteItem) []PaletteAction {
+	if item.Tag == "" {
+		return nil
+	}
+	tag := item.Tag
+	project := m.findProjectWithTag(tag)
+
+	actions := []PaletteAction{
+		{
+			Name:    "Filter by tag",
+			Icon:    "🏷",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				if project != nil {
+					return GlobalTagNavigateMsg{Project: project, Tag: tag}
+				}
+				return nil
+			},
+		},
+		{
+			Name:    "Manage tags",
+			Icon:    "⚙",
+			KeyHint: "t",
+			Handler: func() tea.Msg {
+				return ShowGlobalTagManagerMsg{}
+			},
+		},
+	}
+
+	return actions
+}
+
+// getSectionActions returns inline actions for a section item.
+func (m *CommandPaletteModel) getSectionActions(item PaletteItem) []PaletteAction {
+	if item.Section == "" {
+		return nil
+	}
+	section := item.Section
+	project := m.findProjectWithSection(section)
+
+	actions := []PaletteAction{
+		{
+			Name:    "Filter by section",
+			Icon:    "📂",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				if project != nil {
+					return CommandPaletteSectionSelectMsg{Section: section, Project: project}
+				}
+				return nil
+			},
+		},
+	}
+
+	return actions
+}
+
 // View implements tea.Model.
 func (m *CommandPaletteModel) View() string {
 	var b strings.Builder
 
-	// Title
-	b.WriteString(TitleStyle.Render("Command Palette"))
+	// Title - changes based on mode
+	if m.actionMode {
+		b.WriteString(TitleStyle.Render("Actions"))
+	} else {
+		b.WriteString(TitleStyle.Render("Command Palette"))
+	}
 	b.WriteString("\n")
 
-	// Search input
-	b.WriteString(m.searchInput.View())
-	b.WriteString("\n\n")
+	// In action mode, show which item we're acting on
+	if m.actionMode {
+		itemDesc := m.actionItem.Name
+		if m.actionItem.Description != "" {
+			itemDesc = fmt.Sprintf("%s · %s", m.actionItem.Name, m.actionItem.Description)
+		}
+		b.WriteString(MutedStyle.Render(itemDesc))
+		b.WriteString("\n\n")
+	} else {
+		// Search input (only in search mode)
+		b.WriteString(m.searchInput.View())
+		b.WriteString("\n\n")
+	}
 
 	// Handle edge cases
 	if len(m.allItems) == 0 {
@@ -450,15 +775,21 @@ func (m *CommandPaletteModel) View() string {
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
-	if len(m.filteredItems) == 0 && query != "" {
+	if !m.actionMode && len(m.filteredItems) == 0 && query != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\".", query)))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
 		return b.String()
 	}
 
-	// Render filtered items list
-	listContent := m.renderItemList()
+	// Render content based on mode
+	var listContent string
+	if m.actionMode {
+		listContent = m.renderActionList()
+	} else {
+		listContent = m.renderItemList()
+	}
+
 	paneHeight := m.height - 6 // Account for title, input, spacing, and footer
 	if paneHeight < 5 {
 		paneHeight = 5
@@ -473,11 +804,99 @@ func (m *CommandPaletteModel) View() string {
 	b.WriteString(listPane)
 	b.WriteString("\n")
 
-	// Footer with controls and result count
-	footer := HelpStyle.Render(fmt.Sprintf("↑/↓ navigate • Enter select • Esc close • %d item(s)", len(m.filteredItems)))
+	// Footer with controls - different for each mode
+	var footer string
+	if m.actionMode {
+		footer = HelpStyle.Render("↑/↓ navigate • Enter execute • Tab/Esc back")
+	} else {
+		footer = HelpStyle.Render(fmt.Sprintf("↑/↓ navigate • Enter select • Tab actions • Esc close • %d item(s)", len(m.filteredItems)))
+	}
 	b.WriteString(footer)
 
 	return b.String()
+}
+
+// renderActionList renders the list of available actions for the selected item.
+func (m *CommandPaletteModel) renderActionList() string {
+	if len(m.availableActions) == 0 {
+		return MutedStyle.Render("No actions available.")
+	}
+
+	var b strings.Builder
+	contentWidth := m.width - 4
+	if contentWidth < 40 {
+		contentWidth = 40
+	}
+
+	for i, action := range m.availableActions {
+		line := m.renderActionItem(action, i == m.actionCursor, contentWidth)
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderActionItem renders a single action row.
+// Layout: [cursor] [icon] [name] ... [key hint]
+func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bool, width int) string {
+	// Cursor indicator (2 chars)
+	cursor := "  "
+	if selected {
+		cursor = "> "
+	}
+
+	// Icon (2-3 chars)
+	icon := action.Icon
+	if icon == "" {
+		icon = "•"
+	}
+	icon = icon + " "
+
+	// Key hint for right alignment
+	keyHint := ""
+	keyHintLen := 0
+	if action.KeyHint != "" {
+		keyHint = action.KeyHint
+		keyHintLen = len(keyHint) + 2 // +2 for spacing
+	}
+
+	// Calculate remaining width for name
+	fixedWidth := 2 + 3 + keyHintLen + 2 // cursor + icon + key hint + gap
+	nameWidth := width - fixedWidth
+	if nameWidth < 10 {
+		nameWidth = 10
+	}
+
+	// Truncate name if needed
+	name := action.Name
+	if len(name) > nameWidth {
+		name = name[:nameWidth-1] + "…"
+	}
+
+	// Calculate gap for right-alignment
+	gap := nameWidth - len(name)
+	if gap < 1 {
+		gap = 1
+	}
+
+	// Build the line
+	var line strings.Builder
+	line.WriteString(cursor)
+	line.WriteString(icon)
+	line.WriteString(BoldStyle.Render(name))
+
+	if keyHint != "" {
+		line.WriteString(strings.Repeat(" ", gap))
+		line.WriteString(HelpKeyStyle.Render(keyHint))
+	}
+
+	result := line.String()
+	if selected {
+		result = TaskJumperSelectedStyle.Render(result)
+	}
+
+	return result
 }
 
 // renderItemList renders the filtered item list with cursor indicator.
@@ -701,3 +1120,12 @@ type CommandPaletteSectionSelectMsg struct {
 
 // ShowCommandPaletteMsg is sent to open the command palette.
 type ShowCommandPaletteMsg struct{}
+
+// CommandPaletteTaskActionMsg is sent when an inline action is performed on a task.
+// This message triggers status changes (complete, start, reopen) that need to be
+// saved to the project file.
+type CommandPaletteTaskActionMsg struct {
+	Task    *models.Task
+	Project *models.Project
+	Action  string // "complete", "start", "reopen"
+}

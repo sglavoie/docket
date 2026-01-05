@@ -164,6 +164,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.refreshProjectTree()
 		return true, nil
 
+	case CommandPaletteTaskActionMsg:
+		return m.handleCommandPaletteTaskAction(msg)
+
 	case EditTaskContentMsg:
 		return m.handleEditTaskContent(msg)
 
@@ -291,6 +294,44 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
+}
+
+// handleCommandPaletteTaskAction handles inline task actions from the command palette.
+// It applies status changes (complete, start, reopen) and saves the project.
+func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMsg) (bool, tea.Cmd) {
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+
+	// Apply the status change
+	switch msg.Action {
+	case "complete":
+		msg.Task.Complete()
+	case "start":
+		msg.Task.Start()
+	case "reopen":
+		msg.Task.Reopen()
+	default:
+		return true, nil
+	}
+
+	// Backup and save
+	if err := storage.BackupProject(msg.Project); err != nil {
+		return true, errorCmd("failed to create backup: %w", err)
+	}
+	if err := storage.SaveProject(msg.Project); err != nil {
+		return true, errorCmd("failed to save: %w", err)
+	}
+
+	// Reload project and refresh tree if we're viewing it
+	storage.LoadProject(msg.Project)
+	if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
+		m.refreshProjectTree()
+	}
+
+	// Show status message
+	m.statusMessage = fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
+	return true, statusTimeout(2 * time.Second)
 }
 
 // handleEditTaskContent launches external editor for task title and description.
