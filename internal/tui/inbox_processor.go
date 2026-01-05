@@ -508,6 +508,7 @@ func (m *InboxProcessorModel) reloadProject() tea.Cmd {
 // GetHelpItems returns help items for the inbox processor view.
 func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
+		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "enter", Description: "View task details", Category: "Navigation"},
 		{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation"},
 		{Key: "←/→ or h/l", Description: "Navigate to previous/next task", Category: "Navigation"},

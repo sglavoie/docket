@@ -47,6 +47,7 @@ const (
 	ViewUndoHistory
 	ViewTaskComments
 	ViewProjectCycleManager
+	ViewCommandPalette
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -61,6 +62,9 @@ type AppModel struct {
 
 	// View registry for centralized view management
 	views *ViewRegistry
+
+	// Command registry for centralized command lookup (used by command palette)
+	commandRegistry *CommandRegistry
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	dashboard      *DashboardModel
@@ -82,17 +86,21 @@ type AppModel struct {
 // NewAppModel creates a new TUI application model.
 func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
 	app := &AppModel{
-		config:        cfg,
-		configManager: manager,
-		viewStack:     []ViewType{ViewDashboard},
-		width:         80,
-		height:        24,
-		views:         NewViewRegistry(),
+		config:          cfg,
+		configManager:   manager,
+		viewStack:       []ViewType{ViewDashboard},
+		width:           80,
+		height:          24,
+		views:           NewViewRegistry(),
+		commandRegistry: NewCommandRegistry(),
 	}
 
 	// Initialize dashboard and register it
 	app.dashboard = NewDashboardModel(cfg)
 	app.views.Register(ViewDashboard, app.dashboard)
+
+	// Register global commands
+	app.registerGlobalCommands()
 
 	// Load current project if set
 	if current := cfg.GetCurrentProject(); current != nil {
@@ -102,8 +110,71 @@ func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
 	return app
 }
 
+// registerGlobalCommands registers commands that are available from any view.
+func (m *AppModel) registerGlobalCommands() {
+	globalCommands := []Command{
+		{
+			Name:        "help",
+			Description: "Show help for keyboard shortcuts",
+			Shortcut:    "?",
+			Category:    CategoryHelp,
+			Handler: func() tea.Msg {
+				return ShowHelpMsg{
+					SourceView: ViewDashboard,
+					ViewName:   "tt",
+					Items:      getGlobalHelpItems(),
+				}
+			},
+		},
+		{
+			Name:        "quit",
+			Description: "Quit the application",
+			Shortcut:    "q",
+			Category:    CategoryNavigation,
+			Handler: func() tea.Msg {
+				return QuitMsg{}
+			},
+		},
+		{
+			Name:        "global search",
+			Description: "Search tasks across all projects",
+			Shortcut:    "/",
+			Category:    CategorySearch,
+			Handler: func() tea.Msg {
+				return ShowGlobalSearchMsg{}
+			},
+		},
+	}
+
+	m.commandRegistry.RegisterBatch(globalCommands)
+}
+
+// getGlobalHelpItems returns help items that apply across all views.
+func getGlobalHelpItems() []HelpItem {
+	return []HelpItem{
+		{Key: "?", Description: "Show help", Category: "General"},
+		{Key: "q", Description: "Quit / go back", Category: "General"},
+		{Key: "esc", Description: "Go back / cancel", Category: "General"},
+		{Key: "ctrl+c", Description: "Quit application", Category: "General"},
+		{Key: "/", Description: "Global search", Category: "Navigation"},
+		{Key: ":", Description: "Command palette", Category: "Navigation"},
+		{Key: "j/k", Description: "Move cursor down/up", Category: "Navigation"},
+		{Key: "↑/↓", Description: "Move cursor up/down", Category: "Navigation"},
+		{Key: "g", Description: "Go to first item", Category: "Navigation"},
+		{Key: "G", Description: "Go to last item", Category: "Navigation"},
+		{Key: "Enter", Description: "Select / confirm", Category: "Actions"},
+		{Key: ",", Description: "Settings", Category: "Actions"},
+	}
+}
+
 func (m *AppModel) Init() tea.Cmd {
 	return nil
+}
+
+// GetCommandRegistry returns the command registry for the application.
+// This is used by the command palette and for testing.
+func (m *AppModel) GetCommandRegistry() *CommandRegistry {
+	return m.commandRegistry
 }
 
 // currentView returns the current view type.

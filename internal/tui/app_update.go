@@ -22,10 +22,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if handled := m.handleEscKey(); handled {
 				return m, nil
 			}
+		case ":":
+			// Open command palette if no view has an active text input
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg {
+					return ShowCommandPaletteMsg{}
+				}
+			}
 		}
 
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)
+
+	case QuitMsg:
+		m.saveProjectTreeState()
+		m.quitting = true
+		return m, tea.Quit
 	}
 
 	// Try each handler group in sequence
@@ -59,6 +71,50 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+// hasActiveTextInput returns true if the current view has an active text input
+// that should receive keyboard input (like search boxes, text fields).
+// This is used to determine whether global keyboard shortcuts should be intercepted.
+func (m *AppModel) hasActiveTextInput() bool {
+	// Check if the current view has an active search input
+	switch m.currentView() {
+	case ViewProjectTree:
+		if m.projectTree != nil && m.projectTree.HasActiveSearch() {
+			return true
+		}
+	case ViewDashboard:
+		if m.dashboard != nil && m.dashboard.HasActiveSearch() {
+			return true
+		}
+	case ViewHelp:
+		if m.helpView != nil && m.helpView.HasActiveSearch() {
+			return true
+		}
+	case ViewTaskJumper:
+		// Task jumper always has active search
+		return true
+	case ViewGlobalSearch:
+		// Global search always has active search
+		return true
+	case ViewCommandPalette:
+		// Command palette always has active search
+		return true
+	case ViewTagSelector:
+		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
+			return true
+		}
+	case ViewParentSelector:
+		// Parent selector always has active search
+		return true
+	case ViewTaskCreator, ViewNoteCreator, ViewQuickCapture, ViewBulkCapture:
+		// Form views always have active text input
+		return true
+	case ViewTaskEditor:
+		// Task editor has active text input
+		return true
+	}
+	return false
 }
 
 // handleEscKey handles the escape key for view navigation.

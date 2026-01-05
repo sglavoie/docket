@@ -117,7 +117,7 @@ func (m *AppModel) renderStatusBar() string {
 
 	help := ""
 	if showHelp {
-		help = "Press ? for help"
+		help = "Press : for commands, ? for help"
 	}
 
 	left := StatusBarStyle.Render(status)

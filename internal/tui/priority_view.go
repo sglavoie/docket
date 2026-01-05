@@ -760,6 +760,7 @@ func (m *PriorityViewModel) renderPriorityBadge(priority int) string {
 // GetHelpItems returns help items for this view.
 func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
+		{Category: "Navigation", Key: ":", Description: "Command palette"},
 		{Category: "Navigation", Key: "↑/k", Description: "Move up"},
 		{Category: "Navigation", Key: "↓/j", Description: "Move down"},
 		{Category: "Navigation", Key: "g/G", Description: "Jump to top/bottom"},

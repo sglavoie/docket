@@ -165,6 +165,9 @@ type (
 
 	// Dashboard toggle messages
 	ToggleRecentTasksMsg struct{}
+
+	// Application control messages
+	QuitMsg struct{} // Request to quit the application
 )
 
 // statusTimeout returns a command that clears the status message after the given duration.

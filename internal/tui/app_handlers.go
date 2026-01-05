@@ -18,13 +18,11 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
-		m.saveProjectTreeState()
-		m.currentProject = msg.Project
-		m.config.MigrateProjectSectionColors(msg.Project.SectionColors)
-		m.config.ApplyGlobalColorsToProject(msg.Project)
-		m.configManager.Save(m.config)
-		m.projectTree = NewProjectTreeModel(msg.Project, m.config, m.configManager)
-		m.restoreProjectTreeState()
+		// Pop command palette if that's where we came from
+		if m.currentView() == ViewCommandPalette {
+			m.popView()
+		}
+		m.switchToProject(msg.Project, true)
 		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil
 
@@ -526,6 +524,24 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowCommandPaletteMsg:
+		palette := NewCommandPaletteModel(m.config, m.commandRegistry)
+		m.showView(ViewCommandPalette, palette)
+		return true, palette.Init()
+
+	case CloseCommandPaletteMsg:
+		m.popView()
+		return true, nil
+
+	case CommandPaletteExecuteMsg:
+		// Close command palette first
+		m.popView()
+		// Process the inner message through handlers
+		if msg.ResultMsg != nil {
+			return m.processMessage(msg.ResultMsg)
+		}
+		return true, nil
+
 	case GlobalSearchSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
@@ -818,6 +834,14 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		m.reloadAndRefreshProjectTree()
 		return true, nil
+
+	case CommandPaletteSectionSelectMsg:
+		m.popView()
+		m.switchToProject(msg.Project, false) // Don't restore state - apply specific section filter
+		m.projectTree.filterSections = map[string]bool{msg.Section: true}
+		m.projectTree.updateVisibility()
+		m.showView(ViewProjectTree, m.projectTree)
+		return true, nil
 	}
 	return false, nil
 }
@@ -1017,4 +1041,34 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 	idx := m.config.GetCycleProjectIndex(project.ID)
 	m.statusMessage = fmt.Sprintf("Switched to: %s [%d/%d]", project.Name, idx+1, len(cycleProjects))
 	return true, statusTimeout(2 * time.Second)
+}
+
+// processMessage routes a message through the app's handler chain.
+// Used by CommandPaletteExecuteMsg to process the inner message synchronously.
+func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
+	if handled, cmd := m.handleProjectMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleTaskMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleViewMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleTagMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleSectionMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleInboxMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleClipboardMessages(msg); handled {
+		return true, cmd
+	}
+	if handled, cmd := m.handleProjectCycleMessages(msg); handled {
+		return true, cmd
+	}
+	return false, nil
 }

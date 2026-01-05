@@ -602,6 +602,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 
 	return []HelpItem{
 		{Key: "*", Description: "Current project", Category: "Legend"},
+		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},

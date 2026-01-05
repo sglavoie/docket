@@ -749,6 +749,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 	return []HelpItem{
 		// Navigation
+		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "View task (glow)", Category: "Navigation"},
 		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
