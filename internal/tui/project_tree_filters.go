@@ -61,103 +61,157 @@ func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expandedSta
 }
 
 func (m *ProjectTreeModel) updateVisibility() {
-	parentExpanded := make(map[int]bool)
-	parentExpanded[-1] = true
+	// Reset context node flags
+	for _, node := range m.nodes {
+		node.IsContextNode = false
+	}
 
+	// Pass 1: Determine intrinsic visibility (ignoring parent state)
+	// This determines which nodes would be visible based on their own properties
+	intrinsicVisible := make(map[string]bool)
+	for _, node := range m.nodes {
+		intrinsicVisible[node.Task.ID] = m.passesFilters(node)
+	}
+
+	// Pass 2: Mark ancestors of intrinsically visible nodes as context nodes
+	// This ensures parent hierarchy is shown even when parent is in different section
+	for _, node := range m.nodes {
+		if intrinsicVisible[node.Task.ID] {
+			m.markAncestorsAsContext(node, intrinsicVisible)
+		}
+	}
+
+	// Pass 3: Apply final visibility respecting expand/collapse state
 	for i, node := range m.nodes {
-		// Check if parent is expanded
 		parentLevel := node.Level - 1
-		visible := true
+		visible := intrinsicVisible[node.Task.ID] || node.IsContextNode
 
-		if parentLevel >= 0 {
-			// Find parent node
+		// If we're visible, check if parent is expanded (unless parent is a context node)
+		if visible && parentLevel >= 0 {
 			for j := i - 1; j >= 0; j-- {
 				if m.nodes[j].Level == parentLevel {
-					visible = m.nodes[j].Expanded && m.nodes[j].Visible
+					// Parent must be expanded for child to be visible
+					// Context nodes are force-expanded to show their children
+					if !m.nodes[j].Expanded && !m.nodes[j].IsContextNode {
+						visible = false
+					}
 					break
 				}
 			}
 		}
-
-		// Apply view mode filter (base filter before all others)
-		if visible {
-			switch m.viewMode {
-			case ViewModeActive:
-				// Hide Inbox and Backlog tasks
-				if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
-					visible = false
-				}
-			case ViewModeInbox:
-				// Only show Inbox tasks
-				if node.Task.Section != models.SectionInbox {
-					visible = false
-				}
-			case ViewModeBacklog:
-				// Only show Backlog tasks
-				if node.Task.Section != models.SectionBacklog {
-					visible = false
-				}
-			}
-		}
-
-		// Apply filters
-		if visible && !m.showCompleted && node.Task.IsComplete() {
-			visible = false
-		}
-
-		if visible && m.filterType != "" && node.Task.Type != m.filterType {
-			visible = false
-		}
-
-		// Apply status filter
-		if visible && m.filterStatus != "" && node.Task.Status != m.filterStatus {
-			visible = false
-		}
-
-		// Apply priority filter (1 = high priority only, showing tasks with priority <= 2)
-		if visible && m.filterPriority == 1 && node.Task.Priority > 2 {
-			visible = false
-		}
-
-		// Apply tag filter (AND logic: task must have ALL selected tags)
-		if visible && len(m.filterTags) > 0 {
-			for tag := range m.filterTags {
-				if !node.Task.HasTag(tag) {
-					visible = false
-					break
-				}
-			}
-		}
-
-		// Apply section filter (OR logic: task must be in ANY selected section)
-		if visible && len(m.filterSections) > 0 {
-			if !m.filterSections[node.Task.Section] {
-				visible = false
-			}
-		}
-
-		// Apply due date filter
-		if visible && m.filterDueDate != DueDateAll {
-			switch m.filterDueDate {
-			case DueDateOverdue:
-				visible = isOverdue(node.Task)
-			case DueDateToday:
-				visible = isDueToday(node.Task)
-			case DueDateThisWeek:
-				visible = isDueThisWeek(node.Task)
-			case DueDateNone:
-				visible = node.Task.DueDate == nil
-			}
-		}
-
-		// Apply search filter
-		if visible && m.SearchQuery() != "" {
-			if !m.matchesSearch(node.Task) && !m.hasMatchingDescendant(node.Task) {
-				visible = false
-			}
-		}
-
 		node.Visible = visible
+	}
+}
+
+// passesFilters checks if a node passes all current filters (view mode, status, etc.)
+// without considering parent visibility. This determines "intrinsic" visibility.
+func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
+	// Apply view mode filter (base filter before all others)
+	switch m.viewMode {
+	case ViewModeActive:
+		// Hide Inbox and Backlog tasks
+		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+			return false
+		}
+	case ViewModeInbox:
+		// Only show Inbox tasks
+		if node.Task.Section != models.SectionInbox {
+			return false
+		}
+	case ViewModeBacklog:
+		// Only show Backlog tasks
+		if node.Task.Section != models.SectionBacklog {
+			return false
+		}
+	}
+
+	// Apply completion filter
+	if !m.showCompleted && node.Task.IsComplete() {
+		return false
+	}
+
+	// Apply type filter
+	if m.filterType != "" && node.Task.Type != m.filterType {
+		return false
+	}
+
+	// Apply status filter
+	if m.filterStatus != "" && node.Task.Status != m.filterStatus {
+		return false
+	}
+
+	// Apply priority filter (1 = high priority only, showing tasks with priority <= 2)
+	if m.filterPriority == 1 && node.Task.Priority > 2 {
+		return false
+	}
+
+	// Apply tag filter (AND logic: task must have ALL selected tags)
+	if len(m.filterTags) > 0 {
+		for tag := range m.filterTags {
+			if !node.Task.HasTag(tag) {
+				return false
+			}
+		}
+	}
+
+	// Apply section filter (OR logic: task must be in ANY selected section)
+	if len(m.filterSections) > 0 {
+		if !m.filterSections[node.Task.Section] {
+			return false
+		}
+	}
+
+	// Apply due date filter
+	if m.filterDueDate != DueDateAll {
+		switch m.filterDueDate {
+		case DueDateOverdue:
+			if !isOverdue(node.Task) {
+				return false
+			}
+		case DueDateToday:
+			if !isDueToday(node.Task) {
+				return false
+			}
+		case DueDateThisWeek:
+			if !isDueThisWeek(node.Task) {
+				return false
+			}
+		case DueDateNone:
+			if node.Task.DueDate != nil {
+				return false
+			}
+		}
+	}
+
+	// Apply search filter
+	if m.SearchQuery() != "" {
+		if !m.matchesSearch(node.Task) && !m.hasMatchingDescendant(node.Task) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// markAncestorsAsContext walks up the ancestor chain and marks invisible ancestors
+// as context nodes so they appear (dimmed) to preserve hierarchy visibility.
+func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisible map[string]bool) {
+	task := node.Task
+	if task.Parent == nil {
+		return
+	}
+
+	// Find parent node
+	for _, n := range m.nodes {
+		if n.Task.ID == *task.ParentID {
+			// Only mark as context if parent isn't intrinsically visible
+			if !intrinsicVisible[n.Task.ID] && !n.IsContextNode {
+				n.IsContextNode = true
+			}
+			// Recursively mark grandparents
+			m.markAncestorsAsContext(n, intrinsicVisible)
+			break
+		}
 	}
 }
 
@@ -351,4 +405,44 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			m.filterCounts["tag:"+tag]++
 		}
 	}
+
+	// Calculate children in other sections for each task with children
+	m.childrenInOtherSections = make(map[string]map[string]int)
+	for _, task := range m.project.Tasks {
+		if len(task.Children) > 0 {
+			m.childrenInOtherSections[task.ID] = m.countChildrenBySection(task)
+		}
+	}
+}
+
+// countChildrenBySection recursively counts all descendants by their section.
+// Returns a map of section name -> count. Empty section is normalized to "Active".
+func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]int {
+	counts := make(map[string]int)
+	for _, child := range task.Children {
+		section := child.Section
+		if section == "" {
+			section = "Active"
+		}
+		counts[section]++
+		// Recursively count descendants
+		for s, c := range m.countChildrenBySection(child) {
+			counts[s] += c
+		}
+	}
+	return counts
+}
+
+// getHiddenSectionsForViewMode returns the sections that are hidden by the current view mode.
+// Returns nil when all sections are visible (no filtering).
+func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
+	switch m.viewMode {
+	case ViewModeActive:
+		return []string{models.SectionInbox, models.SectionBacklog}
+	case ViewModeInbox:
+		return []string{models.SectionBacklog, "Active"}
+	case ViewModeBacklog:
+		return []string{models.SectionInbox, "Active"}
+	}
+	return nil
 }

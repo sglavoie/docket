@@ -531,6 +531,13 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		statusStyle = BlockedByDepsStyle
 	}
 
+	// Context nodes (parents shown for hierarchy context) are dimmed
+	if node.IsContextNode {
+		typeStyle = MutedStyle
+		statusStyle = MutedStyle
+		expandIcon = MutedStyle.Render(strings.TrimSuffix(expandIcon, " ")) + " "
+	}
+
 	typeIcon := typeStyle.Render(task.Type.Icon())
 	var statusIcon string
 	if task.IsNote() {
@@ -544,7 +551,10 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Title
 	titleStyle := NormalStyle
-	if selected {
+	if node.IsContextNode {
+		// Context nodes are always dimmed
+		titleStyle = MutedStyle
+	} else if selected {
 		if task.Active {
 			titleStyle = BoldStyle.Foreground(lipgloss.Color("226"))
 		} else if task.Pinned {
@@ -557,10 +567,10 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	} else if task.Pinned {
 		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	}
-	if inSelection && !selected {
+	if inSelection && !selected && !node.IsContextNode {
 		titleStyle = SelectionStyle
 	}
-	if task.Status == models.StatusCancelled {
+	if task.Status == models.StatusCancelled && !node.IsContextNode {
 		titleStyle = CancelledStyle
 	}
 
@@ -581,6 +591,22 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Priority, due date, and dependency indicators (compact)
 	indicators := ""
+
+	// Section badge for context nodes (show which section the parent is actually in)
+	if node.IsContextNode {
+		sectionName := task.Section
+		if sectionName == "" {
+			sectionName = "Active"
+		}
+		indicators += SectionBadgeStyle.Render("@ "+sectionName) + " "
+	}
+
+	// Children in other sections badge (only for non-context nodes with children)
+	if !node.IsContextNode && len(task.Children) > 0 {
+		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
+			indicators += childBadge + " "
+		}
+	}
 
 	// Priority indicator (compact)
 	if !task.IsNote() && task.Priority <= 2 {
@@ -650,6 +676,13 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 		statusStyle = BlockedByDepsStyle
 	}
 
+	// Context nodes (parents shown for hierarchy context) are dimmed
+	if node.IsContextNode {
+		typeStyle = MutedStyle
+		statusStyle = MutedStyle
+		expandIcon = MutedStyle.Render(strings.TrimSuffix(expandIcon, " ")) + " "
+	}
+
 	typeIcon := typeStyle.Render(task.Type.Icon())
 	var statusIcon string
 	if task.IsNote() {
@@ -664,7 +697,10 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Title
 	titleStyle := NormalStyle
-	if selected {
+	if node.IsContextNode {
+		// Context nodes are always dimmed
+		titleStyle = MutedStyle
+	} else if selected {
 		if task.Active {
 			titleStyle = BoldStyle.Foreground(lipgloss.Color("226")) // Bright yellow
 		} else if task.Pinned {
@@ -677,10 +713,10 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	} else if task.Pinned {
 		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	}
-	if inSelection && !selected {
+	if inSelection && !selected && !node.IsContextNode {
 		titleStyle = SelectionStyle
 	}
-	if task.Status == models.StatusCancelled {
+	if task.Status == models.StatusCancelled && !node.IsContextNode {
 		titleStyle = CancelledStyle
 	}
 	title := titleStyle.Render(util.Truncate(task.Title, m.width-node.Level*2-40))
@@ -694,6 +730,22 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Priority, due date, and dependency indicators
 	indicators := ""
+
+	// Section badge for context nodes (show which section the parent is actually in)
+	if node.IsContextNode {
+		sectionName := task.Section
+		if sectionName == "" {
+			sectionName = "Active"
+		}
+		indicators += SectionBadgeStyle.Render("@ "+sectionName) + " "
+	}
+
+	// Children in other sections badge (only for non-context nodes with children)
+	if !node.IsContextNode && len(task.Children) > 0 {
+		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
+			indicators += childBadge + " "
+		}
+	}
 
 	// Priority indicator with level number (skip for notes)
 	if !task.IsNote() {
@@ -1066,4 +1118,31 @@ func (m *ProjectTreeModel) expandAncestors(task *models.Task) {
 		}
 		current = current.Parent
 	}
+}
+
+// renderChildrenInOtherSectionsBadge returns a badge showing how many children
+// are in sections hidden by the current view mode.
+func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task) string {
+	hiddenSections := m.getHiddenSectionsForViewMode()
+	if len(hiddenSections) == 0 {
+		return ""
+	}
+
+	counts, ok := m.childrenInOtherSections[task.ID]
+	if !ok || len(counts) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, section := range hiddenSections {
+		if count, exists := counts[section]; exists && count > 0 {
+			parts = append(parts, fmt.Sprintf("+%d %s", count, section))
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return ChildrenBadgeStyle.Render("[" + strings.Join(parts, ", ") + "]")
 }

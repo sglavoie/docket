@@ -72,10 +72,11 @@ type treeRefreshMsg struct{}
 
 // TreeNode represents a node in the task tree.
 type TreeNode struct {
-	Task     *models.Task
-	Level    int
-	Expanded bool
-	Visible  bool
+	Task          *models.Task
+	Level         int
+	Expanded      bool
+	Visible       bool
+	IsContextNode bool // True if visible only to show hierarchy context (parent in different section)
 }
 
 // ProjectTreeModel represents the project tree view.
@@ -132,6 +133,10 @@ type ProjectTreeModel struct {
 	// Filter bar state
 	filterBarEnabled bool           // Toggle filter bar visibility
 	filterCounts     map[string]int // Cached task counts per filter category
+
+	// Children in other sections cache (computed during calculateFilterCounts)
+	// Maps taskID -> sectionName -> count of descendants in that section
+	childrenInOtherSections map[string]map[string]int
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -163,6 +168,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		sidebarDependencySection: 0,
 		filterBarEnabled:         true, // Filter bar on by default
 		filterCounts:             make(map[string]int),
+		childrenInOtherSections:  make(map[string]map[string]int),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

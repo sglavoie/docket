@@ -329,6 +329,11 @@ var (
 				Foreground(lipgloss.Color("245")). // Gray text
 				Background(lipgloss.Color("236"))  // Dark gray background
 
+	// Children in other sections badge (shown on parent when children are hidden by view filter)
+	ChildrenBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("39")). // Blue (ColorPrimary) - info indicator
+				Background(lipgloss.Color("236")) // Dark gray background (matches SectionBadgeStyle)
+
 	// Pinned project style
 	PinnedProjectStyle = lipgloss.NewStyle().
 				Foreground(ColorSuccess).
