@@ -20,8 +20,7 @@ var (
 	// Title styles
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(ColorPrimary).
-			MarginBottom(1)
+			Foreground(ColorPrimary)
 
 	SubtitleStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary).

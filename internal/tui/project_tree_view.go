@@ -139,7 +139,12 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString("\n")
 	} else {
 		// Calculate available height for task list
-		availableHeight := m.height - 8
+		// Extra line needed when filter bar is enabled (filters on own line)
+		headerOffset := 7
+		if m.filterBarEnabled {
+			headerOffset = 8
+		}
+		availableHeight := m.height - headerOffset
 
 		// Determine visible range
 		startIdx := 0
@@ -411,7 +416,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		b.WriteString("\n")
 	} else {
 		// Calculate available height for task list
-		availableHeight := m.height - 8
+		// Extra line needed when filter bar is enabled (filters on own line)
+		headerOffset := 7
+		if m.filterBarEnabled {
+			headerOffset = 8
+		}
+		availableHeight := m.height - headerOffset
 
 		// Determine visible range
 		startIdx := 0
@@ -917,16 +927,18 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 }
 
 func (m *ProjectTreeModel) renderFilterBar() string {
-	var badges []string
-
-	// View mode indicator (always shown first, even when filter bar is disabled)
-	badges = append(badges, m.renderViewModeIndicator())
+	var result strings.Builder
 
 	if !m.filterBarEnabled {
 		// When filter bar is disabled, just show view mode indicator with hints
-		hints := MutedStyle.Render(" V:view A:active B:backlog I:inbox")
-		return strings.Join(badges, " ") + hints + "\n"
+		result.WriteString(m.renderViewModeIndicator())
+		result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox"))
+		result.WriteString("\n")
+		return result.String()
 	}
+
+	// Line 1: Filter badges (F1-F7)
+	var badges []string
 
 	// F1: Completed (toggle hiding completed tasks)
 	count := m.filterCounts["completed"]
@@ -994,10 +1006,15 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	active = m.filterDueDate != DueDateAll
 	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
 
-	// Add keybinding hints at the end
-	hints := MutedStyle.Render(" V:view A:active B:backlog I:inbox")
+	result.WriteString(strings.Join(badges, " "))
+	result.WriteString("\n")
 
-	return strings.Join(badges, " ") + hints + "\n"
+	// Line 2: View mode indicator with hints
+	result.WriteString(m.renderViewModeIndicator())
+	result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox"))
+	result.WriteString("\n")
+
+	return result.String()
 }
 
 // renderFilterBadge renders a single filter badge with key, name, count, and active state.
