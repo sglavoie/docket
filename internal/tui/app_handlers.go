@@ -1089,6 +1089,12 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 // processMessage routes a message through the app's handler chain.
 // Used by CommandPaletteExecuteMsg to process the inner message synchronously.
 func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
+	// Handle QuitMsg directly since it's not in the handler chains
+	if _, ok := msg.(QuitMsg); ok {
+		m.saveProjectTreeState()
+		m.quitting = true
+		return true, tea.Quit
+	}
 	if handled, cmd := m.handleProjectMessages(msg); handled {
 		return true, cmd
 	}

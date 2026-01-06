@@ -130,7 +130,7 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "quit",
 			Description: "Quit the application",
-			Shortcut:    "q",
+			Shortcut:    "ctrl+c",
 			Category:    CategoryNavigation,
 			Handler: func() tea.Msg {
 				return QuitMsg{}

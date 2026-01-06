@@ -374,13 +374,13 @@ func TestNewAppModelRegistersGlobalCommands(t *testing.T) {
 		t.Error("expected help command to have a handler")
 	}
 
-	// Verify quit command with shortcut "q"
+	// Verify quit command with shortcut "ctrl+c"
 	quitCmd, found := registry.GetByName("quit")
 	if !found {
 		t.Fatal("expected 'quit' command to be registered")
 	}
-	if quitCmd.Shortcut != "q" {
-		t.Errorf("expected quit command shortcut to be 'q', got '%s'", quitCmd.Shortcut)
+	if quitCmd.Shortcut != "ctrl+c" {
+		t.Errorf("expected quit command shortcut to be 'ctrl+c', got '%s'", quitCmd.Shortcut)
 	}
 	if quitCmd.Handler == nil {
 		t.Error("expected quit command to have a handler")
