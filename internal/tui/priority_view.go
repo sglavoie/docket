@@ -396,6 +396,22 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 		return m, nil
 
+	case "y":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleMsg{Task: pt.Task}
+			}
+		}
+		return m, nil
+
+	case "Y":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskDetailsMsg{Task: pt.Task}
+			}
+		}
+		return m, nil
+
 	case "?":
 		return m, func() tea.Msg {
 			return ShowHelpMsg{
@@ -773,6 +789,8 @@ func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 		{Category: "Actions", Key: "o", Description: "Reopen task (todo)"},
 		{Category: "Actions", Key: "x", Description: "Cancel task"},
 		{Category: "Actions", Key: "1-5", Description: "Set priority (1=highest)"},
+		{Category: "Actions", Key: "y", Description: "Copy task title"},
+		{Category: "Actions", Key: "Y", Description: "Copy task description"},
 		{Category: "View", Key: "Tab", Description: "Toggle waiting section"},
 		{Category: "View", Key: "r", Description: "Refresh"},
 		{Category: "View", Key: "?", Description: "Show help"},
