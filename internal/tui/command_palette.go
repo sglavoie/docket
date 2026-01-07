@@ -167,8 +167,11 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			continue
 		}
 
-		// Add tasks and collect tags/sections
+		// Add tasks and collect tags/sections (only active tasks)
 		for _, task := range project.Tasks {
+			if !task.Status.IsActive() {
+				continue
+			}
 			items = append(items, PaletteItem{
 				Name:        task.Title,
 				Description: fmt.Sprintf("#%d in %s", task.ShortID, project.Slug),
