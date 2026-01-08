@@ -106,28 +106,41 @@ func (m *ProjectTreeModel) updateVisibility() {
 // passesFilters checks if a node passes all current filters (view mode, status, etc.)
 // without considering parent visibility. This determines "intrinsic" visibility.
 func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
-	// Apply view mode filter (base filter before all others)
-	switch m.viewMode {
-	case ViewModeActive:
-		// Hide Inbox and Backlog tasks
-		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+	// Handle completion status based on view mode
+	if m.viewMode == ViewModeCompleted {
+		// In Completed view, ONLY show completed tasks
+		if !node.Task.IsComplete() {
 			return false
 		}
-	case ViewModeInbox:
-		// Only show Inbox tasks
-		if node.Task.Section != models.SectionInbox {
+		// Apply section filter for sub-filtering by original section
+		if len(m.filterSections) > 0 {
+			if !m.filterSections[node.Task.Section] {
+				return false
+			}
+		}
+	} else {
+		// In all other views, HIDE completed tasks
+		if node.Task.IsComplete() {
 			return false
 		}
-	case ViewModeBacklog:
-		// Only show Backlog tasks
-		if node.Task.Section != models.SectionBacklog {
-			return false
+		// Apply view mode section logic
+		switch m.viewMode {
+		case ViewModeActive:
+			// Hide Inbox and Backlog tasks
+			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+				return false
+			}
+		case ViewModeInbox:
+			// Only show Inbox tasks
+			if node.Task.Section != models.SectionInbox {
+				return false
+			}
+		case ViewModeBacklog:
+			// Only show Backlog tasks
+			if node.Task.Section != models.SectionBacklog {
+				return false
+			}
 		}
-	}
-
-	// Apply completion filter
-	if !m.showCompleted && node.Task.IsComplete() {
-		return false
 	}
 
 	// Apply type filter
@@ -155,7 +168,9 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 	}
 
 	// Apply section filter (OR logic: task must be in ANY selected section)
-	if len(m.filterSections) > 0 {
+	// In Completed view, section filter is already applied above for sub-filtering
+	// In other views, view mode already controls section visibility
+	if m.viewMode != ViewModeCompleted && len(m.filterSections) > 0 {
 		if !m.filterSections[node.Task.Section] {
 			return false
 		}

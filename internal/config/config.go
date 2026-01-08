@@ -24,7 +24,7 @@ type ProjectViewState struct {
 	ShowCompleted    bool     `json:"show_completed"`
 	SidebarEnabled   bool     `json:"sidebar_enabled"`     // Sidebar toggle state per project
 	FilterBarEnabled bool     `json:"filter_bar_enabled"`  // Filter bar toggle state per project
-	ViewMode         int      `json:"view_mode,omitempty"` // View mode: 0=Active, 1=Inbox, 2=Backlog
+	ViewMode         int      `json:"view_mode,omitempty"` // View mode: 0=Active, 1=Inbox, 2=Backlog, 3=Completed
 }
 
 // Config holds the application configuration.

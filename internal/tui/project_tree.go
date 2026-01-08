@@ -33,9 +33,10 @@ const (
 type ViewMode int
 
 const (
-	ViewModeActive  ViewMode = iota // Tasks not in Inbox or Backlog sections
-	ViewModeInbox                   // Only Inbox section tasks
-	ViewModeBacklog                 // Only Backlog section tasks
+	ViewModeActive    ViewMode = iota // Tasks not in Inbox or Backlog sections
+	ViewModeInbox                     // Only Inbox section tasks
+	ViewModeBacklog                   // Only Backlog section tasks
+	ViewModeCompleted                 // Only completed tasks (done or cancelled)
 )
 
 // String returns the display name for a view mode.
@@ -45,6 +46,8 @@ func (v ViewMode) String() string {
 		return "Inbox"
 	case ViewModeBacklog:
 		return "Backlog"
+	case ViewModeCompleted:
+		return "Completed"
 	default:
 		return "Active"
 	}
@@ -92,7 +95,6 @@ type ProjectTreeModel struct {
 	viewMode ViewMode
 
 	// Filter options
-	showCompleted  bool
 	filterType     models.TaskType
 	filterStatus   models.TaskStatus // filter by specific status
 	filterPriority int               // 0=all, 1=high only (<=2)
@@ -151,7 +153,6 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		config:                   cfg,
 		configManager:            manager,
 		cursor:                   0,
-		showCompleted:            false,
 		filterType:               "",
 		filterStatus:             "",
 		filterPriority:           0,

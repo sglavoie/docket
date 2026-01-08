@@ -219,10 +219,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case DependencyViewerSelectMsg:
 		m.popView()
 		if msg.Task != nil && m.projectTree != nil {
-			// If the task is completed and we're hiding completed tasks,
-			// toggle the filter so the task becomes visible
-			if msg.Task.IsComplete() && !m.projectTree.showCompleted {
-				m.projectTree.showCompleted = true
+			// If the task is completed, switch to Completed view so it's visible
+			if msg.Task.IsComplete() && m.projectTree.viewMode != ViewModeCompleted {
+				m.projectTree.viewMode = ViewModeCompleted
+				m.projectTree.updateVisibility()
 			}
 			m.projectTree.NavigateToTask(msg.Task)
 		}

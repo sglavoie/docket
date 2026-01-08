@@ -232,6 +232,12 @@ var (
 				Bold(true).
 				Padding(0, 1)
 
+	ViewModeCompletedStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("28")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

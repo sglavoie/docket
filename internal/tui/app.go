@@ -188,14 +188,14 @@ func (m *AppModel) registerGlobalCommands() {
 			},
 		},
 		{
-			Name:        "toggle completed",
-			Description: "Show/hide completed tasks",
-			Shortcut:    "d",
+			Name:        "view completed",
+			Description: "Switch to Completed view",
+			Shortcut:    "C",
 			Category:    CategoryFilters,
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.showCompleted = !m.projectTree.showCompleted
+					m.projectTree.viewMode = ViewModeCompleted
 					m.projectTree.updateVisibility()
 				}
 				return nil
@@ -226,7 +226,6 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.showCompleted = false
 					m.projectTree.filterType = ""
 					m.projectTree.filterStatus = ""
 					m.projectTree.filterPriority = 0
@@ -677,7 +676,6 @@ func (m *AppModel) saveProjectTreeState() {
 		FilterDueDate:    int(m.projectTree.filterDueDate),
 		SortField:        int(m.projectTree.sortField),
 		SortAscending:    m.projectTree.sortAscending,
-		ShowCompleted:    m.projectTree.showCompleted,
 		SidebarEnabled:   m.projectTree.sidebarEnabled,
 		FilterBarEnabled: m.projectTree.filterBarEnabled,
 		ViewMode:         int(m.projectTree.viewMode),
@@ -718,7 +716,6 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filterDueDate = DueDateFilter(state.FilterDueDate)
 	m.projectTree.sortField = SortField(state.SortField)
 	m.projectTree.sortAscending = state.SortAscending
-	m.projectTree.showCompleted = state.ShowCompleted
 	m.projectTree.sidebarEnabled = state.SidebarEnabled
 	m.projectTree.filterBarEnabled = state.FilterBarEnabled
 	m.projectTree.viewMode = ViewMode(state.ViewMode)

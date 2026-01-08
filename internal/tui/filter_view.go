@@ -68,16 +68,6 @@ func (m *FilterViewModel) buildFilterList() {
 	m.items = []FilterItem{}
 	keyNum := 1
 
-	if !m.projectTree.showCompleted {
-		m.items = append(m.items, FilterItem{
-			Name:       "Completed",
-			Value:      "hidden",
-			Key:        fmt.Sprintf("%d", keyNum),
-			FilterType: FilterCompleted,
-		})
-		keyNum++
-	}
-
 	if m.projectTree.filterType != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Type",
@@ -165,8 +155,6 @@ func (m *FilterViewModel) buildFilterList() {
 // clearFilter clears a specific filter type.
 func (m *FilterViewModel) clearFilter(filterType FilterType) {
 	switch filterType {
-	case FilterCompleted:
-		m.projectTree.showCompleted = true
 	case FilterTypeFilter:
 		m.projectTree.filterType = ""
 	case FilterStatusFilter:
@@ -188,7 +176,6 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 
 // clearAllFilters clears all active filters.
 func (m *FilterViewModel) clearAllFilters() {
-	m.projectTree.showCompleted = true
 	m.projectTree.filterType = ""
 	m.projectTree.filterStatus = ""
 	m.projectTree.filterPriority = 0

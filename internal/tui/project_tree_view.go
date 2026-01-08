@@ -188,9 +188,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	// Filter and sort status
 	b.WriteString("\n")
 	var filters []string
-	if !m.showCompleted {
-		filters = append(filters, "hiding completed")
-	}
 	if m.filterType != "" {
 		filters = append(filters, fmt.Sprintf("type: %s", m.filterType))
 	}
@@ -465,9 +462,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Filter status (compact)
 	b.WriteString("\n")
 	var filters []string
-	if !m.showCompleted {
-		filters = append(filters, "!done")
-	}
 	if m.filterType != "" {
 		filters = append(filters, string(m.filterType))
 	}
@@ -593,7 +587,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	indicators := ""
 
 	// Section badge for context nodes (show which section the parent is actually in)
-	if node.IsContextNode {
+	// Also show section badge in Completed view to indicate where the task was originally
+	if node.IsContextNode || m.viewMode == ViewModeCompleted {
 		sectionName := task.Section
 		if sectionName == "" {
 			sectionName = "Active"
@@ -732,7 +727,8 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	indicators := ""
 
 	// Section badge for context nodes (show which section the parent is actually in)
-	if node.IsContextNode {
+	// Also show section badge in Completed view to indicate where the task was originally
+	if node.IsContextNode || m.viewMode == ViewModeCompleted {
 		sectionName := task.Section
 		if sectionName == "" {
 			sectionName = "Active"
@@ -879,7 +875,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Filters
 		{Key: "/", Description: "Search tasks", Category: "Filters"},
-		{Key: "d", Description: "Toggle completed", Category: "Filters"},
+		{Key: "C", Description: "Switch to Completed view", Category: "Filters"},
 		{Key: "P", Description: "Filter by priority", Category: "Filters"},
 		{Key: "t", Description: "Filter by type", Category: "Filters"},
 		{Key: "S", Description: "Filter by status", Category: "Filters"},
@@ -910,7 +906,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Filter Bar
 		{Key: "F", Description: "Toggle filter bar", Category: "Filter Bar"},
-		{Key: "F1", Description: "Toggle completed filter", Category: "Filter Bar"},
+		{Key: "F1", Description: "Switch to Completed view", Category: "Filter Bar"},
 		{Key: "F2", Description: "Toggle high priority filter", Category: "Filter Bar"},
 		{Key: "F3", Description: "Cycle type filter", Category: "Filter Bar"},
 		{Key: "F4", Description: "Cycle status filter", Category: "Filter Bar"},
@@ -933,10 +929,11 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 // renderFilterBar renders the filter toggle bar with task counts.
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
-	// Count inbox, backlog, and active items (incomplete only)
-	var inboxCount, backlogCount, activeCount int
+	// Count inbox, backlog, active, and completed items
+	var inboxCount, backlogCount, activeCount, completedCount int
 	for _, task := range m.project.Tasks {
 		if task.IsComplete() {
+			completedCount++
 			continue
 		}
 		if task.Section == models.SectionInbox && task.IsRoot() {
@@ -975,6 +972,14 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(backlogLabel))
 	}
 
+	// Completed view
+	completedLabel := fmt.Sprintf("Completed[%d]", completedCount)
+	if m.viewMode == ViewModeCompleted {
+		parts = append(parts, ViewModeCompletedStyle.Render(completedLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(completedLabel))
+	}
+
 	return strings.Join(parts, " ")
 }
 
@@ -984,7 +989,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	if !m.filterBarEnabled {
 		// When filter bar is disabled, just show view mode indicator with hints
 		result.WriteString(m.renderViewModeIndicator())
-		result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox"))
+		result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox C:completed"))
 		result.WriteString("\n")
 		return result.String()
 	}
@@ -992,9 +997,9 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	// Line 1: Filter badges (F1-F7)
 	var badges []string
 
-	// F1: Completed (toggle hiding completed tasks)
+	// F1: Completed view (switch to Completed view)
 	count := m.filterCounts["completed"]
-	active := !m.showCompleted // Active when hiding completed
+	active := m.viewMode == ViewModeCompleted
 	badges = append(badges, m.renderFilterBadge("F1", "Done", count, active))
 
 	// F2: High Priority
@@ -1063,7 +1068,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 
 	// Line 2: View mode indicator with hints
 	result.WriteString(m.renderViewModeIndicator())
-	result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox"))
+	result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox C:completed"))
 	result.WriteString("\n")
 
 	return result.String()

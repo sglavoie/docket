@@ -18,7 +18,8 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.filterBarEnabled = !m.filterBarEnabled
 		return true, nil
 	case "f1":
-		m.showCompleted = !m.showCompleted
+		// F1 now switches to Completed view (since completed tasks have their own view)
+		m.viewMode = ViewModeCompleted
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -63,17 +64,10 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// handleFilterKeys handles d, P, t, S, T, N, u - filter operations.
+// handleFilterKeys handles P, t, S, T, N, u - filter operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	switch key {
-	case "d":
-		m.showCompleted = !m.showCompleted
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-
 	case "P":
 		if m.filterPriority == 0 {
 			m.filterPriority = 1
@@ -136,13 +130,21 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 	m.updateVisibility()
 }
 
-// handleViewModeKeys handles V, A, B, I - view mode and task section operations.
+// handleViewModeKeys handles V, A, B, I, C - view mode and task section operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleViewModeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "V":
-		// Cycle through views: Active -> Inbox -> Backlog -> Active
-		m.viewMode = (m.viewMode + 1) % 3
+		// Cycle through views: Active -> Inbox -> Backlog -> Completed -> Active
+		m.viewMode = (m.viewMode + 1) % 4
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
+
+	case "C":
+		// Switch directly to Completed view
+		m.viewMode = ViewModeCompleted
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
