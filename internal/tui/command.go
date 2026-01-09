@@ -26,5 +26,6 @@ type Command struct {
 	Shortcut    string          // Keyboard shortcut if any (e.g., "n", "ctrl+n")
 	Category    CommandCategory // Logical grouping for organization
 	Views       []ViewType      // Views where this command is available (empty = global/all views)
+	Aliases     []string        // Alternative names for discoverability (e.g., "create task", "add task")
 	Handler     func() tea.Msg  // Execution closure returning a BubbleTea message
 }

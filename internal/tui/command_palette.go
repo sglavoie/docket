@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -96,6 +97,12 @@ type PaletteAction struct {
 	Handler func() tea.Msg // Returns message when the action is selected
 }
 
+// filteredPaletteItem wraps a PaletteItem with its match positions for highlighting.
+type filteredPaletteItem struct {
+	Item          PaletteItem
+	NamePositions []int // Positions of matched characters in Name
+}
+
 // CommandPaletteModel provides a fullscreen fuzzy search palette for commands.
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
@@ -111,7 +118,7 @@ type CommandPaletteModel struct {
 
 	// Items - using PaletteItem for unified representation of all searchable types
 	allItems      []PaletteItem
-	filteredItems []PaletteItem
+	filteredItems []filteredPaletteItem
 
 	// Navigation state
 	cursor int
@@ -123,15 +130,17 @@ type CommandPaletteModel struct {
 	actionItem       PaletteItem // The item whose actions are being shown
 
 	// Dimensions
-	width  int
-	height int
+	width        int
+	height       int
+	listWidth    int
+	previewWidth int
 }
 
 // NewCommandPaletteModel creates a new command palette model.
 // The currentView parameter determines which commands are shown (context-aware filtering).
 func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search or filter: :cmd :task :prj :tag :sec"
+	searchInput.Placeholder = "Search (use -term to exclude) :cmd :task :prj :tag :sec"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -145,8 +154,11 @@ func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry, curre
 	}
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
-	// Start with all items visible (no filter applied)
-	m.filteredItems = m.allItems
+	// Start with all items visible (no filter applied, no highlight positions)
+	m.filteredItems = make([]filteredPaletteItem, len(m.allItems))
+	for i, item := range m.allItems {
+		m.filteredItems[i] = filteredPaletteItem{Item: item}
+	}
 	return m
 }
 
@@ -160,6 +172,16 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.searchInput.Width = width - 4
+
+	// Calculate split pane widths: 55% list, 45% preview
+	m.listWidth = width * 55 / 100
+	if m.listWidth < 35 {
+		m.listWidth = 35
+	}
+	if m.listWidth > width-25 {
+		m.listWidth = width - 25
+	}
+	m.previewWidth = width - m.listWidth - 1 // -1 for border
 }
 
 // loadAllItems aggregates commands, tasks, projects, tags, and sections into PaletteItems.
@@ -181,9 +203,9 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
-	// Track unique tags and sections across all projects
-	uniqueTags := make(map[string]struct{})
-	uniqueSections := make(map[string]struct{})
+	// Track tags and sections with task counts across all projects
+	tagCounts := make(map[string]int)
+	sectionCounts := make(map[string]int)
 
 	// Load tasks, projects, tags, and sections from active projects
 	projects := m.config.GetActiveProjects()
@@ -214,33 +236,45 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 				Project:     project,
 			})
 
-			// Collect unique tags
+			// Count tasks per tag
 			for _, tag := range task.Tags {
-				uniqueTags[tag] = struct{}{}
+				tagCounts[tag]++
 			}
 
-			// Collect unique sections
+			// Count tasks per section
 			if task.Section != "" {
-				uniqueSections[task.Section] = struct{}{}
+				sectionCounts[task.Section]++
 			}
 		}
 	}
 
-	// Add unique tags as searchable items
-	for tag := range uniqueTags {
+	// Add unique tags as searchable items with task counts
+	for tag, count := range tagCounts {
+		desc := "Tag"
+		if count == 1 {
+			desc = "Tag (1 task)"
+		} else {
+			desc = fmt.Sprintf("Tag (%d tasks)", count)
+		}
 		items = append(items, PaletteItem{
 			Name:        tag,
-			Description: "Tag",
+			Description: desc,
 			Category:    ItemCategoryTags,
 			Tag:         tag,
 		})
 	}
 
-	// Add unique sections as searchable items
-	for section := range uniqueSections {
+	// Add unique sections as searchable items with task counts
+	for section, count := range sectionCounts {
+		desc := "Section"
+		if count == 1 {
+			desc = "Section (1 task)"
+		} else {
+			desc = fmt.Sprintf("Section (%d tasks)", count)
+		}
 		items = append(items, PaletteItem{
 			Name:        section,
-			Description: "Section",
+			Description: desc,
 			Category:    ItemCategorySections,
 			Section:     section,
 		})
@@ -319,8 +353,40 @@ func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []Palette
 	return sorted
 }
 
+// parseSearchTerms splits a query into positive and negative terms.
+// Terms prefixed with "-" are negative (exclude items matching them).
+// Returns (positiveTerms, negativeTerms).
+func parseSearchTerms(query string) ([]string, []string) {
+	terms := strings.Fields(query)
+	var positive, negative []string
+
+	for _, term := range terms {
+		if strings.HasPrefix(term, "-") && len(term) > 1 {
+			// Negative term - remove the "-" prefix
+			negative = append(negative, term[1:])
+		} else if term != "-" {
+			// Positive term (ignore standalone "-")
+			positive = append(positive, term)
+		}
+	}
+
+	return positive, negative
+}
+
+// itemMatchesNegativeTerms returns true if the item matches any negative term.
+func (m *CommandPaletteModel) itemMatchesNegativeTerms(item PaletteItem, negativeTerms []string) bool {
+	for _, term := range negativeTerms {
+		// Check if term matches name or description
+		if fuzzy.Match(item.Name, term) || fuzzy.Match(item.Description, term) {
+			return true
+		}
+	}
+	return false
+}
+
 // filterItems filters items based on the current search query using category-weighted fuzzy scoring.
 // Supports category prefix filtering (e.g., ":cmd help" filters to commands matching "help").
+// Supports negation with "-" prefix (e.g., "task -bug" excludes items matching "bug").
 func (m *CommandPaletteModel) filterItems() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
@@ -340,24 +406,47 @@ func (m *CommandPaletteModel) filterItems() {
 		itemsToSearch = filtered
 	}
 
-	// Empty search query shows all (filtered) items sorted by category
+	// Empty search query shows all (filtered) items sorted by category (no highlighting)
 	if searchQuery == "" {
-		m.filteredItems = m.sortItemsByCategory(itemsToSearch)
+		sorted := m.sortItemsByCategory(itemsToSearch)
+		m.filteredItems = make([]filteredPaletteItem, len(sorted))
+		for i, item := range sorted {
+			m.filteredItems[i] = filteredPaletteItem{Item: item}
+		}
 		m.cursor = 0
 		return
 	}
 
-	// Score each item and collect matches
+	// Parse positive and negative terms
+	positiveTerms, negativeTerms := parseSearchTerms(searchQuery)
+
+	// Build the positive query string for scoring
+	positiveQuery := strings.Join(positiveTerms, " ")
+
+	// Score each item and collect matches with positions
 	type scoredItem struct {
-		item  PaletteItem
-		score int
+		item          PaletteItem
+		score         int
+		namePositions []int
 	}
 	var scored []scoredItem
 
 	for _, item := range itemsToSearch {
-		score := m.scoreItem(item, searchQuery)
+		// Skip items that match any negative term
+		if len(negativeTerms) > 0 && m.itemMatchesNegativeTerms(item, negativeTerms) {
+			continue
+		}
+
+		// If only negative terms, include all non-excluded items
+		if positiveQuery == "" {
+			scored = append(scored, scoredItem{item: item, score: 1})
+			continue
+		}
+
+		// Score against positive terms
+		score, positions := m.scoreItemWithPositions(item, positiveQuery)
 		if score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score})
+			scored = append(scored, scoredItem{item: item, score: score, namePositions: positions})
 		}
 	}
 
@@ -366,10 +455,13 @@ func (m *CommandPaletteModel) filterItems() {
 		return scored[i].score > scored[j].score
 	})
 
-	// Extract sorted results
-	m.filteredItems = make([]PaletteItem, len(scored))
+	// Extract sorted results with positions
+	m.filteredItems = make([]filteredPaletteItem, len(scored))
 	for i, s := range scored {
-		m.filteredItems[i] = s.item
+		m.filteredItems[i] = filteredPaletteItem{
+			Item:          s.item,
+			NamePositions: s.namePositions,
+		}
 	}
 
 	// Reset cursor if out of bounds
@@ -386,25 +478,52 @@ func (m *CommandPaletteModel) filterItems() {
 // Commands receive 3x weight, projects 2x, tasks/tags/sections 1x.
 // Recently selected items receive an additional boost.
 func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
-	// Score against name (primary match target)
-	nameScore := fuzzy.ScoreTerms(item.Name, query)
+	score, _ := m.scoreItemWithPositions(item, query)
+	return score
+}
+
+// scoreItemWithPositions returns a category-weighted fuzzy match score and match positions.
+// Returns 0 and nil if no match. Higher scores indicate better matches.
+// Positions are for the name field only (primary display target).
+// For commands, also scores against aliases for better discoverability.
+func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query string) (int, []int) {
+	// Score against name (primary match target) with positions
+	nameScore, namePositions := fuzzy.ScoreTermsWithPositions(item.Name, query)
 
 	// Score against description (secondary match target)
 	descScore := fuzzy.ScoreTerms(item.Description, query)
 
-	// Use the best score between name and description
+	// For commands, also score against aliases
+	aliasScore := 0
+	if item.Category == ItemCategoryCommands && item.Command != nil {
+		for _, alias := range item.Command.Aliases {
+			score := fuzzy.ScoreTerms(alias, query)
+			if score > aliasScore {
+				aliasScore = score
+			}
+		}
+	}
+
+	// Use the best score between name, description, and aliases
 	bestScore := nameScore
+	var positions []int
 	if descScore > bestScore {
 		bestScore = descScore
+		positions = nil // Description matched better, don't highlight name
+	} else if aliasScore > bestScore {
+		bestScore = aliasScore
+		positions = nil // Alias matched better, don't highlight name
+	} else if nameScore > 0 {
+		positions = namePositions
 	}
 
 	// If name matched, give it extra weight (similar to GlobalSearchModel's title weighting)
-	if nameScore > 0 && nameScore >= descScore {
+	if nameScore > 0 && nameScore >= descScore && nameScore >= aliasScore {
 		bestScore = nameScore * 2
 	}
 
 	if bestScore == 0 {
-		return 0
+		return 0, nil
 	}
 
 	// Apply category weight multiplier
@@ -415,7 +534,7 @@ func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
 		score *= recentBoostMultiplier
 	}
 
-	return score
+	return score, positions
 }
 
 // isRecentSelection checks if an item appears in the recent selections list.
@@ -503,13 +622,13 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 	case "enter":
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			return m.executeItem(m.filteredItems[m.cursor])
+			return m.executeItem(m.filteredItems[m.cursor].Item)
 		}
 		return m, nil
 	case "tab":
 		// Enter action mode for non-command items
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-			item := m.filteredItems[m.cursor]
+			item := m.filteredItems[m.cursor].Item
 			if item.Category != ItemCategoryCommands {
 				actions := m.getActionsForItem(item)
 				if len(actions) > 0 {
@@ -547,6 +666,17 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			m.cursor = 0
 		}
 		return m, nil
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		// Direct number jump when input is empty or only category prefix
+		if m.isNumberJumpEnabled() {
+			idx := int(msg.String()[0] - '1') // "1" -> 0, "9" -> 8
+			if idx < len(m.filteredItems) {
+				return m.executeItem(m.filteredItems[idx].Item)
+			}
+			return m, nil
+		}
+		// Otherwise, fall through to default (add to search)
+		fallthrough
 	default:
 		// Update search input and filter items
 		var cmd tea.Cmd
@@ -554,6 +684,18 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		m.filterItems()
 		return m, cmd
 	}
+}
+
+// isNumberJumpEnabled returns true if number keys should trigger direct selection.
+// This is enabled when the search input is empty or contains only a category prefix.
+func (m *CommandPaletteModel) isNumberJumpEnabled() bool {
+	query := strings.TrimSpace(m.searchInput.Value())
+	if query == "" {
+		return true
+	}
+	// Check if query is just a category prefix (e.g., ":cmd", ":task ")
+	_, searchQuery := m.parseQueryPrefix(query)
+	return searchQuery == ""
 }
 
 // updateActionMode handles key events when showing inline actions for an item.
@@ -970,13 +1112,22 @@ func (m *CommandPaletteModel) View() string {
 		paneHeight = 5
 	}
 
-	listPane := lipgloss.NewStyle().
-		Width(m.width - 2).
+	// Split pane: list on left, preview on right
+	previewContent := m.renderPreview()
+
+	listPane := TaskJumperListStyle.
+		Width(m.listWidth).
 		Height(paneHeight).
 		MaxHeight(paneHeight).
 		Render(listContent)
 
-	b.WriteString(listPane)
+	previewPane := TaskJumperPreviewStyle.
+		Width(m.previewWidth).
+		Height(paneHeight).
+		MaxHeight(paneHeight).
+		Render(previewContent)
+
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
 	b.WriteString("\n")
 
 	// Footer with controls - different for each mode
@@ -995,8 +1146,8 @@ func (m *CommandPaletteModel) View() string {
 func (m *CommandPaletteModel) buildFooter() string {
 	// Count items by category in the filtered results
 	counts := make(map[ItemCategory]int)
-	for _, item := range m.filteredItems {
-		counts[item.Category]++
+	for _, filtered := range m.filteredItems {
+		counts[filtered.Item.Category]++
 	}
 
 	// Build count summary (only non-zero categories)
@@ -1144,7 +1295,8 @@ func (m *CommandPaletteModel) renderItemList() string {
 	linesRendered := 0
 
 	for i := scrollOffset; i < len(m.filteredItems) && linesRendered < maxVisible; i++ {
-		item := m.filteredItems[i]
+		filtered := m.filteredItems[i]
+		item := filtered.Item
 
 		// Insert category header when category changes (only in browse mode)
 		if showHeaders && item.Category != currentCategory {
@@ -1167,7 +1319,12 @@ func (m *CommandPaletteModel) renderItemList() string {
 			}
 		}
 
-		line := m.renderPaletteItem(item, i == m.cursor, contentWidth)
+		// Pass the index for number hint display (only first 9 items when jump is enabled)
+		numberHint := -1
+		if m.isNumberJumpEnabled() && i < 9 {
+			numberHint = i + 1 // 1-9 for first 9 items
+		}
+		line := m.renderPaletteItemWithHighlight(filtered, i == m.cursor, contentWidth, numberHint)
 		b.WriteString(line)
 		b.WriteString("\n")
 		linesRendered++
@@ -1187,18 +1344,453 @@ func (m *CommandPaletteModel) renderItemList() string {
 	return b.String()
 }
 
+// renderPreview renders the preview pane for the selected item.
+func (m *CommandPaletteModel) renderPreview() string {
+	// In action mode, show action help
+	if m.actionMode {
+		return m.renderActionPreview()
+	}
+
+	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
+		return MutedStyle.Render("No item selected.")
+	}
+
+	item := m.filteredItems[m.cursor].Item
+
+	switch item.Category {
+	case ItemCategoryCommands:
+		return m.renderCommandPreview(item)
+	case ItemCategoryTasks:
+		return m.renderTaskPreview(item)
+	case ItemCategoryProjects:
+		return m.renderProjectPreview(item)
+	case ItemCategoryTags:
+		return m.renderTagPreview(item)
+	case ItemCategorySections:
+		return m.renderSectionPreview(item)
+	default:
+		return MutedStyle.Render("Unknown item type.")
+	}
+}
+
+// renderCommandPreview shows details for a command.
+func (m *CommandPaletteModel) renderCommandPreview(item PaletteItem) string {
+	if item.Command == nil {
+		return MutedStyle.Render("No command details.")
+	}
+	cmd := item.Command
+	var b strings.Builder
+
+	// Header
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(cmd.Name))
+	b.WriteString("\n\n")
+
+	// Category
+	b.WriteString(MutedStyle.Render("Category: "))
+	b.WriteString(string(cmd.Category))
+	b.WriteString("\n")
+
+	// Shortcut
+	if cmd.Shortcut != "" {
+		b.WriteString(MutedStyle.Render("Shortcut: "))
+		b.WriteString(HelpKeyStyle.Render(cmd.Shortcut))
+		b.WriteString("\n")
+	}
+
+	// Description
+	if cmd.Description != "" {
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Description"))
+		b.WriteString("\n")
+		b.WriteString(cmd.Description)
+		b.WriteString("\n")
+	}
+
+	// Aliases
+	if len(cmd.Aliases) > 0 {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Also searchable as: "))
+		b.WriteString(strings.Join(cmd.Aliases, ", "))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderTaskPreview shows details for a task.
+func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
+	if item.Task == nil {
+		return MutedStyle.Render("No task details.")
+	}
+	task := item.Task
+	var b strings.Builder
+
+	// Project header if available
+	if item.Project != nil {
+		b.WriteString(MutedStyle.Render("Project: "))
+		b.WriteString(BoldStyle.Render(item.Project.Name))
+		b.WriteString("\n\n")
+	}
+
+	// Header with type and title
+	typeStyle := GetTypeStyle(string(task.Type))
+	header := fmt.Sprintf("%s #%d: %s",
+		typeStyle.Render(task.Type.HeadingPrefix()),
+		task.ShortID,
+		task.Title)
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
+	b.WriteString("\n\n")
+
+	// Status
+	statusStyle := GetStatusStyle(string(task.Status))
+	b.WriteString(fmt.Sprintf("%s %s %s\n",
+		MutedStyle.Render("Status:"),
+		statusStyle.Render(task.Status.Icon()),
+		statusStyle.Render(string(task.Status))))
+
+	// Priority
+	priorityStyle := NormalStyle
+	if task.Priority <= 2 {
+		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	}
+	b.WriteString(fmt.Sprintf("%s %s\n",
+		MutedStyle.Render("Priority:"),
+		priorityStyle.Render(fmt.Sprintf("%d", task.Priority))))
+
+	// Tags
+	if len(task.Tags) > 0 {
+		tagStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
+		tags := make([]string, len(task.Tags))
+		for i, tag := range task.Tags {
+			tags[i] = tagStyle.Render(tag)
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Tags:"),
+			strings.Join(tags, ", ")))
+	}
+
+	// Section
+	if task.Section != "" {
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Section:"),
+			task.Section))
+	}
+
+	// Due date
+	if task.DueDate != nil {
+		dueStyle := DueDateStyle
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		if dueDay.Before(today) {
+			dueStyle = OverdueStyle
+		} else if dueDay.Equal(today) {
+			dueStyle = DueTodayStyle
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Due:"),
+			dueStyle.Render(task.DueDate.Format(util.DateFormat))))
+	}
+
+	// Parent reference
+	if task.Parent != nil {
+		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Parent:"),
+			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10))))
+	}
+
+	// Subtasks count
+	if len(task.Children) > 0 {
+		completed := 0
+		for _, child := range task.Children {
+			if child.Status.IsComplete() {
+				completed++
+			}
+		}
+		b.WriteString(fmt.Sprintf("%s %d/%d done\n",
+			MutedStyle.Render("Subtasks:"),
+			completed, len(task.Children)))
+	}
+
+	// Description (truncated)
+	if task.Description != "" {
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Description"))
+		b.WriteString("\n")
+		desc := util.Truncate(task.Description, m.previewWidth*3) // Allow ~3 lines
+		b.WriteString(desc)
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderProjectPreview shows details for a project.
+func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
+	if item.Project == nil {
+		return MutedStyle.Render("No project details.")
+	}
+	project := item.Project
+	var b strings.Builder
+
+	// Header
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(project.Name))
+	b.WriteString("\n\n")
+
+	// Slug
+	b.WriteString(MutedStyle.Render("Slug: "))
+	b.WriteString(project.Slug)
+	b.WriteString("\n")
+
+	// Context
+	if project.Context != "" {
+		b.WriteString(MutedStyle.Render("Context: "))
+		b.WriteString(project.Context)
+		b.WriteString("\n")
+	}
+
+	// Description
+	if project.Description != "" {
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Description"))
+		b.WriteString("\n")
+		b.WriteString(util.Truncate(project.Description, m.previewWidth*2))
+		b.WriteString("\n")
+	}
+
+	// Task counts (if loaded)
+	if len(project.Tasks) > 0 {
+		active, completed := 0, 0
+		for _, task := range project.Tasks {
+			if task.Status.IsComplete() {
+				completed++
+			} else {
+				active++
+			}
+		}
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Tasks: "))
+		b.WriteString(fmt.Sprintf("%d active, %d completed", active, completed))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderTagPreview shows tasks with this tag.
+func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
+	if item.Tag == "" {
+		return MutedStyle.Render("No tag details.")
+	}
+	var b strings.Builder
+
+	// Header
+	tagStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(tagStyle.Render("#" + item.Tag)))
+	b.WriteString("\n\n")
+
+	// Find tasks with this tag
+	var tasksWithTag []PaletteItem
+	for _, fi := range m.filteredItems {
+		if fi.Item.Category == ItemCategoryTasks && fi.Item.Task != nil {
+			for _, tag := range fi.Item.Task.Tags {
+				if tag == item.Tag {
+					tasksWithTag = append(tasksWithTag, fi.Item)
+					break
+				}
+			}
+		}
+	}
+
+	if len(tasksWithTag) == 0 {
+		b.WriteString(MutedStyle.Render("No active tasks with this tag."))
+		return b.String()
+	}
+
+	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Tasks (%d)", len(tasksWithTag))))
+	b.WriteString("\n")
+
+	// Show up to 5 tasks
+	maxShow := 5
+	if len(tasksWithTag) < maxShow {
+		maxShow = len(tasksWithTag)
+	}
+	for i := 0; i < maxShow; i++ {
+		task := tasksWithTag[i].Task
+		typeStyle := GetTypeStyle(string(task.Type))
+		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
+			typeStyle.Render(task.Type.Icon()),
+			task.ShortID,
+			util.Truncate(task.Title, m.previewWidth-15)))
+	}
+	if len(tasksWithTag) > maxShow {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(tasksWithTag)-maxShow)))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderSectionPreview shows tasks in this section.
+func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
+	if item.Section == "" {
+		return MutedStyle.Render("No section details.")
+	}
+	var b strings.Builder
+
+	// Header
+	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(sectionStyle.Render("§ " + item.Section)))
+	b.WriteString("\n\n")
+
+	// Find tasks in this section
+	var tasksInSection []PaletteItem
+	for _, fi := range m.filteredItems {
+		if fi.Item.Category == ItemCategoryTasks && fi.Item.Task != nil {
+			if fi.Item.Task.Section == item.Section {
+				tasksInSection = append(tasksInSection, fi.Item)
+			}
+		}
+	}
+
+	if len(tasksInSection) == 0 {
+		b.WriteString(MutedStyle.Render("No active tasks in this section."))
+		return b.String()
+	}
+
+	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Tasks (%d)", len(tasksInSection))))
+	b.WriteString("\n")
+
+	// Show up to 5 tasks
+	maxShow := 5
+	if len(tasksInSection) < maxShow {
+		maxShow = len(tasksInSection)
+	}
+	for i := 0; i < maxShow; i++ {
+		task := tasksInSection[i].Task
+		typeStyle := GetTypeStyle(string(task.Type))
+		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
+			typeStyle.Render(task.Type.Icon()),
+			task.ShortID,
+			util.Truncate(task.Title, m.previewWidth-15)))
+	}
+	if len(tasksInSection) > maxShow {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(tasksInSection)-maxShow)))
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderActionPreview shows help for the current action.
+func (m *CommandPaletteModel) renderActionPreview() string {
+	var b strings.Builder
+
+	// Show item context
+	b.WriteString(SubtitleStyle.Render("Acting on:"))
+	b.WriteString("\n")
+	b.WriteString(BoldStyle.Render(m.actionItem.Name))
+	b.WriteString("\n")
+	if m.actionItem.Description != "" {
+		b.WriteString(MutedStyle.Render(m.actionItem.Description))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	// Show available actions with hints
+	b.WriteString(SubtitleStyle.Render("Available Actions:"))
+	b.WriteString("\n")
+	for _, action := range m.availableActions {
+		hint := ""
+		if action.KeyHint != "" {
+			hint = fmt.Sprintf(" [%s]", action.KeyHint)
+		}
+		b.WriteString(fmt.Sprintf("  %s %s%s\n",
+			action.Icon,
+			action.Name,
+			MutedStyle.Render(hint)))
+	}
+
+	return b.String()
+}
+
 // renderCategoryHeader renders a section header for a category.
 func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
 	name := getCategoryDisplayName(cat)
 	// Count items in this category
 	count := 0
-	for _, item := range m.filteredItems {
-		if item.Category == cat {
+	for _, filtered := range m.filteredItems {
+		if filtered.Item.Category == cat {
 			count++
 		}
 	}
 	header := fmt.Sprintf("── %s (%d) ", name, count)
 	return MutedStyle.Render(header)
+}
+
+// renderPaletteItemWithHighlight renders a palette item with match highlighting.
+// numberHint is 1-9 for items that can be selected with number keys, or -1 to hide.
+func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPaletteItem, selected bool, width int, numberHint int) string {
+	item := filtered.Item
+
+	// Cursor/number indicator (2 chars)
+	cursor := "  "
+	if selected {
+		cursor = "> "
+	} else if numberHint > 0 && numberHint <= 9 {
+		// Show number hint in muted style
+		cursor = MutedStyle.Render(fmt.Sprintf("%d ", numberHint))
+	}
+
+	// Category badge with color (5-6 chars including brackets)
+	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category)
+
+	// Shortcut string for right alignment
+	shortcutText := ""
+	shortcutLen := 0
+	if item.Shortcut != "" {
+		shortcutText = item.Shortcut
+		shortcutLen = len(shortcutText) + 2
+	} else if item.Category != ItemCategoryCommands {
+		shortcutText = "Tab"
+		shortcutLen = 5
+	}
+
+	// Calculate space for name + extra info + description
+	fixedWidth := 2 + catBadgeLen + 1 + shortcutLen + 2
+	remainingWidth := width - fixedWidth
+	if remainingWidth < 20 {
+		remainingWidth = 20
+	}
+
+	// Build the left content with highlighting
+	leftContent, leftLen := m.renderItemContentWithHighlight(item, filtered.NamePositions, remainingWidth)
+
+	// Calculate gap to right-align shortcut
+	gap := remainingWidth - leftLen
+	if gap < 1 {
+		gap = 1
+	}
+
+	// Build the complete line
+	var line strings.Builder
+	line.WriteString(cursor)
+	line.WriteString(catBadge)
+	line.WriteString(" ")
+	line.WriteString(leftContent)
+
+	if shortcutText != "" {
+		line.WriteString(strings.Repeat(" ", gap))
+		line.WriteString(HelpKeyStyle.Render(shortcutText))
+	}
+
+	result := line.String()
+	if selected {
+		result = TaskJumperSelectedStyle.Render(result)
+	}
+
+	return result
 }
 
 // renderPaletteItem renders a single palette item row.
@@ -1214,12 +1806,17 @@ func (m *CommandPaletteModel) renderPaletteItem(item PaletteItem, selected bool,
 	// Category badge with color (5-6 chars including brackets)
 	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category)
 
-	// Shortcut string for right alignment (commands only, typically)
+	// Shortcut string for right alignment
+	// Commands show their keyboard shortcut, other items show "Tab" hint for actions
 	shortcutText := ""
 	shortcutLen := 0
 	if item.Shortcut != "" {
 		shortcutText = item.Shortcut
 		shortcutLen = len(shortcutText) + 2 // +2 for spacing
+	} else if item.Category != ItemCategoryCommands {
+		// Show "Tab" hint for non-command items that have actions
+		shortcutText = "Tab"
+		shortcutLen = 5 // "Tab" + spacing
 	}
 
 	// Calculate space for name + extra info + description
@@ -1308,14 +1905,145 @@ func getCategoryDisplayName(cat ItemCategory) string {
 	}
 }
 
+// getDueDateIndicator returns a colored indicator for task due date urgency.
+// Returns empty string if no due date or not urgent.
+func getDueDateIndicator(task *models.Task) (string, int) {
+	if task == nil || task.DueDate == nil {
+		return "", 0
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+
+	if dueDay.Before(today) {
+		// Overdue - red exclamation
+		return OverdueStyle.Render("!") + " ", 2
+	}
+	if dueDay.Equal(today) {
+		// Due today - orange exclamation
+		return DueTodayStyle.Render("!") + " ", 2
+	}
+	weekFromNow := today.AddDate(0, 0, 7)
+	if dueDay.Before(weekFromNow) {
+		// Due this week - yellow tilde
+		return lipgloss.NewStyle().Foreground(ColorWarning).Render("~") + " ", 2
+	}
+
+	return "", 0
+}
+
+// HighlightStyle is used to highlight matched characters in search results.
+var HighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Bold(true)
+
+// highlightText renders text with certain character positions highlighted.
+// Positions are rune indices (0-based) that should be highlighted.
+func highlightText(text string, positions []int, baseStyle lipgloss.Style) string {
+	if len(positions) == 0 {
+		return baseStyle.Render(text)
+	}
+
+	// Create a set for quick lookup
+	posSet := make(map[int]struct{})
+	for _, p := range positions {
+		posSet[p] = struct{}{}
+	}
+
+	var result strings.Builder
+	runes := []rune(text)
+
+	for i, r := range runes {
+		char := string(r)
+		if _, highlight := posSet[i]; highlight {
+			result.WriteString(HighlightStyle.Render(char))
+		} else {
+			result.WriteString(baseStyle.Render(char))
+		}
+	}
+
+	return result.String()
+}
+
+// renderItemContentWithHighlight renders item content with match highlighting on the name.
+func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, namePositions []int, maxWidth int) (string, int) {
+	var content strings.Builder
+	totalLen := 0
+
+	// Task-specific: show due date indicator and type/status icons before name
+	if item.Category == ItemCategoryTasks && item.Task != nil {
+		dueIndicator, dueLen := getDueDateIndicator(item.Task)
+		if dueLen > 0 {
+			content.WriteString(dueIndicator)
+			totalLen += dueLen
+		}
+
+		typeStyle := GetTypeStyle(string(item.Task.Type))
+		statusStyle := GetStatusStyle(string(item.Task.Status))
+		icons := fmt.Sprintf("%s %s ",
+			typeStyle.Render(item.Task.Type.Icon()),
+			statusStyle.Render(item.Task.Status.Icon()))
+		content.WriteString(icons)
+		totalLen += 4
+	}
+
+	// Calculate max name length
+	maxNameLen := maxWidth - totalLen
+	if item.Description != "" && maxNameLen > 25 {
+		maxNameLen = maxWidth/2 - totalLen
+		if maxNameLen < 15 {
+			maxNameLen = 15
+		}
+	}
+	if maxNameLen < 10 {
+		maxNameLen = 10
+	}
+
+	// Name with highlighting (truncated if needed)
+	name := util.Truncate(item.Name, maxNameLen)
+	// Adjust positions if name was truncated
+	truncatedPositions := namePositions
+	if len(name) < len(item.Name) {
+		var validPositions []int
+		nameRunes := []rune(name)
+		for _, p := range namePositions {
+			if p < len(nameRunes) {
+				validPositions = append(validPositions, p)
+			}
+		}
+		truncatedPositions = validPositions
+	}
+	content.WriteString(highlightText(name, truncatedPositions, BoldStyle))
+	totalLen += len([]rune(name))
+
+	// Description (dimmed, if space allows)
+	if item.Description != "" {
+		descMaxLen := maxWidth - totalLen - 3
+		if descMaxLen > 8 {
+			desc := util.Truncate(item.Description, descMaxLen)
+			content.WriteString(" ")
+			content.WriteString(MutedStyle.Render("· " + desc))
+			totalLen += 3 + len(desc)
+		}
+	}
+
+	return content.String(), totalLen
+}
+
 // renderItemContent renders the main content of a palette item (name + extras).
 // Returns the styled string and its approximate display length.
 func (m *CommandPaletteModel) renderItemContent(item PaletteItem, maxWidth int) (string, int) {
 	var content strings.Builder
 	totalLen := 0
 
-	// Task-specific: show type and status icons before name
+	// Task-specific: show due date indicator and type/status icons before name
 	if item.Category == ItemCategoryTasks && item.Task != nil {
+		// Due date urgency indicator
+		dueIndicator, dueLen := getDueDateIndicator(item.Task)
+		if dueLen > 0 {
+			content.WriteString(dueIndicator)
+			totalLen += dueLen
+		}
+
 		typeStyle := GetTypeStyle(string(item.Task.Type))
 		statusStyle := GetStatusStyle(string(item.Task.Status))
 		icons := fmt.Sprintf("%s %s ",

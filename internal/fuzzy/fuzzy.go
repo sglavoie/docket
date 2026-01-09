@@ -72,6 +72,125 @@ func MatchTerms(text, query string) bool {
 	return ScoreTerms(text, query) > 0
 }
 
+// ScoreWithPositions returns both a match score and the indices in text where matches occurred.
+// Returns 0 score and nil positions if there is no match.
+// Positions are 0-indexed byte positions in the original text (before lowercasing).
+func ScoreWithPositions(text, pattern string) (int, []int) {
+	if pattern == "" {
+		return 1, nil
+	}
+	if text == "" {
+		return 0, nil
+	}
+
+	textLower := strings.ToLower(text)
+	patternLower := strings.ToLower(pattern)
+
+	textRunes := []rune(textLower)
+	patternRunes := []rune(patternLower)
+
+	return scoreSubsequenceWithPositions(textRunes, patternRunes)
+}
+
+// ScoreTermsWithPositions splits the query into whitespace-separated terms and returns
+// a combined score and merged match positions if ALL terms match the text.
+// Returns 0 and nil if any term fails to match.
+func ScoreTermsWithPositions(text, query string) (int, []int) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return 1, nil
+	}
+
+	terms := strings.Fields(query)
+	if len(terms) == 0 {
+		return 1, nil
+	}
+
+	totalScore := 0
+	positionSet := make(map[int]struct{})
+
+	for _, term := range terms {
+		score, positions := ScoreWithPositions(text, term)
+		if score == 0 {
+			return 0, nil // All terms must match
+		}
+		totalScore += score
+		for _, pos := range positions {
+			positionSet[pos] = struct{}{}
+		}
+	}
+
+	// Convert set to sorted slice
+	var allPositions []int
+	for pos := range positionSet {
+		allPositions = append(allPositions, pos)
+	}
+	// Sort positions
+	for i := 0; i < len(allPositions)-1; i++ {
+		for j := i + 1; j < len(allPositions); j++ {
+			if allPositions[i] > allPositions[j] {
+				allPositions[i], allPositions[j] = allPositions[j], allPositions[i]
+			}
+		}
+	}
+
+	return totalScore, allPositions
+}
+
+// scoreSubsequenceWithPositions finds the best subsequence match and returns a score and positions.
+// Returns 0 and nil if no match is found.
+func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
+	if len(pattern) == 0 {
+		return 1, nil
+	}
+	if len(text) < len(pattern) {
+		return 0, nil
+	}
+
+	patternIdx := 0
+	score := 0
+	prevMatchIdx := -2
+	var positions []int
+
+	for textIdx := 0; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
+		if text[textIdx] == pattern[patternIdx] {
+			positions = append(positions, textIdx)
+			matchScore := 1
+
+			if textIdx == prevMatchIdx+1 {
+				matchScore += 3
+			}
+
+			if textIdx == 0 {
+				matchScore += 2
+			} else if isWordBoundary(text[textIdx-1]) {
+				matchScore += 2
+			}
+
+			if patternIdx == 0 && textIdx == 0 {
+				matchScore += 1
+			}
+
+			score += matchScore
+			prevMatchIdx = textIdx
+			patternIdx++
+		}
+	}
+
+	if patternIdx < len(pattern) {
+		return 0, nil
+	}
+
+	lengthDiff := len(text) - len(pattern)
+	if lengthDiff == 0 {
+		score += 10
+	} else if lengthDiff <= 3 {
+		score += 5
+	}
+
+	return score, positions
+}
+
 // scoreSubsequence finds the best subsequence match and returns a score.
 // Returns 0 if no match is found.
 func scoreSubsequence(text, pattern []rune) int {

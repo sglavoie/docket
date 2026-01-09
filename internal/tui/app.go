@@ -119,6 +119,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Show help for keyboard shortcuts",
 			Shortcut:    "?",
 			Category:    CategoryHelp,
+			Aliases:     []string{"keyboard shortcuts", "keybindings", "hotkeys"},
 			Handler: func() tea.Msg {
 				return ShowHelpMsg{
 					SourceView: ViewDashboard,
@@ -132,6 +133,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Quit the application",
 			Shortcut:    "ctrl+c",
 			Category:    CategoryNavigation,
+			Aliases:     []string{"exit", "close"},
 			Handler: func() tea.Msg {
 				return QuitMsg{}
 			},
@@ -141,6 +143,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Search tasks across all projects",
 			Shortcut:    "/",
 			Category:    CategorySearch,
+			Aliases:     []string{"find tasks", "search all"},
 			Handler: func() tea.Msg {
 				return ShowGlobalSearchMsg{}
 			},
@@ -150,6 +153,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Open application settings",
 			Shortcut:    ",",
 			Category:    CategoryNavigation,
+			Aliases:     []string{"preferences", "config", "options"},
 			Handler: func() tea.Msg {
 				return SettingsMsg{}
 			},
@@ -159,6 +163,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Go back to previous view",
 			Shortcut:    "esc",
 			Category:    CategoryNavigation,
+			Aliases:     []string{"go back", "return", "previous"},
 			Handler: func() tea.Msg {
 				return BackMsg{}
 			},
@@ -412,6 +417,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "n",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"create task", "add task"},
 			Handler: func() tea.Msg {
 				return CreateTaskMsg{}
 			},
@@ -422,6 +428,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "O",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"create note", "add note"},
 			Handler: func() tea.Msg {
 				return CreateNoteMsg{}
 			},
@@ -432,6 +439,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "i",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowQuickCaptureMsg{Project: m.currentProject}
@@ -445,6 +453,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "ctrl+i",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"multi capture", "batch add"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowBulkCaptureMsg{Project: m.currentProject}
@@ -458,6 +467,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "E",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"unfold all", "open all"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					for _, node := range m.projectTree.nodes {
@@ -474,6 +484,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "c",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"fold all", "close all"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					for _, node := range m.projectTree.nodes {
@@ -496,6 +507,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "n",
 			Category:    CategoryProjects,
 			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"create project", "add project"},
 			Handler: func() tea.Msg {
 				return CreateProjectMsg{}
 			},
@@ -506,6 +518,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "c",
 			Category:    CategoryFilters,
 			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"context filter", "workspace"},
 			Handler: func() tea.Msg {
 				if m.dashboard != nil {
 					return ShowContextPickerMsg{Dashboard: m.dashboard}
@@ -519,6 +532,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Shortcut:    "R",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"recent", "show recent"},
 			Handler: func() tea.Msg {
 				return ToggleRecentTasksMsg{}
 			},
