@@ -28,6 +28,40 @@ const (
 	ItemCategorySections ItemCategory = "Sections"
 )
 
+// categoryPrefixes maps short prefixes to item categories for filtering.
+// Users can type ":cmd " to filter to commands only, ":task " for tasks, etc.
+var categoryPrefixes = map[string]ItemCategory{
+	"cmd":  ItemCategoryCommands,
+	"task": ItemCategoryTasks,
+	"prj":  ItemCategoryProjects,
+	"tag":  ItemCategoryTags,
+	"sec":  ItemCategorySections,
+}
+
+// categoryOrder defines the display order for categories when showing headers.
+var categoryOrder = []ItemCategory{
+	ItemCategoryCommands,
+	ItemCategoryProjects,
+	ItemCategoryTasks,
+	ItemCategoryTags,
+	ItemCategorySections,
+}
+
+// recentSelection tracks a recently selected item for boosting in search results.
+type recentSelection struct {
+	Category ItemCategory
+	ID       string // command name, task ID, project slug, tag, or section name
+}
+
+// recentPaletteSelections stores recently selected items for the current session.
+// Items at the front of the slice are most recent. Capped at maxRecentItems.
+var recentPaletteSelections []recentSelection
+
+const maxRecentItems = 10
+
+// recentBoostMultiplier is applied to items that appear in the recent selections.
+const recentBoostMultiplier = 2
+
 // PaletteItem represents a unified search result in the command palette.
 // It provides a common interface for displaying and selecting items regardless
 // of their underlying type (command, task, project, tag, or section).
@@ -97,7 +131,7 @@ type CommandPaletteModel struct {
 // The currentView parameter determines which commands are shown (context-aware filtering).
 func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search commands, tasks, projects..."
+	searchInput.Placeholder = "Search or filter: :cmd :task :prj :tag :sec"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -235,13 +269,80 @@ func categoryWeight(cat ItemCategory) int {
 	}
 }
 
+// parseQueryPrefix extracts a category filter prefix from the query.
+// Returns the category to filter by (or empty string for no filter) and the remaining search query.
+// Prefix format: ":cmd ", ":task ", ":prj ", ":tag ", ":sec " (note the trailing space).
+func (m *CommandPaletteModel) parseQueryPrefix(query string) (ItemCategory, string) {
+	if !strings.HasPrefix(query, ":") {
+		return "", query
+	}
+
+	// Find the first space after the prefix
+	spaceIdx := strings.Index(query, " ")
+	if spaceIdx == -1 {
+		// No space yet - check if it's a partial prefix (user still typing)
+		prefix := strings.ToLower(query[1:])
+		for p := range categoryPrefixes {
+			if strings.HasPrefix(p, prefix) {
+				// Partial match - filter to this category but no search query yet
+				return categoryPrefixes[p], ""
+			}
+		}
+		return "", query
+	}
+
+	// Extract the prefix (without the colon)
+	prefix := strings.ToLower(query[1:spaceIdx])
+	if cat, ok := categoryPrefixes[prefix]; ok {
+		return cat, strings.TrimSpace(query[spaceIdx+1:])
+	}
+
+	// Unknown prefix - treat as regular search
+	return "", query
+}
+
+// sortItemsByCategory sorts items by the predefined category order for display without search.
+func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []PaletteItem {
+	// Create a map for category order lookup
+	orderMap := make(map[ItemCategory]int)
+	for i, cat := range categoryOrder {
+		orderMap[cat] = i
+	}
+
+	sorted := make([]PaletteItem, len(items))
+	copy(sorted, items)
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return orderMap[sorted[i].Category] < orderMap[sorted[j].Category]
+	})
+
+	return sorted
+}
+
 // filterItems filters items based on the current search query using category-weighted fuzzy scoring.
+// Supports category prefix filtering (e.g., ":cmd help" filters to commands matching "help").
 func (m *CommandPaletteModel) filterItems() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
-	// Empty query shows all items (commands first due to weighting)
-	if query == "" {
-		m.filteredItems = m.allItems
+	// Parse category prefix if present
+	categoryFilter, searchQuery := m.parseQueryPrefix(query)
+
+	// Determine which items to search
+	itemsToSearch := m.allItems
+	if categoryFilter != "" {
+		// Filter to only the specified category
+		var filtered []PaletteItem
+		for _, item := range m.allItems {
+			if item.Category == categoryFilter {
+				filtered = append(filtered, item)
+			}
+		}
+		itemsToSearch = filtered
+	}
+
+	// Empty search query shows all (filtered) items sorted by category
+	if searchQuery == "" {
+		m.filteredItems = m.sortItemsByCategory(itemsToSearch)
 		m.cursor = 0
 		return
 	}
@@ -253,8 +354,8 @@ func (m *CommandPaletteModel) filterItems() {
 	}
 	var scored []scoredItem
 
-	for _, item := range m.allItems {
-		score := m.scoreItem(item, query)
+	for _, item := range itemsToSearch {
+		score := m.scoreItem(item, searchQuery)
 		if score > 0 {
 			scored = append(scored, scoredItem{item: item, score: score})
 		}
@@ -283,6 +384,7 @@ func (m *CommandPaletteModel) filterItems() {
 // scoreItem returns a category-weighted fuzzy match score for an item against the query.
 // Returns 0 if no match. Higher scores indicate better matches.
 // Commands receive 3x weight, projects 2x, tasks/tags/sections 1x.
+// Recently selected items receive an additional boost.
 func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
 	// Score against name (primary match target)
 	nameScore := fuzzy.ScoreTerms(item.Name, query)
@@ -306,7 +408,68 @@ func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
 	}
 
 	// Apply category weight multiplier
-	return bestScore * categoryWeight(item.Category)
+	score := bestScore * categoryWeight(item.Category)
+
+	// Apply recent selection boost
+	if m.isRecentSelection(item) {
+		score *= recentBoostMultiplier
+	}
+
+	return score
+}
+
+// isRecentSelection checks if an item appears in the recent selections list.
+func (m *CommandPaletteModel) isRecentSelection(item PaletteItem) bool {
+	itemID := m.getItemID(item)
+	for _, recent := range recentPaletteSelections {
+		if recent.Category == item.Category && recent.ID == itemID {
+			return true
+		}
+	}
+	return false
+}
+
+// getItemID returns a unique identifier for a palette item.
+func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
+	switch item.Category {
+	case ItemCategoryCommands:
+		if item.Command != nil {
+			return item.Command.Name
+		}
+	case ItemCategoryTasks:
+		if item.Task != nil {
+			return item.Task.ID
+		}
+	case ItemCategoryProjects:
+		if item.Project != nil {
+			return item.Project.Slug
+		}
+	case ItemCategoryTags:
+		return item.Tag
+	case ItemCategorySections:
+		return item.Section
+	}
+	return ""
+}
+
+// recordRecentSelection adds an item to the recent selections list.
+// Most recent items are at the front. Duplicates are moved to the front.
+func recordRecentSelection(item PaletteItem, itemID string) {
+	// Remove existing entry if present
+	for i, recent := range recentPaletteSelections {
+		if recent.Category == item.Category && recent.ID == itemID {
+			recentPaletteSelections = append(recentPaletteSelections[:i], recentPaletteSelections[i+1:]...)
+			break
+		}
+	}
+
+	// Prepend to front
+	recentPaletteSelections = append([]recentSelection{{Category: item.Category, ID: itemID}}, recentPaletteSelections...)
+
+	// Cap at maxRecentItems
+	if len(recentPaletteSelections) > maxRecentItems {
+		recentPaletteSelections = recentPaletteSelections[:maxRecentItems]
+	}
 }
 
 // Init implements tea.Model.
@@ -453,7 +616,14 @@ func (m *CommandPaletteModel) updateActionMode(msg tea.KeyMsg) (tea.Model, tea.C
 // For tags and sections, it emits navigation messages with the first associated project.
 // All item types use CommandPaletteExecuteMsg to ensure the palette closes and action
 // executes in the same update cycle.
+// The selected item is recorded for recent items boosting.
 func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd) {
+	// Record the selection for recent items boosting
+	itemID := m.getItemID(item)
+	if itemID != "" {
+		recordRecentSelection(item, itemID)
+	}
+
 	switch item.Category {
 	case ItemCategoryCommands:
 		if item.Command != nil && item.Command.Handler != nil {
@@ -779,9 +949,11 @@ func (m *CommandPaletteModel) View() string {
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if !m.actionMode && len(m.filteredItems) == 0 && query != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\".", query)))
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc to close"))
+		b.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
+		b.WriteString("\n")
+		b.WriteString(HelpStyle.Render("     :tag for tags • :sec for sections • or clear to browse all"))
 		return b.String()
 	}
 
@@ -812,11 +984,45 @@ func (m *CommandPaletteModel) View() string {
 	if m.actionMode {
 		footer = HelpStyle.Render("↑/↓ navigate • Enter execute • Tab/Esc back")
 	} else {
-		footer = HelpStyle.Render(fmt.Sprintf("↑/↓ navigate • Enter select • Tab actions • Esc close • %d item(s)", len(m.filteredItems)))
+		footer = HelpStyle.Render(m.buildFooter())
 	}
 	b.WriteString(footer)
 
 	return b.String()
+}
+
+// buildFooter constructs the footer text with navigation hints and category counts.
+func (m *CommandPaletteModel) buildFooter() string {
+	// Count items by category in the filtered results
+	counts := make(map[ItemCategory]int)
+	for _, item := range m.filteredItems {
+		counts[item.Category]++
+	}
+
+	// Build count summary (only non-zero categories)
+	var countParts []string
+	if c := counts[ItemCategoryCommands]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d cmd", c))
+	}
+	if c := counts[ItemCategoryProjects]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d prj", c))
+	}
+	if c := counts[ItemCategoryTasks]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d task", c))
+	}
+	if c := counts[ItemCategoryTags]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d tag", c))
+	}
+	if c := counts[ItemCategorySections]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d sec", c))
+	}
+
+	countSummary := strings.Join(countParts, ", ")
+	if countSummary == "" {
+		countSummary = "0 items"
+	}
+
+	return fmt.Sprintf("↑/↓ navigate • Enter select • Tab actions • Esc close • %s", countSummary)
 }
 
 // renderActionList renders the list of available actions for the selected item.
@@ -904,10 +1110,16 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 
 // renderItemList renders the filtered item list with cursor indicator.
 // Each row displays: cursor + category badge + name (prominent) + extra info + shortcut (right-aligned)
+// When no search query is active, items are grouped by category with section headers.
 func (m *CommandPaletteModel) renderItemList() string {
 	if len(m.filteredItems) == 0 {
 		return MutedStyle.Render("Type to search commands, tasks, projects...")
 	}
+
+	// Determine if we should show category headers (only when browsing, not searching)
+	query := strings.TrimSpace(m.searchInput.Value())
+	categoryFilter, searchQuery := m.parseQueryPrefix(query)
+	showHeaders := searchQuery == "" && categoryFilter == ""
 
 	var b strings.Builder
 	maxVisible := m.height - 8 // Account for chrome
@@ -927,11 +1139,38 @@ func (m *CommandPaletteModel) renderItemList() string {
 		contentWidth = 40
 	}
 
-	for i := scrollOffset; i < len(m.filteredItems) && i < scrollOffset+maxVisible; i++ {
+	// Track current category for header insertion
+	var currentCategory ItemCategory
+	linesRendered := 0
+
+	for i := scrollOffset; i < len(m.filteredItems) && linesRendered < maxVisible; i++ {
 		item := m.filteredItems[i]
+
+		// Insert category header when category changes (only in browse mode)
+		if showHeaders && item.Category != currentCategory {
+			// Don't count the header against visible items for first category
+			if currentCategory != "" {
+				// Add spacing before new category (except first)
+				b.WriteString("\n")
+				linesRendered++
+				if linesRendered >= maxVisible {
+					break
+				}
+			}
+			header := m.renderCategoryHeader(item.Category)
+			b.WriteString(header)
+			b.WriteString("\n")
+			linesRendered++
+			currentCategory = item.Category
+			if linesRendered >= maxVisible {
+				break
+			}
+		}
+
 		line := m.renderPaletteItem(item, i == m.cursor, contentWidth)
 		b.WriteString(line)
 		b.WriteString("\n")
+		linesRendered++
 	}
 
 	// Show scroll indicator if there are more items
@@ -946,6 +1185,20 @@ func (m *CommandPaletteModel) renderItemList() string {
 	}
 
 	return b.String()
+}
+
+// renderCategoryHeader renders a section header for a category.
+func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
+	name := getCategoryDisplayName(cat)
+	// Count items in this category
+	count := 0
+	for _, item := range m.filteredItems {
+		if item.Category == cat {
+			count++
+		}
+	}
+	header := fmt.Sprintf("── %s (%d) ", name, count)
+	return MutedStyle.Render(header)
 }
 
 // renderPaletteItem renders a single palette item row.
@@ -1008,32 +1261,51 @@ func (m *CommandPaletteModel) renderPaletteItem(item PaletteItem, selected bool,
 }
 
 // renderCategoryBadge returns the styled category badge and its display length.
+// Badges include an icon prefix for faster visual scanning.
 func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int) {
 	var badge string
 	var style lipgloss.Style
 
 	switch cat {
 	case ItemCategoryCommands:
-		badge = "[CMD]"
+		badge = "> CMD"
 		style = lipgloss.NewStyle().Foreground(ColorPrimary)
 	case ItemCategoryTasks:
-		badge = "[TSK]"
+		badge = "☐ TSK"
 		style = lipgloss.NewStyle().Foreground(ColorSuccess)
 	case ItemCategoryProjects:
-		badge = "[PRJ]"
+		badge = "◈ PRJ"
 		style = lipgloss.NewStyle().Foreground(ColorSecondary)
 	case ItemCategoryTags:
-		badge = "[TAG]"
+		badge = "# TAG"
 		style = lipgloss.NewStyle().Foreground(ColorWarning)
 	case ItemCategorySections:
-		badge = "[SEC]"
+		badge = "§ SEC"
 		style = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
 	default:
-		badge = "[???]"
+		badge = "? ???"
 		style = MutedStyle
 	}
 
-	return style.Render(badge), len(badge)
+	return style.Render(badge), 5 // All badges are 5 display characters
+}
+
+// getCategoryDisplayName returns a human-readable name for a category.
+func getCategoryDisplayName(cat ItemCategory) string {
+	switch cat {
+	case ItemCategoryCommands:
+		return "Commands"
+	case ItemCategoryTasks:
+		return "Tasks"
+	case ItemCategoryProjects:
+		return "Projects"
+	case ItemCategoryTags:
+		return "Tags"
+	case ItemCategorySections:
+		return "Sections"
+	default:
+		return "Other"
+	}
 }
 
 // renderItemContent renders the main content of a palette item (name + extras).

@@ -987,9 +987,8 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	var result strings.Builder
 
 	if !m.filterBarEnabled {
-		// When filter bar is disabled, just show view mode indicator with hints
+		// When filter bar is disabled, just show view mode indicator
 		result.WriteString(m.renderViewModeIndicator())
-		result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox C:completed"))
 		result.WriteString("\n")
 		return result.String()
 	}
@@ -1066,9 +1065,8 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	result.WriteString(strings.Join(badges, " "))
 	result.WriteString("\n")
 
-	// Line 2: View mode indicator with hints
+	// Line 2: View mode indicator
 	result.WriteString(m.renderViewModeIndicator())
-	result.WriteString(MutedStyle.Render(" V:view A:active B:backlog I:inbox C:completed"))
 	result.WriteString("\n")
 
 	return result.String()
