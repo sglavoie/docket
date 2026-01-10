@@ -122,7 +122,8 @@ type CommandPaletteModel struct {
 	filteredItems []filteredPaletteItem
 
 	// Navigation state
-	cursor int
+	cursor       int
+	scrollAnchor int // When >= 0, forces scroll to position this item at top of view, then resets to -1
 
 	// Action mode state - when true, showing inline actions for selected item
 	actionMode       bool
@@ -165,15 +166,13 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		currentView:   currentView,
 		searchInput:   searchInput,
 		cursor:        0,
+		scrollAnchor:  -1,
 		showTips:      true,
 	}
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
-	// Start with all items visible (no filter applied, no highlight positions)
-	m.filteredItems = make([]filteredPaletteItem, len(m.allItems))
-	for i, item := range m.allItems {
-		m.filteredItems[i] = filteredPaletteItem{Item: item}
-	}
+	// Start with all items visible, sorted by category (no search filter, no highlights)
+	m.filterItems()
 	return m
 }
 
@@ -697,6 +696,14 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			m.cursor = 0
 		}
 		return m, nil
+	case "ctrl+n":
+		// Jump to next section and scroll to show it at top
+		nextIdx := m.findNextSectionStart()
+		if nextIdx >= 0 {
+			m.cursor = nextIdx
+			m.scrollAnchor = nextIdx
+		}
+		return m, nil
 	case "ctrl+x":
 		// Quick complete task (ctrl+m is same as Enter in terminals)
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
@@ -784,6 +791,44 @@ func (m *CommandPaletteModel) isNumberJumpEnabled() bool {
 	// Check if query is just a category prefix (e.g., ":cmd", ":task ")
 	_, searchQuery := m.parseQueryPrefix(query)
 	return searchQuery == ""
+}
+
+// findNextSectionStart returns the index of the first item in the next category.
+// Categories cycle in the order: Commands → Projects → Tasks → Tags → Sections → Commands.
+// Returns -1 if there are no items or only one category exists.
+func (m *CommandPaletteModel) findNextSectionStart() int {
+	if len(m.filteredItems) == 0 {
+		return -1
+	}
+
+	currentCategory := m.filteredItems[m.cursor].Item.Category
+
+	// Find current category's position in the order
+	currentIdx := -1
+	for i, cat := range categoryOrder {
+		if cat == currentCategory {
+			currentIdx = i
+			break
+		}
+	}
+	if currentIdx == -1 {
+		return -1
+	}
+
+	// Try each subsequent category in order (wrapping around)
+	for offset := 1; offset <= len(categoryOrder); offset++ {
+		nextCatIdx := (currentIdx + offset) % len(categoryOrder)
+		targetCategory := categoryOrder[nextCatIdx]
+
+		// Find first item with this category
+		for i, filtered := range m.filteredItems {
+			if filtered.Item.Category == targetCategory {
+				return i
+			}
+		}
+	}
+
+	return -1
 }
 
 // updateActionMode handles key events when showing inline actions for an item.
@@ -1403,7 +1448,11 @@ func (m *CommandPaletteModel) renderItemList() string {
 
 	// Calculate scroll offset to keep cursor visible
 	scrollOffset := 0
-	if m.cursor >= maxVisible {
+	if m.scrollAnchor >= 0 {
+		// When scrollAnchor is set, position that item at the top of the view
+		scrollOffset = m.scrollAnchor
+		m.scrollAnchor = -1 // Reset after use
+	} else if m.cursor >= maxVisible {
 		scrollOffset = m.cursor - maxVisible + 1
 	}
 
