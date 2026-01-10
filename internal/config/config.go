@@ -11,6 +11,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// RecentPaletteItem tracks a recently selected item in the command palette.
+// Used to persist recent selections across sessions for boosted search results.
+type RecentPaletteItem struct {
+	Category string `json:"category"` // ItemCategory as string (Commands, Tasks, Projects, Tags, Sections)
+	ID       string `json:"id"`       // Command name, task ID, project slug, tag, or section name
+}
+
 // ProjectViewState holds filter/sort state for a project's tree view.
 type ProjectViewState struct {
 	FilterType       string   `json:"filter_type,omitempty"`
@@ -29,18 +36,19 @@ type ProjectViewState struct {
 
 // Config holds the application configuration.
 type Config struct {
-	DataDir           string                      `json:"data_dir"`
-	CurrentProject    string                      `json:"current_project,omitempty"`
-	Editor            string                      `json:"editor"`
-	DefaultContext    string                      `json:"default_context"`
-	FzfEnabled        bool                        `json:"fzf_enabled"`
-	GlowEnabled       bool                        `json:"glow_enabled"`
-	UndoHistoryDepth  *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects          []*models.Project           `json:"projects"`
-	SectionColors     map[string]string           `json:"section_colors,omitempty"`      // Global section color registry
-	ProjectViewStates map[string]ProjectViewState `json:"project_view_states,omitempty"` // Per-project filter/sort state
-	CycleProjects     []string                    `json:"cycle_projects,omitempty"`      // Project IDs for quick cycling with ` and ~
-	ShowRecentTasks   *bool                       `json:"show_recent_tasks,omitempty"`   // Show Recent Tasks section on dashboard (default: true)
+	DataDir            string                      `json:"data_dir"`
+	CurrentProject     string                      `json:"current_project,omitempty"`
+	Editor             string                      `json:"editor"`
+	DefaultContext     string                      `json:"default_context"`
+	FzfEnabled         bool                        `json:"fzf_enabled"`
+	GlowEnabled        bool                        `json:"glow_enabled"`
+	UndoHistoryDepth   *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects           []*models.Project           `json:"projects"`
+	SectionColors      map[string]string           `json:"section_colors,omitempty"`       // Global section color registry
+	ProjectViewStates  map[string]ProjectViewState `json:"project_view_states,omitempty"`  // Per-project filter/sort state
+	CycleProjects      []string                    `json:"cycle_projects,omitempty"`       // Project IDs for quick cycling with ` and ~
+	ShowRecentTasks    *bool                       `json:"show_recent_tasks,omitempty"`    // Show Recent Tasks section on dashboard (default: true)
+	RecentPaletteItems []RecentPaletteItem         `json:"recent_palette_items,omitempty"` // Recently selected items in command palette
 }
 
 // NewConfig creates a new configuration with default values.
@@ -464,4 +472,17 @@ func (c *Config) GetShowRecentTasks() bool {
 // SetShowRecentTasks sets whether to show the Recent Tasks section on dashboard.
 func (c *Config) SetShowRecentTasks(show bool) {
 	c.ShowRecentTasks = &show
+}
+
+// GetRecentPaletteItems returns the list of recently selected items in the command palette.
+func (c *Config) GetRecentPaletteItems() []RecentPaletteItem {
+	if c.RecentPaletteItems == nil {
+		return []RecentPaletteItem{}
+	}
+	return c.RecentPaletteItems
+}
+
+// SetRecentPaletteItems sets the list of recently selected items in the command palette.
+func (c *Config) SetRecentPaletteItems(items []RecentPaletteItem) {
+	c.RecentPaletteItems = items
 }

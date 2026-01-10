@@ -107,8 +107,9 @@ type filteredPaletteItem struct {
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
 type CommandPaletteModel struct {
-	config   *config.Config
-	registry *CommandRegistry
+	config        *config.Config
+	configManager *config.Manager
+	registry      *CommandRegistry
 
 	// Current view context for filtering commands
 	currentView ViewType
@@ -134,23 +135,37 @@ type CommandPaletteModel struct {
 	height       int
 	listWidth    int
 	previewWidth int
+
+	// Onboarding state
+	showTips bool // Show tips until first keystroke
 }
 
 // NewCommandPaletteModel creates a new command palette model.
 // The currentView parameter determines which commands are shown (context-aware filtering).
-func NewCommandPaletteModel(cfg *config.Config, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
+func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search (use -term to exclude) :cmd :task :prj :tag :sec"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
 
+	// Load persisted recent items from config
+	recentPaletteSelections = nil
+	for _, item := range cfg.GetRecentPaletteItems() {
+		recentPaletteSelections = append(recentPaletteSelections, recentSelection{
+			Category: ItemCategory(item.Category),
+			ID:       item.ID,
+		})
+	}
+
 	m := &CommandPaletteModel{
-		config:      cfg,
-		registry:    registry,
-		currentView: currentView,
-		searchInput: searchInput,
-		cursor:      0,
+		config:        cfg,
+		configManager: manager,
+		registry:      registry,
+		currentView:   currentView,
+		searchInput:   searchInput,
+		cursor:        0,
+		showTips:      true,
 	}
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
@@ -591,6 +606,22 @@ func recordRecentSelection(item PaletteItem, itemID string) {
 	}
 }
 
+// persistRecentSelections saves the current recent selections to config.
+func (m *CommandPaletteModel) persistRecentSelections() {
+	if m.configManager == nil {
+		return
+	}
+	var configItems []config.RecentPaletteItem
+	for _, r := range recentPaletteSelections {
+		configItems = append(configItems, config.RecentPaletteItem{
+			Category: string(r.Category),
+			ID:       r.ID,
+		})
+	}
+	m.config.SetRecentPaletteItems(configItems)
+	m.configManager.Save(m.config)
+}
+
 // Init implements tea.Model.
 func (m *CommandPaletteModel) Init() tea.Cmd {
 	return textinput.Blink
@@ -666,19 +697,76 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			m.cursor = 0
 		}
 		return m, nil
-	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		// Direct number jump when input is empty or only category prefix
-		if m.isNumberJumpEnabled() {
-			idx := int(msg.String()[0] - '1') // "1" -> 0, "9" -> 8
+	case "ctrl+x":
+		// Quick complete task (ctrl+m is same as Enter in terminals)
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
+				task := item.Task
+				project := item.Project
+				if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+					return m, func() tea.Msg {
+						return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+							Task: task, Project: project, Action: "complete",
+						}}
+					}
+				}
+			}
+		}
+		return m, nil
+	case "ctrl+e":
+		// Quick edit task
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil {
+				task := item.Task
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: EditTaskMsg{Task: task}}
+				}
+			}
+		}
+		return m, nil
+	case "ctrl+g":
+		// Quick view in glow (ctrl+v conflicts with paste)
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil {
+				task := item.Task
+				return m, func() tea.Msg {
+					return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
+				}
+			}
+		}
+		return m, nil
+	case "ctrl+s":
+		// Quick start task
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
+				task := item.Task
+				project := item.Project
+				if task.Status == models.StatusTodo {
+					return m, func() tea.Msg {
+						return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+							Task: task, Project: project, Action: "start",
+						}}
+					}
+				}
+			}
+		}
+		return m, nil
+	default:
+		// Handle number keys for direct jump when enabled
+		key := msg.String()
+		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' && m.isNumberJumpEnabled() {
+			idx := int(key[0] - '1') // "1" -> 0, "9" -> 8
 			if idx < len(m.filteredItems) {
 				return m.executeItem(m.filteredItems[idx].Item)
 			}
 			return m, nil
 		}
-		// Otherwise, fall through to default (add to search)
-		fallthrough
-	default:
 		// Update search input and filter items
+		m.showTips = false // Hide tips on first input
 		var cmd tea.Cmd
 		m.searchInput, cmd = m.searchInput.Update(msg)
 		m.filterItems()
@@ -760,10 +848,11 @@ func (m *CommandPaletteModel) updateActionMode(msg tea.KeyMsg) (tea.Model, tea.C
 // executes in the same update cycle.
 // The selected item is recorded for recent items boosting.
 func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd) {
-	// Record the selection for recent items boosting
+	// Record the selection for recent items boosting and persist to config
 	itemID := m.getItemID(item)
 	if itemID != "" {
 		recordRecentSelection(item, itemID)
+		m.persistRecentSelections()
 	}
 
 	switch item.Category {
@@ -894,7 +983,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		actions = append(actions, PaletteAction{
 			Name:    "Complete",
 			Icon:    "✓",
-			KeyHint: "m",
+			KeyHint: "x",
 			Handler: func() tea.Msg {
 				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "complete"}
 			},
@@ -1173,7 +1262,22 @@ func (m *CommandPaletteModel) buildFooter() string {
 		countSummary = "0 items"
 	}
 
-	return fmt.Sprintf("↑/↓ navigate • Enter select • Tab actions • Esc close • %s", countSummary)
+	// Build context-aware hints based on selected item type
+	hints := "↑/↓ navigate • Enter select"
+	if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+		item := m.filteredItems[m.cursor].Item
+		switch item.Category {
+		case ItemCategoryTasks:
+			hints += " • ^X done • ^E edit • ^G view • ^S start"
+		default:
+			hints += " • Tab actions"
+		}
+	} else {
+		hints += " • Tab actions"
+	}
+	hints += " • Esc close"
+
+	return fmt.Sprintf("%s • %s", hints, countSummary)
 }
 
 // renderActionList renders the list of available actions for the selected item.
@@ -1273,7 +1377,26 @@ func (m *CommandPaletteModel) renderItemList() string {
 	showHeaders := searchQuery == "" && categoryFilter == ""
 
 	var b strings.Builder
+
+	// Show tips when palette first opens with empty query
+	if m.showTips && query == "" {
+		tips := []string{
+			"Tip: Type :cmd, :task, :prj, :tag, or :sec to filter by type",
+			"Tip: Use -term to exclude matches (e.g., bug -fixed)",
+			"Tip: Press Tab on any item for quick actions",
+			"Tip: Keys 1-9 select the first 9 items directly",
+			"Tip: ^M completes a task, ^E edits, ^G views in glow",
+		}
+		// Pick one tip based on current second for variety
+		tipIndex := time.Now().Second() % len(tips)
+		b.WriteString(HelpStyle.Render(tips[tipIndex]))
+		b.WriteString("\n\n")
+	}
+
 	maxVisible := m.height - 8 // Account for chrome
+	if m.showTips && query == "" {
+		maxVisible -= 2 // Account for tip line
+	}
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
