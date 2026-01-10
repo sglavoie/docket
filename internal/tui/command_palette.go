@@ -123,6 +123,7 @@ type CommandPaletteModel struct {
 
 	// Navigation state
 	cursor       int
+	scrollOffset int // Current scroll offset (persisted between renders)
 	scrollAnchor int // When >= 0, forces scroll to position this item at top of view, then resets to -1
 
 	// Action mode state - when true, showing inline actions for selected item
@@ -428,6 +429,7 @@ func (m *CommandPaletteModel) filterItems() {
 			m.filteredItems[i] = filteredPaletteItem{Item: item}
 		}
 		m.cursor = 0
+		m.scrollOffset = 0
 		return
 	}
 
@@ -478,13 +480,14 @@ func (m *CommandPaletteModel) filterItems() {
 		}
 	}
 
-	// Reset cursor if out of bounds
+	// Reset cursor and scroll if out of bounds
 	if m.cursor >= len(m.filteredItems) {
 		m.cursor = len(m.filteredItems) - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0
 	}
+	m.scrollOffset = 0
 }
 
 // scoreItem returns a category-weighted fuzzy match score for an item against the query.
@@ -1408,6 +1411,92 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 	return result
 }
 
+// countLinesForRange counts how many display lines are needed to render items
+// from startIdx to endIdx (inclusive), including category headers and spacing.
+// This is used to calculate scroll offsets that account for header overhead.
+func (m *CommandPaletteModel) countLinesForRange(startIdx, endIdx int, showHeaders bool) int {
+	if startIdx < 0 || endIdx < startIdx || len(m.filteredItems) == 0 {
+		return 0
+	}
+	if endIdx >= len(m.filteredItems) {
+		endIdx = len(m.filteredItems) - 1
+	}
+
+	lines := 0
+	var currentCategory ItemCategory
+
+	// If starting from middle, we need the category of the previous item
+	// to know if the first item in our range triggers a header
+	if startIdx > 0 {
+		currentCategory = m.filteredItems[startIdx-1].Item.Category
+	}
+
+	for i := startIdx; i <= endIdx; i++ {
+		item := m.filteredItems[i].Item
+
+		if showHeaders && item.Category != currentCategory {
+			if currentCategory != "" {
+				lines++ // spacing before new category
+			}
+			lines++ // header line
+			currentCategory = item.Category
+		}
+		lines++ // item line
+	}
+
+	return lines
+}
+
+// calculateScrollOffset determines the scroll offset needed to keep the cursor
+// visible within maxVisible lines, accounting for category headers.
+// It preserves the current scroll position when possible, only adjusting when
+// the cursor would be outside the visible range.
+func (m *CommandPaletteModel) calculateScrollOffset(maxVisible int, showHeaders bool) int {
+	if m.cursor < 0 || len(m.filteredItems) == 0 {
+		m.scrollOffset = 0
+		return 0
+	}
+
+	// Handle scroll anchor (used by Ctrl+N section navigation)
+	if m.scrollAnchor >= 0 {
+		m.scrollOffset = m.scrollAnchor
+		m.scrollAnchor = -1
+		return m.scrollOffset
+	}
+
+	// Clamp scrollOffset to valid range
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+	if m.scrollOffset >= len(m.filteredItems) {
+		m.scrollOffset = len(m.filteredItems) - 1
+	}
+
+	// Check if cursor is above the visible range (scrolled past the top)
+	if m.cursor < m.scrollOffset {
+		m.scrollOffset = m.cursor
+		return m.scrollOffset
+	}
+
+	// Check if cursor is below the visible range
+	linesNeeded := m.countLinesForRange(m.scrollOffset, m.cursor, showHeaders)
+	if linesNeeded <= maxVisible {
+		// Cursor is visible, keep current scroll position
+		return m.scrollOffset
+	}
+
+	// Cursor is below visible range, scroll down until it's visible
+	for m.scrollOffset < len(m.filteredItems) {
+		linesNeeded = m.countLinesForRange(m.scrollOffset, m.cursor, showHeaders)
+		if linesNeeded <= maxVisible {
+			break
+		}
+		m.scrollOffset++
+	}
+
+	return m.scrollOffset
+}
+
 // renderItemList renders the filtered item list with cursor indicator.
 // Each row displays: cursor + category badge + name (prominent) + extra info + shortcut (right-aligned)
 // When no search query is active, items are grouped by category with section headers.
@@ -1438,32 +1527,36 @@ func (m *CommandPaletteModel) renderItemList() string {
 		b.WriteString("\n\n")
 	}
 
-	maxVisible := m.height - 8 // Account for chrome
+	// Calculate pane height (must match View's paneHeight calculation)
+	paneHeight := m.height - 6
+	if paneHeight < 5 {
+		paneHeight = 5
+	}
+
+	// maxVisible accounts for tips and category headers within the pane
+	maxVisible := paneHeight
 	if m.showTips && query == "" {
-		maxVisible -= 2 // Account for tip line
+		maxVisible -= 2 // Account for tip lines
 	}
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
 
-	// Calculate scroll offset to keep cursor visible
-	scrollOffset := 0
-	if m.scrollAnchor >= 0 {
-		// When scrollAnchor is set, position that item at the top of the view
-		scrollOffset = m.scrollAnchor
-		m.scrollAnchor = -1 // Reset after use
-	} else if m.cursor >= maxVisible {
-		scrollOffset = m.cursor - maxVisible + 1
-	}
-
-	// Available width for content (account for padding)
-	contentWidth := m.width - 4
+	// Available width for content - use listWidth, not full width
+	contentWidth := m.listWidth - 4
 	if contentWidth < 40 {
 		contentWidth = 40
 	}
 
+	// Calculate scroll offset to keep cursor visible (accounts for headers)
+	scrollOffset := m.calculateScrollOffset(maxVisible, showHeaders)
+
 	// Track current category for header insertion
+	// Initialize to previous item's category so we correctly detect category changes
 	var currentCategory ItemCategory
+	if scrollOffset > 0 {
+		currentCategory = m.filteredItems[scrollOffset-1].Item.Category
+	}
 	linesRendered := 0
 
 	for i := scrollOffset; i < len(m.filteredItems) && linesRendered < maxVisible; i++ {
