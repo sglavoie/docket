@@ -139,6 +139,11 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	if m.currentView() == ViewCommandPalette {
+		if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok && palette != nil && palette.IsActionMode() {
+			return false
+		}
+	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		m.popView()

@@ -216,6 +216,11 @@ func (m *CommandPaletteModel) HasActiveSearch() bool {
 	return true
 }
 
+// IsActionMode returns true if the palette is showing inline actions for an item.
+func (m *CommandPaletteModel) IsActionMode() bool {
+	return m.actionMode
+}
+
 // SetSize sets the view dimensions.
 func (m *CommandPaletteModel) SetSize(width, height int) {
 	m.width = width

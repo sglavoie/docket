@@ -644,8 +644,18 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CommandPaletteExecuteMsg:
-		// Close command palette first
-		m.popView()
+		// Check if the inner message opens a modal view that should return to the palette
+		keepPalette := false
+		if msg.ResultMsg != nil {
+			switch msg.ResultMsg.(type) {
+			case EditTaskMsg, SetDueDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg, GlowViewMsg:
+				keepPalette = true
+			}
+		}
+		// Only close command palette for non-modal actions
+		if !keepPalette {
+			m.popView()
+		}
 		// Process the inner message through handlers
 		if msg.ResultMsg != nil {
 			return m.processMessage(msg.ResultMsg)
