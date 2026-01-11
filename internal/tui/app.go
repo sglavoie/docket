@@ -49,6 +49,7 @@ const (
 	ViewTaskComments
 	ViewProjectCycleManager
 	ViewCommandPalette
+	ViewBulkEdit
 )
 
 // AppModel is the main TUI model with a view stack.

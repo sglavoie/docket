@@ -701,6 +701,19 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseBulkCaptureMsg:
 		m.popView()
 		return true, nil
+
+	case ShowBulkEditMsg:
+		if len(msg.Tasks) > 0 && msg.Project != nil {
+			m.showView(ViewBulkEdit, NewBulkEditModel(msg.Tasks, msg.Project))
+		}
+		return true, nil
+
+	case BulkEditDoneMsg:
+		m.popView()
+		if msg.Applied && m.projectTree != nil {
+			return true, m.projectTree.applyBulkChanges(msg.Changes, msg.Tasks)
+		}
+		return true, nil
 	}
 	return false, nil
 }

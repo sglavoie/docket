@@ -290,6 +290,14 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		}
 
 	case "e":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			return true, func() tea.Msg {
+				return ShowBulkEditMsg{
+					Tasks:   m.getSelectedTasks(),
+					Project: m.project,
+				}
+			}
+		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			return true, func() tea.Msg {
 				return EditTaskMsg{Task: visible[m.cursor].Task}

@@ -68,7 +68,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		count := len(m.selectedTasks)
 		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
 		b.WriteString(" ")
-		b.WriteString(MutedStyle.Render("Space: toggle | a: all | v/Esc: exit | s/m/b/x/o: status | D: delete | T: tag"))
+		b.WriteString(MutedStyle.Render("Space: toggle | a: all | v/Esc: exit | e: bulk edit | s/m/b/x/o: status | D: delete | T: tag"))
 		b.WriteString("\n")
 	}
 

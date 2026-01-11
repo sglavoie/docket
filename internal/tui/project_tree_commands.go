@@ -259,3 +259,73 @@ func (m *ProjectTreeModel) applyBulkTag(tag string) {
 		task.AddTag(tag)
 	}
 }
+
+// applyBulkChanges applies bulk edit changes to the given tasks.
+func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*models.Task) tea.Cmd {
+	if !changes.HasChanges() || len(tasks) == 0 {
+		return nil
+	}
+
+	// Capture config value before returning command
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+	taskCount := len(tasks)
+
+	return func() tea.Msg {
+		// Record undo snapshot before applying changes
+		if undoDepth > 0 {
+			_ = storage.RecordUndoSnapshot(m.project, "Bulk Edit",
+				fmt.Sprintf("%d tasks", taskCount), undoDepth)
+		}
+
+		// Create backup for undo support
+		if err := storage.BackupProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		// Apply changes to each task
+		for _, task := range tasks {
+			if changes.SetStatus != nil {
+				task.Status = *changes.SetStatus
+			}
+			if changes.SetPriority != nil {
+				task.Priority = *changes.SetPriority
+			}
+			for _, tag := range changes.AddTags {
+				task.AddTag(tag)
+			}
+			for _, tag := range changes.RemoveTags {
+				task.RemoveTag(tag)
+			}
+			if changes.SetSection != nil {
+				task.Section = *changes.SetSection
+			}
+			if changes.ClearDueDate {
+				task.DueDate = nil
+			} else if changes.SetDueDate != nil {
+				task.DueDate = changes.SetDueDate
+			}
+		}
+
+		// Check for auto-unblocking
+		m.project.CheckAndAutoUnblock()
+
+		// Reorder root tasks
+		m.project.ReorderRootTasksByCompletion()
+
+		// Save the project
+		if err := storage.SaveProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		// Clear selection and rebuild tree
+		m.clearSelection()
+		storage.LoadProject(m.project)
+		m.buildTree()
+		m.clampCursor()
+
+		return treeRefreshMsg{}
+	}
+}
