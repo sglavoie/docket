@@ -22,6 +22,16 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if handled := m.handleEscKey(); handled {
 				return m, nil
 			}
+		case "q":
+			// On dashboard, q quits the app
+			if m.currentView() == ViewDashboard {
+				m.saveProjectTreeState()
+				m.quitting = true
+				return m, tea.Quit
+			}
+			if handled := m.handleEscKey(); handled {
+				return m, nil
+			}
 		case ":":
 			// Open command palette if no view has an active text input
 			if !m.hasActiveTextInput() {
@@ -117,12 +127,12 @@ func (m *AppModel) hasActiveTextInput() bool {
 	return false
 }
 
-// handleEscKey handles the escape key for view navigation.
+// handleEscKey handles the escape/q key for view navigation.
 // Returns true if the key was handled (should not propagate to views).
 func (m *AppModel) handleEscKey() bool {
-	// Let views handle esc if they have an active search, focus mode, or sidebar focus
+	// Let views handle esc/q if they have an active search, focus mode, or sidebar focus
 	if m.currentView() == ViewProjectTree && m.projectTree != nil &&
-		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused) {
+		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused || m.projectTree.multiSelectMode) {
 		return false
 	}
 	if m.currentView() == ViewDashboard && m.dashboard != nil && m.dashboard.HasActiveSearch() {
