@@ -32,7 +32,8 @@ type SectionManagerModel struct {
 
 // ShowSectionManagerMsg is sent to open the section manager view.
 type ShowSectionManagerMsg struct {
-	ProjectTree *ProjectTreeModel
+	ProjectTree  *ProjectTreeModel
+	StartAddMode bool // If true, open directly in add mode
 }
 
 // CloseSectionManagerMsg is sent when the section manager should close.
@@ -61,7 +62,7 @@ type SectionColorChangedMsg struct {
 }
 
 // NewSectionManagerModel creates a new section manager model.
-func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *config.Manager) *SectionManagerModel {
+func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *config.Manager, startAddMode bool) *SectionManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new section name"
 	renameInput.CharLimit = 50
@@ -79,6 +80,10 @@ func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *confi
 		cursor:        0,
 		renameInput:   renameInput,
 		addInput:      addInput,
+		addMode:       startAddMode,
+	}
+	if startAddMode {
+		m.addInput.Focus()
 	}
 	m.buildSectionList()
 	return m
@@ -257,6 +262,9 @@ func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea
 
 // Init initializes the model.
 func (m *SectionManagerModel) Init() tea.Cmd {
+	if m.addMode {
+		return textinput.Blink
+	}
 	return nil
 }
 

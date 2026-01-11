@@ -172,7 +172,7 @@ type CommandPaletteModel struct {
 // The currentView parameter determines which commands are shown (context-aware filtering).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search (use -term to exclude) :cmd :task :prj :tag :sec"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec • +title to create • ? for help"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -1428,7 +1428,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 		m.filterItems()
 		return m, nil
-	case "e", "g", "x", "s", "r":
+	case "e", "g", "x", "s", "r", "b":
 		// Direct actions on tasks (when not actively typing a search)
 		if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			item := m.filteredItems[m.cursor].Item
@@ -1459,6 +1459,14 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 						return m, func() tea.Msg {
 							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 								Task: task, Project: project, Action: "start",
+							}}
+						}
+					}
+				case "b":
+					if task.Status.IsActive() && task.Status != models.StatusBlocked {
+						return m, func() tea.Msg {
+							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+								Task: task, Project: project, Action: "block",
 							}}
 						}
 					}
@@ -1794,6 +1802,30 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
+	// Block action for active, non-blocked tasks
+	if task.Status.IsActive() && task.Status != models.StatusBlocked {
+		actions = append(actions, PaletteAction{
+			Name:    "Block",
+			Icon:    "◈",
+			KeyHint: "b",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "block"}
+			},
+		})
+	}
+
+	// Cancel action for active tasks
+	if task.Status.IsActive() {
+		actions = append(actions, PaletteAction{
+			Name:    "Cancel",
+			Icon:    "✕",
+			KeyHint: "X",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "cancel"}
+			},
+		})
+	}
+
 	if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
 		actions = append(actions, PaletteAction{
 			Name:    "Reopen",
@@ -1832,6 +1864,16 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		KeyHint: "m",
 		Handler: func() tea.Msg {
 			return ShowSectionPickerMsg{Task: task, Project: project}
+		},
+	})
+
+	// Add set priority action
+	actions = append(actions, PaletteAction{
+		Name:    "Set priority",
+		Icon:    "!",
+		KeyHint: "p",
+		Handler: func() tea.Msg {
+			return ShowPriorityPickerMsg{Task: task, Project: project}
 		},
 	})
 
@@ -1895,6 +1937,23 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 			},
 		})
 	}
+
+	// Pin/unpin action
+	pinName := "Pin"
+	pinIcon := "📌"
+	if project.Pinned {
+		pinName = "Unpin"
+		pinIcon = "📍"
+	}
+	actions = append(actions, PaletteAction{
+		Name:    pinName,
+		Icon:    pinIcon,
+		KeyHint: "p",
+		Handler: func() tea.Msg {
+			project.TogglePinned()
+			return ProjectPinnedToggledMsg{Project: project}
+		},
+	})
 
 	return actions
 }
@@ -2108,9 +2167,8 @@ func (m *CommandPaletteModel) buildFooter() string {
 		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
 	}
 
-	// Build compact hints - essential navigation only
-	// Full: "↑↓ nav • Enter • Tab • ^H hist • ^O sort • ^P preview • ^R reset • Esc"
-	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • ^R • Esc"
+	// Build compact hints with descriptive labels
+	hints := "↑↓:nav • Enter • Tab:actions • ^H:+done • ^O:sort • ^P:view • Esc"
 
 	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
 }
@@ -2122,7 +2180,7 @@ func (m *CommandPaletteModel) renderActionList() string {
 	}
 
 	var b strings.Builder
-	contentWidth := m.width - 4
+	contentWidth := m.listWidth - 4
 	if contentWidth < 40 {
 		contentWidth = 40
 	}
@@ -2145,12 +2203,13 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 		cursor = "> "
 	}
 
-	// Icon (2-3 chars)
+	// Icon with space after
 	icon := action.Icon
 	if icon == "" {
 		icon = "•"
 	}
 	icon = icon + " "
+	iconWidth := lipgloss.Width(icon)
 
 	// Key hint for right alignment
 	keyHint := ""
@@ -2160,8 +2219,8 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 		keyHintLen = len(keyHint) + 2 // +2 for spacing
 	}
 
-	// Calculate remaining width for name
-	fixedWidth := 2 + 3 + keyHintLen + 2 // cursor + icon + key hint + gap
+	// Calculate remaining width for name using actual icon width
+	fixedWidth := 2 + iconWidth + keyHintLen + 2 // cursor + icon + key hint + gap
 	nameWidth := width - fixedWidth
 	if nameWidth < 10 {
 		nameWidth = 10
@@ -2437,6 +2496,12 @@ func (m *CommandPaletteModel) renderPreview() string {
 		return m.renderInlineTaskPreview()
 	}
 
+	// Check for help mode (query starts with ?)
+	query := strings.TrimSpace(m.searchInput.Value())
+	if strings.HasPrefix(query, "?") {
+		return m.renderHelpReference()
+	}
+
 	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
 		return MutedStyle.Render("No item selected.")
 	}
@@ -2457,6 +2522,64 @@ func (m *CommandPaletteModel) renderPreview() string {
 	default:
 		return MutedStyle.Render("Unknown item type.")
 	}
+}
+
+// renderHelpReference shows the command palette syntax reference.
+func (m *CommandPaletteModel) renderHelpReference() string {
+	var b strings.Builder
+
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render("Command Palette Help"))
+	b.WriteString("\n\n")
+
+	// Category prefixes
+	b.WriteString(SubtitleStyle.Render("Category Prefixes"))
+	b.WriteString("\n")
+	b.WriteString("  :cmd   Commands only\n")
+	b.WriteString("  :task  Tasks only\n")
+	b.WriteString("  :prj   Projects only\n")
+	b.WriteString("  :tag   Tags only\n")
+	b.WriteString("  :sec   Sections only\n")
+	b.WriteString("\n")
+
+	// Task filters
+	b.WriteString(SubtitleStyle.Render("Task Filters"))
+	b.WriteString("\n")
+	b.WriteString("  priority:1     Exact priority\n")
+	b.WriteString("  priority:1-3   Priority range\n")
+	b.WriteString("  status:todo    Exact status\n")
+	b.WriteString("  status:a|b     Multiple statuses\n")
+	b.WriteString("  @overdue       Overdue tasks\n")
+	b.WriteString("  @today         Due today\n")
+	b.WriteString("  @tomorrow      Due tomorrow\n")
+	b.WriteString("  @this-week     Due this week\n")
+	b.WriteString("\n")
+
+	// Search syntax
+	b.WriteString(SubtitleStyle.Render("Search Syntax"))
+	b.WriteString("\n")
+	b.WriteString("  term1 term2    AND (both match)\n")
+	b.WriteString("  term1|term2    OR (either match)\n")
+	b.WriteString("  -term          Exclude term\n")
+	b.WriteString("  \"exact\"        Exact match\n")
+	b.WriteString("  #123           Jump to task ID\n")
+	b.WriteString("\n")
+
+	// Inline task creation
+	b.WriteString(SubtitleStyle.Render("Create Task (+)"))
+	b.WriteString("\n")
+	b.WriteString("  +Title         Create task\n")
+	b.WriteString("  +Title !2      With priority\n")
+	b.WriteString("  +Title #bug    With tag\n")
+	b.WriteString("  +Title @today  With due date\n")
+	b.WriteString("\n")
+
+	// Keyboard shortcuts
+	b.WriteString(SubtitleStyle.Render("Task Shortcuts"))
+	b.WriteString("\n")
+	b.WriteString("  e=edit  g=view  x=done\n")
+	b.WriteString("  s=start b=block r=reopen\n")
+
+	return b.String()
 }
 
 // renderInlineTaskPreview shows a preview of the task being created.
@@ -2732,7 +2855,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 		switch item.Category {
 		case ItemCategoryTasks:
 			if m.isDirectActionEnabled() {
-				return "Tip: e=edit  g=view  x=complete  s=start  r=reopen  Tab=more actions"
+				return "Tip: e=edit  g=view  x=complete  s=start  b=block  r=reopen  Tab=more"
 			}
 			return "Tip: Press Tab for quick actions, or Enter to go to task"
 		case ItemCategoryCommands:
@@ -3367,10 +3490,10 @@ type CommandPaletteSectionSelectMsg struct {
 type ShowCommandPaletteMsg struct{}
 
 // CommandPaletteTaskActionMsg is sent when an inline action is performed on a task.
-// This message triggers status changes (complete, start, reopen) that need to be
+// This message triggers status changes (complete, start, block, cancel, reopen) that need to be
 // saved to the project file.
 type CommandPaletteTaskActionMsg struct {
 	Task    *models.Task
 	Project *models.Project
-	Action  string // "complete", "start", "reopen"
+	Action  string // "complete", "start", "block", "cancel", "reopen"
 }

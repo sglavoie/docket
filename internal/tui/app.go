@@ -36,6 +36,7 @@ const (
 	ViewSectionFilterSelector
 	ViewSectionPicker
 	ViewSectionManager
+	ViewPriorityPicker
 	ViewContextPicker
 	ViewGlobalSearch
 	ViewParentSelector
@@ -283,6 +284,16 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				return ShowSectionManagerMsg{ProjectTree: m.projectTree}
+			},
+		},
+		{
+			Name:        "add section",
+			Description: "Add a new section to project",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"create section", "new section"},
+			Handler: func() tea.Msg {
+				return ShowSectionManagerMsg{ProjectTree: m.projectTree, StartAddMode: true}
 			},
 		},
 		{

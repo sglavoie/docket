@@ -313,6 +313,10 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 		msg.Task.Complete()
 	case "start":
 		msg.Task.Start()
+	case "block":
+		msg.Task.Block()
+	case "cancel":
+		msg.Task.Cancel()
 	case "reopen":
 		msg.Task.Reopen()
 	default:
@@ -900,6 +904,32 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowPriorityPickerMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewPriorityPicker, NewPriorityPickerModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case PriorityPickerDoneMsg:
+		m.popView()
+		if !msg.Cancelled && msg.Task != nil && msg.Project != nil {
+			msg.Task.Priority = msg.Priority
+			msg.Task.UpdatedAt = time.Now()
+
+			if err := storage.BackupProject(msg.Project); err != nil {
+				return true, errorCmd("failed to create backup: %w", err)
+			}
+			if err := storage.SaveProject(msg.Project); err != nil {
+				return true, errorCmd("failed to save: %w", err)
+			}
+
+			storage.LoadProject(msg.Project)
+			m.refreshProjectTree()
+			m.statusMessage = fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
+			return true, statusTimeout(2 * time.Second)
+		}
+		return true, nil
+
 	case SectionPickerDoneMsg:
 		m.popView()
 		if !msg.Cancelled && msg.Task != nil && msg.Project != nil {
@@ -928,7 +958,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowSectionManagerMsg:
 		if msg.ProjectTree != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager))
+			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager, msg.StartAddMode))
 		}
 		return true, nil
 
