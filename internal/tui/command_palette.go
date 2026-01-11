@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +105,15 @@ type filteredPaletteItem struct {
 	NamePositions []int // Positions of matched characters in Name
 }
 
+// inlineTaskPreview holds parsed metadata for inline task creation preview.
+// Syntax: "+Task title !priority #tag @due"
+type inlineTaskPreview struct {
+	title    string
+	priority int
+	tags     []string
+	dueDate  *time.Time
+}
+
 // CommandPaletteModel provides a fullscreen fuzzy search palette for commands.
 // It implements the View interface and follows the existing view stack pattern
 // used by GlobalSearchModel and HelpViewModel.
@@ -140,6 +151,15 @@ type CommandPaletteModel struct {
 
 	// Onboarding state
 	showTips bool // Show tips until first keystroke
+
+	// Feature toggles
+	includeCompleted bool      // When true, include completed/cancelled tasks (Ctrl+H)
+	sortField        SortField // Current sort mode for results (Ctrl+O to cycle)
+
+	// Inline task creation state
+	inlineTaskMode   bool   // When true, showing inline task creation preview
+	inlineTaskTitle  string // Parsed title from +query
+	inlineTaskParsed *inlineTaskPreview
 }
 
 // NewCommandPaletteModel creates a new command palette model.
@@ -170,6 +190,13 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		scrollAnchor:  -1,
 		showTips:      true,
 	}
+
+	// Pre-fill with last category filter if set
+	if lastCat := cfg.GetLastPaletteCategory(); lastCat != "" {
+		m.searchInput.SetValue(lastCat)
+		m.showTips = false // Don't show tips when pre-filled
+	}
+
 	// Load all searchable items (lazy loading on palette open per design decision)
 	m.allItems = m.loadAllItems()
 	// Start with all items visible, sorted by category (no search filter, no highlights)
@@ -238,9 +265,10 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			continue
 		}
 
-		// Add tasks and collect tags/sections (only active tasks)
+		// Add tasks and collect tags/sections
+		// By default only show active tasks; when includeCompleted is true, show all
 		for _, task := range project.Tasks {
-			if !task.Status.IsActive() {
+			if !m.includeCompleted && !task.Status.IsActive() {
 				continue
 			}
 			items = append(items, PaletteItem{
@@ -368,45 +396,160 @@ func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []Palette
 	return sorted
 }
 
-// parseSearchTerms splits a query into positive and negative terms.
+// searchTermGroup represents a group of OR-ed alternatives within a search term.
+// For example, "bug|fix" becomes a group with alternatives ["bug", "fix"].
+// A simple term like "task" becomes a group with one alternative ["task"].
+type searchTermGroup struct {
+	alternatives []string // OR-ed alternatives (at least one must match)
+	isNegative   bool     // If true, item must NOT match any alternative
+}
+
+// parseSearchTerms splits a query into positive and negative term groups.
 // Terms prefixed with "-" are negative (exclude items matching them).
-// Returns (positiveTerms, negativeTerms).
-func parseSearchTerms(query string) ([]string, []string) {
+// Terms containing "|" are OR groups (any alternative matches).
+// Example: "task bug|fix -done" returns:
+//   - positiveGroups: [["task"], ["bug", "fix"]]
+//   - negativeGroups: [["done"]]
+func parseSearchTerms(query string) (positiveGroups []searchTermGroup, negativeGroups []searchTermGroup) {
 	terms := strings.Fields(query)
-	var positive, negative []string
 
 	for _, term := range terms {
 		if strings.HasPrefix(term, "-") && len(term) > 1 {
 			// Negative term - remove the "-" prefix
-			negative = append(negative, term[1:])
-		} else if term != "-" {
-			// Positive term (ignore standalone "-")
-			positive = append(positive, term)
+			termContent := term[1:]
+			alternatives := strings.Split(termContent, "|")
+			// Filter empty alternatives
+			var validAlts []string
+			for _, alt := range alternatives {
+				if alt != "" {
+					validAlts = append(validAlts, alt)
+				}
+			}
+			if len(validAlts) > 0 {
+				negativeGroups = append(negativeGroups, searchTermGroup{
+					alternatives: validAlts,
+					isNegative:   true,
+				})
+			}
+		} else if term != "-" && term != "|" {
+			// Positive term - may contain OR alternatives
+			alternatives := strings.Split(term, "|")
+			var validAlts []string
+			for _, alt := range alternatives {
+				if alt != "" {
+					validAlts = append(validAlts, alt)
+				}
+			}
+			if len(validAlts) > 0 {
+				positiveGroups = append(positiveGroups, searchTermGroup{
+					alternatives: validAlts,
+					isNegative:   false,
+				})
+			}
 		}
 	}
 
-	return positive, negative
+	return positiveGroups, negativeGroups
 }
 
-// itemMatchesNegativeTerms returns true if the item matches any negative term.
-func (m *CommandPaletteModel) itemMatchesNegativeTerms(item PaletteItem, negativeTerms []string) bool {
-	for _, term := range negativeTerms {
-		// Check if term matches name or description
-		if fuzzy.Match(item.Name, term) || fuzzy.Match(item.Description, term) {
-			return true
+// itemMatchesNegativeGroups returns true if the item matches any negative term group.
+// A group matches if ANY of its alternatives match (OR logic within group).
+func (m *CommandPaletteModel) itemMatchesNegativeGroups(item PaletteItem, negativeGroups []searchTermGroup) bool {
+	for _, group := range negativeGroups {
+		// Group matches if ANY alternative matches (OR logic)
+		for _, alt := range group.alternatives {
+			if fuzzy.Match(item.Name, alt) || fuzzy.Match(item.Description, alt) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
+// itemMatchesPositiveGroups returns true and a score if item matches ALL positive term groups.
+// Each group must have at least one matching alternative (AND between groups, OR within groups).
+// Returns (matches, totalScore, namePositions).
+func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positiveGroups []searchTermGroup) (bool, int, []int) {
+	if len(positiveGroups) == 0 {
+		return true, 1, nil
+	}
+
+	totalScore := 0
+	var allPositions []int
+	positionSet := make(map[int]bool)
+
+	for _, group := range positiveGroups {
+		// Find best matching alternative in this group
+		bestScore := 0
+		var bestPositions []int
+
+		for _, alt := range group.alternatives {
+			score, positions := m.scoreItemWithPositions(item, alt)
+			if score > bestScore {
+				bestScore = score
+				bestPositions = positions
+			}
+		}
+
+		// Group must have at least one match
+		if bestScore == 0 {
+			return false, 0, nil
+		}
+
+		totalScore += bestScore
+		// Merge positions (avoiding duplicates)
+		for _, pos := range bestPositions {
+			if !positionSet[pos] {
+				positionSet[pos] = true
+				allPositions = append(allPositions, pos)
+			}
+		}
+	}
+
+	return true, totalScore, allPositions
+}
+
+// taskIDPattern matches queries like "#123" for direct task ID jump.
+var taskIDPattern = regexp.MustCompile(`^#(\d+)$`)
+
+// inlineTaskPattern matches queries starting with "+" for inline task creation.
+var inlineTaskPattern = regexp.MustCompile(`^\+(.+)$`)
+
 // filterItems filters items based on the current search query using category-weighted fuzzy scoring.
 // Supports category prefix filtering (e.g., ":cmd help" filters to commands matching "help").
 // Supports negation with "-" prefix (e.g., "task -bug" excludes items matching "bug").
+// Supports direct task ID jump with "#123" syntax.
+// Supports inline task creation with "+Task title" syntax.
 func (m *CommandPaletteModel) filterItems() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
+	// Reset inline task mode
+	m.inlineTaskMode = false
+	m.inlineTaskParsed = nil
+
+	// Check for inline task creation (+Title syntax)
+	if matches := inlineTaskPattern.FindStringSubmatch(query); matches != nil {
+		m.inlineTaskMode = true
+		m.inlineTaskTitle = strings.TrimSpace(matches[1])
+		m.inlineTaskParsed = m.parseInlineTask(m.inlineTaskTitle)
+		m.filteredItems = nil
+		m.cursor = 0
+		m.scrollOffset = 0
+		return
+	}
+
+	// Check for direct task ID jump (#123 syntax)
+	if matches := taskIDPattern.FindStringSubmatch(query); matches != nil {
+		taskID, _ := strconv.Atoi(matches[1])
+		m.filterByTaskID(taskID)
+		return
+	}
+
 	// Parse category prefix if present
 	categoryFilter, searchQuery := m.parseQueryPrefix(query)
+
+	// Persist category filter when used (e.g., ":task " becomes the default for next open)
+	m.persistCategoryFilter(query, categoryFilter)
 
 	// Determine which items to search
 	itemsToSearch := m.allItems
@@ -433,11 +576,8 @@ func (m *CommandPaletteModel) filterItems() {
 		return
 	}
 
-	// Parse positive and negative terms
-	positiveTerms, negativeTerms := parseSearchTerms(searchQuery)
-
-	// Build the positive query string for scoring
-	positiveQuery := strings.Join(positiveTerms, " ")
+	// Parse positive and negative term groups (supports OR with | delimiter)
+	positiveGroups, negativeGroups := parseSearchTerms(searchQuery)
 
 	// Score each item and collect matches with positions
 	type scoredItem struct {
@@ -448,27 +588,62 @@ func (m *CommandPaletteModel) filterItems() {
 	var scored []scoredItem
 
 	for _, item := range itemsToSearch {
-		// Skip items that match any negative term
-		if len(negativeTerms) > 0 && m.itemMatchesNegativeTerms(item, negativeTerms) {
+		// Skip items that match any negative term group
+		if len(negativeGroups) > 0 && m.itemMatchesNegativeGroups(item, negativeGroups) {
 			continue
 		}
 
 		// If only negative terms, include all non-excluded items
-		if positiveQuery == "" {
+		if len(positiveGroups) == 0 {
 			scored = append(scored, scoredItem{item: item, score: 1})
 			continue
 		}
 
-		// Score against positive terms
-		score, positions := m.scoreItemWithPositions(item, positiveQuery)
-		if score > 0 {
+		// Score against positive term groups (AND between groups, OR within groups)
+		matches, score, positions := m.itemMatchesPositiveGroups(item, positiveGroups)
+		if matches && score > 0 {
 			scored = append(scored, scoredItem{item: item, score: score, namePositions: positions})
 		}
 	}
 
-	// Sort by score descending (best matches first)
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
+	// Sort by score descending (best matches first), then apply secondary sort
+	sort.SliceStable(scored, func(i, j int) bool {
+		// Primary sort by score
+		if scored[i].score != scored[j].score {
+			return scored[i].score > scored[j].score
+		}
+
+		// Secondary sort based on sortField (only for tasks)
+		itemI := scored[i].item
+		itemJ := scored[j].item
+
+		// Non-tasks: just keep score order
+		if itemI.Category != ItemCategoryTasks || itemJ.Category != ItemCategoryTasks {
+			return false
+		}
+		if itemI.Task == nil || itemJ.Task == nil {
+			return false
+		}
+
+		switch m.sortField {
+		case SortByPriority:
+			// Lower priority number = higher priority (1 is highest)
+			return itemI.Task.Priority < itemJ.Task.Priority
+		case SortByDueDate:
+			// Earlier due date first; no due date goes last
+			if itemI.Task.DueDate == nil && itemJ.Task.DueDate == nil {
+				return false
+			}
+			if itemI.Task.DueDate == nil {
+				return false // nil goes last
+			}
+			if itemJ.Task.DueDate == nil {
+				return true // nil goes last
+			}
+			return itemI.Task.DueDate.Before(*itemJ.Task.DueDate)
+		default:
+			return false
+		}
 	})
 
 	// Extract sorted results with positions
@@ -488,6 +663,131 @@ func (m *CommandPaletteModel) filterItems() {
 		m.cursor = 0
 	}
 	m.scrollOffset = 0
+}
+
+// filterByTaskID filters items to show only tasks matching the given ShortID.
+// This enables direct task jump with #123 syntax.
+func (m *CommandPaletteModel) filterByTaskID(taskID int) {
+	var results []filteredPaletteItem
+
+	for _, item := range m.allItems {
+		if item.Category == ItemCategoryTasks && item.Task != nil {
+			if item.Task.ShortID == taskID {
+				results = append(results, filteredPaletteItem{Item: item})
+			}
+		}
+	}
+
+	m.filteredItems = results
+	m.cursor = 0
+	m.scrollOffset = 0
+}
+
+// parseInlineTask extracts metadata from inline task creation input.
+// Syntax: "Task title !priority #tag @due"
+// Similar to quick capture but adapted for command palette.
+func (m *CommandPaletteModel) parseInlineTask(input string) *inlineTaskPreview {
+	result := &inlineTaskPreview{
+		priority: 3, // default priority
+	}
+
+	// Extract priority: !1 through !5
+	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
+	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
+		result.priority, _ = strconv.Atoi(match[1])
+		input = priorityRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract tags: #word
+	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
+	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
+	for _, match := range tagMatches {
+		if len(match) > 1 {
+			result.tags = append(result.tags, match[1])
+		}
+	}
+	input = tagRe.ReplaceAllString(input, " ")
+
+	// Extract due date: @today, @tomorrow, @YYYY-MM-DD
+	dueDateRe := regexp.MustCompile(`\s*@(\S+)\s*`)
+	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
+		dateStr := match[1]
+		now := time.Now()
+		var dueDate time.Time
+
+		switch strings.ToLower(dateStr) {
+		case "today":
+			dueDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		case "tomorrow":
+			dueDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+		default:
+			// Try parsing as date
+			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {
+				dueDate = parsed
+			}
+		}
+
+		if !dueDate.IsZero() {
+			result.dueDate = &dueDate
+		}
+		input = dueDateRe.ReplaceAllString(input, " ")
+	}
+
+	// Remaining text is the title
+	result.title = strings.TrimSpace(input)
+
+	return result
+}
+
+// createInlineTask creates a task from the inline task preview and closes the palette.
+func (m *CommandPaletteModel) createInlineTask() (tea.Model, tea.Cmd) {
+	if m.inlineTaskParsed == nil || m.inlineTaskParsed.title == "" {
+		return m, nil
+	}
+
+	// Find current project to create task in
+	var targetProject *models.Project
+	projects := m.config.GetActiveProjects()
+	if len(projects) > 0 {
+		// Use current project if set, otherwise first active project
+		if current := m.config.GetCurrentProject(); current != nil {
+			targetProject = current
+		} else {
+			targetProject = projects[0]
+		}
+	}
+
+	if targetProject == nil {
+		return m, nil // No project available
+	}
+
+	// Load project if needed
+	if err := storage.LoadProject(targetProject); err != nil {
+		return m, nil
+	}
+
+	parsed := m.inlineTaskParsed
+
+	return m, func() tea.Msg {
+		return CommandPaletteExecuteMsg{
+			ResultMsg: InlineTaskCreateMsg{
+				Project:  targetProject,
+				Title:    parsed.title,
+				Priority: parsed.priority,
+				Tags:     parsed.tags,
+				DueDate:  parsed.dueDate,
+			},
+		}
+	}
+}
+
+// InlineTaskCreateMsg is sent when a task is created from the command palette.
+type InlineTaskCreateMsg struct {
+	Project  *models.Project
+	Title    string
+	Priority int
+	Tags     []string
+	DueDate  *time.Time
 }
 
 // scoreItem returns a category-weighted fuzzy match score for an item against the query.
@@ -552,6 +852,36 @@ func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query str
 	}
 
 	return score, positions
+}
+
+// persistCategoryFilter saves the category filter to config when a category prefix is used.
+// Only persists complete prefixes (e.g., ":task " not ":ta").
+func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter ItemCategory) {
+	if m.configManager == nil {
+		return
+	}
+
+	// Only persist if we have a valid category filter with a complete prefix
+	if categoryFilter != "" {
+		// Find the prefix string that matches this category
+		for prefix, cat := range categoryPrefixes {
+			if cat == categoryFilter {
+				newValue := ":" + prefix + " "
+				// Only update if changed
+				if m.config.GetLastPaletteCategory() != newValue {
+					m.config.SetLastPaletteCategory(newValue)
+					m.configManager.Save(m.config)
+				}
+				return
+			}
+		}
+	} else if query == "" {
+		// Clear the filter when query is empty
+		if m.config.GetLastPaletteCategory() != "" {
+			m.config.SetLastPaletteCategory("")
+			m.configManager.Save(m.config)
+		}
+	}
 }
 
 // isRecentSelection checks if an item appears in the recent selections list.
@@ -654,6 +984,11 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			return CloseCommandPaletteMsg{}
 		}
 	case "enter":
+		// Handle inline task creation
+		if m.inlineTaskMode && m.inlineTaskParsed != nil && m.inlineTaskParsed.title != "" {
+			return m.createInlineTask()
+		}
+		// Handle regular item selection
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			return m.executeItem(m.filteredItems[m.cursor].Item)
 		}
@@ -765,9 +1100,108 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			}
 		}
 		return m, nil
+	case "ctrl+h":
+		// Toggle inclusion of completed/cancelled tasks
+		m.includeCompleted = !m.includeCompleted
+		m.allItems = m.loadAllItems()
+		m.filterItems()
+		return m, nil
+	case "ctrl+r":
+		// Reset category filter and clear persisted category
+		m.searchInput.SetValue("")
+		m.config.SetLastPaletteCategory("")
+		if m.configManager != nil {
+			m.configManager.Save(m.config)
+		}
+		m.filterItems()
+		return m, nil
+	case "ctrl+o":
+		// Cycle sort mode: Score -> Priority -> DueDate -> Score
+		switch m.sortField {
+		case SortByDefault:
+			m.sortField = SortByPriority
+		case SortByPriority:
+			m.sortField = SortByDueDate
+		case SortByDueDate:
+			m.sortField = SortByDefault
+		default:
+			m.sortField = SortByDefault
+		}
+		m.filterItems()
+		return m, nil
+	case "e", "g", "x", "s", "r":
+		// Direct actions on tasks (when not actively typing a search)
+		if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
+				task := item.Task
+				project := item.Project
+				key := msg.String()
+
+				switch key {
+				case "e":
+					return m, func() tea.Msg {
+						return CommandPaletteExecuteMsg{ResultMsg: EditTaskMsg{Task: task}}
+					}
+				case "g":
+					return m, func() tea.Msg {
+						return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
+					}
+				case "x":
+					if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+						return m, func() tea.Msg {
+							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+								Task: task, Project: project, Action: "complete",
+							}}
+						}
+					}
+				case "s":
+					if task.Status == models.StatusTodo {
+						return m, func() tea.Msg {
+							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+								Task: task, Project: project, Action: "start",
+							}}
+						}
+					}
+				case "r":
+					if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+						return m, func() tea.Msg {
+							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
+								Task: task, Project: project, Action: "reopen",
+							}}
+						}
+					}
+				}
+			}
+		}
+		// Fall through to default if action not applicable
+		fallthrough
 	default:
-		// Handle number keys for direct jump when enabled
 		key := msg.String()
+
+		// Check if the key matches a command's shortcut (when not actively searching)
+		if m.isDirectActionEnabled() && len(m.filteredItems) > 0 {
+			// First check if current selection is a command with this shortcut
+			if m.cursor < len(m.filteredItems) {
+				item := m.filteredItems[m.cursor].Item
+				if item.Category == ItemCategoryCommands && item.Command != nil {
+					if item.Command.Shortcut == key {
+						return m.executeItem(item)
+					}
+				}
+			}
+			// Also check visible commands (first 9) for shortcut match
+			for i := 0; i < len(m.filteredItems) && i < 9; i++ {
+				item := m.filteredItems[i].Item
+				if item.Category == ItemCategoryCommands && item.Command != nil {
+					if item.Command.Shortcut == key {
+						return m.executeItem(item)
+					}
+				}
+			}
+		}
+
+		// Handle number keys for direct jump when enabled
 		if len(key) == 1 && key[0] >= '1' && key[0] <= '9' && m.isNumberJumpEnabled() {
 			idx := int(key[0] - '1') // "1" -> 0, "9" -> 8
 			if idx < len(m.filteredItems) {
@@ -1280,6 +1714,7 @@ func (m *CommandPaletteModel) View() string {
 }
 
 // buildFooter constructs the footer text with navigation hints and category counts.
+// Adapts to available width by showing shorter hints when space is limited.
 func (m *CommandPaletteModel) buildFooter() string {
 	// Count items by category in the filtered results
 	counts := make(map[ItemCategory]int)
@@ -1287,45 +1722,52 @@ func (m *CommandPaletteModel) buildFooter() string {
 		counts[filtered.Item.Category]++
 	}
 
-	// Build count summary (only non-zero categories)
+	// Build count summary (only non-zero categories, compact format)
 	var countParts []string
 	if c := counts[ItemCategoryCommands]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d cmd", c))
+		countParts = append(countParts, fmt.Sprintf("%dc", c))
 	}
 	if c := counts[ItemCategoryProjects]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d prj", c))
+		countParts = append(countParts, fmt.Sprintf("%dp", c))
 	}
 	if c := counts[ItemCategoryTasks]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d task", c))
+		countParts = append(countParts, fmt.Sprintf("%dt", c))
 	}
 	if c := counts[ItemCategoryTags]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d tag", c))
+		countParts = append(countParts, fmt.Sprintf("%dg", c))
 	}
 	if c := counts[ItemCategorySections]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d sec", c))
+		countParts = append(countParts, fmt.Sprintf("%ds", c))
 	}
 
-	countSummary := strings.Join(countParts, ", ")
+	countSummary := strings.Join(countParts, " ")
 	if countSummary == "" {
-		countSummary = "0 items"
+		countSummary = "0"
 	}
 
-	// Build context-aware hints based on selected item type
-	hints := "↑/↓ navigate • Enter select"
-	if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
-		item := m.filteredItems[m.cursor].Item
-		switch item.Category {
-		case ItemCategoryTasks:
-			hints += " • ^X done • ^E edit • ^G view • ^S start"
-		default:
-			hints += " • Tab actions"
+	// Add toggle indicators (compact)
+	var toggles []string
+	if m.includeCompleted {
+		toggles = append(toggles, "+H")
+	}
+	if m.sortField != SortByDefault {
+		switch m.sortField {
+		case SortByPriority:
+			toggles = append(toggles, "P↓")
+		case SortByDueDate:
+			toggles = append(toggles, "D↓")
 		}
-	} else {
-		hints += " • Tab actions"
 	}
-	hints += " • Esc close"
+	toggleSummary := ""
+	if len(toggles) > 0 {
+		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
+	}
 
-	return fmt.Sprintf("%s • %s", hints, countSummary)
+	// Build compact hints - essential navigation only
+	// Full: "↑↓ nav • Enter • Tab • ^H hist • ^O sort • ^R reset • Esc"
+	hints := "↑↓ • Enter • Tab • ^H • ^O • ^R • Esc"
+
+	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
 }
 
 // renderActionList renders the list of available actions for the selected item.
@@ -1616,6 +2058,11 @@ func (m *CommandPaletteModel) renderPreview() string {
 		return m.renderActionPreview()
 	}
 
+	// In inline task creation mode, show task preview
+	if m.inlineTaskMode {
+		return m.renderInlineTaskPreview()
+	}
+
 	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
 		return MutedStyle.Render("No item selected.")
 	}
@@ -1636,6 +2083,69 @@ func (m *CommandPaletteModel) renderPreview() string {
 	default:
 		return MutedStyle.Render("Unknown item type.")
 	}
+}
+
+// renderInlineTaskPreview shows a preview of the task being created.
+func (m *CommandPaletteModel) renderInlineTaskPreview() string {
+	var b strings.Builder
+
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render("New Task"))
+	b.WriteString("\n\n")
+
+	if m.inlineTaskParsed == nil {
+		b.WriteString(MutedStyle.Render("Type a task title after +"))
+		return b.String()
+	}
+
+	// Title
+	if m.inlineTaskParsed.title != "" {
+		b.WriteString(BoldStyle.Render(m.inlineTaskParsed.title))
+	} else {
+		b.WriteString(MutedStyle.Render("(no title)"))
+	}
+	b.WriteString("\n\n")
+
+	// Priority
+	priorityStyle := NormalStyle
+	if m.inlineTaskParsed.priority <= 2 {
+		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	}
+	b.WriteString(fmt.Sprintf("%s %s\n",
+		MutedStyle.Render("Priority:"),
+		priorityStyle.Render(fmt.Sprintf("%d", m.inlineTaskParsed.priority))))
+
+	// Tags
+	if len(m.inlineTaskParsed.tags) > 0 {
+		tagStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
+		tags := make([]string, len(m.inlineTaskParsed.tags))
+		for i, tag := range m.inlineTaskParsed.tags {
+			tags[i] = tagStyle.Render("#" + tag)
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Tags:"),
+			strings.Join(tags, " ")))
+	}
+
+	// Due date
+	if m.inlineTaskParsed.dueDate != nil {
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Due:"),
+			DueDateStyle.Render(m.inlineTaskParsed.dueDate.Format(util.DateFormat))))
+	}
+
+	// Syntax help
+	b.WriteString("\n")
+	b.WriteString(SubtitleStyle.Render("Syntax"))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("!1-5 priority  #tag  @today/@tomorrow/@YYYY-MM-DD"))
+	b.WriteString("\n\n")
+
+	// Action hint
+	if m.inlineTaskParsed.title != "" {
+		b.WriteString(HelpStyle.Render("Press Enter to create task"))
+	}
+
+	return b.String()
 }
 
 // renderCommandPreview shows details for a command.
@@ -1788,7 +2298,43 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		b.WriteString("\n")
 	}
 
+	// Quick actions hint (when not actively searching)
+	if m.isDirectActionEnabled() {
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Quick Actions"))
+		b.WriteString("\n")
+		var actions []string
+		actions = append(actions, HelpKeyStyle.Render("e")+" edit")
+		actions = append(actions, HelpKeyStyle.Render("g")+" view")
+		if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+			actions = append(actions, HelpKeyStyle.Render("x")+" done")
+		}
+		if task.Status == models.StatusTodo {
+			actions = append(actions, HelpKeyStyle.Render("s")+" start")
+		}
+		if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+			actions = append(actions, HelpKeyStyle.Render("r")+" reopen")
+		}
+		b.WriteString(MutedStyle.Render(strings.Join(actions, "  ")))
+		b.WriteString("\n")
+	}
+
 	return b.String()
+}
+
+// isDirectActionEnabled returns true if single-key actions (e, g, x, s, r) should work directly.
+// This is enabled when the search input is empty or contains only a category prefix.
+func (m *CommandPaletteModel) isDirectActionEnabled() bool {
+	query := strings.TrimSpace(m.searchInput.Value())
+	if query == "" {
+		return true
+	}
+	// Check if query is just a category prefix (e.g., ":task") or task ID jump (#123)
+	if taskIDPattern.MatchString(query) {
+		return true
+	}
+	_, searchQuery := m.parseQueryPrefix(query)
+	return searchQuery == ""
 }
 
 // renderProjectPreview shows details for a project.

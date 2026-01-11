@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -166,6 +167,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CommandPaletteTaskActionMsg:
 		return m.handleCommandPaletteTaskAction(msg)
+
+	case InlineTaskCreateMsg:
+		return m.handleInlineTaskCreate(msg)
 
 	case EditTaskContentMsg:
 		return m.handleEditTaskContent(msg)
@@ -331,6 +335,65 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 
 	// Show status message
 	m.statusMessage = fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
+	return true, statusTimeout(2 * time.Second)
+}
+
+// handleInlineTaskCreate creates a new task from the command palette inline creation.
+func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cmd) {
+	if msg.Project == nil || msg.Title == "" {
+		return true, nil
+	}
+
+	// Ensure project is loaded
+	if err := storage.LoadProject(msg.Project); err != nil {
+		return true, errorCmd("failed to load project: %w", err)
+	}
+
+	// Ensure Inbox section exists
+	if !msg.Project.HasSection(models.SectionInbox) {
+		msg.Project.EnsureSection(models.SectionInbox)
+		msg.Project.SetSectionColor(models.SectionInbox, "red")
+	}
+
+	// Create the task
+	task := &models.Task{
+		ID:        uuid.New().String(),
+		ShortID:   msg.Project.GetNextShortID(),
+		Type:      models.TaskTypeTask,
+		Title:     msg.Title,
+		Status:    models.StatusTodo,
+		Priority:  msg.Priority,
+		Section:   models.SectionInbox,
+		DueDate:   msg.DueDate,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Add tags
+	for _, tag := range msg.Tags {
+		task.AddTag(tag)
+	}
+
+	// Add to project at the beginning so it's prominently visible
+	msg.Project.Tasks = append([]*models.Task{task}, msg.Project.Tasks...)
+	msg.Project.BuildTaskTree()
+
+	// Backup and save
+	if err := storage.BackupProject(msg.Project); err != nil {
+		return true, errorCmd("failed to create backup: %w", err)
+	}
+	if err := storage.SaveProject(msg.Project); err != nil {
+		return true, errorCmd("failed to save: %w", err)
+	}
+
+	// Reload and refresh
+	storage.LoadProject(msg.Project)
+	if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
+		m.refreshProjectTree()
+	}
+
+	// Show status message
+	m.statusMessage = fmt.Sprintf("Created: %s", msg.Title)
 	return true, statusTimeout(2 * time.Second)
 }
 
