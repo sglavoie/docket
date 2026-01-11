@@ -142,14 +142,6 @@ func (m *ProjectTreeModel) handleViewModeKeys(key string, visible []*TreeNode) (
 		m.clampCursor()
 		return true, nil
 
-	case "C":
-		// Switch directly to Completed view
-		m.viewMode = ViewModeCompleted
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-
 	case "A":
 		// Send task(s) to Active view (clear section)
 		return m.sendTasksToActive(visible)
