@@ -634,8 +634,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowCommandPaletteMsg:
 		// Pass the current view (before pushing the palette) for context-aware command filtering
+		// Pass the current project to filter tasks (nil = show all projects' tasks)
 		currentView := m.currentView()
-		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView)
+		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, m.currentProject)
 		m.showView(ViewCommandPalette, palette)
 		return true, palette.Init()
 

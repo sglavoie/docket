@@ -125,6 +125,9 @@ type CommandPaletteModel struct {
 	// Current view context for filtering commands
 	currentView ViewType
 
+	// Current project for task filtering (nil = show tasks from all projects)
+	currentProject *models.Project
+
 	// Input for filtering
 	searchInput textinput.Model
 
@@ -170,7 +173,8 @@ type CommandPaletteModel struct {
 
 // NewCommandPaletteModel creates a new command palette model.
 // The currentView parameter determines which commands are shown (context-aware filtering).
-func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType) *CommandPaletteModel {
+// The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
+func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec • +title to create • ? for help"
 	searchInput.CharLimit = 100
@@ -191,6 +195,7 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		configManager:   manager,
 		registry:        registry,
 		currentView:     currentView,
+		currentProject:  currentProject,
 		searchInput:     searchInput,
 		cursor:          0,
 		scrollAnchor:    -1,
@@ -262,15 +267,21 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	sectionCounts := make(map[string]int)
 
 	// Load tasks, projects, tags, and sections from active projects
+	// When currentProject is set, only load tasks from that project
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
-		// Add project as searchable item
+		// Add project as searchable item (always include all projects for switching)
 		items = append(items, PaletteItem{
 			Name:        project.Name,
 			Description: fmt.Sprintf("Project: %s", project.Slug),
 			Category:    ItemCategoryProjects,
 			Project:     project,
 		})
+
+		// Skip loading tasks from other projects when filtering by current project
+		if m.currentProject != nil && project.ID != m.currentProject.ID {
+			continue
+		}
 
 		// Load project tasks
 		if err := storage.LoadProject(project); err != nil {
@@ -283,9 +294,14 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 			if !m.includeCompleted && !task.Status.IsActive() {
 				continue
 			}
+			// Use simpler description when filtering by current project
+			description := fmt.Sprintf("#%d in %s", task.ShortID, project.Slug)
+			if m.currentProject != nil {
+				description = fmt.Sprintf("#%d", task.ShortID)
+			}
 			items = append(items, PaletteItem{
 				Name:        task.Title,
-				Description: fmt.Sprintf("#%d in %s", task.ShortID, project.Slug),
+				Description: description,
 				Category:    ItemCategoryTasks,
 				Task:        task,
 				Project:     project,
