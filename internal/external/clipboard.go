@@ -1,6 +1,7 @@
 package external
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -27,6 +28,13 @@ func CopyTaskTitles(tasks []*models.Task) (string, error) {
 		titles[i] = task.Title
 	}
 	text := strings.Join(titles, "\n")
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyTaskReference copies a task reference (e.g., "#123: Task title") to the clipboard.
+// Returns the copied text and any error.
+func CopyTaskReference(task *models.Task) (string, error) {
+	text := fmt.Sprintf("#%d: %s", task.ShortID, task.Title)
 	return text, clipboard.WriteAll(text)
 }
 

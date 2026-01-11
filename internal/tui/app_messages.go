@@ -102,11 +102,12 @@ type (
 	}
 
 	// Clipboard messages
-	CopyTaskTitleMsg    struct{ Task *models.Task }
-	CopyTaskDetailsMsg  struct{ Task *models.Task }
-	CopyTasksTitleMsg   struct{ Tasks []*models.Task }
-	CopyTasksDetailsMsg struct{ Tasks []*models.Task }
-	TaskCopiedMsg       struct {
+	CopyTaskTitleMsg     struct{ Task *models.Task }
+	CopyTaskDetailsMsg   struct{ Task *models.Task }
+	CopyTaskReferenceMsg struct{ Task *models.Task }
+	CopyTasksTitleMsg    struct{ Tasks []*models.Task }
+	CopyTasksDetailsMsg  struct{ Tasks []*models.Task }
+	TaskCopiedMsg        struct {
 		Count      int
 		FullDetail bool
 	}

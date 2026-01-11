@@ -984,6 +984,17 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return TaskCopiedMsg{Count: 1, FullDetail: true}
 		}
 
+	case CopyTaskReferenceMsg:
+		if msg.Task == nil {
+			return true, nil
+		}
+		ref, err := external.CopyTaskReference(msg.Task)
+		if err != nil {
+			return true, errorCmd("copy failed: %w", err)
+		}
+		m.statusMessage = fmt.Sprintf("Copied \"%s\" to clipboard", ref)
+		return true, statusTimeout(2 * time.Second)
+
 	case CopyTasksTitleMsg:
 		if len(msg.Tasks) == 0 {
 			return true, nil

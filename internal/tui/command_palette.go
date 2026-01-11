@@ -160,6 +160,12 @@ type CommandPaletteModel struct {
 	inlineTaskMode   bool   // When true, showing inline task creation preview
 	inlineTaskTitle  string // Parsed title from +query
 	inlineTaskParsed *inlineTaskPreview
+
+	// Category cursor persistence - remembers cursor position per category
+	categoryCursors map[ItemCategory]int
+
+	// View mode toggle - compact mode hides preview pane
+	compactMode bool
 }
 
 // NewCommandPaletteModel creates a new command palette model.
@@ -181,14 +187,15 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 	}
 
 	m := &CommandPaletteModel{
-		config:        cfg,
-		configManager: manager,
-		registry:      registry,
-		currentView:   currentView,
-		searchInput:   searchInput,
-		cursor:        0,
-		scrollAnchor:  -1,
-		showTips:      true,
+		config:          cfg,
+		configManager:   manager,
+		registry:        registry,
+		currentView:     currentView,
+		searchInput:     searchInput,
+		cursor:          0,
+		scrollAnchor:    -1,
+		showTips:        true,
+		categoryCursors: make(map[ItemCategory]int),
 	}
 
 	// Pre-fill with last category filter if set
@@ -399,19 +406,245 @@ func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []Palette
 // searchTermGroup represents a group of OR-ed alternatives within a search term.
 // For example, "bug|fix" becomes a group with alternatives ["bug", "fix"].
 // A simple term like "task" becomes a group with one alternative ["task"].
+// Quoted strings are treated as exact phrase matches.
 type searchTermGroup struct {
 	alternatives []string // OR-ed alternatives (at least one must match)
 	isNegative   bool     // If true, item must NOT match any alternative
+	isExact      bool     // If true, require exact substring match (not fuzzy)
 }
+
+// fieldFilter represents a field-specific filter parsed from the query.
+// Supports: priority:1-2, status:todo|progress, @overdue, @today, @this-week
+type fieldFilter struct {
+	field string   // "priority", "status", or "date"
+	op    string   // "eq", "range", "in" for comparison type
+	value string   // single value or range (e.g., "1-3")
+	alt   []string // alternatives for OR logic (e.g., ["todo", "progress"])
+}
+
+// parseFieldFilters extracts field-specific filters from the query.
+// Returns the remaining query after removing field filters, and the filters found.
+// Supported syntax:
+//   - priority:N or priority:N-M (e.g., priority:1, priority:1-2)
+//   - status:val or status:val|val2 (e.g., status:todo, status:todo|progress)
+//   - @overdue, @today, @tomorrow, @this-week
+func parseFieldFilters(query string) (remaining string, filters []fieldFilter) {
+	terms := strings.Fields(query)
+	var remainingTerms []string
+
+	for _, term := range terms {
+		// Check for date predicates (@overdue, @today, etc.)
+		if strings.HasPrefix(term, "@") {
+			datePred := strings.ToLower(term[1:])
+			switch datePred {
+			case "overdue", "today", "tomorrow", "this-week", "thisweek":
+				filters = append(filters, fieldFilter{
+					field: "date",
+					op:    "eq",
+					value: datePred,
+				})
+				continue
+			}
+		}
+
+		// Check for priority:N or priority:N-M
+		if strings.HasPrefix(term, "priority:") {
+			val := term[9:]
+			if strings.Contains(val, "-") {
+				filters = append(filters, fieldFilter{
+					field: "priority",
+					op:    "range",
+					value: val,
+				})
+			} else {
+				filters = append(filters, fieldFilter{
+					field: "priority",
+					op:    "eq",
+					value: val,
+				})
+			}
+			continue
+		}
+
+		// Check for status:val or status:val|val2
+		if strings.HasPrefix(term, "status:") {
+			val := term[7:]
+			if strings.Contains(val, "|") {
+				alts := strings.Split(val, "|")
+				filters = append(filters, fieldFilter{
+					field: "status",
+					op:    "in",
+					alt:   alts,
+				})
+			} else {
+				filters = append(filters, fieldFilter{
+					field: "status",
+					op:    "eq",
+					value: val,
+				})
+			}
+			continue
+		}
+
+		// Not a field filter, keep it
+		remainingTerms = append(remainingTerms, term)
+	}
+
+	return strings.Join(remainingTerms, " "), filters
+}
+
+// taskMatchesFieldFilters checks if a task matches all field filters.
+// Returns false if the item is not a task or doesn't match any filter.
+func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters []fieldFilter) bool {
+	// Non-task items don't match field filters (they get filtered out)
+	if item.Category != ItemCategoryTasks || item.Task == nil {
+		return len(filters) == 0 // Allow non-tasks only if no filters
+	}
+
+	task := item.Task
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	for _, f := range filters {
+		switch f.field {
+		case "priority":
+			if f.op == "eq" {
+				p, err := strconv.Atoi(f.value)
+				if err != nil || task.Priority != p {
+					return false
+				}
+			} else if f.op == "range" {
+				parts := strings.Split(f.value, "-")
+				if len(parts) != 2 {
+					return false
+				}
+				minP, err1 := strconv.Atoi(parts[0])
+				maxP, err2 := strconv.Atoi(parts[1])
+				if err1 != nil || err2 != nil {
+					return false
+				}
+				if task.Priority < minP || task.Priority > maxP {
+					return false
+				}
+			}
+
+		case "status":
+			taskStatus := strings.ToLower(string(task.Status))
+			if f.op == "eq" {
+				if !strings.Contains(taskStatus, strings.ToLower(f.value)) {
+					return false
+				}
+			} else if f.op == "in" {
+				matched := false
+				for _, alt := range f.alt {
+					if strings.Contains(taskStatus, strings.ToLower(alt)) {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					return false
+				}
+			}
+
+		case "date":
+			if task.DueDate == nil {
+				return false // No due date means can't match date filters
+			}
+			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+
+			switch f.value {
+			case "overdue":
+				if !dueDay.Before(today) {
+					return false
+				}
+			case "today":
+				if !dueDay.Equal(today) {
+					return false
+				}
+			case "tomorrow":
+				tomorrow := today.AddDate(0, 0, 1)
+				if !dueDay.Equal(tomorrow) {
+					return false
+				}
+			case "this-week", "thisweek":
+				weekEnd := today.AddDate(0, 0, 7)
+				if dueDay.Before(today) || !dueDay.Before(weekEnd) {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+// quotedPhrasePattern matches quoted phrases: "exact phrase" or 'exact phrase'
+var quotedPhrasePattern = regexp.MustCompile(`"([^"]+)"|'([^']+)'`)
 
 // parseSearchTerms splits a query into positive and negative term groups.
 // Terms prefixed with "-" are negative (exclude items matching them).
 // Terms containing "|" are OR groups (any alternative matches).
-// Example: "task bug|fix -done" returns:
-//   - positiveGroups: [["task"], ["bug", "fix"]]
+// Quoted strings ("exact phrase") are exact substring matches.
+// Example: 'task "fix bug" -done' returns:
+//   - positiveGroups: [["task"], ["fix bug" (exact)]]
 //   - negativeGroups: [["done"]]
 func parseSearchTerms(query string) (positiveGroups []searchTermGroup, negativeGroups []searchTermGroup) {
-	terms := strings.Fields(query)
+	// First extract quoted phrases
+	quotedMatches := quotedPhrasePattern.FindAllStringSubmatchIndex(query, -1)
+	var quotedPhrases []struct {
+		phrase     string
+		isNegative bool
+	}
+
+	// Process quoted phrases in reverse order to preserve indices when removing
+	remaining := query
+	for i := len(quotedMatches) - 1; i >= 0; i-- {
+		match := quotedMatches[i]
+		start, end := match[0], match[1]
+
+		// Check if preceded by "-" for negation
+		isNegative := false
+		if start > 0 && remaining[start-1] == '-' {
+			isNegative = true
+			start-- // Include the "-" in removal
+		}
+
+		// Extract the phrase (either group 1 or group 2, depending on quote type)
+		var phrase string
+		if match[2] != -1 { // Double quotes
+			phrase = remaining[match[2]:match[3]]
+		} else if match[4] != -1 { // Single quotes
+			phrase = remaining[match[4]:match[5]]
+		}
+
+		if phrase != "" {
+			quotedPhrases = append([]struct {
+				phrase     string
+				isNegative bool
+			}{{phrase: phrase, isNegative: isNegative}}, quotedPhrases...)
+		}
+
+		// Remove the quoted phrase from remaining query
+		remaining = remaining[:start] + remaining[end:]
+	}
+
+	// Add quoted phrases as exact match groups
+	for _, qp := range quotedPhrases {
+		group := searchTermGroup{
+			alternatives: []string{qp.phrase},
+			isNegative:   qp.isNegative,
+			isExact:      true,
+		}
+		if qp.isNegative {
+			negativeGroups = append(negativeGroups, group)
+		} else {
+			positiveGroups = append(positiveGroups, group)
+		}
+	}
+
+	// Process remaining non-quoted terms
+	terms := strings.Fields(remaining)
 
 	for _, term := range terms {
 		if strings.HasPrefix(term, "-") && len(term) > 1 {
@@ -458,8 +691,18 @@ func (m *CommandPaletteModel) itemMatchesNegativeGroups(item PaletteItem, negati
 	for _, group := range negativeGroups {
 		// Group matches if ANY alternative matches (OR logic)
 		for _, alt := range group.alternatives {
-			if fuzzy.Match(item.Name, alt) || fuzzy.Match(item.Description, alt) {
-				return true
+			if group.isExact {
+				// Exact substring match (case-insensitive)
+				nameLower := strings.ToLower(item.Name)
+				descLower := strings.ToLower(item.Description)
+				altLower := strings.ToLower(alt)
+				if strings.Contains(nameLower, altLower) || strings.Contains(descLower, altLower) {
+					return true
+				}
+			} else {
+				if fuzzy.Match(item.Name, alt) || fuzzy.Match(item.Description, alt) {
+					return true
+				}
 			}
 		}
 	}
@@ -484,10 +727,39 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 		var bestPositions []int
 
 		for _, alt := range group.alternatives {
-			score, positions := m.scoreItemWithPositions(item, alt)
-			if score > bestScore {
-				bestScore = score
-				bestPositions = positions
+			if group.isExact {
+				// Exact substring match (case-insensitive)
+				nameLower := strings.ToLower(item.Name)
+				descLower := strings.ToLower(item.Description)
+				altLower := strings.ToLower(alt)
+
+				if strings.Contains(nameLower, altLower) {
+					// Find position of match in name for highlighting
+					idx := strings.Index(nameLower, altLower)
+					var positions []int
+					for i := idx; i < idx+len(alt); i++ {
+						positions = append(positions, i)
+					}
+					// Score exact matches highly
+					score := len(alt) * 10 * categoryWeight(item.Category)
+					if score > bestScore {
+						bestScore = score
+						bestPositions = positions
+					}
+				} else if strings.Contains(descLower, altLower) {
+					// Match in description, no name highlighting
+					score := len(alt) * 5 * categoryWeight(item.Category)
+					if score > bestScore {
+						bestScore = score
+						bestPositions = nil
+					}
+				}
+			} else {
+				score, positions := m.scoreItemWithPositions(item, alt)
+				if score > bestScore {
+					bestScore = score
+					bestPositions = positions
+				}
 			}
 		}
 
@@ -551,6 +823,9 @@ func (m *CommandPaletteModel) filterItems() {
 	// Persist category filter when used (e.g., ":task " becomes the default for next open)
 	m.persistCategoryFilter(query, categoryFilter)
 
+	// Parse field filters (priority:, status:, @overdue, etc.) from search query
+	searchQuery, fieldFilters := parseFieldFilters(searchQuery)
+
 	// Determine which items to search
 	itemsToSearch := m.allItems
 	if categoryFilter != "" {
@@ -558,6 +833,17 @@ func (m *CommandPaletteModel) filterItems() {
 		var filtered []PaletteItem
 		for _, item := range m.allItems {
 			if item.Category == categoryFilter {
+				filtered = append(filtered, item)
+			}
+		}
+		itemsToSearch = filtered
+	}
+
+	// Apply field filters first (these are hard filters, not fuzzy)
+	if len(fieldFilters) > 0 {
+		var filtered []PaletteItem
+		for _, item := range itemsToSearch {
+			if m.taskMatchesFieldFilters(item, fieldFilters) {
 				filtered = append(filtered, item)
 			}
 		}
@@ -1034,6 +1320,15 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			m.cursor = 0
 		}
 		return m, nil
+	case "home":
+		m.cursor = 0
+		m.scrollOffset = 0
+		return m, nil
+	case "end":
+		if len(m.filteredItems) > 0 {
+			m.cursor = len(m.filteredItems) - 1
+		}
+		return m, nil
 	case "ctrl+n":
 		// Jump to next section and scroll to show it at top
 		nextIdx := m.findNextSectionStart()
@@ -1041,6 +1336,10 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			m.cursor = nextIdx
 			m.scrollAnchor = nextIdx
 		}
+		return m, nil
+	case "ctrl+p":
+		// Toggle compact view mode (hide/show preview pane)
+		m.compactMode = !m.compactMode
 		return m, nil
 	case "ctrl+x":
 		// Quick complete task (ctrl+m is same as Enter in terminals)
@@ -1232,6 +1531,7 @@ func (m *CommandPaletteModel) isNumberJumpEnabled() bool {
 
 // findNextSectionStart returns the index of the first item in the next category.
 // Categories cycle in the order: Commands → Projects → Tasks → Tags → Sections → Commands.
+// Saves the current cursor position for the current category to restore later.
 // Returns -1 if there are no items or only one category exists.
 func (m *CommandPaletteModel) findNextSectionStart() int {
 	if len(m.filteredItems) == 0 {
@@ -1239,6 +1539,9 @@ func (m *CommandPaletteModel) findNextSectionStart() int {
 	}
 
 	currentCategory := m.filteredItems[m.cursor].Item.Category
+
+	// Save current cursor position for this category
+	m.categoryCursors[currentCategory] = m.cursor
 
 	// Find current category's position in the order
 	currentIdx := -1
@@ -1256,6 +1559,14 @@ func (m *CommandPaletteModel) findNextSectionStart() int {
 	for offset := 1; offset <= len(categoryOrder); offset++ {
 		nextCatIdx := (currentIdx + offset) % len(categoryOrder)
 		targetCategory := categoryOrder[nextCatIdx]
+
+		// Check if we have a saved cursor position for this category
+		if savedPos, ok := m.categoryCursors[targetCategory]; ok {
+			// Verify the saved position is still valid and in this category
+			if savedPos < len(m.filteredItems) && m.filteredItems[savedPos].Item.Category == targetCategory {
+				return savedPos
+			}
+		}
 
 		// Find first item with this category
 		for i, filtered := range m.filteredItems {
@@ -1504,6 +1815,26 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		},
 	})
 
+	// Add copy reference action
+	actions = append(actions, PaletteAction{
+		Name:    "Copy reference",
+		Icon:    "📋",
+		KeyHint: "c",
+		Handler: func() tea.Msg {
+			return CopyTaskReferenceMsg{Task: task}
+		},
+	})
+
+	// Add move to section action
+	actions = append(actions, PaletteAction{
+		Name:    "Move to section",
+		Icon:    "§",
+		KeyHint: "m",
+		Handler: func() tea.Msg {
+			return ShowSectionPickerMsg{Task: task, Project: project}
+		},
+	})
+
 	// Add subtask action for non-leaf types
 	if task.Type == models.TaskTypeEpic || task.Type == models.TaskTypeStory {
 		actions = append(actions, PaletteAction{
@@ -1683,23 +2014,34 @@ func (m *CommandPaletteModel) View() string {
 		paneHeight = 5
 	}
 
-	// Split pane: list on left, preview on right
-	previewContent := m.renderPreview()
+	// Compact mode: full-width list, no preview
+	if m.compactMode {
+		listPane := TaskJumperListStyle.
+			Width(m.width - 2).
+			Height(paneHeight).
+			MaxHeight(paneHeight).
+			Render(listContent)
+		b.WriteString(listPane)
+		b.WriteString("\n")
+	} else {
+		// Split pane: list on left, preview on right
+		previewContent := m.renderPreview()
 
-	listPane := TaskJumperListStyle.
-		Width(m.listWidth).
-		Height(paneHeight).
-		MaxHeight(paneHeight).
-		Render(listContent)
+		listPane := TaskJumperListStyle.
+			Width(m.listWidth).
+			Height(paneHeight).
+			MaxHeight(paneHeight).
+			Render(listContent)
 
-	previewPane := TaskJumperPreviewStyle.
-		Width(m.previewWidth).
-		Height(paneHeight).
-		MaxHeight(paneHeight).
-		Render(previewContent)
+		previewPane := TaskJumperPreviewStyle.
+			Width(m.previewWidth).
+			Height(paneHeight).
+			MaxHeight(paneHeight).
+			Render(previewContent)
 
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
-	b.WriteString("\n")
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
+		b.WriteString("\n")
+	}
 
 	// Footer with controls - different for each mode
 	var footer string
@@ -1758,14 +2100,17 @@ func (m *CommandPaletteModel) buildFooter() string {
 			toggles = append(toggles, "D↓")
 		}
 	}
+	if m.compactMode {
+		toggles = append(toggles, "◫")
+	}
 	toggleSummary := ""
 	if len(toggles) > 0 {
 		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
 	}
 
 	// Build compact hints - essential navigation only
-	// Full: "↑↓ nav • Enter • Tab • ^H hist • ^O sort • ^R reset • Esc"
-	hints := "↑↓ • Enter • Tab • ^H • ^O • ^R • Esc"
+	// Full: "↑↓ nav • Enter • Tab • ^H hist • ^O sort • ^P preview • ^R reset • Esc"
+	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • ^R • Esc"
 
 	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
 }
@@ -1954,18 +2299,9 @@ func (m *CommandPaletteModel) renderItemList() string {
 
 	var b strings.Builder
 
-	// Show tips when palette first opens with empty query
-	if m.showTips && query == "" {
-		tips := []string{
-			"Tip: Type :cmd, :task, :prj, :tag, or :sec to filter by type",
-			"Tip: Use -term to exclude matches (e.g., bug -fixed)",
-			"Tip: Press Tab on any item for quick actions",
-			"Tip: Keys 1-9 select the first 9 items directly",
-			"Tip: ^M completes a task, ^E edits, ^G views in glow",
-		}
-		// Pick one tip based on current second for variety
-		tipIndex := time.Now().Second() % len(tips)
-		b.WriteString(HelpStyle.Render(tips[tipIndex]))
+	// Show contextual hints based on current state
+	if hint := m.getContextualHint(); hint != "" {
+		b.WriteString(HelpStyle.Render(hint))
 		b.WriteString("\n\n")
 	}
 
@@ -1975,10 +2311,10 @@ func (m *CommandPaletteModel) renderItemList() string {
 		paneHeight = 5
 	}
 
-	// maxVisible accounts for tips and category headers within the pane
+	// maxVisible accounts for hints and category headers within the pane
 	maxVisible := paneHeight
-	if m.showTips && query == "" {
-		maxVisible -= 2 // Account for tip lines
+	if m.getContextualHint() != "" {
+		maxVisible -= 2 // Account for hint lines
 	}
 	if maxVisible < 5 {
 		maxVisible = 5
@@ -2037,18 +2373,56 @@ func (m *CommandPaletteModel) renderItemList() string {
 		linesRendered++
 	}
 
-	// Show scroll indicator if there are more items
+	// Show scroll progress indicator if there are more items
 	if len(m.filteredItems) > maxVisible {
-		showing := scrollOffset + 1
-		showingEnd := scrollOffset + maxVisible
-		if showingEnd > len(m.filteredItems) {
-			showingEnd = len(m.filteredItems)
-		}
-		scrollInfo := fmt.Sprintf("Showing %d-%d of %d", showing, showingEnd, len(m.filteredItems))
-		b.WriteString(MutedStyle.Render(scrollInfo))
+		b.WriteString(m.renderScrollIndicator(scrollOffset, maxVisible, contentWidth))
 	}
 
 	return b.String()
+}
+
+// renderScrollIndicator renders a visual progress bar showing scroll position.
+func (m *CommandPaletteModel) renderScrollIndicator(scrollOffset, maxVisible, width int) string {
+	total := len(m.filteredItems)
+	if total <= maxVisible {
+		return ""
+	}
+
+	// Calculate progress percentage
+	maxScroll := total - maxVisible
+	if maxScroll <= 0 {
+		maxScroll = 1
+	}
+	progress := float64(scrollOffset) / float64(maxScroll)
+	if progress > 1 {
+		progress = 1
+	}
+
+	// Build progress bar
+	barWidth := width - 20 // Leave room for text
+	if barWidth < 10 {
+		barWidth = 10
+	}
+	filled := int(float64(barWidth) * progress)
+	if filled < 0 {
+		filled = 0
+	}
+	if filled > barWidth {
+		filled = barWidth
+	}
+
+	// Create the bar
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
+
+	// Position info
+	showing := scrollOffset + 1
+	showingEnd := scrollOffset + maxVisible
+	if showingEnd > total {
+		showingEnd = total
+	}
+	posInfo := fmt.Sprintf(" %d-%d/%d", showing, showingEnd, total)
+
+	return MutedStyle.Render(bar + posInfo)
 }
 
 // renderPreview renders the preview pane for the selected item.
@@ -2335,6 +2709,63 @@ func (m *CommandPaletteModel) isDirectActionEnabled() bool {
 	}
 	_, searchQuery := m.parseQueryPrefix(query)
 	return searchQuery == ""
+}
+
+// getContextualHint returns a context-aware hint based on current palette state.
+// Returns empty string if no hint should be shown.
+func (m *CommandPaletteModel) getContextualHint() string {
+	query := strings.TrimSpace(m.searchInput.Value())
+
+	// Show hints only when palette first opens or when browsing without search
+	if !m.showTips {
+		return ""
+	}
+
+	// If user has typed something, hide tips
+	if query != "" && !strings.HasPrefix(query, ":") {
+		return ""
+	}
+
+	// Context-aware hints based on current selection
+	if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+		item := m.filteredItems[m.cursor].Item
+		switch item.Category {
+		case ItemCategoryTasks:
+			if m.isDirectActionEnabled() {
+				return "Tip: e=edit  g=view  x=complete  s=start  r=reopen  Tab=more actions"
+			}
+			return "Tip: Press Tab for quick actions, or Enter to go to task"
+		case ItemCategoryCommands:
+			if item.Command != nil && item.Command.Shortcut != "" {
+				return fmt.Sprintf("Tip: Press %s to execute, or Enter to confirm", item.Command.Shortcut)
+			}
+			return "Tip: Press Enter to execute command"
+		case ItemCategoryProjects:
+			return "Tip: Enter=open project  Tab=more actions (edit, archive)"
+		case ItemCategoryTags:
+			return "Tip: Enter=filter by tag  Tab=manage tags"
+		case ItemCategorySections:
+			return "Tip: Enter=filter by section"
+		}
+	}
+
+	// Default tips when browsing with no specific selection context
+	if query == "" {
+		return "Tip: Type to search, or use :cmd :task :prj :tag :sec to filter by type"
+	}
+
+	// Category prefix hints
+	categoryFilter, _ := m.parseQueryPrefix(query)
+	if categoryFilter != "" {
+		switch categoryFilter {
+		case ItemCategoryTasks:
+			return "Tip: Use priority:1-2 for high priority, @overdue for overdue tasks"
+		case ItemCategoryCommands:
+			return "Tip: Commands show their keyboard shortcut on the right"
+		}
+	}
+
+	return ""
 }
 
 // renderProjectPreview shows details for a project.
