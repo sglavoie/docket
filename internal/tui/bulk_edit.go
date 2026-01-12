@@ -63,6 +63,9 @@ type BulkEditModel struct {
 
 	// Actions field
 	actionCursor int // 0=Apply, 1=Cancel
+
+	// Scroll management
+	scrollOffset int // Lines scrolled from top
 }
 
 // NewBulkEditModel creates a new bulk edit panel for the given tasks.
@@ -220,6 +223,103 @@ func (m *BulkEditModel) buildSectionOptions() {
 	m.sectionOptions = append(m.sectionOptions, sections...)
 }
 
+// fieldHeight returns the rendered height of a field in lines.
+func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
+	switch fieldIndex {
+	case fieldStatus:
+		// Label line + 6 options + blank line
+		return 8
+	case fieldPriority:
+		// Label line + 6 options + blank line
+		return 8
+	case fieldTags:
+		// Base: label + controls hint = 2-3 lines
+		height := 2
+		if len(m.commonTags) > 0 {
+			height++ // Common tags line
+		}
+		if m.tagMode == 1 {
+			height++ // Add input line
+		} else {
+			if len(m.addTags) > 0 {
+				height++ // Tags to add line
+			}
+			if len(m.removeTags) > 0 {
+				height++ // Tags to remove line
+			}
+		}
+		if m.tagMode == 2 {
+			height += 1 + len(m.allTags) // "Select tags to remove:" + each tag
+		}
+		if m.focusIndex == fieldTags && m.tagMode == 0 {
+			height++ // Controls hint line
+		}
+		height++ // Blank line after field
+		return height
+	case fieldSection:
+		// Label line + "Keep current" + section options + blank line
+		return 3 + len(m.sectionOptions)
+	case fieldDueDate:
+		// Label line + 3 options + blank line
+		return 5
+	case fieldActions:
+		// Actions line + blank + footer
+		return 3
+	default:
+		return 0
+	}
+}
+
+// fieldStartLine returns the starting line number of a field (0-indexed).
+func (m *BulkEditModel) fieldStartLine(fieldIndex int) int {
+	// Header: title + blank line = 2 lines
+	line := 2
+	for i := 0; i < fieldIndex; i++ {
+		line += m.fieldHeight(i)
+	}
+	return line
+}
+
+// viewportHeight returns the available height for content inside the box.
+func (m *BulkEditModel) viewportHeight() int {
+	// Account for box border (2 lines) and some padding
+	// The centered box adds vertical padding, so we need to be conservative
+	vh := m.Height() - 6
+	if vh < 15 {
+		vh = 15
+	}
+	return vh
+}
+
+// ensureFocusedFieldVisible adjusts scrollOffset to keep the focused field visible.
+func (m *BulkEditModel) ensureFocusedFieldVisible() {
+	viewportH := m.viewportHeight()
+
+	fieldStart := m.fieldStartLine(m.focusIndex)
+	fieldEnd := fieldStart + m.fieldHeight(m.focusIndex)
+
+	// If the field starts above the visible area, scroll up to show it
+	if fieldStart < m.scrollOffset {
+		m.scrollOffset = fieldStart
+	}
+
+	// If the field ends below the visible area, scroll down to show it
+	// But ensure we show at least the start of the field
+	if fieldEnd > m.scrollOffset+viewportH {
+		// Scroll so the field end is at the bottom of viewport
+		m.scrollOffset = fieldEnd - viewportH
+		// But don't scroll past the field start
+		if m.scrollOffset > fieldStart {
+			m.scrollOffset = fieldStart
+		}
+	}
+
+	// Ensure scrollOffset doesn't go negative
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+}
+
 // Init initializes the model.
 func (m *BulkEditModel) Init() tea.Cmd {
 	return nil
@@ -230,6 +330,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
+		m.ensureFocusedFieldVisible()
 		return m, nil
 
 	case tea.KeyMsg:
@@ -258,6 +359,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.focusIndex = (m.focusIndex + 1) % fieldCount
 			}
+			m.ensureFocusedFieldVisible()
 			return m, nil
 
 		case "shift+tab", "up", "k":
@@ -271,6 +373,7 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.focusIndex = (m.focusIndex - 1 + fieldCount) % fieldCount
 			}
+			m.ensureFocusedFieldVisible()
 			return m, nil
 
 		case "enter":
@@ -550,7 +653,47 @@ func (m *BulkEditModel) View() string {
 	// Footer
 	content.WriteString(m.renderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Apply scroll offset for viewport management
+	fullContent := content.String()
+	lines := strings.Split(fullContent, "\n")
+	viewportH := m.viewportHeight()
+
+	// Only apply scrolling if content exceeds viewport
+	if len(lines) > viewportH {
+		start := m.scrollOffset
+		end := start + viewportH
+
+		// Clamp end to content length
+		if end > len(lines) {
+			end = len(lines)
+		}
+
+		var visible strings.Builder
+
+		// Show scroll-up indicator if content is hidden above
+		if start > 0 {
+			visible.WriteString(MutedStyle.Render("  ↑ scroll up for more"))
+			visible.WriteString("\n")
+		}
+
+		// Render visible lines
+		for i := start; i < end; i++ {
+			visible.WriteString(lines[i])
+			if i < end-1 {
+				visible.WriteString("\n")
+			}
+		}
+
+		// Show scroll-down indicator if content is hidden below
+		if end < len(lines) {
+			visible.WriteString("\n")
+			visible.WriteString(MutedStyle.Render("  ↓ scroll down for more"))
+		}
+
+		return RenderCenteredBox(visible.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	}
+
+	return RenderCenteredBox(fullContent, boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
 }
 
 // renderStatusField renders the status selection field.
