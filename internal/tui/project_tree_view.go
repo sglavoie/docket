@@ -892,6 +892,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "*", Description: "Toggle active flag", Category: "Task Operations"},
 		{Key: "R", Description: "View dependencies", Category: "Task Operations"},
 		{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations"},
+		{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations"},
 		{Key: "C", Description: "View/add comments", Category: "Task Operations"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 

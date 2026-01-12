@@ -114,6 +114,10 @@ func (m *AppModel) hasActiveTextInput() bool {
 		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
 			return true
 		}
+	case ViewBulkTagSelector:
+		if selector, ok := m.views.Get(ViewBulkTagSelector).(*BulkTagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
+			return true
+		}
 	case ViewParentSelector:
 		// Parent selector always has active search
 		return true
@@ -146,6 +150,11 @@ func (m *AppModel) handleEscKey() bool {
 	}
 	if m.currentView() == ViewTagSelector {
 		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
+			return false
+		}
+	}
+	if m.currentView() == ViewBulkTagSelector {
+		if selector, ok := m.views.Get(ViewBulkTagSelector).(*BulkTagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
 			return false
 		}
 	}

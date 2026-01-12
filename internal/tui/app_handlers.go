@@ -840,16 +840,33 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewTagSelector, selector)
 		return true, nil
 
+	case ShowBulkTagSelectorMsg:
+		selector := NewBulkTagSelectorModel(msg.Tasks, msg.Project)
+		m.showView(ViewBulkTagSelector, selector)
+		return true, nil
+
 	case TagSelectorDoneMsg:
 		m.popView()
 		if msg.Cancelled {
 			return true, nil
 		}
+		// Check if we came from project tree - apply tags directly
+		if m.currentView() == ViewProjectTree && msg.Task != nil {
+			return true, m.applyTagsToTask(msg.Task, msg.Project, msg.SelectedTags)
+		}
+		// Otherwise forward to current view (inbox processor, task editor, etc.)
 		cmd := m.views.Update(m.currentView(), msg)
 		if v := m.views.Get(ViewInboxProcessor); v != nil {
 			m.inboxProcessor = v.(*InboxProcessorModel)
 		}
 		return true, cmd
+
+	case BulkTagSelectorDoneMsg:
+		m.popView()
+		if msg.Cancelled {
+			return true, nil
+		}
+		return true, m.applyTagsToTasks(msg.Tasks, msg.Project, msg.SelectedTags)
 
 	case ShowTagFilterSelectorMsg:
 		if msg.ProjectTree != nil {
@@ -1109,6 +1126,55 @@ func (m *AppModel) reloadAndRefreshProjectTree() {
 	if m.projectTree != nil && m.currentProject != nil {
 		m.switchToProject(m.currentProject, true)
 	}
+}
+
+// applyTagsToTask applies selected tags to a single task and saves the project.
+func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, selectedTags []string) tea.Cmd {
+	// Update task tags
+	task.Tags = selectedTags
+	task.UpdatedAt = time.Now()
+
+	// Create backup and save
+	if err := storage.BackupProject(project); err != nil {
+		return errorCmd("backup failed: %w", err)
+	}
+	if err := storage.SaveProject(project); err != nil {
+		return errorCmd("save failed: %w", err)
+	}
+
+	// Refresh tree and set undo context
+	if m.projectTree != nil {
+		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+		m.projectTree.buildTree()
+	}
+
+	return nil
+}
+
+// applyTagsToTasks applies selected tags to multiple tasks and saves the project.
+func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Project, selectedTags []string) tea.Cmd {
+	// Update all tasks with the selected tags
+	for _, task := range tasks {
+		task.Tags = selectedTags
+		task.UpdatedAt = time.Now()
+	}
+
+	// Create backup and save
+	if err := storage.BackupProject(project); err != nil {
+		return errorCmd("backup failed: %w", err)
+	}
+	if err := storage.SaveProject(project); err != nil {
+		return errorCmd("save failed: %w", err)
+	}
+
+	// Refresh tree, clear selection, and set undo context
+	if m.projectTree != nil {
+		m.projectTree.clearSelection()
+		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
+		m.projectTree.buildTree()
+	}
+
+	return nil
 }
 
 // handleProjectCycleMessages handles project cycling messages.

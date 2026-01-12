@@ -45,6 +45,7 @@ const (
 	ViewBulkCapture
 	ViewInboxProcessor
 	ViewTagSelector
+	ViewBulkTagSelector
 	ViewUndoHistory
 	ViewTaskComments
 	ViewProjectCycleManager

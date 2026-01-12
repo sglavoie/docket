@@ -496,6 +496,26 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 			}
 		}
 		return true, nil
+
+	case "ctrl+g":
+		// Quick tag assignment
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			return true, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        task,
+					Project:     m.project,
+					CurrentTags: append([]string{}, task.Tags...),
+				}
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }
