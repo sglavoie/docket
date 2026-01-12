@@ -1117,16 +1117,65 @@ func (m *ProjectTreeModel) renderFilterBadge(key, name string, count int, active
 }
 
 // NavigateToTask expands parent nodes and positions cursor on the given task.
+// If the task is filtered out, it clears filters and switches view modes as needed.
 func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
 	if task == nil {
 		return
 	}
 
-	// Expand all ancestors
+	// First, try to find in current nodes (task may exist but be collapsed)
+	for _, node := range m.nodes {
+		if node.Task.ID == task.ID {
+			// Task exists in tree, just expand ancestors and navigate
+			m.expandAncestors(task)
+			m.updateVisibility()
+			visible := m.visibleNodes()
+			for i, n := range visible {
+				if n.Task.ID == task.ID {
+					m.cursor = i
+					return
+				}
+			}
+		}
+	}
+
+	// Task not in current tree - need to adjust view to show it
+	// Clear focus mode first
+	if m.focusedTask != nil {
+		m.focusedTask = nil
+	}
+
+	// Determine appropriate view mode based on task state
+	if task.IsComplete() {
+		m.viewMode = ViewModeCompleted
+	} else {
+		// Switch to view mode that includes the task's section
+		switch task.Section {
+		case models.SectionInbox:
+			m.viewMode = ViewModeInbox
+		case models.SectionBacklog:
+			m.viewMode = ViewModeBacklog
+		default:
+			m.viewMode = ViewModeActive
+		}
+	}
+
+	// Clear all filters that might hide the task
+	m.filterType = ""
+	m.filterStatus = ""
+	m.filterPriority = 0
+	m.filterTags = nil
+	m.filterSections = nil
+	m.filterDueDate = DueDateAll
+	m.ClearSearch()
+
+	// Rebuild tree with cleared filters
+	m.buildTree()
+
+	// Now expand ancestors and find the task
 	m.expandAncestors(task)
 	m.updateVisibility()
 
-	// Find the task in visible nodes and set cursor
 	visible := m.visibleNodes()
 	for i, node := range visible {
 		if node.Task.ID == task.ID {
