@@ -135,8 +135,8 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 func (m *ProjectTreeModel) handleViewModeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "V":
-		// Cycle through views: Active -> Inbox -> Backlog -> Completed -> Active
-		m.viewMode = (m.viewMode + 1) % 4
+		// Cycle through views: Active -> Inbox -> Backlog -> Active
+		m.viewMode = (m.viewMode + 1) % 3
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -369,7 +369,7 @@ func (m *ProjectTreeModel) handleExpandCollapseKeys(key string) (bool, tea.Cmd) 
 		m.updateVisibility()
 		return true, nil
 
-	case "c":
+	case "z":
 		for _, node := range m.nodes {
 			if node.Level > 0 {
 				node.Expanded = false
@@ -488,13 +488,21 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
-	case "C":
+	case "c":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			return true, func() tea.Msg {
 				return ShowTaskCommentsMsg{Task: task, Project: m.project}
 			}
 		}
+		return true, nil
+
+	case "C":
+		// Switch to Completed view
+		m.viewMode = ViewModeCompleted
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
 		return true, nil
 
 	case "ctrl+g":

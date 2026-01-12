@@ -842,7 +842,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
 		{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Navigation"},
 		{Key: "E", Description: "Expand all", Category: "Navigation"},
-		{Key: "c", Description: "Collapse all", Category: "Navigation"},
+		{Key: "z", Description: "Collapse all", Category: "Navigation"},
 		{Key: "f", Description: "Focus on subtree", Category: "Navigation"},
 		{Key: "g", Description: "Go to first", Category: "Navigation"},
 		{Key: "G", Description: "Go to last", Category: "Navigation"},
@@ -894,7 +894,8 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "R", Description: "View dependencies", Category: "Task Operations"},
 		{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations"},
-		{Key: "C", Description: "View/add comments", Category: "Task Operations"},
+		{Key: "c", Description: "View/add comments", Category: "Task Operations"},
+		{Key: "C", Description: "View completed tasks", Category: "Views"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 
 		// Views
@@ -1001,14 +1002,6 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, ViewModeBacklogStyle.Render(backlogLabel))
 	} else {
 		parts = append(parts, MutedStyle.Render(backlogLabel))
-	}
-
-	// Completed view
-	completedLabel := fmt.Sprintf("Completed[%d]", completedCount)
-	if m.viewMode == ViewModeCompleted {
-		parts = append(parts, ViewModeCompletedStyle.Render(completedLabel))
-	} else {
-		parts = append(parts, MutedStyle.Render(completedLabel))
 	}
 
 	return strings.Join(parts, " ")

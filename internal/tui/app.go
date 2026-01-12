@@ -511,7 +511,7 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "collapse all",
 			Description: "Collapse all tasks in tree",
-			Shortcut:    "c",
+			Shortcut:    "z",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"fold all", "close all"},
