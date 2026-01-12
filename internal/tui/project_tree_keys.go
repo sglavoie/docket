@@ -516,6 +516,16 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 			}
 		}
 		return true, nil
+
+	case "ctrl+l":
+		// Edit last modified task
+		recentTasks := storage.GetRecentTasks(m.project.Tasks, 1)
+		if len(recentTasks) > 0 {
+			return true, func() tea.Msg {
+				return EditTaskMsg{Task: recentTasks[0]}
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }

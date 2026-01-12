@@ -475,6 +475,23 @@ func (m *AppModel) registerGlobalCommands() {
 			},
 		},
 		{
+			Name:        "edit last task",
+			Description: "Edit the most recently modified task",
+			Shortcut:    "ctrl+l",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"edit recent", "last modified", "recent task"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					recentTasks := storage.GetRecentTasks(m.currentProject.Tasks, 1)
+					if len(recentTasks) > 0 {
+						return EditTaskMsg{Task: recentTasks[0]}
+					}
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "expand all",
 			Description: "Expand all tasks in tree",
 			Shortcut:    "E",
