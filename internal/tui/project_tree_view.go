@@ -592,14 +592,6 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		titleStyle = CancelledStyle
 	}
 
-	// Calculate available width for title
-	usedWidth := len(cursor) + len(checkbox) + node.Level*2 + len(expandIcon) + 15
-	availableTitleWidth := maxWidth - usedWidth
-	if availableTitleWidth < 10 {
-		availableTitleWidth = 10
-	}
-	title := titleStyle.Render(util.Truncate(task.Title, availableTitleWidth))
-
 	// Progress for parent tasks
 	progress := ""
 	if task.HasProgressChildren() {
@@ -607,7 +599,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		progress = MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct))
 	}
 
-	// Priority, due date, and dependency indicators (compact)
+	// Build indicators FIRST so we can account for their width when truncating the title
 	indicators := ""
 
 	// Section badge for context nodes (show which section the parent is actually in)
@@ -649,6 +641,19 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	if len(task.Comments) > 0 {
 		indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
 	}
+
+	// Calculate available width for title, accounting for all other elements
+	// Fixed overhead: cursor(2) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~15
+	// Plus: indent, progress, and indicators (now measured accurately)
+	baseOverhead := 15
+	indicatorWidth := lipgloss.Width(indicators)
+	progressWidth := lipgloss.Width(progress)
+	usedWidth := len(cursor) + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
+	availableTitleWidth := maxWidth - usedWidth
+	if availableTitleWidth < 10 {
+		availableTitleWidth = 10
+	}
+	title := titleStyle.Render(util.Truncate(task.Title, availableTitleWidth))
 
 	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
 		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
