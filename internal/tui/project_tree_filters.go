@@ -345,6 +345,33 @@ func (m *ProjectTreeModel) visibleNodes() []*TreeNode {
 	return visible
 }
 
+// getVisibleSiblings returns siblings of the given task that are currently visible.
+// This filters siblings using the same visibility logic as the tree display,
+// ensuring movement bounds checking matches what the user sees.
+func (m *ProjectTreeModel) getVisibleSiblings(task *models.Task) []*models.Task {
+	allSiblings := m.project.GetSiblings(task)
+	var visibleSiblings []*models.Task
+	for _, sibling := range allSiblings {
+		for _, node := range m.nodes {
+			if node.Task.ID == sibling.ID && m.passesFilters(node) {
+				visibleSiblings = append(visibleSiblings, sibling)
+				break
+			}
+		}
+	}
+	return visibleSiblings
+}
+
+// findVisibleSiblingIndex returns the index of task among its visible siblings, or -1 if not found.
+func (m *ProjectTreeModel) findVisibleSiblingIndex(task *models.Task, visibleSiblings []*models.Task) int {
+	for i, s := range visibleSiblings {
+		if s.ID == task.ID {
+			return i
+		}
+	}
+	return -1
+}
+
 // getAllTags returns all unique tags from the project's tasks.
 func (m *ProjectTreeModel) getAllTags() []string {
 	tagSet := make(map[string]bool)

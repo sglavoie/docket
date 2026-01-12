@@ -57,16 +57,16 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 	case "K":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
-			siblings := m.project.GetSiblings(task)
-			siblingIdx := m.project.FindSiblingIndex(task)
-			if siblingIdx > 0 {
-				siblingAbove := siblings[siblingIdx-1]
+			visibleSiblings := m.getVisibleSiblings(task)
+			visibleSiblingIdx := m.findVisibleSiblingIndex(task, visibleSiblings)
+			if visibleSiblingIdx > 0 {
+				siblingAbove := visibleSiblings[visibleSiblingIdx-1]
 				if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
 					return true, func() tea.Msg {
 						return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
 					}
 				}
-				m.project.MoveTaskUp(task)
+				m.project.SwapTasks(task, siblingAbove)
 				if m.cursor > 0 {
 					m.cursor--
 				}
@@ -78,16 +78,16 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 	case "J":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
-			siblings := m.project.GetSiblings(task)
-			siblingIdx := m.project.FindSiblingIndex(task)
-			if siblingIdx >= 0 && siblingIdx < len(siblings)-1 {
-				siblingBelow := siblings[siblingIdx+1]
+			visibleSiblings := m.getVisibleSiblings(task)
+			visibleSiblingIdx := m.findVisibleSiblingIndex(task, visibleSiblings)
+			if visibleSiblingIdx >= 0 && visibleSiblingIdx < len(visibleSiblings)-1 {
+				siblingBelow := visibleSiblings[visibleSiblingIdx+1]
 				if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
 					return true, func() tea.Msg {
 						return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
 					}
 				}
-				m.project.MoveTaskDown(task)
+				m.project.SwapTasks(task, siblingBelow)
 				if m.cursor < len(visible)-1 {
 					m.cursor++
 				}

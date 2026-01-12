@@ -375,6 +375,19 @@ func (p *Project) MoveTaskDown(task *Task) error {
 	return nil
 }
 
+// SwapTasks swaps the positions of two tasks in the Tasks slice.
+// This is used when moving tasks within a filtered view where the target
+// task is known explicitly rather than being the immediate sibling.
+func (p *Project) SwapTasks(task1, task2 *Task) {
+	idx1 := p.findTaskIndex(task1)
+	idx2 := p.findTaskIndex(task2)
+	if idx1 == -1 || idx2 == -1 {
+		return
+	}
+	p.Tasks[idx1], p.Tasks[idx2] = p.Tasks[idx2], p.Tasks[idx1]
+	task1.UpdatedAt = time.Now()
+}
+
 // IndentTask makes the task a child of the task visually above it.
 // Returns an error if the operation is not valid.
 func (p *Project) IndentTask(task *Task) error {
