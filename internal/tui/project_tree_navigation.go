@@ -63,7 +63,14 @@ func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) 
 			m.sidebarFocused = true
 			m.sidebarScroll = 0
 			m.sidebarDependencyCursor = 0
+			// Start in first non-empty dependency section
 			m.sidebarDependencySection = 0
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				if len(task.DependsOn) == 0 && len(m.project.GetBlockedByTasks(task)) > 0 {
+					m.sidebarDependencySection = 1 // Start in "Blocking" section
+				}
+			}
 		} else {
 			// State 3 -> State 1: Hide sidebar
 			m.sidebarEnabled = false
