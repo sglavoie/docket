@@ -65,11 +65,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	// Multi-select mode indicator
 	if m.multiSelectMode {
-		count := len(m.selectedTasks)
-		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
-		b.WriteString(" ")
-		b.WriteString(MutedStyle.Render("Space: toggle | a: all | v/Esc: exit | e: bulk edit | s/m/b/x/o: status | D: delete | T: tag"))
-		b.WriteString("\n")
+		b.WriteString(m.renderMultiSelectIndicator(m.width))
 	}
 
 	// Tag input prompt
@@ -254,6 +250,36 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	return b.String()
 }
 
+// renderMultiSelectIndicator renders the multi-select mode indicator with adaptive formatting.
+// It adjusts the layout based on available width: full help on same line when wide enough,
+// wrapped to second line for medium widths, and abbreviated for narrow displays.
+func (m *ProjectTreeModel) renderMultiSelectIndicator(width int) string {
+	count := len(m.selectedTasks)
+	badge := SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count))
+	badgeWidth := lipgloss.Width(badge)
+
+	fullHelp := "Space: toggle | a: all | v/Esc: exit | e: bulk edit | s/m/b/x/o: status | D: delete | T: tag"
+	shortHelp := "Spc:sel a:all v:exit e:edit s/m/b/x/o:status D:del T:tag"
+
+	// Wide terminal: badge and full help on same line
+	if width >= badgeWidth+1+len(fullHelp) {
+		return badge + " " + MutedStyle.Render(fullHelp) + "\n"
+	}
+
+	// Medium width: badge on first line, full help on second line
+	if width >= len(fullHelp) {
+		return badge + "\n" + MutedStyle.Render(fullHelp) + "\n"
+	}
+
+	// Narrow width: badge on first line, short help on second line
+	if width >= len(shortHelp) {
+		return badge + "\n" + MutedStyle.Render(shortHelp) + "\n"
+	}
+
+	// Very narrow: just badge
+	return badge + "\n"
+}
+
 // renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
 func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Calculate widths: 55% tree, remainder for sidebar
@@ -341,9 +367,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	// Multi-select mode indicator
 	if m.multiSelectMode {
-		count := len(m.selectedTasks)
-		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
-		b.WriteString("\n")
+		b.WriteString(m.renderMultiSelectIndicator(width))
 	}
 
 	// Tag input prompt
