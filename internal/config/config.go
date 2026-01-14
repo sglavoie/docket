@@ -36,20 +36,22 @@ type ProjectViewState struct {
 
 // Config holds the application configuration.
 type Config struct {
-	DataDir             string                      `json:"data_dir"`
-	CurrentProject      string                      `json:"current_project,omitempty"`
-	Editor              string                      `json:"editor"`
-	DefaultContext      string                      `json:"default_context"`
-	FzfEnabled          bool                        `json:"fzf_enabled"`
-	GlowEnabled         bool                        `json:"glow_enabled"`
-	UndoHistoryDepth    *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects            []*models.Project           `json:"projects"`
-	SectionColors       map[string]string           `json:"section_colors,omitempty"`        // Global section color registry
-	ProjectViewStates   map[string]ProjectViewState `json:"project_view_states,omitempty"`   // Per-project filter/sort state
-	CycleProjects       []string                    `json:"cycle_projects,omitempty"`        // Project IDs for quick cycling with ` and ~
-	ShowRecentTasks     *bool                       `json:"show_recent_tasks,omitempty"`     // Show Recent Tasks section on dashboard (default: true)
-	RecentPaletteItems  []RecentPaletteItem         `json:"recent_palette_items,omitempty"`  // Recently selected items in command palette
-	LastPaletteCategory string                      `json:"last_palette_category,omitempty"` // Last category filter used (e.g., ":task ")
+	DataDir              string                      `json:"data_dir"`
+	CurrentProject       string                      `json:"current_project,omitempty"`
+	Editor               string                      `json:"editor"`
+	DefaultContext       string                      `json:"default_context"`
+	FzfEnabled           bool                        `json:"fzf_enabled"`
+	GlowEnabled          bool                        `json:"glow_enabled"`
+	UndoHistoryDepth     *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects             []*models.Project           `json:"projects"`
+	SectionColors        map[string]string           `json:"section_colors,omitempty"`         // Global section color registry
+	ProjectViewStates    map[string]ProjectViewState `json:"project_view_states,omitempty"`    // Per-project filter/sort state
+	CycleProjects        []string                    `json:"cycle_projects,omitempty"`         // Project IDs for quick cycling with ` and ~
+	ShowRecentTasks      *bool                       `json:"show_recent_tasks,omitempty"`      // Show Recent Tasks section on dashboard (default: true)
+	RecentPaletteItems   []RecentPaletteItem         `json:"recent_palette_items,omitempty"`   // Recently selected items in command palette
+	LastPaletteCategory  string                      `json:"last_palette_category,omitempty"`  // Last category filter used (e.g., ":task ")
+	PaletteSearchHistory []string                    `json:"palette_search_history,omitempty"` // Recent search queries in command palette
+	PinnedCommands       []string                    `json:"pinned_commands,omitempty"`        // Pinned command names for quick access
 }
 
 // NewConfig creates a new configuration with default values.
@@ -496,4 +498,55 @@ func (c *Config) GetLastPaletteCategory() string {
 // SetLastPaletteCategory sets the last category filter used in the command palette.
 func (c *Config) SetLastPaletteCategory(category string) {
 	c.LastPaletteCategory = category
+}
+
+// GetPaletteSearchHistory returns the list of recent search queries in the command palette.
+func (c *Config) GetPaletteSearchHistory() []string {
+	if c.PaletteSearchHistory == nil {
+		return []string{}
+	}
+	return c.PaletteSearchHistory
+}
+
+// SetPaletteSearchHistory sets the list of recent search queries in the command palette.
+func (c *Config) SetPaletteSearchHistory(history []string) {
+	c.PaletteSearchHistory = history
+}
+
+// GetPinnedCommands returns the list of pinned command names.
+func (c *Config) GetPinnedCommands() []string {
+	if c.PinnedCommands == nil {
+		return []string{}
+	}
+	return c.PinnedCommands
+}
+
+// SetPinnedCommands sets the list of pinned command names.
+func (c *Config) SetPinnedCommands(commands []string) {
+	c.PinnedCommands = commands
+}
+
+// IsCommandPinned returns true if the command is in the pinned list.
+func (c *Config) IsCommandPinned(name string) bool {
+	for _, cmd := range c.PinnedCommands {
+		if cmd == name {
+			return true
+		}
+	}
+	return false
+}
+
+// TogglePinnedCommand adds or removes a command from the pinned list.
+// Returns true if the command is now pinned, false if unpinned.
+func (c *Config) TogglePinnedCommand(name string) bool {
+	for i, cmd := range c.PinnedCommands {
+		if cmd == name {
+			// Remove from pinned
+			c.PinnedCommands = append(c.PinnedCommands[:i], c.PinnedCommands[i+1:]...)
+			return false
+		}
+	}
+	// Add to pinned
+	c.PinnedCommands = append(c.PinnedCommands, name)
+	return true
 }

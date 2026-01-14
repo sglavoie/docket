@@ -169,6 +169,16 @@ type CommandPaletteModel struct {
 
 	// View mode toggle - compact mode hides preview pane
 	compactMode bool
+
+	// Search history navigation
+	searchHistory      []string // Copy of history from config
+	searchHistoryIndex int      // -1 = not browsing history, 0+ = index in history
+
+	// Pinned commands - set of pinned command names for quick lookup
+	pinnedCommands map[string]bool
+
+	// Multi-select state for bulk actions on tasks
+	selectedTasks map[string]bool // Task IDs that are selected
 }
 
 // NewCommandPaletteModel creates a new command palette model.
@@ -176,7 +186,7 @@ type CommandPaletteModel struct {
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec • +title to create • ? for help"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec • Alt+↑↓ history • ? for help"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -190,17 +200,27 @@ func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registr
 		})
 	}
 
+	// Build pinned commands set for quick lookup
+	pinnedSet := make(map[string]bool)
+	for _, name := range cfg.GetPinnedCommands() {
+		pinnedSet[name] = true
+	}
+
 	m := &CommandPaletteModel{
-		config:          cfg,
-		configManager:   manager,
-		registry:        registry,
-		currentView:     currentView,
-		currentProject:  currentProject,
-		searchInput:     searchInput,
-		cursor:          0,
-		scrollAnchor:    -1,
-		showTips:        true,
-		categoryCursors: make(map[ItemCategory]int),
+		config:             cfg,
+		configManager:      manager,
+		registry:           registry,
+		currentView:        currentView,
+		currentProject:     currentProject,
+		searchInput:        searchInput,
+		cursor:             0,
+		scrollAnchor:       -1,
+		showTips:           true,
+		categoryCursors:    make(map[ItemCategory]int),
+		searchHistory:      cfg.GetPaletteSearchHistory(),
+		searchHistoryIndex: -1, // Not browsing history
+		pinnedCommands:     pinnedSet,
+		selectedTasks:      make(map[string]bool),
 	}
 
 	// Pre-fill with last category filter if set
@@ -407,6 +427,7 @@ func (m *CommandPaletteModel) parseQueryPrefix(query string) (ItemCategory, stri
 }
 
 // sortItemsByCategory sorts items by the predefined category order for display without search.
+// Pinned commands are placed at the very top before all other categories.
 func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []PaletteItem {
 	// Create a map for category order lookup
 	orderMap := make(map[ItemCategory]int)
@@ -418,10 +439,25 @@ func (m *CommandPaletteModel) sortItemsByCategory(items []PaletteItem) []Palette
 	copy(sorted, items)
 
 	sort.SliceStable(sorted, func(i, j int) bool {
+		// Pinned commands come first
+		iPinned := m.isItemPinned(sorted[i])
+		jPinned := m.isItemPinned(sorted[j])
+		if iPinned != jPinned {
+			return iPinned // Pinned items come before non-pinned
+		}
+		// Then sort by category
 		return orderMap[sorted[i].Category] < orderMap[sorted[j].Category]
 	})
 
 	return sorted
+}
+
+// isItemPinned returns true if the item is a pinned command.
+func (m *CommandPaletteModel) isItemPinned(item PaletteItem) bool {
+	if item.Category != ItemCategoryCommands || item.Command == nil {
+		return false
+	}
+	return m.pinnedCommands[item.Command.Name]
 }
 
 // searchTermGroup represents a group of OR-ed alternatives within a search term.
@@ -1261,6 +1297,54 @@ func (m *CommandPaletteModel) persistRecentSelections() {
 	m.configManager.Save(m.config)
 }
 
+// recordSearchHistory adds the current search query to history if meaningful.
+// Queries are deduplicated, with the most recent occurrence moved to the front.
+// Category prefixes alone (e.g., ":task ") are not recorded.
+func (m *CommandPaletteModel) recordSearchHistory() {
+	if m.configManager == nil {
+		return
+	}
+
+	query := strings.TrimSpace(m.searchInput.Value())
+	if query == "" {
+		return
+	}
+
+	// Don't record category prefixes alone
+	_, searchQuery := m.parseQueryPrefix(query)
+	if searchQuery == "" && strings.HasPrefix(query, ":") {
+		return
+	}
+
+	// Don't record inline task creation queries
+	if strings.HasPrefix(query, "+") {
+		return
+	}
+
+	// Don't record task ID jumps
+	if taskIDPattern.MatchString(query) {
+		return
+	}
+
+	// Remove existing occurrence if present (to move it to front)
+	newHistory := []string{query}
+	for _, h := range m.searchHistory {
+		if h != query {
+			newHistory = append(newHistory, h)
+		}
+	}
+
+	// Cap at 10 entries
+	const maxHistorySize = 10
+	if len(newHistory) > maxHistorySize {
+		newHistory = newHistory[:maxHistorySize]
+	}
+
+	m.searchHistory = newHistory
+	m.config.SetPaletteSearchHistory(newHistory)
+	m.configManager.Save(m.config)
+}
+
 // Init implements tea.Model.
 func (m *CommandPaletteModel) Init() tea.Cmd {
 	return textinput.Blink
@@ -1271,6 +1355,11 @@ func (m *CommandPaletteModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
+		return m, nil
+
+	case CommandPaletteClearSelectionMsg:
+		m.selectedTasks = make(map[string]bool)
+		m.actionMode = false
 		return m, nil
 
 	case tea.KeyMsg:
@@ -1301,6 +1390,21 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 		return m, nil
 	case "tab":
+		// If multiple tasks are selected, show bulk actions
+		if len(m.selectedTasks) > 1 {
+			actions := m.getBulkActionsForSelectedTasks()
+			if len(actions) > 0 {
+				m.actionMode = true
+				m.actionCursor = 0
+				m.availableActions = actions
+				m.actionItem = PaletteItem{
+					Name:        fmt.Sprintf("%d tasks selected", len(m.selectedTasks)),
+					Description: "Bulk actions",
+					Category:    ItemCategoryTasks,
+				}
+				return m, nil
+			}
+		}
 		// Enter action mode for non-command items
 		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
 			item := m.filteredItems[m.cursor].Item
@@ -1314,6 +1418,55 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 					return m, nil
 				}
 			}
+		}
+		return m, nil
+	case " ":
+		// Toggle selection on task items (Space key)
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryTasks && item.Task != nil {
+				taskID := item.Task.ID
+				if m.selectedTasks[taskID] {
+					delete(m.selectedTasks, taskID)
+				} else {
+					m.selectedTasks[taskID] = true
+				}
+				// Move cursor down after toggling
+				if m.cursor < len(m.filteredItems)-1 {
+					m.cursor++
+				}
+				return m, nil
+			}
+		}
+		// Fall through to default handler for non-task items
+		return m, nil
+	case "alt+up":
+		// Navigate to previous search history entry
+		if len(m.searchHistory) > 0 {
+			if m.searchHistoryIndex < 0 {
+				// Starting history navigation, go to most recent
+				m.searchHistoryIndex = 0
+			} else if m.searchHistoryIndex < len(m.searchHistory)-1 {
+				// Go to older entry
+				m.searchHistoryIndex++
+			}
+			if m.searchHistoryIndex < len(m.searchHistory) {
+				m.searchInput.SetValue(m.searchHistory[m.searchHistoryIndex])
+				m.filterItems()
+			}
+		}
+		return m, nil
+	case "alt+down":
+		// Navigate to newer search history entry
+		if m.searchHistoryIndex > 0 {
+			m.searchHistoryIndex--
+			m.searchInput.SetValue(m.searchHistory[m.searchHistoryIndex])
+			m.filterItems()
+		} else if m.searchHistoryIndex == 0 {
+			// Exit history mode, clear input
+			m.searchHistoryIndex = -1
+			m.searchInput.SetValue("")
+			m.filterItems()
 		}
 		return m, nil
 	case "up", "ctrl+k":
@@ -1361,6 +1514,25 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 	case "ctrl+p":
 		// Toggle compact view mode (hide/show preview pane)
 		m.compactMode = !m.compactMode
+		return m, nil
+	case "ctrl+f":
+		// Toggle pin on current command
+		if len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+			item := m.filteredItems[m.cursor].Item
+			if item.Category == ItemCategoryCommands && item.Command != nil {
+				name := item.Command.Name
+				isPinned := m.config.TogglePinnedCommand(name)
+				m.pinnedCommands[name] = isPinned
+				if !isPinned {
+					delete(m.pinnedCommands, name)
+				}
+				if m.configManager != nil {
+					m.configManager.Save(m.config)
+				}
+				// Re-filter to update sort order
+				m.filterItems()
+			}
+		}
 		return m, nil
 	case "ctrl+x":
 		// Quick complete task (ctrl+m is same as Enter in terminals)
@@ -1677,6 +1849,9 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 		m.persistRecentSelections()
 	}
 
+	// Record search query in history if it's a meaningful search
+	m.recordSearchHistory()
+
 	switch item.Category {
 	case ItemCategoryCommands:
 		if item.Command != nil && item.Command.Handler != nil {
@@ -1979,6 +2154,92 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 	return actions
 }
 
+// getBulkActionsForSelectedTasks returns actions that can be applied to multiple selected tasks.
+func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
+	if len(m.selectedTasks) == 0 {
+		return nil
+	}
+
+	// Collect the selected tasks and their projects
+	var selectedItems []struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+	for _, filtered := range m.filteredItems {
+		item := filtered.Item
+		if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
+			if m.selectedTasks[item.Task.ID] {
+				selectedItems = append(selectedItems, struct {
+					Task    *models.Task
+					Project *models.Project
+				}{Task: item.Task, Project: item.Project})
+			}
+		}
+	}
+
+	if len(selectedItems) == 0 {
+		return nil
+	}
+
+	// Check what actions are applicable to all selected tasks
+	canComplete := true
+	canStart := true
+	for _, item := range selectedItems {
+		if item.Task.Status == models.StatusDone || item.Task.Status == models.StatusCancelled {
+			canComplete = false
+		}
+		if item.Task.Status != models.StatusTodo {
+			canStart = false
+		}
+	}
+
+	var actions []PaletteAction
+
+	// Complete all
+	if canComplete {
+		items := selectedItems // Capture for closure
+		actions = append(actions, PaletteAction{
+			Name:    fmt.Sprintf("Complete all (%d)", len(items)),
+			Icon:    "✓",
+			KeyHint: "x",
+			Handler: func() tea.Msg {
+				return CommandPaletteBulkActionMsg{
+					Action: "complete",
+					Tasks:  items,
+				}
+			},
+		})
+	}
+
+	// Start all
+	if canStart {
+		items := selectedItems
+		actions = append(actions, PaletteAction{
+			Name:    fmt.Sprintf("Start all (%d)", len(items)),
+			Icon:    "▶",
+			KeyHint: "s",
+			Handler: func() tea.Msg {
+				return CommandPaletteBulkActionMsg{
+					Action: "start",
+					Tasks:  items,
+				}
+			},
+		})
+	}
+
+	// Clear selection
+	actions = append(actions, PaletteAction{
+		Name:    "Clear selection",
+		Icon:    "✕",
+		KeyHint: "c",
+		Handler: func() tea.Msg {
+			return CommandPaletteClearSelectionMsg{}
+		},
+	})
+
+	return actions
+}
+
 // getTagActions returns inline actions for a tag item.
 func (m *CommandPaletteModel) getTagActions(item PaletteItem) []PaletteAction {
 	if item.Tag == "" {
@@ -2060,6 +2321,12 @@ func (m *CommandPaletteModel) View() string {
 	} else {
 		// Search input (only in search mode)
 		b.WriteString(m.searchInput.View())
+		// Show history indicator when browsing history
+		if m.searchHistoryIndex >= 0 && len(m.searchHistory) > 0 {
+			historyHint := fmt.Sprintf(" %s",
+				MutedStyle.Render(fmt.Sprintf("(history %d/%d)", m.searchHistoryIndex+1, len(m.searchHistory))))
+			b.WriteString(historyHint)
+		}
 		b.WriteString("\n\n")
 	}
 
@@ -2599,6 +2866,27 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("\n")
 	b.WriteString("  e=edit  g=view  x=done\n")
 	b.WriteString("  s=start b=block r=reopen\n")
+	b.WriteString("\n")
+
+	// Multi-select
+	b.WriteString(SubtitleStyle.Render("Multi-Select"))
+	b.WriteString("\n")
+	b.WriteString("  Space   Toggle selection\n")
+	b.WriteString("  Tab     Bulk actions\n")
+	b.WriteString("\n")
+
+	// History navigation
+	b.WriteString(SubtitleStyle.Render("History"))
+	b.WriteString("\n")
+	b.WriteString("  Alt+↑   Previous search\n")
+	b.WriteString("  Alt+↓   Next search\n")
+	b.WriteString("\n")
+
+	// Pinning
+	b.WriteString(SubtitleStyle.Render("Pinning"))
+	b.WriteString("\n")
+	b.WriteString("  Ctrl+F  Pin/unpin command\n")
+	b.WriteString("  *       Pinned indicator\n")
 
 	return b.String()
 }
@@ -2806,6 +3094,53 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 			completed, len(task.Children)))
 	}
 
+	// Dependencies - show blocking and blocked-by relationships
+	if item.Project != nil {
+		// Tasks this task depends on (blockers)
+		blockers := item.Project.GetBlockingTasks(task)
+		if len(blockers) > 0 {
+			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocked by:")))
+			maxShow := 3
+			if len(blockers) < maxShow {
+				maxShow = len(blockers)
+			}
+			var refs []string
+			for i := 0; i < maxShow; i++ {
+				blocker := blockers[i]
+				statusStyle := GetStatusStyle(string(blocker.Status))
+				ref := fmt.Sprintf("%s #%d", statusStyle.Render(blocker.Status.Icon()), blocker.ShortID)
+				refs = append(refs, ref)
+			}
+			b.WriteString(strings.Join(refs, ", "))
+			if len(blockers) > maxShow {
+				b.WriteString(MutedStyle.Render(fmt.Sprintf(" +%d more", len(blockers)-maxShow)))
+			}
+			b.WriteString("\n")
+		}
+
+		// Tasks that depend on this task (blocked by this)
+		blocked := item.Project.GetBlockedByTasks(task)
+		if len(blocked) > 0 {
+			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocking:")))
+			maxShow := 3
+			if len(blocked) < maxShow {
+				maxShow = len(blocked)
+			}
+			var refs []string
+			for i := 0; i < maxShow; i++ {
+				dep := blocked[i]
+				statusStyle := GetStatusStyle(string(dep.Status))
+				ref := fmt.Sprintf("%s #%d", statusStyle.Render(dep.Status.Icon()), dep.ShortID)
+				refs = append(refs, ref)
+			}
+			b.WriteString(strings.Join(refs, ", "))
+			if len(blocked) > maxShow {
+				b.WriteString(MutedStyle.Render(fmt.Sprintf(" +%d more", len(blocked)-maxShow)))
+			}
+			b.WriteString("\n")
+		}
+	}
+
 	// Description (truncated)
 	if task.Description != "" {
 		b.WriteString("\n")
@@ -2945,16 +3280,91 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 		b.WriteString("\n")
 	}
 
-	// Task counts (if loaded)
+	// Task counts and health (if loaded)
 	if len(project.Tasks) > 0 {
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		weekFromNow := today.AddDate(0, 0, 7)
+
 		active, completed := 0, 0
+		overdue, dueToday, dueThisWeek := 0, 0, 0
+		highPriority, blocked := 0, 0
+
 		for _, task := range project.Tasks {
 			if task.Status.IsComplete() {
 				completed++
-			} else {
-				active++
+				continue
+			}
+			active++
+
+			// Count high priority (1-2)
+			if task.Priority <= 2 {
+				highPriority++
+			}
+
+			// Count blocked tasks
+			if task.Status == models.StatusBlocked {
+				blocked++
+			}
+
+			// Count by due date
+			if task.DueDate != nil {
+				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				if dueDay.Before(today) {
+					overdue++
+				} else if dueDay.Equal(today) {
+					dueToday++
+				} else if dueDay.Before(weekFromNow) {
+					dueThisWeek++
+				}
 			}
 		}
+
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Task Health"))
+		b.WriteString("\n")
+
+		// Show overdue in red if any
+		if overdue > 0 {
+			b.WriteString(fmt.Sprintf("  %s %d overdue\n",
+				OverdueStyle.Render("!"),
+				overdue))
+		}
+
+		// Show due today in yellow if any
+		if dueToday > 0 {
+			b.WriteString(fmt.Sprintf("  %s %d due today\n",
+				DueTodayStyle.Render("!"),
+				dueToday))
+		}
+
+		// Show due this week
+		if dueThisWeek > 0 {
+			b.WriteString(fmt.Sprintf("  %s %d due this week\n",
+				lipgloss.NewStyle().Foreground(ColorWarning).Render("~"),
+				dueThisWeek))
+		}
+
+		// Show high priority count
+		if highPriority > 0 {
+			b.WriteString(fmt.Sprintf("  %s %d high priority\n",
+				lipgloss.NewStyle().Foreground(ColorWarning).Render("!"),
+				highPriority))
+		}
+
+		// Show blocked count
+		if blocked > 0 {
+			b.WriteString(fmt.Sprintf("  %s %d blocked\n",
+				lipgloss.NewStyle().Foreground(ColorError).Render("◈"),
+				blocked))
+		}
+
+		// Show if no urgent items
+		if overdue == 0 && dueToday == 0 && blocked == 0 {
+			b.WriteString(fmt.Sprintf("  %s No urgent items\n",
+				lipgloss.NewStyle().Foreground(ColorSuccess).Render("✓")))
+		}
+
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("Tasks: "))
 		b.WriteString(fmt.Sprintf("%d active, %d completed", active, completed))
@@ -3120,6 +3530,21 @@ func (m *CommandPaletteModel) renderCategoryHeader(cat ItemCategory) string {
 func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPaletteItem, selected bool, width int, numberHint int) string {
 	item := filtered.Item
 
+	// Selection checkbox for tasks (2 chars)
+	checkbox := ""
+	checkboxLen := 0
+	if item.Category == ItemCategoryTasks && item.Task != nil {
+		if m.selectedTasks[item.Task.ID] {
+			checkbox = lipgloss.NewStyle().Foreground(ColorSuccess).Render("☑ ")
+		} else if len(m.selectedTasks) > 0 {
+			// Show empty checkbox when in multi-select mode
+			checkbox = MutedStyle.Render("☐ ")
+		}
+		if checkbox != "" {
+			checkboxLen = 2
+		}
+	}
+
 	// Cursor/number indicator (2 chars)
 	cursor := "  "
 	if selected {
@@ -3127,6 +3552,14 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	} else if numberHint > 0 && numberHint <= 9 {
 		// Show number hint in muted style
 		cursor = MutedStyle.Render(fmt.Sprintf("%d ", numberHint))
+	}
+
+	// Pin indicator for pinned commands (shown before badge)
+	pinIndicator := ""
+	pinLen := 0
+	if m.isItemPinned(item) {
+		pinIndicator = lipgloss.NewStyle().Foreground(ColorWarning).Render("*")
+		pinLen = 1
 	}
 
 	// Category badge with color (5-6 chars including brackets)
@@ -3144,7 +3577,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	}
 
 	// Calculate space for name + extra info + description
-	fixedWidth := 2 + catBadgeLen + 1 + shortcutLen + 2
+	fixedWidth := 2 + checkboxLen + pinLen + catBadgeLen + 1 + shortcutLen + 2
 	remainingWidth := width - fixedWidth
 	if remainingWidth < 20 {
 		remainingWidth = 20
@@ -3162,6 +3595,8 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	// Build the complete line
 	var line strings.Builder
 	line.WriteString(cursor)
+	line.WriteString(checkbox)
+	line.WriteString(pinIndicator)
 	line.WriteString(catBadge)
 	line.WriteString(" ")
 	line.WriteString(leftContent)
@@ -3518,3 +3953,15 @@ type CommandPaletteTaskActionMsg struct {
 	Project *models.Project
 	Action  string // "complete", "start", "block", "cancel", "reopen"
 }
+
+// CommandPaletteBulkActionMsg is sent when a bulk action is performed on multiple selected tasks.
+type CommandPaletteBulkActionMsg struct {
+	Action string // "complete", "start"
+	Tasks  []struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+}
+
+// CommandPaletteClearSelectionMsg is sent to clear the multi-select state.
+type CommandPaletteClearSelectionMsg struct{}

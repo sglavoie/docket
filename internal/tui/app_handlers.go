@@ -168,6 +168,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CommandPaletteTaskActionMsg:
 		return m.handleCommandPaletteTaskAction(msg)
 
+	case CommandPaletteBulkActionMsg:
+		return m.handleCommandPaletteBulkAction(msg)
+
 	case InlineTaskCreateMsg:
 		return m.handleInlineTaskCreate(msg)
 
@@ -339,6 +342,70 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 
 	// Show status message
 	m.statusMessage = fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
+	return true, statusTimeout(2 * time.Second)
+}
+
+// handleCommandPaletteBulkAction handles bulk actions on multiple selected tasks.
+func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMsg) (bool, tea.Cmd) {
+	if len(msg.Tasks) == 0 {
+		return true, nil
+	}
+
+	// Group tasks by project for efficient saving
+	projectTasks := make(map[string][]struct {
+		Task    *models.Task
+		Project *models.Project
+	})
+	for _, item := range msg.Tasks {
+		if item.Task != nil && item.Project != nil {
+			projectTasks[item.Project.ID] = append(projectTasks[item.Project.ID], item)
+		}
+	}
+
+	// Apply action to all tasks
+	count := 0
+	for _, items := range projectTasks {
+		for _, item := range items {
+			switch msg.Action {
+			case "complete":
+				item.Task.Complete()
+				count++
+			case "start":
+				item.Task.Start()
+				count++
+			}
+		}
+	}
+
+	// Save each affected project
+	for _, items := range projectTasks {
+		if len(items) > 0 {
+			project := items[0].Project
+			if err := storage.BackupProject(project); err != nil {
+				return true, errorCmd("failed to create backup: %w", err)
+			}
+			if err := storage.SaveProject(project); err != nil {
+				return true, errorCmd("failed to save: %w", err)
+			}
+			storage.LoadProject(project)
+		}
+	}
+
+	// Refresh if viewing an affected project
+	if m.currentProject != nil {
+		if _, ok := projectTasks[m.currentProject.ID]; ok {
+			m.refreshProjectTree()
+		}
+	}
+
+	// Show status message
+	actionPast := msg.Action + "d"
+	if msg.Action == "complete" {
+		actionPast = "completed"
+	} else if msg.Action == "start" {
+		actionPast = "started"
+	}
+	m.statusMessage = fmt.Sprintf("%d tasks %s", count, actionPast)
 	return true, statusTimeout(2 * time.Second)
 }
 
