@@ -3547,6 +3547,11 @@ func (m *CommandPaletteModel) isDirectActionEnabled() bool {
 	if taskIDPattern.MatchString(query) {
 		return true
 	}
+	// If query starts with ":" but has no space, user is still typing a prefix
+	// Disable direct actions to allow typing characters like 'g', 's', etc.
+	if strings.HasPrefix(query, ":") && !strings.Contains(query, " ") {
+		return false
+	}
 	_, searchQuery := m.parseQueryPrefix(query)
 	return searchQuery == ""
 }
