@@ -51,6 +51,7 @@ const (
 	ViewProjectCycleManager
 	ViewCommandPalette
 	ViewBulkEdit
+	ViewSaveSearchInput
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -84,6 +85,9 @@ type AppModel struct {
 	err           error
 	quitting      bool
 	statusMessage string // Temporary status message (auto-clears after timeout)
+
+	// Pending bulk tasks for palette operations (priority, date assignment)
+	pendingBulkTasks []PaletteBulkTaskItem
 }
 
 // NewAppModel creates a new TUI application model.

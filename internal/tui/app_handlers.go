@@ -188,6 +188,60 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case DueDateChangedMsg:
 		m.popView()
+
+		// Check if this is a bulk operation from palette
+		if len(m.pendingBulkTasks) > 1 && msg.Task != nil {
+			// The first task was already saved by DateInputModel
+			// Apply the same date to remaining tasks
+			newDate := msg.Task.DueDate
+			count := 1 // First task already updated
+			projectMap := make(map[string]*models.Project)
+
+			for i, item := range m.pendingBulkTasks {
+				if i == 0 {
+					// Skip the first task (already saved by DateInputModel)
+					projectMap[item.Project.ID] = item.Project
+					continue
+				}
+				if item.Task != nil && item.Project != nil {
+					if newDate != nil {
+						dateCopy := *newDate
+						item.Task.DueDate = &dateCopy
+					} else {
+						item.Task.DueDate = nil
+					}
+					item.Task.UpdatedAt = time.Now()
+					projectMap[item.Project.ID] = item.Project
+					count++
+				}
+			}
+
+			// Save each affected project (except the first which was already saved)
+			for _, project := range projectMap {
+				if project.ID != m.pendingBulkTasks[0].Project.ID {
+					if err := storage.BackupProject(project); err != nil {
+						m.pendingBulkTasks = nil
+						return true, errorCmd("failed to create backup: %w", err)
+					}
+					if err := storage.SaveProject(project); err != nil {
+						m.pendingBulkTasks = nil
+						return true, errorCmd("failed to save: %w", err)
+					}
+					storage.LoadProject(project)
+				}
+			}
+
+			m.refreshProjectTree()
+			if newDate != nil {
+				m.statusMessage = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
+			} else {
+				m.statusMessage = fmt.Sprintf("Cleared due date for %d tasks", count)
+			}
+			m.pendingBulkTasks = nil
+			return true, statusTimeout(2 * time.Second)
+		}
+
+		m.pendingBulkTasks = nil
 		m.refreshProjectTree()
 		return true, nil
 
@@ -781,6 +835,90 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, m.projectTree.applyBulkChanges(msg.Changes, msg.Tasks)
 		}
 		return true, nil
+
+	case ShowSaveSearchDialogMsg:
+		// Show a simple text input dialog for the search name
+		m.showView(ViewSaveSearchInput, NewSaveSearchInputModel(msg.Query))
+		return true, nil
+
+	case SaveSearchMsg:
+		// Save the search to config
+		m.config.SaveSearch(msg.Name, msg.Query)
+		if err := m.configManager.Save(m.config); err != nil {
+			return true, errorCmd("failed to save search: %w", err)
+		}
+		// Pop the input dialog
+		m.popView()
+		// Refresh the command palette if it's still showing
+		if m.currentView() == ViewCommandPalette {
+			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
+				palette.allItems = palette.loadAllItems()
+				palette.filterItems()
+			}
+		}
+		return true, nil
+
+	case DeleteSavedSearchMsg:
+		// Delete the saved search from config
+		m.config.DeleteSavedSearch(msg.Name)
+		if err := m.configManager.Save(m.config); err != nil {
+			return true, errorCmd("failed to delete saved search: %w", err)
+		}
+		// Refresh the command palette if it's showing
+		if m.currentView() == ViewCommandPalette {
+			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
+				palette.allItems = palette.loadAllItems()
+				palette.filterItems()
+			}
+		}
+		return true, nil
+
+	case ExecuteSavedSearchMsg:
+		// Execute a saved search by setting the query in the palette
+		if m.currentView() == ViewCommandPalette {
+			if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok {
+				palette.searchInput.SetValue(msg.Query)
+				palette.filterItems()
+			}
+		}
+		return true, nil
+
+	case PaletteBulkPriorityMsg:
+		// Set priority for multiple tasks from palette - show priority picker
+		if len(msg.Tasks) > 0 {
+			// Store the tasks for when priority is selected
+			m.pendingBulkTasks = msg.Tasks
+			// Show the priority picker (uses first task as reference)
+			m.showView(ViewPriorityPicker, NewPriorityPickerModel(msg.Tasks[0].Task, msg.Tasks[0].Project))
+		}
+		return true, nil
+
+	case PaletteBulkTagMsg:
+		// Add tags to multiple tasks from palette
+		// For simplicity, collect all tasks from the first project and use existing bulk tag selector
+		if len(msg.Tasks) > 0 {
+			// Group by project and use first project's tasks
+			firstProject := msg.Tasks[0].Project
+			var tasks []*models.Task
+			for _, item := range msg.Tasks {
+				if item.Project.ID == firstProject.ID {
+					tasks = append(tasks, item.Task)
+				}
+			}
+			if len(tasks) > 0 {
+				m.showView(ViewBulkTagSelector, NewBulkTagSelectorModel(tasks, firstProject))
+			}
+		}
+		return true, nil
+
+	case PaletteBulkDueDateMsg:
+		// Set due date for multiple tasks from palette
+		if len(msg.Tasks) > 0 {
+			// Store tasks and show date input for first task (will apply to all)
+			m.pendingBulkTasks = msg.Tasks
+			m.showView(ViewDateInput, NewDateInputModel(msg.Tasks[0].Task, msg.Tasks[0].Project))
+		}
+		return true, nil
 	}
 	return false, nil
 }
@@ -1020,7 +1158,50 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case PriorityPickerDoneMsg:
 		m.popView()
-		if !msg.Cancelled && msg.Task != nil && msg.Project != nil {
+		if msg.Cancelled {
+			m.pendingBulkTasks = nil
+			return true, nil
+		}
+
+		// Check if this is a bulk operation from palette
+		if len(m.pendingBulkTasks) > 0 {
+			count := 0
+			projectTasks := make(map[string][]*models.Task)
+			projectMap := make(map[string]*models.Project)
+
+			for _, item := range m.pendingBulkTasks {
+				if item.Task != nil && item.Project != nil {
+					item.Task.Priority = msg.Priority
+					item.Task.UpdatedAt = time.Now()
+					projectTasks[item.Project.ID] = append(projectTasks[item.Project.ID], item.Task)
+					projectMap[item.Project.ID] = item.Project
+					count++
+				}
+			}
+
+			// Save each affected project
+			for projectID, project := range projectMap {
+				if len(projectTasks[projectID]) > 0 {
+					if err := storage.BackupProject(project); err != nil {
+						m.pendingBulkTasks = nil
+						return true, errorCmd("failed to create backup: %w", err)
+					}
+					if err := storage.SaveProject(project); err != nil {
+						m.pendingBulkTasks = nil
+						return true, errorCmd("failed to save: %w", err)
+					}
+					storage.LoadProject(project)
+				}
+			}
+
+			m.refreshProjectTree()
+			m.statusMessage = fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, count)
+			m.pendingBulkTasks = nil
+			return true, statusTimeout(2 * time.Second)
+		}
+
+		// Single task operation
+		if msg.Task != nil && msg.Project != nil {
 			msg.Task.Priority = msg.Priority
 			msg.Task.UpdatedAt = time.Now()
 

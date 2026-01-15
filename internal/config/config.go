@@ -52,6 +52,8 @@ type Config struct {
 	LastPaletteCategory  string                      `json:"last_palette_category,omitempty"`  // Last category filter used (e.g., ":task ")
 	PaletteSearchHistory []string                    `json:"palette_search_history,omitempty"` // Recent search queries in command palette
 	PinnedCommands       []string                    `json:"pinned_commands,omitempty"`        // Pinned command names for quick access
+	SavedSearches        map[string]string           `json:"saved_searches,omitempty"`         // Named saved searches (name -> query)
+	CommandHistory       []string                    `json:"command_history,omitempty"`        // Recently executed command names
 }
 
 // NewConfig creates a new configuration with default values.
@@ -549,4 +551,74 @@ func (c *Config) TogglePinnedCommand(name string) bool {
 	// Add to pinned
 	c.PinnedCommands = append(c.PinnedCommands, name)
 	return true
+}
+
+// GetSavedSearches returns the map of saved searches (name -> query).
+func (c *Config) GetSavedSearches() map[string]string {
+	if c.SavedSearches == nil {
+		return make(map[string]string)
+	}
+	return c.SavedSearches
+}
+
+// SaveSearch saves a search query with a given name.
+// Overwrites if name already exists.
+func (c *Config) SaveSearch(name, query string) {
+	if c.SavedSearches == nil {
+		c.SavedSearches = make(map[string]string)
+	}
+	c.SavedSearches[name] = query
+}
+
+// DeleteSavedSearch removes a saved search by name.
+// Returns true if the search existed and was deleted.
+func (c *Config) DeleteSavedSearch(name string) bool {
+	if c.SavedSearches == nil {
+		return false
+	}
+	if _, exists := c.SavedSearches[name]; exists {
+		delete(c.SavedSearches, name)
+		return true
+	}
+	return false
+}
+
+// GetSavedSearch returns the query for a saved search by name.
+// Returns empty string if not found.
+func (c *Config) GetSavedSearch(name string) string {
+	if c.SavedSearches == nil {
+		return ""
+	}
+	return c.SavedSearches[name]
+}
+
+// GetCommandHistory returns the list of recently executed commands.
+func (c *Config) GetCommandHistory() []string {
+	if c.CommandHistory == nil {
+		return []string{}
+	}
+	return c.CommandHistory
+}
+
+// AddCommandToHistory adds a command to the execution history.
+// Most recent commands are at the front. Duplicates are moved to front.
+// Capped at 10 entries.
+func (c *Config) AddCommandToHistory(name string) {
+	const maxHistory = 10
+
+	// Remove existing entry if present
+	var newHistory []string
+	for _, cmd := range c.CommandHistory {
+		if cmd != name {
+			newHistory = append(newHistory, cmd)
+		}
+	}
+
+	// Add to front
+	c.CommandHistory = append([]string{name}, newHistory...)
+
+	// Cap at max
+	if len(c.CommandHistory) > maxHistory {
+		c.CommandHistory = c.CommandHistory[:maxHistory]
+	}
 }

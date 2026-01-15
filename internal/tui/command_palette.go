@@ -24,25 +24,29 @@ import (
 type ItemCategory string
 
 const (
-	ItemCategoryCommands ItemCategory = "Commands"
-	ItemCategoryTasks    ItemCategory = "Tasks"
-	ItemCategoryProjects ItemCategory = "Projects"
-	ItemCategoryTags     ItemCategory = "Tags"
-	ItemCategorySections ItemCategory = "Sections"
+	ItemCategoryCommands    ItemCategory = "Commands"
+	ItemCategoryTasks       ItemCategory = "Tasks"
+	ItemCategoryProjects    ItemCategory = "Projects"
+	ItemCategoryTags        ItemCategory = "Tags"
+	ItemCategorySections    ItemCategory = "Sections"
+	ItemCategorySavedSearch ItemCategory = "Saved"
 )
 
 // categoryPrefixes maps short prefixes to item categories for filtering.
 // Users can type ":cmd " to filter to commands only, ":task " for tasks, etc.
 var categoryPrefixes = map[string]ItemCategory{
-	"cmd":  ItemCategoryCommands,
-	"task": ItemCategoryTasks,
-	"prj":  ItemCategoryProjects,
-	"tag":  ItemCategoryTags,
-	"sec":  ItemCategorySections,
+	"cmd":    ItemCategoryCommands,
+	"task":   ItemCategoryTasks,
+	"prj":    ItemCategoryProjects,
+	"tag":    ItemCategoryTags,
+	"sec":    ItemCategorySections,
+	"saved":  ItemCategorySavedSearch,
+	"recent": ItemCategoryCommands, // Special: filters to recently executed commands
 }
 
 // categoryOrder defines the display order for categories when showing headers.
 var categoryOrder = []ItemCategory{
+	ItemCategorySavedSearch,
 	ItemCategoryCommands,
 	ItemCategoryProjects,
 	ItemCategoryTasks,
@@ -75,11 +79,12 @@ type PaletteItem struct {
 	Category    ItemCategory // The type of item (Commands, Tasks, Projects, Tags, Sections)
 
 	// Underlying data - only one of these will be set based on Category
-	Command *Command        // Set when Category is CategoryCommands
-	Task    *models.Task    // Set when Category is CategoryTasks
-	Project *models.Project // Set when Category is CategoryProjects
-	Tag     string          // Set when Category is CategoryTags
-	Section string          // Set when Category is CategorySections
+	Command     *Command        // Set when Category is CategoryCommands
+	Task        *models.Task    // Set when Category is CategoryTasks
+	Project     *models.Project // Set when Category is CategoryProjects
+	Tag         string          // Set when Category is CategoryTags
+	Section     string          // Set when Category is CategorySections
+	SavedSearch string          // Set when Category is CategorySavedSearch (the query)
 }
 
 // CommandPaletteItem represents a searchable item in the command palette.
@@ -99,10 +104,24 @@ type PaletteAction struct {
 	Handler func() tea.Msg // Returns message when the action is selected
 }
 
+// MatchField identifies which field of an item was matched during search.
+type MatchField int
+
+const (
+	MatchFieldNone        MatchField = iota
+	MatchFieldName                   // Matched in the item's name/title
+	MatchFieldDescription            // Matched in the description
+	MatchFieldAlias                  // Matched in command aliases
+	MatchFieldTag                    // Matched in task tags
+	MatchFieldSection                // Matched in task section
+)
+
 // filteredPaletteItem wraps a PaletteItem with its match positions for highlighting.
 type filteredPaletteItem struct {
 	Item          PaletteItem
-	NamePositions []int // Positions of matched characters in Name
+	NamePositions []int      // Positions of matched characters in Name
+	MatchedField  MatchField // Which field was matched (for preview display)
+	MatchedTerm   string     // The search term that matched (for preview display)
 }
 
 // inlineTaskPreview holds parsed metadata for inline task creation preview.
@@ -186,7 +205,7 @@ type CommandPaletteModel struct {
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec • Alt+↑↓ history • ? for help"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved • Alt+↑↓ history • ? for help"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -371,6 +390,17 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
+	// Add saved searches from config
+	savedSearches := m.config.GetSavedSearches()
+	for name, query := range savedSearches {
+		items = append(items, PaletteItem{
+			Name:        name,
+			Description: query,
+			Category:    ItemCategorySavedSearch,
+			SavedSearch: query,
+		})
+	}
+
 	return items
 }
 
@@ -389,17 +419,26 @@ func categoryWeight(cat ItemCategory) int {
 		return weightCommands
 	case ItemCategoryProjects:
 		return weightProjects
+	case ItemCategorySavedSearch:
+		return weightCommands // Saved searches rank high like commands
 	default:
 		return weightDefault
 	}
 }
 
 // parseQueryPrefix extracts a category filter prefix from the query.
-// Returns the category to filter by (or empty string for no filter) and the remaining search query.
-// Prefix format: ":cmd ", ":task ", ":prj ", ":tag ", ":sec " (note the trailing space).
+// Returns the category to filter by (or empty string for no filter), the remaining search query,
+// and whether the :recent prefix was used.
+// Prefix format: ":cmd ", ":task ", ":prj ", ":tag ", ":sec ", ":recent " (note the trailing space).
 func (m *CommandPaletteModel) parseQueryPrefix(query string) (ItemCategory, string) {
+	cat, searchQuery, _ := m.parseQueryPrefixWithRecent(query)
+	return cat, searchQuery
+}
+
+// parseQueryPrefixWithRecent is like parseQueryPrefix but also returns whether :recent was used.
+func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCategory, string, bool) {
 	if !strings.HasPrefix(query, ":") {
-		return "", query
+		return "", query, false
 	}
 
 	// Find the first space after the prefix
@@ -410,20 +449,20 @@ func (m *CommandPaletteModel) parseQueryPrefix(query string) (ItemCategory, stri
 		for p := range categoryPrefixes {
 			if strings.HasPrefix(p, prefix) {
 				// Partial match - filter to this category but no search query yet
-				return categoryPrefixes[p], ""
+				return categoryPrefixes[p], "", p == "recent"
 			}
 		}
-		return "", query
+		return "", query, false
 	}
 
 	// Extract the prefix (without the colon)
 	prefix := strings.ToLower(query[1:spaceIdx])
 	if cat, ok := categoryPrefixes[prefix]; ok {
-		return cat, strings.TrimSpace(query[spaceIdx+1:])
+		return cat, strings.TrimSpace(query[spaceIdx+1:]), prefix == "recent"
 	}
 
 	// Unknown prefix - treat as regular search
-	return "", query
+	return "", query, false
 }
 
 // sortItemsByCategory sorts items by the predefined category order for display without search.
@@ -471,9 +510,9 @@ type searchTermGroup struct {
 }
 
 // fieldFilter represents a field-specific filter parsed from the query.
-// Supports: priority:1-2, status:todo|progress, @overdue, @today, @this-week
+// Supports: priority:1-2, status:todo|progress, tag:name, section:name, @overdue, @today, @this-week
 type fieldFilter struct {
-	field string   // "priority", "status", or "date"
+	field string   // "priority", "status", "date", "tag", or "section"
 	op    string   // "eq", "range", "in" for comparison type
 	value string   // single value or range (e.g., "1-3")
 	alt   []string // alternatives for OR logic (e.g., ["todo", "progress"])
@@ -484,6 +523,8 @@ type fieldFilter struct {
 // Supported syntax:
 //   - priority:N or priority:N-M (e.g., priority:1, priority:1-2)
 //   - status:val or status:val|val2 (e.g., status:todo, status:todo|progress)
+//   - tag:name or tag:name|name2 (e.g., tag:bug, tag:bug|feature)
+//   - section:name or section:name|name2 (e.g., section:backlog, section:sprint-1|sprint-2)
 //   - @overdue, @today, @tomorrow, @this-week
 func parseFieldFilters(query string) (remaining string, filters []fieldFilter) {
 	terms := strings.Fields(query)
@@ -536,6 +577,46 @@ func parseFieldFilters(query string) (remaining string, filters []fieldFilter) {
 			} else {
 				filters = append(filters, fieldFilter{
 					field: "status",
+					op:    "eq",
+					value: val,
+				})
+			}
+			continue
+		}
+
+		// Check for tag:name or tag:name|name2
+		if strings.HasPrefix(term, "tag:") {
+			val := term[4:]
+			if strings.Contains(val, "|") {
+				alts := strings.Split(val, "|")
+				filters = append(filters, fieldFilter{
+					field: "tag",
+					op:    "in",
+					alt:   alts,
+				})
+			} else {
+				filters = append(filters, fieldFilter{
+					field: "tag",
+					op:    "eq",
+					value: val,
+				})
+			}
+			continue
+		}
+
+		// Check for section:name or section:name|name2
+		if strings.HasPrefix(term, "section:") {
+			val := term[8:]
+			if strings.Contains(val, "|") {
+				alts := strings.Split(val, "|")
+				filters = append(filters, fieldFilter{
+					field: "section",
+					op:    "in",
+					alt:   alts,
+				})
+			} else {
+				filters = append(filters, fieldFilter{
+					field: "section",
 					op:    "eq",
 					value: val,
 				})
@@ -627,6 +708,58 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 			case "this-week", "thisweek":
 				weekEnd := today.AddDate(0, 0, 7)
 				if dueDay.Before(today) || !dueDay.Before(weekEnd) {
+					return false
+				}
+			}
+
+		case "tag":
+			if f.op == "eq" {
+				// Task must have the specified tag (case-insensitive)
+				found := false
+				for _, tag := range task.Tags {
+					if strings.EqualFold(tag, f.value) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			} else if f.op == "in" {
+				// Task must have at least one of the specified tags
+				found := false
+				for _, tag := range task.Tags {
+					for _, alt := range f.alt {
+						if strings.EqualFold(tag, alt) {
+							found = true
+							break
+						}
+					}
+					if found {
+						break
+					}
+				}
+				if !found {
+					return false
+				}
+			}
+
+		case "section":
+			if f.op == "eq" {
+				// Task must be in the specified section (case-insensitive)
+				if !strings.EqualFold(task.Section, f.value) {
+					return false
+				}
+			} else if f.op == "in" {
+				// Task must be in one of the specified sections
+				found := false
+				for _, alt := range f.alt {
+					if strings.EqualFold(task.Section, alt) {
+						found = true
+						break
+					}
+				}
+				if !found {
 					return false
 				}
 			}
@@ -768,20 +901,24 @@ func (m *CommandPaletteModel) itemMatchesNegativeGroups(item PaletteItem, negati
 
 // itemMatchesPositiveGroups returns true and a score if item matches ALL positive term groups.
 // Each group must have at least one matching alternative (AND between groups, OR within groups).
-// Returns (matches, totalScore, namePositions).
-func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positiveGroups []searchTermGroup) (bool, int, []int) {
+// Returns (matches, totalScore, namePositions, matchedField, matchedTerm).
+func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positiveGroups []searchTermGroup) (bool, int, []int, MatchField, string) {
 	if len(positiveGroups) == 0 {
-		return true, 1, nil
+		return true, 1, nil, MatchFieldNone, ""
 	}
 
 	totalScore := 0
 	var allPositions []int
 	positionSet := make(map[int]bool)
+	bestMatchField := MatchFieldNone
+	bestMatchTerm := ""
 
 	for _, group := range positiveGroups {
 		// Find best matching alternative in this group
 		bestScore := 0
 		var bestPositions []int
+		groupMatchField := MatchFieldNone
+		groupMatchTerm := ""
 
 		for _, alt := range group.alternatives {
 			if group.isExact {
@@ -802,6 +939,8 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 					if score > bestScore {
 						bestScore = score
 						bestPositions = positions
+						groupMatchField = MatchFieldName
+						groupMatchTerm = alt
 					}
 				} else if strings.Contains(descLower, altLower) {
 					// Match in description, no name highlighting
@@ -809,20 +948,24 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 					if score > bestScore {
 						bestScore = score
 						bestPositions = nil
+						groupMatchField = MatchFieldDescription
+						groupMatchTerm = alt
 					}
 				}
 			} else {
-				score, positions := m.scoreItemWithPositions(item, alt)
+				score, positions, matchField := m.scoreItemWithDetails(item, alt)
 				if score > bestScore {
 					bestScore = score
 					bestPositions = positions
+					groupMatchField = matchField
+					groupMatchTerm = alt
 				}
 			}
 		}
 
 		// Group must have at least one match
 		if bestScore == 0 {
-			return false, 0, nil
+			return false, 0, nil, MatchFieldNone, ""
 		}
 
 		totalScore += bestScore
@@ -833,9 +976,14 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 				allPositions = append(allPositions, pos)
 			}
 		}
+		// Track the best match field (prefer non-name matches as they're more interesting)
+		if bestMatchField == MatchFieldNone || (groupMatchField != MatchFieldName && bestMatchField == MatchFieldName) {
+			bestMatchField = groupMatchField
+			bestMatchTerm = groupMatchTerm
+		}
 	}
 
-	return true, totalScore, allPositions
+	return true, totalScore, allPositions, bestMatchField, bestMatchTerm
 }
 
 // taskIDPattern matches queries like "#123" for direct task ID jump.
@@ -874,11 +1022,14 @@ func (m *CommandPaletteModel) filterItems() {
 		return
 	}
 
-	// Parse category prefix if present
-	categoryFilter, searchQuery := m.parseQueryPrefix(query)
+	// Parse category prefix if present (with recent flag)
+	categoryFilter, searchQuery, isRecentFilter := m.parseQueryPrefixWithRecent(query)
 
 	// Persist category filter when used (e.g., ":task " becomes the default for next open)
-	m.persistCategoryFilter(query, categoryFilter)
+	// Don't persist :recent as it's a special filter
+	if !isRecentFilter {
+		m.persistCategoryFilter(query, categoryFilter)
+	}
 
 	// Parse field filters (priority:, status:, @overdue, etc.) from search query
 	searchQuery, fieldFilters := parseFieldFilters(searchQuery)
@@ -893,6 +1044,39 @@ func (m *CommandPaletteModel) filterItems() {
 				filtered = append(filtered, item)
 			}
 		}
+		itemsToSearch = filtered
+	}
+
+	// If :recent prefix, further filter to only recently executed commands
+	if isRecentFilter {
+		recentCommands := m.config.GetCommandHistory()
+		recentSet := make(map[string]bool)
+		for _, cmd := range recentCommands {
+			recentSet[cmd] = true
+		}
+
+		var filtered []PaletteItem
+		for _, item := range itemsToSearch {
+			if item.Category == ItemCategoryCommands && item.Command != nil {
+				if recentSet[item.Command.Name] {
+					filtered = append(filtered, item)
+				}
+			}
+		}
+
+		// Sort by history order (most recent first)
+		sort.SliceStable(filtered, func(i, j int) bool {
+			for _, cmd := range recentCommands {
+				if filtered[i].Command != nil && filtered[i].Command.Name == cmd {
+					return true
+				}
+				if filtered[j].Command != nil && filtered[j].Command.Name == cmd {
+					return false
+				}
+			}
+			return false
+		})
+
 		itemsToSearch = filtered
 	}
 
@@ -922,11 +1106,13 @@ func (m *CommandPaletteModel) filterItems() {
 	// Parse positive and negative term groups (supports OR with | delimiter)
 	positiveGroups, negativeGroups := parseSearchTerms(searchQuery)
 
-	// Score each item and collect matches with positions
+	// Score each item and collect matches with positions and match info
 	type scoredItem struct {
 		item          PaletteItem
 		score         int
 		namePositions []int
+		matchedField  MatchField
+		matchedTerm   string
 	}
 	var scored []scoredItem
 
@@ -943,9 +1129,15 @@ func (m *CommandPaletteModel) filterItems() {
 		}
 
 		// Score against positive term groups (AND between groups, OR within groups)
-		matches, score, positions := m.itemMatchesPositiveGroups(item, positiveGroups)
+		matches, score, positions, matchField, matchTerm := m.itemMatchesPositiveGroups(item, positiveGroups)
 		if matches && score > 0 {
-			scored = append(scored, scoredItem{item: item, score: score, namePositions: positions})
+			scored = append(scored, scoredItem{
+				item:          item,
+				score:         score,
+				namePositions: positions,
+				matchedField:  matchField,
+				matchedTerm:   matchTerm,
+			})
 		}
 	}
 
@@ -989,12 +1181,14 @@ func (m *CommandPaletteModel) filterItems() {
 		}
 	})
 
-	// Extract sorted results with positions
+	// Extract sorted results with positions and match info
 	m.filteredItems = make([]filteredPaletteItem, len(scored))
 	for i, s := range scored {
 		m.filteredItems[i] = filteredPaletteItem{
 			Item:          s.item,
 			NamePositions: s.namePositions,
+			MatchedField:  s.matchedField,
+			MatchedTerm:   s.matchedTerm,
 		}
 	}
 
@@ -1147,6 +1341,13 @@ func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
 // Positions are for the name field only (primary display target).
 // For commands, also scores against aliases for better discoverability.
 func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query string) (int, []int) {
+	score, positions, _ := m.scoreItemWithDetails(item, query)
+	return score, positions
+}
+
+// scoreItemWithDetails scores an item and returns which field matched.
+// Returns (score, namePositions, matchedField).
+func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query string) (int, []int, MatchField) {
 	// Score against name (primary match target) with positions
 	nameScore, namePositions := fuzzy.ScoreTermsWithPositions(item.Name, query)
 
@@ -1166,15 +1367,19 @@ func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query str
 
 	// Use the best score between name, description, and aliases
 	bestScore := nameScore
+	matchedField := MatchFieldName
 	var positions []int
 	if descScore > bestScore {
 		bestScore = descScore
+		matchedField = MatchFieldDescription
 		positions = nil // Description matched better, don't highlight name
 	} else if aliasScore > bestScore {
 		bestScore = aliasScore
+		matchedField = MatchFieldAlias
 		positions = nil // Alias matched better, don't highlight name
 	} else if nameScore > 0 {
 		positions = namePositions
+		matchedField = MatchFieldName
 	}
 
 	// If name matched, give it extra weight (similar to GlobalSearchModel's title weighting)
@@ -1183,7 +1388,7 @@ func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query str
 	}
 
 	if bestScore == 0 {
-		return 0, nil
+		return 0, nil, MatchFieldNone
 	}
 
 	// Apply category weight multiplier
@@ -1194,7 +1399,7 @@ func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query str
 		score *= recentBoostMultiplier
 	}
 
-	return score, positions
+	return score, positions, matchedField
 }
 
 // persistCategoryFilter saves the category filter to config when a category prefix is used.
@@ -1257,6 +1462,8 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 		return item.Tag
 	case ItemCategorySections:
 		return item.Section
+	case ItemCategorySavedSearch:
+		return item.Name // Use the saved search name as ID
 	}
 	return ""
 }
@@ -1607,6 +1814,20 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 		m.filterItems()
 		return m, nil
+	case "ctrl+b":
+		// Save current search as a bookmark
+		query := strings.TrimSpace(m.searchInput.Value())
+		// Don't save empty queries, category prefixes alone, or inline task creation
+		if query != "" && !strings.HasPrefix(query, "+") {
+			_, searchQuery := m.parseQueryPrefix(query)
+			if searchQuery != "" || !strings.HasPrefix(query, ":") {
+				// Show save search dialog
+				return m, func() tea.Msg {
+					return ShowSaveSearchDialogMsg{Query: query}
+				}
+			}
+		}
+		return m, nil
 	case "ctrl+o":
 		// Cycle sort mode: Score -> Priority -> DueDate -> Score
 		switch m.sortField {
@@ -1855,6 +2076,12 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 	switch item.Category {
 	case ItemCategoryCommands:
 		if item.Command != nil && item.Command.Handler != nil {
+			// Record command execution in history
+			m.config.AddCommandToHistory(item.Command.Name)
+			if m.configManager != nil {
+				m.configManager.Save(m.config)
+			}
+
 			handler := item.Command.Handler
 			return m, func() tea.Msg {
 				return CommandPaletteExecuteMsg{ResultMsg: handler()}
@@ -1894,6 +2121,15 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 					return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteSectionSelectMsg{Section: section, Project: project}}
 				}
 			}
+		}
+	case ItemCategorySavedSearch:
+		if item.SavedSearch != "" {
+			// Execute the saved search by setting the search input and re-filtering
+			query := item.SavedSearch
+			m.searchInput.SetValue(query)
+			m.filterItems()
+			// Don't close the palette - let user see the results
+			return m, nil
 		}
 	}
 	return m, nil
@@ -1935,6 +2171,8 @@ func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteActio
 		return m.getTagActions(item)
 	case ItemCategorySections:
 		return m.getSectionActions(item)
+	case ItemCategorySavedSearch:
+		return m.getSavedSearchActions(item)
 	default:
 		return nil
 	}
@@ -2227,6 +2465,42 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 		})
 	}
 
+	// Convert to PaletteBulkTaskItem for the new message types
+	bulkItems := make([]PaletteBulkTaskItem, len(selectedItems))
+	for i, item := range selectedItems {
+		bulkItems[i] = PaletteBulkTaskItem{Task: item.Task, Project: item.Project}
+	}
+
+	// Set priority for all
+	actions = append(actions, PaletteAction{
+		Name:    fmt.Sprintf("Set priority (%d)", len(bulkItems)),
+		Icon:    "!",
+		KeyHint: "p",
+		Handler: func() tea.Msg {
+			return PaletteBulkPriorityMsg{Tasks: bulkItems}
+		},
+	})
+
+	// Add tag to all
+	actions = append(actions, PaletteAction{
+		Name:    fmt.Sprintf("Add tag (%d)", len(bulkItems)),
+		Icon:    "#",
+		KeyHint: "t",
+		Handler: func() tea.Msg {
+			return PaletteBulkTagMsg{Tasks: bulkItems}
+		},
+	})
+
+	// Set due date for all
+	actions = append(actions, PaletteAction{
+		Name:    fmt.Sprintf("Set due date (%d)", len(bulkItems)),
+		Icon:    "📅",
+		KeyHint: "d",
+		Handler: func() tea.Msg {
+			return PaletteBulkDueDateMsg{Tasks: bulkItems}
+		},
+	})
+
 	// Clear selection
 	actions = append(actions, PaletteAction{
 		Name:    "Clear selection",
@@ -2291,6 +2565,36 @@ func (m *CommandPaletteModel) getSectionActions(item PaletteItem) []PaletteActio
 					return CommandPaletteSectionSelectMsg{Section: section, Project: project}
 				}
 				return nil
+			},
+		},
+	}
+
+	return actions
+}
+
+// getSavedSearchActions returns inline actions for a saved search item.
+func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteAction {
+	if item.SavedSearch == "" {
+		return nil
+	}
+	name := item.Name
+	query := item.SavedSearch
+
+	actions := []PaletteAction{
+		{
+			Name:    "Run search",
+			Icon:    "🔍",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return ExecuteSavedSearchMsg{Query: query}
+			},
+		},
+		{
+			Name:    "Delete",
+			Icon:    "✕",
+			KeyHint: "d",
+			Handler: func() tea.Msg {
+				return DeleteSavedSearchMsg{Name: name}
 			},
 		},
 	}
@@ -2413,6 +2717,9 @@ func (m *CommandPaletteModel) buildFooter() string {
 
 	// Build count summary (only non-zero categories, compact format)
 	var countParts []string
+	if c := counts[ItemCategorySavedSearch]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%d★", c))
+	}
 	if c := counts[ItemCategoryCommands]; c > 0 {
 		countParts = append(countParts, fmt.Sprintf("%dc", c))
 	}
@@ -2794,22 +3101,64 @@ func (m *CommandPaletteModel) renderPreview() string {
 		return MutedStyle.Render("No item selected.")
 	}
 
-	item := m.filteredItems[m.cursor].Item
+	filtered := m.filteredItems[m.cursor]
+	item := filtered.Item
 
+	var preview string
 	switch item.Category {
 	case ItemCategoryCommands:
-		return m.renderCommandPreview(item)
+		preview = m.renderCommandPreview(item)
 	case ItemCategoryTasks:
-		return m.renderTaskPreview(item)
+		preview = m.renderTaskPreview(item)
 	case ItemCategoryProjects:
-		return m.renderProjectPreview(item)
+		preview = m.renderProjectPreview(item)
 	case ItemCategoryTags:
-		return m.renderTagPreview(item)
+		preview = m.renderTagPreview(item)
 	case ItemCategorySections:
-		return m.renderSectionPreview(item)
+		preview = m.renderSectionPreview(item)
+	case ItemCategorySavedSearch:
+		preview = m.renderSavedSearchPreview(item)
 	default:
 		return MutedStyle.Render("Unknown item type.")
 	}
+
+	// Append match info if there's an active search with a non-name match
+	if filtered.MatchedField != MatchFieldNone && filtered.MatchedField != MatchFieldName && filtered.MatchedTerm != "" {
+		preview += "\n" + m.renderMatchInfo(filtered)
+	}
+
+	return preview
+}
+
+// renderMatchInfo shows why an item matched the search query.
+func (m *CommandPaletteModel) renderMatchInfo(filtered filteredPaletteItem) string {
+	var b strings.Builder
+
+	b.WriteString(MutedStyle.Render("─────────────────────"))
+	b.WriteString("\n")
+
+	matchStyle := lipgloss.NewStyle().Foreground(ColorHighlight)
+
+	var fieldName string
+	switch filtered.MatchedField {
+	case MatchFieldDescription:
+		fieldName = "description"
+	case MatchFieldAlias:
+		fieldName = "alias"
+	case MatchFieldTag:
+		fieldName = "tag"
+	case MatchFieldSection:
+		fieldName = "section"
+	default:
+		return ""
+	}
+
+	b.WriteString(MutedStyle.Render("Matched in "))
+	b.WriteString(matchStyle.Render(fieldName))
+	b.WriteString(MutedStyle.Render(": "))
+	b.WriteString(BoldStyle.Render("\"" + filtered.MatchedTerm + "\""))
+
+	return b.String()
 }
 
 // renderHelpReference shows the command palette syntax reference.
@@ -2822,11 +3171,13 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	// Category prefixes
 	b.WriteString(SubtitleStyle.Render("Category Prefixes"))
 	b.WriteString("\n")
-	b.WriteString("  :cmd   Commands only\n")
-	b.WriteString("  :task  Tasks only\n")
-	b.WriteString("  :prj   Projects only\n")
-	b.WriteString("  :tag   Tags only\n")
-	b.WriteString("  :sec   Sections only\n")
+	b.WriteString("  :cmd    Commands only\n")
+	b.WriteString("  :task   Tasks only\n")
+	b.WriteString("  :prj    Projects only\n")
+	b.WriteString("  :tag    Tags only\n")
+	b.WriteString("  :sec    Sections only\n")
+	b.WriteString("  :saved  Saved searches\n")
+	b.WriteString("  :recent Recent commands\n")
 	b.WriteString("\n")
 
 	// Task filters
@@ -2836,6 +3187,9 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("  priority:1-3   Priority range\n")
 	b.WriteString("  status:todo    Exact status\n")
 	b.WriteString("  status:a|b     Multiple statuses\n")
+	b.WriteString("  tag:bug        Has tag\n")
+	b.WriteString("  tag:a|b        Has any tag\n")
+	b.WriteString("  section:name   In section\n")
 	b.WriteString("  @overdue       Overdue tasks\n")
 	b.WriteString("  @today         Due today\n")
 	b.WriteString("  @tomorrow      Due tomorrow\n")
@@ -2887,6 +3241,13 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("\n")
 	b.WriteString("  Ctrl+F  Pin/unpin command\n")
 	b.WriteString("  *       Pinned indicator\n")
+	b.WriteString("\n")
+
+	// Saved searches
+	b.WriteString(SubtitleStyle.Render("Saved Searches"))
+	b.WriteString("\n")
+	b.WriteString("  Ctrl+B  Save current search\n")
+	b.WriteString("  :saved  Browse saved searches\n")
 
 	return b.String()
 }
@@ -3479,6 +3840,78 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 	return b.String()
 }
 
+// renderSavedSearchPreview shows details for a saved search.
+func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string {
+	if item.SavedSearch == "" {
+		return MutedStyle.Render("No saved search details.")
+	}
+	var b strings.Builder
+
+	// Header
+	savedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(savedStyle.Render("★ " + item.Name)))
+	b.WriteString("\n\n")
+
+	// Query
+	b.WriteString(SubtitleStyle.Render("Query"))
+	b.WriteString("\n")
+	b.WriteString(BoldStyle.Render(item.SavedSearch))
+	b.WriteString("\n\n")
+
+	// Parse and explain the query components
+	b.WriteString(SubtitleStyle.Render("Components"))
+	b.WriteString("\n")
+
+	query := item.SavedSearch
+	categoryFilter, searchQuery := m.parseQueryPrefix(query)
+
+	if categoryFilter != "" {
+		b.WriteString(fmt.Sprintf("  Category: %s\n", getCategoryDisplayName(categoryFilter)))
+	}
+
+	// Parse field filters
+	remaining, filters := parseFieldFilters(searchQuery)
+	for _, f := range filters {
+		switch f.field {
+		case "priority":
+			if f.op == "range" {
+				b.WriteString(fmt.Sprintf("  Priority: %s\n", f.value))
+			} else {
+				b.WriteString(fmt.Sprintf("  Priority: %s\n", f.value))
+			}
+		case "status":
+			if f.op == "in" {
+				b.WriteString(fmt.Sprintf("  Status: %s\n", strings.Join(f.alt, " or ")))
+			} else {
+				b.WriteString(fmt.Sprintf("  Status: %s\n", f.value))
+			}
+		case "tag":
+			if f.op == "in" {
+				b.WriteString(fmt.Sprintf("  Tag: %s\n", strings.Join(f.alt, " or ")))
+			} else {
+				b.WriteString(fmt.Sprintf("  Tag: %s\n", f.value))
+			}
+		case "section":
+			if f.op == "in" {
+				b.WriteString(fmt.Sprintf("  Section: %s\n", strings.Join(f.alt, " or ")))
+			} else {
+				b.WriteString(fmt.Sprintf("  Section: %s\n", f.value))
+			}
+		case "date":
+			b.WriteString(fmt.Sprintf("  Due: %s\n", f.value))
+		}
+	}
+
+	if remaining != "" {
+		b.WriteString(fmt.Sprintf("  Search: %s\n", remaining))
+	}
+
+	b.WriteString("\n")
+	b.WriteString(HelpStyle.Render("Press Enter to run • Tab for actions • d to delete"))
+
+	return b.String()
+}
+
 // renderActionPreview shows help for the current action.
 func (m *CommandPaletteModel) renderActionPreview() string {
 	var b strings.Builder
@@ -3700,6 +4133,9 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	case ItemCategorySections:
 		badge = "§ SEC"
 		style = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
+	case ItemCategorySavedSearch:
+		badge = "★ SAV"
+		style = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
 	default:
 		badge = "? ???"
 		style = MutedStyle
@@ -3721,6 +4157,8 @@ func getCategoryDisplayName(cat ItemCategory) string {
 		return "Tags"
 	case ItemCategorySections:
 		return "Sections"
+	case ItemCategorySavedSearch:
+		return "Saved Searches"
 	default:
 		return "Other"
 	}
@@ -3965,3 +4403,45 @@ type CommandPaletteBulkActionMsg struct {
 
 // CommandPaletteClearSelectionMsg is sent to clear the multi-select state.
 type CommandPaletteClearSelectionMsg struct{}
+
+// ShowSaveSearchDialogMsg is sent to show a dialog for saving the current search.
+type ShowSaveSearchDialogMsg struct {
+	Query string // The search query to save
+}
+
+// SaveSearchMsg is sent when a search is saved with a name.
+type SaveSearchMsg struct {
+	Name  string // Name for the saved search
+	Query string // The search query
+}
+
+// DeleteSavedSearchMsg is sent to delete a saved search by name.
+type DeleteSavedSearchMsg struct {
+	Name string // Name of the saved search to delete
+}
+
+// ExecuteSavedSearchMsg is sent to execute a saved search.
+type ExecuteSavedSearchMsg struct {
+	Query string // The search query to execute
+}
+
+// PaletteBulkTaskItem represents a task and its project for bulk operations from the palette.
+type PaletteBulkTaskItem struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// PaletteBulkPriorityMsg is sent to set priority for multiple tasks from the palette.
+type PaletteBulkPriorityMsg struct {
+	Tasks []PaletteBulkTaskItem
+}
+
+// PaletteBulkTagMsg is sent to add tags to multiple tasks from the palette.
+type PaletteBulkTagMsg struct {
+	Tasks []PaletteBulkTaskItem
+}
+
+// PaletteBulkDueDateMsg is sent to set due date for multiple tasks from the palette.
+type PaletteBulkDueDateMsg struct {
+	Tasks []PaletteBulkTaskItem
+}
