@@ -110,6 +110,9 @@ type ProjectTreeModel struct {
 	confirmAction string       // "", "archive", "unarchive", "delete", "bulk-delete"
 	deleteTarget  *models.Task // Task to delete when confirmAction="delete"
 
+	// Prefix key state for Vim-style two-key sequences
+	pendingPrefix string // ",", "z", or "g" when waiting for second key
+
 	// Multi-select state
 	multiSelectMode bool
 	selectedTasks   map[string]bool // task IDs currently selected

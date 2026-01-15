@@ -2,11 +2,13 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
-// handleTypeKeys handles h, l, H, L - type change operations.
+// handleTypeKeys handles <, >, H, L - type change operations.
+// Note: h/l are now used for indent/outdent (Vim-style horizontal movement).
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "h":
+	case "<":
+		// Promote type (task → story → epic)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanPromote(); ok {
@@ -16,7 +18,8 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			}
 		}
 		return true, nil
-	case "l":
+	case ">":
+		// Demote type (epic → story → task)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanDemote(); ok {
@@ -27,6 +30,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		}
 		return true, nil
 	case "H":
+		// Cycle leaf type left
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(true); ok {
@@ -37,6 +41,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		}
 		return true, nil
 	case "L":
+		// Cycle leaf type right
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(false); ok {
@@ -50,11 +55,13 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 	return false, nil
 }
 
-// handleMovementKeys handles K, J, left, right - task movement operations.
+// handleMovementKeys handles K, J, h, l - task movement operations.
+// h/l now handle indent/outdent (Vim-style horizontal movement in tree).
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "K":
+		// Move task up (swap with sibling above)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			visibleSiblings := m.getVisibleSiblings(task)
@@ -76,6 +83,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 	case "J":
+		// Move task down (swap with sibling below)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			visibleSiblings := m.getVisibleSiblings(task)
@@ -96,7 +104,8 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			}
 		}
 		return true, nil
-	case "right":
+	case "l":
+		// Indent task (move right in hierarchy, nest under task above)
 		if CursorInBounds(m.cursor, len(visible)) && m.cursor > 0 {
 			task := visible[m.cursor].Task
 			// Walk up from the visually-above task to find a valid parent
@@ -112,7 +121,8 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			}
 		}
 		return true, nil
-	case "left":
+	case "h":
+		// Outdent task (move left in hierarchy, to parent's level)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanOutdent(); ok {

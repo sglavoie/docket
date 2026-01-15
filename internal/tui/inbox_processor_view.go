@@ -86,9 +86,9 @@ func (m *InboxProcessorModel) renderOperationsPanel() string {
 	b.WriteString("\n")
 
 	// Group operations into 3 lines for better readability
-	line1 := []string{"s: Section", "1-5: Priority", "t: Manage tags"}
-	line2 := []string{"c: Create subtask", "e: Edit", "u: Due date"}
-	line3 := []string{"b: Dependencies", "x: Delete"}
+	line1 := []string{"S: Section", "1-5: Priority", "t: Manage tags"}
+	line2 := []string{"c: Create subtask", "e: Edit", "D: Due date"}
+	line3 := []string{"b: Dependencies", "x: Delete", "u: Undo"}
 
 	b.WriteString(MutedStyle.Render(strings.Join(line1, " · ")))
 	b.WriteString("\n")
@@ -102,9 +102,10 @@ func (m *InboxProcessorModel) renderOperationsPanel() string {
 // renderFooter renders the footer with navigation controls.
 func (m *InboxProcessorModel) renderFooter() string {
 	controls := []string{
-		"n: Skip to next",
-		"j/k/←/→: Navigate",
-		"z: Undo",
+		"n: Skip",
+		"j/k: Navigate",
+		"gg/G: First/last",
+		",s/d/b/x/o: Status",
 		"q: Quit",
 	}
 	return MutedStyle.Render(strings.Join(controls, " · "))
@@ -132,4 +133,30 @@ func renderPriorityStars(priority int) string {
 		return ""
 	}
 	return strings.Repeat("★", priority)
+}
+
+// renderPrefixPopup renders the which-key style popup for prefix key sequences.
+// Returns empty string if no prefix is pending.
+func (m *InboxProcessorModel) renderPrefixPopup() string {
+	if m.pendingPrefix == "" {
+		return ""
+	}
+
+	var hints string
+	switch m.pendingPrefix {
+	case ",":
+		// Status operations
+		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
+			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
+			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
+			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
+			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
+	case "g":
+		// Navigation operations
+		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
+	default:
+		return ""
+	}
+
+	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
 }

@@ -29,6 +29,9 @@ type DashboardModel struct {
 	// Confirmation state
 	confirmAction string          // "delete" when confirming deletion
 	deleteTarget  *models.Project // project to delete
+
+	// Prefix key state for Vim-style two-key sequences
+	pendingPrefix string // "g" when waiting for second key
 }
 
 // NewDashboardModel creates a new dashboard model.
@@ -164,6 +167,11 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// Handle pending prefix keys (Vim-style gg)
+		if m.pendingPrefix != "" {
+			return m.handlePrefixKey(msg.String(), visible)
+		}
+
 		switch msg.String() {
 		case "\\":
 			return m, m.ActivateSearch()
@@ -287,8 +295,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "g":
-			// Go to first item (Vim-style)
-			m.cursor = 0
+			// Start prefix sequence for gg (Vim-style)
+			m.pendingPrefix = "g"
+			return m, nil
 		case "G":
 			// Go to last item (Vim-style)
 			if len(visible) > 0 {
@@ -298,6 +307,30 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *DashboardModel) handlePrefixKey(key string, visible []*models.Project) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	if prefix == "g" && key == "g" {
+		// gg: Go to first item
+		m.cursor = 0
+		return m, nil
+	}
+
+	// Invalid prefix sequence - ignore
+	return m, nil
+}
+
+// HasPendingPrefix returns true if waiting for second key in prefix sequence.
+func (m *DashboardModel) HasPendingPrefix() bool {
+	return m.pendingPrefix != ""
 }
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
@@ -498,7 +531,31 @@ func (m *DashboardModel) View() string {
 		}
 	}
 
+	// Prefix popup
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString("\n")
+		b.WriteString(popup)
+		b.WriteString("\n")
+	}
+
 	return b.String()
+}
+
+// renderPrefixPopup renders the which-key style popup for prefix key sequences.
+func (m *DashboardModel) renderPrefixPopup() string {
+	if m.pendingPrefix == "" {
+		return ""
+	}
+
+	var hints string
+	switch m.pendingPrefix {
+	case "g":
+		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
+	default:
+		return ""
+	}
+
+	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
 }
 
 func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.Project) {
@@ -607,7 +664,7 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
 		{Key: "Enter", Description: "Select project", Category: "Navigation"},
 		{Key: "1-9", Description: "Quick select pinned", Category: "Navigation"},
-		{Key: "g", Description: "Go to first", Category: "Navigation"},
+		{Key: "gg", Description: "Go to first", Category: "Navigation"},
 		{Key: "G", Description: "Go to last", Category: "Navigation"},
 		{Key: "/", Description: "Global search", Category: "Navigation"},
 		{Key: "\\", Description: "Search projects", Category: "Navigation"},

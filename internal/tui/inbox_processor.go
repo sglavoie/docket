@@ -36,6 +36,9 @@ type InboxProcessorModel struct {
 
 	// Delete confirmation state
 	confirmDelete bool
+
+	// Prefix key state (which-key style)
+	pendingPrefix string
 }
 
 // processingAction records an action for undo support.
@@ -164,8 +167,19 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
+	// Handle pending prefix keys (which-key style)
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key)
+	}
+
 	// Clear previous error
 	m.err = nil
+
+	// Activate prefix mode
+	if key == "," || key == "g" {
+		m.pendingPrefix = key
+		return m, nil
+	}
 
 	switch key {
 	// Navigation
@@ -183,24 +197,30 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "n":
+		// Skip current task and advance to next (workflow: "next")
 		return m, m.skipCurrent()
 
-	case "left", "h":
+	case "j", "down":
+		// Move to next task in queue
+		return m, m.advanceToNext(false)
+
+	case "k", "up":
+		// Move to previous task in queue
 		m.goToPrevious()
 		return m, nil
 
-	case "right", "l", "j":
-		return m, m.advanceToNext(false)
-
-	case "up", "k":
-		m.goToPrevious()
+	case "G":
+		// Go to last task (Vim-style)
+		if len(m.inboxTasks) > 0 {
+			m.currentIndex = len(m.inboxTasks) - 1
+		}
 		return m, nil
 
-	case "down":
-		return m, m.advanceToNext(false)
+	// Note: h/l/left/right removed - not meaningful for vertical queue navigation
 
 	// Operations
-	case "s":
+	case "S":
+		// Assign section (capital S to avoid clash with ,s for start)
 		return m, m.openSectionPicker()
 
 	case "1", "2", "3", "4", "5":
@@ -213,9 +233,11 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, m.openTaskEditor()
 
 	case "c":
+		// Create subtask
 		return m, m.openSubtaskCreator()
 
-	case "u":
+	case "D":
+		// Set due date (capital D to avoid clash with ,d for done)
 		return m, m.openDueDateInput()
 
 	case "b":
@@ -224,7 +246,8 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "x":
 		return m, m.deleteCurrentTask()
 
-	case "z":
+	case "u":
+		// Undo last action (Vim-style, consistent with project tree)
 		return m, m.undoLastAction()
 
 	case "enter":
@@ -267,6 +290,12 @@ func (m *InboxProcessorModel) View() string {
 
 	// Footer with controls
 	b.WriteString(m.renderFooter())
+
+	// Prefix key popup (which-key style)
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString("\n")
+		b.WriteString(popup)
+	}
 
 	// Status message
 	if m.statusMessage != "" {
@@ -505,22 +534,182 @@ func (m *InboxProcessorModel) reloadProject() tea.Cmd {
 	}
 }
 
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *InboxProcessorModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations
+		switch key {
+		case "s":
+			return m, m.startTask()
+		case "d":
+			return m, m.completeTask()
+		case "b":
+			return m, m.blockTask()
+		case "x":
+			return m, m.cancelTask()
+		case "o":
+			return m, m.reopenTask()
+		}
+	case "g":
+		// Navigation operations
+		if key == "g" {
+			// gg: Go to first task
+			m.currentIndex = 0
+			return m, nil
+		}
+	}
+
+	// Invalid prefix sequence - silently ignore
+	return m, nil
+}
+
+// startTask starts the current task (sets status to in_progress).
+func (m *InboxProcessorModel) startTask() tea.Cmd {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
+		m.statusMessage = "Task must be todo or blocked to start"
+		return nil
+	}
+
+	snapshot := m.captureSnapshot(task)
+	task.Start()
+
+	m.recordAction("started task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d started", task.ShortID)
+
+	return m.saveProject()
+}
+
+// completeTask marks the current task as done.
+func (m *InboxProcessorModel) completeTask() tea.Cmd {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	if !task.Status.IsActive() {
+		m.statusMessage = "Task is not active"
+		return nil
+	}
+
+	// Check for incomplete dependencies
+	incompleteDeps := m.project.GetIncompleteDependencies(task)
+	if len(incompleteDeps) > 0 {
+		depIDs := make([]string, len(incompleteDeps))
+		for i, dep := range incompleteDeps {
+			depIDs[i] = fmt.Sprintf("#%d", dep.ShortID)
+		}
+		m.err = fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+			len(incompleteDeps), strings.Join(depIDs, ", "))
+		return nil
+	}
+
+	snapshot := m.captureSnapshot(task)
+	task.Complete()
+
+	m.recordAction("completed task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d completed", task.ShortID)
+
+	return m.saveProject()
+}
+
+// blockTask blocks the current task.
+func (m *InboxProcessorModel) blockTask() tea.Cmd {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	if !task.Status.IsActive() || task.Status == models.StatusBlocked {
+		m.statusMessage = "Task must be active and not already blocked"
+		return nil
+	}
+
+	snapshot := m.captureSnapshot(task)
+	task.Block()
+
+	m.recordAction("blocked task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d blocked", task.ShortID)
+
+	return m.saveProject()
+}
+
+// cancelTask cancels the current task.
+func (m *InboxProcessorModel) cancelTask() tea.Cmd {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	if !task.Status.IsActive() {
+		m.statusMessage = "Task is not active"
+		return nil
+	}
+
+	snapshot := m.captureSnapshot(task)
+	task.Cancel()
+
+	m.recordAction("cancelled task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d cancelled", task.ShortID)
+
+	return m.saveProject()
+}
+
+// reopenTask reopens the current task (sets status back to todo).
+func (m *InboxProcessorModel) reopenTask() tea.Cmd {
+	task := m.getCurrentTask()
+	if task == nil {
+		return nil
+	}
+
+	if task.Status == models.StatusTodo {
+		m.statusMessage = "Task is already todo"
+		return nil
+	}
+
+	snapshot := m.captureSnapshot(task)
+	task.Reopen()
+
+	m.recordAction("reopened task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d reopened", task.ShortID)
+
+	return m.saveProject()
+}
+
 // GetHelpItems returns help items for the inbox processor view.
 func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
 		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "enter", Description: "View task details", Category: "Navigation"},
 		{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation"},
-		{Key: "←/→ or h/l", Description: "Navigate to previous/next task", Category: "Navigation"},
+		{Key: "j/k", Description: "Navigate to next/previous task", Category: "Navigation"},
+		{Key: "gg/G", Description: "Go to first/last task", Category: "Navigation"},
 		{Key: "q", Description: "Quit inbox processing", Category: "Navigation"},
-		{Key: "s", Description: "Assign section", Category: "Operations"},
+		{Key: ",s", Description: "Start task (in progress)", Category: "Status"},
+		{Key: ",d", Description: "Mark done", Category: "Status"},
+		{Key: ",b", Description: "Block task", Category: "Status"},
+		{Key: ",x", Description: "Cancel task", Category: "Status"},
+		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
+		{Key: "S", Description: "Assign section", Category: "Operations"},
 		{Key: "1-5", Description: "Set priority (quick)", Category: "Operations"},
 		{Key: "t", Description: "Manage tags", Category: "Operations"},
 		{Key: "c", Description: "Create subtask", Category: "Operations"},
 		{Key: "e", Description: "Edit task (title/description)", Category: "Operations"},
-		{Key: "u", Description: "Set due date", Category: "Operations"},
+		{Key: "D", Description: "Set due date", Category: "Operations"},
 		{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations"},
 		{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations"},
-		{Key: "z", Description: "Undo last operation on current task", Category: "Operations"},
+		{Key: "u", Description: "Undo last operation on current task", Category: "Operations"},
 	}
 }

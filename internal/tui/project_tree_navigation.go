@@ -7,7 +7,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleNavigationKeys handles j/k, g/G, arrow keys, and page navigation.
+// handleNavigationKeys handles j/k, G, arrow keys, and page navigation.
+// Note: gg (go to first) is handled via the g prefix in handlePrefixKey.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
@@ -20,9 +21,6 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		if m.cursor < len(visible)-1 {
 			m.cursor++
 		}
-		return true, nil
-	case "g":
-		m.cursor = 0
 		return true, nil
 	case "G":
 		if len(visible) > 0 {
@@ -95,49 +93,12 @@ func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) 
 		return false, nil
 	case "A":
 		if m.multiSelectMode {
-			for _, node := range m.visibleNodes() {
-				delete(m.selectedTasks, node.Task.ID)
-			}
+			m.deselectAllVisible()
 			return true, nil
 		}
 		return false, nil
 	}
 	return false, nil
-}
-
-// handleFocusKeys handles f - focus mode operations.
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleFocusKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
-	if key == "f" {
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			// Only allow focus on tasks that can have children (epics, stories)
-			if task.Type.CanHaveChildren() {
-				m.focusedTask = task
-				m.cursor = 0 // Reset cursor to top
-				m.buildTree()
-			}
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-// handleArchiveKey handles A - archive/unarchive project (requires special handling for multi-select deselect).
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleArchiveKey(visible []*TreeNode) (bool, tea.Cmd) {
-	if m.multiSelectMode {
-		for _, node := range m.visibleNodes() {
-			delete(m.selectedTasks, node.Task.ID)
-		}
-		return true, nil
-	}
-	if m.project.Archived {
-		m.confirmAction = "unarchive"
-	} else {
-		m.confirmAction = "archive"
-	}
-	return true, nil
 }
 
 // handleSidebarKeys handles sidebar navigation when sidebar has focus.

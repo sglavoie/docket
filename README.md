@@ -135,7 +135,7 @@ The TUI provides a visual interface with keyboard navigation.
 
 Dashboard view shows all projects with task counts and progress bars. Use j/k or arrow keys to navigate, Enter to select a project.
 
-Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space or tab to toggle expansion, e to expand all, c to collapse all, d to toggle completed tasks, and Enter to view task details. Press N to filter by sections, Ctrl+N to assign a section to the selected task, and Ctrl+S to open the section manager for adding, renaming, or removing sections.
+Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space to toggle expansion, zR/zM to expand/collapse all, gc to view completed tasks, and Enter to view task details. Use ga/gb/gi to switch between Active/Backlog/Inbox views, and gA/gB/gI to send tasks to those sections. Press N to filter by sections, Ctrl+N to assign a section to the selected task, and Ctrl+S to open the section manager for adding, renaming, or removing sections.
 
 Task detail view shows full task information including metadata, description, and subtasks.
 

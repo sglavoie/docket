@@ -111,25 +111,6 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	return true, nil
 }
 
-// handleStatusKeys handles s, m, b, x, o - status change operations.
-// Returns true if the key was handled.
-// Note: ` and ~ were previously used for status cycling but are now used for project cycling.
-func (m *ProjectTreeModel) handleStatusKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
-	switch key {
-	case "s":
-		return m.handleStartTask(visible)
-	case "m":
-		return m.handleCompleteTask(visible)
-	case "b":
-		return m.handleBlockTask(visible)
-	case "x":
-		return m.handleCancelTask(visible)
-	case "o":
-		return m.handleReopenTask(visible)
-	}
-	return false, nil
-}
-
 // handleStartTask starts a task (in_progress).
 func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,

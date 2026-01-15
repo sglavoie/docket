@@ -107,9 +107,178 @@ func (m *ProjectTreeModel) handleTagInputMode(msg tea.KeyMsg) (tea.Model, tea.Cm
 	}
 }
 
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations
+		switch key {
+		case "s":
+			_, cmd := m.handleStartTask(visible)
+			return m, cmd
+		case "d":
+			_, cmd := m.handleCompleteTask(visible)
+			return m, cmd
+		case "b":
+			_, cmd := m.handleBlockTask(visible)
+			return m, cmd
+		case "x":
+			_, cmd := m.handleCancelTask(visible)
+			return m, cmd
+		case "o":
+			_, cmd := m.handleReopenTask(visible)
+			return m, cmd
+		}
+
+	case "z":
+		// Fold operations
+		switch key {
+		case "a":
+			// Toggle expand/collapse current node
+			if CursorInBounds(m.cursor, len(visible)) {
+				node := visible[m.cursor]
+				if len(node.Task.Children) > 0 {
+					node.Expanded = !node.Expanded
+					m.updateVisibility()
+				}
+			}
+			return m, nil
+		case "o":
+			// Expand current node
+			if CursorInBounds(m.cursor, len(visible)) {
+				node := visible[m.cursor]
+				node.Expanded = true
+				m.updateVisibility()
+			}
+			return m, nil
+		case "c":
+			// Collapse current node
+			if CursorInBounds(m.cursor, len(visible)) {
+				node := visible[m.cursor]
+				node.Expanded = false
+				m.updateVisibility()
+			}
+			return m, nil
+		case "R":
+			// Expand all
+			for _, node := range m.nodes {
+				node.Expanded = true
+			}
+			m.updateVisibility()
+			return m, nil
+		case "M":
+			// Collapse all
+			for _, node := range m.nodes {
+				if node.Level > 0 {
+					node.Expanded = false
+				}
+			}
+			m.updateVisibility()
+			return m, nil
+		case "v":
+			// Focus mode (zoom into subtree)
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				if task.Type.CanHaveChildren() {
+					m.focusedTask = task
+					m.cursor = 0
+					m.buildTree()
+				}
+			}
+			return m, nil
+		}
+
+	case "g":
+		// Go/section operations
+		switch key {
+		case "g":
+			// Go to first task (Vim-style gg)
+			m.cursor = 0
+			return m, nil
+		case "a":
+			// Go to Active view
+			m.viewMode = ViewModeActive
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "b":
+			// Go to Backlog view
+			m.viewMode = ViewModeBacklog
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "i":
+			// Go to Inbox view
+			m.viewMode = ViewModeInbox
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "c":
+			// Go to Completed view
+			m.viewMode = ViewModeCompleted
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "A":
+			// Send to Active section
+			_, cmd := m.sendTasksToActive(visible)
+			return m, cmd
+		case "B":
+			// Send to Backlog section
+			_, cmd := m.sendTasksToSection(models.SectionBacklog, visible)
+			return m, cmd
+		case "I":
+			// Send to Inbox section
+			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
+			return m, cmd
+		case "d":
+			// Cycle due date filter
+			m.filterDueDate = (m.filterDueDate + 1) % 5
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "v":
+			// Cycle view modes
+			m.viewMode = (m.viewMode + 1) % 4
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "X":
+			// Deselect all (in multi-select mode)
+			if m.multiSelectMode {
+				for _, node := range m.visibleNodes() {
+					delete(m.selectedTasks, node.Task.ID)
+				}
+			}
+			return m, nil
+		}
+	}
+
+	// Invalid prefix sequence - silently ignore
+	return m, nil
+}
+
 // handleKeyMsg dispatches key messages to appropriate handlers.
 func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Handle pending prefix keys first (which-key style two-key sequences)
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key, visible)
+	}
 
 	// Get selected task for sidebar navigation
 	var selectedTask *models.Task
@@ -122,6 +291,19 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		if handled, cmd := m.handleSidebarKeys(key, selectedTask); handled {
 			return m, cmd
 		}
+	}
+
+	// Prefix key activation (status, fold, go/section)
+	switch key {
+	case ",":
+		m.pendingPrefix = ","
+		return m, nil
+	case "z":
+		m.pendingPrefix = "z"
+		return m, nil
+	case "g":
+		m.pendingPrefix = "g"
+		return m, nil
 	}
 
 	// Special case for search activation
@@ -172,9 +354,6 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	if handled, cmd := m.handleNavigationKeys(key, visible); handled {
 		return m, cmd
 	}
-	if handled, cmd := m.handleStatusKeys(key, visible); handled {
-		return m, cmd
-	}
 	if handled, cmd := m.handleTypeKeys(key, visible); handled {
 		return m, cmd
 	}
@@ -191,12 +370,6 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, cmd
 	}
 	if handled, cmd := m.handleSortKeys(key); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleViewModeKeys(key, visible); handled {
-		return m, cmd
-	}
-	if handled, cmd := m.handleFocusKeys(key, visible); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleActionKeys(key, visible); handled {

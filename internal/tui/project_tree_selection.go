@@ -39,6 +39,13 @@ func (m *ProjectTreeModel) selectAllVisible() {
 	}
 }
 
+// deselectAllVisible removes all currently visible tasks from the selection.
+func (m *ProjectTreeModel) deselectAllVisible() {
+	for _, node := range m.visibleNodes() {
+		delete(m.selectedTasks, node.Task.ID)
+	}
+}
+
 // pruneInvisibleSelections removes selected tasks that are no longer visible.
 func (m *ProjectTreeModel) pruneInvisibleSelections() {
 	if !m.multiSelectMode {

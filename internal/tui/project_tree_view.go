@@ -102,6 +102,12 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString("\n")
 	}
 
+	// Prefix key popup (which-key style)
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString(popup)
+		b.WriteString("\n")
+	}
+
 	// Stats by status
 	statusCounts := make(map[models.TaskStatus]int)
 	for _, task := range m.project.Tasks {
@@ -258,8 +264,8 @@ func (m *ProjectTreeModel) renderMultiSelectIndicator(width int) string {
 	badge := SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count))
 	badgeWidth := lipgloss.Width(badge)
 
-	fullHelp := "Space: toggle | a: all | v/Esc: exit | e: bulk edit | s/m/b/x/o: status | D: delete | T: tag"
-	shortHelp := "Spc:sel a:all v:exit e:edit s/m/b/x/o:status D:del T:tag"
+	fullHelp := "Space: toggle | a: all | gX: deselect | v/Esc: exit | e: bulk edit | ,s/d/b/x/o: status | D: delete | T: tag"
+	shortHelp := "Spc:sel a:all gX:desel v:exit e:edit ,s/d/b/x/o:status D:del T:tag"
 
 	// Wide terminal: badge and full help on same line
 	if width >= badgeWidth+1+len(fullHelp) {
@@ -401,6 +407,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			prompt = fmt.Sprintf("%s project? (y/n)", m.confirmAction)
 		}
 		b.WriteString(ConfirmStyle.Render(prompt))
+		b.WriteString("\n")
+	}
+
+	// Prefix key popup (which-key style)
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString(popup)
 		b.WriteString("\n")
 	}
 
@@ -841,13 +853,15 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "Enter", Description: "View task (glow)", Category: "Navigation"},
 		{Key: "Space", Description: "Expand/collapse", Category: "Navigation"},
 		{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Navigation"},
-		{Key: "E", Description: "Expand all", Category: "Navigation"},
-		{Key: "z", Description: "Collapse all", Category: "Navigation"},
-		{Key: "f", Description: "Focus on subtree", Category: "Navigation"},
-		{Key: "g", Description: "Go to first", Category: "Navigation"},
-		{Key: "G", Description: "Go to last", Category: "Navigation"},
+		{Key: "gg/G", Description: "Go to first/last", Category: "Navigation"},
 		{Key: "\\", Description: "Jump to task", Category: "Navigation"},
 		{Key: "p", Description: "Priority view", Category: "Navigation"},
+
+		// Folds (z prefix)
+		{Key: "za", Description: "Toggle fold", Category: "Folds"},
+		{Key: "zo/zc", Description: "Open/close fold", Category: "Folds"},
+		{Key: "zR/zM", Description: "Expand/collapse all", Category: "Folds"},
+		{Key: "zv", Description: "Focus on subtree", Category: "Folds"},
 
 		// Sidebar
 		{Key: "j/k (sidebar)", Description: "Scroll/navigate dependencies", Category: "Sidebar"},
@@ -855,12 +869,12 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "Enter (sidebar)", Description: "Jump to dependency", Category: "Sidebar"},
 		{Key: "Esc (sidebar)", Description: "Return focus to tree", Category: "Sidebar"},
 
-		// Status Changes
-		{Key: "s", Description: "Start (in progress)", Category: "Status Changes"},
-		{Key: "m", Description: "Mark complete", Category: "Status Changes"},
-		{Key: "b", Description: "Block task", Category: "Status Changes"},
-		{Key: "x", Description: "Cancel task", Category: "Status Changes"},
-		{Key: "o", Description: "Reopen (todo)", Category: "Status Changes"},
+		// Status Changes (, prefix)
+		{Key: ",s", Description: "Start (in progress)", Category: "Status"},
+		{Key: ",d", Description: "Mark done", Category: "Status"},
+		{Key: ",b", Description: "Block task", Category: "Status"},
+		{Key: ",x", Description: "Cancel task", Category: "Status"},
+		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
 
 		// Project Cycling
 		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
@@ -868,16 +882,16 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "@", Description: "Configure project cycle", Category: "Project Cycling"},
 
 		// Type Changes
-		{Key: "h", Description: "Promote type", Category: "Type Changes"},
-		{Key: "l", Description: "Demote type", Category: "Type Changes"},
+		{Key: "<", Description: "Promote type", Category: "Type Changes"},
+		{Key: ">", Description: "Demote type", Category: "Type Changes"},
 		{Key: "H", Description: "Cycle leaf left", Category: "Type Changes"},
 		{Key: "L", Description: "Cycle leaf right", Category: "Type Changes"},
 
-		// Task Movement
+		// Task Movement (when sidebar unfocused)
 		{Key: "K", Description: "Move task up", Category: "Task Movement"},
 		{Key: "J", Description: "Move task down", Category: "Task Movement"},
-		{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement"},
-		{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement"},
+		{Key: "l", Description: "Indent (nest under above)", Category: "Task Movement"},
+		{Key: "h", Description: "Outdent (to parent level)", Category: "Task Movement"},
 
 		// Task Operations
 		{Key: "n", Description: "Add new task", Category: "Task Operations"},
@@ -895,25 +909,27 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations"},
 		{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations"},
 		{Key: "c", Description: "View/add comments", Category: "Task Operations"},
-		{Key: "C", Description: "View completed tasks", Category: "Views"},
 		{Key: "D", Description: "Delete task", Category: "Task Operations"},
 
-		// Views
-		{Key: "V", Description: "Cycle view (Active/Inbox/Backlog)", Category: "Views"},
-		{Key: "A", Description: "Send task(s) to Active", Category: "Views"},
-		{Key: "B", Description: "Send task(s) to Backlog", Category: "Views"},
-		{Key: "I", Description: "Send task(s) to Inbox", Category: "Views"},
+		// Views (g prefix)
+		{Key: "gv", Description: "Cycle view (Active/Inbox/Backlog/Completed)", Category: "Views"},
+		{Key: "ga", Description: "Go to Active view", Category: "Views"},
+		{Key: "gb", Description: "Go to Backlog view", Category: "Views"},
+		{Key: "gi", Description: "Go to Inbox view", Category: "Views"},
+		{Key: "gc", Description: "Go to Completed view", Category: "Views"},
+		{Key: "gA", Description: "Send task(s) to Active", Category: "Views"},
+		{Key: "gB", Description: "Send task(s) to Backlog", Category: "Views"},
+		{Key: "gI", Description: "Send task(s) to Inbox", Category: "Views"},
 		{Key: "w", Description: "Inbox processor", Category: "Views"},
 
 		// Filters
 		{Key: "/", Description: "Search tasks", Category: "Filters"},
-		{Key: "C", Description: "Switch to Completed view", Category: "Filters"},
 		{Key: "P", Description: "Filter by priority", Category: "Filters"},
 		{Key: "t", Description: "Filter by type", Category: "Filters"},
 		{Key: "S", Description: "Filter by status", Category: "Filters"},
 		{Key: "T", Description: "Filter by tag", Category: "Filters"},
 		{Key: "N", Description: "Filter by section", Category: "Filters"},
-		{Key: "u", Description: "Filter by due date", Category: "Filters"},
+		{Key: "gd", Description: "Cycle due date filter", Category: "Filters"},
 		{Key: "ctrl+F", Description: "Filter summary", Category: "Filters"},
 		{Key: "ctrl+T", Description: "Tag manager", Category: "Filters"},
 		{Key: "ctrl+S", Description: "Section manager", Category: "Filters"},
@@ -928,6 +944,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 		// Multi-select
 		{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select"},
 		{Key: "a", Description: "Select all visible (in multi-select)", Category: "Multi-select"},
+		{Key: "A", Description: "Deselect all visible (in multi-select)", Category: "Multi-select"},
 
 		// Project
 		{Key: "ctrl+A", Description: archiveDesc, Category: "Project"},
@@ -952,7 +969,7 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 		// Other
 		{Key: "ctrl+R", Description: "Refresh", Category: "Other"},
-		{Key: "z", Description: "Undo last change", Category: "Other"},
+		{Key: "u", Description: "Undo last change", Category: "Other"},
 		{Key: "ctrl+Z", Description: "Undo history", Category: "Other"},
 		{Key: "?", Description: "Toggle help", Category: "Other"},
 	}
@@ -1221,4 +1238,48 @@ func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task)
 	}
 
 	return ChildrenBadgeStyle.Render("[" + strings.Join(parts, ", ") + "]")
+}
+
+// renderPrefixPopup renders the which-key style popup for prefix key sequences.
+// Returns empty string if no prefix is pending.
+func (m *ProjectTreeModel) renderPrefixPopup() string {
+	if m.pendingPrefix == "" {
+		return ""
+	}
+
+	var hints string
+	switch m.pendingPrefix {
+	case ",":
+		// Status operations
+		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
+			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
+			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
+			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
+			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
+	case "z":
+		// Fold operations
+		hints = PrefixDescStyle.Render("toggle") + PrefixKeyStyle.Render("(a)") + " " +
+			PrefixDescStyle.Render("open") + PrefixKeyStyle.Render("(o)") + " " +
+			PrefixDescStyle.Render("close") + PrefixKeyStyle.Render("(c)") + " " +
+			PrefixDescStyle.Render("expand-all") + PrefixKeyStyle.Render("(R)") + " " +
+			PrefixDescStyle.Render("collapse-all") + PrefixKeyStyle.Render("(M)") + " " +
+			PrefixDescStyle.Render("focus") + PrefixKeyStyle.Render("(v)")
+	case "g":
+		// Go/section operations
+		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)") + " " +
+			PrefixDescStyle.Render("active") + PrefixKeyStyle.Render("(a)") + " " +
+			PrefixDescStyle.Render("backlog") + PrefixKeyStyle.Render("(b)") + " " +
+			PrefixDescStyle.Render("inbox") + PrefixKeyStyle.Render("(i)") + " " +
+			PrefixDescStyle.Render("completed") + PrefixKeyStyle.Render("(c)") + " " +
+			PrefixDescStyle.Render("→Active") + PrefixKeyStyle.Render("(A)") + " " +
+			PrefixDescStyle.Render("→Backlog") + PrefixKeyStyle.Render("(B)") + " " +
+			PrefixDescStyle.Render("→Inbox") + PrefixKeyStyle.Render("(I)") + " " +
+			PrefixDescStyle.Render("due-filter") + PrefixKeyStyle.Render("(d)") + " " +
+			PrefixDescStyle.Render("view-cycle") + PrefixKeyStyle.Render("(v)") + " " +
+			PrefixDescStyle.Render("deselect") + PrefixKeyStyle.Render("(X)")
+	default:
+		return ""
+	}
+
+	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
 }

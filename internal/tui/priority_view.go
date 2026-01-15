@@ -52,6 +52,9 @@ type PriorityViewModel struct {
 	// Waiting On section state
 	waitingOnCollapsed bool
 
+	// Prefix key state for Vim-style two-key sequences
+	pendingPrefix string // "g" when waiting for second key
+
 	// Dimensions
 	width  int
 	height int
@@ -301,6 +304,11 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle pending prefix keys (Vim-style gg)
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key)
+	}
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -328,8 +336,14 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 		return m, nil
 
+	case ",":
+		// Start prefix sequence for status operations
+		m.pendingPrefix = ","
+		return m, nil
+
 	case "g":
-		m.cursor = 0
+		// Start prefix sequence for gg (Vim-style)
+		m.pendingPrefix = "g"
 		return m, nil
 
 	case "G":
@@ -359,22 +373,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "tab":
 		m.waitingOnCollapsed = !m.waitingOnCollapsed
 		return m, nil
-
-	// Status changes
-	case "s": // Start (in_progress)
-		return m.changeTaskStatus(models.StatusInProgress)
-
-	case "m": // Mark complete (done)
-		return m.changeTaskStatus(models.StatusDone)
-
-	case "b": // Block
-		return m.changeTaskStatus(models.StatusBlocked)
-
-	case "o": // Reopen (todo)
-		return m.changeTaskStatus(models.StatusTodo)
-
-	case "x": // Cancel
-		return m.changeTaskStatus(models.StatusCancelled)
 
 	// Priority changes
 	case "1":
@@ -429,6 +427,47 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	return m, nil
+}
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations
+		switch key {
+		case "s":
+			return m.changeTaskStatus(models.StatusInProgress)
+		case "d":
+			return m.changeTaskStatus(models.StatusDone)
+		case "b":
+			return m.changeTaskStatus(models.StatusBlocked)
+		case "o":
+			return m.changeTaskStatus(models.StatusTodo)
+		case "x":
+			return m.changeTaskStatus(models.StatusCancelled)
+		}
+	case "g":
+		if key == "g" {
+			// gg: Go to first item
+			m.cursor = 0
+			return m, nil
+		}
+	}
+
+	// Invalid prefix sequence - ignore
+	return m, nil
+}
+
+// HasPendingPrefix returns true if waiting for second key in prefix sequence.
+func (m *PriorityViewModel) HasPendingPrefix() bool {
+	return m.pendingPrefix != ""
 }
 
 // changeTaskStatus changes the status of the task at cursor and refreshes.
@@ -567,11 +606,40 @@ func (m *PriorityViewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
+	// Prefix popup
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString(popup)
+		b.WriteString("\n")
+	}
+
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter view • e edit • s start • m done • 1-5 priority • ? help • q close")
+	footer := HelpStyle.Render("↑/↓ navigate • Enter view • e edit • ,s/,d status • 1-5 priority • ? help • q close")
 	b.WriteString(footer)
 
 	return b.String()
+}
+
+// renderPrefixPopup renders the which-key style popup for prefix key sequences.
+func (m *PriorityViewModel) renderPrefixPopup() string {
+	if m.pendingPrefix == "" {
+		return ""
+	}
+
+	var hints string
+	switch m.pendingPrefix {
+	case ",":
+		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
+			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
+			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
+			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
+			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
+	case "g":
+		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
+	default:
+		return ""
+	}
+
+	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
 }
 
 // renderAllGroups renders all task groups and returns the lines.
@@ -779,16 +847,16 @@ func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 		{Category: "Navigation", Key: ":", Description: "Command palette"},
 		{Category: "Navigation", Key: "↑/k", Description: "Move up"},
 		{Category: "Navigation", Key: "↓/j", Description: "Move down"},
-		{Category: "Navigation", Key: "g/G", Description: "Jump to top/bottom"},
+		{Category: "Navigation", Key: "gg/G", Description: "Jump to top/bottom"},
 		{Category: "Navigation", Key: "Ctrl+u/d", Description: "Page up/down"},
 		{Category: "Actions", Key: "Enter", Description: "View task details"},
 		{Category: "Actions", Key: "e", Description: "Edit task"},
-		{Category: "Actions", Key: "s", Description: "Start task (in progress)"},
-		{Category: "Actions", Key: "m", Description: "Mark task complete"},
-		{Category: "Actions", Key: "b", Description: "Block task"},
-		{Category: "Actions", Key: "o", Description: "Reopen task (todo)"},
-		{Category: "Actions", Key: "x", Description: "Cancel task"},
 		{Category: "Actions", Key: "1-5", Description: "Set priority (1=highest)"},
+		{Category: "Status", Key: ",s", Description: "Start task (in progress)"},
+		{Category: "Status", Key: ",d", Description: "Mark task done"},
+		{Category: "Status", Key: ",b", Description: "Block task"},
+		{Category: "Status", Key: ",o", Description: "Reopen task (todo)"},
+		{Category: "Status", Key: ",x", Description: "Cancel task"},
 		{Category: "Actions", Key: "y", Description: "Copy task title"},
 		{Category: "Actions", Key: "Y", Description: "Copy task description"},
 		{Category: "View", Key: "Tab", Description: "Toggle waiting section"},

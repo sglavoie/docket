@@ -134,13 +134,18 @@ func (m *AppModel) hasActiveTextInput() bool {
 // handleEscKey handles the escape/q key for view navigation.
 // Returns true if the key was handled (should not propagate to views).
 func (m *AppModel) handleEscKey() bool {
-	// Let views handle esc/q if they have an active search, focus mode, or sidebar focus
+	// Let views handle esc/q if they have an active search, focus mode, sidebar focus, or pending prefix
 	if m.currentView() == ViewProjectTree && m.projectTree != nil &&
-		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused || m.projectTree.multiSelectMode) {
+		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused || m.projectTree.multiSelectMode || m.projectTree.pendingPrefix != "") {
 		return false
 	}
-	if m.currentView() == ViewDashboard && m.dashboard != nil && m.dashboard.HasActiveSearch() {
+	if m.currentView() == ViewDashboard && m.dashboard != nil && (m.dashboard.HasActiveSearch() || m.dashboard.HasPendingPrefix()) {
 		return false
+	}
+	if m.currentView() == ViewPriorityView {
+		if pv, ok := m.views.Get(ViewPriorityView).(*PriorityViewModel); ok && pv != nil && pv.HasPendingPrefix() {
+			return false
+		}
 	}
 	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 		return false

@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Plan Mode
+
+- Make the plan extremely concise. Sacrifice grammar for the sake of concision.
+- At the end of each plan, give me a list of unresolved questions to answer, if any.
+
 ## Build and Development Commands
 
 ```bash
@@ -39,6 +44,7 @@ The `internal/external/` package wraps optional tool integrations (fzf for fuzzy
 ### Data Flow
 
 When a user runs `tt task add`:
+
 1. Command loads config and gets current project
 2. `storage.LoadProject()` reads `tasks.md` and parses into `[]*Task`
 3. New task is created via `models.NewTask()`

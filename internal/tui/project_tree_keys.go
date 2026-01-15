@@ -108,12 +108,8 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 			return ShowSectionFilterSelectorMsg{ProjectTree: m}
 		}
 
-	case "u":
-		m.filterDueDate = (m.filterDueDate + 1) % 5
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
+		// Note: Due date filter cycling removed from 'u' - use F7 instead.
+		// 'u' is now Vim-style undo (handled in handleMiscActionKeys).
 	}
 	return false, nil
 }
@@ -128,33 +124,6 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 	}
 	m.sortNodes()
 	m.updateVisibility()
-}
-
-// handleViewModeKeys handles V, A, B, I, C - view mode and task section operations.
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleViewModeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
-	switch key {
-	case "V":
-		// Cycle through views: Active -> Inbox -> Backlog -> Active
-		m.viewMode = (m.viewMode + 1) % 3
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-
-	case "A":
-		// Send task(s) to Active view (clear section)
-		return m.sendTasksToActive(visible)
-
-	case "B":
-		// Send task(s) to Backlog
-		return m.sendTasksToSection(models.SectionBacklog, visible)
-
-	case "I":
-		// Send task(s) to Inbox
-		return m.sendTasksToSection(models.SectionInbox, visible)
-	}
-	return false, nil
 }
 
 // sendTasksToActive moves selected tasks or cursor task to the Active view (clears section).
@@ -358,29 +327,6 @@ func (m *ProjectTreeModel) handleClipboardKeys(key string, visible []*TreeNode) 
 	return false, nil
 }
 
-// handleExpandCollapseKeys handles E, c - expand/collapse all operations.
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleExpandCollapseKeys(key string) (bool, tea.Cmd) {
-	switch key {
-	case "E":
-		for _, node := range m.nodes {
-			node.Expanded = true
-		}
-		m.updateVisibility()
-		return true, nil
-
-	case "z":
-		for _, node := range m.nodes {
-			if node.Level > 0 {
-				node.Expanded = false
-			}
-		}
-		m.updateVisibility()
-		return true, nil
-	}
-	return false, nil
-}
-
 // handleFilterOverlayKeys handles ctrl+f, ctrl+t, ctrl+s - filter/manager overlay operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
@@ -497,13 +443,7 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
-	case "C":
-		// Switch to Completed view
-		m.viewMode = ViewModeCompleted
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
+	// Note: "C" (completed view) is now handled via "g" prefix (gc)
 
 	case "ctrl+g":
 		// Quick tag assignment
@@ -542,8 +482,8 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "z":
-		// Quick single-step undo using legacy backup
+	case "u":
+		// Undo last change (Vim-style)
 		return true, m.performUndo()
 
 	case "ctrl+z":
@@ -603,9 +543,6 @@ func (m *ProjectTreeModel) handleActionKeys(key string, visible []*TreeNode) (bo
 		return handled, cmd
 	}
 	if handled, cmd := m.handleClipboardKeys(key, visible); handled {
-		return handled, cmd
-	}
-	if handled, cmd := m.handleExpandCollapseKeys(key); handled {
 		return handled, cmd
 	}
 	if handled, cmd := m.handleFilterOverlayKeys(key); handled {

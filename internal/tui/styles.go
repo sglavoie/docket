@@ -150,6 +150,19 @@ var (
 			Padding(0, 1).
 			MarginTop(1)
 
+	// Prefix key popup style (which-key style hints)
+	PrefixPopupStyle = lipgloss.NewStyle().
+				Background(ColorBackground).
+				Foreground(lipgloss.Color("255")).
+				Padding(0, 1)
+
+	PrefixKeyStyle = lipgloss.NewStyle().
+			Foreground(ColorPrimary).
+			Bold(true)
+
+	PrefixDescStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted)
+
 	// Form input styles
 	InputStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
