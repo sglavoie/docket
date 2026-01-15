@@ -205,7 +205,7 @@ type CommandPaletteModel struct {
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved • Alt+↑↓ history • ? for help"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved • Alt+↑↓ history"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -1645,8 +1645,12 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 				return m, nil
 			}
 		}
-		// Fall through to default handler for non-task items
-		return m, nil
+		// For non-task items, add space to search input (enables prefix filtering like ":prj test")
+		m.showTips = false
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.filterItems()
+		return m, cmd
 	case "alt+up":
 		// Navigate to previous search history entry
 		if len(m.searchHistory) > 0 {
