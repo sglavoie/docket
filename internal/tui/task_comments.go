@@ -140,6 +140,8 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveEditedComment()
+			case "ctrl+o":
+				return m, m.editCommentInExternalEditorFromEditMode()
 			}
 		}
 		m.editTextInput, cmd = m.editTextInput.Update(msg)
@@ -157,6 +159,8 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveComment()
+			case "ctrl+o":
+				return m, m.addCommentInExternalEditor()
 			}
 		}
 		m.textInput, cmd = m.textInput.Update(msg)
@@ -401,6 +405,171 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 	})
 }
 
+func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
+	// Get current textarea content
+	currentText := strings.TrimSpace(m.textInput.Value())
+
+	// Create temp file content
+	content := fmt.Sprintf("# New comment on #%d: %s\n\n", m.task.ShortID, m.task.Title)
+	content += "<!-- Enter the comment text below. -->\n\n"
+	content += currentText
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "tt-comment-*.md")
+	if err != nil {
+		m.err = fmt.Errorf("failed to create temp file: %w", err)
+		return nil
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.WriteString(content)
+	tmpFile.Close()
+
+	// Determine editor
+	editor := m.editor
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "code"
+	}
+
+	// Build command
+	var c *exec.Cmd
+	if editor == "code" {
+		c = exec.Command(editor, "--wait", tmpPath)
+	} else {
+		c = exec.Command(editor, tmpPath)
+	}
+
+	task := m.task
+	project := m.project
+
+	// Reset add mode before launching editor
+	m.addMode = false
+	m.textInput.Reset()
+
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			os.Remove(tmpPath)
+			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
+		}
+
+		// Read modified content
+		modified, readErr := os.ReadFile(tmpPath)
+		os.Remove(tmpPath)
+		if readErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
+		}
+
+		// Parse the edited content
+		newText := util.ParseEditedCommentContent(string(modified))
+		if newText == "" {
+			return nil // Empty comment, just return to normal mode
+		}
+
+		// Add the new comment
+		task.AddComment(newText)
+
+		// Create backup before saving
+		if err := storage.BackupProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		if err := storage.SaveProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return CommentAddedMsg{Task: task}
+	})
+}
+
+func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
+	comment := m.task.Comments[m.editIndex]
+	editIndex := m.editIndex
+
+	// Get current textarea content (may have been modified)
+	currentText := strings.TrimSpace(m.editTextInput.Value())
+
+	// Create temp file content
+	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n", editIndex, m.task.ShortID, m.task.Title)
+	content += "<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n"
+	content += currentText
+
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "tt-comment-*.md")
+	if err != nil {
+		m.err = fmt.Errorf("failed to create temp file: %w", err)
+		return nil
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.WriteString(content)
+	tmpFile.Close()
+
+	// Determine editor
+	editor := m.editor
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "code"
+	}
+
+	// Build command
+	var c *exec.Cmd
+	if editor == "code" {
+		c = exec.Command(editor, "--wait", tmpPath)
+	} else {
+		c = exec.Command(editor, tmpPath)
+	}
+
+	task := m.task
+	project := m.project
+	originalText := comment.Text
+
+	// Reset edit mode before launching editor
+	m.editMode = false
+	m.editTextInput.Reset()
+
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			os.Remove(tmpPath)
+			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
+		}
+
+		// Read modified content
+		modified, readErr := os.ReadFile(tmpPath)
+		os.Remove(tmpPath)
+		if readErr != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
+		}
+
+		// Parse the edited content
+		newText := util.ParseEditedCommentContent(string(modified))
+		if newText == "" {
+			return ErrorMsg{Err: fmt.Errorf("comment text cannot be empty")}
+		}
+
+		// Check if changed from original
+		if newText == originalText {
+			return nil // No changes
+		}
+
+		// Update comment (preserve timestamp)
+		task.Comments[editIndex].Text = newText
+
+		// Create backup before saving
+		if err := storage.BackupProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		if err := storage.SaveProject(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return CommentEditedMsg{Task: task}
+	})
+}
+
 func (m *TaskCommentsModel) View() string {
 	var b strings.Builder
 
@@ -457,7 +626,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+O: external editor | Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
@@ -468,7 +637,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+O: external editor | Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
