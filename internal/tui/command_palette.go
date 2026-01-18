@@ -3141,8 +3141,6 @@ func (m *CommandPaletteModel) renderMatchInfo(filtered filteredPaletteItem) stri
 	b.WriteString(MutedStyle.Render("─────────────────────"))
 	b.WriteString("\n")
 
-	matchStyle := lipgloss.NewStyle().Foreground(ColorHighlight)
-
 	var fieldName string
 	switch filtered.MatchedField {
 	case MatchFieldDescription:
@@ -3158,7 +3156,7 @@ func (m *CommandPaletteModel) renderMatchInfo(filtered filteredPaletteItem) stri
 	}
 
 	b.WriteString(MutedStyle.Render("Matched in "))
-	b.WriteString(matchStyle.Render(fieldName))
+	b.WriteString(MatchHighlightStyle.Render(fieldName))
 	b.WriteString(MutedStyle.Render(": "))
 	b.WriteString(BoldStyle.Render("\"" + filtered.MatchedTerm + "\""))
 
@@ -3277,20 +3275,16 @@ func (m *CommandPaletteModel) renderInlineTaskPreview() string {
 	b.WriteString("\n\n")
 
 	// Priority
-	priorityStyle := NormalStyle
-	if m.inlineTaskParsed.priority <= 2 {
-		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	}
+	priorityStyle := GetPriorityStyle(m.inlineTaskParsed.priority)
 	b.WriteString(fmt.Sprintf("%s %s\n",
 		MutedStyle.Render("Priority:"),
 		priorityStyle.Render(fmt.Sprintf("%d", m.inlineTaskParsed.priority))))
 
 	// Tags
 	if len(m.inlineTaskParsed.tags) > 0 {
-		tagStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
 		tags := make([]string, len(m.inlineTaskParsed.tags))
 		for i, tag := range m.inlineTaskParsed.tags {
-			tags[i] = tagStyle.Render("#" + tag)
+			tags[i] = TagInlineStyle.Render("#" + tag)
 		}
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Tags:"),
@@ -3395,20 +3389,16 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		statusStyle.Render(string(task.Status))))
 
 	// Priority
-	priorityStyle := NormalStyle
-	if task.Priority <= 2 {
-		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
-	}
+	priorityStyle := GetPriorityStyle(task.Priority)
 	b.WriteString(fmt.Sprintf("%s %s\n",
 		MutedStyle.Render("Priority:"),
 		priorityStyle.Render(fmt.Sprintf("%d", task.Priority))))
 
 	// Tags
 	if len(task.Tags) > 0 {
-		tagStyle := lipgloss.NewStyle().Foreground(ColorSecondary)
 		tags := make([]string, len(task.Tags))
 		for i, tag := range task.Tags {
-			tags[i] = tagStyle.Render(tag)
+			tags[i] = TagInlineStyle.Render(tag)
 		}
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Tags:"),
@@ -3711,28 +3701,28 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 		// Show due this week
 		if dueThisWeek > 0 {
 			b.WriteString(fmt.Sprintf("  %s %d due this week\n",
-				lipgloss.NewStyle().Foreground(ColorWarning).Render("~"),
+				WarningIconStyle.Render("~"),
 				dueThisWeek))
 		}
 
 		// Show high priority count
 		if highPriority > 0 {
 			b.WriteString(fmt.Sprintf("  %s %d high priority\n",
-				lipgloss.NewStyle().Foreground(ColorWarning).Render("!"),
+				WarningIconStyle.Render("!"),
 				highPriority))
 		}
 
 		// Show blocked count
 		if blocked > 0 {
 			b.WriteString(fmt.Sprintf("  %s %d blocked\n",
-				lipgloss.NewStyle().Foreground(ColorError).Render("◈"),
+				ErrorIconStyle.Render("◈"),
 				blocked))
 		}
 
 		// Show if no urgent items
 		if overdue == 0 && dueToday == 0 && blocked == 0 {
 			b.WriteString(fmt.Sprintf("  %s No urgent items\n",
-				lipgloss.NewStyle().Foreground(ColorSuccess).Render("✓")))
+				CheckmarkStyle.Render("✓")))
 		}
 
 		b.WriteString("\n")

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -178,21 +177,7 @@ func (m *PriorityPickerModel) View() string {
 		}
 
 		// Color based on priority
-		var style lipgloss.Style
-		switch p.Priority {
-		case 1:
-			style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-		case 2:
-			style = lipgloss.NewStyle().Foreground(ColorWarning)
-		case 3:
-			style = lipgloss.NewStyle().Foreground(ColorPrimary)
-		case 4:
-			style = lipgloss.NewStyle().Foreground(ColorMuted)
-		case 5:
-			style = lipgloss.NewStyle().Foreground(ColorMuted).Faint(true)
-		default:
-			style = NormalStyle
-		}
+		style := GetPriorityStyle(p.Priority)
 
 		line := fmt.Sprintf("%s%d: %s", cursor, p.Priority, p.Description)
 		if i == m.Cursor {

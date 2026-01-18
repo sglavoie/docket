@@ -385,6 +385,23 @@ var (
 					Foreground(ColorMuted).
 					Italic(true).
 					MarginTop(1)
+
+	// Priority level styles (for priority picker and palette)
+	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+	Priority2Style = lipgloss.NewStyle().Foreground(ColorWarning)
+	Priority3Style = lipgloss.NewStyle().Foreground(ColorPrimary)
+	Priority4Style = lipgloss.NewStyle().Foreground(ColorMuted)
+	Priority5Style = lipgloss.NewStyle().Foreground(ColorMuted).Faint(true)
+
+	// Common inline styles used across multiple files
+	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)
+	TagInlineStyle      = lipgloss.NewStyle().Foreground(ColorSecondary)
+	PriorityInlineStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	CheckmarkStyle      = lipgloss.NewStyle().Foreground(ColorSuccess)
+	WarningIconStyle    = lipgloss.NewStyle().Foreground(ColorWarning)
+	ErrorIconStyle      = lipgloss.NewStyle().Foreground(ColorError)
+	PurpleStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
+	OrangeStyle         = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 )
 
 // GetStatusStyle returns the appropriate style for a task status.
@@ -400,6 +417,24 @@ func GetStatusStyle(status string) lipgloss.Style {
 		return BlockedStyle
 	case "cancelled":
 		return CancelledStyle
+	default:
+		return NormalStyle
+	}
+}
+
+// GetPriorityStyle returns the appropriate style for a priority level.
+func GetPriorityStyle(priority int) lipgloss.Style {
+	switch priority {
+	case 1:
+		return Priority1Style
+	case 2:
+		return Priority2Style
+	case 3:
+		return Priority3Style
+	case 4:
+		return Priority4Style
+	case 5:
+		return Priority5Style
 	default:
 		return NormalStyle
 	}
