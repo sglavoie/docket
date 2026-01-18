@@ -250,63 +250,37 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m SelectorModel) View() string {
 	if len(m.items) == 0 {
-		return lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("196")).
-			Render("No items to display")
+		return EmptyErrorStyle.Render("No items to display")
 	}
 
 	var b strings.Builder
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		MarginBottom(1)
-
-	b.WriteString(titleStyle.Render(m.title))
+	b.WriteString(SelectorTitleStyle.Render(m.title))
 	b.WriteString("\n")
 
 	if m.searchMode {
-		searchStyle := lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("33")).
-			MarginBottom(1)
-		b.WriteString(searchStyle.Render("Search: "))
+		b.WriteString(SelectorSearchStyle.Render("Search: "))
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n")
 	}
 
 	if m.searchMode && len(m.filteredItems) < len(m.items) {
-		countStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("244")).
-			MarginBottom(1)
 		count := fmt.Sprintf("Showing %d of %d items", len(m.filteredItems), len(m.items))
-		b.WriteString(countStyle.Render(count))
+		b.WriteString(SelectorCountStyle.Render(count))
 		b.WriteString("\n")
 	}
 
 	if len(m.filteredItems) == 0 {
-		noResultsStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			Italic(true).
-			MarginTop(1).
-			MarginBottom(1)
-		b.WriteString(noResultsStyle.Render("No matching items found"))
+		b.WriteString(SelectorNoResultsStyle.Render("No matching items found"))
 		b.WriteString("\n")
 	} else {
-		baseStyle := lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240"))
-		b.WriteString(baseStyle.Render(m.table.View()))
+		b.WriteString(SelectorBaseStyle.Render(m.table.View()))
 		b.WriteString("\n")
 	}
 
 	if m.showHelp {
-		helpStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")).
-			MarginTop(1)
 		help := "j/k: Navigate | /: Search | Enter: Select | q/Esc: Cancel"
-		b.WriteString(helpStyle.Render(help))
+		b.WriteString(HelpStyle.MarginTop(1).Render(help))
 	}
 
 	return b.String()

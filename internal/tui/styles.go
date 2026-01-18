@@ -552,3 +552,61 @@ var (
 				Foreground(lipgloss.Color("226")). // Bright yellow like ActiveStyle
 				Bold(true)
 )
+
+// Additional shared styles for common UI patterns
+var (
+	// Selector and list styles
+	SelectorTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorPrimary).
+				MarginBottom(1)
+
+	SelectorSearchStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorSecondary).
+				MarginBottom(1)
+
+	SelectorCountStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				MarginBottom(1)
+
+	SelectorNoResultsStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Italic(true).
+				MarginTop(1).
+				MarginBottom(1)
+
+	SelectorBaseStyle = lipgloss.NewStyle().
+				BorderStyle(lipgloss.NormalBorder()).
+				BorderForeground(ColorBorder)
+
+	// Empty/error state styles
+	EmptyErrorStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(ColorError)
+
+	// Separator for split-pane views
+	SeparatorStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted)
+
+	// Category badge styles for command palette
+	CategoryCommandStyle     = lipgloss.NewStyle().Foreground(ColorPrimary)
+	CategoryTaskStyle        = lipgloss.NewStyle().Foreground(ColorSuccess)
+	CategoryProjectStyle     = lipgloss.NewStyle().Foreground(ColorSecondary)
+	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
+	CategorySectionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
+	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
+
+	// Selection indicators
+	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	PinIndicatorStyle     = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Due date urgency styles
+	DueThisWeekStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+
+	// Header style (bold, no color)
+	HeaderBoldStyle = lipgloss.NewStyle().Bold(true)
+
+	// Preview style (warning color for bulk edit, etc.)
+	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+)

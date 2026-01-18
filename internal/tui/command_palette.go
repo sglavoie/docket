@@ -3742,8 +3742,7 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 	var b strings.Builder
 
 	// Header
-	tagStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(tagStyle.Render("#" + item.Tag)))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategoryTagStyle.Render("#" + item.Tag)))
 	b.WriteString("\n\n")
 
 	// Find tasks with this tag
@@ -3796,8 +3795,7 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 	var b strings.Builder
 
 	// Header
-	sectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("135"))
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(sectionStyle.Render("§ " + item.Section)))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategorySectionStyle.Render("§ " + item.Section)))
 	b.WriteString("\n\n")
 
 	// Find tasks in this section
@@ -3847,8 +3845,7 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 	var b strings.Builder
 
 	// Header
-	savedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(savedStyle.Render("★ " + item.Name)))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(CategorySavedSearchStyle.Render("★ " + item.Name)))
 	b.WriteString("\n\n")
 
 	// Query
@@ -3967,7 +3964,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	checkboxLen := 0
 	if item.Category == ItemCategoryTasks && item.Task != nil {
 		if m.selectedTasks[item.Task.ID] {
-			checkbox = lipgloss.NewStyle().Foreground(ColorSuccess).Render("☑ ")
+			checkbox = SelectedCheckboxStyle.Render("☑ ")
 		} else if len(m.selectedTasks) > 0 {
 			// Show empty checkbox when in multi-select mode
 			checkbox = MutedStyle.Render("☐ ")
@@ -3990,7 +3987,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	pinIndicator := ""
 	pinLen := 0
 	if m.isItemPinned(item) {
-		pinIndicator = lipgloss.NewStyle().Foreground(ColorWarning).Render("*")
+		pinIndicator = PinIndicatorStyle.Render("*")
 		pinLen = 1
 	}
 
@@ -4119,22 +4116,22 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	switch cat {
 	case ItemCategoryCommands:
 		badge = "> CMD"
-		style = lipgloss.NewStyle().Foreground(ColorPrimary)
+		style = CategoryCommandStyle
 	case ItemCategoryTasks:
 		badge = "☐ TSK"
-		style = lipgloss.NewStyle().Foreground(ColorSuccess)
+		style = CategoryTaskStyle
 	case ItemCategoryProjects:
 		badge = "◈ PRJ"
-		style = lipgloss.NewStyle().Foreground(ColorSecondary)
+		style = CategoryProjectStyle
 	case ItemCategoryTags:
 		badge = "# TAG"
-		style = lipgloss.NewStyle().Foreground(ColorWarning)
+		style = CategoryTagStyle
 	case ItemCategorySections:
 		badge = "§ SEC"
-		style = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
+		style = CategorySectionStyle
 	case ItemCategorySavedSearch:
 		badge = "★ SAV"
-		style = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
+		style = CategorySavedSearchStyle
 	default:
 		badge = "? ???"
 		style = MutedStyle
@@ -4185,7 +4182,7 @@ func getDueDateIndicator(task *models.Task) (string, int) {
 	weekFromNow := today.AddDate(0, 0, 7)
 	if dueDay.Before(weekFromNow) {
 		// Due this week - yellow tilde
-		return lipgloss.NewStyle().Foreground(ColorWarning).Render("~") + " ", 2
+		return DueThisWeekStyle.Render("~") + " ", 2
 	}
 
 	return "", 0

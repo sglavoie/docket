@@ -278,8 +278,7 @@ func (m *UndoHistoryModel) View() string {
 
 	// Handle error state
 	if m.errorMsg != "" {
-		errStyle := lipgloss.NewStyle().Foreground(ColorError)
-		b.WriteString(errStyle.Render(m.errorMsg))
+		b.WriteString(ErrorIconStyle.Render(m.errorMsg))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
 		return b.String()
@@ -309,9 +308,7 @@ func (m *UndoHistoryModel) View() string {
 	diffContent := m.renderDiffPreview(diffWidth, availableHeight)
 
 	// Separator
-	separator := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Render(strings.Repeat("│\n", availableHeight))
+	separator := SeparatorStyle.Render(strings.Repeat("│\n", availableHeight))
 
 	// Join horizontally
 	row := lipgloss.JoinHorizontal(lipgloss.Top, listContent, " ", separator, " ", diffContent)
