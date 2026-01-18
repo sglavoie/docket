@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -150,8 +149,7 @@ func mapsEqual(a, b map[string]bool) bool {
 func (m *DependencySelectorModel) View() string {
 	var b strings.Builder
 
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	b.WriteString(titleStyle.Render(m.Config.Title))
+	b.WriteString(TitleStyle.Render(m.Config.Title))
 	b.WriteString("\n\n")
 
 	// Search bar
@@ -170,8 +168,7 @@ func (m *DependencySelectorModel) View() string {
 	b.WriteString(m.renderTaskList())
 
 	b.WriteString("\n")
-	helpStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	b.WriteString(helpStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel"))
+	b.WriteString(MutedStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel"))
 
 	return b.String()
 }

@@ -161,8 +161,7 @@ func (m *PriorityPickerModel) View() string {
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(m.Config.Title))
+	content.WriteString(TitleStyle.Render(m.Config.Title))
 	content.WriteString("\n")
 	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))))
 	content.WriteString("\n\n")

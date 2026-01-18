@@ -621,25 +621,10 @@ func (m *PriorityViewModel) View() string {
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
 func (m *PriorityViewModel) renderPrefixPopup() string {
-	if m.pendingPrefix == "" {
-		return ""
-	}
-
-	var hints string
-	switch m.pendingPrefix {
-	case ",":
-		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
-			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
-			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
-			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
-			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
-	case "g":
-		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
-	default:
-		return ""
-	}
-
-	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		",": StatusPrefixHints,
+		"g": NavigationPrefixHints,
+	})
 }
 
 // renderAllGroups renders all task groups and returns the lines.

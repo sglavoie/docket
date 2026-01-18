@@ -618,8 +618,7 @@ func (m *BulkEditModel) View() string {
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(fmt.Sprintf("Bulk Edit: %d tasks", len(m.tasks))))
+	content.WriteString(TitleStyle.Render(fmt.Sprintf("Bulk Edit: %d tasks", len(m.tasks))))
 	content.WriteString("\n\n")
 
 	// Status field

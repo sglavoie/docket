@@ -156,8 +156,7 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(m.Config.Title))
+	content.WriteString(TitleStyle.Render(m.Config.Title))
 	content.WriteString("\n\n")
 
 	// Search bar

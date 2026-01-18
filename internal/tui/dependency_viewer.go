@@ -146,8 +146,7 @@ func (m *DependencyViewerModel) View() string {
 	var b strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	b.WriteString(titleStyle.Render(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title)))
+	b.WriteString(TitleStyle.Render(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title)))
 	b.WriteString("\n\n")
 
 	// Calculate available height for each section
@@ -168,8 +167,7 @@ func (m *DependencyViewerModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	helpStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	b.WriteString(helpStyle.Render("Tab: switch section | j/k: navigate | Enter: go to task | d: view deps | Esc: close"))
+	b.WriteString(MutedStyle.Render("Tab: switch section | j/k: navigate | Enter: go to task | d: view deps | Esc: close"))
 
 	return b.String()
 }

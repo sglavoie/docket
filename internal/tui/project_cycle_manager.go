@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -131,8 +130,7 @@ func (m *ProjectCycleManagerModel) View() string {
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Project Cycle Manager"))
+	content.WriteString(TitleStyle.Render("Project Cycle Manager"))
 	content.WriteString("\n")
 
 	// Selection count

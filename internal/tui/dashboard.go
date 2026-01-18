@@ -543,19 +543,9 @@ func (m *DashboardModel) View() string {
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
 func (m *DashboardModel) renderPrefixPopup() string {
-	if m.pendingPrefix == "" {
-		return ""
-	}
-
-	var hints string
-	switch m.pendingPrefix {
-	case "g":
-		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
-	default:
-		return ""
-	}
-
-	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		"g": NavigationPrefixHints,
+	})
 }
 
 func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.Project) {

@@ -273,8 +273,7 @@ func (m *UndoHistoryModel) View() string {
 	var b strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	b.WriteString(titleStyle.Render("Undo History"))
+	b.WriteString(TitleStyle.Render("Undo History"))
 	b.WriteString("\n\n")
 
 	// Handle error state
@@ -340,7 +339,6 @@ func (m *UndoHistoryModel) View() string {
 func (m *UndoHistoryModel) renderDetailView() string {
 	var b strings.Builder
 
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
 	wrapWidth := m.width - 4
 	if wrapWidth < 20 {
 		wrapWidth = 20
@@ -366,7 +364,7 @@ func (m *UndoHistoryModel) renderDetailView() string {
 
 	if isModification && pairedLine != nil {
 		// Show as modification with both lines
-		b.WriteString(titleStyle.Render("Modified Line (Full Content)"))
+		b.WriteString(TitleStyle.Render("Modified Line (Full Content)"))
 		b.WriteString("\n\n")
 
 		// Determine which is old and which is new
@@ -408,7 +406,7 @@ func (m *UndoHistoryModel) renderDetailView() string {
 		case DiffContext:
 			title = "Context Line (Full Content)"
 		}
-		b.WriteString(titleStyle.Render(title))
+		b.WriteString(TitleStyle.Render(title))
 		b.WriteString("\n\n")
 
 		// Line type indicator
@@ -580,12 +578,11 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 
 	// Summary with horizontal scroll indicator
 	added, removed := SummarizeDiff(m.diffLines)
-	summaryStyle := lipgloss.NewStyle().Foreground(ColorMuted)
 	summaryText := fmt.Sprintf("+%d / -%d lines", added, removed)
 	if m.diffHScroll > 0 {
 		summaryText += fmt.Sprintf(" (h-scroll: %d)", m.diffHScroll)
 	}
-	b.WriteString(summaryStyle.Render(summaryText))
+	b.WriteString(MutedStyle.Render(summaryText))
 	b.WriteString("\n\n")
 
 	// Calculate visible range

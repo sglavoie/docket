@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // PickerItem defines the interface that any picker item must implement.
@@ -300,8 +299,7 @@ func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisib
 	var content strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(titleContent))
+	content.WriteString(TitleStyle.Render(titleContent))
 	content.WriteString("\n")
 
 	// Header content (e.g., task info, selection count)

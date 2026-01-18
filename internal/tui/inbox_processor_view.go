@@ -138,25 +138,8 @@ func renderPriorityStars(priority int) string {
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
 // Returns empty string if no prefix is pending.
 func (m *InboxProcessorModel) renderPrefixPopup() string {
-	if m.pendingPrefix == "" {
-		return ""
-	}
-
-	var hints string
-	switch m.pendingPrefix {
-	case ",":
-		// Status operations
-		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
-			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
-			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
-			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
-			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
-	case "g":
-		// Navigation operations
-		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)")
-	default:
-		return ""
-	}
-
-	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		",": StatusPrefixHints,
+		"g": NavigationPrefixHints,
+	})
 }

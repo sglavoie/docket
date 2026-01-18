@@ -574,13 +574,11 @@ func (m *TaskCommentsModel) View() string {
 	var b strings.Builder
 
 	// Title
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary)
-	b.WriteString(titleStyle.Render(fmt.Sprintf("Comments for #%d: %s", m.task.ShortID, m.task.Title)))
+	b.WriteString(TitleStyle.Render(fmt.Sprintf("Comments for #%d: %s", m.task.ShortID, m.task.Title)))
 	b.WriteString("\n")
 
 	// Comment count
-	countStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	b.WriteString(countStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
 	b.WriteString("\n\n")
 
 	// Expanded view mode - show full comment
@@ -752,8 +750,7 @@ func (m *TaskCommentsModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	helpStyle := lipgloss.NewStyle().Foreground(ColorMuted)
-	b.WriteString(helpStyle.Render("a/n: add | e: edit | E: external editor | d/x: delete | Enter: expand | Esc: close"))
+	b.WriteString(MutedStyle.Render("a/n: add | e: edit | E: external editor | d/x: delete | Enter: expand | Esc: close"))
 
 	return b.String()
 }

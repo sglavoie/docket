@@ -1243,43 +1243,9 @@ func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task)
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
 // Returns empty string if no prefix is pending.
 func (m *ProjectTreeModel) renderPrefixPopup() string {
-	if m.pendingPrefix == "" {
-		return ""
-	}
-
-	var hints string
-	switch m.pendingPrefix {
-	case ",":
-		// Status operations
-		hints = PrefixDescStyle.Render("start") + PrefixKeyStyle.Render("(s)") + " " +
-			PrefixDescStyle.Render("done") + PrefixKeyStyle.Render("(d)") + " " +
-			PrefixDescStyle.Render("block") + PrefixKeyStyle.Render("(b)") + " " +
-			PrefixDescStyle.Render("cancel") + PrefixKeyStyle.Render("(x)") + " " +
-			PrefixDescStyle.Render("reopen") + PrefixKeyStyle.Render("(o)")
-	case "z":
-		// Fold operations
-		hints = PrefixDescStyle.Render("toggle") + PrefixKeyStyle.Render("(a)") + " " +
-			PrefixDescStyle.Render("open") + PrefixKeyStyle.Render("(o)") + " " +
-			PrefixDescStyle.Render("close") + PrefixKeyStyle.Render("(c)") + " " +
-			PrefixDescStyle.Render("expand-all") + PrefixKeyStyle.Render("(R)") + " " +
-			PrefixDescStyle.Render("collapse-all") + PrefixKeyStyle.Render("(M)") + " " +
-			PrefixDescStyle.Render("focus") + PrefixKeyStyle.Render("(v)")
-	case "g":
-		// Go/section operations
-		hints = PrefixDescStyle.Render("first") + PrefixKeyStyle.Render("(g)") + " " +
-			PrefixDescStyle.Render("active") + PrefixKeyStyle.Render("(a)") + " " +
-			PrefixDescStyle.Render("backlog") + PrefixKeyStyle.Render("(b)") + " " +
-			PrefixDescStyle.Render("inbox") + PrefixKeyStyle.Render("(i)") + " " +
-			PrefixDescStyle.Render("completed") + PrefixKeyStyle.Render("(c)") + " " +
-			PrefixDescStyle.Render("→Active") + PrefixKeyStyle.Render("(A)") + " " +
-			PrefixDescStyle.Render("→Backlog") + PrefixKeyStyle.Render("(B)") + " " +
-			PrefixDescStyle.Render("→Inbox") + PrefixKeyStyle.Render("(I)") + " " +
-			PrefixDescStyle.Render("due-filter") + PrefixKeyStyle.Render("(d)") + " " +
-			PrefixDescStyle.Render("view-cycle") + PrefixKeyStyle.Render("(v)") + " " +
-			PrefixDescStyle.Render("deselect") + PrefixKeyStyle.Render("(X)")
-	default:
-		return ""
-	}
-
-	return PrefixPopupStyle.Render(m.pendingPrefix + " → " + hints + "  " + MutedStyle.Render("Esc to cancel"))
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		",": StatusPrefixHints,
+		"z": FoldPrefixHints,
+		"g": ProjectTreeNavigationPrefixHints,
+	})
 }
