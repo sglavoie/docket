@@ -861,7 +861,7 @@ func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 		{Category: "Actions", Key: "Y", Description: "Copy task description"},
 		{Category: "View", Key: "Tab", Description: "Toggle waiting section"},
 		{Category: "View", Key: "r", Description: "Refresh"},
-		{Category: "View", Key: "?", Description: "Show help"},
+		{Category: "View", Key: "?", Description: "Toggle help"},
 		{Category: "View", Key: "q/Esc", Description: "Close priority view"},
 	}
 }

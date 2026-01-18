@@ -200,7 +200,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return SelectProjectMsg{Project: visible[m.cursor]}
 				}
 			}
-		case "?", "h":
+		case "?":
 			return m, func() tea.Msg {
 				return ShowHelpMsg{
 					SourceView: ViewDashboard,

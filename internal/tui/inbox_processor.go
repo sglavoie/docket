@@ -192,9 +192,13 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 
 	case "esc":
-		// Only handle escape in confirmation dialogs
-		// User must use 'q' to exit the processor
-		return m, nil
+		// Close the processor (consistent with other views)
+		return m, func() tea.Msg {
+			return CloseInboxProcessorMsg{
+				ProcessedCount: len(m.processedIDs),
+				SkippedCount:   len(m.skippedIDs),
+			}
+		}
 
 	case "n":
 		// Skip current task and advance to next (workflow: "next")
@@ -257,6 +261,15 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 		return m, nil
+
+	case "?":
+		return m, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewInboxProcessor,
+				ViewName:   "Inbox Processor",
+				Items:      m.GetHelpItems(),
+			}
+		}
 	}
 
 	return m, nil
@@ -711,5 +724,6 @@ func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 		{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations"},
 		{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations"},
 		{Key: "u", Description: "Undo last operation on current task", Category: "Operations"},
+		{Key: "?", Description: "Toggle help", Category: "Navigation"},
 	}
 }
