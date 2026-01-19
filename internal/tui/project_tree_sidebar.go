@@ -5,62 +5,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderSidebarCard renders a card with a titled border for sidebar sections.
-// Uses lipgloss styling for proper ANSI-aware rendering.
+// Uses the shared renderCard utility with sidebar-specific configuration.
 func renderSidebarCard(title, content string, width int, focused bool) string {
-	if width < 10 {
-		width = 10
-	}
-
-	// Choose style based on focus state
-	style := SidebarCardStyle
-	if focused {
-		style = SidebarCardFocusedStyle
-	}
-
-	// Use lipgloss to render the content in a box with proper width handling
-	// The style already has Border and Padding defined
-	rendered := style.
-		Width(width - 2). // Account for border
-		Render(content)
-
-	// Now we need to add the custom title to the top border
-	// Split rendered into lines
-	lines := strings.Split(rendered, "\n")
-	if len(lines) < 1 {
-		return rendered
-	}
-
-	// Replace the top border line with our titled version
-	// The first line is the top border: ╭────────────────╮
-	// We want: ╭─ Title ────────╮
-	borderColor := ColorBorder
-	if focused {
-		borderColor = ColorPrimary
-	}
-	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
-
-	titleText := SidebarCardTitleStyle.Render(title)
-	titleVisualWidth := lipgloss.Width(titleText)
-
-	// Build new top border: ╭─ Title ─────╮
-	// Inner width for dashes = width - 2 (corners)
-	innerDashWidth := width - 2
-	usedByTitle := 2 + titleVisualWidth + 1 // "─ " + title + " "
-	remainingDashes := innerDashWidth - usedByTitle
-	if remainingDashes < 1 {
-		remainingDashes = 1
-	}
-
-	newTopBorder := borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
-	lines[0] = newTopBorder
-
-	return strings.Join(lines, "\n")
+	config := DefaultCardConfig()
+	config.Focused = focused
+	return renderCard(title, content, width, config)
 }
 
 // renderSidebar renders the detail sidebar for the currently selected task.

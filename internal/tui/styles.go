@@ -573,6 +573,16 @@ var (
 
 	SidebarCardTitleStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted)
+
+	// Dashboard card styles (full-width cards for dashboard sections)
+	DashboardCardStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorBorder).
+				Padding(0, 1)
+
+	DashboardCardTitleStyle = lipgloss.NewStyle().
+				Foreground(ColorSecondary).
+				Bold(true)
 )
 
 // Additional shared styles for common UI patterns

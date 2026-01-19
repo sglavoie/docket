@@ -422,15 +422,16 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n")
 		chromeHeight++ // header line
 
-		// Calculate space for bottom section (Recent Tasks + Stats)
+		// Calculate space for bottom section (Recent Tasks + Stats cards)
 		bottomHeight := 0
 		showRecentTasks := m.config.GetShowRecentTasks()
 		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
 			current := m.config.GetCurrentProject()
 			if current != nil && len(current.Tasks) > 0 {
-				// Recent Tasks: 2 blank lines + header + up to 5 tasks = ~8 lines
-				// Stats: types line + status line + optional overdue = ~3 lines
-				bottomHeight = 12
+				// Recent card: 2 border + up to 5 tasks + 1 blank = ~8 lines
+				// Stats card: 2 border + 2-3 content lines = ~5 lines
+				// Plus 1 blank line between cards
+				bottomHeight = 14
 			}
 		}
 
@@ -532,10 +533,25 @@ func (m *DashboardModel) View() string {
 		// Current project details (only show when not searching and toggle is on)
 		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
 			current := m.config.GetCurrentProject()
-			if current != nil {
+			if current != nil && len(current.Tasks) > 0 {
+				cardWidth := m.width - 2 // Leave margin on sides
+				if cardWidth < 20 {
+					cardWidth = 20
+				}
+
 				b.WriteString("\n")
-				m.renderRecentTasks(&b, current)
-				m.renderStats(&b, current)
+
+				// Recent Tasks card
+				recentContent := m.renderRecentTasksContent(current)
+				config := DashboardCardConfig()
+				b.WriteString(renderCard("Recent", recentContent, cardWidth, config))
+				b.WriteString("\n")
+
+				// Stats card
+				statsContent := m.renderStatsContent(current)
+				if statsContent != "" {
+					b.WriteString(renderCard("Stats", statsContent, cardWidth, config))
+				}
 			}
 		}
 	}
@@ -557,44 +573,33 @@ func (m *DashboardModel) renderPrefixPopup() string {
 	}, m.width)
 }
 
-func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.Project) {
+func (m *DashboardModel) renderRecentTasksContent(project *models.Project) string {
 	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
 	if len(recentTasks) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks yet."))
-		b.WriteString("\n")
-		return
+		return MutedStyle.Render("No tasks yet.")
 	}
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(strings.Repeat("─", m.width)))
-	b.WriteString("\n\n")
-	b.WriteString(BoldStyle.Render("Recent Tasks"))
-	b.WriteString("\n")
-
+	var lines []string
 	for _, task := range recentTasks {
 		typeStyle := GetTypeStyle(string(task.Type))
 		statusStyle := GetStatusStyle(string(task.Status))
 
-		line := fmt.Sprintf("  %s %s %s %s  %s",
+		line := fmt.Sprintf("%s %s %s %s  %s",
 			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 			typeStyle.Render(task.Type.Icon()),
 			statusStyle.Render(task.Status.Icon()),
 			util.Truncate(task.Title, 40),
 			MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
 
-		b.WriteString(line)
-		b.WriteString("\n")
+		lines = append(lines, line)
 	}
+	return strings.Join(lines, "\n")
 }
 
-func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project) {
+func (m *DashboardModel) renderStatsContent(project *models.Project) string {
 	if len(project.Tasks) == 0 {
-		return
+		return ""
 	}
-
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(strings.Repeat("─", m.width)))
-	b.WriteString("\n")
 
 	// Count by type
 	typeCounts := make(map[models.TaskType]int)
@@ -623,12 +628,9 @@ func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project
 		}
 	}
 
-	b.WriteString(MutedStyle.Render("Types: "))
-	b.WriteString(strings.Join(typeStats, " "))
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Status: "))
-	b.WriteString(strings.Join(statusStats, " "))
-	b.WriteString("\n")
+	var lines []string
+	lines = append(lines, MutedStyle.Render("Types: ")+strings.Join(typeStats, " "))
+	lines = append(lines, MutedStyle.Render("Status: ")+strings.Join(statusStats, " "))
 
 	// Overdue count
 	overdueCount := 0
@@ -643,9 +645,10 @@ func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project
 		}
 	}
 	if overdueCount > 0 {
-		b.WriteString(OverdueStyle.Render(fmt.Sprintf("Overdue: %d", overdueCount)))
-		b.WriteString("\n")
+		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("Overdue: %d", overdueCount)))
 	}
+
+	return strings.Join(lines, "\n")
 }
 
 // GetHelpItems returns the help items for the dashboard view.
