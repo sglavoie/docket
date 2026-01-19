@@ -28,8 +28,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
 		m.err = msg.Err
-		return true, nil
+		return true, statusTimeout(5 * time.Second)
 
 	case SettingsMsg:
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))

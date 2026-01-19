@@ -23,6 +23,29 @@ func (m *AppModel) View() string {
 }
 
 func (m *AppModel) renderStatusBar() string {
+	// Show loading spinner if active
+	if m.isLoading {
+		spinnerView := m.spinner.View()
+		msg := LoadingStyle.Render(spinnerView + " " + m.loadingMessage)
+		gap := m.width - lipgloss.Width(msg)
+		if gap < 0 {
+			gap = 0
+		}
+		spacer := lipgloss.NewStyle().Width(gap).Render("")
+		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+	}
+
+	// Show error message if present
+	if m.err != nil {
+		msg := ErrorStatusStyle.Render("✗ " + m.err.Error())
+		gap := m.width - lipgloss.Width(msg)
+		if gap < 0 {
+			gap = 0
+		}
+		spacer := lipgloss.NewStyle().Width(gap).Render("")
+		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+	}
+
 	// Show temporary status message if present
 	if m.statusMessage != "" {
 		msg := SuccessStyle.Render("✓ " + m.statusMessage)

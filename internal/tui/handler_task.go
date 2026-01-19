@@ -110,28 +110,30 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 			}
 
-			// Save each affected project (except the first which was already saved)
+			// Build list of projects to save (except first which was already saved)
+			var projectsToSave []*models.Project
 			for _, project := range projectMap {
 				if project.ID != m.pendingBulkTasks[0].Project.ID {
-					if err := storage.BackupProject(project); err != nil {
-						m.pendingBulkTasks = nil
-						return true, errorCmd("failed to create backup: %w", err)
-					}
-					if err := storage.SaveProject(project); err != nil {
-						m.pendingBulkTasks = nil
-						return true, errorCmd("failed to save: %w", err)
-					}
-					storage.LoadProject(project)
+					projectsToSave = append(projectsToSave, project)
 				}
 			}
 
-			m.refreshProjectTree()
+			var successMsg string
 			if newDate != nil {
-				m.statusMessage = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
+				successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
 			} else {
-				m.statusMessage = fmt.Sprintf("Cleared due date for %d tasks", count)
+				successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
 			}
 			m.pendingBulkTasks = nil
+
+			if len(projectsToSave) > 0 {
+				return true, tea.Batch(
+					startLoading("Saving..."),
+					SaveMultipleProjectsAsync(projectsToSave, successMsg),
+				)
+			}
+			m.statusMessage = successMsg
+			m.refreshProjectTree()
 			return true, statusTimeout(2 * time.Second)
 		}
 
@@ -150,14 +152,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.HasChanges && msg.Task != nil && msg.Project != nil {
 			msg.Task.DependsOn = msg.NewDepsOn
 			msg.Task.UpdatedAt = time.Now()
-			if err := storage.BackupProject(msg.Project); err != nil {
-				return true, errorCmd("failed to create backup: %w", err)
-			}
-			if err := storage.SaveProject(msg.Project); err != nil {
-				return true, errorCmd("failed to save: %w", err)
-			}
-			storage.LoadProject(msg.Project)
-			m.refreshProjectTree()
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveProjectAsync(msg.Project, "Dependencies updated"),
+			)
 		}
 		return true, nil
 
@@ -274,23 +272,12 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 		return true, nil
 	}
 
-	// Backup and save
-	if err := storage.BackupProject(msg.Project); err != nil {
-		return true, errorCmd("failed to create backup: %w", err)
-	}
-	if err := storage.SaveProject(msg.Project); err != nil {
-		return true, errorCmd("failed to save: %w", err)
-	}
-
-	// Reload project and refresh tree if we're viewing it
-	storage.LoadProject(msg.Project)
-	if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
-		m.refreshProjectTree()
-	}
-
-	// Show status message
-	m.statusMessage = fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
-	return true, statusTimeout(2 * time.Second)
+	// Async save with loading indicator
+	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
+	return true, tea.Batch(
+		startLoading("Saving..."),
+		SaveProjectAsync(msg.Project, successMsg),
+	)
 }
 
 // handleCommandPaletteBulkAction handles bulk actions on multiple selected tasks.
@@ -312,6 +299,7 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 
 	// Apply action to all tasks
 	count := 0
+	var projects []*models.Project
 	for _, items := range projectTasks {
 		for _, item := range items {
 			switch msg.Action {
@@ -323,38 +311,25 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 				count++
 			}
 		}
-	}
-
-	// Save each affected project
-	for _, items := range projectTasks {
 		if len(items) > 0 {
-			project := items[0].Project
-			if err := storage.BackupProject(project); err != nil {
-				return true, errorCmd("failed to create backup: %w", err)
-			}
-			if err := storage.SaveProject(project); err != nil {
-				return true, errorCmd("failed to save: %w", err)
-			}
-			storage.LoadProject(project)
+			projects = append(projects, items[0].Project)
 		}
 	}
 
-	// Refresh if viewing an affected project
-	if m.currentProject != nil {
-		if _, ok := projectTasks[m.currentProject.ID]; ok {
-			m.refreshProjectTree()
-		}
-	}
-
-	// Show status message
+	// Build success message
 	actionPast := msg.Action + "d"
 	if msg.Action == "complete" {
 		actionPast = "completed"
 	} else if msg.Action == "start" {
 		actionPast = "started"
 	}
-	m.statusMessage = fmt.Sprintf("%d tasks %s", count, actionPast)
-	return true, statusTimeout(2 * time.Second)
+	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)
+
+	// Async save with loading indicator
+	return true, tea.Batch(
+		startLoading("Saving..."),
+		SaveMultipleProjectsAsync(projects, successMsg),
+	)
 }
 
 // handleInlineTaskCreate creates a new task from the command palette inline creation.
@@ -397,23 +372,12 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 	msg.Project.Tasks = append([]*models.Task{task}, msg.Project.Tasks...)
 	msg.Project.BuildTaskTree()
 
-	// Backup and save
-	if err := storage.BackupProject(msg.Project); err != nil {
-		return true, errorCmd("failed to create backup: %w", err)
-	}
-	if err := storage.SaveProject(msg.Project); err != nil {
-		return true, errorCmd("failed to save: %w", err)
-	}
-
-	// Reload and refresh
-	storage.LoadProject(msg.Project)
-	if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
-		m.refreshProjectTree()
-	}
-
-	// Show status message
-	m.statusMessage = fmt.Sprintf("Created: %s", msg.Title)
-	return true, statusTimeout(2 * time.Second)
+	// Async save with loading indicator
+	successMsg := fmt.Sprintf("Created: %s", msg.Title)
+	return true, tea.Batch(
+		startLoading("Saving..."),
+		SaveProjectAsync(msg.Project, successMsg),
+	)
 }
 
 // handleEditTaskContent launches external editor for task title and description.
@@ -480,12 +444,16 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 			msg.Task.UpdatedAt = time.Now()
 
 			if msg.Project != nil {
-				if err := storage.BackupProject(msg.Project); err != nil {
-					return true, errorCmd("failed to create backup: %w", err)
+				// Refresh task editor view first if it's open
+				if m.currentView() == ViewTaskEditor {
+					taskEditor := NewTaskEditorModel(msg.Project, msg.Task, m.config, m.configManager)
+					taskEditor.SetSize(m.width, m.height-2)
+					m.views.Register(ViewTaskEditor, taskEditor)
 				}
-				if err := storage.SaveProject(msg.Project); err != nil {
-					return true, errorCmd("failed to save: %w", err)
-				}
+				return true, tea.Batch(
+					startLoading("Saving..."),
+					SaveProjectAsync(msg.Project, "Task updated"),
+				)
 			}
 		}
 	}

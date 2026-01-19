@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"time"
+
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -10,8 +13,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle global key messages first
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Clear temporary status message on any keypress
+		// Clear temporary status/error messages on any keypress
 		m.statusMessage = ""
+		m.err = nil
 
 		switch msg.String() {
 		case "ctrl+c":
@@ -48,6 +52,33 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.saveProjectTreeState()
 		m.quitting = true
 		return m, tea.Quit
+
+	case spinner.TickMsg:
+		// Only update spinner if we're in loading state
+		if m.isLoading {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
+
+	case SaveStartMsg:
+		m.isLoading = true
+		m.loadingMessage = msg.Message
+		m.err = nil
+		return m, m.spinner.Tick()
+
+	case SaveCompleteMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.statusMessage = msg.SuccessMessage
+		m.refreshProjectTree()
+		return m, statusTimeout(2 * time.Second)
+
+	case SaveErrorMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.err = msg.Err
+		return m, statusTimeout(5 * time.Second)
 	}
 
 	// Try each handler group in sequence

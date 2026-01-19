@@ -201,6 +201,14 @@ var (
 	SuccessStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
 
+	// Loading message style (amber/yellow for in-progress operations)
+	LoadingStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning)
+
+	// Error status bar style (red for errors)
+	ErrorStatusStyle = lipgloss.NewStyle().
+				Foreground(ColorError)
+
 	// Search highlight style
 	SearchHighlightStyle = lipgloss.NewStyle().
 				Background(ColorHighlight).

@@ -342,6 +342,25 @@ type PurgeFromTrashMsg struct{ Slug string }
 type MoveBlockedMsg struct{ Reason string }
 
 // =============================================================================
+// Async Save Messages
+// =============================================================================
+
+// SaveStartMsg signals that an async save operation is starting.
+type SaveStartMsg struct {
+	Message string
+}
+
+// SaveCompleteMsg signals that an async save completed successfully.
+type SaveCompleteMsg struct {
+	SuccessMessage string
+}
+
+// SaveErrorMsg signals that an async save failed.
+type SaveErrorMsg struct {
+	Err error
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 

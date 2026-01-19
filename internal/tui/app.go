@@ -87,6 +87,11 @@ type AppModel struct {
 	quitting      bool
 	statusMessage string // Temporary status message (auto-clears after timeout)
 
+	// Loading state for async operations
+	isLoading      bool
+	loadingMessage string
+	spinner        SpinnerModel
+
 	// Pending bulk tasks for palette operations (priority, date assignment)
 	pendingBulkTasks []PaletteBulkTaskItem
 }
@@ -101,6 +106,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
 		height:          24,
 		views:           NewViewRegistry(),
 		commandRegistry: NewCommandRegistry(),
+		spinner:         NewSpinner(),
 	}
 
 	// Initialize dashboard and register it

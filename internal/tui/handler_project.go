@@ -122,9 +122,13 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case RestoreFromTrashMsg:
-		return true, m.restoreProjectFromTrash(msg.Slug)
+		m.isLoading = true
+		m.loadingMessage = "Restoring..."
+		return true, tea.Batch(m.spinner.Tick(), m.restoreProjectFromTrash(msg.Slug))
 
 	case projectRestoredFromTrashMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
 		m.popView() // Close trashed projects picker
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
@@ -133,9 +137,13 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, statusTimeout(2 * time.Second)
 
 	case PurgeFromTrashMsg:
-		return true, m.purgeProjectFromTrash(msg.Slug)
+		m.isLoading = true
+		m.loadingMessage = "Deleting..."
+		return true, tea.Batch(m.spinner.Tick(), m.purgeProjectFromTrash(msg.Slug))
 
 	case projectPurgedFromTrashMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
 		// Refresh the trashed projects list by re-registering the view
 		newModel := NewTrashedProjectsModel(m.config.DataDir)
 		newModel.SetSize(m.width, m.height-2)
