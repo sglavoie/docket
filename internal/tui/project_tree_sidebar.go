@@ -5,216 +5,293 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// renderSidebarCard renders a card with a titled border for sidebar sections.
+// Uses lipgloss styling for proper ANSI-aware rendering.
+func renderSidebarCard(title, content string, width int, focused bool) string {
+	if width < 10 {
+		width = 10
+	}
+
+	// Choose style based on focus state
+	style := SidebarCardStyle
+	if focused {
+		style = SidebarCardFocusedStyle
+	}
+
+	// Use lipgloss to render the content in a box with proper width handling
+	// The style already has Border and Padding defined
+	rendered := style.
+		Width(width - 2). // Account for border
+		Render(content)
+
+	// Now we need to add the custom title to the top border
+	// Split rendered into lines
+	lines := strings.Split(rendered, "\n")
+	if len(lines) < 1 {
+		return rendered
+	}
+
+	// Replace the top border line with our titled version
+	// The first line is the top border: ╭────────────────╮
+	// We want: ╭─ Title ────────╮
+	borderColor := ColorBorder
+	if focused {
+		borderColor = ColorPrimary
+	}
+	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
+
+	titleText := SidebarCardTitleStyle.Render(title)
+	titleVisualWidth := lipgloss.Width(titleText)
+
+	// Build new top border: ╭─ Title ─────╮
+	// Inner width for dashes = width - 2 (corners)
+	innerDashWidth := width - 2
+	usedByTitle := 2 + titleVisualWidth + 1 // "─ " + title + " "
+	remainingDashes := innerDashWidth - usedByTitle
+	if remainingDashes < 1 {
+		remainingDashes = 1
+	}
+
+	newTopBorder := borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
+	lines[0] = newTopBorder
+
+	return strings.Join(lines, "\n")
+}
+
 // renderSidebar renders the detail sidebar for the currently selected task.
 func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) string {
 	if task == nil {
-		return SidebarStyle.
-			Width(width).
-			Height(height).
-			Render(MutedStyle.Render("No task selected"))
+		emptyCard := renderSidebarCard("Task", MutedStyle.Render("No task selected"), width, false)
+		return m.padSidebarToHeight(emptyCard, width, height)
 	}
 
-	var b strings.Builder
+	// Calculate inner width for card content (width minus card borders and padding)
+	cardInnerWidth := width - 6 // 2 border + 2 padding + 2 margin
 
-	// Header: Task title, type, status, priority, short ID
+	var cards []string
+
+	// Task card: title, type/status, ID/priority
+	cards = append(cards, m.renderTaskCard(task, width))
+
+	// Due card (only if due date set)
+	if task.DueDate != nil {
+		cards = append(cards, m.renderDueCard(task, width))
+	}
+
+	// Metadata card: tags + section
+	cards = append(cards, m.renderMetadataCard(task, width))
+
+	// Dependencies card (only if has dependencies)
+	hasDeps := len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0
+	if hasDeps {
+		cards = append(cards, m.renderDependenciesCard(task, width, cardInnerWidth))
+	}
+
+	// Activity card
+	cards = append(cards, m.renderActivityCard(task, width))
+
+	// Description card (only if has description)
+	if task.Description != "" {
+		cards = append(cards, m.renderDescriptionCard(task, width))
+	}
+
+	// Help hint at bottom if sidebar focused
+	helpHint := ""
+	if m.sidebarFocused && m.hasDependencies(task) {
+		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump")
+	} else if m.sidebarFocused {
+		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
+	}
+
+	// Join cards with no spacing (cards have their own borders)
+	content := strings.Join(cards, "\n")
+	if helpHint != "" {
+		content += "\n" + helpHint
+	}
+
+	return m.padSidebarToHeight(content, width, height)
+}
+
+// renderTaskCard renders the main task info card.
+func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int) string {
 	typeStyle := GetTypeStyle(string(task.Type))
 	statusStyle := GetStatusStyle(string(task.Status))
 
-	// Override status style if task has incomplete dependencies
 	if m.project.HasIncompleteDependencies(task) {
 		statusStyle = BlockedByDepsStyle
 	}
 
-	headerLine1 := fmt.Sprintf("%s %s",
-		typeStyle.Render(task.Type.Icon()+" "+task.Type.HeadingPrefix()),
-		statusStyle.Render(task.Status.Icon()+" "+string(task.Status)))
-
+	title := SidebarHeaderStyle.Render(task.Title)
+	typeLine := typeStyle.Render(task.Type.Icon() + " " + task.Type.HeadingPrefix())
+	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
 	priorityBadge := formatPriorityBadge(task.Priority)
-	headerLine2 := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
+	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
-	b.WriteString(SidebarHeaderStyle.Render(task.Title))
-	b.WriteString("\n")
-	b.WriteString(headerLine1 + " " + headerLine2)
-	b.WriteString("\n\n")
+	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+	return renderSidebarCard("Task", content, width, false)
+}
 
-	// Due Date
-	if task.DueDate != nil {
-		dueAbsolute := task.DueDate.Format(util.DateFormat)
-		dueRelative := formatRelativeDueDateVerbose(task.DueDate)
+// renderDueCard renders the due date card.
+func (m *ProjectTreeModel) renderDueCard(task *models.Task, width int) string {
+	dueAbsolute := task.DueDate.Format(util.DateFormat)
+	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
+	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 
-		dueLine := fmt.Sprintf("Due: %s (%s)", dueAbsolute, dueRelative)
-		if isOverdue(task) && !task.Status.IsComplete() {
-			b.WriteString(OverdueStyle.Render(dueLine))
-		} else if isDueToday(task) {
-			b.WriteString(DueTodayStyle.Render(dueLine))
-		} else {
-			b.WriteString(DueDateStyle.Render(dueLine))
-		}
-		b.WriteString("\n\n")
+	if isOverdue(task) && !task.Status.IsComplete() {
+		dueLine = OverdueStyle.Render(dueLine)
+	} else if isDueToday(task) {
+		dueLine = DueTodayStyle.Render(dueLine)
+	} else {
+		dueLine = DueDateStyle.Render(dueLine)
 	}
 
-	// Tags
+	return renderSidebarCard("Due", dueLine, width, false)
+}
+
+// renderMetadataCard renders tags and section in a combined card.
+func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int) string {
+	var lines []string
+
+	// Tags line - use simple inline style without background/padding for alignment
 	if len(task.Tags) > 0 {
-		b.WriteString(SidebarSectionHeaderStyle.Render("Tags"))
-		b.WriteString("\n")
+		var tagParts []string
 		for _, tag := range task.Tags {
-			b.WriteString(TagStyle.Render("#" + tag))
-			b.WriteString(" ")
+			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
 		}
-		b.WriteString("\n\n")
+		lines = append(lines, strings.Join(tagParts, " "))
 	}
 
-	// Section
-	b.WriteString(SidebarSectionHeaderStyle.Render("Section"))
-	b.WriteString("\n")
+	// Section line
+	sectionName := task.Section
+	if sectionName == "" {
+		sectionName = "None"
+	}
 	sectionColor := m.project.GetSectionColor(task.Section)
 	sectionStyle := GetSectionColorStyle(sectionColor)
-	b.WriteString(sectionStyle.Render(task.Section))
-	b.WriteString("\n\n")
+	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
+	lines = append(lines, sectionLine)
 
-	// Dependencies (with cursor if sidebar focused)
-	if len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0 {
-		b.WriteString(SidebarSectionHeaderStyle.Render("Dependencies"))
-		b.WriteString("\n")
+	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false)
+}
 
-		// Blocked by (tasks this depends on)
-		if len(task.DependsOn) > 0 {
-			blockedByHeader := "Blocked by:"
-			if m.sidebarFocused && m.sidebarDependencySection == 0 {
-				blockedByHeader = BoldStyle.Underline(true).Render(blockedByHeader)
-			}
-			b.WriteString(MutedStyle.Render(blockedByHeader))
-			b.WriteString("\n")
+// renderDependenciesCard renders the dependencies card with navigation support.
+func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
+	var lines []string
 
-			blockingTasks := m.project.GetBlockingTasks(task)
-			for i, dep := range blockingTasks {
-				depStatus := GetStatusStyle(string(dep.Status))
-
-				cursor := "  "
-				if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
-					cursor = "> "
-				}
-
-				depLine := fmt.Sprintf("%s#%-4d %s %s",
-					cursor,
-					dep.ShortID,
-					depStatus.Render(dep.Status.Icon()),
-					util.Truncate(dep.Title, width-15))
-
-				if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
-					depLine = BoldStyle.Render(depLine)
-				}
-
-				b.WriteString(depLine)
-				b.WriteString("\n")
-			}
+	// Blocked by (tasks this depends on)
+	if len(task.DependsOn) > 0 {
+		header := "Blocked by:"
+		if m.sidebarFocused && m.sidebarDependencySection == 0 {
+			header = BoldStyle.Underline(true).Render(header)
+		} else {
+			header = MutedStyle.Render(header)
 		}
+		lines = append(lines, header)
 
-		// Blocking (tasks that depend on this)
-		blockedBy := m.project.GetBlockedByTasks(task)
-		if len(blockedBy) > 0 {
-			if len(task.DependsOn) > 0 {
-				b.WriteString("\n")
+		blockingTasks := m.project.GetBlockingTasks(task)
+		for i, dep := range blockingTasks {
+			depStatus := GetStatusStyle(string(dep.Status))
+			cursor := "  "
+			if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+				cursor = "> "
 			}
 
-			blockingHeader := "Blocking:"
-			if m.sidebarFocused && m.sidebarDependencySection == 1 {
-				blockingHeader = BoldStyle.Underline(true).Render(blockingHeader)
+			depLine := fmt.Sprintf("%s#%-3d %s %s",
+				cursor, dep.ShortID, depStatus.Render(dep.Status.Icon()),
+				util.Truncate(dep.Title, innerWidth-12))
+
+			if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+				depLine = BoldStyle.Render(depLine)
 			}
-			b.WriteString(MutedStyle.Render(blockingHeader))
-			b.WriteString("\n")
-
-			for i, blocked := range blockedBy {
-				blockStatus := GetStatusStyle(string(blocked.Status))
-
-				cursor := "  "
-				if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
-					cursor = "> "
-				}
-
-				blockLine := fmt.Sprintf("%s#%-4d %s %s",
-					cursor,
-					blocked.ShortID,
-					blockStatus.Render(blocked.Status.Icon()),
-					util.Truncate(blocked.Title, width-15))
-
-				if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
-					blockLine = BoldStyle.Render(blockLine)
-				}
-
-				b.WriteString(blockLine)
-				b.WriteString("\n")
-			}
+			lines = append(lines, depLine)
 		}
-		b.WriteString("\n")
 	}
 
-	// Activity History (derived from timestamps)
-	b.WriteString(SidebarSectionHeaderStyle.Render("Activity"))
-	b.WriteString("\n")
-	b.WriteString(formatActivityEntry("Created", task.CreatedAt))
-	b.WriteString("\n")
+	// Blocking (tasks that depend on this)
+	blockedBy := m.project.GetBlockedByTasks(task)
+	if len(blockedBy) > 0 {
+		if len(task.DependsOn) > 0 {
+			lines = append(lines, "") // spacer
+		}
+
+		header := "Blocking:"
+		if m.sidebarFocused && m.sidebarDependencySection == 1 {
+			header = BoldStyle.Underline(true).Render(header)
+		} else {
+			header = MutedStyle.Render(header)
+		}
+		lines = append(lines, header)
+
+		for i, blocked := range blockedBy {
+			blockStatus := GetStatusStyle(string(blocked.Status))
+			cursor := "  "
+			if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+				cursor = "> "
+			}
+
+			blockLine := fmt.Sprintf("%s#%-3d %s %s",
+				cursor, blocked.ShortID, blockStatus.Render(blocked.Status.Icon()),
+				util.Truncate(blocked.Title, innerWidth-12))
+
+			if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+				blockLine = BoldStyle.Render(blockLine)
+			}
+			lines = append(lines, blockLine)
+		}
+	}
+
+	focused := m.sidebarFocused && m.hasDependencies(task)
+	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused)
+}
+
+// renderActivityCard renders the activity timestamps card.
+func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) string {
+	var lines []string
+
+	lines = append(lines, formatActivityEntry("Created", task.CreatedAt))
 
 	if task.CompletedAt != nil {
-		b.WriteString(formatActivityEntry("Completed", *task.CompletedAt))
-		b.WriteString("\n")
+		lines = append(lines, formatActivityEntry("Completed", *task.CompletedAt))
 	}
 
 	if !task.UpdatedAt.Equal(task.CreatedAt) {
-		b.WriteString(formatActivityEntry("Last modified", task.UpdatedAt))
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
-
-	// Description (scrollable)
-	if task.Description != "" {
-		b.WriteString(SidebarSectionHeaderStyle.Render("Description"))
-		b.WriteString("\n")
-
-		// Apply scroll offset
-		lines := strings.Split(task.Description, "\n")
-		if m.sidebarScroll < len(lines) {
-			visibleLines := lines[m.sidebarScroll:]
-			b.WriteString(strings.Join(visibleLines, "\n"))
-		}
-	} else {
-		b.WriteString(MutedStyle.Render("No description"))
+		lines = append(lines, formatActivityEntry("Modified", task.UpdatedAt))
 	}
 
-	// Sidebar focus help hint
-	if m.sidebarFocused && m.hasDependencies(task) {
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("j/k: navigate | h/l: switch section | Enter: jump | Esc: back to tree"))
-	} else if m.sidebarFocused {
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("j/k: scroll | Esc: back to tree"))
+	return renderSidebarCard("Activity", strings.Join(lines, "\n"), width, false)
+}
+
+// renderDescriptionCard renders the description card with scroll support.
+func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) string {
+	lines := strings.Split(task.Description, "\n")
+	if m.sidebarScroll < len(lines) {
+		lines = lines[m.sidebarScroll:]
+	}
+	// Limit visible lines to avoid overflow
+	maxLines := 5
+	if len(lines) > maxLines {
+		lines = lines[:maxLines]
+		lines = append(lines, MutedStyle.Render("..."))
 	}
 
-	content := b.String()
+	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false)
+}
 
-	// Render without height constraint first to preserve all styling
-	rendered := SidebarStyle.
-		Width(width).
-		Render(content)
+// padSidebarToHeight ensures the sidebar content fills the exact height.
+func (m *ProjectTreeModel) padSidebarToHeight(content string, width, height int) string {
+	lines := strings.Split(content, "\n")
 
-	// Now manually truncate rendered lines to fit height
-	// SidebarStyle has padding (2 lines total), border (2 lines total) = 4 lines overhead
-	availableHeight := height - 4
-	if availableHeight < 1 {
-		availableHeight = 1
+	// Truncate if too tall
+	if len(lines) > height {
+		lines = lines[:height]
 	}
 
-	lines := strings.Split(rendered, "\n")
-	if len(lines) > availableHeight {
-		// Keep content from the start (header), truncate from the end
-		lines = lines[:availableHeight]
-	}
-
-	// Pad to exact height if needed
+	// Pad if too short
 	for len(lines) < height {
 		lines = append(lines, "")
 	}

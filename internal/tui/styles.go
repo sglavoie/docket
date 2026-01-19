@@ -559,6 +559,20 @@ var (
 	SidebarFocusBadgeStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("226")). // Bright yellow like ActiveStyle
 				Bold(true)
+
+	// Sidebar card styles (compact boxes for sidebar sections)
+	SidebarCardStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorBorder).
+				Padding(0, 1)
+
+	SidebarCardFocusedStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary).
+				Padding(0, 1)
+
+	SidebarCardTitleStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted)
 )
 
 // Additional shared styles for common UI patterns

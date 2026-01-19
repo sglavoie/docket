@@ -566,6 +566,8 @@ func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.P
 	}
 
 	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render(strings.Repeat("─", m.width)))
+	b.WriteString("\n\n")
 	b.WriteString(BoldStyle.Render("Recent Tasks"))
 	b.WriteString("\n")
 
@@ -590,6 +592,8 @@ func (m *DashboardModel) renderStats(b *strings.Builder, project *models.Project
 		return
 	}
 
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render(strings.Repeat("─", m.width)))
 	b.WriteString("\n")
 
 	// Count by type
