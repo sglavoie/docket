@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // FilterType identifies the category of filter.
@@ -252,22 +251,8 @@ func (m *FilterViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the filter view.
 func (m *FilterViewModel) View() string {
-	var b strings.Builder
-
-	// Calculate box width
-	boxWidth := 46
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
-	}
-
 	// Build content
 	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Active Filters"))
-	content.WriteString("\n\n")
 
 	if len(m.items) == 0 {
 		content.WriteString(MutedStyle.Render("No filters active"))
@@ -298,37 +283,27 @@ func (m *FilterViewModel) View() string {
 	// Footer hint
 	content.WriteString("\n")
 	if len(m.items) > 0 {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("q close | 1-%d clear | c clear all", len(m.items))))
+		content.WriteString(HelpStyle.Render(fmt.Sprintf("q close | 1-%d clear | c clear all", len(m.items))))
 	} else {
-		content.WriteString(MutedStyle.Render("q close"))
+		content.WriteString(HelpStyle.Render("q close"))
 	}
 
-	// Apply box styling
-	box := FilterViewBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
+	// Build subtitle showing count
+	subtitle := ""
+	if len(m.items) > 0 {
+		subtitle = fmt.Sprintf("%d active", len(m.items))
 	}
 
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
+	// Calculate box width
+	boxWidth := 46
+	if m.width > 0 && m.width < boxWidth+10 {
+		boxWidth = m.width - 10
 	}
 
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Active Filters",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

@@ -58,17 +58,22 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Calculate split pane widths: 50/50
-	m.listWidth = width * 50 / 100
+	// Calculate inner content width matching renderOverlayCard:
+	// cardWidth = viewWidth - 4 (margin)
+	// content width = cardWidth - 6 (border 2 + padding 4) = viewWidth - 10
+	innerWidth := width - 10
+	if innerWidth < 60 {
+		innerWidth = 60
+	}
+
+	// Calculate split pane widths: 50/50 based on inner width
+	m.listWidth = innerWidth * 50 / 100
 	if m.listWidth < 30 {
 		m.listWidth = 30
 	}
-	if m.listWidth > width-30 {
-		m.listWidth = width - 30
-	}
-	m.previewWidth = width - m.listWidth - 1 // -1 for border
+	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
-	m.searchInput.Width = width - 4
+	m.searchInput.Width = innerWidth - 4
 }
 
 func (m *TaskJumperModel) Init() tea.Cmd {
@@ -190,47 +195,55 @@ func (m *TaskJumperModel) scoreTask(task *models.Task, query string) int {
 }
 
 func (m *TaskJumperModel) View() string {
-	var b strings.Builder
-
-	// Title
-	b.WriteString(TaskJumperTitleStyle.Render("Jump to Task"))
-	b.WriteString("\n")
+	var content strings.Builder
 
 	// Search input
-	b.WriteString(m.searchInput.View())
-	b.WriteString("\n\n")
+	content.WriteString(m.searchInput.View())
+	content.WriteString("\n\n")
 
 	// Handle edge cases
 	if len(m.tasks) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks in this project."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc or q to close"))
-		return b.String()
+		content.WriteString(MutedStyle.Render("No tasks in this project."))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Press Esc to close"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Jump to Task",
+			Subtitle: "0 tasks",
+			Centered: false,
+		})
+	}
+
+	// Calculate pane height for split view
+	paneHeight := m.height - 10 // Account for card border, title, input, footer
+	if paneHeight < 5 {
+		paneHeight = 5
 	}
 
 	// Split pane: list on left, preview on right
+	// Use m.listWidth and m.previewWidth which are calculated in SetSize
+	// to account for card border and padding
 	listContent := m.renderTaskList()
 	previewContent := m.renderPreview()
 
-	// Apply styles and join horizontally
-	listPane := TaskJumperListStyle.
-		Width(m.listWidth).
-		Height(m.height - 6). // Account for title, input, footer
-		Render(listContent)
-
-	previewPane := TaskJumperPreviewStyle.
-		Width(m.previewWidth).
-		Height(m.height - 6).
-		Render(previewContent)
-
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
-	b.WriteString("\n")
+	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
+	content.WriteString(splitPane)
+	content.WriteString("\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter select • Esc close")
-	b.WriteString(footer)
+	content.WriteString(HelpStyle.Render("↑↓ nav • Enter • Esc"))
 
-	return b.String()
+	// Build subtitle showing count
+	subtitle := fmt.Sprintf("%d tasks", len(m.tasks))
+	if len(m.filtered) != len(m.tasks) {
+		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.tasks))
+	}
+
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Jump to Task",
+		Subtitle: subtitle,
+		Centered: false,
+	})
 }
 
 // renderTaskList renders the filtered task list.
@@ -299,12 +312,17 @@ func (m *TaskJumperModel) renderPreview() string {
 	task := m.filtered[m.cursor]
 	var b strings.Builder
 
-	// Header with type and title
+	// Header with type and title (truncate to fit preview width)
 	typeStyle := GetTypeStyle(string(task.Type))
+	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
+	maxTitleLen := m.previewWidth - len(titlePrefix) - 4 // -4 for padding/margin
+	if maxTitleLen < 10 {
+		maxTitleLen = 10
+	}
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		task.Title)
+		util.Truncate(task.Title, maxTitleLen))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 
@@ -371,6 +389,10 @@ func (m *TaskJumperModel) renderPreview() string {
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 			lines = append(lines, "...")
+		}
+		// Truncate each line to fit preview width
+		for i, line := range lines {
+			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
 		b.WriteString(strings.Join(lines, "\n"))
 	}

@@ -141,10 +141,6 @@ func (m *TrashedProjectsModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	content.WriteString(TitleStyle.Render(m.Config.Title))
-	content.WriteString("\n")
-
 	// Confirmation prompt or keybinding hints
 	if m.confirmPurge && m.purgeTarget != nil {
 		prompt := fmt.Sprintf("PERMANENTLY delete '%s'? (y/n)", m.purgeTarget.Slug)
@@ -168,5 +164,13 @@ func (m *TrashedProjectsModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.RenderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Build subtitle
+	subtitle := fmt.Sprintf("%d projects", len(m.Items))
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    m.Config.Title,
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

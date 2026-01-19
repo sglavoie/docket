@@ -286,7 +286,7 @@ func (p *BasePicker[T]) RenderFooter() string {
 	return MutedStyle.Render("enter select | / search | esc cancel")
 }
 
-// RenderInBox renders the complete picker UI in a centered box.
+// RenderInBox renders the complete picker UI in a centered box with titled border.
 func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
 	boxWidth := p.Config.BoxWidth
 	if boxWidth == 0 {
@@ -297,17 +297,6 @@ func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisib
 	}
 
 	var content strings.Builder
-
-	// Title
-	content.WriteString(TitleStyle.Render(titleContent))
-	content.WriteString("\n")
-
-	// Header content (e.g., task info, selection count)
-	if headerContent != "" {
-		content.WriteString(headerContent)
-		content.WriteString("\n")
-	}
-	content.WriteString("\n")
 
 	// Search bar
 	content.WriteString(p.RenderSearchBar())
@@ -325,7 +314,12 @@ func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisib
 	content.WriteString("\n")
 	content.WriteString(p.RenderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, p.Width(), p.Height(), TagManagerBoxStyle)
+	return renderOverlayCard(content.String(), p.Width(), p.Height(), OverlayCardConfig{
+		Title:    titleContent,
+		Subtitle: headerContent,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }
 
 // pluralize returns singular if count is 1, plural otherwise.

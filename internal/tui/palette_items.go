@@ -84,17 +84,26 @@ func (m *CommandPaletteModel) IsActionMode() bool {
 func (m *CommandPaletteModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.searchInput.Width = width - 4
 
-	// Calculate split pane widths: 55% list, 45% preview
-	m.listWidth = width * 55 / 100
+	// Calculate inner content width matching renderOverlayCard:
+	// cardWidth = viewWidth - 4 (margin)
+	// content width = cardWidth - 6 (border 2 + padding 4) = viewWidth - 10
+	innerWidth := width - 10
+	if innerWidth < 60 {
+		innerWidth = 60
+	}
+
+	m.searchInput.Width = innerWidth - 4
+
+	// Calculate split pane widths: 55% list, 45% preview based on inner width
+	m.listWidth = innerWidth * 55 / 100
 	if m.listWidth < 35 {
 		m.listWidth = 35
 	}
-	if m.listWidth > width-25 {
-		m.listWidth = width - 25
+	if m.listWidth > innerWidth-25 {
+		m.listWidth = innerWidth - 25
 	}
-	m.previewWidth = width - m.listWidth - 1 // -1 for border
+	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 }
 
 // loadAllItems aggregates commands, tasks, projects, tags, and sections into PaletteItems.

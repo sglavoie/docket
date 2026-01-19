@@ -167,12 +167,6 @@ func (m *SectionPickerModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	content.WriteString(TitleStyle.Render(m.Config.Title))
-	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render(fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))))
-	content.WriteString("\n\n")
-
 	// Search bar
 	content.WriteString(m.RenderSearchBar())
 
@@ -195,5 +189,12 @@ func (m *SectionPickerModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.RenderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Assign Section",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

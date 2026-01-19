@@ -155,10 +155,6 @@ func (m *ContextPickerModel) View() string {
 func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent string) string {
 	var content strings.Builder
 
-	// Title
-	content.WriteString(TitleStyle.Render(m.Config.Title))
-	content.WriteString("\n\n")
-
 	// Search bar
 	content.WriteString(m.RenderSearchBar())
 
@@ -228,5 +224,16 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 	content.WriteString("\n")
 	content.WriteString(m.RenderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Build subtitle showing count
+	subtitle := fmt.Sprintf("%d contexts", len(m.Items)-1) // -1 for "All Contexts" option
+	if len(m.Items) == 1 {
+		subtitle = "No contexts defined"
+	}
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Filter by Context",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

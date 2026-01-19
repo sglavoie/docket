@@ -129,19 +129,6 @@ func (m *ProjectCycleManagerModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	content.WriteString(TitleStyle.Render("Project Cycle Manager"))
-	content.WriteString("\n")
-
-	// Selection count
-	selectedCount := len(m.Selected)
-	if selectedCount == 0 {
-		content.WriteString(MutedStyle.Render("No projects selected for cycling"))
-	} else {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("Selected: %d %s", selectedCount, pluralize(selectedCount, "project", "projects"))))
-	}
-	content.WriteString("\n\n")
-
 	// Search bar
 	content.WriteString(m.RenderSearchBar())
 
@@ -159,5 +146,19 @@ func (m *ProjectCycleManagerModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.RenderFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Build subtitle from selection count
+	selectedCount := len(m.Selected)
+	var subtitle string
+	if selectedCount == 0 {
+		subtitle = "No projects selected"
+	} else {
+		subtitle = fmt.Sprintf("%d %s selected", selectedCount, pluralize(selectedCount, "project", "projects"))
+	}
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Project Cycle",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

@@ -298,20 +298,6 @@ func (m *BulkTagSelectorModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	titleStyle := BoldStyle.Copy().Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(m.Config.Title))
-	content.WriteString("\n")
-
-	// Header with selection count
-	selectedCount := len(m.Selected)
-	if selectedCount == 0 {
-		content.WriteString(MutedStyle.Render("No tags selected"))
-	} else {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))))
-	}
-	content.WriteString("\n\n")
-
 	// Search bar
 	content.WriteString(m.RenderSearchBar())
 
@@ -326,7 +312,21 @@ func (m *BulkTagSelectorModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.renderCustomFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Build subtitle from selection count
+	selectedCount := len(m.Selected)
+	var subtitle string
+	if selectedCount == 0 {
+		subtitle = "No tags selected"
+	} else {
+		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
+	}
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    m.Config.Title,
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }
 
 // renderCustomFooter renders the footer with 'a' key for adding tags.
@@ -346,11 +346,6 @@ func (m *BulkTagSelectorModel) renderCustomFooter() string {
 func (m *BulkTagSelectorModel) renderAddTagMode() string {
 	var content strings.Builder
 
-	// Title
-	titleStyle := BoldStyle.Copy().Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Add New Tag"))
-	content.WriteString("\n\n")
-
 	// Instructions
 	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
 	content.WriteString("\n\n")
@@ -369,7 +364,11 @@ func (m *BulkTagSelectorModel) renderAddTagMode() string {
 	// Footer
 	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
 
-	return RenderCenteredBox(content.String(), 50, m.Width(), m.Height(), TagManagerBoxStyle)
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Add New Tag",
+		Width:    50,
+		Centered: true,
+	})
 }
 
 // NewTagSelectorModel creates a new tag selector.
@@ -588,20 +587,6 @@ func (m *TagSelectorModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	titleStyle := BoldStyle.Copy().Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render(m.Config.Title))
-	content.WriteString("\n")
-
-	// Header with selection count
-	selectedCount := len(m.Selected)
-	if selectedCount == 0 {
-		content.WriteString(MutedStyle.Render("No tags selected"))
-	} else {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))))
-	}
-	content.WriteString("\n\n")
-
 	// Search bar
 	content.WriteString(m.RenderSearchBar())
 
@@ -616,7 +601,21 @@ func (m *TagSelectorModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.renderCustomFooter())
 
-	return RenderCenteredBox(content.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	// Build subtitle from selection count
+	selectedCount := len(m.Selected)
+	var subtitle string
+	if selectedCount == 0 {
+		subtitle = "No tags selected"
+	} else {
+		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
+	}
+
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    m.Config.Title,
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }
 
 // renderCustomFooter renders the footer with 'a' key for adding tags.
@@ -636,11 +635,6 @@ func (m *TagSelectorModel) renderCustomFooter() string {
 func (m *TagSelectorModel) renderAddTagMode() string {
 	var content strings.Builder
 
-	// Title
-	titleStyle := BoldStyle.Copy().Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Add New Tag"))
-	content.WriteString("\n\n")
-
 	// Instructions
 	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
 	content.WriteString("\n\n")
@@ -659,5 +653,9 @@ func (m *TagSelectorModel) renderAddTagMode() string {
 	// Footer
 	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
 
-	return RenderCenteredBox(content.String(), 50, m.Width(), m.Height(), TagManagerBoxStyle)
+	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Add New Tag",
+		Width:    50,
+		Centered: true,
+	})
 }

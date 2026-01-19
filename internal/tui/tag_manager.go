@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -317,22 +316,8 @@ func (m *TagManagerModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 // View renders the tag manager view.
 func (m *TagManagerModel) View() string {
-	var b strings.Builder
-
-	// Calculate box width
-	boxWidth := 46
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
-	}
-
 	// Build content
 	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Tag Manager"))
-	content.WriteString("\n\n")
 
 	// Show add tag input if in add mode
 	if m.addTagMode {
@@ -380,41 +365,31 @@ func (m *TagManagerModel) View() string {
 	// Footer hint
 	content.WriteString("\n")
 	if m.addTagMode {
-		content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
+		content.WriteString(HelpStyle.Render("enter add tag | esc cancel"))
 	} else if m.renameMode {
-		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
+		content.WriteString(HelpStyle.Render("enter confirm | esc cancel"))
 	} else if len(m.tags) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | a add | r rename | d del | q close"))
+		content.WriteString(HelpStyle.Render("j/k nav | enter filter | a add | r rename | d del | q close"))
 	} else {
-		content.WriteString(MutedStyle.Render("a add tag | q close"))
+		content.WriteString(HelpStyle.Render("a add tag | q close"))
 	}
 
-	// Apply box styling
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
+	// Build subtitle showing count
+	subtitle := ""
+	if len(m.tags) > 0 {
+		subtitle = fmt.Sprintf("%d tags", len(m.tags))
 	}
 
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
+	// Calculate box width
+	boxWidth := 46
+	if m.width > 0 && m.width < boxWidth+10 {
+		boxWidth = m.width - 10
 	}
 
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Tag Manager",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }

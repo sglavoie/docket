@@ -15,15 +15,7 @@ var HighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Bold(true)
 
 // View implements tea.Model.
 func (m *CommandPaletteModel) View() string {
-	var b strings.Builder
-
-	// Title - changes based on mode
-	if m.actionMode {
-		b.WriteString(TitleStyle.Render("Actions"))
-	} else {
-		b.WriteString(TitleStyle.Render("Command Palette"))
-	}
-	b.WriteString("\n")
+	var content strings.Builder
 
 	// In action mode, show which item we're acting on
 	if m.actionMode {
@@ -31,36 +23,46 @@ func (m *CommandPaletteModel) View() string {
 		if m.actionItem.Description != "" {
 			itemDesc = fmt.Sprintf("%s · %s", m.actionItem.Name, m.actionItem.Description)
 		}
-		b.WriteString(MutedStyle.Render(itemDesc))
-		b.WriteString("\n\n")
+		content.WriteString(MutedStyle.Render(itemDesc))
+		content.WriteString("\n\n")
 	} else {
 		// Search input (only in search mode)
-		b.WriteString(m.searchInput.View())
+		content.WriteString(m.searchInput.View())
 		// Show history indicator when browsing history
 		if m.searchHistoryIndex >= 0 && len(m.searchHistory) > 0 {
 			historyHint := fmt.Sprintf(" %s",
 				MutedStyle.Render(fmt.Sprintf("(history %d/%d)", m.searchHistoryIndex+1, len(m.searchHistory))))
-			b.WriteString(historyHint)
+			content.WriteString(historyHint)
 		}
-		b.WriteString("\n\n")
+		content.WriteString("\n\n")
 	}
 
 	// Handle edge cases
 	if len(m.allItems) == 0 {
-		b.WriteString(MutedStyle.Render("No items available."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		content.WriteString(MutedStyle.Render("No items available."))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Press Esc to close"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Command Palette",
+			Subtitle: "0 items",
+			Centered: false,
+		})
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if !m.actionMode && len(m.filteredItems) == 0 && query != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
-		b.WriteString("\n")
-		b.WriteString(HelpStyle.Render("     :tag for tags • :sec for sections • or clear to browse all"))
-		return b.String()
+		content.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
+		content.WriteString("\n")
+		content.WriteString(HelpStyle.Render("     :tag for tags • :sec for sections • or clear to browse all"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Command Palette",
+			Subtitle: fmt.Sprintf("0/%d matching", len(m.allItems)),
+			Centered: false,
+		})
 	}
 
 	// Render content based on mode
@@ -71,38 +73,30 @@ func (m *CommandPaletteModel) View() string {
 		listContent = m.renderItemList()
 	}
 
-	paneHeight := m.height - 6 // Account for title, input, spacing, and footer
+	paneHeight := m.height - 10 // Account for card border, title, input, spacing, and footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
 
 	// Compact mode: full-width list, no preview
+	// Use m.listWidth + m.previewWidth for full inner width (calculated in SetSize)
 	if m.compactMode {
+		innerWidth := m.listWidth + m.previewWidth + 1 // +1 for separator that's not used
 		listPane := TaskJumperListStyle.
-			Width(m.width - 2).
+			Width(innerWidth).
 			Height(paneHeight).
 			MaxHeight(paneHeight).
 			Render(listContent)
-		b.WriteString(listPane)
-		b.WriteString("\n")
+		content.WriteString(listPane)
+		content.WriteString("\n")
 	} else {
 		// Split pane: list on left, preview on right
+		// Use m.listWidth and m.previewWidth which are calculated in SetSize
+		// to account for card border and padding
 		previewContent := m.renderPreview()
-
-		listPane := TaskJumperListStyle.
-			Width(m.listWidth).
-			Height(paneHeight).
-			MaxHeight(paneHeight).
-			Render(listContent)
-
-		previewPane := TaskJumperPreviewStyle.
-			Width(m.previewWidth).
-			Height(paneHeight).
-			MaxHeight(paneHeight).
-			Render(previewContent)
-
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
-		b.WriteString("\n")
+		splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
+		content.WriteString(splitPane)
+		content.WriteString("\n")
 	}
 
 	// Footer with controls - different for each mode
@@ -112,9 +106,50 @@ func (m *CommandPaletteModel) View() string {
 	} else {
 		footer = HelpStyle.Render(m.buildFooter())
 	}
-	b.WriteString(footer)
+	content.WriteString(footer)
 
-	return b.String()
+	// Build subtitle showing count
+	title := "Command Palette"
+	if m.actionMode {
+		title = "Actions"
+	}
+
+	subtitle := m.buildSubtitle()
+
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    title,
+		Subtitle: subtitle,
+		Centered: false,
+	})
+}
+
+// buildSubtitle builds the subtitle showing item counts.
+func (m *CommandPaletteModel) buildSubtitle() string {
+	if m.actionMode {
+		return fmt.Sprintf("%d available", len(m.availableActions))
+	}
+
+	// Count by category
+	counts := make(map[ItemCategory]int)
+	for _, filtered := range m.filteredItems {
+		counts[filtered.Item.Category]++
+	}
+
+	var parts []string
+	if c := counts[ItemCategoryCommands]; c > 0 {
+		parts = append(parts, fmt.Sprintf("%dc", c))
+	}
+	if c := counts[ItemCategoryTasks]; c > 0 {
+		parts = append(parts, fmt.Sprintf("%dt", c))
+	}
+	if c := counts[ItemCategoryProjects]; c > 0 {
+		parts = append(parts, fmt.Sprintf("%dp", c))
+	}
+
+	if len(parts) == 0 {
+		return fmt.Sprintf("%d items", len(m.filteredItems))
+	}
+	return strings.Join(parts, " ")
 }
 
 // buildFooter constructs the footer text with navigation hints and category counts.
@@ -173,8 +208,8 @@ func (m *CommandPaletteModel) buildFooter() string {
 		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
 	}
 
-	// Build compact hints with descriptive labels
-	hints := "↑↓:nav • Enter • Tab:actions • ^H:+done • ^O:sort • ^P:view • Esc"
+	// Build compact hints
+	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • Esc"
 
 	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
 }

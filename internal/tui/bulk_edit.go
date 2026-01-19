@@ -617,10 +617,6 @@ func (m *BulkEditModel) View() string {
 
 	var content strings.Builder
 
-	// Title
-	content.WriteString(TitleStyle.Render(fmt.Sprintf("Bulk Edit: %d tasks", len(m.tasks))))
-	content.WriteString("\n\n")
-
 	// Status field
 	content.WriteString(m.renderStatusField())
 	content.WriteString("\n")
@@ -651,6 +647,9 @@ func (m *BulkEditModel) View() string {
 
 	// Footer
 	content.WriteString(m.renderFooter())
+
+	// Build subtitle
+	subtitle := fmt.Sprintf("%d tasks", len(m.tasks))
 
 	// Apply scroll offset for viewport management
 	fullContent := content.String()
@@ -689,10 +688,20 @@ func (m *BulkEditModel) View() string {
 			visible.WriteString(MutedStyle.Render("  ↓ scroll down for more"))
 		}
 
-		return RenderCenteredBox(visible.String(), boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+		return renderOverlayCard(visible.String(), m.Width(), m.Height(), OverlayCardConfig{
+			Title:    "Bulk Edit",
+			Subtitle: subtitle,
+			Width:    boxWidth,
+			Centered: true,
+		})
 	}
 
-	return RenderCenteredBox(fullContent, boxWidth, m.Width(), m.Height(), TagManagerBoxStyle)
+	return renderOverlayCard(fullContent, m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Bulk Edit",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		Centered: true,
+	})
 }
 
 // renderStatusField renders the status selection field.

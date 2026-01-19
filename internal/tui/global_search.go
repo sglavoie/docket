@@ -79,17 +79,22 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Calculate split pane widths: 50/50
-	m.listWidth = width * 50 / 100
+	// Calculate inner content width matching renderOverlayCard:
+	// cardWidth = viewWidth - 4 (margin)
+	// content width = cardWidth - 6 (border 2 + padding 4) = viewWidth - 10
+	innerWidth := width - 10
+	if innerWidth < 60 {
+		innerWidth = 60
+	}
+
+	// Calculate split pane widths: 50/50 based on inner width
+	m.listWidth = innerWidth * 50 / 100
 	if m.listWidth < 30 {
 		m.listWidth = 30
 	}
-	if m.listWidth > width-30 {
-		m.listWidth = width - 30
-	}
-	m.previewWidth = width - m.listWidth - 1 // -1 for border
+	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
-	m.searchInput.Width = width - 4
+	m.searchInput.Width = innerWidth - 4
 }
 
 func (m *GlobalSearchModel) Init() tea.Cmd {
@@ -221,62 +226,77 @@ func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) int {
 }
 
 func (m *GlobalSearchModel) View() string {
-	var b strings.Builder
+	var content strings.Builder
 
 	// Search input
-	b.WriteString(m.searchInput.View())
-	b.WriteString("\n")
+	content.WriteString(m.searchInput.View())
+	content.WriteString("\n\n")
 
 	// Handle edge cases
 	if len(m.allTasks) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks found in any project."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		content.WriteString(MutedStyle.Render("No tasks found in any project."))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Press Esc to close"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Global Search",
+			Subtitle: "0 tasks",
+			Centered: false,
+		})
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		b.WriteString(MutedStyle.Render("Type to search across all tasks..."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		content.WriteString(MutedStyle.Render("Type to search across all tasks..."))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Press Esc to close"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Global Search",
+			Subtitle: fmt.Sprintf("%d tasks", len(m.allTasks)),
+			Centered: false,
+		})
 	}
 
 	if len(m.filtered) == 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press Esc to close"))
-		return b.String()
+		content.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
+		content.WriteString("\n\n")
+		content.WriteString(HelpStyle.Render("Press Esc to close"))
+
+		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Global Search",
+			Subtitle: fmt.Sprintf("0/%d matching", len(m.allTasks)),
+			Centered: false,
+		})
+	}
+
+	// Calculate pane height for split view
+	paneHeight := m.height - 10 // Account for card border, title, input, footer
+	if paneHeight < 5 {
+		paneHeight = 5
 	}
 
 	// Split pane: list on left, preview on right
+	// Use m.listWidth and m.previewWidth which are calculated in SetSize
+	// to account for card border and padding
 	listContent := m.renderTaskList()
 	previewContent := m.renderPreview()
 
-	// Apply styles and join horizontally
-	// Use both Height (pads short content) and MaxHeight (truncates long content)
-	paneHeight := m.height - 5 // Account for input, newline, footer, status bar
-	listPane := TaskJumperListStyle.
-		Width(m.listWidth).
-		Height(paneHeight).
-		MaxHeight(paneHeight).
-		Render(listContent)
+	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
+	content.WriteString(splitPane)
+	content.WriteString("\n")
 
-	previewPane := TaskJumperPreviewStyle.
-		Width(m.previewWidth).
-		Height(paneHeight).
-		MaxHeight(paneHeight).
-		Render(previewContent)
+	// Footer - use shorter text to fit within card width
+	content.WriteString(HelpStyle.Render(fmt.Sprintf("↑↓ nav • Enter • Esc • %d results", len(m.filtered))))
 
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listPane, previewPane))
-	b.WriteString("\n")
+	// Build subtitle showing count
+	subtitle := fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
 
-	// Footer
-	footer := HelpStyle.Render(fmt.Sprintf("↑/↓ navigate • Enter select • Esc close • %d result(s)", len(m.filtered)))
-	b.WriteString(footer)
-
-	return b.String()
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Global Search",
+		Subtitle: subtitle,
+		Centered: false,
+	})
 }
 
 // renderTaskList renders the filtered task list.
@@ -312,22 +332,36 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		statusStyle := GetStatusStyle(string(task.Status))
 		statusIcon := statusStyle.Render(task.Status.Icon())
 
-		// Project name (truncated)
-		projectName := MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(result.Project.Slug, 10)))
+		// Project name (truncated to 8 chars to save space)
+		projectSlug := util.Truncate(result.Project.Slug, 8)
+		projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
 
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
-		// Title (truncated)
-		// Account for: cursor(2) + icons(4) + spaces(4) + ID(5) + project(12) = ~27
-		maxTitleLen := m.listWidth - 24
+		// Build prefix to measure its actual visual width
+		prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, typeIcon, statusIcon, shortID, projectName)
+		prefixWidth := lipgloss.Width(prefix)
+
+		// Title (truncated) - use measured prefix width for accuracy
+		// Subtract extra buffer to ensure no wrapping
+		maxTitleLen := m.listWidth - prefixWidth - 2
 		if maxTitleLen < 10 {
 			maxTitleLen = 10
 		}
 		title := util.Truncate(task.Title, maxTitleLen)
 
-		// Build line
-		line := fmt.Sprintf("%s%s %s %s %s %s", cursor, typeIcon, statusIcon, shortID, projectName, title)
+		// Build line and verify total width doesn't exceed listWidth
+		line := prefix + title
+		lineWidth := lipgloss.Width(line)
+		if lineWidth > m.listWidth {
+			// Truncate title further if still too wide
+			excess := lineWidth - m.listWidth + 3
+			if len(title) > excess {
+				title = util.Truncate(task.Title, maxTitleLen-excess)
+				line = prefix + title
+			}
+		}
 
 		if i == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)
@@ -356,12 +390,17 @@ func (m *GlobalSearchModel) renderPreview() string {
 	b.WriteString(BoldStyle.Render(project.Name))
 	b.WriteString("\n\n")
 
-	// Header with type and title
+	// Header with type and title (truncate to fit preview width)
 	typeStyle := GetTypeStyle(string(task.Type))
+	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
+	maxTitleLen := m.previewWidth - len(titlePrefix) - 4 // -4 for padding/margin
+	if maxTitleLen < 10 {
+		maxTitleLen = 10
+	}
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
-		task.Title)
+		util.Truncate(task.Title, maxTitleLen))
 	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
 	b.WriteString("\n\n")
 
@@ -428,6 +467,10 @@ func (m *GlobalSearchModel) renderPreview() string {
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 			lines = append(lines, "...")
+		}
+		// Truncate each line to fit preview width
+		for i, line := range lines {
+			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
 		b.WriteString(strings.Join(lines, "\n"))
 	}
