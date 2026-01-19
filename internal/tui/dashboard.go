@@ -121,6 +121,11 @@ func (m *DashboardModel) Refresh(cfg *config.Config) {
 	m.loadProjects()
 }
 
+// ResetCursor moves the cursor to the first project.
+func (m *DashboardModel) ResetCursor() {
+	m.cursor = 0
+}
+
 // SetSize sets the dashboard dimensions.
 func (m *DashboardModel) SetSize(width, height int) {
 	m.width = width

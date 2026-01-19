@@ -60,6 +60,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
+			m.dashboard.ResetCursor()
 		}
 		return true, nil
 
