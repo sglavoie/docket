@@ -7,169 +7,327 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// Messages for navigation
-type (
-	SelectProjectMsg        struct{ Project *models.Project }
-	BackMsg                 struct{}
-	RefreshMsg              struct{}
-	ErrorMsg                struct{ Err error }
-	CreateProjectMsg        struct{}
-	ProjectCreatedMsg       struct{ Project *models.Project }
-	ProjectArchivedMsg      struct{ Project *models.Project }
-	ProjectPinnedToggledMsg struct{ Project *models.Project }
-	ProjectDeletedMsg       struct{ Project *models.Project }
-	ProjectRestoredMsg      struct{ Project *models.Project }
-	EditProjectMsg          struct{ Project *models.Project }
-	ProjectUpdatedMsg       struct{ Project *models.Project }
-	SetCurrentProjectMsg    struct{ Project *models.Project }
+// =============================================================================
+// Navigation Messages
+// =============================================================================
 
-	// Task management messages
-	CreateTaskMsg        struct{ ParentTask *models.Task }
-	CreateNoteMsg        struct{ ParentTask *models.Task }
-	EditTaskMsg          struct{ Task *models.Task }
-	TaskCreatedMsg       struct{ Task *models.Task }
-	TaskUpdatedMsg       struct{ Task *models.Task }
-	TaskDeletedMsg       struct{ Task *models.Task }
-	TaskStatusChangedMsg struct{ Task *models.Task }
+// BackMsg requests navigation back to the previous view.
+type BackMsg struct{}
 
-	// External editor messages
-	EditTaskContentMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
-	TaskContentEditedMsg struct {
-		Task           *models.Task
-		Project        *models.Project
-		NewTitle       string
-		NewDescription string
-		Err            error
-	}
+// RefreshMsg requests a refresh of the current view's data.
+type RefreshMsg struct{}
 
-	// Glow view message
-	GlowViewMsg struct{ Task *models.Task }
+// QuitMsg requests application termination.
+type QuitMsg struct{}
 
-	// Scratchpad messages
-	ShowScratchpadMsg struct {
-		Project *models.Project
-	}
-	EditScratchpadMsg struct {
-		Project *models.Project
-	}
-	ScratchpadEditedMsg struct {
-		Project *models.Project
-		Err     error
-	}
+// ErrorMsg reports an error that should be displayed to the user.
+type ErrorMsg struct{ Err error }
 
-	// Settings messages
-	SettingsMsg      struct{}
-	SettingsSavedMsg struct{}
+// StatusClearMsg clears the status message after a timeout.
+type StatusClearMsg struct{}
 
-	// Due date messages
-	SetDueDateMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
+// =============================================================================
+// Project CRUD Messages
+// =============================================================================
 
-	// Dependency management messages
-	ManageDependenciesMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
+// SelectProjectMsg switches the current project view.
+type SelectProjectMsg struct{ Project *models.Project }
 
-	// Dependency viewer messages
-	ShowDependencyViewerMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
-	CloseDependencyViewerMsg    struct{}
-	DependencyViewerSelectMsg   struct{ Task *models.Task }
-	DependencyViewerViewDepsMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
+// CreateProjectMsg opens the project creator view.
+type CreateProjectMsg struct{}
 
-	// Undo messages
-	UndoCompletedMsg struct {
-		TasksBefore int
-		TasksAfter  int
-	}
-	ShowUndoHistoryMsg struct {
-		Project *models.Project
-	}
-	CloseUndoHistoryMsg struct{}
-	UndoPerformedMsg    struct {
-		Action string
-	}
+// EditProjectMsg opens the project editor for the given project.
+type EditProjectMsg struct{ Project *models.Project }
 
-	// Clipboard messages
-	CopyTaskTitleMsg     struct{ Task *models.Task }
-	CopyTaskDetailsMsg   struct{ Task *models.Task }
-	CopyTaskReferenceMsg struct{ Task *models.Task }
-	CopyTasksTitleMsg    struct{ Tasks []*models.Task }
-	CopyTasksDetailsMsg  struct{ Tasks []*models.Task }
-	TaskCopiedMsg        struct {
-		Count      int
-		FullDetail bool
-	}
+// ProjectCreatedMsg signals a new project was created.
+type ProjectCreatedMsg struct{ Project *models.Project }
 
-	// Status message
-	StatusClearMsg struct{}
+// ProjectUpdatedMsg signals a project's metadata was updated.
+type ProjectUpdatedMsg struct{ Project *models.Project }
 
-	// Move blocked message (when task can't move due to completion boundary)
-	MoveBlockedMsg struct{ Reason string }
+// ProjectArchivedMsg signals a project was archived.
+type ProjectArchivedMsg struct{ Project *models.Project }
 
-	// Parent selector messages
-	OpenParentSelectorMsg struct {
-		ValidParents []*models.Task
-		CurrentID    *string  // Pre-select current parent
-		AllowNone    bool     // Whether "None" is valid option
-		Source       ViewType // Which view opened it
-	}
-	ParentSelectedMsg struct {
-		ParentID *string  // nil means "None"
-		Source   ViewType // Which view to send result to
-	}
-	CloseParentSelectorMsg struct{}
+// ProjectRestoredMsg signals an archived project was restored.
+type ProjectRestoredMsg struct{ Project *models.Project }
 
-	// Priority view messages
-	ShowPriorityViewMsg struct {
-		Project *models.Project
-	}
-	ClosePriorityViewMsg struct{}
+// ProjectDeletedMsg signals a project was permanently deleted.
+type ProjectDeletedMsg struct{ Project *models.Project }
 
-	// Quick capture messages
-	ShowQuickCaptureMsg struct {
-		Project *models.Project
-	}
-	CloseQuickCaptureMsg struct{}
+// ProjectPinnedToggledMsg signals a project's pinned state changed.
+type ProjectPinnedToggledMsg struct{ Project *models.Project }
 
-	// Bulk capture messages
-	ShowBulkCaptureMsg struct {
-		Project *models.Project
-	}
-	CloseBulkCaptureMsg struct{}
+// SetCurrentProjectMsg sets the default/current project.
+type SetCurrentProjectMsg struct{ Project *models.Project }
 
-	// Task comments messages
-	ShowTaskCommentsMsg struct {
-		Task    *models.Task
-		Project *models.Project
-	}
-	CloseTaskCommentsMsg struct{}
-	CommentAddedMsg      struct{ Task *models.Task }
-	CommentDeletedMsg    struct{ Task *models.Task }
-	CommentEditedMsg     struct{ Task *models.Task }
+// =============================================================================
+// Task CRUD Messages
+// =============================================================================
 
-	// Project cycling messages
-	CycleProjectMsg struct {
-		Forward bool // true = next, false = previous
-	}
+// CreateTaskMsg opens the task creator, optionally with a parent task.
+type CreateTaskMsg struct{ ParentTask *models.Task }
 
-	// Dashboard toggle messages
-	ToggleRecentTasksMsg struct{}
+// CreateNoteMsg opens the note creator under a parent task.
+type CreateNoteMsg struct{ ParentTask *models.Task }
 
-	// Application control messages
-	QuitMsg struct{} // Request to quit the application
-)
+// EditTaskMsg opens the task editor for the given task.
+type EditTaskMsg struct{ Task *models.Task }
+
+// TaskCreatedMsg signals a new task was created.
+type TaskCreatedMsg struct{ Task *models.Task }
+
+// TaskUpdatedMsg signals a task was modified.
+type TaskUpdatedMsg struct{ Task *models.Task }
+
+// TaskDeletedMsg signals a task was deleted.
+type TaskDeletedMsg struct{ Task *models.Task }
+
+// TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
+type TaskStatusChangedMsg struct{ Task *models.Task }
+
+// =============================================================================
+// External Editor Messages
+// =============================================================================
+
+// EditTaskContentMsg launches external editor for task title/description.
+type EditTaskContentMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// TaskContentEditedMsg returns results from external editor.
+type TaskContentEditedMsg struct {
+	Task           *models.Task
+	Project        *models.Project
+	NewTitle       string
+	NewDescription string
+	Err            error
+}
+
+// GlowViewMsg opens glow viewer for task markdown.
+type GlowViewMsg struct{ Task *models.Task }
+
+// =============================================================================
+// Scratchpad Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowScratchpadMsg opens the scratchpad viewer.
+type ShowScratchpadMsg struct {
+	Project *models.Project
+}
+
+// EditScratchpadMsg launches external editor for scratchpad.
+type EditScratchpadMsg struct {
+	Project *models.Project
+}
+
+// ScratchpadEditedMsg returns results from scratchpad editor.
+type ScratchpadEditedMsg struct {
+	Project *models.Project
+	Err     error
+}
+
+// =============================================================================
+// Settings Messages
+// =============================================================================
+
+// SettingsMsg opens the settings view.
+type SettingsMsg struct{}
+
+// SettingsSavedMsg signals settings were saved.
+type SettingsSavedMsg struct{}
+
+// =============================================================================
+// Due Date Messages
+// =============================================================================
+
+// SetDueDateMsg opens the date input view for a task.
+type SetDueDateMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// =============================================================================
+// Dependency Messages (Show/Close Pattern)
+// =============================================================================
+
+// ManageDependenciesMsg opens the dependency selector for a task.
+type ManageDependenciesMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// ShowDependencyViewerMsg opens read-only dependency visualization.
+type ShowDependencyViewerMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseDependencyViewerMsg closes the dependency viewer.
+type CloseDependencyViewerMsg struct{}
+
+// DependencyViewerSelectMsg navigates to a task from dependency viewer.
+type DependencyViewerSelectMsg struct{ Task *models.Task }
+
+// DependencyViewerViewDepsMsg opens dependency viewer for a different task.
+type DependencyViewerViewDepsMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// =============================================================================
+// Undo Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowUndoHistoryMsg opens the undo history view.
+type ShowUndoHistoryMsg struct {
+	Project *models.Project
+}
+
+// CloseUndoHistoryMsg closes the undo history view.
+type CloseUndoHistoryMsg struct{}
+
+// UndoPerformedMsg signals an undo operation completed.
+type UndoPerformedMsg struct {
+	Action string
+}
+
+// UndoCompletedMsg signals tasks were restored from undo.
+type UndoCompletedMsg struct {
+	TasksBefore int
+	TasksAfter  int
+}
+
+// =============================================================================
+// Clipboard Messages
+// =============================================================================
+
+// CopyTaskTitleMsg copies a single task's title to clipboard.
+type CopyTaskTitleMsg struct{ Task *models.Task }
+
+// CopyTaskDetailsMsg copies a single task's full details to clipboard.
+type CopyTaskDetailsMsg struct{ Task *models.Task }
+
+// CopyTaskReferenceMsg copies a task reference (e.g., #123) to clipboard.
+type CopyTaskReferenceMsg struct{ Task *models.Task }
+
+// CopyTasksTitleMsg copies multiple tasks' titles to clipboard.
+type CopyTasksTitleMsg struct{ Tasks []*models.Task }
+
+// CopyTasksDetailsMsg copies multiple tasks' full details to clipboard.
+type CopyTasksDetailsMsg struct{ Tasks []*models.Task }
+
+// TaskCopiedMsg confirms task(s) were copied to clipboard.
+type TaskCopiedMsg struct {
+	Count      int
+	FullDetail bool
+}
+
+// =============================================================================
+// Parent Selector Messages (Show/Close/Done Pattern)
+// =============================================================================
+
+// OpenParentSelectorMsg opens the parent task selector.
+type OpenParentSelectorMsg struct {
+	ValidParents []*models.Task
+	CurrentID    *string  // Pre-select current parent
+	AllowNone    bool     // Whether "None" is valid option
+	Source       ViewType // Which view opened it
+}
+
+// ParentSelectedMsg returns the selected parent from parent selector.
+type ParentSelectedMsg struct {
+	ParentID *string  // nil means "None"
+	Source   ViewType // Which view to send result to
+}
+
+// CloseParentSelectorMsg closes the parent selector without selection.
+type CloseParentSelectorMsg struct{}
+
+// =============================================================================
+// Priority View Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowPriorityViewMsg opens the priority overview.
+type ShowPriorityViewMsg struct {
+	Project *models.Project
+}
+
+// ClosePriorityViewMsg closes the priority overview.
+type ClosePriorityViewMsg struct{}
+
+// =============================================================================
+// Quick Capture Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowQuickCaptureMsg opens the quick capture input.
+type ShowQuickCaptureMsg struct {
+	Project *models.Project
+}
+
+// CloseQuickCaptureMsg closes quick capture.
+type CloseQuickCaptureMsg struct{}
+
+// =============================================================================
+// Bulk Capture Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowBulkCaptureMsg opens the bulk capture input.
+type ShowBulkCaptureMsg struct {
+	Project *models.Project
+}
+
+// CloseBulkCaptureMsg closes bulk capture.
+type CloseBulkCaptureMsg struct{}
+
+// =============================================================================
+// Task Comments Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTaskCommentsMsg opens the comments view for a task.
+type ShowTaskCommentsMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskCommentsMsg closes the comments view.
+type CloseTaskCommentsMsg struct{}
+
+// CommentAddedMsg signals a comment was added.
+type CommentAddedMsg struct{ Task *models.Task }
+
+// CommentDeletedMsg signals a comment was deleted.
+type CommentDeletedMsg struct{ Task *models.Task }
+
+// CommentEditedMsg signals a comment was edited.
+type CommentEditedMsg struct{ Task *models.Task }
+
+// =============================================================================
+// Project Cycling Messages
+// =============================================================================
+
+// CycleProjectMsg cycles to next/previous project.
+type CycleProjectMsg struct {
+	Forward bool // true = next, false = previous
+}
+
+// =============================================================================
+// Dashboard Messages
+// =============================================================================
+
+// ToggleRecentTasksMsg toggles recent tasks visibility in dashboard.
+type ToggleRecentTasksMsg struct{}
+
+// =============================================================================
+// Misc Messages
+// =============================================================================
+
+// MoveBlockedMsg signals a task move was blocked (e.g., completion boundary).
+type MoveBlockedMsg struct{ Reason string }
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
 // statusTimeout returns a command that clears the status message after the given duration.
 func statusTimeout(d time.Duration) tea.Cmd {
