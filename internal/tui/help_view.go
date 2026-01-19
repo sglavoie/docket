@@ -24,17 +24,19 @@ type HelpProvider interface {
 
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
-	items         []HelpItem
-	filteredItems []HelpItem
-	viewport      viewport.Model
-	searchInput   textinput.Model
-	searchMode    bool
-	searchQuery   string
-	width         int
-	height        int
-	sourceView    ViewType
-	viewName      string
-	ready         bool
+	items            []HelpItem
+	filteredItems    []HelpItem
+	viewport         viewport.Model
+	searchInput      textinput.Model
+	searchMode       bool
+	searchQuery      string
+	width            int
+	height           int
+	sourceView       ViewType
+	viewName         string
+	ready            bool
+	sectionPositions []int // Line numbers where each section header starts
+	currentSection   int   // Current section index for n/N navigation
 }
 
 // NewHelpViewModel creates a new help view model.
@@ -147,6 +149,36 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.HalfViewUp()
 		case "pgdown", "ctrl+d":
 			m.viewport.HalfViewDown()
+		case "n":
+			// Next section (with wrap)
+			if len(m.sectionPositions) > 0 {
+				startOffset := m.viewport.YOffset
+				for i := 0; i < len(m.sectionPositions); i++ {
+					m.currentSection++
+					if m.currentSection >= len(m.sectionPositions) {
+						m.currentSection = 0
+					}
+					m.goToSection(m.currentSection)
+					if m.viewport.YOffset != startOffset {
+						break
+					}
+				}
+			}
+		case "N":
+			// Previous section (with wrap)
+			if len(m.sectionPositions) > 0 {
+				startOffset := m.viewport.YOffset
+				for i := 0; i < len(m.sectionPositions); i++ {
+					m.currentSection--
+					if m.currentSection < 0 {
+						m.currentSection = len(m.sectionPositions) - 1
+					}
+					m.goToSection(m.currentSection)
+					if m.viewport.YOffset != startOffset {
+						break
+					}
+				}
+			}
 		}
 	}
 
@@ -181,6 +213,7 @@ func (m *HelpViewModel) filterItems() {
 
 func (m *HelpViewModel) renderContent() string {
 	if len(m.filteredItems) == 0 {
+		m.sectionPositions = nil
 		return MutedStyle.Render("No matching help items.")
 	}
 
@@ -196,6 +229,10 @@ func (m *HelpViewModel) renderContent() string {
 		}
 		categories[item.Category] = append(categories[item.Category], item)
 	}
+
+	// Track section positions for n/N navigation
+	m.sectionPositions = make([]int, 0, len(categoryOrder))
+	lineCount := 0
 
 	// Calculate column widths
 	// Each column: keyWidth + separator(2) + descWidth
@@ -221,11 +258,19 @@ func (m *HelpViewModel) renderContent() string {
 	for i, category := range categoryOrder {
 		if i > 0 {
 			b.WriteString("\n")
+			lineCount++
 		}
 
-		// Category header
-		b.WriteString(HelpCategoryStyle.Render(category))
+		// Record section position before writing header
+		// HelpCategoryStyle has MarginTop(1) which adds a blank line before the header
+		// We want to position at the blank line so the header appears consistently at top
+		m.sectionPositions = append(m.sectionPositions, lineCount)
+
+		// Category header - count actual lines in rendered output
+		header := HelpCategoryStyle.Render(category)
+		b.WriteString(header)
 		b.WriteString("\n")
+		lineCount += strings.Count(header, "\n") + 1
 
 		items := categories[category]
 
@@ -253,10 +298,24 @@ func (m *HelpViewModel) renderContent() string {
 			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, "    ", col2)
 			b.WriteString(row)
 			b.WriteString("\n")
+			// Count actual lines in row (may be multi-line due to wrapped descriptions)
+			lineCount += strings.Count(row, "\n") + 1
 		}
 	}
 
 	return b.String()
+}
+
+// goToSection scrolls the viewport to show the given section index at the top.
+func (m *HelpViewModel) goToSection(idx int) {
+	if idx < 0 || idx >= len(m.sectionPositions) {
+		return
+	}
+	if idx == 0 {
+		m.viewport.GotoTop()
+	} else {
+		m.viewport.SetYOffset(m.sectionPositions[idx])
+	}
 }
 
 func (m *HelpViewModel) View() string {
@@ -293,7 +352,7 @@ func (m *HelpViewModel) View() string {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("ctrl+c | esc: back | ? close | / filter | j/k scroll | g/G top/bottom%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("esc: back | ? close | / filter | j/k scroll | n/N sections | g/G top/bottom%s", scrollPercent))
 	b.WriteString(footer)
 
 	return b.String()
