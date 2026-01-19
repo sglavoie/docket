@@ -56,10 +56,14 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 		} else if m.confirmAction == "bulk-delete" {
 			m.confirmAction = ""
 			return m, m.bulkDeleteTasks()
+		} else if m.confirmAction == "bulk-status" {
+			m.confirmAction = ""
+			return m, m.executePendingBulkStatus()
 		}
 	case "n", "N", "esc":
 		m.confirmAction = ""
 		m.deleteTarget = nil
+		m.clearPendingBulkStatus()
 		return m, nil
 	}
 	return m, nil

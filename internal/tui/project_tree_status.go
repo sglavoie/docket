@@ -56,6 +56,8 @@ func (m *ProjectTreeModel) handleStatusChange(
 // Unlike handleStatusChange, this variant can skip individual tasks based on validation
 // and reports skipped tasks via an error message. Used for operations like complete
 // where dependency checking may block individual tasks.
+//
+// In multi-select mode with blocked tasks, shows a confirmation prompt before proceeding.
 func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	visible []*TreeNode,
 	predicate statusPredicate,
@@ -63,35 +65,47 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	action statusAction,
 	actionVerb string,
 	undoAction string,
+	targetStatus models.TaskStatus,
 ) (bool, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		var skippedIDs []string
-		actionCount := 0
+		// Analyze which tasks can be changed vs blocked
+		var validTasks []*models.Task
+		blockedCount := 0
 		for _, task := range m.getSelectedTasks() {
 			if !predicate(task) {
 				continue
 			}
 			if errMsg := validator(task); errMsg != "" {
-				skippedIDs = append(skippedIDs, fmt.Sprintf("#%d", task.ShortID))
+				blockedCount++
 				continue
 			}
+			validTasks = append(validTasks, task)
+		}
+
+		// If there are blocked tasks, show confirmation before proceeding
+		if blockedCount > 0 && len(validTasks) > 0 {
+			m.pendingBulkStatus = targetStatus
+			m.pendingBulkTasks = validTasks
+			m.pendingBulkBlockedCount = blockedCount
+			m.confirmAction = "bulk-status"
+			return true, nil
+		}
+
+		// If all tasks are blocked, show error
+		if blockedCount > 0 && len(validTasks) == 0 {
+			m.clearSelection()
+			return true, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("no tasks %s: %d have incomplete dependencies", actionVerb, blockedCount)}
+			}
+		}
+
+		// No blocked tasks, proceed directly
+		for _, task := range validTasks {
 			action(task)
-			actionCount++
 		}
 		m.clearSelection()
-		if actionCount > 0 {
-			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", actionCount))
-		}
-		if len(skippedIDs) > 0 {
-			var msg string
-			if actionCount == 0 {
-				msg = fmt.Sprintf("no tasks %s: %s have incomplete dependencies", actionVerb, strings.Join(skippedIDs, ", "))
-			} else {
-				msg = fmt.Sprintf("%s %d, skipped %s (incomplete dependencies)", actionVerb, actionCount, strings.Join(skippedIDs, ", "))
-			}
-			return true, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
-				return ErrorMsg{Err: fmt.Errorf("%s", msg)}
-			})
+		if len(validTasks) > 0 {
+			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", len(validTasks)))
 		}
 		return true, m.saveAndRefresh()
 	}
@@ -141,6 +155,7 @@ func (m *ProjectTreeModel) handleCompleteTask(visible []*TreeNode) (bool, tea.Cm
 		func(t *models.Task) { t.Complete() },
 		"completed",
 		"Complete Task",
+		models.StatusDone,
 	)
 }
 
@@ -283,4 +298,42 @@ func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool,
 		}
 	}
 	return true, nil
+}
+
+// executePendingBulkStatus applies the pending bulk status change after confirmation.
+func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
+	if len(m.pendingBulkTasks) == 0 {
+		m.clearPendingBulkStatus()
+		return nil
+	}
+
+	// Apply status to all pending tasks
+	for _, task := range m.pendingBulkTasks {
+		switch m.pendingBulkStatus {
+		case models.StatusDone:
+			task.Complete()
+		case models.StatusInProgress:
+			task.Start()
+		case models.StatusBlocked:
+			task.Block()
+		case models.StatusCancelled:
+			task.Cancel()
+		case models.StatusTodo:
+			task.Reopen()
+		}
+	}
+
+	count := len(m.pendingBulkTasks)
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.pendingBulkStatus))
+	m.clearSelection()
+	m.clearPendingBulkStatus()
+
+	return m.saveAndRefresh()
+}
+
+// clearPendingBulkStatus clears the pending bulk status state.
+func (m *ProjectTreeModel) clearPendingBulkStatus() {
+	m.pendingBulkStatus = ""
+	m.pendingBulkTasks = nil
+	m.pendingBulkBlockedCount = 0
 }

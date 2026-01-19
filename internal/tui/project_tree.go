@@ -135,6 +135,11 @@ type ProjectTreeModel struct {
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
 	pendingUndoContext string // Additional context (e.g., task title)
 
+	// Pending bulk status change (for confirmation prompts)
+	pendingBulkStatus       models.TaskStatus // Status to apply after confirmation
+	pendingBulkTasks        []*models.Task    // Tasks to change
+	pendingBulkBlockedCount int               // Count of tasks with incomplete deps
+
 	// Filter bar state
 	filterBarEnabled bool           // Toggle filter bar visibility
 	filterCounts     map[string]int // Cached task counts per filter category

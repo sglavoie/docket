@@ -95,6 +95,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			} else {
 				prompt = fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks))
 			}
+		} else if m.confirmAction == "bulk-status" {
+			prompt = fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)",
+				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
 		} else {
 			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", m.confirmAction)
 		}
@@ -403,6 +406,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			} else {
 				prompt = fmt.Sprintf("Delete %d tasks? (y/n)", len(m.selectedTasks))
 			}
+		} else if m.confirmAction == "bulk-status" {
+			prompt = fmt.Sprintf("%d have incomplete deps, complete %d? (y/n)",
+				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
 		} else {
 			prompt = fmt.Sprintf("%s project? (y/n)", m.confirmAction)
 		}
