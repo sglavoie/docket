@@ -319,6 +319,19 @@ type CycleProjectMsg struct {
 type ToggleRecentTasksMsg struct{}
 
 // =============================================================================
+// Trash Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTrashedProjectsMsg opens the trashed projects picker.
+type ShowTrashedProjectsMsg struct{}
+
+// CloseTrashedProjectsMsg closes the trashed projects picker.
+type CloseTrashedProjectsMsg struct{}
+
+// RestoreFromTrashMsg requests restoration of a project from trash.
+type RestoreFromTrashMsg struct{ Slug string }
+
+// =============================================================================
 // Misc Messages
 // =============================================================================
 

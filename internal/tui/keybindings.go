@@ -137,6 +137,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "D", Description: "Delete project", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+P", Description: "Toggle pinned", Category: "Actions", Views: views},
 		Keybinding{Key: "a", Description: "Toggle archived filter", Category: "Actions", Views: views},
+		Keybinding{Key: "T", Description: "View trash", Category: "Actions", Views: views},
 		Keybinding{Key: "R", Description: "Toggle recent tasks", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
 		Keybinding{Key: ",", Description: "Settings", Category: "Actions", Views: views},

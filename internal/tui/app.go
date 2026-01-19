@@ -52,6 +52,7 @@ const (
 	ViewCommandPalette
 	ViewBulkEdit
 	ViewSaveSearchInput
+	ViewTrashedProjects
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -569,6 +570,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"recent", "show recent"},
 			Handler: func() tea.Msg {
 				return ToggleRecentTasksMsg{}
+			},
+		},
+		{
+			Name:        "restore from trash",
+			Description: "View and restore deleted projects",
+			Shortcut:    "T",
+			Category:    CategoryProjects,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"trash", "undelete", "recover project"},
+			Handler: func() tea.Msg {
+				return ShowTrashedProjectsMsg{}
 			},
 		},
 	}

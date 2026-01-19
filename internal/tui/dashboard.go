@@ -284,6 +284,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return SetCurrentProjectMsg{Project: visible[m.cursor]}
 				}
 			}
+		case "T":
+			return m, func() tea.Msg {
+				return ShowTrashedProjectsMsg{}
+			}
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			// Quick select pinned project by number
 			n := int(msg.String()[0] - '0')
