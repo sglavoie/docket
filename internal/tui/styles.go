@@ -127,6 +127,9 @@ var (
 	// Tree view
 	TreeIndent = "  "
 
+	// Form layout
+	FormLabelWidth = 11 // Width of label column in form card layouts
+
 	TreeBranchStyle = lipgloss.NewStyle().
 			Foreground(ColorBorder)
 
@@ -173,6 +176,25 @@ var (
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ColorPrimary).
 				Padding(0, 1)
+
+	// Form card styles (for editor views)
+	FormCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(ColorBorder).
+			Padding(1, 2)
+
+	FormCardFocusedStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ColorPrimary).
+				Padding(1, 2)
+
+	FormInputBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(ColorBorder)
+
+	FormInputBorderFocusedStyle = lipgloss.NewStyle().
+					Border(lipgloss.NormalBorder()).
+					BorderForeground(ColorPrimary)
 
 	// Validation error style
 	ValidationErrorStyle = lipgloss.NewStyle().

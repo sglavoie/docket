@@ -538,34 +538,119 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 }
 
 func (m *TaskEditorModel) View() string {
-	var b strings.Builder
+	var content strings.Builder
 
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Edit Task #%d", m.task.ShortID)))
+	// Title field
+	content.WriteString(m.renderFormLabel("Title", 0))
+	content.WriteString("\n")
+	content.WriteString(m.titleInput.View())
+	content.WriteString("\n\n")
+
+	// Type selector row
+	content.WriteString(m.renderFormLabel("Type", 1))
+	content.WriteString(m.renderTypeSelector())
+	content.WriteString("\n")
+
+	// Parent selector row
+	content.WriteString(m.renderFormLabel("Parent", 2))
+	content.WriteString(m.renderParentSelector())
+	content.WriteString("\n")
+
+	// Priority selector row
+	content.WriteString(m.renderFormLabel("Priority", 3))
+	content.WriteString(m.renderPrioritySelector())
+	content.WriteString("\n")
+
+	// Section selector row
+	content.WriteString(m.renderFormLabel("Section", 4))
+	content.WriteString(m.renderSectionSelector())
+	content.WriteString("\n")
+
+	// Due date row
+	content.WriteString(m.renderFormLabel("Due", 5))
+	content.WriteString(m.renderDueDateField())
+	content.WriteString("\n")
+
+	// Flags row
+	content.WriteString(m.renderFormLabel("Flags", 6))
+	content.WriteString(m.renderFlagsField())
+	content.WriteString("\n\n")
+
+	// Tags row (read-only)
+	content.WriteString(m.renderFormLabel("Tags", -1))
+	if len(m.tags) == 0 {
+		content.WriteString(MutedStyle.Render("(none)"))
+	} else {
+		content.WriteString(strings.Join(m.tags, ", "))
+	}
+	content.WriteString("  ")
+	content.WriteString(HelpStyle.Render("Ctrl+T"))
+	content.WriteString("\n")
+
+	// Description row (read-only)
+	content.WriteString(m.renderFormLabel("Description", -1))
+	if m.task.Description == "" {
+		content.WriteString(MutedStyle.Render("(empty)"))
+	} else {
+		lines := strings.Count(m.task.Description, "\n") + 1
+		chars := len(m.task.Description)
+		content.WriteString(MutedStyle.Render(fmt.Sprintf("(%d lines, %d chars)", lines, chars)))
+	}
+	content.WriteString("  ")
+	content.WriteString(HelpStyle.Render("Ctrl+O"))
+
+	// Error display inside card
+	if m.err != nil {
+		content.WriteString("\n\n")
+		content.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+	}
+
+	// Build card title
+	cardTitle := fmt.Sprintf("Edit Task #%d", m.task.ShortID)
 	if m.hasChanges {
-		b.WriteString(" ")
-		b.WriteString(UnsavedChangesStyle.Render("(unsaved changes)"))
+		cardTitle += " *"
 	}
-	b.WriteString("\n\n")
 
-	// Title input (textarea spans 2 lines)
-	titleLabel := "Title:\n"
-	if m.focusIndex == 0 {
-		titleLabel = FieldLabelFocusedStyle.Render("Title:\n")
-	} else {
-		titleLabel = FieldLabelStyle.Render("Title:\n")
+	// Wrap content in card
+	cardWidth := m.width - 4
+	if cardWidth < 40 {
+		cardWidth = 40
 	}
-	b.WriteString(titleLabel)
-	b.WriteString(m.titleInput.View())
-	b.WriteString("\n\n")
+	if cardWidth > 80 {
+		cardWidth = 80
+	}
 
-	// Type selector
-	typeLabel := "Type: "
-	if m.focusIndex == 1 {
-		typeLabel = FieldLabelFocusedStyle.Render("Type: ")
-	} else {
-		typeLabel = FieldLabelStyle.Render("Type: ")
+	// Use renderCard for proper titled border
+	config := CardConfig{
+		Style:      FormCardStyle,
+		TitleStyle: TitleStyle,
+		Focused:    false,
 	}
-	b.WriteString(typeLabel)
+	card := renderCard(cardTitle, content.String(), cardWidth, config)
+
+	var result strings.Builder
+	result.WriteString(card)
+	result.WriteString("\n")
+
+	// Help footer outside card
+	result.WriteString(HelpStyle.Render("  Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel"))
+
+	return result.String()
+}
+
+// renderFormLabel renders a form field label with fixed width alignment.
+func (m *TaskEditorModel) renderFormLabel(label string, focusIdx int) string {
+	// Pad label to fixed width
+	paddedLabel := fmt.Sprintf("%-*s", FormLabelWidth, label)
+	if focusIdx >= 0 && m.focusIndex == focusIdx {
+		return FieldLabelFocusedStyle.Render(paddedLabel)
+	}
+	return FieldLabelStyle.Render(paddedLabel)
+}
+
+// renderTypeSelector renders the task type selector options.
+func (m *TaskEditorModel) renderTypeSelector() string {
+	var b strings.Builder
 	for i, t := range m.types {
 		var style = SelectorOptionStyle
 		if i == m.typeCursor {
@@ -579,16 +664,12 @@ func (m *TaskEditorModel) View() string {
 			b.WriteString(style.Render(fmt.Sprintf(" %s ", t.HeadingPrefix())))
 		}
 	}
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	// Parent selector
-	parentLabel := "Parent: "
-	if m.focusIndex == 2 {
-		parentLabel = FieldLabelFocusedStyle.Render("Parent: ")
-	} else {
-		parentLabel = FieldLabelStyle.Render("Parent: ")
-	}
-	b.WriteString(parentLabel)
+// renderParentSelector renders the parent task selector options.
+func (m *TaskEditorModel) renderParentSelector() string {
+	var b strings.Builder
 
 	// "None" option
 	if m.parentCursor == 0 {
@@ -610,7 +691,7 @@ func (m *TaskEditorModel) View() string {
 
 	for i := startIdx; i < len(m.validParents) && i < startIdx+maxShow+1; i++ {
 		p := m.validParents[i]
-		display := util.Truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 20)
+		display := util.Truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 18)
 		if m.parentCursor == i+1 {
 			if m.focusIndex == 2 {
 				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf(" [%s]", display)))
@@ -623,18 +704,14 @@ func (m *TaskEditorModel) View() string {
 	}
 
 	if len(m.validParents) > maxShow+1 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" ... (%d more)", len(m.validParents)-maxShow-1)))
+		b.WriteString(MutedStyle.Render(fmt.Sprintf(" +%d", len(m.validParents)-maxShow-1)))
 	}
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	// Priority selector
-	priorityLabel := "Priority: "
-	if m.focusIndex == 3 {
-		priorityLabel = FieldLabelFocusedStyle.Render("Priority: ")
-	} else {
-		priorityLabel = FieldLabelStyle.Render("Priority: ")
-	}
-	b.WriteString(priorityLabel)
+// renderPrioritySelector renders the priority selector options.
+func (m *TaskEditorModel) renderPrioritySelector() string {
+	var b strings.Builder
 	for i := 1; i <= 5; i++ {
 		if i == m.priority {
 			if m.focusIndex == 3 {
@@ -646,17 +723,13 @@ func (m *TaskEditorModel) View() string {
 			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %d ", i)))
 		}
 	}
-	b.WriteString(MutedStyle.Render(" (1=highest)"))
-	b.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render(" (1=high)"))
+	return b.String()
+}
 
-	// Section selector
-	sectionLabel := "Section: "
-	if m.focusIndex == 4 {
-		sectionLabel = FieldLabelFocusedStyle.Render("Section: ")
-	} else {
-		sectionLabel = FieldLabelStyle.Render("Section: ")
-	}
-	b.WriteString(sectionLabel)
+// renderSectionSelector renders the section selector options.
+func (m *TaskEditorModel) renderSectionSelector() string {
+	var b strings.Builder
 	for i, s := range m.sections {
 		if i == m.sectionCursor {
 			if m.focusIndex == 4 {
@@ -668,18 +741,13 @@ func (m *TaskEditorModel) View() string {
 			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", s)))
 		}
 	}
-	b.WriteString("\n\n")
+	return b.String()
+}
 
-	// Due date input
-	dueDateLabel := "Due Date: "
+// renderDueDateField renders the due date input field.
+func (m *TaskEditorModel) renderDueDateField() string {
+	var b strings.Builder
 	if m.focusIndex == 5 {
-		dueDateLabel = FieldLabelFocusedStyle.Render("Due Date: ")
-	} else {
-		dueDateLabel = FieldLabelStyle.Render("Due Date: ")
-	}
-	b.WriteString(dueDateLabel)
-	if m.focusIndex == 5 {
-		// Show editable input with cursor
 		b.WriteString(SelectorOptionSelectedStyle.Render(m.dueDateInput + "█"))
 	} else if m.dueDateInput == "" {
 		b.WriteString(MutedStyle.Render("(none)"))
@@ -687,22 +755,18 @@ func (m *TaskEditorModel) View() string {
 		b.WriteString(m.dueDateInput)
 	}
 	b.WriteString("  ")
-	b.WriteString(HelpStyle.Render("e.g., tomorrow, +3d, 2024-01-15, none"))
-	b.WriteString("\n\n")
+	b.WriteString(HelpStyle.Render("tomorrow, +3d, 2024-01-15"))
+	return b.String()
+}
 
-	// Flags (pinned and active)
-	flagsLabel := "Flags: "
-	if m.focusIndex == 6 {
-		flagsLabel = FieldLabelFocusedStyle.Render("Flags: ")
-	} else {
-		flagsLabel = FieldLabelStyle.Render("Flags: ")
-	}
-	b.WriteString(flagsLabel)
+// renderFlagsField renders the pinned and active flag toggles.
+func (m *TaskEditorModel) renderFlagsField() string {
+	var b strings.Builder
 
 	// Pinned toggle
-	pinnedText := "Pinned"
+	pinnedText := "Pin"
 	if m.pinned {
-		pinnedText = "Pinned ✓"
+		pinnedText = "Pin ✓"
 	}
 	if m.focusIndex == 6 && m.flagFocus == 0 {
 		b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", pinnedText)))
@@ -726,52 +790,5 @@ func (m *TaskEditorModel) View() string {
 	} else {
 		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", activeText)))
 	}
-	b.WriteString("  ")
-	b.WriteString(HelpStyle.Render("Space to toggle"))
-	b.WriteString("\n\n")
-
-	// Tags display (read-only, edited via Ctrl+T)
-	b.WriteString(FieldLabelStyle.Render("Tags: "))
-	if len(m.tags) == 0 {
-		b.WriteString(MutedStyle.Render("(none)"))
-	} else {
-		b.WriteString(strings.Join(m.tags, ", "))
-	}
-	b.WriteString("  ")
-	b.WriteString(HelpStyle.Render("Press Ctrl+T to edit"))
-	b.WriteString("\n\n")
-
-	// Description preview (edited via external editor)
-	b.WriteString(FieldLabelStyle.Render("Description: "))
-	if m.task.Description == "" {
-		b.WriteString(MutedStyle.Render("(empty)"))
-	} else {
-		lines := strings.Count(m.task.Description, "\n") + 1
-		chars := len(m.task.Description)
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("(%d lines, %d chars)", lines, chars)))
-	}
-	b.WriteString("  ")
-	b.WriteString(HelpStyle.Render("Press Ctrl+O to edit in external editor"))
-	b.WriteString("\n\n")
-
-	// Error display
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n\n")
-	}
-
-	// Help
-	help := BoxStyle.Render(
-		BoldStyle.Render("Controls") + "\n" +
-			"  Tab/Shift+Tab  Switch field\n" +
-			"  Left/Right     Select option\n" +
-			"  Space          Toggle flags\n" +
-			"  Ctrl+T         Edit tags\n" +
-			"  Ctrl+O         Edit description\n" +
-			"  Ctrl+S         Save changes\n" +
-			"  Esc            Cancel",
-	)
-	b.WriteString(help)
-
 	return b.String()
 }
