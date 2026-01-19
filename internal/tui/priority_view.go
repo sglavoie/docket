@@ -828,25 +828,5 @@ func (m *PriorityViewModel) renderPriorityBadge(priority int) string {
 
 // GetHelpItems returns help items for this view.
 func (m *PriorityViewModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
-		{Category: "Navigation", Key: ":", Description: "Command palette"},
-		{Category: "Navigation", Key: "↑/k", Description: "Move up"},
-		{Category: "Navigation", Key: "↓/j", Description: "Move down"},
-		{Category: "Navigation", Key: "gg/G", Description: "Jump to top/bottom"},
-		{Category: "Navigation", Key: "Ctrl+u/d", Description: "Page up/down"},
-		{Category: "Actions", Key: "Enter", Description: "View task details"},
-		{Category: "Actions", Key: "e", Description: "Edit task"},
-		{Category: "Actions", Key: "1-5", Description: "Set priority (1=highest)"},
-		{Category: "Status", Key: ",s", Description: "Start task (in progress)"},
-		{Category: "Status", Key: ",d", Description: "Mark task done"},
-		{Category: "Status", Key: ",b", Description: "Block task"},
-		{Category: "Status", Key: ",o", Description: "Reopen task (todo)"},
-		{Category: "Status", Key: ",x", Description: "Cancel task"},
-		{Category: "Actions", Key: "y", Description: "Copy task title"},
-		{Category: "Actions", Key: "Y", Description: "Copy task description"},
-		{Category: "View", Key: "Tab", Description: "Toggle waiting section"},
-		{Category: "View", Key: "r", Description: "Refresh"},
-		{Category: "View", Key: "?", Description: "Toggle help"},
-		{Category: "View", Key: "q/Esc", Description: "Close priority view"},
-	}
+	return GetKeybindingRegistry().GetForView(ViewPriorityView)
 }

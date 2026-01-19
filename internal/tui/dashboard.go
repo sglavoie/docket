@@ -641,39 +641,13 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 	if m.showArchived {
 		toggleArchiveDesc = "Show active"
 	}
-
 	toggleRecentDesc := "Hide Recent Tasks"
 	if !m.config.GetShowRecentTasks() {
 		toggleRecentDesc = "Show Recent Tasks"
 	}
-
-	return []HelpItem{
-		{Key: "*", Description: "Current project", Category: "Legend"},
-		{Key: ":", Description: "Command palette", Category: "Navigation"},
-		{Key: "j/k", Description: "Move cursor", Category: "Navigation"},
-		{Key: "↑/↓", Description: "Move cursor", Category: "Navigation"},
-		{Key: "Enter", Description: "Select project", Category: "Navigation"},
-		{Key: "1-9", Description: "Quick select pinned", Category: "Navigation"},
-		{Key: "gg", Description: "Go to first", Category: "Navigation"},
-		{Key: "G", Description: "Go to last", Category: "Navigation"},
-		{Key: "/", Description: "Global search", Category: "Navigation"},
-		{Key: "\\", Description: "Search projects", Category: "Navigation"},
-		{Key: "Ctrl+D", Description: "Due date overview", Category: "Navigation"},
-		{Key: "Ctrl+T", Description: "Global tag manager", Category: "Navigation"},
-		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
-		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
-		{Key: "@", Description: "Configure project cycle", Category: "Project Cycling"},
-		{Key: "c", Description: "Filter by context", Category: "Filters"},
-		{Key: "n", Description: "New project", Category: "Actions"},
-		{Key: "e", Description: "Edit project", Category: "Actions"},
-		{Key: "p", Description: "Preview project", Category: "Actions"},
-		{Key: "s", Description: "Set as current", Category: "Actions"},
-		{Key: "D", Description: "Delete project", Category: "Actions"},
-		{Key: "Ctrl+P", Description: "Toggle pinned", Category: "Actions"},
-		{Key: "a", Description: toggleArchiveDesc, Category: "Actions"},
-		{Key: "R", Description: toggleRecentDesc, Category: "Actions"},
-		{Key: "r", Description: "Refresh", Category: "Actions"},
-		{Key: ",", Description: "Settings", Category: "Actions"},
-		{Key: "?", Description: "Toggle help", Category: "Actions"},
+	overrides := map[string]string{
+		"a": toggleArchiveDesc,
+		"R": toggleRecentDesc,
 	}
+	return GetKeybindingRegistry().GetForViewWithOverrides(ViewDashboard, overrides)
 }

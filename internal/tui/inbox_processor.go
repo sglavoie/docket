@@ -703,27 +703,5 @@ func (m *InboxProcessorModel) reopenTask() tea.Cmd {
 
 // GetHelpItems returns help items for the inbox processor view.
 func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
-		{Key: ":", Description: "Command palette", Category: "Navigation"},
-		{Key: "enter", Description: "View task details", Category: "Navigation"},
-		{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation"},
-		{Key: "j/k", Description: "Navigate to next/previous task", Category: "Navigation"},
-		{Key: "gg/G", Description: "Go to first/last task", Category: "Navigation"},
-		{Key: "q", Description: "Quit inbox processing", Category: "Navigation"},
-		{Key: ",s", Description: "Start task (in progress)", Category: "Status"},
-		{Key: ",d", Description: "Mark done", Category: "Status"},
-		{Key: ",b", Description: "Block task", Category: "Status"},
-		{Key: ",x", Description: "Cancel task", Category: "Status"},
-		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
-		{Key: "S", Description: "Assign section", Category: "Operations"},
-		{Key: "1-5", Description: "Set priority (quick)", Category: "Operations"},
-		{Key: "t", Description: "Manage tags", Category: "Operations"},
-		{Key: "c", Description: "Create subtask", Category: "Operations"},
-		{Key: "e", Description: "Edit task (title/description)", Category: "Operations"},
-		{Key: "D", Description: "Set due date", Category: "Operations"},
-		{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations"},
-		{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations"},
-		{Key: "u", Description: "Undo last operation on current task", Category: "Operations"},
-		{Key: "?", Description: "Toggle help", Category: "Navigation"},
-	}
+	return GetKeybindingRegistry().GetForView(ViewInboxProcessor)
 }
