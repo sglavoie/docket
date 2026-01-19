@@ -10,7 +10,7 @@ func TestRenderPrefixPopup_EmptyPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup("", hints)
+	result := RenderPrefixPopup("", hints, 200)
 	if result != "" {
 		t.Errorf("expected empty string for empty prefix, got %q", result)
 	}
@@ -21,7 +21,7 @@ func TestRenderPrefixPopup_UnknownPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup("x", hints)
+	result := RenderPrefixPopup("x", hints, 200)
 	if result != "" {
 		t.Errorf("expected empty string for unknown prefix, got %q", result)
 	}
@@ -32,7 +32,7 @@ func TestRenderPrefixPopup_EmptyHints(t *testing.T) {
 		",": []PrefixHint{},
 	}
 
-	result := RenderPrefixPopup(",", hints)
+	result := RenderPrefixPopup(",", hints, 200)
 	if result != "" {
 		t.Errorf("expected empty string for prefix with empty hints, got %q", result)
 	}
@@ -43,7 +43,7 @@ func TestRenderPrefixPopup_StatusPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup(",", hints)
+	result := RenderPrefixPopup(",", hints, 200)
 
 	// Should contain the prefix and arrow
 	if !strings.Contains(result, ", →") {
@@ -71,7 +71,7 @@ func TestRenderPrefixPopup_FoldPrefix(t *testing.T) {
 		"z": FoldPrefixHints,
 	}
 
-	result := RenderPrefixPopup("z", hints)
+	result := RenderPrefixPopup("z", hints, 200)
 
 	// Should contain fold hints
 	for _, hint := range FoldPrefixHints {
@@ -86,7 +86,7 @@ func TestRenderPrefixPopup_NavigationPrefix(t *testing.T) {
 		"g": NavigationPrefixHints,
 	}
 
-	result := RenderPrefixPopup("g", hints)
+	result := RenderPrefixPopup("g", hints, 200)
 
 	// Should contain navigation hints
 	for _, hint := range NavigationPrefixHints {
@@ -101,7 +101,7 @@ func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 		"g": ProjectTreeNavigationPrefixHints,
 	}
 
-	result := RenderPrefixPopup("g", hints)
+	result := RenderPrefixPopup("g", hints, 200)
 
 	// Should contain extended navigation hints
 	expectedDescriptions := []string{"first", "active", "backlog", "inbox", "completed"}
@@ -195,5 +195,31 @@ func TestProjectTreeNavigationPrefixHints_HasExtendedKeys(t *testing.T) {
 	}
 	if !foundFirst {
 		t.Error("expected ProjectTreeNavigationPrefixHints to contain 'g' -> 'first'")
+	}
+}
+
+func TestRenderPrefixPopup_WrapsOnNarrowWidth(t *testing.T) {
+	hints := PrefixHints{
+		"g": ProjectTreeNavigationPrefixHints,
+	}
+
+	// Use narrow width to force wrapping
+	result := RenderPrefixPopup("g", hints, 50)
+
+	// Should still contain all hints
+	for _, hint := range ProjectTreeNavigationPrefixHints {
+		if !strings.Contains(result, hint.Description) {
+			t.Errorf("expected result to contain description %q even with narrow width, got %q", hint.Description, result)
+		}
+	}
+
+	// Should contain escape hint
+	if !strings.Contains(result, "Esc to cancel") {
+		t.Errorf("expected result to contain escape hint even with narrow width, got %q", result)
+	}
+
+	// Should wrap to multiple lines (contains newlines)
+	if !strings.Contains(result, "\n") {
+		t.Errorf("expected result to wrap to multiple lines with narrow width, got %q", result)
 	}
 }

@@ -545,7 +545,7 @@ func (m *DashboardModel) View() string {
 func (m *DashboardModel) renderPrefixPopup() string {
 	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
 		"g": NavigationPrefixHints,
-	})
+	}, m.width)
 }
 
 func (m *DashboardModel) renderRecentTasks(b *strings.Builder, project *models.Project) {

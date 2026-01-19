@@ -141,5 +141,5 @@ func (m *InboxProcessorModel) renderPrefixPopup() string {
 	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
 		",": StatusPrefixHints,
 		"g": NavigationPrefixHints,
-	})
+	}, m.width)
 }

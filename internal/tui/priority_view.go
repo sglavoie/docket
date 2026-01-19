@@ -624,7 +624,7 @@ func (m *PriorityViewModel) renderPrefixPopup() string {
 	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
 		",": StatusPrefixHints,
 		"g": NavigationPrefixHints,
-	})
+	}, m.width)
 }
 
 // renderAllGroups renders all task groups and returns the lines.
