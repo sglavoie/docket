@@ -291,7 +291,7 @@ func (m *ProjectTreeModel) renderMultiSelectIndicator(width int) string {
 
 // renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
 func (m *ProjectTreeModel) renderWithSidebar() string {
-	// Calculate widths: 55% tree, remainder for sidebar
+	// Calculate widths: 55% tree, 1 for divider, remainder for sidebar
 	treeWidth := (m.width * 55) / 100
 
 	// Ensure minimum width for tree
@@ -299,14 +299,17 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 		treeWidth = 35
 	}
 
-	// Sidebar always takes all remaining space
-	sidebarWidth := m.width - treeWidth
+	// Account for divider (1 char)
+	dividerWidth := 1
+
+	// Sidebar takes remaining space after tree and divider
+	sidebarWidth := m.width - treeWidth - dividerWidth
 
 	// Ensure minimum width for sidebar
 	if sidebarWidth < 25 {
 		sidebarWidth = 25
 		// If sidebar needs more space, reduce tree width
-		treeWidth = m.width - sidebarWidth
+		treeWidth = m.width - sidebarWidth - dividerWidth
 	}
 
 	// Render tree content (reuse most of renderFullWidth logic)
@@ -328,8 +331,26 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Apply width constraint to tree to ensure it fills its allocated space
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
 
-	// Join horizontally
-	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, sidebarContent)
+	// Render vertical divider
+	divider := m.renderVerticalDivider(m.height - 2)
+
+	// Join horizontally: tree | divider | sidebar
+	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
+}
+
+// renderVerticalDivider renders a vertical line for split-pane separation.
+func (m *ProjectTreeModel) renderVerticalDivider(height int) string {
+	if height <= 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i := 0; i < height; i++ {
+		b.WriteString("│")
+		if i < height-1 {
+			b.WriteString("\n")
+		}
+	}
+	return MutedStyle.Render(b.String())
 }
 
 // renderTreeContent renders just the tree portion (for split-pane layout).

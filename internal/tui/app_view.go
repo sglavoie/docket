@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -23,6 +24,9 @@ func (m *AppModel) View() string {
 }
 
 func (m *AppModel) renderStatusBar() string {
+	// Top border separator for visual distinction
+	separator := MutedStyle.Render(strings.Repeat("─", m.width))
+
 	// Show loading spinner if active
 	if m.isLoading {
 		spinnerView := m.spinner.View()
@@ -32,7 +36,7 @@ func (m *AppModel) renderStatusBar() string {
 			gap = 0
 		}
 		spacer := lipgloss.NewStyle().Width(gap).Render("")
-		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+		return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
 	// Show error message if present
@@ -43,7 +47,7 @@ func (m *AppModel) renderStatusBar() string {
 			gap = 0
 		}
 		spacer := lipgloss.NewStyle().Width(gap).Render("")
-		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+		return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
 	// Show temporary status message if present
@@ -54,7 +58,7 @@ func (m *AppModel) renderStatusBar() string {
 			gap = 0
 		}
 		spacer := lipgloss.NewStyle().Width(gap).Render("")
-		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
+		return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
 
 	var status string
@@ -155,5 +159,5 @@ func (m *AppModel) renderStatusBar() string {
 
 	spacer := lipgloss.NewStyle().Width(gap).Render("")
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+	return separator + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
 }
