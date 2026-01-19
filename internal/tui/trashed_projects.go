@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -35,7 +36,9 @@ func (t TrashedProjectItem) ItemID() string {
 // TrashedProjectsModel displays trashed projects and allows restoration.
 type TrashedProjectsModel struct {
 	*BasePicker[TrashedProjectItem]
-	dataDir string
+	dataDir      string
+	confirmPurge bool
+	purgeTarget  *TrashedProjectItem
 }
 
 // NewTrashedProjectsModel creates a new trashed projects picker.
@@ -74,11 +77,38 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle confirmation mode first
+		if m.confirmPurge {
+			switch msg.String() {
+			case "y", "Y":
+				if m.purgeTarget != nil {
+					slug := m.purgeTarget.Slug
+					m.confirmPurge = false
+					m.purgeTarget = nil
+					return m, func() tea.Msg {
+						return PurgeFromTrashMsg{Slug: slug}
+					}
+				}
+			case "n", "N", "esc":
+				m.confirmPurge = false
+				m.purgeTarget = nil
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return CloseTrashedProjectsMsg{}
 			}
+
+		case "d":
+			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
+				m.confirmPurge = true
+				target := m.Filtered[m.Cursor]
+				m.purgeTarget = &target
+			}
+			return m, nil
 
 		case "enter":
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
@@ -114,7 +144,14 @@ func (m *TrashedProjectsModel) View() string {
 	// Title
 	content.WriteString(TitleStyle.Render(m.Config.Title))
 	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render("Select a project to restore"))
+
+	// Confirmation prompt or keybinding hints
+	if m.confirmPurge && m.purgeTarget != nil {
+		prompt := fmt.Sprintf("PERMANENTLY delete '%s'? (y/n)", m.purgeTarget.Slug)
+		content.WriteString(ConfirmStyle.Render(prompt))
+	} else {
+		content.WriteString(MutedStyle.Render("Enter: restore | d: delete | q: close"))
+	}
 	content.WriteString("\n\n")
 
 	// Search bar

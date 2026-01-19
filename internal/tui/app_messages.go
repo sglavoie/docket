@@ -331,6 +331,9 @@ type CloseTrashedProjectsMsg struct{}
 // RestoreFromTrashMsg requests restoration of a project from trash.
 type RestoreFromTrashMsg struct{ Slug string }
 
+// PurgeFromTrashMsg requests permanent deletion of a project from trash.
+type PurgeFromTrashMsg struct{ Slug string }
+
 // =============================================================================
 // Misc Messages
 // =============================================================================

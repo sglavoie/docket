@@ -131,6 +131,17 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.statusMessage = fmt.Sprintf("Restored: %s", msg.Project.Name)
 		return true, statusTimeout(2 * time.Second)
+
+	case PurgeFromTrashMsg:
+		return true, m.purgeProjectFromTrash(msg.Slug)
+
+	case projectPurgedFromTrashMsg:
+		// Refresh the trashed projects list by re-registering the view
+		newModel := NewTrashedProjectsModel(m.config.DataDir)
+		newModel.SetSize(m.width, m.height-2)
+		m.views.Register(ViewTrashedProjects, newModel)
+		m.statusMessage = fmt.Sprintf("Permanently deleted: %s", msg.Slug)
+		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
 }
@@ -184,6 +195,21 @@ func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
 // projectRestoredFromTrashMsg is an internal message for trash restoration completion.
 type projectRestoredFromTrashMsg struct {
 	Project *models.Project
+}
+
+// projectPurgedFromTrashMsg is an internal message for trash purge completion.
+type projectPurgedFromTrashMsg struct {
+	Slug string
+}
+
+// purgeProjectFromTrash permanently deletes a project from the trash directory.
+func (m *AppModel) purgeProjectFromTrash(slug string) tea.Cmd {
+	return func() tea.Msg {
+		if err := storage.PurgeFromTrash(slug, m.config.DataDir); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to delete project: %w", err)}
+		}
+		return projectPurgedFromTrashMsg{Slug: slug}
+	}
 }
 
 // reconstructProjectFromDir rebuilds project metadata from a restored directory.
