@@ -26,22 +26,34 @@ type TaskEditorModel struct {
 	originalType     models.TaskType
 	originalParentID *string
 	originalPriority int
+	originalSection  string
+	originalDueDate  *time.Time
+	originalPinned   bool
+	originalActive   bool
 
 	// Form fields
 	titleInput textarea.Model
 	tags       []string
 
 	// Selectable fields
-	taskType     models.TaskType
-	typeCursor   int
-	types        []models.TaskType
-	parentID     *string
-	parentCursor int
-	validParents []*models.Task
-	priority     int
+	taskType      models.TaskType
+	typeCursor    int
+	types         []models.TaskType
+	parentID      *string
+	parentCursor  int
+	validParents  []*models.Task
+	priority      int
+	section       string
+	sectionCursor int
+	sections      []string
+	dueDate       *time.Time
+	dueDateInput  string
+	pinned        bool
+	active        bool
+	flagFocus     int // 0=pinned, 1=active (within the flags field)
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=tags
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags
 	width      int
 	height     int
 	err        error
@@ -76,6 +88,32 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		}
 	}
 
+	// Get available sections from project
+	sections := project.GetSections()
+	sectionCursor := 0
+	for i, s := range sections {
+		if s == task.Section {
+			sectionCursor = i
+			break
+		}
+	}
+
+	// Copy due date if present
+	var dueDate *time.Time
+	var dueDateInput string
+	if task.DueDate != nil {
+		dueCopy := *task.DueDate
+		dueDate = &dueCopy
+		dueDateInput = task.DueDate.Format("2006-01-02")
+	}
+
+	// Copy original due date for change detection
+	var originalDueDate *time.Time
+	if task.DueDate != nil {
+		dueCopy := *task.DueDate
+		originalDueDate = &dueCopy
+	}
+
 	m := &TaskEditorModel{
 		project:          project,
 		task:             task,
@@ -86,6 +124,10 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		originalType:     task.Type,
 		originalParentID: task.ParentID,
 		originalPriority: task.Priority,
+		originalSection:  task.Section,
+		originalDueDate:  originalDueDate,
+		originalPinned:   task.Pinned,
+		originalActive:   task.Active,
 		titleInput:       titleInput,
 		tags:             tags,
 		taskType:         task.Type,
@@ -94,6 +136,14 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		parentID:         task.ParentID,
 		parentCursor:     0,
 		priority:         task.Priority,
+		section:          task.Section,
+		sectionCursor:    sectionCursor,
+		sections:         sections,
+		dueDate:          dueDate,
+		dueDateInput:     dueDateInput,
+		pinned:           task.Pinned,
+		active:           task.Active,
+		flagFocus:        0,
 		focusIndex:       0,
 		width:            80,
 		height:           24,
@@ -176,7 +226,48 @@ func (m *TaskEditorModel) checkChanges() bool {
 	if m.parentID != nil && m.originalParentID != nil && *m.parentID != *m.originalParentID {
 		return true
 	}
+	// Check section
+	if m.section != m.originalSection {
+		return true
+	}
+	// Check due date
+	if m.dueDate == nil && m.originalDueDate != nil {
+		return true
+	}
+	if m.dueDate != nil && m.originalDueDate == nil {
+		return true
+	}
+	if m.dueDate != nil && m.originalDueDate != nil && !m.dueDate.Equal(*m.originalDueDate) {
+		return true
+	}
+	// Check flags
+	if m.pinned != m.originalPinned {
+		return true
+	}
+	if m.active != m.originalActive {
+		return true
+	}
 	return false
+}
+
+// parseDueDate parses the due date input string and updates m.dueDate.
+func (m *TaskEditorModel) parseDueDate() error {
+	value := strings.TrimSpace(m.dueDateInput)
+
+	// Handle empty or "none" to clear due date
+	if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
+		m.dueDate = nil
+		return nil
+	}
+
+	// Parse the date using the existing ParseDate function
+	date, err := ParseDate(value)
+	if err != nil {
+		return err
+	}
+
+	m.dueDate = &date
+	return nil
 }
 
 // SetSize sets the view dimensions.
@@ -212,11 +303,11 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (4 fields: title, type, parent, priority)
+			// Move focus (7 fields: title, type, parent, priority, section, due date, flags)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 4
+				m.focusIndex = (m.focusIndex + 1) % 7
 			} else {
-				m.focusIndex = (m.focusIndex + 3) % 4
+				m.focusIndex = (m.focusIndex + 6) % 7
 			}
 
 			// Focus new field
@@ -224,8 +315,16 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			// Move to next field (only 4 focusable fields: 0-3)
-			if m.focusIndex < 3 {
+			// Move to next field (7 focusable fields: 0-6)
+			if m.focusIndex < 6 {
+				// For due date field, parse and validate on enter
+				if m.focusIndex == 5 {
+					if err := m.parseDueDate(); err != nil {
+						m.err = err
+						return m, nil
+					}
+					m.err = nil
+				}
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -273,6 +372,15 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.priority > 1 {
 					m.priority--
 				}
+			case 4: // Section selector
+				if m.sectionCursor > 0 {
+					m.sectionCursor--
+					m.section = m.sections[m.sectionCursor]
+				}
+			case 6: // Flags - switch between pinned and active
+				if m.flagFocus > 0 {
+					m.flagFocus--
+				}
 			}
 
 		case "right", "l":
@@ -296,6 +404,25 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.priority < 5 {
 					m.priority++
 				}
+			case 4: // Section selector
+				if m.sectionCursor < len(m.sections)-1 {
+					m.sectionCursor++
+					m.section = m.sections[m.sectionCursor]
+				}
+			case 6: // Flags - switch between pinned and active
+				if m.flagFocus < 1 {
+					m.flagFocus++
+				}
+			}
+
+		case " ":
+			// Toggle flags with space
+			if m.focusIndex == 6 {
+				if m.flagFocus == 0 {
+					m.pinned = !m.pinned
+				} else {
+					m.active = !m.active
+				}
 			}
 		}
 	}
@@ -304,6 +431,17 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput, cmd = m.titleInput.Update(msg)
+	case 5: // Due date text input
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			key := keyMsg.String()
+			// Handle backspace
+			if key == "backspace" && len(m.dueDateInput) > 0 {
+				m.dueDateInput = m.dueDateInput[:len(m.dueDateInput)-1]
+			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
+				// Printable ASCII characters
+				m.dueDateInput += key
+			}
+		}
 	}
 
 	// Check for changes
@@ -333,12 +471,33 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
 		}
 
+		// Parse due date before saving
+		if err := m.parseDueDate(); err != nil {
+			return ErrorMsg{Err: err}
+		}
+
 		// Update task fields (description is edited separately via external editor)
+		now := time.Now()
 		m.task.Title = title
 		m.task.Type = m.taskType
 		m.task.Priority = m.priority
 		m.task.ParentID = m.parentID
-		m.task.UpdatedAt = time.Now()
+		m.task.Section = m.section
+		m.task.DueDate = m.dueDate
+		m.task.UpdatedAt = now
+
+		// Handle pinned status change
+		if m.pinned != m.task.Pinned {
+			m.task.Pinned = m.pinned
+			if m.pinned {
+				m.task.PinnedAt = &now
+			} else {
+				m.task.PinnedAt = nil
+			}
+		}
+
+		// Handle active status change
+		m.task.Active = m.active
 
 		// Set tags from the selector
 		m.task.Tags = append([]string{}, m.tags...)
@@ -351,6 +510,11 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 				t.Type = m.task.Type
 				t.Priority = m.task.Priority
 				t.ParentID = m.task.ParentID
+				t.Section = m.task.Section
+				t.DueDate = m.task.DueDate
+				t.Pinned = m.task.Pinned
+				t.PinnedAt = m.task.PinnedAt
+				t.Active = m.task.Active
 				t.UpdatedAt = m.task.UpdatedAt
 				break
 			}
@@ -485,6 +649,87 @@ func (m *TaskEditorModel) View() string {
 	b.WriteString(MutedStyle.Render(" (1=highest)"))
 	b.WriteString("\n\n")
 
+	// Section selector
+	sectionLabel := "Section: "
+	if m.focusIndex == 4 {
+		sectionLabel = FieldLabelFocusedStyle.Render("Section: ")
+	} else {
+		sectionLabel = FieldLabelStyle.Render("Section: ")
+	}
+	b.WriteString(sectionLabel)
+	for i, s := range m.sections {
+		if i == m.sectionCursor {
+			if m.focusIndex == 4 {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", s)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", s)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", s)))
+		}
+	}
+	b.WriteString("\n\n")
+
+	// Due date input
+	dueDateLabel := "Due Date: "
+	if m.focusIndex == 5 {
+		dueDateLabel = FieldLabelFocusedStyle.Render("Due Date: ")
+	} else {
+		dueDateLabel = FieldLabelStyle.Render("Due Date: ")
+	}
+	b.WriteString(dueDateLabel)
+	if m.focusIndex == 5 {
+		// Show editable input with cursor
+		b.WriteString(SelectorOptionSelectedStyle.Render(m.dueDateInput + "█"))
+	} else if m.dueDateInput == "" {
+		b.WriteString(MutedStyle.Render("(none)"))
+	} else {
+		b.WriteString(m.dueDateInput)
+	}
+	b.WriteString("  ")
+	b.WriteString(HelpStyle.Render("e.g., tomorrow, +3d, 2024-01-15, none"))
+	b.WriteString("\n\n")
+
+	// Flags (pinned and active)
+	flagsLabel := "Flags: "
+	if m.focusIndex == 6 {
+		flagsLabel = FieldLabelFocusedStyle.Render("Flags: ")
+	} else {
+		flagsLabel = FieldLabelStyle.Render("Flags: ")
+	}
+	b.WriteString(flagsLabel)
+
+	// Pinned toggle
+	pinnedText := "Pinned"
+	if m.pinned {
+		pinnedText = "Pinned ✓"
+	}
+	if m.focusIndex == 6 && m.flagFocus == 0 {
+		b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", pinnedText)))
+	} else if m.pinned {
+		b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", pinnedText)))
+	} else {
+		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", pinnedText)))
+	}
+
+	b.WriteString(" ")
+
+	// Active toggle
+	activeText := "Active"
+	if m.active {
+		activeText = "Active ✓"
+	}
+	if m.focusIndex == 6 && m.flagFocus == 1 {
+		b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", activeText)))
+	} else if m.active {
+		b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", activeText)))
+	} else {
+		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", activeText)))
+	}
+	b.WriteString("  ")
+	b.WriteString(HelpStyle.Render("Space to toggle"))
+	b.WriteString("\n\n")
+
 	// Tags display (read-only, edited via Ctrl+T)
 	b.WriteString(FieldLabelStyle.Render("Tags: "))
 	if len(m.tags) == 0 {
@@ -520,6 +765,7 @@ func (m *TaskEditorModel) View() string {
 		BoldStyle.Render("Controls") + "\n" +
 			"  Tab/Shift+Tab  Switch field\n" +
 			"  Left/Right     Select option\n" +
+			"  Space          Toggle flags\n" +
 			"  Ctrl+T         Edit tags\n" +
 			"  Ctrl+O         Edit description\n" +
 			"  Ctrl+S         Save changes\n" +
