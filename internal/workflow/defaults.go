@@ -1,0 +1,236 @@
+package workflow
+
+// GetDefaultRules returns the built-in default workflow rules.
+// All default rules are created disabled so users can review and enable selectively.
+func GetDefaultRules() []WorkflowRule {
+	return []WorkflowRule{
+		{
+			ID:      "def-overdue",
+			Name:    "Tag Overdue Tasks",
+			Enabled: false,
+			Source:  "default",
+			Trigger: RuleTrigger{
+				Field:     FieldDueDays,
+				Operation: OpLessThan,
+				Value:     "0",
+			},
+			Actions: []RuleAction{
+				{ActionType: ActionAddTag, Value: "overdue"},
+			},
+		},
+		{
+			ID:      "def-stale",
+			Name:    "Mark Stale In-Progress",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "14"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionAddTag, Value: "stale"},
+			},
+		},
+		{
+			ID:      "def-epic-done",
+			Name:    "Auto-complete Epic",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: "epic"},
+				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetStatus, Value: "done"},
+			},
+		},
+		{
+			ID:      "def-archive",
+			Name:    "Archive Completed",
+			Enabled: false,
+			Source:  "default",
+			Trigger: RuleTrigger{
+				Field:     FieldCompleted,
+				Operation: OpEquals,
+				Value:     "true",
+			},
+			Actions: []RuleAction{
+				{ActionType: ActionSetSection, Value: "Archive"},
+			},
+		},
+		// Auto-complete Story: same logic as epic completion
+		{
+			ID:      "def-story-done",
+			Name:    "Auto-complete Story",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: "story"},
+				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetStatus, Value: "done"},
+			},
+		},
+		// Clear Overdue Tag: cleanup when due date extended
+		{
+			ID:      "def-clear-overdue",
+			Name:    "Clear Overdue Tag",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldDueDays, Operation: OpGreaterThan, Value: "-1"},
+				{Field: FieldTags, Operation: OpContains, Value: "overdue"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionRemoveTag, Value: "overdue"},
+			},
+		},
+		// Bug Aging Alert: bugs deserve faster attention
+		{
+			ID:      "def-bug-aging",
+			Name:    "Bug Aging Alert",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: "bug"},
+				{Field: FieldStatus, Operation: OpNotEquals, Value: "done"},
+				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionAddTag, Value: "aging"},
+			},
+		},
+		// Auto-block on Blockers: sync status with dependency state
+		{
+			ID:      "def-auto-block",
+			Name:    "Auto-block on Blockers",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
+				{Field: FieldStatus, Operation: OpNotEquals, Value: "blocked"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetStatus, Value: "blocked"},
+			},
+		},
+		// Unblock When Ready: complement to auto-block
+		{
+			ID:      "def-auto-unblock",
+			Name:    "Unblock When Ready",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
+				{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetStatus, Value: "todo"},
+			},
+		},
+		// High Priority Due Soon: bump priority when deadline approaches
+		{
+			ID:      "def-priority-due",
+			Name:    "High Priority Due Soon",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+				{Field: FieldPriority, Operation: OpGreaterThan, Value: "2"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetPriority, Value: "2"},
+			},
+		},
+		// Inbox Triage Reminder: remind user to process inbox items
+		{
+			ID:      "def-inbox-stale",
+			Name:    "Inbox Triage Reminder",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldSection, Operation: OpEquals, Value: "Inbox"},
+				{Field: FieldCreatedDays, Operation: OpGreaterThan, Value: "3"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionAddTag, Value: "needs-triage"},
+			},
+		},
+		// WIP Warning: highlight work-in-progress that may be stuck
+		{
+			ID:      "def-wip-warning",
+			Name:    "WIP Warning",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldStatus, Operation: OpEquals, Value: "in_progress"},
+				{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionAddTag, Value: "wip-old"},
+			},
+		},
+		// Cascade Urgent Tag: propagate urgency down the hierarchy
+		{
+			ID:      "def-cascade-urgent",
+			Name:    "Cascade Urgent Tag",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldTags, Operation: OpContains, Value: "urgent"},
+				{Field: FieldHasChildren, Operation: OpEquals, Value: "true"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionCascadeTag, Value: "urgent"},
+			},
+		},
+		// Epic Started: auto-start epic when any child begins
+		{
+			ID:      "def-epic-started",
+			Name:    "Epic Started",
+			Enabled: false,
+			Source:  "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: "epic"},
+				{Field: FieldChildrenProgress, Operation: OpGreaterThan, Value: "0"},
+				{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetStatus, Value: "in_progress"},
+			},
+		},
+	}
+}
+
+// DefaultRuleIDs returns the IDs of all default rules.
+func DefaultRuleIDs() []string {
+	rules := GetDefaultRules()
+	ids := make([]string, len(rules))
+	for i, r := range rules {
+		ids[i] = r.ID
+	}
+	return ids
+}
+
+// IsDefaultRuleID returns true if the given ID is a default rule ID.
+func IsDefaultRuleID(id string) bool {
+	for _, defaultID := range DefaultRuleIDs() {
+		if id == defaultID {
+			return true
+		}
+	}
+	return false
+}

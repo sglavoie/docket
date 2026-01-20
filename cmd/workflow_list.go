@@ -30,7 +30,9 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 	rules := cfg.GetWorkflowRules()
 	if len(rules) == 0 {
 		fmt.Println("No workflow rules configured.")
-		fmt.Println("\nUse 'tt workflow add' to create a rule.")
+		fmt.Println()
+		fmt.Println("Use 'tt workflow init' to add default rules.")
+		fmt.Println("Use 'tt workflow add' to create a custom rule.")
 		return nil
 	}
 
@@ -40,11 +42,15 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		if !rule.Enabled {
 			status = "disabled"
 		}
+		sourceMarker := ""
+		if rule.Source == "default" {
+			sourceMarker = " [default]"
+		}
 		triggerInfo := ""
 		if rule.TriggerCount > 0 {
 			triggerInfo = fmt.Sprintf(" | %d triggers", rule.TriggerCount)
 		}
-		fmt.Printf("  [%s] %s (%s)%s\n", rule.ID, rule.Name, status, triggerInfo)
+		fmt.Printf("  [%s] %s (%s)%s%s\n", rule.ID, rule.Name, status, sourceMarker, triggerInfo)
 		fmt.Printf("      %s\n", rule.Summary())
 		fmt.Println()
 	}

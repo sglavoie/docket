@@ -172,6 +172,7 @@ type WorkflowRule struct {
 	TriggerLogic TriggerLogic  `json:"trigger_logic,omitempty"` // "and" or "or" (default: "and")
 	Actions      []RuleAction  `json:"actions"`
 	TriggerCount int64         `json:"trigger_count,omitempty"`
+	Source       string        `json:"source,omitempty"` // "default" for built-in rules, empty for user-created
 }
 
 // NewRule creates a new workflow rule with a generated ID.

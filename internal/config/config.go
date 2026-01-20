@@ -38,25 +38,26 @@ type ProjectViewState struct {
 
 // Config holds the application configuration.
 type Config struct {
-	DataDir              string                      `json:"data_dir"`
-	CurrentProject       string                      `json:"current_project,omitempty"`
-	Editor               string                      `json:"editor"`
-	DefaultContext       string                      `json:"default_context"`
-	FzfEnabled           bool                        `json:"fzf_enabled"`
-	GlowEnabled          bool                        `json:"glow_enabled"`
-	UndoHistoryDepth     *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects             []*models.Project           `json:"projects"`
-	SectionColors        map[string]string           `json:"section_colors,omitempty"`         // Global section color registry
-	ProjectViewStates    map[string]ProjectViewState `json:"project_view_states,omitempty"`    // Per-project filter/sort state
-	CycleProjects        []string                    `json:"cycle_projects,omitempty"`         // Project IDs for quick cycling with ` and ~
-	ShowRecentTasks      *bool                       `json:"show_recent_tasks,omitempty"`      // Show Recent Tasks section on dashboard (default: true)
-	RecentPaletteItems   []RecentPaletteItem         `json:"recent_palette_items,omitempty"`   // Recently selected items in command palette
-	LastPaletteCategory  string                      `json:"last_palette_category,omitempty"`  // Last category filter used (e.g., ":task ")
-	PaletteSearchHistory []string                    `json:"palette_search_history,omitempty"` // Recent search queries in command palette
-	PinnedCommands       []string                    `json:"pinned_commands,omitempty"`        // Pinned command names for quick access
-	SavedSearches        map[string]string           `json:"saved_searches,omitempty"`         // Named saved searches (name -> query)
-	CommandHistory       []string                    `json:"command_history,omitempty"`        // Recently executed command names
-	WorkflowRules        []workflow.WorkflowRule     `json:"workflow_rules,omitempty"`         // Automation rules for task changes
+	DataDir                 string                      `json:"data_dir"`
+	CurrentProject          string                      `json:"current_project,omitempty"`
+	Editor                  string                      `json:"editor"`
+	DefaultContext          string                      `json:"default_context"`
+	FzfEnabled              bool                        `json:"fzf_enabled"`
+	GlowEnabled             bool                        `json:"glow_enabled"`
+	UndoHistoryDepth        *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects                []*models.Project           `json:"projects"`
+	SectionColors           map[string]string           `json:"section_colors,omitempty"`            // Global section color registry
+	ProjectViewStates       map[string]ProjectViewState `json:"project_view_states,omitempty"`       // Per-project filter/sort state
+	CycleProjects           []string                    `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~
+	ShowRecentTasks         *bool                       `json:"show_recent_tasks,omitempty"`         // Show Recent Tasks section on dashboard (default: true)
+	RecentPaletteItems      []RecentPaletteItem         `json:"recent_palette_items,omitempty"`      // Recently selected items in command palette
+	LastPaletteCategory     string                      `json:"last_palette_category,omitempty"`     // Last category filter used (e.g., ":task ")
+	PaletteSearchHistory    []string                    `json:"palette_search_history,omitempty"`    // Recent search queries in command palette
+	PinnedCommands          []string                    `json:"pinned_commands,omitempty"`           // Pinned command names for quick access
+	SavedSearches           map[string]string           `json:"saved_searches,omitempty"`            // Named saved searches (name -> query)
+	CommandHistory          []string                    `json:"command_history,omitempty"`           // Recently executed command names
+	WorkflowRules           []workflow.WorkflowRule     `json:"workflow_rules,omitempty"`            // Automation rules for task changes
+	DefaultRulesInitialized bool                        `json:"default_rules_initialized,omitempty"` // True after tt workflow init has run
 }
 
 // NewConfig creates a new configuration with default values.
@@ -722,4 +723,31 @@ func (c *Config) ResetAllRuleTriggerCounts() {
 	for i := range c.WorkflowRules {
 		c.WorkflowRules[i].TriggerCount = 0
 	}
+}
+
+// HasRuleWithID returns true if a rule with the given ID exists.
+func (c *Config) HasRuleWithID(id string) bool {
+	for _, rule := range c.WorkflowRules {
+		if rule.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// AddDefaultRules adds the built-in default rules that don't already exist.
+// If enableRules is true, rules are created enabled; otherwise disabled.
+// Returns the number of rules added.
+func (c *Config) AddDefaultRules(enableRules bool) int {
+	defaults := workflow.GetDefaultRules()
+	added := 0
+	for _, rule := range defaults {
+		if !c.HasRuleWithID(rule.ID) {
+			rule.Enabled = enableRules
+			c.WorkflowRules = append(c.WorkflowRules, rule)
+			added++
+		}
+	}
+	c.DefaultRulesInitialized = true
+	return added
 }
