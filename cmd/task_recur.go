@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +68,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		task.ClearRecurrence()
-		if err := storage.SaveProject(project); err != nil {
+		if err := SaveProjectWithBackup(project); err != nil {
 			return fmt.Errorf("failed to save project: %w", err)
 		}
 		fmt.Printf("Removed recurrence from task #%d (%s)\n", taskID, task.Title)
@@ -98,7 +97,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 
 	task.SetRecurrence(pattern)
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

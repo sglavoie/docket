@@ -59,13 +59,31 @@ func SaveProjectWithBackup(project *models.Project) error {
 // It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
 // Prints warnings to stderr if there are rule conflicts.
 // If configManager is provided, trigger counts are persisted.
+// This version does not support event-based triggers (use SaveProjectWithRulesAndChanges).
 func SaveProjectWithRules(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
+	return SaveProjectWithRulesAndChanges(project, cfg, configManager, nil)
+}
+
+// SaveProjectWithRulesAndChanges saves the project after evaluating workflow rules.
+// If prevStates is provided, it enables event-based triggers by comparing current
+// state against previous state. Pass nil for prevStates to disable event triggers.
+func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config, configManager *config.Manager, prevStates map[string]*models.Task) error {
 	project.CheckAndAutoUnblock()
 
 	// Evaluate workflow rules
 	rules := cfg.GetEnabledWorkflowRules()
 	if len(rules) > 0 {
-		result := workflow.EvaluateRules(project.Tasks, rules)
+		var result *workflow.EvaluationResult
+
+		if prevStates != nil {
+			// Use context-aware evaluation with event triggers
+			evalCtx := BuildEvaluationContext(project.Tasks, prevStates)
+			result = workflow.EvaluateRulesWithContext(evalCtx, rules)
+		} else {
+			// Use standard evaluation (no event triggers)
+			result = workflow.EvaluateRules(project.Tasks, rules)
+		}
+
 		if len(result.Conflicts) > 0 {
 			fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
 			fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
@@ -85,6 +103,59 @@ func SaveProjectWithRules(project *models.Project, cfg *config.Config, configMan
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 	return storage.SaveProject(project)
+}
+
+// CaptureTaskStates creates a snapshot of task states for event trigger detection.
+// Call this before making changes to tasks to capture their previous state.
+func CaptureTaskStates(tasks []*models.Task) map[string]*models.Task {
+	states := make(map[string]*models.Task, len(tasks))
+	for _, task := range tasks {
+		states[task.ID] = copyTaskState(task)
+	}
+	return states
+}
+
+// copyTaskState creates a shallow copy of task fields relevant for event detection.
+func copyTaskState(task *models.Task) *models.Task {
+	if task == nil {
+		return nil
+	}
+	// Copy tags slice
+	tagsCopy := make([]string, len(task.Tags))
+	copy(tagsCopy, task.Tags)
+
+	return &models.Task{
+		ID:       task.ID,
+		Status:   task.Status,
+		Priority: task.Priority,
+		Section:  task.Section,
+		Tags:     tagsCopy,
+		Type:     task.Type,
+		// Preserve parent/child relationships for hierarchical triggers
+		Parent:   task.Parent,
+		Children: task.Children,
+		Level:    task.Level,
+	}
+}
+
+// BuildEvaluationContext creates an evaluation context for workflow rules.
+func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task) *workflow.EvaluationContext {
+	changes := make([]workflow.TaskChangeContext, len(tasks))
+	taskMap := make(map[string]*models.Task, len(tasks))
+
+	for i, task := range tasks {
+		taskMap[task.ID] = task
+		changes[i] = workflow.TaskChangeContext{
+			Task:     task,
+			Previous: prevStates[task.ID], // nil if task is new
+		}
+	}
+
+	return &workflow.EvaluationContext{
+		Changes:  changes,
+		AllTasks: tasks,
+		TaskMap:  taskMap,
+	}
 }
 
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.

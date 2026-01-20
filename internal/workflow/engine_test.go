@@ -1059,3 +1059,477 @@ func TestRuleValidation_NewActions(t *testing.T) {
 func timePtr(t time.Time) *time.Time {
 	return &t
 }
+
+// Tests for event-based triggers
+
+func TestMatchesEventTrigger_StatusChanged(t *testing.T) {
+	tests := []struct {
+		name       string
+		prevStatus models.TaskStatus
+		currStatus models.TaskStatus
+		pattern    string
+		expected   bool
+	}{
+		{
+			name:       "blocked to in_progress matches blocked->*",
+			prevStatus: models.StatusBlocked,
+			currStatus: models.StatusInProgress,
+			pattern:    "blocked->*",
+			expected:   true,
+		},
+		{
+			name:       "todo to done matches *->done",
+			prevStatus: models.StatusTodo,
+			currStatus: models.StatusDone,
+			pattern:    "*->done",
+			expected:   true,
+		},
+		{
+			name:       "blocked to done matches blocked->done",
+			prevStatus: models.StatusBlocked,
+			currStatus: models.StatusDone,
+			pattern:    "blocked->done",
+			expected:   true,
+		},
+		{
+			name:       "todo to blocked does not match blocked->*",
+			prevStatus: models.StatusTodo,
+			currStatus: models.StatusBlocked,
+			pattern:    "blocked->*",
+			expected:   false,
+		},
+		{
+			name:       "same status does not trigger",
+			prevStatus: models.StatusBlocked,
+			currStatus: models.StatusBlocked,
+			pattern:    "blocked->*",
+			expected:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prev := &models.Task{ID: "1", Status: tt.prevStatus}
+			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			trigger := RuleTrigger{Field: FieldStatusChanged, Operation: OpEquals, Value: tt.pattern}
+
+			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
+				t.Errorf("matchesEventTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesEventTrigger_Completed(t *testing.T) {
+	tests := []struct {
+		name       string
+		prevStatus models.TaskStatus
+		currStatus models.TaskStatus
+		expected   bool
+	}{
+		{
+			name:       "todo to done fires completed",
+			prevStatus: models.StatusTodo,
+			currStatus: models.StatusDone,
+			expected:   true,
+		},
+		{
+			name:       "in_progress to cancelled fires completed",
+			prevStatus: models.StatusInProgress,
+			currStatus: models.StatusCancelled,
+			expected:   true,
+		},
+		{
+			name:       "done to done does not fire",
+			prevStatus: models.StatusDone,
+			currStatus: models.StatusDone,
+			expected:   false,
+		},
+		{
+			name:       "todo to blocked does not fire",
+			prevStatus: models.StatusTodo,
+			currStatus: models.StatusBlocked,
+			expected:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prev := &models.Task{ID: "1", Status: tt.prevStatus}
+			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			trigger := RuleTrigger{Field: FieldCompleted, Operation: OpEquals, Value: "true"}
+
+			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
+				t.Errorf("matchesEventTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesEventTrigger_TagAdded(t *testing.T) {
+	tests := []struct {
+		name     string
+		prevTags []string
+		currTags []string
+		tagName  string
+		expected bool
+	}{
+		{
+			name:     "tag added",
+			prevTags: []string{},
+			currTags: []string{"urgent"},
+			tagName:  "urgent",
+			expected: true,
+		},
+		{
+			name:     "tag already existed",
+			prevTags: []string{"urgent"},
+			currTags: []string{"urgent"},
+			tagName:  "urgent",
+			expected: false,
+		},
+		{
+			name:     "different tag added",
+			prevTags: []string{},
+			currTags: []string{"backend"},
+			tagName:  "urgent",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prev := &models.Task{ID: "1", Tags: tt.prevTags}
+			curr := &models.Task{ID: "1", Tags: tt.currTags}
+			trigger := RuleTrigger{Field: FieldTagAdded, Operation: OpEquals, Value: tt.tagName}
+
+			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
+				t.Errorf("matchesEventTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesEventTrigger_Reopened(t *testing.T) {
+	tests := []struct {
+		name       string
+		prevStatus models.TaskStatus
+		currStatus models.TaskStatus
+		expected   bool
+	}{
+		{
+			name:       "done to todo fires reopened",
+			prevStatus: models.StatusDone,
+			currStatus: models.StatusTodo,
+			expected:   true,
+		},
+		{
+			name:       "cancelled to in_progress fires reopened",
+			prevStatus: models.StatusCancelled,
+			currStatus: models.StatusInProgress,
+			expected:   true,
+		},
+		{
+			name:       "todo to in_progress does not fire",
+			prevStatus: models.StatusTodo,
+			currStatus: models.StatusInProgress,
+			expected:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prev := &models.Task{ID: "1", Status: tt.prevStatus}
+			curr := &models.Task{ID: "1", Status: tt.currStatus}
+			trigger := RuleTrigger{Field: FieldReopened, Operation: OpEquals, Value: "true"}
+
+			if got := matchesEventTrigger(curr, prev, trigger); got != tt.expected {
+				t.Errorf("matchesEventTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// Tests for hierarchical triggers
+
+func TestMatchesHierarchicalTrigger_ParentStatus(t *testing.T) {
+	parent := &models.Task{ID: "parent", Status: models.StatusInProgress, Type: models.TaskTypeEpic}
+	child := &models.Task{ID: "child", Status: models.StatusTodo, Parent: parent}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"parent": parent, "child": child},
+	}
+
+	tests := []struct {
+		name     string
+		trigger  RuleTrigger
+		expected bool
+	}{
+		{
+			name:     "parent status matches",
+			trigger:  RuleTrigger{Field: FieldParentStatus, Operation: OpEquals, Value: "in_progress"},
+			expected: true,
+		},
+		{
+			name:     "parent status does not match",
+			trigger:  RuleTrigger{Field: FieldParentStatus, Operation: OpEquals, Value: "done"},
+			expected: false,
+		},
+		{
+			name:     "parent type matches",
+			trigger:  RuleTrigger{Field: FieldParentType, Operation: OpEquals, Value: "epic"},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesHierarchicalTrigger(child, tt.trigger, evalCtx); got != tt.expected {
+				t.Errorf("matchesHierarchicalTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesHierarchicalTrigger_AllChildrenDone(t *testing.T) {
+	tests := []struct {
+		name          string
+		childStatuses []models.TaskStatus
+		expectedMatch bool
+	}{
+		{
+			name:          "all children done",
+			childStatuses: []models.TaskStatus{models.StatusDone, models.StatusDone},
+			expectedMatch: true,
+		},
+		{
+			name:          "some children incomplete",
+			childStatuses: []models.TaskStatus{models.StatusDone, models.StatusTodo},
+			expectedMatch: false,
+		},
+		{
+			name:          "no children",
+			childStatuses: []models.TaskStatus{},
+			expectedMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := &models.Task{ID: "parent", Type: models.TaskTypeEpic, Children: []*models.Task{}}
+			for i, status := range tt.childStatuses {
+				child := &models.Task{
+					ID:     "child" + string(rune('0'+i)),
+					Status: status,
+					Type:   models.TaskTypeTask,
+					Parent: parent,
+				}
+				parent.Children = append(parent.Children, child)
+			}
+
+			evalCtx := &EvaluationContext{
+				AllTasks: append([]*models.Task{parent}, parent.Children...),
+			}
+
+			trigger := RuleTrigger{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"}
+			if got := matchesHierarchicalTrigger(parent, trigger, evalCtx); got != tt.expectedMatch {
+				t.Errorf("matchesHierarchicalTrigger() = %v, want %v", got, tt.expectedMatch)
+			}
+		})
+	}
+}
+
+func TestMatchesHierarchicalTrigger_IsBlocked(t *testing.T) {
+	blocker1 := &models.Task{ID: "blocker1", Status: models.StatusTodo}
+	blocker2 := &models.Task{ID: "blocker2", Status: models.StatusDone}
+	task := &models.Task{ID: "task", DependsOn: []string{"blocker1", "blocker2"}}
+
+	evalCtx := &EvaluationContext{
+		TaskMap: map[string]*models.Task{
+			"blocker1": blocker1,
+			"blocker2": blocker2,
+			"task":     task,
+		},
+	}
+
+	tests := []struct {
+		name     string
+		trigger  RuleTrigger
+		expected bool
+	}{
+		{
+			name:     "is_blocked true (has incomplete blocker)",
+			trigger:  RuleTrigger{Field: FieldIsBlocked, Operation: OpEquals, Value: "true"},
+			expected: true,
+		},
+		{
+			name:     "blocker_count greater than 0",
+			trigger:  RuleTrigger{Field: FieldBlockerCount, Operation: OpGreaterThan, Value: "0"},
+			expected: true,
+		},
+		{
+			name:     "blocker_count equals 1",
+			trigger:  RuleTrigger{Field: FieldBlockerCount, Operation: OpEquals, Value: "1"},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesHierarchicalTrigger(task, tt.trigger, evalCtx); got != tt.expected {
+				t.Errorf("matchesHierarchicalTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// Tests for hierarchical actions
+
+func TestApplyHierarchicalAction_CascadeTag(t *testing.T) {
+	parent := &models.Task{ID: "parent", Tags: []string{"urgent"}, Children: []*models.Task{}}
+	child1 := &models.Task{ID: "child1", Tags: []string{}, Parent: parent}
+	child2 := &models.Task{ID: "child2", Tags: []string{"urgent"}, Parent: parent}
+	parent.Children = []*models.Task{child1, child2}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child1, child2},
+		TaskMap:  map[string]*models.Task{"parent": parent, "child1": child1, "child2": child2},
+	}
+
+	action := RuleAction{ActionType: ActionCascadeTag, Value: "urgent"}
+	modified := applyHierarchicalAction(parent, action, evalCtx)
+
+	if !modified {
+		t.Error("expected cascade_tag to modify at least one child")
+	}
+	if !child1.HasTag("urgent") {
+		t.Error("expected child1 to have 'urgent' tag after cascade")
+	}
+}
+
+func TestApplyHierarchicalAction_InheritTag(t *testing.T) {
+	parent := &models.Task{ID: "parent", Tags: []string{"urgent"}}
+	child := &models.Task{ID: "child", Tags: []string{}, Parent: parent}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"parent": parent, "child": child},
+	}
+
+	action := RuleAction{ActionType: ActionInheritTag, Value: "urgent"}
+	modified := applyHierarchicalAction(child, action, evalCtx)
+
+	if !modified {
+		t.Error("expected inherit_tag to modify child")
+	}
+	if !child.HasTag("urgent") {
+		t.Error("expected child to have 'urgent' tag after inherit")
+	}
+}
+
+func TestApplyHierarchicalAction_NotifyParent(t *testing.T) {
+	parent := &models.Task{ID: "parent", Comments: []*models.Comment{}}
+	child := &models.Task{ID: "child", Parent: parent}
+
+	evalCtx := &EvaluationContext{
+		AllTasks: []*models.Task{parent, child},
+		TaskMap:  map[string]*models.Task{"parent": parent, "child": child},
+	}
+
+	action := RuleAction{ActionType: ActionNotifyParent, Value: "Child completed"}
+	modified := applyHierarchicalAction(child, action, evalCtx)
+
+	if !modified {
+		t.Error("expected notify_parent to modify parent")
+	}
+	if len(parent.Comments) != 1 {
+		t.Errorf("expected parent to have 1 comment, got %d", len(parent.Comments))
+	}
+	if parent.Comments[0].Text != "[Workflow] Child completed" {
+		t.Errorf("unexpected comment text: %s", parent.Comments[0].Text)
+	}
+}
+
+// Tests for EvaluateRulesWithContext
+
+func TestEvaluateRulesWithContext_EventTrigger(t *testing.T) {
+	// Create previous state with blocked task
+	prevTask := &models.Task{ID: "1", Status: models.StatusBlocked, Tags: []string{}}
+	// Current state with unblocked task
+	currTask := &models.Task{ID: "1", Status: models.StatusInProgress, Tags: []string{}}
+
+	evalCtx := &EvaluationContext{
+		Changes: []TaskChangeContext{
+			{Task: currTask, Previous: prevTask},
+		},
+		AllTasks: []*models.Task{currTask},
+		TaskMap:  map[string]*models.Task{"1": currTask},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Unblock Tag",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldStatusChanged, Operation: OpEquals, Value: "blocked->*"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "ready"}},
+		},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if !currTask.HasTag("ready") {
+		t.Error("expected task to have 'ready' tag from event trigger")
+	}
+}
+
+func TestEvaluateRulesWithContext_HierarchicalTrigger(t *testing.T) {
+	// Epic with two completed children
+	child1 := &models.Task{ID: "c1", Status: models.StatusDone, Type: models.TaskTypeTask}
+	child2 := &models.Task{ID: "c2", Status: models.StatusDone, Type: models.TaskTypeTask}
+	epic := &models.Task{
+		ID:       "epic",
+		Status:   models.StatusInProgress,
+		Type:     models.TaskTypeEpic,
+		Children: []*models.Task{child1, child2},
+	}
+	child1.Parent = epic
+	child2.Parent = epic
+
+	evalCtx := &EvaluationContext{
+		Changes: []TaskChangeContext{
+			{Task: epic, Previous: nil},
+			{Task: child1, Previous: nil},
+			{Task: child2, Previous: nil},
+		},
+		AllTasks: []*models.Task{epic, child1, child2},
+		TaskMap:  map[string]*models.Task{"epic": epic, "c1": child1, "c2": child2},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Auto Complete Epic",
+			Enabled: true,
+			Triggers: []RuleTrigger{
+				{Field: FieldType, Operation: OpEquals, Value: "epic"},
+				{Field: FieldAllChildrenDone, Operation: OpEquals, Value: "true"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionSetStatus, Value: "done"}},
+		},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task (epic), got %d", len(result.ModifiedTasks))
+	}
+	if epic.Status != models.StatusDone {
+		t.Errorf("expected epic status to be done, got %s", epic.Status)
+	}
+}

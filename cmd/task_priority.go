@@ -62,10 +62,13 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := CaptureTaskStates(project.Tasks)
+
 	task.Priority = priority
 	task.UpdatedAt = time.Now()
 
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
+	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

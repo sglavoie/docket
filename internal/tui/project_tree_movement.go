@@ -4,6 +4,7 @@ import tea "github.com/charmbracelet/bubbletea"
 
 // handleTypeKeys handles <, >, H, L - type change operations.
 // Note: h/l are now used for indent/outdent (Vim-style horizontal movement).
+// Captures task states before changes to enable event-based workflow triggers.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
@@ -12,9 +13,10 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanPromote(); ok {
+				prevStates := captureTaskStates(m.project.Tasks)
 				task.Promote()
 				m.setUndoContext("Promote Task", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -23,9 +25,10 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanDemote(); ok {
+				prevStates := captureTaskStates(m.project.Tasks)
 				task.Demote()
 				m.setUndoContext("Demote Task", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -34,9 +37,10 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(true); ok {
+				prevStates := captureTaskStates(m.project.Tasks)
 				task.CycleLeafType(true)
 				m.setUndoContext("Change Type", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -45,9 +49,10 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(false); ok {
+				prevStates := captureTaskStates(m.project.Tasks)
 				task.CycleLeafType(false)
 				m.setUndoContext("Change Type", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -57,6 +62,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 
 // handleMovementKeys handles K, J, h, l - task movement operations.
 // h/l now handle indent/outdent (Vim-style horizontal movement in tree).
+// Captures task states before changes to enable event-based workflow triggers.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
@@ -73,12 +79,13 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 						return MoveBlockedMsg{Reason: "Cannot move completed task above uncompleted task"}
 					}
 				}
+				prevStates := captureTaskStates(m.project.Tasks)
 				m.project.SwapTasks(task, siblingAbove)
 				if m.cursor > 0 {
 					m.cursor--
 				}
 				m.setUndoContext("Move Up", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -95,12 +102,13 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 						return MoveBlockedMsg{Reason: "Cannot move uncompleted task below completed task"}
 					}
 				}
+				prevStates := captureTaskStates(m.project.Tasks)
 				m.project.SwapTasks(task, siblingBelow)
 				if m.cursor < len(visible)-1 {
 					m.cursor++
 				}
 				m.setUndoContext("Move Down", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -112,10 +120,11 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			candidate := visible[m.cursor-1].Task
 			for candidate != nil {
 				if ok, _ := task.CanIndent(candidate); ok {
+					prevStates := captureTaskStates(m.project.Tasks)
 					task.ParentID = &candidate.ID
 					m.project.BuildTaskTree()
 					m.setUndoContext("Indent", task.Title)
-					return true, m.saveAndRefresh()
+					return true, m.saveAndRefreshWithPrevStates(prevStates)
 				}
 				candidate = candidate.Parent
 			}
@@ -126,9 +135,10 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanOutdent(); ok {
+				prevStates := captureTaskStates(m.project.Tasks)
 				m.project.OutdentTask(task)
 				m.setUndoContext("Outdent", task.Title)
-				return true, m.saveAndRefresh()
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil

@@ -299,6 +299,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		switch key {
 		case "1", "2", "3", "4", "5":
 			priority := int(key[0] - '0')
+			// Capture task states before changes for event-based workflow triggers
+			prevStates := captureTaskStates(m.project.Tasks)
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				count := 0
 				for id := range m.selectedTasks {
@@ -310,14 +312,14 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 				m.clearSelection()
 				m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
-				return m, m.saveAndRefresh()
+				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 			if CursorInBounds(m.cursor, len(visible)) {
 				task := visible[m.cursor].Task
 				task.Priority = priority
 				task.UpdatedAt = time.Now()
 				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
-				return m, m.saveAndRefresh()
+				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 			return m, nil
 		}
@@ -367,6 +369,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, nil
 		}
 
+		// Capture task states before changes for event-based workflow triggers
+		prevStates := captureTaskStates(m.project.Tasks)
+
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			count := 0
 			for id := range m.selectedTasks {
@@ -378,14 +383,14 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			}
 			m.clearSelection()
 			m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
-			return m, m.saveAndRefresh()
+			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			task.DueDate = dueDate
 			task.UpdatedAt = time.Now()
 			m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
-			return m, m.saveAndRefresh()
+			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		return m, nil
 	}

@@ -18,37 +18,51 @@ var workflowAddCmd = &cobra.Command{
 Rules are defined with trigger condition(s) and one or more actions.
 When a task matches the trigger(s), the actions are applied automatically.
 
-Trigger fields: status, priority, section, tags, type, due_days, created_days, updated_days
-Trigger operations: equals, not_equals, contains, greater_than, less_than
-Action types:
-  set_status, set_priority, set_section, add_tag, remove_tag,
-  set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
+STATE TRIGGER FIELDS (match current task state):
+  status, priority, section, tags, type
+  due_days, created_days, updated_days
 
-Compound Triggers:
+EVENT TRIGGER FIELDS (detect transitions):
+  status_changed    - Value: "old->new" (e.g., "blocked->*", "*->done")
+  section_changed   - Value: "old->new" (e.g., "Backlog->Active")
+  priority_changed  - Value: "old->new" (e.g., "*->1")
+  tag_added         - Value: tag name that was added
+  tag_removed       - Value: tag name that was removed
+  completed         - Value: "true" (fires on done/cancelled)
+  reopened          - Value: "true" (fires when reopened)
+
+HIERARCHICAL TRIGGER FIELDS:
+  parent_status, parent_type, parent_tags, level
+  has_children, children_progress, all_children_done
+  is_blocked, blocker_count
+
+TRIGGER OPERATIONS:
+  equals, not_equals, contains, greater_than, less_than
+
+ACTION TYPES:
+  set_status, set_priority, set_section, add_tag, remove_tag
+  set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
+  complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
+
+COMPOUND TRIGGERS:
   Use multiple -f/-o/-V flag groups to create compound triggers.
   Use --logic to specify AND (default) or OR logic.
 
 Examples:
-  # Move high-priority tasks to Active
-  tt workflow add -n "High Priority Active" -f priority -o equals -V 1 -a set_section --action-value ""
+  # When unblocked, add ready tag (event trigger)
+  tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
 
-  # Add 'urgent' tag when task is blocked
-  tt workflow add -n "Blocked Tag" -f status -o equals -V blocked -a add_tag --action-value urgent
+  # When completed, move to Archive
+  tt workflow add -n "Archive Done" -f completed -o equals -V true -a set_section --action-value Archive
 
-  # Compound: High-priority AND blocked tasks get urgent tag
-  tt workflow add -n "Urgent Blocked" -f status -o equals -V blocked -f priority -o equals -V 1 --logic and -a add_tag --action-value urgent
+  # Auto-complete epic when all children done (hierarchical)
+  tt workflow add -n "Epic Auto-Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
 
-  # Compound OR: Active section OR urgent tag -> high priority
-  tt workflow add -n "Prioritize" -f section -o equals -V "" -f tags -o contains -V urgent --logic or -a set_priority --action-value 1
-
-  # Set due date 3 days out when moved to Active section
-  tt workflow add -n "Active Due" -f section -o equals -V "" -a set_due_relative --action-value "+3d"
+  # Inherit urgent tag from parent
+  tt workflow add -n "Inherit Urgent" -f parent_tags -o contains -V urgent -a inherit_tag --action-value urgent
 
   # Tag overdue tasks
   tt workflow add -n "Overdue Alert" -f due_days -o less_than -V 0 -a add_tag --action-value overdue
-
-  # Bump priority when due within 3 days
-  tt workflow add -n "Due Soon" -f due_days -o less_than -V 3 -a set_priority --action-value 1
 
   # Tag stale in-progress tasks (not updated in 7 days)
   tt workflow add -n "Stale WIP" -f updated_days -o greater_than -V 7 -f status -o equals -V in_progress --logic and -a add_tag --action-value stale`,
@@ -101,6 +115,7 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	validFields := map[workflow.TriggerField]bool{
+		// State triggers
 		workflow.FieldStatus:      true,
 		workflow.FieldPriority:    true,
 		workflow.FieldSection:     true,
@@ -109,6 +124,24 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.FieldDueDays:     true,
 		workflow.FieldCreatedDays: true,
 		workflow.FieldUpdatedDays: true,
+		// Event triggers
+		workflow.FieldStatusChanged:   true,
+		workflow.FieldSectionChanged:  true,
+		workflow.FieldPriorityChanged: true,
+		workflow.FieldTagAdded:        true,
+		workflow.FieldTagRemoved:      true,
+		workflow.FieldCompleted:       true,
+		workflow.FieldReopened:        true,
+		// Hierarchical triggers
+		workflow.FieldParentStatus:     true,
+		workflow.FieldParentType:       true,
+		workflow.FieldParentTags:       true,
+		workflow.FieldLevel:            true,
+		workflow.FieldHasChildren:      true,
+		workflow.FieldChildrenProgress: true,
+		workflow.FieldAllChildrenDone:  true,
+		workflow.FieldIsBlocked:        true,
+		workflow.FieldBlockerCount:     true,
 	}
 	validOps := map[workflow.TriggerOperation]bool{
 		workflow.OpEquals:      true,
@@ -123,7 +156,7 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	for i := range triggerFields {
 		field := workflow.TriggerField(strings.ToLower(triggerFields[i]))
 		if !validFields[field] {
-			return fmt.Errorf("invalid trigger field: %s (valid: status, priority, section, tags, type, due_days, created_days, updated_days)", triggerFields[i])
+			return fmt.Errorf("invalid trigger field: %s (run 'tt workflow add --help' for valid fields)", triggerFields[i])
 		}
 
 		op := workflow.TriggerOperation(strings.ToLower(triggerOps[i]))
@@ -158,15 +191,23 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.ActionSetPinned:      true,
 		workflow.ActionAddComment:     true,
 		workflow.ActionSetType:        true,
+		// Hierarchical actions
+		workflow.ActionCompleteParent: true,
+		workflow.ActionBlockParent:    true,
+		workflow.ActionCascadeTag:     true,
+		workflow.ActionInheritTag:     true,
+		workflow.ActionNotifyParent:   true,
 	}
 	if !validActions[action] {
-		return fmt.Errorf("invalid action type: %s (valid: set_status, set_priority, set_section, add_tag, remove_tag, set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type)", actionType)
+		return fmt.Errorf("invalid action type: %s (run 'tt workflow add --help' for valid actions)", actionType)
 	}
 
 	// Actions that don't require a value
 	noValueRequired := map[workflow.ActionType]bool{
-		workflow.ActionSetSection: true, // empty = Active
-		workflow.ActionClearDue:   true,
+		workflow.ActionSetSection:     true, // empty = Active
+		workflow.ActionClearDue:       true,
+		workflow.ActionCompleteParent: true,
+		workflow.ActionBlockParent:    true,
 	}
 
 	// Validate action value based on action type

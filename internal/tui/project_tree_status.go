@@ -21,12 +21,16 @@ type statusValidator func(*models.Task) string
 // It handles multi-select mode by applying the change to all selected tasks that pass
 // the predicate, then clears selection. For single-task mode, it applies the change
 // to the task at the cursor if it passes the predicate.
+// Captures task states before changes to enable event-based workflow triggers.
 func (m *ProjectTreeModel) handleStatusChange(
 	visible []*TreeNode,
 	predicate statusPredicate,
 	action statusAction,
 	undoAction string,
 ) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for _, task := range m.getSelectedTasks() {
@@ -39,14 +43,14 @@ func (m *ProjectTreeModel) handleStatusChange(
 		if count > 0 {
 			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", count))
 		}
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
 		task := visible[m.cursor].Task
 		if predicate(task) {
 			action(task)
 			m.setUndoContext(undoAction, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 	}
 	return true, nil
@@ -56,6 +60,7 @@ func (m *ProjectTreeModel) handleStatusChange(
 // Unlike handleStatusChange, this variant can skip individual tasks based on validation
 // and reports skipped tasks via an error message. Used for operations like complete
 // where dependency checking may block individual tasks.
+// Captures task states before changes to enable event-based workflow triggers.
 //
 // In multi-select mode with blocked tasks, shows a confirmation prompt before proceeding.
 func (m *ProjectTreeModel) handleStatusChangeWithValidation(
@@ -67,6 +72,9 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	undoAction string,
 	targetStatus models.TaskStatus,
 ) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		// Analyze which tasks can be changed vs blocked
 		var validTasks []*models.Task
@@ -87,6 +95,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 			m.pendingBulkStatus = targetStatus
 			m.pendingBulkTasks = validTasks
 			m.pendingBulkBlockedCount = blockedCount
+			m.pendingBulkPrevStates = prevStates
 			m.confirmAction = "bulk-status"
 			return true, nil
 		}
@@ -107,7 +116,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 		if len(validTasks) > 0 {
 			m.setUndoContext(undoAction, fmt.Sprintf("%d tasks", len(validTasks)))
 		}
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
 		task := visible[m.cursor].Task
@@ -119,7 +128,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 			}
 			action(task)
 			m.setUndoContext(undoAction, fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 	}
 	return true, nil
@@ -189,7 +198,11 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 }
 
 // handleCycleStatusForward cycles status: todo -> in_progress -> done -> todo.
+// Captures task states before changes to enable event-based workflow triggers.
 func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		var skippedIDs []string
 		cycledCount := 0
@@ -221,11 +234,11 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 			} else {
 				msg = fmt.Sprintf("cycled %d, skipped %s (incomplete dependencies)", cycledCount, strings.Join(skippedIDs, ", "))
 			}
-			return true, tea.Batch(m.saveAndRefresh(), func() tea.Msg {
+			return true, tea.Batch(m.saveAndRefreshWithPrevStates(prevStates), func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("%s", msg)}
 			})
 		}
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
 		task := visible[m.cursor].Task
@@ -233,7 +246,7 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 		case models.StatusTodo:
 			task.Start()
 			m.setUndoContext("Start Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		case models.StatusInProgress:
 			if incompleteDeps := m.project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
 				depNames := make([]string, len(incompleteDeps))
@@ -247,18 +260,22 @@ func (m *ProjectTreeModel) handleCycleStatusForward(visible []*TreeNode) (bool, 
 			}
 			task.Complete()
 			m.setUndoContext("Complete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		case models.StatusDone:
 			task.Reopen()
 			m.setUndoContext("Reopen Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 	}
 	return true, nil
 }
 
 // handleCycleStatusBackward cycles status backward: todo -> done -> in_progress -> todo.
+// Captures task states before changes to enable event-based workflow triggers.
 func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for _, task := range m.getSelectedTasks() {
@@ -278,7 +295,7 @@ func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool,
 		if count > 0 {
 			m.setUndoContext("Cycle Status", fmt.Sprintf("%d tasks", count))
 		}
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 	if CursorInBounds(m.cursor, len(visible)) {
 		task := visible[m.cursor].Task
@@ -286,15 +303,15 @@ func (m *ProjectTreeModel) handleCycleStatusBackward(visible []*TreeNode) (bool,
 		case models.StatusTodo:
 			task.Complete()
 			m.setUndoContext("Complete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		case models.StatusInProgress:
 			task.Reopen()
 			m.setUndoContext("Reopen Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		case models.StatusDone:
 			task.Start()
 			m.setUndoContext("Start Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-			return true, m.saveAndRefresh()
+			return true, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 	}
 	return true, nil
@@ -306,6 +323,9 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 		m.clearPendingBulkStatus()
 		return nil
 	}
+
+	// Capture previous states for event-based workflow triggers
+	prevStates := m.pendingBulkPrevStates
 
 	// Apply status to all pending tasks
 	for _, task := range m.pendingBulkTasks {
@@ -328,7 +348,7 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 	m.clearSelection()
 	m.clearPendingBulkStatus()
 
-	return m.saveAndRefresh()
+	return m.saveAndRefreshWithPrevStates(prevStates)
 }
 
 // clearPendingBulkStatus clears the pending bulk status state.
@@ -336,4 +356,5 @@ func (m *ProjectTreeModel) clearPendingBulkStatus() {
 	m.pendingBulkStatus = ""
 	m.pendingBulkTasks = nil
 	m.pendingBulkBlockedCount = 0
+	m.pendingBulkPrevStates = nil
 }

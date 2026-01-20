@@ -61,7 +61,7 @@ func init() {
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -125,8 +125,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	// Add to project
 	project.Tasks = append(project.Tasks, task)
 
-	// Save
-	if err := SaveProjectWithBackup(project); err != nil {
+	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
+	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 

@@ -133,7 +133,11 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 }
 
 // sendTasksToActive moves selected tasks or cursor task to the Active view (clears section).
+// Captures task states before changes to enable event-based workflow triggers.
 func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for id := range m.selectedTasks {
@@ -146,7 +150,7 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 		m.clearSelection()
 		m.pendingUndoAction = "Move to Active"
 		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 
 	// Single task mode
@@ -158,11 +162,15 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 	task.UpdatedAt = time.Now()
 	m.pendingUndoAction = "Move to Active"
 	m.pendingUndoContext = task.Title
-	return true, m.saveAndRefresh()
+	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
 // sendTasksToSection moves selected tasks or cursor task to the specified section.
+// Captures task states before changes to enable event-based workflow triggers.
 func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNode) (bool, tea.Cmd) {
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := captureTaskStates(m.project.Tasks)
+
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for id := range m.selectedTasks {
@@ -175,7 +183,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		m.clearSelection()
 		m.pendingUndoAction = "Move to " + section
 		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
-		return true, m.saveAndRefresh()
+		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 
 	// Single task mode
@@ -187,7 +195,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	task.UpdatedAt = time.Now()
 	m.pendingUndoAction = "Move to " + section
 	m.pendingUndoContext = task.Title
-	return true, m.saveAndRefresh()
+	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
 // handleSortKeys handles 1, 2, 3, 4, 0 - sort operations.

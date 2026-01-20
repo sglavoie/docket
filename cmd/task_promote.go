@@ -88,7 +88,7 @@ func runTaskCycle(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskType(args []string, action string, update func(*models.Task) error) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -140,13 +140,16 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 	// Record old type for output
 	oldType := task.Type
 
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := CaptureTaskStates(project.Tasks)
+
 	// Update type
 	if err := update(task); err != nil {
 		return err
 	}
 
-	// Save
-	if err := SaveProjectWithBackup(project); err != nil {
+	// Save with workflow rules evaluation
+	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

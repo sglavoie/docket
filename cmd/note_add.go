@@ -36,7 +36,7 @@ func init() {
 }
 
 func runNoteAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 	// Add to project
 	project.Tasks = append(project.Tasks, note)
 
-	// Save
-	if err := SaveProjectWithBackup(project); err != nil {
+	// Save with workflow rules evaluation
+	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 

@@ -15,20 +15,20 @@ Rules are evaluated whenever tasks are saved (status changes, edits, etc).
 
 EXAMPLES
 
-  Move high-priority tasks to Active section:
-    tt workflow add -n "High Priority Active" -f priority -o equals -V 1 -a set_section --action-value ""
+  When task unblocked, add ready tag (event trigger):
+    tt workflow add -n "Unblock Ready" -f status_changed -o equals -V "blocked->*" -a add_tag --action-value ready
 
-  Add 'urgent' tag when a task is blocked:
-    tt workflow add -n "Tag Blocked" -f status -o equals -V blocked -a add_tag --action-value urgent
+  When completed, move to Archive (event trigger):
+    tt workflow add -n "Archive Done" -f completed -o equals -V true -a set_section --action-value Archive
 
-  Auto-start tasks moved to Active (empty section):
-    tt workflow add -n "Active Starts" -f section -o equals -V "" -a set_status --action-value in_progress
+  Auto-complete epic when all children done (hierarchical):
+    tt workflow add -n "Epic Complete" -f type -o equals -V epic -f all_children_done -o equals -V true --logic and -a set_status --action-value done
 
-  Bump priority when 'critical' tag is added:
-    tt workflow add -n "Critical Priority" -f tags -o contains -V critical -a set_priority --action-value 1
+  Inherit urgent tag from parent (hierarchical):
+    tt workflow add -n "Inherit Urgent" -f parent_tags -o contains -V urgent -a inherit_tag --action-value urgent
 
-  Move completed tasks to Archive section:
-    tt workflow add -n "Archive Done" -f status -o equals -V done -a set_section --action-value Archive
+  Tag overdue tasks:
+    tt workflow add -n "Overdue Alert" -f due_days -o less_than -V 0 -a add_tag --action-value overdue
 
   Test which rules would match tasks (dry-run):
     tt workflow test
@@ -36,32 +36,33 @@ EXAMPLES
   List all rules:
     tt workflow list
 
-  Toggle a rule on/off:
-    tt workflow toggle <rule-id>
+STATE TRIGGER FIELDS (match current task state)
+  status, priority, section, tags, type
+  due_days, created_days, updated_days
 
-  Delete a rule:
-    tt workflow delete <rule-id>
+EVENT TRIGGER FIELDS (detect transitions)
+  status_changed   - Value: "old->new" (e.g., "blocked->*", "*->done")
+  section_changed  - Value: "old->new" (e.g., "Backlog->Active")
+  priority_changed - Value: "old->new" (e.g., "*->1")
+  tag_added        - Value: tag name that was added
+  tag_removed      - Value: tag name that was removed
+  completed        - Value: "true" (fires on done/cancelled)
+  reopened         - Value: "true" (fires when reopened)
 
-TRIGGER FIELDS
-  status    - Task status (todo, in_progress, blocked, done, cancelled)
-  priority  - Priority level (1-5, where 1 is highest)
-  section   - Section name (empty string "" means Active/no section)
-  tags      - Task tags
-  type      - Task type (task, epic, story, bug, idea, note)
-
-TRIGGER OPERATIONS
-  equals       - Exact match (case-insensitive)
-  not_equals   - Does not match
-  contains     - Contains substring (or has tag)
-  greater_than - Numeric comparison
-  less_than    - Numeric comparison
+HIERARCHICAL TRIGGER FIELDS
+  parent_status, parent_type, parent_tags, level
+  has_children, children_progress, all_children_done
+  is_blocked, blocker_count
 
 ACTION TYPES
-  set_status   - Change task status
-  set_priority - Change priority (1-5)
-  set_section  - Move to section (empty string for Active)
-  add_tag      - Add a tag
-  remove_tag   - Remove a tag`,
+  set_status, set_priority, set_section, add_tag, remove_tag
+  set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
+  complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
+
+COMPOUND TRIGGERS
+  Multiple triggers can be combined with --logic:
+    tt workflow add -n "Rule" -f status -o equals -V blocked -f priority -o equals -V 1 --logic and ...
+    tt workflow add -n "Rule" -f tags -o contains -V urgent -f due_days -o less_than -V 3 --logic or ...`,
 	RunE: runWorkflowList,
 }
 

@@ -166,6 +166,9 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		}
 	}
 
+	// Capture task states before changes for event-based workflow triggers
+	prevStates := CaptureTaskStates(project.Tasks)
+
 	// Update status
 	update(task)
 
@@ -180,8 +183,8 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		generated = project.GenerateRecurringInstances()
 	}
 
-	// Save with workflow rules evaluation
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
+	// Save with workflow rules evaluation (with event trigger support)
+	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

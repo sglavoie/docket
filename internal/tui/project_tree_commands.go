@@ -77,6 +77,12 @@ func (m *ProjectTreeModel) clearUndoContext() {
 
 // saveAndRefresh saves the project and refreshes the tree view.
 func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
+	return m.saveAndRefreshWithPrevStates(nil)
+}
+
+// saveAndRefreshWithPrevStates saves the project with event trigger support.
+// If prevStates is provided, event-based workflow triggers will be evaluated.
+func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) tea.Cmd {
 	// Capture undo context before returning the command
 	action := m.pendingUndoAction
 	context := m.pendingUndoContext
@@ -101,7 +107,14 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		// Evaluate workflow rules
 		rules := cfg.GetEnabledWorkflowRules()
 		if len(rules) > 0 {
-			result := workflow.EvaluateRules(m.project.Tasks, rules)
+			var result *workflow.EvaluationResult
+			if prevStates != nil {
+				// Use context-aware evaluation with event triggers
+				evalCtx := buildEvaluationContext(m.project.Tasks, prevStates)
+				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
+			} else {
+				result = workflow.EvaluateRules(m.project.Tasks, rules)
+			}
 			// Log conflicts as warnings (they're also shown in status bar)
 			if len(result.Conflicts) > 0 {
 				// Conflicts are silently ignored in TUI - tasks are skipped
@@ -136,6 +149,56 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		storage.LoadProject(m.project)
 		m.buildTree()
 		return treeRefreshMsg{}
+	}
+}
+
+// captureTaskStates creates a snapshot of task states for event trigger detection.
+func captureTaskStates(tasks []*models.Task) map[string]*models.Task {
+	states := make(map[string]*models.Task, len(tasks))
+	for _, task := range tasks {
+		states[task.ID] = copyTaskState(task)
+	}
+	return states
+}
+
+// copyTaskState creates a shallow copy of task fields relevant for event detection.
+func copyTaskState(task *models.Task) *models.Task {
+	if task == nil {
+		return nil
+	}
+	tagsCopy := make([]string, len(task.Tags))
+	copy(tagsCopy, task.Tags)
+
+	return &models.Task{
+		ID:       task.ID,
+		Status:   task.Status,
+		Priority: task.Priority,
+		Section:  task.Section,
+		Tags:     tagsCopy,
+		Type:     task.Type,
+		Parent:   task.Parent,
+		Children: task.Children,
+		Level:    task.Level,
+	}
+}
+
+// buildEvaluationContext creates an evaluation context for workflow rules.
+func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task) *workflow.EvaluationContext {
+	changes := make([]workflow.TaskChangeContext, len(tasks))
+	taskMap := make(map[string]*models.Task, len(tasks))
+
+	for i, task := range tasks {
+		taskMap[task.ID] = task
+		changes[i] = workflow.TaskChangeContext{
+			Task:     task,
+			Previous: prevStates[task.ID],
+		}
+	}
+
+	return &workflow.EvaluationContext{
+		Changes:  changes,
+		AllTasks: tasks,
+		TaskMap:  taskMap,
 	}
 }
 
@@ -297,6 +360,8 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		undoDepth = *m.config.UndoHistoryDepth
 	}
 	taskCount := len(tasks)
+	cfg := m.config
+	configManager := m.configManager
 
 	return func() tea.Msg {
 		// Record undo snapshot before applying changes
@@ -309,6 +374,9 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		if err := storage.BackupProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
+
+		// Capture task states before changes for event-based workflow triggers
+		prevStates := captureTaskStates(m.project.Tasks)
 
 		// Apply changes to each task
 		for _, task := range tasks {
@@ -336,6 +404,17 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 		// Check for auto-unblocking
 		m.project.CheckAndAutoUnblock()
+
+		// Evaluate workflow rules with event triggers
+		rules := cfg.GetEnabledWorkflowRules()
+		if len(rules) > 0 {
+			evalCtx := buildEvaluationContext(m.project.Tasks, prevStates)
+			result := workflow.EvaluateRulesWithContext(evalCtx, rules)
+			if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+				cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+				_ = configManager.Save(cfg)
+			}
+		}
 
 		// Reorder root tasks
 		m.project.ReorderRootTasksByCompletion()

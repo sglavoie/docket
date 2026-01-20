@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +40,7 @@ func init() {
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -102,8 +101,8 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	task.Description = newDesc
 	task.UpdatedAt = time.Now()
 
-	// Save
-	if err := storage.SaveProject(project); err != nil {
+	// Save with workflow rules evaluation
+	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

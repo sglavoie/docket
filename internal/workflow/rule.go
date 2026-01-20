@@ -20,6 +20,24 @@ const (
 	FieldDueDays     TriggerField = "due_days"     // Days until due (negative = overdue)
 	FieldCreatedDays TriggerField = "created_days" // Days since creation
 	FieldUpdatedDays TriggerField = "updated_days" // Days since last update
+	// Event-based trigger fields (detect transitions)
+	FieldStatusChanged   TriggerField = "status_changed"   // Value: "old->new", "*->done", "blocked->*"
+	FieldSectionChanged  TriggerField = "section_changed"  // Value: "Backlog->Active", "*->Archive"
+	FieldPriorityChanged TriggerField = "priority_changed" // Value: "*->1", "3->1"
+	FieldTagAdded        TriggerField = "tag_added"        // Value: tag name that was added
+	FieldTagRemoved      TriggerField = "tag_removed"      // Value: tag name that was removed
+	FieldCompleted       TriggerField = "completed"        // Value: "true" (fires on done/cancelled)
+	FieldReopened        TriggerField = "reopened"         // Value: "true" (fires when reopened)
+	// Hierarchical trigger fields
+	FieldParentStatus     TriggerField = "parent_status"     // Parent task status
+	FieldParentType       TriggerField = "parent_type"       // Parent task type (epic, story)
+	FieldParentTags       TriggerField = "parent_tags"       // Parent has tag
+	FieldLevel            TriggerField = "level"             // Hierarchy depth (0=root)
+	FieldHasChildren      TriggerField = "has_children"      // "true"/"false"
+	FieldChildrenProgress TriggerField = "children_progress" // Percentage: 0-100
+	FieldAllChildrenDone  TriggerField = "all_children_done" // "true" when 100% complete
+	FieldIsBlocked        TriggerField = "is_blocked"        // Has incomplete dependencies
+	FieldBlockerCount     TriggerField = "blocker_count"     // Number of incomplete blockers
 )
 
 // TriggerOperation represents how to compare the field value.
@@ -48,6 +66,12 @@ const (
 	ActionSetPinned      ActionType = "set_pinned"
 	ActionAddComment     ActionType = "add_comment"
 	ActionSetType        ActionType = "set_type"
+	// Hierarchical actions
+	ActionCompleteParent ActionType = "complete_parent" // Mark parent task as done
+	ActionBlockParent    ActionType = "block_parent"    // Mark parent task as blocked
+	ActionCascadeTag     ActionType = "cascade_tag"     // Add tag to all children
+	ActionInheritTag     ActionType = "inherit_tag"     // Copy tag from parent
+	ActionNotifyParent   ActionType = "notify_parent"   // Add comment to parent task
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -115,6 +139,16 @@ func (a RuleAction) String() string {
 		return fmt.Sprintf("add comment: %s", a.Value)
 	case ActionSetType:
 		return fmt.Sprintf("set type to %s", a.Value)
+	case ActionCompleteParent:
+		return "mark parent as done"
+	case ActionBlockParent:
+		return "mark parent as blocked"
+	case ActionCascadeTag:
+		return fmt.Sprintf("add tag #%s to children", a.Value)
+	case ActionInheritTag:
+		return fmt.Sprintf("inherit tag #%s from parent", a.Value)
+	case ActionNotifyParent:
+		return fmt.Sprintf("notify parent: %s", a.Value)
 	default:
 		return fmt.Sprintf("%s: %s", a.ActionType, a.Value)
 	}
@@ -261,6 +295,24 @@ func (t RuleTrigger) Validate() error {
 		FieldDueDays:     true,
 		FieldCreatedDays: true,
 		FieldUpdatedDays: true,
+		// Event-based triggers
+		FieldStatusChanged:   true,
+		FieldSectionChanged:  true,
+		FieldPriorityChanged: true,
+		FieldTagAdded:        true,
+		FieldTagRemoved:      true,
+		FieldCompleted:       true,
+		FieldReopened:        true,
+		// Hierarchical triggers
+		FieldParentStatus:     true,
+		FieldParentType:       true,
+		FieldParentTags:       true,
+		FieldLevel:            true,
+		FieldHasChildren:      true,
+		FieldChildrenProgress: true,
+		FieldAllChildrenDone:  true,
+		FieldIsBlocked:        true,
+		FieldBlockerCount:     true,
 	}
 	if !validFields[t.Field] {
 		return fmt.Errorf("invalid field: %s", t.Field)
@@ -298,6 +350,12 @@ func (a RuleAction) Validate() error {
 		ActionSetPinned:      true,
 		ActionAddComment:     true,
 		ActionSetType:        true,
+		// Hierarchical actions
+		ActionCompleteParent: true,
+		ActionBlockParent:    true,
+		ActionCascadeTag:     true,
+		ActionInheritTag:     true,
+		ActionNotifyParent:   true,
 	}
 	if !validActions[a.ActionType] {
 		return fmt.Errorf("invalid action type: %s", a.ActionType)
@@ -305,8 +363,10 @@ func (a RuleAction) Validate() error {
 
 	// Actions that don't require a value
 	noValueRequired := map[ActionType]bool{
-		ActionSetSection: true, // empty value means "Active" (no section)
-		ActionClearDue:   true, // no value needed
+		ActionSetSection:     true, // empty value means "Active" (no section)
+		ActionClearDue:       true, // no value needed
+		ActionCompleteParent: true, // no value needed
+		ActionBlockParent:    true, // no value needed
 	}
 
 	if !noValueRequired[a.ActionType] && a.Value == "" {
@@ -380,6 +440,13 @@ func ValidTriggerFields() []TriggerField {
 	return []TriggerField{
 		FieldStatus, FieldPriority, FieldSection, FieldTags, FieldType,
 		FieldDueDays, FieldCreatedDays, FieldUpdatedDays,
+		// Event-based triggers
+		FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
+		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
+		// Hierarchical triggers
+		FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
+		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
+		FieldIsBlocked, FieldBlockerCount,
 	}
 }
 
@@ -396,5 +463,39 @@ func ValidActionTypes() []ActionType {
 		ActionSetDueRelative, ActionClearDue,
 		ActionSetActive, ActionSetPinned,
 		ActionAddComment, ActionSetType,
+		// Hierarchical actions
+		ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
+		ActionInheritTag, ActionNotifyParent,
 	}
+}
+
+// IsEventTrigger returns true if the trigger field requires change detection.
+func IsEventTrigger(field TriggerField) bool {
+	switch field {
+	case FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
+		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened:
+		return true
+	}
+	return false
+}
+
+// IsHierarchicalTrigger returns true if the trigger requires parent/child data.
+func IsHierarchicalTrigger(field TriggerField) bool {
+	switch field {
+	case FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
+		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
+		FieldIsBlocked, FieldBlockerCount:
+		return true
+	}
+	return false
+}
+
+// IsHierarchicalAction returns true if the action operates on parent/children.
+func IsHierarchicalAction(actionType ActionType) bool {
+	switch actionType {
+	case ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
+		ActionInheritTag, ActionNotifyParent:
+		return true
+	}
+	return false
 }
