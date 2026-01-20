@@ -109,7 +109,7 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -180,8 +180,8 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		generated = project.GenerateRecurringInstances()
 	}
 
-	// Save
-	if err := SaveProjectWithBackup(project); err != nil {
+	// Save with workflow rules evaluation
+	if err := SaveProjectWithRules(project, cfg); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

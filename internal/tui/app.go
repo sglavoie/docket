@@ -55,6 +55,7 @@ const (
 	ViewTrashedProjects
 	ViewProjectSelector
 	ViewDailyReview
+	ViewWorkflowRules
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -182,6 +183,15 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"go back", "return", "previous"},
 			Handler: func() tea.Msg {
 				return BackMsg{}
+			},
+		},
+		{
+			Name:        "workflow rules",
+			Description: "Manage workflow automation rules",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"automation", "rules", "workflow"},
+			Handler: func() tea.Msg {
+				return ShowWorkflowRulesMsg{}
 			},
 		},
 	}

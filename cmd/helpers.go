@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // LoadConfig loads the configuration file.
@@ -45,6 +47,30 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 // It also runs auto-unblock checks and reorders root tasks by completion status.
 func SaveProjectWithBackup(project *models.Project) error {
 	project.CheckAndAutoUnblock()
+	project.ReorderRootTasksByCompletion()
+
+	if err := storage.BackupProject(project); err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+	return storage.SaveProject(project)
+}
+
+// SaveProjectWithRules saves the project after evaluating workflow rules.
+// It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
+// Prints warnings to stderr if there are rule conflicts.
+func SaveProjectWithRules(project *models.Project, cfg *config.Config) error {
+	project.CheckAndAutoUnblock()
+
+	// Evaluate workflow rules
+	rules := cfg.GetEnabledWorkflowRules()
+	if len(rules) > 0 {
+		result := workflow.EvaluateRules(project.Tasks, rules)
+		if len(result.Conflicts) > 0 {
+			fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
+			fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
+		}
+	}
+
 	project.ReorderRootTasksByCompletion()
 
 	if err := storage.BackupProject(project); err != nil {

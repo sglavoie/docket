@@ -130,6 +130,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filter by Context"
 	case ViewGlobalSearch:
 		status = "Global Search"
+	case ViewWorkflowRules:
+		status = "Workflow Rules"
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply

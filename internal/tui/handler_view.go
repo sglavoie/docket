@@ -44,6 +44,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowWorkflowRulesMsg:
+		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))
+		return true, nil
+
+	case WorkflowRulesUpdatedMsg:
+		// Rules updated, just refresh the view (it's already updated internally)
+		return true, nil
+
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)

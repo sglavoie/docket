@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 func (m *ProjectTreeModel) archiveProject() tea.Cmd {
@@ -93,6 +94,18 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 
 		// Generate recurring task instances for completed recurring tasks
 		m.project.GenerateRecurringInstances()
+
+		// Evaluate workflow rules
+		rules := m.config.GetEnabledWorkflowRules()
+		if len(rules) > 0 {
+			result := workflow.EvaluateRules(m.project.Tasks, rules)
+			// Log conflicts as warnings (they're also shown in status bar)
+			if len(result.Conflicts) > 0 {
+				// Conflicts are silently ignored in TUI - tasks are skipped
+				// User can use 'tt workflow test' to debug
+				_ = result.Conflicts
+			}
+		}
 
 		// Reorder root tasks so uncompleted tasks appear before completed tasks
 		m.project.ReorderRootTasksByCompletion()

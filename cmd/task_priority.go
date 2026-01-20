@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +46,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("priority must be between 1 and 5, got %d", priority)
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -66,7 +65,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 	task.Priority = priority
 	task.UpdatedAt = time.Now()
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProjectWithRules(project, cfg); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

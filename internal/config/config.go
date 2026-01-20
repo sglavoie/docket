@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // RecentPaletteItem tracks a recently selected item in the command palette.
@@ -55,6 +56,7 @@ type Config struct {
 	PinnedCommands       []string                    `json:"pinned_commands,omitempty"`        // Pinned command names for quick access
 	SavedSearches        map[string]string           `json:"saved_searches,omitempty"`         // Named saved searches (name -> query)
 	CommandHistory       []string                    `json:"command_history,omitempty"`        // Recently executed command names
+	WorkflowRules        []workflow.WorkflowRule     `json:"workflow_rules,omitempty"`         // Automation rules for task changes
 }
 
 // NewConfig creates a new configuration with default values.
@@ -622,4 +624,74 @@ func (c *Config) AddCommandToHistory(name string) {
 	if len(c.CommandHistory) > maxHistory {
 		c.CommandHistory = c.CommandHistory[:maxHistory]
 	}
+}
+
+// GetWorkflowRules returns all workflow rules.
+func (c *Config) GetWorkflowRules() []workflow.WorkflowRule {
+	if c.WorkflowRules == nil {
+		return []workflow.WorkflowRule{}
+	}
+	return c.WorkflowRules
+}
+
+// GetEnabledWorkflowRules returns only enabled workflow rules.
+func (c *Config) GetEnabledWorkflowRules() []workflow.WorkflowRule {
+	var enabled []workflow.WorkflowRule
+	for _, rule := range c.WorkflowRules {
+		if rule.Enabled {
+			enabled = append(enabled, rule)
+		}
+	}
+	return enabled
+}
+
+// GetWorkflowRule returns a workflow rule by ID.
+func (c *Config) GetWorkflowRule(id string) *workflow.WorkflowRule {
+	for i := range c.WorkflowRules {
+		if c.WorkflowRules[i].ID == id {
+			return &c.WorkflowRules[i]
+		}
+	}
+	return nil
+}
+
+// AddWorkflowRule adds a new workflow rule.
+func (c *Config) AddWorkflowRule(rule workflow.WorkflowRule) {
+	c.WorkflowRules = append(c.WorkflowRules, rule)
+}
+
+// UpdateWorkflowRule updates an existing workflow rule by ID.
+// Returns true if the rule was found and updated.
+func (c *Config) UpdateWorkflowRule(rule workflow.WorkflowRule) bool {
+	for i := range c.WorkflowRules {
+		if c.WorkflowRules[i].ID == rule.ID {
+			c.WorkflowRules[i] = rule
+			return true
+		}
+	}
+	return false
+}
+
+// DeleteWorkflowRule removes a workflow rule by ID.
+// Returns true if the rule was found and deleted.
+func (c *Config) DeleteWorkflowRule(id string) bool {
+	for i := range c.WorkflowRules {
+		if c.WorkflowRules[i].ID == id {
+			c.WorkflowRules = append(c.WorkflowRules[:i], c.WorkflowRules[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// ToggleWorkflowRule enables or disables a workflow rule by ID.
+// Returns the new enabled state, or false if the rule was not found.
+func (c *Config) ToggleWorkflowRule(id string) (enabled bool, found bool) {
+	for i := range c.WorkflowRules {
+		if c.WorkflowRules[i].ID == id {
+			c.WorkflowRules[i].Enabled = !c.WorkflowRules[i].Enabled
+			return c.WorkflowRules[i].Enabled, true
+		}
+	}
+	return false, false
 }

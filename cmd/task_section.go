@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +35,7 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 	sectionName := args[1]
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -55,7 +54,7 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 	task.Section = sectionName
 	task.UpdatedAt = time.Now()
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProjectWithRules(project, cfg); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 
