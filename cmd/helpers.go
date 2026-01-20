@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -281,4 +282,81 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []t
 		}
 	}
 	return items
+}
+
+// WorkflowEvalResult holds the result of evaluating workflow rules for a project.
+type WorkflowEvalResult struct {
+	ProjectName   string
+	ModifiedTasks int
+	RulesApplied  map[string]int // rule ID -> count of tasks affected
+	Skipped       bool           // true if evaluation was skipped (recently evaluated)
+	Error         error
+}
+
+// EvaluateProjectWorkflowRules evaluates workflow rules for a project.
+// If force is false and the project was recently evaluated, evaluation is skipped.
+// The project must already be loaded with tasks.
+// Returns the evaluation result and updates the eval state in config.
+func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, configManager *config.Manager, force bool) WorkflowEvalResult {
+	result := WorkflowEvalResult{
+		ProjectName:  project.Name,
+		RulesApplied: make(map[string]int),
+	}
+
+	// Check if evaluation is needed
+	if !force && !cfg.ShouldEvaluateWorkflow(project.ID) {
+		result.Skipped = true
+		return result
+	}
+
+	rules := cfg.GetEnabledWorkflowRules()
+	if len(rules) == 0 {
+		result.Skipped = true
+		return result
+	}
+
+	// Run auto-unblock before rule evaluation
+	project.CheckAndAutoUnblock()
+
+	// Evaluate rules
+	evalResult := workflow.EvaluateRules(project.Tasks, rules)
+
+	result.ModifiedTasks = len(evalResult.ModifiedTasks)
+	result.RulesApplied = evalResult.RuleTriggerCounts
+
+	// Only save if there were actual modifications
+	if result.ModifiedTasks > 0 {
+		project.ReorderRootTasksByCompletion()
+
+		if err := storage.BackupProject(project); err != nil {
+			result.Error = fmt.Errorf("failed to create backup: %w", err)
+			return result
+		}
+
+		if err := storage.SaveProject(project); err != nil {
+			result.Error = fmt.Errorf("failed to save project: %w", err)
+			return result
+		}
+
+		// Update trigger counts
+		if len(evalResult.RuleTriggerCounts) > 0 && configManager != nil {
+			cfg.IncrementRuleTriggerCounts(evalResult.RuleTriggerCounts)
+		}
+	}
+
+	// Update eval state
+	cfg.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
+		LastEvalTime: time.Now(),
+		RulesHash:    cfg.ComputeWorkflowRulesHash(),
+	})
+
+	// Persist config changes
+	if configManager != nil {
+		if err := configManager.Save(cfg); err != nil {
+			// Non-fatal, just log
+			fmt.Fprintln(os.Stderr, "Warning: failed to save workflow eval state:", err)
+		}
+	}
+
+	return result
 }

@@ -1,12 +1,15 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -17,6 +20,12 @@ import (
 type RecentPaletteItem struct {
 	Category string `json:"category"` // ItemCategory as string (Commands, Tasks, Projects, Tags, Sections)
 	ID       string `json:"id"`       // Command name, task ID, project slug, tag, or section name
+}
+
+// WorkflowEvalState tracks when workflow rules were last evaluated for a project.
+type WorkflowEvalState struct {
+	LastEvalTime time.Time `json:"last_eval_time"`
+	RulesHash    string    `json:"rules_hash,omitempty"` // Detects rule changes
 }
 
 // ProjectViewState holds filter/sort state for a project's tree view.
@@ -38,26 +47,28 @@ type ProjectViewState struct {
 
 // Config holds the application configuration.
 type Config struct {
-	DataDir                 string                      `json:"data_dir"`
-	CurrentProject          string                      `json:"current_project,omitempty"`
-	Editor                  string                      `json:"editor"`
-	DefaultContext          string                      `json:"default_context"`
-	FzfEnabled              bool                        `json:"fzf_enabled"`
-	GlowEnabled             bool                        `json:"glow_enabled"`
-	UndoHistoryDepth        *int                        `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects                []*models.Project           `json:"projects"`
-	SectionColors           map[string]string           `json:"section_colors,omitempty"`            // Global section color registry
-	ProjectViewStates       map[string]ProjectViewState `json:"project_view_states,omitempty"`       // Per-project filter/sort state
-	CycleProjects           []string                    `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~
-	ShowRecentTasks         *bool                       `json:"show_recent_tasks,omitempty"`         // Show Recent Tasks section on dashboard (default: true)
-	RecentPaletteItems      []RecentPaletteItem         `json:"recent_palette_items,omitempty"`      // Recently selected items in command palette
-	LastPaletteCategory     string                      `json:"last_palette_category,omitempty"`     // Last category filter used (e.g., ":task ")
-	PaletteSearchHistory    []string                    `json:"palette_search_history,omitempty"`    // Recent search queries in command palette
-	PinnedCommands          []string                    `json:"pinned_commands,omitempty"`           // Pinned command names for quick access
-	SavedSearches           map[string]string           `json:"saved_searches,omitempty"`            // Named saved searches (name -> query)
-	CommandHistory          []string                    `json:"command_history,omitempty"`           // Recently executed command names
-	WorkflowRules           []workflow.WorkflowRule     `json:"workflow_rules,omitempty"`            // Automation rules for task changes
-	DefaultRulesInitialized bool                        `json:"default_rules_initialized,omitempty"` // True after tt workflow init has run
+	DataDir                 string                       `json:"data_dir"`
+	CurrentProject          string                       `json:"current_project,omitempty"`
+	Editor                  string                       `json:"editor"`
+	DefaultContext          string                       `json:"default_context"`
+	FzfEnabled              bool                         `json:"fzf_enabled"`
+	GlowEnabled             bool                         `json:"glow_enabled"`
+	UndoHistoryDepth        *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects                []*models.Project            `json:"projects"`
+	SectionColors           map[string]string            `json:"section_colors,omitempty"`            // Global section color registry
+	ProjectViewStates       map[string]ProjectViewState  `json:"project_view_states,omitempty"`       // Per-project filter/sort state
+	CycleProjects           []string                     `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~
+	ShowRecentTasks         *bool                        `json:"show_recent_tasks,omitempty"`         // Show Recent Tasks section on dashboard (default: true)
+	RecentPaletteItems      []RecentPaletteItem          `json:"recent_palette_items,omitempty"`      // Recently selected items in command palette
+	LastPaletteCategory     string                       `json:"last_palette_category,omitempty"`     // Last category filter used (e.g., ":task ")
+	PaletteSearchHistory    []string                     `json:"palette_search_history,omitempty"`    // Recent search queries in command palette
+	PinnedCommands          []string                     `json:"pinned_commands,omitempty"`           // Pinned command names for quick access
+	SavedSearches           map[string]string            `json:"saved_searches,omitempty"`            // Named saved searches (name -> query)
+	CommandHistory          []string                     `json:"command_history,omitempty"`           // Recently executed command names
+	WorkflowRules           []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`            // Automation rules for task changes
+	DefaultRulesInitialized bool                         `json:"default_rules_initialized,omitempty"` // True after tt workflow init has run
+	WorkflowEvalStates      map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`      // Per-project workflow evaluation state
+	WorkflowEvalInterval    *int                         `json:"workflow_eval_interval,omitempty"`    // Minutes between auto-evals (nil=60, 0=disabled)
 }
 
 // NewConfig creates a new configuration with default values.
@@ -750,4 +761,93 @@ func (c *Config) AddDefaultRules(enableRules bool) int {
 	}
 	c.DefaultRulesInitialized = true
 	return added
+}
+
+// GetWorkflowEvalState returns the evaluation state for a project.
+func (c *Config) GetWorkflowEvalState(projectID string) WorkflowEvalState {
+	if c.WorkflowEvalStates == nil {
+		return WorkflowEvalState{}
+	}
+	return c.WorkflowEvalStates[projectID]
+}
+
+// SetWorkflowEvalState sets the evaluation state for a project.
+func (c *Config) SetWorkflowEvalState(projectID string, state WorkflowEvalState) {
+	if c.WorkflowEvalStates == nil {
+		c.WorkflowEvalStates = make(map[string]WorkflowEvalState)
+	}
+	c.WorkflowEvalStates[projectID] = state
+}
+
+// GetWorkflowEvalInterval returns the interval in minutes between automatic evaluations.
+// Returns 60 if not set, 0 means disabled.
+func (c *Config) GetWorkflowEvalInterval() int {
+	if c.WorkflowEvalInterval == nil {
+		return 60 // Default: 60 minutes
+	}
+	return *c.WorkflowEvalInterval
+}
+
+// SetWorkflowEvalInterval sets the interval in minutes between automatic evaluations.
+// Set to 0 to disable automatic evaluation.
+func (c *Config) SetWorkflowEvalInterval(minutes int) {
+	c.WorkflowEvalInterval = &minutes
+}
+
+// ComputeWorkflowRulesHash computes a hash of enabled workflow rules.
+// Used to detect when rules have changed, forcing re-evaluation.
+// Hashes full rule content (not just IDs) to detect in-place edits.
+func (c *Config) ComputeWorkflowRulesHash() string {
+	var rules []workflow.WorkflowRule
+	for _, rule := range c.WorkflowRules {
+		if rule.Enabled {
+			rules = append(rules, rule)
+		}
+	}
+	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
+	data, _ := json.Marshal(rules)
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:8]) // First 8 bytes is enough
+}
+
+// ShouldEvaluateWorkflow returns true if workflow rules should be evaluated for a project.
+// Returns false if no enabled rules, evaluation is disabled, or recently evaluated.
+func (c *Config) ShouldEvaluateWorkflow(projectID string) bool {
+	if len(c.GetEnabledWorkflowRules()) == 0 {
+		return false
+	}
+
+	interval := c.GetWorkflowEvalInterval()
+	if interval == 0 {
+		return false // Disabled
+	}
+
+	state := c.GetWorkflowEvalState(projectID)
+	currentHash := c.ComputeWorkflowRulesHash()
+
+	// Force evaluation if rules changed
+	if state.RulesHash != currentHash {
+		return true
+	}
+
+	// Never evaluated
+	if state.LastEvalTime.IsZero() {
+		return true
+	}
+
+	// Check time interval
+	elapsed := time.Since(state.LastEvalTime)
+	return elapsed >= time.Duration(interval)*time.Minute
+}
+
+// InvalidateWorkflowEvalStates clears the rules hash from all eval states,
+// forcing re-evaluation on next check. Called when rules are modified.
+func (c *Config) InvalidateWorkflowEvalStates() {
+	if c.WorkflowEvalStates == nil {
+		return
+	}
+	for projectID, state := range c.WorkflowEvalStates {
+		state.RulesHash = ""
+		c.WorkflowEvalStates[projectID] = state
+	}
 }

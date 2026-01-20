@@ -256,6 +256,9 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 
 	cfg.AddWorkflowRule(*rule)
 
+	// Invalidate workflow eval states so all projects re-evaluate with new rule
+	cfg.InvalidateWorkflowEvalStates()
+
 	if err := configManager.Save(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}

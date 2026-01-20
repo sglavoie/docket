@@ -44,6 +44,9 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete workflow rule: %s", ruleID)
 	}
 
+	// Invalidate workflow eval states so all projects re-evaluate with removed rule
+	cfg.InvalidateWorkflowEvalStates()
+
 	if err := configManager.Save(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
