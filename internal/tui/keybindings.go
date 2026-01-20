@@ -178,6 +178,21 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 
+		// Priority Quick Actions (! prefix)
+		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "Priority", Views: views},
+		Keybinding{Key: "!2", Description: "Set priority: High", Category: "Priority", Views: views},
+		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "Priority", Views: views},
+		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "Priority", Views: views},
+		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "Priority", Views: views},
+
+		// Due Date Quick Actions (d prefix)
+		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in a week", Category: "Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in a month", Category: "Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
 		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},

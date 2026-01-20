@@ -135,4 +135,23 @@ var (
 		{Key: "v", Description: "view-cycle"},
 		{Key: "X", Description: "deselect"},
 	}
+
+	// PriorityPrefixHints contains hints for the "!" (priority) prefix.
+	PriorityPrefixHints = []PrefixHint{
+		{Key: "1", Description: "critical"},
+		{Key: "2", Description: "high"},
+		{Key: "3", Description: "normal"},
+		{Key: "4", Description: "low"},
+		{Key: "5", Description: "someday"},
+	}
+
+	// DueDatePrefixHints contains hints for the "d" (due date) prefix.
+	DueDatePrefixHints = []PrefixHint{
+		{Key: "t", Description: "today"},
+		{Key: "m", Description: "tomorrow"},
+		{Key: "w", Description: "+week"},
+		{Key: "n", Description: "+month"},
+		{Key: "0", Description: "clear"},
+		{Key: "d", Description: "picker"},
+	}
 )

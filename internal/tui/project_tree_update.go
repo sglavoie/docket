@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/models"
@@ -269,6 +270,101 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			}
 			return m, nil
 		}
+
+	case "!":
+		// Priority quick actions
+		switch key {
+		case "1", "2", "3", "4", "5":
+			priority := int(key[0] - '0')
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				count := 0
+				for id := range m.selectedTasks {
+					if task := m.project.GetTaskByID(id); task != nil {
+						task.Priority = priority
+						task.UpdatedAt = time.Now()
+						count++
+					}
+				}
+				m.clearSelection()
+				m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
+				return m, m.saveAndRefresh()
+			}
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				task.Priority = priority
+				task.UpdatedAt = time.Now()
+				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
+				return m, m.saveAndRefresh()
+			}
+			return m, nil
+		}
+
+	case "d":
+		// Due date quick actions
+		now := time.Now()
+		var dueDate *time.Time
+		var desc string
+
+		switch key {
+		case "t":
+			// Today
+			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
+			dueDate = &today
+			desc = "today"
+		case "m":
+			// Tomorrow
+			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
+			dueDate = &tomorrow
+			desc = "tomorrow"
+		case "w":
+			// Next week (+7 days)
+			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
+			dueDate = &nextWeek
+			desc = "+7 days"
+		case "n":
+			// Next month (+30 days)
+			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
+			dueDate = &nextMonth
+			desc = "+30 days"
+		case "0":
+			// Clear due date
+			dueDate = nil
+			desc = "cleared"
+		case "d":
+			// Open full date picker
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				project := m.project
+				return m, func() tea.Msg {
+					return SetDueDateMsg{Task: task, Project: project}
+				}
+			}
+			return m, nil
+		default:
+			return m, nil
+		}
+
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			count := 0
+			for id := range m.selectedTasks {
+				if task := m.project.GetTaskByID(id); task != nil {
+					task.DueDate = dueDate
+					task.UpdatedAt = time.Now()
+					count++
+				}
+			}
+			m.clearSelection()
+			m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
+			return m, m.saveAndRefresh()
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.DueDate = dueDate
+			task.UpdatedAt = time.Now()
+			m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
+			return m, m.saveAndRefresh()
+		}
+		return m, nil
 	}
 
 	// Invalid prefix sequence - silently ignore
@@ -297,7 +393,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		}
 	}
 
-	// Prefix key activation (status, fold, go/section)
+	// Prefix key activation (status, fold, go/section, priority, due date)
 	switch key {
 	case ",":
 		m.pendingPrefix = ","
@@ -307,6 +403,12 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	case "g":
 		m.pendingPrefix = "g"
+		return m, nil
+	case "!":
+		m.pendingPrefix = "!"
+		return m, nil
+	case "d":
+		m.pendingPrefix = "d"
 		return m, nil
 	}
 

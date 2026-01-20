@@ -1235,6 +1235,8 @@ func (m *ProjectTreeModel) renderPrefixPopup() string {
 		",": StatusPrefixHints,
 		"z": FoldPrefixHints,
 		"g": ProjectTreeNavigationPrefixHints,
+		"!": PriorityPrefixHints,
+		"d": DueDatePrefixHints,
 	}, m.width)
 }
 
