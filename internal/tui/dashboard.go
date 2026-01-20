@@ -375,72 +375,79 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Search bar
+	// Filter bar: search and context on same line when both present
 	chromeHeight := 0
+	hasSearch := m.IsSearchMode() || m.SearchQuery() != ""
+	hasContext := m.filterContext != ""
+
 	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
 		b.WriteString(m.SearchInputView())
+		if hasContext {
+			b.WriteString(" ")
+			b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.filterContext)))
+		}
 		b.WriteString("\n")
 		chromeHeight++
-	} else if m.SearchQuery() != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
-		b.WriteString(HelpStyle.Render("(\\ to edit, Esc to clear)"))
-		b.WriteString("\n")
-		chromeHeight++
-	}
-
-	// Context filter
-	if m.filterContext != "" {
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[context: %s]", m.filterContext)))
+	} else if hasSearch || hasContext {
+		var parts []string
+		if m.SearchQuery() != "" {
+			parts = append(parts, MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery())))
+		}
+		if hasContext {
+			parts = append(parts, FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.filterContext)))
+		}
+		b.WriteString(strings.Join(parts, " · "))
 		b.WriteString(" ")
-		b.WriteString(HelpStyle.Render("(c to cycle, Esc to clear)"))
+		b.WriteString(HelpStyle.Render("(Esc clear)"))
 		b.WriteString("\n")
 		chromeHeight++
 	}
-	b.WriteString("\n")
-	chromeHeight++ // separator line
 
 	visible := m.visibleProjects()
 
+	// Card width for all cards
+	cardWidth := m.width - 2
+	if cardWidth < 20 {
+		cardWidth = 20
+	}
+
+	// Build project card title with count
+	var cardTitle string
+	if m.showArchived {
+		cardTitle = fmt.Sprintf("Archived (%d)", len(visible))
+	} else {
+		cardTitle = fmt.Sprintf("Projects (%d)", len(visible))
+	}
+
+	// Build project list content
+	var cardContent strings.Builder
+
 	if len(m.projects) == 0 {
 		if m.showArchived {
-			b.WriteString(MutedStyle.Render("No archived projects."))
+			cardContent.WriteString(MutedStyle.Render("No archived projects."))
 		} else {
-			b.WriteString(MutedStyle.Render("No projects yet. Create one with: tt project new <name>"))
+			cardContent.WriteString(MutedStyle.Render("No projects yet. Press n to create one."))
 		}
-		b.WriteString("\n")
 	} else if len(visible) == 0 {
-		b.WriteString(MutedStyle.Render("No projects match your filters."))
-		b.WriteString("\n")
+		cardContent.WriteString(MutedStyle.Render("No projects match your filters."))
 	} else {
-		// Projects header
-		if m.showArchived {
-			b.WriteString(SubtitleStyle.Render("ARCHIVED PROJECTS"))
-		} else {
-			b.WriteString(SubtitleStyle.Render("PROJECTS"))
-		}
-		b.WriteString("\n")
-		chromeHeight++ // header line
-
 		// Calculate space for bottom section (Recent Tasks + Stats cards)
 		bottomHeight := 0
 		showRecentTasks := m.config.GetShowRecentTasks()
 		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
 			current := m.config.GetCurrentProject()
 			if current != nil && len(current.Tasks) > 0 {
-				// Recent card: 2 border + up to 5 tasks + 1 blank = ~8 lines
-				// Stats card: 2 border + 2-3 content lines = ~5 lines
-				// Plus 1 blank line between cards
 				bottomHeight = 14
 			}
 		}
 
 		// Calculate max visible projects
-		// Reserve space for scroll indicators (up to 2 lines if both needed)
-		scrollIndicatorSpace := 2
-		maxVisible := m.height - chromeHeight - bottomHeight - scrollIndicatorSpace
+		// Card adds 2 lines overhead (borders), scroll indicators inside card
+		cardOverhead := 2
+		maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1
 		if maxVisible < 3 {
-			maxVisible = 3 // minimum visible projects
+			maxVisible = 3
 		}
 
 		// Calculate scroll offset to keep cursor visible
@@ -448,8 +455,6 @@ func (m *DashboardModel) View() string {
 		if m.cursor >= maxVisible {
 			scrollOffset = m.cursor - maxVisible + 1
 		}
-
-		// Ensure we don't scroll past the end
 		if scrollOffset > len(visible)-maxVisible {
 			scrollOffset = len(visible) - maxVisible
 		}
@@ -457,10 +462,10 @@ func (m *DashboardModel) View() string {
 			scrollOffset = 0
 		}
 
-		// Show scroll-up indicator
+		// Scroll-up indicator inside card
 		if scrollOffset > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↑ %d more above", scrollOffset)))
-			b.WriteString("\n")
+			cardContent.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", scrollOffset)))
+			cardContent.WriteString("\n")
 		}
 
 		// Project list (windowed)
@@ -470,7 +475,6 @@ func (m *DashboardModel) View() string {
 		}
 
 		pinnedNum := 0
-		// Count pinned projects before scroll offset for correct numbering
 		for i := 0; i < scrollOffset; i++ {
 			if visible[i].Pinned {
 				pinnedNum++
@@ -481,7 +485,7 @@ func (m *DashboardModel) View() string {
 			p := visible[i]
 			cursor := "  "
 			style := NormalStyle
-			numberPrefix := "  " // Two spaces to align with numbered items
+			numberPrefix := "  "
 			if p.Pinned {
 				pinnedNum++
 				if pinnedNum <= 9 {
@@ -499,7 +503,6 @@ func (m *DashboardModel) View() string {
 				style = PinnedProjectStyle
 			}
 
-			// Calculate stats
 			total := p.CountTasks()
 			active := p.CountActiveTasks()
 			done := p.CountCompletedTasks()
@@ -509,7 +512,6 @@ func (m *DashboardModel) View() string {
 				progress = float64(done) / float64(total) * 100
 			}
 
-			// Format line
 			currentMarker := ""
 			if p.ID == m.config.CurrentProject {
 				currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
@@ -520,38 +522,37 @@ func (m *DashboardModel) View() string {
 			progressBar := RenderProgressBar(progress, 10)
 
 			line := fmt.Sprintf("%s%s%s %s  %s  %s", numberPrefix, cursor, name, context, stats, progressBar)
-			b.WriteString(line)
-			b.WriteString("\n")
+			cardContent.WriteString(line)
+			if i < end-1 || (len(visible)-end) > 0 {
+				cardContent.WriteString("\n")
+			}
 		}
 
-		// Show scroll-down indicator
+		// Scroll-down indicator inside card
 		if remaining := len(visible) - end; remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↓ %d more below", remaining)))
-			b.WriteString("\n")
+			cardContent.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more below", remaining)))
 		}
+	}
 
-		// Current project details (only show when not searching and toggle is on)
-		if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
-			current := m.config.GetCurrentProject()
-			if current != nil && len(current.Tasks) > 0 {
-				cardWidth := m.width - 2 // Leave margin on sides
-				if cardWidth < 20 {
-					cardWidth = 20
-				}
+	// Render the projects card
+	config := DashboardCardConfig()
+	b.WriteString(renderCard(cardTitle, cardContent.String(), cardWidth, config))
+	b.WriteString("\n")
 
-				b.WriteString("\n")
+	// Current project details (only show when not searching and toggle is on)
+	showRecentTasks := m.config.GetShowRecentTasks()
+	if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
+		current := m.config.GetCurrentProject()
+		if current != nil && len(current.Tasks) > 0 {
+			b.WriteString("\n")
 
-				// Recent Tasks card
-				recentContent := m.renderRecentTasksContent(current)
-				config := DashboardCardConfig()
-				b.WriteString(renderCard("Recent", recentContent, cardWidth, config))
-				b.WriteString("\n")
+			recentContent := m.renderRecentTasksContent(current)
+			b.WriteString(renderCard("Recent", recentContent, cardWidth, config))
+			b.WriteString("\n")
 
-				// Stats card
-				statsContent := m.renderStatsContent(current)
-				if statsContent != "" {
-					b.WriteString(renderCard("Stats", statsContent, cardWidth, config))
-				}
+			statsContent := m.renderStatsContent(current)
+			if statsContent != "" {
+				b.WriteString(renderCard("Stats", statsContent, cardWidth, config))
 			}
 		}
 	}
