@@ -69,16 +69,32 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	headerHeight := 4 // Title + search bar + spacing
+	// Card chrome: border (2 vertical) + padding (2 vertical) = 4 vertical
+	// Plus search bar (2 lines when active) + footer (2 lines) + spacing
+	cardVerticalChrome := 4
+	searchHeight := 2 // Search bar + spacing (shown inside card)
 	footerHeight := 2 // Footer hint
 
+	// Card horizontal: border (2) + padding (4) = 6
+	cardHorizontalChrome := 6
+
+	viewportWidth := width - cardHorizontalChrome - 4 // Extra margin for centering
+	viewportHeight := height - cardVerticalChrome - searchHeight - footerHeight - 4
+
+	if viewportWidth < 40 {
+		viewportWidth = 40
+	}
+	if viewportHeight < 5 {
+		viewportHeight = 5
+	}
+
 	if !m.ready {
-		m.viewport = viewport.New(width, height-headerHeight-footerHeight)
-		m.viewport.YPosition = headerHeight
+		m.viewport = viewport.New(viewportWidth, viewportHeight)
+		m.viewport.YPosition = 0
 		m.ready = true
 	} else {
-		m.viewport.Width = width
-		m.viewport.Height = height - headerHeight - footerHeight
+		m.viewport.Width = viewportWidth
+		m.viewport.Height = viewportHeight
 	}
 
 	m.viewport.SetContent(m.renderContent())
@@ -234,13 +250,17 @@ func (m *HelpViewModel) renderContent() string {
 	m.sectionPositions = make([]int, 0, len(categoryOrder))
 	lineCount := 0
 
-	// Calculate column widths
+	// Calculate column widths based on viewport width (not full width)
 	// Each column: keyWidth + separator(2) + descWidth
 	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
+	contentWidth := m.viewport.Width
+	if contentWidth < 40 {
+		contentWidth = 40
+	}
 	keyWidth := 12
 	columnGap := 4
 	columnOverhead := keyWidth + 2 // key + separator
-	descWidth := (m.width - 2*columnOverhead - columnGap) / 2
+	descWidth := (contentWidth - 2*columnOverhead - columnGap) / 2
 	if descWidth < 20 {
 		descWidth = 20
 	}
@@ -321,25 +341,17 @@ func (m *HelpViewModel) goToSection(idx int) {
 func (m *HelpViewModel) View() string {
 	var b strings.Builder
 
-	// Title
-	title := fmt.Sprintf("Help - %s", m.viewName)
-	b.WriteString(HelpViewTitleStyle.Render(title))
-	b.WriteString("\n")
-
-	// Search bar
+	// Search bar (inside card content)
 	if m.searchMode {
 		b.WriteString(SubtitleStyle.Render("Filter: "))
 		b.WriteString(m.searchInput.View())
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 	} else if m.searchQuery != "" {
-		filterInfo := fmt.Sprintf("Filter: \"%s\" (%d matches) ", m.searchQuery, len(m.filteredItems))
+		filterInfo := fmt.Sprintf("Filter: \"%s\" ", m.searchQuery)
 		b.WriteString(HelpFilterActiveStyle.Render(filterInfo))
 		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
-		b.WriteString("\n")
-	} else {
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 	}
-	b.WriteString("\n")
 
 	// Viewport with content
 	if m.ready {
@@ -347,15 +359,37 @@ func (m *HelpViewModel) View() string {
 	}
 
 	// Footer
-	b.WriteString("\n")
+	b.WriteString("\n\n")
 	scrollPercent := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("esc: back | ? close | / filter | j/k scroll | n/N sections | g/G top/bottom%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("Esc back | ? close | / filter | j/k scroll | n/N sections%s", scrollPercent))
 	b.WriteString(footer)
 
-	return b.String()
+	// Build card title and subtitle
+	title := fmt.Sprintf("Help - %s", m.viewName)
+	subtitle := ""
+	if m.searchQuery != "" {
+		subtitle = fmt.Sprintf("%d matches", len(m.filteredItems))
+	}
+
+	// Calculate card width
+	cardWidth := m.width - 4
+	if cardWidth > 100 {
+		cardWidth = 100
+	}
+	if cardWidth < 50 {
+		cardWidth = 50
+	}
+
+	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+		Title:        title,
+		Subtitle:     subtitle,
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	})
 }
 
 // CloseHelpMsg is sent when the help view should close.
