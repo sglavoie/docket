@@ -163,15 +163,12 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 func (m *ProjectCreatorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Create New Project"))
-	b.WriteString("\n\n")
-
 	// Name input
 	nameLabel := "Name: "
 	if m.focusIndex == 0 {
-		nameLabel = BoldStyle.Foreground(ColorPrimary).Render("Name: ")
+		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
 	} else {
-		nameLabel = MutedStyle.Render("Name: ")
+		nameLabel = FieldLabelStyle.Render("Name: ")
 	}
 	b.WriteString(nameLabel)
 	b.WriteString(m.nameInput.View())
@@ -180,9 +177,9 @@ func (m *ProjectCreatorModel) View() string {
 	// Context selection
 	contextLabel := "Context: "
 	if m.focusIndex == 1 {
-		contextLabel = BoldStyle.Foreground(ColorPrimary).Render("Context: ")
+		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
 	} else {
-		contextLabel = MutedStyle.Render("Context: ")
+		contextLabel = FieldLabelStyle.Render("Context: ")
 	}
 	b.WriteString(contextLabel)
 
@@ -190,15 +187,15 @@ func (m *ProjectCreatorModel) View() string {
 		var style lipgloss.Style
 		if i == m.contextCursor {
 			if m.focusIndex == 1 {
-				style = BoldStyle.Foreground(ColorPrimary)
+				style = SelectorOptionSelectedStyle
 			} else {
 				style = BoldStyle
 			}
 			b.WriteString(style.Render(fmt.Sprintf("[%s]", ctx)))
 		} else {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf(" %s ", ctx)))
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", ctx)))
 		}
-		b.WriteString("  ")
+		b.WriteString(" ")
 	}
 	b.WriteString("\n\n")
 
@@ -207,18 +204,22 @@ func (m *ProjectCreatorModel) View() string {
 	if name != "" {
 		slug := models.Slugify(name)
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s", slug)))
-		b.WriteString("\n\n")
 	}
 
-	// Help
-	help := lipgloss.JoinVertical(lipgloss.Left,
-		BoldStyle.Render("Controls"),
-		"  Tab        Switch field",
-		"  ←/→        Select context",
-		"  Enter      Confirm/Submit",
-		"  Esc        Cancel",
-	)
-	b.WriteString(BoxStyle.Render(help))
+	// Help footer
+	b.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render("Tab: switch field · ←/→: select context · Enter: submit · Esc: cancel"))
 
-	return b.String()
+	// Wrap in overlay card
+	cardWidth := m.width - 4
+	if cardWidth > 60 {
+		cardWidth = 60
+	}
+	config := OverlayCardConfig{
+		Title:        "Create Project",
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	}
+	return renderOverlayCard(b.String(), m.width, m.height, config)
 }

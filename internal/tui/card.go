@@ -35,11 +35,12 @@ func DashboardCardConfig() CardConfig {
 
 // OverlayCardConfig holds configuration for overlay card rendering.
 type OverlayCardConfig struct {
-	Title    string // Main title in the border
-	Subtitle string // Optional subtitle below title (e.g., "42 tasks")
-	Width    int    // Desired width (0 = auto)
-	Height   int    // Desired height (0 = auto)
-	Centered bool   // Whether to center in viewport
+	Title        string // Main title in the border
+	Subtitle     string // Optional subtitle below title (e.g., "42 tasks")
+	Width        int    // Desired width (0 = auto)
+	Height       int    // Desired height (0 = auto)
+	Centered     bool   // Whether to center in viewport
+	NoTruncation bool   // If true, don't truncate lines (for forms with textareas)
 }
 
 // renderOverlayCard renders an overlay card with titled border and optional subtitle.
@@ -58,24 +59,38 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 	contentWidth := cardWidth - 6
 
 	// Build the styled content with subtitle if present
-	// Truncate all lines to fit within content width to prevent overflow
 	var fullContent strings.Builder
 	if config.Subtitle != "" {
-		fullContent.WriteString(truncateAndPad(OverlaySubtitleStyle.Render(config.Subtitle), contentWidth))
+		if config.NoTruncation {
+			fullContent.WriteString(OverlaySubtitleStyle.Render(config.Subtitle))
+		} else {
+			fullContent.WriteString(truncateAndPad(OverlaySubtitleStyle.Render(config.Subtitle), contentWidth))
+		}
 		fullContent.WriteString("\n\n")
 	}
-	// Truncate each line of content to prevent overflow
-	contentLines := strings.Split(content, "\n")
-	for i, line := range contentLines {
-		contentLines[i] = truncateAndPad(line, contentWidth)
+
+	if config.NoTruncation {
+		// For forms with textareas, don't truncate - let lipgloss handle width
+		fullContent.WriteString(content)
+	} else {
+		// Truncate each line of content to prevent overflow
+		contentLines := strings.Split(content, "\n")
+		for i, line := range contentLines {
+			contentLines[i] = truncateAndPad(line, contentWidth)
+		}
+		fullContent.WriteString(strings.Join(contentLines, "\n"))
 	}
-	fullContent.WriteString(strings.Join(contentLines, "\n"))
 
 	// Render the content in a box
-	// Note: We don't use .Width() here because content is already pre-formatted
-	// to exact width by truncateAndPad. Using .Width() would cause lipgloss to
-	// apply word-wrapping which can break our carefully constructed split-pane lines.
-	rendered := OverlayCardStyle.Render(fullContent.String())
+	var rendered string
+	if config.NoTruncation {
+		// For forms, use Width() to let lipgloss handle the box sizing
+		rendered = OverlayCardStyle.Width(contentWidth).Render(fullContent.String())
+	} else {
+		// For pre-formatted content (split-panes, lists), don't use Width()
+		// as it would cause word-wrapping that breaks our carefully constructed lines
+		rendered = OverlayCardStyle.Render(fullContent.String())
+	}
 
 	// Split into lines to replace top border with titled version
 	lines := strings.Split(rendered, "\n")

@@ -292,9 +292,6 @@ func (m *NoteCreatorModel) createNote() tea.Cmd {
 func (m *NoteCreatorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Create New Note"))
-	b.WriteString("\n\n")
-
 	// Title input (textarea spans 2 lines)
 	titleLabel := "Title:\n"
 	if m.focusIndex == 0 {
@@ -361,24 +358,27 @@ func (m *NoteCreatorModel) View() string {
 	}
 	b.WriteString(descLabel)
 	b.WriteString(m.descInput.View())
-	b.WriteString("\n\n")
 
 	// Error display
 	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 		b.WriteString("\n\n")
+		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	// Help
-	help := BoxStyle.Render(
-		BoldStyle.Render("Controls") + "\n" +
-			"  Tab/Shift+Tab  Switch field\n" +
-			"  Left/Right     Select parent\n" +
-			"  /              Search parents\n" +
-			"  Ctrl+S         Create note\n" +
-			"  Esc            Cancel",
-	)
-	b.WriteString(help)
+	// Help footer
+	b.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: parent · /: search parents · Ctrl+S: save · Esc: cancel"))
 
-	return b.String()
+	// Wrap in overlay card
+	cardWidth := m.width - 4
+	if cardWidth > 80 {
+		cardWidth = 80
+	}
+	config := OverlayCardConfig{
+		Title:        "Create Note",
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	}
+	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
