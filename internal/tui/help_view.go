@@ -75,10 +75,18 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	searchHeight := 2 // Search bar + spacing (shown inside card)
 	footerHeight := 2 // Footer hint
 
-	// Card horizontal: border (2) + padding (4) = 6
-	cardHorizontalChrome := 6
+	// Calculate card width using same logic as View() to ensure consistency
+	cardWidth := width - 4
+	if cardWidth > 100 {
+		cardWidth = 100
+	}
+	if cardWidth < 50 {
+		cardWidth = 50
+	}
 
-	viewportWidth := width - cardHorizontalChrome - 4 // Extra margin for centering
+	// Card horizontal chrome: border (2) + padding (4) = 6
+	cardHorizontalChrome := 6
+	viewportWidth := cardWidth - cardHorizontalChrome
 	viewportHeight := height - cardVerticalChrome - searchHeight - footerHeight - 4
 
 	if viewportWidth < 40 {
