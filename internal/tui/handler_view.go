@@ -100,6 +100,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowDailyReviewMsg:
+		m.showView(ViewDailyReview, NewDailyReviewModel(m.config))
+		return true, nil
+
+	case CloseDailyReviewMsg:
+		m.popView()
+		return true, nil
+
+	case DailyReviewSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case DueDateOverviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {

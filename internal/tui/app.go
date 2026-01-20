@@ -54,6 +54,7 @@ const (
 	ViewSaveSearchInput
 	ViewTrashedProjects
 	ViewProjectSelector
+	ViewDailyReview
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -335,6 +336,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree, ViewDashboard},
 			Handler: func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
+			},
+		},
+		{
+			Name:        "daily review",
+			Description: "Daily planning and review view",
+			Shortcut:    "ctrl+r",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"planning", "today", "morning review"},
+			Handler: func() tea.Msg {
+				return ShowDailyReviewMsg{}
 			},
 		},
 		{

@@ -400,3 +400,22 @@ type TaskMovedToProjectMsg struct {
 	ClearedDeps   int // Number of dependencies that were cleared
 	OldShortID    int // Original short ID before move
 }
+
+// =============================================================================
+// Daily Review Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowDailyReviewMsg opens the daily review view.
+type ShowDailyReviewMsg struct{}
+
+// CloseDailyReviewMsg closes the daily review view.
+type CloseDailyReviewMsg struct{}
+
+// DailyReviewRefreshMsg requests a refresh of the daily review data.
+type DailyReviewRefreshMsg struct{}
+
+// DailyReviewSelectMsg navigates to a task from daily review.
+type DailyReviewSelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}

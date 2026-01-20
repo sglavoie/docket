@@ -181,6 +181,11 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	if m.currentView() == ViewDailyReview {
+		if dr, ok := m.views.Get(ViewDailyReview).(*DailyReviewModel); ok && dr != nil && dr.HasPendingPrefix() {
+			return false
+		}
+	}
 	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 		return false
 	}
