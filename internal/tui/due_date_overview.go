@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,6 +45,13 @@ type DueDateOverviewModel struct {
 	cursor      int // Absolute position across all groups
 	totalTasks  int
 	groupStarts []int // Starting index of each group in flattened view
+
+	// Prefix key state for Vim-style two-key sequences
+	pendingPrefix string // "," or "d" when waiting for second key
+
+	// UI feedback
+	statusMessage string
+	err           error
 
 	// Dimensions
 	width  int
@@ -182,55 +190,433 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "esc":
+		return m.handleKeyMsg(msg)
+
+	case DueDateOverviewRefreshMsg:
+		m.loadTasksWithDueDates()
+		m.clampCursor()
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleKeyMsg handles keyboard input.
+func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	// Handle pending prefix keys (which-key style)
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key)
+	}
+
+	// Clear previous error on any key
+	m.err = nil
+
+	// Activate prefix mode
+	switch key {
+	case ",", "d", "g":
+		m.pendingPrefix = key
+		return m, nil
+	}
+
+	switch key {
+	case "esc", "q":
+		return m, func() tea.Msg {
+			return CloseDueDateOverviewMsg{}
+		}
+
+	case "enter":
+		if dt := m.getTaskAtCursor(); dt != nil {
 			return m, func() tea.Msg {
-				return CloseDueDateOverviewMsg{}
+				return DueDateOverviewSelectMsg{Task: dt.Task, Project: dt.Project}
 			}
-		case "enter":
+		}
+		return m, nil
+
+	// Navigation
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+		return m, nil
+
+	case "down", "j":
+		if m.cursor < m.totalTasks-1 {
+			m.cursor++
+		}
+		return m, nil
+
+	case "G":
+		if m.totalTasks > 0 {
+			m.cursor = m.totalTasks - 1
+		}
+		return m, nil
+
+	case "ctrl+u":
+		m.cursor -= 10
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		return m, nil
+
+	case "ctrl+d":
+		m.cursor += 10
+		if m.cursor >= m.totalTasks {
+			m.cursor = m.totalTasks - 1
+		}
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
+		return m, nil
+
+	// Priority changes
+	case "1", "2", "3", "4", "5":
+		return m.changeTaskPriority(key)
+
+	// Edit task
+	case "e":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return EditTaskMsg{Task: dt.Task}
+			}
+		}
+		return m, nil
+
+	// Refresh
+	case "r":
+		m.loadTasksWithDueDates()
+		m.clampCursor()
+		m.statusMessage = "Refreshed"
+		return m, nil
+
+	// Copy
+	case "y":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleMsg{Task: dt.Task}
+			}
+		}
+		return m, nil
+
+	case "Y":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskDetailsMsg{Task: dt.Task}
+			}
+		}
+		return m, nil
+
+	// Help
+	case "?":
+		return m, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewDueDateOverview,
+				ViewName:   "Due Date Overview",
+				Items:      m.GetHelpItems(),
+			}
+		}
+	}
+
+	return m, nil
+}
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations
+		switch key {
+		case "s":
+			return m.changeTaskStatus(models.StatusInProgress)
+		case "d":
+			return m.changeTaskStatus(models.StatusDone)
+		case "b":
+			return m.changeTaskStatus(models.StatusBlocked)
+		case "x":
+			return m.changeTaskStatus(models.StatusCancelled)
+		case "o":
+			return m.changeTaskStatus(models.StatusTodo)
+		}
+
+	case "d":
+		// Due date operations
+		switch key {
+		case "t":
+			return m.setQuickDueDate(0) // Today
+		case "m":
+			return m.setQuickDueDate(1) // Tomorrow
+		case "w":
+			return m.setQuickDueDate(7) // +1 week
+		case "n":
+			return m.setQuickDueDate(30) // +1 month
+		case "0":
+			return m.clearDueDate()
+		case "d":
+			// Open date picker
 			if dt := m.getTaskAtCursor(); dt != nil {
 				return m, func() tea.Msg {
-					return DueDateOverviewSelectMsg{Task: dt.Task, Project: dt.Project}
+					return SetDueDateMsg{Task: dt.Task}
 				}
 			}
-			return m, nil
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-			return m, nil
-		case "down", "j":
-			if m.cursor < m.totalTasks-1 {
-				m.cursor++
-			}
-			return m, nil
+		}
+
+	case "g":
+		switch key {
 		case "g":
+			// gg: Go to first item
 			m.cursor = 0
 			return m, nil
-		case "G":
-			if m.totalTasks > 0 {
-				m.cursor = m.totalTasks - 1
-			}
-			return m, nil
-		case "ctrl+u":
-			m.cursor -= 10
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
-			return m, nil
-		case "ctrl+d":
-			m.cursor += 10
-			if m.cursor >= m.totalTasks {
-				m.cursor = m.totalTasks - 1
-			}
-			if m.cursor < 0 {
-				m.cursor = 0
+		case "p":
+			// gp: Go to project (navigate to task in its project)
+			if dt := m.getTaskAtCursor(); dt != nil {
+				return m, func() tea.Msg {
+					return GlobalSearchSelectMsg{Task: dt.Task, Project: dt.Project}
+				}
 			}
 			return m, nil
 		}
 	}
 
+	// Invalid prefix sequence - ignore
 	return m, nil
+}
+
+// changeTaskStatus changes the status of the task at cursor.
+func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	task := dt.Task
+	project := dt.Project
+
+	// Validate status transition
+	switch newStatus {
+	case models.StatusInProgress:
+		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
+			m.statusMessage = "Task must be todo or blocked to start"
+			return m, nil
+		}
+	case models.StatusDone:
+		if !task.Status.IsActive() {
+			m.statusMessage = "Task is not active"
+			return m, nil
+		}
+		// Check for incomplete dependencies
+		if project.HasIncompleteDependencies(task) {
+			m.err = fmt.Errorf("cannot complete: has incomplete dependencies")
+			return m, nil
+		}
+	case models.StatusBlocked:
+		if !task.Status.IsActive() || task.Status == models.StatusBlocked {
+			m.statusMessage = "Task must be active and not already blocked"
+			return m, nil
+		}
+	case models.StatusCancelled:
+		if !task.Status.IsActive() {
+			m.statusMessage = "Task is not active"
+			return m, nil
+		}
+	case models.StatusTodo:
+		if task.Status == models.StatusTodo {
+			m.statusMessage = "Task is already todo"
+			return m, nil
+		}
+	}
+
+	// Backup before change
+	if err := storage.BackupProject(project); err != nil {
+		m.err = fmt.Errorf("backup failed: %w", err)
+		return m, nil
+	}
+
+	// Update task status
+	task.Status = newStatus
+	task.UpdatedAt = time.Now()
+	if newStatus.IsComplete() {
+		now := time.Now()
+		task.CompletedAt = &now
+	} else {
+		task.CompletedAt = nil
+	}
+
+	// Save project
+	if err := storage.SaveProject(project); err != nil {
+		m.err = fmt.Errorf("save failed: %w", err)
+		return m, nil
+	}
+
+	// Reload project and refresh view
+	storage.LoadProject(project)
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+
+	m.statusMessage = fmt.Sprintf("Task #%d → %s", task.ShortID, newStatus)
+
+	return m, func() tea.Msg {
+		return TaskStatusChangedMsg{Task: task}
+	}
+}
+
+// changeTaskPriority changes the priority of the task at cursor.
+func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	priority, _ := strconv.Atoi(key)
+	task := dt.Task
+	project := dt.Project
+
+	if task.Priority == priority {
+		return m, nil
+	}
+
+	// Backup before change
+	if err := storage.BackupProject(project); err != nil {
+		m.err = fmt.Errorf("backup failed: %w", err)
+		return m, nil
+	}
+
+	// Update task priority
+	task.Priority = priority
+	task.UpdatedAt = time.Now()
+
+	// Save project
+	if err := storage.SaveProject(project); err != nil {
+		m.err = fmt.Errorf("save failed: %w", err)
+		return m, nil
+	}
+
+	// Reload project and refresh view
+	storage.LoadProject(project)
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+
+	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
+
+	return m, nil
+}
+
+// setQuickDueDate sets the due date to a relative number of days from today.
+func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	task := dt.Task
+	project := dt.Project
+
+	// Backup before change
+	if err := storage.BackupProject(project); err != nil {
+		m.err = fmt.Errorf("backup failed: %w", err)
+		return m, nil
+	}
+
+	// Set due date
+	newDate := time.Now().AddDate(0, 0, daysFromNow)
+	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
+	task.DueDate = &newDate
+	task.UpdatedAt = time.Now()
+
+	// Save project
+	if err := storage.SaveProject(project); err != nil {
+		m.err = fmt.Errorf("save failed: %w", err)
+		return m, nil
+	}
+
+	// Reload project and refresh view
+	storage.LoadProject(project)
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+
+	label := "today"
+	if daysFromNow == 1 {
+		label = "tomorrow"
+	} else if daysFromNow == 7 {
+		label = "next week"
+	} else if daysFromNow == 30 {
+		label = "next month"
+	}
+	m.statusMessage = fmt.Sprintf("Due date set to %s", label)
+
+	return m, func() tea.Msg {
+		return DueDateChangedMsg{Task: task}
+	}
+}
+
+// clearDueDate clears the due date from the task at cursor.
+func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	task := dt.Task
+	project := dt.Project
+
+	if task.DueDate == nil {
+		m.statusMessage = "Task has no due date"
+		return m, nil
+	}
+
+	// Backup before change
+	if err := storage.BackupProject(project); err != nil {
+		m.err = fmt.Errorf("backup failed: %w", err)
+		return m, nil
+	}
+
+	// Clear due date
+	task.DueDate = nil
+	task.UpdatedAt = time.Now()
+
+	// Save project
+	if err := storage.SaveProject(project); err != nil {
+		m.err = fmt.Errorf("save failed: %w", err)
+		return m, nil
+	}
+
+	// Reload project and refresh view
+	storage.LoadProject(project)
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+
+	m.statusMessage = "Due date cleared"
+
+	return m, func() tea.Msg {
+		return DueDateChangedMsg{Task: task}
+	}
+}
+
+// clampCursor ensures cursor is within valid range.
+func (m *DueDateOverviewModel) clampCursor() {
+	if m.cursor >= m.totalTasks {
+		m.cursor = m.totalTasks - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+}
+
+// HasPendingPrefix returns true if waiting for second key in prefix sequence.
+func (m *DueDateOverviewModel) HasPendingPrefix() bool {
+	return m.pendingPrefix != ""
+}
+
+// GetHelpItems returns help items for this view.
+func (m *DueDateOverviewModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewDueDateOverview)
 }
 
 func (m *DueDateOverviewModel) View() string {
@@ -272,8 +658,26 @@ func (m *DueDateOverviewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
+	// Prefix popup
+	if popup := m.renderPrefixPopup(); popup != "" {
+		b.WriteString(popup)
+		b.WriteString("\n")
+	}
+
+	// Status message
+	if m.statusMessage != "" {
+		b.WriteString(SuccessStyle.Render(m.statusMessage))
+		b.WriteString("\n")
+	}
+
+	// Error message
+	if m.err != nil {
+		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+		b.WriteString("\n")
+	}
+
 	// Footer
-	footer := HelpStyle.Render("↑/↓/j/k navigate • Enter view task • g/G top/bottom • Esc close")
+	footer := HelpStyle.Render("↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
@@ -281,6 +685,21 @@ func (m *DueDateOverviewModel) View() string {
 		Subtitle: fmt.Sprintf("%d tasks across all projects", m.totalTasks),
 		Centered: true,
 	})
+}
+
+// renderPrefixPopup renders the which-key style popup for prefix key sequences.
+func (m *DueDateOverviewModel) renderPrefixPopup() string {
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		",": StatusPrefixHints,
+		"d": DueDatePrefixHints,
+		"g": DueDateOverviewNavigationPrefixHints,
+	}, m.width)
+}
+
+// DueDateOverviewNavigationPrefixHints contains "g" prefix hints for due date overview.
+var DueDateOverviewNavigationPrefixHints = []PrefixHint{
+	{Key: "g", Description: "first"},
+	{Key: "p", Description: "go to project"},
 }
 
 // renderAllGroups renders all task groups and returns the lines.
@@ -425,3 +844,6 @@ type DueDateOverviewSelectMsg struct {
 
 // ShowDueDateOverviewMsg is sent to open the due date overview.
 type ShowDueDateOverviewMsg struct{}
+
+// DueDateOverviewRefreshMsg is sent to refresh the due date overview.
+type DueDateOverviewRefreshMsg struct{}
