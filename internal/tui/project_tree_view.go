@@ -707,6 +707,33 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
 	}
 
+	// Tag badges (compact, show first 2 tags + count if more)
+	if len(task.Tags) > 0 {
+		maxTags := 2
+		maxTagLen := 8
+		var tagParts []string
+		for i, tag := range task.Tags {
+			if i >= maxTags {
+				break
+			}
+			displayTag := tag
+			if len(displayTag) > maxTagLen {
+				displayTag = displayTag[:maxTagLen-1] + "…"
+			}
+			tagParts = append(tagParts, "#"+displayTag)
+		}
+		tagStr := TagInlineStyle.Render(strings.Join(tagParts, " "))
+		if len(task.Tags) > maxTags {
+			tagStr += MutedStyle.Render(fmt.Sprintf(" +%d", len(task.Tags)-maxTags))
+		}
+		indicators += tagStr + " "
+	}
+
+	// Add leading space to indicators if non-empty (separates from title/progress)
+	if indicators != "" {
+		indicators = " " + indicators
+	}
+
 	// Calculate available width for title, accounting for all other elements
 	// Fixed overhead: cursor(2) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~15
 	// Plus: indent, progress, and indicators (now measured accurately)
@@ -887,6 +914,33 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	// Comment indicator
 	if len(task.Comments) > 0 {
 		indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
+	}
+
+	// Tag badges (compact, show first 2 tags + count if more)
+	if len(task.Tags) > 0 {
+		maxTags := 2
+		maxTagLen := 8
+		var tagParts []string
+		for i, tag := range task.Tags {
+			if i >= maxTags {
+				break
+			}
+			displayTag := tag
+			if len(displayTag) > maxTagLen {
+				displayTag = displayTag[:maxTagLen-1] + "…"
+			}
+			tagParts = append(tagParts, "#"+displayTag)
+		}
+		tagStr := TagInlineStyle.Render(strings.Join(tagParts, " "))
+		if len(task.Tags) > maxTags {
+			tagStr += MutedStyle.Render(fmt.Sprintf(" +%d", len(task.Tags)-maxTags))
+		}
+		indicators += tagStr + " "
+	}
+
+	// Add leading space to indicators if non-empty (separates from title/progress)
+	if indicators != "" {
+		indicators = " " + indicators
 	}
 
 	// Section is no longer displayed in tree line (moved to sidebar)
