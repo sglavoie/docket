@@ -77,9 +77,6 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *QuickCaptureModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Quick Capture"))
-	b.WriteString("\n\n")
-
 	b.WriteString(m.input.View())
 	b.WriteString("\n\n")
 
@@ -88,14 +85,21 @@ func (m *QuickCaptureModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	hint := MutedStyle.Render("!N priority  #tag  @date  >parent")
-	b.WriteString(hint)
+	b.WriteString(MutedStyle.Render("!N priority · #tag · @date · >parent"))
 	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
 
-	controls := MutedStyle.Render("Enter: create · Esc: cancel")
-	b.WriteString(controls)
-
-	return b.String()
+	cardWidth := 60
+	if m.width-4 < cardWidth {
+		cardWidth = m.width - 4
+	}
+	config := OverlayCardConfig{
+		Title:        "Quick Capture",
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	}
+	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
 
 // parseQuickCapture extracts metadata from the input string.

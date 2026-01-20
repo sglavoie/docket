@@ -9,7 +9,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/config"
 )
 
@@ -304,15 +303,12 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 func (m *SettingsModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Settings"))
-	b.WriteString("\n\n")
-
 	// Editor input
 	editorLabel := "Editor: "
 	if m.focusIndex == 0 {
-		editorLabel = BoldStyle.Foreground(ColorPrimary).Render("Editor: ")
+		editorLabel = FieldLabelFocusedStyle.Render("Editor: ")
 	} else {
-		editorLabel = MutedStyle.Render("Editor: ")
+		editorLabel = FieldLabelStyle.Render("Editor: ")
 	}
 	b.WriteString(editorLabel)
 	b.WriteString(m.editorInput.View())
@@ -320,9 +316,8 @@ func (m *SettingsModel) View() string {
 
 	// Validation error for editor
 	if m.focusIndex == 0 && m.validationErr != "" {
-		errStyle := lipgloss.NewStyle().Foreground(ColorError)
 		b.WriteString("        ")
-		b.WriteString(errStyle.Render(m.validationErr))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
@@ -331,9 +326,9 @@ func (m *SettingsModel) View() string {
 	// Default context input
 	contextLabel := "Default Context: "
 	if m.focusIndex == 1 {
-		contextLabel = BoldStyle.Foreground(ColorPrimary).Render("Default Context: ")
+		contextLabel = FieldLabelFocusedStyle.Render("Default Context: ")
 	} else {
-		contextLabel = MutedStyle.Render("Default Context: ")
+		contextLabel = FieldLabelStyle.Render("Default Context: ")
 	}
 	b.WriteString(contextLabel)
 	b.WriteString(m.contextInput.View())
@@ -361,9 +356,8 @@ func (m *SettingsModel) View() string {
 
 	// Validation error for context
 	if m.focusIndex == 1 && m.validationErr != "" {
-		errStyle := lipgloss.NewStyle().Foreground(ColorError)
 		b.WriteString("                 ")
-		b.WriteString(errStyle.Render(m.validationErr))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
@@ -372,9 +366,9 @@ func (m *SettingsModel) View() string {
 	// Undo history depth input
 	undoLabel := "Undo History Depth: "
 	if m.focusIndex == 2 {
-		undoLabel = BoldStyle.Foreground(ColorPrimary).Render("Undo History Depth: ")
+		undoLabel = FieldLabelFocusedStyle.Render("Undo History Depth: ")
 	} else {
-		undoLabel = MutedStyle.Render("Undo History Depth: ")
+		undoLabel = FieldLabelStyle.Render("Undo History Depth: ")
 	}
 	b.WriteString(undoLabel)
 	b.WriteString(m.undoDepthInput.View())
@@ -385,23 +379,24 @@ func (m *SettingsModel) View() string {
 
 	// Validation error for undo depth
 	if m.focusIndex == 2 && m.validationErr != "" {
-		errStyle := lipgloss.NewStyle().Foreground(ColorError)
 		b.WriteString("                    ")
-		b.WriteString(errStyle.Render(m.validationErr))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
+	// Help footer
 	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: context · Enter: save · Esc: cancel"))
 
-	// Help
-	help := lipgloss.JoinVertical(lipgloss.Left,
-		BoldStyle.Render("Controls"),
-		"  Tab        Switch field",
-		"  ←/→        Select context",
-		"  Enter      Save",
-		"  Esc        Cancel",
-	)
-	b.WriteString(BoxStyle.Render(help))
-
-	return b.String()
+	cardWidth := 70
+	if m.width-4 < cardWidth {
+		cardWidth = m.width - 4
+	}
+	config := OverlayCardConfig{
+		Title:        "Settings",
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	}
+	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
