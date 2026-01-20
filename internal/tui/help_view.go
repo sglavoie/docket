@@ -272,15 +272,41 @@ func (m *HelpViewModel) renderContent() string {
 	if descWidth < 20 {
 		descWidth = 20
 	}
+	columnWidth := keyWidth + 2 + descWidth
 
 	keyStyle := lipgloss.NewStyle().
 		Width(keyWidth).
 		Align(lipgloss.Right).
 		Foreground(ColorSecondary)
 
-	descStyle := lipgloss.NewStyle().
-		Width(descWidth).
-		MaxWidth(descWidth)
+	// columnStyle ensures entire column block has fixed width for proper alignment
+	columnStyle := lipgloss.NewStyle().Width(columnWidth)
+
+	// renderHelpItem renders a single key+description pair with proper wrapping
+	renderHelpItem := func(key, desc string) string {
+		// Wrap description with indentation for continuation lines
+		// Indent = keyWidth + separator(2) so wrapped text aligns under description
+		wrappedDesc := wrapDescriptionWithIndent(desc, descWidth, keyWidth+2)
+
+		// Split into lines and build the block
+		descLines := strings.Split(wrappedDesc, "\n")
+		var result strings.Builder
+
+		for i, line := range descLines {
+			if i == 0 {
+				// First line: key + separator + description
+				result.WriteString(keyStyle.Render(key))
+				result.WriteString("  ")
+				result.WriteString(line)
+			} else {
+				// Continuation lines are already indented by wrapDescriptionWithIndent
+				result.WriteString("\n")
+				result.WriteString(line)
+			}
+		}
+
+		return result.String()
+	}
 
 	// Render each category
 	for i, category := range categoryOrder {
@@ -304,26 +330,18 @@ func (m *HelpViewModel) renderContent() string {
 
 		// Render items in 2-column layout
 		for j := 0; j < len(items); j += 2 {
-			// First column
+			// First column - wrap in columnStyle to ensure fixed width for proper alignment
 			item1 := items[j]
-			col1 := lipgloss.JoinHorizontal(lipgloss.Top,
-				keyStyle.Render(item1.Key),
-				"  ",
-				descStyle.Render(item1.Description),
-			)
+			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description))
 
 			// Second column (if exists)
 			var col2 string
 			if j+1 < len(items) {
 				item2 := items[j+1]
-				col2 = lipgloss.JoinHorizontal(lipgloss.Top,
-					keyStyle.Render(item2.Key),
-					"  ",
-					descStyle.Render(item2.Description),
-				)
+				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description))
 			}
 
-			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, "    ", col2)
+			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
 			b.WriteString(row)
 			b.WriteString("\n")
 			// Count actual lines in row (may be multi-line due to wrapped descriptions)
@@ -398,6 +416,56 @@ func (m *HelpViewModel) View() string {
 		Centered:     true,
 		NoTruncation: true,
 	})
+}
+
+// wrapDescriptionWithIndent wraps text to fit within width, indenting continuation
+// lines to align under the first line of text (after key + separator).
+func wrapDescriptionWithIndent(text string, width, indentWidth int) string {
+	if width <= 0 {
+		return text
+	}
+
+	indent := strings.Repeat(" ", indentWidth)
+	var lines []string
+	remaining := text
+
+	for len(remaining) > 0 {
+		// All lines use full width - indent is added as prefix, not subtracted from width
+		if len(remaining) <= width {
+			if len(lines) > 0 {
+				lines = append(lines, indent+remaining)
+			} else {
+				lines = append(lines, remaining)
+			}
+			break
+		}
+
+		// Find break point (last space within width)
+		breakPoint := width
+		for i := width; i > 0; i-- {
+			if remaining[i-1] == ' ' {
+				breakPoint = i - 1
+				break
+			}
+		}
+		// If no space found, force break at width
+		if breakPoint == width {
+			breakPoint = width
+		}
+
+		line := remaining[:breakPoint]
+		if len(lines) > 0 {
+			lines = append(lines, indent+line)
+		} else {
+			lines = append(lines, line)
+		}
+
+		// Skip past the break point and any leading spaces
+		remaining = remaining[breakPoint:]
+		remaining = strings.TrimLeft(remaining, " ")
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // CloseHelpMsg is sent when the help view should close.
