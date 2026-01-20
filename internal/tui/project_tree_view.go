@@ -131,25 +131,31 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
 	b.WriteString(strings.Join(statusStats, " "))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	visible := m.visibleNodes()
 
+	// Build card content (task list + scroll indicator)
+	var cardContent strings.Builder
+
+	// Card has 4 chars horizontal overhead (2 border + 2 padding)
+	cardContentWidth := m.width - 4
+
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			b.WriteString(MutedStyle.Render("No tasks yet. Add one with: tt task add <title>"))
+			cardContent.WriteString(MutedStyle.Render("No tasks yet. Add one with: tt task add <title>"))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			cardContent.WriteString(MutedStyle.Render("No tasks match current filters."))
 		}
-		b.WriteString("\n")
 	} else {
 		// Calculate available height for task list
 		// Extra line needed when filter bar is enabled (filters on own line)
+		// Card border consumes 2 lines (top + bottom)
 		headerOffset := 7
 		if m.filterBarEnabled {
 			headerOffset = 8
 		}
-		availableHeight := m.height - headerOffset
+		availableHeight := m.height - headerOffset - 2 // -2 for card borders
 
 		// Determine visible range
 		startIdx := 0
@@ -176,22 +182,27 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
-			line := m.renderNode(node, i == m.cursor, inSelection)
-			b.WriteString(line)
-			b.WriteString("\n")
+			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth)
+			cardContent.WriteString(line)
+			if i < endIdx-1 {
+				cardContent.WriteString("\n")
+			}
 		}
 
-		// Scroll indicator
+		// Scroll indicator inside card
 		if len(visible) > availableHeight {
 			scrollInfo := fmt.Sprintf("Showing %d-%d of %d", startIdx+1, endIdx, len(visible))
-			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(scrollInfo))
-			b.WriteString("\n")
+			cardContent.WriteString("\n")
+			cardContent.WriteString(MutedStyle.Render(scrollInfo))
 		}
 	}
 
-	// Filter and sort status
+	// Render the card with view mode as title
+	// Full-width mode has no sidebar, so always focused
+	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), m.width, true))
 	b.WriteString("\n")
+
+	// Filter and sort status - outside the card
 	var filters []string
 	if m.filterType != "" {
 		filters = append(filters, fmt.Sprintf("type: %s", m.filterType))
@@ -463,25 +474,31 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 	b.WriteString(MutedStyle.Render("Tasks: "))
 	b.WriteString(strings.Join(statusStats, " "))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	visible := m.visibleNodes()
 
+	// Build card content (task list + scroll indicator)
+	var cardContent strings.Builder
+
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			b.WriteString(MutedStyle.Render("No tasks yet."))
+			cardContent.WriteString(MutedStyle.Render("No tasks yet."))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks match filters."))
+			cardContent.WriteString(MutedStyle.Render("No tasks match filters."))
 		}
-		b.WriteString("\n")
 	} else {
 		// Calculate available height for task list
 		// Extra line needed when filter bar is enabled (filters on own line)
+		// Card border consumes 2 lines (top + bottom)
 		headerOffset := 7
 		if m.filterBarEnabled {
 			headerOffset = 8
 		}
-		availableHeight := m.height - headerOffset
+		availableHeight := m.height - headerOffset - 2 // -2 for card borders
+
+		// Card has 4 chars horizontal overhead (2 border + 2 padding)
+		cardContentWidth := width - 4
 
 		// Determine visible range
 		startIdx := 0
@@ -504,26 +521,32 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			}
 		}
 
-		// Render visible tasks (with adjusted width)
+		// Render visible tasks (with adjusted width for card content)
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
-			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, width)
-			b.WriteString(line)
-			b.WriteString("\n")
+			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth)
+			cardContent.WriteString(line)
+			if i < endIdx-1 {
+				cardContent.WriteString("\n")
+			}
 		}
 
-		// Scroll indicator
+		// Scroll indicator inside card
 		if len(visible) > availableHeight {
 			scrollInfo := fmt.Sprintf("%d-%d/%d", startIdx+1, endIdx, len(visible))
-			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(scrollInfo))
-			b.WriteString("\n")
+			cardContent.WriteString("\n")
+			cardContent.WriteString(MutedStyle.Render(scrollInfo))
 		}
 	}
 
-	// Filter status (compact)
+	// Render the card with view mode as title
+	// Main tree is focused when sidebar is not focused
+	focused := !m.sidebarFocused
+	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused))
 	b.WriteString("\n")
+
+	// Filter status (compact) - outside the card
 	var filters []string
 	if m.filterType != "" {
 		filters = append(filters, string(m.filterType))
@@ -1151,4 +1174,20 @@ func (m *ProjectTreeModel) renderPrefixPopup() string {
 		"z": FoldPrefixHints,
 		"g": ProjectTreeNavigationPrefixHints,
 	}, m.width)
+}
+
+// getViewModeTitle returns the card title based on current view mode.
+func (m *ProjectTreeModel) getViewModeTitle() string {
+	switch m.viewMode {
+	case ViewModeActive:
+		return "Active"
+	case ViewModeInbox:
+		return "Inbox"
+	case ViewModeBacklog:
+		return "Backlog"
+	case ViewModeCompleted:
+		return "Completed"
+	default:
+		return "Tasks"
+	}
 }
