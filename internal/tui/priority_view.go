@@ -567,23 +567,20 @@ func (m *PriorityViewModel) clampCursor() {
 func (m *PriorityViewModel) View() string {
 	var b strings.Builder
 
-	// Title
-	title := PriorityViewTitleStyle.Render("Priority View")
-	projectName := MutedStyle.Render(m.project.Name)
-	b.WriteString(title + " " + projectName)
-	b.WriteString("\n")
-	b.WriteString(strings.Repeat("─", min(m.width-2, 60)))
-	b.WriteString("\n\n")
-
 	if m.totalTasks == 0 && len(m.waitingOn) == 0 {
 		b.WriteString(MutedStyle.Render("No actionable tasks."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
-		return b.String()
+
+		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Priority View",
+			Subtitle: m.project.Name,
+			Centered: true,
+		})
 	}
 
-	// Calculate available height for task list
-	contentHeight := m.height - 8
+	// Calculate available height for task list (account for card border/padding)
+	contentHeight := m.height - 12
 
 	// Render groups with scroll awareness
 	currentIndex := 0
@@ -616,7 +613,11 @@ func (m *PriorityViewModel) View() string {
 	footer := HelpStyle.Render("↑/↓ navigate • Enter view • e edit • ,s/,d status • 1-5 priority • ? help • q close")
 	b.WriteString(footer)
 
-	return b.String()
+	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Priority View",
+		Subtitle: fmt.Sprintf("%d tasks • %s", m.totalTasks, m.project.Name),
+		Centered: true,
+	})
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
@@ -630,39 +631,56 @@ func (m *PriorityViewModel) renderPrefixPopup() string {
 // renderAllGroups renders all task groups and returns the lines.
 func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
+	hasContent := false
+	separatorWidth := min(m.width-10, 50)
 
 	if len(m.overdue) > 0 {
 		lines = append(lines, m.renderGroupHeader("OVERDUE", len(m.overdue), true))
 		lines = append(lines, m.renderGroup(m.overdue, currentIndex, true)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.today) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("DUE TODAY", len(m.today), false))
 		lines = append(lines, m.renderGroup(m.today, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.thisWeek) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("THIS WEEK", len(m.thisWeek), false))
 		lines = append(lines, m.renderGroup(m.thisWeek, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.later) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("LATER", len(m.later), false))
 		lines = append(lines, m.renderGroup(m.later, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.backlog) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("BACKLOG", len(m.backlog), false))
 		lines = append(lines, m.renderGroup(m.backlog, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	// Waiting On section (blocked tasks)
 	if len(m.waitingOn) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderWaitingOnHeader())
 		if !m.waitingOnCollapsed {
 			// Waiting on tasks are not navigable

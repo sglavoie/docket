@@ -236,23 +236,20 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *DueDateOverviewModel) View() string {
 	var b strings.Builder
 
-	// Title
-	title := DueDateOverviewTitleStyle.Render("Due Dates")
-	subtitle := MutedStyle.Render("across all projects")
-	b.WriteString(title + " " + subtitle)
-	b.WriteString("\n")
-	b.WriteString(strings.Repeat("─", min(m.width-2, 50)))
-	b.WriteString("\n\n")
-
 	if m.totalTasks == 0 {
 		b.WriteString(MutedStyle.Render("No tasks with due dates found."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
-		return b.String()
+
+		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Due Dates",
+			Subtitle: "across all projects",
+			Centered: true,
+		})
 	}
 
-	// Calculate available height for task list
-	contentHeight := m.height - 6 // Account for title, separator, footer
+	// Calculate available height for task list (account for card border/padding)
+	contentHeight := m.height - 12
 
 	// Render groups with scroll awareness
 	currentIndex := 0
@@ -276,35 +273,50 @@ func (m *DueDateOverviewModel) View() string {
 	b.WriteString("\n\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓/j/k navigate • Enter view task • g/G top/bottom • q close")
+	footer := HelpStyle.Render("↑/↓/j/k navigate • Enter view task • g/G top/bottom • Esc close")
 	b.WriteString(footer)
 
-	return b.String()
+	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Due Dates",
+		Subtitle: fmt.Sprintf("%d tasks across all projects", m.totalTasks),
+		Centered: true,
+	})
 }
 
 // renderAllGroups renders all task groups and returns the lines.
 func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
+	hasContent := false
+	separatorWidth := min(m.width-10, 50)
 
 	if len(m.overdue) > 0 {
 		lines = append(lines, m.renderGroupHeader("Overdue", len(m.overdue), true))
 		lines = append(lines, m.renderGroup(m.overdue, currentIndex, true)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.today) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("Today", len(m.today), false))
 		lines = append(lines, m.renderGroup(m.today, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.thisWeek) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("This Week", len(m.thisWeek), false))
 		lines = append(lines, m.renderGroup(m.thisWeek, currentIndex, false)...)
-		lines = append(lines, "")
+		hasContent = true
 	}
 
 	if len(m.later) > 0 {
+		if hasContent {
+			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+		}
 		lines = append(lines, m.renderGroupHeader("Later", len(m.later), false))
 		lines = append(lines, m.renderGroup(m.later, currentIndex, false)...)
 	}
