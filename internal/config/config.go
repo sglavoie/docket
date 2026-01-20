@@ -26,6 +26,7 @@ type ProjectViewState struct {
 	FilterTags       []string `json:"filter_tags,omitempty"`
 	FilterSections   []string `json:"filter_sections,omitempty"`
 	FilterDueDate    int      `json:"filter_due_date,omitempty"`
+	FilterActionable bool     `json:"filter_actionable,omitempty"` // Actionable filter (F8)
 	SortField        int      `json:"sort_field,omitempty"`
 	SortAscending    bool     `json:"sort_ascending"`
 	ShowCompleted    bool     `json:"show_completed"`

@@ -1091,6 +1091,11 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	active = m.filterDueDate != DueDateAll
 	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
 
+	// F8: Actionable (tasks ready to work on)
+	count = m.filterCounts["actionable"]
+	active = m.filterActionable
+	badges = append(badges, m.renderFilterBadge("F8", "Ready", count, active))
+
 	result.WriteString(strings.Join(badges, " "))
 	result.WriteString("\n")
 

@@ -60,6 +60,12 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return true, nil
+	case "f8":
+		m.filterActionable = !m.filterActionable
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return true, nil
 	}
 	return false, nil
 }

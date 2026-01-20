@@ -282,6 +282,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F5", Description: "Tag filter selector", Category: "Filter Bar", Views: views},
 		Keybinding{Key: "F6", Description: "Section filter selector", Category: "Filter Bar", Views: views},
 		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar", Views: views},
+		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filter Bar", Views: views},
 
 		// Scratchpad
 		Keybinding{Key: "[", Description: "View scratchpad", Category: "Scratchpad", Views: views},

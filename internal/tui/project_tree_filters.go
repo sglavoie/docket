@@ -198,6 +198,22 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		}
 	}
 
+	// Apply actionable filter (hide tasks not ready to work on)
+	if m.filterActionable {
+		// Hide tasks with incomplete dependencies
+		if m.project.HasIncompleteDependencies(node.Task) {
+			return false
+		}
+		// Hide manually-blocked tasks
+		if node.Task.Status == models.StatusBlocked {
+			return false
+		}
+		// Hide Inbox/Backlog tasks (awaiting triage)
+		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+			return false
+		}
+	}
+
 	// Apply search filter
 	if m.SearchQuery() != "" {
 		if !m.matchesSearch(node.Task) && !m.hasMatchingDescendant(node.Task) {
@@ -445,6 +461,14 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 		// Count by tag
 		for _, tag := range task.Tags {
 			m.filterCounts["tag:"+tag]++
+		}
+		// Count actionable tasks (ready to work on)
+		if !task.IsComplete() &&
+			!m.project.HasIncompleteDependencies(task) &&
+			task.Status != models.StatusBlocked &&
+			task.Section != models.SectionInbox &&
+			task.Section != models.SectionBacklog {
+			m.filterCounts["actionable"]++
 		}
 	}
 

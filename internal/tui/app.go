@@ -741,6 +741,7 @@ func (m *AppModel) saveProjectTreeState() {
 		FilterTags:       filterTags,
 		FilterSections:   filterSections,
 		FilterDueDate:    int(m.projectTree.filterDueDate),
+		FilterActionable: m.projectTree.filterActionable,
 		SortField:        int(m.projectTree.sortField),
 		SortAscending:    m.projectTree.sortAscending,
 		SidebarEnabled:   m.projectTree.sidebarEnabled,
@@ -781,6 +782,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filterStatus = models.TaskStatus(state.FilterStatus)
 	m.projectTree.filterPriority = state.FilterPriority
 	m.projectTree.filterDueDate = DueDateFilter(state.FilterDueDate)
+	m.projectTree.filterActionable = state.FilterActionable
 	m.projectTree.sortField = SortField(state.SortField)
 	m.projectTree.sortAscending = state.SortAscending
 	m.projectTree.sidebarEnabled = state.SidebarEnabled

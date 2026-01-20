@@ -95,12 +95,13 @@ type ProjectTreeModel struct {
 	viewMode ViewMode
 
 	// Filter options
-	filterType     models.TaskType
-	filterStatus   models.TaskStatus // filter by specific status
-	filterPriority int               // 0=all, 1=high only (<=2)
-	filterTags     map[string]bool   // filter by tag names (AND logic)
-	filterSections map[string]bool   // filter by section names (OR logic)
-	filterDueDate  DueDateFilter     // filter by due date
+	filterType       models.TaskType
+	filterStatus     models.TaskStatus // filter by specific status
+	filterPriority   int               // 0=all, 1=high only (<=2)
+	filterTags       map[string]bool   // filter by tag names (AND logic)
+	filterSections   map[string]bool   // filter by section names (OR logic)
+	filterDueDate    DueDateFilter     // filter by due date
+	filterActionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
 
 	// Sort options
 	sortField     SortField // current sort field
