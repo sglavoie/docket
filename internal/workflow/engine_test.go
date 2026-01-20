@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -500,4 +501,561 @@ func TestTestRule(t *testing.T) {
 	if task.Section != "Backlog" {
 		t.Error("TestRule should not modify task")
 	}
+}
+
+// Tests for new action types
+
+func TestApplyAction_NewActions(t *testing.T) {
+	tests := []struct {
+		name           string
+		action         RuleAction
+		setupTask      func() *models.Task
+		expectedChange func(*models.Task) bool
+		shouldModify   bool
+	}{
+		{
+			name:   "set due relative +3d",
+			action: RuleAction{ActionType: ActionSetDueRelative, Value: "+3d"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Status: models.StatusTodo}
+			},
+			expectedChange: func(t *models.Task) bool {
+				if t.DueDate == nil {
+					return false
+				}
+				// Should be approximately 3 days from now
+				expected := time.Now().AddDate(0, 0, 3)
+				diff := t.DueDate.Sub(expected)
+				return diff < time.Hour && diff > -time.Hour
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "clear due date",
+			action: RuleAction{ActionType: ActionClearDue, Value: ""},
+			setupTask: func() *models.Task {
+				due := time.Now().Add(24 * time.Hour)
+				return &models.Task{ID: "1", DueDate: &due}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.DueDate == nil
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "clear due date no-op when nil",
+			action: RuleAction{ActionType: ActionClearDue, Value: ""},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", DueDate: nil}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.DueDate == nil
+			},
+			shouldModify: false,
+		},
+		{
+			name:   "set active true",
+			action: RuleAction{ActionType: ActionSetActive, Value: "true"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Active: false}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Active == true
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set active false",
+			action: RuleAction{ActionType: ActionSetActive, Value: "false"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Active: true}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Active == false
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set pinned true",
+			action: RuleAction{ActionType: ActionSetPinned, Value: "true"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Pinned: false}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Pinned == true && t.PinnedAt != nil
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set pinned false",
+			action: RuleAction{ActionType: ActionSetPinned, Value: "false"},
+			setupTask: func() *models.Task {
+				now := time.Now()
+				return &models.Task{ID: "1", Pinned: true, PinnedAt: &now}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Pinned == false && t.PinnedAt == nil
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "add comment",
+			action: RuleAction{ActionType: ActionAddComment, Value: "Test comment"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Comments: []*models.Comment{}}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return len(t.Comments) == 1 && t.Comments[0].Text == "[Workflow] Test comment"
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set type to bug",
+			action: RuleAction{ActionType: ActionSetType, Value: "bug"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Type: models.TaskTypeTask}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Type == models.TaskTypeBug
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set type no change",
+			action: RuleAction{ActionType: ActionSetType, Value: "task"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Type: models.TaskTypeTask}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.Type == models.TaskTypeTask
+			},
+			shouldModify: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := tt.setupTask()
+			modified := applyAction(task, tt.action)
+			if modified != tt.shouldModify {
+				t.Errorf("applyAction() modified = %v, want %v", modified, tt.shouldModify)
+			}
+			if !tt.expectedChange(task) {
+				t.Errorf("applyAction() did not produce expected change")
+			}
+		})
+	}
+}
+
+// Tests for compound triggers
+
+func TestMatchesRule_CompoundAND(t *testing.T) {
+	task := &models.Task{
+		ID:       "task-1",
+		Status:   models.StatusBlocked,
+		Priority: 1,
+	}
+
+	rule := WorkflowRule{
+		ID:      "rule-1",
+		Name:    "Compound AND",
+		Enabled: true,
+		Triggers: []RuleTrigger{
+			{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+			{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+		},
+		TriggerLogic: LogicAnd,
+		Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "urgent"}},
+	}
+
+	if !matchesRule(task, &rule) {
+		t.Error("expected compound AND rule to match when all conditions met")
+	}
+
+	// Change one condition to not match
+	task.Priority = 3
+	if matchesRule(task, &rule) {
+		t.Error("expected compound AND rule to not match when one condition fails")
+	}
+}
+
+func TestMatchesRule_CompoundOR(t *testing.T) {
+	task := &models.Task{
+		ID:       "task-1",
+		Status:   models.StatusTodo,
+		Priority: 1,
+	}
+
+	rule := WorkflowRule{
+		ID:      "rule-1",
+		Name:    "Compound OR",
+		Enabled: true,
+		Triggers: []RuleTrigger{
+			{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+			{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+		},
+		TriggerLogic: LogicOr,
+		Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "important"}},
+	}
+
+	// Only priority matches, but OR should still succeed
+	if !matchesRule(task, &rule) {
+		t.Error("expected compound OR rule to match when one condition met")
+	}
+
+	// Neither matches
+	task.Priority = 3
+	if matchesRule(task, &rule) {
+		t.Error("expected compound OR rule to not match when no conditions met")
+	}
+}
+
+func TestMatchesRule_LegacySingleTrigger(t *testing.T) {
+	task := &models.Task{
+		ID:       "task-1",
+		Priority: 1,
+	}
+
+	// Legacy rule with single Trigger field (not Triggers slice)
+	rule := WorkflowRule{
+		ID:      "rule-1",
+		Name:    "Legacy",
+		Enabled: true,
+		Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+		Actions: []RuleAction{{ActionType: ActionAddTag, Value: "test"}},
+	}
+
+	if !matchesRule(task, &rule) {
+		t.Error("expected legacy single trigger rule to match")
+	}
+}
+
+func TestEvaluateRules_CompoundTriggers(t *testing.T) {
+	tasks := []*models.Task{
+		{ID: "1", Title: "Urgent blocked", Priority: 1, Status: models.StatusBlocked, Tags: []string{}},
+		{ID: "2", Title: "Normal blocked", Priority: 3, Status: models.StatusBlocked, Tags: []string{}},
+		{ID: "3", Title: "Urgent todo", Priority: 1, Status: models.StatusTodo, Tags: []string{}},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Urgent AND Blocked",
+			Enabled: true,
+			Triggers: []RuleTrigger{
+				{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+				{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "critical"}},
+		},
+	}
+
+	result := EvaluateRules(tasks, rules)
+
+	// Only task 1 should match (both blocked AND priority 1)
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if !tasks[0].HasTag("critical") {
+		t.Error("expected task 1 to have 'critical' tag")
+	}
+	if tasks[1].HasTag("critical") {
+		t.Error("expected task 2 to NOT have 'critical' tag")
+	}
+	if tasks[2].HasTag("critical") {
+		t.Error("expected task 3 to NOT have 'critical' tag")
+	}
+}
+
+// Tests for time-based triggers
+
+func TestMatchesTrigger_DueDays(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name     string
+		dueDate  *time.Time
+		trigger  RuleTrigger
+		expected bool
+	}{
+		{
+			name:     "due in 2 days, less than 3",
+			dueDate:  timePtr(now.AddDate(0, 0, 2)),
+			trigger:  RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+			expected: true,
+		},
+		{
+			name:     "due in 5 days, not less than 3",
+			dueDate:  timePtr(now.AddDate(0, 0, 5)),
+			trigger:  RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+			expected: false,
+		},
+		{
+			name:     "overdue by 2 days (negative)",
+			dueDate:  timePtr(now.AddDate(0, 0, -2)),
+			trigger:  RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "0"},
+			expected: true,
+		},
+		{
+			name:     "no due date",
+			dueDate:  nil,
+			trigger:  RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:      "task-1",
+				DueDate: tt.dueDate,
+			}
+			if got := matchesTrigger(task, tt.trigger); got != tt.expected {
+				t.Errorf("matchesTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesTrigger_CreatedDays(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name      string
+		createdAt time.Time
+		trigger   RuleTrigger
+		expected  bool
+	}{
+		{
+			name:      "created 10 days ago, greater than 7",
+			createdAt: now.AddDate(0, 0, -10),
+			trigger:   RuleTrigger{Field: FieldCreatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  true,
+		},
+		{
+			name:      "created 3 days ago, not greater than 7",
+			createdAt: now.AddDate(0, 0, -3),
+			trigger:   RuleTrigger{Field: FieldCreatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  false,
+		},
+		{
+			name:      "created today, equals 0",
+			createdAt: now,
+			trigger:   RuleTrigger{Field: FieldCreatedDays, Operation: OpEquals, Value: "0"},
+			expected:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:        "task-1",
+				CreatedAt: tt.createdAt,
+			}
+			if got := matchesTrigger(task, tt.trigger); got != tt.expected {
+				t.Errorf("matchesTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesTrigger_UpdatedDays(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name      string
+		updatedAt time.Time
+		trigger   RuleTrigger
+		expected  bool
+	}{
+		{
+			name:      "updated 10 days ago, greater than 7 (stale)",
+			updatedAt: now.AddDate(0, 0, -10),
+			trigger:   RuleTrigger{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  true,
+		},
+		{
+			name:      "updated 3 days ago, not greater than 7",
+			updatedAt: now.AddDate(0, 0, -3),
+			trigger:   RuleTrigger{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := &models.Task{
+				ID:        "task-1",
+				UpdatedAt: tt.updatedAt,
+			}
+			if got := matchesTrigger(task, tt.trigger); got != tt.expected {
+				t.Errorf("matchesTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEvaluateRules_TimeBased(t *testing.T) {
+	now := time.Now()
+
+	tasks := []*models.Task{
+		{ID: "1", Title: "Due soon", DueDate: timePtr(now.AddDate(0, 0, 2)), Priority: 3, Tags: []string{}},
+		{ID: "2", Title: "Due later", DueDate: timePtr(now.AddDate(0, 0, 10)), Priority: 3, Tags: []string{}},
+		{ID: "3", Title: "No due date", DueDate: nil, Priority: 3, Tags: []string{}},
+	}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Due Soon Priority",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+			Actions: []RuleAction{{ActionType: ActionSetPriority, Value: "1"}},
+		},
+	}
+
+	result := EvaluateRules(tasks, rules)
+
+	// Only task 1 should be modified (due in 2 days < 3)
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if tasks[0].Priority != 1 {
+		t.Errorf("expected task 1 priority to be 1, got %d", tasks[0].Priority)
+	}
+	if tasks[1].Priority != 3 {
+		t.Errorf("expected task 2 priority to remain 3, got %d", tasks[1].Priority)
+	}
+	if tasks[2].Priority != 3 {
+		t.Errorf("expected task 3 priority to remain 3, got %d", tasks[2].Priority)
+	}
+}
+
+// Tests for ParseRelativeDuration
+
+func TestParseRelativeDuration(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int
+		wantErr  bool
+	}{
+		{"+3d", 3, false},
+		{"3d", 3, false},
+		{"+1w", 7, false},
+		{"+2w", 14, false},
+		{"+1m", 30, false},
+		{"+1y", 365, false},
+		{"+10d", 10, false},
+		{"", 0, true},
+		{"d", 0, true},
+		{"+0d", 0, true},
+		{"+3x", 0, true},
+		{"abc", 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := ParseRelativeDuration(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseRelativeDuration(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.expected {
+				t.Errorf("ParseRelativeDuration(%q) = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// Tests for rule validation with new features
+
+func TestRuleValidation_NewActions(t *testing.T) {
+	tests := []struct {
+		name    string
+		rule    WorkflowRule
+		wantErr bool
+	}{
+		{
+			name: "valid set_due_relative",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				Actions: []RuleAction{{ActionType: ActionSetDueRelative, Value: "+3d"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid set_due_relative format",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				Actions: []RuleAction{{ActionType: ActionSetDueRelative, Value: "invalid"}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid clear_due (no value)",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				Actions: []RuleAction{{ActionType: ActionClearDue, Value: ""}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid set_active true",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				Actions: []RuleAction{{ActionType: ActionSetActive, Value: "true"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid set_active value",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				Actions: []RuleAction{{ActionType: ActionSetActive, Value: "yes"}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "valid compound rule",
+			rule: WorkflowRule{
+				Name: "Test",
+				Triggers: []RuleTrigger{
+					{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+					{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+				},
+				TriggerLogic: LogicAnd,
+				Actions:      []RuleAction{{ActionType: ActionAddTag, Value: "urgent"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid time-based trigger",
+			rule: WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldDueDays, Operation: OpLessThan, Value: "3"},
+				Actions: []RuleAction{{ActionType: ActionSetPriority, Value: "1"}},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.rule.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Helper function
+func timePtr(t time.Time) *time.Time {
+	return &t
 }

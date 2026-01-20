@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -90,7 +91,7 @@ func evaluateRulesRecursive(tasks []*models.Task, rules []WorkflowRule, ctx *exe
 			if ctx.wasApplied(task.ID, rule.ID) {
 				continue
 			}
-			if !matchesTrigger(task, rule.Trigger) {
+			if !matchesRule(task, &rule) {
 				continue
 			}
 
@@ -136,7 +137,7 @@ func evaluateRulesRecursive(tasks []*models.Task, rules []WorkflowRule, ctx *exe
 			if ctx.wasApplied(task.ID, rule.ID) {
 				continue
 			}
-			if !matchesTrigger(task, rule.Trigger) {
+			if !matchesRule(task, &rule) {
 				continue
 			}
 
@@ -171,6 +172,35 @@ func getFieldFromAction(actionType ActionType) string {
 	}
 }
 
+// matchesRule checks if a task matches all of the rule's trigger conditions.
+// Handles both single trigger (legacy) and compound triggers.
+func matchesRule(task *models.Task, rule *WorkflowRule) bool {
+	triggers := rule.GetTriggers()
+	if len(triggers) == 0 {
+		return false
+	}
+
+	logic := rule.GetTriggerLogic()
+
+	if logic == LogicOr {
+		// OR: any trigger must match
+		for _, trigger := range triggers {
+			if matchesTrigger(task, trigger) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// AND (default): all triggers must match
+	for _, trigger := range triggers {
+		if !matchesTrigger(task, trigger) {
+			return false
+		}
+	}
+	return true
+}
+
 // matchesTrigger checks if a task matches the rule's trigger condition.
 func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 	var fieldValue string
@@ -187,11 +217,52 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 		return matchesTagTrigger(task.Tags, trigger)
 	case FieldType:
 		fieldValue = string(task.Type)
+	case FieldDueDays:
+		// Days until due date (negative = overdue)
+		if task.DueDate == nil {
+			return false // No due date, skip this trigger
+		}
+		days := daysUntil(*task.DueDate)
+		fieldValue = strconv.Itoa(days)
+	case FieldCreatedDays:
+		// Days since creation
+		days := daysSince(task.CreatedAt)
+		fieldValue = strconv.Itoa(days)
+	case FieldUpdatedDays:
+		// Days since last update
+		days := daysSince(task.UpdatedAt)
+		fieldValue = strconv.Itoa(days)
 	default:
 		return false
 	}
 
 	return compareValues(fieldValue, trigger.Operation, trigger.Value)
+}
+
+// daysUntil returns the number of days until the given date.
+// Returns negative values for past dates (overdue).
+func daysUntil(t time.Time) int {
+	now := time.Now()
+	// Normalize to start of day for consistent comparison
+	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	targetDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	diff := targetDate.Sub(nowDate)
+	return int(diff.Hours() / 24)
+}
+
+// daysSince returns the number of days since the given date.
+// Always returns 0 or positive values.
+func daysSince(t time.Time) int {
+	now := time.Now()
+	// Normalize to start of day for consistent comparison
+	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	targetDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	diff := nowDate.Sub(targetDate)
+	days := int(diff.Hours() / 24)
+	if days < 0 {
+		return 0
+	}
+	return days
 }
 
 func matchesTagTrigger(tags []string, trigger RuleTrigger) bool {
@@ -272,6 +343,47 @@ func applyAction(task *models.Task, action RuleAction) bool {
 			task.RemoveTag(action.Value)
 			return true
 		}
+	case ActionSetDueRelative:
+		days, err := ParseRelativeDuration(action.Value)
+		if err == nil {
+			newDue := time.Now().AddDate(0, 0, days)
+			task.DueDate = &newDue
+			task.UpdatedAt = time.Now()
+			return true
+		}
+	case ActionClearDue:
+		if task.DueDate != nil {
+			task.DueDate = nil
+			task.UpdatedAt = time.Now()
+			return true
+		}
+	case ActionSetActive:
+		active := action.Value == "true"
+		if task.Active != active {
+			task.Active = active
+			task.UpdatedAt = time.Now()
+			return true
+		}
+	case ActionSetPinned:
+		pinned := action.Value == "true"
+		if task.Pinned != pinned {
+			if pinned {
+				task.Pin()
+			} else {
+				task.Unpin()
+			}
+			return true
+		}
+	case ActionAddComment:
+		task.AddComment("[Workflow] " + action.Value)
+		return true
+	case ActionSetType:
+		newType := models.TaskType(action.Value)
+		if newType.IsValid() && task.Type != newType {
+			task.Type = newType
+			task.UpdatedAt = time.Now()
+			return true
+		}
 	}
 	return false
 }
@@ -297,7 +409,7 @@ func FormatConflicts(conflicts []RuleConflict) string {
 // TestRule evaluates a single rule against a task without applying changes.
 // Returns whether the rule would match and what actions would be taken.
 func TestRule(task *models.Task, rule WorkflowRule) (matches bool, actions []string) {
-	if !matchesTrigger(task, rule.Trigger) {
+	if !matchesRule(task, &rule) {
 		return false, nil
 	}
 
