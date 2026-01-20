@@ -53,6 +53,7 @@ const (
 	ViewBulkEdit
 	ViewSaveSearchInput
 	ViewTrashedProjects
+	ViewProjectSelector
 )
 
 // AppModel is the main TUI model with a view stack.

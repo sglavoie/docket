@@ -370,3 +370,33 @@ func statusTimeout(d time.Duration) tea.Cmd {
 		return StatusClearMsg{}
 	})
 }
+
+// =============================================================================
+// Cross-Project Move Messages (Show/Close/Done Pattern)
+// =============================================================================
+
+// ShowProjectSelectorForMoveMsg opens the project selector for moving a task.
+type ShowProjectSelectorForMoveMsg struct {
+	Task          *models.Task
+	SourceProject *models.Project
+}
+
+// CloseProjectSelectorMsg closes the project selector without selection.
+type CloseProjectSelectorMsg struct{}
+
+// MoveTaskToProjectMsg requests moving a task to another project.
+type MoveTaskToProjectMsg struct {
+	Task          *models.Task
+	SourceProject *models.Project
+	DestProjectID string
+}
+
+// TaskMovedToProjectMsg signals a task was moved to another project.
+type TaskMovedToProjectMsg struct {
+	Task          *models.Task
+	SourceProject *models.Project
+	DestProject   *models.Project
+	MovedCount    int // Number of tasks moved (including descendants)
+	ClearedDeps   int // Number of dependencies that were cleared
+	OldShortID    int // Original short ID before move
+}

@@ -245,6 +245,37 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CommentEditedMsg:
 		m.statusMessage = "Comment updated"
 		return true, statusTimeout(2 * time.Second)
+
+	case ShowProjectSelectorForMoveMsg:
+		if msg.Task != nil && msg.SourceProject != nil {
+			projects := m.config.GetActiveProjects()
+			m.showView(ViewProjectSelector, NewProjectSelectorModel(projects, msg.Task, msg.SourceProject))
+		}
+		return true, nil
+
+	case CloseProjectSelectorMsg:
+		m.popView()
+		return true, nil
+
+	case MoveTaskToProjectMsg:
+		return m.handleMoveTaskToProject(msg)
+
+	case TaskMovedToProjectMsg:
+		m.isLoading = false
+		m.loadingMessage = ""
+		m.popView() // Close project selector
+		m.refreshProjectTree()
+		var statusMsg string
+		if msg.MovedCount > 1 {
+			statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)
+		} else {
+			statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, msg.DestProject.Name)
+		}
+		if msg.ClearedDeps > 0 {
+			statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
+		}
+		m.statusMessage = statusMsg
+		return true, statusTimeout(3 * time.Second)
 	}
 	return false, nil
 }
@@ -464,4 +495,76 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		m.views.Register(ViewTaskEditor, taskEditor)
 	}
 	return true, nil
+}
+
+// handleMoveTaskToProject handles moving a task to another project.
+func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.Cmd) {
+	if msg.Task == nil || msg.SourceProject == nil || msg.DestProjectID == "" {
+		return true, nil
+	}
+
+	// Get destination project
+	destProject := m.config.GetProject(msg.DestProjectID)
+	if destProject == nil {
+		return true, errorCmd("destination project not found")
+	}
+
+	// Load destination project
+	if err := storage.LoadProject(destProject); err != nil {
+		return true, errorCmd("failed to load destination project: %w", err)
+	}
+
+	// Store old short ID before move
+	oldShortID := msg.Task.ShortID
+
+	// Perform the move
+	result, err := msg.SourceProject.MoveTaskToProject(msg.Task, destProject)
+	if err != nil {
+		return true, errorCmd("failed to move task: %w", err)
+	}
+	if result == nil {
+		return true, nil
+	}
+
+	// Save both projects
+	return true, tea.Batch(
+		startLoading("Moving task..."),
+		m.saveBothProjectsAsync(msg.SourceProject, destProject, result, oldShortID),
+	)
+}
+
+// saveBothProjectsAsync saves both source and destination projects after a cross-project move.
+func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int) tea.Cmd {
+	return func() tea.Msg {
+		// Backup and save source project
+		if err := storage.BackupProject(source); err != nil {
+			return SaveErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
+		}
+		if err := storage.SaveProject(source); err != nil {
+			return SaveErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
+		}
+
+		// Backup and save destination project
+		if err := storage.BackupProject(dest); err != nil {
+			return SaveErrorMsg{Err: fmt.Errorf("failed to backup destination project: %w", err)}
+		}
+		if err := storage.SaveProject(dest); err != nil {
+			return SaveErrorMsg{Err: fmt.Errorf("failed to save destination project: %w", err)}
+		}
+
+		// Return success message with move details
+		var movedTask *models.Task
+		if len(result.MovedTasks) > 0 {
+			movedTask = result.MovedTasks[0]
+		}
+
+		return TaskMovedToProjectMsg{
+			Task:          movedTask,
+			SourceProject: source,
+			DestProject:   dest,
+			MovedCount:    len(result.MovedTasks),
+			ClearedDeps:   len(result.ClearedDeps),
+			OldShortID:    oldShortID,
+		}
+	}
 }

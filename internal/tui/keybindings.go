@@ -255,6 +255,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "y", Description: "Copy title", Category: "Clipboard", Views: views},
 		Keybinding{Key: "Y", Description: "Copy description", Category: "Clipboard", Views: views},
 
+		// Cross-Project
+		Keybinding{Key: "M", Description: "Move to another project", Category: "Cross-Project", Views: views},
+
 		// Filter Bar
 		Keybinding{Key: "F", Description: "Toggle filter bar", Category: "Filter Bar", Views: views},
 		Keybinding{Key: "F1", Description: "Switch to Completed view", Category: "Filter Bar", Views: views},

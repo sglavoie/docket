@@ -474,6 +474,23 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 			}
 		}
 		return true, nil
+
+	case "M":
+		// Move task to another project
+		// Not available in multi-select mode (too complex with subtrees)
+		if m.multiSelectMode && len(m.selectedTasks) > 1 {
+			return true, nil
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowProjectSelectorForMoveMsg{
+					Task:          task,
+					SourceProject: m.project,
+				}
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }
