@@ -9,9 +9,10 @@ import (
 
 // CardConfig holds configuration for card rendering.
 type CardConfig struct {
-	Style      lipgloss.Style
-	TitleStyle lipgloss.Style
-	Focused    bool
+	Style       lipgloss.Style
+	TitleStyle  lipgloss.Style
+	Focused     bool
+	AccentColor lipgloss.Color // optional section color for border
 }
 
 // DefaultCardConfig returns the default card configuration for sidebar cards.
@@ -224,15 +225,38 @@ func truncateAndPad(line string, maxWidth int) string {
 
 // renderCard renders a card with a titled border.
 // Uses lipgloss styling for proper ANSI-aware rendering.
+// When AccentColor is set, uses it for borders. When Focused with AccentColor,
+// shows a blue title indicator while keeping the accent border.
 func renderCard(title, content string, width int, config CardConfig) string {
 	if width < 10 {
 		width = 10
 	}
 
-	// Choose border color based on focus state
-	borderColor := ColorBorder
-	if config.Focused {
-		borderColor = ColorPrimary
+	// Determine border and title colors based on accent and focus state
+	var borderColor lipgloss.Color
+	var titleStyle lipgloss.Style
+
+	hasAccent := config.AccentColor != ""
+
+	if hasAccent {
+		// Use accent color for border
+		borderColor = config.AccentColor
+		if config.Focused {
+			// Focused with accent: use blue title to indicate focus
+			titleStyle = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+		} else {
+			// Accent but not focused: use accent color for title too
+			titleStyle = lipgloss.NewStyle().Foreground(config.AccentColor)
+		}
+	} else {
+		// No accent: use standard focus behavior
+		if config.Focused {
+			borderColor = ColorPrimary
+			titleStyle = config.TitleStyle
+		} else {
+			borderColor = ColorBorder
+			titleStyle = config.TitleStyle
+		}
 	}
 
 	// Apply border color to the style
@@ -257,7 +281,7 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	// We want: ╭─ Title ────────╮
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
 
-	titleText := config.TitleStyle.Render(title)
+	titleText := titleStyle.Render(title)
 	titleVisualWidth := lipgloss.Width(titleText)
 
 	// Calculate dashes to fill the remaining width

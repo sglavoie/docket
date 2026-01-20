@@ -11,34 +11,39 @@ import (
 
 // renderSidebarCard renders a card with a titled border for sidebar sections.
 // Uses the shared renderCard utility with sidebar-specific configuration.
-func renderSidebarCard(title, content string, width int, focused bool) string {
+// accentColor is optional - pass empty string for default styling.
+func renderSidebarCard(title, content string, width int, focused bool, accentColor string) string {
 	config := DefaultCardConfig()
 	config.Focused = focused
+	config.AccentColor = GetSectionColorValue(accentColor)
 	return renderCard(title, content, width, config)
 }
 
 // renderSidebar renders the detail sidebar for the currently selected task.
 func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) string {
 	if task == nil {
-		emptyCard := renderSidebarCard("Task", MutedStyle.Render("No task selected"), width, false)
+		emptyCard := renderSidebarCard("Task", MutedStyle.Render("No task selected"), width, false, "")
 		return m.padSidebarToHeight(emptyCard, width, height)
 	}
+
+	// Get section color for accent on Task and Info cards
+	sectionColor := m.project.GetSectionColor(task.Section)
 
 	// Calculate inner width for card content (width minus card borders and padding)
 	cardInnerWidth := width - 6 // 2 border + 2 padding + 2 margin
 
 	var cards []string
 
-	// Task card: title, type/status, ID/priority
-	cards = append(cards, m.renderTaskCard(task, width))
+	// Task card: title, type/status, ID/priority (uses section color)
+	cards = append(cards, m.renderTaskCard(task, width, sectionColor))
 
 	// Due card (only if due date set)
 	if task.DueDate != nil {
 		cards = append(cards, m.renderDueCard(task, width))
 	}
 
-	// Metadata card: tags + section
-	cards = append(cards, m.renderMetadataCard(task, width))
+	// Metadata card: tags + section (uses section color)
+	cards = append(cards, m.renderMetadataCard(task, width, sectionColor))
 
 	// Dependencies card (only if has dependencies)
 	hasDeps := len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0
@@ -72,7 +77,7 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 }
 
 // renderTaskCard renders the main task info card.
-func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int) string {
+func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionColor string) string {
 	typeStyle := GetTypeStyle(string(task.Type))
 	statusStyle := GetStatusStyle(string(task.Status))
 
@@ -87,7 +92,7 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int) string {
 	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
-	return renderSidebarCard("Task", content, width, false)
+	return renderSidebarCard("Task", content, width, false, sectionColor)
 }
 
 // renderDueCard renders the due date card.
@@ -104,11 +109,11 @@ func (m *ProjectTreeModel) renderDueCard(task *models.Task, width int) string {
 		dueLine = DueDateStyle.Render(dueLine)
 	}
 
-	return renderSidebarCard("Due", dueLine, width, false)
+	return renderSidebarCard("Due", dueLine, width, false, "")
 }
 
 // renderMetadataCard renders tags and section in a combined card.
-func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int) string {
+func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sectionColor string) string {
 	var lines []string
 
 	// Tags line - use simple inline style without background/padding for alignment
@@ -125,12 +130,11 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int) stri
 	if sectionName == "" {
 		sectionName = "None"
 	}
-	sectionColor := m.project.GetSectionColor(task.Section)
 	sectionStyle := GetSectionColorStyle(sectionColor)
 	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 	lines = append(lines, sectionLine)
 
-	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false)
+	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
 }
 
 // renderDependenciesCard renders the dependencies card with navigation support.
@@ -200,7 +204,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 	}
 
 	focused := m.sidebarFocused && m.hasDependencies(task)
-	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused)
+	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
 }
 
 // renderActivityCard renders the activity timestamps card.
@@ -217,7 +221,7 @@ func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) stri
 		lines = append(lines, formatActivityEntry("Modified", task.UpdatedAt))
 	}
 
-	return renderSidebarCard("Activity", strings.Join(lines, "\n"), width, false)
+	return renderSidebarCard("Activity", strings.Join(lines, "\n"), width, false, "")
 }
 
 // renderDescriptionCard renders the description card with scroll support.
@@ -233,7 +237,7 @@ func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) s
 		lines = append(lines, MutedStyle.Render("..."))
 	}
 
-	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false)
+	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false, "")
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.

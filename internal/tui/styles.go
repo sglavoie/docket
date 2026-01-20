@@ -602,6 +602,20 @@ func GetSectionColorByIndex(index int) string {
 	return SectionColorPalette[index].Name
 }
 
+// GetSectionColorValue returns the lipgloss.Color for a section color name.
+// Returns empty string if the color name is empty or not found.
+func GetSectionColorValue(colorName string) lipgloss.Color {
+	if colorName == "" {
+		return ""
+	}
+	for _, pc := range SectionColorPalette {
+		if pc.Name == colorName {
+			return pc.Color
+		}
+	}
+	return ""
+}
+
 // Sidebar styles
 var (
 	SidebarStyle = lipgloss.NewStyle().

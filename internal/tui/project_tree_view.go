@@ -199,7 +199,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	// Render the card with view mode as title
 	// Full-width mode has no sidebar, so always focused
-	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), m.width, true))
+	// Use section color accent if exactly one section is filtered
+	sectionAccent := m.getSingleFilteredSectionColor()
+	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), m.width, true, sectionAccent))
 	b.WriteString("\n")
 
 	// Filter and sort status - outside the card
@@ -542,8 +544,10 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	// Render the card with view mode as title
 	// Main tree is focused when sidebar is not focused
+	// Use section color accent if exactly one section is filtered
 	focused := !m.sidebarFocused
-	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused))
+	sectionAccent := m.getSingleFilteredSectionColor()
+	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused, sectionAccent))
 	b.WriteString("\n")
 
 	// Filter status (compact) - outside the card
@@ -1237,17 +1241,44 @@ func (m *ProjectTreeModel) renderPrefixPopup() string {
 }
 
 // getViewModeTitle returns the card title based on current view mode.
+// If a single section is filtered, appends the section name.
 func (m *ProjectTreeModel) getViewModeTitle() string {
+	var base string
 	switch m.viewMode {
 	case ViewModeActive:
-		return "Active"
+		base = "Active"
 	case ViewModeInbox:
-		return "Inbox"
+		base = "Inbox"
 	case ViewModeBacklog:
-		return "Backlog"
+		base = "Backlog"
 	case ViewModeCompleted:
-		return "Completed"
+		base = "Completed"
 	default:
-		return "Tasks"
+		base = "Tasks"
 	}
+
+	// Append section name if exactly one section is filtered
+	if len(m.filterSections) == 1 {
+		for name := range m.filterSections {
+			base = base + " · @" + name
+			break
+		}
+	}
+
+	return base
+}
+
+// getSingleFilteredSectionColor returns the section color if exactly one section
+// is being filtered, otherwise returns empty string.
+func (m *ProjectTreeModel) getSingleFilteredSectionColor() string {
+	if len(m.filterSections) != 1 {
+		return ""
+	}
+	// Get the single filtered section name
+	var sectionName string
+	for name := range m.filterSections {
+		sectionName = name
+		break
+	}
+	return m.project.GetSectionColor(sectionName)
 }
