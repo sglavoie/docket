@@ -483,7 +483,7 @@ func (m *DashboardModel) View() string {
 
 		for i := scrollOffset; i < end; i++ {
 			p := visible[i]
-			cursor := "  "
+			selected := i == m.cursor
 			style := NormalStyle
 			numberPrefix := "  "
 			if p.Pinned {
@@ -492,8 +492,7 @@ func (m *DashboardModel) View() string {
 					numberPrefix = PinnedNumberStyle.Render(fmt.Sprintf("%d", pinnedNum)) + " "
 				}
 			}
-			if i == m.cursor {
-				cursor = "> "
+			if selected {
 				if p.Pinned {
 					style = BoldStyle.Foreground(ColorSuccess)
 				} else {
@@ -521,7 +520,8 @@ func (m *DashboardModel) View() string {
 			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
 			progressBar := RenderProgressBar(progress, 10)
 
-			line := fmt.Sprintf("%s%s%s %s  %s  %s", numberPrefix, cursor, name, context, stats, progressBar)
+			content := fmt.Sprintf("%s%s %s  %s  %s", numberPrefix, name, context, stats, progressBar)
+			line := RenderSelectableRow(selected, content, cardWidth-4) // -4 for card padding
 			cardContent.WriteString(line)
 			if i < end-1 || (len(visible)-end) > 0 {
 				cardContent.WriteString("\n")

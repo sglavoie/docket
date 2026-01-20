@@ -209,14 +209,19 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		end = len(p.Filtered)
 	}
 
+	// Determine width for selection row (use box width or default)
+	rowWidth := p.Config.BoxWidth
+	if rowWidth == 0 {
+		rowWidth = 50
+	}
+	if p.Width() > 0 && p.Width() < rowWidth+10 {
+		rowWidth = p.Width() - 10
+	}
+	rowWidth -= 6 // Account for box padding/borders
+
 	for i := start; i < end; i++ {
 		item := p.Filtered[i]
-
-		// Cursor indicator
-		cursor := "  "
-		if i == p.Cursor {
-			cursor = "> "
-		}
+		selected := i == p.Cursor
 
 		// Checkbox for multi-select
 		checkbox := ""
@@ -237,15 +242,12 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 			countStr = TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
 		}
 
-		// Build line
-		line := fmt.Sprintf("%s%s%s", cursor, checkbox, displayText)
+		// Build content without cursor
+		content := checkbox + displayText + countStr
 
-		if i == p.Cursor {
-			b.WriteString(TagManagerItemSelectedStyle.Render(line))
-		} else {
-			b.WriteString(TagManagerItemStyle.Render(line))
-		}
-		b.WriteString(countStr)
+		// Apply selection styling
+		line := RenderSelectableRow(selected, content, rowWidth)
+		b.WriteString(line)
 		b.WriteString("\n")
 	}
 

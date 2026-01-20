@@ -393,6 +393,14 @@ var (
 			Foreground(ColorPrimary).
 			Bold(true)
 
+	// Selection row styles (unified across all list views)
+	SelectionCursorStyle = lipgloss.NewStyle().
+				Foreground(ColorPrimary).
+				Bold(true)
+
+	SelectionRowStyle = lipgloss.NewStyle().
+				Background(ColorBackground)
+
 	// Multi-select styles
 	SelectionStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary)
@@ -784,3 +792,15 @@ var (
 	OverlaySplitStyle = lipgloss.NewStyle().
 				Foreground(ColorBorder)
 )
+
+// RenderSelectableRow applies consistent selection styling to list items.
+// When selected=true, adds cursor prefix and row background that extends to full width.
+// The content should already have its internal styling (badges, etc).
+func RenderSelectableRow(selected bool, content string, width int) string {
+	if selected {
+		prefix := SelectionCursorStyle.Render(">") + " "
+		row := prefix + content
+		return SelectionRowStyle.Width(width).Render(row)
+	}
+	return "  " + content
+}

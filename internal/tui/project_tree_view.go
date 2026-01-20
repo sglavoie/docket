@@ -600,12 +600,6 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		}
 	}
 
-	// Cursor
-	cursor := "  "
-	if selected {
-		cursor = "> "
-	}
-
 	// Type and status icons with colors
 	typeStyle := GetTypeStyle(string(task.Type))
 	statusStyle := GetStatusStyle(string(task.Status))
@@ -743,20 +737,21 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Calculate available width for title, accounting for all other elements
-	// Fixed overhead: cursor(2) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~15
+	// Fixed overhead: selection prefix(2) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~15
 	// Plus: indent, progress, and indicators (now measured accurately)
 	baseOverhead := 15
 	indicatorWidth := lipgloss.Width(indicators)
 	progressWidth := lipgloss.Width(progress)
-	usedWidth := len(cursor) + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
+	usedWidth := 2 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
 	availableTitleWidth := maxWidth - usedWidth
 	if availableTitleWidth < 10 {
 		availableTitleWidth = 10
 	}
 	title := titleStyle.Render(util.Truncate(task.Title, availableTitleWidth))
 
-	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
-		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
+		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	return RenderSelectableRow(selected, content, maxWidth)
 }
 
 func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection bool) string {
@@ -783,12 +778,6 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 		} else {
 			checkbox = MutedStyle.Render("[ ]") + " "
 		}
-	}
-
-	// Cursor
-	cursor := "  "
-	if selected {
-		cursor = "> "
 	}
 
 	// Type and status icons with colors
@@ -850,7 +839,7 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	if task.Status == models.StatusCancelled && !node.IsContextNode {
 		titleStyle = CancelledStyle
 	}
-	title := titleStyle.Render(util.Truncate(task.Title, m.width-node.Level*2-40))
+	title := titleStyle.Render(util.Truncate(task.Title, m.width-node.Level*2-42))
 
 	// Progress for parent tasks (only show if has non-note children)
 	progress := ""
@@ -957,8 +946,9 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	// Section is no longer displayed in tree line (moved to sidebar)
 
-	return fmt.Sprintf("%s%s%s%s%s %s %s %s%s%s",
-		cursor, checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
+		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	return RenderSelectableRow(selected, content, m.width)
 }
 
 // GetHelpItems returns the help items for the project tree view.
