@@ -273,9 +273,8 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-		// Status icon
-		statusStyle := GetStatusStyle(string(task.Status))
-		statusIcon := statusStyle.Render(task.Status.Icon())
+		// Status icon with badge style
+		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))

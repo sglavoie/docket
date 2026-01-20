@@ -629,8 +629,12 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	var statusIcon string
 	if task.IsNote() {
 		statusIcon = MutedStyle.Render("·")
-	} else {
+	} else if node.IsContextNode {
 		statusIcon = statusStyle.Render(task.Status.Icon())
+	} else if m.project.HasIncompleteDependencies(task) {
+		statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
+	} else {
+		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
 	}
 
 	// Task ID
@@ -811,8 +815,12 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	if task.IsNote() {
 		// Notes show a neutral dot instead of status icon
 		statusIcon = MutedStyle.Render("·")
-	} else {
+	} else if node.IsContextNode {
 		statusIcon = statusStyle.Render(task.Status.Icon())
+	} else if m.project.HasIncompleteDependencies(task) {
+		statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
+	} else {
+		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
 	}
 
 	// Task ID

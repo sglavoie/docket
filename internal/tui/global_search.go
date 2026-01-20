@@ -327,9 +327,8 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-		// Status icon
-		statusStyle := GetStatusStyle(string(task.Status))
-		statusIcon := statusStyle.Render(task.Status.Icon())
+		// Status icon with badge style
+		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 		// Project name (truncated to 8 chars to save space)
 		projectSlug := util.Truncate(result.Project.Slug, 8)

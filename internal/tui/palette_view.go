@@ -794,10 +794,9 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 			totalLen += dueLen
 		}
 
-		statusStyle := GetStatusStyle(string(item.Task.Status))
 		icons := fmt.Sprintf("%s %s ",
 			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
-			statusStyle.Render(item.Task.Status.Icon()))
+			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
 		content.WriteString(icons)
 		totalLen += 4
 	}
@@ -860,10 +859,9 @@ func (m *CommandPaletteModel) renderItemContent(item PaletteItem, maxWidth int) 
 			totalLen += dueLen
 		}
 
-		statusStyle := GetStatusStyle(string(item.Task.Status))
 		icons := fmt.Sprintf("%s %s ",
 			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
-			statusStyle.Render(item.Task.Status.Icon()))
+			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
 		content.WriteString(icons)
 		totalLen += 4 // 2 icons + 2 spaces
 	}

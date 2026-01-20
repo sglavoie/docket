@@ -737,9 +737,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		cursor = "> "
 	}
 
-	// Status icon with style
-	statusStyle := GetStatusStyle(string(task.Status))
-	statusIcon := statusStyle.Render(task.Status.Icon())
+	// Status icon with badge style
+	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 	// Type icon with badge style
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())

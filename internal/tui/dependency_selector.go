@@ -216,9 +216,8 @@ func (m *DependencySelectorModel) renderTaskList() string {
 			cursor = "> "
 		}
 
-		// Status icon
-		statusStyle := GetStatusStyle(string(t.Status))
-		statusIcon := statusStyle.Render(t.Status.Icon())
+		// Status icon with badge style
+		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 
 		// Task info
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", t.ShortID))

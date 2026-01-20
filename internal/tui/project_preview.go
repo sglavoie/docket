@@ -197,12 +197,10 @@ func (m *ProjectPreviewModel) renderContent() string {
 			b.WriteString("\n")
 
 			for _, task := range recentTasks {
-				statusStyle := GetStatusStyle(string(task.Status))
-
 				line := fmt.Sprintf("  %s %s %s %s  %s",
 					MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 					GetTypeBadge(string(task.Type), task.Type.Icon()),
-					statusStyle.Render(task.Status.Icon()),
+					GetStatusBadge(string(task.Status), task.Status.Icon()),
 					util.Truncate(task.Title, 40),
 					MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
 

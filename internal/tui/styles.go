@@ -125,6 +125,27 @@ var (
 			Foreground(lipgloss.Color("248")). // Gray
 			Background(lipgloss.Color("237"))  // Dark gray
 
+	// Task status badge styles (icon with background for visual distinction)
+	TodoBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241")). // Gray
+			Background(lipgloss.Color("236"))  // Dark gray
+
+	InProgressBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("214")). // Orange
+				Background(lipgloss.Color("94"))   // Dark orange
+
+	DoneBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("42")). // Green
+			Background(lipgloss.Color("22"))  // Dark green
+
+	BlockedBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("196")). // Red
+				Background(lipgloss.Color("52"))   // Dark red
+
+	CancelledBadgeStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("241")). // Gray
+				Background(lipgloss.Color("236"))  // Dark gray
+
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -530,6 +551,24 @@ func GetTypeBadge(taskType string, icon string) string {
 		return IdeaBadgeStyle.Render(icon)
 	case "note":
 		return NoteBadgeStyle.Render(icon)
+	default:
+		return NormalStyle.Render(icon)
+	}
+}
+
+// GetStatusBadge returns the task status icon rendered as a styled badge with background.
+func GetStatusBadge(status string, icon string) string {
+	switch status {
+	case "todo":
+		return TodoBadgeStyle.Render(icon)
+	case "in_progress":
+		return InProgressBadgeStyle.Render(icon)
+	case "done":
+		return DoneBadgeStyle.Render(icon)
+	case "blocked":
+		return BlockedBadgeStyle.Render(icon)
+	case "cancelled":
+		return CancelledBadgeStyle.Render(icon)
 	default:
 		return NormalStyle.Render(icon)
 	}

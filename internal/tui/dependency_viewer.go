@@ -215,9 +215,8 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
-		// Status icon
-		statusStyle := GetStatusStyle(string(task.Status))
-		statusIcon := statusStyle.Render(task.Status.Icon())
+		// Status icon with badge style
+		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
 		// Task ID
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
