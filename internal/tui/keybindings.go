@@ -289,6 +289,11 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "[", Description: "View scratchpad", Category: "Scratchpad", Views: views},
 		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "Scratchpad", Views: views},
 
+		// Recurring Tasks
+		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "Recurring Tasks", Views: views},
+		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "Recurring Tasks", Views: views},
+		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "Recurring Tasks", Views: views},
+
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
@@ -338,7 +343,7 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 
 		// Status
 		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
+		Keybinding{Key: ",d", Description: "Mark done (creates next for recurring)", Category: "Status", Views: views},
 		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
@@ -353,6 +358,9 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
 		Keybinding{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
+
+		// Recurring Tasks
+		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
 	)
 }
 

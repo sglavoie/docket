@@ -25,17 +25,18 @@ type QuickCaptureModel struct {
 
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
-	title    string
-	priority int
-	tags     []string
-	dueDate  *time.Time
-	parentID *string
+	title      string
+	priority   int
+	tags       []string
+	dueDate    *time.Time
+	parentID   *string
+	recurrence *models.RecurrencePattern
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
 	input := textinput.New()
-	input.Placeholder = "Task title !priority #tag @due >parent"
+	input.Placeholder = "Task title !priority #tag @due ~recur >parent"
 	input.Focus()
 	input.CharLimit = 200
 	input.Width = 50
@@ -85,7 +86,7 @@ func (m *QuickCaptureModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(MutedStyle.Render("!N priority · #tag · @date · >parent"))
+	b.WriteString(MutedStyle.Render("!N priority · #tag · @date · ~recur · >parent"))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
 
@@ -135,6 +136,17 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 		}
 		result.dueDate = &date
 		input = dueDateRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract recurrence: ~pattern (e.g., ~daily, ~weekly, ~2w)
+	recurRe := regexp.MustCompile(`\s*~(\S+)\s*`)
+	if match := recurRe.FindStringSubmatch(input); len(match) > 1 {
+		pattern := models.ParseRecurrence(match[1])
+		if pattern == nil {
+			return nil, fmt.Errorf("invalid recurrence: %s", match[1])
+		}
+		result.recurrence = pattern
+		input = recurRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract parent: >ref (short ID or title prefix)
@@ -207,17 +219,18 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 
 		// Create task
 		task := &models.Task{
-			ID:        uuid.New().String(),
-			ShortID:   m.project.GetNextShortID(),
-			Type:      models.TaskTypeTask,
-			Title:     result.title,
-			Status:    models.StatusTodo,
-			Priority:  result.priority,
-			Section:   models.SectionInbox,
-			ParentID:  result.parentID,
-			DueDate:   result.dueDate,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+			ID:         uuid.New().String(),
+			ShortID:    m.project.GetNextShortID(),
+			Type:       models.TaskTypeTask,
+			Title:      result.title,
+			Status:     models.StatusTodo,
+			Priority:   result.priority,
+			Section:    models.SectionInbox,
+			ParentID:   result.parentID,
+			DueDate:    result.dueDate,
+			Recurrence: result.recurrence,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
 		}
 
 		for _, tag := range result.tags {

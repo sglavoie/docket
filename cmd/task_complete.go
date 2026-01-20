@@ -174,6 +174,12 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		project.CheckAndAutoUnblock()
 	}
 
+	// Generate recurring task instances for completed recurring tasks
+	generated := 0
+	if action == "complete" {
+		generated = project.GenerateRecurringInstances()
+	}
+
 	// Save
 	if err := SaveProjectWithBackup(project); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
@@ -184,6 +190,11 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		task.ShortID,
 		task.Title,
 		task.Status)
+
+	// Notify user about generated recurring instances
+	if generated > 0 {
+		fmt.Printf("Created %d recurring task instance(s) in Inbox\n", generated)
+	}
 
 	return nil
 }

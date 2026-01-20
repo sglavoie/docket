@@ -43,7 +43,30 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleConfirmation handles y/n confirmation prompts.
 func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	key := msg.String()
+
+	// Handle recurring task delete confirmation (d/s/n)
+	if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+		switch key {
+		case "d", "D":
+			// Delete instance only - keeps recurrence, next instance will still generate
+			m.confirmAction = ""
+			return m, m.deleteTask()
+		case "s", "S":
+			// Stop recurrence - clear recurrence pattern then delete
+			m.deleteTarget.ClearRecurrence()
+			m.confirmAction = ""
+			return m, m.deleteTask()
+		case "n", "N", "esc":
+			m.confirmAction = ""
+			m.deleteTarget = nil
+			return m, nil
+		}
+		return m, nil
+	}
+
+	// Handle standard y/n confirmations
+	switch key {
 	case "y", "Y":
 		if m.confirmAction == "archive" {
 			m.confirmAction = ""

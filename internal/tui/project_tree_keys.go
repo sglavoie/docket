@@ -286,8 +286,13 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return true, nil
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
-			m.confirmAction = "delete"
-			m.deleteTarget = visible[m.cursor].Task
+			task := visible[m.cursor].Task
+			if task.IsRecurring() {
+				m.confirmAction = "delete-recurring"
+			} else {
+				m.confirmAction = "delete"
+			}
+			m.deleteTarget = task
 		}
 		return true, nil
 	}

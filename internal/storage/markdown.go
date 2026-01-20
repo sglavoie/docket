@@ -217,7 +217,51 @@ func writeMetadata(task *models.Task) string {
 		parts = append(parts, "active: true")
 	}
 
+	if task.Recurrence != nil {
+		parts = append(parts, fmt.Sprintf("recur: %s", formatRecurrence(task.Recurrence)))
+	}
+
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
+}
+
+// formatRecurrence converts a RecurrencePattern to its string representation for storage.
+func formatRecurrence(r *models.RecurrencePattern) string {
+	if r == nil {
+		return ""
+	}
+
+	// Use compact format: Nd, Nw, Nm, Ny
+	var unit string
+	switch r.Unit {
+	case models.RecurrenceDaily:
+		unit = "d"
+	case models.RecurrenceWeekly:
+		unit = "w"
+	case models.RecurrenceMonthly:
+		unit = "m"
+	case models.RecurrenceYearly:
+		unit = "y"
+	default:
+		unit = "d"
+	}
+
+	base := fmt.Sprintf("%d%s", r.Interval, unit)
+
+	// Add weekdays for weekly patterns
+	if r.Unit == models.RecurrenceWeekly && len(r.Weekdays) > 0 {
+		dayNames := []string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
+		var days []string
+		for _, d := range r.Weekdays {
+			if d >= 0 && d < 7 {
+				days = append(days, dayNames[d])
+			}
+		}
+		if len(days) > 0 {
+			return base + ":" + strings.Join(days, ",")
+		}
+	}
+
+	return base
 }
 
 // writeComments generates the comments block for a task.

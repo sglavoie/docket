@@ -15,6 +15,7 @@ var (
 	taskPriority    int
 	taskTags        []string
 	taskSectionFlag string
+	taskRecurFlag   string
 	isEpic          bool
 	isStory         bool
 	isBug           bool
@@ -56,6 +57,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
 	taskAddCmd.Flags().BoolVar(&isNote, "note", false, "create a note")
 	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: Backlog)")
+	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
@@ -95,6 +97,15 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if taskSectionFlag != "" {
 		project.EnsureSection(taskSectionFlag)
 		task.Section = taskSectionFlag
+	}
+
+	// Handle recurrence
+	if taskRecurFlag != "" {
+		pattern := models.ParseRecurrence(taskRecurFlag)
+		if pattern == nil {
+			return fmt.Errorf("invalid recurrence pattern: %s", taskRecurFlag)
+		}
+		task.Recurrence = pattern
 	}
 
 	// Handle parent

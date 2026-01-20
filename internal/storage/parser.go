@@ -301,6 +301,10 @@ func parseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			task.Pinned = value == "true"
 		case "active":
 			task.Active = value == "true"
+		case "recur":
+			if pattern := models.ParseRecurrence(value); pattern != nil {
+				task.Recurrence = pattern
+			}
 		}
 	}
 	return warnings

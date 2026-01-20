@@ -29,19 +29,22 @@ type TaskCreatorModel struct {
 	tagsInput  textinput.Model
 
 	// Selectable fields
-	taskType      models.TaskType
-	typeCursor    int
-	types         []models.TaskType
-	parentID      *string
-	parentCursor  int
-	validParents  []*models.Task
-	priority      int
-	section       string
-	sectionCursor int
-	sections      []string
+	taskType         models.TaskType
+	typeCursor       int
+	types            []models.TaskType
+	parentID         *string
+	parentCursor     int
+	validParents     []*models.Task
+	priority         int
+	section          string
+	sectionCursor    int
+	sections         []string
+	recurrence       *models.RecurrencePattern
+	recurrenceCursor int
+	recurrenceOpts   []string
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=tags, 6=description
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=recurrence, 6=tags, 7=description
 	width      int
 	height     int
 	err        error
@@ -73,25 +76,31 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 	// Get available sections from project
 	sections := project.GetSections()
 
+	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly
+	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly"}
+
 	m := &TaskCreatorModel{
-		project:       project,
-		config:        cfg,
-		configManager: manager,
-		titleInput:    titleInput,
-		descInput:     descInput,
-		tagsInput:     tagsInput,
-		taskType:      models.TaskTypeTask,
-		typeCursor:    0,
-		types:         types,
-		parentID:      nil,
-		parentCursor:  0,
-		priority:      3,
-		section:       models.SectionBacklog,
-		sectionCursor: 0,
-		sections:      sections,
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		project:          project,
+		config:           cfg,
+		configManager:    manager,
+		titleInput:       titleInput,
+		descInput:        descInput,
+		tagsInput:        tagsInput,
+		taskType:         models.TaskTypeTask,
+		typeCursor:       0,
+		types:            types,
+		parentID:         nil,
+		parentCursor:     0,
+		priority:         3,
+		section:          models.SectionBacklog,
+		sectionCursor:    0,
+		sections:         sections,
+		recurrence:       nil,
+		recurrenceCursor: 0,
+		recurrenceOpts:   recurrenceOpts,
+		focusIndex:       0,
+		width:            80,
+		height:           24,
 	}
 
 	// Set initial parent by finding nearest valid ancestor
@@ -185,11 +194,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus
+			// Move focus (8 fields: title, type, parent, priority, section, recurrence, tags, description)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 7
+				m.focusIndex = (m.focusIndex + 1) % 8
 			} else {
-				m.focusIndex = (m.focusIndex + 6) % 7
+				m.focusIndex = (m.focusIndex + 7) % 8
 			}
 
 			// Focus new field
@@ -197,13 +206,13 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			if m.focusIndex == 6 {
+			if m.focusIndex == 7 {
 				// In description, allow newlines
 				m.descInput, cmd = m.descInput.Update(msg)
 				return m, cmd
 			}
 			// Move to next field or submit if on last navigable field
-			if m.focusIndex < 6 {
+			if m.focusIndex < 7 {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -253,6 +262,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor--
 					m.section = m.sections[m.sectionCursor]
 				}
+			case 5: // Recurrence selector
+				if m.recurrenceCursor > 0 {
+					m.recurrenceCursor--
+					m.updateRecurrenceFromCursor()
+				}
 			}
 
 		case "right", "l":
@@ -277,6 +291,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor++
 					m.section = m.sections[m.sectionCursor]
 				}
+			case 5: // Recurrence selector
+				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
+					m.recurrenceCursor++
+					m.updateRecurrenceFromCursor()
+				}
 			}
 		}
 	}
@@ -285,9 +304,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput, cmd = m.titleInput.Update(msg)
-	case 5:
+	case 6: // Tags
 		m.tagsInput, cmd = m.tagsInput.Update(msg)
-	case 6:
+	case 7: // Description
 		m.descInput, cmd = m.descInput.Update(msg)
 	}
 
@@ -298,9 +317,9 @@ func (m *TaskCreatorModel) blurCurrentField() {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput.Blur()
-	case 5:
+	case 6: // Tags
 		m.tagsInput.Blur()
-	case 6:
+	case 7: // Description
 		m.descInput.Blur()
 	}
 }
@@ -309,10 +328,28 @@ func (m *TaskCreatorModel) focusCurrentField() {
 	switch m.focusIndex {
 	case 0:
 		m.titleInput.Focus()
-	case 5:
+	case 6: // Tags
 		m.tagsInput.Focus()
-	case 6:
+	case 7: // Description
 		m.descInput.Focus()
+	}
+}
+
+// updateRecurrenceFromCursor updates the recurrence pattern based on cursor position.
+func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
+	switch m.recurrenceCursor {
+	case 0: // None
+		m.recurrence = nil
+	case 1: // Daily
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
+	case 2: // Weekly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly}
+	case 3: // Biweekly
+		m.recurrence = &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly}
+	case 4: // Monthly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly}
+	case 5: // Yearly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceYearly}
 	}
 }
 
@@ -336,6 +373,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			Priority:    m.priority,
 			ParentID:    m.parentID,
 			Section:     m.section,
+			Recurrence:  m.recurrence,
 		}
 
 		// Parse and set tags
@@ -498,9 +536,30 @@ func (m *TaskCreatorModel) View() string {
 	}
 	b.WriteString("\n\n")
 
+	// Recurrence selector
+	recurLabel := "Recurrence: "
+	if m.focusIndex == 5 {
+		recurLabel = FieldLabelFocusedStyle.Render("Recurrence: ")
+	} else {
+		recurLabel = FieldLabelStyle.Render("Recurrence: ")
+	}
+	b.WriteString(recurLabel)
+	for i, opt := range m.recurrenceOpts {
+		if i == m.recurrenceCursor {
+			if m.focusIndex == 5 {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
+		}
+	}
+	b.WriteString("\n\n")
+
 	// Tags input
 	tagsLabel := "Tags: "
-	if m.focusIndex == 5 {
+	if m.focusIndex == 6 {
 		tagsLabel = FieldLabelFocusedStyle.Render("Tags: ")
 	} else {
 		tagsLabel = FieldLabelStyle.Render("Tags: ")
@@ -511,7 +570,7 @@ func (m *TaskCreatorModel) View() string {
 
 	// Description textarea
 	descLabel := "Description:\n"
-	if m.focusIndex == 6 {
+	if m.focusIndex == 7 {
 		descLabel = FieldLabelFocusedStyle.Render("Description:\n")
 	} else {
 		descLabel = FieldLabelStyle.Render("Description:\n")

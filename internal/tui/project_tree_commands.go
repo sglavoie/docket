@@ -91,6 +91,9 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		// Check for auto-unblocking before save
 		m.project.CheckAndAutoUnblock()
 
+		// Generate recurring task instances for completed recurring tasks
+		m.project.GenerateRecurringInstances()
+
 		// Reorder root tasks so uncompleted tasks appear before completed tasks
 		m.project.ReorderRootTasksByCompletion()
 

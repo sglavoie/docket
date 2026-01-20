@@ -21,39 +21,43 @@ type TaskEditorModel struct {
 	configManager *config.Manager
 
 	// Original values for change detection
-	originalTitle    string
-	originalTags     string
-	originalType     models.TaskType
-	originalParentID *string
-	originalPriority int
-	originalSection  string
-	originalDueDate  *time.Time
-	originalPinned   bool
-	originalActive   bool
+	originalTitle      string
+	originalTags       string
+	originalType       models.TaskType
+	originalParentID   *string
+	originalPriority   int
+	originalSection    string
+	originalDueDate    *time.Time
+	originalPinned     bool
+	originalActive     bool
+	originalRecurrence *models.RecurrencePattern
 
 	// Form fields
 	titleInput textarea.Model
 	tags       []string
 
 	// Selectable fields
-	taskType      models.TaskType
-	typeCursor    int
-	types         []models.TaskType
-	parentID      *string
-	parentCursor  int
-	validParents  []*models.Task
-	priority      int
-	section       string
-	sectionCursor int
-	sections      []string
-	dueDate       *time.Time
-	dueDateInput  string
-	pinned        bool
-	active        bool
-	flagFocus     int // 0=pinned, 1=active (within the flags field)
+	taskType         models.TaskType
+	typeCursor       int
+	types            []models.TaskType
+	parentID         *string
+	parentCursor     int
+	validParents     []*models.Task
+	priority         int
+	section          string
+	sectionCursor    int
+	sections         []string
+	dueDate          *time.Time
+	dueDateInput     string
+	pinned           bool
+	active           bool
+	flagFocus        int // 0=pinned, 1=active (within the flags field)
+	recurrence       *models.RecurrencePattern
+	recurrenceCursor int
+	recurrenceOpts   []string // Display labels for recurrence options
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence
 	width      int
 	height     int
 	err        error
@@ -114,39 +118,75 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		originalDueDate = &dueCopy
 	}
 
+	// Copy original recurrence for change detection
+	var originalRecurrence *models.RecurrencePattern
+	var recurrence *models.RecurrencePattern
+	if task.Recurrence != nil {
+		origCopy := *task.Recurrence
+		originalRecurrence = &origCopy
+		recurCopy := *task.Recurrence
+		recurrence = &recurCopy
+	}
+
+	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly
+	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly"}
+	recurrenceCursor := 0
+	if task.Recurrence != nil {
+		// Find matching option
+		switch {
+		case task.Recurrence.Unit == models.RecurrenceDaily && task.Recurrence.Interval == 1:
+			recurrenceCursor = 1
+		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 1:
+			recurrenceCursor = 2
+		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 2:
+			recurrenceCursor = 3
+		case task.Recurrence.Unit == models.RecurrenceMonthly && task.Recurrence.Interval == 1:
+			recurrenceCursor = 4
+		case task.Recurrence.Unit == models.RecurrenceYearly && task.Recurrence.Interval == 1:
+			recurrenceCursor = 5
+		default:
+			// Custom pattern - keep at None but preserve the actual pattern
+			recurrenceCursor = 0
+		}
+	}
+
 	m := &TaskEditorModel{
-		project:          project,
-		task:             task,
-		config:           cfg,
-		configManager:    manager,
-		originalTitle:    task.Title,
-		originalTags:     strings.Join(task.Tags, ", "),
-		originalType:     task.Type,
-		originalParentID: task.ParentID,
-		originalPriority: task.Priority,
-		originalSection:  task.Section,
-		originalDueDate:  originalDueDate,
-		originalPinned:   task.Pinned,
-		originalActive:   task.Active,
-		titleInput:       titleInput,
-		tags:             tags,
-		taskType:         task.Type,
-		typeCursor:       typeCursor,
-		types:            types,
-		parentID:         task.ParentID,
-		parentCursor:     0,
-		priority:         task.Priority,
-		section:          task.Section,
-		sectionCursor:    sectionCursor,
-		sections:         sections,
-		dueDate:          dueDate,
-		dueDateInput:     dueDateInput,
-		pinned:           task.Pinned,
-		active:           task.Active,
-		flagFocus:        0,
-		focusIndex:       0,
-		width:            80,
-		height:           24,
+		project:            project,
+		task:               task,
+		config:             cfg,
+		configManager:      manager,
+		originalTitle:      task.Title,
+		originalTags:       strings.Join(task.Tags, ", "),
+		originalType:       task.Type,
+		originalParentID:   task.ParentID,
+		originalPriority:   task.Priority,
+		originalSection:    task.Section,
+		originalDueDate:    originalDueDate,
+		originalPinned:     task.Pinned,
+		originalActive:     task.Active,
+		titleInput:         titleInput,
+		tags:               tags,
+		taskType:           task.Type,
+		typeCursor:         typeCursor,
+		types:              types,
+		parentID:           task.ParentID,
+		parentCursor:       0,
+		priority:           task.Priority,
+		section:            task.Section,
+		sectionCursor:      sectionCursor,
+		sections:           sections,
+		dueDate:            dueDate,
+		dueDateInput:       dueDateInput,
+		pinned:             task.Pinned,
+		active:             task.Active,
+		flagFocus:          0,
+		recurrence:         recurrence,
+		recurrenceCursor:   recurrenceCursor,
+		recurrenceOpts:     recurrenceOpts,
+		originalRecurrence: originalRecurrence,
+		focusIndex:         0,
+		width:              80,
+		height:             24,
 	}
 
 	m.updateValidParents()
@@ -247,7 +287,40 @@ func (m *TaskEditorModel) checkChanges() bool {
 	if m.active != m.originalActive {
 		return true
 	}
+	// Check recurrence
+	if !recurrenceEqual(m.recurrence, m.originalRecurrence) {
+		return true
+	}
 	return false
+}
+
+// recurrenceEqual compares two recurrence patterns for equality.
+func recurrenceEqual(a, b *models.RecurrencePattern) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Interval == b.Interval && a.Unit == b.Unit
+}
+
+// updateRecurrenceFromCursor updates the recurrence pattern based on cursor position.
+func (m *TaskEditorModel) updateRecurrenceFromCursor() {
+	switch m.recurrenceCursor {
+	case 0: // None
+		m.recurrence = nil
+	case 1: // Daily
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
+	case 2: // Weekly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly}
+	case 3: // Biweekly
+		m.recurrence = &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly}
+	case 4: // Monthly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly}
+	case 5: // Yearly
+		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceYearly}
+	}
 }
 
 // parseDueDate parses the due date input string and updates m.dueDate.
@@ -303,11 +376,11 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (7 fields: title, type, parent, priority, section, due date, flags)
+			// Move focus (8 fields: title, type, parent, priority, section, due date, flags, recurrence)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 7
+				m.focusIndex = (m.focusIndex + 1) % 8
 			} else {
-				m.focusIndex = (m.focusIndex + 6) % 7
+				m.focusIndex = (m.focusIndex + 7) % 8
 			}
 
 			// Focus new field
@@ -315,8 +388,8 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			// Move to next field (7 focusable fields: 0-6)
-			if m.focusIndex < 6 {
+			// Move to next field (8 focusable fields: 0-7)
+			if m.focusIndex < 7 {
 				// For due date field, parse and validate on enter
 				if m.focusIndex == 5 {
 					if err := m.parseDueDate(); err != nil {
@@ -381,6 +454,11 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.flagFocus > 0 {
 					m.flagFocus--
 				}
+			case 7: // Recurrence selector
+				if m.recurrenceCursor > 0 {
+					m.recurrenceCursor--
+					m.updateRecurrenceFromCursor()
+				}
 			}
 
 		case "right", "l":
@@ -412,6 +490,11 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 6: // Flags - switch between pinned and active
 				if m.flagFocus < 1 {
 					m.flagFocus++
+				}
+			case 7: // Recurrence selector
+				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
+					m.recurrenceCursor++
+					m.updateRecurrenceFromCursor()
 				}
 			}
 
@@ -499,6 +582,9 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 		// Handle active status change
 		m.task.Active = m.active
 
+		// Handle recurrence change
+		m.task.Recurrence = m.recurrence
+
 		// Set tags from the selector
 		m.task.Tags = append([]string{}, m.tags...)
 
@@ -515,6 +601,7 @@ func (m *TaskEditorModel) saveTask() tea.Cmd {
 				t.Pinned = m.task.Pinned
 				t.PinnedAt = m.task.PinnedAt
 				t.Active = m.task.Active
+				t.Recurrence = m.task.Recurrence
 				t.UpdatedAt = m.task.UpdatedAt
 				break
 			}
@@ -574,6 +661,11 @@ func (m *TaskEditorModel) View() string {
 	// Flags row
 	content.WriteString(m.renderFormLabel("Flags", 6))
 	content.WriteString(m.renderFlagsField())
+	content.WriteString("\n")
+
+	// Recurrence row
+	content.WriteString(m.renderFormLabel("Recur", 7))
+	content.WriteString(m.renderRecurrenceSelector())
 	content.WriteString("\n\n")
 
 	// Tags row (read-only)
@@ -789,6 +881,23 @@ func (m *TaskEditorModel) renderFlagsField() string {
 		b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", activeText)))
 	} else {
 		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", activeText)))
+	}
+	return b.String()
+}
+
+// renderRecurrenceSelector renders the recurrence pattern selector options.
+func (m *TaskEditorModel) renderRecurrenceSelector() string {
+	var b strings.Builder
+	for i, opt := range m.recurrenceOpts {
+		if i == m.recurrenceCursor {
+			if m.focusIndex == 7 {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
+		}
 	}
 	return b.String()
 }

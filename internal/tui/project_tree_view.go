@@ -78,7 +78,10 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	// Confirmation prompt
 	if m.confirmAction != "" {
 		var prompt string
-		if m.confirmAction == "delete" && m.deleteTarget != nil {
+		if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+			prompt = fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
+				m.deleteTarget.ShortID, m.deleteTarget.Title)
+		} else if m.confirmAction == "delete" && m.deleteTarget != nil {
 			childCount := m.deleteTarget.CountChildren()
 			if childCount > 0 {
 				prompt = fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title, childCount)
@@ -423,7 +426,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Confirmation prompt
 	if m.confirmAction != "" {
 		var prompt string
-		if m.confirmAction == "delete" && m.deleteTarget != nil {
+		if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+			prompt = fmt.Sprintf("Delete recurring #%d? (d)elete / (s)top recurrence / (n)o", m.deleteTarget.ShortID)
+		} else if m.confirmAction == "delete" && m.deleteTarget != nil {
 			childCount := m.deleteTarget.CountChildren()
 			if childCount > 0 {
 				prompt = fmt.Sprintf("Delete #%d and %d children? (y/n)", m.deleteTarget.ShortID, childCount)
@@ -694,6 +699,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Due date display (compact)
 	if dueStr := formatDueDate(task); dueStr != "" {
 		indicators += dueStr + " "
+	}
+
+	// Recurrence indicator
+	if task.IsRecurring() {
+		indicators += MutedStyle.Render("↻") + " "
 	}
 
 	// Dependency indicators (compact)
