@@ -74,6 +74,11 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create data directory: %w", err)
 	}
 
+	// Purge any existing trash entry with same slug to allow recreation
+	if err := storage.PurgeFromTrash(slug, cfg.DataDir); err != nil {
+		return fmt.Errorf("failed to purge old trash entry: %w", err)
+	}
+
 	// Create project directory and initial tasks.md
 	if err := storage.CreateProjectDir(project); err != nil {
 		return fmt.Errorf("failed to create project: %w", err)
