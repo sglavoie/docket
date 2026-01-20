@@ -109,7 +109,7 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
-	project, cfg, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 	}
 
 	// Save with workflow rules evaluation
-	if err := SaveProjectWithRules(project, cfg); err != nil {
+	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

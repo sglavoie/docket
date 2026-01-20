@@ -94,11 +94,12 @@ func (a RuleAction) String() string {
 
 // WorkflowRule defines an automation rule.
 type WorkflowRule struct {
-	ID      string       `json:"id"`
-	Name    string       `json:"name"`
-	Enabled bool         `json:"enabled"`
-	Trigger RuleTrigger  `json:"trigger"`
-	Actions []RuleAction `json:"actions"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Enabled      bool         `json:"enabled"`
+	Trigger      RuleTrigger  `json:"trigger"`
+	Actions      []RuleAction `json:"actions"`
+	TriggerCount int64        `json:"trigger_count,omitempty"`
 }
 
 // NewRule creates a new workflow rule with a generated ID.

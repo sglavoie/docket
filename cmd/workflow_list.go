@@ -40,7 +40,11 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		if !rule.Enabled {
 			status = "disabled"
 		}
-		fmt.Printf("  [%s] %s (%s)\n", rule.ID, rule.Name, status)
+		triggerInfo := ""
+		if rule.TriggerCount > 0 {
+			triggerInfo = fmt.Sprintf(" | %d triggers", rule.TriggerCount)
+		}
+		fmt.Printf("  [%s] %s (%s)%s\n", rule.ID, rule.Name, status, triggerInfo)
 		fmt.Printf("      %s\n", rule.Summary())
 		fmt.Println()
 	}

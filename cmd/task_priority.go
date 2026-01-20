@@ -46,7 +46,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("priority must be between 1 and 5, got %d", priority)
 	}
 
-	project, cfg, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 	task.Priority = priority
 	task.UpdatedAt = time.Now()
 
-	if err := SaveProjectWithRules(project, cfg); err != nil {
+	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

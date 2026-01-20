@@ -20,9 +20,10 @@ type RuleConflict struct {
 
 // EvaluationResult contains the result of rule evaluation.
 type EvaluationResult struct {
-	ModifiedTasks []*models.Task
-	Conflicts     []RuleConflict
-	AppliedRules  map[string][]string // taskID -> list of applied rule names
+	ModifiedTasks     []*models.Task
+	Conflicts         []RuleConflict
+	AppliedRules      map[string][]string // taskID -> list of applied rule names
+	RuleTriggerCounts map[string]int      // ruleID -> count of tasks affected
 }
 
 // executionContext tracks rule applications to prevent infinite loops.
@@ -56,9 +57,10 @@ func (ctx *executionContext) wasApplied(taskID, ruleID string) bool {
 // Returns which tasks were modified and any conflicts detected.
 func EvaluateRules(tasks []*models.Task, rules []WorkflowRule) *EvaluationResult {
 	result := &EvaluationResult{
-		ModifiedTasks: []*models.Task{},
-		Conflicts:     []RuleConflict{},
-		AppliedRules:  make(map[string][]string),
+		ModifiedTasks:     []*models.Task{},
+		Conflicts:         []RuleConflict{},
+		AppliedRules:      make(map[string][]string),
+		RuleTriggerCounts: make(map[string]int),
 	}
 
 	if len(rules) == 0 {
@@ -145,6 +147,7 @@ func evaluateRulesRecursive(tasks []*models.Task, rules []WorkflowRule, ctx *exe
 				}
 			}
 			result.AppliedRules[task.ID] = append(result.AppliedRules[task.ID], rule.Name)
+			result.RuleTriggerCounts[rule.ID]++
 		}
 
 		if modified {

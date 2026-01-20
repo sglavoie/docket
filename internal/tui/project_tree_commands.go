@@ -84,6 +84,9 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 	if m.config.UndoHistoryDepth != nil {
 		undoDepth = *m.config.UndoHistoryDepth
 	}
+	// Capture config references for closure
+	cfg := m.config
+	configManager := m.configManager
 
 	// Clear the context for next operation
 	m.clearUndoContext()
@@ -96,7 +99,7 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 		m.project.GenerateRecurringInstances()
 
 		// Evaluate workflow rules
-		rules := m.config.GetEnabledWorkflowRules()
+		rules := cfg.GetEnabledWorkflowRules()
 		if len(rules) > 0 {
 			result := workflow.EvaluateRules(m.project.Tasks, rules)
 			// Log conflicts as warnings (they're also shown in status bar)
@@ -104,6 +107,12 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 				// Conflicts are silently ignored in TUI - tasks are skipped
 				// User can use 'tt workflow test' to debug
 				_ = result.Conflicts
+			}
+			// Persist trigger counts if any rules fired
+			if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+				cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+				// Ignore save errors for trigger counts - non-critical
+				_ = configManager.Save(cfg)
 			}
 		}
 

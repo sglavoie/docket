@@ -58,7 +58,8 @@ func SaveProjectWithBackup(project *models.Project) error {
 // SaveProjectWithRules saves the project after evaluating workflow rules.
 // It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
 // Prints warnings to stderr if there are rule conflicts.
-func SaveProjectWithRules(project *models.Project, cfg *config.Config) error {
+// If configManager is provided, trigger counts are persisted.
+func SaveProjectWithRules(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
 	project.CheckAndAutoUnblock()
 
 	// Evaluate workflow rules
@@ -68,6 +69,13 @@ func SaveProjectWithRules(project *models.Project, cfg *config.Config) error {
 		if len(result.Conflicts) > 0 {
 			fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
 			fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
+		}
+		// Persist trigger counts if any rules fired
+		if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+			cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+			if err := configManager.Save(cfg); err != nil {
+				fmt.Fprintln(os.Stderr, "Warning: failed to save rule trigger counts:", err)
+			}
 		}
 	}
 

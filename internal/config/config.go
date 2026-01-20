@@ -695,3 +695,31 @@ func (c *Config) ToggleWorkflowRule(id string) (enabled bool, found bool) {
 	}
 	return false, false
 }
+
+// IncrementRuleTriggerCounts increments trigger counts for rules based on evaluation results.
+func (c *Config) IncrementRuleTriggerCounts(counts map[string]int) {
+	for i := range c.WorkflowRules {
+		if count, ok := counts[c.WorkflowRules[i].ID]; ok {
+			c.WorkflowRules[i].TriggerCount += int64(count)
+		}
+	}
+}
+
+// ResetRuleTriggerCount resets the trigger count for a rule by ID.
+// Returns true if the rule was found.
+func (c *Config) ResetRuleTriggerCount(id string) bool {
+	for i := range c.WorkflowRules {
+		if c.WorkflowRules[i].ID == id {
+			c.WorkflowRules[i].TriggerCount = 0
+			return true
+		}
+	}
+	return false
+}
+
+// ResetAllRuleTriggerCounts resets trigger counts for all rules.
+func (c *Config) ResetAllRuleTriggerCounts() {
+	for i := range c.WorkflowRules {
+		c.WorkflowRules[i].TriggerCount = 0
+	}
+}
