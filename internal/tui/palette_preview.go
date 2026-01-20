@@ -622,9 +622,8 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 	}
 	for i := 0; i < maxShow; i++ {
 		task := tasksWithTag[i].Task
-		typeStyle := GetTypeStyle(string(task.Type))
 		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
-			typeStyle.Render(task.Type.Icon()),
+			GetTypeBadge(string(task.Type), task.Type.Icon()),
 			task.ShortID,
 			util.Truncate(task.Title, m.previewWidth-15)))
 	}
@@ -672,9 +671,8 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 	}
 	for i := 0; i < maxShow; i++ {
 		task := tasksInSection[i].Task
-		typeStyle := GetTypeStyle(string(task.Type))
 		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
-			typeStyle.Render(task.Type.Icon()),
+			GetTypeBadge(string(task.Type), task.Type.Icon()),
 			task.ShortID,
 			util.Truncate(task.Title, m.previewWidth-15)))
 	}

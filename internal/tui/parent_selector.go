@@ -322,9 +322,8 @@ func (m *ParentSelectorModel) renderList() string {
 				cursor = "> "
 			}
 
-			// Type icon
-			typeStyle := GetTypeStyle(string(item.Task.Type))
-			typeIcon := typeStyle.Render(item.Task.Type.Icon())
+			// Type icon with badge style
+			typeIcon := GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon())
 
 			// Short ID
 			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))

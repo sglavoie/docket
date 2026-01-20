@@ -362,9 +362,8 @@ func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isOverdue bool, is
 	projectName := util.Truncate(dt.Project.Name, 15)
 	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
 
-	// Task type icon
-	typeStyle := GetTypeStyle(string(dt.Task.Type))
-	typeIcon := typeStyle.Render(dt.Task.Type.Icon())
+	// Task type icon with badge style
+	typeIcon := GetTypeBadge(string(dt.Task.Type), dt.Task.Type.Icon())
 
 	// Title
 	if maxTitleLen < 10 {

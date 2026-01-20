@@ -612,13 +612,16 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Context nodes (parents shown for hierarchy context) are dimmed
+	var typeIcon string
 	if node.IsContextNode {
 		typeStyle = MutedStyle
 		statusStyle = MutedStyle
 		expandIcon = MutedStyle.Render(strings.TrimSuffix(expandIcon, " ")) + " "
+		typeIcon = typeStyle.Render(task.Type.Icon())
+	} else {
+		typeIcon = GetTypeBadge(string(task.Type), task.Type.Icon())
 	}
 
-	typeIcon := typeStyle.Render(task.Type.Icon())
 	var statusIcon string
 	if task.IsNote() {
 		statusIcon = MutedStyle.Render("·")
@@ -763,13 +766,16 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	}
 
 	// Context nodes (parents shown for hierarchy context) are dimmed
+	var typeIcon string
 	if node.IsContextNode {
 		typeStyle = MutedStyle
 		statusStyle = MutedStyle
 		expandIcon = MutedStyle.Render(strings.TrimSuffix(expandIcon, " ")) + " "
+		typeIcon = typeStyle.Render(task.Type.Icon())
+	} else {
+		typeIcon = GetTypeBadge(string(task.Type), task.Type.Icon())
 	}
 
-	typeIcon := typeStyle.Render(task.Type.Icon())
 	var statusIcon string
 	if task.IsNote() {
 		// Notes show a neutral dot instead of status icon

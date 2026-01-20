@@ -100,6 +100,31 @@ var (
 	NoteStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("248")) // Gray
 
+	// Task type badge styles (icon with background for visual distinction)
+	EpicBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("135")). // Purple
+			Background(lipgloss.Color("53"))   // Dark purple
+
+	StoryBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("39")). // Blue
+			Background(lipgloss.Color("17"))  // Dark blue
+
+	TaskBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("42")). // Green
+			Background(lipgloss.Color("22"))  // Dark green
+
+	BugBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")). // Red
+			Background(lipgloss.Color("52"))   // Dark red
+
+	IdeaBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")). // Orange
+			Background(lipgloss.Color("94"))   // Dark orange
+
+	NoteBadgeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("248")). // Gray
+			Background(lipgloss.Color("237"))  // Dark gray
+
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -487,6 +512,26 @@ func GetTypeStyle(taskType string) lipgloss.Style {
 		return NoteStyle
 	default:
 		return NormalStyle
+	}
+}
+
+// GetTypeBadge returns the task type icon rendered as a styled badge with background.
+func GetTypeBadge(taskType string, icon string) string {
+	switch taskType {
+	case "epic":
+		return EpicBadgeStyle.Render(icon)
+	case "story":
+		return StoryBadgeStyle.Render(icon)
+	case "task":
+		return TaskBadgeStyle.Render(icon)
+	case "bug":
+		return BugBadgeStyle.Render(icon)
+	case "idea":
+		return IdeaBadgeStyle.Render(icon)
+	case "note":
+		return NoteBadgeStyle.Render(icon)
+	default:
+		return NormalStyle.Render(icon)
 	}
 }
 

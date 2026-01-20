@@ -29,12 +29,15 @@ func (m *InboxProcessorModel) renderTaskDisplay(task *models.Task) string {
 	b.WriteString("\n")
 
 	// Type, status, created date, priority
+	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+	statusStyle := GetStatusStyle(string(task.Status))
+	statusIcon := statusStyle.Render(task.Status.Icon())
 	metadata := fmt.Sprintf("%s %s · Created %s · Priority %s",
-		task.Type.Icon(), task.Status.Icon(),
-		task.CreatedAt.Format("Jan 2"),
-		renderPriorityStars(task.Priority),
+		typeIcon, statusIcon,
+		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
+		MutedStyle.Render(renderPriorityStars(task.Priority)),
 	)
-	b.WriteString(MutedStyle.Render(metadata))
+	b.WriteString(metadata)
 	b.WriteString("\n\n")
 
 	// Description if present

@@ -741,9 +741,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	statusStyle := GetStatusStyle(string(task.Status))
 	statusIcon := statusStyle.Render(task.Status.Icon())
 
-	// Type icon with style
-	typeStyle := GetTypeStyle(string(task.Type))
-	typeIcon := typeStyle.Render(task.Type.Icon())
+	// Type icon with badge style
+	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
 	// Priority badge
 	priorityBadge := m.renderPriorityBadge(task.Priority)
@@ -797,9 +796,8 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	// Blocked status icon
 	statusIcon := BlockedStyle.Render("◈")
 
-	// Type icon
-	typeStyle := GetTypeStyle(string(task.Type))
-	typeIcon := typeStyle.Render(task.Type.Icon())
+	// Type icon with badge style
+	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
 	// Title
 	if maxTitleLen < 10 {

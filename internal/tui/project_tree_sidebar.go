@@ -81,7 +81,7 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int) string {
 	}
 
 	title := SidebarHeaderStyle.Render(task.Title)
-	typeLine := typeStyle.Render(task.Type.Icon() + " " + task.Type.HeadingPrefix())
+	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
 	priorityBadge := formatPriorityBadge(task.Priority)
 	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
