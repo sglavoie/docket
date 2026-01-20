@@ -1123,7 +1123,7 @@ func (m *ProjectTreeModel) renderFilterBadge(key, name string, count int, active
 	if active {
 		return FilterBadgeStyle.Render(label)
 	}
-	return MutedStyle.Render(label)
+	return FilterBadgeInactiveStyle.Render(label)
 }
 
 // NavigateToTask expands parent nodes and positions cursor on the given task.

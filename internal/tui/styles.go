@@ -333,6 +333,11 @@ var (
 				Foreground(lipgloss.Color("0")).
 				Padding(0, 1)
 
+	FilterBadgeInactiveStyle = lipgloss.NewStyle().
+					Background(lipgloss.Color("236")). // Dark gray (matches SectionBadgeStyle)
+					Foreground(lipgloss.Color("245")). // Gray text
+					Padding(0, 1)
+
 	FilterViewBoxStyle = lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ColorPrimary).
