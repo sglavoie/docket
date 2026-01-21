@@ -26,6 +26,7 @@ type QuickCaptureModel struct {
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
 	title      string
+	taskType   models.TaskType
 	priority   int
 	tags       []string
 	dueDate    *time.Time
@@ -36,7 +37,7 @@ type quickCaptureResult struct {
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
 	input := textarea.New()
-	input.Placeholder = "Task title !priority #tag @due ~recur >parent"
+	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent"
 	input.CharLimit = 200
 	input.SetHeight(3)
 	input.ShowLineNumbers = false
@@ -89,7 +90,7 @@ func (m *QuickCaptureModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(MutedStyle.Render("!N priority · #tag · @date · ~recur · >parent"))
+	b.WriteString(MutedStyle.Render("^type · !N priority · #tag · @date · ~recur · >parent"))
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
 
@@ -108,10 +109,22 @@ func (m *QuickCaptureModel) View() string {
 }
 
 // parseQuickCapture extracts metadata from the input string.
-// Syntax: "Task title !1 #backend #urgent @tomorrow >3"
+// Syntax: "^bug Task title !1 #backend #urgent @tomorrow >3"
 func parseQuickCapture(input string, project *models.Project) (*quickCaptureResult, error) {
 	result := &quickCaptureResult{
-		priority: 3, // default priority
+		taskType: models.TaskTypeTask, // default type
+		priority: 3,                   // default priority
+	}
+
+	// Extract task type: ^epic, ^story, ^task, ^bug, ^idea, ^note (case-insensitive)
+	typeRe := regexp.MustCompile(`(?i)\s*\^(epic|story|task|bug|idea|note)\s*`)
+	if match := typeRe.FindStringSubmatch(input); len(match) > 1 {
+		taskType, ok := models.ParseTaskTypeInsensitive(match[1])
+		if !ok {
+			return nil, fmt.Errorf("invalid task type: %s", match[1])
+		}
+		result.taskType = taskType
+		input = typeRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract priority: !1 through !5
@@ -161,8 +174,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 		if parent == nil {
 			return nil, fmt.Errorf("parent not found: %s", ref)
 		}
-		if !models.TaskTypeTask.CanBeChildOf(parent.Type) {
-			return nil, fmt.Errorf("task cannot be child of %s", parent.Type.HeadingPrefix())
+		if !result.taskType.CanBeChildOf(parent.Type) {
+			return nil, fmt.Errorf("%s cannot be child of %s", result.taskType.HeadingPrefix(), parent.Type.HeadingPrefix())
 		}
 		result.parentID = &parent.ID
 		input = parentRe.ReplaceAllString(input, " ")
@@ -227,7 +240,7 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 		task := &models.Task{
 			ID:         uuid.New().String(),
 			ShortID:    m.project.GetNextShortID(),
-			Type:       models.TaskTypeTask,
+			Type:       result.taskType,
 			Title:      result.title,
 			Status:     models.StatusTodo,
 			Priority:   result.priority,

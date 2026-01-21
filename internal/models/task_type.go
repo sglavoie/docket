@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // TaskType represents the kind of task item.
 type TaskType string
 
@@ -110,6 +112,12 @@ func (t TaskType) HeadingPrefix() string {
 // ParseTaskType converts a string to a TaskType.
 func ParseTaskType(s string) (TaskType, bool) {
 	t := TaskType(s)
+	return t, t.IsValid()
+}
+
+// ParseTaskTypeInsensitive converts a string to a TaskType case-insensitively.
+func ParseTaskTypeInsensitive(s string) (TaskType, bool) {
+	t := TaskType(strings.ToLower(s))
 	return t, t.IsValid()
 }
 

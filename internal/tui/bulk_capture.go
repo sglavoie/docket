@@ -32,7 +32,7 @@ type lineError struct {
 // NewBulkCaptureModel creates a new bulk capture model.
 func NewBulkCaptureModel(project *models.Project) *BulkCaptureModel {
 	input := textarea.New()
-	input.Placeholder = "Enter tasks, one per line\n!priority #tag @due >parent"
+	input.Placeholder = "Enter tasks, one per line\n^type !priority #tag @due >parent"
 	input.Focus()
 	input.CharLimit = 2000
 	input.SetWidth(60)
@@ -102,7 +102,7 @@ func (m *BulkCaptureModel) View() string {
 		b.WriteString("\n")
 	}
 
-	hint := MutedStyle.Render("One task per line: !N priority  #tag  @date  >parent")
+	hint := MutedStyle.Render("One task per line: ^type  !N priority  #tag  @date  >parent")
 	b.WriteString(hint)
 	b.WriteString("\n")
 
@@ -158,7 +158,7 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 				task := &models.Task{
 					ID:        uuid.New().String(),
 					ShortID:   m.project.GetNextShortID(),
-					Type:      models.TaskTypeTask,
+					Type:      result.taskType,
 					Title:     result.title,
 					Status:    models.StatusTodo,
 					Priority:  result.priority,
