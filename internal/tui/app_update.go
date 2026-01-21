@@ -199,6 +199,10 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	// Inbox processor handles its own q/esc to properly reload project and refresh tree
+	if m.currentView() == ViewInboxProcessor {
+		return false
+	}
 	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 		return false
 	}

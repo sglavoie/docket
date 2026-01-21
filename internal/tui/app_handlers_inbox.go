@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleInboxMessages handles inbox processor related messages.
@@ -22,6 +23,11 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CloseInboxProcessorMsg:
 		m.popView()
 		m.views.Remove(ViewInboxProcessor)
+		// Reload from disk to ensure we have the latest state
+		// (handles race condition if save Cmd is still in flight)
+		if m.currentProject != nil {
+			storage.LoadProject(m.currentProject)
+		}
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
 			m.statusMessage = fmt.Sprintf("Inbox processing complete: %d processed, %d skipped",
