@@ -107,26 +107,35 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
-			// In Progress
-			if task.Status == models.StatusInProgress {
-				m.inProgress = append(m.inProgress, dt)
-			}
-
-			// Blocked (status or incomplete dependencies)
-			if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
-				m.blocked = append(m.blocked, dt)
-				continue // Don't double-count in other sections
-			}
-
-			// Due date categorization
+			// Check due date first (overdue/today take priority over status)
 			if task.DueDate != nil {
 				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 
 				if dueDay.Before(today) {
 					m.overdue = append(m.overdue, dt)
+					continue
 				} else if dueDay.Equal(today) {
 					m.dueToday = append(m.dueToday, dt)
-				} else if dueDay.Before(weekEnd) {
+					continue
+				}
+			}
+
+			// Blocked (status or incomplete dependencies)
+			if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
+				m.blocked = append(m.blocked, dt)
+				continue
+			}
+
+			// In Progress
+			if task.Status == models.StatusInProgress {
+				m.inProgress = append(m.inProgress, dt)
+				continue
+			}
+
+			// This week (non-urgent future due dates)
+			if task.DueDate != nil {
+				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				if dueDay.Before(weekEnd) {
 					m.thisWeek = append(m.thisWeek, dt)
 				}
 			}
