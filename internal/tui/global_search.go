@@ -32,6 +32,19 @@ type GlobalSearchModel struct {
 	// Input for filtering
 	searchInput textinput.Model
 
+	// Parsed filters from current query
+	parsedFilters *ParsedSearchQuery
+
+	// Autocomplete state
+	acMode       int          // Current autocomplete mode (acSearchMode*)
+	suggestions  []suggestion // Current autocomplete suggestions
+	acCursor     int          // Selected suggestion index
+	acTriggerPos int          // Position of trigger character in input
+
+	// Caches for autocomplete
+	tagCache     []string // All tags across projects
+	sectionCache []string // All sections across projects
+
 	// Dimensions
 	width        int
 	height       int
@@ -69,10 +82,54 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 		allTasks:    allTasks,
 		searchInput: searchInput,
 		cursor:      0,
+		acMode:      acSearchModeNone,
 	}
+
+	// Build caches for autocomplete
+	m.buildCaches()
+
 	// Start with no results (empty query shows nothing)
 	m.filtered = nil
 	return m
+}
+
+// Autocomplete mode constants for global search
+const (
+	acSearchModeNone    = iota // No autocomplete active
+	acSearchModeTag            // Completing #tag
+	acSearchModeSection        // Completing /section
+	acSearchModeStatus         // Completing $status
+	acSearchModeType           // Completing ^type
+	acSearchModeDueDate        // Completing @duedate
+)
+
+// buildCaches builds tag and section caches from all loaded projects.
+func (m *GlobalSearchModel) buildCaches() {
+	tagSet := make(map[string]bool)
+	sectionSet := make(map[string]bool)
+
+	for _, project := range m.projects {
+		// Collect tags from all tasks
+		for _, task := range project.Tasks {
+			for _, tag := range task.Tags {
+				tagSet[tag] = true
+			}
+		}
+		// Collect sections
+		for _, section := range project.GetSections() {
+			sectionSet[section] = true
+		}
+	}
+
+	m.tagCache = make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		m.tagCache = append(m.tagCache, tag)
+	}
+
+	m.sectionCache = make([]string, 0, len(sectionSet))
+	for section := range sectionSet {
+		m.sectionCache = append(m.sectionCache, section)
+	}
 }
 
 // HasActiveSearch returns true (search input is always active).
@@ -115,13 +172,42 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
+		key := msg.String()
+
+		// Handle autocomplete navigation when active
+		if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
+			switch key {
+			case "tab", "enter":
+				m.acceptAutocompleteSuggestion()
+				m.filterTasks()
+				return m, nil
+			case "esc":
+				// Dismiss autocomplete
+				m.acMode = acSearchModeNone
+				m.suggestions = nil
+				m.acCursor = 0
+				return m, nil
+			case "up", "ctrl+p":
+				if m.acCursor > 0 {
+					m.acCursor--
+				}
+				return m, nil
+			case "down", "ctrl+n":
+				if m.acCursor < len(m.suggestions)-1 {
+					m.acCursor++
+				}
+				return m, nil
+			}
+		}
+
+		switch key {
 		case "esc":
 			return m, func() tea.Msg {
 				return CloseGlobalSearchMsg{}
 			}
 		case "enter":
-			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+			// Only select task if not in autocomplete mode
+			if m.acMode == acSearchModeNone && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				result := m.filtered[m.cursor].result
 				return m, func() tea.Msg {
 					return GlobalSearchSelectMsg{
@@ -132,12 +218,12 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "up", "ctrl+k":
-			if m.cursor > 0 {
+			if m.acMode == acSearchModeNone && m.cursor > 0 {
 				m.cursor--
 			}
 			return m, nil
 		case "down", "ctrl+j":
-			if m.cursor < len(m.filtered)-1 {
+			if m.acMode == acSearchModeNone && m.cursor < len(m.filtered)-1 {
 				m.cursor++
 			}
 			return m, nil
@@ -161,6 +247,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.searchInput, cmd = m.searchInput.Update(msg)
 			m.filterTasks()
+			m.detectAutocomplete()
 			return m, cmd
 		}
 	}
@@ -172,7 +259,10 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *GlobalSearchModel) filterTasks() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
-	// Empty query shows no results
+	// Parse structured filters from query
+	m.parsedFilters = ParseSearchQuery(query)
+
+	// Empty query shows no results (unless filters are active)
 	if query == "" {
 		m.filtered = nil
 		m.cursor = 0
@@ -188,12 +278,28 @@ func (m *GlobalSearchModel) filterTasks() {
 	var scored []scoredResult
 
 	for _, result := range m.allTasks {
-		score, titlePositions := m.scoreTask(result.Task, query)
-		if score > 0 {
+		// First apply structured filters
+		if !TaskMatchesFilters(result.Task, m.parsedFilters) {
+			continue
+		}
+
+		// If there's a text query, apply fuzzy scoring
+		textQuery := m.parsedFilters.TextQuery
+		if textQuery != "" {
+			score, titlePositions := m.scoreTask(result.Task, textQuery)
+			if score > 0 {
+				scored = append(scored, scoredResult{
+					result:         result,
+					score:          score,
+					titlePositions: titlePositions,
+				})
+			}
+		} else {
+			// No text query but filters matched - include with base score
 			scored = append(scored, scoredResult{
 				result:         result,
-				score:          score,
-				titlePositions: titlePositions,
+				score:          1,
+				titlePositions: nil,
 			})
 		}
 	}
@@ -246,13 +352,32 @@ func (m *GlobalSearchModel) View() string {
 
 	// Search input
 	content.WriteString(m.searchInput.View())
-	content.WriteString("\n\n")
+	content.WriteString("\n")
+
+	// Show autocomplete suggestions if active
+	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
+		for i, s := range m.suggestions {
+			if i == m.acCursor {
+				content.WriteString(SelectedStyle.Render("> " + s.display))
+			} else {
+				content.WriteString(MutedStyle.Render("  " + s.display))
+			}
+			content.WriteString("\n")
+		}
+	}
+	content.WriteString("\n")
+
+	// Show active filters as badges
+	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
+		content.WriteString(m.renderFilterBadges())
+		content.WriteString("\n\n")
+	}
 
 	// Handle edge cases
 	if len(m.allTasks) == 0 {
 		content.WriteString(MutedStyle.Render("No tasks found in any project."))
 		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Press Esc to close"))
+		content.WriteString(m.renderHelpText())
 
 		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
 			Title:    "Global Search",
@@ -265,7 +390,9 @@ func (m *GlobalSearchModel) View() string {
 	if query == "" {
 		content.WriteString(MutedStyle.Render("Type to search across all tasks..."))
 		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Press Esc to close"))
+		content.WriteString(MutedStyle.Render("Filters: !priority #tag @due $status ^type /section *active"))
+		content.WriteString("\n\n")
+		content.WriteString(m.renderHelpText())
 
 		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
 			Title:    "Global Search",
@@ -277,7 +404,7 @@ func (m *GlobalSearchModel) View() string {
 	if len(m.filtered) == 0 {
 		content.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
 		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Press Esc to close"))
+		content.WriteString(m.renderHelpText())
 
 		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
 			Title:    "Global Search",
@@ -292,9 +419,15 @@ func (m *GlobalSearchModel) View() string {
 		paneHeight = 5
 	}
 
+	// Adjust for autocomplete and filter badges
+	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
+		paneHeight -= len(m.suggestions)
+	}
+	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
+		paneHeight -= 2
+	}
+
 	// Split pane: list on left, preview on right
-	// Use m.listWidth and m.previewWidth which are calculated in SetSize
-	// to account for card border and padding
 	listContent := m.renderTaskList()
 	previewContent := m.renderPreview()
 
@@ -302,8 +435,8 @@ func (m *GlobalSearchModel) View() string {
 	content.WriteString(splitPane)
 	content.WriteString("\n")
 
-	// Footer - use shorter text to fit within card width
-	content.WriteString(HelpStyle.Render(fmt.Sprintf("↑↓ nav • Enter • Esc • %d results", len(m.filtered))))
+	// Footer
+	content.WriteString(m.renderHelpText())
 
 	// Build subtitle showing count
 	subtitle := fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
@@ -313,6 +446,74 @@ func (m *GlobalSearchModel) View() string {
 		Subtitle: subtitle,
 		Centered: false,
 	})
+}
+
+// renderFilterBadges renders active filters as styled badges.
+func (m *GlobalSearchModel) renderFilterBadges() string {
+	if m.parsedFilters == nil {
+		return ""
+	}
+
+	var badges []string
+
+	// Priority badges
+	if len(m.parsedFilters.Priorities) > 0 {
+		var pStrs []string
+		for _, p := range m.parsedFilters.Priorities {
+			pStrs = append(pStrs, fmt.Sprintf("%d", p))
+		}
+		badges = append(badges, fmt.Sprintf("!%s", strings.Join(pStrs, ",")))
+	}
+
+	// Tag badges
+	for _, tag := range m.parsedFilters.Tags {
+		badges = append(badges, "#"+tag)
+	}
+
+	// Status badges
+	for _, status := range m.parsedFilters.Statuses {
+		badges = append(badges, "$"+string(status))
+	}
+
+	// Type badges
+	for _, taskType := range m.parsedFilters.Types {
+		badges = append(badges, "^"+string(taskType))
+	}
+
+	// Due date badge
+	if m.parsedFilters.DueDateFilter != "" {
+		badges = append(badges, "@"+m.parsedFilters.DueDateFilter)
+	}
+
+	// Section badge
+	if m.parsedFilters.Section != "" {
+		badges = append(badges, "/"+m.parsedFilters.Section)
+	}
+
+	// Active badge
+	if m.parsedFilters.ActiveOnly {
+		badges = append(badges, "*active")
+	}
+
+	if len(badges) == 0 {
+		return ""
+	}
+
+	// Style each badge
+	var styled []string
+	for _, badge := range badges {
+		styled = append(styled, FilterBadgeStyle.Render(badge))
+	}
+
+	return "Filters: " + strings.Join(styled, " ")
+}
+
+// renderHelpText renders context-appropriate help text.
+func (m *GlobalSearchModel) renderHelpText() string {
+	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
+		return HelpStyle.Render("Tab: accept • ↑↓: navigate • Esc: dismiss")
+	}
+	return HelpStyle.Render(fmt.Sprintf("↑↓ nav • Enter • Esc • %d results", len(m.filtered)))
 }
 
 // renderTaskList renders the filtered task list.
@@ -534,6 +735,235 @@ func (m *GlobalSearchModel) renderPreview() string {
 	}
 
 	return b.String()
+}
+
+// detectAutocomplete checks if the cursor is after a filter trigger character
+// and populates suggestions accordingly.
+func (m *GlobalSearchModel) detectAutocomplete() {
+	input := m.searchInput.Value()
+	if len(input) == 0 {
+		m.acMode = acSearchModeNone
+		m.suggestions = nil
+		return
+	}
+
+	// Scan backward from end to find most recent trigger
+	for i := len(input) - 1; i >= 0; i-- {
+		ch := input[i]
+		if ch == ' ' || ch == '\n' {
+			// Hit whitespace before finding trigger
+			break
+		}
+
+		partial := input[i+1:]
+
+		switch ch {
+		case '#':
+			m.acMode = acSearchModeTag
+			m.acTriggerPos = i
+			m.acCursor = 0
+			m.suggestions = m.getTagSuggestions(partial)
+			if len(m.suggestions) == 0 {
+				m.acMode = acSearchModeNone
+			}
+			return
+		case '/':
+			m.acMode = acSearchModeSection
+			m.acTriggerPos = i
+			m.acCursor = 0
+			m.suggestions = m.getSectionSuggestions(partial)
+			if len(m.suggestions) == 0 {
+				m.acMode = acSearchModeNone
+			}
+			return
+		case '$':
+			m.acMode = acSearchModeStatus
+			m.acTriggerPos = i
+			m.acCursor = 0
+			m.suggestions = m.getStatusSuggestions(partial)
+			if len(m.suggestions) == 0 {
+				m.acMode = acSearchModeNone
+			}
+			return
+		case '^':
+			m.acMode = acSearchModeType
+			m.acTriggerPos = i
+			m.acCursor = 0
+			m.suggestions = m.getTypeSuggestions(partial)
+			if len(m.suggestions) == 0 {
+				m.acMode = acSearchModeNone
+			}
+			return
+		case '@':
+			m.acMode = acSearchModeDueDate
+			m.acTriggerPos = i
+			m.acCursor = 0
+			m.suggestions = m.getDueDateSuggestions(partial)
+			if len(m.suggestions) == 0 {
+				m.acMode = acSearchModeNone
+			}
+			return
+		}
+	}
+
+	m.acMode = acSearchModeNone
+	m.suggestions = nil
+}
+
+// getTagSuggestions returns matching tags for the partial query.
+func (m *GlobalSearchModel) getTagSuggestions(partial string) []suggestion {
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, tag := range m.tagCache {
+		// Show all if partial is empty, otherwise filter by prefix/contains
+		if partial == "" || strings.Contains(strings.ToLower(tag), partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: "#" + tag,
+				value:   tag,
+			})
+		}
+		if len(suggestions) >= 8 {
+			break
+		}
+	}
+	return suggestions
+}
+
+// getSectionSuggestions returns matching sections for the partial query.
+func (m *GlobalSearchModel) getSectionSuggestions(partial string) []suggestion {
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, section := range m.sectionCache {
+		if partial == "" || strings.Contains(strings.ToLower(section), partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: "/" + section,
+				value:   section,
+			})
+		}
+		if len(suggestions) >= 8 {
+			break
+		}
+	}
+	return suggestions
+}
+
+// getStatusSuggestions returns matching status options for the partial query.
+func (m *GlobalSearchModel) getStatusSuggestions(partial string) []suggestion {
+	statuses := []struct {
+		name string
+		icon string
+	}{
+		{"todo", "○"},
+		{"in_progress", "◐"},
+		{"done", "●"},
+		{"blocked", "◈"},
+		{"cancelled", "✕"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, s := range statuses {
+		if partial == "" || strings.Contains(s.name, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("$%s %s", s.name, s.icon),
+				value:   s.name,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getTypeSuggestions returns matching type options for the partial query.
+func (m *GlobalSearchModel) getTypeSuggestions(partial string) []suggestion {
+	types := []struct {
+		name string
+		icon string
+	}{
+		{"epic", "◆"},
+		{"story", "◇"},
+		{"task", "□"},
+		{"bug", "⚠"},
+		{"idea", "💡"},
+		{"note", "📝"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, t := range types {
+		if partial == "" || strings.Contains(t.name, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("^%s %s", t.name, t.icon),
+				value:   t.name,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getDueDateSuggestions returns due date filter options for the partial query.
+func (m *GlobalSearchModel) getDueDateSuggestions(partial string) []suggestion {
+	options := []struct {
+		name string
+		desc string
+	}{
+		{"today", "due today"},
+		{"tomorrow", "due tomorrow"},
+		{"week", "due this week"},
+		{"overdue", "past due date"},
+		{"none", "no due date"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, o := range options {
+		if partial == "" || strings.Contains(o.name, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("@%s (%s)", o.name, o.desc),
+				value:   o.name,
+			})
+		}
+	}
+	return suggestions
+}
+
+// acceptAutocompleteSuggestion inserts the selected suggestion into the input.
+func (m *GlobalSearchModel) acceptAutocompleteSuggestion() {
+	if m.acMode == acSearchModeNone || len(m.suggestions) == 0 {
+		return
+	}
+
+	selected := m.suggestions[m.acCursor]
+	input := m.searchInput.Value()
+
+	// Build the prefix character based on mode
+	var prefix string
+	switch m.acMode {
+	case acSearchModeTag:
+		prefix = "#"
+	case acSearchModeSection:
+		prefix = "/"
+	case acSearchModeStatus:
+		prefix = "$"
+	case acSearchModeType:
+		prefix = "^"
+	case acSearchModeDueDate:
+		prefix = "@"
+	}
+
+	// Replace from trigger position to end with completed value
+	newInput := input[:m.acTriggerPos] + prefix + selected.value + " "
+	m.searchInput.SetValue(newInput)
+	m.searchInput.SetCursor(len(newInput))
+
+	// Reset autocomplete state
+	m.acMode = acSearchModeNone
+	m.suggestions = nil
+	m.acCursor = 0
 }
 
 // CloseGlobalSearchMsg is sent when the global search should close.
