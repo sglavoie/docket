@@ -10,8 +10,9 @@ import (
 func TestParseQuickCapture(t *testing.T) {
 	// Create a test project with some tasks for parent resolution
 	project := &models.Project{
-		ID:   "test-project",
-		Name: "Test Project",
+		ID:       "test-project",
+		Name:     "Test Project",
+		Sections: []string{"Active", "Backlog", "Pending"},
 		Tasks: []*models.Task{
 			{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
 			{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},
@@ -28,6 +29,9 @@ func TestParseQuickCapture(t *testing.T) {
 		wantTags       []string
 		wantHasDueDate bool
 		wantParentID   *string
+		wantTaskType   models.TaskType
+		wantSection    string
+		wantHasRecur   bool
 		wantErr        bool
 		errContains    string
 	}{
@@ -182,6 +186,157 @@ func TestParseQuickCapture(t *testing.T) {
 			wantPriority: 2,
 			wantTags:     []string{"backend"},
 		},
+		// Section assignment tests
+		{
+			name:         "section assignment",
+			input:        "Fix bug /Active",
+			wantTitle:    "Fix bug",
+			wantPriority: 3,
+			wantSection:  "Active",
+		},
+		{
+			name:         "section case insensitive",
+			input:        "Fix bug /active",
+			wantTitle:    "Fix bug",
+			wantPriority: 3,
+			wantSection:  "Active",
+		},
+		{
+			name:         "section with other metadata",
+			input:        "Urgent fix !1 #backend /Pending",
+			wantTitle:    "Urgent fix",
+			wantPriority: 1,
+			wantTags:     []string{"backend"},
+			wantSection:  "Pending",
+		},
+		{
+			name:        "invalid section",
+			input:       "Fix bug /NonexistentSection",
+			wantErr:     true,
+			errContains: "section not found",
+		},
+		// Task type tests
+		{
+			name:         "task type bug",
+			input:        "^bug Fix crash",
+			wantTitle:    "Fix crash",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeBug,
+		},
+		{
+			name:         "task type epic",
+			input:        "^epic User management system",
+			wantTitle:    "User management system",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeEpic,
+		},
+		{
+			name:         "task type story",
+			input:        "^story Login flow",
+			wantTitle:    "Login flow",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeStory,
+		},
+		{
+			name:         "task type idea",
+			input:        "^idea Add dark mode",
+			wantTitle:    "Add dark mode",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeIdea,
+		},
+		{
+			name:         "task type note",
+			input:        "^note Meeting summary",
+			wantTitle:    "Meeting summary",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeNote,
+		},
+		{
+			name:         "task type case insensitive",
+			input:        "^BUG Fix crash",
+			wantTitle:    "Fix crash",
+			wantPriority: 3,
+			wantTaskType: models.TaskTypeBug,
+		},
+		{
+			name:         "task type with other metadata",
+			input:        "^bug Fix crash !1 #urgent /Active",
+			wantTitle:    "Fix crash",
+			wantPriority: 1,
+			wantTags:     []string{"urgent"},
+			wantTaskType: models.TaskTypeBug,
+			wantSection:  "Active",
+		},
+		// Recurrence tests
+		{
+			name:         "recurrence daily",
+			input:        "Standup ~daily",
+			wantTitle:    "Standup",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:         "recurrence weekly",
+			input:        "Review ~weekly",
+			wantTitle:    "Review",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:         "recurrence monthly",
+			input:        "Monthly report ~monthly",
+			wantTitle:    "Monthly report",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:         "recurrence biweekly",
+			input:        "Payroll ~biweekly",
+			wantTitle:    "Payroll",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:         "recurrence Nd format",
+			input:        "Check plants ~3d",
+			wantTitle:    "Check plants",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:         "recurrence Nw format",
+			input:        "Team sync ~2w",
+			wantTitle:    "Team sync",
+			wantPriority: 3,
+			wantHasRecur: true,
+		},
+		{
+			name:           "recurrence with due date",
+			input:          "Standup @tomorrow ~daily",
+			wantTitle:      "Standup",
+			wantPriority:   3,
+			wantHasDueDate: true,
+			wantHasRecur:   true,
+		},
+		{
+			name:        "invalid recurrence pattern",
+			input:       "Task ~notapattern",
+			wantErr:     true,
+			errContains: "invalid recurrence",
+		},
+		// Combined: all features together
+		{
+			name:           "all features combined",
+			input:          "^bug Critical fix !1 #urgent #production @tomorrow ~weekly /Active >1",
+			wantTitle:      "Critical fix",
+			wantPriority:   1,
+			wantTags:       []string{"urgent", "production"},
+			wantHasDueDate: true,
+			wantParentID:   strPtr("epic-1"),
+			wantTaskType:   models.TaskTypeBug,
+			wantSection:    "Active",
+			wantHasRecur:   true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -229,6 +384,22 @@ func TestParseQuickCapture(t *testing.T) {
 				}
 			} else if result.parentID != nil {
 				t.Errorf("parentID = %q, want nil", *result.parentID)
+			}
+
+			// Check task type (only if explicitly set in test)
+			if tt.wantTaskType != "" && result.taskType != tt.wantTaskType {
+				t.Errorf("taskType = %q, want %q", result.taskType, tt.wantTaskType)
+			}
+
+			// Check section (only if explicitly set in test)
+			if tt.wantSection != "" && result.section != tt.wantSection {
+				t.Errorf("section = %q, want %q", result.section, tt.wantSection)
+			}
+
+			// Check recurrence
+			hasRecur := result.recurrence != nil
+			if hasRecur != tt.wantHasRecur {
+				t.Errorf("hasRecurrence = %v, want %v", hasRecur, tt.wantHasRecur)
 			}
 		})
 	}
