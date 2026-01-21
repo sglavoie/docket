@@ -321,6 +321,10 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 
+		// Suggestion
+		Keybinding{Key: "s", Description: "Start suggested task", Category: "Suggestion", Views: views},
+		Keybinding{Key: "x", Description: "Dismiss suggestion", Category: "Suggestion", Views: views},
+
 		// Actions
 		Keybinding{Key: "Enter", Description: "View task details", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
@@ -337,7 +341,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 
 		// View
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
-		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
 }

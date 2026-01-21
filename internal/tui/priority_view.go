@@ -32,6 +32,13 @@ type PriorityTask struct {
 	RelativeDue  string // Formatted relative due date
 }
 
+// SuggestedTask represents the single most actionable task with reasoning.
+type SuggestedTask struct {
+	Task   *PriorityTask
+	Score  int
+	Reason string
+}
+
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
 	project *models.Project
@@ -43,6 +50,10 @@ type PriorityViewModel struct {
 	later     []*PriorityTask
 	backlog   []*PriorityTask // Tasks without due dates
 	waitingOn []*PriorityTask // Blocked tasks
+
+	// Smart suggestion
+	suggestion   *SuggestedTask  // The single most actionable task
+	dismissedIDs map[string]bool // Task IDs dismissed this session
 
 	// Navigation
 	cursor      int   // Absolute position across all visible groups
@@ -65,6 +76,7 @@ func NewPriorityViewModel(project *models.Project) *PriorityViewModel {
 	m := &PriorityViewModel{
 		project:            project,
 		waitingOnCollapsed: true,
+		dismissedIDs:       make(map[string]bool),
 	}
 	m.loadActionableTasks()
 	return m
@@ -138,6 +150,9 @@ func (m *PriorityViewModel) loadActionableTasks() {
 		len(m.overdue) + len(m.today) + len(m.thisWeek),
 		len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later),
 	}
+
+	// Compute the smart suggestion
+	m.computeSuggestion()
 }
 
 // computeUrgencyScore calculates the urgency score for a task.
@@ -174,6 +189,275 @@ func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
 	}
 
 	return score
+}
+
+// computeSuggestionScore calculates the suggestion score for a task.
+// Builds on urgencyScore with additional factors for actionability.
+// Higher scores = more recommended as the suggested next task.
+func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
+	// Start with base urgency score
+	score := m.computeUrgencyScore(task)
+
+	// Leaf task bonus: prefer actionable leaf tasks over containers
+	if task.IsLeaf() && !task.IsNote() {
+		score += 800
+	}
+
+	// Container penalty: penalize tasks with incomplete children
+	if len(task.Children) > 0 && !m.allChildrenComplete(task) {
+		score -= 1000
+	}
+
+	// Task age: older tasks get a small boost to avoid stagnation
+	daysSinceCreated := int(time.Since(task.CreatedAt).Hours() / 24)
+	ageBonus := daysSinceCreated / 7 // 30 points per week
+	if ageBonus > 10 {
+		ageBonus = 10 // Cap at 300 points
+	}
+	score += ageBonus * 30
+
+	// Recent momentum: boost tasks with recent activity
+	daysSinceUpdated := int(time.Since(task.UpdatedAt).Hours() / 24)
+	if daysSinceUpdated == 0 {
+		score += 400 // Updated today
+	} else if daysSinceUpdated <= 3 {
+		score += 200 // Updated within 3 days
+	}
+
+	// Unblocking bonus: prefer tasks that unblock others
+	blockedByThisCount := len(m.project.GetBlockedByTasks(task))
+	unblockingBonus := blockedByThisCount
+	if unblockingBonus > 3 {
+		unblockingBonus = 3 // Cap at 3
+	}
+	score += unblockingBonus * 150
+
+	// Section penalty: deprioritize Backlog and Pending section tasks
+	if task.Section == models.SectionBacklog {
+		score -= 300
+	} else if task.Section == models.SectionPending {
+		score -= 200
+	}
+
+	return score
+}
+
+// allChildrenComplete returns true if all non-note children of the task are complete.
+func (m *PriorityViewModel) allChildrenComplete(task *models.Task) bool {
+	for _, child := range task.Children {
+		if child.IsNote() {
+			continue
+		}
+		if !child.Status.IsComplete() {
+			return false
+		}
+	}
+	return true
+}
+
+// computeSuggestion finds the highest-scoring non-dismissed actionable task.
+func (m *PriorityViewModel) computeSuggestion() {
+	m.suggestion = nil
+
+	// Collect all actionable tasks (not blocked, not completed)
+	var candidates []*PriorityTask
+	candidates = append(candidates, m.overdue...)
+	candidates = append(candidates, m.today...)
+	candidates = append(candidates, m.thisWeek...)
+	candidates = append(candidates, m.later...)
+	candidates = append(candidates, m.backlog...)
+
+	if len(candidates) == 0 {
+		return
+	}
+
+	// Find highest-scoring non-dismissed task
+	var best *PriorityTask
+	bestScore := -999999
+
+	for _, pt := range candidates {
+		if m.dismissedIDs[pt.Task.ID] {
+			continue
+		}
+
+		suggestionScore := m.computeSuggestionScore(pt.Task)
+		if suggestionScore > bestScore {
+			bestScore = suggestionScore
+			best = pt
+		}
+	}
+
+	if best == nil {
+		return
+	}
+
+	m.suggestion = &SuggestedTask{
+		Task:   best,
+		Score:  bestScore,
+		Reason: m.getSuggestionReason(best.Task),
+	}
+}
+
+// getSuggestionReason generates a human-readable explanation for why a task is suggested.
+func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
+	var reasons []string
+
+	// Priority
+	if task.Priority == 1 {
+		reasons = append(reasons, "critical priority")
+	} else if task.Priority == 2 {
+		reasons = append(reasons, "high priority")
+	}
+
+	// Due date status
+	if task.DueDate != nil {
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+
+		if dueDay.Before(today) {
+			reasons = append(reasons, "overdue")
+		} else if dueDay.Equal(today) {
+			reasons = append(reasons, "due today")
+		} else if dueDay.Before(today.AddDate(0, 0, 7)) {
+			reasons = append(reasons, "due this week")
+		}
+	}
+
+	// In-progress status
+	if task.Status == models.StatusInProgress {
+		reasons = append(reasons, "in progress")
+	}
+
+	// Active flag
+	if task.Active {
+		reasons = append(reasons, "flagged active")
+	}
+
+	// Unblocking count
+	blockedByThisCount := len(m.project.GetBlockedByTasks(task))
+	if blockedByThisCount > 0 {
+		if blockedByThisCount == 1 {
+			reasons = append(reasons, "unblocks 1 task")
+		} else {
+			reasons = append(reasons, fmt.Sprintf("unblocks %d tasks", blockedByThisCount))
+		}
+	}
+
+	// Momentum
+	daysSinceUpdated := int(time.Since(task.UpdatedAt).Hours() / 24)
+	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
+		reasons = append(reasons, "recent activity")
+	}
+
+	// If no specific reasons, provide a generic one
+	if len(reasons) == 0 {
+		return "Ready to work on"
+	}
+
+	// Join reasons with " + "
+	result := ""
+	for i, r := range reasons {
+		if i > 0 {
+			result += " + "
+		}
+		// Capitalize first reason
+		if i == 0 {
+			result += strings.ToUpper(r[:1]) + r[1:]
+		} else {
+			result += r
+		}
+	}
+	return result
+}
+
+// dismissSuggestion adds the current suggestion to the dismissed set.
+func (m *PriorityViewModel) dismissSuggestion() {
+	if m.suggestion == nil {
+		return
+	}
+	m.dismissedIDs[m.suggestion.Task.Task.ID] = true
+	m.computeSuggestion()
+}
+
+// startSuggestedTask sets the suggested task to in_progress or jumps to it if already started.
+func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
+	if m.suggestion == nil {
+		return m, nil
+	}
+
+	task := m.suggestion.Task.Task
+
+	// If already in progress, just jump to it in the list
+	if task.Status == models.StatusInProgress {
+		// Find the task's position in the list and move cursor there
+		m.jumpToTask(task)
+		return m, nil
+	}
+
+	// Otherwise, start the task
+	if err := storage.BackupProject(m.project); err != nil {
+		return m, func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+	}
+
+	task.Start()
+
+	if err := storage.SaveProject(m.project); err != nil {
+		return m, func() tea.Msg {
+			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+		}
+	}
+
+	// Reload and refresh
+	storage.LoadProject(m.project)
+	m.loadActionableTasks()
+	m.clampCursor()
+
+	return m, func() tea.Msg {
+		return TaskStatusChangedMsg{Task: task}
+	}
+}
+
+// jumpToTask moves the cursor to the position of the given task in the list.
+func (m *PriorityViewModel) jumpToTask(task *models.Task) {
+	index := 0
+	for _, pt := range m.overdue {
+		if pt.Task.ID == task.ID {
+			m.cursor = index
+			return
+		}
+		index++
+	}
+	for _, pt := range m.today {
+		if pt.Task.ID == task.ID {
+			m.cursor = index
+			return
+		}
+		index++
+	}
+	for _, pt := range m.thisWeek {
+		if pt.Task.ID == task.ID {
+			m.cursor = index
+			return
+		}
+		index++
+	}
+	for _, pt := range m.later {
+		if pt.Task.ID == task.ID {
+			m.cursor = index
+			return
+		}
+		index++
+	}
+	for _, pt := range m.backlog {
+		if pt.Task.ID == task.ID {
+			m.cursor = index
+			return
+		}
+		index++
+	}
 }
 
 // categorizeByDueDate determines which urgency group a task belongs to.
@@ -420,9 +704,21 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 
 	case "r":
+		// Refresh: reload project and clear dismissed suggestions
 		storage.LoadProject(m.project)
+		m.dismissedIDs = make(map[string]bool)
 		m.loadActionableTasks()
 		m.clampCursor()
+		return m, nil
+
+	// Suggestion actions
+	case "s":
+		// Start suggested task (or jump to it if already in progress)
+		return m.startSuggestedTask()
+
+	case "x":
+		// Dismiss current suggestion
+		m.dismissSuggestion()
 		return m, nil
 	}
 
@@ -582,6 +878,16 @@ func (m *PriorityViewModel) View() string {
 	// Calculate available height for task list (account for card border/padding)
 	contentHeight := m.height - 12
 
+	// Render suggestion section at top if available
+	suggestionSection := m.renderSuggestionSection()
+	suggestionLines := 0
+	if suggestionSection != "" {
+		b.WriteString(suggestionSection)
+		b.WriteString("\n\n")
+		suggestionLines = 5 // Approximate height of suggestion box
+		contentHeight -= suggestionLines
+	}
+
 	// Render groups with scroll awareness
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex)
@@ -610,7 +916,7 @@ func (m *PriorityViewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter view • e edit • ,s/,d status • 1-5 priority • ? help • q close")
+	footer := HelpStyle.Render("↑/↓ navigate • s start suggested • x dismiss • ,s/,d status • ? help • q close")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
@@ -626,6 +932,60 @@ func (m *PriorityViewModel) renderPrefixPopup() string {
 		",": StatusPrefixHints,
 		"g": NavigationPrefixHints,
 	}, m.width)
+}
+
+// renderSuggestionSection renders the "SUGGESTED NEXT" section at the top.
+func (m *PriorityViewModel) renderSuggestionSection() string {
+	if m.suggestion == nil {
+		return ""
+	}
+
+	task := m.suggestion.Task.Task
+	boxWidth := min(m.width-6, 54) // Constrain box width
+
+	// Build task line
+	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+	priorityBadge := m.renderPriorityBadge(task.Priority)
+
+	// Calculate available title width
+	// Star + status + type + priority + spacing takes about 15-20 chars
+	titleWidth := boxWidth - 22
+	if titleWidth < 10 {
+		titleWidth = 10
+	}
+	title := util.Truncate(task.Title, titleWidth)
+
+	// Due date
+	dueStr := ""
+	if m.suggestion.Task.RelativeDue != "" {
+		dueStr = DueDateStyle.Render(m.suggestion.Task.RelativeDue)
+	}
+
+	// Star indicator
+	star := SuggestionStarStyle.Render("★")
+
+	// Build the task line
+	taskLine := fmt.Sprintf("%s %s %s %s %s", star, statusIcon, typeIcon, priorityBadge, title)
+	if dueStr != "" {
+		taskLine = fmt.Sprintf("%-*s %s", boxWidth-12, taskLine, dueStr)
+	}
+
+	// Reason line (muted, indented)
+	reasonLine := SuggestionReasonStyle.Render("  " + m.suggestion.Reason)
+
+	// Build the box
+	content := taskLine + "\n" + reasonLine
+	box := SuggestionBoxStyle.Width(boxWidth).Render(content)
+
+	// Add header
+	header := SuggestionHeaderStyle.Render("─ SUGGESTED NEXT ")
+	headerPadding := boxWidth - 17
+	if headerPadding > 0 {
+		header += MutedStyle.Render(strings.Repeat("─", headerPadding))
+	}
+
+	return header + "\n" + box
 }
 
 // renderAllGroups renders all task groups and returns the lines.
@@ -730,6 +1090,13 @@ func (m *PriorityViewModel) renderGroup(tasks []*PriorityTask, currentIndex *int
 func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isSelected bool, maxTitleLen int) string {
 	task := pt.Task
 
+	// Star indicator for suggested task
+	isSuggested := m.suggestion != nil && m.suggestion.Task.Task.ID == task.ID
+	starIndicator := "  "
+	if isSuggested {
+		starIndicator = SuggestionStarStyle.Render("★ ")
+	}
+
 	// Cursor indicator
 	cursor := "  "
 	if isSelected {
@@ -745,11 +1112,15 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	// Priority badge
 	priorityBadge := m.renderPriorityBadge(task.Priority)
 
-	// Title
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
+	// Title (reduce width if showing star indicator)
+	adjustedMaxTitleLen := maxTitleLen
+	if isSuggested {
+		adjustedMaxTitleLen -= 2 // Account for star indicator
 	}
-	title := util.Truncate(task.Title, maxTitleLen)
+	if adjustedMaxTitleLen < 10 {
+		adjustedMaxTitleLen = 10
+	}
+	title := util.Truncate(task.Title, adjustedMaxTitleLen)
 
 	// Tags
 	tagsStr := ""
@@ -773,8 +1144,8 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		}
 	}
 
-	// Build line
-	line := fmt.Sprintf("%s%s %s %s %s%s", cursor, statusIcon, typeIcon, priorityBadge, title, tagsStr)
+	// Build line with star indicator before cursor
+	line := fmt.Sprintf("%s%s%s %s %s %s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, tagsStr)
 	if dueStr != "" {
 		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
 	}

@@ -486,6 +486,24 @@ var (
 					Italic(true).
 					MarginTop(1)
 
+	// Suggestion styles (for Priority View smart suggestions)
+	SuggestionBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("226")). // Bright yellow
+				Padding(0, 1)
+
+	SuggestionHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("226")). // Bright yellow
+				Bold(true)
+
+	SuggestionReasonStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Italic(true)
+
+	SuggestionStarStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("226")). // Bright yellow (matches ActiveStyle)
+				Bold(true)
+
 	// Priority level styles (for priority picker and palette)
 	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 	Priority2Style = lipgloss.NewStyle().Foreground(ColorWarning)
