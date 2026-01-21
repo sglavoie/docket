@@ -419,3 +419,22 @@ type DailyReviewSelectMsg struct {
 	Task    *models.Task
 	Project *models.Project
 }
+
+// =============================================================================
+// Focus View Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowFocusViewMsg opens the focus view.
+type ShowFocusViewMsg struct{}
+
+// CloseFocusViewMsg closes the focus view.
+type CloseFocusViewMsg struct{}
+
+// FocusViewRefreshMsg requests a refresh of the focus view data.
+type FocusViewRefreshMsg struct{}
+
+// FocusViewSelectMsg navigates to a task from focus view.
+type FocusViewSelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}

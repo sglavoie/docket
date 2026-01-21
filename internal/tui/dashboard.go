@@ -261,6 +261,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowDailyReviewMsg{}
 			}
+		case "f":
+			return m, func() tea.Msg {
+				return ShowFocusViewMsg{}
+			}
 		case "ctrl+t":
 			return m, func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}

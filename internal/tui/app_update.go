@@ -199,6 +199,11 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	if m.currentView() == ViewFocusView {
+		if fv, ok := m.views.Get(ViewFocusView).(*FocusViewModel); ok && fv != nil && fv.HasPendingPrefix() {
+			return false
+		}
+	}
 	// Inbox processor handles its own q/esc to properly reload project and refresh tree
 	if m.currentView() == ViewInboxProcessor {
 		return false

@@ -61,6 +61,7 @@ const (
 	ViewRecurrenceEditor
 	ViewTextEditor
 	ViewGlobalInboxProcessor
+	ViewFocusView
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -374,6 +375,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"planning", "today", "morning review"},
 			Handler: func() tea.Msg {
 				return ShowDailyReviewMsg{}
+			},
+		},
+		{
+			Name:        "focus view",
+			Description: "View all active-flagged tasks across projects",
+			Shortcut:    "f",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"active tasks", "focus", "today tasks"},
+			Handler: func() tea.Msg {
+				return ShowFocusViewMsg{}
 			},
 		},
 		{
