@@ -237,7 +237,7 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 	}
 
 	// Build line
-	line := fmt.Sprintf("%s%s %s %s%s%s", cursor, projectStr, statusIcon, typeIcon, priorityStr, title)
+	line := fmt.Sprintf("%s%s %s %s %s%s", cursor, projectStr, statusIcon, typeIcon, priorityStr, title)
 	if contextStr != "" {
 		// Right-align context info
 		lineWidth := len(line) // Approximate, ignoring ANSI
