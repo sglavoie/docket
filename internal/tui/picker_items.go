@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // SectionInfo implements PickerItem for section selection.
@@ -139,4 +140,132 @@ func (p ProjectInfo) CountValue() int {
 // ItemID returns the project ID as its unique identifier.
 func (p ProjectInfo) ItemID() string {
 	return p.Project.ID
+}
+
+// TriggerFieldInfo wraps a workflow TriggerField with description for picker display.
+type TriggerFieldInfo struct {
+	Field       workflow.TriggerField
+	Description string
+}
+
+// FilterText returns searchable text (field name + description).
+func (t TriggerFieldInfo) FilterText() string {
+	return string(t.Field) + " " + t.Description
+}
+
+// DisplayText returns the field name with description.
+func (t TriggerFieldInfo) DisplayText() string {
+	return fmt.Sprintf("%s - %s", t.Field, t.Description)
+}
+
+// CountValue returns 0 as fields don't have counts.
+func (t TriggerFieldInfo) CountValue() int {
+	return 0
+}
+
+// ItemID returns the field name as its unique identifier.
+func (t TriggerFieldInfo) ItemID() string {
+	return string(t.Field)
+}
+
+// ActionTypeInfo wraps a workflow ActionType with description for picker display.
+type ActionTypeInfo struct {
+	ActionType  workflow.ActionType
+	Description string
+}
+
+// FilterText returns searchable text (action type + description).
+func (a ActionTypeInfo) FilterText() string {
+	return string(a.ActionType) + " " + a.Description
+}
+
+// DisplayText returns the action type with description.
+func (a ActionTypeInfo) DisplayText() string {
+	return fmt.Sprintf("%s - %s", a.ActionType, a.Description)
+}
+
+// CountValue returns 0 as action types don't have counts.
+func (a ActionTypeInfo) CountValue() int {
+	return 0
+}
+
+// ItemID returns the action type as its unique identifier.
+func (a ActionTypeInfo) ItemID() string {
+	return string(a.ActionType)
+}
+
+// TriggerFieldDescriptions maps trigger fields to human-readable descriptions.
+var TriggerFieldDescriptions = map[workflow.TriggerField]string{
+	workflow.FieldStatus:           "Current task status",
+	workflow.FieldPriority:         "Task priority level (1-5)",
+	workflow.FieldSection:          "Section name (Active, Backlog, etc.)",
+	workflow.FieldTags:             "Task tags",
+	workflow.FieldType:             "Task type (epic, story, task, bug, idea)",
+	workflow.FieldDueDays:          "Days until due (negative = overdue)",
+	workflow.FieldCreatedDays:      "Days since task creation",
+	workflow.FieldUpdatedDays:      "Days since last update",
+	workflow.FieldStatusChanged:    "Status transition (e.g., todo->done)",
+	workflow.FieldSectionChanged:   "Section transition (e.g., Backlog->Active)",
+	workflow.FieldPriorityChanged:  "Priority transition (e.g., 3->1)",
+	workflow.FieldTagAdded:         "Tag was added to task",
+	workflow.FieldTagRemoved:       "Tag was removed from task",
+	workflow.FieldCompleted:        "Task was completed or cancelled",
+	workflow.FieldReopened:         "Task was reopened",
+	workflow.FieldParentStatus:     "Parent task's status",
+	workflow.FieldParentType:       "Parent task's type",
+	workflow.FieldParentTags:       "Parent task has tag",
+	workflow.FieldLevel:            "Hierarchy depth (0 = root)",
+	workflow.FieldHasChildren:      "Task has subtasks",
+	workflow.FieldChildrenProgress: "Subtask completion percentage (0-100)",
+	workflow.FieldAllChildrenDone:  "All subtasks are complete",
+	workflow.FieldIsBlocked:        "Task has incomplete dependencies",
+	workflow.FieldBlockerCount:     "Number of incomplete blockers",
+}
+
+// ActionTypeDescriptions maps action types to human-readable descriptions.
+var ActionTypeDescriptions = map[workflow.ActionType]string{
+	workflow.ActionSetStatus:      "Change task status",
+	workflow.ActionSetPriority:    "Change task priority",
+	workflow.ActionSetSection:     "Move task to section",
+	workflow.ActionAddTag:         "Add tag to task",
+	workflow.ActionRemoveTag:      "Remove tag from task",
+	workflow.ActionSetDueRelative: "Set due date relative to now (+3d, +1w)",
+	workflow.ActionClearDue:       "Clear due date",
+	workflow.ActionSetActive:      "Set/clear active flag",
+	workflow.ActionSetPinned:      "Pin/unpin task",
+	workflow.ActionAddComment:     "Add comment to task",
+	workflow.ActionSetType:        "Change task type",
+	workflow.ActionCompleteParent: "Mark parent task as done",
+	workflow.ActionBlockParent:    "Mark parent task as blocked",
+	workflow.ActionCascadeTag:     "Add tag to all children",
+	workflow.ActionInheritTag:     "Copy tag from parent",
+	workflow.ActionNotifyParent:   "Add comment to parent task",
+}
+
+// BuildTriggerFieldItems creates picker items for all trigger fields.
+func BuildTriggerFieldItems() []TriggerFieldInfo {
+	fields := workflow.ValidTriggerFields()
+	items := make([]TriggerFieldInfo, len(fields))
+	for i, f := range fields {
+		desc := TriggerFieldDescriptions[f]
+		if desc == "" {
+			desc = string(f)
+		}
+		items[i] = TriggerFieldInfo{Field: f, Description: desc}
+	}
+	return items
+}
+
+// BuildActionTypeItems creates picker items for all action types.
+func BuildActionTypeItems() []ActionTypeInfo {
+	types := workflow.ValidActionTypes()
+	items := make([]ActionTypeInfo, len(types))
+	for i, t := range types {
+		desc := ActionTypeDescriptions[t]
+		if desc == "" {
+			desc = string(t)
+		}
+		items[i] = ActionTypeInfo{ActionType: t, Description: desc}
+	}
+	return items
 }

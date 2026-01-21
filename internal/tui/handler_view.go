@@ -52,6 +52,36 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Rules updated, just refresh the view (it's already updated internally)
 		return true, nil
 
+	case ShowWorkflowRuleCreatorMsg:
+		creator := NewWorkflowRuleCreatorModel(m.config, m.configManager)
+		m.showView(ViewWorkflowRuleCreator, creator)
+		return true, creator.Init()
+
+	case ShowWorkflowRuleEditorMsg:
+		editor := NewWorkflowRuleEditorModel(m.config, m.configManager, msg.Rule)
+		m.showView(ViewWorkflowRuleEditor, editor)
+		return true, editor.Init()
+
+	case WorkflowRuleCreatedMsg:
+		m.popView()
+		// Refresh the rules list if it's visible by replacing it in the registry
+		if m.currentView() == ViewWorkflowRules {
+			rulesView := NewWorkflowRulesModel(m.config, m.configManager)
+			rulesView.SetSize(m.width, m.height-2)
+			m.views.Register(ViewWorkflowRules, rulesView)
+		}
+		return true, nil
+
+	case WorkflowRuleEditedMsg:
+		m.popView()
+		// Refresh the rules list if it's visible by replacing it in the registry
+		if m.currentView() == ViewWorkflowRules {
+			rulesView := NewWorkflowRulesModel(m.config, m.configManager)
+			rulesView.SetSize(m.width, m.height-2)
+			m.views.Register(ViewWorkflowRules, rulesView)
+		}
+		return true, nil
+
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)

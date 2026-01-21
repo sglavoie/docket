@@ -123,6 +123,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "ctrl+D", Description: "Due date overview", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+R", Description: "Daily review", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+W", Description: "Workflow rules", Category: "Navigation", Views: views},
 
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},

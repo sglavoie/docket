@@ -207,6 +207,10 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	// Workflow rule creator/editor handle their own esc for picker overlays
+	if m.currentView() == ViewWorkflowRuleCreator || m.currentView() == ViewWorkflowRuleEditor {
+		return false
+	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		m.popView()

@@ -56,6 +56,8 @@ const (
 	ViewProjectSelector
 	ViewDailyReview
 	ViewWorkflowRules
+	ViewWorkflowRuleCreator
+	ViewWorkflowRuleEditor
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -188,10 +190,21 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "workflow rules",
 			Description: "Manage workflow automation rules",
+			Shortcut:    "ctrl+W",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"automation", "rules", "workflow"},
+			Views:       []ViewType{ViewDashboard},
 			Handler: func() tea.Msg {
 				return ShowWorkflowRulesMsg{}
+			},
+		},
+		{
+			Name:        "create workflow rule",
+			Description: "Create a new workflow automation rule",
+			Category:    CategoryActions,
+			Aliases:     []string{"new rule", "add rule", "new automation"},
+			Handler: func() tea.Msg {
+				return ShowWorkflowRuleCreatorMsg{}
 			},
 		},
 	}

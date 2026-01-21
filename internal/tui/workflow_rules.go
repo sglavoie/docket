@@ -101,6 +101,22 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmDelete = true
 			}
 			return m, nil
+
+		case "n":
+			// Create new rule
+			return m, func() tea.Msg {
+				return ShowWorkflowRuleCreatorMsg{}
+			}
+
+		case "e":
+			// Edit selected rule
+			if len(m.rules) > 0 && m.cursor < len(m.rules) {
+				rule := m.rules[m.cursor]
+				return m, func() tea.Msg {
+					return ShowWorkflowRuleEditorMsg{Rule: rule}
+				}
+			}
+			return m, nil
 		}
 	}
 
@@ -227,9 +243,9 @@ func (m *WorkflowRulesModel) View() string {
 	// Help footer
 	b.WriteString("\n\n")
 	if len(m.rules) > 0 {
-		b.WriteString(MutedStyle.Render("j/k: navigate · Space: toggle · d: delete · q: close"))
+		b.WriteString(MutedStyle.Render("j/k: navigate · Space: toggle · n: new · e: edit · d: delete · q: close"))
 	} else {
-		b.WriteString(MutedStyle.Render("q: close"))
+		b.WriteString(MutedStyle.Render("n: new rule · q: close"))
 	}
 
 	cardWidth := 70
