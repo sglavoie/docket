@@ -671,7 +671,6 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("BACKLOG", len(m.backlog), false))
 		lines = append(lines, m.renderGroup(m.backlog, currentIndex, false)...)
 		hasContent = true
 	}
