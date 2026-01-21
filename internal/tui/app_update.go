@@ -27,6 +27,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "q":
+			// Don't intercept q if there's an active text input
+			if m.hasActiveTextInput() {
+				break
+			}
 			// On dashboard, q quits the app
 			if m.currentView() == ViewDashboard {
 				m.saveProjectTreeState()
