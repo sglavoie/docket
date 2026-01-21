@@ -226,11 +226,54 @@ func parseTimeField(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// metadataKeys lists all known metadata keys for smart splitting.
+var metadataKeys = []string{
+	"id", "status", "priority", "parent", "tags", "created", "updated",
+	"completed", "due", "depends", "section", "pinned", "active", "recur",
+}
+
+// splitMetadataPairs splits metadata string into key-value pairs, handling values
+// that may contain commas (e.g., "recur: 1w:mon,wed,fri").
+// It looks for ", key:" patterns where key is a known metadata key.
+func splitMetadataPairs(metaStr string) []string {
+	var pairs []string
+	remaining := metaStr
+
+	for len(remaining) > 0 {
+		// Find the earliest occurrence of ", knownKey:" in the remaining string
+		splitIdx := -1
+		for _, key := range metadataKeys {
+			pattern := ", " + key + ":"
+			idx := strings.Index(remaining, pattern)
+			if idx != -1 && (splitIdx == -1 || idx < splitIdx) {
+				splitIdx = idx
+			}
+		}
+
+		if splitIdx == -1 {
+			// No more splits found, the rest is one pair
+			pairs = append(pairs, strings.TrimSpace(remaining))
+			break
+		}
+
+		// Add the pair before the split point
+		pairs = append(pairs, strings.TrimSpace(remaining[:splitIdx]))
+		// Continue with the rest (skip the ", ")
+		remaining = remaining[splitIdx+2:]
+	}
+
+	return pairs
+}
+
 // parseMetadata parses the metadata string and sets task fields.
 // Returns any warnings encountered during parsing.
 func parseMetadata(task *models.Task, metaStr string) []ParseWarning {
 	var warnings []ParseWarning
-	pairs := strings.Split(metaStr, ",")
+
+	// Parse key-value pairs, handling values that may contain commas (like recur: 1w:mon,wed,fri)
+	// Format: "key1: value1, key2: value2, ..."
+	// Strategy: find known keys and extract their values until the next known key
+	pairs := splitMetadataPairs(metaStr)
 	for _, pair := range pairs {
 		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
 		if len(parts) != 2 {
