@@ -207,8 +207,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case OpenParentSelectorMsg:
-		m.showView(ViewParentSelector, NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source))
-		return true, nil
+		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
+		m.showView(ViewParentSelector, selector)
+		return true, selector.Init()
 
 	case CloseParentSelectorMsg:
 		m.popView()
