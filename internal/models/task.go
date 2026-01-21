@@ -244,12 +244,12 @@ func (t *Task) Complete() {
 }
 
 // Start marks the task as in progress.
-// If the task is in the Backlog or Pending section, it is automatically moved out (auto-triage).
+// If the task is in the Inbox, Backlog, or Pending section, it is automatically moved out (auto-triage).
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
-	// Auto-triage: move out of Backlog/Pending when starting
-	if t.Section == SectionBacklog || t.Section == SectionPending {
+	// Auto-triage: move out of Inbox/Backlog/Pending when starting
+	if t.Section == SectionInbox || t.Section == SectionBacklog || t.Section == SectionPending {
 		t.Section = ""
 	}
 }
@@ -273,10 +273,11 @@ func (t *Task) Cancel() {
 	}
 }
 
-// Reopen sets the task back to todo status.
+// Reopen sets the task back to todo status and moves it to the Inbox for re-processing.
 func (t *Task) Reopen() {
 	t.Status = StatusTodo
 	t.CompletedAt = nil
+	t.Section = SectionInbox
 	t.UpdatedAt = time.Now()
 }
 

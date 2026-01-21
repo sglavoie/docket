@@ -117,16 +117,16 @@ func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 	}
 }
 
-func TestTaskReopenDoesNotAutoTriage(t *testing.T) {
+func TestTaskReopenMovesToInbox(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = "" // Already triaged out of Backlog
 	task.Status = StatusDone
 
 	task.Reopen()
 
-	// Reopen does not move back to Backlog
-	if task.Section != "" {
-		t.Errorf("expected section to remain empty after Reopen(), got %s", task.Section)
+	// Reopen moves task back to Inbox for re-processing
+	if task.Section != SectionInbox {
+		t.Errorf("expected section to be Inbox after Reopen(), got %s", task.Section)
 	}
 	if task.Status != StatusTodo {
 		t.Errorf("expected status to be todo, got %s", task.Status)
