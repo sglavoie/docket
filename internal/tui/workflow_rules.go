@@ -21,6 +21,7 @@ type WorkflowRulesModel struct {
 	height int
 
 	confirmDelete bool
+	expandedView  bool
 }
 
 // NewWorkflowRulesModel creates a new workflow rules model.
@@ -48,6 +49,16 @@ func (m *WorkflowRulesModel) Init() tea.Cmd {
 func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle expanded view mode first
+		if m.expandedView {
+			switch msg.String() {
+			case "esc", "enter", "q":
+				m.expandedView = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		if m.confirmDelete {
 			switch msg.String() {
 			case "y", "Y":
@@ -88,10 +99,17 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case " ", "enter":
+		case " ":
 			// Toggle enabled/disabled
 			if len(m.rules) > 0 {
 				return m, m.toggleCurrentRule()
+			}
+			return m, nil
+
+		case "enter":
+			// Show expanded view with full rule details
+			if len(m.rules) > 0 && m.cursor < len(m.rules) {
+				m.expandedView = true
 			}
 			return m, nil
 
@@ -174,6 +192,115 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 func (m *WorkflowRulesModel) View() string {
 	var b strings.Builder
 
+	// Expanded view mode - show full rule details
+	if m.expandedView && len(m.rules) > 0 && m.cursor < len(m.rules) {
+		rule := m.rules[m.cursor]
+
+		// Rule name
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+		b.WriteString("\n\n")
+
+		// Status
+		if rule.Enabled {
+			b.WriteString(DoneStyle.Render("● Enabled"))
+		} else {
+			b.WriteString(MutedStyle.Render("○ Disabled"))
+		}
+		b.WriteString("\n\n")
+
+		// Full summary split into triggers and actions
+		b.WriteString(FieldLabelFocusedStyle.Render("Rule:"))
+		b.WriteString("\n")
+		summary := rule.Summary()
+		maxLen := m.width - 12
+		if maxLen < 40 {
+			maxLen = 40
+		}
+
+		// Split triggers and actions at ": "
+		if colonIdx := strings.Index(summary, ": "); colonIdx != -1 {
+			triggers := summary[:colonIdx+1] // Include the colon
+			actions := summary[colonIdx+2:]  // Skip ": "
+
+			// Write triggers line with word wrap
+			for len(triggers) > maxLen {
+				breakAt := maxLen
+				for i := maxLen; i > 0; i-- {
+					if triggers[i] == ' ' {
+						breakAt = i
+						break
+					}
+				}
+				b.WriteString(triggers[:breakAt])
+				b.WriteString("\n")
+				triggers = triggers[breakAt:]
+				if len(triggers) > 0 && triggers[0] == ' ' {
+					triggers = triggers[1:]
+				}
+			}
+			b.WriteString(triggers)
+			b.WriteString("\n")
+
+			// Write actions on new line with indent and word wrap
+			indent := "    "
+			actionMaxLen := maxLen - len(indent)
+			if actionMaxLen < 20 {
+				actionMaxLen = 20
+			}
+			for len(actions) > actionMaxLen {
+				breakAt := actionMaxLen
+				for i := actionMaxLen; i > 0; i-- {
+					if actions[i] == ' ' {
+						breakAt = i
+						break
+					}
+				}
+				b.WriteString(indent)
+				b.WriteString(actions[:breakAt])
+				b.WriteString("\n")
+				actions = actions[breakAt:]
+				if len(actions) > 0 && actions[0] == ' ' {
+					actions = actions[1:]
+				}
+			}
+			b.WriteString(indent)
+			b.WriteString(actions)
+		} else {
+			// No colon found, just write as-is with word wrap
+			for len(summary) > maxLen {
+				breakAt := maxLen
+				for i := maxLen; i > 0; i-- {
+					if summary[i] == ' ' {
+						breakAt = i
+						break
+					}
+				}
+				b.WriteString(summary[:breakAt])
+				b.WriteString("\n")
+				summary = summary[breakAt:]
+				if len(summary) > 0 && summary[0] == ' ' {
+					summary = summary[1:]
+				}
+			}
+			b.WriteString(summary)
+		}
+		b.WriteString("\n\n")
+
+		b.WriteString(MutedStyle.Render("Enter/Esc: close"))
+
+		cardWidth := 70
+		if m.width-4 < cardWidth {
+			cardWidth = m.width - 4
+		}
+		config := OverlayCardConfig{
+			Title:        "Rule Details",
+			Width:        cardWidth,
+			Centered:     true,
+			NoTruncation: true,
+		}
+		return renderOverlayCard(b.String(), m.width, m.height, config)
+	}
+
 	if len(m.rules) == 0 {
 		b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
 		b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
@@ -243,7 +370,7 @@ func (m *WorkflowRulesModel) View() string {
 	// Help footer
 	b.WriteString("\n\n")
 	if len(m.rules) > 0 {
-		b.WriteString(MutedStyle.Render("j/k: navigate · Space: toggle · n: new · e: edit · d: delete · q: close"))
+		b.WriteString(MutedStyle.Render("j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"))
 	} else {
 		b.WriteString(MutedStyle.Render("n: new rule · q: close"))
 	}

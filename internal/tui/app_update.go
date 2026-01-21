@@ -211,6 +211,12 @@ func (m *AppModel) handleEscKey() bool {
 	if m.currentView() == ViewWorkflowRuleCreator || m.currentView() == ViewWorkflowRuleEditor {
 		return false
 	}
+	// Workflow rules view handles its own esc/q when in expanded view or delete confirmation
+	if m.currentView() == ViewWorkflowRules {
+		if rules, ok := m.views.Get(ViewWorkflowRules).(*WorkflowRulesModel); ok && rules != nil && (rules.expandedView || rules.confirmDelete) {
+			return false
+		}
+	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		m.popView()
