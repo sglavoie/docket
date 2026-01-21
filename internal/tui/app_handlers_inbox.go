@@ -21,6 +21,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseInboxProcessorMsg:
 		m.popView()
+		m.views.Remove(ViewInboxProcessor)
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
 			m.statusMessage = fmt.Sprintf("Inbox processing complete: %d processed, %d skipped",

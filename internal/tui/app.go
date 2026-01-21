@@ -723,6 +723,10 @@ func (m *AppModel) refreshProjectTree() {
 	}
 
 	m.saveProjectTreeState()
+
+	// Rebuild task tree to ensure parent-child relationships are current
+	m.currentProject.BuildTaskTree()
+
 	m.projectTree = NewProjectTreeModel(m.currentProject, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
@@ -732,9 +736,12 @@ func (m *AppModel) refreshProjectTree() {
 	if focusedTaskID != "" {
 		if task := m.currentProject.GetTaskByID(focusedTaskID); task != nil {
 			m.projectTree.focusedTask = task
-			m.projectTree.buildTree()
 		}
 	}
+
+	// Rebuild tree after restoring state to ensure nodes, visibility, and
+	// filter counts reflect the restored filter/sort settings
+	m.projectTree.buildTree()
 }
 
 // refreshProjectTreeWith recreates the project tree view with the given project.
@@ -747,6 +754,10 @@ func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
 	}
 
 	m.saveProjectTreeState()
+
+	// Rebuild task tree to ensure parent-child relationships are current
+	project.BuildTaskTree()
+
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
 	m.views.Register(ViewProjectTree, m.projectTree)
@@ -756,9 +767,12 @@ func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
 	if focusedTaskID != "" {
 		if task := project.GetTaskByID(focusedTaskID); task != nil {
 			m.projectTree.focusedTask = task
-			m.projectTree.buildTree()
 		}
 	}
+
+	// Rebuild tree after restoring state to ensure nodes, visibility, and
+	// filter counts reflect the restored filter/sort settings
+	m.projectTree.buildTree()
 }
 
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
