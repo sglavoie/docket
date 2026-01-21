@@ -460,6 +460,11 @@ var (
 	ActiveStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("226")) // Bright yellow
 
+	// Triaged badge style (shown in inbox processor when task will leave inbox)
+	TriagedBadgeStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning). // Orange
+				Italic(true)
+
 	// Priority view styles
 	PriorityViewTitleStyle = lipgloss.NewStyle().
 				Bold(true).

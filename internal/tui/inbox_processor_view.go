@@ -37,6 +37,12 @@ func (m *InboxProcessorModel) renderTaskDisplay(task *models.Task) string {
 		MutedStyle.Render(renderPriorityStars(task.Priority)),
 	)
 	b.WriteString(metadata)
+
+	// Show triaged indicator if task will leave inbox after save
+	if m.willLeaveInbox(task) {
+		b.WriteString(" · ")
+		b.WriteString(TriagedBadgeStyle.Render("↗ Triaged"))
+	}
 	b.WriteString("\n\n")
 
 	// Description if present

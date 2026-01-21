@@ -705,3 +705,9 @@ func (m *InboxProcessorModel) reopenTask() tea.Cmd {
 func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewInboxProcessor)
 }
+
+// willLeaveInbox returns true if the task will no longer appear in inbox after save.
+// A task leaves inbox when its section is changed from Inbox or when it's completed/cancelled.
+func (m *InboxProcessorModel) willLeaveInbox(task *models.Task) bool {
+	return task.Section != models.SectionInbox || task.IsComplete()
+}
