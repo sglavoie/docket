@@ -33,8 +33,9 @@ const (
 type ViewMode int
 
 const (
-	ViewModeActive    ViewMode = iota // Tasks not in Inbox or Backlog sections
+	ViewModeActive    ViewMode = iota // Tasks not in Inbox, Pending, or Backlog sections
 	ViewModeInbox                     // Only Inbox section tasks
+	ViewModePending                   // Only Pending section tasks
 	ViewModeBacklog                   // Only Backlog section tasks
 	ViewModeCompleted                 // Only completed tasks (done or cancelled)
 )
@@ -44,6 +45,8 @@ func (v ViewMode) String() string {
 	switch v {
 	case ViewModeInbox:
 		return "Inbox"
+	case ViewModePending:
+		return "Pending"
 	case ViewModeBacklog:
 		return "Backlog"
 	case ViewModeCompleted:

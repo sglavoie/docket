@@ -1008,8 +1008,8 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 // renderFilterBar renders the filter toggle bar with task counts.
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
-	// Count inbox, backlog, active, and completed items
-	var inboxCount, backlogCount, activeCount, completedCount int
+	// Count inbox, pending, backlog, active, and completed items
+	var inboxCount, pendingCount, backlogCount, activeCount, completedCount int
 	for _, task := range m.project.Tasks {
 		if task.IsComplete() {
 			completedCount++
@@ -1017,9 +1017,11 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		}
 		if task.Section == models.SectionInbox && task.IsRoot() {
 			inboxCount++
+		} else if task.Section == models.SectionPending && task.IsRoot() {
+			pendingCount++
 		} else if task.Section == models.SectionBacklog && task.IsRoot() {
 			backlogCount++
-		} else if task.Section != models.SectionInbox && task.Section != models.SectionBacklog {
+		} else if task.Section != models.SectionInbox && task.Section != models.SectionPending && task.Section != models.SectionBacklog {
 			activeCount++
 		}
 	}
@@ -1041,6 +1043,14 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, ViewModeInboxStyle.Render(inboxLabel))
 	} else {
 		parts = append(parts, MutedStyle.Render(inboxLabel))
+	}
+
+	// Pending view
+	pendingLabel := fmt.Sprintf("Pending[%d]", pendingCount)
+	if m.viewMode == ViewModePending {
+		parts = append(parts, ViewModePendingStyle.Render(pendingLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(pendingLabel))
 	}
 
 	// Backlog view
@@ -1296,6 +1306,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 		base = "Active"
 	case ViewModeInbox:
 		base = "Inbox"
+	case ViewModePending:
+		base = "Pending"
 	case ViewModeBacklog:
 		base = "Backlog"
 	case ViewModeCompleted:

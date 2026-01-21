@@ -126,13 +126,18 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		// Apply view mode section logic
 		switch m.viewMode {
 		case ViewModeActive:
-			// Hide Inbox and Backlog tasks
-			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+			// Hide Inbox, Pending, and Backlog tasks
+			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionPending || node.Task.Section == models.SectionBacklog {
 				return false
 			}
 		case ViewModeInbox:
 			// Only show Inbox tasks
 			if node.Task.Section != models.SectionInbox {
+				return false
+			}
+		case ViewModePending:
+			// Only show Pending tasks
+			if node.Task.Section != models.SectionPending {
 				return false
 			}
 		case ViewModeBacklog:
@@ -515,11 +520,13 @@ func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]
 func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 	switch m.viewMode {
 	case ViewModeActive:
-		return []string{models.SectionInbox, models.SectionBacklog}
+		return []string{models.SectionInbox, models.SectionPending, models.SectionBacklog}
 	case ViewModeInbox:
-		return []string{models.SectionBacklog, "Active"}
+		return []string{models.SectionPending, models.SectionBacklog, "Active"}
+	case ViewModePending:
+		return []string{models.SectionInbox, models.SectionBacklog, "Active"}
 	case ViewModeBacklog:
-		return []string{models.SectionInbox, "Active"}
+		return []string{models.SectionInbox, models.SectionPending, "Active"}
 	}
 	return nil
 }

@@ -315,6 +315,12 @@ var (
 				Bold(true).
 				Padding(0, 1)
 
+	ViewModePendingStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("214")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
 	ViewModeBacklogStyle = lipgloss.NewStyle().
 				Background(lipgloss.Color("241")).
 				Foreground(lipgloss.Color("15")).

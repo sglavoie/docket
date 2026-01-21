@@ -251,6 +251,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
+		case "p":
+			// Go to Pending view
+			m.viewMode = ViewModePending
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
 		case "c":
 			// Go to Completed view
 			m.viewMode = ViewModeCompleted
@@ -270,6 +277,10 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			// Send to Inbox section
 			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
 			return m, cmd
+		case "P":
+			// Send to Pending section
+			_, cmd := m.sendTasksToSection(models.SectionPending, visible)
+			return m, cmd
 		case "d":
 			// Cycle due date filter
 			m.filterDueDate = (m.filterDueDate + 1) % 5
@@ -278,8 +289,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.clampCursor()
 			return m, nil
 		case "v":
-			// Cycle view modes
-			m.viewMode = (m.viewMode + 1) % 4
+			// Cycle view modes (including Completed)
+			m.viewMode = (m.viewMode + 1) % 5
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()

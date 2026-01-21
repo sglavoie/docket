@@ -233,14 +233,16 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 
 		// Views (g prefix)
-		Keybinding{Key: "gv", Description: "Cycle view (Active/Inbox/Backlog/Completed)", Category: "Views", Views: views},
+		Keybinding{Key: "gv", Description: "Cycle view (Active/Inbox/Pending/Backlog/Completed)", Category: "Views", Views: views},
 		Keybinding{Key: "ga", Description: "Go to Active view", Category: "Views", Views: views},
-		Keybinding{Key: "gb", Description: "Go to Backlog view", Category: "Views", Views: views},
 		Keybinding{Key: "gi", Description: "Go to Inbox view", Category: "Views", Views: views},
+		Keybinding{Key: "gp", Description: "Go to Pending view", Category: "Views", Views: views},
+		Keybinding{Key: "gb", Description: "Go to Backlog view", Category: "Views", Views: views},
 		Keybinding{Key: "gc", Description: "Go to Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "gA", Description: "Send task(s) to Active", Category: "Views", Views: views},
-		Keybinding{Key: "gB", Description: "Send task(s) to Backlog", Category: "Views", Views: views},
 		Keybinding{Key: "gI", Description: "Send task(s) to Inbox", Category: "Views", Views: views},
+		Keybinding{Key: "gP", Description: "Send task(s) to Pending", Category: "Views", Views: views},
+		Keybinding{Key: "gB", Description: "Send task(s) to Backlog", Category: "Views", Views: views},
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
 
 		// Filters
@@ -353,6 +355,7 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 
 		// Operations
 		Keybinding{Key: "S", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "p", Description: "Send to Pending section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
 		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
 		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
