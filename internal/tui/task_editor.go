@@ -386,6 +386,23 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case ParentSelectedMsg:
+		if msg.Source == ViewTaskEditor {
+			m.parentID = msg.ParentID
+			if msg.ParentID == nil {
+				m.parentCursor = 0
+			} else {
+				for i, p := range m.validParents {
+					if p.ID == *msg.ParentID {
+						m.parentCursor = i + 1
+						break
+					}
+				}
+			}
+			m.hasChanges = m.checkChanges()
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -442,6 +459,19 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Task:        m.task,
 					Project:     m.project,
 					CurrentTags: m.tags,
+				}
+			}
+
+		case "/":
+			// Open parent selector modal when on parent field
+			if m.focusIndex == 2 {
+				return m, func() tea.Msg {
+					return OpenParentSelectorMsg{
+						ValidParents: m.validParents,
+						CurrentID:    m.parentID,
+						AllowNone:    true,
+						Source:       ViewTaskEditor,
+					}
 				}
 			}
 
