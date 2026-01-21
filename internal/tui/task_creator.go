@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
@@ -23,9 +22,9 @@ type TaskCreatorModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	// Form fields
-	titleInput textarea.Model
-	descInput  textarea.Model
+	// Form fields (title and description use popup editor)
+	titleValue string
+	descValue  string
 	tagsInput  textinput.Model
 
 	// Selectable fields
@@ -54,15 +53,7 @@ type TaskCreatorModel struct {
 func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *config.Manager, suggestedParent *models.Task) *TaskCreatorModel {
 	factory := DefaultFormFieldFactory()
 
-	titleInput := factory.NewTitleInputFocused("Task title")
-	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
-
 	tagsInput := factory.NewTextInput("tag1, tag2, tag3")
-
-	descInput := factory.NewDescriptionInput("Description (optional)")
-	descInput.SetHeight(4)
-	descInput.CharLimit = 5000
-	descInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -83,8 +74,8 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		project:          project,
 		config:           cfg,
 		configManager:    manager,
-		titleInput:       titleInput,
-		descInput:        descInput,
+		titleValue:       "",
+		descValue:        "",
 		tagsInput:        tagsInput,
 		taskType:         models.TaskTypeTask,
 		typeCursor:       0,
@@ -152,13 +143,11 @@ func (m *TaskCreatorModel) updateValidParents() {
 func (m *TaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextarea(&m.titleInput, width)
 	formFactory.ResizeTextInput(&m.tagsInput, width)
-	formFactory.ResizeTextarea(&m.descInput, width)
 }
 
 func (m *TaskCreatorModel) Init() tea.Cmd {
-	return textarea.Blink
+	return nil
 }
 
 func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -191,6 +180,16 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case TextEditorDoneMsg:
+		if !msg.Cancelled {
+			if msg.FieldName == "title" {
+				m.titleValue = msg.Value
+			} else if msg.FieldName == "description" {
+				m.descValue = msg.Value
+			}
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
@@ -214,12 +213,25 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			if m.focusIndex == 7 {
-				// In description, allow newlines
-				m.descInput, cmd = m.descInput.Update(msg)
-				return m, cmd
+			if m.focusIndex == 0 {
+				// Open title editor popup
+				return m, func() tea.Msg {
+					return ShowTextEditorMsg{
+						FieldName:    "title",
+						CurrentValue: m.titleValue,
+					}
+				}
 			}
-			// Move to next field or submit if on last navigable field
+			if m.focusIndex == 7 {
+				// Open description editor popup
+				return m, func() tea.Msg {
+					return ShowTextEditorMsg{
+						FieldName:    "description",
+						CurrentValue: m.descValue,
+					}
+				}
+			}
+			// Move to next field for other fields
 			if m.focusIndex < 7 {
 				m.blurCurrentField()
 				m.focusIndex++
@@ -328,38 +340,23 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update the focused input
-	switch m.focusIndex {
-	case 0:
-		m.titleInput, cmd = m.titleInput.Update(msg)
-	case 6: // Tags
+	// Update the focused input (only tags uses inline text input now)
+	if m.focusIndex == 6 {
 		m.tagsInput, cmd = m.tagsInput.Update(msg)
-	case 7: // Description
-		m.descInput, cmd = m.descInput.Update(msg)
 	}
 
 	return m, cmd
 }
 
 func (m *TaskCreatorModel) blurCurrentField() {
-	switch m.focusIndex {
-	case 0:
-		m.titleInput.Blur()
-	case 6: // Tags
+	if m.focusIndex == 6 {
 		m.tagsInput.Blur()
-	case 7: // Description
-		m.descInput.Blur()
 	}
 }
 
 func (m *TaskCreatorModel) focusCurrentField() {
-	switch m.focusIndex {
-	case 0:
-		m.titleInput.Focus()
-	case 6: // Tags
+	if m.focusIndex == 6 {
 		m.tagsInput.Focus()
-	case 7: // Description
-		m.descInput.Focus()
 	}
 }
 
@@ -383,9 +380,7 @@ func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
 
 func (m *TaskCreatorModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		// Replace newlines with spaces since titles should be single logical lines
-		title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
-		title = strings.TrimSpace(title)
+		title := strings.TrimSpace(m.titleValue)
 		if title == "" {
 			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
 		}
@@ -396,7 +391,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			ShortID:     m.project.GetNextShortID(),
 			Type:        m.taskType,
 			Title:       title,
-			Description: strings.TrimSpace(m.descInput.Value()),
+			Description: strings.TrimSpace(m.descValue),
 			Status:      models.StatusTodo,
 			Priority:    m.priority,
 			ParentID:    m.parentID,
@@ -441,15 +436,25 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 func (m *TaskCreatorModel) View() string {
 	var b strings.Builder
 
-	// Title input (textarea spans 2 lines)
-	titleLabel := "Title:\n"
+	// Title field (single line, truncated, Enter to edit)
+	titleLabel := "Title: "
 	if m.focusIndex == 0 {
-		titleLabel = FieldLabelFocusedStyle.Render("Title:\n")
+		titleLabel = FieldLabelFocusedStyle.Render("Title: ")
 	} else {
-		titleLabel = FieldLabelStyle.Render("Title:\n")
+		titleLabel = FieldLabelStyle.Render("Title: ")
 	}
 	b.WriteString(titleLabel)
-	b.WriteString(m.titleInput.View())
+	titleDisplay := m.titleValue
+	if titleDisplay == "" {
+		titleDisplay = MutedStyle.Render("(press Enter to edit)")
+	} else {
+		titleDisplay = util.Truncate(titleDisplay, 50)
+	}
+	if m.focusIndex == 0 {
+		b.WriteString(SelectorOptionSelectedStyle.Render(titleDisplay))
+	} else {
+		b.WriteString(titleDisplay)
+	}
 	b.WriteString("\n\n")
 
 	// Type selector
@@ -606,15 +611,27 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString(m.tagsInput.View())
 	b.WriteString("\n\n")
 
-	// Description textarea
-	descLabel := "Description:\n"
+	// Description field (single line, truncated, Enter to edit)
+	descLabel := "Description: "
 	if m.focusIndex == 7 {
-		descLabel = FieldLabelFocusedStyle.Render("Description:\n")
+		descLabel = FieldLabelFocusedStyle.Render("Description: ")
 	} else {
-		descLabel = FieldLabelStyle.Render("Description:\n")
+		descLabel = FieldLabelStyle.Render("Description: ")
 	}
 	b.WriteString(descLabel)
-	b.WriteString(m.descInput.View())
+	descDisplay := m.descValue
+	if descDisplay == "" {
+		descDisplay = MutedStyle.Render("(press Enter to edit)")
+	} else {
+		// Replace newlines with spaces for display and truncate
+		descDisplay = strings.ReplaceAll(descDisplay, "\n", " ")
+		descDisplay = util.Truncate(descDisplay, 50)
+	}
+	if m.focusIndex == 7 {
+		b.WriteString(SelectorOptionSelectedStyle.Render(descDisplay))
+	} else {
+		b.WriteString(descDisplay)
+	}
 
 	// Error display
 	if m.err != nil {
@@ -624,7 +641,7 @@ func (m *TaskCreatorModel) View() string {
 
 	// Help footer
 	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: options · /: search parents · Ctrl+S: save · Esc: cancel"))
+	b.WriteString(MutedStyle.Render("Tab: fields · Enter: edit text · ←/→: options · /: search parents · Ctrl+S: save · Esc: cancel"))
 
 	// Wrap in overlay card
 	cardWidth := m.width - 4

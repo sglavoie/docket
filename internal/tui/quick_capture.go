@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/sglavoie/tt/internal/models"
@@ -17,7 +17,7 @@ import (
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
 	project *models.Project
-	input   textinput.Model
+	input   textarea.Model
 	err     error
 	width   int
 	height  int
@@ -35,15 +35,18 @@ type quickCaptureResult struct {
 
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
-	input := textinput.New()
+	input := textarea.New()
 	input.Placeholder = "Task title !priority #tag @due ~recur >parent"
-	input.Focus()
 	input.CharLimit = 200
-	input.Width = 50
+	input.SetHeight(3)
+	input.ShowLineNumbers = false
+	input.SetPromptFunc(0, func(lineIdx int) string { return "" })
+	input.Focus()
 
 	return &QuickCaptureModel{
 		project: project,
 		input:   input,
+		width:   80, // sensible default until SetSize is called
 	}
 }
 
@@ -51,11 +54,12 @@ func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
 func (m *QuickCaptureModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	m.input.Width = min(width-10, 60)
+	// Use same resize logic as task_creator
+	formFactory.ResizeTextarea(&m.input, width)
 }
 
 func (m *QuickCaptureModel) Init() tea.Cmd {
-	return textinput.Blink
+	return textarea.Blink
 }
 
 func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -77,7 +81,6 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *QuickCaptureModel) View() string {
 	var b strings.Builder
-
 	b.WriteString(m.input.View())
 	b.WriteString("\n\n")
 
@@ -90,9 +93,10 @@ func (m *QuickCaptureModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
 
-	cardWidth := 60
-	if m.width-4 < cardWidth {
-		cardWidth = m.width - 4
+	// Same card width calculation as task_creator
+	cardWidth := m.width - 4
+	if cardWidth > 80 {
+		cardWidth = 80
 	}
 	config := OverlayCardConfig{
 		Title:        "Quick Capture",
@@ -199,7 +203,9 @@ func resolveParent(ref string, project *models.Project) *models.Task {
 
 func (m *QuickCaptureModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		input := strings.TrimSpace(m.input.Value())
+		// Replace newlines with spaces since this is a single task title
+		input := strings.ReplaceAll(m.input.Value(), "\n", " ")
+		input = strings.TrimSpace(input)
 		if input == "" {
 			m.err = fmt.Errorf("task title cannot be empty")
 			return nil

@@ -55,8 +55,9 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 		cardWidth = 20
 	}
 
-	// OverlayCardStyle has Border (2 chars) + Padding(1, 2) (4 chars horizontal) = 6 chars total
-	contentWidth := cardWidth - 6
+	// OverlayCardStyle has Border (2 chars) added to Width() value
+	// Padding is inside the Width() value, not added to it
+	contentWidth := cardWidth - 2
 
 	// Build the styled content with subtitle if present
 	var fullContent strings.Builder
@@ -84,7 +85,7 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 	// Render the content in a box
 	var rendered string
 	if config.NoTruncation {
-		// For forms, use Width() to let lipgloss handle the box sizing
+		// For forms, use Width() to set the box size
 		rendered = OverlayCardStyle.Width(contentWidth).Render(fullContent.String())
 	} else {
 		// For pre-formatted content (split-panes, lists), don't use Width()

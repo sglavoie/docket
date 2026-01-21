@@ -397,8 +397,68 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// so it can update the recurrence pattern
 		cmd := m.views.Update(m.currentView(), msg)
 		return true, cmd
+
+	case ShowTextEditorMsg:
+		editor := NewTextEditorModel(msg.FieldName, msg.CurrentValue)
+		m.showView(ViewTextEditor, editor)
+		return true, editor.Init()
+
+	case TextEditorDoneMsg:
+		m.popView()
+		// Forward the message to the parent view (task creator or task editor)
+		// so it can update the title/description
+		cmd := m.views.Update(m.currentView(), msg)
+		return true, cmd
+
+	case TextEditorExternalMsg:
+		return m.handleTextEditorExternal(msg)
+
+	case TextEditorExternalDoneMsg:
+		// Forward to text editor view to update its textarea
+		cmd := m.views.Update(m.currentView(), msg)
+		return true, cmd
 	}
 	return false, nil
+}
+
+// handleTextEditorExternal opens an external editor for text field editing.
+func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, tea.Cmd) {
+	tmpFile, err := os.CreateTemp("", "tt-text-*.md")
+	if err != nil {
+		return true, errorCmd("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpFile.WriteString(msg.CurrentValue)
+	tmpFile.Close()
+
+	editor := m.config.Editor
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "code"
+	}
+
+	var c *exec.Cmd
+	if editor == "code" {
+		c = exec.Command(editor, "--wait", tmpPath)
+	} else {
+		c = exec.Command(editor, tmpPath)
+	}
+
+	fieldName := msg.FieldName
+	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			os.Remove(tmpPath)
+			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
+		}
+		content, readErr := os.ReadFile(tmpPath)
+		os.Remove(tmpPath)
+		if readErr != nil {
+			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
+		}
+		return TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Cancelled: false}
+	})
 }
 
 // handleGlowView opens task in glow pager.

@@ -58,9 +58,10 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Calculate inner content width matching renderOverlayCard:
+	// Calculate inner content width for split-pane overlay:
 	// cardWidth = viewWidth - 4 (margin)
-	// content width = cardWidth - 6 (border 2 + padding 4) = viewWidth - 10
+	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
+	// usable text area = Width - 4 (padding inside) = viewWidth - 10
 	innerWidth := width - 10
 	if innerWidth < 60 {
 		innerWidth = 60
