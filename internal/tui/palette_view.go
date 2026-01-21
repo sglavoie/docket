@@ -225,8 +225,31 @@ func (m *CommandPaletteModel) renderActionList() string {
 		contentWidth = 40
 	}
 
-	for i, action := range m.availableActions {
-		line := m.renderActionItem(action, i == m.actionCursor, contentWidth)
+	// Calculate max visible items based on pane height
+	paneHeight := m.height - 10
+	if paneHeight < 5 {
+		paneHeight = 5
+	}
+	maxVisible := paneHeight - 2 // Account for item description header
+	if maxVisible < 3 {
+		maxVisible = 3
+	}
+
+	// Calculate scroll offset to keep cursor visible
+	if m.actionCursor < m.actionScrollOffset {
+		m.actionScrollOffset = m.actionCursor
+	} else if m.actionCursor >= m.actionScrollOffset+maxVisible {
+		m.actionScrollOffset = m.actionCursor - maxVisible + 1
+	}
+
+	// Render only visible items
+	endIdx := m.actionScrollOffset + maxVisible
+	if endIdx > len(m.availableActions) {
+		endIdx = len(m.availableActions)
+	}
+
+	for i := m.actionScrollOffset; i < endIdx; i++ {
+		line := m.renderActionItem(m.availableActions[i], i == m.actionCursor, contentWidth)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -404,8 +427,8 @@ func (m *CommandPaletteModel) renderItemList() string {
 		b.WriteString("\n\n")
 	}
 
-	// Calculate pane height (must match View's paneHeight calculation)
-	paneHeight := m.height - 6
+	// Calculate pane height (must match View's paneHeight calculation: m.height - 10)
+	paneHeight := m.height - 10
 	if paneHeight < 5 {
 		paneHeight = 5
 	}

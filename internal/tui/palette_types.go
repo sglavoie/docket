@@ -151,10 +151,11 @@ type CommandPaletteModel struct {
 	scrollAnchor int // When >= 0, forces scroll to position this item at top of view, then resets to -1
 
 	// Action mode state - when true, showing inline actions for selected item
-	actionMode       bool
-	actionCursor     int
-	availableActions []PaletteAction
-	actionItem       PaletteItem // The item whose actions are being shown
+	actionMode         bool
+	actionCursor       int
+	actionScrollOffset int
+	availableActions   []PaletteAction
+	actionItem         PaletteItem // The item whose actions are being shown
 
 	// Dimensions
 	width        int

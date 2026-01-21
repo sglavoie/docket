@@ -59,6 +59,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			if len(actions) > 0 {
 				m.actionMode = true
 				m.actionCursor = 0
+				m.actionScrollOffset = 0
 				m.availableActions = actions
 				m.actionItem = PaletteItem{
 					Name:        fmt.Sprintf("%d tasks selected", len(m.selectedTasks)),
@@ -76,6 +77,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 				if len(actions) > 0 {
 					m.actionMode = true
 					m.actionCursor = 0
+					m.actionScrollOffset = 0
 					m.availableActions = actions
 					m.actionItem = item
 					return m, nil
