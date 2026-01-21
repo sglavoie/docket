@@ -75,11 +75,12 @@ type treeRefreshMsg struct{}
 
 // TreeNode represents a node in the task tree.
 type TreeNode struct {
-	Task          *models.Task
-	Level         int
-	Expanded      bool
-	Visible       bool
-	IsContextNode bool // True if visible only to show hierarchy context (parent in different section)
+	Task           *models.Task
+	Level          int
+	Expanded       bool
+	Visible        bool
+	IsContextNode  bool  // True if visible only to show hierarchy context (parent in different section)
+	MatchPositions []int // Match positions within title for search highlighting
 }
 
 // ProjectTreeModel represents the project tree view.

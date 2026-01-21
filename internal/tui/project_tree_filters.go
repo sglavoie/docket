@@ -269,6 +269,17 @@ func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
 	return false
 }
 
+// getSearchMatchPositions returns match positions for the title if there's a search query.
+// This is called during rendering to get positions for highlighting.
+func (m *ProjectTreeModel) getSearchMatchPositions(task *models.Task) []int {
+	if m.SearchQuery() == "" {
+		return nil
+	}
+	query := strings.TrimSpace(m.SearchQuery())
+	_, positions := fuzzy.ScoreTermsWithPositions(task.Title, query)
+	return positions
+}
+
 func (m *ProjectTreeModel) hasMatchingDescendant(task *models.Task) bool {
 	for _, child := range task.Children {
 		if m.matchesSearch(child) || m.hasMatchingDescendant(child) {

@@ -757,7 +757,23 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	if availableTitleWidth < 10 {
 		availableTitleWidth = 10
 	}
-	title := titleStyle.Render(util.Truncate(task.Title, availableTitleWidth))
+	truncatedTitle := util.Truncate(task.Title, availableTitleWidth)
+
+	// Apply search highlighting if there's an active search query
+	var title string
+	if positions := m.getSearchMatchPositions(task); len(positions) > 0 {
+		// Filter positions to only include those within the truncated title
+		titleRunes := []rune(truncatedTitle)
+		var validPositions []int
+		for _, p := range positions {
+			if p < len(titleRunes) {
+				validPositions = append(validPositions, p)
+			}
+		}
+		title = HighlightText(truncatedTitle, validPositions, titleStyle)
+	} else {
+		title = titleStyle.Render(truncatedTitle)
+	}
 
 	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
@@ -849,7 +865,23 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	if task.Status == models.StatusCancelled && !node.IsContextNode {
 		titleStyle = CancelledStyle
 	}
-	title := titleStyle.Render(util.Truncate(task.Title, m.width-node.Level*2-42))
+	truncatedTitle := util.Truncate(task.Title, m.width-node.Level*2-42)
+
+	// Apply search highlighting if there's an active search query
+	var title string
+	if positions := m.getSearchMatchPositions(task); len(positions) > 0 {
+		// Filter positions to only include those within the truncated title
+		titleRunes := []rune(truncatedTitle)
+		var validPositions []int
+		for _, p := range positions {
+			if p < len(titleRunes) {
+				validPositions = append(validPositions, p)
+			}
+		}
+		title = HighlightText(truncatedTitle, validPositions, titleStyle)
+	} else {
+		title = titleStyle.Render(truncatedTitle)
+	}
 
 	// Progress for parent tasks (only show if has non-note children)
 	progress := ""

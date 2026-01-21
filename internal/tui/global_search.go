@@ -15,12 +15,18 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// filteredSearchResult holds a search result with match positions for highlighting.
+type filteredSearchResult struct {
+	result         models.SearchResult
+	titlePositions []int // Match positions within the title for highlighting
+}
+
 // GlobalSearchModel provides global search across all projects.
 type GlobalSearchModel struct {
 	config   *config.Config
 	projects []*models.Project
-	allTasks []models.SearchResult // flattened list of all tasks with project refs
-	filtered []models.SearchResult // tasks matching current query
+	allTasks []models.SearchResult  // flattened list of all tasks with project refs
+	filtered []filteredSearchResult // tasks matching current query with highlight positions
 	cursor   int
 
 	// Input for filtering
@@ -116,7 +122,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-				result := m.filtered[m.cursor]
+				result := m.filtered[m.cursor].result
 				return m, func() tea.Msg {
 					return GlobalSearchSelectMsg{
 						Task:    result.Task,
@@ -173,17 +179,22 @@ func (m *GlobalSearchModel) filterTasks() {
 		return
 	}
 
-	// Score each task and collect matches
+	// Score each task and collect matches with title positions
 	type scoredResult struct {
-		result models.SearchResult
-		score  int
+		result         models.SearchResult
+		score          int
+		titlePositions []int
 	}
 	var scored []scoredResult
 
 	for _, result := range m.allTasks {
-		score := m.scoreTask(result.Task, query)
+		score, titlePositions := m.scoreTask(result.Task, query)
 		if score > 0 {
-			scored = append(scored, scoredResult{result: result, score: score})
+			scored = append(scored, scoredResult{
+				result:         result,
+				score:          score,
+				titlePositions: titlePositions,
+			})
 		}
 	}
 
@@ -192,10 +203,13 @@ func (m *GlobalSearchModel) filterTasks() {
 		return scored[i].score > scored[j].score
 	})
 
-	// Extract sorted results
-	m.filtered = make([]models.SearchResult, len(scored))
+	// Extract sorted results with positions
+	m.filtered = make([]filteredSearchResult, len(scored))
 	for i, s := range scored {
-		m.filtered[i] = s.result
+		m.filtered[i] = filteredSearchResult{
+			result:         s.result,
+			titlePositions: s.titlePositions,
+		}
 	}
 
 	// Reset cursor if out of bounds
@@ -207,11 +221,12 @@ func (m *GlobalSearchModel) filterTasks() {
 	}
 }
 
-// scoreTask returns a fuzzy match score for a task against the query.
-// Returns 0 if no match, higher scores indicate better matches.
-func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) int {
+// scoreTask returns a fuzzy match score for a task against the query,
+// along with match positions within the title for highlighting.
+// Returns 0 and nil if no match, higher scores indicate better matches.
+func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) (int, []int) {
 	// Score against title (weighted higher)
-	titleScore := fuzzy.ScoreTerms(task.Title, query)
+	titleScore, titlePositions := fuzzy.ScoreTermsWithPositions(task.Title, query)
 	if titleScore > 0 {
 		titleScore *= 2 // Title matches are more important
 	}
@@ -219,11 +234,11 @@ func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) int {
 	// Score against description
 	descScore := fuzzy.ScoreTerms(task.Description, query)
 
-	// Return the best score
+	// Return the best score with title positions (for highlighting)
 	if titleScore > descScore {
-		return titleScore
+		return titleScore, titlePositions
 	}
-	return descScore
+	return descScore, nil // No title highlighting if description matched better
 }
 
 func (m *GlobalSearchModel) View() string {
@@ -316,7 +331,8 @@ func (m *GlobalSearchModel) renderTaskList() string {
 	}
 
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
-		result := m.filtered[i]
+		fr := m.filtered[i]
+		result := fr.result
 		task := result.Task
 
 		// Cursor indicator
@@ -350,15 +366,44 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		}
 		title := util.Truncate(task.Title, maxTitleLen)
 
+		// Adjust positions for truncated title and apply highlighting
+		var titleRendered string
+		if len(fr.titlePositions) > 0 {
+			// Filter positions to only include those within the truncated title
+			titleRunes := []rune(title)
+			var validPositions []int
+			for _, p := range fr.titlePositions {
+				if p < len(titleRunes) {
+					validPositions = append(validPositions, p)
+				}
+			}
+			titleRendered = HighlightText(title, validPositions, NormalStyle)
+		} else {
+			titleRendered = title
+		}
+
 		// Build line and verify total width doesn't exceed listWidth
-		line := prefix + title
+		line := prefix + titleRendered
 		lineWidth := lipgloss.Width(line)
 		if lineWidth > m.listWidth {
-			// Truncate title further if still too wide
+			// Truncate title further if still too wide (recalculate without highlighting)
 			excess := lineWidth - m.listWidth + 3
 			if len(title) > excess {
 				title = util.Truncate(task.Title, maxTitleLen-excess)
-				line = prefix + title
+				// Re-apply highlighting with new truncated title
+				if len(fr.titlePositions) > 0 {
+					titleRunes := []rune(title)
+					var validPositions []int
+					for _, p := range fr.titlePositions {
+						if p < len(titleRunes) {
+							validPositions = append(validPositions, p)
+						}
+					}
+					titleRendered = HighlightText(title, validPositions, NormalStyle)
+				} else {
+					titleRendered = title
+				}
+				line = prefix + titleRendered
 			}
 		}
 
@@ -379,7 +424,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		return MutedStyle.Render("No task selected.")
 	}
 
-	result := m.filtered[m.cursor]
+	result := m.filtered[m.cursor].result
 	task := result.Task
 	project := result.Project
 	var b strings.Builder

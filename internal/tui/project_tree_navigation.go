@@ -27,6 +27,24 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 			m.cursor = len(visible) - 1
 		}
 		return true, nil
+	case "left":
+		// Cycle backward through views: Active -> Backlog -> Inbox -> Active
+		// Skip if sidebar is focused (handled by handleSidebarKeys)
+		if !m.sidebarFocused {
+			m.viewMode = (m.viewMode + 2) % 3
+			m.updateVisibility()
+			m.clampCursor()
+			return true, nil
+		}
+	case "right":
+		// Cycle forward through views: Active -> Inbox -> Backlog -> Active
+		// Skip if sidebar is focused (handled by handleSidebarKeys)
+		if !m.sidebarFocused {
+			m.viewMode = (m.viewMode + 1) % 3
+			m.updateVisibility()
+			m.clampCursor()
+			return true, nil
+		}
 	}
 	return false, nil
 }

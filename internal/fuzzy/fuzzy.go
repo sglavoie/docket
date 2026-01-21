@@ -150,12 +150,17 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 	patternIdx := 0
 	score := 0
 	prevMatchIdx := -2
+	firstMatchIdx := -1
 	var positions []int
 
 	for textIdx := 0; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
 		if text[textIdx] == pattern[patternIdx] {
 			positions = append(positions, textIdx)
 			matchScore := 1
+
+			if firstMatchIdx == -1 {
+				firstMatchIdx = textIdx
+			}
 
 			if textIdx == prevMatchIdx+1 {
 				matchScore += 3
@@ -178,6 +183,12 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 	}
 
 	if patternIdx < len(pattern) {
+		return 0, nil
+	}
+
+	// Reject matches that are too scattered (span > 3x pattern length)
+	matchSpan := prevMatchIdx - firstMatchIdx + 1
+	if matchSpan > len(pattern)*3 {
 		return 0, nil
 	}
 
@@ -205,11 +216,17 @@ func scoreSubsequence(text, pattern []rune) int {
 	patternIdx := 0
 	score := 0
 	prevMatchIdx := -2 // Use -2 so first match at 0 isn't considered consecutive
+	firstMatchIdx := -1
 
 	for textIdx := 0; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
 		if text[textIdx] == pattern[patternIdx] {
 			// Base score for match
 			matchScore := 1
+
+			// Track first match position
+			if firstMatchIdx == -1 {
+				firstMatchIdx = textIdx
+			}
 
 			// Consecutive match bonus
 			if textIdx == prevMatchIdx+1 {
@@ -236,6 +253,12 @@ func scoreSubsequence(text, pattern []rune) int {
 
 	// Check if entire pattern was matched
 	if patternIdx < len(pattern) {
+		return 0
+	}
+
+	// Reject matches that are too scattered (span > 3x pattern length)
+	matchSpan := prevMatchIdx - firstMatchIdx + 1
+	if matchSpan > len(pattern)*3 {
 		return 0
 	}
 

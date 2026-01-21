@@ -10,8 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// HighlightStyle is used to highlight matched characters in search results.
-var HighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight).Bold(true)
+// Note: HighlightStyle and HighlightText are defined in highlight.go
 
 // View implements tea.Model.
 func (m *CommandPaletteModel) View() string {
@@ -753,34 +752,6 @@ func getDueDateIndicator(task *models.Task) (string, int) {
 	return "", 0
 }
 
-// highlightText renders text with certain character positions highlighted.
-// Positions are rune indices (0-based) that should be highlighted.
-func highlightText(text string, positions []int, baseStyle lipgloss.Style) string {
-	if len(positions) == 0 {
-		return baseStyle.Render(text)
-	}
-
-	// Create a set for quick lookup
-	posSet := make(map[int]struct{})
-	for _, p := range positions {
-		posSet[p] = struct{}{}
-	}
-
-	var result strings.Builder
-	runes := []rune(text)
-
-	for i, r := range runes {
-		char := string(r)
-		if _, highlight := posSet[i]; highlight {
-			result.WriteString(HighlightStyle.Render(char))
-		} else {
-			result.WriteString(baseStyle.Render(char))
-		}
-	}
-
-	return result.String()
-}
-
 // renderItemContentWithHighlight renders item content with match highlighting on the name.
 func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, namePositions []int, maxWidth int) (string, int) {
 	var content strings.Builder
@@ -827,7 +798,7 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 		}
 		truncatedPositions = validPositions
 	}
-	content.WriteString(highlightText(name, truncatedPositions, BoldStyle))
+	content.WriteString(HighlightText(name, truncatedPositions, BoldStyle))
 	totalLen += len([]rune(name))
 
 	// Description (dimmed, if space allows)

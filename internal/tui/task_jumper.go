@@ -13,11 +13,17 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// filteredTask holds a task with its match positions for highlighting.
+type filteredTask struct {
+	task           *models.Task
+	titlePositions []int // Match positions within the title for highlighting
+}
+
 // TaskJumperModel provides fuzzy-find navigation to tasks.
 type TaskJumperModel struct {
 	project  *models.Project
 	tasks    []*models.Task // Flat list of all tasks
-	filtered []*models.Task // Tasks matching current query
+	filtered []filteredTask // Tasks matching current query with highlight positions
 	cursor   int            // Currently selected task index
 
 	// Input for filtering
@@ -44,7 +50,11 @@ func NewTaskJumperModel(project *models.Project) *TaskJumperModel {
 		searchInput: searchInput,
 		cursor:      0,
 	}
-	m.filtered = m.tasks
+	// Initialize filtered with all tasks (no highlighting when no query)
+	m.filtered = make([]filteredTask, len(m.tasks))
+	for i, task := range m.tasks {
+		m.filtered[i] = filteredTask{task: task}
+	}
 	return m
 }
 
@@ -95,8 +105,9 @@ func (m *TaskJumperModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+				selectedTask := m.filtered[m.cursor].task
 				return m, func() tea.Msg {
-					return TaskJumperSelectMsg{Task: m.filtered[m.cursor]}
+					return TaskJumperSelectMsg{Task: selectedTask}
 				}
 			}
 			return m, nil
@@ -142,22 +153,31 @@ func (m *TaskJumperModel) filterTasks() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
 	if query == "" {
-		m.filtered = m.tasks
+		// Reset to all tasks with no highlighting
+		m.filtered = make([]filteredTask, len(m.tasks))
+		for i, task := range m.tasks {
+			m.filtered[i] = filteredTask{task: task}
+		}
 		m.cursor = 0
 		return
 	}
 
-	// Score each task and collect matches
+	// Score each task and collect matches with title positions
 	type scoredTask struct {
-		task  *models.Task
-		score int
+		task           *models.Task
+		score          int
+		titlePositions []int
 	}
 	var scored []scoredTask
 
 	for _, task := range m.tasks {
-		score := m.scoreTask(task, query)
+		score, titlePositions := m.scoreTask(task, query)
 		if score > 0 {
-			scored = append(scored, scoredTask{task: task, score: score})
+			scored = append(scored, scoredTask{
+				task:           task,
+				score:          score,
+				titlePositions: titlePositions,
+			})
 		}
 	}
 
@@ -166,10 +186,13 @@ func (m *TaskJumperModel) filterTasks() {
 		return scored[i].score > scored[j].score
 	})
 
-	// Extract sorted results
-	m.filtered = make([]*models.Task, len(scored))
+	// Extract sorted results with positions
+	m.filtered = make([]filteredTask, len(scored))
 	for i, s := range scored {
-		m.filtered[i] = s.task
+		m.filtered[i] = filteredTask{
+			task:           s.task,
+			titlePositions: s.titlePositions,
+		}
 	}
 
 	// Reset cursor if out of bounds
@@ -181,9 +204,10 @@ func (m *TaskJumperModel) filterTasks() {
 	}
 }
 
-// scoreTask returns a fuzzy match score for a task against the query.
-// Returns 0 if no match, higher scores indicate better matches.
-func (m *TaskJumperModel) scoreTask(task *models.Task, query string) int {
+// scoreTask returns a fuzzy match score for a task against the query,
+// along with match positions within the title for highlighting.
+// Returns 0 and nil if no match, higher scores indicate better matches.
+func (m *TaskJumperModel) scoreTask(task *models.Task, query string) (int, []int) {
 	// Build searchable text combining multiple fields
 	searchable := fmt.Sprintf("#%d %s %s %s",
 		task.ShortID,
@@ -192,7 +216,14 @@ func (m *TaskJumperModel) scoreTask(task *models.Task, query string) int {
 		strings.Join(task.Tags, " "),
 	)
 
-	return fuzzy.ScoreTerms(searchable, query)
+	score := fuzzy.ScoreTerms(searchable, query)
+	if score == 0 {
+		return 0, nil
+	}
+
+	// Get match positions specifically for the title (for highlighting)
+	_, titlePositions := fuzzy.ScoreTermsWithPositions(task.Title, query)
+	return score, titlePositions
 }
 
 func (m *TaskJumperModel) View() string {
@@ -263,7 +294,8 @@ func (m *TaskJumperModel) renderTaskList() string {
 	}
 
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
-		task := m.filtered[i]
+		ft := m.filtered[i]
+		task := ft.task
 
 		// Cursor indicator
 		cursor := "  "
@@ -280,7 +312,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Short ID
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
-		// Title (truncated)
+		// Title (truncated) with highlighting
 		// Account for: cursor(2) + icons(4) + spaces(3) + ID(5) = 14
 		maxTitleLen := m.listWidth - 14
 		if maxTitleLen < 10 {
@@ -288,8 +320,24 @@ func (m *TaskJumperModel) renderTaskList() string {
 		}
 		title := util.Truncate(task.Title, maxTitleLen)
 
+		// Adjust positions for truncated title and apply highlighting
+		var titleRendered string
+		if len(ft.titlePositions) > 0 {
+			// Filter positions to only include those within the truncated title
+			titleRunes := []rune(title)
+			var validPositions []int
+			for _, p := range ft.titlePositions {
+				if p < len(titleRunes) {
+					validPositions = append(validPositions, p)
+				}
+			}
+			titleRendered = HighlightText(title, validPositions, NormalStyle)
+		} else {
+			titleRendered = title
+		}
+
 		// Build line
-		line := fmt.Sprintf("%s%s %s %s %s", cursor, typeIcon, statusIcon, shortID, title)
+		line := fmt.Sprintf("%s%s %s %s %s", cursor, typeIcon, statusIcon, shortID, titleRendered)
 
 		if i == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)
@@ -308,7 +356,7 @@ func (m *TaskJumperModel) renderPreview() string {
 		return MutedStyle.Render("No task selected.")
 	}
 
-	task := m.filtered[m.cursor]
+	task := m.filtered[m.cursor].task
 	var b strings.Builder
 
 	// Header with type and title (truncate to fit preview width)

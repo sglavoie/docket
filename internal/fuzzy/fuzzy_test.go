@@ -11,12 +11,16 @@ func TestMatch(t *testing.T) {
 		pattern string
 		want    bool
 	}{
-		// Basic subsequence matching
+		// Basic subsequence matching (within density threshold)
 		{"exact match", "need", "need", true},
-		{"subsequence match", "need a way", "ndway", true},
+		{"tight subsequence", "implement", "impl", true},
 		{"word gap match", "need a way", "need way", true},
 		{"partial match", "hello world", "hlo", true},
 		{"full subsequence", "abcdef", "ace", true},
+
+		// Scattered matches (rejected by density threshold: span > 3x pattern length)
+		{"very scattered rejected", "Some huge old random text", "short", false},
+		{"scattered across long text", "start middle content finish end", "smcfe", false},
 
 		// Case insensitivity
 		{"case insensitive upper pattern", "need", "NEED", true},
@@ -62,7 +66,9 @@ func TestScore(t *testing.T) {
 		wantZero bool // true if score should be 0 (no match)
 	}{
 		{"exact match scores", "need", "need", false},
-		{"subsequence scores", "need a way", "ndway", false},
+		{"tight subsequence scores", "implement", "impl", false},
+		{"moderate subsequence allowed", "need a way", "ndway", false}, // span 10, pattern 5, 10 <= 15
+		{"scattered subsequence rejected", "start middle content finish end", "smcfe", true},
 		{"no match scores zero", "hello", "xyz", true},
 		{"empty pattern scores", "text", "", false},
 	}
@@ -97,9 +103,9 @@ func TestScoreRanking(t *testing.T) {
 			want1Higher: true,
 		},
 		{
-			name:        "consecutive beats scattered",
+			name:        "consecutive beats word-boundary",
 			text1:       "hello",
-			text2:       "h e l l o",
+			text2:       "he-llo",
 			pattern:     "hello",
 			want1Higher: true,
 		},
@@ -189,6 +195,46 @@ func TestMatchTerms(t *testing.T) {
 			got := MatchTerms(tt.text, tt.query)
 			if got != tt.want {
 				t.Errorf("MatchTerms(%q, %q) = %v, want %v", tt.text, tt.query, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMatchDensityThreshold(t *testing.T) {
+	// Match density threshold: span must be <= 3x pattern length
+	tests := []struct {
+		name     string
+		text     string
+		pattern  string
+		wantZero bool
+	}{
+		// Pattern "impl" (4 chars) - max span = 12
+		{"exact span 1x", "impl", "impl", false},                // span 4
+		{"span 2x allowed", "improve layout", "impl", false},    // span ~8, within 3x
+		{"span 3x allowed", "improve my layout", "impl", false}, // span ~11, within 3x
+
+		// Pattern "short" (5 chars) - max span = 15
+		{"scattered beyond 3x", "Some huge old random text", "short", true}, // span way > 15
+
+		// Pattern "abc" (3 chars) - max span = 9
+		{"tight abc", "abcdef", "abc", false},         // span 3
+		{"moderate abc", "a--b--c", "abc", false},     // span 7, within 3x
+		{"scattered abc", "a----b----c", "abc", true}, // span 11, exceeds 3x
+
+		// Real-world patterns
+		{"auth in authentication", "authentication", "auth", false},
+		{"impl in implementation", "implementation", "impl", false},
+		{"scattered shortcut", "Sync with remote server tasks across multiple", "shortcut", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Score(tt.text, tt.pattern)
+			if tt.wantZero && got != 0 {
+				t.Errorf("Score(%q, %q) = %d, want 0 (too scattered)", tt.text, tt.pattern, got)
+			}
+			if !tt.wantZero && got == 0 {
+				t.Errorf("Score(%q, %q) = 0, want > 0 (should match)", tt.text, tt.pattern)
 			}
 		})
 	}
