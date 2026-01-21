@@ -34,7 +34,28 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case TaskCreatedMsg, TaskUpdatedMsg:
+	case TaskCreatedMsg:
+		m.popView()
+		// Reload current project to get fresh task references after save
+		if m.currentProject != nil {
+			storage.LoadProject(m.currentProject)
+		}
+		m.refreshProjectTree()
+		// Set status message showing section
+		if msg.Task != nil && msg.Task.Section != "" {
+			m.statusMessage = fmt.Sprintf("Created in %s", msg.Task.Section)
+		}
+		// Delegate to current view (e.g., inbox processor) so it can reload its state
+		cmd := m.views.Update(m.currentView(), msg)
+		// Keep typed pointer in sync if it's the inbox processor
+		if m.currentView() == ViewInboxProcessor {
+			if v := m.views.Get(ViewInboxProcessor); v != nil {
+				m.inboxProcessor = v.(*InboxProcessorModel)
+			}
+		}
+		return true, tea.Batch(cmd, statusTimeout(2*time.Second))
+
+	case TaskUpdatedMsg:
 		m.popView()
 		// Reload current project to get fresh task references after save
 		if m.currentProject != nil {
