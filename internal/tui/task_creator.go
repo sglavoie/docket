@@ -76,8 +76,8 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 	// Get available sections from project
 	sections := project.GetSections()
 
-	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly
-	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly"}
+	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly, custom
+	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly", "Custom..."}
 
 	m := &TaskCreatorModel{
 		project:          project,
@@ -180,6 +180,14 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		}
+		return m, nil
+
+	case RecurrenceEditorDoneMsg:
+		if !msg.Cancelled && msg.Pattern != nil {
+			m.recurrence = msg.Pattern
+			// Update cursor to "Custom..." since we have a custom pattern
+			m.recurrenceCursor = 6
 		}
 		return m, nil
 
@@ -294,7 +302,27 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 5: // Recurrence selector
 				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
 					m.recurrenceCursor++
+					if m.recurrenceCursor == 6 {
+						// "Custom..." selected - open the editor
+						return m, func() tea.Msg {
+							return ShowRecurrenceEditorMsg{
+								CurrentPattern: m.recurrence,
+								DueDate:        nil, // No due date set during creation
+							}
+						}
+					}
 					m.updateRecurrenceFromCursor()
+				}
+			}
+
+		case "r":
+			// Open recurrence editor when on recurrence field
+			if m.focusIndex == 5 {
+				return m, func() tea.Msg {
+					return ShowRecurrenceEditorMsg{
+						CurrentPattern: m.recurrence,
+						DueDate:        nil,
+					}
 				}
 			}
 		}
@@ -545,15 +573,25 @@ func (m *TaskCreatorModel) View() string {
 	}
 	b.WriteString(recurLabel)
 	for i, opt := range m.recurrenceOpts {
+		display := opt
+		// For "Custom..." option, show the actual pattern if we have one
+		if i == 6 && m.recurrenceCursor == 6 && m.recurrence != nil {
+			display = m.recurrence.String()
+		}
 		if i == m.recurrenceCursor {
 			if m.focusIndex == 5 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", display)))
 			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", display)))
 			}
 		} else {
 			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
 		}
+	}
+	// Add hint for 'r' keybind
+	if m.focusIndex == 5 {
+		b.WriteString("  ")
+		b.WriteString(HelpStyle.Render("r: edit"))
 	}
 	b.WriteString("\n\n")
 

@@ -219,6 +219,10 @@ func (m *AppModel) handleEscKey() bool {
 	if m.currentView() == ViewWorkflowRuleCreator || m.currentView() == ViewWorkflowRuleEditor {
 		return false
 	}
+	// Recurrence editor handles its own esc to properly signal cancellation
+	if m.currentView() == ViewRecurrenceEditor {
+		return false
+	}
 	// Workflow rules view handles its own esc/q when in expanded view or delete confirmation
 	if m.currentView() == ViewWorkflowRules {
 		if rules, ok := m.views.Get(ViewWorkflowRules).(*WorkflowRulesModel); ok && rules != nil && (rules.expandedView || rules.confirmDelete) {

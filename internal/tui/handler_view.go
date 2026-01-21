@@ -385,6 +385,18 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.showView(ViewDateInput, NewDateInputModel(msg.Tasks[0].Task, msg.Tasks[0].Project))
 		}
 		return true, nil
+
+	case ShowRecurrenceEditorMsg:
+		editor := NewRecurrenceEditorModel(msg.CurrentPattern, msg.DueDate)
+		m.showView(ViewRecurrenceEditor, editor)
+		return true, nil
+
+	case RecurrenceEditorDoneMsg:
+		m.popView()
+		// Forward the message to the parent view (task editor or task creator)
+		// so it can update the recurrence pattern
+		cmd := m.views.Update(m.currentView(), msg)
+		return true, cmd
 	}
 	return false, nil
 }

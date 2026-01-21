@@ -128,25 +128,25 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		recurrence = &recurCopy
 	}
 
-	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly
-	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly"}
+	// Recurrence options: None, daily, weekly, biweekly, monthly, yearly, custom
+	recurrenceOpts := []string{"None", "Daily", "Weekly", "Biweekly", "Monthly", "Yearly", "Custom..."}
 	recurrenceCursor := 0
 	if task.Recurrence != nil {
 		// Find matching option
 		switch {
-		case task.Recurrence.Unit == models.RecurrenceDaily && task.Recurrence.Interval == 1:
+		case task.Recurrence.Unit == models.RecurrenceDaily && task.Recurrence.Interval == 1 && len(task.Recurrence.Weekdays) == 0:
 			recurrenceCursor = 1
-		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 1:
+		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 1 && len(task.Recurrence.Weekdays) == 0:
 			recurrenceCursor = 2
-		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 2:
+		case task.Recurrence.Unit == models.RecurrenceWeekly && task.Recurrence.Interval == 2 && len(task.Recurrence.Weekdays) == 0:
 			recurrenceCursor = 3
 		case task.Recurrence.Unit == models.RecurrenceMonthly && task.Recurrence.Interval == 1:
 			recurrenceCursor = 4
 		case task.Recurrence.Unit == models.RecurrenceYearly && task.Recurrence.Interval == 1:
 			recurrenceCursor = 5
 		default:
-			// Custom pattern - keep at None but preserve the actual pattern
-			recurrenceCursor = 0
+			// Custom pattern - show as "Custom..."
+			recurrenceCursor = 6
 		}
 	}
 
@@ -302,7 +302,19 @@ func recurrenceEqual(a, b *models.RecurrencePattern) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return a.Interval == b.Interval && a.Unit == b.Unit
+	if a.Interval != b.Interval || a.Unit != b.Unit {
+		return false
+	}
+	// Compare weekdays
+	if len(a.Weekdays) != len(b.Weekdays) {
+		return false
+	}
+	for i, wd := range a.Weekdays {
+		if wd != b.Weekdays[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // updateRecurrenceFromCursor updates the recurrence pattern based on cursor position.
@@ -361,6 +373,15 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TagSelectorDoneMsg:
 		if !msg.Cancelled {
 			m.tags = msg.SelectedTags
+			m.hasChanges = m.checkChanges()
+		}
+		return m, nil
+
+	case RecurrenceEditorDoneMsg:
+		if !msg.Cancelled && msg.Pattern != nil {
+			m.recurrence = msg.Pattern
+			// Update cursor to "Custom..." since we have a custom pattern
+			m.recurrenceCursor = 6
 			m.hasChanges = m.checkChanges()
 		}
 		return m, nil
@@ -494,6 +515,15 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 7: // Recurrence selector
 				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
 					m.recurrenceCursor++
+					if m.recurrenceCursor == 6 {
+						// "Custom..." selected - open the editor
+						return m, func() tea.Msg {
+							return ShowRecurrenceEditorMsg{
+								CurrentPattern: m.recurrence,
+								DueDate:        m.dueDate,
+							}
+						}
+					}
 					m.updateRecurrenceFromCursor()
 				}
 			}
@@ -505,6 +535,17 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.pinned = !m.pinned
 				} else {
 					m.active = !m.active
+				}
+			}
+
+		case "r":
+			// Open recurrence editor when on recurrence field
+			if m.focusIndex == 7 {
+				return m, func() tea.Msg {
+					return ShowRecurrenceEditorMsg{
+						CurrentPattern: m.recurrence,
+						DueDate:        m.dueDate,
+					}
 				}
 			}
 		}
@@ -889,15 +930,25 @@ func (m *TaskEditorModel) renderFlagsField() string {
 func (m *TaskEditorModel) renderRecurrenceSelector() string {
 	var b strings.Builder
 	for i, opt := range m.recurrenceOpts {
+		display := opt
+		// For "Custom..." option, show the actual pattern if we have one
+		if i == 6 && m.recurrenceCursor == 6 && m.recurrence != nil {
+			display = m.recurrence.String()
+		}
 		if i == m.recurrenceCursor {
 			if m.focusIndex == 7 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", display)))
 			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", display)))
 			}
 		} else {
 			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
 		}
+	}
+	// Add hint for 'r' keybind
+	if m.focusIndex == 7 {
+		b.WriteString("  ")
+		b.WriteString(HelpStyle.Render("r: edit"))
 	}
 	return b.String()
 }

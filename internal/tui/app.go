@@ -58,6 +58,7 @@ const (
 	ViewWorkflowRules
 	ViewWorkflowRuleCreator
 	ViewWorkflowRuleEditor
+	ViewRecurrenceEditor
 )
 
 // AppModel is the main TUI model with a view stack.
