@@ -36,6 +36,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerProjectTreeBindings()
 	r.registerPriorityViewBindings()
 	r.registerInboxProcessorBindings()
+	r.registerGlobalInboxProcessorBindings()
 	r.registerDueDateOverviewBindings()
 	r.registerDailyReviewBindings()
 	return r
@@ -132,6 +133,9 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 
 		// Filters
 		Keybinding{Key: "c", Description: "Filter by context", Category: "Filters", Views: views},
+
+		// Views
+		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},
 
 		// Actions
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},
@@ -367,6 +371,37 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 
 		// Recurring Tasks
 		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
+	views := []ViewType{ViewGlobalInboxProcessor}
+	r.add(
+		// Navigation
+		Keybinding{Key: "enter", Description: "View task details", Category: "Navigation", Views: views},
+		Keybinding{Key: "n", Description: "Skip task (move to next without processing)", Category: "Navigation", Views: views},
+		Keybinding{Key: "j/k", Description: "Navigate to next/previous task", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Go to first/last task", Category: "Navigation", Views: views},
+		Keybinding{Key: "q", Description: "Quit inbox processing", Category: "Navigation", Views: views},
+
+		// Status
+		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
+		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
+		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
+		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
+
+		// Operations
+		Keybinding{Key: "S", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "p", Description: "Send to Pending section", Category: "Operations", Views: views},
+		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
+		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
+		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
+		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
+		Keybinding{Key: "D", Description: "Set due date", Category: "Operations", Views: views},
+		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
+		Keybinding{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations", Views: views},
+		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
 	)
 }
 

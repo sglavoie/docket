@@ -292,6 +292,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowTrashedProjectsMsg{}
 			}
+		case "w":
+			return m, func() tea.Msg {
+				return ShowGlobalInboxProcessorMsg{}
+			}
 		case "ctrl+w":
 			return m, func() tea.Msg {
 				return ShowWorkflowRulesMsg{}

@@ -194,6 +194,11 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	if m.currentView() == ViewGlobalInboxProcessor {
+		if gip, ok := m.views.Get(ViewGlobalInboxProcessor).(*GlobalInboxProcessorModel); ok && gip != nil && gip.HasPendingPrefix() {
+			return false
+		}
+	}
 	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
 		return false
 	}
@@ -275,6 +280,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewInboxProcessor:
 		if v := m.views.Get(ViewInboxProcessor); v != nil {
 			m.inboxProcessor = v.(*InboxProcessorModel)
+		}
+	case ViewGlobalInboxProcessor:
+		if v := m.views.Get(ViewGlobalInboxProcessor); v != nil {
+			m.globalInboxProcessor = v.(*GlobalInboxProcessorModel)
 		}
 	}
 

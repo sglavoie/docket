@@ -60,6 +60,7 @@ const (
 	ViewWorkflowRuleEditor
 	ViewRecurrenceEditor
 	ViewTextEditor
+	ViewGlobalInboxProcessor
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -79,12 +80,13 @@ type AppModel struct {
 	commandRegistry *CommandRegistry
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
-	dashboard      *DashboardModel
-	projectTree    *ProjectTreeModel
-	helpView       *HelpViewModel
-	taskJumper     *TaskJumperModel
-	globalSearch   *GlobalSearchModel
-	inboxProcessor *InboxProcessorModel
+	dashboard            *DashboardModel
+	projectTree          *ProjectTreeModel
+	helpView             *HelpViewModel
+	taskJumper           *TaskJumperModel
+	globalSearch         *GlobalSearchModel
+	inboxProcessor       *InboxProcessorModel
+	globalInboxProcessor *GlobalInboxProcessorModel
 
 	// Current project context
 	currentProject *models.Project
@@ -398,6 +400,17 @@ func (m *AppModel) registerGlobalCommands() {
 					return ShowInboxProcessorMsg{Project: m.currentProject}
 				}
 				return nil
+			},
+		},
+		{
+			Name:        "global inbox processor",
+			Description: "Process inbox items across all projects",
+			Shortcut:    "w",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"global inbox", "all inbox", "process all inbox"},
+			Handler: func() tea.Msg {
+				return ShowGlobalInboxProcessorMsg{}
 			},
 		},
 		{
