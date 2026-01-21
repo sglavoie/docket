@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,9 +58,13 @@ type BulkEditModel struct {
 	sectionOptions []string // Available sections
 
 	// Due date field
-	dueDateCursor  int    // 0=no change, 1=set date, 2=clear
-	dueDateSummary string // Summary of current values
-	clearDueDate   bool   // Whether to clear due dates
+	dueDateCursor    int             // 0=no change, 1=set date, 2=clear
+	dueDateSummary   string          // Summary of current values
+	clearDueDate     bool            // Whether to clear due dates
+	setDueDate       *time.Time      // Selected date to apply (nil = no change)
+	dueDateInputMode bool            // True when typing date
+	dueDateInput     textinput.Model // Text input for date entry
+	dueDateError     error           // Validation error
 
 	// Actions field
 	actionCursor int // 0=Apply, 1=Cancel
@@ -82,6 +87,12 @@ func NewBulkEditModel(tasks []*models.Task, project *models.Project) *BulkEditMo
 	m.tagAddInput.Placeholder = "Enter tag name..."
 	m.tagAddInput.CharLimit = 50
 	m.tagAddInput.Width = 30
+
+	// Initialize due date input
+	m.dueDateInput = textinput.New()
+	m.dueDateInput.Placeholder = "e.g., tomorrow, +3d, fri, 2024-01-15"
+	m.dueDateInput.CharLimit = 30
+	m.dueDateInput.Width = 40
 
 	// Analyze current values
 	m.analyzeCurrentValues()
@@ -261,7 +272,14 @@ func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 		return 3 + len(m.sectionOptions)
 	case fieldDueDate:
 		// Label line + 3 options + blank line
-		return 5
+		height := 5
+		if m.dueDateInputMode {
+			height++ // Input line takes extra space
+			if m.dueDateError != nil {
+				height++ // Error line
+			}
+		}
+		return height
 	case fieldActions:
 		// Actions line + blank + footer
 		return 3
@@ -337,6 +355,11 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle tag add input mode
 		if m.tagMode == 1 {
 			return m.handleTagAddInput(msg)
+		}
+
+		// Handle due date input mode
+		if m.dueDateInputMode {
+			return m.handleDueDateInput(msg)
 		}
 
 		switch msg.String() {
@@ -442,6 +465,46 @@ func (m *BulkEditModel) handleTagAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+// handleDueDateInput handles input when setting a due date.
+func (m *BulkEditModel) handleDueDateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.dueDateInputMode = false
+		m.dueDateInput.Blur()
+		m.dueDateError = nil
+		return m, nil
+
+	case "enter":
+		value := strings.TrimSpace(m.dueDateInput.Value())
+		if value == "" {
+			// Empty input, stay in input mode
+			return m, nil
+		}
+
+		// Parse the date using the existing ParseDate function
+		date, err := ParseDate(value)
+		if err != nil {
+			m.dueDateError = err
+			return m, nil
+		}
+
+		// Success - store the date and exit input mode
+		m.setDueDate = &date
+		m.clearDueDate = false
+		m.dueDateInputMode = false
+		m.dueDateInput.Blur()
+		m.dueDateError = nil
+		return m, nil
+
+	default:
+		// Clear error when user types
+		m.dueDateError = nil
+		var cmd tea.Cmd
+		m.dueDateInput, cmd = m.dueDateInput.Update(msg)
+		return m, cmd
+	}
+}
+
 // handleEnter handles the enter key based on current field.
 func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
@@ -483,11 +546,21 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 
 	case fieldDueDate:
 		if m.dueDateCursor == 0 {
+			// Keep current - clear any set date
 			m.clearDueDate = false
+			m.setDueDate = nil
+		} else if m.dueDateCursor == 1 {
+			// Set date - enter input mode
+			m.dueDateInputMode = true
+			m.dueDateInput.Reset()
+			m.dueDateInput.Focus()
+			m.dueDateError = nil
+			return m, textinput.Blink
 		} else if m.dueDateCursor == 2 {
+			// Clear due date
 			m.clearDueDate = true
+			m.setDueDate = nil
 		}
-		// Note: dueDateCursor == 1 (Set date) would need date input integration
 
 	case fieldActions:
 		if m.actionCursor == 0 {
@@ -597,6 +670,7 @@ func (m *BulkEditModel) buildChanges() PendingChanges {
 		AddTags:      m.addTags,
 		SetSection:   m.sectionValue,
 		ClearDueDate: m.clearDueDate,
+		SetDueDate:   m.setDueDate,
 	}
 
 	// Collect remove tags
@@ -968,24 +1042,79 @@ func (m *BulkEditModel) renderDueDateField() string {
 		prefix = "    "
 	}
 
-	options := []string{"Keep current", "Set date... (not yet supported)", "Clear due date"}
-	for i, opt := range options {
-		cursor := "[ ]"
-		if (i == 0 && !m.clearDueDate) || (i == 2 && m.clearDueDate) {
+	// Determine which option is selected
+	// Priority: setDueDate > clearDueDate > keep current
+	keepSelected := m.setDueDate == nil && !m.clearDueDate
+	setSelected := m.setDueDate != nil
+	clearSelected := m.clearDueDate
+
+	// Option 0: Keep current
+	cursor := "[ ]"
+	if keepSelected {
+		cursor = "[x]"
+	}
+	if focused && m.dueDateCursor == 0 {
+		cursor = "[>]"
+	}
+	line := fmt.Sprintf("%s%s Keep current", prefix, cursor)
+	if focused && m.dueDateCursor == 0 {
+		b.WriteString(TaskJumperSelectedStyle.Render(line))
+	} else {
+		b.WriteString(line)
+	}
+	b.WriteString("\n")
+
+	// Option 1: Set date
+	if m.dueDateInputMode {
+		// Show input mode
+		b.WriteString(prefix)
+		b.WriteString("    Set date: ")
+		b.WriteString(m.dueDateInput.View())
+		b.WriteString("\n")
+		if m.dueDateError != nil {
+			b.WriteString(prefix)
+			b.WriteString("    ")
+			b.WriteString(ValidationErrorStyle.Render(m.dueDateError.Error()))
+			b.WriteString("\n")
+		}
+	} else {
+		cursor = "[ ]"
+		if setSelected {
 			cursor = "[x]"
 		}
-		if focused && m.dueDateCursor == i {
+		if focused && m.dueDateCursor == 1 {
 			cursor = "[>]"
 		}
-
-		line := fmt.Sprintf("%s%s %s", prefix, cursor, opt)
-		if focused && m.dueDateCursor == i {
+		var setLabel string
+		if m.setDueDate != nil {
+			setLabel = fmt.Sprintf("Set: %s (%s)", m.setDueDate.Format("2006-01-02"), m.setDueDate.Format("Monday"))
+		} else {
+			setLabel = "Set date..."
+		}
+		line = fmt.Sprintf("%s%s %s", prefix, cursor, setLabel)
+		if focused && m.dueDateCursor == 1 {
 			b.WriteString(TaskJumperSelectedStyle.Render(line))
 		} else {
 			b.WriteString(line)
 		}
 		b.WriteString("\n")
 	}
+
+	// Option 2: Clear due date
+	cursor = "[ ]"
+	if clearSelected {
+		cursor = "[x]"
+	}
+	if focused && m.dueDateCursor == 2 {
+		cursor = "[>]"
+	}
+	line = fmt.Sprintf("%s%s Clear due date", prefix, cursor)
+	if focused && m.dueDateCursor == 2 {
+		b.WriteString(TaskJumperSelectedStyle.Render(line))
+	} else {
+		b.WriteString(line)
+	}
+	b.WriteString("\n")
 
 	return b.String()
 }
@@ -1018,7 +1147,9 @@ func (m *BulkEditModel) renderPreview() string {
 			parts = append(parts, fmt.Sprintf("Section → %s", *changes.SetSection))
 		}
 	}
-	if changes.ClearDueDate {
+	if changes.SetDueDate != nil {
+		parts = append(parts, fmt.Sprintf("Due → %s", changes.SetDueDate.Format("2006-01-02")))
+	} else if changes.ClearDueDate {
 		parts = append(parts, "Clear due dates")
 	}
 
@@ -1064,6 +1195,9 @@ func (m *BulkEditModel) renderFooter() string {
 	}
 	if m.tagMode == 2 {
 		return MutedStyle.Render("  Space: toggle | Tab: next | Esc: done")
+	}
+	if m.dueDateInputMode {
+		return MutedStyle.Render("  Enter: set date | Esc: cancel | Formats: tomorrow, +3d, fri, 2024-01-15")
 	}
 	return MutedStyle.Render("  Tab/j/k: navigate | Enter: select | h/l: options | Esc: cancel")
 }
