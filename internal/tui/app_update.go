@@ -161,6 +161,10 @@ func (m *AppModel) hasActiveTextInput() bool {
 	case ViewTaskEditor:
 		// Task editor has active text input
 		return true
+	case ViewTaskComments:
+		if comments, ok := m.views.Get(ViewTaskComments).(*TaskCommentsModel); ok && comments != nil {
+			return comments.addMode || comments.editMode
+		}
 	}
 	return false
 }
