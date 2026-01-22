@@ -18,9 +18,15 @@ import (
 
 // Autocomplete mode constants
 const (
-	acModeNone   = iota // No autocomplete active
-	acModeTag           // Completing a #tag
-	acModeParent        // Completing a >parent
+	acModeNone     = iota // No autocomplete active
+	acModeTag             // Completing a #tag
+	acModeParent          // Completing a >parent
+	acModeType            // Completing a ^type
+	acModePriority        // Completing a !priority
+	acModeDate            // Completing a @date
+	acModeRecur           // Completing a ~recurrence
+	acModeSection         // Completing a /section
+	acModeStatus          // Completing a $status
 )
 
 // suggestion represents an autocomplete suggestion
@@ -44,6 +50,7 @@ type QuickCaptureModel struct {
 	acTriggerPos int            // Position of trigger character in input
 	tagCache     []string       // Cached project tags
 	parentCache  []*models.Task // Cached valid parent tasks
+	sectionCache []string       // Cached project sections
 
 	// Live preview
 	preview    *quickCaptureResult // Parsed preview (may be partial)
@@ -110,6 +117,9 @@ func (m *QuickCaptureModel) initCaches() {
 			m.parentCache = append(m.parentCache, task)
 		}
 	}
+
+	// Cache sections
+	m.sectionCache = m.project.GetSections()
 }
 
 // SetSize sets the view dimensions.
@@ -184,6 +194,18 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.suggestions = m.getTagSuggestions(partial)
 		case acModeParent:
 			m.suggestions = m.getParentSuggestions(partial)
+		case acModeType:
+			m.suggestions = m.getTypeSuggestions(partial)
+		case acModePriority:
+			m.suggestions = m.getPrioritySuggestions(partial)
+		case acModeDate:
+			m.suggestions = m.getDateSuggestions(partial)
+		case acModeRecur:
+			m.suggestions = m.getRecurrenceSuggestions(partial)
+		case acModeSection:
+			m.suggestions = m.getSectionSuggestions(partial)
+		case acModeStatus:
+			m.suggestions = m.getStatusSuggestions(partial)
 		}
 		// If no suggestions, exit autocomplete mode
 		if len(m.suggestions) == 0 {
@@ -532,13 +554,24 @@ func (m *QuickCaptureModel) detectAutocompleteTrigger() (int, int, string) {
 			// Hit whitespace before finding trigger
 			break
 		}
-		if ch == '#' {
-			partial := input[i+1:]
+		partial := input[i+1:]
+		switch ch {
+		case '#':
 			return acModeTag, i, partial
-		}
-		if ch == '>' {
-			partial := input[i+1:]
+		case '>':
 			return acModeParent, i, partial
+		case '^':
+			return acModeType, i, partial
+		case '!':
+			return acModePriority, i, partial
+		case '@':
+			return acModeDate, i, partial
+		case '~':
+			return acModeRecur, i, partial
+		case '/':
+			return acModeSection, i, partial
+		case '$':
+			return acModeStatus, i, partial
 		}
 	}
 	return acModeNone, 0, ""
@@ -571,6 +604,166 @@ func (m *QuickCaptureModel) getTagSuggestions(partial string) []suggestion {
 			display: "#" + scored[i].tag,
 			value:   scored[i].tag,
 		})
+	}
+	return suggestions
+}
+
+// getTypeSuggestions returns matching task type options for the partial query.
+func (m *QuickCaptureModel) getTypeSuggestions(partial string) []suggestion {
+	types := []struct {
+		name string
+		icon string
+	}{
+		{"epic", "◆"},
+		{"story", "◇"},
+		{"task", "□"},
+		{"bug", "⚠"},
+		{"idea", "💡"},
+		{"note", "📝"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, t := range types {
+		if partial == "" || strings.Contains(t.name, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("^%s %s", t.name, t.icon),
+				value:   t.name,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getPrioritySuggestions returns matching priority options for the partial query.
+func (m *QuickCaptureModel) getPrioritySuggestions(partial string) []suggestion {
+	priorities := []struct {
+		value string
+		desc  string
+	}{
+		{"1", "Urgent"},
+		{"2", "High"},
+		{"3", "Normal"},
+		{"4", "Low"},
+		{"5", "Lowest"},
+	}
+
+	var suggestions []suggestion
+	for _, p := range priorities {
+		if partial == "" || strings.HasPrefix(p.value, partial) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
+				value:   p.value,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getDateSuggestions returns common due date options for the partial query.
+func (m *QuickCaptureModel) getDateSuggestions(partial string) []suggestion {
+	options := []struct {
+		value string
+		desc  string
+	}{
+		{"today", "today"},
+		{"tomorrow", "tomorrow"},
+		{"+1d", "in 1 day"},
+		{"+3d", "in 3 days"},
+		{"+1w", "in 1 week"},
+		{"+2w", "in 2 weeks"},
+		{"+1m", "in 1 month"},
+		{"monday", "next Monday"},
+		{"friday", "next Friday"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, o := range options {
+		if partial == "" || strings.Contains(o.value, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("@%s (%s)", o.value, o.desc),
+				value:   o.value,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getRecurrenceSuggestions returns recurrence pattern options for the partial query.
+func (m *QuickCaptureModel) getRecurrenceSuggestions(partial string) []suggestion {
+	options := []struct {
+		value string
+		desc  string
+	}{
+		{"daily", "every day"},
+		{"weekly", "every week"},
+		{"biweekly", "every 2 weeks"},
+		{"monthly", "every month"},
+		{"2d", "every 2 days"},
+		{"3d", "every 3 days"},
+		{"2w", "every 2 weeks"},
+		{"3w", "every 3 weeks"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, o := range options {
+		if partial == "" || strings.Contains(o.value, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("~%s (%s)", o.value, o.desc),
+				value:   o.value,
+			})
+		}
+	}
+	return suggestions
+}
+
+// getSectionSuggestions returns matching sections for the partial query.
+func (m *QuickCaptureModel) getSectionSuggestions(partial string) []suggestion {
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, section := range m.sectionCache {
+		if partial == "" || strings.Contains(strings.ToLower(section), partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: "/" + section,
+				value:   section,
+			})
+		}
+		if len(suggestions) >= 8 {
+			break
+		}
+	}
+	return suggestions
+}
+
+// getStatusSuggestions returns matching status options for the partial query.
+func (m *QuickCaptureModel) getStatusSuggestions(partial string) []suggestion {
+	statuses := []struct {
+		name string
+		icon string
+		desc string
+	}{
+		{"start", "◐", "in progress + activate"},
+		{"blocked", "◈", "blocked"},
+		{"done", "●", "completed"},
+		{"cancelled", "✕", "cancelled"},
+	}
+
+	var suggestions []suggestion
+	partialLower := strings.ToLower(partial)
+
+	for _, s := range statuses {
+		if partial == "" || strings.Contains(s.name, partialLower) {
+			suggestions = append(suggestions, suggestion{
+				display: fmt.Sprintf("$%s %s (%s)", s.name, s.icon, s.desc),
+				value:   s.name,
+			})
+		}
 	}
 	return suggestions
 }
@@ -630,6 +823,18 @@ func (m *QuickCaptureModel) acceptSuggestion() {
 		newInput = input[:m.acTriggerPos] + "#" + selected.value + " "
 	case acModeParent:
 		newInput = input[:m.acTriggerPos] + ">" + selected.value + " "
+	case acModeType:
+		newInput = input[:m.acTriggerPos] + "^" + selected.value + " "
+	case acModePriority:
+		newInput = input[:m.acTriggerPos] + "!" + selected.value + " "
+	case acModeDate:
+		newInput = input[:m.acTriggerPos] + "@" + selected.value + " "
+	case acModeRecur:
+		newInput = input[:m.acTriggerPos] + "~" + selected.value + " "
+	case acModeSection:
+		newInput = input[:m.acTriggerPos] + "/" + selected.value + " "
+	case acModeStatus:
+		newInput = input[:m.acTriggerPos] + "$" + selected.value + " "
 	}
 
 	m.input.SetValue(newInput)
