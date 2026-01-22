@@ -21,9 +21,9 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Build indent
 	indent := strings.Repeat(TreeIndent, node.Level)
 
-	// Expand/collapse indicator
+	// Expand/collapse indicator (only show if node has filtered children)
 	expandIcon := "  "
-	if len(task.Children) > 0 {
+	if node.HasFilteredChildren {
 		if node.Expanded {
 			expandIcon = "▼ "
 		} else {
@@ -273,9 +273,9 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 	// Build indent
 	indent := strings.Repeat(TreeIndent, node.Level)
 
-	// Expand/collapse indicator
+	// Expand/collapse indicator (only show if node has filtered children)
 	expandIcon := "  "
-	if len(task.Children) > 0 {
+	if node.HasFilteredChildren {
 		if node.Expanded {
 			expandIcon = "▼ "
 		} else {

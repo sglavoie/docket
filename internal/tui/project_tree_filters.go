@@ -81,6 +81,20 @@ func (m *ProjectTreeModel) updateVisibility() {
 		}
 	}
 
+	// Pass 2.5: Compute HasFilteredChildren for each node
+	// A node has filtered children if any child is intrinsically visible or is a context node
+	for _, node := range m.nodes {
+		node.HasFilteredChildren = false
+		for _, child := range node.Task.Children {
+			if childNode := m.findNodeByTaskID(child.ID); childNode != nil {
+				if intrinsicVisible[child.ID] || childNode.IsContextNode {
+					node.HasFilteredChildren = true
+					break
+				}
+			}
+		}
+	}
+
 	// Pass 3: Apply final visibility respecting expand/collapse state
 	for i, node := range m.nodes {
 		parentLevel := node.Level - 1
@@ -538,6 +552,16 @@ func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, "Active"}
 	case ViewModeSomeday:
 		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, "Active"}
+	}
+	return nil
+}
+
+// findNodeByTaskID returns the TreeNode for the given task ID, or nil if not found.
+func (m *ProjectTreeModel) findNodeByTaskID(id string) *TreeNode {
+	for _, node := range m.nodes {
+		if node.Task.ID == id {
+			return node
+		}
 	}
 	return nil
 }
