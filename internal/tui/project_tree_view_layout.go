@@ -91,6 +91,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		} else if m.confirmAction == "bulk-status" {
 			prompt = fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)",
 				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
+		} else if m.confirmAction == "archive-tasks" {
+			count := m.project.CountCompletedTasks()
+			prompt = fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", count)
 		} else {
 			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", m.confirmAction)
 		}
@@ -438,6 +441,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		} else if m.confirmAction == "bulk-status" {
 			prompt = fmt.Sprintf("%d have incomplete deps, complete %d? (y/n)",
 				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
+		} else if m.confirmAction == "archive-tasks" {
+			count := m.project.CountCompletedTasks()
+			prompt = fmt.Sprintf("Archive %d completed task(s)? (y/n)", count)
 		} else {
 			prompt = fmt.Sprintf("%s project? (y/n)", m.confirmAction)
 		}

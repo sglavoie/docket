@@ -76,6 +76,11 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.refreshProjectTree()
 		return true, nil
 
+	case TasksArchivedMsg:
+		m.refreshProjectTree()
+		m.statusMessage = fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
+		return true, statusTimeout(3 * time.Second)
+
 	case TaskStatusChangedMsg:
 		m.refreshProjectTree()
 		return true, nil

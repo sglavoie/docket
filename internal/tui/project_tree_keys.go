@@ -589,6 +589,16 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		return true, func() tea.Msg {
 			return ShowInboxProcessorMsg{Project: m.project}
 		}
+
+	case "A":
+		// Archive completed tasks (only in Completed view)
+		if m.viewMode == ViewModeCompleted {
+			completedCount := m.project.CountCompletedTasks()
+			if completedCount > 0 {
+				m.confirmAction = "archive-tasks"
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }

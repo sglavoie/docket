@@ -199,6 +199,17 @@ func (p *Project) CountCompletedTasks() int {
 	return count
 }
 
+// GetCompletedTasks returns all tasks that are complete (done or cancelled).
+func (p *Project) GetCompletedTasks() []*Task {
+	var result []*Task
+	for _, task := range p.Tasks {
+		if task.IsComplete() {
+			result = append(result, task)
+		}
+	}
+	return result
+}
+
 // GetTasksByStatus returns tasks filtered by status.
 func (p *Project) GetTasksByStatus(status TaskStatus) []*Task {
 	var result []*Task

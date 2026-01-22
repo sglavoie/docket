@@ -88,6 +88,9 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 		} else if m.confirmAction == "bulk-status" {
 			m.confirmAction = ""
 			return m, m.executePendingBulkStatus()
+		} else if m.confirmAction == "archive-tasks" {
+			m.confirmAction = ""
+			return m, m.archiveCompletedTasks()
 		}
 	case "n", "N", "esc":
 		m.confirmAction = ""

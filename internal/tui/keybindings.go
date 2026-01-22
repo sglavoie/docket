@@ -311,6 +311,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "Recurring Tasks", Views: views},
 		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "Recurring Tasks", Views: views},
 
+		// Archive
+		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "Archive", Views: views},
+
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},

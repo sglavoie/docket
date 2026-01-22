@@ -460,3 +460,43 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		return treeRefreshMsg{}
 	}
 }
+
+// archiveCompletedTasks moves all completed tasks to the archive file.
+func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
+	// Capture config value before returning command
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+	completedCount := m.project.CountCompletedTasks()
+
+	return func() tea.Msg {
+		if completedCount == 0 {
+			return nil
+		}
+
+		// Record undo snapshot before archiving
+		if undoDepth > 0 {
+			_ = storage.RecordUndoSnapshot(m.project, "Archive Tasks",
+				fmt.Sprintf("%d tasks", completedCount), undoDepth)
+		}
+
+		// Create backup before archiving
+		if err := storage.BackupProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		// Archive the tasks
+		count, err := storage.ArchiveTasks(m.project)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
+		}
+
+		// Reload project and rebuild tree
+		storage.LoadProject(m.project)
+		m.buildTree()
+		m.clampCursor()
+
+		return TasksArchivedMsg{Count: count}
+	}
+}

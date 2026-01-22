@@ -455,3 +455,12 @@ type ShowProjectFocusViewMsg struct {
 
 // CloseProjectFocusViewMsg closes the project focus view.
 type CloseProjectFocusViewMsg struct{}
+
+// =============================================================================
+// Archive Messages
+// =============================================================================
+
+// TasksArchivedMsg signals that completed tasks were archived.
+type TasksArchivedMsg struct {
+	Count int // Number of tasks archived
+}
