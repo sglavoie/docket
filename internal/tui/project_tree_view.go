@@ -747,12 +747,12 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Calculate available width for title, accounting for all other elements
-	// Fixed overhead: selection prefix(2) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~15
+	// Fixed overhead: selection prefix(3) + checkbox(0 or 4) + expand(2) + typeIcon(~2) + statusIcon(~2) + space(1) + idStr(~5) + space(1) = ~16
 	// Plus: indent, progress, and indicators (now measured accurately)
-	baseOverhead := 15
+	baseOverhead := 16
 	indicatorWidth := lipgloss.Width(indicators)
 	progressWidth := lipgloss.Width(progress)
-	usedWidth := 2 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
+	usedWidth := 3 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
 	availableTitleWidth := maxWidth - usedWidth
 	if availableTitleWidth < 10 {
 		availableTitleWidth = 10
@@ -777,7 +777,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
-	return RenderSelectableRow(selected, content, maxWidth)
+	return RenderSelectableRow(selected, task.Active, content, maxWidth)
 }
 
 func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection bool) string {
@@ -990,7 +990,7 @@ func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection
 
 	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
-	return RenderSelectableRow(selected, content, m.width)
+	return RenderSelectableRow(selected, task.Active, content, m.width)
 }
 
 // GetHelpItems returns the help items for the project tree view.

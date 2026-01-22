@@ -824,12 +824,24 @@ var (
 
 // RenderSelectableRow applies consistent selection styling to list items.
 // When selected=true, adds cursor prefix and row background that extends to full width.
+// When active=true, adds an asterisk indicator after the cursor position.
 // The content should already have its internal styling (badges, etc).
-func RenderSelectableRow(selected bool, content string, width int) string {
+func RenderSelectableRow(selected bool, active bool, content string, width int) string {
+	activeMarker := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("226")).Render("*")
+	var prefix string
+	if selected && active {
+		prefix = SelectionCursorStyle.Render(">") + activeMarker + " "
+	} else if selected {
+		prefix = SelectionCursorStyle.Render(">") + "  "
+	} else if active {
+		prefix = " " + activeMarker + " "
+	} else {
+		prefix = "   "
+	}
+
 	if selected {
-		prefix := SelectionCursorStyle.Render(">") + " "
 		row := prefix + content
 		return SelectionRowStyle.Width(width).Render(row)
 	}
-	return "  " + content
+	return prefix + content
 }

@@ -246,7 +246,7 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		content := checkbox + displayText + countStr
 
 		// Apply selection styling
-		line := RenderSelectableRow(selected, content, rowWidth)
+		line := RenderSelectableRow(selected, false, content, rowWidth)
 		b.WriteString(line)
 		b.WriteString("\n")
 	}

@@ -537,7 +537,7 @@ func (m *DashboardModel) View() string {
 			progressBar := RenderProgressBar(progress, 10)
 
 			content := fmt.Sprintf("%s%s %s  %s  %s", numberPrefix, name, context, stats, progressBar)
-			line := RenderSelectableRow(selected, content, cardWidth-4) // -4 for card padding
+			line := RenderSelectableRow(selected, false, content, cardWidth-4) // -4 for card padding
 			cardContent.WriteString(line)
 			if i < end-1 || (len(visible)-end) > 0 {
 				cardContent.WriteString("\n")
