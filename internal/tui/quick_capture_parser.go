@@ -18,7 +18,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract task type: ^epic, ^story, ^task, ^bug, ^idea, ^note (case-insensitive)
-	typeRe := regexp.MustCompile(`(?i)\s*\^(epic|story|task|bug|idea|note)\s*`)
+	// Require ^ to be at start of string or preceded by whitespace
+	typeRe := regexp.MustCompile(`(?i)(?:^|\s)\^(epic|story|task|bug|idea|note)`)
 	if match := typeRe.FindStringSubmatch(input); len(match) > 1 {
 		taskType, ok := models.ParseTaskTypeInsensitive(match[1])
 		if !ok {
@@ -29,14 +30,16 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract priority: !1 through !5
-	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
+	// Require ! to be at start of string or preceded by whitespace
+	priorityRe := regexp.MustCompile(`(?:^|\s)!([1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority, _ = strconv.Atoi(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags: #word
-	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
+	// Require # to be at start of string or preceded by whitespace
+	tagRe := regexp.MustCompile(`(?:^|\s)#(\w+)`)
 	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
@@ -46,7 +49,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	input = tagRe.ReplaceAllString(input, " ")
 
 	// Extract due date: @value
-	dueDateRe := regexp.MustCompile(`\s*@(\S+)\s*`)
+	// Require @ to be at start of string or preceded by whitespace
+	dueDateRe := regexp.MustCompile(`(?:^|\s)@(\S+)`)
 	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		date, err := ParseDate(match[1])
 		if err != nil {
@@ -57,7 +61,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract recurrence: ~pattern (e.g., ~daily, ~weekly, ~2w)
-	recurRe := regexp.MustCompile(`\s*~(\S+)\s*`)
+	// Require ~ to be at start of string or preceded by whitespace
+	recurRe := regexp.MustCompile(`(?:^|\s)~(\S+)`)
 	if match := recurRe.FindStringSubmatch(input); len(match) > 1 {
 		pattern := models.ParseRecurrence(match[1])
 		if pattern == nil {
@@ -68,7 +73,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract parent: >ref (short ID or title prefix)
-	parentRe := regexp.MustCompile(`\s*>(\S+)\s*`)
+	// Require > to be at start of string or preceded by whitespace
+	parentRe := regexp.MustCompile(`(?:^|\s)>(\S+)`)
 	if match := parentRe.FindStringSubmatch(input); len(match) > 1 {
 		ref := match[1]
 		parent := resolveParent(ref, project)
@@ -83,7 +89,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract section: /SectionName (case-insensitive matching)
-	sectionRe := regexp.MustCompile(`\s*/(\S+)\s*`)
+	// Require / to be at start of string or preceded by whitespace
+	sectionRe := regexp.MustCompile(`(?:^|\s)/(\S+)`)
 	if match := sectionRe.FindStringSubmatch(input); len(match) > 1 {
 		sectionName := match[1]
 		// Find matching section (case-insensitive)
@@ -102,7 +109,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 	}
 
 	// Extract status: $start, $blocked, $done, $cancelled
-	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
+	// Require $ to be at start of string or preceded by whitespace
+	statusRe := regexp.MustCompile(`(?:^|\s)\$(\w+)`)
 	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
 		statusStr := strings.ToLower(match[1])
 		switch statusStr {
@@ -164,7 +172,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	var errMsg string
 
 	// Extract task type
-	typeRe := regexp.MustCompile(`(?i)\s*\^(epic|story|task|bug|idea|note)\s*`)
+	// Require ^ to be at start of string or preceded by whitespace
+	typeRe := regexp.MustCompile(`(?i)(?:^|\s)\^(epic|story|task|bug|idea|note)`)
 	if match := typeRe.FindStringSubmatch(input); len(match) > 1 {
 		if taskType, ok := models.ParseTaskTypeInsensitive(match[1]); ok {
 			result.taskType = taskType
@@ -173,14 +182,16 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	}
 
 	// Extract priority
-	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
+	// Require ! to be at start of string or preceded by whitespace
+	priorityRe := regexp.MustCompile(`(?:^|\s)!([1-5])`)
 	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority, _ = strconv.Atoi(match[1])
 		input = priorityRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags
-	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
+	// Require # to be at start of string or preceded by whitespace
+	tagRe := regexp.MustCompile(`(?:^|\s)#(\w+)`)
 	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
@@ -190,7 +201,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	input = tagRe.ReplaceAllString(input, " ")
 
 	// Extract due date (capture error but don't stop)
-	dueDateRe := regexp.MustCompile(`\s*@(\S+)\s*`)
+	// Require @ to be at start of string or preceded by whitespace
+	dueDateRe := regexp.MustCompile(`(?:^|\s)@(\S+)`)
 	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		date, err := ParseDate(match[1])
 		if err != nil {
@@ -202,7 +214,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	}
 
 	// Extract recurrence
-	recurRe := regexp.MustCompile(`\s*~(\S+)\s*`)
+	// Require ~ to be at start of string or preceded by whitespace
+	recurRe := regexp.MustCompile(`(?:^|\s)~(\S+)`)
 	if match := recurRe.FindStringSubmatch(input); len(match) > 1 {
 		pattern := models.ParseRecurrence(match[1])
 		if pattern == nil && errMsg == "" {
@@ -214,7 +227,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	}
 
 	// Extract parent
-	parentRe := regexp.MustCompile(`\s*>(\S+)\s*`)
+	// Require > to be at start of string or preceded by whitespace
+	parentRe := regexp.MustCompile(`(?:^|\s)>(\S+)`)
 	if match := parentRe.FindStringSubmatch(input); len(match) > 1 {
 		ref := match[1]
 		parent := resolveParent(ref, project)
@@ -231,7 +245,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	}
 
 	// Extract section
-	sectionRe := regexp.MustCompile(`\s*/(\S+)\s*`)
+	// Require / to be at start of string or preceded by whitespace
+	sectionRe := regexp.MustCompile(`(?:^|\s)/(\S+)`)
 	if match := sectionRe.FindStringSubmatch(input); len(match) > 1 {
 		sectionName := match[1]
 		found := false
@@ -249,7 +264,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 	}
 
 	// Extract status
-	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
+	// Require $ to be at start of string or preceded by whitespace
+	statusRe := regexp.MustCompile(`(?:^|\s)\$(\w+)`)
 	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
 		statusStr := strings.ToLower(match[1])
 		switch statusStr {

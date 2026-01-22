@@ -19,11 +19,17 @@ func (m *QuickCaptureModel) detectAutocompleteTrigger() (int, int, string) {
 	}
 
 	// Scan backward from end to find most recent trigger
+	// Triggers only activate if at start of input or preceded by whitespace
 	for i := len(input) - 1; i >= 0; i-- {
 		ch := input[i]
 		if ch == ' ' || ch == '\n' {
 			// Hit whitespace before finding trigger
 			break
+		}
+		// Check if trigger is at start or preceded by whitespace
+		atStartOrAfterSpace := i == 0 || input[i-1] == ' ' || input[i-1] == '\n'
+		if !atStartOrAfterSpace {
+			continue
 		}
 		partial := input[i+1:]
 		switch ch {
