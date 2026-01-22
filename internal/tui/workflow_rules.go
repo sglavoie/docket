@@ -14,8 +14,9 @@ type WorkflowRulesModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	rules  []workflow.WorkflowRule
-	cursor int
+	rules        []workflow.WorkflowRule
+	defaultCount int // Number of default rules (at start of slice)
+	cursor       int
 
 	width  int
 	height int
@@ -26,10 +27,13 @@ type WorkflowRulesModel struct {
 
 // NewWorkflowRulesModel creates a new workflow rules model.
 func NewWorkflowRulesModel(cfg *config.Config, manager *config.Manager) *WorkflowRulesModel {
+	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
+	rules := append(defaultRules, customRules...)
 	return &WorkflowRulesModel{
 		config:        cfg,
 		configManager: manager,
-		rules:         cfg.GetWorkflowRules(),
+		rules:         rules,
+		defaultCount:  len(defaultRules),
 		cursor:        0,
 		width:         80,
 		height:        24,
@@ -175,8 +179,10 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("rule not found")}
 		}
 
-		// Update local copy
-		m.rules = m.config.GetWorkflowRules()
+		// Update local copy with sorted rules
+		defaultRules, customRules := m.config.GetWorkflowRulesSorted()
+		m.rules = append(defaultRules, customRules...)
+		m.defaultCount = len(defaultRules)
 		if m.cursor >= len(m.rules) && m.cursor > 0 {
 			m.cursor--
 		}
@@ -195,9 +201,14 @@ func (m *WorkflowRulesModel) View() string {
 	// Expanded view mode - show full rule details
 	if m.expandedView && len(m.rules) > 0 && m.cursor < len(m.rules) {
 		rule := m.rules[m.cursor]
+		isDefault := m.cursor < m.defaultCount
 
-		// Rule name
+		// Rule name with default indicator
 		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+		if isDefault {
+			b.WriteString(" ")
+			b.WriteString(MutedStyle.Render("[Default]"))
+		}
 		b.WriteString("\n\n")
 
 		// Status
@@ -320,8 +331,24 @@ func (m *WorkflowRulesModel) View() string {
 			endIdx = len(m.rules)
 		}
 
+		customCount := len(m.rules) - m.defaultCount
+
 		for i := startIdx; i < endIdx; i++ {
+			// Section headers
+			if i == 0 && m.defaultCount > 0 {
+				b.WriteString(MutedStyle.Render("── Default Rules ──"))
+				b.WriteString("\n")
+			}
+			if i == m.defaultCount && customCount > 0 {
+				if m.defaultCount > 0 {
+					b.WriteString("\n")
+				}
+				b.WriteString(MutedStyle.Render("── Custom Rules ──"))
+				b.WriteString("\n")
+			}
+
 			rule := m.rules[i]
+			isDefault := i < m.defaultCount
 
 			// Status indicator
 			var status string
@@ -331,10 +358,20 @@ func (m *WorkflowRulesModel) View() string {
 				status = MutedStyle.Render("○")
 			}
 
+			// Default marker
+			defaultMarker := ""
+			if isDefault {
+				defaultMarker = MutedStyle.Render("[D]") + " "
+			}
+
 			// Rule name and summary
 			name := rule.Name
-			if len(name) > 30 {
-				name = name[:27] + "..."
+			maxNameLen := 30
+			if isDefault {
+				maxNameLen = 26 // Account for [D] marker
+			}
+			if len(name) > maxNameLen {
+				name = name[:maxNameLen-3] + "..."
 			}
 
 			summary := rule.Summary()
@@ -343,13 +380,13 @@ func (m *WorkflowRulesModel) View() string {
 			}
 
 			if i == m.cursor {
-				line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %-30s", status, name))
+				line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %s%-*s", status, defaultMarker, maxNameLen, name))
 				b.WriteString(line)
 				b.WriteString("\n")
 				// Show summary for selected rule
 				b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
 			} else {
-				b.WriteString(fmt.Sprintf("  %s %-30s", status, name))
+				b.WriteString(fmt.Sprintf("  %s %s%-*s", status, defaultMarker, maxNameLen, name))
 			}
 			b.WriteString("\n")
 		}

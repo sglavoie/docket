@@ -657,6 +657,25 @@ func (c *Config) GetEnabledWorkflowRules() []workflow.WorkflowRule {
 	return enabled
 }
 
+// GetWorkflowRulesSorted returns rules sorted: default first, then custom.
+// Within each group, rules are sorted alphabetically by name.
+func (c *Config) GetWorkflowRulesSorted() (defaultRules, customRules []workflow.WorkflowRule) {
+	for _, rule := range c.WorkflowRules {
+		if rule.Source == "default" {
+			defaultRules = append(defaultRules, rule)
+		} else {
+			customRules = append(customRules, rule)
+		}
+	}
+	sort.Slice(defaultRules, func(i, j int) bool {
+		return defaultRules[i].Name < defaultRules[j].Name
+	})
+	sort.Slice(customRules, func(i, j int) bool {
+		return customRules[i].Name < customRules[j].Name
+	})
+	return defaultRules, customRules
+}
+
 // GetWorkflowRule returns a workflow rule by ID.
 func (c *Config) GetWorkflowRule(id string) *workflow.WorkflowRule {
 	for i := range c.WorkflowRules {

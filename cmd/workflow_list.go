@@ -27,8 +27,9 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	rules := cfg.GetWorkflowRules()
-	if len(rules) == 0 {
+	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
+	total := len(defaultRules) + len(customRules)
+	if total == 0 {
 		fmt.Println("No workflow rules configured.")
 		fmt.Println()
 		fmt.Println("Use 'tt workflow init' to add default rules.")
@@ -36,23 +37,44 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Workflow Rules (%d):\n\n", len(rules))
-	for _, rule := range rules {
-		status := "enabled"
-		if !rule.Enabled {
-			status = "disabled"
-		}
-		sourceMarker := ""
-		if rule.Source == "default" {
-			sourceMarker = " [default]"
-		}
-		triggerInfo := ""
-		if rule.TriggerCount > 0 {
-			triggerInfo = fmt.Sprintf(" | %d triggers", rule.TriggerCount)
-		}
-		fmt.Printf("  [%s] %s (%s)%s%s\n", rule.ID, rule.Name, status, sourceMarker, triggerInfo)
-		fmt.Printf("      %s\n", rule.Summary())
+	fmt.Printf("Workflow Rules (%d):\n", total)
+
+	if len(defaultRules) > 0 {
 		fmt.Println()
+		fmt.Println("── Default Rules ──")
+		fmt.Println()
+		for _, rule := range defaultRules {
+			status := "enabled"
+			if !rule.Enabled {
+				status = "disabled"
+			}
+			triggerInfo := ""
+			if rule.TriggerCount > 0 {
+				triggerInfo = fmt.Sprintf(" | %d triggers", rule.TriggerCount)
+			}
+			fmt.Printf("  [%s] %s (%s)%s\n", rule.ID, rule.Name, status, triggerInfo)
+			fmt.Printf("      %s\n", rule.Summary())
+			fmt.Println()
+		}
+	}
+
+	if len(customRules) > 0 {
+		fmt.Println()
+		fmt.Println("── Custom Rules ──")
+		fmt.Println()
+		for _, rule := range customRules {
+			status := "enabled"
+			if !rule.Enabled {
+				status = "disabled"
+			}
+			triggerInfo := ""
+			if rule.TriggerCount > 0 {
+				triggerInfo = fmt.Sprintf(" | %d triggers", rule.TriggerCount)
+			}
+			fmt.Printf("  [%s] %s (%s)%s\n", rule.ID, rule.Name, status, triggerInfo)
+			fmt.Printf("      %s\n", rule.Summary())
+			fmt.Println()
+		}
 	}
 
 	return nil
