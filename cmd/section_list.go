@@ -36,10 +36,10 @@ func runSectionList(cmd *cobra.Command, args []string) error {
 	sections := project.GetSections()
 	counts := project.CountTasksBySection()
 
-	// Filter out empty Backlog section
+	// Filter out empty Next section
 	var visibleSections []string
 	for _, s := range sections {
-		if s == models.SectionBacklog && counts[s] == 0 {
+		if s == models.SectionNext && counts[s] == 0 {
 			continue
 		}
 		visibleSections = append(visibleSections, s)

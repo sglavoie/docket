@@ -83,7 +83,7 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		parentID:         nil,
 		parentCursor:     0,
 		priority:         3,
-		section:          models.SectionBacklog,
+		section:          models.SectionNext,
 		sectionCursor:    0,
 		sections:         sections,
 		recurrence:       nil,

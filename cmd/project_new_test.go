@@ -119,10 +119,10 @@ func TestProjectSlugUniqueness(t *testing.T) {
 func TestProjectSections(t *testing.T) {
 	project := models.NewProject("test-id", "Test", "/path")
 
-	// Initially has Backlog section by default
+	// Initially has Next section by default
 	testutil.AssertEqual(t, len(project.Sections), 1)
-	if !project.HasSection(models.SectionBacklog) {
-		t.Error("project should have default Backlog section")
+	if !project.HasSection(models.SectionNext) {
+		t.Error("project should have default Next section")
 	}
 
 	// Ensure a new section

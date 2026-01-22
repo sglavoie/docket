@@ -156,9 +156,9 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 			return nil
 		}
 
-		// Check if it's Backlog
-		if oldName == models.SectionBacklog {
-			return ErrorMsg{Err: fmt.Errorf("cannot rename Backlog section")}
+		// Check if it's Next
+		if oldName == models.SectionNext {
+			return ErrorMsg{Err: fmt.Errorf("cannot rename Next section")}
 		}
 
 		// Check if new name already exists
@@ -189,8 +189,8 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 // removeSection removes a section from the project.
 func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 	return func() tea.Msg {
-		if name == models.SectionBacklog {
-			return ErrorMsg{Err: fmt.Errorf("cannot remove Backlog section")}
+		if name == models.SectionNext {
+			return ErrorMsg{Err: fmt.Errorf("cannot remove Next section")}
 		}
 
 		if !m.projectTree.project.RemoveSection(name) {
@@ -349,8 +349,8 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r":
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
-				if section.Name == models.SectionBacklog {
-					m.errorMsg = "Cannot rename Backlog section"
+				if section.Name == models.SectionNext {
+					m.errorMsg = "Cannot rename Next section"
 					return m, nil
 				}
 				m.renameMode = true
@@ -363,8 +363,8 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
-				if section.Name == models.SectionBacklog {
-					m.errorMsg = "Cannot remove Backlog section"
+				if section.Name == models.SectionNext {
+					m.errorMsg = "Cannot remove Next section"
 					return m, nil
 				}
 				return m, m.removeSection(section.Name)
@@ -535,9 +535,9 @@ func (m *SectionManagerModel) View() string {
 				colorStyle := GetSectionColorStyle(sectionColor)
 				colorSwatch := colorStyle.Render("█") + " "
 
-				// Mark Backlog specially
+				// Mark Next specially
 				displayName := section.Name
-				if section.Name == models.SectionBacklog {
+				if section.Name == models.SectionNext {
 					displayName = section.Name + " (default)"
 				}
 				line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, displayName)

@@ -200,9 +200,9 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 	}
 
-	// Default to Backlog section if none specified
+	// Default to Next section if none specified
 	if len(sections) == 0 {
-		sections = []string{models.SectionBacklog}
+		sections = []string{models.SectionNext}
 	}
 
 	return &ParseResult{

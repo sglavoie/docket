@@ -61,10 +61,14 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
 	} else {
 		// Switch to view mode that includes the task's section
 		switch task.Section {
+		case models.SectionNext:
+			m.viewMode = ViewModeNext
 		case models.SectionInbox:
 			m.viewMode = ViewModeInbox
-		case models.SectionBacklog:
-			m.viewMode = ViewModeBacklog
+		case models.SectionWaiting:
+			m.viewMode = ViewModeWaiting
+		case models.SectionSomeday:
+			m.viewMode = ViewModeSomeday
 		default:
 			m.viewMode = ViewModeActive
 		}

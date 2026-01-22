@@ -643,12 +643,12 @@ func TestParseTasksMarkdownWithSections_DefaultBacklog(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should default to Backlog when no sections specified
+	// Should default to Next when no sections specified
 	if len(result.Sections) != 1 {
 		t.Errorf("expected 1 default section, got %d", len(result.Sections))
 	}
-	if result.Sections[0] != models.SectionBacklog {
-		t.Errorf("expected default section to be Backlog, got %s", result.Sections[0])
+	if result.Sections[0] != models.SectionNext {
+		t.Errorf("expected default section to be Next, got %s", result.Sections[0])
 	}
 }
 
@@ -689,12 +689,12 @@ func TestParseTasksMarkdownWithSections_SectionsAfterTaskIgnored(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Sections after first task should be ignored, defaulting to Backlog
+	// Sections after first task should be ignored, defaulting to Next
 	if len(result.Sections) != 1 {
 		t.Errorf("expected 1 section (sections after task ignored), got %d", len(result.Sections))
 	}
-	if result.Sections[0] != models.SectionBacklog {
-		t.Errorf("expected default Backlog, got %s", result.Sections[0])
+	if result.Sections[0] != models.SectionNext {
+		t.Errorf("expected default Next, got %s", result.Sections[0])
 	}
 }
 

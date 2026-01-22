@@ -264,7 +264,7 @@ func (m *NoteCreatorModel) createNote() tea.Cmd {
 			Status:      models.StatusTodo, // Notes still have status internally
 			Priority:    3,                 // Default priority, not displayed
 			ParentID:    m.parentID,
-			Section:     models.SectionBacklog,
+			Section:     models.SectionNext,
 		}
 
 		// Add task to project and reorder so it appears before completed tasks

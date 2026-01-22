@@ -33,22 +33,25 @@ const (
 type ViewMode int
 
 const (
-	ViewModeActive    ViewMode = iota // Tasks not in Inbox, Pending, or Backlog sections
+	ViewModeActive    ViewMode = iota // Tasks not in Inbox, Next, Waiting, or Someday sections
+	ViewModeNext                      // Only Next section tasks (GTD "Next Actions")
 	ViewModeInbox                     // Only Inbox section tasks
-	ViewModePending                   // Only Pending section tasks
-	ViewModeBacklog                   // Only Backlog section tasks
+	ViewModeWaiting                   // Only Waiting section tasks (GTD "Waiting For")
+	ViewModeSomeday                   // Only Someday section tasks (GTD "Someday/Maybe")
 	ViewModeCompleted                 // Only completed tasks (done or cancelled)
 )
 
 // String returns the display name for a view mode.
 func (v ViewMode) String() string {
 	switch v {
+	case ViewModeNext:
+		return "Next"
 	case ViewModeInbox:
 		return "Inbox"
-	case ViewModePending:
-		return "Pending"
-	case ViewModeBacklog:
-		return "Backlog"
+	case ViewModeWaiting:
+		return "Waiting"
+	case ViewModeSomeday:
+		return "Someday"
 	case ViewModeCompleted:
 		return "Completed"
 	default:

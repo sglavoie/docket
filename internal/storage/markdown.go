@@ -36,7 +36,7 @@ func LoadProject(project *models.Project) error {
 		// No tasks file yet, initialize empty
 		project.Tasks = []*models.Task{}
 		project.NextShortID = 1
-		project.Sections = []string{models.SectionBacklog}
+		project.Sections = []string{models.SectionNext}
 		return nil
 	}
 	if err != nil {

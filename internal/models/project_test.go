@@ -788,62 +788,62 @@ func TestGetIncompleteDependencies(t *testing.T) {
 	}
 }
 
-func TestNewProjectHasBacklogSection(t *testing.T) {
+func TestNewProjectHasNextSection(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
 	if len(project.Sections) != 1 {
 		t.Errorf("expected 1 section, got %d", len(project.Sections))
 	}
-	if project.Sections[0] != SectionBacklog {
-		t.Errorf("expected first section to be Backlog, got %s", project.Sections[0])
+	if project.Sections[0] != SectionNext {
+		t.Errorf("expected first section to be Next, got %s", project.Sections[0])
 	}
 }
 
 func TestProjectGetSections(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	// Default should be just Backlog
+	// Default should be just Next
 	sections := project.GetSections()
-	if len(sections) != 1 || sections[0] != SectionBacklog {
-		t.Errorf("expected [Backlog], got %v", sections)
+	if len(sections) != 1 || sections[0] != SectionNext {
+		t.Errorf("expected [Next], got %v", sections)
 	}
 
 	// Add more sections
-	project.Sections = []string{"Active", "Done", SectionBacklog}
+	project.Sections = []string{"Active", "Done", SectionNext}
 	sections = project.GetSections()
 
-	// Backlog should always be first
-	if sections[0] != SectionBacklog {
-		t.Errorf("expected Backlog first, got %s", sections[0])
+	// Next should always be first
+	if sections[0] != SectionNext {
+		t.Errorf("expected Next first, got %s", sections[0])
 	}
 	if len(sections) != 3 {
 		t.Errorf("expected 3 sections, got %d", len(sections))
 	}
 
-	// Test with empty sections - should return Backlog
+	// Test with empty sections - should return Next
 	project.Sections = []string{}
 	sections = project.GetSections()
-	if len(sections) != 1 || sections[0] != SectionBacklog {
-		t.Errorf("expected [Backlog] for empty sections, got %v", sections)
+	if len(sections) != 1 || sections[0] != SectionNext {
+		t.Errorf("expected [Next] for empty sections, got %v", sections)
 	}
 
-	// Test with sections missing Backlog - should prepend it
+	// Test with sections missing Next - should prepend it
 	project.Sections = []string{"Active", "Done"}
 	sections = project.GetSections()
-	if sections[0] != SectionBacklog {
-		t.Errorf("expected Backlog first even when missing, got %s", sections[0])
+	if sections[0] != SectionNext {
+		t.Errorf("expected Next first even when missing, got %s", sections[0])
 	}
 	if len(sections) != 3 {
-		t.Errorf("expected 3 sections after prepending Backlog, got %d", len(sections))
+		t.Errorf("expected 3 sections after prepending Next, got %d", len(sections))
 	}
 }
 
 func TestProjectHasSection(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
-	project.Sections = []string{SectionBacklog, "Active", "Done"}
+	project.Sections = []string{SectionNext, "Active", "Done"}
 
-	if !project.HasSection(SectionBacklog) {
-		t.Error("expected HasSection to return true for Backlog")
+	if !project.HasSection(SectionNext) {
+		t.Error("expected HasSection to return true for Next")
 	}
 	if !project.HasSection("Active") {
 		t.Error("expected HasSection to return true for Active")
@@ -858,9 +858,9 @@ func TestProjectEnsureSection(t *testing.T) {
 	initialLen := len(project.Sections)
 
 	// Adding existing section should not add duplicate
-	project.EnsureSection(SectionBacklog)
+	project.EnsureSection(SectionNext)
 	if len(project.Sections) != initialLen {
-		t.Error("EnsureSection should not add duplicate Backlog")
+		t.Error("EnsureSection should not add duplicate Next")
 	}
 
 	// Adding new section should add it
@@ -879,7 +879,7 @@ func TestProjectEnsureSection(t *testing.T) {
 
 func TestProjectRemoveSection(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
-	project.Sections = []string{SectionBacklog, "Active", "Done"}
+	project.Sections = []string{SectionNext, "Active", "Done"}
 
 	// Create tasks in Active section
 	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -890,9 +890,9 @@ func TestProjectRemoveSection(t *testing.T) {
 	task3.Section = "Done"
 	project.Tasks = []*Task{task1, task2, task3}
 
-	// Cannot remove Backlog
-	if project.RemoveSection(SectionBacklog) {
-		t.Error("should not be able to remove Backlog")
+	// Cannot remove Next
+	if project.RemoveSection(SectionNext) {
+		t.Error("should not be able to remove Next")
 	}
 
 	// Remove Active - should clear section from tasks
@@ -920,7 +920,7 @@ func TestProjectRemoveSection(t *testing.T) {
 
 func TestProjectRenameSection(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
-	project.Sections = []string{SectionBacklog, "Active", "Done"}
+	project.Sections = []string{SectionNext, "Active", "Done"}
 
 	// Create tasks in Active section
 	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
@@ -929,9 +929,9 @@ func TestProjectRenameSection(t *testing.T) {
 	task2.Section = "Done"
 	project.Tasks = []*Task{task1, task2}
 
-	// Cannot rename Backlog
-	if project.RenameSection(SectionBacklog, "NewName") {
-		t.Error("should not be able to rename Backlog")
+	// Cannot rename Next
+	if project.RenameSection(SectionNext, "NewName") {
+		t.Error("should not be able to rename Next")
 	}
 
 	// Cannot rename to empty string
@@ -997,10 +997,10 @@ func TestProjectGetTasksBySection(t *testing.T) {
 		t.Errorf("expected 1 task with empty section (Active view), got %d", len(activeView))
 	}
 
-	// Backlog section should be empty since task4 has empty section
-	backlog := project.GetTasksBySection(SectionBacklog)
-	if len(backlog) != 0 {
-		t.Errorf("expected 0 tasks in Backlog, got %d", len(backlog))
+	// Next section should be empty since task4 has empty section
+	next := project.GetTasksBySection(SectionNext)
+	if len(next) != 0 {
+		t.Errorf("expected 0 tasks in Next, got %d", len(next))
 	}
 
 	nonexistent := project.GetTasksBySection("Nonexistent")

@@ -126,8 +126,13 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		// Apply view mode section logic
 		switch m.viewMode {
 		case ViewModeActive:
-			// Hide Inbox, Pending, and Backlog tasks
-			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionPending || node.Task.Section == models.SectionBacklog {
+			// Hide Inbox, Next, Waiting, and Someday tasks
+			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday {
+				return false
+			}
+		case ViewModeNext:
+			// Only show Next tasks
+			if node.Task.Section != models.SectionNext {
 				return false
 			}
 		case ViewModeInbox:
@@ -135,14 +140,14 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 			if node.Task.Section != models.SectionInbox {
 				return false
 			}
-		case ViewModePending:
-			// Only show Pending tasks
-			if node.Task.Section != models.SectionPending {
+		case ViewModeWaiting:
+			// Only show Waiting tasks
+			if node.Task.Section != models.SectionWaiting {
 				return false
 			}
-		case ViewModeBacklog:
-			// Only show Backlog tasks
-			if node.Task.Section != models.SectionBacklog {
+		case ViewModeSomeday:
+			// Only show Someday tasks
+			if node.Task.Section != models.SectionSomeday {
 				return false
 			}
 		}
@@ -213,8 +218,8 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		if node.Task.Status == models.StatusBlocked {
 			return false
 		}
-		// Hide Inbox/Backlog tasks (awaiting triage)
-		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionBacklog {
+		// Hide Inbox/Next/Waiting/Someday tasks (GTD-aligned - not immediately actionable)
+		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday {
 			return false
 		}
 	}
@@ -483,7 +488,9 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			!m.project.HasIncompleteDependencies(task) &&
 			task.Status != models.StatusBlocked &&
 			task.Section != models.SectionInbox &&
-			task.Section != models.SectionBacklog {
+			task.Section != models.SectionNext &&
+			task.Section != models.SectionWaiting &&
+			task.Section != models.SectionSomeday {
 			m.filterCounts["actionable"]++
 		}
 	}
@@ -520,13 +527,15 @@ func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]
 func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 	switch m.viewMode {
 	case ViewModeActive:
-		return []string{models.SectionInbox, models.SectionPending, models.SectionBacklog}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday}
+	case ViewModeNext:
+		return []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, "Active"}
 	case ViewModeInbox:
-		return []string{models.SectionPending, models.SectionBacklog, "Active"}
-	case ViewModePending:
-		return []string{models.SectionInbox, models.SectionBacklog, "Active"}
-	case ViewModeBacklog:
-		return []string{models.SectionInbox, models.SectionPending, "Active"}
+		return []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, "Active"}
+	case ViewModeWaiting:
+		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, "Active"}
+	case ViewModeSomeday:
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, "Active"}
 	}
 	return nil
 }

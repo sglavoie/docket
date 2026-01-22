@@ -15,7 +15,7 @@ var sectionRemoveCmd = &cobra.Command{
 	Long: `Remove a section from the project.
 
 Tasks in the removed section will have their section cleared.
-The Backlog section cannot be removed.
+The Next section cannot be removed.
 
 Examples:
   tt section remove "In Progress"
@@ -32,8 +32,8 @@ func init() {
 func runSectionRemove(cmd *cobra.Command, args []string) error {
 	sectionName := args[0]
 
-	if sectionName == models.SectionBacklog {
-		return fmt.Errorf("cannot remove the Backlog section")
+	if sectionName == models.SectionNext {
+		return fmt.Errorf("cannot remove the Next section")
 	}
 
 	project, _, _, err := LoadCurrentProject()

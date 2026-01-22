@@ -264,9 +264,9 @@ func (m *GlobalInboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea
 	case "x":
 		return m, m.deleteCurrentTask()
 
-	case "p":
-		// Send to Pending section
-		return m, m.sendToPending()
+	case "w":
+		// Send to Waiting section
+		return m, m.sendToWaiting()
 
 	case "u":
 		// Undo last action

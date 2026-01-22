@@ -11,12 +11,12 @@ func TestNewTaskHasEmptySection(t *testing.T) {
 	}
 }
 
-func TestTaskCompleteAutoTriageFromBacklog(t *testing.T) {
+func TestTaskCompleteAutoTriageFromNext(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = SectionBacklog // Explicitly place in Backlog
+	task.Section = SectionNext // Explicitly place in Next
 
-	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
+	if task.Section != SectionNext {
+		t.Fatalf("precondition failed: task should be in Next, got %s", task.Section)
 	}
 
 	task.Complete()
@@ -29,7 +29,7 @@ func TestTaskCompleteAutoTriageFromBacklog(t *testing.T) {
 	}
 }
 
-func TestTaskCompletePreservesNonBacklogSection(t *testing.T) {
+func TestTaskCompletePreservesNonNextSection(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = "Active"
 
@@ -40,12 +40,12 @@ func TestTaskCompletePreservesNonBacklogSection(t *testing.T) {
 	}
 }
 
-func TestTaskStartAutoTriageFromBacklog(t *testing.T) {
+func TestTaskStartAutoTriageFromNext(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = SectionBacklog // Explicitly place in Backlog
+	task.Section = SectionNext // Explicitly place in Next
 
-	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
+	if task.Section != SectionNext {
+		t.Fatalf("precondition failed: task should be in Next, got %s", task.Section)
 	}
 
 	task.Start()
@@ -58,7 +58,7 @@ func TestTaskStartAutoTriageFromBacklog(t *testing.T) {
 	}
 }
 
-func TestTaskStartPreservesNonBacklogSection(t *testing.T) {
+func TestTaskStartPreservesNonNextSection(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = "Active"
 
@@ -69,12 +69,12 @@ func TestTaskStartPreservesNonBacklogSection(t *testing.T) {
 	}
 }
 
-func TestTaskCancelAutoTriageFromBacklog(t *testing.T) {
+func TestTaskCancelAutoTriageFromNext(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = SectionBacklog // Explicitly place in Backlog
+	task.Section = SectionNext // Explicitly place in Next
 
-	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
+	if task.Section != SectionNext {
+		t.Fatalf("precondition failed: task should be in Next, got %s", task.Section)
 	}
 
 	task.Cancel()
@@ -87,7 +87,7 @@ func TestTaskCancelAutoTriageFromBacklog(t *testing.T) {
 	}
 }
 
-func TestTaskCancelPreservesNonBacklogSection(t *testing.T) {
+func TestTaskCancelPreservesNonNextSection(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = "Done"
 
@@ -100,17 +100,17 @@ func TestTaskCancelPreservesNonBacklogSection(t *testing.T) {
 
 func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = SectionBacklog // Explicitly place in Backlog
+	task.Section = SectionNext // Explicitly place in Next
 
-	if task.Section != SectionBacklog {
-		t.Fatalf("precondition failed: task should be in Backlog, got %s", task.Section)
+	if task.Section != SectionNext {
+		t.Fatalf("precondition failed: task should be in Next, got %s", task.Section)
 	}
 
 	task.Block()
 
-	// Block does not auto-triage - task stays in Backlog
-	if task.Section != SectionBacklog {
-		t.Errorf("expected section to remain Backlog after Block(), got %s", task.Section)
+	// Block does not auto-triage - task stays in Next
+	if task.Section != SectionNext {
+		t.Errorf("expected section to remain Next after Block(), got %s", task.Section)
 	}
 	if task.Status != StatusBlocked {
 		t.Errorf("expected status to be blocked, got %s", task.Status)
@@ -119,7 +119,7 @@ func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 
 func TestTaskReopenMovesToInbox(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = "" // Already triaged out of Backlog
+	task.Section = "" // Already triaged out of Next
 	task.Status = StatusDone
 
 	task.Reopen()
@@ -142,5 +142,49 @@ func TestTaskWithEmptySectionNoAutoTriage(t *testing.T) {
 	// Should stay empty
 	if task.Section != "" {
 		t.Errorf("expected section to remain empty, got %s", task.Section)
+	}
+}
+
+func TestTaskAutoTriageFromWaiting(t *testing.T) {
+	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionWaiting
+
+	task.Complete()
+
+	if task.Section != "" {
+		t.Errorf("expected section to be cleared after Complete() from Waiting, got %s", task.Section)
+	}
+}
+
+func TestTaskAutoTriageFromSomeday(t *testing.T) {
+	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionSomeday
+
+	task.Complete()
+
+	if task.Section != "" {
+		t.Errorf("expected section to be cleared after Complete() from Someday, got %s", task.Section)
+	}
+}
+
+func TestTaskStartAutoTriageFromWaiting(t *testing.T) {
+	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionWaiting
+
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected section to be cleared after Start() from Waiting, got %s", task.Section)
+	}
+}
+
+func TestTaskStartAutoTriageFromSomeday(t *testing.T) {
+	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task.Section = SectionSomeday
+
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected section to be cleared after Start() from Someday, got %s", task.Section)
 	}
 }

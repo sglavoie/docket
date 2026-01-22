@@ -9,20 +9,32 @@ import (
 
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
-	// Count inbox, pending, backlog, active, and completed items
-	var inboxCount, pendingCount, backlogCount, activeCount, completedCount int
+	// Count by section: active, next, inbox, waiting, someday, completed
+	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, completedCount int
 	for _, task := range m.project.Tasks {
 		if task.IsComplete() {
 			completedCount++
 			continue
 		}
-		if task.Section == models.SectionInbox && task.IsRoot() {
-			inboxCount++
-		} else if task.Section == models.SectionPending && task.IsRoot() {
-			pendingCount++
-		} else if task.Section == models.SectionBacklog && task.IsRoot() {
-			backlogCount++
-		} else if task.Section != models.SectionInbox && task.Section != models.SectionPending && task.Section != models.SectionBacklog {
+		switch task.Section {
+		case models.SectionNext:
+			if task.IsRoot() {
+				nextCount++
+			}
+		case models.SectionInbox:
+			if task.IsRoot() {
+				inboxCount++
+			}
+		case models.SectionWaiting:
+			if task.IsRoot() {
+				waitingCount++
+			}
+		case models.SectionSomeday:
+			if task.IsRoot() {
+				somedayCount++
+			}
+		default:
+			// Empty section = Active
 			activeCount++
 		}
 	}
@@ -38,6 +50,14 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(activeLabel))
 	}
 
+	// Next view
+	nextLabel := fmt.Sprintf("Next[%d]", nextCount)
+	if m.viewMode == ViewModeNext {
+		parts = append(parts, ViewModeNextStyle.Render(nextLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(nextLabel))
+	}
+
 	// Inbox view
 	inboxLabel := fmt.Sprintf("Inbox[%d]", inboxCount)
 	if m.viewMode == ViewModeInbox {
@@ -46,20 +66,20 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(inboxLabel))
 	}
 
-	// Pending view
-	pendingLabel := fmt.Sprintf("Pending[%d]", pendingCount)
-	if m.viewMode == ViewModePending {
-		parts = append(parts, ViewModePendingStyle.Render(pendingLabel))
+	// Waiting view
+	waitingLabel := fmt.Sprintf("Waiting[%d]", waitingCount)
+	if m.viewMode == ViewModeWaiting {
+		parts = append(parts, ViewModeWaitingStyle.Render(waitingLabel))
 	} else {
-		parts = append(parts, MutedStyle.Render(pendingLabel))
+		parts = append(parts, MutedStyle.Render(waitingLabel))
 	}
 
-	// Backlog view
-	backlogLabel := fmt.Sprintf("Backlog[%d]", backlogCount)
-	if m.viewMode == ViewModeBacklog {
-		parts = append(parts, ViewModeBacklogStyle.Render(backlogLabel))
+	// Someday view
+	somedayLabel := fmt.Sprintf("Someday[%d]", somedayCount)
+	if m.viewMode == ViewModeSomeday {
+		parts = append(parts, ViewModeSomedayStyle.Render(somedayLabel))
 	} else {
-		parts = append(parts, MutedStyle.Render(backlogLabel))
+		parts = append(parts, MutedStyle.Render(somedayLabel))
 	}
 
 	return strings.Join(parts, " ")
@@ -220,12 +240,14 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 	switch m.viewMode {
 	case ViewModeActive:
 		base = "Active"
+	case ViewModeNext:
+		base = "Next"
 	case ViewModeInbox:
 		base = "Inbox"
-	case ViewModePending:
-		base = "Pending"
-	case ViewModeBacklog:
-		base = "Backlog"
+	case ViewModeWaiting:
+		base = "Waiting"
+	case ViewModeSomeday:
+		base = "Someday"
 	case ViewModeCompleted:
 		base = "Completed"
 	default:

@@ -56,7 +56,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
 	taskAddCmd.Flags().BoolVar(&isNote, "note", false, "create a note")
-	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: Backlog)")
+	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: project's first section)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 }
 

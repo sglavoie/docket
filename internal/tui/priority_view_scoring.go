@@ -87,11 +87,13 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	}
 	score += unblockingBonus * 150
 
-	// Section penalty: deprioritize Backlog and Pending section tasks
-	if task.Section == models.SectionBacklog {
-		score -= 300
-	} else if task.Section == models.SectionPending {
+	// Section penalty: deprioritize Next, Waiting, and Someday section tasks
+	if task.Section == models.SectionNext {
+		score -= 100
+	} else if task.Section == models.SectionWaiting {
 		score -= 200
+	} else if task.Section == models.SectionSomeday {
+		score -= 300
 	}
 
 	return score

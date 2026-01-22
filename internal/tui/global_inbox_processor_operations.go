@@ -356,8 +356,8 @@ func (m *GlobalInboxProcessorModel) reopenTask() tea.Cmd {
 	return m.saveCurrentProject()
 }
 
-// sendToPending moves the current task to Pending section and marks it processed.
-func (m *GlobalInboxProcessorModel) sendToPending() tea.Cmd {
+// sendToWaiting moves the current task to Waiting section and marks it processed.
+func (m *GlobalInboxProcessorModel) sendToWaiting() tea.Cmd {
 	git := m.getCurrentTask()
 	if git == nil {
 		return nil
@@ -365,11 +365,11 @@ func (m *GlobalInboxProcessorModel) sendToPending() tea.Cmd {
 
 	task := git.Task
 	snapshot := m.captureSnapshot(task)
-	task.Section = models.SectionPending
+	task.Section = models.SectionWaiting
 	task.UpdatedAt = time.Now()
 
-	m.recordAction("sent to Pending", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d sent to Pending", task.ShortID)
+	m.recordAction("sent to Waiting", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", task.ShortID)
 
 	// Mark as processed (it's leaving inbox)
 	m.processedIDs[task.ID] = true

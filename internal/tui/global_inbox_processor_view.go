@@ -103,7 +103,7 @@ func (m *GlobalInboxProcessorModel) renderOperationsPanel() string {
 	// Group operations into 3 lines for better readability
 	line1 := []string{"S: Section", "1-5: Priority", "t: Manage tags"}
 	line2 := []string{"c: Create subtask", "e: Edit", "D: Due date"}
-	line3 := []string{"p: Pending", "b: Dependencies", "x: Delete", "u: Undo"}
+	line3 := []string{"w: Waiting", "b: Dependencies", "x: Delete", "u: Undo"}
 
 	b.WriteString(MutedStyle.Render(strings.Join(line1, " · ")))
 	b.WriteString("\n")

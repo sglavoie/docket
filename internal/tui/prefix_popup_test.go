@@ -104,7 +104,7 @@ func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 	result := RenderPrefixPopup("g", hints, 200)
 
 	// Should contain extended navigation hints
-	expectedDescriptions := []string{"first", "active", "backlog", "inbox", "completed"}
+	expectedDescriptions := []string{"first", "active", "next", "inbox", "waiting", "someday", "completed"}
 	for _, desc := range expectedDescriptions {
 		if !strings.Contains(result, desc) {
 			t.Errorf("expected result to contain description %q, got %q", desc, result)

@@ -68,8 +68,8 @@ func buildSectionList(project *models.Project) []SectionInfo {
 	// Include all project-defined sections, even if empty
 	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {
-			// Skip empty Backlog
-			if section == models.SectionBacklog {
+			// Skip empty Next
+			if section == models.SectionNext {
 				continue
 			}
 			sectionCounts[section] = 0
@@ -81,12 +81,12 @@ func buildSectionList(project *models.Project) []SectionInfo {
 		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
 	}
 
-	// Sort: Backlog first (if present), then alphabetically
+	// Sort: Next first (if present), then alphabetically
 	sort.Slice(sections, func(i, j int) bool {
-		if sections[i].Name == models.SectionBacklog {
+		if sections[i].Name == models.SectionNext {
 			return true
 		}
-		if sections[j].Name == models.SectionBacklog {
+		if sections[j].Name == models.SectionNext {
 			return false
 		}
 		return sections[i].Name < sections[j].Name

@@ -69,7 +69,7 @@ func TestSaveProject_WithSections(t *testing.T) {
 
 	project := testutil.NewTestProject("Sections Test")
 	project.Path = filepath.Join(dir, "sections-test")
-	project.Sections = []string{"Backlog", "Active", "Done"}
+	project.Sections = []string{"Next", "Active", "Done"}
 	project.SectionColors = map[string]string{
 		"Active": "green",
 		"Done":   "blue",

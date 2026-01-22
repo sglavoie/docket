@@ -13,7 +13,7 @@ var sectionRenameCmd = &cobra.Command{
 	Short: "Rename a section in the current project",
 	Long: `Rename a section and update all tasks with that section.
 
-The Backlog section cannot be renamed.
+The Next section cannot be renamed.
 
 Examples:
   tt section rename "In Progress" "Working"
@@ -30,8 +30,8 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 	oldName := args[0]
 	newName := args[1]
 
-	if oldName == models.SectionBacklog {
-		return fmt.Errorf("cannot rename the Backlog section")
+	if oldName == models.SectionNext {
+		return fmt.Errorf("cannot rename the Next section")
 	}
 
 	if newName == "" {

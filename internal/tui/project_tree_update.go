@@ -321,9 +321,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
-		case "b":
-			// Go to Backlog view
-			m.viewMode = ViewModeBacklog
+		case "n":
+			// Go to Next view
+			m.viewMode = ViewModeNext
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()
@@ -335,9 +335,16 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
-		case "p":
-			// Go to Pending view
-			m.viewMode = ViewModePending
+		case "w":
+			// Go to Waiting view
+			m.viewMode = ViewModeWaiting
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		case "s":
+			// Go to Someday view
+			m.viewMode = ViewModeSomeday
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()
@@ -353,17 +360,21 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			// Send to Active section
 			_, cmd := m.sendTasksToActive(visible)
 			return m, cmd
-		case "B":
-			// Send to Backlog section
-			_, cmd := m.sendTasksToSection(models.SectionBacklog, visible)
+		case "N":
+			// Send to Next section
+			_, cmd := m.sendTasksToSection(models.SectionNext, visible)
 			return m, cmd
 		case "I":
 			// Send to Inbox section
 			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
 			return m, cmd
-		case "P":
-			// Send to Pending section
-			_, cmd := m.sendTasksToSection(models.SectionPending, visible)
+		case "W":
+			// Send to Waiting section
+			_, cmd := m.sendTasksToSection(models.SectionWaiting, visible)
+			return m, cmd
+		case "S":
+			// Send to Someday section
+			_, cmd := m.sendTasksToSection(models.SectionSomeday, visible)
 			return m, cmd
 		case "d":
 			// Cycle due date filter
@@ -374,7 +385,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, nil
 		case "v":
 			// Cycle view modes (including Completed)
-			m.viewMode = (m.viewMode + 1) % 5
+			m.viewMode = (m.viewMode + 1) % 6
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()

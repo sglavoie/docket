@@ -98,14 +98,17 @@ const (
 	StatusCancelled  TaskStatus = "cancelled"
 )
 
-// SectionBacklog is the default section for new tasks awaiting triage.
-const SectionBacklog = "Backlog"
+// SectionNext is the default section for tasks ready to work on (GTD "Next Actions").
+const SectionNext = "Next"
 
 // SectionInbox is the section for quick-captured tasks awaiting triage.
 const SectionInbox = "Inbox"
 
-// SectionPending is the section for tasks on the back burner (started but not actively worked on).
-const SectionPending = "Pending"
+// SectionWaiting is the section for tasks blocked on external input (GTD "Waiting For").
+const SectionWaiting = "Waiting"
+
+// SectionSomeday is the section for uncommitted ideas (GTD "Someday/Maybe").
+const SectionSomeday = "Someday"
 
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
@@ -171,7 +174,7 @@ type Task struct {
 	Priority    int                `json:"priority"`
 	ParentID    *string            `json:"parent_id,omitempty"`
 	Tags        []string           `json:"tags,omitempty"`
-	Section     string             `json:"section,omitempty"` // Section for organizing tasks (e.g., "Backlog", "Active")
+	Section     string             `json:"section,omitempty"` // Section for organizing tasks (e.g., "Next", "Inbox", "Waiting", "Someday")
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
 	CompletedAt *time.Time         `json:"completed_at,omitempty"`
@@ -230,26 +233,26 @@ func (t *Task) IsNote() bool {
 }
 
 // Complete marks the task as done and sets the completion time.
-// If the task is in the Backlog section, it is automatically moved out (auto-triage).
+// If the task is in a non-Active section, it is automatically moved out (auto-triage).
 func (t *Task) Complete() {
 	now := time.Now()
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
 	t.Active = false
-	// Auto-triage: move out of Backlog/Pending when completing
-	if t.Section == SectionBacklog || t.Section == SectionPending {
+	// Auto-triage: move out of Next/Waiting/Someday when completing
+	if t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
 		t.Section = ""
 	}
 }
 
 // Start marks the task as in progress.
-// If the task is in the Inbox, Backlog, or Pending section, it is automatically moved out (auto-triage).
+// If the task is in any non-Active section, it is automatically moved out (auto-triage).
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
-	// Auto-triage: move out of Inbox/Backlog/Pending when starting
-	if t.Section == SectionInbox || t.Section == SectionBacklog || t.Section == SectionPending {
+	// Auto-triage: move out of Inbox/Next/Waiting/Someday when starting
+	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
 		t.Section = ""
 	}
 }
@@ -261,14 +264,14 @@ func (t *Task) Block() {
 }
 
 // Cancel marks the task as cancelled.
-// If the task is in the Backlog or Pending section, it is automatically moved out (auto-triage).
+// If the task is in a non-Active section, it is automatically moved out (auto-triage).
 func (t *Task) Cancel() {
 	now := time.Now()
 	t.Status = StatusCancelled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
-	// Auto-triage: move out of Backlog/Pending when cancelling
-	if t.Section == SectionBacklog || t.Section == SectionPending {
+	// Auto-triage: move out of Next/Waiting/Someday when cancelling
+	if t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
 		t.Section = ""
 	}
 }

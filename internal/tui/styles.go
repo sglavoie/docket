@@ -309,20 +309,26 @@ var (
 				Bold(true).
 				Padding(0, 1)
 
+	ViewModeNextStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("241")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
 	ViewModeInboxStyle = lipgloss.NewStyle().
 				Background(lipgloss.Color("33")).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
 				Padding(0, 1)
 
-	ViewModePendingStyle = lipgloss.NewStyle().
+	ViewModeWaitingStyle = lipgloss.NewStyle().
 				Background(lipgloss.Color("214")).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
 				Padding(0, 1)
 
-	ViewModeBacklogStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("241")).
+	ViewModeSomedayStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("135")).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
 				Padding(0, 1)

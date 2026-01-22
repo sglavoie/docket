@@ -6,7 +6,7 @@ A CLI-first project and task management tool with a TUI built on BubbleTea. Desi
 
 tt supports hierarchical task management with five task types that follow a parent-child relationship. Epics can contain stories, tasks, bugs, and ideas. Stories can contain tasks and bugs. Tasks, bugs, and ideas are leaf nodes that cannot have children.
 
-Tasks can be organized into sections for workflow management. Sections like "Backlog", "Active", "Review", and "Done" help categorize tasks by their current stage. New tasks default to the Backlog section and are automatically moved out when started, completed, or cancelled.
+Tasks can be organized into GTD-aligned sections for workflow management. The built-in sections are Active (tasks you're working on now), Next (ready to work on), Inbox (quick-captured items awaiting triage), Waiting (blocked on external input), and Someday (uncommitted ideas). New tasks default to the Next section and are automatically moved to Active when started, completed, or cancelled.
 
 All data is stored in human-readable markdown files, making it easy to view and edit tasks with any text editor or render them beautifully with glow.
 
@@ -91,7 +91,7 @@ Task add flags:
 --parent <id>       Add as child of another task
 --priority <1-5>    Set priority (1=highest, default=3)
 --tags <t1,t2>      Add tags
---section <name>    Set section (default: Backlog)
+--section <name>    Set section (default: Next)
 ```
 
 Task list flags:
@@ -107,12 +107,12 @@ Task list flags:
 
 ### Section Commands
 
-Sections organize tasks into workflow stages. Every project starts with a Backlog section.
+Sections organize tasks into GTD-aligned workflow stages. Every project starts with a Next section.
 
 ```bash
 tt section add <name>           # Add a section to the project
 tt section list                 # List all sections with task counts
-tt section remove <name>        # Remove a section (Backlog protected)
+tt section remove <name>        # Remove a section (Next protected)
 tt section rename <old> <new>   # Rename a section
 ```
 
@@ -135,7 +135,7 @@ The TUI provides a visual interface with keyboard navigation.
 
 Dashboard view shows all projects with task counts and progress bars. Use j/k or arrow keys to navigate, Enter to select a project.
 
-Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space to toggle expansion, zR/zM to expand/collapse all, gc to view completed tasks, and Enter to view task details. Use ga/gb/gi to switch between Active/Backlog/Inbox views, and gA/gB/gI to send tasks to those sections. Press N to filter by sections, Ctrl+N to assign a section to the selected task, and Ctrl+S to open the section manager for adding, renaming, or removing sections.
+Project tree view shows tasks in a hierarchical tree with expand/collapse support. Press space to toggle expansion, zR/zM to expand/collapse all, gc to view completed tasks, and Enter to view task details. Use ga/gn/gi/gw/gs to switch between Active/Next/Inbox/Waiting/Someday views, and gA/gN/gI/gW/gS to send tasks to those sections. Press N to filter by sections, Ctrl+N to assign a section to the selected task, and Ctrl+S to open the section manager for adding, renaming, or removing sections.
 
 Task detail view shows full task information including metadata, description, and subtasks.
 
@@ -202,10 +202,10 @@ Tasks are stored in human-readable markdown. Each project has a `tasks.md` file 
 
 ```markdown
 # Project: My Project
-<!-- sections: Backlog;Active;Review;Done -->
+<!-- sections: Next;Inbox;Waiting;Someday -->
 
 ## Epic: User Authentication
-<!-- id: uuid, status: in_progress, priority: 1, tags: backend, section: Active -->
+<!-- id: uuid, status: in_progress, priority: 1, tags: backend -->
 
 Build complete auth flow.
 

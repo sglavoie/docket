@@ -250,9 +250,9 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "x":
 		return m, m.deleteCurrentTask()
 
-	case "p":
-		// Send to Pending section
-		return m, m.sendToPending()
+	case "w":
+		// Send to Waiting section
+		return m, m.sendToWaiting()
 
 	case "u":
 		// Undo last action (Vim-style, consistent with project tree)
@@ -705,19 +705,19 @@ func (m *InboxProcessorModel) reopenTask() tea.Cmd {
 	return m.saveProject()
 }
 
-// sendToPending moves the current task to Pending section and marks it processed.
-func (m *InboxProcessorModel) sendToPending() tea.Cmd {
+// sendToWaiting moves the current task to Waiting section and marks it processed.
+func (m *InboxProcessorModel) sendToWaiting() tea.Cmd {
 	task := m.getCurrentTask()
 	if task == nil {
 		return nil
 	}
 
 	snapshot := m.captureSnapshot(task)
-	task.Section = models.SectionPending
+	task.Section = models.SectionWaiting
 	task.UpdatedAt = time.Now()
 
-	m.recordAction("sent to Pending", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d sent to Pending", task.ShortID)
+	m.recordAction("sent to Waiting", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", task.ShortID)
 
 	// Mark as processed (it's leaving inbox)
 	m.processedIDs[task.ID] = true

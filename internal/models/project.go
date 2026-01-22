@@ -42,7 +42,7 @@ func NewProject(id, name, path string) *Project {
 		Archived:      false,
 		Tasks:         []*Task{},
 		NextShortID:   1,
-		Sections:      []string{SectionBacklog},
+		Sections:      []string{SectionNext},
 		SectionColors: make(map[string]string),
 	}
 }
@@ -615,28 +615,28 @@ func (p *Project) GetIncompleteDependencies(task *Task) []*Task {
 	return incomplete
 }
 
-// GetSections returns the project's sections, ensuring Backlog is always first.
+// GetSections returns the project's sections, ensuring Next is always first.
 func (p *Project) GetSections() []string {
 	if len(p.Sections) == 0 {
-		return []string{SectionBacklog}
+		return []string{SectionNext}
 	}
-	// Ensure Backlog is first
-	hasBacklog := false
+	// Ensure Next is first
+	hasNext := false
 	for _, s := range p.Sections {
-		if s == SectionBacklog {
-			hasBacklog = true
+		if s == SectionNext {
+			hasNext = true
 			break
 		}
 	}
-	if !hasBacklog {
-		return append([]string{SectionBacklog}, p.Sections...)
+	if !hasNext {
+		return append([]string{SectionNext}, p.Sections...)
 	}
-	// If Backlog exists but isn't first, reorder
-	if p.Sections[0] != SectionBacklog {
+	// If Next exists but isn't first, reorder
+	if p.Sections[0] != SectionNext {
 		sections := make([]string, 0, len(p.Sections))
-		sections = append(sections, SectionBacklog)
+		sections = append(sections, SectionNext)
 		for _, s := range p.Sections {
-			if s != SectionBacklog {
+			if s != SectionNext {
 				sections = append(sections, s)
 			}
 		}
@@ -667,11 +667,11 @@ func (p *Project) EnsureSection(name string) {
 }
 
 // RemoveSection removes a section from the project.
-// Returns false if trying to remove the Backlog section or if section doesn't exist.
+// Returns false if trying to remove the Next section or if section doesn't exist.
 // Tasks in the removed section will have their section cleared.
 func (p *Project) RemoveSection(name string) bool {
-	if name == SectionBacklog {
-		return false // Cannot remove Backlog
+	if name == SectionNext {
+		return false // Cannot remove Next
 	}
 	for i, s := range p.Sections {
 		if s == name {
@@ -695,9 +695,9 @@ func (p *Project) RemoveSection(name string) bool {
 }
 
 // RenameSection renames a section and updates all tasks with that section.
-// Returns false if trying to rename Backlog or if the section doesn't exist.
+// Returns false if trying to rename Next or if the section doesn't exist.
 func (p *Project) RenameSection(oldName, newName string) bool {
-	if oldName == SectionBacklog || newName == "" {
+	if oldName == SectionNext || newName == "" {
 		return false
 	}
 	if p.HasSection(newName) {
@@ -777,7 +777,7 @@ type MoveTaskToProjectResult struct {
 
 // MoveTaskToProject moves a task and all its descendants to another project.
 // Dependencies pointing to tasks not in the moved set are cleared.
-// Sections are preserved if they exist in destination, otherwise reset to Backlog.
+// Sections are preserved if they exist in destination, otherwise reset to Next.
 // Short IDs are regenerated in the destination project.
 func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProjectResult, error) {
 	if task == nil {
@@ -828,7 +828,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 
 		// Reset section if it doesn't exist in destination
 		if t.Section != "" && !destSectionSet[t.Section] {
-			t.Section = SectionBacklog
+			t.Section = SectionNext
 		}
 
 		// Update timestamp

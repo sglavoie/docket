@@ -84,7 +84,7 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
 	}
 
-	// Sort: Backlog first, then alphabetically, with empty last
+	// Sort: Next first, then alphabetically, with empty last
 	sort.Slice(sections, func(i, j int) bool {
 		if sections[i].Name == "" {
 			return false
@@ -92,10 +92,10 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		if sections[j].Name == "" {
 			return true
 		}
-		if sections[i].Name == models.SectionBacklog {
+		if sections[i].Name == models.SectionNext {
 			return true
 		}
-		if sections[j].Name == models.SectionBacklog {
+		if sections[j].Name == models.SectionNext {
 			return false
 		}
 		return sections[i].Name < sections[j].Name
