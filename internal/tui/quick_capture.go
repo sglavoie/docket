@@ -183,9 +183,13 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.updatePreview()
 	mode, pos, partial := m.detectAutocompleteTrigger()
 	if mode != acModeNone {
+		// Only reset cursor if entering new autocomplete context
+		// (different mode or different trigger position)
+		if mode != m.acMode || pos != m.acTriggerPos {
+			m.acCursor = 0
+		}
 		m.acMode = mode
 		m.acTriggerPos = pos
-		m.acCursor = 0
 		switch mode {
 		case acModeTag:
 			m.suggestions = m.getTagSuggestions(partial)
@@ -203,6 +207,10 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.suggestions = m.getSectionSuggestions(partial)
 		case acModeStatus:
 			m.suggestions = m.getStatusSuggestions(partial)
+		}
+		// Clamp cursor if suggestions list shrunk
+		if m.acCursor >= len(m.suggestions) {
+			m.acCursor = max(0, len(m.suggestions)-1)
 		}
 		// If no suggestions, exit autocomplete mode
 		if len(m.suggestions) == 0 {
