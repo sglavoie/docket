@@ -32,6 +32,8 @@ func TestParseQuickCapture(t *testing.T) {
 		wantTaskType   models.TaskType
 		wantSection    string
 		wantHasRecur   bool
+		wantStatus     models.TaskStatus
+		wantActivate   bool
 		wantErr        bool
 		errContains    string
 	}{
@@ -324,6 +326,59 @@ func TestParseQuickCapture(t *testing.T) {
 			wantErr:     true,
 			errContains: "invalid recurrence",
 		},
+		// Status tests
+		{
+			name:         "status start",
+			input:        "Fix bug $start",
+			wantTitle:    "Fix bug",
+			wantPriority: 3,
+			wantStatus:   models.StatusInProgress,
+			wantActivate: true,
+		},
+		{
+			name:         "status blocked",
+			input:        "Waiting for review $blocked",
+			wantTitle:    "Waiting for review",
+			wantPriority: 3,
+			wantStatus:   models.StatusBlocked,
+		},
+		{
+			name:         "status done",
+			input:        "Already finished $done",
+			wantTitle:    "Already finished",
+			wantPriority: 3,
+			wantStatus:   models.StatusDone,
+		},
+		{
+			name:         "status cancelled",
+			input:        "Abandoned task $cancelled",
+			wantTitle:    "Abandoned task",
+			wantPriority: 3,
+			wantStatus:   models.StatusCancelled,
+		},
+		{
+			name:         "status case insensitive",
+			input:        "Fix bug $START",
+			wantTitle:    "Fix bug",
+			wantPriority: 3,
+			wantStatus:   models.StatusInProgress,
+			wantActivate: true,
+		},
+		{
+			name:         "status with other metadata",
+			input:        "Critical fix !1 #urgent $start",
+			wantTitle:    "Critical fix",
+			wantPriority: 1,
+			wantTags:     []string{"urgent"},
+			wantStatus:   models.StatusInProgress,
+			wantActivate: true,
+		},
+		{
+			name:        "invalid status",
+			input:       "Fix bug $invalid",
+			wantErr:     true,
+			errContains: "invalid status",
+		},
 		// Combined: all features together
 		{
 			name:           "all features combined",
@@ -400,6 +455,16 @@ func TestParseQuickCapture(t *testing.T) {
 			hasRecur := result.recurrence != nil
 			if hasRecur != tt.wantHasRecur {
 				t.Errorf("hasRecurrence = %v, want %v", hasRecur, tt.wantHasRecur)
+			}
+
+			// Check status (only if explicitly set in test)
+			if tt.wantStatus != "" && result.status != tt.wantStatus {
+				t.Errorf("status = %q, want %q", result.status, tt.wantStatus)
+			}
+
+			// Check activate
+			if result.activate != tt.wantActivate {
+				t.Errorf("activate = %v, want %v", result.activate, tt.wantActivate)
 			}
 		})
 	}

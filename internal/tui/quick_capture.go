@@ -59,13 +59,15 @@ type quickCaptureResult struct {
 	dueDate    *time.Time
 	parentID   *string
 	recurrence *models.RecurrencePattern
-	section    string // Target section (empty = Inbox)
+	section    string            // Target section (empty = Inbox)
+	status     models.TaskStatus // Initial status (empty = todo)
+	activate   bool              // Whether to activate task (for $start)
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
 	input := textarea.New()
-	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent /section"
+	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status"
 	input.CharLimit = 200
 	input.SetHeight(3)
 	input.ShowLineNumbers = false
@@ -225,7 +227,7 @@ func (m *QuickCaptureModel) View() string {
 	}
 
 	// Help text
-	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section"))
+	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status"))
 	b.WriteString("\n")
 	if m.acMode != acModeNone {
 		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
@@ -337,6 +339,26 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 			return nil, fmt.Errorf("section not found: %s", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract status: $start, $blocked, $done, $cancelled
+	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
+	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
+		statusStr := strings.ToLower(match[1])
+		switch statusStr {
+		case "start":
+			result.status = models.StatusInProgress
+			result.activate = true
+		case "blocked":
+			result.status = models.StatusBlocked
+		case "done":
+			result.status = models.StatusDone
+		case "cancelled":
+			result.status = models.StatusCancelled
+		default:
+			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $cancelled)", match[1])
+		}
+		input = statusRe.ReplaceAllString(input, " ")
 	}
 
 	// Clean up title
@@ -464,6 +486,28 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 			errMsg = fmt.Sprintf("section not found: %s", sectionName)
 		}
 		input = sectionRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract status
+	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
+	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
+		statusStr := strings.ToLower(match[1])
+		switch statusStr {
+		case "start":
+			result.status = models.StatusInProgress
+			result.activate = true
+		case "blocked":
+			result.status = models.StatusBlocked
+		case "done":
+			result.status = models.StatusDone
+		case "cancelled":
+			result.status = models.StatusCancelled
+		default:
+			if errMsg == "" {
+				errMsg = fmt.Sprintf("invalid status: $%s", match[1])
+			}
+		}
+		input = statusRe.ReplaceAllString(input, " ")
 	}
 
 	// Clean up title
@@ -654,6 +698,11 @@ func (m *QuickCaptureModel) renderPreview() string {
 		parts = append(parts, "/"+m.preview.section)
 	}
 
+	// Status (only show if not default todo)
+	if m.preview.status != "" && m.preview.status != models.StatusTodo {
+		parts = append(parts, m.preview.status.Icon()+" $"+string(m.preview.status))
+	}
+
 	return MutedStyle.Render(strings.Join(parts, " · "))
 }
 
@@ -705,6 +754,21 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 
 		for _, tag := range result.tags {
 			task.AddTag(tag)
+		}
+
+		// Apply status transition using Task methods (handles auto-triage)
+		switch result.status {
+		case models.StatusInProgress:
+			task.Start()
+			if result.activate {
+				task.Activate()
+			}
+		case models.StatusBlocked:
+			task.Block()
+		case models.StatusDone:
+			task.Complete()
+		case models.StatusCancelled:
+			task.Cancel()
 		}
 
 		// Add to project at the beginning so it's prominently visible
