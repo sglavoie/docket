@@ -110,6 +110,12 @@ const SectionWaiting = "Waiting"
 // SectionSomeday is the section for uncommitted ideas (GTD "Someday/Maybe").
 const SectionSomeday = "Someday"
 
+// IsGTDSection returns true if the section name is a built-in GTD section.
+func IsGTDSection(name string) bool {
+	return name == SectionNext || name == SectionInbox ||
+		name == SectionWaiting || name == SectionSomeday
+}
+
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
 	return []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCancelled}

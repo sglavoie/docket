@@ -95,15 +95,20 @@ func (m *SectionManagerModel) SetSize(width, height int) {
 	m.height = height
 }
 
-// buildSectionList builds a sorted list of sections with counts.
+// buildSectionList builds a sorted list of custom sections with counts.
+// GTD sections (Next, Inbox, Waiting, Someday) are excluded as they are
+// managed via view modes, not the section manager.
 func (m *SectionManagerModel) buildSectionList() {
 	sectionCounts := m.projectTree.project.CountTasksBySection()
 
-	// Get sections in project order (Backlog first)
+	// Get sections in project order, excluding GTD sections
 	projectSections := m.projectTree.project.GetSections()
 
 	m.sections = make([]SectionInfo, 0, len(projectSections))
 	for _, name := range projectSections {
+		if models.IsGTDSection(name) {
+			continue // Skip GTD sections
+		}
 		count := sectionCounts[name]
 		m.sections = append(m.sections, SectionInfo{Name: name, TaskCount: count})
 	}
@@ -123,6 +128,11 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			return nil
+		}
+
+		// Block GTD section names
+		if models.IsGTDSection(name) {
+			return ErrorMsg{Err: fmt.Errorf("'%s' is a built-in GTD section", name)}
 		}
 
 		// Check if section already exists
@@ -156,9 +166,14 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 			return nil
 		}
 
-		// Check if it's Next
-		if oldName == models.SectionNext {
-			return ErrorMsg{Err: fmt.Errorf("cannot rename Next section")}
+		// Block renaming GTD sections (defensive check)
+		if models.IsGTDSection(oldName) {
+			return ErrorMsg{Err: fmt.Errorf("cannot rename GTD section '%s'", oldName)}
+		}
+
+		// Block renaming to a GTD section name
+		if models.IsGTDSection(newName) {
+			return ErrorMsg{Err: fmt.Errorf("'%s' is a built-in GTD section", newName)}
 		}
 
 		// Check if new name already exists
@@ -189,8 +204,9 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 // removeSection removes a section from the project.
 func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 	return func() tea.Msg {
-		if name == models.SectionNext {
-			return ErrorMsg{Err: fmt.Errorf("cannot remove Next section")}
+		// Block removing GTD sections (defensive check)
+		if models.IsGTDSection(name) {
+			return ErrorMsg{Err: fmt.Errorf("cannot remove GTD section '%s'", name)}
 		}
 
 		if !m.projectTree.project.RemoveSection(name) {
@@ -349,8 +365,8 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r":
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
-				if section.Name == models.SectionNext {
-					m.errorMsg = "Cannot rename Next section"
+				if models.IsGTDSection(section.Name) {
+					m.errorMsg = "Cannot rename GTD sections"
 					return m, nil
 				}
 				m.renameMode = true
@@ -363,8 +379,8 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			if len(m.sections) > 0 && m.cursor < len(m.sections) {
 				section := m.sections[m.cursor]
-				if section.Name == models.SectionNext {
-					m.errorMsg = "Cannot remove Next section"
+				if models.IsGTDSection(section.Name) {
+					m.errorMsg = "Cannot remove GTD sections"
 					return m, nil
 				}
 				return m, m.removeSection(section.Name)
@@ -535,12 +551,7 @@ func (m *SectionManagerModel) View() string {
 				colorStyle := GetSectionColorStyle(sectionColor)
 				colorSwatch := colorStyle.Render("█") + " "
 
-				// Mark Next specially
-				displayName := section.Name
-				if section.Name == models.SectionNext {
-					displayName = section.Name + " (default)"
-				}
-				line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, displayName)
+				line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, section.Name)
 				content.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", section.TaskCount)
 				content.WriteString(TagManagerCountStyle.Render(countStr))
