@@ -126,6 +126,14 @@ type ProjectTreeModel struct {
 	tagInputMode bool
 	tagInput     textinput.Model
 
+	// Quick edit mode state (inline task editing)
+	quickEditMode     bool             // True when in quick edit mode
+	quickEditRename   bool             // True if rename-only mode (no modifier parsing)
+	quickEditInput    textinput.Model  // Text input for editing
+	quickEditTask     *models.Task     // Task being edited
+	quickEditPreview  *quickEditResult // Live preview of parsed changes
+	quickEditOriginal *quickEditResult // Original task state for comparison
+
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
 
@@ -162,6 +170,11 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	tagInput.CharLimit = 50
 	tagInput.Width = 30
 
+	quickEditInput := textinput.New()
+	quickEditInput.Placeholder = "Edit task..."
+	quickEditInput.CharLimit = 200
+	quickEditInput.Width = 60
+
 	m := &ProjectTreeModel{
 		project:                  project,
 		config:                   cfg,
@@ -176,6 +189,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		sortAscending:            true,
 		selectedTasks:            make(map[string]bool),
 		tagInput:                 tagInput,
+		quickEditInput:           quickEditInput,
 		sidebarEnabled:           true, // Sidebar on by default
 		sidebarFocused:           false,
 		sidebarScroll:            0,

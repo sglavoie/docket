@@ -288,6 +288,22 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 
+	case "E":
+		// Quick edit mode: inline editing with modifier syntax
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			m.enterQuickEditMode(task, false)
+		}
+		return true, nil
+
+	case "r":
+		// Rename mode: inline title editing only (no modifier parsing)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			m.enterQuickEditMode(task, true)
+		}
+		return true, nil
+
 	case "D":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			m.confirmAction = "bulk-delete"

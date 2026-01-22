@@ -582,6 +582,11 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, inSelection bool, maxWidth int) string {
 	task := node.Task
 
+	// Check if this task is being quick-edited
+	if m.quickEditMode && m.quickEditTask != nil && task.ID == m.quickEditTask.ID {
+		return m.renderQuickEditNode(node, maxWidth)
+	}
+
 	// Build indent
 	indent := strings.Repeat(TreeIndent, node.Level)
 
@@ -778,6 +783,57 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
 	return RenderSelectableRow(selected, task.Active, content, maxWidth)
+}
+
+// renderQuickEditNode renders a task node in quick edit mode.
+func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) string {
+	task := node.Task
+
+	// Build indent
+	indent := strings.Repeat(TreeIndent, node.Level)
+
+	// Type and status icons
+	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+
+	// Task ID
+	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
+
+	// Calculate width for the text input
+	prefixWidth := len(indent) + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
+	inputWidth := maxWidth - prefixWidth - 4
+	if inputWidth < 20 {
+		inputWidth = 20
+	}
+	m.quickEditInput.Width = inputWidth
+
+	// Render the input
+	inputView := m.quickEditInput.View()
+
+	// Build prefix
+	prefix := fmt.Sprintf("%s%s %s %s ", indent, typeIcon, statusIcon, idStr)
+
+	// Build the edit line
+	editLine := prefix + inputView
+
+	// Add preview line if in full edit mode (not rename-only)
+	if !m.quickEditRename && m.quickEditPreview != nil && m.quickEditOriginal != nil {
+		previewText := renderQuickEditPreview(m.quickEditPreview, m.quickEditOriginal)
+		if previewText != "" {
+			previewIndent := strings.Repeat(" ", len(indent)+2)
+			editLine += "\n" + previewIndent + MutedStyle.Render(previewText)
+		}
+	}
+
+	// Add help hint
+	helpIndent := strings.Repeat(" ", len(indent)+2)
+	if m.quickEditRename {
+		editLine += "\n" + helpIndent + HelpStyle.Render("Enter: save · Esc: cancel")
+	} else {
+		editLine += "\n" + helpIndent + HelpStyle.Render("!N priority · #tag · -#tag · @date · /section · $status | Enter: save · Esc: cancel")
+	}
+
+	return editLine
 }
 
 func (m *ProjectTreeModel) renderNode(node *TreeNode, selected bool, inSelection bool) string {
