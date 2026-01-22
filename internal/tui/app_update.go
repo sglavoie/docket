@@ -159,7 +159,7 @@ func (m *AppModel) hasActiveTextInput() bool {
 	case ViewProjectSelector:
 		// Project selector always has active search
 		return true
-	case ViewTaskCreator, ViewNoteCreator, ViewQuickCapture, ViewBulkCapture:
+	case ViewTaskCreator, ViewNoteCreator, ViewQuickCapture, ViewBulkCapture, ViewTextEditor:
 		// Form views always have active text input
 		return true
 	case ViewTaskEditor:
