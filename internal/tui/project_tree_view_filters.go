@@ -10,29 +10,25 @@ import (
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Count by section: active, next, inbox, waiting, someday, completed
+	// Skip notes - they don't count toward section totals
 	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, completedCount int
 	for _, task := range m.project.Tasks {
+		if task.IsNote() {
+			continue
+		}
 		if task.IsComplete() {
 			completedCount++
 			continue
 		}
 		switch task.Section {
 		case models.SectionNext:
-			if task.IsRoot() {
-				nextCount++
-			}
+			nextCount++
 		case models.SectionInbox:
-			if task.IsRoot() {
-				inboxCount++
-			}
+			inboxCount++
 		case models.SectionWaiting:
-			if task.IsRoot() {
-				waitingCount++
-			}
+			waitingCount++
 		case models.SectionSomeday:
-			if task.IsRoot() {
-				somedayCount++
-			}
+			somedayCount++
 		default:
 			// Empty section = Active
 			activeCount++
