@@ -54,6 +54,11 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	// Activity card
 	cards = append(cards, m.renderActivityCard(task, width))
 
+	// Comments card (only if has comments)
+	if len(task.Comments) > 0 {
+		cards = append(cards, m.renderCommentsCard(task, width))
+	}
+
 	// Description card (only if has description)
 	if task.Description != "" {
 		cards = append(cards, m.renderDescriptionCard(task, width))
@@ -222,6 +227,22 @@ func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) stri
 	}
 
 	return renderSidebarCard("Activity", strings.Join(lines, "\n"), width, false, "")
+}
+
+// renderCommentsCard renders the comments card showing all comments.
+func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) string {
+	var lines []string
+
+	for i, comment := range task.Comments {
+		if i > 0 {
+			lines = append(lines, "") // spacer between comments
+		}
+		relative := formatRelativeTime(comment.CreatedAt)
+		lines = append(lines, MutedStyle.Render(relative+":"))
+		lines = append(lines, comment.Text)
+	}
+
+	return renderSidebarCard("Comments", strings.Join(lines, "\n"), width, false, "")
 }
 
 // renderDescriptionCard renders the description card with scroll support.
