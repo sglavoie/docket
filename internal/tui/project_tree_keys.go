@@ -563,6 +563,11 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return ShowPriorityViewMsg{Project: m.project}
 		}
 
+	case "f":
+		return true, func() tea.Msg {
+			return ShowProjectFocusViewMsg{Project: m.project}
+		}
+
 	case "w":
 		// Open inbox processor workflow
 		return true, func() tea.Msg {

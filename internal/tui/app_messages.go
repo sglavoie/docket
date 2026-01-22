@@ -443,3 +443,15 @@ type FocusViewSelectMsg struct {
 	Task    *models.Task
 	Project *models.Project
 }
+
+// =============================================================================
+// Project Focus View Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowProjectFocusViewMsg opens the project-scoped focus view.
+type ShowProjectFocusViewMsg struct {
+	Project *models.Project
+}
+
+// CloseProjectFocusViewMsg closes the project focus view.
+type CloseProjectFocusViewMsg struct{}

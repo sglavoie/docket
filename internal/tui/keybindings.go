@@ -40,6 +40,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerDueDateOverviewBindings()
 	r.registerDailyReviewBindings()
 	r.registerFocusViewBindings()
+	r.registerProjectFocusViewBindings()
 	return r
 }
 
@@ -168,6 +169,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gg/G", Description: "Go to first/last", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Navigation", Views: views},
+		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Navigation", Views: views},
 
 		// Folds (z prefix)
 		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
@@ -524,6 +526,44 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
+	views := []ViewType{ViewProjectFocusView}
+	r.add(
+		// Navigation
+		Keybinding{Key: "↑/k", Description: "Move up", Category: "Navigation", Views: views},
+		Keybinding{Key: "↓/j", Description: "Move down", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
+
+		// Actions
+		Keybinding{Key: "Enter", Description: "Close and return to tree", Category: "Actions", Views: views},
+		Keybinding{Key: "*", Description: "Remove from focus", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
+		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
+		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
+		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+
+		// Status
+		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
+		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
+		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
+		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
+
+		// Due Date
+		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+
+		// View
+		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
 }

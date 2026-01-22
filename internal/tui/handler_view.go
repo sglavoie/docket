@@ -172,6 +172,16 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowProjectFocusViewMsg:
+		if msg.Project != nil {
+			m.showView(ViewProjectFocusView, NewProjectFocusViewModel(msg.Project))
+		}
+		return true, nil
+
+	case CloseProjectFocusViewMsg:
+		m.popView()
+		return true, nil
+
 	case DueDateOverviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
