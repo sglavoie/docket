@@ -1,11 +1,14 @@
 .PHONY: \
 	build \
 	clean \
+	coverage \
 	fmt \
 	help \
 	install \
 	lint \
+	lint-ci \
 	test \
+	test-race \
 	tidy \
 	tt \
 	vet
@@ -40,6 +43,16 @@ test: ## Run tests
 	@echo "🧪 Running tests..."
 	go test ./...
 
+test-race: ## Run tests with race detector
+	@echo "🧪 Running tests with race detector..."
+	go test -race ./...
+
+coverage: ## Run tests with coverage report
+	@echo "📊 Running tests with coverage..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "✅ Coverage report: coverage.html"
+
 fmt: ## Format Go code
 	@echo "🎨 Formatting code..."
 	go fmt ./...
@@ -51,6 +64,10 @@ vet: ## Run go vet
 	go vet ./...
 
 lint: fmt vet ## Run formatting and vetting
+
+lint-ci: ## Run golangci-lint (requires golangci-lint installed)
+	@echo "🔍 Running golangci-lint..."
+	golangci-lint run
 
 clean: ## Remove build artifacts
 	@echo "🧹 Cleaning..."
