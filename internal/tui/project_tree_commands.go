@@ -183,15 +183,20 @@ func copyTaskState(task *models.Task) *models.Task {
 }
 
 // buildEvaluationContext creates an evaluation context for workflow rules.
+// Only tasks that actually changed are included in Changes to avoid excessive rule triggering.
+// AllTasks and TaskMap still contain all tasks for hierarchical trigger lookups.
 func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task) *workflow.EvaluationContext {
-	changes := make([]workflow.TaskChangeContext, len(tasks))
 	taskMap := make(map[string]*models.Task, len(tasks))
+	var changes []workflow.TaskChangeContext
 
-	for i, task := range tasks {
+	for _, task := range tasks {
 		taskMap[task.ID] = task
-		changes[i] = workflow.TaskChangeContext{
-			Task:     task,
-			Previous: prevStates[task.ID],
+		prev := prevStates[task.ID]
+		if prev == nil || taskStateChanged(task, prev) {
+			changes = append(changes, workflow.TaskChangeContext{
+				Task:     task,
+				Previous: prev,
+			})
 		}
 	}
 
@@ -200,6 +205,28 @@ func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 		AllTasks: tasks,
 		TaskMap:  taskMap,
 	}
+}
+
+// taskStateChanged returns true if the task's workflow-relevant state changed.
+func taskStateChanged(current, prev *models.Task) bool {
+	if prev == nil {
+		return true
+	}
+	if current.Status != prev.Status ||
+		current.Priority != prev.Priority ||
+		current.Section != prev.Section ||
+		current.Type != prev.Type {
+		return true
+	}
+	if len(current.Tags) != len(prev.Tags) {
+		return true
+	}
+	for i, tag := range current.Tags {
+		if tag != prev.Tags[i] {
+			return true
+		}
+	}
+	return false
 }
 
 // deleteTask removes a task and its children from the project.
