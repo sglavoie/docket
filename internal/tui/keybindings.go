@@ -319,6 +319,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "↑/k", Description: "Move up", Category: "Navigation", Views: views},
 		Keybinding{Key: "↓/j", Description: "Move down", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "gt", Description: "Go to task in tree", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 
 		// Suggestion

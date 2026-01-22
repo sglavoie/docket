@@ -286,6 +286,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case PriorityViewSelectMsg:
+		m.popView()
+		if msg.Task != nil {
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
 			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project))

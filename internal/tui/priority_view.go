@@ -750,9 +750,18 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m.changeTaskStatus(models.StatusCancelled)
 		}
 	case "g":
-		if key == "g" {
+		switch key {
+		case "g":
 			// gg: Go to first item
 			m.cursor = 0
+			return m, nil
+		case "t":
+			// gt: Go to task in project tree
+			if pt := m.getTaskAtCursor(); pt != nil {
+				return m, func() tea.Msg {
+					return PriorityViewSelectMsg{Task: pt.Task}
+				}
+			}
 			return m, nil
 		}
 	}
@@ -930,7 +939,7 @@ func (m *PriorityViewModel) View() string {
 func (m *PriorityViewModel) renderPrefixPopup() string {
 	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
 		",": StatusPrefixHints,
-		"g": NavigationPrefixHints,
+		"g": PriorityViewNavigationPrefixHints,
 	}, m.width)
 }
 

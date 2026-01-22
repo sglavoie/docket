@@ -256,6 +256,11 @@ type ShowPriorityViewMsg struct {
 // ClosePriorityViewMsg closes the priority overview.
 type ClosePriorityViewMsg struct{}
 
+// PriorityViewSelectMsg navigates to a task from priority view in the project tree.
+type PriorityViewSelectMsg struct {
+	Task *models.Task
+}
+
 // =============================================================================
 // Quick Capture Messages (Show/Close Pattern)
 // =============================================================================

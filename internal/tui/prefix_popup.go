@@ -121,6 +121,12 @@ var (
 		{Key: "g", Description: "first"},
 	}
 
+	// PriorityViewNavigationPrefixHints contains "g" prefix hints for priority view.
+	PriorityViewNavigationPrefixHints = []PrefixHint{
+		{Key: "g", Description: "first"},
+		{Key: "t", Description: "tree"},
+	}
+
 	// ProjectTreeNavigationPrefixHints contains extended "g" prefix hints for project tree.
 	ProjectTreeNavigationPrefixHints = []PrefixHint{
 		{Key: "g", Description: "first"},
