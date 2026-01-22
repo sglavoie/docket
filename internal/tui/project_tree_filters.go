@@ -90,9 +90,8 @@ func (m *ProjectTreeModel) updateVisibility() {
 		if visible && parentLevel >= 0 {
 			for j := i - 1; j >= 0; j-- {
 				if m.nodes[j].Level == parentLevel {
-					// Parent must be expanded for child to be visible
-					// Context nodes are force-expanded to show their children
-					if !m.nodes[j].Expanded && !m.nodes[j].IsContextNode {
+					// Parent must be visible and expanded for child to be visible
+					if !m.nodes[j].Visible || !m.nodes[j].Expanded {
 						visible = false
 					}
 					break

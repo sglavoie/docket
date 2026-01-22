@@ -34,6 +34,7 @@ build: ## Build the binary in the current directory
 install: build ## Install the binary to ~/.local/bin
 	@echo "📦 Installing $(BINARY_NAME) to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
+	rm -f $(INSTALL_DIR)/$(BINARY_NAME)
 	cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "✅ Installed to $(INSTALL_DIR)/$(BINARY_NAME)"
 
