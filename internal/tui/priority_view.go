@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -884,48 +885,94 @@ func (m *PriorityViewModel) View() string {
 		})
 	}
 
-	// Calculate available height for task list (account for card border/padding)
-	contentHeight := m.height - 12
-
-	// Render suggestion section at top if available
+	// Pre-render conditional sections to calculate their actual height
 	suggestionSection := m.renderSuggestionSection()
-	suggestionLines := 0
+	prefixPopup := m.renderPrefixPopup()
+	footer := HelpStyle.Render("↑/↓ navigate • s start suggested • x dismiss • ,s/,d status • ? help • q close")
+
+	// Calculate available height for task list
+	// Card overhead breakdown:
+	// - OverlayCardStyle border: 2 lines (top + bottom)
+	// - OverlayCardStyle padding: 2 lines (1 top + 1 bottom)
+	// - Subtitle + blank line: 2 lines
+	// - Blank line before footer (\n\n): 2 lines
+	// - Footer: 1 line
+	// Total: 9 lines
+	cardOverhead := 9
+	contentHeight := m.height - cardOverhead
+
+	// Account for suggestion section if present (use lipgloss.Height for accurate measurement)
 	if suggestionSection != "" {
-		b.WriteString(suggestionSection)
-		b.WriteString("\n\n")
-		suggestionLines = 5 // Approximate height of suggestion box
+		suggestionLines := lipgloss.Height(suggestionSection) + 2 // +2 for trailing \n\n
 		contentHeight -= suggestionLines
 	}
 
-	// Render groups with scroll awareness
+	// Account for prefix popup if present
+	if prefixPopup != "" {
+		popupLines := lipgloss.Height(prefixPopup) + 1 // +1 for newline after
+		contentHeight -= popupLines
+	}
+
+	// Render groups
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex)
 
-	// Apply scrolling if needed
-	scrollOffset := 0
-	if m.cursor >= contentHeight {
-		scrollOffset = m.cursor - contentHeight + 1
+	// Reserve line for scroll indicator if we'll need to scroll
+	needsScrolling := len(lines) > contentHeight
+	if needsScrolling {
+		contentHeight-- // Reserve 1 line for scroll indicator
 	}
 
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
+	// Ensure contentHeight is at least 1
+	if contentHeight < 1 {
+		contentHeight = 1
 	}
 
+	// Apply centered scrolling (keep cursor in middle of viewport)
+	startIdx := 0
+	endIdx := len(lines)
+
+	if len(lines) > contentHeight {
+		halfView := contentHeight / 2
+		startIdx = m.cursor - halfView
+		if startIdx < 0 {
+			startIdx = 0
+		}
+		endIdx = startIdx + contentHeight
+		if endIdx > len(lines) {
+			endIdx = len(lines)
+			startIdx = endIdx - contentHeight
+			if startIdx < 0 {
+				startIdx = 0
+			}
+		}
+	}
+
+	// Write suggestion section
+	if suggestionSection != "" {
+		b.WriteString(suggestionSection)
+		b.WriteString("\n\n")
+	}
+
+	// Write visible task lines
+	visibleLines := lines[startIdx:endIdx]
 	b.WriteString(strings.Join(visibleLines, "\n"))
+
+	// Scroll indicator
+	if needsScrolling {
+		scrollInfo := fmt.Sprintf("Showing %d-%d of %d", startIdx+1, endIdx, len(lines))
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(scrollInfo))
+	}
 	b.WriteString("\n\n")
 
 	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
+	if prefixPopup != "" {
+		b.WriteString(prefixPopup)
 		b.WriteString("\n")
 	}
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • s start suggested • x dismiss • ,s/,d status • ? help • q close")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
