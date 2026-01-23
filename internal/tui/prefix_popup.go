@@ -164,4 +164,14 @@ var (
 		{Key: "0", Description: "clear"},
 		{Key: "d", Description: "picker"},
 	}
+
+	// SectionPrefixHints contains hints for the "s" (section focus) prefix in Review view.
+	SectionPrefixHints = []PrefixHint{
+		{Key: "d", Description: "overdue"},
+		{Key: "t", Description: "today"},
+		{Key: "s", Description: "due-soon"},
+		{Key: "l", Description: "due-later"},
+		{Key: "f", Description: "future"},
+		{Key: "o", Description: "old"},
+	}
 )

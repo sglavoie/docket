@@ -18,29 +18,35 @@ type DailyReviewTask struct {
 	Project *models.Project
 }
 
-// DailyReviewSection represents the different sections in daily review.
+// DailyReviewSection represents the different sections in review.
 type DailyReviewSection int
 
 const (
-	SectionCompletedRecently DailyReviewSection = iota
-	SectionOverdue
+	SectionOverdue DailyReviewSection = iota
 	SectionDueToday
+	SectionDueSoon
+	SectionDueLater
+	SectionFuture
 	SectionInProgress
 	SectionBlocked
-	SectionThisWeek
+	SectionOld
+	SectionCompleted
 )
 
-// DailyReviewModel displays aggregated task information for daily planning.
+// DailyReviewModel displays aggregated task information for review.
 type DailyReviewModel struct {
 	config *config.Config
 
 	// Sections
-	completedRecently []DailyReviewTask
-	overdue           []DailyReviewTask
-	dueToday          []DailyReviewTask
-	inProgress        []DailyReviewTask
-	blocked           []DailyReviewTask
-	thisWeek          []DailyReviewTask
+	overdue    []DailyReviewTask
+	dueToday   []DailyReviewTask
+	dueSoon    []DailyReviewTask
+	dueLater   []DailyReviewTask
+	future     []DailyReviewTask
+	inProgress []DailyReviewTask
+	blocked    []DailyReviewTask
+	old        []DailyReviewTask
+	completed  []DailyReviewTask
 
 	// Navigation
 	cursor            int
@@ -48,6 +54,7 @@ type DailyReviewModel struct {
 	sectionStarts     []int                // Starting index of each section
 	collapsedSections map[int]bool         // Track collapsed sections
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
+	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string
@@ -73,17 +80,33 @@ func NewDailyReviewModel(cfg *config.Config) *DailyReviewModel {
 
 // loadTasks aggregates tasks from all active projects into sections.
 func (m *DailyReviewModel) loadTasks() {
-	m.completedRecently = nil
 	m.overdue = nil
 	m.dueToday = nil
+	m.dueSoon = nil
+	m.dueLater = nil
+	m.future = nil
 	m.inProgress = nil
 	m.blocked = nil
-	m.thisWeek = nil
+	m.old = nil
+	m.completed = nil
 
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	yesterday := today.AddDate(0, 0, -1)
-	weekEnd := today.AddDate(0, 0, 7)
+
+	// Get configurable thresholds
+	dueSoonDays := m.config.GetReviewDueSoonDays()
+	futureDays := m.config.GetReviewFutureDays()
+	oldDays := m.config.GetReviewOldDays()
+	completedHours := m.config.GetReviewCompletedHours()
+
+	// Calculate threshold dates
+	// Due Soon: tomorrow through dueSoonDays (e.g., days 1-7)
+	dueSoonEnd := today.AddDate(0, 0, dueSoonDays+1)
+	// Future: tasks due in >= futureDays (e.g., 300+ days)
+	futureStart := today.AddDate(0, 0, futureDays)
+	// Due Later: between Due Soon and Future (e.g., days 8-299)
+	oldThreshold := now.AddDate(0, 0, -oldDays)
+	completedThreshold := now.Add(-time.Duration(completedHours) * time.Hour)
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
@@ -94,50 +117,67 @@ func (m *DailyReviewModel) loadTasks() {
 		for _, task := range project.Tasks {
 			dt := DailyReviewTask{Task: task, Project: project}
 
-			// Completed in last 24 hours
+			// 1. Completed: CompletedAt within completedHours
 			if task.Status.IsComplete() && task.CompletedAt != nil {
-				if task.CompletedAt.After(yesterday) {
-					m.completedRecently = append(m.completedRecently, dt)
+				if completedHours > 0 && task.CompletedAt.After(completedThreshold) {
+					m.completed = append(m.completed, dt)
 				}
 				continue
 			}
 
-			// Skip other completed tasks
+			// 2. Skip other completed tasks
 			if task.Status.IsComplete() {
 				continue
 			}
 
-			// Check due date first (overdue/today take priority over status)
+			// 3. Overdue: DueDate < today
 			if task.DueDate != nil {
 				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 
 				if dueDay.Before(today) {
 					m.overdue = append(m.overdue, dt)
 					continue
-				} else if dueDay.Equal(today) {
+				}
+
+				// 4. Today: DueDate == today
+				if dueDay.Equal(today) {
 					m.dueToday = append(m.dueToday, dt)
 					continue
 				}
+
+				// 5. Due Soon: DueDate between tomorrow and dueSoonDays (e.g., 1-7 days)
+				if dueSoonDays > 0 && dueDay.Before(dueSoonEnd) {
+					m.dueSoon = append(m.dueSoon, dt)
+					continue
+				}
+
+				// 6. Future: DueDate >= futureDays (e.g., 300+ days)
+				if futureDays > 0 && !dueDay.Before(futureStart) {
+					m.future = append(m.future, dt)
+					continue
+				}
+
+				// 7. Due Later: DueDate between dueSoonDays+1 and futureDays-1 (e.g., 8-299 days)
+				// This catches everything between Due Soon and Future
+				m.dueLater = append(m.dueLater, dt)
+				continue
 			}
 
-			// Blocked (status or incomplete dependencies)
+			// 8. Blocked: status == blocked or has incomplete deps
 			if task.Status == models.StatusBlocked || project.HasIncompleteDependencies(task) {
 				m.blocked = append(m.blocked, dt)
 				continue
 			}
 
-			// In Progress
+			// 9. In Progress: status == in_progress
 			if task.Status == models.StatusInProgress {
 				m.inProgress = append(m.inProgress, dt)
 				continue
 			}
 
-			// This week (non-urgent future due dates)
-			if task.DueDate != nil {
-				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-				if dueDay.Before(weekEnd) {
-					m.thisWeek = append(m.thisWeek, dt)
-				}
+			// 10. Old: UpdatedAt older than oldDays
+			if oldDays > 0 && task.UpdatedAt.Before(oldThreshold) {
+				m.old = append(m.old, dt)
 			}
 		}
 	}
@@ -149,17 +189,6 @@ func (m *DailyReviewModel) loadTasks() {
 
 // sortSections sorts each section by appropriate criteria.
 func (m *DailyReviewModel) sortSections() {
-	// Completed: most recent first
-	sort.Slice(m.completedRecently, func(i, j int) bool {
-		if m.completedRecently[i].Task.CompletedAt == nil {
-			return false
-		}
-		if m.completedRecently[j].Task.CompletedAt == nil {
-			return true
-		}
-		return m.completedRecently[i].Task.CompletedAt.After(*m.completedRecently[j].Task.CompletedAt)
-	})
-
 	// Overdue: oldest first (most urgent)
 	sort.Slice(m.overdue, func(i, j int) bool {
 		return m.overdue[i].Task.DueDate.Before(*m.overdue[j].Task.DueDate)
@@ -168,6 +197,30 @@ func (m *DailyReviewModel) sortSections() {
 	// Due today: by priority
 	sort.Slice(m.dueToday, func(i, j int) bool {
 		return m.dueToday[i].Task.Priority < m.dueToday[j].Task.Priority
+	})
+
+	// Due soon: by due date then priority
+	sort.Slice(m.dueSoon, func(i, j int) bool {
+		if !m.dueSoon[i].Task.DueDate.Equal(*m.dueSoon[j].Task.DueDate) {
+			return m.dueSoon[i].Task.DueDate.Before(*m.dueSoon[j].Task.DueDate)
+		}
+		return m.dueSoon[i].Task.Priority < m.dueSoon[j].Task.Priority
+	})
+
+	// Due later: by due date then priority
+	sort.Slice(m.dueLater, func(i, j int) bool {
+		if !m.dueLater[i].Task.DueDate.Equal(*m.dueLater[j].Task.DueDate) {
+			return m.dueLater[i].Task.DueDate.Before(*m.dueLater[j].Task.DueDate)
+		}
+		return m.dueLater[i].Task.Priority < m.dueLater[j].Task.Priority
+	})
+
+	// Future: by due date then priority
+	sort.Slice(m.future, func(i, j int) bool {
+		if !m.future[i].Task.DueDate.Equal(*m.future[j].Task.DueDate) {
+			return m.future[i].Task.DueDate.Before(*m.future[j].Task.DueDate)
+		}
+		return m.future[i].Task.Priority < m.future[j].Task.Priority
 	})
 
 	// In progress: by priority then by updated date
@@ -183,12 +236,20 @@ func (m *DailyReviewModel) sortSections() {
 		return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
 	})
 
-	// This week: by due date then priority
-	sort.Slice(m.thisWeek, func(i, j int) bool {
-		if !m.thisWeek[i].Task.DueDate.Equal(*m.thisWeek[j].Task.DueDate) {
-			return m.thisWeek[i].Task.DueDate.Before(*m.thisWeek[j].Task.DueDate)
+	// Old: by UpdatedAt (oldest first)
+	sort.Slice(m.old, func(i, j int) bool {
+		return m.old[i].Task.UpdatedAt.Before(m.old[j].Task.UpdatedAt)
+	})
+
+	// Completed: most recent first
+	sort.Slice(m.completed, func(i, j int) bool {
+		if m.completed[i].Task.CompletedAt == nil {
+			return false
 		}
-		return m.thisWeek[i].Task.Priority < m.thisWeek[j].Task.Priority
+		if m.completed[j].Task.CompletedAt == nil {
+			return true
+		}
+		return m.completed[i].Task.CompletedAt.After(*m.completed[j].Task.CompletedAt)
 	})
 }
 
@@ -205,14 +266,21 @@ func (m *DailyReviewModel) calculateNavigation() {
 	}{
 		{SectionOverdue, m.overdue},
 		{SectionDueToday, m.dueToday},
+		{SectionDueSoon, m.dueSoon},
+		{SectionDueLater, m.dueLater},
+		{SectionFuture, m.future},
 		{SectionInProgress, m.inProgress},
 		{SectionBlocked, m.blocked},
-		{SectionThisWeek, m.thisWeek},
-		{SectionCompletedRecently, m.completedRecently},
+		{SectionOld, m.old},
+		{SectionCompleted, m.completed},
 	}
 
 	for _, s := range sections {
 		if len(s.tasks) > 0 {
+			// If focused on a section, only show that section
+			if m.focusedSection != nil && *m.focusedSection != s.section {
+				continue
+			}
 			m.sectionOrder = append(m.sectionOrder, s.section)
 			m.sectionStarts = append(m.sectionStarts, m.totalTasks)
 			m.totalTasks++ // Count header as navigable item
@@ -226,18 +294,24 @@ func (m *DailyReviewModel) calculateNavigation() {
 // getSectionTasks returns the tasks for a given section.
 func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []DailyReviewTask {
 	switch section {
-	case SectionCompletedRecently:
-		return m.completedRecently
 	case SectionOverdue:
 		return m.overdue
 	case SectionDueToday:
 		return m.dueToday
+	case SectionDueSoon:
+		return m.dueSoon
+	case SectionDueLater:
+		return m.dueLater
+	case SectionFuture:
+		return m.future
 	case SectionInProgress:
 		return m.inProgress
 	case SectionBlocked:
 		return m.blocked
-	case SectionThisWeek:
-		return m.thisWeek
+	case SectionOld:
+		return m.old
+	case SectionCompleted:
+		return m.completed
 	}
 	return nil
 }
@@ -324,13 +398,25 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Activate prefix mode
 	switch key {
-	case ",", "d", "g":
+	case ",", "d", "g", "s":
 		m.pendingPrefix = key
 		return m, nil
 	}
 
 	switch key {
-	case "esc", "q":
+	case "esc":
+		// If focused on a section, unfocus to show all sections
+		if m.focusedSection != nil {
+			m.focusedSection = nil
+			m.calculateNavigation()
+			m.clampCursor()
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CloseDailyReviewMsg{}
+		}
+
+	case "q":
 		return m, func() tea.Msg {
 			return CloseDailyReviewMsg{}
 		}
@@ -379,11 +465,19 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Section navigation
+	// Section navigation (reset focus to show all sections)
 	case "n":
+		m.focusedSection = nil
+		m.calculateNavigation()
 		return m.goToNextSection()
 	case "N":
+		m.focusedSection = nil
+		m.calculateNavigation()
 		return m.goToPrevSection()
+
+	// Toggle active flag
+	case "*":
+		return m.toggleActive()
 
 	// Toggle section collapse
 	case "tab":
@@ -439,7 +533,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowHelpMsg{
 				SourceView: ViewDailyReview,
-				ViewName:   "Daily Review",
+				ViewName:   "Review",
 				Items:      m.GetHelpItems(),
 			}
 		}
@@ -509,6 +603,33 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		}
+
+	case "s":
+		// Section focus toggles
+		var targetSection *DailyReviewSection
+		switch key {
+		case "d":
+			s := SectionOverdue
+			targetSection = &s
+		case "t":
+			s := SectionDueToday
+			targetSection = &s
+		case "s":
+			s := SectionDueSoon
+			targetSection = &s
+		case "l":
+			s := SectionDueLater
+			targetSection = &s
+		case "f":
+			s := SectionFuture
+			targetSection = &s
+		case "o":
+			s := SectionOld
+			targetSection = &s
+		}
+		if targetSection != nil {
+			return m.toggleSectionFocus(*targetSection)
 		}
 	}
 
@@ -806,6 +927,64 @@ func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// toggleActive toggles the Active flag on the task at cursor.
+func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	task := dt.Task
+	project := dt.Project
+
+	// Backup before change
+	if err := storage.BackupProject(project); err != nil {
+		m.err = fmt.Errorf("backup failed: %w", err)
+		return m, nil
+	}
+
+	// Toggle active flag
+	task.Active = !task.Active
+	task.UpdatedAt = time.Now()
+
+	// Save project
+	if err := storage.SaveProject(project); err != nil {
+		m.err = fmt.Errorf("save failed: %w", err)
+		return m, nil
+	}
+
+	// Reload project and refresh view
+	storage.LoadProject(project)
+	m.loadTasks()
+	m.clampCursor()
+
+	if task.Active {
+		m.statusMessage = fmt.Sprintf("Task #%d marked active", task.ShortID)
+	} else {
+		m.statusMessage = fmt.Sprintf("Task #%d unmarked active", task.ShortID)
+	}
+
+	return m, func() tea.Msg {
+		return TaskUpdatedMsg{Task: task}
+	}
+}
+
+// toggleSectionFocus toggles focus on a specific section.
+// If already focused on that section, shows all sections.
+// Otherwise, focuses only on that section.
+func (m *DailyReviewModel) toggleSectionFocus(section DailyReviewSection) (tea.Model, tea.Cmd) {
+	if m.focusedSection != nil && *m.focusedSection == section {
+		// Already focused on this section, show all
+		m.focusedSection = nil
+	} else {
+		// Focus on this section
+		m.focusedSection = &section
+	}
+	m.calculateNavigation()
+	m.clampCursor()
+	return m, nil
+}
+
 // clampCursor ensures cursor is within valid range.
 func (m *DailyReviewModel) clampCursor() {
 	if m.cursor >= m.totalTasks {
@@ -821,6 +1000,11 @@ func (m *DailyReviewModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
 }
 
+// HasFocusedSection returns true if viewing a single focused section.
+func (m *DailyReviewModel) HasFocusedSection() bool {
+	return m.focusedSection != nil
+}
+
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewDailyReview)
@@ -828,25 +1012,31 @@ func (m *DailyReviewModel) GetHelpItems() []HelpItem {
 
 // getTotalTaskCount returns count across all sections (ignoring collapse state).
 func (m *DailyReviewModel) getTotalTaskCount() int {
-	return len(m.completedRecently) + len(m.overdue) + len(m.dueToday) +
-		len(m.inProgress) + len(m.blocked) + len(m.thisWeek)
+	return len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) +
+		len(m.future) + len(m.inProgress) + len(m.blocked) + len(m.old) + len(m.completed)
 }
 
 // getSectionName returns a human-readable name for a section.
 func getSectionName(section DailyReviewSection) string {
 	switch section {
-	case SectionCompletedRecently:
-		return "Completed Recently"
 	case SectionOverdue:
 		return "Overdue"
 	case SectionDueToday:
-		return "Due Today"
+		return "Today"
+	case SectionDueSoon:
+		return "Due Soon"
+	case SectionDueLater:
+		return "Due Later"
+	case SectionFuture:
+		return "Future"
 	case SectionInProgress:
 		return "In Progress"
 	case SectionBlocked:
 		return "Blocked"
-	case SectionThisWeek:
-		return "This Week"
+	case SectionOld:
+		return "Old"
+	case SectionCompleted:
+		return "Completed"
 	}
 	return ""
 }

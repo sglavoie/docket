@@ -18,7 +18,7 @@ func (m *DailyReviewModel) View() string {
 		b.WriteString(HelpStyle.Render("Your inbox is clear. Press q or Esc to close."))
 
 		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Daily Review",
+			Title:    "Review",
 			Subtitle: "all caught up",
 			Centered: true,
 		})
@@ -68,11 +68,11 @@ func (m *DailyReviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | n/N section | Tab collapse | ,s/d/b/x status | 1-5 priority | dt/dm due | ? help")
+	footer := HelpStyle.Render("j/k nav | n/N section | s{d,t,s,l,f,o} focus | * active | ,s/d/b/x status | ? help")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Daily Review",
+		Title:    "Review",
 		Subtitle: fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder)),
 		Centered: true,
 	})
@@ -84,6 +84,7 @@ func (m *DailyReviewModel) renderPrefixPopup() string {
 		",": StatusPrefixHints,
 		"d": DueDatePrefixHints,
 		"g": DailyReviewNavigationPrefixHints,
+		"s": SectionPrefixHints,
 	}, m.width)
 }
 
@@ -156,10 +157,12 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 		styled = OverdueStyle.Bold(true).Render(header)
 	case SectionDueToday:
 		styled = DueTodayStyle.Bold(true).Render(header)
-	case SectionCompletedRecently:
+	case SectionCompleted:
 		styled = SuccessStyle.Bold(true).Render(header)
 	case SectionBlocked:
 		styled = BlockedStyle.Bold(true).Render(header)
+	case SectionOld:
+		styled = MutedStyle.Bold(true).Render(header)
 	default:
 		styled = DailyReviewSectionHeaderStyle.Render(header)
 	}
@@ -216,11 +219,11 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 	// Additional context based on section
 	contextStr := ""
 	switch section {
-	case SectionCompletedRecently:
+	case SectionCompleted:
 		if task.CompletedAt != nil {
 			contextStr = MutedStyle.Render(formatRelativeTime(*task.CompletedAt))
 		}
-	case SectionOverdue, SectionDueToday, SectionThisWeek:
+	case SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture:
 		if task.DueDate != nil {
 			contextStr = m.formatDueDateContext(task.DueDate, section)
 		}
@@ -234,6 +237,8 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 		} else {
 			contextStr = MutedStyle.Render("blocked")
 		}
+	case SectionOld:
+		contextStr = MutedStyle.Render(formatRelativeTime(task.UpdatedAt))
 	}
 
 	// Build line
@@ -281,13 +286,19 @@ func (m *DailyReviewModel) formatDueDateContext(dueDate *time.Time, section Dail
 	case SectionDueToday:
 		return DueTodayStyle.Render("today")
 
-	case SectionThisWeek:
+	case SectionDueSoon:
 		if dueDay.Equal(today.AddDate(0, 0, 1)) {
 			dateStr = "tomorrow"
 		} else {
 			dateStr = dueDate.Format("Mon")
 		}
 		return DueDateStyle.Render(dateStr)
+
+	case SectionDueLater:
+		return DueDateStyle.Render(dueDate.Format("Jan 2"))
+
+	case SectionFuture:
+		return MutedStyle.Render(dueDate.Format("Jan 2, 2006"))
 	}
 
 	return DueDateStyle.Render(dueDate.Format("Jan 2"))

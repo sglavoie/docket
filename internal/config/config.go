@@ -69,6 +69,10 @@ type Config struct {
 	DefaultRulesInitialized bool                         `json:"default_rules_initialized,omitempty"` // True after tt workflow init has run
 	WorkflowEvalStates      map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`      // Per-project workflow evaluation state
 	WorkflowEvalInterval    *int                         `json:"workflow_eval_interval,omitempty"`    // Minutes between auto-evals (nil=60, 0=disabled)
+	ReviewDueSoonDays       *int                         `json:"review_due_soon_days,omitempty"`      // nil=7, 0=hide section
+	ReviewFutureDays        *int                         `json:"review_future_days,omitempty"`        // nil=30, 0=hide section (tasks due in >= this many days)
+	ReviewOldDays           *int                         `json:"review_old_days,omitempty"`           // nil=14, 0=hide section (based on UpdatedAt)
+	ReviewCompletedHours    *int                         `json:"review_completed_hours,omitempty"`    // nil=24, 0=hide section
 }
 
 // NewConfig creates a new configuration with default values.
@@ -872,4 +876,40 @@ func (c *Config) InvalidateWorkflowEvalStates() {
 		state.RulesHash = ""
 		c.WorkflowEvalStates[projectID] = state
 	}
+}
+
+// GetReviewDueSoonDays returns the number of days for the "Due Soon" section.
+// Returns 7 if not set, 0 means hide the section.
+func (c *Config) GetReviewDueSoonDays() int {
+	if c.ReviewDueSoonDays == nil {
+		return 7
+	}
+	return *c.ReviewDueSoonDays
+}
+
+// GetReviewFutureDays returns the minimum days for the "Future" section.
+// Tasks due in >= this many days appear in Future. Returns 30 if not set, 0 means hide the section.
+func (c *Config) GetReviewFutureDays() int {
+	if c.ReviewFutureDays == nil {
+		return 30
+	}
+	return *c.ReviewFutureDays
+}
+
+// GetReviewOldDays returns the number of days for the "Old" section (based on UpdatedAt).
+// Returns 14 if not set, 0 means hide the section.
+func (c *Config) GetReviewOldDays() int {
+	if c.ReviewOldDays == nil {
+		return 14
+	}
+	return *c.ReviewOldDays
+}
+
+// GetReviewCompletedHours returns the number of hours for the "Completed" section.
+// Returns 24 if not set, 0 means hide the section.
+func (c *Config) GetReviewCompletedHours() int {
+	if c.ReviewCompletedHours == nil {
+		return 24
+	}
+	return *c.ReviewCompletedHours
 }

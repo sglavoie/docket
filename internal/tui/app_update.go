@@ -190,7 +190,7 @@ func (m *AppModel) handleEscKey() bool {
 		}
 	}
 	if m.currentView() == ViewDailyReview {
-		if dr, ok := m.views.Get(ViewDailyReview).(*DailyReviewModel); ok && dr != nil && dr.HasPendingPrefix() {
+		if dr, ok := m.views.Get(ViewDailyReview).(*DailyReviewModel); ok && dr != nil && (dr.HasPendingPrefix() || dr.HasFocusedSection()) {
 			return false
 		}
 	}

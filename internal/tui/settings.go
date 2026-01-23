@@ -17,13 +17,17 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput    textinput.Model
-	contextInput   textinput.Model
-	undoDepthInput textinput.Model
-	contexts       []string
-	contextCursor  int // -1 for custom mode, 0+ for selecting from list
+	editorInput         textinput.Model
+	contextInput        textinput.Model
+	undoDepthInput      textinput.Model
+	dueSoonInput        textinput.Model
+	futureInput         textinput.Model
+	oldDaysInput        textinput.Model
+	completedHoursInput textinput.Model
+	contexts            []string
+	contextCursor       int // -1 for custom mode, 0+ for selecting from list
 
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours
 	validationErr string
 
 	width  int
@@ -55,6 +59,30 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 	undoDepthInput.SetValue(strconv.Itoa(undoDepthValue))
 
+	dueSoonInput := textinput.New()
+	dueSoonInput.Placeholder = "7"
+	dueSoonInput.CharLimit = 3
+	dueSoonInput.Width = 6
+	dueSoonInput.SetValue(strconv.Itoa(cfg.GetReviewDueSoonDays()))
+
+	futureInput := textinput.New()
+	futureInput.Placeholder = "30"
+	futureInput.CharLimit = 3
+	futureInput.Width = 6
+	futureInput.SetValue(strconv.Itoa(cfg.GetReviewFutureDays()))
+
+	oldDaysInput := textinput.New()
+	oldDaysInput.Placeholder = "14"
+	oldDaysInput.CharLimit = 3
+	oldDaysInput.Width = 6
+	oldDaysInput.SetValue(strconv.Itoa(cfg.GetReviewOldDays()))
+
+	completedHoursInput := textinput.New()
+	completedHoursInput.Placeholder = "24"
+	completedHoursInput.CharLimit = 3
+	completedHoursInput.Width = 6
+	completedHoursInput.SetValue(strconv.Itoa(cfg.GetReviewCompletedHours()))
+
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
 
@@ -68,16 +96,20 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:         cfg,
-		configManager:  manager,
-		editorInput:    editorInput,
-		contextInput:   contextInput,
-		undoDepthInput: undoDepthInput,
-		contexts:       contexts,
-		contextCursor:  contextCursor,
-		focusIndex:     0,
-		width:          80,
-		height:         24,
+		config:              cfg,
+		configManager:       manager,
+		editorInput:         editorInput,
+		contextInput:        contextInput,
+		undoDepthInput:      undoDepthInput,
+		dueSoonInput:        dueSoonInput,
+		futureInput:         futureInput,
+		oldDaysInput:        oldDaysInput,
+		completedHoursInput: completedHoursInput,
+		contexts:            contexts,
+		contextCursor:       contextCursor,
+		focusIndex:          0,
+		width:               80,
+		height:              24,
 	}
 }
 
@@ -104,31 +136,17 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "tab", "shift+tab":
 			// Blur current field
-			switch m.focusIndex {
-			case 0:
-				m.editorInput.Blur()
-			case 1:
-				m.contextInput.Blur()
-			case 2:
-				m.undoDepthInput.Blur()
-			}
+			m.blurCurrentField()
 
-			// Move focus
+			// Move focus (7 fields total)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 3
+				m.focusIndex = (m.focusIndex + 1) % 7
 			} else {
-				m.focusIndex = (m.focusIndex + 2) % 3 // +2 is -1 mod 3
+				m.focusIndex = (m.focusIndex + 6) % 7 // +6 is -1 mod 7
 			}
 
 			// Focus new field
-			switch m.focusIndex {
-			case 0:
-				m.editorInput.Focus()
-			case 1:
-				m.contextInput.Focus()
-			case 2:
-				m.undoDepthInput.Focus()
-			}
+			m.focusCurrentField()
 			return m, nil
 
 		case "enter":
@@ -141,6 +159,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if err := m.validateUndoDepth(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+			if err := m.validateReviewSettings(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}
@@ -190,31 +212,78 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case 2:
 		m.undoDepthInput, cmd = m.undoDepthInput.Update(msg)
+	case 3:
+		m.dueSoonInput, cmd = m.dueSoonInput.Update(msg)
+	case 4:
+		m.futureInput, cmd = m.futureInput.Update(msg)
+	case 5:
+		m.oldDaysInput, cmd = m.oldDaysInput.Update(msg)
+	case 6:
+		m.completedHoursInput, cmd = m.completedHoursInput.Update(msg)
 	}
 
 	// Validate on each keystroke
+	m.validationErr = ""
 	switch m.focusIndex {
 	case 0:
 		if err := m.validateEditor(); err != nil {
 			m.validationErr = err.Error()
-		} else {
-			m.validationErr = ""
 		}
 	case 1:
 		if err := m.validateContext(); err != nil {
 			m.validationErr = err.Error()
-		} else {
-			m.validationErr = ""
 		}
 	case 2:
 		if err := m.validateUndoDepth(); err != nil {
 			m.validationErr = err.Error()
-		} else {
-			m.validationErr = ""
+		}
+	case 3, 4, 5, 6:
+		if err := m.validateReviewSettings(); err != nil {
+			m.validationErr = err.Error()
 		}
 	}
 
 	return m, cmd
+}
+
+// blurCurrentField removes focus from the current field.
+func (m *SettingsModel) blurCurrentField() {
+	switch m.focusIndex {
+	case 0:
+		m.editorInput.Blur()
+	case 1:
+		m.contextInput.Blur()
+	case 2:
+		m.undoDepthInput.Blur()
+	case 3:
+		m.dueSoonInput.Blur()
+	case 4:
+		m.futureInput.Blur()
+	case 5:
+		m.oldDaysInput.Blur()
+	case 6:
+		m.completedHoursInput.Blur()
+	}
+}
+
+// focusCurrentField sets focus on the current field.
+func (m *SettingsModel) focusCurrentField() {
+	switch m.focusIndex {
+	case 0:
+		m.editorInput.Focus()
+	case 1:
+		m.contextInput.Focus()
+	case 2:
+		m.undoDepthInput.Focus()
+	case 3:
+		m.dueSoonInput.Focus()
+	case 4:
+		m.futureInput.Focus()
+	case 5:
+		m.oldDaysInput.Focus()
+	case 6:
+		m.completedHoursInput.Focus()
+	}
 }
 
 func (m *SettingsModel) validateEditor() error {
@@ -282,15 +351,84 @@ func (m *SettingsModel) validateUndoDepth() error {
 	return nil
 }
 
+func (m *SettingsModel) validateReviewSettings() error {
+	// Validate Due Soon Days
+	dueSoonStr := strings.TrimSpace(m.dueSoonInput.Value())
+	if dueSoonStr == "" {
+		return fmt.Errorf("due soon days is required")
+	}
+	dueSoon, err := strconv.Atoi(dueSoonStr)
+	if err != nil {
+		return fmt.Errorf("due soon days must be a number")
+	}
+	if dueSoon < 0 {
+		return fmt.Errorf("due soon days must be 0 or greater")
+	}
+
+	// Validate Future Days
+	futureStr := strings.TrimSpace(m.futureInput.Value())
+	if futureStr == "" {
+		return fmt.Errorf("future days is required")
+	}
+	futureDays, err := strconv.Atoi(futureStr)
+	if err != nil {
+		return fmt.Errorf("future days must be a number")
+	}
+	if futureDays < 0 {
+		return fmt.Errorf("future days must be 0 or greater")
+	}
+
+	// Future must be > Due Soon when both are non-zero
+	if dueSoon > 0 && futureDays > 0 && futureDays <= dueSoon {
+		return fmt.Errorf("future must be greater than due soon")
+	}
+
+	// Validate Old Days
+	oldDaysStr := strings.TrimSpace(m.oldDaysInput.Value())
+	if oldDaysStr == "" {
+		return fmt.Errorf("old days is required")
+	}
+	oldDays, err := strconv.Atoi(oldDaysStr)
+	if err != nil {
+		return fmt.Errorf("old days must be a number")
+	}
+	if oldDays < 0 {
+		return fmt.Errorf("old days must be 0 or greater")
+	}
+
+	// Validate Completed Hours
+	completedHoursStr := strings.TrimSpace(m.completedHoursInput.Value())
+	if completedHoursStr == "" {
+		return fmt.Errorf("completed hours is required")
+	}
+	completedHours, err := strconv.Atoi(completedHoursStr)
+	if err != nil {
+		return fmt.Errorf("completed hours must be a number")
+	}
+	if completedHours < 0 {
+		return fmt.Errorf("completed hours must be 0 or greater")
+	}
+
+	return nil
+}
+
 func (m *SettingsModel) saveSettings() tea.Cmd {
 	return func() tea.Msg {
 		editor := strings.TrimSpace(m.editorInput.Value())
 		context := strings.TrimSpace(m.contextInput.Value())
 		undoDepth, _ := strconv.Atoi(strings.TrimSpace(m.undoDepthInput.Value()))
+		dueSoon, _ := strconv.Atoi(strings.TrimSpace(m.dueSoonInput.Value()))
+		futureDays, _ := strconv.Atoi(strings.TrimSpace(m.futureInput.Value()))
+		oldDays, _ := strconv.Atoi(strings.TrimSpace(m.oldDaysInput.Value()))
+		completedHours, _ := strconv.Atoi(strings.TrimSpace(m.completedHoursInput.Value()))
 
 		m.config.Editor = editor
 		m.config.DefaultContext = context
 		m.config.UndoHistoryDepth = &undoDepth
+		m.config.ReviewDueSoonDays = &dueSoon
+		m.config.ReviewFutureDays = &futureDays
+		m.config.ReviewOldDays = &oldDays
+		m.config.ReviewCompletedHours = &completedHours
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
@@ -372,14 +510,74 @@ func (m *SettingsModel) View() string {
 	}
 	b.WriteString(undoLabel)
 	b.WriteString(m.undoDepthInput.View())
-	b.WriteString("\n")
-	b.WriteString("                    ")
-	b.WriteString(MutedStyle.Render("(0 to disable, max 1000)"))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
 	b.WriteString("\n")
 
 	// Validation error for undo depth
 	if m.focusIndex == 2 && m.validationErr != "" {
 		b.WriteString("                    ")
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+
+	// Review Settings section header
+	b.WriteString(SubtitleStyle.Render("Review View Thresholds"))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(0 = hide section)"))
+	b.WriteString("\n\n")
+
+	// Due Soon Days
+	dueSoonLabel := "Due Soon (days): "
+	if m.focusIndex == 3 {
+		dueSoonLabel = FieldLabelFocusedStyle.Render("Due Soon (days): ")
+	} else {
+		dueSoonLabel = FieldLabelStyle.Render("Due Soon (days): ")
+	}
+	b.WriteString(dueSoonLabel)
+	b.WriteString(m.dueSoonInput.View())
+	b.WriteString("\n")
+
+	// Future Days
+	futureLabel := "Future (days): "
+	if m.focusIndex == 4 {
+		futureLabel = FieldLabelFocusedStyle.Render("Future (days): ")
+	} else {
+		futureLabel = FieldLabelStyle.Render("Future (days): ")
+	}
+	b.WriteString(futureLabel)
+	b.WriteString(m.futureInput.View())
+	b.WriteString("\n")
+
+	// Old Days
+	oldDaysLabel := "Old (days): "
+	if m.focusIndex == 5 {
+		oldDaysLabel = FieldLabelFocusedStyle.Render("Old (days): ")
+	} else {
+		oldDaysLabel = FieldLabelStyle.Render("Old (days): ")
+	}
+	b.WriteString(oldDaysLabel)
+	b.WriteString(m.oldDaysInput.View())
+	b.WriteString("       ")
+	b.WriteString(MutedStyle.Render("(based on last update)"))
+	b.WriteString("\n")
+
+	// Completed Hours
+	completedLabel := "Completed (hours): "
+	if m.focusIndex == 6 {
+		completedLabel = FieldLabelFocusedStyle.Render("Completed (hours): ")
+	} else {
+		completedLabel = FieldLabelStyle.Render("Completed (hours): ")
+	}
+	b.WriteString(completedLabel)
+	b.WriteString(m.completedHoursInput.View())
+	b.WriteString("\n")
+
+	// Validation error for review settings
+	if m.focusIndex >= 3 && m.validationErr != "" {
+		b.WriteString("                   ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
@@ -392,11 +590,11 @@ func (m *SettingsModel) View() string {
 	if m.width-4 < cardWidth {
 		cardWidth = m.width - 4
 	}
-	config := OverlayCardConfig{
+	cfg := OverlayCardConfig{
 		Title:        "Settings",
 		Width:        cardWidth,
 		Centered:     true,
 		NoTruncation: true,
 	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	return renderOverlayCard(b.String(), m.width, m.height, cfg)
 }

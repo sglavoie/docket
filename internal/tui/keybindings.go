@@ -470,9 +470,19 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
+		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
+
+		// Section Focus
+		Keybinding{Key: "sd", Description: "Focus Overdue", Category: "Sections", Views: views},
+		Keybinding{Key: "st", Description: "Focus Today", Category: "Sections", Views: views},
+		Keybinding{Key: "ss", Description: "Focus Due Soon", Category: "Sections", Views: views},
+		Keybinding{Key: "sl", Description: "Focus Due Later", Category: "Sections", Views: views},
+		Keybinding{Key: "sf", Description: "Focus Future", Category: "Sections", Views: views},
+		Keybinding{Key: "so", Description: "Focus Old", Category: "Sections", Views: views},
 
 		// Actions
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
+		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
@@ -496,7 +506,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close daily review", Category: "View", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
 	)
 }
 
