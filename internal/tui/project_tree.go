@@ -30,6 +30,20 @@ const (
 	DueDateNone                          // tasks with no due date
 )
 
+// ConfirmActionType represents the type of action requiring confirmation.
+type ConfirmActionType int
+
+const (
+	ConfirmNone ConfirmActionType = iota
+	ConfirmDelete
+	ConfirmDeleteRecurring
+	ConfirmBulkDelete
+	ConfirmBulkStatus
+	ConfirmArchiveTasks
+	ConfirmArchive
+	ConfirmUnarchive
+)
+
 // ViewMode represents the view mode filter for the project tree.
 type ViewMode int
 
@@ -80,6 +94,35 @@ func (s SortField) String() string {
 // This is an internal message that preserves filter state.
 type treeRefreshMsg struct{}
 
+// FilterState contains all task filtering options.
+type FilterState struct {
+	Type       models.TaskType
+	Status     models.TaskStatus // filter by specific status
+	Priority   int               // 0=all, 1=high only (<=2)
+	Tags       map[string]bool   // filter by tag names (AND logic)
+	Sections   map[string]bool   // filter by section names (OR logic)
+	DueDate    DueDateFilter     // filter by due date
+	Actionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
+}
+
+// QuickEditState contains state for inline task editing.
+type QuickEditState struct {
+	Mode     bool             // True when in quick edit mode
+	Rename   bool             // True if rename-only mode (no modifier parsing)
+	Input    textinput.Model  // Text input for editing
+	Task     *models.Task     // Task being edited
+	Preview  *quickEditResult // Live preview of parsed changes
+	Original *quickEditResult // Original task state for comparison
+}
+
+// BulkOperationState contains state for pending bulk operations.
+type BulkOperationState struct {
+	Status       models.TaskStatus       // Status to apply after confirmation
+	Tasks        []*models.Task          // Tasks to change
+	BlockedCount int                     // Count of tasks with incomplete deps
+	PrevStates   map[string]*models.Task // Previous states for event triggers
+}
+
 // TreeNode represents a node in the task tree.
 type TreeNode struct {
 	Task                *models.Task
@@ -104,21 +147,15 @@ type ProjectTreeModel struct {
 	viewMode ViewMode
 
 	// Filter options
-	filterType       models.TaskType
-	filterStatus     models.TaskStatus // filter by specific status
-	filterPriority   int               // 0=all, 1=high only (<=2)
-	filterTags       map[string]bool   // filter by tag names (AND logic)
-	filterSections   map[string]bool   // filter by section names (OR logic)
-	filterDueDate    DueDateFilter     // filter by due date
-	filterActionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
+	filter FilterState
 
 	// Sort options
 	sortField     SortField // current sort field
 	sortAscending bool      // sort direction
 
 	// Confirmation state for destructive actions
-	confirmAction string       // "", "archive", "unarchive", "delete", "bulk-delete"
-	deleteTarget  *models.Task // Task to delete when confirmAction="delete"
+	confirmAction ConfirmActionType
+	deleteTarget  *models.Task // Task to delete when confirmAction=ConfirmDelete
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string // ",", "z", or "g" when waiting for second key
@@ -132,12 +169,7 @@ type ProjectTreeModel struct {
 	tagInput     textinput.Model
 
 	// Quick edit mode state (inline task editing)
-	quickEditMode     bool             // True when in quick edit mode
-	quickEditRename   bool             // True if rename-only mode (no modifier parsing)
-	quickEditInput    textinput.Model  // Text input for editing
-	quickEditTask     *models.Task     // Task being edited
-	quickEditPreview  *quickEditResult // Live preview of parsed changes
-	quickEditOriginal *quickEditResult // Original task state for comparison
+	quickEdit QuickEditState
 
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
@@ -154,10 +186,7 @@ type ProjectTreeModel struct {
 	pendingUndoContext string // Additional context (e.g., task title)
 
 	// Pending bulk status change (for confirmation prompts)
-	pendingBulkStatus       models.TaskStatus       // Status to apply after confirmation
-	pendingBulkTasks        []*models.Task          // Tasks to change
-	pendingBulkBlockedCount int                     // Count of tasks with incomplete deps
-	pendingBulkPrevStates   map[string]*models.Task // Previous states for event triggers
+	bulkOp BulkOperationState
 
 	// Filter bar state
 	filterBarEnabled bool           // Toggle filter bar visibility
@@ -181,28 +210,46 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	quickEditInput.Width = 60
 
 	m := &ProjectTreeModel{
-		project:                  project,
-		config:                   cfg,
-		configManager:            manager,
-		cursor:                   0,
-		filterType:               "",
-		filterStatus:             "",
-		filterPriority:           0,
-		filterTags:               make(map[string]bool),
-		filterSections:           make(map[string]bool),
-		sortField:                SortByDefault,
-		sortAscending:            true,
-		selectedTasks:            make(map[string]bool),
-		tagInput:                 tagInput,
-		quickEditInput:           quickEditInput,
+		project:       project,
+		config:        cfg,
+		configManager: manager,
+		cursor:        0,
+		filter: FilterState{
+			Type:       "",
+			Status:     "",
+			Priority:   0,
+			Tags:       make(map[string]bool),
+			Sections:   make(map[string]bool),
+			DueDate:    DueDateAll,
+			Actionable: false,
+		},
+		sortField:     SortByDefault,
+		sortAscending: true,
+		confirmAction: ConfirmNone,
+		selectedTasks: make(map[string]bool),
+		tagInput:      tagInput,
+		quickEdit: QuickEditState{
+			Mode:     false,
+			Rename:   false,
+			Input:    quickEditInput,
+			Task:     nil,
+			Preview:  nil,
+			Original: nil,
+		},
 		sidebarEnabled:           true, // Sidebar on by default
 		sidebarFocused:           false,
 		sidebarScroll:            0,
 		sidebarDependencyCursor:  0,
 		sidebarDependencySection: 0,
-		filterBarEnabled:         true, // Filter bar on by default
-		filterCounts:             make(map[string]int),
-		childrenInOtherSections:  make(map[string]map[string]int),
+		bulkOp: BulkOperationState{
+			Status:       "",
+			Tasks:        nil,
+			BlockedCount: 0,
+			PrevStates:   make(map[string]*models.Task),
+		},
+		filterBarEnabled:        true, // Filter bar on by default
+		filterCounts:            make(map[string]int),
+		childrenInOtherSections: make(map[string]map[string]int),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
