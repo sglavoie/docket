@@ -406,6 +406,14 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 		return m, nil
 
+	case "ctrl+y":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: pt.Task}
+			}
+		}
+		return m, nil
+
 	case "?":
 		return m, func() tea.Msg {
 			return ShowHelpMsg{

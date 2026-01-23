@@ -240,6 +240,14 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case "ctrl+y":
+		if ft := m.getTaskAtCursor(); ft != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: ft.Task}
+			}
+		}
+		return m, nil
+
 	// Help
 	case "?":
 		return m, func() tea.Msg {

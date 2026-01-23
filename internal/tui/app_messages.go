@@ -217,10 +217,17 @@ type CopyTasksTitleMsg struct{ Tasks []*models.Task }
 // CopyTasksDetailsMsg copies multiple tasks' full details to clipboard.
 type CopyTasksDetailsMsg struct{ Tasks []*models.Task }
 
+// CopyTaskTitleAndDescMsg copies a single task's title and description to clipboard.
+type CopyTaskTitleAndDescMsg struct{ Task *models.Task }
+
+// CopyTasksTitleAndDescMsg copies multiple tasks' title and description to clipboard.
+type CopyTasksTitleAndDescMsg struct{ Tasks []*models.Task }
+
 // TaskCopiedMsg confirms task(s) were copied to clipboard.
 type TaskCopiedMsg struct {
-	Count      int
-	FullDetail bool
+	Count        int
+	FullDetail   bool
+	TitleAndDesc bool
 }
 
 // =============================================================================

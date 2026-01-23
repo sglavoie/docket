@@ -55,3 +55,23 @@ func CopyTasksDetails(tasks []*models.Task) (string, error) {
 	text := strings.Join(parts, "\n---\n\n")
 	return text, clipboard.WriteAll(text)
 }
+
+// CopyTaskTitleAndDescription copies task title and description to the clipboard.
+// Format: title + blank line + description
+// Returns the copied text and any error.
+func CopyTaskTitleAndDescription(task *models.Task) (string, error) {
+	text := task.Title + "\n\n" + task.Description
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyTasksTitleAndDescription copies multiple tasks' title and description to the clipboard.
+// Each task is formatted as title + blank line + description, separated by "---".
+// Returns the copied text and any error.
+func CopyTasksTitleAndDescription(tasks []*models.Task) (string, error) {
+	var parts []string
+	for _, task := range tasks {
+		parts = append(parts, task.Title+"\n\n"+task.Description)
+	}
+	text := strings.Join(parts, "\n---\n\n")
+	return text, clipboard.WriteAll(text)
+}

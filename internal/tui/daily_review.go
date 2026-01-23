@@ -426,6 +426,14 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case "ctrl+y":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: dt.Task}
+			}
+		}
+		return m, nil
+
 	// Help
 	case "?":
 		return m, func() tea.Msg {

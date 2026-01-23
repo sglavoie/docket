@@ -221,6 +221,14 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		}
 		return m, nil
 
+	case "ctrl+y":
+		if task := m.getTaskAtCursor(); task != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: task}
+			}
+		}
+		return m, nil
+
 	// Help
 	case "?":
 		return m, func() tea.Msg {

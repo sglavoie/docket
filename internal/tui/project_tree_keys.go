@@ -358,6 +358,22 @@ func (m *ProjectTreeModel) handleClipboardKeys(key string, visible []*TreeNode) 
 			}
 		}
 		return true, nil
+
+	case "ctrl+y":
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			m.clearSelection()
+			return true, func() tea.Msg {
+				return CopyTasksTitleAndDescMsg{Tasks: tasks}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: task}
+			}
+		}
+		return true, nil
 	}
 	return false, nil
 }

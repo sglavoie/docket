@@ -88,9 +88,36 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return TaskCopiedMsg{Count: count, FullDetail: true}
 		}
 
+	case CopyTaskTitleAndDescMsg:
+		if msg.Task == nil {
+			return true, nil
+		}
+		_, err := external.CopyTaskTitleAndDescription(msg.Task)
+		if err != nil {
+			return true, errorCmd("copy failed: %w", err)
+		}
+		return true, func() tea.Msg {
+			return TaskCopiedMsg{Count: 1, TitleAndDesc: true}
+		}
+
+	case CopyTasksTitleAndDescMsg:
+		if len(msg.Tasks) == 0 {
+			return true, nil
+		}
+		_, err := external.CopyTasksTitleAndDescription(msg.Tasks)
+		if err != nil {
+			return true, errorCmd("copy failed: %w", err)
+		}
+		count := len(msg.Tasks)
+		return true, func() tea.Msg {
+			return TaskCopiedMsg{Count: count, TitleAndDesc: true}
+		}
+
 	case TaskCopiedMsg:
 		var what string
-		if msg.FullDetail {
+		if msg.TitleAndDesc {
+			what = "title and description"
+		} else if msg.FullDetail {
 			what = "description"
 		} else {
 			what = "title"
