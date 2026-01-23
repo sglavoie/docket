@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var projectPinCmd = &cobra.Command{
@@ -32,7 +34,7 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 
 	project := cfg.GetProject(args[0])
 	if project == nil {
-		return fmt.Errorf("project '%s' not found", args[0])
+		return tterrors.NewProjectNotFoundError(args[0])
 	}
 
 	project.TogglePinned()

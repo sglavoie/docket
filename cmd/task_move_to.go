@@ -133,7 +133,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 
 	destProject := cfg.GetProject(destProjectID)
 	if destProject == nil {
-		return fmt.Errorf("destination project '%s' not found", destProjectID)
+		return fmt.Errorf("destination %w", tterrors.NewProjectNotFoundError(destProjectID))
 	}
 	if destProject.ID == sourceProject.ID {
 		return fmt.Errorf("cannot move task to the same project")

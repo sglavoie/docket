@@ -52,3 +52,14 @@ func NewParentTaskNotFoundError(taskID interface{}) error {
 func NewBlockerTaskNotFoundError(taskID interface{}) error {
 	return fmt.Errorf("blocker %w: '%v'", ErrTaskNotFound, taskID)
 }
+
+// NewProjectNotFoundError creates a project not found error with the specified project identifier.
+// Use this for consistent error messaging across the codebase.
+func NewProjectNotFoundError(projectID interface{}) error {
+	return fmt.Errorf("%w: '%v'", ErrProjectNotFound, projectID)
+}
+
+// NewProjectNotFoundInTrashError creates a project not found in trash error with the specified project identifier.
+func NewProjectNotFoundInTrashError(projectID interface{}) error {
+	return fmt.Errorf("%w in trash: '%v'", ErrProjectNotFound, projectID)
+}

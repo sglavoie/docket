@@ -85,7 +85,7 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 		// Specific project
 		p := cfg.GetProject(evalProject)
 		if p == nil {
-			return fmt.Errorf("project not found: %s", evalProject)
+			return tterrors.NewProjectNotFoundError(evalProject)
 		}
 		projects = append(projects, p)
 	} else if evalAll {

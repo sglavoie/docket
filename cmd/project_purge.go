@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var purgeForce bool
@@ -51,7 +52,7 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 
 	// Check if project exists in trash
 	if !storage.TrashEntryExists(slug, cfg.DataDir) {
-		return fmt.Errorf("project '%s' not found in trash", slug)
+		return tterrors.NewProjectNotFoundInTrashError(slug)
 	}
 
 	// Confirmation unless --force

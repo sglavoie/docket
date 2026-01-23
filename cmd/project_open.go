@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -44,7 +45,7 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		project = cfg.GetProject(args[0])
 		if project == nil {
-			return fmt.Errorf("project '%s' not found", args[0])
+			return tterrors.NewProjectNotFoundError(args[0])
 		}
 	} else {
 		// Interactive selection

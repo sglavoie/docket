@@ -1,0 +1,307 @@
+package models
+
+import "testing"
+
+func TestMoveTaskToProjectBasic(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
+
+	sourceProj.Tasks = []*Task{task1, task2}
+	sourceProj.BuildTaskTree()
+
+	// Move task1 to destination
+	result, err := sourceProj.MoveTaskToProject(task1, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify result
+	if len(result.MovedTasks) != 1 {
+		t.Errorf("expected 1 moved task, got %d", len(result.MovedTasks))
+	}
+	if result.MovedTasks[0].ID != task1.ID {
+		t.Errorf("expected task1 to be moved, got %s", result.MovedTasks[0].ID)
+	}
+
+	// Verify source project has 1 task remaining
+	if len(sourceProj.Tasks) != 1 {
+		t.Errorf("expected 1 task in source, got %d", len(sourceProj.Tasks))
+	}
+	if sourceProj.Tasks[0].ID != task2.ID {
+		t.Errorf("expected task2 to remain in source, got %s", sourceProj.Tasks[0].ID)
+	}
+
+	// Verify destination project has 1 task
+	if len(destProj.Tasks) != 1 {
+		t.Errorf("expected 1 task in dest, got %d", len(destProj.Tasks))
+	}
+	if destProj.Tasks[0].ID != task1.ID {
+		t.Errorf("expected task1 in dest, got %s", destProj.Tasks[0].ID)
+	}
+
+	// Verify short ID was regenerated
+	if result.OldShortIDs[0] != 1 {
+		t.Errorf("expected old short ID 1, got %d", result.OldShortIDs[0])
+	}
+	if task1.ShortID != 1 {
+		t.Errorf("expected new short ID 1 (first in dest), got %d", task1.ShortID)
+	}
+}
+
+func TestMoveTaskToProjectWithChildren(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	parent := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	other := NewTask("other", 4, TaskTypeTask, "Other Task")
+
+	parentID := parent.ID
+	child1.ParentID = &parentID
+	child2.ParentID = &parentID
+
+	sourceProj.Tasks = []*Task{parent, child1, child2, other}
+	sourceProj.BuildTaskTree()
+
+	// Move parent (should move children too)
+	result, err := sourceProj.MoveTaskToProject(parent, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify all descendants moved
+	if len(result.MovedTasks) != 3 {
+		t.Errorf("expected 3 moved tasks (parent + 2 children), got %d", len(result.MovedTasks))
+	}
+
+	// Verify source has only 1 task left
+	if len(sourceProj.Tasks) != 1 {
+		t.Errorf("expected 1 task in source, got %d", len(sourceProj.Tasks))
+	}
+	if sourceProj.Tasks[0].ID != other.ID {
+		t.Errorf("expected 'other' task to remain in source")
+	}
+
+	// Verify destination has 3 tasks
+	if len(destProj.Tasks) != 3 {
+		t.Errorf("expected 3 tasks in dest, got %d", len(destProj.Tasks))
+	}
+
+	// Verify parent's ParentID was cleared (becomes root in dest)
+	if parent.ParentID != nil {
+		t.Error("expected parent's ParentID to be cleared")
+	}
+
+	// Verify children still reference parent
+	if child1.ParentID == nil || *child1.ParentID != parent.ID {
+		t.Error("expected child1 to still reference parent")
+	}
+	if child2.ParentID == nil || *child2.ParentID != parent.ID {
+		t.Error("expected child2 to still reference parent")
+	}
+}
+
+func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	parent := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	other := NewTask("other", 4, TaskTypeTask, "Other Task")
+
+	parentID := parent.ID
+	child1.ParentID = &parentID
+	child2.ParentID = &parentID
+
+	// child1 depends on child2 (both will be moved together with parent)
+	child1.AddDependency(child2.ID)
+	// child1 also depends on "other" task (which stays in source -> should be cleared)
+	child1.AddDependency(other.ID)
+
+	sourceProj.Tasks = []*Task{parent, child1, child2, other}
+	sourceProj.BuildTaskTree()
+
+	// Move parent (and children) to destination
+	result, err := sourceProj.MoveTaskToProject(parent, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify child1's dependency on child2 is preserved (both moved)
+	if len(child1.DependsOn) != 1 || child1.DependsOn[0] != child2.ID {
+		t.Errorf("expected child1 to only depend on child2 (both moved), got %v", child1.DependsOn)
+	}
+
+	// Verify cleared dependencies in result (child1's dependency on other)
+	if len(result.ClearedDeps) != 1 || result.ClearedDeps[0] != other.ID {
+		t.Errorf("expected 1 cleared dependency (other), got %v", result.ClearedDeps)
+	}
+}
+
+func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	// Add custom section to both projects
+	sourceProj.Sections = []string{SectionNext, "InProgress", "CustomSection"}
+	destProj.Sections = []string{SectionNext, "InProgress"}
+
+	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task1.Section = "InProgress"
+
+	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task2.Section = "CustomSection" // Only in source
+
+	sourceProj.Tasks = []*Task{task1, task2}
+	sourceProj.BuildTaskTree()
+
+	// Move task1 (section exists in dest)
+	result1, err := sourceProj.MoveTaskToProject(task1, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+	if task1.Section != "InProgress" {
+		t.Errorf("expected task1 to keep 'InProgress' section, got %s", task1.Section)
+	}
+
+	// Move task2 (section doesn't exist in dest, should reset to Next)
+	result2, err := sourceProj.MoveTaskToProject(task2, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+	if task2.Section != SectionNext {
+		t.Errorf("expected task2 section to reset to Next, got %s", task2.Section)
+	}
+
+	// Verify both tasks moved
+	if len(result1.MovedTasks) != 1 || len(result2.MovedTasks) != 1 {
+		t.Error("expected each move to report 1 moved task")
+	}
+}
+
+func TestMoveTaskToProjectNilInputs(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+
+	// Nil task
+	result, err := sourceProj.MoveTaskToProject(nil, destProj)
+	if err != nil || result != nil {
+		t.Error("expected nil result for nil task")
+	}
+
+	// Nil destination
+	result, err = sourceProj.MoveTaskToProject(task, nil)
+	if err != nil || result != nil {
+		t.Error("expected nil result for nil destination")
+	}
+}
+
+func TestMoveTaskToProjectSameProject(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	sourceProj.Tasks = []*Task{task}
+
+	// Move to same project (should be no-op)
+	result, err := sourceProj.MoveTaskToProject(task, sourceProj)
+	if err != nil || result != nil {
+		t.Error("expected nil result when moving to same project")
+	}
+
+	// Verify task still in project
+	if len(sourceProj.Tasks) != 1 {
+		t.Error("expected task to remain in project")
+	}
+}
+
+func TestMoveTaskToProjectRegeneratesShortIDs(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	task1 := NewTask("task1", 5, TaskTypeTask, "Task 1")
+	task2 := NewTask("task2", 10, TaskTypeTask, "Task 2")
+
+	sourceProj.Tasks = []*Task{task1, task2}
+	sourceProj.BuildTaskTree()
+
+	// Move task1 (should get short ID 1 in empty dest)
+	result, err := sourceProj.MoveTaskToProject(task1, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify old short ID captured
+	if result.OldShortIDs[0] != 5 {
+		t.Errorf("expected old short ID 5, got %d", result.OldShortIDs[0])
+	}
+
+	// Verify new short ID assigned (GetNextShortID on empty project returns 1)
+	if task1.ShortID != 1 {
+		t.Errorf("expected new short ID 1, got %d", task1.ShortID)
+	}
+}
+
+func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task3 := NewTask("task3", 3, TaskTypeTask, "Task 3")
+
+	// Task 3 depends on task1 and task2
+	task3.AddDependency(task1.ID)
+	task3.AddDependency(task2.ID)
+
+	sourceProj.Tasks = []*Task{task1, task2, task3}
+	sourceProj.BuildTaskTree()
+
+	// Move task1 to destination
+	_, err := sourceProj.MoveTaskToProject(task1, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify task3's dependency on task1 was cleared in source
+	if len(task3.DependsOn) != 1 {
+		t.Errorf("expected 1 dependency remaining in task3, got %d", len(task3.DependsOn))
+	}
+	if task3.DependsOn[0] != task2.ID {
+		t.Errorf("expected task3 to still depend on task2, got %s", task3.DependsOn[0])
+	}
+}
+
+func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
+	sourceProj := NewProject("source", "Source Project", "/tmp/source")
+	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
+
+	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	sourceProj.Tasks = []*Task{task}
+	sourceProj.BuildTaskTree()
+
+	oldTaskTime := task.UpdatedAt
+	oldSourceTime := sourceProj.UpdatedAt
+	oldDestTime := destProj.UpdatedAt
+
+	// Move task
+	_, err := sourceProj.MoveTaskToProject(task, destProj)
+	if err != nil {
+		t.Fatalf("MoveTaskToProject failed: %v", err)
+	}
+
+	// Verify timestamps updated
+	if !task.UpdatedAt.After(oldTaskTime) {
+		t.Error("expected task timestamp to be updated")
+	}
+	if !sourceProj.UpdatedAt.After(oldSourceTime) {
+		t.Error("expected source project timestamp to be updated")
+	}
+	if !destProj.UpdatedAt.After(oldDestTime) {
+		t.Error("expected dest project timestamp to be updated")
+	}
+}

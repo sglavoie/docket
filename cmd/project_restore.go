@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 // Note: config import kept for listTrashedProjects function signature
@@ -49,7 +50,7 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 
 	// Check if project exists in trash
 	if !storage.TrashEntryExists(slug, cfg.DataDir) {
-		return fmt.Errorf("project '%s' not found in trash", slug)
+		return tterrors.NewProjectNotFoundInTrashError(slug)
 	}
 
 	// Check if active project with same slug exists
