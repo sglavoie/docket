@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui"
 )
 
 var taskFocusCmd = &cobra.Command{
@@ -45,36 +44,11 @@ func runTaskFocus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var task *models.Task
-
-	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return fmt.Errorf("task '%s' not found", args[0])
-		}
-	} else {
-		// Interactive selection - show active (non-completed) tasks
-		var candidates []*models.Task
-		for _, t := range project.Tasks {
-			if t.Status.IsActive() {
-				candidates = append(candidates, t)
-			}
-		}
-
-		if len(candidates) == 0 {
-			return fmt.Errorf("no active tasks available")
-		}
-
-		items := TasksToSelectorItems(candidates)
-		selected, err := tui.RunSelector("Select task to toggle focus:", items)
-		if err != nil {
-			return err
-		}
-
-		task, err = GetTaskFromSelector(selected)
-		if err != nil {
-			return err
-		}
+	task, err := SelectTask(project, args,
+		func(t *models.Task) bool { return t.Status.IsActive() },
+		"Select task to toggle focus:", "no active tasks available")
+	if err != nil {
+		return err
 	}
 
 	// Toggle active flag
@@ -100,36 +74,11 @@ func runTaskUnfocus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var task *models.Task
-
-	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return fmt.Errorf("task '%s' not found", args[0])
-		}
-	} else {
-		// Interactive selection - show only active-flagged tasks
-		var candidates []*models.Task
-		for _, t := range project.Tasks {
-			if t.Active && t.Status.IsActive() {
-				candidates = append(candidates, t)
-			}
-		}
-
-		if len(candidates) == 0 {
-			return fmt.Errorf("no tasks in focus")
-		}
-
-		items := TasksToSelectorItems(candidates)
-		selected, err := tui.RunSelector("Select task to remove from focus:", items)
-		if err != nil {
-			return err
-		}
-
-		task, err = GetTaskFromSelector(selected)
-		if err != nil {
-			return err
-		}
+	task, err := SelectTask(project, args,
+		func(t *models.Task) bool { return t.Active && t.Status.IsActive() },
+		"Select task to remove from focus:", "no tasks in focus")
+	if err != nil {
+		return err
 	}
 
 	if !task.Active {

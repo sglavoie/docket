@@ -7,11 +7,30 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
 	"github.com/sglavoie/tt/internal/workflow"
 )
+
+// Dependencies holds injectable dependencies for commands.
+// This allows swapping implementations for testing.
+type Dependencies struct {
+	Selector   external.FuzzySelector
+	Renderer   external.MarkdownRenderer
+	Editor     external.Editor
+	Repository storage.ProjectRepository
+}
+
+// Deps is the global dependencies instance used by commands.
+// Tests can replace this with mock implementations.
+var Deps = Dependencies{
+	Selector:   external.DefaultSelector,
+	Renderer:   external.DefaultRenderer,
+	Editor:     external.DefaultEditor,
+	Repository: storage.DefaultRepository,
+}
 
 // Debugf prints a formatted message to stderr if verbose mode is enabled.
 func Debugf(format string, args ...any) {
@@ -268,6 +287,42 @@ func GetTaskFromSelector(item *tui.SelectorItem) (*models.Task, error) {
 		return nil, fmt.Errorf("internal error: expected Task, got %T", item.Data)
 	}
 	return task, nil
+}
+
+// TaskFilter is a predicate function for filtering tasks.
+type TaskFilter func(*models.Task) bool
+
+// SelectTask handles the common pattern of selecting a task from args or interactively.
+// If args contains an identifier, finds the task directly.
+// Otherwise, filters tasks using the predicate and presents an interactive selector.
+// Returns an error if no task is found or selection is cancelled.
+func SelectTask(project *models.Project, args []string, filter TaskFilter, prompt, emptyMsg string) (*models.Task, error) {
+	if len(args) > 0 {
+		task := FindTaskByIdentifier(project, args[0])
+		if task == nil {
+			return nil, fmt.Errorf("task '%s' not found", args[0])
+		}
+		return task, nil
+	}
+
+	var candidates []*models.Task
+	for _, t := range project.Tasks {
+		if filter(t) {
+			candidates = append(candidates, t)
+		}
+	}
+
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("%s", emptyMsg)
+	}
+
+	items := TasksToSelectorItems(candidates)
+	selected, err := tui.RunSelector(prompt, items)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetTaskFromSelector(selected)
 }
 
 // GetProjectFromSelector safely extracts a Project from a SelectorItem.

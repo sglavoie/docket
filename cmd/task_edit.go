@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui"
 )
 
 var taskEditCmd = &cobra.Command{
@@ -46,29 +45,11 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var task *models.Task
-
-	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return fmt.Errorf("task '%s' not found", args[0])
-		}
-	} else {
-		// Interactive selection
-		if len(project.Tasks) == 0 {
-			return fmt.Errorf("no tasks available")
-		}
-
-		items := TasksToSelectorItems(project.Tasks)
-		selected, err := tui.RunSelector("Select task to edit:", items)
-		if err != nil {
-			return err
-		}
-
-		task, err = GetTaskFromSelector(selected)
-		if err != nil {
-			return err
-		}
+	task, err := SelectTask(project, args,
+		func(t *models.Task) bool { return true },
+		"Select task to edit:", "no tasks available")
+	if err != nil {
+		return err
 	}
 
 	// Determine editor

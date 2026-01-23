@@ -1,6 +1,10 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
+)
 
 // View is the base interface that all TUI views must implement.
 // It extends tea.Model with dimension management.
@@ -45,6 +49,6 @@ type FocusableView interface {
 type ViewContext struct {
 	Width         int
 	Height        int
-	Config        interface{} // *config.Config
-	ConfigManager interface{} // *config.Manager
+	Config        *config.Config
+	ConfigManager *config.Manager
 }

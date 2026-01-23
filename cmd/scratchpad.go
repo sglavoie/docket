@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -51,9 +50,9 @@ func runScratchpadView(cmd *cobra.Command, args []string) error {
 	displayContent := fmt.Sprintf("# Scratchpad: %s\n\n%s", project.Name, content)
 
 	// Use glow if available and enabled
-	useGlow := cfg.GlowEnabled && external.GlowAvailable() && !scratchpadNoGlow
+	useGlow := cfg.GlowEnabled && Deps.Renderer.Available() && !scratchpadNoGlow
 	if useGlow {
-		return external.PageMarkdown(displayContent)
+		return Deps.Renderer.PageMarkdown(displayContent)
 	}
 
 	fmt.Println(displayContent)

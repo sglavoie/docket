@@ -7,7 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
@@ -71,9 +70,9 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use glow if available and enabled
-	useGlow := cfg.GlowEnabled && external.GlowAvailable() && !noGlow
+	useGlow := cfg.GlowEnabled && Deps.Renderer.Available() && !noGlow
 	if useGlow {
-		return external.RenderTaskMarkdown(task)
+		return Deps.Renderer.RenderTaskMarkdown(task)
 	}
 
 	displayTaskDetail(task)
