@@ -15,11 +15,12 @@ linters:
     - unconvert
     - bodyclose
     - nilerr
+    - errorlint
+    - unused
   disable:
-    - errcheck     # Enable later after fixing existing issues
-    - unused       # Enable later after cleanup
-    - ineffassign  # Enable later after cleanup
-    - staticcheck  # Enable later - many style warnings to fix
+    - errcheck    # Enable after fixing existing unchecked errors
+    - ineffassign # Enable after fixing existing issues
+    - staticcheck # Enable after fixing existing issues
 
 linters-settings:
   govet:
@@ -28,3 +29,15 @@ linters-settings:
       - fieldalignment
   misspell:
     locale: US
+  goimports:
+    local-prefixes:
+      - github.com/sglavoie/tt
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: true
+    comparison: true
+
+issues:
+  exclude-dirs:
+    - vendor

@@ -2,12 +2,14 @@ package testutil
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -168,4 +170,87 @@ func AssertEqual[T comparable](t *testing.T, got, want T) {
 	if got != want {
 		t.Errorf("got %v, want %v", got, want)
 	}
+}
+
+// TestDeps holds mock dependencies for testing cmd package.
+// Use SetupTestDeps to create this struct with all mocks initialized.
+type TestDeps struct {
+	Selector   *MockSelector
+	Renderer   *MockRenderer
+	Editor     *MockEditor
+	Repository *MockRepository
+	Config     *config.Config
+	ConfigPath string
+	Cleanup    func()
+}
+
+// SetupTestDeps creates a complete test environment with mock dependencies.
+// It creates a temporary directory for config and project files.
+// Call Cleanup() when done to remove temp files and restore external defaults.
+// Note: Tests must set storage.DefaultRepository themselves to avoid import cycles.
+func SetupTestDeps(t *testing.T) *TestDeps {
+	t.Helper()
+
+	// Create temp directory for test files
+	tempDir, err := os.MkdirTemp("", "tt-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+
+	configPath := filepath.Join(tempDir, "config.json")
+
+	// Store original defaults to restore later
+	origSelector := external.DefaultSelector
+	origRenderer := external.DefaultRenderer
+	origEditor := external.DefaultEditor
+
+	// Create mocks
+	selector := &MockSelector{Available_: true}
+	renderer := &MockRenderer{Available_: true}
+	editor := &MockEditor{Available_: true}
+	repository := NewMockRepository()
+
+	// Replace defaults with mocks
+	external.DefaultSelector = selector
+	external.DefaultRenderer = renderer
+	external.DefaultEditor = editor
+
+	// Create test config
+	cfg := NewTestConfig()
+	cfg.DataDir = tempDir
+
+	cleanup := func() {
+		// Restore original defaults
+		external.DefaultSelector = origSelector
+		external.DefaultRenderer = origRenderer
+		external.DefaultEditor = origEditor
+		// Remove temp directory
+		os.RemoveAll(tempDir)
+	}
+
+	return &TestDeps{
+		Selector:   selector,
+		Renderer:   renderer,
+		Editor:     editor,
+		Repository: repository,
+		Config:     cfg,
+		ConfigPath: configPath,
+		Cleanup:    cleanup,
+	}
+}
+
+// SetupTestDepsWithProject creates test deps and adds a project with tasks.
+// Returns the TestDeps and the created project.
+func SetupTestDepsWithProject(t *testing.T, projectName string) (*TestDeps, *models.Project) {
+	t.Helper()
+
+	deps := SetupTestDeps(t)
+
+	project := NewTestProjectWithTasks(projectName)
+	project.Path = filepath.Join(deps.Config.DataDir, project.Slug)
+	deps.Config.Projects = []*models.Project{project}
+	deps.Config.CurrentProject = project.ID
+	deps.Repository.Projects[project.ID] = project
+
+	return deps, project
 }

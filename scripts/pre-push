@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Pre-push hook: runs quality checks before pushing
+# Install with: make install-hooks
+
+set -e
+
+echo "Running pre-push checks..."
+
+echo "Formatting..."
+go fmt ./...
+
+echo "Vetting..."
+go vet ./...
+
+echo "Running tests..."
+go test ./...
+
+echo "All checks passed!"

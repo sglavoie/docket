@@ -7,6 +7,7 @@
 	fmt \
 	help \
 	install \
+	install-hooks \
 	lint \
 	lint-ci \
 	test \
@@ -85,3 +86,9 @@ clean: ## Remove build artifacts
 	rm -f $(BINARY_NAME)
 	go clean
 	@echo "✅ Clean complete"
+
+install-hooks: ## Install git hooks for pre-push checks
+	@echo "🪝 Installing git hooks..."
+	@chmod +x scripts/pre-push
+	@ln -sf ../../scripts/pre-push .git/hooks/pre-push
+	@echo "✅ Pre-push hook installed"

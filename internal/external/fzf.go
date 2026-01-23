@@ -2,6 +2,7 @@ package external
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,7 +52,8 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("cancelled")
 			}
@@ -121,7 +123,8 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("cancelled")
 			}
@@ -188,7 +191,8 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 	cmd.Stdout = &stdout
 
 	if err := cmd.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
 				return nil, fmt.Errorf("cancelled")
 			}

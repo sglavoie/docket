@@ -205,7 +205,7 @@ func TestHandleViewMessagesError(t *testing.T) {
 	if !handled {
 		t.Error("ErrorMsg should be handled")
 	}
-	if app.err != testErr {
+	if !errors.Is(app.err, testErr) {
 		t.Error("app.err should be set to the error from message")
 	}
 }

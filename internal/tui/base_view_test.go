@@ -1,6 +1,9 @@
 package tui
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestWrapCursor(t *testing.T) {
 	tests := []struct {
@@ -138,7 +141,7 @@ func TestBaseView_Error(t *testing.T) {
 	if !v.HasError() {
 		t.Error("HasError() = false, want true after SetError")
 	}
-	if v.Error() != testErr {
+	if !errors.Is(v.Error(), testErr) {
 		t.Error("Error() did not return set error")
 	}
 
