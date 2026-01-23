@@ -75,3 +75,12 @@ BubbleTea/terminal limitations:
 
 - `Ctrl+,` does not work as a keybinding (not recognized by terminal)
 - Dashboard uses `,` for Settings (not as a status prefix like other views) because Dashboard shows projects, not tasks
+
+### TUI Esc/q Key Handling
+
+Esc and q have distinct behaviors:
+
+- `Esc` dismisses the current action/mode (close expanded view, cancel input, exit focus mode)
+- `q` navigates one view up in the stack (pop the current view)
+
+The global `handleEscKey()` in `app_update.go` intercepts Esc/q before views receive them. Views that need to handle Esc internally (expanded views, input modes, delete confirmations) must be added to `handleEscKey()` to return `false`, allowing the key to propagate to the view's `Update()` method. See existing checks for ViewWorkflowRules, ViewTaskComments, etc. as examples.

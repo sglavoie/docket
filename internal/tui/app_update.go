@@ -243,6 +243,14 @@ func (m *AppModel) handleEscKey() bool {
 			return false
 		}
 	}
+	// Task comments view handles its own esc when in expanded view, add/edit mode, or delete confirmation
+	if m.currentView() == ViewTaskComments {
+		if comments, ok := m.views.Get(ViewTaskComments).(*TaskCommentsModel); ok && comments != nil {
+			if comments.expandedView || comments.confirmDelete || comments.addMode || comments.editMode {
+				return false
+			}
+		}
+	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		m.popView()
