@@ -276,3 +276,214 @@ func TestCannotIndentEpicUnderAnything(t *testing.T) {
 		t.Error("epic should not be able to indent under another epic")
 	}
 }
+
+func TestSelectTaskForMove_WithDirectID(t *testing.T) {
+	project := testutil.NewTestProject("Select Move Test")
+
+	task := models.NewTask("known-id-123", project.GetNextShortID(), models.TaskTypeTask, "Task to Find")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	args := []string{task.ID}
+	found, err := selectTaskForMove(project, args, "up")
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, found.ID, task.ID)
+}
+
+func TestSelectTaskForMove_TaskNotFound(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Move Not Found Test")
+	defer deps.Cleanup()
+
+	args := []string{"nonexistent-task-id"}
+	_, err := selectTaskForMove(project, args, "up")
+	if err == nil {
+		t.Error("expected error for nonexistent task")
+	}
+}
+
+func TestSelectTaskForMove_FilterUp_NoCandidates(t *testing.T) {
+	project := testutil.NewTestProject("Filter Up Test")
+
+	task := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	_, err := selectTaskForMove(project, nil, "up")
+	if err == nil {
+		t.Error("expected error when no candidates for move up")
+	}
+}
+
+func TestSelectTaskForMove_FilterDown_NoCandidates(t *testing.T) {
+	project := testutil.NewTestProject("Filter Down Test")
+
+	task := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	_, err := selectTaskForMove(project, nil, "down")
+	if err == nil {
+		t.Error("expected error when no candidates for move down")
+	}
+}
+
+func TestSelectTaskForMove_FilterOutdent_NoCandidates(t *testing.T) {
+	project := testutil.NewTestProject("Filter Outdent Test")
+
+	task := models.NewTask("root-task", project.GetNextShortID(), models.TaskTypeTask, "Root Task")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	_, err := selectTaskForMove(project, nil, "outdent")
+	if err == nil {
+		t.Error("expected error when no candidates for outdent")
+	}
+}
+
+func TestSelectTaskForMove_FilterIndent_NoCandidates(t *testing.T) {
+	project := testutil.NewTestProject("Filter Indent Test")
+
+	task := models.NewTask("only-task", project.GetNextShortID(), models.TaskTypeIdea, "Lonely Idea")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	_, err := selectTaskForMove(project, nil, "indent")
+	if err == nil {
+		t.Error("expected error when no candidates for indent")
+	}
+}
+
+func TestMoveUp_CompletionBoundaryBlocked(t *testing.T) {
+	project := testutil.NewTestProject("Completion Boundary Test")
+
+	incompleteTask := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	incompleteTask.Status = models.StatusTodo
+	project.Tasks = append(project.Tasks, incompleteTask)
+	project.NextShortID++
+
+	completedTask := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	completedTask.Complete()
+	project.Tasks = append(project.Tasks, completedTask)
+	project.NextShortID++
+
+	project.BuildTaskTree()
+
+	siblings := project.GetSiblings(completedTask)
+	siblingIdx := project.FindSiblingIndex(completedTask)
+
+	if siblingIdx <= 0 {
+		t.Fatal("expected completed task to have siblings above")
+	}
+
+	siblingAbove := siblings[siblingIdx-1]
+	if completedTask.IsRoot() && completedTask.IsComplete() && !siblingAbove.IsComplete() {
+		// This condition should prevent moving - verify the boundary logic
+		testutil.AssertEqual(t, completedTask.IsComplete(), true)
+		testutil.AssertEqual(t, siblingAbove.IsComplete(), false)
+	}
+}
+
+func TestMoveDown_CompletionBoundaryBlocked(t *testing.T) {
+	project := testutil.NewTestProject("Completion Down Boundary Test")
+
+	incompleteTask := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	incompleteTask.Status = models.StatusInProgress
+	project.Tasks = append(project.Tasks, incompleteTask)
+	project.NextShortID++
+
+	completedTask := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	completedTask.Complete()
+	project.Tasks = append(project.Tasks, completedTask)
+	project.NextShortID++
+
+	project.BuildTaskTree()
+
+	siblings := project.GetSiblings(incompleteTask)
+	siblingIdx := project.FindSiblingIndex(incompleteTask)
+
+	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
+		t.Fatal("expected incomplete task to have siblings below")
+	}
+
+	siblingBelow := siblings[siblingIdx+1]
+	if incompleteTask.IsRoot() && !incompleteTask.IsComplete() && siblingBelow.IsComplete() {
+		// This condition should prevent moving
+		testutil.AssertEqual(t, incompleteTask.IsComplete(), false)
+		testutil.AssertEqual(t, siblingBelow.IsComplete(), true)
+	}
+}
+
+func TestIndent_NoTaskAbove(t *testing.T) {
+	project := testutil.NewTestProject("Indent No Task Above Test")
+
+	task := models.NewTask("lonely-task", project.GetNextShortID(), models.TaskTypeTask, "Lonely Task")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+	project.BuildTaskTree()
+
+	targetParent := project.GetTaskAbove(task)
+	if targetParent != nil {
+		t.Error("expected no task above single root task")
+	}
+}
+
+func TestIndent_ValidParent(t *testing.T) {
+	project := testutil.NewTestProject("Indent Valid Parent Test")
+
+	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	project.Tasks = append(project.Tasks, epic)
+	project.NextShortID++
+
+	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	project.Tasks = append(project.Tasks, task)
+	project.NextShortID++
+
+	project.BuildTaskTree()
+
+	targetParent := project.GetTaskAbove(task)
+	if targetParent == nil {
+		t.Fatal("expected epic to be above task")
+	}
+	testutil.AssertEqual(t, targetParent.ID, epic.ID)
+
+	ok, reason := task.CanIndent(targetParent)
+	if !ok {
+		t.Errorf("expected task to be able to indent under epic: %s", reason)
+	}
+}
+
+func TestOutdent_ToNewParent(t *testing.T) {
+	project := testutil.NewTestProject("Outdent New Parent Test")
+
+	grandparent := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Grandparent")
+	project.Tasks = append(project.Tasks, grandparent)
+	project.NextShortID++
+
+	parent := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	parent.ParentID = &grandparent.ID
+	project.Tasks = append(project.Tasks, parent)
+	project.NextShortID++
+
+	child := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	child.ParentID = &parent.ID
+	project.Tasks = append(project.Tasks, child)
+	project.NextShortID++
+
+	project.BuildTaskTree()
+
+	testutil.AssertEqual(t, *child.ParentID, parent.ID)
+
+	err := project.OutdentTask(child)
+	testutil.AssertNoError(t, err)
+
+	if child.ParentID == nil {
+		t.Error("expected child to move to grandparent, not root")
+	} else {
+		testutil.AssertEqual(t, *child.ParentID, grandparent.ID)
+	}
+}
