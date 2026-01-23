@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/workflow"
-	"github.com/spf13/cobra"
 )
 
 var workflowAddCmd = &cobra.Command{

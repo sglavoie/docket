@@ -7,8 +7,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 var showArchived bool

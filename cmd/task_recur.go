@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var taskRecurClear bool

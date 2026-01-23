@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+set -e
+
+./scripts/dead_code.sh
+go vet ./...
+go fmt ./...
+goimports -l -w -local "github.com/sglavoie/tt" .
+staticcheck ./...

@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 var workflowToggleCmd = &cobra.Command{

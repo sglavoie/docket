@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var projectArchiveCmd = &cobra.Command{

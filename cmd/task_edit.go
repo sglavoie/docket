@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var taskEditCmd = &cobra.Command{

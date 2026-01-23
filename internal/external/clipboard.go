@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 

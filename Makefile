@@ -1,7 +1,9 @@
 .PHONY: \
 	build \
+	check \
 	clean \
 	coverage \
+	dead \
 	fmt \
 	help \
 	install \
@@ -69,6 +71,14 @@ lint: fmt vet ## Run formatting and vetting
 lint-ci: ## Run golangci-lint (requires golangci-lint installed)
 	@echo "🔍 Running golangci-lint..."
 	golangci-lint run
+
+check: ## Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
+	@echo "🔍 Running code quality checks..."
+	./scripts/check.sh
+
+dead: ## Find dead code in the codebase
+	@echo "💀 Finding dead code..."
+	./scripts/dead_code.sh
 
 clean: ## Remove build artifacts
 	@echo "🧹 Cleaning..."

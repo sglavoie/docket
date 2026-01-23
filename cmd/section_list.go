@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var sectionListCmd = &cobra.Command{

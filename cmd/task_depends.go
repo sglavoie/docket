@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui"
-	"github.com/spf13/cobra"
 )
 
 var (

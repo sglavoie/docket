@@ -5,12 +5,13 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui"
 	"github.com/sglavoie/tt/internal/util"
-	"github.com/spf13/cobra"
 )
 
 var taskShowCmd = &cobra.Command{

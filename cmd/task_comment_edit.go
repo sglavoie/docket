@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/util"
-	"github.com/spf13/cobra"
 )
 
 var taskCommentEditCmd = &cobra.Command{

@@ -3,9 +3,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/workflow"
-	"github.com/spf13/cobra"
 )
 
 var workflowInitCmd = &cobra.Command{
