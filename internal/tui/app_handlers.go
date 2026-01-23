@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.
@@ -25,10 +24,7 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 	task.UpdatedAt = time.Now()
 
 	// Create backup and save
-	if err := storage.BackupProject(project); err != nil {
-		return errorCmd("backup failed: %w", err)
-	}
-	if err := storage.SaveProject(project); err != nil {
+	if err := saveProjectSync(project); err != nil {
 		return errorCmd("save failed: %w", err)
 	}
 
@@ -50,10 +46,7 @@ func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Projec
 	}
 
 	// Create backup and save
-	if err := storage.BackupProject(project); err != nil {
-		return errorCmd("backup failed: %w", err)
-	}
-	if err := storage.SaveProject(project); err != nil {
+	if err := saveProjectSync(project); err != nil {
 		return errorCmd("save failed: %w", err)
 	}
 

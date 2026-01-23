@@ -148,10 +148,7 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 			m.projectTree.project.SetSectionColor(name, globalColor)
 		}
 
-		if err := storage.BackupProject(m.projectTree.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -191,10 +188,7 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 			m.projectTree.project.SetSectionColor(newName, globalColor)
 		}
 
-		if err := storage.BackupProject(m.projectTree.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -214,10 +208,7 @@ func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to remove section")}
 		}
 
-		if err := storage.BackupProject(m.projectTree.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -266,10 +257,7 @@ func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea
 		// Also update the current project in memory
 		m.projectTree.project.SetSectionColor(sectionName, colorName)
 
-		if err := storage.BackupProject(m.projectTree.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

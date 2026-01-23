@@ -493,14 +493,8 @@ func (m *InboxProcessorModel) setPriorityQuick(key string) tea.Cmd {
 // saveProject saves the project with backup.
 func (m *InboxProcessorModel) saveProject() tea.Cmd {
 	return func() tea.Msg {
-		if err := storage.BackupProject(m.project); err != nil {
-			return InboxProjectSavedMsg{Error: fmt.Errorf("backup failed: %w", err)}
-		}
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectSync(m.project); err != nil {
 			return InboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
-		}
-		if err := storage.LoadProject(m.project); err != nil {
-			return InboxProjectSavedMsg{Error: fmt.Errorf("reload failed: %w", err)}
 		}
 		return InboxProjectSavedMsg{Error: nil}
 	}

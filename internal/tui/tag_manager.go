@@ -7,8 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // TagInfo holds a tag name and its usage count.
@@ -118,10 +116,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 			}
 		}
 
-		if err := storage.BackupProject(m.projectTree.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.projectTree.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

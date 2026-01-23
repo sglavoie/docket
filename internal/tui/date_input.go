@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -95,14 +94,10 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *DateInputModel) saveAndReturn() tea.Cmd {
 	return func() tea.Msg {
-		// Create backup before saving for undo support
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.project); err != nil {
+		// Save project with backup for undo support
+		if err := saveProjectSync(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		_ = storage.LoadProject(m.project)
 		return DueDateChangedMsg{Task: m.task}
 	}
 }

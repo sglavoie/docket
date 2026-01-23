@@ -548,14 +548,8 @@ func (m *GlobalInboxProcessorModel) saveCurrentProject() tea.Cmd {
 
 	project := git.Project
 	return func() tea.Msg {
-		if err := storage.BackupProject(project); err != nil {
-			return GlobalInboxProjectSavedMsg{Error: fmt.Errorf("backup failed: %w", err)}
-		}
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectSync(project); err != nil {
 			return GlobalInboxProjectSavedMsg{Error: fmt.Errorf("save failed: %w", err)}
-		}
-		if err := storage.LoadProject(project); err != nil {
-			return GlobalInboxProjectSavedMsg{Error: fmt.Errorf("reload failed: %w", err)}
 		}
 		return GlobalInboxProjectSavedMsg{Error: nil}
 	}

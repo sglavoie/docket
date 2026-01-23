@@ -10,7 +10,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -424,18 +423,10 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		m.project.BuildTaskTree()
 		m.project.ReorderRootTasksByCompletion()
 
-		// Create backup before saving for undo support
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		// Save project
-		if err := storage.SaveProject(m.project); err != nil {
+		// Save project with backup for undo support
+		if err := saveProjectSync(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-
-		// Reload to rebuild tree properly
-		_ = storage.LoadProject(m.project)
 
 		return TaskCreatedMsg{Task: task}
 	}

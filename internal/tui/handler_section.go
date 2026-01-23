@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleSectionMessages handles section-related messages.
@@ -54,38 +53,28 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Check if this is a bulk operation from palette
 		if len(m.pendingBulkTasks) > 0 {
 			count := 0
-			projectTasks := make(map[string][]*models.Task)
 			projectMap := make(map[string]*models.Project)
 
 			for _, item := range m.pendingBulkTasks {
 				if item.Task != nil && item.Project != nil {
 					item.Task.Priority = msg.Priority
 					item.Task.UpdatedAt = time.Now()
-					projectTasks[item.Project.ID] = append(projectTasks[item.Project.ID], item.Task)
 					projectMap[item.Project.ID] = item.Project
 					count++
 				}
 			}
 
-			// Save each affected project
-			for projectID, project := range projectMap {
-				if len(projectTasks[projectID]) > 0 {
-					if err := storage.BackupProject(project); err != nil {
-						m.pendingBulkTasks = nil
-						return true, errorCmd("failed to create backup: %w", err)
-					}
-					if err := storage.SaveProject(project); err != nil {
-						m.pendingBulkTasks = nil
-						return true, errorCmd("failed to save: %w", err)
-					}
-					_ = storage.LoadProject(project)
-				}
+			var projects []*models.Project
+			for _, project := range projectMap {
+				projects = append(projects, project)
 			}
 
-			m.refreshProjectTree()
-			m.statusMessage = fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, count)
 			m.pendingBulkTasks = nil
-			return true, statusTimeout(2 * time.Second)
+			successMsg := fmt.Sprintf("Set priority %d for %d tasks", msg.Priority, count)
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveMultipleProjectsAsync(projects, successMsg),
+			)
 		}
 
 		// Single task operation
@@ -93,17 +82,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			msg.Task.Priority = msg.Priority
 			msg.Task.UpdatedAt = time.Now()
 
-			if err := storage.BackupProject(msg.Project); err != nil {
-				return true, errorCmd("failed to create backup: %w", err)
-			}
-			if err := storage.SaveProject(msg.Project); err != nil {
-				return true, errorCmd("failed to save: %w", err)
-			}
-
-			_ = storage.LoadProject(msg.Project)
-			m.refreshProjectTree()
-			m.statusMessage = fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
-			return true, statusTimeout(2 * time.Second)
+			successMsg := fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveProjectAsync(msg.Project, successMsg),
+			)
 		}
 		return true, nil
 
@@ -120,16 +103,15 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 			}
 
-			if err := storage.BackupProject(msg.Project); err != nil {
-				return true, errorCmd("failed to create backup: %w", err)
-			}
-			if err := storage.SaveProject(msg.Project); err != nil {
-				return true, errorCmd("failed to save: %w", err)
-			}
-
-			_ = storage.LoadProject(msg.Project)
 			m.config.ApplyGlobalColorsToProject(msg.Project)
-			m.refreshProjectTree()
+			successMsg := fmt.Sprintf("Moved to %s", msg.Section)
+			if msg.Section == "" {
+				successMsg = "Removed from section"
+			}
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveProjectAsync(msg.Project, successMsg),
+			)
 		}
 		return true, nil
 
