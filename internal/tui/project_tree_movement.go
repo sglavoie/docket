@@ -3,7 +3,7 @@ package tui
 import tea "github.com/charmbracelet/bubbletea"
 
 // handleTypeKeys handles <, >, H, L - type change operations.
-// Note: h/l are now used for indent/outdent (Vim-style horizontal movement).
+// Note: ←/→ are now used for indent/outdent, h/l for section switching.
 // Captures task states before changes to enable event-based workflow triggers.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
@@ -60,8 +60,8 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 	return false, nil
 }
 
-// handleMovementKeys handles K, J, h, l - task movement operations.
-// h/l now handle indent/outdent (Vim-style horizontal movement in tree).
+// handleMovementKeys handles K, J, ←, → - task movement operations.
+// ←/→ handle indent/outdent, h/l are used for section switching.
 // Captures task states before changes to enable event-based workflow triggers.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
@@ -112,7 +112,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			}
 		}
 		return true, nil
-	case "l":
+	case "right":
 		// Indent task (move right in hierarchy, nest under task above)
 		if CursorInBounds(m.cursor, len(visible)) && m.cursor > 0 {
 			task := visible[m.cursor].Task
@@ -130,7 +130,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			}
 		}
 		return true, nil
-	case "h":
+	case "left":
 		// Outdent task (move left in hierarchy, to parent's level)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task

@@ -163,6 +163,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 	r.add(
 		// Navigation
 		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "h/l", Description: "Switch section (Active/Next/Inbox/Waiting/Someday)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "View task (glow)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Expand/collapse", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Navigation", Views: views},
@@ -219,8 +220,8 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Task Movement (when sidebar unfocused)
 		Keybinding{Key: "K", Description: "Move task up", Category: "Task Movement", Views: views},
 		Keybinding{Key: "J", Description: "Move task down", Category: "Task Movement", Views: views},
-		Keybinding{Key: "l", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
-		Keybinding{Key: "h", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
+		Keybinding{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
+		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
 
 		// Task Operations
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
