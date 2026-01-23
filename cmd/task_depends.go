@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -47,7 +48,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 
 	task := FindTaskByIdentifier(project, args[0])
 	if task == nil {
-		return fmt.Errorf("task '%s' not found", args[0])
+		return tterrors.NewTaskNotFoundError(args[0])
 	}
 
 	// Handle --clear
@@ -68,7 +69,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 	if dependsRemoveFlag != "" {
 		blocker := FindTaskByIdentifier(project, dependsRemoveFlag)
 		if blocker == nil {
-			return fmt.Errorf("blocker task '%s' not found", dependsRemoveFlag)
+			return tterrors.NewBlockerTaskNotFoundError(dependsRemoveFlag)
 		}
 		if !task.HasDependency(blocker.ID) {
 			return fmt.Errorf("task #%d does not depend on #%d", task.ShortID, blocker.ShortID)
@@ -86,7 +87,7 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 	if dependsOnFlag != "" {
 		blocker := FindTaskByIdentifier(project, dependsOnFlag)
 		if blocker == nil {
-			return fmt.Errorf("blocker task '%s' not found", dependsOnFlag)
+			return tterrors.NewBlockerTaskNotFoundError(dependsOnFlag)
 		}
 		if blocker.ID == task.ID {
 			return fmt.Errorf("a task cannot depend on itself")

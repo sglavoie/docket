@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskCommentAddCmd = &cobra.Command{
@@ -35,7 +37,7 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 
 	task := FindTaskByIdentifier(project, args[0])
 	if task == nil {
-		return fmt.Errorf("task '%s' not found", args[0])
+		return tterrors.NewTaskNotFoundError(args[0])
 	}
 
 	// Join remaining args as the comment text

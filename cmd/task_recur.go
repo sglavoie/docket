@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskRecurClear bool
@@ -59,7 +60,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 
 	task := project.GetTaskByShortID(taskID)
 	if task == nil {
-		return fmt.Errorf("task #%d not found", taskID)
+		return tterrors.NewTaskNotFoundError(taskID)
 	}
 
 	// Handle --clear flag

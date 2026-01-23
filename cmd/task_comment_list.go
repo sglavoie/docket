@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskCommentListCmd = &cobra.Command{
@@ -34,7 +35,7 @@ func runTaskCommentList(cmd *cobra.Command, args []string) error {
 
 	task := FindTaskByIdentifier(project, args[0])
 	if task == nil {
-		return fmt.Errorf("task '%s' not found", args[0])
+		return tterrors.NewTaskNotFoundError(args[0])
 	}
 
 	fmt.Printf("#%d: %s\n", task.ShortID, task.Title)

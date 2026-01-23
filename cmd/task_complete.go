@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -120,7 +121,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 	if len(args) > 0 {
 		task = FindTaskByIdentifier(project, args[0])
 		if task == nil {
-			return fmt.Errorf("task '%s' not found", args[0])
+			return tterrors.NewTaskNotFoundError(args[0])
 		}
 	} else {
 		// Interactive selection - filter based on action

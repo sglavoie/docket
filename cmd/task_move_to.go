@@ -76,7 +76,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 
 	task := FindTaskByIdentifier(sourceProject, taskID)
 	if task == nil {
-		return fmt.Errorf("task '%s' not found", taskID)
+		return tterrors.NewTaskNotFoundError(taskID)
 	}
 
 	// Select destination project

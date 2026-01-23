@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -79,8 +80,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate priority
-	if taskPriority < 1 || taskPriority > 5 {
-		return fmt.Errorf("priority must be between 1 and 5")
+	if taskPriority < models.PriorityMin || taskPriority > models.PriorityMax {
+		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
 	}
 
 	// Create task
@@ -113,7 +114,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if taskParentFlag != "" {
 		parent := FindTaskByIdentifier(project, taskParentFlag)
 		if parent == nil {
-			return fmt.Errorf("parent task '%s' not found", taskParentFlag)
+			return tterrors.NewParentTaskNotFoundError(taskParentFlag)
 		}
 
 		if !task.Type.CanBeChildOf(parent.Type) {

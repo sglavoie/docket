@@ -46,7 +46,7 @@ func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
 		Type:      taskType,
 		Title:     title,
 		Status:    StatusTodo,
-		Priority:  3, // Medium priority
+		Priority:  PriorityDefault, // Medium priority
 		Tags:      []string{},
 		Section:   "", // Empty section = Active view (default for new tasks)
 		DependsOn: []string{},

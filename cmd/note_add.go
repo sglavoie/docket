@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -56,7 +57,7 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 	if noteParentFlag != "" {
 		parent := FindTaskByIdentifier(project, noteParentFlag)
 		if parent == nil {
-			return fmt.Errorf("parent task '%s' not found", noteParentFlag)
+			return tterrors.NewParentTaskNotFoundError(noteParentFlag)
 		}
 
 		if !models.TaskTypeNote.CanBeChildOf(parent.Type) {

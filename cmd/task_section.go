@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var taskSectionCmd = &cobra.Command{
@@ -28,49 +28,37 @@ func init() {
 }
 
 func runTaskSection(cmd *cobra.Command, args []string) error {
-	taskID, err := strconv.Atoi(args[0])
-	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
-	}
-
+	taskID := args[0]
 	sectionName := args[1]
 
-	project, cfg, configManager, err := LoadCurrentProject()
+	var oldSection string
+
+	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+		// If section name is provided and non-empty, ensure it exists
+		if sectionName != "" {
+			project.EnsureSection(sectionName)
+		}
+
+		oldSection = task.Section
+		task.Section = sectionName
+		return nil
+	})
+
 	if err != nil {
 		return err
 	}
 
-	task := project.GetTaskByShortID(taskID)
-	if task == nil {
-		return fmt.Errorf("task #%d not found", taskID)
-	}
-
-	// If section name is provided and non-empty, ensure it exists
-	if sectionName != "" {
-		project.EnsureSection(sectionName)
-	}
-
-	// Capture task states before changes for event-based workflow triggers
-	prevStates := CaptureTaskStates(project.Tasks)
-
-	oldSection := task.Section
-	task.Section = sectionName
-	task.UpdatedAt = time.Now()
-
-	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
-	}
-
+	// Output feedback
 	if sectionName == "" {
 		if oldSection != "" {
-			fmt.Printf("Cleared section from task #%d (was: %s)\n", taskID, oldSection)
+			fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
 		} else {
-			fmt.Printf("Task #%d has no section\n", taskID)
+			fmt.Printf("Task #%d has no section\n", task.ShortID)
 		}
 	} else if oldSection == "" {
-		fmt.Printf("Assigned task #%d to section: %s\n", taskID, sectionName)
+		fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
 	} else {
-		fmt.Printf("Moved task #%d from '%s' to '%s'\n", taskID, oldSection, sectionName)
+		fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
 	}
 
 	return nil

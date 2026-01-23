@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -258,7 +259,7 @@ func selectTaskForMove(project *models.Project, args []string, action string) (*
 	if len(args) > 0 {
 		task := FindTaskByIdentifier(project, args[0])
 		if task == nil {
-			return nil, fmt.Errorf("task '%s' not found", args[0])
+			return nil, tterrors.NewTaskNotFoundError(args[0])
 		}
 		return task, nil
 	}

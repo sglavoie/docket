@@ -655,7 +655,7 @@ func applyAction(task *models.Task, action RuleAction) bool {
 		}
 	case ActionSetPriority:
 		newPriority, err := strconv.Atoi(action.Value)
-		if err == nil && newPriority >= 1 && newPriority <= 5 && task.Priority != newPriority {
+		if err == nil && newPriority >= models.PriorityMin && newPriority <= models.PriorityMax && task.Priority != newPriority {
 			task.Priority = newPriority
 			return true
 		}

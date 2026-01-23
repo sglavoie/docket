@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -46,7 +47,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	task := FindTaskByIdentifier(project, args[0])
 	if task == nil {
-		return fmt.Errorf("task '%s' not found", args[0])
+		return tterrors.NewTaskNotFoundError(args[0])
 	}
 
 	index, err := strconv.Atoi(args[1])

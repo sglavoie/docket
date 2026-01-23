@@ -2,7 +2,10 @@
 // These errors enable callers to use errors.Is() for precise error handling.
 package tterrors
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Project-related errors
 var (
@@ -33,3 +36,19 @@ var (
 	ErrReadFailed     = errors.New("failed to read file")
 	ErrWriteFailed    = errors.New("failed to write file")
 )
+
+// NewTaskNotFoundError creates a task not found error with the specified task identifier.
+// Use this for consistent error messaging across the codebase.
+func NewTaskNotFoundError(taskID interface{}) error {
+	return fmt.Errorf("%w: '%v'", ErrTaskNotFound, taskID)
+}
+
+// NewParentTaskNotFoundError creates a parent task not found error with the specified task identifier.
+func NewParentTaskNotFoundError(taskID interface{}) error {
+	return fmt.Errorf("parent %w: '%v'", ErrTaskNotFound, taskID)
+}
+
+// NewBlockerTaskNotFoundError creates a blocker task not found error with the specified task identifier.
+func NewBlockerTaskNotFoundError(taskID interface{}) error {
+	return fmt.Errorf("blocker %w: '%v'", ErrTaskNotFound, taskID)
+}
