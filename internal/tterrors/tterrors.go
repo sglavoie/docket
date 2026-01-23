@@ -29,4 +29,7 @@ var (
 var (
 	ErrBackupNotFound = errors.New("backup not found")
 	ErrParseError     = errors.New("failed to parse markdown")
+	ErrSaveFailed     = errors.New("failed to save project")
+	ErrReadFailed     = errors.New("failed to read file")
+	ErrWriteFailed    = errors.New("failed to write file")
 )

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -59,7 +60,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 
 	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse tasks: %w", err)
+		return nil, fmt.Errorf("%w: %v", tterrors.ErrParseError, err)
 	}
 
 	project.Tasks = result.Tasks
@@ -362,7 +363,10 @@ func RestoreFromBackup(project *models.Project) error {
 	// Read backup content
 	backupContent, err := os.ReadFile(backupPath)
 	if err != nil {
-		return fmt.Errorf("failed to read backup file: %w", err)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%w: %s", tterrors.ErrBackupNotFound, backupPath)
+		}
+		return fmt.Errorf("%w: %v", tterrors.ErrReadFailed, err)
 	}
 
 	// Validate backup content is valid markdown before restoring
@@ -545,12 +549,12 @@ func RestoreProjectFromTrash(slug, dataDir string) error {
 
 	// Check if trash entry exists
 	if !TrashEntryExists(slug, dataDir) {
-		return fmt.Errorf("project '%s' not found in trash", slug)
+		return fmt.Errorf("%w: '%s' not in trash", tterrors.ErrProjectNotFound, slug)
 	}
 
 	// Check if active project exists
 	if _, err := os.Stat(projectPath); !os.IsNotExist(err) {
-		return fmt.Errorf("active project '%s' already exists; rename or delete it first", slug)
+		return fmt.Errorf("%w: '%s' already exists; rename or delete it first", tterrors.ErrProjectExists, slug)
 	}
 
 	// Move from trash back to data directory

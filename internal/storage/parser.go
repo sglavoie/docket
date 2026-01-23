@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -173,7 +174,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading markdown: %w", err)
+		return nil, fmt.Errorf("%w: %v", tterrors.ErrParseError, err)
 	}
 
 	// Build parent-child relationships using levels captured during initial parse
@@ -368,7 +369,7 @@ func ParseProjectNameFromFile(filePath string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("project name not found in file")
+	return "", fmt.Errorf("%w: project name not found in file", tterrors.ErrParseError)
 }
 
 // extractCommentsFromDescription parses the COMMENTS block from task description.

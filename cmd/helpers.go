@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -68,6 +70,9 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	result, err := storage.LoadProjectWithWarnings(project)
 	if err != nil {
+		if errors.Is(err, tterrors.ErrParseError) {
+			return nil, nil, nil, fmt.Errorf("corrupted tasks file in %s: %w", project.Name, err)
+		}
 		return nil, nil, nil, fmt.Errorf("failed to load project: %w", err)
 	}
 
