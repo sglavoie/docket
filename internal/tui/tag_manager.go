@@ -127,7 +127,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 // filterByTag sets the project tree filter and closes the tag manager.
 func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
 	return func() tea.Msg {
-		m.projectTree.filterTags = map[string]bool{tagName: true}
+		m.projectTree.filter.Tags = map[string]bool{tagName: true}
 		m.projectTree.updateVisibility()
 		m.projectTree.clampCursor()
 		return CloseTagManagerMsg{}

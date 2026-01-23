@@ -260,10 +260,10 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					if m.projectTree.filterPriority == 0 {
-						m.projectTree.filterPriority = 1
+					if m.projectTree.filter.Priority == 0 {
+						m.projectTree.filter.Priority = 1
 					} else {
-						m.projectTree.filterPriority = 0
+						m.projectTree.filter.Priority = 0
 					}
 					m.projectTree.updateVisibility()
 				}
@@ -277,12 +277,12 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.filterType = ""
-					m.projectTree.filterStatus = ""
-					m.projectTree.filterPriority = 0
-					m.projectTree.filterTags = make(map[string]bool)
-					m.projectTree.filterSections = make(map[string]bool)
-					m.projectTree.filterDueDate = 0
+					m.projectTree.filter.Type = ""
+					m.projectTree.filter.Status = ""
+					m.projectTree.filter.Priority = 0
+					m.projectTree.filter.Tags = make(map[string]bool)
+					m.projectTree.filter.Sections = make(map[string]bool)
+					m.projectTree.filter.DueDate = 0
 					m.projectTree.updateVisibility()
 				}
 				return nil
@@ -782,22 +782,22 @@ func (m *AppModel) saveProjectTreeState() {
 	}
 
 	var filterTags []string
-	for tag := range m.projectTree.filterTags {
+	for tag := range m.projectTree.filter.Tags {
 		filterTags = append(filterTags, tag)
 	}
 	var filterSections []string
-	for section := range m.projectTree.filterSections {
+	for section := range m.projectTree.filter.Sections {
 		filterSections = append(filterSections, section)
 	}
 
 	state := config.ProjectViewState{
-		FilterType:       string(m.projectTree.filterType),
-		FilterStatus:     string(m.projectTree.filterStatus),
-		FilterPriority:   m.projectTree.filterPriority,
+		FilterType:       string(m.projectTree.filter.Type),
+		FilterStatus:     string(m.projectTree.filter.Status),
+		FilterPriority:   m.projectTree.filter.Priority,
 		FilterTags:       filterTags,
 		FilterSections:   filterSections,
-		FilterDueDate:    int(m.projectTree.filterDueDate),
-		FilterActionable: m.projectTree.filterActionable,
+		FilterDueDate:    int(m.projectTree.filter.DueDate),
+		FilterActionable: m.projectTree.filter.Actionable,
 		SortField:        int(m.projectTree.sortField),
 		SortAscending:    m.projectTree.sortAscending,
 		SidebarEnabled:   m.projectTree.sidebarEnabled,
@@ -834,11 +834,11 @@ func (m *AppModel) restoreProjectTreeState() {
 		return
 	}
 
-	m.projectTree.filterType = models.TaskType(state.FilterType)
-	m.projectTree.filterStatus = models.TaskStatus(state.FilterStatus)
-	m.projectTree.filterPriority = state.FilterPriority
-	m.projectTree.filterDueDate = DueDateFilter(state.FilterDueDate)
-	m.projectTree.filterActionable = state.FilterActionable
+	m.projectTree.filter.Type = models.TaskType(state.FilterType)
+	m.projectTree.filter.Status = models.TaskStatus(state.FilterStatus)
+	m.projectTree.filter.Priority = state.FilterPriority
+	m.projectTree.filter.DueDate = DueDateFilter(state.FilterDueDate)
+	m.projectTree.filter.Actionable = state.FilterActionable
 	m.projectTree.sortField = SortField(state.SortField)
 	m.projectTree.sortAscending = state.SortAscending
 	m.projectTree.sidebarEnabled = state.SidebarEnabled
@@ -846,7 +846,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.viewMode = ViewMode(state.ViewMode)
 
 	// Restore tags - validate they still exist
-	m.projectTree.filterTags = make(map[string]bool)
+	m.projectTree.filter.Tags = make(map[string]bool)
 	existingTags := m.projectTree.getAllTags()
 	tagSet := make(map[string]bool)
 	for _, t := range existingTags {
@@ -854,12 +854,12 @@ func (m *AppModel) restoreProjectTreeState() {
 	}
 	for _, tag := range state.FilterTags {
 		if tagSet[tag] {
-			m.projectTree.filterTags[tag] = true
+			m.projectTree.filter.Tags[tag] = true
 		}
 	}
 
 	// Restore sections - validate they still exist
-	m.projectTree.filterSections = make(map[string]bool)
+	m.projectTree.filter.Sections = make(map[string]bool)
 	existingSections := m.currentProject.GetSections()
 	sectionSet := make(map[string]bool)
 	for _, s := range existingSections {
@@ -867,7 +867,7 @@ func (m *AppModel) restoreProjectTreeState() {
 	}
 	for _, section := range state.FilterSections {
 		if sectionSet[section] {
-			m.projectTree.filterSections[section] = true
+			m.projectTree.filter.Sections[section] = true
 		}
 	}
 

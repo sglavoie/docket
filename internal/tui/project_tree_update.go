@@ -21,7 +21,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle confirmation prompts first
-		if m.confirmAction != "" {
+		if m.confirmAction != ConfirmNone {
 			return m.handleConfirmation(msg)
 		}
 
@@ -36,7 +36,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle quick edit mode for inline task editing
-		if m.quickEditMode {
+		if m.quickEdit.Mode {
 			return m.handleQuickEditMode(msg)
 		}
 
@@ -52,19 +52,19 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 	key := msg.String()
 
 	// Handle recurring task delete confirmation (d/s/n)
-	if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+	if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
 		switch key {
 		case "d", "D":
 			// Delete instance only - keeps recurrence, next instance will still generate
-			m.confirmAction = ""
+			m.confirmAction = ConfirmNone
 			return m, m.deleteTask()
 		case "s", "S":
 			// Stop recurrence - clear recurrence pattern then delete
 			m.deleteTarget.ClearRecurrence()
-			m.confirmAction = ""
+			m.confirmAction = ConfirmNone
 			return m, m.deleteTask()
 		case "n", "N", "esc":
-			m.confirmAction = ""
+			m.confirmAction = ConfirmNone
 			m.deleteTarget = nil
 			return m, nil
 		}
@@ -74,27 +74,27 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 	// Handle standard y/n confirmations
 	switch key {
 	case "y", "Y":
-		if m.confirmAction == "archive" {
-			m.confirmAction = ""
+		if m.confirmAction == ConfirmArchive {
+			m.confirmAction = ConfirmNone
 			return m, m.archiveProject()
-		} else if m.confirmAction == "unarchive" {
-			m.confirmAction = ""
+		} else if m.confirmAction == ConfirmUnarchive {
+			m.confirmAction = ConfirmNone
 			return m, m.unarchiveProject()
-		} else if m.confirmAction == "delete" {
-			m.confirmAction = ""
+		} else if m.confirmAction == ConfirmDelete {
+			m.confirmAction = ConfirmNone
 			return m, m.deleteTask()
-		} else if m.confirmAction == "bulk-delete" {
-			m.confirmAction = ""
+		} else if m.confirmAction == ConfirmBulkDelete {
+			m.confirmAction = ConfirmNone
 			return m, m.bulkDeleteTasks()
-		} else if m.confirmAction == "bulk-status" {
-			m.confirmAction = ""
+		} else if m.confirmAction == ConfirmBulkStatus {
+			m.confirmAction = ConfirmNone
 			return m, m.executePendingBulkStatus()
-		} else if m.confirmAction == "archive-tasks" {
-			m.confirmAction = ""
+		} else if m.confirmAction == ConfirmArchiveTasks {
+			m.confirmAction = ConfirmNone
 			return m, m.archiveCompletedTasks()
 		}
 	case "n", "N", "esc":
-		m.confirmAction = ""
+		m.confirmAction = ConfirmNone
 		m.deleteTarget = nil
 		m.clearPendingBulkStatus()
 		return m, nil
@@ -152,28 +152,28 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 		return m, nil
 
 	case "enter":
-		input := strings.TrimSpace(m.quickEditInput.Value())
+		input := strings.TrimSpace(m.quickEdit.Input.Value())
 		if input == "" {
 			m.exitQuickEditMode()
 			return m, nil
 		}
 
 		// Parse and apply the edit
-		if m.quickEditRename {
+		if m.quickEdit.Rename {
 			// Rename-only mode: just update title, no modifier parsing
-			m.quickEditTask.Title = input
-			m.quickEditTask.UpdatedAt = time.Now()
-			m.setUndoContext("Rename Task", m.quickEditTask.Title)
+			m.quickEdit.Task.Title = input
+			m.quickEdit.Task.UpdatedAt = time.Now()
+			m.setUndoContext("Rename Task", m.quickEdit.Task.Title)
 		} else {
 			// Full quick edit mode: parse modifiers
-			result, err := parseQuickEdit(input, m.quickEditTask, m.project)
+			result, err := parseQuickEdit(input, m.quickEdit.Task, m.project)
 			if err != nil {
 				// Keep edit mode open with error displayed
-				m.quickEditPreview = nil
+				m.quickEdit.Preview = nil
 				return m, nil
 			}
-			applyQuickEdit(m.quickEditTask, result)
-			m.setUndoContext("Quick Edit", m.quickEditTask.Title)
+			applyQuickEdit(m.quickEdit.Task, result)
+			m.setUndoContext("Quick Edit", m.quickEdit.Task.Title)
 		}
 
 		m.exitQuickEditMode()
@@ -182,12 +182,12 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 	default:
 		// Update the text input
 		var cmd tea.Cmd
-		m.quickEditInput, cmd = m.quickEditInput.Update(msg)
+		m.quickEdit.Input, cmd = m.quickEdit.Input.Update(msg)
 
 		// Update preview (only in full edit mode, not rename mode)
-		if !m.quickEditRename {
-			input := m.quickEditInput.Value()
-			m.quickEditPreview, _ = parseQuickEditForPreview(input, m.quickEditTask, m.project)
+		if !m.quickEdit.Rename {
+			input := m.quickEdit.Input.Value()
+			m.quickEdit.Preview, _ = parseQuickEditForPreview(input, m.quickEdit.Task, m.project)
 		}
 
 		return m, cmd
@@ -196,31 +196,31 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 
 // enterQuickEditMode starts inline editing for the current task.
 func (m *ProjectTreeModel) enterQuickEditMode(task *models.Task, renameOnly bool) {
-	m.quickEditMode = true
-	m.quickEditRename = renameOnly
-	m.quickEditTask = task
-	m.quickEditOriginal = snapshotTaskForEdit(task)
+	m.quickEdit.Mode = true
+	m.quickEdit.Rename = renameOnly
+	m.quickEdit.Task = task
+	m.quickEdit.Original = snapshotTaskForEdit(task)
 
 	// Initialize text input with current title
-	m.quickEditInput.SetValue(task.Title)
-	m.quickEditInput.CursorEnd()
-	m.quickEditInput.Focus()
+	m.quickEdit.Input.SetValue(task.Title)
+	m.quickEdit.Input.CursorEnd()
+	m.quickEdit.Input.Focus()
 
 	// Initialize preview
 	if !renameOnly {
-		m.quickEditPreview, _ = parseQuickEditForPreview(task.Title, task, m.project)
+		m.quickEdit.Preview, _ = parseQuickEditForPreview(task.Title, task, m.project)
 	}
 }
 
 // exitQuickEditMode cleans up quick edit state.
 func (m *ProjectTreeModel) exitQuickEditMode() {
-	m.quickEditMode = false
-	m.quickEditRename = false
-	m.quickEditTask = nil
-	m.quickEditPreview = nil
-	m.quickEditOriginal = nil
-	m.quickEditInput.Blur()
-	m.quickEditInput.SetValue("")
+	m.quickEdit.Mode = false
+	m.quickEdit.Rename = false
+	m.quickEdit.Task = nil
+	m.quickEdit.Preview = nil
+	m.quickEdit.Original = nil
+	m.quickEdit.Input.Blur()
+	m.quickEdit.Input.SetValue("")
 }
 
 // handlePrefixKey handles the second key in a prefix key sequence.
@@ -382,7 +382,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, cmd
 		case "d":
 			// Cycle due date filter
-			m.filterDueDate = (m.filterDueDate + 1) % 5
+			m.filter.DueDate = (m.filter.DueDate + 1) % 5
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()
@@ -551,7 +551,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	}
 
 	// Special case for search activation
-	if key == "/" && m.confirmAction == "" {
+	if key == "/" && m.confirmAction == ConfirmNone {
 		return m, m.ActivateSearch()
 	}
 
@@ -577,9 +577,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	// Special case for ctrl+a (archive project)
 	if key == "ctrl+a" {
 		if m.project.Archived {
-			m.confirmAction = "unarchive"
+			m.confirmAction = ConfirmUnarchive
 		} else {
-			m.confirmAction = "archive"
+			m.confirmAction = ConfirmArchive
 		}
 		return m, nil
 	}

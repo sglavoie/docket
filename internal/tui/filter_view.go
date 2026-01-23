@@ -67,27 +67,27 @@ func (m *FilterViewModel) buildFilterList() {
 	m.items = []FilterItem{}
 	keyNum := 1
 
-	if m.projectTree.filterType != "" {
+	if m.projectTree.filter.Type != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Type",
-			Value:      string(m.projectTree.filterType),
+			Value:      string(m.projectTree.filter.Type),
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterTypeFilter,
 		})
 		keyNum++
 	}
 
-	if m.projectTree.filterStatus != "" {
+	if m.projectTree.filter.Status != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Status",
-			Value:      string(m.projectTree.filterStatus),
+			Value:      string(m.projectTree.filter.Status),
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterStatusFilter,
 		})
 		keyNum++
 	}
 
-	if m.projectTree.filterPriority == 1 {
+	if m.projectTree.filter.Priority == 1 {
 		m.items = append(m.items, FilterItem{
 			Name:       "Priority",
 			Value:      "high only",
@@ -97,9 +97,9 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if len(m.projectTree.filterTags) > 0 {
-		tags := make([]string, 0, len(m.projectTree.filterTags))
-		for tag := range m.projectTree.filterTags {
+	if len(m.projectTree.filter.Tags) > 0 {
+		tags := make([]string, 0, len(m.projectTree.filter.Tags))
+		for tag := range m.projectTree.filter.Tags {
 			tags = append(tags, tag)
 		}
 		sort.Strings(tags)
@@ -112,9 +112,9 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.projectTree.filterDueDate != DueDateAll {
+	if m.projectTree.filter.DueDate != DueDateAll {
 		var dueName string
-		switch m.projectTree.filterDueDate {
+		switch m.projectTree.filter.DueDate {
 		case DueDateOverdue:
 			dueName = "overdue"
 		case DueDateToday:
@@ -155,15 +155,15 @@ func (m *FilterViewModel) buildFilterList() {
 func (m *FilterViewModel) clearFilter(filterType FilterType) {
 	switch filterType {
 	case FilterTypeFilter:
-		m.projectTree.filterType = ""
+		m.projectTree.filter.Type = ""
 	case FilterStatusFilter:
-		m.projectTree.filterStatus = ""
+		m.projectTree.filter.Status = ""
 	case FilterPriorityFilter:
-		m.projectTree.filterPriority = 0
+		m.projectTree.filter.Priority = 0
 	case FilterTagFilter:
-		m.projectTree.filterTags = make(map[string]bool)
+		m.projectTree.filter.Tags = make(map[string]bool)
 	case FilterDueDateFilter:
-		m.projectTree.filterDueDate = DueDateAll
+		m.projectTree.filter.DueDate = DueDateAll
 	case FilterSearchFilter:
 		m.projectTree.searchQuery = ""
 		m.projectTree.searchInput.SetValue("")
@@ -175,11 +175,11 @@ func (m *FilterViewModel) clearFilter(filterType FilterType) {
 
 // clearAllFilters clears all active filters.
 func (m *FilterViewModel) clearAllFilters() {
-	m.projectTree.filterType = ""
-	m.projectTree.filterStatus = ""
-	m.projectTree.filterPriority = 0
-	m.projectTree.filterTags = make(map[string]bool)
-	m.projectTree.filterDueDate = DueDateAll
+	m.projectTree.filter.Type = ""
+	m.projectTree.filter.Status = ""
+	m.projectTree.filter.Priority = 0
+	m.projectTree.filter.Tags = make(map[string]bool)
+	m.projectTree.filter.DueDate = DueDateAll
 	m.projectTree.searchQuery = ""
 	m.projectTree.searchInput.SetValue("")
 	m.projectTree.updateVisibility()

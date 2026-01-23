@@ -93,16 +93,11 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 
 		// If there are blocked tasks, show confirmation before proceeding
 		if blockedCount > 0 && len(validTasks) > 0 {
-			m.pendingBulkStatus = targetStatus
-			m.pendingBulkTasks = validTasks
-			m.pendingBulkBlockedCount = blockedCount
-			m.pendingBulkPrevStates = prevStates
-			m.confirmAction = "bulk-status"
-			return true, nil
-		}
-
-		// If all tasks are blocked, show error
-		if blockedCount > 0 && len(validTasks) == 0 {
+			m.bulkOp.Status = targetStatus
+			m.bulkOp.Tasks = validTasks
+			m.bulkOp.BlockedCount = blockedCount
+			m.bulkOp.PrevStates = prevStates
+			m.confirmAction = ConfirmBulkStatus
 			m.clearSelection()
 			return true, func() tea.Msg {
 				return ErrorMsg{Err: fmt.Errorf("no tasks %s: %d have incomplete dependencies", actionVerb, blockedCount)}
@@ -200,17 +195,17 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 
 // executePendingBulkStatus applies the pending bulk status change after confirmation.
 func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
-	if len(m.pendingBulkTasks) == 0 {
+	if len(m.bulkOp.Tasks) == 0 {
 		m.clearPendingBulkStatus()
 		return nil
 	}
 
 	// Capture previous states for event-based workflow triggers
-	prevStates := m.pendingBulkPrevStates
+	prevStates := m.bulkOp.PrevStates
 
 	// Apply status to all pending tasks
-	for _, task := range m.pendingBulkTasks {
-		switch m.pendingBulkStatus {
+	for _, task := range m.bulkOp.Tasks {
+		switch m.bulkOp.Status {
 		case models.StatusDone:
 			task.Complete()
 		case models.StatusInProgress:
@@ -224,8 +219,8 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 		}
 	}
 
-	count := len(m.pendingBulkTasks)
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.pendingBulkStatus))
+	count := len(m.bulkOp.Tasks)
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.Status))
 	m.clearSelection()
 	m.clearPendingBulkStatus()
 
@@ -234,8 +229,8 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 
 // clearPendingBulkStatus clears the pending bulk status state.
 func (m *ProjectTreeModel) clearPendingBulkStatus() {
-	m.pendingBulkStatus = ""
-	m.pendingBulkTasks = nil
-	m.pendingBulkBlockedCount = 0
-	m.pendingBulkPrevStates = nil
+	m.bulkOp.Status = ""
+	m.bulkOp.Tasks = nil
+	m.bulkOp.BlockedCount = 0
+	m.bulkOp.PrevStates = nil
 }

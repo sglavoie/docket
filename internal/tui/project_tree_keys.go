@@ -26,23 +26,23 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.clampCursor()
 		return true, nil
 	case "f2":
-		if m.filterPriority == 0 {
-			m.filterPriority = 1
+		if m.filter.Priority == 0 {
+			m.filter.Priority = 1
 		} else {
-			m.filterPriority = 0
+			m.filter.Priority = 0
 		}
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return true, nil
 	case "f3":
-		m.filterType = cycleFilter(m.filterType, models.AllTaskTypes())
+		m.filter.Type = cycleFilter(m.filter.Type, models.AllTaskTypes())
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return true, nil
 	case "f4":
-		m.filterStatus = cycleFilter(m.filterStatus, models.AllTaskStatuses())
+		m.filter.Status = cycleFilter(m.filter.Status, models.AllTaskStatuses())
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -56,13 +56,13 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 			return ShowSectionFilterSelectorMsg{ProjectTree: m}
 		}
 	case "f7":
-		m.filterDueDate = (m.filterDueDate + 1) % 5
+		m.filter.DueDate = (m.filter.DueDate + 1) % 5
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return true, nil
 	case "f8":
-		m.filterActionable = !m.filterActionable
+		m.filter.Actionable = !m.filter.Actionable
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -76,10 +76,10 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	switch key {
 	case "P":
-		if m.filterPriority == 0 {
-			m.filterPriority = 1
+		if m.filter.Priority == 0 {
+			m.filter.Priority = 1
 		} else {
-			m.filterPriority = 0
+			m.filter.Priority = 0
 		}
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
@@ -87,14 +87,14 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 		return true, nil
 
 	case "t":
-		m.filterType = cycleFilter(m.filterType, models.AllTaskTypes())
+		m.filter.Type = cycleFilter(m.filter.Type, models.AllTaskTypes())
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return true, nil
 
 	case "S":
-		m.filterStatus = cycleFilter(m.filterStatus, models.AllTaskStatuses())
+		m.filter.Status = cycleFilter(m.filter.Status, models.AllTaskStatuses())
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -307,15 +307,15 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 
 	case "D":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.confirmAction = "bulk-delete"
+			m.confirmAction = ConfirmBulkDelete
 			return true, nil
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			if task.IsRecurring() {
-				m.confirmAction = "delete-recurring"
+				m.confirmAction = ConfirmDeleteRecurring
 			} else {
-				m.confirmAction = "delete"
+				m.confirmAction = ConfirmDelete
 			}
 			m.deleteTarget = task
 		}
@@ -612,7 +612,7 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		if m.viewMode == ViewModeCompleted {
 			completedCount := m.project.CountCompletedTasks()
 			if completedCount > 0 {
-				m.confirmAction = "archive-tasks"
+				m.confirmAction = ConfirmArchiveTasks
 			}
 		}
 		return true, nil

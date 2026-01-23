@@ -37,7 +37,7 @@ func NewTagFilterSelectorModel(pt *ProjectTreeModel) *TagFilterSelectorModel {
 	})
 
 	// Pre-select currently filtered tags
-	for tag := range pt.filterTags {
+	for tag := range pt.filter.Tags {
 		picker.PreSelectByID(tag)
 	}
 

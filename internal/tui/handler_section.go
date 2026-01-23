@@ -22,9 +22,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case SectionFilterSelectorDoneMsg:
 		m.popView()
 		if !msg.Cancelled && m.projectTree != nil {
-			m.projectTree.filterSections = make(map[string]bool)
+			m.projectTree.filter.Sections = make(map[string]bool)
 			for _, section := range msg.SelectedSections {
-				m.projectTree.filterSections[section] = true
+				m.projectTree.filter.Sections[section] = true
 			}
 			m.projectTree.updateVisibility()
 			m.projectTree.clampCursor()
@@ -133,7 +133,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CommandPaletteSectionSelectMsg:
 		m.popView()
 		m.switchToProject(msg.Project, false) // Don't restore state - apply specific section filter
-		m.projectTree.filterSections = map[string]bool{msg.Section: true}
+		m.projectTree.filter.Sections = map[string]bool{msg.Section: true}
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil

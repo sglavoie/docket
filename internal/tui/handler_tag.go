@@ -58,9 +58,9 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TagFilterSelectorDoneMsg:
 		m.popView()
 		if !msg.Cancelled && m.projectTree != nil {
-			m.projectTree.filterTags = make(map[string]bool)
+			m.projectTree.filter.Tags = make(map[string]bool)
 			for _, tag := range msg.SelectedTags {
-				m.projectTree.filterTags[tag] = true
+				m.projectTree.filter.Tags[tag] = true
 			}
 			m.projectTree.updateVisibility()
 			m.projectTree.clampCursor()
@@ -90,7 +90,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlobalTagNavigateMsg:
 		m.popView()
 		m.switchToProject(msg.Project, false) // Don't restore state - apply specific tag filter
-		m.projectTree.filterTags = map[string]bool{msg.Tag: true}
+		m.projectTree.filter.Tags = map[string]bool{msg.Tag: true}
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil

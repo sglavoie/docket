@@ -101,33 +101,33 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 
 	// F2: High Priority
 	count = m.filterCounts["highPriority"]
-	active = m.filterPriority == 1
+	active = m.filter.Priority == 1
 	badges = append(badges, m.renderFilterBadge("F2", "!Hi", count, active))
 
 	// F3: Type (show current type if filtered)
 	typeName := "Type"
-	if m.filterType != "" {
-		typeName = string(m.filterType)
-		count = m.filterCounts["type:"+string(m.filterType)]
+	if m.filter.Type != "" {
+		typeName = string(m.filter.Type)
+		count = m.filterCounts["type:"+string(m.filter.Type)]
 	} else {
 		count = len(m.project.Tasks)
 	}
-	active = m.filterType != ""
+	active = m.filter.Type != ""
 	badges = append(badges, m.renderFilterBadge("F3", typeName, count, active))
 
 	// F4: Status (show current status if filtered)
 	statusName := "Status"
-	if m.filterStatus != "" {
-		statusName = string(m.filterStatus)
-		count = m.filterCounts["status:"+string(m.filterStatus)]
+	if m.filter.Status != "" {
+		statusName = string(m.filter.Status)
+		count = m.filterCounts["status:"+string(m.filter.Status)]
 	} else {
 		count = len(m.project.Tasks)
 	}
-	active = m.filterStatus != ""
+	active = m.filter.Status != ""
 	badges = append(badges, m.renderFilterBadge("F4", statusName, count, active))
 
 	// F5: Tags (show count of selected tags)
-	tagCount := len(m.filterTags)
+	tagCount := len(m.filter.Tags)
 	if tagCount > 0 {
 		badges = append(badges, m.renderFilterBadge("F5", fmt.Sprintf("#%dtag", tagCount), tagCount, true))
 	} else {
@@ -135,7 +135,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	}
 
 	// F6: Section (show count of selected sections)
-	sectionCount := len(m.filterSections)
+	sectionCount := len(m.filter.Sections)
 	if sectionCount > 0 {
 		badges = append(badges, m.renderFilterBadge("F6", fmt.Sprintf("@%dsec", sectionCount), sectionCount, true))
 	} else {
@@ -144,7 +144,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 
 	// F7: Due Date
 	dueName := "Due"
-	switch m.filterDueDate {
+	switch m.filter.DueDate {
 	case DueDateOverdue:
 		dueName = "Ovrd"
 		count = m.filterCounts["overdue"]
@@ -157,12 +157,12 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	default:
 		count = 0
 	}
-	active = m.filterDueDate != DueDateAll
+	active = m.filter.DueDate != DueDateAll
 	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
 
 	// F8: Actionable (tasks ready to work on)
 	count = m.filterCounts["actionable"]
-	active = m.filterActionable
+	active = m.filter.Actionable
 	badges = append(badges, m.renderFilterBadge("F8", "Ready", count, active))
 
 	result.WriteString(strings.Join(badges, " "))
@@ -251,8 +251,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 	}
 
 	// Append section name if exactly one section is filtered
-	if len(m.filterSections) == 1 {
-		for name := range m.filterSections {
+	if len(m.filter.Sections) == 1 {
+		for name := range m.filter.Sections {
 			base = base + " · @" + name
 			break
 		}
@@ -264,12 +264,12 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 // getSingleFilteredSectionColor returns the section color if exactly one section
 // is being filtered, otherwise returns empty string.
 func (m *ProjectTreeModel) getSingleFilteredSectionColor() string {
-	if len(m.filterSections) != 1 {
+	if len(m.filter.Sections) != 1 {
 		return ""
 	}
 	// Get the single filtered section name
 	var sectionName string
-	for name := range m.filterSections {
+	for name := range m.filter.Sections {
 		sectionName = name
 		break
 	}

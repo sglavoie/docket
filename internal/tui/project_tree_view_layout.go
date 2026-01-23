@@ -67,19 +67,19 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 
 	// Confirmation prompt
-	if m.confirmAction != "" {
+	if m.confirmAction != ConfirmNone {
 		var prompt string
-		if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+		if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
 			prompt = fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
 				m.deleteTarget.ShortID, m.deleteTarget.Title)
-		} else if m.confirmAction == "delete" && m.deleteTarget != nil {
+		} else if m.confirmAction == ConfirmDelete && m.deleteTarget != nil {
 			childCount := m.deleteTarget.CountChildren()
 			if childCount > 0 {
 				prompt = fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title, childCount)
 			} else {
 				prompt = fmt.Sprintf("Delete task #%d '%s'? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title)
 			}
-		} else if m.confirmAction == "bulk-delete" {
+		} else if m.confirmAction == ConfirmBulkDelete {
 			totalChildren := 0
 			for _, task := range m.getSelectedTasks() {
 				totalChildren += task.CountChildren()
@@ -89,14 +89,22 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			} else {
 				prompt = fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks))
 			}
-		} else if m.confirmAction == "bulk-status" {
+		} else if m.confirmAction == ConfirmBulkStatus {
 			prompt = fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)",
-				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
-		} else if m.confirmAction == "archive-tasks" {
+				m.bulkOp.BlockedCount, len(m.bulkOp.Tasks))
+		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", count)
 		} else {
-			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", m.confirmAction)
+			// For ConfirmArchive/ConfirmUnarchive - format as string for display
+			var action string
+			switch m.confirmAction {
+			case ConfirmArchive:
+				action = "archive"
+			case ConfirmUnarchive:
+				action = "unarchive"
+			}
+			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", action)
 		}
 		b.WriteString(ConfirmStyle.Render(prompt))
 		b.WriteString("\n")
@@ -203,34 +211,34 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	// Filter and sort status - outside the card
 	var filters []string
-	if m.filterType != "" {
-		filters = append(filters, fmt.Sprintf("type: %s", m.filterType))
+	if m.filter.Type != "" {
+		filters = append(filters, fmt.Sprintf("type: %s", m.filter.Type))
 	}
-	if m.filterStatus != "" {
-		filters = append(filters, fmt.Sprintf("status: %s", m.filterStatus))
+	if m.filter.Status != "" {
+		filters = append(filters, fmt.Sprintf("status: %s", m.filter.Status))
 	}
-	if m.filterPriority == 1 {
+	if m.filter.Priority == 1 {
 		filters = append(filters, "priority: high")
 	}
-	if len(m.filterTags) > 0 {
-		tags := make([]string, 0, len(m.filterTags))
-		for tag := range m.filterTags {
+	if len(m.filter.Tags) > 0 {
+		tags := make([]string, 0, len(m.filter.Tags))
+		for tag := range m.filter.Tags {
 			tags = append(tags, tag)
 		}
 		sort.Strings(tags)
 		filters = append(filters, fmt.Sprintf("tags: %s", strings.Join(tags, ", ")))
 	}
-	if len(m.filterSections) > 0 {
-		sections := make([]string, 0, len(m.filterSections))
-		for section := range m.filterSections {
+	if len(m.filter.Sections) > 0 {
+		sections := make([]string, 0, len(m.filter.Sections))
+		for section := range m.filter.Sections {
 			sections = append(sections, section)
 		}
 		sort.Strings(sections)
 		filters = append(filters, fmt.Sprintf("sections: %s", strings.Join(sections, ", ")))
 	}
-	if m.filterDueDate != DueDateAll {
+	if m.filter.DueDate != DueDateAll {
 		var dueName string
-		switch m.filterDueDate {
+		switch m.filter.DueDate {
 		case DueDateOverdue:
 			dueName = "overdue"
 		case DueDateToday:
@@ -418,18 +426,18 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 
 	// Confirmation prompt
-	if m.confirmAction != "" {
+	if m.confirmAction != ConfirmNone {
 		var prompt string
-		if m.confirmAction == "delete-recurring" && m.deleteTarget != nil {
+		if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
 			prompt = fmt.Sprintf("Delete recurring #%d? (d)elete / (s)top recurrence / (n)o", m.deleteTarget.ShortID)
-		} else if m.confirmAction == "delete" && m.deleteTarget != nil {
+		} else if m.confirmAction == ConfirmDelete && m.deleteTarget != nil {
 			childCount := m.deleteTarget.CountChildren()
 			if childCount > 0 {
 				prompt = fmt.Sprintf("Delete #%d and %d children? (y/n)", m.deleteTarget.ShortID, childCount)
 			} else {
 				prompt = fmt.Sprintf("Delete #%d? (y/n)", m.deleteTarget.ShortID)
 			}
-		} else if m.confirmAction == "bulk-delete" {
+		} else if m.confirmAction == ConfirmBulkDelete {
 			totalChildren := 0
 			for _, task := range m.getSelectedTasks() {
 				totalChildren += task.CountChildren()
@@ -439,14 +447,22 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			} else {
 				prompt = fmt.Sprintf("Delete %d tasks? (y/n)", len(m.selectedTasks))
 			}
-		} else if m.confirmAction == "bulk-status" {
+		} else if m.confirmAction == ConfirmBulkStatus {
 			prompt = fmt.Sprintf("%d have incomplete deps, complete %d? (y/n)",
-				m.pendingBulkBlockedCount, len(m.pendingBulkTasks))
-		} else if m.confirmAction == "archive-tasks" {
+				m.bulkOp.BlockedCount, len(m.bulkOp.Tasks))
+		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s)? (y/n)", count)
 		} else {
-			prompt = fmt.Sprintf("%s project? (y/n)", m.confirmAction)
+			// For ConfirmArchive/ConfirmUnarchive - format as string for display
+			var action string
+			switch m.confirmAction {
+			case ConfirmArchive:
+				action = "archive"
+			case ConfirmUnarchive:
+				action = "unarchive"
+			}
+			prompt = fmt.Sprintf("%s project? (y/n)", action)
 		}
 		b.WriteString(ConfirmStyle.Render(prompt))
 		b.WriteString("\n")
@@ -554,14 +570,14 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	// Filter status (compact) - outside the card
 	var filters []string
-	if m.filterType != "" {
-		filters = append(filters, string(m.filterType))
+	if m.filter.Type != "" {
+		filters = append(filters, string(m.filter.Type))
 	}
-	if m.filterPriority == 1 {
+	if m.filter.Priority == 1 {
 		filters = append(filters, "!high")
 	}
-	if len(m.filterTags) > 0 {
-		filters = append(filters, fmt.Sprintf("%d tags", len(m.filterTags)))
+	if len(m.filter.Tags) > 0 {
+		filters = append(filters, fmt.Sprintf("%d tags", len(m.filter.Tags)))
 	}
 
 	if len(filters) > 0 {

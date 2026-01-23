@@ -75,12 +75,12 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
 	}
 
 	// Clear all filters that might hide the task
-	m.filterType = ""
-	m.filterStatus = ""
-	m.filterPriority = 0
-	m.filterTags = nil
-	m.filterSections = nil
-	m.filterDueDate = DueDateAll
+	m.filter.Type = ""
+	m.filter.Status = ""
+	m.filter.Priority = 0
+	m.filter.Tags = nil
+	m.filter.Sections = nil
+	m.filter.DueDate = DueDateAll
 	m.ClearSearch()
 
 	// Rebuild tree with cleared filters

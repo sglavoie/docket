@@ -219,7 +219,7 @@ func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 // filterBySection sets the project tree filter and closes the section manager.
 func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 	return func() tea.Msg {
-		m.projectTree.filterSections = map[string]bool{sectionName: true}
+		m.projectTree.filter.Sections = map[string]bool{sectionName: true}
 		m.projectTree.updateVisibility()
 		m.projectTree.clampCursor()
 		return CloseSectionManagerMsg{}

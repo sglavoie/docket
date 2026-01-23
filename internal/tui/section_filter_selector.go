@@ -45,7 +45,7 @@ func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorM
 	})
 
 	// Pre-select currently filtered sections
-	for section := range pt.filterSections {
+	for section := range pt.filter.Sections {
 		picker.PreSelectByID(section)
 	}
 

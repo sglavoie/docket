@@ -127,8 +127,8 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 			return false
 		}
 		// Apply section filter for sub-filtering by original section
-		if len(m.filterSections) > 0 {
-			if !m.filterSections[node.Task.Section] {
+		if len(m.filter.Sections) > 0 {
+			if !m.filter.Sections[node.Task.Section] {
 				return false
 			}
 		}
@@ -168,23 +168,23 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 	}
 
 	// Apply type filter
-	if m.filterType != "" && node.Task.Type != m.filterType {
+	if m.filter.Type != "" && node.Task.Type != m.filter.Type {
 		return false
 	}
 
 	// Apply status filter
-	if m.filterStatus != "" && node.Task.Status != m.filterStatus {
+	if m.filter.Status != "" && node.Task.Status != m.filter.Status {
 		return false
 	}
 
 	// Apply priority filter (1 = high priority only, showing tasks with priority <= 2)
-	if m.filterPriority == 1 && node.Task.Priority > 2 {
+	if m.filter.Priority == 1 && node.Task.Priority > 2 {
 		return false
 	}
 
 	// Apply tag filter (AND logic: task must have ALL selected tags)
-	if len(m.filterTags) > 0 {
-		for tag := range m.filterTags {
+	if len(m.filter.Tags) > 0 {
+		for tag := range m.filter.Tags {
 			if !node.Task.HasTag(tag) {
 				return false
 			}
@@ -194,15 +194,15 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 	// Apply section filter (OR logic: task must be in ANY selected section)
 	// In Completed view, section filter is already applied above for sub-filtering
 	// In other views, view mode already controls section visibility
-	if m.viewMode != ViewModeCompleted && len(m.filterSections) > 0 {
-		if !m.filterSections[node.Task.Section] {
+	if m.viewMode != ViewModeCompleted && len(m.filter.Sections) > 0 {
+		if !m.filter.Sections[node.Task.Section] {
 			return false
 		}
 	}
 
 	// Apply due date filter
-	if m.filterDueDate != DueDateAll {
-		switch m.filterDueDate {
+	if m.filter.DueDate != DueDateAll {
+		switch m.filter.DueDate {
 		case DueDateOverdue:
 			if !isOverdue(node.Task) {
 				return false
@@ -223,7 +223,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 	}
 
 	// Apply actionable filter (hide tasks not ready to work on)
-	if m.filterActionable {
+	if m.filter.Actionable {
 		// Hide tasks with incomplete dependencies
 		if m.project.HasIncompleteDependencies(node.Task) {
 			return false
