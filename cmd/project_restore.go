@@ -71,8 +71,8 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	projectPath := filepath.Join(cfg.DataDir, slug)
 	project, err := reconstructProjectFromDir(slug, projectPath)
 	if err != nil {
-		// Move back to trash on failure
-		storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, cfg.DataDir)
+		// Move back to trash on failure (best effort)
+		_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, cfg.DataDir)
 		return fmt.Errorf("failed to reconstruct project metadata: %w", err)
 	}
 
@@ -81,8 +81,8 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 
 	// Save config
 	if err := configManager.Save(cfg); err != nil {
-		// Move back to trash on failure
-		storage.MoveProjectToTrash(project, cfg.DataDir)
+		// Move back to trash on failure (best effort)
+		_ = storage.MoveProjectToTrash(project, cfg.DataDir)
 		return fmt.Errorf("failed to save config: %w", err)
 	}
 

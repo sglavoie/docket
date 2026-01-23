@@ -17,10 +17,9 @@ linters:
     - nilerr
     - errorlint
     - unused
-  disable:
-    - errcheck    # Enable after fixing existing unchecked errors
-    - ineffassign # Enable after fixing existing issues
-    - staticcheck # Enable after fixing existing issues
+    - errcheck
+    - ineffassign
+    - staticcheck
 
 linters-settings:
   govet:

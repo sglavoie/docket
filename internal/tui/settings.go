@@ -443,7 +443,7 @@ func (m *SettingsModel) View() string {
 	var b strings.Builder
 
 	// Editor input
-	editorLabel := "Editor: "
+	var editorLabel string
 	if m.focusIndex == 0 {
 		editorLabel = FieldLabelFocusedStyle.Render("Editor: ")
 	} else {
@@ -463,7 +463,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Default context input
-	contextLabel := "Default Context: "
+	var contextLabel string
 	if m.focusIndex == 1 {
 		contextLabel = FieldLabelFocusedStyle.Render("Default Context: ")
 	} else {
@@ -503,7 +503,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Undo history depth input
-	undoLabel := "Undo History Depth: "
+	var undoLabel string
 	if m.focusIndex == 2 {
 		undoLabel = FieldLabelFocusedStyle.Render("Undo History Depth: ")
 	} else {
@@ -531,7 +531,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n\n")
 
 	// Due Soon Days
-	dueSoonLabel := "Due Soon (days): "
+	var dueSoonLabel string
 	if m.focusIndex == 3 {
 		dueSoonLabel = FieldLabelFocusedStyle.Render("Due Soon (days): ")
 	} else {
@@ -542,7 +542,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Future Days
-	futureLabel := "Future (days): "
+	var futureLabel string
 	if m.focusIndex == 4 {
 		futureLabel = FieldLabelFocusedStyle.Render("Future (days): ")
 	} else {
@@ -553,7 +553,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Old Days
-	oldDaysLabel := "Old (days): "
+	var oldDaysLabel string
 	if m.focusIndex == 5 {
 		oldDaysLabel = FieldLabelFocusedStyle.Render("Old (days): ")
 	} else {
@@ -566,7 +566,7 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Completed Hours
-	completedLabel := "Completed (hours): "
+	var completedLabel string
 	if m.focusIndex == 6 {
 		completedLabel = FieldLabelFocusedStyle.Render("Completed (hours): ")
 	} else {

@@ -374,14 +374,14 @@ func TestConfigManager_RestoreConfigFromBackup(t *testing.T) {
 	// Create initial config with one project
 	cfg, _ := manager.LoadOrCreate()
 	cfg.AddProject(&models.Project{ID: "p1", Slug: "project-1", Name: "Project 1"})
-	manager.Save(cfg)
+	_ = manager.Save(cfg)
 
 	// Create backup
-	manager.BackupConfig()
+	_ = manager.BackupConfig()
 
 	// Modify config (add another project)
 	cfg.AddProject(&models.Project{ID: "p2", Slug: "project-2", Name: "Project 2"})
-	manager.Save(cfg)
+	_ = manager.Save(cfg)
 
 	// Verify we have 2 projects
 	cfg, _ = manager.Load()
@@ -410,22 +410,22 @@ func TestConfigManager_RestoreConfigFromBackup_Reversibility(t *testing.T) {
 	// State A: 1 project
 	cfg, _ := manager.LoadOrCreate()
 	cfg.AddProject(&models.Project{ID: "p1", Slug: "project-1", Name: "Project 1"})
-	manager.Save(cfg)
-	manager.BackupConfig()
+	_ = manager.Save(cfg)
+	_ = manager.BackupConfig()
 
 	// State B: 2 projects
 	cfg.AddProject(&models.Project{ID: "p2", Slug: "project-2", Name: "Project 2"})
-	manager.Save(cfg)
+	_ = manager.Save(cfg)
 
 	// Restore to State A
-	manager.RestoreConfigFromBackup()
+	_ = manager.RestoreConfigFromBackup()
 	cfg, _ = manager.Load()
 	if len(cfg.Projects) != 1 {
 		t.Errorf("expected 1 project after first restore, got %d", len(cfg.Projects))
 	}
 
 	// Restore again should go back to State B (reversibility)
-	manager.RestoreConfigFromBackup()
+	_ = manager.RestoreConfigFromBackup()
 	cfg, _ = manager.Load()
 	if len(cfg.Projects) != 2 {
 		t.Errorf("expected 2 projects after second restore, got %d", len(cfg.Projects))
@@ -445,7 +445,7 @@ func TestConfigManager_ConfigBackupExists(t *testing.T) {
 	}
 
 	// Create config file
-	manager.LoadOrCreate()
+	_, _ = manager.LoadOrCreate()
 
 	// Still no backup
 	if manager.ConfigBackupExists() {
@@ -453,7 +453,7 @@ func TestConfigManager_ConfigBackupExists(t *testing.T) {
 	}
 
 	// Create backup manually
-	os.WriteFile(backupPath, []byte("{}"), 0644)
+	_ = os.WriteFile(backupPath, []byte("{}"), 0644)
 
 	// Now backup exists
 	if !manager.ConfigBackupExists() {
@@ -476,7 +476,7 @@ func TestConfigManager_RestoreConfigFromBackup_NoBackup(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "test-config.json")
 
 	manager := NewManager(configPath)
-	manager.LoadOrCreate()
+	_, _ = manager.LoadOrCreate()
 
 	// Restore without backup should fail
 	err := manager.RestoreConfigFromBackup()

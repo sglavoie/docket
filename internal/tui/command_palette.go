@@ -197,7 +197,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 					delete(m.pinnedCommands, name)
 				}
 				if m.configManager != nil {
-					m.configManager.Save(m.config)
+					_ = m.configManager.Save(m.config)
 				}
 				// Re-filter to update sort order
 				m.filterItems()
@@ -273,7 +273,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		m.searchInput.SetValue("")
 		m.config.SetLastPaletteCategory("")
 		if m.configManager != nil {
-			m.configManager.Save(m.config)
+			_ = m.configManager.Save(m.config)
 		}
 		m.filterItems()
 		return m, nil

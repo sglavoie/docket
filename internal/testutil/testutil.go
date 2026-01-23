@@ -111,7 +111,7 @@ func TempProjectDir(t *testing.T) (string, func()) {
 	}
 
 	cleanup := func() {
-		os.RemoveAll(dir)
+		_ = os.RemoveAll(dir)
 	}
 
 	return dir, cleanup
@@ -225,7 +225,7 @@ func SetupTestDeps(t *testing.T) *TestDeps {
 		external.DefaultRenderer = origRenderer
 		external.DefaultEditor = origEditor
 		// Remove temp directory
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 	}
 
 	return &TestDeps{

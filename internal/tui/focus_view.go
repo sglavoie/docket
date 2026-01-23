@@ -358,7 +358,7 @@ func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -444,7 +444,7 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -487,7 +487,7 @@ func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -527,7 +527,7 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -578,7 +578,7 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 

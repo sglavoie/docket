@@ -634,7 +634,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 
 	// Name input
-	nameLabel := "Name: "
+	var nameLabel string
 	if section == "name" {
 		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
 	} else {

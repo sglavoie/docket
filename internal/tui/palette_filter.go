@@ -801,7 +801,7 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 				// Only update if changed
 				if m.config.GetLastPaletteCategory() != newValue {
 					m.config.SetLastPaletteCategory(newValue)
-					m.configManager.Save(m.config)
+					_ = m.configManager.Save(m.config)
 				}
 				return
 			}
@@ -810,7 +810,7 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 		// Clear the filter when query is empty
 		if m.config.GetLastPaletteCategory() != "" {
 			m.config.SetLastPaletteCategory("")
-			m.configManager.Save(m.config)
+			_ = m.configManager.Save(m.config)
 		}
 	}
 }

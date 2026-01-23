@@ -194,7 +194,7 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 			}
 
 			// Reload to rebuild tree properly
-			storage.LoadProject(m.project)
+			_ = storage.LoadProject(m.project)
 		}
 
 		// Update textarea with only failed lines and show errors if any

@@ -587,7 +587,7 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 
 	case "ctrl+r":
 		m.clearSelection()
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		return true, nil
 

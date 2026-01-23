@@ -296,7 +296,7 @@ func (m *RecurrenceEditorModel) View() string {
 	var b strings.Builder
 
 	// Interval row
-	intervalLabel := "Interval: "
+	var intervalLabel string
 	if m.focusSection == 0 {
 		intervalLabel = FieldLabelFocusedStyle.Render("Interval: ")
 	} else {
@@ -317,7 +317,7 @@ func (m *RecurrenceEditorModel) View() string {
 	b.WriteString("  ")
 
 	// Unit selector
-	unitLabel := "Unit: "
+	var unitLabel string
 	if m.focusSection == 1 {
 		unitLabel = FieldLabelFocusedStyle.Render("Unit: ")
 	} else {
@@ -329,7 +329,7 @@ func (m *RecurrenceEditorModel) View() string {
 
 	// Weekdays section (only for weekly)
 	if m.isWeeklyUnit() {
-		weekdaysLabel := "Weekdays: "
+		var weekdaysLabel string
 		if m.focusSection == 2 {
 			weekdaysLabel = FieldLabelFocusedStyle.Render("Weekdays: ")
 		} else {

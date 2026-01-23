@@ -288,7 +288,7 @@ func (m *ProjectEditorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Name input with slug preview
-	nameLabel := "Name: "
+	var nameLabel string
 	if m.focusIndex == 0 {
 		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
 	} else {
@@ -313,7 +313,7 @@ func (m *ProjectEditorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Context input with available contexts hint
-	contextLabel := "Context: "
+	var contextLabel string
 	if m.focusIndex == 1 {
 		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
 	} else {
@@ -344,7 +344,7 @@ func (m *ProjectEditorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Description input
-	descLabel := "Description: "
+	var descLabel string
 	if m.focusIndex == 2 {
 		descLabel = FieldLabelFocusedStyle.Render("Description: ")
 	} else {

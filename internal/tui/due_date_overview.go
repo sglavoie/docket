@@ -465,7 +465,7 @@ func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (te
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -508,7 +508,7 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -546,7 +546,7 @@ func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -597,7 +597,7 @@ func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 

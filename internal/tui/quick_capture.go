@@ -420,7 +420,7 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 		}
 
 		// Reload to rebuild tree properly
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 
 		return TaskCreatedMsg{Task: task}
 	}

@@ -59,10 +59,10 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(content); err != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", fmt.Errorf("failed to write to temp file: %w", err)
 	}
 
@@ -76,7 +76,7 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	// Get editor command
 	if editor == "" {

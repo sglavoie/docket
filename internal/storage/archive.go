@@ -181,7 +181,7 @@ func appendToArchiveFile(path, content string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(content); err != nil {
 		return fmt.Errorf("failed to write to archive file: %w", err)

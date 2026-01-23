@@ -17,7 +17,7 @@ func SaveProjectAsync(project *models.Project, successMsg string) tea.Cmd {
 		if err := storage.SaveProject(project); err != nil {
 			return SaveErrorMsg{Err: err}
 		}
-		storage.LoadProject(project)
+		_ = storage.LoadProject(project)
 		return SaveCompleteMsg{SuccessMessage: successMsg}
 	}
 }
@@ -32,7 +32,7 @@ func SaveMultipleProjectsAsync(projects []*models.Project, successMsg string) te
 			if err := storage.SaveProject(project); err != nil {
 				return SaveErrorMsg{Err: err}
 			}
-			storage.LoadProject(project)
+			_ = storage.LoadProject(project)
 		}
 		return SaveCompleteMsg{SuccessMessage: successMsg}
 	}

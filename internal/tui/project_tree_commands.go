@@ -147,7 +147,7 @@ func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*m
 		if err := storage.SaveProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		return treeRefreshMsg{}
 	}
@@ -291,7 +291,7 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		return TaskDeletedMsg{Task: task}
 	}
@@ -362,7 +362,7 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		}
 
 		m.clearSelection()
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		m.clampCursor()
 		return treeRefreshMsg{}
@@ -454,7 +454,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 		// Clear selection and rebuild tree
 		m.clearSelection()
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		m.clampCursor()
 
@@ -494,7 +494,7 @@ func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
 		}
 
 		// Reload project and rebuild tree
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.buildTree()
 		m.clampCursor()
 

@@ -57,7 +57,7 @@ func buildProjectInfoList(cfg *config.Config) []ProjectInfo {
 	projects := make([]ProjectInfo, 0, len(activeProjects))
 
 	for _, p := range activeProjects {
-		storage.LoadProject(p)
+		_ = storage.LoadProject(p)
 		projects = append(projects, ProjectInfo{
 			Project:   p,
 			TaskCount: p.CountTasks(),

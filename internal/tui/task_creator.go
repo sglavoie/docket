@@ -435,7 +435,7 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 		}
 
 		// Reload to rebuild tree properly
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 
 		return TaskCreatedMsg{Task: task}
 	}
@@ -445,7 +445,7 @@ func (m *TaskCreatorModel) View() string {
 	var b strings.Builder
 
 	// Title field (single line, truncated, Enter to edit)
-	titleLabel := "Title: "
+	var titleLabel string
 	if m.focusIndex == 0 {
 		titleLabel = FieldLabelFocusedStyle.Render("Title: ")
 	} else {
@@ -466,7 +466,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Type selector
-	typeLabel := "Type: "
+	var typeLabel string
 	if m.focusIndex == 1 {
 		typeLabel = FieldLabelFocusedStyle.Render("Type: ")
 	} else {
@@ -489,7 +489,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Parent selector
-	parentLabel := "Parent: "
+	var parentLabel string
 	if m.focusIndex == 2 {
 		parentLabel = FieldLabelFocusedStyle.Render("Parent: ")
 	} else {
@@ -535,7 +535,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Priority selector
-	priorityLabel := "Priority: "
+	var priorityLabel string
 	if m.focusIndex == 3 {
 		priorityLabel = FieldLabelFocusedStyle.Render("Priority: ")
 	} else {
@@ -557,7 +557,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Section selector
-	sectionLabel := "Section: "
+	var sectionLabel string
 	if m.focusIndex == 4 {
 		sectionLabel = FieldLabelFocusedStyle.Render("Section: ")
 	} else {
@@ -578,7 +578,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Recurrence selector
-	recurLabel := "Recurrence: "
+	var recurLabel string
 	if m.focusIndex == 5 {
 		recurLabel = FieldLabelFocusedStyle.Render("Recurrence: ")
 	} else {
@@ -609,7 +609,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Tags input
-	tagsLabel := "Tags: "
+	var tagsLabel string
 	if m.focusIndex == 6 {
 		tagsLabel = FieldLabelFocusedStyle.Render("Tags: ")
 	} else {
@@ -620,7 +620,7 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Description field (single line, truncated, Enter to edit)
-	descLabel := "Description: "
+	var descLabel string
 	if m.focusIndex == 7 {
 		descLabel = FieldLabelFocusedStyle.Render("Description: ")
 	} else {

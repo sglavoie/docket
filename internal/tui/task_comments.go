@@ -343,8 +343,8 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	// Determine editor
 	editor := m.editor
@@ -368,13 +368,13 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
 		}
 
 		// Read modified content
 		modified, readErr := os.ReadFile(tmpPath)
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if readErr != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
 		}
@@ -422,8 +422,8 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	// Determine editor
 	editor := m.editor
@@ -451,13 +451,13 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
 		}
 
 		// Read modified content
 		modified, readErr := os.ReadFile(tmpPath)
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if readErr != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
 		}
@@ -503,8 +503,8 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	// Determine editor
 	editor := m.editor
@@ -533,13 +533,13 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
 		}
 
 		// Read modified content
 		modified, readErr := os.ReadFile(tmpPath)
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if readErr != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to read modified file: %w", readErr)}
 		}

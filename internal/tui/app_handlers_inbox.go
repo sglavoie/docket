@@ -27,7 +27,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Reload from disk to ensure we have the latest state
 		// (handles race condition if save Cmd is still in flight)
 		if m.currentProject != nil {
-			storage.LoadProject(m.currentProject)
+			_ = storage.LoadProject(m.currentProject)
 		}
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {

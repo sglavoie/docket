@@ -789,7 +789,7 @@ func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mo
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -832,7 +832,7 @@ func (m *DailyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -870,7 +870,7 @@ func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd)
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -919,7 +919,7 @@ func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -955,7 +955,7 @@ func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.loadTasks()
 	m.clampCursor()
 

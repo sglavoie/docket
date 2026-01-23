@@ -677,12 +677,12 @@ func (m *AppModel) registerGlobalCommands() {
 	}
 
 	// Register all command batches
-	m.commandRegistry.RegisterBatch(globalCommands)
-	m.commandRegistry.RegisterBatch(filterCommands)
-	m.commandRegistry.RegisterBatch(viewCommands)
-	m.commandRegistry.RegisterBatch(navCommands)
-	m.commandRegistry.RegisterBatch(taskCommands)
-	m.commandRegistry.RegisterBatch(projectCommands)
+	_ = m.commandRegistry.RegisterBatch(globalCommands)
+	_ = m.commandRegistry.RegisterBatch(filterCommands)
+	_ = m.commandRegistry.RegisterBatch(viewCommands)
+	_ = m.commandRegistry.RegisterBatch(navCommands)
+	_ = m.commandRegistry.RegisterBatch(taskCommands)
+	_ = m.commandRegistry.RegisterBatch(projectCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
@@ -805,7 +805,7 @@ func (m *AppModel) saveProjectTreeState() {
 		ViewMode:         int(m.projectTree.viewMode),
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
-	m.configManager.Save(m.config)
+	_ = m.configManager.Save(m.config)
 }
 
 // switchToProject handles switching to a different project, loading it and creating the tree view.
@@ -814,7 +814,7 @@ func (m *AppModel) saveProjectTreeState() {
 func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.saveProjectTreeState()
 	m.currentProject = project
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)

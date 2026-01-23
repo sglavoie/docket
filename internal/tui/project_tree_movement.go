@@ -14,7 +14,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanPromote(); ok {
 				prevStates := captureTaskStates(m.project.Tasks)
-				task.Promote()
+				_ = task.Promote()
 				m.setUndoContext("Promote Task", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
@@ -26,7 +26,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanDemote(); ok {
 				prevStates := captureTaskStates(m.project.Tasks)
-				task.Demote()
+				_ = task.Demote()
 				m.setUndoContext("Demote Task", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
@@ -38,7 +38,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(true); ok {
 				prevStates := captureTaskStates(m.project.Tasks)
-				task.CycleLeafType(true)
+				_ = task.CycleLeafType(true)
 				m.setUndoContext("Change Type", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
@@ -50,7 +50,7 @@ func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanCycleLeafType(false); ok {
 				prevStates := captureTaskStates(m.project.Tasks)
-				task.CycleLeafType(false)
+				_ = task.CycleLeafType(false)
 				m.setUndoContext("Change Type", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
@@ -136,7 +136,7 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 			task := visible[m.cursor].Task
 			if ok, _ := task.CanOutdent(); ok {
 				prevStates := captureTaskStates(m.project.Tasks)
-				m.project.OutdentTask(task)
+				_ = m.project.OutdentTask(task)
 				m.setUndoContext("Outdent", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}

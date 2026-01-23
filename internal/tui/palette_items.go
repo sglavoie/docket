@@ -186,7 +186,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 
 	// Add unique tags as searchable items with task counts
 	for tag, count := range tagCounts {
-		desc := "Tag"
+		var desc string
 		if count == 1 {
 			desc = "Tag (1 task)"
 		} else {
@@ -202,7 +202,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 
 	// Add unique sections as searchable items with task counts
 	for section, count := range sectionCounts {
-		desc := "Section"
+		var desc string
 		if count == 1 {
 			desc = "Section (1 task)"
 		} else {
@@ -356,7 +356,7 @@ func (m *CommandPaletteModel) persistRecentSelections() {
 		})
 	}
 	m.config.SetRecentPaletteItems(configItems)
-	m.configManager.Save(m.config)
+	_ = m.configManager.Save(m.config)
 }
 
 // recordSearchHistory adds the current search query to history if meaningful.
@@ -404,7 +404,7 @@ func (m *CommandPaletteModel) recordSearchHistory() {
 
 	m.searchHistory = newHistory
 	m.config.SetPaletteSearchHistory(newHistory)
-	m.configManager.Save(m.config)
+	_ = m.configManager.Save(m.config)
 }
 
 // parseInlineTask extracts metadata from inline task creation input.
@@ -554,7 +554,7 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			// Record command execution in history
 			m.config.AddCommandToHistory(item.Command.Name)
 			if m.configManager != nil {
-				m.configManager.Save(m.config)
+				_ = m.configManager.Save(m.config)
 			}
 
 			handler := item.Command.Handler

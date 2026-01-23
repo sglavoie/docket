@@ -284,7 +284,7 @@ func (m *NoteCreatorModel) createNote() tea.Cmd {
 		}
 
 		// Reload to rebuild tree properly
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 
 		return TaskCreatedMsg{Task: task}
 	}
@@ -294,7 +294,7 @@ func (m *NoteCreatorModel) View() string {
 	var b strings.Builder
 
 	// Title input (textarea spans 2 lines)
-	titleLabel := "Title:\n"
+	var titleLabel string
 	if m.focusIndex == 0 {
 		titleLabel = FieldLabelFocusedStyle.Render("Title:\n")
 	} else {
@@ -305,7 +305,7 @@ func (m *NoteCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Parent selector
-	parentLabel := "Parent: "
+	var parentLabel string
 	if m.focusIndex == 1 {
 		parentLabel = FieldLabelFocusedStyle.Render("Parent: ")
 	} else {
@@ -351,7 +351,7 @@ func (m *NoteCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Description textarea (larger for notes)
-	descLabel := "Content:\n"
+	var descLabel string
 	if m.focusIndex == 2 {
 		descLabel = FieldLabelFocusedStyle.Render("Content:\n")
 	} else {

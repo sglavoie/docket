@@ -1,6 +1,6 @@
-// Package errors defines sentinel errors for the tt application.
+// Package tterrors defines sentinel errors for the tt application.
 // These errors enable callers to use errors.Is() for precise error handling.
-package errors
+package tterrors
 
 import "errors"
 

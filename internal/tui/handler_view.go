@@ -488,8 +488,8 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 		return true, errorCmd("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(msg.CurrentValue)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(msg.CurrentValue)
+	_ = tmpFile.Close()
 
 	editor := m.config.Editor
 	if editor == "" {
@@ -509,11 +509,11 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	fieldName := msg.FieldName
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
 		}
 		content, readErr := os.ReadFile(tmpPath)
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if readErr != nil {
 			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
 		}
@@ -533,12 +533,12 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
 		}
@@ -576,12 +576,12 @@ func (m *AppModel) handleShowScratchpad(msg ShowScratchpadMsg) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	tmpFile.WriteString(displayContent)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(displayContent)
+	_ = tmpFile.Close()
 
 	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
 		}

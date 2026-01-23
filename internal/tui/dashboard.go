@@ -53,7 +53,7 @@ func (m *DashboardModel) loadProjects() {
 		m.projects = m.config.GetActiveProjects()
 	}
 	for _, p := range m.projects {
-		storage.LoadProject(p)
+		_ = storage.LoadProject(p)
 	}
 	m.contexts = m.getAllContexts()
 }

@@ -269,7 +269,7 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload and refresh
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 

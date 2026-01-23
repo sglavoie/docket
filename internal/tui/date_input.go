@@ -102,7 +102,7 @@ func (m *DateInputModel) saveAndReturn() tea.Cmd {
 		if err := storage.SaveProject(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		return DueDateChangedMsg{Task: m.task}
 	}
 }

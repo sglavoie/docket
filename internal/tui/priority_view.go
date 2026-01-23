@@ -426,7 +426,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 	case "r":
 		// Refresh: reload project and clear dismissed suggestions
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.dismissedIDs = make(map[string]bool)
 		m.loadActionableTasks()
 		m.clampCursor()
@@ -533,7 +533,7 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 	}
 
 	// Reload and refresh
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 
@@ -573,7 +573,7 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 	}
 
 	// Reload and refresh
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 

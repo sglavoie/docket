@@ -94,7 +94,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 		return true, errorCmd("failed to save config: %w", err)
 	}
 
-	storage.LoadProject(project)
+	_ = storage.LoadProject(project)
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)

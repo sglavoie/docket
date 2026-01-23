@@ -217,7 +217,7 @@ func pruneOldSnapshots(project *models.Project, meta *UndoMeta, maxDepth int) er
 	toRemove := len(meta.Entries) - maxDepth
 	for i := 0; i < toRemove; i++ {
 		snapshotPath := getSnapshotPath(project, meta.Entries[i].Num)
-		os.Remove(snapshotPath) // Ignore errors for missing files
+		_ = os.Remove(snapshotPath) // Ignore errors for missing files
 	}
 
 	// Keep only the newest entries
@@ -266,7 +266,7 @@ func PerformUndo(project *models.Project) (string, error) {
 
 	// Remove the snapshot file
 	snapshotPath := getSnapshotPath(project, latest.Num)
-	os.Remove(snapshotPath)
+	_ = os.Remove(snapshotPath)
 
 	// Remove the entry from metadata
 	meta.Entries = meta.Entries[1:]

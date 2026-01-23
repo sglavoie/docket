@@ -93,10 +93,10 @@ func init() {
 	workflowAddCmd.Flags().StringVar(&actionValue, "action-value", "", "action value (empty string for set_section means Active)")
 	workflowAddCmd.Flags().BoolVar(&ruleDisabled, "disabled", false, "create rule in disabled state")
 
-	workflowAddCmd.MarkFlagRequired("name")
-	workflowAddCmd.MarkFlagRequired("field")
-	workflowAddCmd.MarkFlagRequired("value")
-	workflowAddCmd.MarkFlagRequired("action")
+	_ = workflowAddCmd.MarkFlagRequired("name")
+	_ = workflowAddCmd.MarkFlagRequired("field")
+	_ = workflowAddCmd.MarkFlagRequired("value")
+	_ = workflowAddCmd.MarkFlagRequired("action")
 }
 
 func runWorkflowAdd(cmd *cobra.Command, args []string) error {

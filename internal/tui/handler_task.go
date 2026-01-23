@@ -39,7 +39,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		// Reload current project to get fresh task references after save
 		if m.currentProject != nil {
-			storage.LoadProject(m.currentProject)
+			_ = storage.LoadProject(m.currentProject)
 		}
 		m.refreshProjectTree()
 		// Set status message showing section
@@ -60,7 +60,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		// Reload current project to get fresh task references after save
 		if m.currentProject != nil {
-			storage.LoadProject(m.currentProject)
+			_ = storage.LoadProject(m.currentProject)
 		}
 		m.refreshProjectTree()
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
@@ -451,8 +451,8 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 	}
 	tmpPath := tmpFile.Name()
 	content := fmt.Sprintf("# %s\n\n<!-- Edit the title above and description below. -->\n\n%s", msg.Task.Title, msg.Task.Description)
-	tmpFile.WriteString(content)
-	tmpFile.Close()
+	_, _ = tmpFile.WriteString(content)
+	_ = tmpFile.Close()
 
 	editor := m.config.Editor
 	if editor == "" {
@@ -470,11 +470,11 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 	project := msg.Project
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return TaskContentEditedMsg{Task: task, Project: project, Err: err}
 		}
 		content, readErr := os.ReadFile(tmpPath)
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		if readErr != nil {
 			return TaskContentEditedMsg{Task: task, Project: project, Err: readErr}
 		}

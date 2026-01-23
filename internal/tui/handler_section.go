@@ -78,7 +78,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 						m.pendingBulkTasks = nil
 						return true, errorCmd("failed to save: %w", err)
 					}
-					storage.LoadProject(project)
+					_ = storage.LoadProject(project)
 				}
 			}
 
@@ -100,7 +100,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				return true, errorCmd("failed to save: %w", err)
 			}
 
-			storage.LoadProject(msg.Project)
+			_ = storage.LoadProject(msg.Project)
 			m.refreshProjectTree()
 			m.statusMessage = fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
 			return true, statusTimeout(2 * time.Second)
@@ -127,7 +127,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				return true, errorCmd("failed to save: %w", err)
 			}
 
-			storage.LoadProject(msg.Project)
+			_ = storage.LoadProject(msg.Project)
 			m.config.ApplyGlobalColorsToProject(msg.Project)
 			m.refreshProjectTree()
 		}

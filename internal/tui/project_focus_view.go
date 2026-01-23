@@ -103,7 +103,7 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TaskUpdatedMsg:
 		// Auto-refresh when a task is updated (e.g., after editing)
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.loadTasks()
 		m.clampCursor()
 		return m, nil
@@ -199,7 +199,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	// Refresh
 	case "r":
-		storage.LoadProject(m.project)
+		_ = storage.LoadProject(m.project)
 		m.loadTasks()
 		m.clampCursor()
 		m.statusMessage = "Refreshed"
@@ -328,7 +328,7 @@ func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload and refresh view
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -411,7 +411,7 @@ func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (t
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -452,7 +452,7 @@ func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.C
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -489,7 +489,7 @@ func (m *ProjectFocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -537,7 +537,7 @@ func (m *ProjectFocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Reload project and refresh view
-	storage.LoadProject(m.project)
+	_ = storage.LoadProject(m.project)
 	m.loadTasks()
 	m.clampCursor()
 

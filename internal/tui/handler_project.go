@@ -182,8 +182,8 @@ func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
 		projectPath := filepath.Join(m.config.DataDir, slug)
 		project, err := reconstructProjectFromDir(slug, projectPath)
 		if err != nil {
-			// Move back to trash on failure
-			storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, m.config.DataDir)
+			// Move back to trash on failure (best effort)
+			_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, m.config.DataDir)
 			return ErrorMsg{Err: fmt.Errorf("failed to reconstruct project metadata: %w", err)}
 		}
 
@@ -192,8 +192,8 @@ func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
 
 		// Save config
 		if err := m.configManager.Save(m.config); err != nil {
-			// Move back to trash on failure
-			storage.MoveProjectToTrash(project, m.config.DataDir)
+			// Move back to trash on failure (best effort)
+			_ = storage.MoveProjectToTrash(project, m.config.DataDir)
 			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
 		}
 

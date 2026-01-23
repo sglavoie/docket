@@ -164,7 +164,7 @@ func (m *ProjectCreatorModel) View() string {
 	var b strings.Builder
 
 	// Name input
-	nameLabel := "Name: "
+	var nameLabel string
 	if m.focusIndex == 0 {
 		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
 	} else {
@@ -175,7 +175,7 @@ func (m *ProjectCreatorModel) View() string {
 	b.WriteString("\n\n")
 
 	// Context selection
-	contextLabel := "Context: "
+	var contextLabel string
 	if m.focusIndex == 1 {
 		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
 	} else {
