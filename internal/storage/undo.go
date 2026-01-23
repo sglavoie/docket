@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const undoDirName = ".undo"
@@ -71,7 +72,7 @@ func saveUndoMeta(project *models.Project, meta *UndoMeta) error {
 		return fmt.Errorf("failed to marshal undo meta: %w", err)
 	}
 
-	if err := os.WriteFile(metaPath, data, 0644); err != nil {
+	if err := util.AtomicWriteFile(metaPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write undo meta: %w", err)
 	}
 
@@ -173,7 +174,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 
 	// Write snapshot file
 	snapshotPath := getSnapshotPath(project, nextNum)
-	if err := os.WriteFile(snapshotPath, content, 0644); err != nil {
+	if err := util.AtomicWriteFile(snapshotPath, content, 0644); err != nil {
 		return fmt.Errorf("failed to write snapshot: %w", err)
 	}
 
@@ -259,7 +260,7 @@ func PerformUndo(project *models.Project) (string, error) {
 
 	// Write the snapshot content to tasks.md
 	tasksPath := GetTasksFilePath(project)
-	if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
+	if err := util.AtomicWriteFile(tasksPath, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("failed to restore from snapshot: %w", err)
 	}
 

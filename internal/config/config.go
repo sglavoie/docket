@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -175,7 +176,7 @@ func (m *Manager) Save(config *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(m.configPath, data, 0644); err != nil {
+	if err := util.AtomicWriteFile(m.configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -347,7 +348,7 @@ func (m *Manager) BackupConfig() error {
 		return fmt.Errorf("failed to read config file for backup: %w", err)
 	}
 
-	if err := os.WriteFile(backupPath, content, 0644); err != nil {
+	if err := util.AtomicWriteFile(backupPath, content, 0644); err != nil {
 		return fmt.Errorf("failed to write config backup file: %w", err)
 	}
 
@@ -379,12 +380,12 @@ func (m *Manager) RestoreConfigFromBackup() error {
 	}
 
 	// Write backup content to main file
-	if err := os.WriteFile(m.configPath, backupContent, 0644); err != nil {
+	if err := util.AtomicWriteFile(m.configPath, backupContent, 0644); err != nil {
 		return fmt.Errorf("failed to restore config file: %w", err)
 	}
 
 	// Write current content to backup (for reversibility)
-	if err := os.WriteFile(backupPath, currentContent, 0644); err != nil {
+	if err := util.AtomicWriteFile(backupPath, currentContent, 0644); err != nil {
 		return fmt.Errorf("failed to update config backup file: %w", err)
 	}
 
@@ -831,7 +832,11 @@ func (c *Config) ComputeWorkflowRulesHash() string {
 		}
 	}
 	sort.Slice(rules, func(i, j int) bool { return rules[i].ID < rules[j].ID })
-	data, _ := json.Marshal(rules)
+	data, err := json.Marshal(rules)
+	if err != nil {
+		// Fallback to empty hash if marshaling fails (shouldn't happen with valid rules)
+		return ""
+	}
 	hash := sha256.Sum256(data)
 	return hex.EncodeToString(hash[:8]) // First 8 bytes is enough
 }

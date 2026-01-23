@@ -12,6 +12,9 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// writeFileAtomic writes a file atomically to prevent corruption on interrupted writes.
+var writeFileAtomic = util.AtomicWriteFile
+
 // getChildrenInOrder returns tasks that are children of the given parent ID,
 // preserving their original order in the tasks slice.
 func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
@@ -27,8 +30,19 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 const tasksFileName = "tasks.md"
 const backupFileName = ".tasks.md.bak"
 
+// ProjectLoadResult contains the result of loading a project, including any warnings.
+type ProjectLoadResult struct {
+	Warnings []ParseWarning
+}
+
 // LoadProject loads tasks from a project's tasks.md file.
 func LoadProject(project *models.Project) error {
+	_, err := LoadProjectWithWarnings(project)
+	return err
+}
+
+// LoadProjectWithWarnings loads tasks from a project's tasks.md file and returns any warnings.
+func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error) {
 	tasksPath := filepath.Join(project.Path, tasksFileName)
 
 	content, err := os.ReadFile(tasksPath)
@@ -37,15 +51,15 @@ func LoadProject(project *models.Project) error {
 		project.Tasks = []*models.Task{}
 		project.NextShortID = 1
 		project.Sections = []string{models.SectionNext}
-		return nil
+		return &ProjectLoadResult{}, nil
 	}
 	if err != nil {
-		return fmt.Errorf("failed to read tasks file: %w", err)
+		return nil, fmt.Errorf("failed to read tasks file: %w", err)
 	}
 
 	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
-		return fmt.Errorf("failed to parse tasks: %w", err)
+		return nil, fmt.Errorf("failed to parse tasks: %w", err)
 	}
 
 	project.Tasks = result.Tasks
@@ -64,7 +78,7 @@ func LoadProject(project *models.Project) error {
 	// Build the tree structure
 	project.BuildTaskTree()
 
-	return nil
+	return &ProjectLoadResult{Warnings: result.Warnings}, nil
 }
 
 // SaveProject saves a project's tasks to its tasks.md file.
@@ -76,7 +90,7 @@ func SaveProject(project *models.Project) error {
 	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
 
 	tasksPath := filepath.Join(project.Path, tasksFileName)
-	if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
+	if err := writeFileAtomic(tasksPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}
 
@@ -332,7 +346,7 @@ func BackupProject(project *models.Project) error {
 		return fmt.Errorf("failed to read tasks file for backup: %w", err)
 	}
 
-	if err := os.WriteFile(backupPath, content, 0644); err != nil {
+	if err := writeFileAtomic(backupPath, content, 0644); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -366,12 +380,12 @@ func RestoreFromBackup(project *models.Project) error {
 	}
 
 	// Write backup content to main file
-	if err := os.WriteFile(tasksPath, backupContent, 0644); err != nil {
+	if err := writeFileAtomic(tasksPath, backupContent, 0644); err != nil {
 		return fmt.Errorf("failed to restore tasks file: %w", err)
 	}
 
 	// Write current content to backup (for reversibility)
-	if err := os.WriteFile(backupPath, currentContent, 0644); err != nil {
+	if err := writeFileAtomic(backupPath, currentContent, 0644); err != nil {
 		return fmt.Errorf("failed to update backup file: %w", err)
 	}
 

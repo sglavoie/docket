@@ -13,6 +13,13 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+// Debugf prints a formatted message to stderr if verbose mode is enabled.
+func Debugf(format string, args ...any) {
+	if IsVerbose() {
+		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", args...)
+	}
+}
+
 // LoadConfig loads the configuration file.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {
@@ -26,6 +33,7 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 
 // LoadCurrentProject loads the config and current project with its tasks.
 // Returns an error if no project is selected or if loading fails.
+// Parser warnings are printed to stderr (always for data corrections, verbose mode for others).
 func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, error) {
 	cfg, configManager, err := LoadConfig()
 	if err != nil {
@@ -37,8 +45,23 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 		return nil, nil, nil, fmt.Errorf("no current project selected. Select one with: tt select")
 	}
 
-	if err := storage.LoadProject(project); err != nil {
+	Debugf("loading project: %s (%s)", project.Name, project.Path)
+
+	result, err := storage.LoadProjectWithWarnings(project)
+	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to load project: %w", err)
+	}
+
+	Debugf("loaded %d tasks", len(project.Tasks))
+
+	// Print warnings - always show data correction warnings, others only in verbose mode
+	for _, w := range result.Warnings {
+		// Data correction warnings (like cleared parent references) are always shown
+		if strings.Contains(w.Message, "clearing") || strings.Contains(w.Message, "corrected") {
+			fmt.Fprintf(os.Stderr, "Warning: %s\n", w.Message)
+		} else {
+			Debugf("parser warning: %s", w.Message)
+		}
 	}
 
 	return project, cfg, configManager, nil
@@ -74,6 +97,7 @@ func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config,
 	// Evaluate workflow rules
 	rules := cfg.GetEnabledWorkflowRules()
 	if len(rules) > 0 {
+		Debugf("evaluating %d workflow rules", len(rules))
 		var result *workflow.EvaluationResult
 
 		if prevStates != nil {
@@ -91,6 +115,7 @@ func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config,
 		}
 		// Persist trigger counts if any rules fired
 		if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+			Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
 			cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
 			if err := configManager.Save(cfg); err != nil {
 				fmt.Fprintln(os.Stderr, "Warning: failed to save rule trigger counts:", err)
@@ -100,6 +125,7 @@ func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config,
 
 	project.ReorderRootTasksByCompletion()
 
+	Debugf("saving project: %s", project.Name)
 	if err := storage.BackupProject(project); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}

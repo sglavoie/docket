@@ -1,0 +1,60 @@
+package util
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+// AtomicWriteFile writes data to a file atomically using a temporary file and rename.
+// This prevents data corruption if the write is interrupted (e.g., power loss, crash).
+// The file is created with the specified permissions.
+func AtomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+
+	// Create temp file in the same directory to ensure atomic rename works
+	// (rename across filesystems is not atomic)
+	tmp, err := os.CreateTemp(dir, base+".tmp.*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+
+	// Clean up temp file on any error
+	success := false
+	defer func() {
+		if !success {
+			os.Remove(tmpPath)
+		}
+	}()
+
+	// Write data to temp file
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	// Sync to ensure data is on disk before rename
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return fmt.Errorf("failed to sync temp file: %w", err)
+	}
+
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Set permissions on temp file before rename
+	if err := os.Chmod(tmpPath, perm); err != nil {
+		return fmt.Errorf("failed to set file permissions: %w", err)
+	}
+
+	// Atomic rename
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to rename temp file: %w", err)
+	}
+
+	success = true
+	return nil
+}

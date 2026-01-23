@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const scratchpadFileName = "scratchpad.md"
@@ -36,7 +37,7 @@ func SaveScratchpad(project *models.Project, content string) error {
 	}
 
 	scratchpadPath := filepath.Join(project.Path, scratchpadFileName)
-	return os.WriteFile(scratchpadPath, []byte(content), 0644)
+	return util.AtomicWriteFile(scratchpadPath, []byte(content), 0644)
 }
 
 // ScratchpadExists checks if a project has a scratchpad with user content.
@@ -57,7 +58,7 @@ func EnsureScratchpadFile(project *models.Project) (string, error) {
 		if err := os.MkdirAll(project.Path, 0755); err != nil {
 			return "", err
 		}
-		if err := os.WriteFile(scratchpadPath, []byte(DefaultScratchpadTemplate), 0644); err != nil {
+		if err := util.AtomicWriteFile(scratchpadPath, []byte(DefaultScratchpadTemplate), 0644); err != nil {
 			return "", err
 		}
 	}

@@ -17,22 +17,50 @@ func GlowAvailable() bool {
 }
 
 // RenderMarkdown renders markdown content using glow.
+// Falls back to plain text output if glow fails or is unavailable.
 func RenderMarkdown(content string) error {
+	if !GlowAvailable() {
+		fmt.Println(content)
+		return nil
+	}
+
 	cmd := exec.Command("glow", "-")
 	cmd.Stdin = strings.NewReader(content)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		// Glow failed at runtime - fall back to plain text
+		fmt.Println(content)
+	}
+	return nil
 }
 
 // RenderFile renders a markdown file using glow.
+// Falls back to printing the file content if glow fails or is unavailable.
 func RenderFile(path string) error {
+	if !GlowAvailable() {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(content))
+		return nil
+	}
+
 	cmd := exec.Command("glow", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		// Glow failed at runtime - fall back to plain text
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		fmt.Println(string(content))
+	}
+	return nil
 }
 
 // RenderTaskMarkdown formats a task as markdown and renders it with glow.
@@ -121,11 +149,21 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 }
 
 // PageMarkdown renders markdown content using glow with pager.
+// Falls back to plain text output if glow fails or is unavailable.
 func PageMarkdown(content string) error {
+	if !GlowAvailable() {
+		fmt.Println(content)
+		return nil
+	}
+
 	cmd := exec.Command("glow", "-p", "-")
 	cmd.Stdin = strings.NewReader(content)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		// Glow failed at runtime - fall back to plain text
+		fmt.Println(content)
+	}
+	return nil
 }
