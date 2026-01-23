@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui"
 )
 
 var (
@@ -139,36 +138,4 @@ func showTaskDependencies(project *models.Project, task *models.Task) {
 			fmt.Printf("  %s #%d: %s\n", status, t.ShortID, t.Title)
 		}
 	}
-}
-
-// selectDependency opens an interactive selector to choose a dependency
-func selectDependency(project *models.Project, task *models.Task) (*models.Task, error) {
-	var candidates []*models.Task
-	for _, t := range project.Tasks {
-		// Exclude the task itself
-		if t.ID == task.ID {
-			continue
-		}
-		// Exclude tasks that would create circular dependencies
-		if project.HasCircularDependency(task.ID, t.ID) {
-			continue
-		}
-		// Exclude already added dependencies
-		if task.HasDependency(t.ID) {
-			continue
-		}
-		candidates = append(candidates, t)
-	}
-
-	if len(candidates) == 0 {
-		return nil, fmt.Errorf("no tasks available to add as dependencies")
-	}
-
-	items := TasksToSelectorItems(candidates)
-	selected, err := tui.RunSelector("Select blocking task:", items)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetTaskFromSelector(selected)
 }

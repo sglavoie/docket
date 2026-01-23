@@ -133,11 +133,6 @@ func NewVSCodeEditor() *VSCodeEditor {
 	return &VSCodeEditor{}
 }
 
-// NewEditorWithOverride creates an editor that uses a custom editor command.
-func NewEditorWithOverride(editor string) *VSCodeEditor {
-	return &VSCodeEditor{editorOverride: editor}
-}
-
 // Available implements Editor.
 func (e *VSCodeEditor) Available() bool {
 	return VSCodeAvailable()

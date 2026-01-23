@@ -68,29 +68,3 @@ func EnsureScratchpadFile(project *models.Project) (string, error) {
 func ScratchpadPath(project *models.Project) string {
 	return filepath.Join(project.Path, scratchpadFileName)
 }
-
-// DeleteScratchpad removes the scratchpad file if it exists.
-func DeleteScratchpad(project *models.Project) error {
-	scratchpadPath := filepath.Join(project.Path, scratchpadFileName)
-
-	err := os.Remove(scratchpadPath)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
-}
-
-// ClearScratchpad removes the scratchpad file if it's empty or whitespace-only,
-// otherwise returns false indicating the scratchpad has content.
-func ClearScratchpad(project *models.Project) (cleared bool, err error) {
-	content, err := LoadScratchpad(project)
-	if err != nil {
-		return false, err
-	}
-
-	if strings.TrimSpace(content) == "" {
-		return true, DeleteScratchpad(project)
-	}
-
-	return false, nil
-}

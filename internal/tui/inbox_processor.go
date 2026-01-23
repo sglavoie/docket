@@ -391,17 +391,6 @@ func (m *InboxProcessorModel) goToPrevious() {
 	}
 }
 
-// markProcessed marks current task as processed and advances.
-func (m *InboxProcessorModel) markProcessed() tea.Cmd {
-	if task := m.getCurrentTask(); task != nil {
-		m.processedIDs[task.ID] = true
-		delete(m.skippedIDs, task.ID)
-		m.statusMessage = fmt.Sprintf("Processed task #%d", task.ShortID)
-		return m.advanceToNext(true)
-	}
-	return nil
-}
-
 // skipCurrent skips current task and advances.
 func (m *InboxProcessorModel) skipCurrent() tea.Cmd {
 	if task := m.getCurrentTask(); task != nil {
@@ -497,31 +486,6 @@ func (m *InboxProcessorModel) setPriorityQuick(key string) tea.Cmd {
 
 	m.recordAction(fmt.Sprintf("priority set to %d", priority), snapshot)
 	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
-
-	return m.saveProject()
-}
-
-// applyTags applies comma-separated tags to current task.
-func (m *InboxProcessorModel) applyTags(tagInput string) tea.Cmd {
-	task := m.getCurrentTask()
-	if task == nil {
-		return nil
-	}
-
-	snapshot := m.captureSnapshot(task)
-
-	// Parse comma-separated tags
-	tags := strings.Split(tagInput, ",")
-	task.Tags = []string{}
-	for _, tag := range tags {
-		tag = strings.TrimSpace(tag)
-		if tag != "" {
-			task.AddTag(tag)
-		}
-	}
-
-	m.recordAction("tags updated", snapshot)
-	m.statusMessage = fmt.Sprintf("Tags set to: %s", strings.Join(task.Tags, ", "))
 
 	return m.saveProject()
 }

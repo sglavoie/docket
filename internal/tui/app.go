@@ -733,17 +733,6 @@ func (m *AppModel) popView() {
 	}
 }
 
-// Sizable is implemented by views that can be resized.
-type Sizable interface {
-	SetSize(width, height int)
-}
-
-// initView sets dimensions on a view and pushes it onto the view stack.
-func (m *AppModel) initView(viewType ViewType, view Sizable) {
-	view.SetSize(m.width, m.height-2)
-	m.pushView(viewType)
-}
-
 // refreshProjectTree recreates the project tree view with current project.
 // Preserves filter/sort state across the refresh.
 func (m *AppModel) refreshProjectTree() {
@@ -769,37 +758,6 @@ func (m *AppModel) refreshProjectTree() {
 	// Restore focus state if the task still exists
 	if focusedTaskID != "" {
 		if task := m.currentProject.GetTaskByID(focusedTaskID); task != nil {
-			m.projectTree.focusedTask = task
-		}
-	}
-
-	// Rebuild tree after restoring state to ensure nodes, visibility, and
-	// filter counts reflect the restored filter/sort settings
-	m.projectTree.buildTree()
-}
-
-// refreshProjectTreeWith recreates the project tree view with the given project.
-// Preserves filter/sort state across the refresh.
-func (m *AppModel) refreshProjectTreeWith(project *models.Project) {
-	// Save focus state (transient, not persisted to config)
-	var focusedTaskID string
-	if m.projectTree != nil && m.projectTree.focusedTask != nil {
-		focusedTaskID = m.projectTree.focusedTask.ID
-	}
-
-	m.saveProjectTreeState()
-
-	// Rebuild task tree to ensure parent-child relationships are current
-	project.BuildTaskTree()
-
-	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
-	m.projectTree.SetSize(m.width, m.height-2)
-	m.views.Register(ViewProjectTree, m.projectTree)
-	m.restoreProjectTreeState()
-
-	// Restore focus state if the task still exists
-	if focusedTaskID != "" {
-		if task := project.GetTaskByID(focusedTaskID); task != nil {
 			m.projectTree.focusedTask = task
 		}
 	}

@@ -651,70 +651,6 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	return result
 }
 
-// renderPaletteItem renders a single palette item row.
-// Layout: [cursor][category badge] [name] [extra info] ... [shortcut]
-// The shortcut is right-aligned, with the name and info filling the remaining space.
-func (m *CommandPaletteModel) renderPaletteItem(item PaletteItem, selected bool, width int) string {
-	// Cursor indicator (2 chars)
-	cursor := "  "
-	if selected {
-		cursor = "> "
-	}
-
-	// Category badge with color (5-6 chars including brackets)
-	catBadge, catBadgeLen := m.renderCategoryBadge(item.Category)
-
-	// Shortcut string for right alignment
-	// Commands show their keyboard shortcut, other items show "Tab" hint for actions
-	shortcutText := ""
-	shortcutLen := 0
-	if item.Shortcut != "" {
-		shortcutText = item.Shortcut
-		shortcutLen = len(shortcutText) + 2 // +2 for spacing
-	} else if item.Category != ItemCategoryCommands {
-		// Show "Tab" hint for non-command items that have actions
-		shortcutText = "Tab"
-		shortcutLen = 5 // "Tab" + spacing
-	}
-
-	// Calculate space for name + extra info + description
-	// Layout: cursor(2) + badge(6) + space(1) + name + extras + gap + shortcut
-	fixedWidth := 2 + catBadgeLen + 1 + shortcutLen + 2 // cursor + badge + space + shortcut + min gap
-	remainingWidth := width - fixedWidth
-	if remainingWidth < 20 {
-		remainingWidth = 20
-	}
-
-	// Build the left content: name + task extras + description
-	leftContent, leftLen := m.renderItemContent(item, remainingWidth)
-
-	// Calculate gap to right-align shortcut
-	gap := remainingWidth - leftLen
-	if gap < 1 {
-		gap = 1
-	}
-
-	// Build the complete line
-	var line strings.Builder
-	line.WriteString(cursor)
-	line.WriteString(catBadge)
-	line.WriteString(" ")
-	line.WriteString(leftContent)
-
-	// Add shortcut with right-alignment if present
-	if shortcutText != "" {
-		line.WriteString(strings.Repeat(" ", gap))
-		line.WriteString(HelpKeyStyle.Render(shortcutText))
-	}
-
-	result := line.String()
-	if selected {
-		result = TaskJumperSelectedStyle.Render(result)
-	}
-
-	return result
-}
-
 // renderCategoryBadge returns the styled category badge and its display length.
 // Badges include an icon prefix for faster visual scanning.
 func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int) {
@@ -833,60 +769,6 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 			content.WriteString(" ")
 			content.WriteString(MutedStyle.Render("· " + desc))
 			totalLen += 3 + len(desc)
-		}
-	}
-
-	return content.String(), totalLen
-}
-
-// renderItemContent renders the main content of a palette item (name + extras).
-// Returns the styled string and its approximate display length.
-func (m *CommandPaletteModel) renderItemContent(item PaletteItem, maxWidth int) (string, int) {
-	var content strings.Builder
-	totalLen := 0
-
-	// Task-specific: show due date indicator and type/status icons before name
-	if item.Category == ItemCategoryTasks && item.Task != nil {
-		// Due date urgency indicator
-		dueIndicator, dueLen := getDueDateIndicator(item.Task)
-		if dueLen > 0 {
-			content.WriteString(dueIndicator)
-			totalLen += dueLen
-		}
-
-		icons := fmt.Sprintf("%s %s ",
-			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
-			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
-		content.WriteString(icons)
-		totalLen += 4 // 2 icons + 2 spaces
-	}
-
-	// Calculate max name length based on remaining space
-	// Reserve some space for description if present
-	maxNameLen := maxWidth - totalLen
-	if item.Description != "" && maxNameLen > 25 {
-		maxNameLen = maxWidth/2 - totalLen
-		if maxNameLen < 15 {
-			maxNameLen = 15
-		}
-	}
-	if maxNameLen < 10 {
-		maxNameLen = 10
-	}
-
-	// Name (prominent, truncated if needed)
-	name := util.Truncate(item.Name, maxNameLen)
-	content.WriteString(BoldStyle.Render(name))
-	totalLen += len(name)
-
-	// Description (dimmed, if space allows)
-	if item.Description != "" {
-		descMaxLen := maxWidth - totalLen - 3 // -3 for " · " separator
-		if descMaxLen > 8 {
-			desc := util.Truncate(item.Description, descMaxLen)
-			content.WriteString(" ")
-			content.WriteString(MutedStyle.Render("· " + desc))
-			totalLen += 3 + len(desc) // separator + desc
 		}
 	}
 

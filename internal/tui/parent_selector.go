@@ -14,8 +14,7 @@ import (
 
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
 type ParentPickerItem struct {
-	Task  *models.Task
-	score int // Cached score for current query
+	Task *models.Task
 }
 
 // FilterText returns searchable text for parent filtering.

@@ -245,23 +245,3 @@ func GetDefaultRules() []WorkflowRule {
 		},
 	}
 }
-
-// DefaultRuleIDs returns the IDs of all default rules.
-func DefaultRuleIDs() []string {
-	rules := GetDefaultRules()
-	ids := make([]string, len(rules))
-	for i, r := range rules {
-		ids[i] = r.ID
-	}
-	return ids
-}
-
-// IsDefaultRuleID returns true if the given ID is a default rule ID.
-func IsDefaultRuleID(id string) bool {
-	for _, defaultID := range DefaultRuleIDs() {
-		if id == defaultID {
-			return true
-		}
-	}
-	return false
-}

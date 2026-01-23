@@ -72,13 +72,6 @@ func (f *FormFieldFactory) NewDescriptionInput(placeholder string) textarea.Mode
 	return ti
 }
 
-// NewDescriptionInputWithValue creates a description input with an initial value.
-func (f *FormFieldFactory) NewDescriptionInputWithValue(value string) textarea.Model {
-	ti := f.NewDescriptionInput("")
-	ti.SetValue(value)
-	return ti
-}
-
 // NewTextInput creates a single-line text input.
 func (f *FormFieldFactory) NewTextInput(placeholder string) textinput.Model {
 	ti := textinput.New()
@@ -100,17 +93,6 @@ func (f *FormFieldFactory) NewTextInputWithValue(value, placeholder string) text
 	ti := f.NewTextInput(placeholder)
 	ti.SetValue(value)
 	return ti
-}
-
-// UpdateDimensions adjusts input widths based on available space.
-// Call this when the view is resized.
-func (f *FormFieldFactory) UpdateDimensions(availableWidth int) {
-	// Apply responsive sizing with constraints
-	maxWidth := min(availableWidth-20, 80)
-	minWidth := 30
-
-	f.DefaultWidth = max(min(maxWidth, f.DefaultWidth), minWidth)
-	f.TitleWidth = max(min(maxWidth, f.TitleWidth), minWidth)
 }
 
 // ResizeTextarea adjusts a textarea to fit available width.

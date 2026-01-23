@@ -1,7 +1,5 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
-
 // ConfirmDialog provides reusable confirmation prompt functionality.
 // Embed this in models that need yes/no confirmation for destructive actions.
 type ConfirmDialog struct {
@@ -71,9 +69,4 @@ func (c *ConfirmDialog) Render() string {
 type ConfirmResult struct {
 	Action    string
 	Confirmed bool
-}
-
-// HandleKeyMsg is a convenience wrapper for tea.KeyMsg.
-func (c *ConfirmDialog) HandleKeyMsg(msg tea.KeyMsg) (confirmed, handled bool) {
-	return c.HandleKey(msg.String())
 }

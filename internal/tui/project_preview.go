@@ -75,17 +75,17 @@ func (m *ProjectPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return CloseProjectPreviewMsg{}
 			}
 		case "up", "k":
-			m.viewport.LineUp(1)
+			m.viewport.ScrollUp(1)
 		case "down", "j":
-			m.viewport.LineDown(1)
+			m.viewport.ScrollDown(1)
 		case "g":
 			m.viewport.GotoTop()
 		case "G":
 			m.viewport.GotoBottom()
 		case "pgup", "ctrl+u":
-			m.viewport.HalfViewUp()
+			m.viewport.HalfPageUp()
 		case "pgdown", "ctrl+d":
-			m.viewport.HalfViewDown()
+			m.viewport.HalfPageDown()
 		}
 	}
 

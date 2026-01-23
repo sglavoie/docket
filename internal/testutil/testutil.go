@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -116,17 +115,6 @@ func TempProjectDir(t *testing.T) (string, func()) {
 	return dir, cleanup
 }
 
-// TempConfigFile creates a temporary config file for testing.
-// Returns the file path and a cleanup function.
-func TempConfigFile(t *testing.T) (string, func()) {
-	t.Helper()
-
-	dir, cleanup := TempProjectDir(t)
-	configPath := filepath.Join(dir, "tt.json")
-
-	return configPath, cleanup
-}
-
 // NewTestTask creates a simple task for testing.
 func NewTestTask(title string, taskType models.TaskType) *models.Task {
 	return models.NewTask(uuid.New().String(), 1, taskType, title)
@@ -140,13 +128,6 @@ func NewTestTaskWithStatus(title string, status models.TaskStatus) *models.Task 
 		now := time.Now()
 		task.CompletedAt = &now
 	}
-	return task
-}
-
-// NewTestTaskWithTags creates a task with specific tags.
-func NewTestTaskWithTags(title string, tags ...string) *models.Task {
-	task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
-	task.Tags = tags
 	return task
 }
 
@@ -178,14 +159,6 @@ func AssertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-// AssertError fails the test if err is nil.
-func AssertError(t *testing.T, err error) {
-	t.Helper()
-	if err == nil {
-		t.Fatal("expected an error, got nil")
 	}
 }
 

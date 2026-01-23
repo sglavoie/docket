@@ -118,7 +118,7 @@ func TestProjectGetTaskByID(t *testing.T) {
 	// Find existing task
 	found := project.GetTaskByID("task-1")
 	if found == nil {
-		t.Error("expected to find task-1")
+		t.Fatal("expected to find task-1")
 	}
 	if found.Title != "Task 1" {
 		t.Errorf("expected Title 'Task 1', got '%s'", found.Title)
@@ -142,7 +142,7 @@ func TestProjectGetTaskByShortID(t *testing.T) {
 	// Find by short ID
 	found := project.GetTaskByShortID(42)
 	if found == nil {
-		t.Error("expected to find task with short ID 42")
+		t.Fatal("expected to find task with short ID 42")
 	}
 	if found.Title != "Task 2" {
 		t.Errorf("expected Title 'Task 2', got '%s'", found.Title)

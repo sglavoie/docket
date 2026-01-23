@@ -357,7 +357,7 @@ func (m *BulkTagSelectorModel) renderAddTagMode() string {
 
 	// Error message if any
 	if m.addTagError != "" {
-		errorStyle := BoldStyle.Copy().Foreground(ColorError)
+		errorStyle := BoldStyle.Foreground(ColorError)
 		content.WriteString(errorStyle.Render(m.addTagError))
 		content.WriteString("\n\n")
 	}
@@ -646,7 +646,7 @@ func (m *TagSelectorModel) renderAddTagMode() string {
 
 	// Error message if any
 	if m.addTagError != "" {
-		errorStyle := BoldStyle.Copy().Foreground(ColorError)
+		errorStyle := BoldStyle.Foreground(ColorError)
 		content.WriteString(errorStyle.Render(m.addTagError))
 		content.WriteString("\n\n")
 	}

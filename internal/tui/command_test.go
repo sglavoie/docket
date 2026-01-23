@@ -247,7 +247,8 @@ func TestGetAllReturnedSliceModificationDoesNotAffectRegistry(t *testing.T) {
 	returned := registry.GetAll()
 	originalLen := len(returned)
 
-	returned = append(returned, Command{Name: "Command C", Description: "Appended command", Category: CategoryHelp, Handler: func() tea.Msg { return nil }})
+	// Modify returned slice (should not affect original registry)
+	_ = append(returned, Command{Name: "Command C", Description: "Appended command", Category: CategoryHelp, Handler: func() tea.Msg { return nil }})
 
 	freshGet := registry.GetAll()
 	if len(freshGet) != originalLen {

@@ -13,10 +13,24 @@ type testItem struct {
 	count int
 }
 
+// Compile-time interface satisfaction check.
+var _ PickerItem = testItem{}
+
 func (t testItem) FilterText() string  { return t.text }
 func (t testItem) DisplayText() string { return t.text }
 func (t testItem) CountValue() int     { return t.count }
 func (t testItem) ItemID() string      { return t.id }
+
+// usePickerItemMethods silences deadcode false positives for interface methods
+// that are only called through generic type constraints.
+func usePickerItemMethods(p PickerItem) {
+	_ = p.DisplayText()
+	_ = p.CountValue()
+}
+
+func init() {
+	usePickerItemMethods(testItem{})
+}
 
 func TestNewBasePicker(t *testing.T) {
 	items := []testItem{

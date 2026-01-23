@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 )
 
 // VSCodeAvailable checks if VS Code is installed and available.
@@ -50,70 +48,6 @@ func OpenNewWindow(path string) error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Start()
-}
-
-// OpenInEditor opens a file in the configured editor.
-// Falls back to VS Code if the editor is not found.
-func OpenInEditor(editor string, path string) error {
-	if editor == "" {
-		editor = "code"
-	}
-
-	// Check if editor is available
-	_, err := exec.LookPath(editor)
-	if err != nil {
-		// Fall back to code
-		if editor != "code" && VSCodeAvailable() {
-			return OpenFile(path)
-		}
-		return fmt.Errorf("editor '%s' not found", editor)
-	}
-
-	cmd := exec.Command(editor, path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Start()
-}
-
-// OpenInDefaultEditor opens a file in the system's default editor.
-// Uses EDITOR environment variable, falls back to common editors.
-func OpenInDefaultEditor(path string) error {
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = os.Getenv("VISUAL")
-	}
-
-	if editor == "" {
-		// Try common editors based on platform
-		if runtime.GOOS == "darwin" {
-			if VSCodeAvailable() {
-				return OpenFile(path)
-			}
-			// Fall back to default macOS editor
-			return exec.Command("open", "-t", path).Start()
-		}
-
-		// Try common editors in order
-		editors := []string{"code", "vim", "nano", "vi"}
-		for _, e := range editors {
-			if _, err := exec.LookPath(e); err == nil {
-				editor = e
-				break
-			}
-		}
-
-		if editor == "" {
-			return fmt.Errorf("no suitable editor found")
-		}
-	}
-
-	cmd := exec.Command(editor, path)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
 }
 
 // CreateTempFileWithContent creates a temporary file with the given content.
@@ -175,9 +109,4 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 	}
 
 	return string(modified), nil
-}
-
-// GetProjectTasksPath returns the path to a project's tasks.md file.
-func GetProjectTasksPath(projectPath string) string {
-	return filepath.Join(projectPath, "tasks.md")
 }

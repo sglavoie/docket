@@ -162,32 +162,6 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 	return box
 }
 
-// truncateLineVisual truncates a single line to maxWidth visual characters.
-// It handles ANSI escape codes properly using charmbracelet/x/ansi.Truncate.
-func truncateLineVisual(line string, maxWidth int) string {
-	if maxWidth < 4 {
-		maxWidth = 4
-	}
-	visualWidth := lipgloss.Width(line)
-	if visualWidth <= maxWidth {
-		return line
-	}
-
-	// Use ansi.Truncate which properly handles ANSI escape codes
-	// It adds the tail ("...") and accounts for its width
-	return ansi.Truncate(line, maxWidth, "...")
-}
-
-// truncateLines truncates each line in content to maxWidth visual characters.
-// This ensures content doesn't wrap when rendered in a fixed-width pane.
-func truncateLines(content string, maxWidth int) string {
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		lines[i] = truncateLineVisual(line, maxWidth)
-	}
-	return strings.Join(lines, "\n")
-}
-
 // renderOverlaySplitPane renders a split-pane layout for overlays (list on left, preview on right).
 // Uses a styled vertical separator between panes.
 func renderOverlaySplitPane(leftContent, rightContent string, leftWidth, rightWidth, height int) string {

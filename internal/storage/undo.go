@@ -283,18 +283,3 @@ func PerformUndo(project *models.Project) (string, error) {
 
 	return actionDesc, nil
 }
-
-// ClearUndoHistory removes all undo history for a project.
-func ClearUndoHistory(project *models.Project) error {
-	undoDir := GetUndoDir(project)
-	return os.RemoveAll(undoDir)
-}
-
-// GetUndoHistoryCount returns the number of available undo entries.
-func GetUndoHistoryCount(project *models.Project) int {
-	meta, err := LoadUndoMeta(project)
-	if err != nil {
-		return 0
-	}
-	return len(meta.Entries)
-}

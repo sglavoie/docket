@@ -15,7 +15,6 @@ import (
 // ProjectPickerItem wraps a Project for selection with fuzzy scoring.
 type ProjectPickerItem struct {
 	Project *models.Project
-	score   int // Cached score for current query
 }
 
 // FilterText returns searchable text for project filtering.

@@ -27,7 +27,6 @@ type ProjectCreatorModel struct {
 	width      int
 	height     int
 
-	err       error
 	cancelled bool
 }
 

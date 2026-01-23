@@ -70,10 +70,6 @@ func GetConfigPath() string {
 	return viper.GetString("config")
 }
 
-func IsVerbose() bool {
-	return viper.GetBool("verbose")
-}
-
 func runRoot(cmd *cobra.Command, args []string) error {
 	showVersion, _ := cmd.Flags().GetBool("version")
 	if showVersion {

@@ -107,15 +107,6 @@ func (t TaskPickerItem) ItemID() string {
 	return t.Task.ID
 }
 
-// WrapTasks converts a slice of tasks to TaskPickerItems.
-func WrapTasks(tasks []*models.Task) []TaskPickerItem {
-	items := make([]TaskPickerItem, len(tasks))
-	for i, t := range tasks {
-		items[i] = TaskPickerItem{Task: t}
-	}
-	return items
-}
-
 // ProjectInfo holds project data for picker display.
 type ProjectInfo struct {
 	Project   *models.Project

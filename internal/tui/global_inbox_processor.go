@@ -439,17 +439,6 @@ func (m *GlobalInboxProcessorModel) goToPrevious() {
 	}
 }
 
-// markProcessed marks current task as processed and advances.
-func (m *GlobalInboxProcessorModel) markProcessed() tea.Cmd {
-	if git := m.getCurrentTask(); git != nil {
-		m.processedIDs[git.Task.ID] = true
-		delete(m.skippedIDs, git.Task.ID)
-		m.statusMessage = fmt.Sprintf("Processed task #%d", git.Task.ShortID)
-		return m.advanceToNext(true)
-	}
-	return nil
-}
-
 // skipCurrent skips current task and advances.
 func (m *GlobalInboxProcessorModel) skipCurrent() tea.Cmd {
 	if git := m.getCurrentTask(); git != nil {

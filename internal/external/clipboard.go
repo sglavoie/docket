@@ -9,11 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// CopyToClipboard copies text to the system clipboard.
-func CopyToClipboard(text string) error {
-	return clipboard.WriteAll(text)
-}
-
 // CopyTaskTitle copies the task title to the clipboard.
 // Returns the copied text and any error.
 func CopyTaskTitle(task *models.Task) (string, error) {

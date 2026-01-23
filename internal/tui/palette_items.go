@@ -230,24 +230,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	return items
 }
 
-// scoreItem returns a category-weighted fuzzy match score for an item against the query.
-// Returns 0 if no match. Higher scores indicate better matches.
-// Commands receive 3x weight, projects 2x, tasks/tags/sections 1x.
-// Recently selected items receive an additional boost.
-func (m *CommandPaletteModel) scoreItem(item PaletteItem, query string) int {
-	score, _ := m.scoreItemWithPositions(item, query)
-	return score
-}
-
-// scoreItemWithPositions returns a category-weighted fuzzy match score and match positions.
-// Returns 0 and nil if no match. Higher scores indicate better matches.
-// Positions are for the name field only (primary display target).
-// For commands, also scores against aliases for better discoverability.
-func (m *CommandPaletteModel) scoreItemWithPositions(item PaletteItem, query string) (int, []int) {
-	score, positions, _ := m.scoreItemWithDetails(item, query)
-	return score, positions
-}
-
 // scoreItemWithDetails scores an item and returns which field matched.
 // Returns (score, namePositions, matchedField).
 func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query string) (int, []int, MatchField) {
