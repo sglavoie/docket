@@ -55,6 +55,9 @@ var (
 	OverdueStyle = lipgloss.NewStyle().
 			Foreground(ColorError)
 
+	DueSoonStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning)
+
 	DependencyStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary)
 

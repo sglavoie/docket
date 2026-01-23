@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // ProjectEditorModel handles editing an existing project via TUI.
@@ -242,6 +243,14 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 				if p.ID != m.project.ID && p.Slug == newSlug {
 					return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", newSlug)}
 				}
+			}
+		}
+
+		// Rename directory if slug changed
+		oldSlug := models.Slugify(m.originalName)
+		if oldSlug != newSlug {
+			if err := storage.RenameProjectDir(m.project, oldSlug, newSlug, m.config.DataDir); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to rename project directory: %w", err)}
 			}
 		}
 

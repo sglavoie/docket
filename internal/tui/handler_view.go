@@ -452,6 +452,30 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Forward to text editor view to update its textarea
 		cmd := m.views.Update(m.currentView(), msg)
 		return true, cmd
+
+	case OpenDataFolderMsg:
+		var path string
+		if msg.Project != nil {
+			path = m.config.GetProjectPath(msg.Project.Slug)
+		} else {
+			path = m.config.DataDir
+		}
+
+		editor := m.config.Editor
+		if editor == "" {
+			editor = os.Getenv("EDITOR")
+		}
+		if editor == "" {
+			editor = "code"
+		}
+
+		c := exec.Command(editor, path)
+		return true, tea.ExecProcess(c, func(err error) tea.Msg {
+			if err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to open folder: %w", err)}
+			}
+			return nil
+		})
 	}
 	return false, nil
 }

@@ -668,6 +668,35 @@ func (t *Task) IsRecurring() bool {
 	return t.Recurrence != nil
 }
 
+// IsOverdue returns true if the task has a due date in the past and is not complete.
+// Uses day-level comparison (normalizes to midnight UTC).
+func (t *Task) IsOverdue() bool {
+	if t.DueDate == nil || t.Status.IsComplete() {
+		return false
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	dueDay := t.DueDate.UTC().Truncate(24 * time.Hour)
+	return dueDay.Before(today)
+}
+
+// IsDueSoon returns true if the task has a due date within the specified number
+// of days (inclusive) and is not overdue or complete.
+// Uses day-level comparison (normalizes to midnight UTC).
+func (t *Task) IsDueSoon(days int) bool {
+	if t.DueDate == nil || t.Status.IsComplete() {
+		return false
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	dueDay := t.DueDate.UTC().Truncate(24 * time.Hour)
+	// Not overdue
+	if dueDay.Before(today) {
+		return false
+	}
+	// Within N days (including today)
+	threshold := today.AddDate(0, 0, days)
+	return !dueDay.After(threshold)
+}
+
 // SetRecurrence sets the recurrence pattern for the task.
 func (t *Task) SetRecurrence(pattern *RecurrencePattern) {
 	t.Recurrence = pattern

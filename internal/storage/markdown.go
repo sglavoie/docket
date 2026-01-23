@@ -463,6 +463,37 @@ func TrashEntryExists(slug, dataDir string) bool {
 	return !os.IsNotExist(err)
 }
 
+// RenameProjectDir renames a project's data directory when the slug changes.
+// Updates project.Path to the new location. Returns nil if slugs are the same.
+func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string) error {
+	if oldSlug == newSlug {
+		return nil
+	}
+
+	oldPath := filepath.Join(dataDir, oldSlug)
+	newPath := filepath.Join(dataDir, newSlug)
+
+	// Check if old directory exists
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		// Old directory doesn't exist, just update the path
+		project.Path = newPath
+		return nil
+	}
+
+	// Check if new path already exists
+	if _, err := os.Stat(newPath); !os.IsNotExist(err) {
+		return fmt.Errorf("directory '%s' already exists", newSlug)
+	}
+
+	// Rename the directory
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return fmt.Errorf("failed to rename project directory: %w", err)
+	}
+
+	project.Path = newPath
+	return nil
+}
+
 // MoveProjectToTrash moves a project directory to the trash folder.
 // Callers should use PurgeFromTrash first if a same-slug entry might exist.
 func MoveProjectToTrash(project *models.Project, dataDir string) error {

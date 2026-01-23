@@ -522,10 +522,11 @@ func (m *DashboardModel) View() string {
 			active := p.CountActiveTasks()
 			done := p.CountCompletedTasks()
 
-			progress := 0.0
-			if total > 0 {
-				progress = float64(done) / float64(total) * 100
-			}
+			// Count urgency indicators
+			overdue := p.CountOverdueTasks()
+			dueSoonDays := m.config.GetReviewDueSoonDays()
+			dueSoon := p.CountDueSoonTasks(dueSoonDays)
+			blocked := p.CountBlockedTasks()
 
 			currentMarker := ""
 			if p.ID == m.config.CurrentProject {
@@ -534,9 +535,26 @@ func (m *DashboardModel) View() string {
 			name := style.Render(p.Name) + currentMarker
 			context := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
 			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
-			progressBar := RenderProgressBar(progress, 10)
 
-			content := fmt.Sprintf("%s%s %s  %s  %s", numberPrefix, name, context, stats, progressBar)
+			// Build status indicator: urgency if issues, completion otherwise
+			var statusIndicator string
+			if overdue > 0 || dueSoon > 0 || blocked > 0 {
+				var parts []string
+				if overdue > 0 {
+					parts = append(parts, OverdueStyle.Render(fmt.Sprintf("🔥%d", overdue)))
+				}
+				if dueSoon > 0 {
+					parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("⏰%d", dueSoon)))
+				}
+				if blocked > 0 {
+					parts = append(parts, MutedStyle.Render(fmt.Sprintf("◈%d", blocked)))
+				}
+				statusIndicator = strings.Join(parts, " ")
+			} else {
+				statusIndicator = MutedStyle.Render(fmt.Sprintf("✓%d/%d", done, total))
+			}
+
+			content := fmt.Sprintf("%s%s %s  %s  %s", numberPrefix, name, context, stats, statusIndicator)
 			line := RenderSelectableRow(selected, false, content, cardWidth-4) // -4 for card padding
 			cardContent.WriteString(line)
 			if i < end-1 || (len(visible)-end) > 0 {

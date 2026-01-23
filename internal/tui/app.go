@@ -341,6 +341,26 @@ func (m *AppModel) registerGlobalCommands() {
 			},
 		},
 		{
+			Name:        "open data folder",
+			Description: "Open root data folder in editor",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"open folder", "reveal data", "data directory"},
+			Handler: func() tea.Msg {
+				return OpenDataFolderMsg{Project: nil}
+			},
+		},
+		{
+			Name:        "open project folder",
+			Description: "Open project data folder in editor",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"open folder", "reveal data", "data directory", "open data folder"},
+			Handler: func() tea.Msg {
+				return OpenDataFolderMsg{Project: m.currentProject}
+			},
+		},
+		{
 			Name:        "search projects",
 			Description: "Filter projects by name",
 			Shortcut:    "\\",

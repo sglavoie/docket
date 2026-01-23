@@ -353,6 +353,12 @@ type PurgeFromTrashMsg struct{ Slug string }
 // MoveBlockedMsg signals a task move was blocked (e.g., completion boundary).
 type MoveBlockedMsg struct{ Reason string }
 
+// OpenDataFolderMsg opens the data folder in the configured editor.
+// If Project is nil, opens root data directory. Otherwise opens project directory.
+type OpenDataFolderMsg struct {
+	Project *models.Project
+}
+
 // =============================================================================
 // Async Save Messages
 // =============================================================================
