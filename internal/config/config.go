@@ -766,14 +766,17 @@ func (c *Config) HasRuleWithID(id string) bool {
 }
 
 // AddDefaultRules adds the built-in default rules that don't already exist.
-// If enableRules is true, rules are created enabled; otherwise disabled.
+// If useOriginalEnabled is true, rules keep their original Enabled state from defaults.
+// Otherwise, enableRules determines the enabled state.
 // Returns the number of rules added.
-func (c *Config) AddDefaultRules(enableRules bool) int {
+func (c *Config) AddDefaultRules(enableRules, useOriginalEnabled bool) int {
 	defaults := workflow.GetDefaultRules()
 	added := 0
 	for _, rule := range defaults {
 		if !c.HasRuleWithID(rule.ID) {
-			rule.Enabled = enableRules
+			if !useOriginalEnabled {
+				rule.Enabled = enableRules
+			}
 			c.WorkflowRules = append(c.WorkflowRules, rule)
 			added++
 		}

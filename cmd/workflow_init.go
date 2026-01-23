@@ -87,13 +87,6 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if cfg.DefaultRulesInitialized && !initForce {
-		fmt.Println("Default rules have already been initialized.")
-		fmt.Println()
-		fmt.Println("To re-add deleted defaults, use: tt workflow init --force")
-		return nil
-	}
-
 	if len(cfg.WorkflowRules) > 0 && !initForce && !cfg.DefaultRulesInitialized {
 		fmt.Printf("You have %d existing workflow rule(s).\n", len(cfg.WorkflowRules))
 		fmt.Println()
@@ -101,7 +94,10 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	added := cfg.AddDefaultRules(initEnable)
+	// When already initialized, sync new defaults with their original enabled state.
+	// When not initialized or --force, use initEnable flag.
+	useOriginalEnabled := cfg.DefaultRulesInitialized && !initForce
+	added := cfg.AddDefaultRules(initEnable, useOriginalEnabled)
 
 	if err := configManager.Save(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
