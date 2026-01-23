@@ -40,42 +40,38 @@ func (p *Project) GetNextShortID() int {
 
 // GetCompletedTasks returns all tasks that are complete (done or cancelled).
 func (p *Project) GetCompletedTasks() []*Task {
-	var result []*Task
-	for _, task := range p.Tasks {
-		if task.IsComplete() {
-			result = append(result, task)
-		}
-	}
-	return result
+	return p.FilterTasks(func(t *Task) bool {
+		return t.IsComplete()
+	})
 }
 
 // GetTasksByStatus returns tasks filtered by status.
 func (p *Project) GetTasksByStatus(status TaskStatus) []*Task {
-	var result []*Task
-	for _, task := range p.Tasks {
-		if task.Status == status {
-			result = append(result, task)
-		}
-	}
-	return result
+	return p.FilterTasks(func(t *Task) bool {
+		return t.Status == status
+	})
 }
 
 // GetTasksByType returns tasks filtered by type.
 func (p *Project) GetTasksByType(taskType TaskType) []*Task {
-	var result []*Task
-	for _, task := range p.Tasks {
-		if task.Type == taskType {
-			result = append(result, task)
-		}
-	}
-	return result
+	return p.FilterTasks(func(t *Task) bool {
+		return t.Type == taskType
+	})
 }
 
 // GetTasksByTag returns tasks that have the given tag.
 func (p *Project) GetTasksByTag(tag string) []*Task {
+	return p.FilterTasks(func(t *Task) bool {
+		return t.HasTag(tag)
+	})
+}
+
+// FilterTasks returns tasks that match the given predicate function.
+// This is a generic filtering method that can be used directly or by other filtering methods.
+func (p *Project) FilterTasks(predicate func(*Task) bool) []*Task {
 	var result []*Task
 	for _, task := range p.Tasks {
-		if task.HasTag(tag) {
+		if predicate(task) {
 			result = append(result, task)
 		}
 	}

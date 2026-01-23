@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -98,7 +99,7 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 		// Current project
 		p := cfg.GetCurrentProject()
 		if p == nil {
-			return fmt.Errorf("no current project selected. Use --all or --project, or select a project with: tt select")
+			return fmt.Errorf("%w. Use --all or --project, or select a project with: tt select", tterrors.ErrNoCurrentProject)
 		}
 		projects = append(projects, p)
 	}

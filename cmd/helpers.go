@@ -63,7 +63,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return nil, nil, nil, fmt.Errorf("no current project selected. Select one with: tt select")
+		return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
 	}
 
 	Debugf("loading project: %s (%s)", project.Name, project.Path)
@@ -91,58 +91,57 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	return project, cfg, configManager, nil
 }
 
-// SaveProjectWithBackup saves the project after creating a backup.
-// It also runs auto-unblock checks and reorders root tasks by completion status.
-func SaveProjectWithBackup(project *models.Project) error {
-	project.CheckAndAutoUnblock()
-	project.ReorderRootTasksByCompletion()
-
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
-	}
-	return storage.SaveProject(project)
+// SaveOptions configures the behavior of SaveProject.
+type SaveOptions struct {
+	// EvaluateRules enables workflow rule evaluation before saving.
+	EvaluateRules bool
+	// PrevStates provides previous task states for event-based triggers.
+	// If nil, event triggers are disabled.
+	PrevStates map[string]*models.Task
+	// Config is required when EvaluateRules is true.
+	Config *config.Config
+	// ConfigManager is required when EvaluateRules is true.
+	ConfigManager *config.Manager
 }
 
-// SaveProjectWithRules saves the project after evaluating workflow rules.
-// It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
+// SaveProject saves the project with optional workflow rule evaluation.
+// If opts is nil, performs basic backup and save with auto-unblock and reordering.
+// If opts.EvaluateRules is true, evaluates workflow rules before saving.
 // Prints warnings to stderr if there are rule conflicts.
-// If configManager is provided, trigger counts are persisted.
-// This version does not support event-based triggers (use SaveProjectWithRulesAndChanges).
-func SaveProjectWithRules(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
-	return SaveProjectWithRulesAndChanges(project, cfg, configManager, nil)
-}
-
-// SaveProjectWithRulesAndChanges saves the project after evaluating workflow rules.
-// If prevStates is provided, it enables event-based triggers by comparing current
-// state against previous state. Pass nil for prevStates to disable event triggers.
-func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config, configManager *config.Manager, prevStates map[string]*models.Task) error {
+func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.CheckAndAutoUnblock()
 
-	// Evaluate workflow rules
-	rules := cfg.GetEnabledWorkflowRules()
-	if len(rules) > 0 {
-		Debugf("evaluating %d workflow rules", len(rules))
-		var result *workflow.EvaluationResult
-
-		if prevStates != nil {
-			// Use context-aware evaluation with event triggers
-			evalCtx := BuildEvaluationContext(project.Tasks, prevStates)
-			result = workflow.EvaluateRulesWithContext(evalCtx, rules)
-		} else {
-			// Use standard evaluation (no event triggers)
-			result = workflow.EvaluateRules(project.Tasks, rules)
+	// Evaluate workflow rules if requested
+	if opts != nil && opts.EvaluateRules {
+		if opts.Config == nil || opts.ConfigManager == nil {
+			return fmt.Errorf("Config and ConfigManager required when EvaluateRules is true")
 		}
 
-		if len(result.Conflicts) > 0 {
-			fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
-			fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
-		}
-		// Persist trigger counts if any rules fired
-		if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-			Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
-			cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-			if err := configManager.Save(cfg); err != nil {
-				fmt.Fprintln(os.Stderr, "Warning: failed to save rule trigger counts:", err)
+		rules := opts.Config.GetEnabledWorkflowRules()
+		if len(rules) > 0 {
+			Debugf("evaluating %d workflow rules", len(rules))
+			var result *workflow.EvaluationResult
+
+			if opts.PrevStates != nil {
+				// Use context-aware evaluation with event triggers
+				evalCtx := BuildEvaluationContext(project.Tasks, opts.PrevStates)
+				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
+			} else {
+				// Use standard evaluation (no event triggers)
+				result = workflow.EvaluateRules(project.Tasks, rules)
+			}
+
+			if len(result.Conflicts) > 0 {
+				fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
+				fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
+			}
+			// Persist trigger counts if any rules fired
+			if len(result.RuleTriggerCounts) > 0 {
+				Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
+				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+				if err := opts.ConfigManager.Save(opts.Config); err != nil {
+					fmt.Fprintln(os.Stderr, "Warning: failed to save rule trigger counts:", err)
+				}
 			}
 		}
 	}
@@ -154,6 +153,40 @@ func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config,
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 	return storage.SaveProject(project)
+}
+
+// SaveProjectWithBackup saves the project after creating a backup.
+// It also runs auto-unblock checks and reorders root tasks by completion status.
+// Deprecated: Use SaveProject with nil opts instead.
+func SaveProjectWithBackup(project *models.Project) error {
+	return SaveProject(project, nil)
+}
+
+// SaveProjectWithRules saves the project after evaluating workflow rules.
+// It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
+// Prints warnings to stderr if there are rule conflicts.
+// If configManager is provided, trigger counts are persisted.
+// This version does not support event-based triggers (use SaveProjectWithRulesAndChanges).
+// Deprecated: Use SaveProject with SaveOptions instead.
+func SaveProjectWithRules(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
+	return SaveProject(project, &SaveOptions{
+		EvaluateRules: true,
+		Config:        cfg,
+		ConfigManager: configManager,
+	})
+}
+
+// SaveProjectWithRulesAndChanges saves the project after evaluating workflow rules.
+// If prevStates is provided, it enables event-based triggers by comparing current
+// state against previous state. Pass nil for prevStates to disable event triggers.
+// Deprecated: Use SaveProject with SaveOptions instead.
+func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config, configManager *config.Manager, prevStates map[string]*models.Task) error {
+	return SaveProject(project, &SaveOptions{
+		EvaluateRules: true,
+		Config:        cfg,
+		ConfigManager: configManager,
+		PrevStates:    prevStates,
+	})
 }
 
 // CaptureTaskStates creates a snapshot of task states for event trigger detection.
@@ -305,7 +338,7 @@ func SelectTask(project *models.Project, args []string, filter TaskFilter, promp
 	if len(args) > 0 {
 		task := FindTaskByIdentifier(project, args[0])
 		if task == nil {
-			return nil, fmt.Errorf("task '%s' not found", args[0])
+			return nil, fmt.Errorf("task '%s': %w", args[0], tterrors.ErrTaskNotFound)
 		}
 		return task, nil
 	}

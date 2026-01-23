@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -45,7 +46,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 
 	sourceProject := cfg.GetCurrentProject()
 	if sourceProject == nil {
-		return fmt.Errorf("no current project selected. Select one with: tt select")
+		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
 	}
 
 	if err := storage.LoadProject(sourceProject); err != nil {
