@@ -317,7 +317,9 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
 	} else {
 		// Calculate visible area
-		maxVisible := m.height - 10 // Leave room for header, footer, card padding
+		// Reserve: borders (2), section headers (3), selected summary (1),
+		// scroll indicators (3), help footer (3), card padding (2) = 14 lines
+		maxVisible := m.height - 14
 		if maxVisible < 3 {
 			maxVisible = 3
 		}
@@ -332,6 +334,12 @@ func (m *WorkflowRulesModel) View() string {
 		}
 
 		customCount := len(m.rules) - m.defaultCount
+
+		// Show scroll indicator for rules above
+		if startIdx > 0 {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", startIdx)))
+			b.WriteString("\n")
+		}
 
 		for i := startIdx; i < endIdx; i++ {
 			// Section headers
@@ -419,7 +427,7 @@ func (m *WorkflowRulesModel) View() string {
 	config := OverlayCardConfig{
 		Title:        "Workflow Rules",
 		Width:        cardWidth,
-		Centered:     true,
+		CenterH:      true,
 		NoTruncation: true,
 	}
 	return renderOverlayCard(b.String(), m.width, m.height, config)

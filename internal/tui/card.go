@@ -39,7 +39,8 @@ type OverlayCardConfig struct {
 	Subtitle     string // Optional subtitle below title (e.g., "42 tasks")
 	Width        int    // Desired width (0 = auto)
 	Height       int    // Desired height (0 = auto)
-	Centered     bool   // Whether to center in viewport
+	Centered     bool   // Whether to center in viewport (vertical + horizontal)
+	CenterH      bool   // Horizontal centering only (for scrollable lists)
 	NoTruncation bool   // If true, don't truncate lines (for forms with textareas)
 }
 
@@ -138,6 +139,24 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 			result.WriteString("\n")
 		}
 		return result.String()
+	}
+
+	// Horizontal centering only (no vertical padding)
+	if config.CenterH {
+		leftPadding := max((viewWidth-lipgloss.Width(box))/2, 0)
+		if leftPadding > 0 {
+			padding := strings.Repeat(" ", leftPadding)
+			lines := strings.Split(box, "\n")
+			var result strings.Builder
+			for i, line := range lines {
+				if i > 0 {
+					result.WriteString("\n")
+				}
+				result.WriteString(padding)
+				result.WriteString(line)
+			}
+			return result.String()
+		}
 	}
 
 	return box
