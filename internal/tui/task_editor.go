@@ -475,6 +475,13 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case "1", "2", "3", "4", "5":
+			// Direct priority selection when priority field is focused
+			if m.focusIndex == 3 {
+				m.priority = int(msg.String()[0] - '0')
+			}
+			return m, nil
+
 		case "left", "h":
 			switch m.focusIndex {
 			case 1: // Type selector
