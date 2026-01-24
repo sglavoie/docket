@@ -20,23 +20,15 @@ linters:
     - errcheck
     - ineffassign
     - staticcheck
-
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  misspell:
-    locale: US
-  goimports:
-    local-prefixes:
-      - github.com/sglavoie/tt
-  errorlint:
-    errorf: true
-    errorf-multi: true
-    asserts: true
-    comparison: true
-
-issues:
-  exclude-dirs:
-    - vendor
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    misspell:
+      locale: US
+    errorlint:
+      errorf: true
+      errorf-multi: true
+      asserts: true
+      comparison: true
