@@ -222,6 +222,14 @@ POST /api/auth/login endpoint.
 
 ## Development
 
+Run all CI checks locally (build, test with race detector, coverage check, golangci-lint):
+
+```bash
+make ci
+```
+
+The coverage threshold is configured in `.coverage-threshold` and shared between local and CI runs.
+
 Run tests:
 
 ```bash

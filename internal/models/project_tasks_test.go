@@ -451,42 +451,42 @@ func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
 
 	t.Run("FilterTasks on empty list", func(t *testing.T) {
 		result := project.FilterTasks(func(t *Task) bool { return true })
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("FilterTasks on empty list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByStatus on empty list", func(t *testing.T) {
 		result := project.GetTasksByStatus(StatusTodo)
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByStatus on empty list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByType on empty list", func(t *testing.T) {
 		result := project.GetTasksByType(TaskTypeTask)
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByType on empty list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByTag on empty list", func(t *testing.T) {
 		result := project.GetTasksByTag("backend")
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByTag on empty list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetCompletedTasks on empty list", func(t *testing.T) {
 		result := project.GetCompletedTasks()
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetCompletedTasks on empty list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetRootTasks on empty list", func(t *testing.T) {
 		result := project.GetRootTasks()
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetRootTasks on empty list should return empty, got %d", len(result))
 		}
 	})
@@ -498,28 +498,28 @@ func TestProjectFilterMethods_NilTaskList(t *testing.T) {
 
 	t.Run("FilterTasks on nil list", func(t *testing.T) {
 		result := project.FilterTasks(func(t *Task) bool { return true })
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("FilterTasks on nil list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByStatus on nil list", func(t *testing.T) {
 		result := project.GetTasksByStatus(StatusTodo)
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByStatus on nil list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByType on nil list", func(t *testing.T) {
 		result := project.GetTasksByType(TaskTypeTask)
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByType on nil list should return empty, got %d", len(result))
 		}
 	})
 
 	t.Run("GetTasksByTag on nil list", func(t *testing.T) {
 		result := project.GetTasksByTag("backend")
-		if result != nil && len(result) != 0 {
+		if len(result) != 0 {
 			t.Errorf("GetTasksByTag on nil list should return empty, got %d", len(result))
 		}
 	})

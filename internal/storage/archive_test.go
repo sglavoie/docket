@@ -174,7 +174,7 @@ func TestRotateArchiveIfNeeded(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if _, err := os.Stat(archivePath); !os.IsNotExist(err) {
+		if _, statErr := os.Stat(archivePath); !os.IsNotExist(statErr) {
 			t.Error("original archive should be removed after rotation")
 		}
 

@@ -1,6 +1,7 @@
 .PHONY: \
 	build \
 	check \
+	ci \
 	clean \
 	coverage \
 	dead \
@@ -72,6 +73,29 @@ lint: fmt vet ## Run formatting and vetting
 lint-ci: ## Run golangci-lint (requires golangci-lint installed)
 	@echo "🔍 Running golangci-lint..."
 	golangci-lint run
+
+ci: ## Run all CI checks locally (build, test, coverage, lint)
+	@echo "🚀 Running CI checks locally..."
+	@echo "📦 Building..."
+	go build -v ./...
+	@echo "🧪 Running tests with race detector..."
+	go test -race -coverprofile=coverage.out ./...
+	@echo "📊 Checking coverage threshold..."
+	@THRESHOLD=$$(cat .coverage-threshold); \
+	COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	echo "Total coverage: $${COVERAGE}%"; \
+	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc)" -eq 1 ]; then \
+		echo "❌ Coverage $${COVERAGE}% is below $${THRESHOLD}% threshold"; \
+		exit 1; \
+	fi; \
+	echo "✅ Coverage $${COVERAGE}% meets $${THRESHOLD}% threshold"; \
+	MARGIN=5; \
+	if [ "$$(echo "$$COVERAGE >= $$THRESHOLD + $$MARGIN" | bc)" -eq 1 ]; then \
+		echo "💡 Coverage $${COVERAGE}% exceeds threshold by $${MARGIN}%+. Consider increasing .coverage-threshold."; \
+	fi
+	@echo "🔍 Running golangci-lint..."
+	golangci-lint run
+	@echo "✅ All CI checks passed!"
 
 check: ## Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
 	@echo "🔍 Running code quality checks..."

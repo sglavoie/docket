@@ -22,11 +22,16 @@ jobs:
 
       - name: Check coverage threshold
         run: |
+          THRESHOLD=$(cat .coverage-threshold)
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          if [ "$(echo "$COVERAGE < 20" | bc)" -eq 1 ]; then
-            echo "Coverage ${COVERAGE}% is below 20% threshold"
+          if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
+            echo "Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
             exit 1
+          fi
+          MARGIN=5
+          if [ "$(echo "$COVERAGE >= $THRESHOLD + $MARGIN" | bc)" -eq 1 ]; then
+            echo "Coverage ${COVERAGE}% exceeds threshold by ${MARGIN}%+. Consider increasing .coverage-threshold."
           fi
 
   lint:
