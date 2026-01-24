@@ -168,6 +168,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	for _, t := range tasks {
 		if t.ParentID != nil && !taskByID[*t.ParentID] {
 			metadataWarnings = append(metadataWarnings, ParseWarning{
+				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "parent",
 				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference", t.ID, *t.ParentID),

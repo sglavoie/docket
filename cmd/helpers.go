@@ -4,12 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -77,8 +77,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	// Print warnings - always show data correction warnings, others only in verbose mode
 	for _, w := range result.Warnings {
-		// Data correction warnings (like cleared parent references) are always shown
-		if strings.Contains(w.Message, "clearing") || strings.Contains(w.Message, "corrected") {
+		if w.Type == format.WarningDataCorrection {
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", w.Message)
 		} else {
 			Debugf("parser warning: %s", w.Message)

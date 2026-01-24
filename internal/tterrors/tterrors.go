@@ -37,6 +37,12 @@ var (
 	ErrWriteFailed    = errors.New("failed to write file")
 )
 
+// Validation errors
+var (
+	ErrRequiredField = errors.New("required field missing")
+	ErrInvalidValue  = errors.New("invalid value")
+)
+
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
 // Use this for consistent error messaging across the codebase.
 func NewTaskNotFoundError(taskID interface{}) error {
@@ -62,4 +68,16 @@ func NewProjectNotFoundError(projectID interface{}) error {
 // NewProjectNotFoundInTrashError creates a project not found in trash error with the specified project identifier.
 func NewProjectNotFoundInTrashError(projectID interface{}) error {
 	return fmt.Errorf("%w in trash: '%v'", ErrProjectNotFound, projectID)
+}
+
+// NewRequiredFieldError creates an error for a missing required field.
+// Use this for consistent validation error messaging across the codebase.
+func NewRequiredFieldError(field string) error {
+	return fmt.Errorf("%w: %s", ErrRequiredField, field)
+}
+
+// NewInvalidValueError creates an error for an invalid field value with a reason.
+// Use this for consistent validation error messaging across the codebase.
+func NewInvalidValueError(field string, value interface{}, reason string) error {
+	return fmt.Errorf("%w for %s: '%v' (%s)", ErrInvalidValue, field, value, reason)
 }

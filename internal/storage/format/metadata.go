@@ -19,11 +19,29 @@ func MetadataRegex() *regexp.Regexp {
 	return metadataRegex
 }
 
+// WarningType categorizes the kind of warning for appropriate handling.
+type WarningType int
+
+const (
+	// WarningValidation indicates a validation issue (e.g., invalid value, out of range).
+	// These are informational and shown only in verbose mode.
+	WarningValidation WarningType = iota
+
+	// WarningDataCorrection indicates data was automatically corrected (e.g., cleared invalid reference).
+	// These are always shown to the user since they represent automatic data changes.
+	WarningDataCorrection
+
+	// WarningDeprecation indicates use of deprecated syntax or features.
+	// These are shown to encourage migration to new patterns.
+	WarningDeprecation
+)
+
 // ParseWarning represents a non-fatal issue found during metadata parsing.
 type ParseWarning struct {
-	TaskID  string // ID of the task with the issue (may be empty for global warnings)
-	Field   string // Which field had the issue (e.g., "priority", "parent")
-	Message string // Human-readable description of the issue
+	Type    WarningType // Category of the warning (determines display behavior)
+	TaskID  string      // ID of the task with the issue (may be empty for global warnings)
+	Field   string      // Which field had the issue (e.g., "priority", "parent")
+	Message string      // Human-readable description of the issue
 }
 
 // metadataKeys lists all known metadata keys for smart splitting.
@@ -60,11 +78,13 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			p, err := strconv.Atoi(value)
 			if err != nil {
 				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
 					Field:   "priority",
 					Message: fmt.Sprintf("invalid priority '%s', using default", value),
 				})
 			} else if p < 1 || p > 5 {
 				warnings = append(warnings, ParseWarning{
+					Type:    WarningValidation,
 					Field:   "priority",
 					Message: fmt.Sprintf("priority %d out of range (1-5), using default", p),
 				})
