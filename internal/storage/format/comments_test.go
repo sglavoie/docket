@@ -281,9 +281,9 @@ func TestWriteComments_RoundTrip(t *testing.T) {
 
 func TestEscapeUnescapeCommentText(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		escaped  string
+		name      string
+		input     string
+		escaped   string
 		roundtrip bool
 	}{
 		{
