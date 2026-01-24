@@ -365,7 +365,9 @@ func (m *TagManagerModel) View() string {
 	} else if m.renameMode {
 		content.WriteString(HelpStyle.Render("enter confirm | esc cancel"))
 	} else if len(m.tags) > 0 {
-		content.WriteString(HelpStyle.Render("j/k nav | enter filter | a add | r rename | d del | q close"))
+		content.WriteString(HelpStyle.Render("j/k nav | enter filter | a add | r rename"))
+		content.WriteString("\n")
+		content.WriteString(HelpStyle.Render("d del | q close"))
 	} else {
 		content.WriteString(HelpStyle.Render("a add tag | q close"))
 	}
