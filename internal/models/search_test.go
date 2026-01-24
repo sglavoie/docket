@@ -209,3 +209,57 @@ func TestSearchCaseInsensitive(t *testing.T) {
 		})
 	}
 }
+
+func TestMatchesSearchQuery_TagsNotSearched(t *testing.T) {
+	task := &Task{
+		Title:       "Simple task",
+		Description: "A simple description",
+		Tags:        []string{"backend", "urgent", "api-related"},
+	}
+
+	tests := []struct {
+		name     string
+		query    string
+		expected bool
+	}{
+		{"tag not in title or description", "backend", false},
+		{"tag not in title or description", "urgent", false},
+		{"tag with hyphen", "api-related", false},
+		{"partial tag match", "api", false},
+		{"title still matches", "simple", true},
+		{"description still matches", "description", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name+"_"+tt.query, func(t *testing.T) {
+			result := task.MatchesSearchQuery(strings.ToLower(tt.query))
+			if result != tt.expected {
+				t.Errorf("MatchesSearchQuery(%q) = %v, want %v (tags are not searched)", tt.query, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMatchesSearchQuery_NoMatchReturnsFalse(t *testing.T) {
+	task := &Task{
+		Title:       "Implement feature X",
+		Description: "Add functionality for users",
+	}
+
+	noMatchQueries := []string{
+		"database",
+		"migration",
+		"test",
+		"xyz123",
+		"completely unrelated",
+	}
+
+	for _, query := range noMatchQueries {
+		t.Run(query, func(t *testing.T) {
+			result := task.MatchesSearchQuery(strings.ToLower(query))
+			if result {
+				t.Errorf("MatchesSearchQuery(%q) should return false for non-matching query", query)
+			}
+		})
+	}
+}

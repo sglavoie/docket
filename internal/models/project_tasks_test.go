@@ -172,3 +172,355 @@ func TestProjectGetTaskAbove(t *testing.T) {
 		t.Errorf("expected task above task2, got %v", above)
 	}
 }
+
+func TestProjectFilterTasks_WithPredicates(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "High priority task")
+	task1.Priority = 1
+
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Medium priority task")
+	task2.Priority = 2
+
+	task3 := NewTask("task-3", 3, TaskTypeTask, "Low priority task")
+	task3.Priority = 3
+
+	task4 := NewTask("task-4", 4, TaskTypeBug, "Bug fix")
+	task4.Priority = 1
+
+	project.Tasks = []*Task{task1, task2, task3, task4}
+
+	t.Run("filter by priority", func(t *testing.T) {
+		highPriority := project.FilterTasks(func(t *Task) bool {
+			return t.Priority == 1
+		})
+		if len(highPriority) != 2 {
+			t.Errorf("expected 2 high priority tasks, got %d", len(highPriority))
+		}
+	})
+
+	t.Run("filter by title contains", func(t *testing.T) {
+		containing := project.FilterTasks(func(t *Task) bool {
+			return len(t.Title) > 10
+		})
+		// "High priority task", "Medium priority task", "Low priority task" have > 10 chars
+		// "Bug fix" has 7 chars
+		if len(containing) != 3 {
+			t.Errorf("expected 3 tasks with title > 10 chars, got %d", len(containing))
+		}
+	})
+
+	t.Run("filter with no matches", func(t *testing.T) {
+		none := project.FilterTasks(func(t *Task) bool {
+			return t.Priority == 99
+		})
+		if len(none) != 0 {
+			t.Errorf("expected 0 tasks with priority 99, got %d", len(none))
+		}
+	})
+
+	t.Run("filter all matches", func(t *testing.T) {
+		all := project.FilterTasks(func(t *Task) bool {
+			return true
+		})
+		if len(all) != 4 {
+			t.Errorf("expected 4 tasks when filter matches all, got %d", len(all))
+		}
+	})
+}
+
+func TestProjectGetTasksByStatus_AllStatuses(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	todoTask := NewTask("todo", 1, TaskTypeTask, "Todo task")
+	todoTask.Status = StatusTodo
+
+	inProgressTask := NewTask("in-progress", 2, TaskTypeTask, "In progress task")
+	inProgressTask.Status = StatusInProgress
+
+	doneTask := NewTask("done", 3, TaskTypeTask, "Done task")
+	doneTask.Status = StatusDone
+
+	blockedTask := NewTask("blocked", 4, TaskTypeTask, "Blocked task")
+	blockedTask.Status = StatusBlocked
+
+	canceledTask := NewTask("canceled", 5, TaskTypeTask, "Canceled task")
+	canceledTask.Status = StatusCanceled
+
+	project.Tasks = []*Task{todoTask, inProgressTask, doneTask, blockedTask, canceledTask}
+
+	tests := []struct {
+		status   TaskStatus
+		expected int
+	}{
+		{StatusTodo, 1},
+		{StatusInProgress, 1},
+		{StatusDone, 1},
+		{StatusBlocked, 1},
+		{StatusCanceled, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			tasks := project.GetTasksByStatus(tt.status)
+			if len(tasks) != tt.expected {
+				t.Errorf("GetTasksByStatus(%s) returned %d tasks, want %d", tt.status, len(tasks), tt.expected)
+			}
+			if len(tasks) > 0 && tasks[0].Status != tt.status {
+				t.Errorf("returned task has status %s, want %s", tasks[0].Status, tt.status)
+			}
+		})
+	}
+}
+
+func TestProjectGetTasksByStatus_MultipleMatches(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1.Status = StatusTodo
+
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2.Status = StatusTodo
+
+	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	task3.Status = StatusDone
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	todoTasks := project.GetTasksByStatus(StatusTodo)
+	if len(todoTasks) != 2 {
+		t.Errorf("expected 2 todo tasks, got %d", len(todoTasks))
+	}
+}
+
+func TestProjectGetTasksByType_AllTypes(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	story := NewTask("story", 2, TaskTypeStory, "Story")
+	task := NewTask("task", 3, TaskTypeTask, "Task")
+	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
+	idea := NewTask("idea", 5, TaskTypeIdea, "Idea")
+	note := NewTask("note", 6, TaskTypeNote, "Note")
+
+	project.Tasks = []*Task{epic, story, task, bug, idea, note}
+
+	tests := []struct {
+		taskType TaskType
+		expected int
+	}{
+		{TaskTypeEpic, 1},
+		{TaskTypeStory, 1},
+		{TaskTypeTask, 1},
+		{TaskTypeBug, 1},
+		{TaskTypeIdea, 1},
+		{TaskTypeNote, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.taskType), func(t *testing.T) {
+			tasks := project.GetTasksByType(tt.taskType)
+			if len(tasks) != tt.expected {
+				t.Errorf("GetTasksByType(%s) returned %d tasks, want %d", tt.taskType, len(tasks), tt.expected)
+			}
+			if len(tasks) > 0 && tasks[0].Type != tt.taskType {
+				t.Errorf("returned task has type %s, want %s", tasks[0].Type, tt.taskType)
+			}
+		})
+	}
+}
+
+func TestProjectGetTasksByType_MultipleMatches(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
+
+	project.Tasks = []*Task{task1, task2, task3, bug}
+
+	tasks := project.GetTasksByType(TaskTypeTask)
+	if len(tasks) != 3 {
+		t.Errorf("expected 3 tasks, got %d", len(tasks))
+	}
+}
+
+func TestProjectGetTasksByTag_SingleTag(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "Backend task")
+	task1.Tags = []string{"backend", "api"}
+
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Frontend task")
+	task2.Tags = []string{"frontend", "ui"}
+
+	task3 := NewTask("task-3", 3, TaskTypeTask, "Full stack task")
+	task3.Tags = []string{"backend", "frontend"}
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	backendTasks := project.GetTasksByTag("backend")
+	if len(backendTasks) != 2 {
+		t.Errorf("expected 2 backend tasks, got %d", len(backendTasks))
+	}
+
+	frontendTasks := project.GetTasksByTag("frontend")
+	if len(frontendTasks) != 2 {
+		t.Errorf("expected 2 frontend tasks, got %d", len(frontendTasks))
+	}
+
+	apiTasks := project.GetTasksByTag("api")
+	if len(apiTasks) != 1 {
+		t.Errorf("expected 1 api task, got %d", len(apiTasks))
+	}
+}
+
+func TestProjectGetTasksByTag_NoMatches(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1.Tags = []string{"backend"}
+
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2.Tags = []string{"frontend"}
+
+	project.Tasks = []*Task{task1, task2}
+
+	nonexistentTasks := project.GetTasksByTag("database")
+	if len(nonexistentTasks) != 0 {
+		t.Errorf("expected 0 tasks with nonexistent tag, got %d", len(nonexistentTasks))
+	}
+}
+
+func TestProjectGetTasksByTag_TasksWithNoTags(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1.Tags = []string{"backend"}
+
+	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	// task2 has no tags (empty slice from NewTask)
+
+	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	task3.Tags = nil // explicit nil
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	backendTasks := project.GetTasksByTag("backend")
+	if len(backendTasks) != 1 {
+		t.Errorf("expected 1 backend task, got %d", len(backendTasks))
+	}
+}
+
+func TestProjectGetCompletedTasks(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	todoTask := NewTask("todo", 1, TaskTypeTask, "Todo")
+	todoTask.Status = StatusTodo
+
+	inProgressTask := NewTask("in-progress", 2, TaskTypeTask, "In Progress")
+	inProgressTask.Status = StatusInProgress
+
+	doneTask := NewTask("done", 3, TaskTypeTask, "Done")
+	doneTask.Status = StatusDone
+
+	canceledTask := NewTask("canceled", 4, TaskTypeTask, "Canceled")
+	canceledTask.Status = StatusCanceled
+
+	blockedTask := NewTask("blocked", 5, TaskTypeTask, "Blocked")
+	blockedTask.Status = StatusBlocked
+
+	project.Tasks = []*Task{todoTask, inProgressTask, doneTask, canceledTask, blockedTask}
+
+	completed := project.GetCompletedTasks()
+	if len(completed) != 2 {
+		t.Errorf("expected 2 completed tasks (done + canceled), got %d", len(completed))
+	}
+
+	for _, task := range completed {
+		if task.Status != StatusDone && task.Status != StatusCanceled {
+			t.Errorf("completed task has unexpected status: %s", task.Status)
+		}
+	}
+}
+
+func TestProjectFilterMethods_EmptyTaskList(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+	project.Tasks = []*Task{}
+
+	t.Run("FilterTasks on empty list", func(t *testing.T) {
+		result := project.FilterTasks(func(t *Task) bool { return true })
+		if result != nil && len(result) != 0 {
+			t.Errorf("FilterTasks on empty list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByStatus on empty list", func(t *testing.T) {
+		result := project.GetTasksByStatus(StatusTodo)
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByStatus on empty list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByType on empty list", func(t *testing.T) {
+		result := project.GetTasksByType(TaskTypeTask)
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByType on empty list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByTag on empty list", func(t *testing.T) {
+		result := project.GetTasksByTag("backend")
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByTag on empty list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetCompletedTasks on empty list", func(t *testing.T) {
+		result := project.GetCompletedTasks()
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetCompletedTasks on empty list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetRootTasks on empty list", func(t *testing.T) {
+		result := project.GetRootTasks()
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetRootTasks on empty list should return empty, got %d", len(result))
+		}
+	})
+}
+
+func TestProjectFilterMethods_NilTaskList(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+	project.Tasks = nil
+
+	t.Run("FilterTasks on nil list", func(t *testing.T) {
+		result := project.FilterTasks(func(t *Task) bool { return true })
+		if result != nil && len(result) != 0 {
+			t.Errorf("FilterTasks on nil list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByStatus on nil list", func(t *testing.T) {
+		result := project.GetTasksByStatus(StatusTodo)
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByStatus on nil list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByType on nil list", func(t *testing.T) {
+		result := project.GetTasksByType(TaskTypeTask)
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByType on nil list should return empty, got %d", len(result))
+		}
+	})
+
+	t.Run("GetTasksByTag on nil list", func(t *testing.T) {
+		result := project.GetTasksByTag("backend")
+		if result != nil && len(result) != 0 {
+			t.Errorf("GetTasksByTag on nil list should return empty, got %d", len(result))
+		}
+	})
+}
