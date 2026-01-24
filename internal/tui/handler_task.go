@@ -16,6 +16,11 @@ import (
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
+	// Delegate dependency messages to dedicated handler
+	if handled, cmd := m.handleDependencyMessages(msg); handled {
+		return handled, cmd
+	}
+
 	switch msg := msg.(type) {
 	case CreateTaskMsg:
 		if m.currentProject != nil {
@@ -168,54 +173,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.refreshProjectTree()
 		return true, nil
 
-	case ManageDependenciesMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewDependencySelector, NewDependencySelectorModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
-	case DependencySelectorDoneMsg:
-		m.popView()
-		if msg.HasChanges && msg.Task != nil && msg.Project != nil {
-			msg.Task.DependsOn = msg.NewDepsOn
-			msg.Task.UpdatedAt = time.Now()
-			return true, tea.Batch(
-				startLoading("Saving..."),
-				SaveProjectAsync(msg.Project, "Dependencies updated"),
-			)
-		}
-		return true, nil
-
-	case ShowDependencyViewerMsg:
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewDependencyViewer, NewDependencyViewerModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
-	case CloseDependencyViewerMsg:
-		m.popView()
-		return true, nil
-
-	case DependencyViewerSelectMsg:
-		m.popView()
-		if msg.Task != nil && m.projectTree != nil {
-			// If the task is completed, switch to Completed view so it's visible
-			if msg.Task.IsComplete() && m.projectTree.viewMode != ViewModeCompleted {
-				m.projectTree.viewMode = ViewModeCompleted
-				m.projectTree.updateVisibility()
-			}
-			m.projectTree.NavigateToTask(msg.Task)
-		}
-		return true, nil
-
-	case DependencyViewerViewDepsMsg:
-		// Replace current view with new dependency viewer for selected task
-		m.popView()
-		if msg.Task != nil && msg.Project != nil {
-			m.showView(ViewDependencyViewer, NewDependencyViewerModel(msg.Task, msg.Project))
-		}
-		return true, nil
-
 	case ShowUndoHistoryMsg:
 		if msg.Project != nil {
 			m.showView(ViewUndoHistory, NewUndoHistoryModel(msg.Project))
@@ -336,59 +293,6 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 	return true, tea.Batch(
 		startLoading("Saving..."),
 		SaveProjectAsync(msg.Project, successMsg),
-	)
-}
-
-// handleCommandPaletteBulkAction handles bulk actions on multiple selected tasks.
-func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMsg) (bool, tea.Cmd) {
-	if len(msg.Tasks) == 0 {
-		return true, nil
-	}
-
-	// Group tasks by project for efficient saving
-	projectTasks := make(map[string][]struct {
-		Task    *models.Task
-		Project *models.Project
-	})
-	for _, item := range msg.Tasks {
-		if item.Task != nil && item.Project != nil {
-			projectTasks[item.Project.ID] = append(projectTasks[item.Project.ID], item)
-		}
-	}
-
-	// Apply action to all tasks
-	count := 0
-	var projects []*models.Project
-	for _, items := range projectTasks {
-		for _, item := range items {
-			switch msg.Action {
-			case "complete":
-				item.Task.Complete()
-				count++
-			case "start":
-				item.Task.Start()
-				count++
-			}
-		}
-		if len(items) > 0 {
-			projects = append(projects, items[0].Project)
-		}
-	}
-
-	// Build success message
-	actionPast := msg.Action + "d"
-	switch msg.Action {
-	case "complete":
-		actionPast = "completed"
-	case "start":
-		actionPast = "started"
-	}
-	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)
-
-	// Async save with loading indicator
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		SaveMultipleProjectsAsync(projects, successMsg),
 	)
 }
 
