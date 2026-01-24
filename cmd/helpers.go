@@ -38,6 +38,29 @@ func Debugf(format string, args ...any) {
 	}
 }
 
+// CommandContext bundles the commonly-needed config and project data for commands.
+// This reduces duplicate loading code and makes it easier to pass context around.
+type CommandContext struct {
+	Project       *models.Project
+	Config        *config.Config
+	ConfigManager *config.Manager
+}
+
+// LoadCommandContext loads the config and current project, returning them bundled together.
+// Use this when a command needs the current project with its tasks loaded.
+// Returns an error if no project is selected or if loading fails.
+func LoadCommandContext() (*CommandContext, error) {
+	project, cfg, configManager, err := LoadCurrentProject()
+	if err != nil {
+		return nil, err
+	}
+	return &CommandContext{
+		Project:       project,
+		Config:        cfg,
+		ConfigManager: configManager,
+	}, nil
+}
+
 // LoadConfig loads the configuration file.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {
