@@ -12,7 +12,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -34,7 +33,8 @@ const (
 
 // DueDateOverviewModel displays all tasks with due dates across all projects.
 type DueDateOverviewModel struct {
-	config *config.Config
+	config         *config.Config
+	projectService *ProjectService
 
 	// Grouped tasks
 	overdue  []DueDateTask
@@ -62,7 +62,8 @@ type DueDateOverviewModel struct {
 // NewDueDateOverviewModel creates a new due date overview model.
 func NewDueDateOverviewModel(cfg *config.Config) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
-		config: cfg,
+		config:         cfg,
+		projectService: NewProjectService(),
 	}
 	m.loadTasksWithDueDates()
 	return m
@@ -77,7 +78,7 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
+		if err := m.projectService.Load(project); err != nil {
 			continue
 		}
 
@@ -443,7 +444,7 @@ func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (te
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -459,13 +460,13 @@ func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (te
 	}
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -492,7 +493,7 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -502,13 +503,13 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -528,7 +529,7 @@ func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.
 	project := dt.Project
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -540,13 +541,13 @@ func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 
@@ -582,7 +583,7 @@ func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -592,13 +593,13 @@ func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
 

@@ -137,11 +137,12 @@ type TreeNode struct {
 // ProjectTreeModel represents the project tree view.
 type ProjectTreeModel struct {
 	BaseSearchableView
-	project       *models.Project
-	config        *config.Config
-	configManager *config.Manager
-	nodes         []*TreeNode
-	cursor        int
+	project        *models.Project
+	config         *config.Config
+	configManager  *config.Manager
+	projectService *ProjectService
+	nodes          []*TreeNode
+	cursor         int
 
 	// View mode (Active, Inbox, or Backlog)
 	viewMode ViewMode
@@ -190,10 +191,11 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	tagInput.Width = 30
 
 	m := &ProjectTreeModel{
-		project:       project,
-		config:        cfg,
-		configManager: manager,
-		cursor:        0,
+		project:        project,
+		config:         cfg,
+		configManager:  manager,
+		projectService: NewProjectService(),
+		cursor:         0,
 		filter: FilterState{
 			Type:       "",
 			Status:     "",

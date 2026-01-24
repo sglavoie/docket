@@ -4,38 +4,21 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
+
+var projectService = NewProjectService()
 
 // SaveProjectAsync returns a command that saves a project asynchronously.
 // It backs up the project first, then saves it.
+// Deprecated: Use projectService.SaveWithBackup directly.
 func SaveProjectAsync(project *models.Project, successMsg string) tea.Cmd {
-	return func() tea.Msg {
-		if err := storage.BackupProject(project); err != nil {
-			return SaveErrorMsg{Err: err}
-		}
-		if err := storage.SaveProject(project); err != nil {
-			return SaveErrorMsg{Err: err}
-		}
-		_ = storage.LoadProject(project)
-		return SaveCompleteMsg{SuccessMessage: successMsg}
-	}
+	return projectService.SaveWithBackup(project, successMsg)
 }
 
 // SaveMultipleProjectsAsync returns a command that saves multiple projects asynchronously.
+// Deprecated: Use projectService.SaveMultiple directly.
 func SaveMultipleProjectsAsync(projects []*models.Project, successMsg string) tea.Cmd {
-	return func() tea.Msg {
-		for _, project := range projects {
-			if err := storage.BackupProject(project); err != nil {
-				return SaveErrorMsg{Err: err}
-			}
-			if err := storage.SaveProject(project); err != nil {
-				return SaveErrorMsg{Err: err}
-			}
-			_ = storage.LoadProject(project)
-		}
-		return SaveCompleteMsg{SuccessMessage: successMsg}
-	}
+	return projectService.SaveMultiple(projects, successMsg)
 }
 
 // startLoading returns a command that triggers the loading state.

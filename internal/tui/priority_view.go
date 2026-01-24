@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // PriorityGroup represents a category of tasks by urgency.
@@ -42,7 +41,8 @@ type SuggestedTask struct {
 
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
-	project *models.Project
+	project        *models.Project
+	projectService *ProjectService
 
 	// Grouped tasks by urgency
 	overdue   []*PriorityTask
@@ -76,6 +76,7 @@ type PriorityViewModel struct {
 func NewPriorityViewModel(project *models.Project) *PriorityViewModel {
 	m := &PriorityViewModel{
 		project:            project,
+		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
 	}
@@ -426,7 +427,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 	case "r":
 		// Refresh: reload project and clear dismissed suggestions
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.dismissedIDs = make(map[string]bool)
 		m.loadActionableTasks()
 		m.clampCursor()
@@ -519,7 +520,7 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
+	if err := m.projectService.Backup(m.project); err != nil {
 		return m, func() tea.Msg {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
@@ -536,14 +537,14 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 	}
 
 	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
+	if err := m.projectService.Save(m.project); err != nil {
 		return m, func() tea.Msg {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 	}
 
 	// Reload and refresh
-	_ = storage.LoadProject(m.project)
+	_ = m.projectService.Load(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 
@@ -565,7 +566,7 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
+	if err := m.projectService.Backup(m.project); err != nil {
 		return m, func() tea.Msg {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
@@ -576,14 +577,14 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
+	if err := m.projectService.Save(m.project); err != nil {
 		return m, func() tea.Msg {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 	}
 
 	// Reload and refresh
-	_ = storage.LoadProject(m.project)
+	_ = m.projectService.Load(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 

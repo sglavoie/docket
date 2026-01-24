@@ -11,7 +11,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -23,7 +22,8 @@ type FocusTask struct {
 
 // FocusViewModel displays all active-flagged tasks across projects.
 type FocusViewModel struct {
-	config *config.Config
+	config         *config.Config
+	projectService *ProjectService
 
 	// Tasks
 	tasks []FocusTask
@@ -46,7 +46,8 @@ type FocusViewModel struct {
 // NewFocusViewModel creates a new focus view model.
 func NewFocusViewModel(cfg *config.Config) *FocusViewModel {
 	m := &FocusViewModel{
-		config: cfg,
+		config:         cfg,
+		projectService: NewProjectService(),
 	}
 	m.loadTasks()
 	return m
@@ -58,7 +59,7 @@ func (m *FocusViewModel) loadTasks() {
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
+		if err := m.projectService.Load(project); err != nil {
 			continue
 		}
 
@@ -342,7 +343,7 @@ func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	project := ft.Project
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -352,13 +353,13 @@ func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -420,7 +421,7 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -438,13 +439,13 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 	}
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -471,7 +472,7 @@ func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -481,13 +482,13 @@ func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -509,7 +510,7 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 	project := ft.Project
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -521,13 +522,13 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasks()
 	m.clampCursor()
 
@@ -563,7 +564,7 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Backup before change
-	if err := storage.BackupProject(project); err != nil {
+	if err := m.projectService.Backup(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
@@ -573,13 +574,13 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	task.UpdatedAt = time.Now()
 
 	// Save project
-	if err := storage.SaveProject(project); err != nil {
+	if err := m.projectService.Save(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
 		return m, nil
 	}
 
 	// Reload project and refresh view
-	_ = storage.LoadProject(project)
+	_ = m.projectService.Load(project)
 	m.loadTasks()
 	m.clampCursor()
 

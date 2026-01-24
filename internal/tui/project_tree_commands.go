@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -42,17 +41,17 @@ func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
 // performUndo restores the project from backup.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
 	return func() tea.Msg {
-		if !storage.BackupExists(m.project) {
+		if !m.projectService.BackupExists(m.project) {
 			return ErrorMsg{Err: fmt.Errorf("no backup available to undo")}
 		}
 
 		tasksBefore := len(m.project.Tasks)
 
-		if err := storage.RestoreFromBackup(m.project); err != nil {
+		if err := m.projectService.RestoreFromBackup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to undo: %w", err)}
 		}
 
-		if err := storage.LoadProject(m.project); err != nil {
+		if err := m.projectService.Load(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
 		}
 
@@ -136,18 +135,18 @@ func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*m
 		// Record undo snapshot before saving (if undo is enabled and action is set)
 		if undoDepth > 0 && action != "" {
 			// Ignore errors - undo snapshot failures shouldn't block normal operation
-			_ = storage.RecordUndoSnapshot(m.project, action, context, undoDepth)
+			_ = m.projectService.RecordUndoSnapshot(m.project, action, context, undoDepth)
 		}
 
 		// Create backup before saving for legacy undo support
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := m.projectService.Save(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		return treeRefreshMsg{}
 	}
@@ -249,12 +248,12 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 		// Record undo snapshot before deleting
 		if undoDepth > 0 {
 			// Ignore errors - undo snapshot failures shouldn't block normal operation
-			_ = storage.RecordUndoSnapshot(m.project, "Delete Task",
+			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Task",
 				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth)
 		}
 
 		// Create backup before deleting for undo support
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
@@ -287,11 +286,11 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 		}
 		m.project.Tasks = remaining
 
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := m.projectService.Save(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		return TaskDeletedMsg{Task: task}
 	}
@@ -314,12 +313,12 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		// Record undo snapshot before deleting
 		if undoDepth > 0 {
 			// Ignore errors - undo snapshot failures shouldn't block normal operation
-			_ = storage.RecordUndoSnapshot(m.project, "Delete Tasks",
+			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Tasks",
 				fmt.Sprintf("%d tasks", taskCount), undoDepth)
 		}
 
 		// Create backup before deleting for undo support
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
@@ -357,12 +356,12 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		}
 		m.project.Tasks = remaining
 
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := m.projectService.Save(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
 		m.clearSelection()
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		m.clampCursor()
 		return treeRefreshMsg{}
@@ -394,12 +393,12 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 	return func() tea.Msg {
 		// Record undo snapshot before applying changes
 		if undoDepth > 0 {
-			_ = storage.RecordUndoSnapshot(m.project, "Bulk Edit",
+			_ = m.projectService.RecordUndoSnapshot(m.project, "Bulk Edit",
 				fmt.Sprintf("%d tasks", taskCount), undoDepth)
 		}
 
 		// Create backup for undo support
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
@@ -448,13 +447,13 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		m.project.ReorderRootTasksByCompletion()
 
 		// Save the project
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := m.projectService.Save(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
 		// Clear selection and rebuild tree
 		m.clearSelection()
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		m.clampCursor()
 
@@ -478,23 +477,23 @@ func (m *ProjectTreeModel) archiveCompletedTasks() tea.Cmd {
 
 		// Record undo snapshot before archiving
 		if undoDepth > 0 {
-			_ = storage.RecordUndoSnapshot(m.project, "Archive Tasks",
+			_ = m.projectService.RecordUndoSnapshot(m.project, "Archive Tasks",
 				fmt.Sprintf("%d tasks", completedCount), undoDepth)
 		}
 
 		// Create backup before archiving
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
 		// Archive the tasks
-		count, err := storage.ArchiveTasks(m.project)
+		count, err := m.projectService.ArchiveTasks(m.project)
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
 		}
 
 		// Reload project and rebuild tree
-		_ = storage.LoadProject(m.project)
+		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		m.clampCursor()
 
