@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleProjectCycleMessages handles project cycling messages.
@@ -94,7 +93,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 		return true, errorCmd("failed to save config: %w", err)
 	}
 
-	_ = storage.LoadProject(project)
+	_ = m.persister.Load(project)
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)

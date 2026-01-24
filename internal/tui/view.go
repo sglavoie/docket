@@ -60,4 +60,5 @@ type ViewContext struct {
 	Height        int
 	Config        *config.Config
 	ConfigManager *config.Manager
+	Persister     Persister
 }

@@ -22,6 +22,7 @@ func newTestAppModel() *AppModel {
 	return &AppModel{
 		config:        cfg,
 		configManager: manager,
+		persister:     NewProjectService(),
 		viewStack:     []ViewType{ViewDashboard},
 		width:         80,
 		height:        24,
@@ -43,6 +44,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	app := &AppModel{
 		config:         cfg,
 		configManager:  manager,
+		persister:      NewProjectService(),
 		viewStack:      []ViewType{ViewDashboard},
 		width:          80,
 		height:         24,

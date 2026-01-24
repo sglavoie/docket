@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
@@ -44,7 +43,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		// Reload current project to get fresh task references after save
 		if m.currentProject != nil {
-			_ = storage.LoadProject(m.currentProject)
+			_ = m.persister.Load(m.currentProject)
 		}
 		m.refreshProjectTree()
 		// Set status message showing section
@@ -65,7 +64,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		// Reload current project to get fresh task references after save
 		if m.currentProject != nil {
-			_ = storage.LoadProject(m.currentProject)
+			_ = m.persister.Load(m.currentProject)
 		}
 		m.refreshProjectTree()
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
@@ -303,7 +302,7 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 	}
 
 	// Ensure project is loaded
-	if err := storage.LoadProject(msg.Project); err != nil {
+	if err := m.persister.Load(msg.Project); err != nil {
 		return true, errorCmd("failed to load project: %w", err)
 	}
 
@@ -443,7 +442,7 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 	}
 
 	// Load destination project
-	if err := storage.LoadProject(destProject); err != nil {
+	if err := m.persister.Load(destProject); err != nil {
 		return true, errorCmd("failed to load destination project: %w", err)
 	}
 
@@ -468,20 +467,21 @@ func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.
 
 // saveBothProjectsAsync saves both source and destination projects after a cross-project move.
 func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int) tea.Cmd {
+	persister := m.persister
 	return func() tea.Msg {
 		// Backup and save source project
-		if err := storage.BackupProject(source); err != nil {
+		if err := persister.Backup(source); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
 		}
-		if err := storage.SaveProject(source); err != nil {
+		if err := persister.Save(source); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
 		}
 
 		// Backup and save destination project
-		if err := storage.BackupProject(dest); err != nil {
+		if err := persister.Backup(dest); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to backup destination project: %w", err)}
 		}
-		if err := storage.SaveProject(dest); err != nil {
+		if err := persister.Save(dest); err != nil {
 			return SaveErrorMsg{Err: fmt.Errorf("failed to save destination project: %w", err)}
 		}
 

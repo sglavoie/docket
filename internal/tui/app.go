@@ -71,6 +71,9 @@ type AppModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
+	// Persister for project persistence operations (enables testing with mocks)
+	persister Persister
+
 	// View stack for navigation
 	viewStack []ViewType
 	width     int
@@ -108,17 +111,34 @@ type AppModel struct {
 	pendingBulkTasks []PaletteBulkTaskItem
 }
 
+// AppOption is a functional option for configuring AppModel.
+type AppOption func(*AppModel)
+
+// WithPersister sets a custom Persister for the AppModel.
+// This is primarily used for testing with mock implementations.
+func WithPersister(p Persister) AppOption {
+	return func(app *AppModel) {
+		app.persister = p
+	}
+}
+
 // NewAppModel creates a new TUI application model.
-func NewAppModel(cfg *config.Config, manager *config.Manager) *AppModel {
+func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
 	app := &AppModel{
 		config:          cfg,
 		configManager:   manager,
+		persister:       NewProjectService(),
 		viewStack:       []ViewType{ViewDashboard},
 		width:           80,
 		height:          24,
 		views:           NewViewRegistry(),
 		commandRegistry: NewCommandRegistry(),
 		spinner:         NewSpinner(),
+	}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(app)
 	}
 
 	// Initialize dashboard and register it
@@ -814,7 +834,7 @@ func (m *AppModel) saveProjectTreeState() {
 func (m *AppModel) switchToProject(project *models.Project, restoreState bool) {
 	m.saveProjectTreeState()
 	m.currentProject = project
-	_ = storage.LoadProject(project)
+	_ = m.persister.Load(project)
 	m.config.ApplyGlobalColorsToProject(project)
 	m.projectTree = NewProjectTreeModel(project, m.config, m.configManager)
 	m.projectTree.SetSize(m.width, m.height-2)
