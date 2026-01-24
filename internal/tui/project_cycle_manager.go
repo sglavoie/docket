@@ -126,6 +126,23 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "p":
+			// Toggle pin status on highlighted project
+			item := m.SelectedItem()
+			if item.Project != nil {
+				item.Project.TogglePinned()
+				if err := m.configManager.Save(m.config); err != nil {
+					return m, func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+					}
+				}
+				// Refresh list (re-sorts with pinned first)
+				currentID := item.Project.ID
+				m.SetItems(buildProjectInfoList(m.config))
+				m.SetCursorToID(currentID)
+			}
+			return m, nil
+
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
 			if handled {
@@ -211,5 +228,5 @@ func (m *ProjectCycleManagerModel) RenderFooter() string {
 		return MutedStyle.Render("esc cancel")
 	}
 
-	return MutedStyle.Render("space toggle | / search | c clear\ng go to project | enter apply | esc cancel")
+	return MutedStyle.Render("space toggle | / search | c clear\np pin | g go to project | enter apply | esc cancel")
 }

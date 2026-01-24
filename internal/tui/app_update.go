@@ -150,8 +150,14 @@ func (m *AppModel) handleEscKey() bool {
 		m.popView()
 		// Rebuild project tree when closing ProjectCycleManager since it reloads
 		// all projects in buildProjectInfoList(), invalidating tree's task pointers
-		if closingView == ViewProjectCycleManager && m.projectTree != nil {
-			m.projectTree.buildTree()
+		if closingView == ViewProjectCycleManager {
+			if m.projectTree != nil {
+				m.projectTree.buildTree()
+			}
+			// Refresh dashboard to re-sort with pinned projects first
+			if m.dashboard != nil {
+				m.dashboard.Refresh(m.config)
+			}
 		}
 		return true
 	}

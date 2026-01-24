@@ -23,6 +23,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if m.currentView() == ViewProjectCycleManager {
 			m.popView()
+			// Refresh dashboard in case pins were changed
+			if m.dashboard != nil {
+				m.dashboard.Refresh(m.config)
+			}
 		}
 		m.switchToProject(msg.Project, true)
 		m.showView(ViewProjectTree, m.projectTree)

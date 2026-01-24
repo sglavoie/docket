@@ -24,6 +24,17 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.projectTree != nil {
 			m.projectTree.buildTree()
 		}
+		// Refresh dashboard to reflect any pin changes
+		var dash *DashboardModel
+		if v := m.views.Get(ViewDashboard); v != nil {
+			dash, _ = v.(*DashboardModel)
+		}
+		if dash == nil {
+			dash = m.dashboard
+		}
+		if dash != nil {
+			dash.Refresh(m.config)
+		}
 		if msg.Changed {
 			count := len(m.config.CycleProjects)
 			if count == 0 {

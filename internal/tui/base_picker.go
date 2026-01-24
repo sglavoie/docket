@@ -19,6 +19,12 @@ type PickerItem interface {
 	ItemID() string
 }
 
+// PinnablePickerItem is an optional interface for items that can be pinned.
+// Items implementing this interface will be rendered with pinned styling.
+type PinnablePickerItem interface {
+	IsPinned() bool
+}
+
 // PickerConfig holds customizable settings for a picker.
 type PickerConfig struct {
 	Title          string // Title displayed at the top
@@ -223,6 +229,12 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		item := p.Filtered[i]
 		selected := i == p.Cursor
 
+		// Check if item is pinned (optional interface)
+		isPinned := false
+		if pinnable, ok := any(item).(PinnablePickerItem); ok {
+			isPinned = pinnable.IsPinned()
+		}
+
 		// Checkbox for multi-select
 		checkbox := ""
 		if p.Config.MultiSelect {
@@ -233,8 +245,15 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 			}
 		}
 
-		// Display text
+		// Display text with optional pinned styling
 		displayText := item.DisplayText()
+		if isPinned {
+			if selected {
+				displayText = BoldStyle.Foreground(ColorSuccess).Render(displayText)
+			} else {
+				displayText = PinnedProjectStyle.Render(displayText)
+			}
+		}
 
 		// Count (optional)
 		countStr := ""

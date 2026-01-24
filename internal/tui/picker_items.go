@@ -118,8 +118,11 @@ func (p ProjectInfo) FilterText() string {
 	return p.Project.Name + " " + p.Project.Context
 }
 
-// DisplayText returns the project name for display.
+// DisplayText returns the project name for display, with pin indicator if pinned.
 func (p ProjectInfo) DisplayText() string {
+	if p.Project.Pinned {
+		return "*" + p.Project.Name
+	}
 	return p.Project.Name
 }
 
@@ -131,6 +134,11 @@ func (p ProjectInfo) CountValue() int {
 // ItemID returns the project ID as its unique identifier.
 func (p ProjectInfo) ItemID() string {
 	return p.Project.ID
+}
+
+// IsPinned returns whether the project is pinned.
+func (p ProjectInfo) IsPinned() bool {
+	return p.Project.Pinned
 }
 
 // TriggerFieldInfo wraps a workflow TriggerField with description for picker display.
