@@ -40,55 +40,33 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case TaskCreatedMsg:
-		m.popView()
-		// Reload current project to get fresh task references after save
-		if m.currentProject != nil {
-			_ = m.persister.Load(m.currentProject)
-		}
-		m.refreshProjectTree()
+		// Common pattern: pop view, reload, refresh
+		m.handleWithRefresh(true, true, "")
 		// Set status message showing section
 		if msg.Task != nil && msg.Task.Section != "" {
 			m.statusMessage = fmt.Sprintf("Created in %s", msg.Task.Section)
 		}
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
 		cmd := m.views.Update(m.currentView(), msg)
-		// Keep typed pointer in sync if it's the inbox processor
-		if m.currentView() == ViewInboxProcessor {
-			if v := m.views.Get(ViewInboxProcessor); v != nil {
-				m.inboxProcessor = v.(*InboxProcessorModel)
-			}
-		}
+		m.syncInboxProcessor()
 		return true, tea.Batch(cmd, statusTimeout(2*time.Second))
 
 	case TaskUpdatedMsg:
-		m.popView()
-		// Reload current project to get fresh task references after save
-		if m.currentProject != nil {
-			_ = m.persister.Load(m.currentProject)
-		}
-		m.refreshProjectTree()
+		// Common pattern: pop view, reload, refresh
+		m.handleWithRefresh(true, true, "")
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
 		cmd := m.views.Update(m.currentView(), msg)
-		// Keep typed pointer in sync if it's the inbox processor
-		if m.currentView() == ViewInboxProcessor {
-			if v := m.views.Get(ViewInboxProcessor); v != nil {
-				m.inboxProcessor = v.(*InboxProcessorModel)
-			}
-		}
+		m.syncInboxProcessor()
 		return true, cmd
 
 	case TaskDeletedMsg:
-		m.refreshProjectTree()
-		return true, nil
+		return true, m.handleWithRefresh(false, false, "")
 
 	case TasksArchivedMsg:
-		m.refreshProjectTree()
-		m.statusMessage = fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
-		return true, statusTimeout(3 * time.Second)
+		return true, m.handleWithRefresh(false, false, fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count))
 
 	case TaskStatusChangedMsg:
-		m.refreshProjectTree()
-		return true, nil
+		return true, m.handleWithRefresh(false, false, "")
 
 	case CommandPaletteTaskActionMsg:
 		return m.handleCommandPaletteTaskAction(msg)
@@ -183,11 +161,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case UndoPerformedMsg:
-		// Pop the undo history view, refresh project tree, show status
-		m.popView()
-		m.refreshProjectTree()
-		m.statusMessage = fmt.Sprintf("Undid: %s", msg.Action)
-		return true, nil
+		return true, m.handleWithRefresh(true, false, fmt.Sprintf("Undid: %s", msg.Action))
 
 	case OpenParentSelectorMsg:
 		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
@@ -205,8 +179,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.delegateToCurrentView(msg)
 
 	case UndoCompletedMsg:
-		m.refreshProjectTree()
-		return true, nil
+		return true, m.handleWithRefresh(false, false, "")
 
 	case ShowTaskCommentsMsg:
 		if msg.Task != nil && msg.Project != nil {
