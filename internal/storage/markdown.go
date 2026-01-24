@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -176,7 +177,7 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 	b.WriteString(fmt.Sprintf("%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title))
 
 	// Write metadata
-	b.WriteString(writeMetadata(task))
+	b.WriteString(format.WriteMetadata(task))
 	b.WriteString("\n")
 
 	// Write description
@@ -188,7 +189,7 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 	// Write comments block if task has comments
 	if len(task.Comments) > 0 {
 		b.WriteString("\n")
-		b.WriteString(writeComments(task))
+		b.WriteString(format.WriteComments(task))
 	}
 
 	// Get children in their original slice order (not sorted by type)
@@ -199,139 +200,6 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 		b.WriteString("\n")
 		writeTaskPreservingOrder(b, child, allTasks, level+1)
 	}
-}
-
-// writeMetadata generates the metadata comment for a task.
-func writeMetadata(task *models.Task) string {
-	var parts []string
-
-	if task.ID != "" {
-		parts = append(parts, fmt.Sprintf("id: %s", task.ID))
-	}
-
-	// Notes don't have status, priority, or tags
-	if !task.IsNote() {
-		parts = append(parts, fmt.Sprintf("status: %s", task.Status))
-		parts = append(parts, fmt.Sprintf("priority: %d", task.Priority))
-
-		if len(task.Tags) > 0 {
-			parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
-		}
-	}
-
-	if task.Section != "" {
-		parts = append(parts, fmt.Sprintf("section: %s", task.Section))
-	}
-
-	if !task.CreatedAt.IsZero() {
-		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format(util.DateTimeFormat)))
-	}
-
-	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
-		parts = append(parts, fmt.Sprintf("updated: %s", task.UpdatedAt.Format(util.DateTimeFormat)))
-	}
-
-	if task.CompletedAt != nil {
-		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format(util.DateTimeFormat)))
-	}
-
-	if task.DueDate != nil {
-		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
-	}
-
-	if len(task.DependsOn) > 0 {
-		parts = append(parts, fmt.Sprintf("depends: %s", strings.Join(task.DependsOn, ";")))
-	}
-
-	if task.Pinned {
-		parts = append(parts, "pinned: true")
-	}
-
-	if task.Active {
-		parts = append(parts, "active: true")
-	}
-
-	if task.Recurrence != nil {
-		parts = append(parts, fmt.Sprintf("recur: %s", formatRecurrence(task.Recurrence)))
-	}
-
-	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
-}
-
-// formatRecurrence converts a RecurrencePattern to its string representation for storage.
-func formatRecurrence(r *models.RecurrencePattern) string {
-	if r == nil {
-		return ""
-	}
-
-	// Use compact format: Nd, Nw, Nm, Ny
-	var unit string
-	switch r.Unit {
-	case models.RecurrenceDaily:
-		unit = "d"
-	case models.RecurrenceWeekly:
-		unit = "w"
-	case models.RecurrenceMonthly:
-		unit = "m"
-	case models.RecurrenceYearly:
-		unit = "y"
-	default:
-		unit = "d"
-	}
-
-	base := fmt.Sprintf("%d%s", r.Interval, unit)
-
-	// Add weekdays for weekly patterns
-	if r.Unit == models.RecurrenceWeekly && len(r.Weekdays) > 0 {
-		dayNames := []string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
-		var days []string
-		for _, d := range r.Weekdays {
-			if d >= 0 && d < 7 {
-				days = append(days, dayNames[d])
-			}
-		}
-		if len(days) > 0 {
-			return base + ":" + strings.Join(days, ",")
-		}
-	}
-
-	return base
-}
-
-// writeComments generates the comments block for a task.
-func writeComments(task *models.Task) string {
-	if len(task.Comments) == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	b.WriteString("<!-- COMMENTS -->\n")
-
-	for _, comment := range task.Comments {
-		b.WriteString(fmt.Sprintf("<!-- comment: %s -->\n", comment.CreatedAt.Format(util.DateTimeFormat)))
-		// Escape HTML comment markers to prevent parser corruption
-		escapedText := escapeCommentText(comment.Text)
-		b.WriteString(escapedText)
-		b.WriteString("\n")
-	}
-
-	b.WriteString("<!-- /COMMENTS -->\n")
-	return b.String()
-}
-
-// escapeCommentText escapes HTML comment markers in comment text
-// to prevent parser corruption when the text contains <!-- or -->.
-func escapeCommentText(text string) string {
-	text = strings.ReplaceAll(text, "<!--", "&lt;!--")
-	text = strings.ReplaceAll(text, "-->", "--&gt;")
-	return text
-}
-
-// unescapeCommentText reverses the escaping done by escapeCommentText.
-func unescapeCommentText(text string) string {
-	text = strings.ReplaceAll(text, "&lt;!--", "<!--")
-	text = strings.ReplaceAll(text, "--&gt;", "-->")
-	return text
 }
 
 // GetTasksFilePath returns the path to a project's tasks.md file.
