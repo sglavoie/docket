@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
-	"github.com/sglavoie/tt/internal/tui"
 )
 
 var taskMoveCmd = &cobra.Command{
@@ -256,58 +254,20 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 
 // selectTaskForMove finds a task by ID or presents an interactive selector.
 func selectTaskForMove(project *models.Project, args []string, action string) (*models.Task, error) {
-	if len(args) > 0 {
-		task := FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return nil, tterrors.NewTaskNotFoundError(args[0])
-		}
-		return task, nil
+	var filter TaskFilter
+	switch action {
+	case "up":
+		filter = CanMoveUpFilter(project)
+	case "down":
+		filter = CanMoveDownFilter(project)
+	case "indent":
+		filter = CanIndentFilter(project)
+	case "outdent":
+		filter = CanOutdentFilter()
+	default:
+		return nil, fmt.Errorf("unknown action: %s", action)
 	}
 
-	// Interactive selection - filter based on action
-	var candidates []*models.Task
-	for _, t := range project.Tasks {
-		switch action {
-		case "up":
-			siblings := project.GetSiblings(t)
-			for i, s := range siblings {
-				if s.ID == t.ID && i > 0 {
-					candidates = append(candidates, t)
-					break
-				}
-			}
-		case "down":
-			siblings := project.GetSiblings(t)
-			for i, s := range siblings {
-				if s.ID == t.ID && i < len(siblings)-1 {
-					candidates = append(candidates, t)
-					break
-				}
-			}
-		case "indent":
-			targetParent := project.GetTaskAbove(t)
-			if targetParent != nil {
-				if ok, _ := t.CanIndent(targetParent); ok {
-					candidates = append(candidates, t)
-				}
-			}
-		case "outdent":
-			if ok, _ := t.CanOutdent(); ok {
-				candidates = append(candidates, t)
-			}
-		}
-	}
-
-	if len(candidates) == 0 {
-		return nil, fmt.Errorf("no tasks available for this action")
-	}
-
-	items := TasksToSelectorItems(candidates)
 	prompt := fmt.Sprintf("Select task to move %s:", action)
-	selected, err := tui.RunSelector(prompt, items)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetTaskFromSelector(selected)
+	return SelectTask(project, args, filter, prompt, "no tasks available for this action")
 }

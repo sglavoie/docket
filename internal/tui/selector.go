@@ -11,15 +11,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/selector"
 )
 
-// SelectorItem represents an item that can be selected.
-type SelectorItem struct {
-	ID      string
-	Data    any
-	Columns []string
-	Headers []string // Column header names (only first item's headers are used)
-}
+// SelectorItem is an alias for selector.Item for backwards compatibility.
+type SelectorItem = selector.Item
 
 // SelectorModel is the BubbleTea model for selection.
 type SelectorModel struct {

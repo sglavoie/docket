@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
@@ -66,11 +67,11 @@ func ParseTaskTypeFlags(epic, story, bug, idea, note bool, typeFlag string) (mod
 }
 
 // TasksToSelectorItems converts tasks to selector items with standard columns.
-func TasksToSelectorItems(tasks []*models.Task) []tui.SelectorItem {
+func TasksToSelectorItems(tasks []*models.Task) []selector.Item {
 	headers := []string{"ID", "Type", "Status", "Title"}
-	items := make([]tui.SelectorItem, len(tasks))
+	items := make([]selector.Item, len(tasks))
 	for i, t := range tasks {
-		items[i] = tui.SelectorItem{
+		items[i] = selector.Item{
 			ID:      t.ID,
 			Data:    t,
 			Headers: headers,
@@ -85,9 +86,9 @@ func TasksToSelectorItems(tasks []*models.Task) []tui.SelectorItem {
 	return items
 }
 
-// GetTaskFromSelector safely extracts a Task from a SelectorItem.
+// GetTaskFromSelector safely extracts a Task from a selector.Item.
 // Returns an error if the data is not a *models.Task.
-func GetTaskFromSelector(item *tui.SelectorItem) (*models.Task, error) {
+func GetTaskFromSelector(item *selector.Item) (*models.Task, error) {
 	task, ok := item.Data.(*models.Task)
 	if !ok {
 		return nil, fmt.Errorf("internal error: expected Task, got %T", item.Data)
@@ -97,6 +98,52 @@ func GetTaskFromSelector(item *tui.SelectorItem) (*models.Task, error) {
 
 // TaskFilter is a predicate function for filtering tasks.
 type TaskFilter func(*models.Task) bool
+
+// CanMoveUpFilter returns a filter for tasks that can be moved up among siblings.
+func CanMoveUpFilter(project *models.Project) TaskFilter {
+	return func(t *models.Task) bool {
+		siblings := project.GetSiblings(t)
+		for i, s := range siblings {
+			if s.ID == t.ID && i > 0 {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// CanMoveDownFilter returns a filter for tasks that can be moved down among siblings.
+func CanMoveDownFilter(project *models.Project) TaskFilter {
+	return func(t *models.Task) bool {
+		siblings := project.GetSiblings(t)
+		for i, s := range siblings {
+			if s.ID == t.ID && i < len(siblings)-1 {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// CanIndentFilter returns a filter for tasks that can be indented.
+func CanIndentFilter(project *models.Project) TaskFilter {
+	return func(t *models.Task) bool {
+		targetParent := project.GetTaskAbove(t)
+		if targetParent == nil {
+			return false
+		}
+		ok, _ := t.CanIndent(targetParent)
+		return ok
+	}
+}
+
+// CanOutdentFilter returns a filter for tasks that can be outdented.
+func CanOutdentFilter() TaskFilter {
+	return func(t *models.Task) bool {
+		ok, _ := t.CanOutdent()
+		return ok
+	}
+}
 
 // SelectTask handles the common pattern of selecting a task from args or interactively.
 // If args contains an identifier, finds the task directly.

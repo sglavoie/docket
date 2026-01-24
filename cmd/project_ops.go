@@ -6,8 +6,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -109,9 +109,9 @@ func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config,
 	})
 }
 
-// GetProjectFromSelector safely extracts a Project from a SelectorItem.
+// GetProjectFromSelector safely extracts a Project from a selector.Item.
 // Returns an error if the data is not a *models.Project.
-func GetProjectFromSelector(item *tui.SelectorItem) (*models.Project, error) {
+func GetProjectFromSelector(item *selector.Item) (*models.Project, error) {
 	project, ok := item.Data.(*models.Project)
 	if !ok {
 		return nil, fmt.Errorf("internal error: expected Project, got %T", item.Data)
@@ -121,7 +121,7 @@ func GetProjectFromSelector(item *tui.SelectorItem) (*models.Project, error) {
 
 // ProjectsToSelectorItems converts projects to selector items.
 // If includeActive is true, includes the "Active" column.
-func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []tui.SelectorItem {
+func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []selector.Item {
 	var headers []string
 	if includeActive {
 		headers = []string{"Project", "Context", "Tasks", "Active"}
@@ -129,7 +129,7 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []t
 		headers = []string{"Project", "Context", "Tasks"}
 	}
 
-	items := make([]tui.SelectorItem, len(projects))
+	items := make([]selector.Item, len(projects))
 	for i, p := range projects {
 		columns := []string{
 			p.Name,
@@ -139,7 +139,7 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []t
 		if includeActive {
 			columns = append(columns, fmt.Sprintf("%d active", p.CountActiveTasks()))
 		}
-		items[i] = tui.SelectorItem{
+		items[i] = selector.Item{
 			ID:      p.ID,
 			Data:    p,
 			Headers: headers,

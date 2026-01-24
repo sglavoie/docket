@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
@@ -114,9 +115,9 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		}
 
 		// Build selector items
-		items := make([]tui.SelectorItem, len(candidates))
+		items := make([]selector.Item, len(candidates))
 		for i, c := range candidates {
-			items[i] = tui.SelectorItem{
+			items[i] = selector.Item{
 				ID:      c.ID,
 				Data:    c.Project,
 				Headers: []string{"Project", "Context", "Tasks"},
