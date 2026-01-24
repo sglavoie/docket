@@ -465,37 +465,37 @@ func cycleFilter[T comparable](current T, values []T) T {
 // calculateFilterCounts calculates task counts for each filter category.
 // This enables the filter bar to show how many tasks match each filter.
 func (m *ProjectTreeModel) calculateFilterCounts() {
-	m.filterCounts = make(map[string]int)
+	counts := make(map[string]int)
 	for _, task := range m.project.Tasks {
 		// Count completed tasks
 		if task.IsComplete() {
-			m.filterCounts["completed"]++
+			counts["completed"]++
 		}
 		// Count high priority tasks (priority 1-2)
 		if task.Priority <= 2 {
-			m.filterCounts["highPriority"]++
+			counts["highPriority"]++
 		}
 		// Count by type
-		m.filterCounts["type:"+string(task.Type)]++
+		counts["type:"+string(task.Type)]++
 		// Count by status
-		m.filterCounts["status:"+string(task.Status)]++
+		counts["status:"+string(task.Status)]++
 		// Count by due date category
 		if isOverdue(task) {
-			m.filterCounts["overdue"]++
+			counts["overdue"]++
 		}
 		if isDueToday(task) {
-			m.filterCounts["today"]++
+			counts["today"]++
 		}
 		if isDueThisWeek(task) {
-			m.filterCounts["thisWeek"]++
+			counts["thisWeek"]++
 		}
 		// Count by section
 		if task.Section != "" {
-			m.filterCounts["section:"+task.Section]++
+			counts["section:"+task.Section]++
 		}
 		// Count by tag
 		for _, tag := range task.Tags {
-			m.filterCounts["tag:"+tag]++
+			counts["tag:"+tag]++
 		}
 		// Count actionable tasks (ready to work on)
 		if !task.IsComplete() &&
@@ -505,16 +505,22 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			task.Section != models.SectionNext &&
 			task.Section != models.SectionWaiting &&
 			task.Section != models.SectionSomeday {
-			m.filterCounts["actionable"]++
+			counts["actionable"]++
 		}
 	}
+	
+	// Only set counts if filterBar component is initialized
+	if m.filterBar != nil {
+		m.filterBar.SetCounts(counts)
 
-	// Calculate children in other sections for each task with children
-	m.childrenInOtherSections = make(map[string]map[string]int)
-	for _, task := range m.project.Tasks {
-		if len(task.Children) > 0 {
-			m.childrenInOtherSections[task.ID] = m.countChildrenBySection(task)
+		// Calculate children in other sections for each task with children
+		childrenInOtherSections := make(map[string]map[string]int)
+		for _, task := range m.project.Tasks {
+			if len(task.Children) > 0 {
+				childrenInOtherSections[task.ID] = m.countChildrenBySection(task)
+			}
 		}
+		m.filterBar.SetChildrenInOtherSections(childrenInOtherSections)
 	}
 }
 

@@ -468,7 +468,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.filterBarEnabled = !m.projectTree.filterBarEnabled
+					m.projectTree.filterBar.Toggle()
 				}
 				return nil
 			},
@@ -800,8 +800,8 @@ func (m *AppModel) saveProjectTreeState() {
 		FilterActionable: m.projectTree.filter.Actionable,
 		SortField:        int(m.projectTree.sortField),
 		SortAscending:    m.projectTree.sortAscending,
-		SidebarEnabled:   m.projectTree.sidebarEnabled,
-		FilterBarEnabled: m.projectTree.filterBarEnabled,
+		SidebarEnabled:   m.projectTree.sidebar.IsEnabled(),
+		FilterBarEnabled: m.projectTree.filterBar.IsEnabled(),
 		ViewMode:         int(m.projectTree.viewMode),
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
@@ -841,8 +841,8 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.filter.Actionable = state.FilterActionable
 	m.projectTree.sortField = SortField(state.SortField)
 	m.projectTree.sortAscending = state.SortAscending
-	m.projectTree.sidebarEnabled = state.SidebarEnabled
-	m.projectTree.filterBarEnabled = state.FilterBarEnabled
+	m.projectTree.sidebar.SetEnabled(state.SidebarEnabled)
+	m.projectTree.filterBar.SetEnabled(state.FilterBarEnabled)
 	m.projectTree.viewMode = ViewMode(state.ViewMode)
 
 	// Restore tags - validate they still exist

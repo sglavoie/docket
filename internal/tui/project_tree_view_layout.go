@@ -91,7 +91,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			}
 		} else if m.confirmAction == ConfirmBulkStatus {
 			prompt = fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)",
-				m.bulkOp.BlockedCount, len(m.bulkOp.Tasks))
+				m.bulkOp.GetBlockedCount(), len(m.bulkOp.GetTasks()))
 		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", count)
@@ -157,7 +157,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := 7
-		if m.filterBarEnabled {
+		if m.filterBar.IsEnabled() {
 			headerOffset = 8
 		}
 		availableHeight := m.height - headerOffset - 2 // -2 for card borders
@@ -449,7 +449,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			}
 		} else if m.confirmAction == ConfirmBulkStatus {
 			prompt = fmt.Sprintf("%d have incomplete deps, complete %d? (y/n)",
-				m.bulkOp.BlockedCount, len(m.bulkOp.Tasks))
+				m.bulkOp.GetBlockedCount(), len(m.bulkOp.GetTasks()))
 		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s)? (y/n)", count)
@@ -512,7 +512,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := 7
-		if m.filterBarEnabled {
+		if m.filterBar.IsEnabled() {
 			headerOffset = 8
 		}
 		availableHeight := m.height - headerOffset - 2 // -2 for card borders
@@ -563,7 +563,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Render the card with view mode as title
 	// Main tree is focused when sidebar is not focused
 	// Use section color accent if exactly one section is filtered
-	focused := !m.sidebarFocused
+	focused := !m.sidebar.IsFocused()
 	sectionAccent := m.getSingleFilteredSectionColor()
 	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused, sectionAccent))
 	b.WriteString("\n")

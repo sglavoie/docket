@@ -15,7 +15,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	task := node.Task
 
 	// Check if this task is being quick-edited
-	if m.quickEdit.Mode && m.quickEdit.Task != nil && task.ID == m.quickEdit.Task.ID {
+	if m.quickEdit.IsActive() && m.quickEdit.GetTask() != nil && task.ID == m.quickEdit.GetTask().ID {
 		return m.renderQuickEditNode(node, maxWidth)
 	}
 
@@ -235,10 +235,12 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	if inputWidth < 20 {
 		inputWidth = 20
 	}
-	m.quickEdit.Input.Width = inputWidth
+	input := m.quickEdit.GetInput()
+	input.Width = inputWidth
+	m.quickEdit.UpdateInput(input)
 
 	// Render the input
-	inputView := m.quickEdit.Input.View()
+	inputView := m.quickEdit.GetInput().View()
 
 	// Build prefix
 	prefix := fmt.Sprintf("%s%s %s %s ", indent, typeIcon, statusIcon, idStr)
@@ -247,8 +249,8 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	editLine := prefix + inputView
 
 	// Add preview line if in full edit mode (not rename-only)
-	if !m.quickEdit.Rename && m.quickEdit.Preview != nil && m.quickEdit.Original != nil {
-		previewText := renderQuickEditPreview(m.quickEdit.Preview, m.quickEdit.Original)
+	if !m.quickEdit.IsRenameOnly() && m.quickEdit.GetPreview() != nil && m.quickEdit.GetOriginal() != nil {
+		previewText := renderQuickEditPreview(m.quickEdit.GetPreview(), m.quickEdit.GetOriginal())
 		if previewText != "" {
 			previewIndent := strings.Repeat(" ", len(indent)+2)
 			editLine += "\n" + previewIndent + MutedStyle.Render(previewText)
@@ -257,7 +259,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 
 	// Add help hint
 	helpIndent := strings.Repeat(" ", len(indent)+2)
-	if m.quickEdit.Rename {
+	if m.quickEdit.IsRenameOnly() {
 		editLine += "\n" + helpIndent + HelpStyle.Render("Enter: save · Esc: cancel")
 	} else {
 		editLine += "\n" + helpIndent + HelpStyle.Render("!N priority · #tag · -#tag · @date · /section · $status | Enter: save · Esc: cancel")

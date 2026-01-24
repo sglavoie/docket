@@ -82,7 +82,7 @@ func (m *AppModel) renderStatusBar() string {
 				}
 			}
 			// Add sidebar focus indicator if sidebar is focused
-			if m.projectTree != nil && m.projectTree.sidebarFocused {
+			if m.projectTree != nil && m.projectTree.sidebar.IsFocused() {
 				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
 			}
 		} else {

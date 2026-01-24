@@ -6,7 +6,7 @@ import (
 
 func (m *ProjectTreeModel) View() string {
 	// If sidebar is enabled, render split-pane layout
-	if m.sidebarEnabled {
+	if m.sidebar.IsEnabled() {
 		return m.renderWithSidebar()
 	}
 

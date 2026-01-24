@@ -168,33 +168,18 @@ type ProjectTreeModel struct {
 	tagInputMode bool
 	tagInput     textinput.Model
 
-	// Quick edit mode state (inline task editing)
-	quickEdit QuickEditState
+	// Components
+	quickEdit *QuickEditComponent
+	filterBar *FilterBarComponent
+	bulkOp    *BulkOperationComponent
+	sidebar   *SidebarComponent
 
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
 
-	// Sidebar state
-	sidebarEnabled           bool // Toggle sidebar on/off
-	sidebarFocused           bool // When true, sidebar has focus for scrolling
-	sidebarScroll            int  // Scroll offset for sidebar content
-	sidebarDependencyCursor  int  // Cursor position within active dependency section
-	sidebarDependencySection int  // 0 = "Blocked by", 1 = "Blocking"
-
 	// Undo context for the next save operation
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
 	pendingUndoContext string // Additional context (e.g., task title)
-
-	// Pending bulk status change (for confirmation prompts)
-	bulkOp BulkOperationState
-
-	// Filter bar state
-	filterBarEnabled bool           // Toggle filter bar visibility
-	filterCounts     map[string]int // Cached task counts per filter category
-
-	// Children in other sections cache (computed during calculateFilterCounts)
-	// Maps taskID -> sectionName -> count of descendants in that section
-	childrenInOtherSections map[string]map[string]int
 }
 
 // NewProjectTreeModel creates a new project tree model.
@@ -203,11 +188,6 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	tagInput.Placeholder = "Enter tag name..."
 	tagInput.CharLimit = 50
 	tagInput.Width = 30
-
-	quickEditInput := textinput.New()
-	quickEditInput.Placeholder = "Edit task..."
-	quickEditInput.CharLimit = 200
-	quickEditInput.Width = 60
 
 	m := &ProjectTreeModel{
 		project:       project,
@@ -228,28 +208,10 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		confirmAction: ConfirmNone,
 		selectedTasks: make(map[string]bool),
 		tagInput:      tagInput,
-		quickEdit: QuickEditState{
-			Mode:     false,
-			Rename:   false,
-			Input:    quickEditInput,
-			Task:     nil,
-			Preview:  nil,
-			Original: nil,
-		},
-		sidebarEnabled:           true, // Sidebar on by default
-		sidebarFocused:           false,
-		sidebarScroll:            0,
-		sidebarDependencyCursor:  0,
-		sidebarDependencySection: 0,
-		bulkOp: BulkOperationState{
-			Status:       "",
-			Tasks:        nil,
-			BlockedCount: 0,
-			PrevStates:   make(map[string]*models.Task),
-		},
-		filterBarEnabled:        true, // Filter bar on by default
-		filterCounts:            make(map[string]int),
-		childrenInOtherSections: make(map[string]map[string]int),
+		quickEdit:     NewQuickEditComponent(),
+		filterBar:     NewFilterBarComponent(),
+		bulkOp:        NewBulkOperationComponent(),
+		sidebar:       NewSidebarComponent(),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
@@ -268,7 +230,7 @@ func (m *ProjectTreeModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebarFocused || m.multiSelectMode || m.pendingPrefix != ""
+	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != ""
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.

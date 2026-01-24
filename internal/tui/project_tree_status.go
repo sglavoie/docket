@@ -93,10 +93,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 
 		// If there are blocked tasks, show confirmation before proceeding
 		if blockedCount > 0 && len(validTasks) > 0 {
-			m.bulkOp.Status = targetStatus
-			m.bulkOp.Tasks = validTasks
-			m.bulkOp.BlockedCount = blockedCount
-			m.bulkOp.PrevStates = prevStates
+			m.bulkOp.SetOperation(targetStatus, validTasks, blockedCount, prevStates)
 			m.confirmAction = ConfirmBulkStatus
 			m.clearSelection()
 			return true, func() tea.Msg {
@@ -195,17 +192,17 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 
 // executePendingBulkStatus applies the pending bulk status change after confirmation.
 func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
-	if len(m.bulkOp.Tasks) == 0 {
+	if len(m.bulkOp.GetTasks()) == 0 {
 		m.clearPendingBulkStatus()
 		return nil
 	}
 
 	// Capture previous states for event-based workflow triggers
-	prevStates := m.bulkOp.PrevStates
+	prevStates := m.bulkOp.GetPrevStates()
 
 	// Apply status to all pending tasks
-	for _, task := range m.bulkOp.Tasks {
-		switch m.bulkOp.Status {
+	for _, task := range m.bulkOp.GetTasks() {
+		switch m.bulkOp.GetStatus() {
 		case models.StatusDone:
 			task.Complete()
 		case models.StatusInProgress:
@@ -219,8 +216,8 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 		}
 	}
 
-	count := len(m.bulkOp.Tasks)
-	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.Status))
+	count := len(m.bulkOp.GetTasks())
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, m.bulkOp.GetStatus()))
 	m.clearSelection()
 	m.clearPendingBulkStatus()
 
@@ -229,8 +226,5 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 
 // clearPendingBulkStatus clears the pending bulk status state.
 func (m *ProjectTreeModel) clearPendingBulkStatus() {
-	m.bulkOp.Status = ""
-	m.bulkOp.Tasks = nil
-	m.bulkOp.BlockedCount = 0
-	m.bulkOp.PrevStates = nil
+	m.bulkOp.Clear()
 }

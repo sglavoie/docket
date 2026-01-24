@@ -66,9 +66,9 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 
 	// Help hint at bottom if sidebar focused
 	helpHint := ""
-	if m.sidebarFocused && m.hasDependencies(task) {
+	if m.sidebar.IsFocused() && m.hasDependencies(task) {
 		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump")
-	} else if m.sidebarFocused {
+	} else if m.sidebar.IsFocused() {
 		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
 	}
 
@@ -149,7 +149,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 	// Blocked by (tasks this depends on)
 	if len(task.DependsOn) > 0 {
 		header := "Blocked by:"
-		if m.sidebarFocused && m.sidebarDependencySection == 0 {
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
 			header = BoldStyle.Underline(true).Render(header)
 		} else {
 			header = MutedStyle.Render(header)
@@ -160,7 +160,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		for i, dep := range blockingTasks {
 			depStatus := GetStatusStyle(string(dep.Status))
 			cursor := "  "
-			if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
 				cursor = "> "
 			}
 
@@ -168,7 +168,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 				cursor, dep.ShortID, depStatus.Render(dep.Status.Icon()),
 				util.Truncate(dep.Title, innerWidth-12))
 
-			if m.sidebarFocused && m.sidebarDependencySection == 0 && i == m.sidebarDependencyCursor {
+			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
 				depLine = BoldStyle.Render(depLine)
 			}
 			lines = append(lines, depLine)
@@ -183,7 +183,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		}
 
 		header := "Blocking:"
-		if m.sidebarFocused && m.sidebarDependencySection == 1 {
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 {
 			header = BoldStyle.Underline(true).Render(header)
 		} else {
 			header = MutedStyle.Render(header)
@@ -193,7 +193,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		for i, blocked := range blockedBy {
 			blockStatus := GetStatusStyle(string(blocked.Status))
 			cursor := "  "
-			if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
 				cursor = "> "
 			}
 
@@ -201,14 +201,14 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 				cursor, blocked.ShortID, blockStatus.Render(blocked.Status.Icon()),
 				util.Truncate(blocked.Title, innerWidth-12))
 
-			if m.sidebarFocused && m.sidebarDependencySection == 1 && i == m.sidebarDependencyCursor {
+			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
 				blockLine = BoldStyle.Render(blockLine)
 			}
 			lines = append(lines, blockLine)
 		}
 	}
 
-	focused := m.sidebarFocused && m.hasDependencies(task)
+	focused := m.sidebar.IsFocused() && m.hasDependencies(task)
 	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
 }
 
@@ -248,8 +248,8 @@ func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) stri
 // renderDescriptionCard renders the description card with scroll support.
 func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) string {
 	lines := strings.Split(task.Description, "\n")
-	if m.sidebarScroll < len(lines) {
-		lines = lines[m.sidebarScroll:]
+	if m.sidebar.GetScroll() < len(lines) {
+		lines = lines[m.sidebar.GetScroll():]
 	}
 	// Limit visible lines to avoid overflow
 	maxLines := 5

@@ -36,7 +36,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle quick edit mode for inline task editing
-		if m.quickEdit.Mode {
+		if m.quickEdit.IsActive() {
 			return m.handleQuickEditMode(msg)
 		}
 
@@ -152,28 +152,27 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 		return m, nil
 
 	case "enter":
-		input := strings.TrimSpace(m.quickEdit.Input.Value())
+		input := strings.TrimSpace(m.quickEdit.GetInput().Value())
 		if input == "" {
 			m.exitQuickEditMode()
 			return m, nil
 		}
 
 		// Parse and apply the edit
-		if m.quickEdit.Rename {
+		if m.quickEdit.IsRenameOnly() {
 			// Rename-only mode: just update title, no modifier parsing
-			m.quickEdit.Task.Title = input
-			m.quickEdit.Task.UpdatedAt = time.Now()
-			m.setUndoContext("Rename Task", m.quickEdit.Task.Title)
+			m.quickEdit.GetTask().Title = input
+			m.quickEdit.GetTask().UpdatedAt = time.Now()
+			m.setUndoContext("Rename Task", m.quickEdit.GetTask().Title)
 		} else {
 			// Full quick edit mode: parse modifiers
-			result, err := parseQuickEdit(input, m.quickEdit.Task, m.project)
+			result, err := parseQuickEdit(input, m.quickEdit.GetTask(), m.project)
 			if err != nil {
 				// Keep edit mode open with error displayed
-				m.quickEdit.Preview = nil
 				return m, nil
 			}
-			applyQuickEdit(m.quickEdit.Task, result)
-			m.setUndoContext("Quick Edit", m.quickEdit.Task.Title)
+			applyQuickEdit(m.quickEdit.GetTask(), result)
+			m.setUndoContext("Quick Edit", m.quickEdit.GetTask().Title)
 		}
 
 		m.exitQuickEditMode()
@@ -182,12 +181,15 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 	default:
 		// Update the text input
 		var cmd tea.Cmd
-		m.quickEdit.Input, cmd = m.quickEdit.Input.Update(msg)
+		input := m.quickEdit.GetInput()
+		input, cmd = input.Update(msg)
+		m.quickEdit.UpdateInput(input)
 
 		// Update preview (only in full edit mode, not rename mode)
-		if !m.quickEdit.Rename {
-			input := m.quickEdit.Input.Value()
-			m.quickEdit.Preview, _ = parseQuickEditForPreview(input, m.quickEdit.Task, m.project)
+		if !m.quickEdit.IsRenameOnly() {
+			inputValue := m.quickEdit.GetInput().Value()
+			preview, _ := parseQuickEditForPreview(inputValue, m.quickEdit.GetTask(), m.project)
+			m.quickEdit.SetPreview(preview)
 		}
 
 		return m, cmd
@@ -196,31 +198,12 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 
 // enterQuickEditMode starts inline editing for the current task.
 func (m *ProjectTreeModel) enterQuickEditMode(task *models.Task, renameOnly bool) {
-	m.quickEdit.Mode = true
-	m.quickEdit.Rename = renameOnly
-	m.quickEdit.Task = task
-	m.quickEdit.Original = snapshotTaskForEdit(task)
-
-	// Initialize text input with current title
-	m.quickEdit.Input.SetValue(task.Title)
-	m.quickEdit.Input.CursorEnd()
-	m.quickEdit.Input.Focus()
-
-	// Initialize preview
-	if !renameOnly {
-		m.quickEdit.Preview, _ = parseQuickEditForPreview(task.Title, task, m.project)
-	}
+	m.quickEdit.Enter(task, renameOnly)
 }
 
 // exitQuickEditMode cleans up quick edit state.
 func (m *ProjectTreeModel) exitQuickEditMode() {
-	m.quickEdit.Mode = false
-	m.quickEdit.Rename = false
-	m.quickEdit.Task = nil
-	m.quickEdit.Preview = nil
-	m.quickEdit.Original = nil
-	m.quickEdit.Input.Blur()
-	m.quickEdit.Input.SetValue("")
+	m.quickEdit.Exit()
 }
 
 // handlePrefixKey handles the second key in a prefix key sequence.
@@ -525,7 +508,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	}
 
 	// Sidebar keys have priority when sidebar is focused
-	if m.sidebarFocused {
+	if m.sidebar.IsFocused() {
 		if handled, cmd := m.handleSidebarKeys(key, selectedTask); handled {
 			return m, cmd
 		}

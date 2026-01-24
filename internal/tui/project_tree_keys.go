@@ -16,7 +16,7 @@ import (
 func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 	switch key {
 	case "F":
-		m.filterBarEnabled = !m.filterBarEnabled
+		m.filterBar.SetEnabled(!m.filterBar.IsEnabled())
 		return true, nil
 	case "f1":
 		// F1 now switches to Completed view (since completed tasks have their own view)

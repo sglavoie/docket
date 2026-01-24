@@ -84,7 +84,12 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 func (m *ProjectTreeModel) renderFilterBar() string {
 	var result strings.Builder
 
-	if !m.filterBarEnabled {
+	// If filterBar component is not initialized, return empty string
+	if m.filterBar == nil {
+		return ""
+	}
+
+	if !m.filterBar.IsEnabled() {
 		// When filter bar is disabled, just show view mode indicator
 		result.WriteString(m.renderViewModeIndicator())
 		result.WriteString("\n")
@@ -95,12 +100,12 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	var badges []string
 
 	// F1: Completed view (switch to Completed view)
-	count := m.filterCounts["completed"]
+	count := m.filterBar.GetCounts()["completed"]
 	active := m.viewMode == ViewModeCompleted
 	badges = append(badges, m.renderFilterBadge("F1", "Done", count, active))
 
 	// F2: High Priority
-	count = m.filterCounts["highPriority"]
+	count = m.filterBar.GetCounts()["highPriority"]
 	active = m.filter.Priority == 1
 	badges = append(badges, m.renderFilterBadge("F2", "!Hi", count, active))
 
@@ -108,7 +113,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	typeName := "Type"
 	if m.filter.Type != "" {
 		typeName = string(m.filter.Type)
-		count = m.filterCounts["type:"+string(m.filter.Type)]
+		count = m.filterBar.GetCounts()["type:"+string(m.filter.Type)]
 	} else {
 		count = len(m.project.Tasks)
 	}
@@ -119,7 +124,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	statusName := "Status"
 	if m.filter.Status != "" {
 		statusName = string(m.filter.Status)
-		count = m.filterCounts["status:"+string(m.filter.Status)]
+		count = m.filterBar.GetCounts()["status:"+string(m.filter.Status)]
 	} else {
 		count = len(m.project.Tasks)
 	}
@@ -147,13 +152,13 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	switch m.filter.DueDate {
 	case DueDateOverdue:
 		dueName = "Ovrd"
-		count = m.filterCounts["overdue"]
+		count = m.filterBar.GetCounts()["overdue"]
 	case DueDateToday:
 		dueName = "Today"
-		count = m.filterCounts["today"]
+		count = m.filterBar.GetCounts()["today"]
 	case DueDateThisWeek:
 		dueName = "Week"
-		count = m.filterCounts["thisWeek"]
+		count = m.filterBar.GetCounts()["thisWeek"]
 	default:
 		count = 0
 	}
@@ -161,7 +166,7 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
 
 	// F8: Actionable (tasks ready to work on)
-	count = m.filterCounts["actionable"]
+	count = m.filterBar.GetCounts()["actionable"]
 	active = m.filter.Actionable
 	badges = append(badges, m.renderFilterBadge("F8", "Ready", count, active))
 
@@ -198,7 +203,7 @@ func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task)
 		return ""
 	}
 
-	counts, ok := m.childrenInOtherSections[task.ID]
+	counts, ok := m.filterBar.GetChildrenInOtherSections()[task.ID]
 	if !ok || len(counts) == 0 {
 		return ""
 	}
