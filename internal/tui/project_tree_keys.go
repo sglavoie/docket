@@ -255,7 +255,7 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return ShowQuickCaptureMsg{Project: m.project}
 		}
 
-	case "ctrl+i":
+	case "I":
 		return true, func() tea.Msg {
 			return ShowBulkCaptureMsg{Project: m.project}
 		}

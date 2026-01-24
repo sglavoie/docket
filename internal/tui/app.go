@@ -579,7 +579,7 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "bulk capture",
 			Description: "Bulk capture multiple tasks",
-			Shortcut:    "ctrl+i",
+			Shortcut:    "I",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"multi capture", "batch add"},

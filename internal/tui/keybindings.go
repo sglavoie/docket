@@ -226,7 +226,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Task Operations
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+I", Description: "Bulk capture", Category: "Task Operations", Views: views},
+		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "O", Description: "Add new note", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
