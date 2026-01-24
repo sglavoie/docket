@@ -3,6 +3,8 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/viper"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -12,6 +14,10 @@ func TestProjectArchive(t *testing.T) {
 	t.Run("archives project successfully", func(t *testing.T) {
 		deps := testutil.SetupTestDeps(t)
 		defer deps.Cleanup()
+
+		// Configure viper to use test config path
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
 
 		// Create and add project to config
 		project := testutil.NewTestProject("Test Project")
@@ -46,6 +52,9 @@ func TestProjectArchive(t *testing.T) {
 		deps := testutil.SetupTestDeps(t)
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
 		project := testutil.NewTestProject("Archived Project")
 		project.Archived = true
 		deps.Config.Projects = []*models.Project{project}
@@ -64,6 +73,9 @@ func TestProjectArchive(t *testing.T) {
 		deps := testutil.SetupTestDeps(t)
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
 		manager := config.NewManager(deps.ConfigPath)
 		err := manager.Save(deps.Config)
 		testutil.AssertNoError(t, err)
@@ -79,6 +91,9 @@ func TestProjectUnarchive(t *testing.T) {
 	t.Run("unarchives project successfully", func(t *testing.T) {
 		deps := testutil.SetupTestDeps(t)
 		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
 
 		// Create archived project
 		project := testutil.NewTestProject("Archived Project")

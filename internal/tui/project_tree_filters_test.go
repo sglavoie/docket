@@ -479,3 +479,587 @@ func TestCollapseWithViewModeActive(t *testing.T) {
 		t.Errorf("Expected 1 visible node after collapse, got %d", len(visible))
 	}
 }
+
+func TestFormatDueDate(t *testing.T) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	yesterday := today.AddDate(0, 0, -1)
+	tomorrow := today.AddDate(0, 0, 1)
+	nextWeek := today.AddDate(0, 0, 7)
+	nextYear := today.AddDate(1, 0, 0)
+
+	tests := []struct {
+		name        string
+		task        *models.Task
+		shouldEmpty bool
+		contains    string
+	}{
+		{
+			name: "no due date returns empty",
+			task: &models.Task{
+				DueDate: nil,
+				Status:  models.StatusTodo,
+			},
+			shouldEmpty: true,
+		},
+		{
+			name: "completed task returns empty",
+			task: &models.Task{
+				DueDate: &today,
+				Status:  models.StatusDone,
+			},
+			shouldEmpty: true,
+		},
+		{
+			name: "cancelled task returns empty",
+			task: &models.Task{
+				DueDate: &today,
+				Status:  models.StatusCancelled,
+			},
+			shouldEmpty: true,
+		},
+		{
+			name: "due today contains Today",
+			task: &models.Task{
+				DueDate: &today,
+				Status:  models.StatusTodo,
+			},
+			contains: "Today",
+		},
+		{
+			name: "due tomorrow contains Tomorrow",
+			task: &models.Task{
+				DueDate: &tomorrow,
+				Status:  models.StatusTodo,
+			},
+			contains: "Tomorrow",
+		},
+		{
+			name: "overdue shows date",
+			task: &models.Task{
+				DueDate: &yesterday,
+				Status:  models.StatusTodo,
+			},
+			contains: yesterday.Format("Jan 2"),
+		},
+		{
+			name: "next week shows date",
+			task: &models.Task{
+				DueDate: &nextWeek,
+				Status:  models.StatusInProgress,
+			},
+			contains: nextWeek.Format("Jan 2"),
+		},
+		{
+			name: "next year includes year",
+			task: &models.Task{
+				DueDate: &nextYear,
+				Status:  models.StatusTodo,
+			},
+			contains: nextYear.Format("'06"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatDueDate(tt.task)
+			if tt.shouldEmpty {
+				if result != "" {
+					t.Errorf("formatDueDate() = %q, expected empty", result)
+				}
+				return
+			}
+			if result == "" {
+				t.Errorf("formatDueDate() returned empty, expected to contain %q", tt.contains)
+			}
+		})
+	}
+}
+
+func TestGetHiddenSectionsForViewMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		viewMode ViewMode
+		expected []string
+	}{
+		{
+			name:     "active mode hides special sections",
+			viewMode: ViewModeActive,
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday},
+		},
+		{
+			name:     "next mode hides other sections",
+			viewMode: ViewModeNext,
+			expected: []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, "Active"},
+		},
+		{
+			name:     "inbox mode",
+			viewMode: ViewModeInbox,
+			expected: []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, "Active"},
+		},
+		{
+			name:     "waiting mode",
+			viewMode: ViewModeWaiting,
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, "Active"},
+		},
+		{
+			name:     "someday mode",
+			viewMode: ViewModeSomeday,
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, "Active"},
+		},
+		{
+			name:     "completed mode shows all",
+			viewMode: ViewModeCompleted,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &ProjectTreeModel{viewMode: tt.viewMode}
+			result := m.getHiddenSectionsForViewMode()
+
+			if tt.expected == nil {
+				if result != nil {
+					t.Errorf("getHiddenSectionsForViewMode() = %v, expected nil", result)
+				}
+				return
+			}
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("getHiddenSectionsForViewMode() returned %d sections, expected %d", len(result), len(tt.expected))
+				return
+			}
+
+			// Check all expected sections are present
+			expectedMap := make(map[string]bool)
+			for _, s := range tt.expected {
+				expectedMap[s] = true
+			}
+
+			for _, s := range result {
+				if !expectedMap[s] {
+					t.Errorf("getHiddenSectionsForViewMode() contains unexpected section %q", s)
+				}
+			}
+		})
+	}
+}
+
+func TestCountChildrenBySection(t *testing.T) {
+	// Create test tasks
+	parentTask := &models.Task{
+		ID:       "parent",
+		Section:  "Active",
+		Type:     models.TaskTypeEpic,
+		Children: []*models.Task{},
+	}
+
+	child1 := &models.Task{
+		ID:       "child1",
+		Section:  models.SectionNext,
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	child2 := &models.Task{
+		ID:       "child2",
+		Section:  models.SectionInbox,
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	child3 := &models.Task{
+		ID:       "child3",
+		Section:  models.SectionNext,
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	grandchild := &models.Task{
+		ID:       "grandchild",
+		Section:  models.SectionWaiting,
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	note := &models.Task{
+		ID:       "note",
+		Section:  models.SectionInbox,
+		Type:     models.TaskTypeNote, // Notes should be excluded
+		Children: []*models.Task{},
+	}
+
+	childEmptySection := &models.Task{
+		ID:       "empty-section",
+		Section:  "", // Empty section should be normalized to "Active"
+		Type:     models.TaskTypeTask,
+		Children: []*models.Task{},
+	}
+
+	parentTask.Children = []*models.Task{child1, child2, child3, note, childEmptySection}
+	child1.Children = []*models.Task{grandchild}
+
+	m := &ProjectTreeModel{}
+
+	tests := []struct {
+		name     string
+		task     *models.Task
+		expected map[string]int
+	}{
+		{
+			name: "count all children by section",
+			task: parentTask,
+			expected: map[string]int{
+				models.SectionNext:    2, // child1 and child3
+				models.SectionInbox:   1, // child2 (note is excluded)
+				models.SectionWaiting: 1, // grandchild
+				"Active":              1, // childEmptySection (empty normalized to Active)
+			},
+		},
+		{
+			name: "task with single child in one section",
+			task: child1,
+			expected: map[string]int{
+				models.SectionWaiting: 1,
+			},
+		},
+		{
+			name:     "task with no children returns empty",
+			task:     child2,
+			expected: map[string]int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := m.countChildrenBySection(tt.task)
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("countChildrenBySection() returned %d sections, expected %d. Got: %v, Expected: %v",
+					len(result), len(tt.expected), result, tt.expected)
+				return
+			}
+
+			for section, expectedCount := range tt.expected {
+				if result[section] != expectedCount {
+					t.Errorf("countChildrenBySection() section %q = %d, expected %d",
+						section, result[section], expectedCount)
+				}
+			}
+		})
+	}
+}
+
+func TestGetAllTags(t *testing.T) {
+	project := &models.Project{
+		Tasks: []*models.Task{
+			{
+				ID:   "task1",
+				Tags: []string{"backend", "urgent"},
+			},
+			{
+				ID:   "task2",
+				Tags: []string{"frontend", "urgent"},
+			},
+			{
+				ID:   "task3",
+				Tags: []string{"backend"},
+			},
+			{
+				ID:   "task4",
+				Tags: []string{},
+			},
+		},
+	}
+
+	m := &ProjectTreeModel{project: project}
+	tags := m.getAllTags()
+
+	// Should get unique sorted tags
+	expected := []string{"backend", "frontend", "urgent"}
+
+	if len(tags) != len(expected) {
+		t.Errorf("getAllTags() returned %d tags, expected %d", len(tags), len(expected))
+		return
+	}
+
+	for i, tag := range expected {
+		if tags[i] != tag {
+			t.Errorf("getAllTags()[%d] = %q, expected %q", i, tags[i], tag)
+		}
+	}
+}
+
+func TestGetAllTagsEmpty(t *testing.T) {
+	project := &models.Project{
+		Tasks: []*models.Task{
+			{ID: "task1", Tags: []string{}},
+			{ID: "task2", Tags: []string{}},
+		},
+	}
+
+	m := &ProjectTreeModel{project: project}
+	tags := m.getAllTags()
+
+	if len(tags) != 0 {
+		t.Errorf("getAllTags() returned %d tags, expected 0", len(tags))
+	}
+}
+
+func TestMatchesSearch(t *testing.T) {
+	task := &models.Task{
+		Title:       "Build authentication system",
+		Description: "Implement OAuth2 login flow",
+		Tags:        []string{"backend", "security"},
+	}
+
+	tests := []struct {
+		name  string
+		query string
+		want  bool
+	}{
+		{
+			name:  "empty query matches",
+			query: "",
+			want:  true,
+		},
+		{
+			name:  "matches title",
+			query: "authentication",
+			want:  true,
+		},
+		{
+			name:  "matches title partial",
+			query: "auth",
+			want:  true,
+		},
+		{
+			name:  "matches title case insensitive",
+			query: "BUILD",
+			want:  true,
+		},
+		{
+			name:  "matches description",
+			query: "OAuth2",
+			want:  true,
+		},
+		{
+			name:  "matches tag",
+			query: "backend",
+			want:  true,
+		},
+		{
+			name:  "matches tag partial",
+			query: "back",
+			want:  true,
+		},
+		{
+			name:  "no match returns false",
+			query: "xyzabc",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &ProjectTreeModel{}
+			m.InitSearchInput("", 100, 40)
+			m.SetSearchQuery(tt.query)
+			result := m.matchesSearch(task)
+			if result != tt.want {
+				t.Errorf("matchesSearch() = %v, want %v for query %q", result, tt.want, tt.query)
+			}
+		})
+	}
+}
+
+func TestHasMatchingDescendant(t *testing.T) {
+	// Create hierarchy: parent -> child -> grandchild
+	grandchild := &models.Task{
+		ID:          "grandchild",
+		Title:       "Implement authentication",
+		Description: "",
+		Tags:        []string{},
+		Children:    []*models.Task{},
+	}
+
+	child := &models.Task{
+		ID:          "child",
+		Title:       "Build feature",
+		Description: "",
+		Tags:        []string{},
+		Children:    []*models.Task{grandchild},
+	}
+
+	parent := &models.Task{
+		ID:          "parent",
+		Title:       "Epic task",
+		Description: "",
+		Tags:        []string{},
+		Children:    []*models.Task{child},
+	}
+
+	tests := []struct {
+		name  string
+		task  *models.Task
+		query string
+		want  bool
+	}{
+		{
+			name:  "direct child matches",
+			task:  parent,
+			query: "feature",
+			want:  true,
+		},
+		{
+			name:  "grandchild matches",
+			task:  parent,
+			query: "authentication",
+			want:  true,
+		},
+		{
+			name:  "no descendant matches",
+			task:  parent,
+			query: "xyzabc",
+			want:  false,
+		},
+		{
+			name:  "task with no children",
+			task:  grandchild,
+			query: "xyzabc",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &ProjectTreeModel{}
+			m.InitSearchInput("", 100, 40)
+			m.SetSearchQuery(tt.query)
+			result := m.hasMatchingDescendant(tt.task)
+			if result != tt.want {
+				t.Errorf("hasMatchingDescendant() = %v, want %v for query %q", result, tt.want, tt.query)
+			}
+		})
+	}
+}
+
+func TestGetVisibleSiblings(t *testing.T) {
+	// Create a project with siblings
+	parent := &models.Task{
+		ID:    "parent",
+		Title: "Parent",
+		Type:  models.TaskTypeEpic,
+	}
+
+	child1 := &models.Task{
+		ID:       "child1",
+		Title:    "First Child",
+		Type:     models.TaskTypeTask,
+		Section:  "",
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+
+	child2 := &models.Task{
+		ID:       "child2",
+		Title:    "Second Child",
+		Type:     models.TaskTypeTask,
+		Section:  models.SectionInbox, // Different section
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+
+	child3 := &models.Task{
+		ID:       "child3",
+		Title:    "Third Child",
+		Type:     models.TaskTypeTask,
+		Section:  "",
+		ParentID: &parent.ID,
+		Parent:   parent,
+	}
+
+	parent.Children = []*models.Task{child1, child2, child3}
+
+	project := &models.Project{
+		Tasks: []*models.Task{parent, child1, child2, child3},
+	}
+
+	// Test in Active view mode (hides Inbox)
+	m := &ProjectTreeModel{
+		project:  project,
+		viewMode: ViewModeActive,
+	}
+	m.buildTree()
+
+	siblings := m.getVisibleSiblings(child1)
+
+	// child2 is in Inbox section, so should not be visible in Active mode
+	// Only child1 and child3 should be visible
+	if len(siblings) != 2 {
+		t.Errorf("getVisibleSiblings() returned %d siblings, expected 2", len(siblings))
+	}
+
+	// Verify correct siblings
+	foundChild1 := false
+	foundChild3 := false
+	for _, sibling := range siblings {
+		if sibling.ID == "child1" {
+			foundChild1 = true
+		}
+		if sibling.ID == "child3" {
+			foundChild3 = true
+		}
+	}
+
+	if !foundChild1 || !foundChild3 {
+		t.Errorf("getVisibleSiblings() did not return expected siblings")
+	}
+}
+
+func TestFindVisibleSiblingIndex(t *testing.T) {
+	child1 := &models.Task{ID: "child1", Title: "First"}
+	child2 := &models.Task{ID: "child2", Title: "Second"}
+	child3 := &models.Task{ID: "child3", Title: "Third"}
+
+	siblings := []*models.Task{child1, child2, child3}
+
+	m := &ProjectTreeModel{}
+
+	tests := []struct {
+		name     string
+		task     *models.Task
+		expected int
+	}{
+		{
+			name:     "first sibling",
+			task:     child1,
+			expected: 0,
+		},
+		{
+			name:     "middle sibling",
+			task:     child2,
+			expected: 1,
+		},
+		{
+			name:     "last sibling",
+			task:     child3,
+			expected: 2,
+		},
+		{
+			name:     "not in siblings",
+			task:     &models.Task{ID: "other", Title: "Other"},
+			expected: -1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := m.findVisibleSiblingIndex(tt.task, siblings)
+			if result != tt.expected {
+				t.Errorf("findVisibleSiblingIndex() = %d, expected %d", result, tt.expected)
+			}
+		})
+	}
+}

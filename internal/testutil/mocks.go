@@ -162,8 +162,34 @@ func (m *MockRepository) Load(project *models.Project) error {
 		return m.LoadError
 	}
 	if stored, ok := m.Projects[project.ID]; ok {
-		project.Tasks = stored.Tasks
+		// Deep copy to avoid shared references
 		project.NextShortID = stored.NextShortID
+		project.Sections = append([]string{}, stored.Sections...)
+		project.SectionColors = make(map[string]string)
+		for k, v := range stored.SectionColors {
+			project.SectionColors[k] = v
+		}
+
+		// Deep copy tasks
+		project.Tasks = make([]*models.Task, len(stored.Tasks))
+		for i, task := range stored.Tasks {
+			taskCopy := *task
+			// Deep copy slices
+			if task.Tags != nil {
+				taskCopy.Tags = append([]string{}, task.Tags...)
+			}
+			if task.DependsOn != nil {
+				taskCopy.DependsOn = append([]string{}, task.DependsOn...)
+			}
+			if task.Comments != nil {
+				taskCopy.Comments = make([]*models.Comment, len(task.Comments))
+				for j, comment := range task.Comments {
+					commentCopy := *comment
+					taskCopy.Comments[j] = &commentCopy
+				}
+			}
+			project.Tasks[i] = &taskCopy
+		}
 	}
 	return nil
 }
@@ -172,7 +198,41 @@ func (m *MockRepository) Save(project *models.Project) error {
 	if m.SaveError != nil {
 		return m.SaveError
 	}
-	m.Projects[project.ID] = project
+	// Deep copy the project to avoid test interference
+	savedProject := &models.Project{
+		ID:            project.ID,
+		Name:          project.Name,
+		Path:          project.Path,
+		NextShortID:   project.NextShortID,
+		Sections:      append([]string{}, project.Sections...),
+		SectionColors: make(map[string]string),
+		Tasks:         make([]*models.Task, len(project.Tasks)),
+	}
+
+	// Deep copy tasks
+	for i, task := range project.Tasks {
+		taskCopy := *task // Copy the struct
+		// Deep copy slices and maps
+		if task.Tags != nil {
+			taskCopy.Tags = append([]string{}, task.Tags...)
+		}
+		if task.DependsOn != nil {
+			taskCopy.DependsOn = append([]string{}, task.DependsOn...)
+		}
+		if task.Comments != nil {
+			taskCopy.Comments = make([]*models.Comment, len(task.Comments))
+			for j, comment := range task.Comments {
+				commentCopy := *comment
+				taskCopy.Comments[j] = &commentCopy
+			}
+		}
+		savedProject.Tasks[i] = &taskCopy
+	}
+
+	for k, v := range project.SectionColors {
+		savedProject.SectionColors[k] = v
+	}
+	m.Projects[project.ID] = savedProject
 	return nil
 }
 

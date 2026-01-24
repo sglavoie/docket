@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -40,22 +39,45 @@ func init() {
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	// Load config to get editor preference
+	cfg, _, err := LoadConfig()
 	if err != nil {
 		return err
 	}
 
-	task, err := SelectTask(project, args,
-		func(t *models.Task) bool { return true },
-		"Select task to edit:", "no tasks available")
-	if err != nil {
-		return err
+	// Handle interactive selection if no ID provided
+	var taskID string
+	if len(args) > 0 {
+		taskID = args[0]
+	} else {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+
+		task, err := SelectTask(project, args,
+			func(t *models.Task) bool { return true },
+			"Select task to edit:", "no tasks available")
+		if err != nil {
+			return err
+		}
+		taskID = task.ID
 	}
 
 	// Determine editor
 	editor := editEditor
 	if editor == "" {
 		editor = cfg.Editor
+	}
+
+	// We need to load the task first to build edit content
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	task := FindTaskByIdentifier(project, taskID)
+	if task == nil {
+		return fmt.Errorf("task not found: %s", taskID)
 	}
 
 	// Build content for editing
@@ -78,20 +100,21 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Update task
-	task.Title = newTitle
-	task.Description = newDesc
-	task.UpdatedAt = time.Now()
+	// Use WithTaskUpdate to apply changes
+	updatedTask, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+		t.Title = newTitle
+		t.Description = newDesc
+		return nil
+	})
 
-	// Save with workflow rules evaluation
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Updated %s #%d: %s\n",
-		task.Type.HeadingPrefix(),
-		task.ShortID,
-		task.Title)
+		updatedTask.Type.HeadingPrefix(),
+		updatedTask.ShortID,
+		updatedTask.Title)
 
 	return nil
 }

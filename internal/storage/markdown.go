@@ -38,12 +38,26 @@ type ProjectLoadResult struct {
 
 // LoadProject loads tasks from a project's tasks.md file.
 func LoadProject(project *models.Project) error {
+	// If using a non-filesystem repository (e.g., mock), delegate to it
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return DefaultRepository.Load(project)
+	}
+	// Otherwise do the actual file loading
 	_, err := LoadProjectWithWarnings(project)
 	return err
 }
 
 // LoadProjectWithWarnings loads tasks from a project's tasks.md file and returns any warnings.
 func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error) {
+	// If using a non-filesystem repository (e.g., mock), delegate to it
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		if err := DefaultRepository.Load(project); err != nil {
+			return nil, err
+		}
+		return &ProjectLoadResult{}, nil
+	}
+
+	// Otherwise do the actual file loading
 	tasksPath := filepath.Join(project.Path, tasksFileName)
 
 	content, err := os.ReadFile(tasksPath)
@@ -84,6 +98,11 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 
 // SaveProject saves a project's tasks to its tasks.md file.
 func SaveProject(project *models.Project) error {
+	// If using a non-filesystem repository (e.g., mock), delegate to it
+	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
+		return DefaultRepository.Save(project)
+	}
+	// Otherwise do the actual file saving
 	if err := os.MkdirAll(project.Path, 0755); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}

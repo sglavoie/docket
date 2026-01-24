@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -111,20 +110,18 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 }
 
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	var task *models.Task
-
+	// Handle interactive selection if no ID provided
+	var taskID string
 	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return tterrors.NewTaskNotFoundError(args[0])
-		}
+		taskID = args[0]
 	} else {
-		// Interactive selection - filter based on action
+		// Load project for interactive selection
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+
+		// Filter candidates based on action
 		var candidates []*models.Task
 		for _, t := range project.Tasks {
 			switch action {
@@ -150,44 +147,48 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 			return err
 		}
 
-		task, err = GetTaskFromSelector(selected)
+		task, err := GetTaskFromSelector(selected)
 		if err != nil {
 			return err
 		}
+		taskID = task.ID
 	}
 
-	// Block completion if task has incomplete dependencies
-	if action == "complete" {
-		if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
-			msg := fmt.Sprintf("cannot complete task #%d: has %d incomplete dependencies:\n",
-				task.ShortID, len(incompleteDeps))
-			for _, dep := range incompleteDeps {
-				msg += fmt.Sprintf("  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+	// Track if we generated recurring instances
+	var generated int
+
+	// Use WithTaskUpdateInProject since we need project context
+	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+		// Block completion if task has incomplete dependencies
+		if action == "complete" {
+			if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+				msg := fmt.Sprintf("cannot complete task #%d: has %d incomplete dependencies:\n",
+					task.ShortID, len(incompleteDeps))
+				for _, dep := range incompleteDeps {
+					msg += fmt.Sprintf("  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+				}
+				return errors.New(msg)
 			}
-			return errors.New(msg)
 		}
-	}
 
-	// Capture task states before changes for event-based workflow triggers
-	prevStates := CaptureTaskStates(project.Tasks)
+		// Update status
+		update(task)
 
-	// Update status
-	update(task)
+		// Check for auto-unblocking (when task is completed/cancelled, its dependents may unblock)
+		if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+			project.CheckAndAutoUnblock()
+		}
 
-	// Check for auto-unblocking (when task is completed/cancelled, its dependents may unblock)
-	if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
-		project.CheckAndAutoUnblock()
-	}
+		// Generate recurring task instances for completed recurring tasks
+		if action == "complete" {
+			generated = project.GenerateRecurringInstances()
+		}
 
-	// Generate recurring task instances for completed recurring tasks
-	generated := 0
-	if action == "complete" {
-		generated = project.GenerateRecurringInstances()
-	}
+		return nil
+	})
 
-	// Save with workflow rules evaluation (with event trigger support)
-	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("%s #%d: %s -> %s\n",

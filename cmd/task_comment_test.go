@@ -3,6 +3,9 @@ package cmd
 import (
 	"testing"
 
+	"github.com/spf13/viper"
+
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
@@ -13,6 +16,13 @@ func TestTaskCommentAdd(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -22,7 +32,7 @@ func TestTaskCommentAdd(t *testing.T) {
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project
 
-		err := runTaskCommentAdd(nil, []string{"1", "This", "is", "a", "comment"})
+		err = runTaskCommentAdd(nil, []string{"1", "This", "is", "a", "comment"})
 		testutil.AssertNoError(t, err)
 
 		// Verify comment was added
@@ -45,6 +55,13 @@ func TestTaskCommentAdd(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -53,7 +70,7 @@ func TestTaskCommentAdd(t *testing.T) {
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project
 
-		err := runTaskCommentAdd(nil, []string{"1", ""})
+		err = runTaskCommentAdd(nil, []string{"1", ""})
 		if err == nil {
 			t.Error("runTaskCommentAdd() should error for empty comment")
 		}
@@ -79,18 +96,26 @@ func TestTaskCommentRemove(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
 		// Add task with comments
-		task := testutil.NewTestTask("Task with comments", models.TaskTypeTask)
+		// Use project's first task (epic from NewTestProjectWithTasks)
+		task := project.Tasks[0]
 		task.AddComment("First comment")
 		task.AddComment("Second comment")
-		project.Tasks = append(project.Tasks, task)
-		deps.Repository.Projects[project.ID] = project
+		err = deps.Repository.Save(project)
+		testutil.AssertNoError(t, err)
 
-		err := runTaskCommentRemove(nil, []string{"1", "0"})
+		err = runTaskCommentRemove(nil, []string{"1", "0"})
 		testutil.AssertNoError(t, err)
 
 		// Verify first comment was removed
@@ -108,6 +133,13 @@ func TestTaskCommentRemove(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -124,7 +156,7 @@ func TestTaskCommentRemove(t *testing.T) {
 		commentClearFlag = true
 		defer func() { commentClearFlag = false }()
 
-		err := runTaskCommentRemove(nil, []string{"1"})
+		err = runTaskCommentRemove(nil, []string{"1"})
 		testutil.AssertNoError(t, err)
 
 		// Verify all comments were removed
@@ -139,6 +171,13 @@ func TestTaskCommentRemove(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -148,7 +187,7 @@ func TestTaskCommentRemove(t *testing.T) {
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project
 
-		err := runTaskCommentRemove(nil, []string{"1", "999"})
+		err = runTaskCommentRemove(nil, []string{"1", "999"})
 		if err == nil {
 			t.Error("runTaskCommentRemove() should error for invalid index")
 		}
@@ -160,6 +199,13 @@ func TestTaskCommentEdit(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -170,7 +216,7 @@ func TestTaskCommentEdit(t *testing.T) {
 		deps.Repository.Projects[project.ID] = project
 
 		// Test out of range index
-		err := runTaskCommentEdit(nil, []string{"1", "999"})
+		err = runTaskCommentEdit(nil, []string{"1", "999"})
 		if err == nil {
 			t.Error("runTaskCommentEdit() should error for out of range index")
 		}
@@ -200,6 +246,13 @@ func TestTaskCommentEdit(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
 		oldStorageRepo := storage.DefaultRepository
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
@@ -208,7 +261,7 @@ func TestTaskCommentEdit(t *testing.T) {
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project
 
-		err := runTaskCommentEdit(nil, []string{"1", "abc"})
+		err = runTaskCommentEdit(nil, []string{"1", "abc"})
 		if err == nil {
 			t.Error("runTaskCommentEdit() should error for non-numeric index")
 		}

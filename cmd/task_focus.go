@@ -39,24 +39,33 @@ func init() {
 }
 
 func runTaskFocus(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	// Handle interactive selection if no ID provided
+	var taskID string
+	if len(args) > 0 {
+		taskID = args[0]
+	} else {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+
+		task, err := SelectTask(project, args,
+			func(t *models.Task) bool { return t.Status.IsActive() },
+			"Select task to toggle focus:", "no active tasks available")
+		if err != nil {
+			return err
+		}
+		taskID = task.ID
 	}
 
-	task, err := SelectTask(project, args,
-		func(t *models.Task) bool { return t.Status.IsActive() },
-		"Select task to toggle focus:", "no active tasks available")
+	// Use WithTaskUpdate to toggle focus
+	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+		t.ToggleActive()
+		return nil
+	})
+
 	if err != nil {
 		return err
-	}
-
-	// Toggle active flag
-	task.ToggleActive()
-
-	// Save project
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
 	}
 
 	if task.Active {
@@ -69,31 +78,42 @@ func runTaskFocus(cmd *cobra.Command, args []string) error {
 }
 
 func runTaskUnfocus(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	// Handle interactive selection if no ID provided
+	var taskID string
+	if len(args) > 0 {
+		taskID = args[0]
+	} else {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+
+		task, err := SelectTask(project, args,
+			func(t *models.Task) bool { return t.Active && t.Status.IsActive() },
+			"Select task to remove from focus:", "no tasks in focus")
+		if err != nil {
+			return err
+		}
+		taskID = task.ID
 	}
 
-	task, err := SelectTask(project, args,
-		func(t *models.Task) bool { return t.Active && t.Status.IsActive() },
-		"Select task to remove from focus:", "no tasks in focus")
+	// Use WithTaskUpdate to remove focus
+	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+		if !t.Active {
+			fmt.Printf("Task #%d is not in focus\n", t.ShortID)
+			return nil
+		}
+		t.Deactivate()
+		return nil
+	})
+
 	if err != nil {
 		return err
 	}
 
 	if !task.Active {
-		fmt.Printf("Task #%d is not in focus\n", task.ShortID)
-		return nil
+		fmt.Printf("Removed #%d from focus: %s\n", task.ShortID, task.Title)
 	}
 
-	// Remove active flag
-	task.Deactivate()
-
-	// Save project
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	fmt.Printf("Removed #%d from focus: %s\n", task.ShortID, task.Title)
 	return nil
 }

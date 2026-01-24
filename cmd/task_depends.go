@@ -41,74 +41,91 @@ func init() {
 }
 
 func runTaskDepends(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	taskID := args[0]
 
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
+	// If no flags provided, just show dependencies (read-only)
+	if !dependsClearFlag && dependsRemoveFlag == "" && dependsOnFlag == "" {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		task := FindTaskByIdentifier(project, taskID)
+		if task == nil {
+			return tterrors.NewTaskNotFoundError(taskID)
+		}
+		showTaskDependencies(project, task)
+		return nil
 	}
 
 	// Handle --clear
 	if dependsClearFlag {
-		if len(task.DependsOn) == 0 {
-			fmt.Printf("Task #%d has no dependencies to clear\n", task.ShortID)
+		task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+			if len(t.DependsOn) == 0 {
+				fmt.Printf("Task #%d has no dependencies to clear\n", t.ShortID)
+				return nil
+			}
+			t.ClearDependencies()
 			return nil
+		})
+		if err != nil {
+			return err
 		}
-		task.ClearDependencies()
-		if err := SaveProjectWithBackup(project); err != nil {
-			return fmt.Errorf("failed to save: %w", err)
+		if len(task.DependsOn) == 0 {
+			fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
 		}
-		fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
 		return nil
 	}
 
 	// Handle --remove
 	if dependsRemoveFlag != "" {
-		blocker := FindTaskByIdentifier(project, dependsRemoveFlag)
-		if blocker == nil {
-			return tterrors.NewBlockerTaskNotFoundError(dependsRemoveFlag)
+		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
+			blocker := FindTaskByIdentifier(project, dependsRemoveFlag)
+			if blocker == nil {
+				return tterrors.NewBlockerTaskNotFoundError(dependsRemoveFlag)
+			}
+			if !t.HasDependency(blocker.ID) {
+				return fmt.Errorf("task #%d does not depend on #%d", t.ShortID, blocker.ShortID)
+			}
+			t.RemoveDependency(blocker.ID)
+			fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
+				t.ShortID, blocker.ShortID, blocker.Title)
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		if !task.HasDependency(blocker.ID) {
-			return fmt.Errorf("task #%d does not depend on #%d", task.ShortID, blocker.ShortID)
-		}
-		task.RemoveDependency(blocker.ID)
-		if err := SaveProjectWithBackup(project); err != nil {
-			return fmt.Errorf("failed to save: %w", err)
-		}
-		fmt.Printf("Removed dependency: #%d no longer depends on #%d (%s)\n",
-			task.ShortID, blocker.ShortID, blocker.Title)
+		_ = task // used by inner function
 		return nil
 	}
 
 	// Handle --on
 	if dependsOnFlag != "" {
-		blocker := FindTaskByIdentifier(project, dependsOnFlag)
-		if blocker == nil {
-			return tterrors.NewBlockerTaskNotFoundError(dependsOnFlag)
+		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
+			blocker := FindTaskByIdentifier(project, dependsOnFlag)
+			if blocker == nil {
+				return tterrors.NewBlockerTaskNotFoundError(dependsOnFlag)
+			}
+			if blocker.ID == t.ID {
+				return fmt.Errorf("a task cannot depend on itself")
+			}
+			if t.HasDependency(blocker.ID) {
+				return fmt.Errorf("task #%d already depends on #%d", t.ShortID, blocker.ShortID)
+			}
+			if project.HasCircularDependency(t.ID, blocker.ID) {
+				return fmt.Errorf("cannot add dependency: would create circular dependency")
+			}
+			t.AddDependency(blocker.ID)
+			fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
+				t.ShortID, blocker.ShortID, blocker.Title)
+			return nil
+		})
+		if err != nil {
+			return err
 		}
-		if blocker.ID == task.ID {
-			return fmt.Errorf("a task cannot depend on itself")
-		}
-		if task.HasDependency(blocker.ID) {
-			return fmt.Errorf("task #%d already depends on #%d", task.ShortID, blocker.ShortID)
-		}
-		if project.HasCircularDependency(task.ID, blocker.ID) {
-			return fmt.Errorf("cannot add dependency: would create circular dependency")
-		}
-		task.AddDependency(blocker.ID)
-		if err := SaveProjectWithBackup(project); err != nil {
-			return fmt.Errorf("failed to save: %w", err)
-		}
-		fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
-			task.ShortID, blocker.ShortID, blocker.Title)
+		_ = task // used by inner function
 		return nil
 	}
 
-	// Show dependencies (no flags)
-	showTaskDependencies(project, task)
 	return nil
 }
 

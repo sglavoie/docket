@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var taskCommentAddCmd = &cobra.Command{
@@ -30,15 +30,7 @@ func init() {
 }
 
 func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
-	}
+	taskID := args[0]
 
 	// Join remaining args as the comment text
 	commentText := strings.Join(args[1:], " ")
@@ -47,10 +39,14 @@ func runTaskCommentAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("comment text cannot be empty")
 	}
 
-	task.AddComment(commentText)
+	// Use WithTaskUpdate to add comment
+	task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+		t.AddComment(commentText)
+		return nil
+	})
 
-	if err := SaveProjectWithBackup(project); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Added comment to #%d: %s\n", task.ShortID, task.Title)
