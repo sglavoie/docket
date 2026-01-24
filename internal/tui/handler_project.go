@@ -17,8 +17,11 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case SelectProjectMsg:
-		// Pop command palette if that's where we came from
+		// Pop overlay views if that's where we came from
 		if m.currentView() == ViewCommandPalette {
+			m.popView()
+		}
+		if m.currentView() == ViewProjectCycleManager {
 			m.popView()
 		}
 		m.switchToProject(msg.Project, true)

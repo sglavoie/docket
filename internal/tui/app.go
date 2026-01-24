@@ -508,7 +508,7 @@ func (m *AppModel) registerGlobalCommands() {
 		},
 		{
 			Name:        "project cycle",
-			Description: "Configure project cycle",
+			Description: "Configure project cycle, jump to project",
 			Shortcut:    "@",
 			Category:    CategoryNavigation,
 			Views:       []ViewType{ViewDashboard, ViewProjectTree},

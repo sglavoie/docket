@@ -131,7 +131,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
 		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "@", Description: "Configure project cycle", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
 
 		// Filters
 		Keybinding{Key: "c", Description: "Filter by context", Category: "Filters", Views: views},
@@ -209,7 +209,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
 		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "@", Description: "Configure project cycle", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
 
 		// Type Changes
 		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},

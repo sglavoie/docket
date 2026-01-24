@@ -80,8 +80,25 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Let search mode handle all input
+		if m.IsSearchMode() {
+			_, cmd := m.HandleKeyMsg(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
-		case "q", "esc":
+		case "esc":
+			// If there's an active filter, clear it first
+			if m.SearchQuery() != "" {
+				m.ClearSearch()
+				m.Filter("")
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return CloseProjectCycleManagerMsg{Changed: false}
+			}
+
+		case "q":
 			return m, func() tea.Msg {
 				return CloseProjectCycleManagerMsg{Changed: false}
 			}
@@ -98,6 +115,16 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return CloseProjectCycleManagerMsg{Changed: true}
 			}
+
+		case "g":
+			// Go to the highlighted project
+			item := m.SelectedItem()
+			if item.Project != nil {
+				return m, func() tea.Msg {
+					return SelectProjectMsg{Project: item.Project}
+				}
+			}
+			return m, nil
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
@@ -162,4 +189,27 @@ func (m *ProjectCycleManagerModel) View() string {
 		Width:    boxWidth,
 		Centered: true,
 	})
+}
+
+// ShouldCaptureEsc returns true when in search mode or has active filter.
+func (m *ProjectCycleManagerModel) ShouldCaptureEsc() bool {
+	return m.IsSearchMode() || m.SearchQuery() != ""
+}
+
+// HasTextInput returns true when in search mode.
+func (m *ProjectCycleManagerModel) HasTextInput() bool {
+	return m.IsSearchMode()
+}
+
+// RenderFooter renders context-appropriate keyboard hints (overrides BasePicker).
+func (m *ProjectCycleManagerModel) RenderFooter() string {
+	if m.IsSearchMode() {
+		return MutedStyle.Render("enter done | esc clear")
+	}
+
+	if len(m.Filtered) == 0 {
+		return MutedStyle.Render("esc cancel")
+	}
+
+	return MutedStyle.Render("space toggle | / search | c clear\ng go to project | enter apply | esc cancel")
 }
