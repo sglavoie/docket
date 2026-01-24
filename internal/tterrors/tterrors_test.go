@@ -252,3 +252,56 @@ func TestErrorsIsWithAllSentinels(t *testing.T) {
 		})
 	}
 }
+
+func TestNewLoadProjectError(t *testing.T) {
+	innerErr := errors.New("file not found")
+	err := NewLoadProjectError("my-project", innerErr)
+
+	if !errors.Is(err, ErrReadFailed) {
+		t.Error("NewLoadProjectError should wrap ErrReadFailed")
+	}
+	if !strings.Contains(err.Error(), "my-project") {
+		t.Errorf("error message should contain project name, got %q", err.Error())
+	}
+	if !errors.Is(err, innerErr) {
+		t.Error("NewLoadProjectError should wrap the inner error")
+	}
+}
+
+func TestNewSaveProjectError(t *testing.T) {
+	innerErr := errors.New("disk full")
+	err := NewSaveProjectError("work-tasks", innerErr)
+
+	if !errors.Is(err, ErrSaveFailed) {
+		t.Error("NewSaveProjectError should wrap ErrSaveFailed")
+	}
+	if !strings.Contains(err.Error(), "work-tasks") {
+		t.Errorf("error message should contain project name, got %q", err.Error())
+	}
+	if !errors.Is(err, innerErr) {
+		t.Error("NewSaveProjectError should wrap the inner error")
+	}
+}
+
+func TestNewInvalidTaskTypeError(t *testing.T) {
+	testCases := []struct {
+		name     string
+		taskType string
+	}{
+		{"unknown type", "widget"},
+		{"typo", "epci"},
+		{"empty", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewInvalidTaskTypeError(tc.taskType)
+			if !errors.Is(err, ErrInvalidTaskType) {
+				t.Error("NewInvalidTaskTypeError should wrap ErrInvalidTaskType")
+			}
+			if tc.taskType != "" && !strings.Contains(err.Error(), tc.taskType) {
+				t.Errorf("error message should contain task type %q, got %q", tc.taskType, err.Error())
+			}
+		})
+	}
+}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -47,18 +48,18 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		name = strings.TrimSpace(args[0])
 	} else {
-		return fmt.Errorf("project name is required")
+		return tterrors.NewRequiredFieldError("name")
 	}
 
 	if name == "" {
-		return fmt.Errorf("project name cannot be empty")
+		return tterrors.NewInvalidValueError("name", name, "cannot be empty")
 	}
 
 	// Check for duplicate slug
 	slug := models.Slugify(name)
 	for _, p := range cfg.Projects {
 		if p.Slug == slug {
-			return fmt.Errorf("project with slug '%s' already exists", slug)
+			return fmt.Errorf("%w: '%s'", tterrors.ErrProjectExists, slug)
 		}
 	}
 
@@ -72,7 +73,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	// Ensure data directory exists
 	if err := cfg.EnsureDataDir(); err != nil {
-		return fmt.Errorf("failed to create data directory: %w", err)
+		return fmt.Errorf("%w: data directory: %w", tterrors.ErrWriteFailed, err)
 	}
 
 	// Purge any existing trash entry with same slug to allow recreation
@@ -82,7 +83,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	// Create project directory and initial tasks.md
 	if err := storage.CreateProjectDir(project); err != nil {
-		return fmt.Errorf("failed to create project: %w", err)
+		return tterrors.NewSaveProjectError(name, err)
 	}
 
 	// Add to config and set as current
@@ -90,7 +91,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	cfg.CurrentProject = project.ID
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return fmt.Errorf("%w: %w", tterrors.ErrConfigSaveFailed, err)
 	}
 
 	fmt.Printf("Created project '%s' (%s)\n", name, slug)

@@ -81,3 +81,21 @@ func NewRequiredFieldError(field string) error {
 func NewInvalidValueError(field string, value interface{}, reason string) error {
 	return fmt.Errorf("%w for %s: '%v' (%s)", ErrInvalidValue, field, value, reason)
 }
+
+// NewLoadProjectError creates an error for failing to load a project.
+// Use this when project loading fails to provide consistent error messaging.
+func NewLoadProjectError(name string, err error) error {
+	return fmt.Errorf("%w '%s': %w", ErrReadFailed, name, err)
+}
+
+// NewSaveProjectError creates an error for failing to save a project.
+// Use this when project saving fails to provide consistent error messaging.
+func NewSaveProjectError(name string, err error) error {
+	return fmt.Errorf("%w '%s': %w", ErrSaveFailed, name, err)
+}
+
+// NewInvalidTaskTypeError creates an error for an invalid task type.
+// Use this for consistent task type validation error messaging.
+func NewInvalidTaskTypeError(taskType string) error {
+	return fmt.Errorf("%w: '%s'", ErrInvalidTaskType, taskType)
+}

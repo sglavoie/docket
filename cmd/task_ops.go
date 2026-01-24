@@ -59,7 +59,7 @@ func ParseTaskTypeFlags(epic, story, bug, idea, note bool, typeFlag string) (mod
 	if typeFlag != "" {
 		t, ok := models.ParseTaskType(typeFlag)
 		if !ok {
-			return "", fmt.Errorf("invalid task type: %s", typeFlag)
+			return "", tterrors.NewInvalidTaskTypeError(typeFlag)
 		}
 		return t, nil
 	}

@@ -70,7 +70,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	title := strings.Join(args, " ")
 	if title == "" {
-		return fmt.Errorf("task title is required")
+		return tterrors.NewRequiredFieldError("title")
 	}
 
 	// Determine task type
@@ -81,7 +81,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	// Validate priority
 	if taskPriority < models.PriorityMin || taskPriority > models.PriorityMax {
-		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
+		return tterrors.NewInvalidValueError("priority", taskPriority,
+			fmt.Sprintf("must be %d-%d", models.PriorityMin, models.PriorityMax))
 	}
 
 	// Create task
@@ -105,7 +106,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if taskRecurFlag != "" {
 		pattern := models.ParseRecurrence(taskRecurFlag)
 		if pattern == nil {
-			return fmt.Errorf("invalid recurrence pattern: %s", taskRecurFlag)
+			return tterrors.NewInvalidValueError("recurrence", taskRecurFlag, "use daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny")
 		}
 		task.Recurrence = pattern
 	}
@@ -118,7 +119,8 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		}
 
 		if !task.Type.CanBeChildOf(parent.Type) {
-			return fmt.Errorf("%s cannot be a child of %s", task.Type.HeadingPrefix(), parent.Type.HeadingPrefix())
+			return fmt.Errorf("%w: %s cannot be a child of %s", tterrors.ErrInvalidParent,
+				task.Type.HeadingPrefix(), parent.Type.HeadingPrefix())
 		}
 
 		task.ParentID = &parent.ID
@@ -129,7 +131,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
 	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
-		return fmt.Errorf("failed to save task: %w", err)
+		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
 	fmt.Printf("Created %s #%d: %s\n", taskType.HeadingPrefix(), shortID, title)

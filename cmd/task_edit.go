@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskEditCmd = &cobra.Command{
@@ -77,7 +78,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	}
 	task := FindTaskByIdentifier(project, taskID)
 	if task == nil {
-		return fmt.Errorf("task not found: %s", taskID)
+		return tterrors.NewTaskNotFoundError(taskID)
 	}
 
 	// Build content for editing
