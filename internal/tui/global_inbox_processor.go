@@ -238,7 +238,7 @@ func (m *GlobalInboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea
 		return m, nil
 
 	// Operations
-	case "S":
+	case "s":
 		// Assign section
 		return m, m.openSectionPicker()
 

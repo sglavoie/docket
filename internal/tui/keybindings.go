@@ -376,7 +376,7 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 
 		// Operations
-		Keybinding{Key: "S", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "p", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
 		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
@@ -410,7 +410,7 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 
 		// Operations
-		Keybinding{Key: "S", Description: "Assign section", Category: "Operations", Views: views},
+		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
 		Keybinding{Key: "p", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
 		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},

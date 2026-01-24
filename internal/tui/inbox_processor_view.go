@@ -94,7 +94,7 @@ func (m *InboxProcessorModel) renderOperationsPanel() string {
 	b.WriteString("\n")
 
 	// Group operations into 3 lines for better readability
-	line1 := []string{"S: Section", "1-5: Priority", "t: Manage tags"}
+	line1 := []string{"s: Section", "1-5: Priority", "t: Manage tags"}
 	line2 := []string{"c: Create subtask", "e: Edit", "D: Due date"}
 	line3 := []string{"w: Waiting", "b: Dependencies", "x: Delete", "u: Undo"}
 

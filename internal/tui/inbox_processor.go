@@ -234,8 +234,8 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	// Note: h/l/left/right removed - not meaningful for vertical queue navigation
 
 	// Operations
-	case "S":
-		// Assign section (capital S to avoid clash with ,s for start)
+	case "s":
+		// Assign section
 		return m, m.openSectionPicker()
 
 	case "1", "2", "3", "4", "5":
