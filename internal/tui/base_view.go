@@ -49,6 +49,16 @@ func (v *BaseView) Error() error {
 	return v.err
 }
 
+// ShouldCaptureEsc returns false by default.
+func (v *BaseView) ShouldCaptureEsc() bool {
+	return false
+}
+
+// HasTextInput returns false by default.
+func (v *BaseView) HasTextInput() bool {
+	return false
+}
+
 // ContentWidth returns width minus standard padding (2 on each side).
 func (v *BaseView) ContentWidth() int {
 	return max(v.width-4, 20)

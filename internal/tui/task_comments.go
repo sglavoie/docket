@@ -755,3 +755,13 @@ func (m *TaskCommentsModel) View() string {
 
 	return b.String()
 }
+
+// HasTextInput returns true when add/edit mode is active.
+func (m *TaskCommentsModel) HasTextInput() bool {
+	return m.addMode || m.editMode
+}
+
+// ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
+func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
+	return m.expandedView || m.confirmDelete || m.addMode || m.editMode
+}

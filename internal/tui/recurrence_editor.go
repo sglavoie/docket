@@ -393,6 +393,16 @@ func (m *RecurrenceEditorModel) View() string {
 	return renderOverlayCard(content, m.width, m.height, cfg)
 }
 
+// HasTextInput returns false for the recurrence editor.
+func (m *RecurrenceEditorModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true to let the editor handle esc internally.
+func (m *RecurrenceEditorModel) ShouldCaptureEsc() bool {
+	return true
+}
+
 func (m *RecurrenceEditorModel) renderUnitSelector() string {
 	var b strings.Builder
 

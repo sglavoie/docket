@@ -64,6 +64,16 @@ func (m *TaskJumperModel) HasActiveSearch() bool {
 	return true
 }
 
+// HasTextInput returns true because the jumper always uses the search input.
+func (m *TaskJumperModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns true to allow the jumper to handle esc itself.
+func (m *TaskJumperModel) ShouldCaptureEsc() bool {
+	return true
+}
+
 // SetSize sets the view dimensions.
 func (m *TaskJumperModel) SetSize(width, height int) {
 	m.width = width

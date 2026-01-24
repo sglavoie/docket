@@ -655,3 +655,13 @@ func (m *TaskCreatorModel) View() string {
 	}
 	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
+
+// HasTextInput returns true because the task creator always has inputs.
+func (m *TaskCreatorModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns false so the app can close the view on esc.
+func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
+	return false
+}

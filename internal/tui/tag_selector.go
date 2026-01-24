@@ -284,6 +284,16 @@ func (m *BulkTagSelectorModel) HasActiveInput() bool {
 	return m.addTagMode
 }
 
+// HasTextInput returns true when the add-tag input is active.
+func (m *BulkTagSelectorModel) HasTextInput() bool {
+	return m.HasActiveInput()
+}
+
+// ShouldCaptureEsc returns true when the add-tag input is active.
+func (m *BulkTagSelectorModel) ShouldCaptureEsc() bool {
+	return m.HasActiveInput()
+}
+
 // View renders the bulk tag selector.
 func (m *BulkTagSelectorModel) View() string {
 	// If in add tag mode, show add tag UI
@@ -571,6 +581,16 @@ func (m *TagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 // HasActiveInput returns true when in add tag mode.
 func (m *TagSelectorModel) HasActiveInput() bool {
 	return m.addTagMode
+}
+
+// HasTextInput returns true when the add-tag input is active.
+func (m *TagSelectorModel) HasTextInput() bool {
+	return m.HasActiveInput()
+}
+
+// ShouldCaptureEsc returns true when the add-tag input is active.
+func (m *TagSelectorModel) ShouldCaptureEsc() bool {
+	return m.HasActiveInput()
 }
 
 // View renders the tag selector.

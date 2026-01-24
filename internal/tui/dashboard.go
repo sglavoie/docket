@@ -359,6 +359,16 @@ func (m *DashboardModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
 }
 
+// HasTextInput returns true when dashboard search is active.
+func (m *DashboardModel) HasTextInput() bool {
+	return m.HasActiveSearch()
+}
+
+// ShouldCaptureEsc returns true when dashboard search or prefix mode is active.
+func (m *DashboardModel) ShouldCaptureEsc() bool {
+	return m.HasActiveSearch() || m.HasPendingPrefix()
+}
+
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
 	return func() tea.Msg {
 		// Purge any existing trash entry with same slug

@@ -115,6 +115,16 @@ func (m *GlobalSearchModel) HasActiveSearch() bool {
 	return true
 }
 
+// HasTextInput returns true because global search always has input focus.
+func (m *GlobalSearchModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns false so the app can close the view on esc.
+func (m *GlobalSearchModel) ShouldCaptureEsc() bool {
+	return false
+}
+
 // SetSize sets the view dimensions.
 func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.width = width

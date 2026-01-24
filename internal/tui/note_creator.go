@@ -374,3 +374,13 @@ func (m *NoteCreatorModel) View() string {
 	}
 	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
+
+// HasTextInput returns true because the note creator always has inputs.
+func (m *NoteCreatorModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns false so the app can close the view on esc.
+func (m *NoteCreatorModel) ShouldCaptureEsc() bool {
+	return false
+}

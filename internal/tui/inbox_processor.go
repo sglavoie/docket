@@ -99,6 +99,16 @@ func (m *InboxProcessorModel) SetSize(width, height int) {
 	m.height = height
 }
 
+// HasTextInput returns false for the inbox processor.
+func (m *InboxProcessorModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true because the inbox processor handles esc/q itself.
+func (m *InboxProcessorModel) ShouldCaptureEsc() bool {
+	return true
+}
+
 // Update handles messages.
 func (m *InboxProcessorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {

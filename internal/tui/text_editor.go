@@ -129,6 +129,16 @@ func (m *TextEditorModel) View() string {
 	return renderOverlayCard(b.String(), m.width, m.height, cfg)
 }
 
+// HasTextInput returns true because the text editor uses a textarea input.
+func (m *TextEditorModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns false so the app can close the view on esc.
+func (m *TextEditorModel) ShouldCaptureEsc() bool {
+	return false
+}
+
 // ShowTextEditorMsg triggers showing the text editor popup.
 type ShowTextEditorMsg struct {
 	FieldName    string // "title" or "description"

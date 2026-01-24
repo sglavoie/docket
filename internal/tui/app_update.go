@@ -118,57 +118,23 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *AppModel) currentViewCapabilities() ViewCapabilities {
+	view := m.views.Get(m.currentView())
+	if view == nil {
+		return nil
+	}
+	if caps, ok := view.(ViewCapabilities); ok {
+		return caps
+	}
+	return nil
+}
+
 // hasActiveTextInput returns true if the current view has an active text input
 // that should receive keyboard input (like search boxes, text fields).
 // This is used to determine whether global keyboard shortcuts should be intercepted.
 func (m *AppModel) hasActiveTextInput() bool {
-	// Check if the current view has an active search input
-	switch m.currentView() {
-	case ViewProjectTree:
-		if m.projectTree != nil && m.projectTree.HasActiveSearch() {
-			return true
-		}
-	case ViewDashboard:
-		if m.dashboard != nil && m.dashboard.HasActiveSearch() {
-			return true
-		}
-	case ViewHelp:
-		if m.helpView != nil && m.helpView.HasActiveSearch() {
-			return true
-		}
-	case ViewTaskJumper:
-		// Task jumper always has active search
-		return true
-	case ViewGlobalSearch:
-		// Global search always has active search
-		return true
-	case ViewCommandPalette:
-		// Command palette always has active search
-		return true
-	case ViewTagSelector:
-		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
-			return true
-		}
-	case ViewBulkTagSelector:
-		if selector, ok := m.views.Get(ViewBulkTagSelector).(*BulkTagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
-			return true
-		}
-	case ViewParentSelector:
-		// Parent selector always has active search
-		return true
-	case ViewProjectSelector:
-		// Project selector always has active search
-		return true
-	case ViewTaskCreator, ViewNoteCreator, ViewQuickCapture, ViewBulkCapture, ViewTextEditor:
-		// Form views always have active text input
-		return true
-	case ViewTaskEditor:
-		// Task editor has active text input
-		return true
-	case ViewTaskComments:
-		if comments, ok := m.views.Get(ViewTaskComments).(*TaskCommentsModel); ok && comments != nil {
-			return comments.addMode || comments.editMode
-		}
+	if caps := m.currentViewCapabilities(); caps != nil {
+		return caps.HasTextInput()
 	}
 	return false
 }
@@ -176,80 +142,8 @@ func (m *AppModel) hasActiveTextInput() bool {
 // handleEscKey handles the escape/q key for view navigation.
 // Returns true if the key was handled (should not propagate to views).
 func (m *AppModel) handleEscKey() bool {
-	// Let views handle esc/q if they have an active search, focus mode, sidebar focus, or pending prefix
-	if m.currentView() == ViewProjectTree && m.projectTree != nil &&
-		(m.projectTree.HasActiveSearch() || m.projectTree.IsFocusMode() || m.projectTree.sidebarFocused || m.projectTree.multiSelectMode || m.projectTree.pendingPrefix != "") {
+	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false
-	}
-	if m.currentView() == ViewDashboard && m.dashboard != nil && (m.dashboard.HasActiveSearch() || m.dashboard.HasPendingPrefix()) {
-		return false
-	}
-	if m.currentView() == ViewPriorityView {
-		if pv, ok := m.views.Get(ViewPriorityView).(*PriorityViewModel); ok && pv != nil && pv.HasPendingPrefix() {
-			return false
-		}
-	}
-	if m.currentView() == ViewDailyReview {
-		if dr, ok := m.views.Get(ViewDailyReview).(*DailyReviewModel); ok && dr != nil && (dr.HasPendingPrefix() || dr.HasFocusedSection()) {
-			return false
-		}
-	}
-	if m.currentView() == ViewGlobalInboxProcessor {
-		if gip, ok := m.views.Get(ViewGlobalInboxProcessor).(*GlobalInboxProcessorModel); ok && gip != nil && gip.HasPendingPrefix() {
-			return false
-		}
-	}
-	if m.currentView() == ViewFocusView {
-		if fv, ok := m.views.Get(ViewFocusView).(*FocusViewModel); ok && fv != nil && fv.HasPendingPrefix() {
-			return false
-		}
-	}
-	// Inbox processor handles its own q/esc to properly reload project and refresh tree
-	if m.currentView() == ViewInboxProcessor {
-		return false
-	}
-	if m.currentView() == ViewHelp && m.helpView != nil && m.helpView.HasActiveSearch() {
-		return false
-	}
-	if m.currentView() == ViewTaskJumper && m.taskJumper != nil {
-		return false
-	}
-	if m.currentView() == ViewTagSelector {
-		if selector, ok := m.views.Get(ViewTagSelector).(*TagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
-			return false
-		}
-	}
-	if m.currentView() == ViewBulkTagSelector {
-		if selector, ok := m.views.Get(ViewBulkTagSelector).(*BulkTagSelectorModel); ok && selector != nil && selector.HasActiveInput() {
-			return false
-		}
-	}
-	if m.currentView() == ViewCommandPalette {
-		if palette, ok := m.views.Get(ViewCommandPalette).(*CommandPaletteModel); ok && palette != nil && palette.IsActionMode() {
-			return false
-		}
-	}
-	// Workflow rule creator/editor handle their own esc for picker overlays
-	if m.currentView() == ViewWorkflowRuleCreator || m.currentView() == ViewWorkflowRuleEditor {
-		return false
-	}
-	// Recurrence editor handles its own esc to properly signal cancellation
-	if m.currentView() == ViewRecurrenceEditor {
-		return false
-	}
-	// Workflow rules view handles its own esc/q when in expanded view or delete confirmation
-	if m.currentView() == ViewWorkflowRules {
-		if rules, ok := m.views.Get(ViewWorkflowRules).(*WorkflowRulesModel); ok && rules != nil && (rules.expandedView || rules.confirmDelete) {
-			return false
-		}
-	}
-	// Task comments view handles its own esc when in expanded view, add/edit mode, or delete confirmation
-	if m.currentView() == ViewTaskComments {
-		if comments, ok := m.views.Get(ViewTaskComments).(*TaskCommentsModel); ok && comments != nil {
-			if comments.expandedView || comments.confirmDelete || comments.addMode || comments.editMode {
-				return false
-			}
-		}
 	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()

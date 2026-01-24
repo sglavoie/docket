@@ -91,6 +91,11 @@ func (m *ParentSelectorModel) HasActiveSearch() bool {
 	return true
 }
 
+// HasTextInput returns true because the parent selector always has input focus.
+func (m *ParentSelectorModel) HasTextInput() bool {
+	return true
+}
+
 func (m *ParentSelectorModel) Init() tea.Cmd {
 	return m.ActivateSearch()
 }

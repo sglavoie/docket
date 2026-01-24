@@ -13,6 +13,15 @@ type View interface {
 	SetSize(width, height int)
 }
 
+// ViewCapabilities describes view-level behaviors used by the app shell.
+// Views can implement this to control global navigation and input handling.
+type ViewCapabilities interface {
+	// ShouldCaptureEsc returns true if the view wants to handle esc/q directly.
+	ShouldCaptureEsc() bool
+	// HasTextInput returns true if the view currently has active text input.
+	HasTextInput() bool
+}
+
 // SizableView extends View with dimension accessors.
 // Use this when a view needs to report its dimensions to parent views.
 type SizableView interface {

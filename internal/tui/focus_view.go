@@ -604,6 +604,16 @@ func (m *FocusViewModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
 }
 
+// HasTextInput returns false for the focus view.
+func (m *FocusViewModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when prefix mode is active.
+func (m *FocusViewModel) ShouldCaptureEsc() bool {
+	return m.HasPendingPrefix()
+}
+
 // GetHelpItems returns help items for this view.
 func (m *FocusViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewFocusView)

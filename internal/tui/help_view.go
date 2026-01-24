@@ -64,6 +64,16 @@ func (m *HelpViewModel) HasActiveSearch() bool {
 	return m.searchMode || m.searchQuery != ""
 }
 
+// HasTextInput returns true when help search is active.
+func (m *HelpViewModel) HasTextInput() bool {
+	return m.HasActiveSearch()
+}
+
+// ShouldCaptureEsc returns true when help search is active.
+func (m *HelpViewModel) ShouldCaptureEsc() bool {
+	return m.HasActiveSearch()
+}
+
 // SetSize sets the view dimensions.
 func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width

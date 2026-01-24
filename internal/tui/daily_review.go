@@ -369,6 +369,16 @@ func (m *DailyReviewModel) HasFocusedSection() bool {
 	return m.focusedSection != nil
 }
 
+// HasTextInput returns false for the daily review view.
+func (m *DailyReviewModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when prefix mode or section focus is active.
+func (m *DailyReviewModel) ShouldCaptureEsc() bool {
+	return m.HasPendingPrefix() || m.HasFocusedSection()
+}
+
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewDailyReview)

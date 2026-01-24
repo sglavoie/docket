@@ -76,9 +76,19 @@ func (m *CommandPaletteModel) HasActiveSearch() bool {
 	return true
 }
 
+// HasTextInput returns true because the palette always has input focus.
+func (m *CommandPaletteModel) HasTextInput() bool {
+	return true
+}
+
 // IsActionMode returns true if the palette is showing inline actions for an item.
 func (m *CommandPaletteModel) IsActionMode() bool {
 	return m.actionMode
+}
+
+// ShouldCaptureEsc returns true when inline actions are shown.
+func (m *CommandPaletteModel) ShouldCaptureEsc() bool {
+	return m.IsActionMode()
 }
 
 // SetSize sets the view dimensions.

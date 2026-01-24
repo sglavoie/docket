@@ -434,6 +434,16 @@ func (m *WorkflowRulesModel) View() string {
 	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
 
+// HasTextInput returns false for workflow rules view.
+func (m *WorkflowRulesModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when expanded view or delete confirmation is active.
+func (m *WorkflowRulesModel) ShouldCaptureEsc() bool {
+	return m.expandedView || m.confirmDelete
+}
+
 // WorkflowRulesUpdatedMsg is sent when rules are modified.
 type WorkflowRulesUpdatedMsg struct{}
 

@@ -559,3 +559,13 @@ func (m *TaskEditorModel) View() string {
 
 	return result.String()
 }
+
+// HasTextInput returns true because the task editor contains inputs.
+func (m *TaskEditorModel) HasTextInput() bool {
+	return true
+}
+
+// ShouldCaptureEsc returns false so the app can close the view on esc.
+func (m *TaskEditorModel) ShouldCaptureEsc() bool {
+	return false
+}

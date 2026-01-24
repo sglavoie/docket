@@ -576,6 +576,16 @@ func (m *GlobalInboxProcessorModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
 }
 
+// HasTextInput returns false for the global inbox processor.
+func (m *GlobalInboxProcessorModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when prefix mode is active.
+func (m *GlobalInboxProcessorModel) ShouldCaptureEsc() bool {
+	return m.HasPendingPrefix()
+}
+
 // HasActiveSearch returns false (no search in this view).
 func (m *GlobalInboxProcessorModel) HasActiveSearch() bool {
 	return false

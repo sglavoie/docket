@@ -496,6 +496,16 @@ func (m *PriorityViewModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
 }
 
+// HasTextInput returns false for the priority view.
+func (m *PriorityViewModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when the priority view is in prefix mode.
+func (m *PriorityViewModel) ShouldCaptureEsc() bool {
+	return m.HasPendingPrefix()
+}
+
 // changeTaskStatus changes the status of the task at cursor and refreshes.
 func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
 	pt := m.getTaskAtCursor()

@@ -87,6 +87,11 @@ func (m *ProjectSelectorModel) HasActiveSearch() bool {
 	return true
 }
 
+// HasTextInput returns true because the project selector always has input focus.
+func (m *ProjectSelectorModel) HasTextInput() bool {
+	return true
+}
+
 func (m *ProjectSelectorModel) Init() tea.Cmd {
 	return m.ActivateSearch()
 }
