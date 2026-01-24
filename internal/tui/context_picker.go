@@ -7,6 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // ContextInfo holds a context name and its project count.
@@ -18,7 +21,8 @@ type ContextInfo struct {
 // ContextPickerModel allows selecting a single context to filter by.
 type ContextPickerModel struct {
 	*BasePicker[ContextInfo]
-	dashboard *DashboardModel
+	currentFilter string // Current filter context for highlighting
+	fromCycle     bool   // True if opened from Project Cycle Manager
 }
 
 // ShowContextPickerMsg is sent to open the context picker.
@@ -30,11 +34,12 @@ type ShowContextPickerMsg struct {
 type ContextPickerDoneMsg struct {
 	SelectedContext string
 	Canceled        bool
+	FromCycle       bool // True if picker was opened from cycle manager
 }
 
-// NewContextPickerModel creates a new context picker.
+// NewContextPickerModel creates a new context picker from dashboard.
 func NewContextPickerModel(dashboard *DashboardModel) *ContextPickerModel {
-	contexts := buildContextList(dashboard)
+	contexts := buildContextListFromProjects(dashboard.projects)
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
@@ -50,15 +55,41 @@ func NewContextPickerModel(dashboard *DashboardModel) *ContextPickerModel {
 	}
 
 	return &ContextPickerModel{
-		BasePicker: picker,
-		dashboard:  dashboard,
+		BasePicker:    picker,
+		currentFilter: dashboard.filterContext,
+		fromCycle:     false,
 	}
 }
 
-// buildContextList gathers unique contexts from projects with counts.
-func buildContextList(dashboard *DashboardModel) []ContextInfo {
+// NewContextPickerModelFromConfig creates a context picker using config.
+func NewContextPickerModelFromConfig(cfg *config.Config) *ContextPickerModel {
+	projects := cfg.GetActiveProjects()
+	contexts := buildContextListFromProjects(projects)
+
+	picker := NewBasePicker(contexts, PickerConfig{
+		Title:          "Filter by Context",
+		EmptyMessage:   "No contexts available",
+		NoMatchMessage: "No matching contexts",
+		MultiSelect:    false,
+		ShowCounts:     true,
+	})
+
+	// Position cursor on currently filtered context
+	if cfg.FilterContext != "" {
+		picker.SetCursorToID(cfg.FilterContext)
+	}
+
+	return &ContextPickerModel{
+		BasePicker:    picker,
+		currentFilter: cfg.FilterContext,
+		fromCycle:     true,
+	}
+}
+
+// buildContextListFromProjects gathers unique contexts from projects with counts.
+func buildContextListFromProjects(projects []*models.Project) []ContextInfo {
 	contextCounts := make(map[string]int)
-	for _, p := range dashboard.projects {
+	for _, p := range projects {
 		if p.Context != "" {
 			contextCounts[p.Context]++
 		}
@@ -70,7 +101,7 @@ func buildContextList(dashboard *DashboardModel) []ContextInfo {
 	// Add "All Contexts" option first (empty string value)
 	contexts = append(contexts, ContextInfo{
 		Name:         "",
-		ProjectCount: len(dashboard.projects),
+		ProjectCount: len(projects),
 	})
 
 	// Add actual contexts sorted alphabetically
@@ -105,17 +136,20 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
+			fromCycle := m.fromCycle
 			return m, func() tea.Msg {
-				return ContextPickerDoneMsg{Canceled: true}
+				return ContextPickerDoneMsg{Canceled: true, FromCycle: fromCycle}
 			}
 
 		case "enter":
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
+				fromCycle := m.fromCycle
 				return m, func() tea.Msg {
 					return ContextPickerDoneMsg{
 						SelectedContext: selected.Name,
 						Canceled:        false,
+						FromCycle:       fromCycle,
 					}
 				}
 			}
@@ -141,8 +175,8 @@ func (m *ContextPickerModel) View() string {
 
 	// Current filter indicator
 	var headerContent string
-	if m.dashboard.filterContext != "" {
-		headerContent = MutedStyle.Render(fmt.Sprintf("Current: %s", m.dashboard.filterContext))
+	if m.currentFilter != "" {
+		headerContent = MutedStyle.Render(fmt.Sprintf("Current: %s", m.currentFilter))
 	} else {
 		headerContent = MutedStyle.Render("Current: All Contexts")
 	}
@@ -197,7 +231,7 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 			displayName := ctx.DisplayText()
 
 			// Check if this is the currently active filter
-			isActive := ctx.Name == m.dashboard.filterContext
+			isActive := ctx.Name == m.currentFilter
 
 			// Build line
 			line := fmt.Sprintf("%s%s ", cursor, displayName)

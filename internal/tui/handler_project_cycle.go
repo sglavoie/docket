@@ -36,11 +36,15 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 			dash.Refresh(m.config)
 		}
 		if msg.Changed {
-			count := len(m.config.CycleProjects)
+			count := len(m.config.GetCycleProjectsForContext(m.config.FilterContext))
 			if count == 0 {
 				m.statusMessage = "Project cycle cleared"
 			} else {
-				m.statusMessage = fmt.Sprintf("Project cycle updated: %d projects", count)
+				contextInfo := ""
+				if m.config.FilterContext != "" {
+					contextInfo = fmt.Sprintf(" for %s", m.config.FilterContext)
+				}
+				m.statusMessage = fmt.Sprintf("Project cycle updated%s: %d projects", contextInfo, count)
 			}
 			return true, statusTimeout(2 * time.Second)
 		}
@@ -54,17 +58,22 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 // handleCycleProject cycles through configured projects.
 func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
-	cycleProjects := m.config.GetCycleProjects()
+	// Use context-specific cycle list when a context filter is active
+	cycleProjects := m.config.GetCycleProjectsForContext(m.config.FilterContext)
 
 	if len(cycleProjects) == 0 {
-		m.statusMessage = "No projects in cycle. Press C to configure."
+		if m.config.FilterContext != "" {
+			m.statusMessage = fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext)
+		} else {
+			m.statusMessage = "No projects in cycle. Press @ to configure."
+		}
 		return true, statusTimeout(2 * time.Second)
 	}
 
 	if len(cycleProjects) == 1 {
 		// Single project in cycle - switch to it if not current
 		if m.currentProject == nil || m.currentProject.ID != cycleProjects[0].ID {
-			return m.switchToCycleProject(cycleProjects[0])
+			return m.switchToCycleProject(cycleProjects[0], len(cycleProjects))
 		}
 		m.statusMessage = "Only one project in cycle"
 		return true, statusTimeout(2 * time.Second)
@@ -92,11 +101,12 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 		nextIdx = (currentIdx - 1 + len(cycleProjects)) % len(cycleProjects)
 	}
 
-	return m.switchToCycleProject(cycleProjects[nextIdx])
+	return m.switchToCycleProject(cycleProjects[nextIdx], len(cycleProjects))
 }
 
 // switchToCycleProject switches to a project from the cycle list.
-func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd) {
+// cycleTotal is the number of projects in the filtered cycle list.
+func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int) (bool, tea.Cmd) {
 	m.saveProjectTreeState()
 	m.currentProject = project
 	m.config.CurrentProject = project.ID
@@ -116,9 +126,7 @@ func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd)
 		m.pushView(ViewProjectTree)
 	}
 
-	// Show cycle position in status
-	cycleProjects := m.config.GetCycleProjects()
-	idx := m.config.GetCycleProjectIndex(project.ID)
-	m.statusMessage = fmt.Sprintf("Switched to: %s [%d/%d]", project.Name, idx+1, len(cycleProjects))
+	// Show cycle position in status (using filtered count)
+	m.statusMessage = fmt.Sprintf("Switched to: %s [%d projects in cycle]", project.Name, cycleTotal)
 	return true, statusTimeout(2 * time.Second)
 }

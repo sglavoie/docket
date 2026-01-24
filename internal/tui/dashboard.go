@@ -38,8 +38,9 @@ type DashboardModel struct {
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(cfg *config.Config) *DashboardModel {
 	m := &DashboardModel{
-		config: cfg,
-		cursor: 0,
+		config:        cfg,
+		cursor:        0,
+		filterContext: cfg.FilterContext, // Load persisted context filter
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.loadProjects()
@@ -119,6 +120,7 @@ func (m *DashboardModel) HasActiveSearch() bool {
 // Refresh reloads the dashboard data.
 func (m *DashboardModel) Refresh(cfg *config.Config) {
 	m.config = cfg
+	m.filterContext = cfg.FilterContext
 	m.loadProjects()
 }
 

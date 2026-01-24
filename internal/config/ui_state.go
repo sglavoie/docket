@@ -30,6 +30,50 @@ func (c *Config) GetCycleProjectIndex(projectID string) int {
 	return -1
 }
 
+// GetCycleProjectsForContext returns active projects in the cycle list for a specific context.
+// If context is empty, returns the global cycle projects.
+func (c *Config) GetCycleProjectsForContext(context string) []*models.Project {
+	if context == "" {
+		return c.GetCycleProjects()
+	}
+	if c.ContextCycleProjects == nil {
+		return nil
+	}
+	ids := c.ContextCycleProjects[context]
+	var projects []*models.Project
+	for _, id := range ids {
+		if p := c.GetProject(id); p != nil && !p.Archived {
+			projects = append(projects, p)
+		}
+	}
+	return projects
+}
+
+// GetCycleProjectIDsForContext returns project IDs in the cycle list for a specific context.
+// If context is empty, returns the global cycle project IDs.
+func (c *Config) GetCycleProjectIDsForContext(context string) []string {
+	if context == "" {
+		return c.CycleProjects
+	}
+	if c.ContextCycleProjects == nil {
+		return nil
+	}
+	return c.ContextCycleProjects[context]
+}
+
+// SetCycleProjectsForContext sets the cycle project IDs for a specific context.
+// If context is empty, sets the global cycle projects.
+func (c *Config) SetCycleProjectsForContext(context string, ids []string) {
+	if context == "" {
+		c.CycleProjects = ids
+		return
+	}
+	if c.ContextCycleProjects == nil {
+		c.ContextCycleProjects = make(map[string][]string)
+	}
+	c.ContextCycleProjects[context] = ids
+}
+
 // GetShowRecentTasks returns whether to show the Recent Tasks section on dashboard.
 // Defaults to true if not set.
 func (c *Config) GetShowRecentTasks() bool {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
@@ -25,9 +26,12 @@ type CloseProjectCycleManagerMsg struct {
 	Changed bool
 }
 
+// ShowContextPickerForCycleMsg is sent to open context picker from cycle manager.
+type ShowContextPickerForCycleMsg struct{}
+
 // NewProjectCycleManagerModel creates a new project cycle manager.
 func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *ProjectCycleManagerModel {
-	projects := buildProjectInfoList(cfg)
+	projects := buildProjectInfoListFiltered(cfg, cfg.FilterContext)
 
 	picker := NewBasePicker(projects, PickerConfig{
 		Title:          "Project Cycle Manager",
@@ -39,8 +43,9 @@ func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *P
 		BoxWidth:       60,
 	})
 
-	// Pre-select currently configured cycle projects
-	for _, id := range cfg.CycleProjects {
+	// Pre-select currently configured cycle projects for the current context
+	cycleIDs := cfg.GetCycleProjectIDsForContext(cfg.FilterContext)
+	for _, id := range cycleIDs {
 		picker.PreSelectByID(id)
 	}
 
@@ -51,12 +56,16 @@ func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *P
 	}
 }
 
-// buildProjectInfoList gathers all active projects with task counts.
-func buildProjectInfoList(cfg *config.Config) []ProjectInfo {
+// buildProjectInfoListFiltered gathers active projects filtered by context.
+// If filterContext is empty, returns all active projects.
+func buildProjectInfoListFiltered(cfg *config.Config, filterContext string) []ProjectInfo {
 	activeProjects := cfg.GetActiveProjects()
 	projects := make([]ProjectInfo, 0, len(activeProjects))
 
 	for _, p := range activeProjects {
+		if filterContext != "" && p.Context != filterContext {
+			continue
+		}
 		_ = storage.LoadProject(p)
 		projects = append(projects, ProjectInfo{
 			Project:   p,
@@ -65,6 +74,27 @@ func buildProjectInfoList(cfg *config.Config) []ProjectInfo {
 	}
 
 	return projects
+}
+
+// RefreshWithContext reloads the project list with the current context filter.
+// Also reloads selections from the context-specific cycle list.
+func (m *ProjectCycleManagerModel) RefreshWithContext() {
+	currentID := ""
+	if item := m.SelectedItem(); item.Project != nil {
+		currentID = item.Project.ID
+	}
+	m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext))
+
+	// Clear existing selections and reload from context-specific storage
+	m.Selected = make(map[string]bool)
+	cycleIDs := m.config.GetCycleProjectIDsForContext(m.config.FilterContext)
+	for _, id := range cycleIDs {
+		m.Selected[id] = true
+	}
+
+	if currentID != "" {
+		m.SetCursorToID(currentID)
+	}
 }
 
 // Init initializes the model.
@@ -105,8 +135,9 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			// Save selected projects to config, preserving selection order
+			// Use context-specific storage when a context filter is active
 			ids := m.getSelectedIDsInOrder()
-			m.config.SetCycleProjects(ids)
+			m.config.SetCycleProjectsForContext(m.config.FilterContext, ids)
 			if err := m.configManager.Save(m.config); err != nil {
 				return m, func() tea.Msg {
 					return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
@@ -138,10 +169,45 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Refresh list (re-sorts with pinned first)
 				currentID := item.Project.ID
-				m.SetItems(buildProjectInfoList(m.config))
+				m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext))
 				m.SetCursorToID(currentID)
 			}
 			return m, nil
+
+		case "c":
+			// Show context picker
+			return m, func() tea.Msg {
+				return ShowContextPickerForCycleMsg{}
+			}
+
+		case "C":
+			// Clear context filter
+			if m.config.FilterContext != "" {
+				m.config.FilterContext = ""
+				if err := m.configManager.Save(m.config); err != nil {
+					return m, func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+					}
+				}
+				m.RefreshWithContext()
+			}
+			return m, nil
+
+		case "u":
+			// Clear selection for visible (filtered) projects
+			for _, item := range m.Filtered {
+				delete(m.Selected, item.ItemID())
+			}
+			return m, nil
+
+		case "?":
+			return m, func() tea.Msg {
+				return ShowHelpMsg{
+					SourceView: ViewProjectCycleManager,
+					ViewName:   "Project Cycle",
+					Items:      m.GetHelpItems(),
+				}
+			}
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
@@ -191,14 +257,26 @@ func (m *ProjectCycleManagerModel) View() string {
 	content.WriteString("\n")
 	content.WriteString(m.RenderFooter())
 
-	// Build subtitle from selection count
-	selectedCount := len(m.Selected)
-	var subtitle string
-	if selectedCount == 0 {
-		subtitle = "No projects selected"
+	// Build subtitle: context indicator + selection count
+	var subtitleParts []string
+
+	// Context indicator (colored)
+	if m.config.FilterContext != "" {
+		contextStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render(m.config.FilterContext)))
 	} else {
-		subtitle = fmt.Sprintf("%d %s selected", selectedCount, pluralize(selectedCount, "project", "projects"))
+		subtitleParts = append(subtitleParts, "Context: All")
 	}
+
+	// Selection count
+	selectedCount := len(m.Selected)
+	if selectedCount == 0 {
+		subtitleParts = append(subtitleParts, "No projects selected")
+	} else {
+		subtitleParts = append(subtitleParts, fmt.Sprintf("%d %s selected", selectedCount, pluralize(selectedCount, "project", "projects")))
+	}
+
+	subtitle := strings.Join(subtitleParts, " · ")
 
 	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
 		Title:    "Project Cycle",
@@ -225,8 +303,16 @@ func (m *ProjectCycleManagerModel) RenderFooter() string {
 	}
 
 	if len(m.Filtered) == 0 {
-		return MutedStyle.Render("esc cancel")
+		if m.config.FilterContext != "" {
+			return MutedStyle.Render("c/C context set/clear | esc cancel")
+		}
+		return MutedStyle.Render("c context | esc cancel")
 	}
 
-	return MutedStyle.Render("space toggle | / search | c clear\np pin | g go to project | enter apply | esc cancel")
+	return MutedStyle.Render("space toggle | / search | c/C context | u clear\np pin | g go | enter apply | esc cancel")
+}
+
+// GetHelpItems returns the help items for the project cycle manager.
+func (m *ProjectCycleManagerModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewProjectCycleManager)
 }

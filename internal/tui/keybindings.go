@@ -34,6 +34,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerGlobalBindings()
 	r.registerDashboardBindings()
 	r.registerProjectTreeBindings()
+	r.registerProjectCycleManagerBindings()
 	r.registerPriorityViewBindings()
 	r.registerInboxProcessorBindings()
 	r.registerGlobalInboxProcessorBindings()
@@ -320,6 +321,30 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerProjectCycleManagerBindings() {
+	views := []ViewType{ViewProjectCycleManager}
+	r.add(
+		// Navigation
+		Keybinding{Key: "↑/k", Description: "Move up", Category: "Navigation", Views: views},
+		Keybinding{Key: "↓/j", Description: "Move down", Category: "Navigation", Views: views},
+		Keybinding{Key: "/", Description: "Search projects", Category: "Navigation", Views: views},
+
+		// Selection
+		Keybinding{Key: "Space", Description: "Toggle selection", Category: "Selection", Views: views},
+		Keybinding{Key: "u", Description: "Clear selection (in context)", Category: "Selection", Views: views},
+
+		// Context
+		Keybinding{Key: "c", Description: "Set context filter", Category: "Context", Views: views},
+		Keybinding{Key: "C", Description: "Clear context filter", Category: "Context", Views: views},
+
+		// Actions
+		Keybinding{Key: "p", Description: "Toggle pin", Category: "Actions", Views: views},
+		Keybinding{Key: "g", Description: "Go to project", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Apply selection", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Cancel", Category: "Actions", Views: views},
 	)
 }
 

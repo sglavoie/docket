@@ -220,16 +220,32 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowContextPickerForCycleMsg:
+		m.showView(ViewContextPicker, NewContextPickerModelFromConfig(m.config))
+		return true, nil
+
 	case ContextPickerDoneMsg:
 		m.popView()
-		if !msg.Canceled && m.dashboard != nil {
-			m.dashboard.filterContext = msg.SelectedContext
-			visible := m.dashboard.visibleProjects()
-			if m.dashboard.cursor >= len(visible) {
-				if len(visible) > 0 {
-					m.dashboard.cursor = len(visible) - 1
-				} else {
-					m.dashboard.cursor = 0
+		if !msg.Canceled {
+			// Persist context filter to config
+			m.config.FilterContext = msg.SelectedContext
+			_ = m.configManager.Save(m.config)
+
+			if msg.FromCycle {
+				// Refresh the Project Cycle Manager with new context
+				if cycleManager, ok := m.views.Get(ViewProjectCycleManager).(*ProjectCycleManagerModel); ok {
+					cycleManager.RefreshWithContext()
+				}
+			} else if m.dashboard != nil {
+				// Update dashboard filter
+				m.dashboard.filterContext = msg.SelectedContext
+				visible := m.dashboard.visibleProjects()
+				if m.dashboard.cursor >= len(visible) {
+					if len(visible) > 0 {
+						m.dashboard.cursor = len(visible) - 1
+					} else {
+						m.dashboard.cursor = 0
+					}
 				}
 			}
 		}

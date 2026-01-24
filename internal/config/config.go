@@ -45,13 +45,15 @@ type Config struct {
 	CurrentProject          string                       `json:"current_project,omitempty"`
 	Editor                  string                       `json:"editor"`
 	DefaultContext          string                       `json:"default_context"`
+	FilterContext           string                       `json:"filter_context,omitempty"` // Persisted context filter for dashboard/cycling
 	FzfEnabled              bool                         `json:"fzf_enabled"`
 	GlowEnabled             bool                         `json:"glow_enabled"`
 	UndoHistoryDepth        *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
 	Projects                []*models.Project            `json:"projects"`
 	SectionColors           map[string]string            `json:"section_colors,omitempty"`            // Global section color registry
 	ProjectViewStates       map[string]ProjectViewState  `json:"project_view_states,omitempty"`       // Per-project filter/sort state
-	CycleProjects           []string                     `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~
+	CycleProjects           []string                     `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~ (global, when no context filter)
+	ContextCycleProjects    map[string][]string          `json:"context_cycle_projects,omitempty"`    // Per-context cycle project IDs (context name -> project IDs)
 	ShowRecentTasks         *bool                        `json:"show_recent_tasks,omitempty"`         // Show Recent Tasks section on dashboard (default: true)
 	RecentPaletteItems      []RecentPaletteItem          `json:"recent_palette_items,omitempty"`      // Recently selected items in command palette
 	LastPaletteCategory     string                       `json:"last_palette_category,omitempty"`     // Last category filter used (e.g., ":task ")
