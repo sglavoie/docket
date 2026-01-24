@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -20,8 +19,9 @@ type ProjectCreatorModel struct {
 	configManager *config.Manager
 
 	nameInput     textinput.Model
-	contextCursor int
-	contexts      []string
+	contextInput  textinput.Model
+	contextCursor int      // -1 means custom input mode, 0+ means selecting from list
+	contexts      []string // Available contexts from existing projects
 
 	focusIndex int // 0 = name input, 1 = context selection
 	width      int
@@ -36,6 +36,10 @@ func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *Projec
 	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
 
+	// Context input with default value
+	contextInput := factory.NewTextInputWithValue(cfg.DefaultContext, "e.g., personal, work")
+	contextInput.CharLimit = 50
+
 	// Build contexts list: start with default context, then add others
 	contexts := []string{cfg.DefaultContext}
 	for _, ctx := range cfg.GetAllContexts() {
@@ -48,7 +52,8 @@ func NewProjectCreatorModel(cfg *config.Config, manager *config.Manager) *Projec
 		config:        cfg,
 		configManager: manager,
 		nameInput:     nameInput,
-		contextCursor: 0,
+		contextInput:  contextInput,
+		contextCursor: 0, // Default context is at index 0
 		contexts:      contexts,
 		focusIndex:    0,
 		width:         80,
@@ -61,6 +66,7 @@ func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	formFactory.ResizeTextInput(&m.nameInput, width)
+	formFactory.ResizeTextInput(&m.contextInput, width)
 }
 
 func (m *ProjectCreatorModel) Init() tea.Cmd {
@@ -83,8 +89,10 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIndex = (m.focusIndex + 1) % 2
 			if m.focusIndex == 0 {
 				m.nameInput.Focus()
+				m.contextInput.Blur()
 			} else {
 				m.nameInput.Blur()
+				m.contextInput.Focus()
 			}
 			return m, nil
 
@@ -93,25 +101,54 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Move to context selection
 				m.focusIndex = 1
 				m.nameInput.Blur()
+				m.contextInput.Focus()
 				return m, nil
 			}
 			// Submit
 			return m, m.createProject()
 
 		case "left", "h":
-			if m.focusIndex == 1 && m.contextCursor > 0 {
-				m.contextCursor--
+			// Cycle through contexts when on context field
+			if m.focusIndex == 1 && len(m.contexts) > 0 {
+				if m.contextCursor > 0 {
+					m.contextCursor--
+					m.contextInput.SetValue(m.contexts[m.contextCursor])
+				} else if m.contextCursor == -1 {
+					// From custom mode, go to last context
+					m.contextCursor = len(m.contexts) - 1
+					m.contextInput.SetValue(m.contexts[m.contextCursor])
+				}
 			}
 
 		case "right", "l":
-			if m.focusIndex == 1 && m.contextCursor < len(m.contexts)-1 {
-				m.contextCursor++
+			// Cycle through contexts when on context field
+			if m.focusIndex == 1 && len(m.contexts) > 0 {
+				if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
+					m.contextCursor++
+					m.contextInput.SetValue(m.contexts[m.contextCursor])
+				}
 			}
 		}
 	}
 
-	if m.focusIndex == 0 {
+	// Update the focused input
+	switch m.focusIndex {
+	case 0:
 		m.nameInput, cmd = m.nameInput.Update(msg)
+	case 1:
+		oldValue := m.contextInput.Value()
+		m.contextInput, cmd = m.contextInput.Update(msg)
+		// If user typed something, switch to custom mode
+		if m.contextInput.Value() != oldValue {
+			m.contextCursor = -1
+			// Check if typed value matches an existing context
+			for i, ctx := range m.contexts {
+				if ctx == m.contextInput.Value() {
+					m.contextCursor = i
+					break
+				}
+			}
+		}
 	}
 
 	return m, cmd
@@ -136,7 +173,13 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		projectID := uuid.New().String()
 		projectPath := m.config.GetProjectPath(slug)
 		project := models.NewProject(projectID, name, projectPath)
-		project.Context = m.contexts[m.contextCursor]
+
+		// Get context value
+		context := strings.TrimSpace(m.contextInput.Value())
+		if context == "" {
+			context = m.config.DefaultContext
+		}
+		project.Context = context
 
 		// Ensure data directory exists
 		if err := m.config.EnsureDataDir(); err != nil {
@@ -174,7 +217,7 @@ func (m *ProjectCreatorModel) View() string {
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n\n")
 
-	// Context selection
+	// Context input with available contexts hint
 	var contextLabel string
 	if m.focusIndex == 1 {
 		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
@@ -182,20 +225,26 @@ func (m *ProjectCreatorModel) View() string {
 		contextLabel = FieldLabelStyle.Render("Context: ")
 	}
 	b.WriteString(contextLabel)
+	b.WriteString(m.contextInput.View())
+	b.WriteString("\n")
 
-	for i, ctx := range m.contexts {
-		var style lipgloss.Style
-		if i == m.contextCursor {
-			if m.focusIndex == 1 {
-				style = SelectorOptionSelectedStyle
+	// Show available contexts
+	if len(m.contexts) > 0 {
+		b.WriteString("         ")
+		b.WriteString(MutedStyle.Render("Available: "))
+		for i, ctx := range m.contexts {
+			if i == m.contextCursor {
+				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("[%s]", ctx)))
 			} else {
-				style = BoldStyle
+				b.WriteString(MutedStyle.Render(ctx))
 			}
-			b.WriteString(style.Render(fmt.Sprintf("[%s]", ctx)))
-		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", ctx)))
+			if i < len(m.contexts)-1 {
+				b.WriteString(MutedStyle.Render(", "))
+			}
 		}
-		b.WriteString(" ")
+		if m.focusIndex == 1 {
+			b.WriteString(HelpStyle.Render("  (←/→ to select, or type custom)"))
+		}
 	}
 	b.WriteString("\n\n")
 
@@ -208,7 +257,7 @@ func (m *ProjectCreatorModel) View() string {
 
 	// Help footer
 	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Tab: switch field · ←/→: select context · Enter: submit · Esc: cancel"))
+	b.WriteString(MutedStyle.Render("Tab: switch field · ←/→: select context (or type custom) · Enter: submit · Esc: cancel"))
 
 	// Wrap in overlay card
 	cardWidth := m.width - 4
