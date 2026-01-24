@@ -654,3 +654,104 @@ func TestDaysInMonth(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateNextDateMonthlyFromLeapDay(t *testing.T) {
+	tests := []struct {
+		name     string
+		base     time.Time
+		interval int
+		want     time.Time
+	}{
+		{
+			"Feb 29 + 1m = Mar 29",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			1,
+			time.Date(2024, 3, 29, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 + 12m (to non-leap year) = Feb 28",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			12,
+			time.Date(2025, 2, 28, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 + 48m (to leap year) = Feb 29",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			48,
+			time.Date(2028, 2, 29, 10, 0, 0, 0, time.UTC),
+		},
+		{
+			"Feb 29 + 2m = Apr 29",
+			time.Date(2024, 2, 29, 10, 0, 0, 0, time.UTC),
+			2,
+			time.Date(2024, 4, 29, 10, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &RecurrencePattern{Interval: tc.interval, Unit: RecurrenceMonthly}
+			got := calculateNextDate(tc.base, r)
+			if !got.Equal(tc.want) {
+				t.Errorf("calculateNextDate() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCalculateNextDateWeeklyMultiWeekWrap(t *testing.T) {
+	// 2024-01-19 is Friday
+	friday := time.Date(2024, 1, 19, 10, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name     string
+		base     time.Time
+		interval int
+		weekdays []int
+		want     time.Time
+	}{
+		{
+			"Friday with 3-week interval, Mon+Fri pattern",
+			friday,
+			3,
+			[]int{1, 5}, // Mon, Fri
+			time.Date(2024, 2, 5, 10, 0, 0, 0, time.UTC), // Monday 3 weeks later
+		},
+		{
+			"Friday with 4-week interval, Mon only",
+			friday,
+			4,
+			[]int{1}, // Mon
+			time.Date(2024, 2, 12, 10, 0, 0, 0, time.UTC), // Monday 4 weeks later
+		},
+		{
+			"Monday with 3-week interval, Wed+Fri pattern - jumps to next cycle",
+			time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC), // Monday Jan 15
+			3,
+			[]int{3, 5}, // Wed, Fri
+			time.Date(2024, 1, 31, 10, 0, 0, 0, time.UTC), // Wed in next 3-week cycle
+		},
+		{
+			"Friday with 2-week interval, Sat pattern - finds next Sat in current week",
+			friday,
+			2,
+			[]int{6}, // Saturday only
+			time.Date(2024, 1, 27, 10, 0, 0, 0, time.UTC), // Next Saturday (still in period)
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &RecurrencePattern{
+				Interval: tc.interval,
+				Unit:     RecurrenceWeekly,
+				Weekdays: tc.weekdays,
+			}
+			got := calculateNextDate(tc.base, r)
+			if !got.Equal(tc.want) {
+				t.Errorf("calculateNextDate() = %v (%s), want %v (%s)",
+					got, got.Weekday(), tc.want, tc.want.Weekday())
+			}
+		})
+	}
+}

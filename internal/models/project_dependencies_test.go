@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestProjectGetBlockingTasks(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
@@ -250,5 +253,74 @@ func TestGetIncompleteDependencies(t *testing.T) {
 	incomplete = project.GetIncompleteDependencies(dependent)
 	if len(incomplete) != 0 {
 		t.Errorf("expected 0 incomplete deps, got %d", len(incomplete))
+	}
+}
+
+func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	tasks := make([]*Task, 5)
+	for i := 0; i < 5; i++ {
+		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+	}
+	project.Tasks = tasks
+
+	// Chain: 0 -> 1 -> 2 -> 3 -> 4 (task 0 depends on 1, which depends on 2, etc.)
+	tasks[0].AddDependency(tasks[1].ID)
+	tasks[1].AddDependency(tasks[2].ID)
+	tasks[2].AddDependency(tasks[3].ID)
+	tasks[3].AddDependency(tasks[4].ID)
+
+	// Adding 4 -> 0 would create 5-node cycle: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+	if !project.HasCircularDependency(tasks[4].ID, tasks[0].ID) {
+		t.Error("should detect 5-node circular dependency")
+	}
+
+	// Adding 4 -> 2 would create 3-node cycle: 2 -> 3 -> 4 -> 2
+	if !project.HasCircularDependency(tasks[4].ID, tasks[2].ID) {
+		t.Error("should detect cycle 4 -> 2 -> 3 -> 4")
+	}
+
+	// Adding 4 -> 3 would create 2-node cycle: 3 -> 4 -> 3
+	if !project.HasCircularDependency(tasks[4].ID, tasks[3].ID) {
+		t.Error("should detect cycle 4 -> 3 -> 4")
+	}
+
+	// Adding 1 -> 4 would NOT create a cycle (4 doesn't depend on anything that leads to 1)
+	if project.HasCircularDependency(tasks[1].ID, tasks[4].ID) {
+		t.Error("should not detect cycle for 1 -> 4")
+	}
+}
+
+func TestProjectHasCircularDependencyBranching(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	// Create branching dependency graph:
+	//     0 -> 1 -> 3
+	//     0 -> 2 -> 3
+	tasks := make([]*Task, 4)
+	for i := 0; i < 4; i++ {
+		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+	}
+	project.Tasks = tasks
+
+	tasks[0].AddDependency(tasks[1].ID)
+	tasks[0].AddDependency(tasks[2].ID)
+	tasks[1].AddDependency(tasks[3].ID)
+	tasks[2].AddDependency(tasks[3].ID)
+
+	// Adding 3 -> 0 would create cycle through either branch
+	if !project.HasCircularDependency(tasks[3].ID, tasks[0].ID) {
+		t.Error("should detect cycle in branching graph")
+	}
+
+	// Adding 3 -> 1 would create cycle: 1 -> 3 -> 1
+	if !project.HasCircularDependency(tasks[3].ID, tasks[1].ID) {
+		t.Error("should detect cycle 3 -> 1 -> 3")
+	}
+
+	// Adding 1 -> 2 would NOT create a cycle
+	if project.HasCircularDependency(tasks[1].ID, tasks[2].ID) {
+		t.Error("should not detect cycle for 1 -> 2")
 	}
 }

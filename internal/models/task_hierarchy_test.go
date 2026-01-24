@@ -334,3 +334,61 @@ func TestProgressExcludesNotesWithMixedChildren(t *testing.T) {
 		t.Errorf("expected 100 progress with 2/2 tasks complete, got %f", parent.GetProgress())
 	}
 }
+
+func TestPromoteWithNestedChildren(t *testing.T) {
+	// Story with task children can promote to epic (tasks valid under epic)
+	story := NewTask("story", 1, TaskTypeStory, "Story")
+	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	task2 := NewTask("task2", 3, TaskTypeTask, "Task 2")
+	story.AddChild(task1)
+	story.AddChild(task2)
+
+	err := story.Promote()
+	if err != nil {
+		t.Errorf("Promote() story with task children should succeed: %v", err)
+	}
+	if story.Type != TaskTypeEpic {
+		t.Errorf("Type = %s, want epic", story.Type)
+	}
+	// Children should still be valid
+	if len(story.Children) != 2 {
+		t.Errorf("expected 2 children after promote, got %d", len(story.Children))
+	}
+}
+
+func TestDemoteWithNestedChildren(t *testing.T) {
+	// Epic with task children can demote to story (tasks valid under story)
+	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	bug := NewTask("bug", 3, TaskTypeBug, "Bug")
+	epic.AddChild(task1)
+	epic.AddChild(bug)
+
+	err := epic.Demote()
+	if err != nil {
+		t.Errorf("Demote() epic with task/bug children should succeed: %v", err)
+	}
+	if epic.Type != TaskTypeStory {
+		t.Errorf("Type = %s, want story", epic.Type)
+	}
+	// Children should still be valid
+	if len(epic.Children) != 2 {
+		t.Errorf("expected 2 children after demote, got %d", len(epic.Children))
+	}
+}
+
+func TestDemoteEpicWithIncompatibleChildren(t *testing.T) {
+	// Epic with idea children cannot demote (idea cannot be child of story)
+	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
+	epic.AddChild(idea)
+
+	err := epic.Demote()
+	if err == nil {
+		t.Error("Demote() epic with idea child should fail")
+	}
+	// Type should remain epic
+	if epic.Type != TaskTypeEpic {
+		t.Errorf("Type should remain epic after failed demote, got %s", epic.Type)
+	}
+}
