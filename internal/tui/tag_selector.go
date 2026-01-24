@@ -19,10 +19,9 @@ type TagSelectorModel struct {
 	originalTags []string
 
 	// Add tag mode
-	addTagMode        bool
-	addTagJustEntered bool
-	addTagInput       textinput.Model
-	addTagError       string
+	addTagMode  bool
+	addTagInput textinput.Model
+	addTagError string
 }
 
 // ShowTagSelectorMsg is sent to open the tag selector.
@@ -62,10 +61,9 @@ type BulkTagSelectorModel struct {
 	originalTags map[string][]string // taskID -> original tags
 
 	// Add tag mode
-	addTagMode        bool
-	addTagJustEntered bool
-	addTagInput       textinput.Model
-	addTagError       string
+	addTagMode  bool
+	addTagInput textinput.Model
+	addTagError string
 }
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
@@ -97,7 +95,6 @@ func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *Bul
 
 	// Create add tag input
 	addInput := textinput.New()
-	addInput.Placeholder = "Enter tag name"
 	addInput.CharLimit = 50
 
 	// Save original tags for each task
@@ -188,7 +185,6 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			// Enter add tag mode
 			m.addTagMode = true
-			m.addTagJustEntered = true
 			m.addTagError = ""
 			m.addTagInput.Reset()
 			m.addTagInput.SetValue("")
@@ -208,12 +204,6 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleAddTagMode handles keyboard input when in add tag mode.
 func (m *BulkTagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Skip the first keystroke (the 'a' that triggered add mode)
-	if m.addTagJustEntered {
-		m.addTagJustEntered = false
-		return m, nil
-	}
-
 	switch msg.String() {
 	case "esc":
 		// Cancel add mode
@@ -406,7 +396,6 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 
 	// Create add tag input
 	addInput := textinput.New()
-	addInput.Placeholder = "Enter tag name"
 	addInput.CharLimit = 50
 
 	return &TagSelectorModel{
@@ -487,7 +476,6 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			// Enter add tag mode
 			m.addTagMode = true
-			m.addTagJustEntered = true
 			m.addTagError = ""
 			m.addTagInput.Reset()
 			m.addTagInput.SetValue("")
@@ -507,12 +495,6 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleAddTagMode handles keyboard input when in add tag mode.
 func (m *TagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Skip the first keystroke (the 'a' that triggered add mode)
-	if m.addTagJustEntered {
-		m.addTagJustEntered = false
-		return m, nil
-	}
-
 	switch msg.String() {
 	case "esc":
 		// Cancel add mode
