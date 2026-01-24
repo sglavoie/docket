@@ -59,13 +59,13 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Backup config before making changes
-	if err := configManager.BackupConfig(); err != nil {
-		return fmt.Errorf("failed to create config backup: %w", err)
+	if backupErr := configManager.BackupConfig(); backupErr != nil {
+		return fmt.Errorf("failed to create config backup: %w", backupErr)
 	}
 
 	// Restore project directory from trash
-	if err := storage.RestoreProjectFromTrash(slug, cfg.DataDir); err != nil {
-		return fmt.Errorf("failed to restore project from trash: %w", err)
+	if restoreErr := storage.RestoreProjectFromTrash(slug, cfg.DataDir); restoreErr != nil {
+		return fmt.Errorf("failed to restore project from trash: %w", restoreErr)
 	}
 
 	// Reconstruct project metadata

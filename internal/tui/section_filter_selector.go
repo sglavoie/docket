@@ -29,7 +29,7 @@ type ShowSectionFilterSelectorMsg struct {
 // SectionFilterSelectorDoneMsg is sent when the section filter selector is done.
 type SectionFilterSelectorDoneMsg struct {
 	SelectedSections []string
-	Cancelled        bool
+	Canceled         bool
 }
 
 // NewSectionFilterSelectorModel creates a new section filter selector.
@@ -112,7 +112,7 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
-				return SectionFilterSelectorDoneMsg{Cancelled: true}
+				return SectionFilterSelectorDoneMsg{Canceled: true}
 			}
 
 		case "enter":
@@ -121,7 +121,7 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return SectionFilterSelectorDoneMsg{
 					SelectedSections: selectedSections,
-					Cancelled:        false,
+					Canceled:         false,
 				}
 			}
 

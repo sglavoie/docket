@@ -40,5 +40,5 @@ type BulkEditDoneMsg struct {
 	Tasks     []*models.Task
 	Project   *models.Project
 	TaskCount int
-	Applied   bool // false = cancelled
+	Applied   bool // false = canceled
 }

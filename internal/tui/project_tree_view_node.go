@@ -95,8 +95,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	if inSelection && !selected && !node.IsContextNode {
 		titleStyle = SelectionStyle
 	}
-	if task.Status == models.StatusCancelled && !node.IsContextNode {
-		titleStyle = CancelledStyle
+	if task.Status == models.StatusCanceled && !node.IsContextNode {
+		titleStyle = CanceledStyle
 	}
 
 	// Progress for parent tasks

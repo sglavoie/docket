@@ -37,7 +37,7 @@ type TagSelectorDoneMsg struct {
 	Task         *models.Task
 	Project      *models.Project
 	SelectedTags []string
-	Cancelled    bool
+	Canceled     bool
 }
 
 // ShowBulkTagSelectorMsg is sent to open the tag selector for multiple tasks.
@@ -51,7 +51,7 @@ type BulkTagSelectorDoneMsg struct {
 	Tasks        []*models.Task
 	Project      *models.Project
 	SelectedTags []string
-	Cancelled    bool
+	Canceled     bool
 }
 
 // BulkTagSelectorModel allows multi-selecting tags for multiple tasks.
@@ -167,9 +167,9 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return BulkTagSelectorDoneMsg{
-					Tasks:     m.tasks,
-					Project:   m.project,
-					Cancelled: true,
+					Tasks:    m.tasks,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 
@@ -181,7 +181,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Tasks:        m.tasks,
 					Project:      m.project,
 					SelectedTags: selectedTags,
-					Cancelled:    false,
+					Canceled:     false,
 				}
 			}
 
@@ -466,9 +466,9 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Cancelled: true,
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 
@@ -480,7 +480,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Task:         m.task,
 					Project:      m.project,
 					SelectedTags: selectedTags,
-					Cancelled:    false,
+					Canceled:     false,
 				}
 			}
 

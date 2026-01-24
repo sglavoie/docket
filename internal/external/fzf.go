@@ -55,7 +55,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("cancelled")
+				return nil, fmt.Errorf("canceled")
 			}
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
@@ -63,7 +63,7 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 
 	selected := strings.TrimSpace(stdout.String())
 	if selected == "" {
-		return nil, fmt.Errorf("cancelled")
+		return nil, fmt.Errorf("canceled")
 	}
 
 	// Parse the selection - get project name from first field
@@ -126,7 +126,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("cancelled")
+				return nil, fmt.Errorf("canceled")
 			}
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
@@ -134,7 +134,7 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 
 	selected := strings.TrimSpace(stdout.String())
 	if selected == "" {
-		return nil, fmt.Errorf("cancelled")
+		return nil, fmt.Errorf("canceled")
 	}
 
 	// Parse the selection - get task ID from first field
@@ -194,7 +194,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if exitErr.ExitCode() == 130 {
-				return nil, fmt.Errorf("cancelled")
+				return nil, fmt.Errorf("canceled")
 			}
 		}
 		return nil, fmt.Errorf("fzf failed: %w", err)
@@ -202,7 +202,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	output := strings.TrimSpace(stdout.String())
 	if output == "" {
-		return nil, fmt.Errorf("cancelled")
+		return nil, fmt.Errorf("canceled")
 	}
 
 	// Parse selections

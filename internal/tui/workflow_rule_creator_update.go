@@ -18,7 +18,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case TriggerFieldPickerDoneMsg:
 			m.showingFieldPicker = false
-			if !msg.Cancelled && m.fieldPickerTarget < len(m.triggers) {
+			if !msg.Canceled && m.fieldPickerTarget < len(m.triggers) {
 				// Find cursor position for selected field
 				for i, f := range m.triggerFields {
 					if f == msg.Field {
@@ -42,7 +42,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case ActionTypePickerDoneMsg:
 			m.showingActionPicker = false
-			if !msg.Cancelled && m.actionPickerTarget < len(m.actions) {
+			if !msg.Canceled && m.actionPickerTarget < len(m.actions) {
 				// Find cursor position for selected action type
 				for i, at := range m.actionTypes {
 					if at == msg.ActionType {

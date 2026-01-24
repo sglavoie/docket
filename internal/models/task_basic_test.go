@@ -42,7 +42,7 @@ func TestTaskStatus(t *testing.T) {
 		{StatusInProgress, false, true, "◐"},
 		{StatusDone, true, false, "●"},
 		{StatusBlocked, false, true, "◈"},
-		{StatusCancelled, true, false, "✕"},
+		{StatusCanceled, true, false, "✕"},
 	}
 
 	for _, tc := range tests {
@@ -95,8 +95,8 @@ func TestTaskStatusTransitions(t *testing.T) {
 
 	// Cancel
 	task.Cancel()
-	if task.Status != StatusCancelled {
-		t.Errorf("after Cancel(), Status = %s, want cancelled", task.Status)
+	if task.Status != StatusCanceled {
+		t.Errorf("after Cancel(), Status = %s, want canceled", task.Status)
 	}
 	if task.CompletedAt == nil {
 		t.Error("after Cancel(), CompletedAt should be set")
@@ -153,7 +153,7 @@ func TestParseTaskStatus(t *testing.T) {
 		{"in_progress", StatusInProgress, true},
 		{"done", StatusDone, true},
 		{"blocked", StatusBlocked, true},
-		{"cancelled", StatusCancelled, true},
+		{"canceled", StatusCanceled, true},
 		{"invalid", TaskStatus("invalid"), false},
 		{"", TaskStatus(""), false},
 	}

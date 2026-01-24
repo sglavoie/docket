@@ -22,16 +22,16 @@ package tui
 // # Done Pattern (Picker Results)
 //
 // Used by picker/selector views that return a selection result. The Done
-// message includes a Cancelled field to distinguish user cancellation from
+// message includes a Canceled field to distinguish user cancellation from
 // successful selection.
 //
-//   - XxxDoneMsg: Carries selected value(s) and Cancelled bool
+//   - XxxDoneMsg: Carries selected value(s) and Canceled bool
 //
 // Examples:
-//   - TagSelectorDoneMsg{Tags: []string, Cancelled: bool}
-//   - SectionPickerDoneMsg{Section: string, Cancelled: bool}
-//   - PriorityPickerDoneMsg{Priority: int, Cancelled: bool}
-//   - ContextPickerDoneMsg{Context: string, Cancelled: bool}
+//   - TagSelectorDoneMsg{Tags: []string, Canceled: bool}
+//   - SectionPickerDoneMsg{Section: string, Canceled: bool}
+//   - PriorityPickerDoneMsg{Priority: int, Canceled: bool}
+//   - ContextPickerDoneMsg{Context: string, Canceled: bool}
 //
 // # CRUD Pattern (Entity Lifecycle)
 //

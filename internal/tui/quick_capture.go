@@ -412,7 +412,7 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 			task.Block()
 		case models.StatusDone:
 			task.Complete()
-		case models.StatusCancelled:
+		case models.StatusCanceled:
 			task.Cancel()
 		}
 

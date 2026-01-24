@@ -195,14 +195,14 @@ func TestLoadActionableTasks(t *testing.T) {
 		// Add completed tasks
 		done := models.NewTask("1", 1, models.TaskTypeTask, "Done task")
 		done.Status = models.StatusDone
-		cancelled := models.NewTask("2", 2, models.TaskTypeTask, "Cancelled task")
-		cancelled.Status = models.StatusCancelled
+		canceled := models.NewTask("2", 2, models.TaskTypeTask, "Canceled task")
+		canceled.Status = models.StatusCanceled
 
 		// Add active task
 		active := models.NewTask("3", 3, models.TaskTypeTask, "Active task")
 		active.Status = models.StatusTodo
 
-		project.Tasks = []*models.Task{done, cancelled, active}
+		project.Tasks = []*models.Task{done, canceled, active}
 
 		m := NewPriorityViewModel(project)
 
@@ -616,7 +616,7 @@ func TestEdgeCases(t *testing.T) {
 		done1 := models.NewTask("1", 1, models.TaskTypeTask, "Done 1")
 		done1.Status = models.StatusDone
 		done2 := models.NewTask("2", 2, models.TaskTypeTask, "Done 2")
-		done2.Status = models.StatusCancelled
+		done2.Status = models.StatusCanceled
 
 		project.Tasks = []*models.Task{done1, done2}
 

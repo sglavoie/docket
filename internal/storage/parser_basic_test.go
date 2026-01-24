@@ -83,7 +83,7 @@ func TestParseTasksMarkdown_AllTypes(t *testing.T) {
 <!-- id: b1, status: blocked, priority: 1 -->
 
 ## Idea: An Idea
-<!-- id: i1, status: cancelled, priority: 5 -->
+<!-- id: i1, status: canceled, priority: 5 -->
 `
 	_, tasks, err := ParseTasksMarkdown(content)
 	if err != nil {

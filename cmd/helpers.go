@@ -114,7 +114,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	// Evaluate workflow rules if requested
 	if opts != nil && opts.EvaluateRules {
 		if opts.Config == nil || opts.ConfigManager == nil {
-			return fmt.Errorf("Config and ConfigManager required when EvaluateRules is true")
+			return fmt.Errorf("config and ConfigManager required when EvaluateRules is true")
 		}
 
 		rules := opts.Config.GetEnabledWorkflowRules()
@@ -333,7 +333,7 @@ type TaskFilter func(*models.Task) bool
 // SelectTask handles the common pattern of selecting a task from args or interactively.
 // If args contains an identifier, finds the task directly.
 // Otherwise, filters tasks using the predicate and presents an interactive selector.
-// Returns an error if no task is found or selection is cancelled.
+// Returns an error if no task is found or selection is canceled.
 func SelectTask(project *models.Project, args []string, filter TaskFilter, prompt, emptyMsg string) (*models.Task, error) {
 	if len(args) > 0 {
 		task := FindTaskByIdentifier(project, args[0])

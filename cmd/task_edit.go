@@ -50,16 +50,16 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		taskID = args[0]
 	} else {
-		project, _, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
+		project, _, _, loadErr := LoadCurrentProject()
+		if loadErr != nil {
+			return loadErr
 		}
 
-		task, err := SelectTask(project, args,
+		task, selectErr := SelectTask(project, args,
 			func(t *models.Task) bool { return true },
 			"Select task to edit:", "no tasks available")
-		if err != nil {
-			return err
+		if selectErr != nil {
+			return selectErr
 		}
 		taskID = task.ID
 	}

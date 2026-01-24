@@ -29,7 +29,7 @@ type ShowContextPickerMsg struct {
 // ContextPickerDoneMsg is sent when the context picker is done.
 type ContextPickerDoneMsg struct {
 	SelectedContext string
-	Cancelled       bool
+	Canceled        bool
 }
 
 // NewContextPickerModel creates a new context picker.
@@ -106,7 +106,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
-				return ContextPickerDoneMsg{Cancelled: true}
+				return ContextPickerDoneMsg{Canceled: true}
 			}
 
 		case "enter":
@@ -115,7 +115,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					return ContextPickerDoneMsg{
 						SelectedContext: selected.Name,
-						Cancelled:       false,
+						Canceled:        false,
 					}
 				}
 			}

@@ -300,19 +300,19 @@ func TestListTrashedProjects(t *testing.T) {
 
 	// Create trash dir with some projects
 	trashDir := filepath.Join(dataDir, ".trash")
-	if err := os.MkdirAll(filepath.Join(trashDir, "project-a"), 0755); err != nil {
-		t.Fatalf("failed to create project-a: %v", err)
+	if mkdirErr := os.MkdirAll(filepath.Join(trashDir, "project-a"), 0755); mkdirErr != nil {
+		t.Fatalf("failed to create project-a: %v", mkdirErr)
 	}
-	if err := os.MkdirAll(filepath.Join(trashDir, "project-b"), 0755); err != nil {
-		t.Fatalf("failed to create project-b: %v", err)
+	if mkdirErr := os.MkdirAll(filepath.Join(trashDir, "project-b"), 0755); mkdirErr != nil {
+		t.Fatalf("failed to create project-b: %v", mkdirErr)
 	}
-	if err := os.MkdirAll(filepath.Join(trashDir, "project-c"), 0755); err != nil {
-		t.Fatalf("failed to create project-c: %v", err)
+	if mkdirErr := os.MkdirAll(filepath.Join(trashDir, "project-c"), 0755); mkdirErr != nil {
+		t.Fatalf("failed to create project-c: %v", mkdirErr)
 	}
 
 	// Create a file (should be ignored, only directories count)
-	if err := os.WriteFile(filepath.Join(trashDir, "not-a-project.txt"), []byte("test"), 0644); err != nil {
-		t.Fatalf("failed to create file: %v", err)
+	if writeErr := os.WriteFile(filepath.Join(trashDir, "not-a-project.txt"), []byte("test"), 0644); writeErr != nil {
+		t.Fatalf("failed to create file: %v", writeErr)
 	}
 
 	projects, err = ListTrashedProjects(dataDir)

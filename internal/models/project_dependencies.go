@@ -81,7 +81,7 @@ func (p *Project) CheckAndAutoUnblock() {
 }
 
 // HasIncompleteDependencies returns true if the task has any dependencies
-// that are not yet complete (done or cancelled).
+// that are not yet complete (done or canceled).
 func (p *Project) HasIncompleteDependencies(task *Task) bool {
 	if len(task.DependsOn) == 0 {
 		return false

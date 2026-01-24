@@ -63,7 +63,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 	}
 
 	// Add status-based actions
-	if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+	if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
 		actions = append(actions, PaletteAction{
 			Name:    "Complete",
 			Icon:    "✓",
@@ -109,7 +109,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
-	if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+	if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
 		actions = append(actions, PaletteAction{
 			Name:    "Reopen",
 			Icon:    "↺",
@@ -272,7 +272,7 @@ func (m *CommandPaletteModel) getBulkActionsForSelectedTasks() []PaletteAction {
 	canComplete := true
 	canStart := true
 	for _, item := range selectedItems {
-		if item.Task.Status == models.StatusDone || item.Task.Status == models.StatusCancelled {
+		if item.Task.Status == models.StatusDone || item.Task.Status == models.StatusCanceled {
 			canComplete = false
 		}
 		if item.Task.Status != models.StatusTodo {

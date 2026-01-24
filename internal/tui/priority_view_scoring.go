@@ -89,11 +89,12 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	score += unblockingBonus * 150
 
 	// Section penalty: deprioritize Next, Waiting, and Someday section tasks
-	if task.Section == models.SectionNext {
+	switch task.Section {
+	case models.SectionNext:
 		score -= 100
-	} else if task.Section == models.SectionWaiting {
+	case models.SectionWaiting:
 		score -= 200
-	} else if task.Section == models.SectionSomeday {
+	case models.SectionSomeday:
 		score -= 300
 	}
 
@@ -161,9 +162,10 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	var reasons []string
 
 	// Priority
-	if task.Priority == 1 {
+	switch task.Priority {
+	case 1:
 		reasons = append(reasons, "critical priority")
-	} else if task.Priority == 2 {
+	case 2:
 		reasons = append(reasons, "high priority")
 	}
 

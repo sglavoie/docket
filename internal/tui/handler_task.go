@@ -377,9 +377,10 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 
 	// Build success message
 	actionPast := msg.Action + "d"
-	if msg.Action == "complete" {
+	switch msg.Action {
+	case "complete":
 		actionPast = "completed"
-	} else if msg.Action == "start" {
+	case "start":
 		actionPast = "started"
 	}
 	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)

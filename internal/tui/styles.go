@@ -48,7 +48,7 @@ var (
 	BlockedStyle = lipgloss.NewStyle().
 			Foreground(ColorError)
 
-	CancelledStyle = lipgloss.NewStyle().
+	CanceledStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted).
 			Strikethrough(true)
 
@@ -145,7 +145,7 @@ var (
 				Foreground(lipgloss.Color("196")). // Red
 				Background(lipgloss.Color("52"))   // Dark red
 
-	CancelledBadgeStyle = lipgloss.NewStyle().
+	CanceledBadgeStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("241")). // Gray
 				Background(lipgloss.Color("236"))  // Dark gray
 
@@ -542,8 +542,8 @@ func GetStatusStyle(status string) lipgloss.Style {
 		return DoneStyle
 	case "blocked":
 		return BlockedStyle
-	case "cancelled":
-		return CancelledStyle
+	case "canceled":
+		return CanceledStyle
 	default:
 		return NormalStyle
 	}
@@ -618,8 +618,8 @@ func GetStatusBadge(status string, icon string) string {
 		return DoneBadgeStyle.Render(icon)
 	case "blocked":
 		return BlockedBadgeStyle.Render(icon)
-	case "cancelled":
-		return CancelledBadgeStyle.Render(icon)
+	case "canceled":
+		return CanceledBadgeStyle.Render(icon)
 	default:
 		return NormalStyle.Render(icon)
 	}

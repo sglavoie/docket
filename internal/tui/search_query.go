@@ -37,7 +37,7 @@ func (p *ParsedSearchQuery) HasFilters() bool {
 //   - !N or !N-M for priority (1-5 or range)
 //   - #tag for tags
 //   - @today, @tomorrow, @week, @overdue, @none for due date filters
-//   - $status for status (todo, in_progress, done, blocked, cancelled)
+//   - $status for status (todo, in_progress, done, blocked, canceled)
 //   - ^type for task type (epic, story, task, bug, idea, note)
 //   - /section for section filter
 //   - * for active tasks only
@@ -93,7 +93,7 @@ func ParseSearchQuery(input string) *ParsedSearchQuery {
 	input = dueDateRe.ReplaceAllString(input, " ")
 
 	// Extract status: $status
-	statusRe := regexp.MustCompile(`\s*\$(todo|in_progress|done|blocked|cancelled)\s*`)
+	statusRe := regexp.MustCompile(`\s*\$(todo|in_progress|done|blocked|canceled)\s*`)
 	for _, match := range statusRe.FindAllStringSubmatch(input, -1) {
 		if len(match) == 2 {
 			if status, ok := models.ParseTaskStatus(match[1]); ok {

@@ -42,10 +42,10 @@ func init() {
 	taskCmd.AddCommand(taskListCmd)
 
 	taskListCmd.Flags().StringVar(&listTaskType, "type", "", "filter by type (epic, story, task, bug, idea)")
-	taskListCmd.Flags().StringVar(&listTaskStatus, "status", "", "filter by status (todo, in_progress, done, blocked, cancelled)")
+	taskListCmd.Flags().StringVar(&listTaskStatus, "status", "", "filter by status (todo, in_progress, done, blocked, canceled)")
 	taskListCmd.Flags().IntVar(&listPriority, "priority", 0, "filter by priority (1-5)")
 	taskListCmd.Flags().StringVar(&listTag, "tag", "", "filter by tag")
-	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/cancelled tasks")
+	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
 }
 
@@ -179,11 +179,12 @@ func printTaskNode(task *models.Task, depth int) {
 
 	// Style based on status
 	style := lipgloss.NewStyle()
-	if task.Status == models.StatusDone {
+	switch task.Status {
+	case models.StatusDone:
 		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
-	} else if task.Status == models.StatusInProgress {
+	case models.StatusInProgress:
 		style = style.Foreground(lipgloss.Color("82"))
-	} else if task.Status == models.StatusBlocked {
+	case models.StatusBlocked:
 		style = style.Foreground(lipgloss.Color("196"))
 	}
 

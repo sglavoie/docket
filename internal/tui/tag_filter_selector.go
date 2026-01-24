@@ -21,7 +21,7 @@ type ShowTagFilterSelectorMsg struct {
 // TagFilterSelectorDoneMsg is sent when the tag filter selector is done.
 type TagFilterSelectorDoneMsg struct {
 	SelectedTags []string
-	Cancelled    bool
+	Canceled     bool
 }
 
 // NewTagFilterSelectorModel creates a new tag filter selector.
@@ -89,7 +89,7 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg {
-				return TagFilterSelectorDoneMsg{Cancelled: true}
+				return TagFilterSelectorDoneMsg{Canceled: true}
 			}
 
 		case "enter":
@@ -98,7 +98,7 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TagFilterSelectorDoneMsg{
 					SelectedTags: selectedTags,
-					Cancelled:    false,
+					Canceled:     false,
 				}
 			}
 

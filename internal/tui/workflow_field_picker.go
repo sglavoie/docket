@@ -25,7 +25,7 @@ type ShowTriggerFieldPickerMsg struct {
 type TriggerFieldPickerDoneMsg struct {
 	TriggerIndex int
 	Field        workflow.TriggerField
-	Cancelled    bool
+	Canceled     bool
 }
 
 // NewTriggerFieldPickerModel creates a new trigger field picker.
@@ -89,7 +89,7 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TriggerFieldPickerDoneMsg{
 					TriggerIndex: m.triggerIndex,
-					Cancelled:    true,
+					Canceled:     true,
 				}
 			}
 
@@ -100,14 +100,14 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return TriggerFieldPickerDoneMsg{
 						TriggerIndex: m.triggerIndex,
 						Field:        field,
-						Cancelled:    false,
+						Canceled:     false,
 					}
 				}
 			}
 			return m, func() tea.Msg {
 				return TriggerFieldPickerDoneMsg{
 					TriggerIndex: m.triggerIndex,
-					Cancelled:    true,
+					Canceled:     true,
 				}
 			}
 

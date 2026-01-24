@@ -49,7 +49,7 @@ func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mo
 			m.statusMessage = "Task must be active and not already blocked"
 			return m, nil
 		}
-	case models.StatusCancelled:
+	case models.StatusCanceled:
 		if !task.Status.IsActive() {
 			m.statusMessage = "Task is not active"
 			return m, nil
@@ -170,11 +170,12 @@ func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd)
 	m.clampCursor()
 
 	label := "today"
-	if daysFromNow == 1 {
+	switch daysFromNow {
+	case 1:
 		label = "tomorrow"
-	} else if daysFromNow == 7 {
+	case 7:
 		label = "next week"
-	} else if daysFromNow == 30 {
+	case 30:
 		label = "next month"
 	}
 	m.statusMessage = fmt.Sprintf("Due date set to %s", label)

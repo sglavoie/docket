@@ -440,13 +440,13 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		var actions []string
 		actions = append(actions, HelpKeyStyle.Render("e")+" edit")
 		actions = append(actions, HelpKeyStyle.Render("g")+" view")
-		if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+		if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
 			actions = append(actions, HelpKeyStyle.Render("x")+" done")
 		}
 		if task.Status == models.StatusTodo {
 			actions = append(actions, HelpKeyStyle.Render("s")+" start")
 		}
-		if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
 			actions = append(actions, HelpKeyStyle.Render("r")+" reopen")
 		}
 		b.WriteString(MutedStyle.Render(strings.Join(actions, "  ")))

@@ -25,7 +25,7 @@ type ShowActionTypePickerMsg struct {
 type ActionTypePickerDoneMsg struct {
 	ActionIndex int
 	ActionType  workflow.ActionType
-	Cancelled   bool
+	Canceled    bool
 }
 
 // NewActionTypePickerModel creates a new action type picker.
@@ -89,7 +89,7 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ActionTypePickerDoneMsg{
 					ActionIndex: m.actionIndex,
-					Cancelled:   true,
+					Canceled:    true,
 				}
 			}
 
@@ -100,14 +100,14 @@ func (m *ActionTypePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ActionTypePickerDoneMsg{
 						ActionIndex: m.actionIndex,
 						ActionType:  actionType,
-						Cancelled:   false,
+						Canceled:    false,
 					}
 				}
 			}
 			return m, func() tea.Msg {
 				return ActionTypePickerDoneMsg{
 					ActionIndex: m.actionIndex,
-					Cancelled:   true,
+					Canceled:    true,
 				}
 			}
 

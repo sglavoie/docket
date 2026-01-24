@@ -51,10 +51,10 @@ type ShowPriorityPickerMsg struct {
 
 // PriorityPickerDoneMsg is sent when the priority picker is done.
 type PriorityPickerDoneMsg struct {
-	Task      *models.Task
-	Project   *models.Project
-	Priority  int
-	Cancelled bool
+	Task     *models.Task
+	Project  *models.Project
+	Priority int
+	Canceled bool
 }
 
 // NewPriorityPickerModel creates a new priority picker for task assignment.
@@ -102,9 +102,9 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Cancelled: true,
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 
@@ -113,18 +113,18 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				priority := m.Filtered[m.Cursor].Priority
 				return m, func() tea.Msg {
 					return PriorityPickerDoneMsg{
-						Task:      m.task,
-						Project:   m.project,
-						Priority:  priority,
-						Cancelled: false,
+						Task:     m.task,
+						Project:  m.project,
+						Priority: priority,
+						Canceled: false,
 					}
 				}
 			}
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Cancelled: true,
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 
@@ -133,10 +133,10 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			priority := int(msg.String()[0] - '0')
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Priority:  priority,
-					Cancelled: false,
+					Task:     m.task,
+					Project:  m.project,
+					Priority: priority,
+					Canceled: false,
 				}
 			}
 

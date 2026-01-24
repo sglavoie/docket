@@ -108,7 +108,7 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 		input = sectionRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract status: $start, $blocked, $done, $cancelled
+	// Extract status: $start, $blocked, $done, $canceled
 	// Require $ to be at start of string or preceded by whitespace
 	statusRe := regexp.MustCompile(`(?:^|\s)\$(\w+)`)
 	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
@@ -121,10 +121,10 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 			result.status = models.StatusBlocked
 		case "done":
 			result.status = models.StatusDone
-		case "cancelled":
-			result.status = models.StatusCancelled
+		case "canceled":
+			result.status = models.StatusCanceled
 		default:
-			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $cancelled)", match[1])
+			return nil, fmt.Errorf("invalid status: $%s (use $start, $blocked, $done, $canceled)", match[1])
 		}
 		input = statusRe.ReplaceAllString(input, " ")
 	}
@@ -276,8 +276,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 			result.status = models.StatusBlocked
 		case "done":
 			result.status = models.StatusDone
-		case "cancelled":
-			result.status = models.StatusCancelled
+		case "canceled":
+			result.status = models.StatusCanceled
 		default:
 			if errMsg == "" {
 				errMsg = fmt.Sprintf("invalid status: $%s", match[1])

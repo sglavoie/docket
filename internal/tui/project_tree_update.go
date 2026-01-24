@@ -74,22 +74,23 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 	// Handle standard y/n confirmations
 	switch key {
 	case "y", "Y":
-		if m.confirmAction == ConfirmArchive {
+		switch m.confirmAction {
+		case ConfirmArchive:
 			m.confirmAction = ConfirmNone
 			return m, m.archiveProject()
-		} else if m.confirmAction == ConfirmUnarchive {
+		case ConfirmUnarchive:
 			m.confirmAction = ConfirmNone
 			return m, m.unarchiveProject()
-		} else if m.confirmAction == ConfirmDelete {
+		case ConfirmDelete:
 			m.confirmAction = ConfirmNone
 			return m, m.deleteTask()
-		} else if m.confirmAction == ConfirmBulkDelete {
+		case ConfirmBulkDelete:
 			m.confirmAction = ConfirmNone
 			return m, m.bulkDeleteTasks()
-		} else if m.confirmAction == ConfirmBulkStatus {
+		case ConfirmBulkStatus:
 			m.confirmAction = ConfirmNone
 			return m, m.executePendingBulkStatus()
-		} else if m.confirmAction == ConfirmArchiveTasks {
+		case ConfirmArchiveTasks:
 			m.confirmAction = ConfirmNone
 			return m, m.archiveCompletedTasks()
 		}

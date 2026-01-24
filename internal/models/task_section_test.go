@@ -82,8 +82,8 @@ func TestTaskCancelAutoTriageFromNext(t *testing.T) {
 	if task.Section != "" {
 		t.Errorf("expected section to be cleared after Cancel(), got %s", task.Section)
 	}
-	if task.Status != StatusCancelled {
-		t.Errorf("expected status to be cancelled, got %s", task.Status)
+	if task.Status != StatusCanceled {
+		t.Errorf("expected status to be canceled, got %s", task.Status)
 	}
 }
 

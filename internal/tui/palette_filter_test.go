@@ -310,7 +310,7 @@ func TestParseSearchTerms_ORGroups(t *testing.T) {
 }
 
 func TestParseSearchTerms_NegativeORGroup(t *testing.T) {
-	pos, neg := parseSearchTerms("task -done|cancelled")
+	pos, neg := parseSearchTerms("task -done|canceled")
 
 	if len(pos) != 1 {
 		t.Errorf("expected 1 positive group, got %d", len(pos))
@@ -389,7 +389,7 @@ func TestParseSearchTerms_EmptyQuery(t *testing.T) {
 }
 
 func TestParseSearchTerms_OnlyNegation(t *testing.T) {
-	pos, neg := parseSearchTerms("-done -cancelled")
+	pos, neg := parseSearchTerms("-done -canceled")
 
 	if len(pos) != 0 {
 		t.Errorf("expected 0 positive groups, got %d", len(pos))
@@ -400,13 +400,13 @@ func TestParseSearchTerms_OnlyNegation(t *testing.T) {
 }
 
 func TestParseSearchTerms_MixedComplex(t *testing.T) {
-	pos, neg := parseSearchTerms(`bug|fix "high priority" -done|cancelled task`)
+	pos, neg := parseSearchTerms(`bug|fix "high priority" -done|canceled task`)
 
 	// Should have: bug|fix (OR group), "high priority" (exact), task
 	if len(pos) != 3 {
 		t.Errorf("expected 3 positive groups, got %d", len(pos))
 	}
-	// Should have: done|cancelled (negative OR group)
+	// Should have: done|canceled (negative OR group)
 	if len(neg) != 1 {
 		t.Errorf("expected 1 negative group, got %d", len(neg))
 	}

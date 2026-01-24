@@ -121,7 +121,7 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 	}
 }
 
-func TestProjectCheckAndAutoUnblockWithCancelled(t *testing.T) {
+func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
 	blocker := NewTask("blocker", 1, TaskTypeTask, "Blocker")
@@ -136,7 +136,7 @@ func TestProjectCheckAndAutoUnblockWithCancelled(t *testing.T) {
 	blocker.Cancel()
 	project.CheckAndAutoUnblock()
 	if blocked.Status != StatusTodo {
-		t.Errorf("blocked task should be unblocked when blocker cancelled, got %s", blocked.Status)
+		t.Errorf("blocked task should be unblocked when blocker canceled, got %s", blocked.Status)
 	}
 }
 
@@ -189,14 +189,14 @@ func TestHasIncompleteDependencies(t *testing.T) {
 		t.Error("task with all dependencies complete should return false")
 	}
 
-	// Test with cancelled dependency
+	// Test with canceled dependency
 	blocker2.Reopen()
 	if !project.HasIncompleteDependencies(dependent) {
 		t.Error("task with reopened dependency should return true")
 	}
 	blocker2.Cancel()
 	if project.HasIncompleteDependencies(dependent) {
-		t.Error("task with cancelled dependency should return false (cancelled is complete)")
+		t.Error("task with canceled dependency should return false (canceled is complete)")
 	}
 }
 

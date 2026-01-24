@@ -209,14 +209,14 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case TagSelectorDoneMsg:
-		if !msg.Cancelled {
+		if !msg.Canceled {
 			m.tags = msg.SelectedTags
 			m.hasChanges = m.checkChanges()
 		}
 		return m, nil
 
 	case RecurrenceEditorDoneMsg:
-		if !msg.Cancelled && msg.Pattern != nil {
+		if !msg.Canceled && msg.Pattern != nil {
 			m.recurrence = msg.Pattern
 			// Update cursor to "Custom..." since we have a custom pattern
 			m.recurrenceCursor = 6

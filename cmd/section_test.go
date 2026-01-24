@@ -369,6 +369,19 @@ func TestSectionList(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		// Save config so LoadConfig() can find it
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		// Set up storage to use the mock repository
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
 		// Add some sections
 		project.EnsureSection("Backlog")
 		project.EnsureSection("In Progress")
@@ -384,7 +397,7 @@ func TestSectionList(t *testing.T) {
 
 		// Just verify it runs without error
 		// Output testing is difficult for table formatting
-		err := runSectionList(nil, nil)
+		err = runSectionList(nil, nil)
 		testutil.AssertNoError(t, err)
 	})
 
@@ -392,12 +405,25 @@ func TestSectionList(t *testing.T) {
 		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
 		defer deps.Cleanup()
 
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		// Save config so LoadConfig() can find it
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		// Set up storage to use the mock repository
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
 		// Clear all sections
 		project.Sections = []string{}
 		deps.Repository.Projects[project.ID] = project
 
 		// Should handle gracefully and not error
-		err := runSectionList(nil, nil)
+		err = runSectionList(nil, nil)
 		testutil.AssertNoError(t, err)
 	})
 }

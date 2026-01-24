@@ -209,7 +209,7 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 			task.Start()
 		case models.StatusBlocked:
 			task.Block()
-		case models.StatusCancelled:
+		case models.StatusCanceled:
 			task.Cancel()
 		case models.StatusTodo:
 			task.Reopen()

@@ -13,7 +13,7 @@ func TestProjectTaskCounts(t *testing.T) {
 	task4 := NewTask("4", 4, TaskTypeTask, "Task 4")
 	task4.Block() // blocked
 	task5 := NewTask("5", 5, TaskTypeTask, "Task 5")
-	task5.Cancel() // cancelled
+	task5.Cancel() // canceled
 
 	project.Tasks = []*Task{task1, task2, task3, task4, task5}
 
@@ -26,7 +26,7 @@ func TestProjectTaskCounts(t *testing.T) {
 		t.Errorf("expected 3 active tasks, got %d", project.CountActiveTasks())
 	}
 
-	// Completed: done, cancelled = 2
+	// Completed: done, canceled = 2
 	if project.CountCompletedTasks() != 2 {
 		t.Errorf("expected 2 completed tasks, got %d", project.CountCompletedTasks())
 	}

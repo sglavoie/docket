@@ -284,7 +284,7 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		case "b":
 			return m.changeTaskStatus(models.StatusBlocked)
 		case "x":
-			return m.changeTaskStatus(models.StatusCancelled)
+			return m.changeTaskStatus(models.StatusCanceled)
 		case "o":
 			return m.changeTaskStatus(models.StatusTodo)
 		}

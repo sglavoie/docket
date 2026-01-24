@@ -26,10 +26,10 @@ type ShowSectionPickerMsg struct {
 
 // SectionPickerDoneMsg is sent when the section picker is done.
 type SectionPickerDoneMsg struct {
-	Task      *models.Task
-	Project   *models.Project
-	Section   string
-	Cancelled bool
+	Task     *models.Task
+	Project  *models.Project
+	Section  string
+	Canceled bool
 }
 
 // NewSectionPickerModel creates a new section picker for task assignment.
@@ -122,9 +122,9 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return SectionPickerDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Cancelled: true,
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 
@@ -133,18 +133,18 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				section := m.Filtered[m.Cursor].Name
 				return m, func() tea.Msg {
 					return SectionPickerDoneMsg{
-						Task:      m.task,
-						Project:   m.project,
-						Section:   section,
-						Cancelled: false,
+						Task:     m.task,
+						Project:  m.project,
+						Section:  section,
+						Canceled: false,
 					}
 				}
 			}
 			return m, func() tea.Msg {
 				return SectionPickerDoneMsg{
-					Task:      m.task,
-					Project:   m.project,
-					Cancelled: true,
+					Task:     m.task,
+					Project:  m.project,
+					Canceled: true,
 				}
 			}
 

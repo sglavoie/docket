@@ -54,14 +54,14 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
 		if response != "yes" {
-			fmt.Println("Cancelled.")
+			fmt.Println("Canceled.")
 			return nil
 		}
 	}
 
 	// Create backup before archiving
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
+	if backupErr := storage.BackupProject(project); backupErr != nil {
+		return fmt.Errorf("failed to create backup: %w", backupErr)
 	}
 
 	// Archive the tasks

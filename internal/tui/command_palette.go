@@ -211,7 +211,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 			if item.Category == ItemCategoryTasks && item.Task != nil && item.Project != nil {
 				task := item.Task
 				project := item.Project
-				if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+				if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
 					return m, func() tea.Msg {
 						return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 							Task: task, Project: project, Action: "complete",
@@ -263,7 +263,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 		return m, nil
 	case "ctrl+h":
-		// Toggle inclusion of completed/cancelled tasks
+		// Toggle inclusion of completed/canceled tasks
 		m.includeCompleted = !m.includeCompleted
 		m.allItems = m.loadAllItems()
 		m.filterItems()
@@ -324,7 +324,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 						return CommandPaletteExecuteMsg{ResultMsg: GlowViewMsg{Task: task}}
 					}
 				case "x":
-					if task.Status != models.StatusDone && task.Status != models.StatusCancelled {
+					if task.Status != models.StatusDone && task.Status != models.StatusCanceled {
 						return m, func() tea.Msg {
 							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 								Task: task, Project: project, Action: "complete",
@@ -348,7 +348,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 						}
 					}
 				case "r":
-					if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+					if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
 						return m, func() tea.Msg {
 							return CommandPaletteExecuteMsg{ResultMsg: CommandPaletteTaskActionMsg{
 								Task: task, Project: project, Action: "reopen",

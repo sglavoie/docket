@@ -27,7 +27,7 @@ type ProjectCreatorModel struct {
 	width      int
 	height     int
 
-	cancelled bool
+	canceled bool
 }
 
 // NewProjectCreatorModel creates a new project creator.
@@ -74,7 +74,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.cancelled = true
+			m.canceled = true
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}

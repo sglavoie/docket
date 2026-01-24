@@ -96,14 +96,14 @@ func (m *RecurrenceEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg {
-				return RecurrenceEditorDoneMsg{Pattern: nil, Cancelled: true}
+				return RecurrenceEditorDoneMsg{Pattern: nil, Canceled: true}
 			}
 
 		case "enter":
 			// Confirm and return pattern
 			pattern := m.buildPattern()
 			return m, func() tea.Msg {
-				return RecurrenceEditorDoneMsg{Pattern: pattern, Cancelled: false}
+				return RecurrenceEditorDoneMsg{Pattern: pattern, Canceled: false}
 			}
 
 		case "tab":
@@ -477,6 +477,6 @@ type ShowRecurrenceEditorMsg struct {
 
 // RecurrenceEditorDoneMsg signals the recurrence editor has finished.
 type RecurrenceEditorDoneMsg struct {
-	Pattern   *models.RecurrencePattern
-	Cancelled bool
+	Pattern  *models.RecurrencePattern
+	Canceled bool
 }

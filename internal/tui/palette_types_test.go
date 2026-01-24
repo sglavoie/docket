@@ -174,6 +174,11 @@ func TestPaletteItemFields(t *testing.T) {
 		Command:     &Command{Name: "test"},
 	}
 
+	_ = cmdItem.Name
+	_ = cmdItem.Description
+	_ = cmdItem.Shortcut
+	_ = cmdItem.Category
+
 	if cmdItem.Command == nil {
 		t.Error("Command should not be nil")
 	}
@@ -186,6 +191,9 @@ func TestPaletteItemFields(t *testing.T) {
 		Category: ItemCategoryTags,
 		Tag:      "bug",
 	}
+
+	_ = tagItem.Name
+	_ = tagItem.Category
 
 	if tagItem.Tag != "bug" {
 		t.Errorf("Tag = %q, want 'bug'", tagItem.Tag)
@@ -222,6 +230,8 @@ func TestSearchTermGroup(t *testing.T) {
 		isExact:      false,
 	}
 
+	_ = posGroup.isExact
+
 	if posGroup.isNegative {
 		t.Error("positive group should not be negative")
 	}
@@ -235,6 +245,8 @@ func TestSearchTermGroup(t *testing.T) {
 		isNegative:   true,
 		isExact:      true,
 	}
+
+	_ = negGroup.alternatives
 
 	if !negGroup.isNegative {
 		t.Error("negative group should be negative")
@@ -252,6 +264,8 @@ func TestFieldFilter(t *testing.T) {
 		value: "1",
 	}
 
+	_ = singleFilter.value
+
 	if singleFilter.field != "priority" {
 		t.Errorf("field = %q, want 'priority'", singleFilter.field)
 	}
@@ -265,6 +279,9 @@ func TestFieldFilter(t *testing.T) {
 		op:    "in",
 		alt:   []string{"todo", "progress"},
 	}
+
+	_ = multiFilter.field
+	_ = multiFilter.op
 
 	if len(multiFilter.alt) != 2 {
 		t.Errorf("alt length = %d, want 2", len(multiFilter.alt))

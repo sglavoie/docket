@@ -52,7 +52,7 @@ Examples:
 var taskCancelCmd = &cobra.Command{
 	Use:   "cancel [id]",
 	Short: "Cancel a task",
-	Long: `Mark a task as cancelled.
+	Long: `Mark a task as canceled.
 
 Examples:
   tt task cancel 5`,
@@ -174,8 +174,8 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		// Update status
 		update(task)
 
-		// Check for auto-unblocking (when task is completed/cancelled, its dependents may unblock)
-		if task.Status == models.StatusDone || task.Status == models.StatusCancelled {
+		// Check for auto-unblocking (when task is completed/canceled, its dependents may unblock)
+		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
 			project.CheckAndAutoUnblock()
 		}
 

@@ -143,7 +143,7 @@ func (m *GlobalSearchModel) getStatusSuggestions(partial string) []searchSuggest
 		{"in_progress", "◐"},
 		{"done", "●"},
 		{"blocked", "◈"},
-		{"cancelled", "✕"},
+		{"canceled", "✕"},
 	}
 
 	var suggestions []searchSuggestion

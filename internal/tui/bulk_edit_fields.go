@@ -27,7 +27,7 @@ func (m *BulkEditModel) renderStatusField() string {
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%s)", m.statusSummary)))
 	b.WriteString("\n")
 
-	options := []string{"No change", "Todo", "In Progress", "Done", "Blocked", "Cancelled"}
+	options := []string{"No change", "Todo", "In Progress", "Done", "Blocked", "Canceled"}
 	for i, opt := range options {
 		prefix := "  "
 		if focused {
@@ -453,7 +453,7 @@ func getStatusIndex(s models.TaskStatus) int {
 		return 2
 	case models.StatusBlocked:
 		return 3
-	case models.StatusCancelled:
+	case models.StatusCanceled:
 		return 4
 	default:
 		return 0

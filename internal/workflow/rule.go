@@ -26,7 +26,7 @@ const (
 	FieldPriorityChanged TriggerField = "priority_changed" // Value: "*->1", "3->1"
 	FieldTagAdded        TriggerField = "tag_added"        // Value: tag name that was added
 	FieldTagRemoved      TriggerField = "tag_removed"      // Value: tag name that was removed
-	FieldCompleted       TriggerField = "completed"        // Value: "true" (fires on done/cancelled)
+	FieldCompleted       TriggerField = "completed"        // Value: "true" (fires on done/canceled)
 	FieldReopened        TriggerField = "reopened"         // Value: "true" (fires when reopened)
 	// Hierarchical trigger fields
 	FieldParentStatus     TriggerField = "parent_status"     // Parent task status

@@ -290,7 +290,7 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool {
 		return hadTag && !hasTagNow
 
 	case FieldCompleted:
-		// Trigger fires when task becomes done or cancelled
+		// Trigger fires when task becomes done or canceled
 		if trigger.Value != "true" {
 			return false
 		}

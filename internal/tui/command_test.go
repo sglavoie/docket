@@ -84,6 +84,11 @@ func TestCommandWithNoShortcut(t *testing.T) {
 		Handler:     func() tea.Msg { return nil },
 	}
 
+	_ = cmd.Name
+	_ = cmd.Description
+	_ = cmd.Category
+	_ = cmd.Handler
+
 	if cmd.Shortcut != "" {
 		t.Errorf("expected empty Shortcut, got '%s'", cmd.Shortcut)
 	}
@@ -103,6 +108,11 @@ func TestCommandHandlerReturnsMessage(t *testing.T) {
 			return TestMsg{Value: "hello"}
 		},
 	}
+
+	_ = cmd.Name
+	_ = cmd.Description
+	_ = cmd.Shortcut
+	_ = cmd.Category
 
 	result := cmd.Handler()
 	msg, ok := result.(TestMsg)

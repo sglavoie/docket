@@ -27,8 +27,8 @@ func TestNewSelectorModel(t *testing.T) {
 	if m.done {
 		t.Error("done should be false initially")
 	}
-	if m.cancelled {
-		t.Error("cancelled should be false initially")
+	if m.canceled {
+		t.Error("canceled should be false initially")
 	}
 	if m.searchMode {
 		t.Error("searchMode should be false initially")
@@ -141,8 +141,8 @@ func TestSelectorModel_Update_Escape(t *testing.T) {
 	if !sm.done {
 		t.Error("done should be true after escape")
 	}
-	if !sm.cancelled {
-		t.Error("cancelled should be true after escape")
+	if !sm.canceled {
+		t.Error("canceled should be true after escape")
 	}
 }
 
@@ -159,8 +159,8 @@ func TestSelectorModel_Update_CtrlC(t *testing.T) {
 	if !sm.done {
 		t.Error("done should be true after ctrl+c")
 	}
-	if !sm.cancelled {
-		t.Error("cancelled should be true after ctrl+c")
+	if !sm.canceled {
+		t.Error("canceled should be true after ctrl+c")
 	}
 }
 
@@ -244,8 +244,8 @@ func TestSelectorModel_Update_SelectItem(t *testing.T) {
 	if !sm.done {
 		t.Error("done should be true after enter")
 	}
-	if sm.cancelled {
-		t.Error("cancelled should be false after enter")
+	if sm.canceled {
+		t.Error("canceled should be false after enter")
 	}
 	if sm.selectedItem == nil {
 		t.Error("selectedItem should not be nil")
@@ -400,16 +400,16 @@ func TestSelectorModel_GetError(t *testing.T) {
 	}
 }
 
-func TestSelectorModel_IsCancelled(t *testing.T) {
+func TestSelectorModel_IsCanceled(t *testing.T) {
 	m := NewSelectorModel("Test", []SelectorItem{})
 
-	if m.IsCancelled() {
-		t.Error("IsCancelled should return false initially")
+	if m.IsCanceled() {
+		t.Error("IsCanceled should return false initially")
 	}
 
-	m.cancelled = true
-	if !m.IsCancelled() {
-		t.Error("IsCancelled should return true after setting cancelled")
+	m.canceled = true
+	if !m.IsCanceled() {
+		t.Error("IsCanceled should return true after setting canceled")
 	}
 }
 

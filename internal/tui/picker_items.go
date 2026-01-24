@@ -200,7 +200,7 @@ var TriggerFieldDescriptions = map[workflow.TriggerField]string{
 	workflow.FieldPriorityChanged:  "Priority transition (e.g., 3->1)",
 	workflow.FieldTagAdded:         "Tag was added to task",
 	workflow.FieldTagRemoved:       "Tag was removed from task",
-	workflow.FieldCompleted:        "Task was completed or cancelled",
+	workflow.FieldCompleted:        "Task was completed or canceled",
 	workflow.FieldReopened:         "Task was reopened",
 	workflow.FieldParentStatus:     "Parent task's status",
 	workflow.FieldParentType:       "Parent task's type",

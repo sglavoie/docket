@@ -28,7 +28,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TagSelectorDoneMsg:
 		m.popView()
-		if msg.Cancelled {
+		if msg.Canceled {
 			return true, nil
 		}
 		// Check if we came from project tree - apply tags directly
@@ -44,7 +44,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case BulkTagSelectorDoneMsg:
 		m.popView()
-		if msg.Cancelled {
+		if msg.Canceled {
 			return true, nil
 		}
 		return true, m.applyTagsToTasks(msg.Tasks, msg.Project, msg.SelectedTags)
@@ -57,7 +57,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TagFilterSelectorDoneMsg:
 		m.popView()
-		if !msg.Cancelled && m.projectTree != nil {
+		if !msg.Canceled && m.projectTree != nil {
 			m.projectTree.filter.Tags = make(map[string]bool)
 			for _, tag := range msg.SelectedTags {
 				m.projectTree.filter.Tags[tag] = true

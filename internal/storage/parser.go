@@ -55,7 +55,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	var parsedTasks []*format.ParsedTask
 	var currentTask *format.ParsedTask
 	var descBuilder strings.Builder
-	var nextShortID int = 1
+	var nextShortID = 1
 	var foundFirstTask bool
 	var metadataWarnings []ParseWarning
 
@@ -149,7 +149,7 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %v", tterrors.ErrParseError, err)
+		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
 
 	// Build parent-child relationships using levels captured during initial parse

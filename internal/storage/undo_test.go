@@ -40,7 +40,7 @@ func TestRecordUndoSnapshot(t *testing.T) {
 	// Verify snapshot was created
 	undoDir := GetUndoDir(project)
 	snapshotPath := filepath.Join(undoDir, "0001.md")
-	if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(snapshotPath); os.IsNotExist(statErr) {
 		t.Error("snapshot file was not created")
 	}
 

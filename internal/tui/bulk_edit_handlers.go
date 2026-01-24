@@ -97,7 +97,7 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 				models.StatusInProgress,
 				models.StatusDone,
 				models.StatusBlocked,
-				models.StatusCancelled,
+				models.StatusCanceled,
 			}
 			if m.statusCursor <= len(statuses) {
 				s := statuses[m.statusCursor-1]
@@ -125,18 +125,19 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 		}
 
 	case fieldDueDate:
-		if m.dueDateCursor == 0 {
+		switch m.dueDateCursor {
+		case 0:
 			// Keep current - clear any set date
 			m.clearDueDate = false
 			m.setDueDate = nil
-		} else if m.dueDateCursor == 1 {
+		case 1:
 			// Set date - enter input mode
 			m.dueDateInputMode = true
 			m.dueDateInput.Reset()
 			m.dueDateInput.Focus()
 			m.dueDateError = nil
 			return m, textinput.Blink
-		} else if m.dueDateCursor == 2 {
+		case 2:
 			// Clear due date
 			m.clearDueDate = true
 			m.setDueDate = nil

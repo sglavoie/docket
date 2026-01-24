@@ -78,9 +78,9 @@ func TestMatchesEventTrigger_Completed(t *testing.T) {
 			expected:   true,
 		},
 		{
-			name:       "in_progress to cancelled fires completed",
+			name:       "in_progress to canceled fires completed",
 			prevStatus: models.StatusInProgress,
-			currStatus: models.StatusCancelled,
+			currStatus: models.StatusCanceled,
 			expected:   true,
 		},
 		{
@@ -168,8 +168,8 @@ func TestMatchesEventTrigger_Reopened(t *testing.T) {
 			expected:   true,
 		},
 		{
-			name:       "cancelled to in_progress fires reopened",
-			prevStatus: models.StatusCancelled,
+			name:       "canceled to in_progress fires reopened",
+			prevStatus: models.StatusCanceled,
 			currStatus: models.StatusInProgress,
 			expected:   true,
 		},

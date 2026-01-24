@@ -41,7 +41,11 @@ func TestCreateTempFileWithContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpPath)
+	defer func() {
+		if removeErr := os.Remove(tmpPath); removeErr != nil {
+			t.Errorf("failed to remove temp file: %v", removeErr)
+		}
+	}()
 
 	if !filepath.IsAbs(tmpPath) {
 		t.Error("expected absolute path")
@@ -66,7 +70,11 @@ func TestCreateTempFileWithEmptyContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpPath)
+	defer func() {
+		if removeErr := os.Remove(tmpPath); removeErr != nil {
+			t.Errorf("failed to remove temp file: %v", removeErr)
+		}
+	}()
 
 	data, err := os.ReadFile(tmpPath)
 	if err != nil {
@@ -83,7 +91,11 @@ func TestCreateTempFileWithMultilineContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpPath)
+	defer func() {
+		if removeErr := os.Remove(tmpPath); removeErr != nil {
+			t.Errorf("failed to remove temp file: %v", removeErr)
+		}
+	}()
 
 	data, err := os.ReadFile(tmpPath)
 	if err != nil {
@@ -96,24 +108,21 @@ func TestCreateTempFileWithMultilineContent(t *testing.T) {
 
 func TestEditorDefaultFallback(t *testing.T) {
 	// Test the logic for choosing default editor
-	editor := ""
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
 	// When EDITOR is not set, should default to "code"
 	originalEditor := os.Getenv("EDITOR")
-	os.Unsetenv("EDITOR")
+	if err := os.Unsetenv("EDITOR"); err != nil {
+		t.Fatalf("failed to unset EDITOR: %v", err)
+	}
 	defer func() {
 		if originalEditor != "" {
-			os.Setenv("EDITOR", originalEditor)
+			if err := os.Setenv("EDITOR", originalEditor); err != nil {
+				t.Errorf("failed to restore EDITOR: %v", err)
+			}
 		}
 	}()
 
-	editor = ""
+	// Test that default editor is "code" when EDITOR is not set
+	editor := ""
 	if editor == "" {
 		editor = os.Getenv("EDITOR")
 	}

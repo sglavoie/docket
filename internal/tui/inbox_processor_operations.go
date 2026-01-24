@@ -25,7 +25,7 @@ func (m *InboxProcessorModel) openSectionPicker() tea.Cmd {
 
 // handleSectionPickerDone handles section picker completion.
 func (m *InboxProcessorModel) handleSectionPickerDone(msg SectionPickerDoneMsg) (tea.Model, tea.Cmd) {
-	if msg.Cancelled {
+	if msg.Canceled {
 		return m, nil
 	}
 
@@ -187,8 +187,8 @@ func (m *InboxProcessorModel) openTagSelector() tea.Cmd {
 
 // handleTagSelectorDone handles tag selector completion.
 func (m *InboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg) (*InboxProcessorModel, tea.Cmd) {
-	if msg.Cancelled {
-		m.statusMessage = "Tag editing cancelled"
+	if msg.Canceled {
+		m.statusMessage = "Tag editing canceled"
 		return m, nil
 	}
 

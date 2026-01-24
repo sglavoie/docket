@@ -75,7 +75,7 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 
 	result, err := ParseTasksMarkdownWithSections(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", tterrors.ErrParseError, err)
+		return nil, fmt.Errorf("%w: %w", tterrors.ErrParseError, err)
 	}
 
 	project.Tasks = result.Tasks
@@ -174,7 +174,7 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []*models.Task, level int) {
 	// Write heading
 	hashes := strings.Repeat("#", level)
-	b.WriteString(fmt.Sprintf("%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title))
+	fmt.Fprintf(b, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title)
 
 	// Write metadata
 	b.WriteString(format.WriteMetadata(task))
@@ -253,7 +253,7 @@ func RestoreFromBackup(project *models.Project) error {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("%w: %s", tterrors.ErrBackupNotFound, backupPath)
 		}
-		return fmt.Errorf("%w: %v", tterrors.ErrReadFailed, err)
+		return fmt.Errorf("%w: %w", tterrors.ErrReadFailed, err)
 	}
 
 	// Validate backup content is valid markdown before restoring

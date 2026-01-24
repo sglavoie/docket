@@ -28,7 +28,7 @@ type SelectorModel struct {
 	filteredItems []SelectorItem
 	table         table.Model
 	done          bool
-	cancelled     bool
+	canceled      bool
 	selectedItem  *SelectorItem
 	err           error
 	showHelp      bool
@@ -51,12 +51,12 @@ func NewSelectorModel(title string, items []SelectorItem) SelectorModel {
 		baseWidth := 70 / columnCount
 		columns = make([]table.Column, columnCount)
 		for i := range columnCount {
-			title := fmt.Sprintf("Col %d", i+1) // fallback
+			colTitle := fmt.Sprintf("Col %d", i+1) // fallback
 			if len(items[0].Headers) > i {
-				title = items[0].Headers[i]
+				colTitle = items[0].Headers[i]
 			}
 			columns[i] = table.Column{
-				Title: title,
+				Title: colTitle,
 				Width: baseWidth,
 			}
 		}
@@ -218,8 +218,8 @@ func (m SelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+c", "esc":
 				m.done = true
-				m.cancelled = true
-				m.err = fmt.Errorf("cancelled")
+				m.canceled = true
+				m.err = fmt.Errorf("canceled")
 				return m, tea.Quit
 			case "enter":
 				if len(m.filteredItems) > 0 {
@@ -295,8 +295,8 @@ func (m SelectorModel) GetError() error {
 	return m.err
 }
 
-func (m SelectorModel) IsCancelled() bool {
-	return m.cancelled
+func (m SelectorModel) IsCanceled() bool {
+	return m.canceled
 }
 
 // RunSelector runs the selector TUI and returns the selected item.
@@ -318,8 +318,8 @@ func RunSelector(title string, items []SelectorItem) (*SelectorItem, error) {
 		return nil, selectorModel.GetError()
 	}
 
-	if selectorModel.IsCancelled() {
-		return nil, fmt.Errorf("cancelled")
+	if selectorModel.IsCanceled() {
+		return nil, fmt.Errorf("canceled")
 	}
 
 	return selectorModel.GetSelectedItem(), nil

@@ -186,12 +186,13 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 	for _, f := range filters {
 		switch f.field {
 		case "priority":
-			if f.op == "eq" {
+			switch f.op {
+			case "eq":
 				p, err := strconv.Atoi(f.value)
 				if err != nil || task.Priority != p {
 					return false
 				}
-			} else if f.op == "range" {
+			case "range":
 				parts := strings.Split(f.value, "-")
 				if len(parts) != 2 {
 					return false

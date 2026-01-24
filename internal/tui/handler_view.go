@@ -217,7 +217,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ContextPickerDoneMsg:
 		m.popView()
-		if !msg.Cancelled && m.dashboard != nil {
+		if !msg.Canceled && m.dashboard != nil {
 			m.dashboard.filterContext = msg.SelectedContext
 			visible := m.dashboard.visibleProjects()
 			if m.dashboard.cursor >= len(visible) {
@@ -510,14 +510,14 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
 			_ = os.Remove(tmpPath)
-			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
+			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
 		}
 		content, readErr := os.ReadFile(tmpPath)
 		_ = os.Remove(tmpPath)
 		if readErr != nil {
-			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Cancelled: true}
+			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
 		}
-		return TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Cancelled: false}
+		return TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Canceled: false}
 	})
 }
 

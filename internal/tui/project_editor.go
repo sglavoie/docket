@@ -172,9 +172,8 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.contextCursor >= 0 && m.contextCursor < len(m.contexts)-1 {
 					m.contextCursor++
 					m.contextInput.SetValue(m.contexts[m.contextCursor])
-				} else if m.contextCursor == len(m.contexts)-1 {
-					// Stay at last context
 				}
+				// Stay at last context when at the end
 			}
 		}
 	}

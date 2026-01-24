@@ -228,7 +228,7 @@ func (m *QuickCaptureModel) getStatusSuggestions(partial string) []suggestion {
 		{"start", "◐", "in progress + activate"},
 		{"blocked", "◈", "blocked"},
 		{"done", "●", "completed"},
-		{"cancelled", "✕", "cancelled"},
+		{"canceled", "✕", "canceled"},
 	}
 
 	var suggestions []suggestion

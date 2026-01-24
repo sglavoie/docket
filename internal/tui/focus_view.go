@@ -283,7 +283,7 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		case "b":
 			return m.changeTaskStatus(models.StatusBlocked)
 		case "x":
-			return m.changeTaskStatus(models.StatusCancelled)
+			return m.changeTaskStatus(models.StatusCanceled)
 		case "o":
 			return m.changeTaskStatus(models.StatusTodo)
 		}
@@ -407,7 +407,7 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 			m.statusMessage = "Task must be active and not already blocked"
 			return m, nil
 		}
-	case models.StatusCancelled:
+	case models.StatusCanceled:
 		if !task.Status.IsActive() {
 			m.statusMessage = "Task is not active"
 			return m, nil
@@ -532,11 +532,12 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 	m.clampCursor()
 
 	label := "today"
-	if daysFromNow == 1 {
+	switch daysFromNow {
+	case 1:
 		label = "tomorrow"
-	} else if daysFromNow == 7 {
+	case 7:
 		label = "next week"
-	} else if daysFromNow == 30 {
+	case 30:
 		label = "next month"
 	}
 	m.statusMessage = fmt.Sprintf("Due date set to %s", label)

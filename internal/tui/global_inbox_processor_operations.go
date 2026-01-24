@@ -27,7 +27,7 @@ func (m *GlobalInboxProcessorModel) openSectionPicker() tea.Cmd {
 
 // handleSectionPickerDone handles section picker completion.
 func (m *GlobalInboxProcessorModel) handleSectionPickerDone(msg SectionPickerDoneMsg) (tea.Model, tea.Cmd) {
-	if msg.Cancelled {
+	if msg.Canceled {
 		return m, nil
 	}
 
@@ -198,8 +198,8 @@ func (m *GlobalInboxProcessorModel) openTagSelector() tea.Cmd {
 
 // handleTagSelectorDone handles tag selector completion.
 func (m *GlobalInboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg) (*GlobalInboxProcessorModel, tea.Cmd) {
-	if msg.Cancelled {
-		m.statusMessage = "Tag editing cancelled"
+	if msg.Canceled {
+		m.statusMessage = "Tag editing canceled"
 		return m, nil
 	}
 
@@ -326,10 +326,10 @@ func (m *GlobalInboxProcessorModel) cancelTask() tea.Cmd {
 	snapshot := m.captureSnapshot(task)
 	task.Cancel()
 
-	m.recordAction("cancelled task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d cancelled", task.ShortID)
+	m.recordAction("canceled task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d canceled", task.ShortID)
 
-	// Task is leaving inbox (cancelled)
+	// Task is leaving inbox (canceled)
 	m.processedIDs[task.ID] = true
 
 	return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))

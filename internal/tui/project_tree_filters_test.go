@@ -511,10 +511,10 @@ func TestFormatDueDate(t *testing.T) {
 			shouldEmpty: true,
 		},
 		{
-			name: "cancelled task returns empty",
+			name: "canceled task returns empty",
 			task: &models.Task{
 				DueDate: &today,
-				Status:  models.StatusCancelled,
+				Status:  models.StatusCanceled,
 			},
 			shouldEmpty: true,
 		},

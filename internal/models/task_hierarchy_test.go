@@ -175,7 +175,7 @@ func TestTaskCountCompletedChildren(t *testing.T) {
 	task2.Complete()
 	task3.Cancel()
 	if epic.CountCompletedChildren() != 3 {
-		t.Errorf("expected 3 completed (including cancelled), got %d", epic.CountCompletedChildren())
+		t.Errorf("expected 3 completed (including canceled), got %d", epic.CountCompletedChildren())
 	}
 }
 

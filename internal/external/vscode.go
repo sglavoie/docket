@@ -98,8 +98,8 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("editor failed: %w", err)
+	if runErr := cmd.Run(); runErr != nil {
+		return "", fmt.Errorf("editor failed: %w", runErr)
 	}
 
 	// Read modified content

@@ -10,12 +10,12 @@ import (
 
 // SaveSearchInputModel handles naming a saved search.
 type SaveSearchInputModel struct {
-	query     string // The search query to save
-	input     textinput.Model
-	err       string
-	width     int
-	height    int
-	cancelled bool
+	query    string // The search query to save
+	input    textinput.Model
+	err      string
+	width    int
+	height   int
+	canceled bool
 }
 
 // NewSaveSearchInputModel creates a new save search input model.
@@ -48,7 +48,7 @@ func (m *SaveSearchInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.cancelled = true
+			m.canceled = true
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":

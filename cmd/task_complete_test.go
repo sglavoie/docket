@@ -51,7 +51,7 @@ func TestUpdateTaskStatusCancel(t *testing.T) {
 	testutil.AssertTaskStatus(t, task, models.StatusTodo)
 
 	task.Cancel()
-	testutil.AssertTaskStatus(t, task, models.StatusCancelled)
+	testutil.AssertTaskStatus(t, task, models.StatusCanceled)
 
 	if task.CompletedAt == nil {
 		t.Error("CompletedAt should be set after Cancel()")
@@ -173,10 +173,10 @@ func TestStatusTransitions(t *testing.T) {
 			wantStatus:   models.StatusBlocked,
 		},
 		{
-			name:         "todo to cancelled",
+			name:         "todo to canceled",
 			initialState: models.StatusTodo,
 			action:       (*models.Task).Cancel,
-			wantStatus:   models.StatusCancelled,
+			wantStatus:   models.StatusCanceled,
 		},
 		{
 			name:         "in_progress to done",
@@ -203,8 +203,8 @@ func TestStatusTransitions(t *testing.T) {
 			wantStatus:   models.StatusTodo,
 		},
 		{
-			name:         "cancelled to todo via reopen",
-			initialState: models.StatusCancelled,
+			name:         "canceled to todo via reopen",
+			initialState: models.StatusCanceled,
 			action:       (*models.Task).Reopen,
 			wantStatus:   models.StatusTodo,
 		},
@@ -228,7 +228,7 @@ func TestStatusIsComplete(t *testing.T) {
 		{models.StatusInProgress, false},
 		{models.StatusBlocked, false},
 		{models.StatusDone, true},
-		{models.StatusCancelled, true},
+		{models.StatusCanceled, true},
 	}
 
 	for _, tt := range tests {
@@ -249,7 +249,7 @@ func TestStatusIsActive(t *testing.T) {
 		{models.StatusInProgress, true},
 		{models.StatusBlocked, true},
 		{models.StatusDone, false},
-		{models.StatusCancelled, false},
+		{models.StatusCanceled, false},
 	}
 
 	for _, tt := range tests {

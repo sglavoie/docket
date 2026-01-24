@@ -162,7 +162,7 @@ func (m *ProjectTreeModel) statusOrder(status models.TaskStatus) int {
 		return 2
 	case models.StatusDone:
 		return 3
-	case models.StatusCancelled:
+	case models.StatusCanceled:
 		return 4
 	default:
 		return 5

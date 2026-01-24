@@ -173,7 +173,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case RecurrenceEditorDoneMsg:
-		if !msg.Cancelled && msg.Pattern != nil {
+		if !msg.Canceled && msg.Pattern != nil {
 			m.recurrence = msg.Pattern
 			// Update cursor to "Custom..." since we have a custom pattern
 			m.recurrenceCursor = 6
@@ -181,10 +181,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case TextEditorDoneMsg:
-		if !msg.Cancelled {
-			if msg.FieldName == "title" {
+		if !msg.Canceled {
+			switch msg.FieldName {
+			case "title":
 				m.titleValue = msg.Value
-			} else if msg.FieldName == "description" {
+			case "description":
 				m.descValue = msg.Value
 			}
 		}

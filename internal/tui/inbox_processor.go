@@ -647,8 +647,8 @@ func (m *InboxProcessorModel) cancelTask() tea.Cmd {
 	snapshot := m.captureSnapshot(task)
 	task.Cancel()
 
-	m.recordAction("cancelled task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d cancelled", task.ShortID)
+	m.recordAction("canceled task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d canceled", task.ShortID)
 
 	return m.saveProject()
 }
@@ -700,7 +700,7 @@ func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 }
 
 // willLeaveInbox returns true if the task will no longer appear in inbox after save.
-// A task leaves inbox when its section is changed from Inbox or when it's completed/cancelled.
+// A task leaves inbox when its section is changed from Inbox or when it's completed/canceled.
 func (m *InboxProcessorModel) willLeaveInbox(task *models.Task) bool {
 	return task.Section != models.SectionInbox || task.IsComplete()
 }

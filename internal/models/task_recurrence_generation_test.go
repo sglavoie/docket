@@ -354,7 +354,7 @@ func TestGenerateRecurringInstancesIdempotency(t *testing.T) {
 
 func TestGenerateRecurringInstancesNonDoneStatuses(t *testing.T) {
 	// Only StatusDone should trigger generation
-	statuses := []TaskStatus{StatusTodo, StatusInProgress, StatusBlocked, StatusCancelled}
+	statuses := []TaskStatus{StatusTodo, StatusInProgress, StatusBlocked, StatusCanceled}
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
 	for _, status := range statuses {

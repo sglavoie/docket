@@ -34,22 +34,6 @@ type quickEditResult struct {
 	statusSet bool
 }
 
-// snapshotTaskForEdit captures the current task state for comparison.
-func snapshotTaskForEdit(task *models.Task) *quickEditResult {
-	return &quickEditResult{
-		title:       task.Title,
-		titleSet:    true,
-		priority:    task.Priority,
-		prioritySet: true,
-		dueDate:     task.DueDate,
-		dueDateSet:  task.DueDate != nil,
-		section:     task.Section,
-		sectionSet:  true,
-		status:      task.Status,
-		statusSet:   true,
-	}
-}
-
 // parseQuickEdit parses input for inline task editing.
 // Syntax supports: !1-5 (priority), #tag (add tag), -#tag (remove tag),
 // @date (due date), @0 (clear due), /section, $status
@@ -127,7 +111,7 @@ func parseQuickEdit(input string, task *models.Task, project *models.Project) (*
 		input = sectionRe.ReplaceAllString(input, " ")
 	}
 
-	// Extract status: $start, $blocked, $done, $cancelled, $todo
+	// Extract status: $start, $blocked, $done, $canceled, $todo
 	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
 	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
 		statusStr := strings.ToLower(match[1])
@@ -141,8 +125,8 @@ func parseQuickEdit(input string, task *models.Task, project *models.Project) (*
 		case "done", "complete", "completed":
 			result.status = models.StatusDone
 			result.statusSet = true
-		case "cancelled", "cancel":
-			result.status = models.StatusCancelled
+		case "canceled", "cancel":
+			result.status = models.StatusCanceled
 			result.statusSet = true
 		case "todo", "open", "reopen":
 			result.status = models.StatusTodo
@@ -254,8 +238,8 @@ func parseQuickEditForPreview(input string, task *models.Task, project *models.P
 		case "done", "complete", "completed":
 			result.status = models.StatusDone
 			result.statusSet = true
-		case "cancelled", "cancel":
-			result.status = models.StatusCancelled
+		case "canceled", "cancel":
+			result.status = models.StatusCanceled
 			result.statusSet = true
 		case "todo", "open", "reopen":
 			result.status = models.StatusTodo

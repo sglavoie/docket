@@ -29,7 +29,7 @@ EVENT TRIGGER FIELDS (detect transitions):
   priority_changed  - Value: "old->new" (e.g., "*->1")
   tag_added         - Value: tag name that was added
   tag_removed       - Value: tag name that was removed
-  completed         - Value: "true" (fires on done/cancelled)
+  completed         - Value: "true" (fires on done/canceled)
   reopened          - Value: "true" (fires when reopened)
 
 HIERARCHICAL TRIGGER FIELDS:

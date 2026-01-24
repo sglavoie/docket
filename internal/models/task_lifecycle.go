@@ -33,14 +33,14 @@ func (t *Task) Block() {
 	t.UpdatedAt = time.Now()
 }
 
-// Cancel marks the task as cancelled.
+// Cancel marks the task as canceled.
 // If the task is in a non-Active section, it is automatically moved out (auto-triage).
 func (t *Task) Cancel() {
 	now := time.Now()
-	t.Status = StatusCancelled
+	t.Status = StatusCanceled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
-	// Auto-triage: move out of Next/Waiting/Someday when cancelling
+	// Auto-triage: move out of Next/Waiting/Someday when canceling
 	if t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
 		t.Section = ""
 	}

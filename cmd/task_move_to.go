@@ -49,8 +49,8 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
 	}
 
-	if err := storage.LoadProject(sourceProject); err != nil {
-		return fmt.Errorf("failed to load source project: %w", err)
+	if loadErr := storage.LoadProject(sourceProject); loadErr != nil {
+		return fmt.Errorf("failed to load source project: %w", loadErr)
 	}
 
 	// Select task if not provided
@@ -63,13 +63,13 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("no tasks in current project")
 		}
 		items := TasksToSelectorItems(sourceProject.Tasks)
-		selected, err := tui.RunSelector("Select task to move:", items)
-		if err != nil {
-			return err
+		selected, selErr := tui.RunSelector("Select task to move:", items)
+		if selErr != nil {
+			return selErr
 		}
-		task, err := GetTaskFromSelector(selected)
-		if err != nil {
-			return err
+		task, getErr := GetTaskFromSelector(selected)
+		if getErr != nil {
+			return getErr
 		}
 		taskID = fmt.Sprintf("%d", task.ShortID)
 	}
@@ -124,9 +124,9 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		selected, err := tui.RunSelector("Select destination project:", items)
-		if err != nil {
-			return err
+		selected, selErr := tui.RunSelector("Select destination project:", items)
+		if selErr != nil {
+			return selErr
 		}
 		destProjectID = selected.ID
 	}
@@ -139,8 +139,8 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot move task to the same project")
 	}
 
-	if err := storage.LoadProject(destProject); err != nil {
-		return fmt.Errorf("failed to load destination project: %w", err)
+	if loadErr := storage.LoadProject(destProject); loadErr != nil {
+		return fmt.Errorf("failed to load destination project: %w", loadErr)
 	}
 
 	// Build tree to count descendants and check dependencies
@@ -183,7 +183,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		var response string
 		_, _ = fmt.Scanln(&response)
 		if response != "y" && response != "Y" {
-			fmt.Println("Cancelled.")
+			fmt.Println("Canceled.")
 			return nil
 		}
 	}

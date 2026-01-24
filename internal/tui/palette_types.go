@@ -168,7 +168,7 @@ type CommandPaletteModel struct {
 	showTips bool // Show tips until first keystroke
 
 	// Feature toggles
-	includeCompleted bool      // When true, include completed/cancelled tasks (Ctrl+H)
+	includeCompleted bool      // When true, include completed/canceled tasks (Ctrl+H)
 	sortField        SortField // Current sort mode for results (Ctrl+O to cycle)
 
 	// Inline task creation state

@@ -468,7 +468,7 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		case "o":
 			return m.changeTaskStatus(models.StatusTodo)
 		case "x":
-			return m.changeTaskStatus(models.StatusCancelled)
+			return m.changeTaskStatus(models.StatusCanceled)
 		}
 	case "g":
 		switch key {

@@ -38,7 +38,7 @@ func (p *Project) GetNextShortID() int {
 	return id
 }
 
-// GetCompletedTasks returns all tasks that are complete (done or cancelled).
+// GetCompletedTasks returns all tasks that are complete (done or canceled).
 func (p *Project) GetCompletedTasks() []*Task {
 	return p.FilterTasks(func(t *Task) bool {
 		return t.IsComplete()

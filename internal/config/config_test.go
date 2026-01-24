@@ -50,8 +50,8 @@ func TestConfigManager_LoadSave(t *testing.T) {
 	cfg.FzfEnabled = false
 
 	// Save
-	if err := manager.Save(cfg); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if saveErr := manager.Save(cfg); saveErr != nil {
+		t.Fatalf("Save failed: %v", saveErr)
 	}
 
 	// Load again

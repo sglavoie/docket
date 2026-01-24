@@ -420,11 +420,11 @@ func TestParseQuickCapture(t *testing.T) {
 			wantStatus:   models.StatusDone,
 		},
 		{
-			name:         "status cancelled",
-			input:        "Abandoned task $cancelled",
+			name:         "status canceled",
+			input:        "Abandoned task $canceled",
 			wantTitle:    "Abandoned task",
 			wantPriority: 3,
-			wantStatus:   models.StatusCancelled,
+			wantStatus:   models.StatusCanceled,
 		},
 		{
 			name:         "status case insensitive",

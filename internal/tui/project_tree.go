@@ -53,7 +53,7 @@ const (
 	ViewModeInbox                     // Only Inbox section tasks
 	ViewModeWaiting                   // Only Waiting section tasks (GTD "Waiting For")
 	ViewModeSomeday                   // Only Someday section tasks (GTD "Someday/Maybe")
-	ViewModeCompleted                 // Only completed tasks (done or cancelled)
+	ViewModeCompleted                 // Only completed tasks (done or canceled)
 )
 
 // String returns the display name for a view mode.

@@ -508,7 +508,7 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			counts["actionable"]++
 		}
 	}
-	
+
 	// Only set counts if filterBar component is initialized
 	if m.filterBar != nil {
 		m.filterBar.SetCounts(counts)

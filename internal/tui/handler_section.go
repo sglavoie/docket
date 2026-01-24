@@ -21,7 +21,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case SectionFilterSelectorDoneMsg:
 		m.popView()
-		if !msg.Cancelled && m.projectTree != nil {
+		if !msg.Canceled && m.projectTree != nil {
 			m.projectTree.filter.Sections = make(map[string]bool)
 			for _, section := range msg.SelectedSections {
 				m.projectTree.filter.Sections[section] = true
@@ -45,7 +45,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case PriorityPickerDoneMsg:
 		m.popView()
-		if msg.Cancelled {
+		if msg.Canceled {
 			m.pendingBulkTasks = nil
 			return true, nil
 		}
@@ -92,7 +92,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case SectionPickerDoneMsg:
 		m.popView()
-		if !msg.Cancelled && msg.Task != nil && msg.Project != nil {
+		if !msg.Canceled && msg.Task != nil && msg.Project != nil {
 			msg.Task.Section = msg.Section
 			msg.Task.UpdatedAt = time.Now()
 

@@ -16,13 +16,13 @@ import (
 
 // DateInputModel handles setting a due date for a task.
 type DateInputModel struct {
-	task      *models.Task
-	project   *models.Project
-	input     textinput.Model
-	err       error
-	width     int
-	height    int
-	cancelled bool
+	task     *models.Task
+	project  *models.Project
+	input    textinput.Model
+	err      error
+	width    int
+	height   int
+	canceled bool
 }
 
 // NewDateInputModel creates a new date input model.
@@ -61,7 +61,7 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.cancelled = true
+			m.canceled = true
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":

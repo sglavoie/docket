@@ -51,7 +51,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TextEditorExternalDoneMsg:
 		// External editor finished - update textarea with result
-		if !msg.Cancelled {
+		if !msg.Canceled {
 			m.textarea.SetValue(msg.Value)
 		}
 		return m, nil
@@ -64,7 +64,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return TextEditorDoneMsg{
 					FieldName: m.fieldName,
 					Value:     m.initialValue,
-					Cancelled: true,
+					Canceled:  true,
 				}
 			}
 
@@ -80,7 +80,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return TextEditorDoneMsg{
 					FieldName: m.fieldName,
 					Value:     value,
-					Cancelled: false,
+					Canceled:  false,
 				}
 			}
 
@@ -149,7 +149,7 @@ type ShowTextEditorMsg struct {
 type TextEditorDoneMsg struct {
 	FieldName string
 	Value     string
-	Cancelled bool
+	Canceled  bool
 }
 
 // TextEditorExternalMsg requests opening an external editor.
@@ -162,5 +162,5 @@ type TextEditorExternalMsg struct {
 type TextEditorExternalDoneMsg struct {
 	FieldName string
 	Value     string
-	Cancelled bool
+	Canceled  bool
 }

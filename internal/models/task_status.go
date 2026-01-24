@@ -8,7 +8,7 @@ const (
 	StatusInProgress TaskStatus = "in_progress"
 	StatusDone       TaskStatus = "done"
 	StatusBlocked    TaskStatus = "blocked"
-	StatusCancelled  TaskStatus = "cancelled"
+	StatusCanceled   TaskStatus = "canceled"
 )
 
 // SectionWaiting is the section for tasks blocked on external input (GTD "Waiting For").
@@ -25,13 +25,13 @@ func IsGTDSection(name string) bool {
 
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
-	return []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCancelled}
+	return []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCanceled}
 }
 
 // IsValid checks if the status is valid.
 func (s TaskStatus) IsValid() bool {
 	switch s {
-	case StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCancelled:
+	case StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCanceled:
 		return true
 	}
 	return false
@@ -39,7 +39,7 @@ func (s TaskStatus) IsValid() bool {
 
 // IsComplete returns true if this status represents a completed state.
 func (s TaskStatus) IsComplete() bool {
-	return s == StatusDone || s == StatusCancelled
+	return s == StatusDone || s == StatusCanceled
 }
 
 // IsActive returns true if this status represents an active/open state.
@@ -58,7 +58,7 @@ func (s TaskStatus) Icon() string {
 		return "●"
 	case StatusBlocked:
 		return "◈"
-	case StatusCancelled:
+	case StatusCanceled:
 		return "✕"
 	default:
 		return "?"

@@ -41,6 +41,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 
 		cfg := newTestFocusConfig([]*models.Project{project})
 		m := &FocusViewModel{config: cfg}
+		_ = m.config
 		m.tasks = nil
 
 		// Manually populate tasks (bypassing storage.LoadProject)
@@ -67,14 +68,15 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 		done := newTestFocusTask("Done task", 3, true)
 		done.Status = models.StatusDone
 
-		cancelled := newTestFocusTask("Cancelled task", 3, true)
-		cancelled.Status = models.StatusCancelled
+		canceled := newTestFocusTask("Canceled task", 3, true)
+		canceled.Status = models.StatusCanceled
 
 		active := newTestFocusTask("Active task", 3, true)
-		project.Tasks = []*models.Task{done, cancelled, active}
+		project.Tasks = []*models.Task{done, canceled, active}
 
 		cfg := newTestFocusConfig([]*models.Project{project})
 		m := &FocusViewModel{config: cfg}
+		_ = m.config
 		m.tasks = nil
 
 		for _, task := range project.Tasks {
@@ -100,6 +102,7 @@ func TestFocusViewLoadTasks_FilteringLogic(t *testing.T) {
 
 		cfg := newTestFocusConfig([]*models.Project{project})
 		m := &FocusViewModel{config: cfg}
+		_ = m.config
 		m.tasks = nil
 
 		for _, task := range project.Tasks {
