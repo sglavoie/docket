@@ -512,7 +512,7 @@ func (m *AppModel) handleShowScratchpad(msg ShowScratchpadMsg) (bool, tea.Cmd) {
 	}
 
 	// Add header for nicer display
-	displayContent := fmt.Sprintf("# Scratchpad: %s\n\n%s", msg.Project.Name, content)
+	displayContent := fmt.Sprintf("# 🗒️ Scratchpad: %s\n\n%s", msg.Project.Name, content)
 
 	tmpFile, err := os.CreateTemp("", "tt-scratchpad-*.md")
 	if err != nil {

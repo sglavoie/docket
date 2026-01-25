@@ -124,7 +124,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "G", Description: "Go to last", Category: "Navigation", Views: views},
 		Keybinding{Key: "/", Description: "Global search", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Search projects", Category: "Navigation", Views: views},
-		Keybinding{Key: "ctrl+D", Description: "Due date overview", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+D", Description: "⏰ Due date overview", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+R", Description: "Daily review", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+W", Description: "Workflow rules", Category: "Navigation", Views: views},
@@ -139,8 +139,8 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 
 		// Views
 		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},
-		Keybinding{Key: "f", Description: "Focus view", Category: "Views", Views: views},
-		Keybinding{Key: "b", Description: "Project blockers", Category: "Views", Views: views},
+		Keybinding{Key: "f", Description: "🎯 Focus view", Category: "Views", Views: views},
+		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Views", Views: views},
 
 		// Actions
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},
@@ -172,7 +172,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gg/G", Description: "Go to first/last", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Navigation", Views: views},
-		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Navigation", Views: views},
+		Keybinding{Key: "f", Description: "🎯 Focus view (project)", Category: "Navigation", Views: views},
 
 		// Folds (z prefix)
 		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
@@ -194,19 +194,19 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 
 		// Priority Quick Actions (! prefix)
-		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "Priority", Views: views},
-		Keybinding{Key: "!2", Description: "Set priority: High", Category: "Priority", Views: views},
-		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "Priority", Views: views},
-		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "Priority", Views: views},
-		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "Priority", Views: views},
+		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority", Views: views},
 
 		// Due Date Quick Actions (d prefix)
-		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in a week", Category: "Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in a month", Category: "Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
@@ -247,7 +247,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 
 		// Project Views
-		Keybinding{Key: "b", Description: "Project blockers", Category: "Project Views", Views: views},
+		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
 
 		// Views (g prefix)
 		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed)", Category: "Views", Views: views},
@@ -292,9 +292,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
 
 		// Clipboard
-		Keybinding{Key: "y", Description: "Copy title", Category: "Clipboard", Views: views},
-		Keybinding{Key: "Y", Description: "Copy description", Category: "Clipboard", Views: views},
-		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Clipboard", Views: views},
+		Keybinding{Key: "y", Description: "Copy title", Category: "📋 Clipboard", Views: views},
+		Keybinding{Key: "Y", Description: "Copy description", Category: "📋 Clipboard", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard", Views: views},
 
 		// Cross-Project
 		Keybinding{Key: "M", Description: "Move to another project", Category: "Cross-Project", Views: views},
@@ -311,16 +311,16 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filter Bar", Views: views},
 
 		// Scratchpad
-		Keybinding{Key: "[", Description: "View scratchpad", Category: "Scratchpad", Views: views},
-		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "Scratchpad", Views: views},
+		Keybinding{Key: "[", Description: "View scratchpad", Category: "🗒️ Scratchpad", Views: views},
+		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "🗒️ Scratchpad", Views: views},
 
 		// Recurring Tasks
-		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "Recurring Tasks", Views: views},
-		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "Recurring Tasks", Views: views},
-		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "Recurring Tasks", Views: views},
+		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "🔁 Recurring Tasks", Views: views},
+		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "🔁 Recurring Tasks", Views: views},
+		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "🔁 Recurring Tasks", Views: views},
 
 		// Archive
-		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "Archive", Views: views},
+		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "📦 Archive", Views: views},
 
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},
@@ -477,12 +477,12 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
 		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
@@ -526,12 +526,12 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
 		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
@@ -565,12 +565,12 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
 		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
@@ -604,12 +604,12 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
 		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "Due Date", Views: views},
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},

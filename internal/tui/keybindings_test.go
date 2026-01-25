@@ -187,7 +187,7 @@ func TestKeybindingCategories(t *testing.T) {
 
 	expectedCategories := []string{
 		"Navigation", "Folds", "Status", "Task Operations",
-		"Views", "Filters", "Sort", "Multi-select", "Clipboard",
+		"Views", "Filters", "Sort", "Multi-select", "📋 Clipboard",
 	}
 	for _, cat := range expectedCategories {
 		if !categories[cat] {

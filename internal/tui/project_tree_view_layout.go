@@ -22,6 +22,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	if m.project.Context != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
 	}
+	if storage.ScratchpadExists(m.project) {
+		b.WriteString(" 🗒️")
+	}
 
 	// Show archived badge
 	if m.project.Archived {
@@ -391,6 +394,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	b.WriteString(TitleStyle.Render(title))
 	if m.project.Context != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
+	}
+	if storage.ScratchpadExists(m.project) {
+		b.WriteString(" 🗒️")
 	}
 
 	// Show archived badge
