@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
@@ -76,6 +77,13 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, ViewModeSomedayStyle.Render(somedayLabel))
 	} else {
 		parts = append(parts, MutedStyle.Render(somedayLabel))
+	}
+
+	// Blockers indicator (only show if there are active blockers)
+	blockerCount := storage.GetActiveBlockerCount(m.project)
+	if blockerCount > 0 {
+		blockerLabel := fmt.Sprintf("🚧%d", blockerCount)
+		parts = append(parts, DueSoonStyle.Render(blockerLabel))
 	}
 
 	return strings.Join(parts, " ")

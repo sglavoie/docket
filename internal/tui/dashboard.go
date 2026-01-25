@@ -303,6 +303,14 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowGlobalInboxProcessorMsg{}
 			}
+		case "b":
+			// Open blockers for selected project
+			if len(visible) > 0 && m.cursor < len(visible) {
+				project := visible[m.cursor]
+				return m, func() tea.Msg {
+					return ShowBlockersMsg{Project: project}
+				}
+			}
 		case "ctrl+w":
 			return m, func() tea.Msg {
 				return ShowWorkflowRulesMsg{}
@@ -540,6 +548,7 @@ func (m *DashboardModel) View() string {
 			dueSoonDays := m.config.GetReviewDueSoonDays()
 			dueSoon := p.CountDueSoonTasks(dueSoonDays)
 			blocked := p.CountBlockedTasks()
+			blockerCount := storage.GetActiveBlockerCount(p)
 
 			currentMarker := ""
 			if p.ID == m.config.CurrentProject {
@@ -551,7 +560,7 @@ func (m *DashboardModel) View() string {
 
 			// Build status indicator: urgency if issues, completion otherwise
 			var statusIndicator string
-			if overdue > 0 || dueSoon > 0 || blocked > 0 {
+			if overdue > 0 || dueSoon > 0 || blocked > 0 || blockerCount > 0 {
 				var parts []string
 				if overdue > 0 {
 					parts = append(parts, OverdueStyle.Render(fmt.Sprintf("🔥%d", overdue)))
@@ -561,6 +570,9 @@ func (m *DashboardModel) View() string {
 				}
 				if blocked > 0 {
 					parts = append(parts, MutedStyle.Render(fmt.Sprintf("◈%d", blocked)))
+				}
+				if blockerCount > 0 {
+					parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("🚧%d", blockerCount)))
 				}
 				statusIndicator = strings.Join(parts, " ")
 			} else {

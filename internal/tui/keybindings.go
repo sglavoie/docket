@@ -140,6 +140,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		// Views
 		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "Focus view", Category: "Views", Views: views},
+		Keybinding{Key: "b", Description: "Project blockers", Category: "Views", Views: views},
 
 		// Actions
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},
@@ -244,6 +245,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations", Views: views},
 		Keybinding{Key: "c", Description: "View/add comments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
+
+		// Project Views
+		Keybinding{Key: "b", Description: "Project blockers", Category: "Project Views", Views: views},
 
 		// Views (g prefix)
 		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed)", Category: "Views", Views: views},

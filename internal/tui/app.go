@@ -64,6 +64,7 @@ const (
 	ViewGlobalInboxProcessor
 	ViewFocusView
 	ViewProjectFocusView
+	ViewBlockers
 )
 
 // AppModel is the main TUI model with a view stack.

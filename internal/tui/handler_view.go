@@ -402,6 +402,24 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			return nil
 		})
+
+	case ShowBlockersMsg:
+		if msg.Project != nil {
+			editor := m.config.Editor
+			m.showView(ViewBlockers, NewBlockersModelWithEditor(msg.Project, editor))
+		}
+		return true, nil
+
+	case CloseBlockersMsg:
+		m.popView()
+		return true, nil
+
+	case BlockerAddedMsg, BlockerEditedMsg, BlockerDeletedMsg:
+		// Blockers were modified, refresh dashboard to update indicators
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		return true, nil
 	}
 	return false, nil
 }
