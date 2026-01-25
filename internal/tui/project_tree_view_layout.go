@@ -95,6 +95,14 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", count)
+		} else if m.confirmAction == ConfirmTurnIntoNote && m.noteTarget != nil {
+			childCount := len(m.noteTarget.Children)
+			if childCount > 0 {
+				prompt = fmt.Sprintf("Turn #%d '%s' into note? %d children will be reparented. (y/n)",
+					m.noteTarget.ShortID, m.noteTarget.Title, childCount)
+			} else {
+				prompt = fmt.Sprintf("Turn #%d '%s' into note? (y/n)", m.noteTarget.ShortID, m.noteTarget.Title)
+			}
 		} else {
 			// For ConfirmArchive/ConfirmUnarchive - format as string for display
 			var action string
@@ -453,6 +461,14 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		} else if m.confirmAction == ConfirmArchiveTasks {
 			count := m.project.CountCompletedTasks()
 			prompt = fmt.Sprintf("Archive %d completed task(s)? (y/n)", count)
+		} else if m.confirmAction == ConfirmTurnIntoNote && m.noteTarget != nil {
+			childCount := len(m.noteTarget.Children)
+			if childCount > 0 {
+				prompt = fmt.Sprintf("Turn #%d into note? %d children reparented. (y/n)",
+					m.noteTarget.ShortID, childCount)
+			} else {
+				prompt = fmt.Sprintf("Turn #%d into note? (y/n)", m.noteTarget.ShortID)
+			}
 		} else {
 			// For ConfirmArchive/ConfirmUnarchive - format as string for display
 			var action string

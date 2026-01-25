@@ -93,10 +93,14 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 		case ConfirmArchiveTasks:
 			m.confirmAction = ConfirmNone
 			return m, m.archiveCompletedTasks()
+		case ConfirmTurnIntoNote:
+			m.confirmAction = ConfirmNone
+			return m, m.turnTaskIntoNote()
 		}
 	case "n", "N", "esc":
 		m.confirmAction = ConfirmNone
 		m.deleteTarget = nil
+		m.noteTarget = nil
 		m.clearPendingBulkStatus()
 		return m, nil
 	}

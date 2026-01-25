@@ -83,6 +83,9 @@ type TaskUpdatedMsg struct{ Task *models.Task }
 // TaskDeletedMsg signals a task was deleted.
 type TaskDeletedMsg struct{ Task *models.Task }
 
+// TurnIntoNoteMsg triggers the turn-into-note confirmation for the selected task.
+type TurnIntoNoteMsg struct{}
+
 // TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
 type TaskStatusChangedMsg struct{ Task *models.Task }
 

@@ -33,6 +33,24 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case TurnIntoNoteMsg:
+		if m.projectTree != nil {
+			visible := m.projectTree.visibleNodes()
+			cursor := m.projectTree.cursor
+			if CursorInBounds(cursor, len(visible)) {
+				task := visible[cursor].Task
+				if allowed, reason := task.CanTurnIntoNote(); allowed {
+					m.projectTree.confirmAction = ConfirmTurnIntoNote
+					m.projectTree.noteTarget = task
+				} else {
+					return true, func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("cannot convert to note: %s", reason)}
+					}
+				}
+			}
+		}
+		return true, nil
+
 	case EditTaskMsg:
 		if m.currentProject != nil && msg.Task != nil {
 			m.showView(ViewTaskEditor, NewTaskEditorModel(m.currentProject, msg.Task, m.config, m.configManager))

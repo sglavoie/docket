@@ -260,8 +260,8 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			return ShowBulkCaptureMsg{Project: m.project}
 		}
 
-	case "O":
-		// Create a new note (Shift+O)
+	case "o":
+		// Create a new note
 		var parentTask *models.Task
 		if m.focusedTask != nil {
 			// In focus mode, default to focused task as parent
@@ -272,6 +272,21 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		return true, func() tea.Msg {
 			return CreateNoteMsg{ParentTask: parentTask}
 		}
+
+	case "O":
+		// Turn task into note (requires confirmation)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if allowed, reason := task.CanTurnIntoNote(); allowed {
+				m.confirmAction = ConfirmTurnIntoNote
+				m.noteTarget = task
+			} else {
+				return true, func() tea.Msg {
+					return ErrorMsg{Err: fmt.Errorf("cannot convert to note: %s", reason)}
+				}
+			}
+		}
+		return true, nil
 
 	case "e":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {

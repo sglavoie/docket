@@ -554,12 +554,23 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "new note",
 			Description: "Create a new note",
-			Shortcut:    "O",
+			Shortcut:    "o",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"create note", "add note"},
 			Handler: func() tea.Msg {
 				return CreateNoteMsg{}
+			},
+		},
+		{
+			Name:        "turn into note",
+			Description: "Convert current task to a note",
+			Shortcut:    "O",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"convert to note", "make note"},
+			Handler: func() tea.Msg {
+				return TurnIntoNoteMsg{}
 			},
 		},
 		{

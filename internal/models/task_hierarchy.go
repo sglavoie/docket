@@ -261,3 +261,53 @@ func (t *Task) CycleLeafType(left bool) error {
 	t.UpdatedAt = time.Now()
 	return nil
 }
+
+// CanTurnIntoNote checks if this task can be converted to a Note.
+// Returns (allowed, reason) where reason explains why if not allowed.
+func (t *Task) CanTurnIntoNote() (bool, string) {
+	// Already a note
+	if t.Type == TaskTypeNote {
+		return false, "already a note"
+	}
+
+	// Root task with children would orphan them (Note can't have children)
+	if len(t.Children) > 0 && t.Parent == nil {
+		return false, "root task with children cannot become note"
+	}
+
+	// If task has children, verify parent can adopt them
+	if len(t.Children) > 0 && t.Parent != nil {
+		for _, child := range t.Children {
+			if !child.Type.CanBeChildOf(t.Parent.Type) {
+				return false, child.Type.String() + " cannot be reparented to " + t.Parent.Type.String()
+			}
+		}
+	}
+
+	return true, ""
+}
+
+// TurnIntoNote converts this task to a Note type.
+// If the task has children, they are reparented to this task's parent.
+// Returns an error if conversion is not allowed.
+func (t *Task) TurnIntoNote() error {
+	if allowed, reason := t.CanTurnIntoNote(); !allowed {
+		return fmt.Errorf("cannot convert to note: %s", reason)
+	}
+
+	// Reparent children to this task's parent before converting
+	if len(t.Children) > 0 && t.Parent != nil {
+		for _, child := range t.Children {
+			child.ParentID = t.ParentID
+			child.Parent = t.Parent
+			child.Level = t.Level
+			t.Parent.Children = append(t.Parent.Children, child)
+		}
+		// Clear this task's children
+		t.Children = []*Task{}
+	}
+
+	t.Type = TaskTypeNote
+	t.UpdatedAt = time.Now()
+	return nil
+}

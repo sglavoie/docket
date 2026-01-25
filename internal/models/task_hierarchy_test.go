@@ -392,3 +392,111 @@ func TestDemoteEpicWithIncompatibleChildren(t *testing.T) {
 		t.Errorf("Type should remain epic after failed demote, got %s", epic.Type)
 	}
 }
+
+func TestCanTurnIntoNote(t *testing.T) {
+	// Note cannot turn into note
+	note := NewTask("note", 1, TaskTypeNote, "Note")
+	ok, reason := note.CanTurnIntoNote()
+	if ok {
+		t.Error("note should not be able to turn into note")
+	}
+	if reason != "already a note" {
+		t.Errorf("expected reason 'already a note', got '%s'", reason)
+	}
+
+	// Task with no children can turn into note
+	task := NewTask("task", 2, TaskTypeTask, "Task")
+	ok, _ = task.CanTurnIntoNote()
+	if !ok {
+		t.Error("task with no children should be able to turn into note")
+	}
+
+	// Root task with children cannot turn into note
+	epic := NewTask("epic", 3, TaskTypeEpic, "Epic")
+	child := NewTask("child", 4, TaskTypeTask, "Child")
+	epic.AddChild(child)
+	ok, reason = epic.CanTurnIntoNote()
+	if ok {
+		t.Error("root task with children should not be able to turn into note")
+	}
+	if reason != "root task with children cannot become note" {
+		t.Errorf("expected reason about root task with children, got '%s'", reason)
+	}
+
+	// Task with children under a parent can turn into note (children reparented)
+	parent := NewTask("parent", 5, TaskTypeEpic, "Parent Epic")
+	story := NewTask("story", 6, TaskTypeStory, "Story")
+	storyChild := NewTask("storyChild", 7, TaskTypeTask, "Story Child")
+	parent.AddChild(story)
+	story.AddChild(storyChild)
+	ok, _ = story.CanTurnIntoNote()
+	if !ok {
+		t.Error("task with children under a parent should be able to turn into note")
+	}
+}
+
+func TestTurnIntoNote(t *testing.T) {
+	// Basic conversion - task becomes note
+	task := NewTask("task", 1, TaskTypeTask, "Task")
+	err := task.TurnIntoNote()
+	if err != nil {
+		t.Errorf("TurnIntoNote() should succeed for leaf task: %v", err)
+	}
+	if task.Type != TaskTypeNote {
+		t.Errorf("Type = %s, want note", task.Type)
+	}
+
+	// Note cannot convert again
+	err = task.TurnIntoNote()
+	if err == nil {
+		t.Error("TurnIntoNote() should fail for existing note")
+	}
+}
+
+func TestTurnIntoNoteReparentsChildren(t *testing.T) {
+	// Set up: epic -> story -> task
+	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	story := NewTask("story", 2, TaskTypeStory, "Story")
+	storyTask := NewTask("task", 3, TaskTypeTask, "Task under Story")
+	epic.AddChild(story)
+	story.AddChild(storyTask)
+
+	// Convert story to note - task should be reparented to epic
+	err := story.TurnIntoNote()
+	if err != nil {
+		t.Errorf("TurnIntoNote() should succeed: %v", err)
+	}
+	if story.Type != TaskTypeNote {
+		t.Errorf("Type = %s, want note", story.Type)
+	}
+	if len(story.Children) != 0 {
+		t.Errorf("story should have no children after conversion, got %d", len(story.Children))
+	}
+
+	// Task should now be under epic
+	if storyTask.Parent != epic {
+		t.Error("task should be reparented to epic")
+	}
+	if storyTask.ParentID == nil || *storyTask.ParentID != epic.ID {
+		t.Error("task.ParentID should be epic.ID")
+	}
+
+	// Epic should now have both story (as note) and task as children
+	if len(epic.Children) != 2 {
+		t.Errorf("epic should have 2 children, got %d", len(epic.Children))
+	}
+}
+
+func TestTurnIntoNoteFailsForRootWithChildren(t *testing.T) {
+	root := NewTask("root", 1, TaskTypeEpic, "Root Epic")
+	child := NewTask("child", 2, TaskTypeTask, "Child Task")
+	root.AddChild(child)
+
+	err := root.TurnIntoNote()
+	if err == nil {
+		t.Error("TurnIntoNote() should fail for root task with children")
+	}
+	if root.Type != TaskTypeEpic {
+		t.Errorf("Type should remain epic after failed conversion, got %s", root.Type)
+	}
+}
