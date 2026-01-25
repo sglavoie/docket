@@ -125,7 +125,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "/", Description: "Global search", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Search projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+D", Description: "⏰ Due date overview", Category: "Navigation", Views: views},
-		Keybinding{Key: "ctrl+R", Description: "Daily review", Category: "Navigation", Views: views},
+	Keybinding{Key: "r", Description: "Daily review", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+W", Description: "Workflow rules", Category: "Navigation", Views: views},
 
@@ -152,7 +152,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "a", Description: "Toggle archived filter", Category: "Actions", Views: views},
 		Keybinding{Key: "T", Description: "View trash", Category: "Actions", Views: views},
 		Keybinding{Key: "R", Description: "Toggle recent tasks", Category: "Actions", Views: views},
-		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Actions", Views: views},
 		Keybinding{Key: ",", Description: "Settings", Category: "Actions", Views: views},
 
 		// Legend

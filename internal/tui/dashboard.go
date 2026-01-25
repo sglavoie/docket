@@ -216,7 +216,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Items:      m.GetHelpItems(),
 				}
 			}
-		case "r":
+		case "ctrl+r":
 			m.loadProjects()
 		case "R":
 			return m, func() tea.Msg {
@@ -260,7 +260,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
 			}
-		case "ctrl+r":
+		case "r":
 			return m, func() tea.Msg {
 				return ShowDailyReviewMsg{}
 			}

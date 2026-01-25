@@ -412,7 +412,7 @@ func (m *AppModel) registerGlobalCommands() {
 		{
 			Name:        "daily review",
 			Description: "Daily planning and review view",
-			Shortcut:    "ctrl+r",
+			Shortcut:    "r",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"planning", "today", "morning review"},
