@@ -555,7 +555,11 @@ func (m *DashboardModel) View() string {
 				currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
 			}
 			name := style.Render(p.Name) + currentMarker
-			context := MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
+			// Only show context badge if no context filter is active (avoids redundancy)
+			context := ""
+			if m.filterContext == "" && p.Context != "" {
+				context = MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
+			}
 			stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
 
 			// Build status indicator: urgency if issues, completion otherwise
