@@ -11,18 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 )
 
-// newTestAppModelWithMockPersister creates an AppModel with a mock persister for testing.
-func newTestAppModelWithMockPersister() (*AppModel, *MockPersister) {
-	cfg := testutil.NewTestConfig()
-	tmpDir, _ := os.MkdirTemp("", "tt-test-*")
-	configPath := filepath.Join(tmpDir, "tt.json")
-	manager := config.NewManager(configPath)
-	mockPersister := NewMockPersister()
-
-	app := NewAppModel(cfg, manager, WithPersister(mockPersister))
-	return app, mockPersister
-}
-
 // newTestAppModelWithMockPersisterAndProject creates an AppModel with mock persister and test project.
 func newTestAppModelWithMockPersisterAndProject() (*AppModel, *MockPersister, *models.Project) {
 	cfg := testutil.NewTestConfig()
@@ -215,10 +203,8 @@ func TestHandleMoveTaskToProjectUsesPersister(t *testing.T) {
 	}
 
 	// Execute the returned batch command to trigger the async save
-	if cmd != nil {
-		// The batch contains startLoading and saveBothProjectsAsync
-		// We can't easily test the async part without running the program
-	}
+	_ = cmd // The batch contains startLoading and saveBothProjectsAsync
+	// We can't easily test the async part without running the program
 }
 
 func TestCloseInboxProcessorMsgUsesPersister(t *testing.T) {
