@@ -371,6 +371,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Enter", Description: "View task details", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
+		Keybinding{Key: "dd", Description: "Set due date", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 

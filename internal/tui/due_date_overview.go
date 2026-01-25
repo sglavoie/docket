@@ -373,7 +373,7 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 			// Open date picker
 			if dt := m.getTaskAtCursor(); dt != nil {
 				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: dt.Task}
+					return SetDueDateMsg{Task: dt.Task, Project: dt.Project}
 				}
 			}
 		}

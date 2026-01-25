@@ -344,6 +344,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		m.pendingPrefix = "g"
 		return m, nil
 
+	case "d":
+		// Start prefix sequence for dd (due date)
+		m.pendingPrefix = "d"
+		return m, nil
+
 	case "G":
 		if m.totalTasks > 0 {
 			m.cursor = m.totalTasks - 1
@@ -482,6 +487,17 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			if pt := m.getTaskAtCursor(); pt != nil {
 				return m, func() tea.Msg {
 					return PriorityViewSelectMsg{Task: pt.Task}
+				}
+			}
+			return m, nil
+		}
+	case "d":
+		switch key {
+		case "d":
+			// dd: Open date picker for task at cursor
+			if pt := m.getTaskAtCursor(); pt != nil {
+				return m, func() tea.Msg {
+					return SetDueDateMsg{Task: pt.Task, Project: m.project}
 				}
 			}
 			return m, nil

@@ -13,6 +13,7 @@ func (m *PriorityViewModel) renderPrefixPopup() string {
 	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
 		",": StatusPrefixHints,
 		"g": PriorityViewNavigationPrefixHints,
+		"d": DueDatePrefixHints,
 	}, m.width)
 }
 

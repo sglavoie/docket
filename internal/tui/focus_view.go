@@ -306,7 +306,7 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			// Open date picker
 			if ft := m.getTaskAtCursor(); ft != nil {
 				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: ft.Task}
+					return SetDueDateMsg{Task: ft.Task, Project: ft.Project}
 				}
 			}
 		}
