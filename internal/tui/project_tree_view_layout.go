@@ -19,6 +19,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	// Title
 	title := fmt.Sprintf("%s - Tasks", m.project.Name)
 	b.WriteString(TitleStyle.Render(title))
+	if m.project.Context != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
+	}
 
 	// Show archived badge
 	if m.project.Archived {
@@ -386,6 +389,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Title
 	title := fmt.Sprintf("%s - Tasks", m.project.Name)
 	b.WriteString(TitleStyle.Render(title))
+	if m.project.Context != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
+	}
 
 	// Show archived badge
 	if m.project.Archived {
