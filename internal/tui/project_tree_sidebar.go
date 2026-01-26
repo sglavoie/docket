@@ -59,6 +59,11 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 		cards = append(cards, m.renderCommentsCard(task, width))
 	}
 
+	// Attachments card (only if has attachments)
+	if task.HasAttachments() {
+		cards = append(cards, m.renderAttachmentsCard(task, width))
+	}
+
 	// Description card (only if has description)
 	if task.Description != "" {
 		cards = append(cards, m.renderDescriptionCard(task, width))
@@ -243,6 +248,27 @@ func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) stri
 	}
 
 	return renderSidebarCard("Comments", strings.Join(lines, "\n"), width, false, "")
+}
+
+// renderAttachmentsCard renders the attachments card showing filenames only.
+func (m *ProjectTreeModel) renderAttachmentsCard(task *models.Task, width int) string {
+	var lines []string
+
+	for i, attachment := range task.Attachments {
+		if i > 0 {
+			lines = append(lines, "") // spacer between attachments
+		}
+		filename := attachment.Filename
+		// For URLs, show just the domain or full URL if short enough
+		if attachment.IsURL {
+			filename = MutedStyle.Render("🔗 ") + filename
+		} else {
+			filename = MutedStyle.Render("📎 ") + filename
+		}
+		lines = append(lines, filename)
+	}
+
+	return renderSidebarCard("Attachments", strings.Join(lines, "\n"), width, false, "")
 }
 
 // renderDescriptionCard renders the description card with scroll support.

@@ -3,11 +3,12 @@ package models
 import "time"
 
 // AddAttachment adds a file attachment to the task.
-func (t *Task) AddAttachment(filename string, isURL bool) {
+func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) {
 	attachment := Attachment{
-		Filename: filename,
-		IsURL:    isURL,
-		AddedAt:  time.Now(),
+		Filename:     filename,
+		IsURL:        isURL,
+		OriginalPath: originalPath,
+		AddedAt:      time.Now(),
 	}
 	t.Attachments = append(t.Attachments, attachment)
 	t.UpdatedAt = time.Now()

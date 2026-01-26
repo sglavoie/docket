@@ -66,7 +66,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("URL cannot be empty")
 		}
 
-		task.AddAttachment(url, true)
+		task.AddAttachment(url, true, url)
 
 		if err := storage.BackupProject(project); err != nil {
 			return fmt.Errorf("failed to create backup: %w", err)
@@ -110,7 +110,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add attachment to task metadata
-	task.AddAttachment(filename, false)
+	task.AddAttachment(filename, false, absPath)
 
 	if err := storage.BackupProject(project); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)

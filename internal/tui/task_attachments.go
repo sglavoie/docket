@@ -185,6 +185,12 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.copyPath()
 			}
 
+		case "ctrl+o":
+			// Open original path reference
+			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+				return m, m.openOriginalPath()
+			}
+
 		case "O":
 			// Open attachments directory in file manager
 			return m, m.openAttachmentsDir()
@@ -207,7 +213,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 		if isURL {
 			// Add URL attachment
-			m.task.AddAttachment(input, true)
+			m.task.AddAttachment(input, true, input)
 		} else {
 			// Handle file path
 			path := input
@@ -242,7 +248,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 				return nil
 			}
 
-			m.task.AddAttachment(filename, false)
+			m.task.AddAttachment(filename, false, absPath)
 		}
 
 		// Create backup before saving
@@ -428,6 +434,64 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 	return nil
 }
 
+func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
+	att := m.task.Attachments[m.cursor]
+
+	// For URLs, copy to clipboard
+	if att.IsURL {
+		var clipCmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			clipCmd = exec.Command("pbcopy")
+		case "linux":
+			clipCmd = exec.Command("xclip", "-selection", "clipboard")
+		case "windows":
+			clipCmd = exec.Command("clip")
+		default:
+			m.statusMessage = "Clipboard not supported on this OS"
+			return nil
+		}
+
+		clipCmd.Stdin = strings.NewReader(att.OriginalPath)
+		if err := clipCmd.Run(); err != nil {
+			m.err = fmt.Errorf("failed to copy URL to clipboard: %w", err)
+			return nil
+		}
+
+		m.statusMessage = "URL copied to clipboard"
+		return nil
+	}
+
+	// For files, open the directory containing the original file
+	dir := filepath.Dir(att.OriginalPath)
+
+	// Check if directory exists
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		m.err = fmt.Errorf("original directory not found: %s", dir)
+		return nil
+	}
+
+	var openCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		openCmd = exec.Command("open", dir)
+	case "linux":
+		openCmd = exec.Command("xdg-open", dir)
+	case "windows":
+		openCmd = exec.Command("explorer", dir)
+	default:
+		m.err = fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+		return nil
+	}
+
+	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+		}
+		return nil
+	})
+}
+
 func (m *TaskAttachmentsModel) View() string {
 	var b strings.Builder
 
@@ -567,6 +631,15 @@ func (m *TaskAttachmentsModel) View() string {
 			entry.WriteString(name)
 			entry.WriteString("\n")
 
+			// Original path
+			origPath := att.OriginalPath
+			if len(origPath) > maxLen {
+				origPath = origPath[:maxLen-3] + "..."
+			}
+			entry.WriteString("      ")
+			entry.WriteString(MutedStyle.Render("from: " + origPath))
+			entry.WriteString("\n")
+
 			// Size and date (for files)
 			if !att.IsURL {
 				size := storage.GetAttachmentSize(m.project, m.task, &att)
@@ -599,7 +672,7 @@ func (m *TaskAttachmentsModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(MutedStyle.Render("a: add | o: open | O: open dir | d: delete | u: unlink | y: copy | Esc: close"))
+	b.WriteString(MutedStyle.Render("a: add | o: open | O: open dir | Ctrl+O: open original | d: delete | u: unlink | y: copy | Esc: close"))
 
 	return b.String()
 }

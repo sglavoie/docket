@@ -145,6 +145,9 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				}
 				// Parse timestamp from @epoch suffix if present
 				var addedAt time.Time
+				var originalPath string
+				
+				// First, extract timestamp
 				if idx := strings.LastIndex(att, "@"); idx > 0 {
 					if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
 						addedAt = time.Unix(epoch, 0)
@@ -154,17 +157,30 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				if addedAt.IsZero() {
 					addedAt = time.Now()
 				}
+				
+				// Then, extract original path from the timestamp-stripped string
+				if origIdx := strings.Index(att, "||"); origIdx > 0 {
+					originalPath = att[origIdx+2:]
+					att = att[:origIdx]
+				}
+				
 				if strings.HasPrefix(att, "url:") {
+					filename := strings.TrimPrefix(att, "url:")
+					if originalPath == "" {
+						originalPath = filename // URLs: original path same as filename if not specified
+					}
 					task.Attachments = append(task.Attachments, models.Attachment{
-						Filename: strings.TrimPrefix(att, "url:"),
-						IsURL:    true,
-						AddedAt:  addedAt,
+						Filename:     filename,
+						IsURL:        true,
+						OriginalPath: originalPath,
+						AddedAt:      addedAt,
 					})
 				} else {
 					task.Attachments = append(task.Attachments, models.Attachment{
-						Filename: att,
-						IsURL:    false,
-						AddedAt:  addedAt,
+						Filename:     att,
+						IsURL:        false,
+						OriginalPath: originalPath,
+						AddedAt:      addedAt,
 					})
 				}
 			}
@@ -275,12 +291,18 @@ func WriteMetadata(task *models.Task) string {
 	if len(task.Attachments) > 0 {
 		var attStrings []string
 		for _, att := range task.Attachments {
-			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
+			var attStr string
 			if att.IsURL {
-				attStrings = append(attStrings, "url:"+att.Filename+timestamp)
+				attStr = "url:" + att.Filename
 			} else {
-				attStrings = append(attStrings, att.Filename+timestamp)
+				attStr = att.Filename
 			}
+			// Append original path if different from filename (for files) or always for URLs
+			if att.OriginalPath != "" {
+				attStr += "||" + att.OriginalPath
+			}
+			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
+			attStrings = append(attStrings, attStr+timestamp)
 		}
 		parts = append(parts, fmt.Sprintf("attachments: %s", strings.Join(attStrings, ";")))
 	}

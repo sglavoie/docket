@@ -6,9 +6,10 @@ import (
 
 // Attachment represents a file or URL attached to a task.
 type Attachment struct {
-	Filename string    `json:"filename"` // filename (local) or full URL
-	IsURL    bool      `json:"is_url"`   // true for URLs (not stored locally)
-	AddedAt  time.Time `json:"added_at"`
+	Filename     string    `json:"filename"`      // filename (local) or full URL
+	IsURL        bool      `json:"is_url"`        // true for URLs (not stored locally)
+	OriginalPath string    `json:"original_path"` // original filesystem path for files, URL for URLs
+	AddedAt      time.Time `json:"added_at"`
 }
 
 // Task represents a single task, story, epic, bug, or idea.
