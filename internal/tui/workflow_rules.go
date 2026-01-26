@@ -12,15 +12,14 @@ import (
 
 // WorkflowRulesModel handles the workflow rules management view.
 type WorkflowRulesModel struct {
+	BaseSearchableView
 	config        *config.Config
 	configManager *config.Manager
 
-	rules        []workflow.WorkflowRule
-	defaultCount int // Number of default rules (at start of slice)
-	cursor       int
-
-	width  int
-	height int
+	allRules      []workflow.WorkflowRule
+	filteredRules []workflow.WorkflowRule
+	defaultCount  int // Number of default rules (at start of allRules slice)
+	cursor        int
 
 	confirmDelete bool
 	expandedView  bool
@@ -29,22 +28,23 @@ type WorkflowRulesModel struct {
 // NewWorkflowRulesModel creates a new workflow rules model.
 func NewWorkflowRulesModel(cfg *config.Config, manager *config.Manager) *WorkflowRulesModel {
 	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
-	rules := append(defaultRules, customRules...)
-	return &WorkflowRulesModel{
+	allRules := append(defaultRules, customRules...)
+	m := &WorkflowRulesModel{
 		config:        cfg,
 		configManager: manager,
-		rules:         rules,
+		allRules:      allRules,
+		filteredRules: allRules,
 		defaultCount:  len(defaultRules),
 		cursor:        0,
-		width:         80,
-		height:        24,
 	}
+	m.SetSize(80, 24)
+	m.InitSearchInput("Search rules...", 50, 30)
+	return m
 }
 
 // SetSize sets the view dimensions.
 func (m *WorkflowRulesModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseSearchableView.SetSize(width, height)
 }
 
 func (m *WorkflowRulesModel) Init() tea.Cmd {
@@ -76,14 +76,40 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Handle search mode
+		if m.searchActive {
+			handled, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterRules()
+			}
+			if handled {
+				return m, cmd
+			}
+			return m, cmd
+		}
+
 		switch msg.String() {
-		case "esc", "q":
+		case "esc":
+			// If there's an active search filter, clear it instead of closing
+			if m.searchQuery != "" {
+				m.ClearSearch()
+				m.filterRules()
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
 
+		case "q":
+			return m, func() tea.Msg {
+				return BackMsg{}
+			}
+
+		case "/":
+			return m, m.ActivateSearch()
+
 		case "j", "down":
-			if len(m.rules) > 0 && m.cursor < len(m.rules)-1 {
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules)-1 {
 				m.cursor++
 			}
 			return m, nil
@@ -99,28 +125,28 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "G":
-			if len(m.rules) > 0 {
-				m.cursor = len(m.rules) - 1
+			if len(m.filteredRules) > 0 {
+				m.cursor = len(m.filteredRules) - 1
 			}
 			return m, nil
 
 		case " ":
 			// Toggle enabled/disabled
-			if len(m.rules) > 0 {
+			if len(m.filteredRules) > 0 {
 				return m, m.toggleCurrentRule()
 			}
 			return m, nil
 
 		case "enter":
 			// Show expanded view with full rule details
-			if len(m.rules) > 0 && m.cursor < len(m.rules) {
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
 				m.expandedView = true
 			}
 			return m, nil
 
 		case "d", "D":
 			// Delete rule (with confirmation)
-			if len(m.rules) > 0 {
+			if len(m.filteredRules) > 0 {
 				m.confirmDelete = true
 			}
 			return m, nil
@@ -133,8 +159,8 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "e":
 			// Edit selected rule
-			if len(m.rules) > 0 && m.cursor < len(m.rules) {
-				rule := m.rules[m.cursor]
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+				rule := m.filteredRules[m.cursor]
 				return m, func() tea.Msg {
 					return ShowWorkflowRuleEditorMsg{Rule: rule}
 				}
@@ -146,13 +172,53 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// isDefaultRule returns true if the rule with the given ID is a default rule.
+func (m *WorkflowRulesModel) isDefaultRule(id string) bool {
+	for i := 0; i < m.defaultCount && i < len(m.allRules); i++ {
+		if m.allRules[i].ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// filterRules filters allRules based on the current search query.
+func (m *WorkflowRulesModel) filterRules() {
+	query := strings.ToLower(m.searchQuery)
+	if query == "" {
+		m.filteredRules = m.allRules
+		if m.cursor >= len(m.filteredRules) && len(m.filteredRules) > 0 {
+			m.cursor = len(m.filteredRules) - 1
+		}
+		return
+	}
+
+	m.filteredRules = nil
+	for _, rule := range m.allRules {
+		nameLower := strings.ToLower(rule.Name)
+		summaryLower := strings.ToLower(rule.Summary())
+		if strings.Contains(nameLower, query) || strings.Contains(summaryLower, query) {
+			m.filteredRules = append(m.filteredRules, rule)
+		}
+	}
+
+	// Clamp cursor to filtered results
+	if m.cursor >= len(m.filteredRules) {
+		if len(m.filteredRules) > 0 {
+			m.cursor = len(m.filteredRules) - 1
+		} else {
+			m.cursor = 0
+		}
+	}
+}
+
 func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 	return func() tea.Msg {
-		if m.cursor >= len(m.rules) {
+		if m.cursor >= len(m.filteredRules) {
 			return nil
 		}
 
-		rule := &m.rules[m.cursor]
+		rule := &m.filteredRules[m.cursor]
 		enabled, found := m.config.ToggleWorkflowRule(rule.ID)
 		if !found {
 			return ErrorMsg{Err: fmt.Errorf("rule not found")}
@@ -160,6 +226,14 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 
 		// Update local copy
 		rule.Enabled = enabled
+
+		// Also update in allRules
+		for i := range m.allRules {
+			if m.allRules[i].ID == rule.ID {
+				m.allRules[i].Enabled = enabled
+				break
+			}
+		}
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
@@ -171,22 +245,22 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 
 func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 	return func() tea.Msg {
-		if m.cursor >= len(m.rules) {
+		if m.cursor >= len(m.filteredRules) {
 			return nil
 		}
 
-		rule := m.rules[m.cursor]
+		rule := m.filteredRules[m.cursor]
 		if !m.config.DeleteWorkflowRule(rule.ID) {
 			return ErrorMsg{Err: fmt.Errorf("rule not found")}
 		}
 
 		// Update local copy with sorted rules
 		defaultRules, customRules := m.config.GetWorkflowRulesSorted()
-		m.rules = append(defaultRules, customRules...)
+		m.allRules = append(defaultRules, customRules...)
 		m.defaultCount = len(defaultRules)
-		if m.cursor >= len(m.rules) && m.cursor > 0 {
-			m.cursor--
-		}
+
+		// Re-filter to update filteredRules
+		m.filterRules()
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
@@ -200,9 +274,9 @@ func (m *WorkflowRulesModel) View() string {
 	var b strings.Builder
 
 	// Expanded view mode - show full rule details
-	if m.expandedView && len(m.rules) > 0 && m.cursor < len(m.rules) {
-		rule := m.rules[m.cursor]
-		isDefault := m.cursor < m.defaultCount
+	if m.expandedView && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+		rule := m.filteredRules[m.cursor]
+		isDefault := m.isDefaultRule(rule.ID)
 
 		// Rule name with default indicator
 		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
@@ -224,7 +298,7 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString(FieldLabelFocusedStyle.Render("Rule:"))
 		b.WriteString("\n")
 		summary := rule.Summary()
-		maxLen := m.width - 12
+		maxLen := m.Width() - 12
 		if maxLen < 40 {
 			maxLen = 40
 		}
@@ -301,8 +375,8 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString(MutedStyle.Render("Enter/Esc: close"))
 
 		cardWidth := 70
-		if m.width-4 < cardWidth {
-			cardWidth = m.width - 4
+		if m.Width()-4 < cardWidth {
+			cardWidth = m.Width() - 4
 		}
 		config := OverlayCardConfig{
 			Title:        "Rule Details",
@@ -310,17 +384,32 @@ func (m *WorkflowRulesModel) View() string {
 			Centered:     true,
 			NoTruncation: true,
 		}
-		return renderOverlayCard(b.String(), m.width, m.height, config)
+		return renderOverlayCard(b.String(), m.Width(), m.Height(), config)
 	}
 
-	if len(m.rules) == 0 {
-		b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
-		b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
+	// Show search input when active
+	if m.searchActive || m.searchQuery != "" {
+		b.WriteString("/")
+		b.WriteString(m.SearchInputView())
+		if m.searchQuery != "" && !m.searchActive {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf(" (%d matches)", len(m.filteredRules))))
+		}
+		b.WriteString("\n\n")
+	}
+
+	if len(m.filteredRules) == 0 {
+		if m.searchQuery != "" {
+			b.WriteString(MutedStyle.Render("No rules match your search.\n\n"))
+			b.WriteString(MutedStyle.Render("Press Esc to clear search."))
+		} else {
+			b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
+			b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
+		}
 	} else {
 		// Calculate visible area
 		// Reserve: borders (2), section headers (3), selected summary (1),
-		// scroll indicators (3), help footer (3), card padding (2) = 14 lines
-		maxVisible := m.height - 14
+		// scroll indicators (3), help footer (3), card padding (2), search (2) = 16 lines
+		maxVisible := m.Height() - 16
 		if maxVisible < 3 {
 			maxVisible = 3
 		}
@@ -330,11 +419,9 @@ func (m *WorkflowRulesModel) View() string {
 			startIdx = m.cursor - maxVisible + 1
 		}
 		endIdx := startIdx + maxVisible
-		if endIdx > len(m.rules) {
-			endIdx = len(m.rules)
+		if endIdx > len(m.filteredRules) {
+			endIdx = len(m.filteredRules)
 		}
-
-		customCount := len(m.rules) - m.defaultCount
 
 		// Show scroll indicator for rules above
 		if startIdx > 0 {
@@ -343,21 +430,8 @@ func (m *WorkflowRulesModel) View() string {
 		}
 
 		for i := startIdx; i < endIdx; i++ {
-			// Section headers
-			if i == 0 && m.defaultCount > 0 {
-				b.WriteString(MutedStyle.Render("── Default Rules ──"))
-				b.WriteString("\n")
-			}
-			if i == m.defaultCount && customCount > 0 {
-				if m.defaultCount > 0 {
-					b.WriteString("\n")
-				}
-				b.WriteString(MutedStyle.Render("── Custom Rules ──"))
-				b.WriteString("\n")
-			}
-
-			rule := m.rules[i]
-			isDefault := i < m.defaultCount
+			rule := m.filteredRules[i]
+			isDefault := m.isDefaultRule(rule.ID)
 
 			// Status indicator
 			var status string
@@ -401,29 +475,31 @@ func (m *WorkflowRulesModel) View() string {
 		}
 
 		// Show scroll indicator if needed
-		if len(m.rules) > maxVisible {
+		if len(m.filteredRules) > maxVisible {
 			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d rules", m.cursor+1, len(m.rules))))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d rules", m.cursor+1, len(m.filteredRules))))
 		}
 	}
 
 	// Confirmation dialog
-	if m.confirmDelete && len(m.rules) > 0 {
+	if m.confirmDelete && len(m.filteredRules) > 0 {
 		b.WriteString("\n\n")
-		b.WriteString(ConfirmStyle.Render(fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.rules[m.cursor].Name)))
+		b.WriteString(ConfirmStyle.Render(fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name)))
 	}
 
 	// Help footer
 	b.WriteString("\n\n")
-	if len(m.rules) > 0 {
-		b.WriteString(MutedStyle.Render("j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"))
+	if len(m.filteredRules) > 0 {
+		b.WriteString(MutedStyle.Render("/: search · j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"))
+	} else if m.searchQuery == "" {
+		b.WriteString(MutedStyle.Render("/: search · n: new rule · q: close"))
 	} else {
-		b.WriteString(MutedStyle.Render("n: new rule · q: close"))
+		b.WriteString(MutedStyle.Render("Esc: clear search · n: new rule · q: close"))
 	}
 
 	cardWidth := 70
-	if m.width-4 < cardWidth {
-		cardWidth = m.width - 4
+	if m.Width()-4 < cardWidth {
+		cardWidth = m.Width() - 4
 	}
 	config := OverlayCardConfig{
 		Title:        "Workflow Rules",
@@ -431,17 +507,17 @@ func (m *WorkflowRulesModel) View() string {
 		CenterH:      true,
 		NoTruncation: true,
 	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	return renderOverlayCard(b.String(), m.Width(), m.Height(), config)
 }
 
-// HasTextInput returns false for workflow rules view.
+// HasTextInput returns true when search is active.
 func (m *WorkflowRulesModel) HasTextInput() bool {
-	return false
+	return m.searchActive
 }
 
-// ShouldCaptureEsc returns true when expanded view or delete confirmation is active.
+// ShouldCaptureEsc returns true when expanded view, delete confirmation, or search is active.
 func (m *WorkflowRulesModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirmDelete
+	return m.expandedView || m.confirmDelete || m.searchActive || m.searchQuery != ""
 }
 
 // WorkflowRulesUpdatedMsg is sent when rules are modified.

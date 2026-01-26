@@ -146,7 +146,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				// Parse timestamp from @epoch suffix if present
 				var addedAt time.Time
 				var originalPath string
-				
+
 				// First, extract timestamp
 				if idx := strings.LastIndex(att, "@"); idx > 0 {
 					if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
@@ -157,13 +157,13 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				if addedAt.IsZero() {
 					addedAt = time.Now()
 				}
-				
+
 				// Then, extract original path from the timestamp-stripped string
 				if origIdx := strings.Index(att, "||"); origIdx > 0 {
 					originalPath = att[origIdx+2:]
 					att = att[:origIdx]
 				}
-				
+
 				if strings.HasPrefix(att, "url:") {
 					filename := strings.TrimPrefix(att, "url:")
 					if originalPath == "" {
