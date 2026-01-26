@@ -194,6 +194,15 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "O":
 			// Open attachments directory in file manager
 			return m, m.openAttachmentsDir()
+
+		case "?":
+			return m, func() tea.Msg {
+				return ShowHelpMsg{
+					SourceView: ViewTaskAttachments,
+					ViewName:   "Attachments",
+					Items:      m.GetHelpItems(),
+				}
+			}
 		}
 	}
 
@@ -674,7 +683,9 @@ func (m *TaskAttachmentsModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(MutedStyle.Render("a: add | o: open | O: open dir | Ctrl+O: open original | d: delete | u: unlink | y: copy | Esc: close"))
+	b.WriteString(MutedStyle.Render("a: add | o: open | O: open dir | Ctrl+O: open original"))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("d: delete | u: unlink | y: copy | ?: help | Esc: close"))
 
 	return b.String()
 }
@@ -687,4 +698,9 @@ func (m *TaskAttachmentsModel) HasTextInput() bool {
 // ShouldCaptureEsc returns true when in add, delete, or unlink confirmation modes.
 func (m *TaskAttachmentsModel) ShouldCaptureEsc() bool {
 	return m.confirmDelete || m.confirmKeep || m.addMode
+}
+
+// GetHelpItems returns help items for the attachments view.
+func (m *TaskAttachmentsModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewTaskAttachments)
 }

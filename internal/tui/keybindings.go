@@ -631,6 +631,8 @@ func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
 		// Actions
 		Keybinding{Key: "a", Description: "Add attachment", Category: "Actions", Views: views},
 		Keybinding{Key: "o/Enter", Description: "Open attachment", Category: "Actions", Views: views},
+		Keybinding{Key: "O", Description: "Open attachments directory", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+O", Description: "Open original path", Category: "Actions", Views: views},
 		Keybinding{Key: "d/x", Description: "Delete (removes file)", Category: "Actions", Views: views},
 		Keybinding{Key: "u", Description: "Unlink (keep file)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy path to clipboard", Category: "Actions", Views: views},
