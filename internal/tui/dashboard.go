@@ -24,8 +24,9 @@ type DashboardModel struct {
 	showArchived bool
 
 	// Context filter state
-	filterContext string   // Empty string means "all contexts"
-	contexts      []string // Dynamically discovered contexts from projects
+	filterContext       string   // Empty string means "all contexts"
+	filterCustomContext string   // Custom context filter (mutually exclusive with filterContext)
+	contexts            []string // Dynamically discovered contexts from projects
 
 	// Confirmation state
 	confirmAction string          // "delete" when confirming deletion
@@ -38,9 +39,10 @@ type DashboardModel struct {
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(cfg *config.Config) *DashboardModel {
 	m := &DashboardModel{
-		config:        cfg,
-		cursor:        0,
-		filterContext: cfg.FilterContext, // Load persisted context filter
+		config:              cfg,
+		cursor:              0,
+		filterContext:       cfg.FilterContext,       // Load persisted context filter
+		filterCustomContext: cfg.FilterCustomContext, // Load persisted custom context filter
 	}
 	m.InitSearchInput("Search projects...", 100, 40)
 	m.loadProjects()
@@ -76,8 +78,13 @@ func (m *DashboardModel) getAllContexts() []string {
 }
 
 func (m *DashboardModel) matchesFilters(p *models.Project) bool {
-	// Apply context filter first
-	if m.filterContext != "" && p.Context != m.filterContext {
+	// Apply custom context filter first (list of specific project IDs)
+	if m.filterCustomContext != "" {
+		if !m.config.IsProjectInCustomContext(m.filterCustomContext, p.ID) {
+			return false
+		}
+	} else if m.filterContext != "" && p.Context != m.filterContext {
+		// Apply regular context filter
 		return false
 	}
 
@@ -100,7 +107,7 @@ func (m *DashboardModel) matchesFilters(p *models.Project) bool {
 }
 
 func (m *DashboardModel) visibleProjects() []*models.Project {
-	if m.SearchQuery() == "" && m.filterContext == "" {
+	if m.SearchQuery() == "" && m.filterContext == "" && m.filterCustomContext == "" {
 		return m.projects
 	}
 	var visible []*models.Project
@@ -121,6 +128,7 @@ func (m *DashboardModel) HasActiveSearch() bool {
 func (m *DashboardModel) Refresh(cfg *config.Config) {
 	m.config = cfg
 	m.filterContext = cfg.FilterContext
+	m.filterCustomContext = cfg.FilterCustomContext
 	m.loadProjects()
 }
 
@@ -189,8 +197,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "esc":
 			// Clear filters if active
-			if m.filterContext != "" || m.SearchQuery() != "" {
+			if m.filterContext != "" || m.filterCustomContext != "" || m.SearchQuery() != "" {
 				m.filterContext = ""
+				m.filterCustomContext = ""
 				m.ClearSearch()
 				return m, nil
 			}
@@ -416,22 +425,28 @@ func (m *DashboardModel) View() string {
 	chromeHeight := 0
 	hasSearch := m.IsSearchMode() || m.SearchQuery() != ""
 	hasContext := m.filterContext != ""
+	hasCustomContext := m.filterCustomContext != ""
 
 	if m.IsSearchMode() {
 		b.WriteString(SubtitleStyle.Render("Search: "))
 		b.WriteString(m.SearchInputView())
-		if hasContext {
+		if hasCustomContext {
+			b.WriteString(" ")
+			b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", m.filterCustomContext)))
+		} else if hasContext {
 			b.WriteString(" ")
 			b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.filterContext)))
 		}
 		b.WriteString("\n")
 		chromeHeight++
-	} else if hasSearch || hasContext {
+	} else if hasSearch || hasContext || hasCustomContext {
 		var parts []string
 		if m.SearchQuery() != "" {
 			parts = append(parts, MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery())))
 		}
-		if hasContext {
+		if hasCustomContext {
+			parts = append(parts, FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", m.filterCustomContext)))
+		} else if hasContext {
 			parts = append(parts, FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.filterContext)))
 		}
 		b.WriteString(strings.Join(parts, " · "))

@@ -36,12 +36,18 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 			dash.Refresh(m.config)
 		}
 		if msg.Changed {
-			count := len(m.config.GetCycleProjectsForContext(m.config.FilterContext))
+			contextKey := m.config.FilterContext
+			if m.config.FilterCustomContext != "" {
+				contextKey = "+" + m.config.FilterCustomContext
+			}
+			count := len(m.config.GetCycleProjectsForContext(contextKey))
 			if count == 0 {
 				m.statusMessage = "Project cycle cleared"
 			} else {
 				contextInfo := ""
-				if m.config.FilterContext != "" {
+				if m.config.FilterCustomContext != "" {
+					contextInfo = fmt.Sprintf(" for +%s", m.config.FilterCustomContext)
+				} else if m.config.FilterContext != "" {
 					contextInfo = fmt.Sprintf(" for %s", m.config.FilterContext)
 				}
 				m.statusMessage = fmt.Sprintf("Project cycle updated%s: %d projects", contextInfo, count)
@@ -59,10 +65,17 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 // handleCycleProject cycles through configured projects.
 func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 	// Use context-specific cycle list when a context filter is active
-	cycleProjects := m.config.GetCycleProjectsForContext(m.config.FilterContext)
+	// Custom context takes precedence over regular context
+	contextKey := m.config.FilterContext
+	if m.config.FilterCustomContext != "" {
+		contextKey = "+" + m.config.FilterCustomContext
+	}
+	cycleProjects := m.config.GetCycleProjectsForContext(contextKey)
 
 	if len(cycleProjects) == 0 {
-		if m.config.FilterContext != "" {
+		if m.config.FilterCustomContext != "" {
+			m.statusMessage = fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext)
+		} else if m.config.FilterContext != "" {
 			m.statusMessage = fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext)
 		} else {
 			m.statusMessage = "No projects in cycle. Press @ to configure."

@@ -128,6 +128,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Section Manager"
 	case ViewContextPicker:
 		status = "Filter by Context"
+	case ViewCustomContextEditor:
+		status = "Custom Context Editor"
 	case ViewGlobalSearch:
 		status = "Global Search"
 	case ViewWorkflowRules:
@@ -144,7 +146,8 @@ func (m *AppModel) renderStatusBar() string {
 		currentView != ViewSettings &&
 		currentView != ViewTaskJumper &&
 		currentView != ViewGlobalSearch &&
-		currentView != ViewDependencyViewer
+		currentView != ViewDependencyViewer &&
+		currentView != ViewCustomContextEditor
 
 	help := ""
 	if showHelp {

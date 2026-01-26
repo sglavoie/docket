@@ -57,7 +57,11 @@ func (c ContextInfo) CountValue() int {
 }
 
 // ItemID returns the context name as its unique identifier.
+// Custom contexts are prefixed with "+" to distinguish from project contexts.
 func (c ContextInfo) ItemID() string {
+	if c.IsCustom {
+		return "+" + c.Name
+	}
 	return c.Name
 }
 

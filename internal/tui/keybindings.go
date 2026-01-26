@@ -43,6 +43,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerFocusViewBindings()
 	r.registerProjectFocusViewBindings()
 	r.registerTaskAttachmentsBindings()
+	r.registerCustomContextEditorBindings()
 	return r
 }
 
@@ -637,5 +638,24 @@ func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
 		Keybinding{Key: "u", Description: "Unlink (keep file)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy path to clipboard", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Actions", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerCustomContextEditorBindings() {
+	views := []ViewType{ViewCustomContextEditor}
+	r.add(
+		// Navigation
+		Keybinding{Key: "Tab", Description: "Toggle name/projects", Category: "Navigation", Views: views},
+		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Move cursor", Category: "Navigation", Views: views},
+
+		// Selection
+		Keybinding{Key: "Space/Enter", Description: "Toggle selection", Category: "Selection", Views: views},
+		Keybinding{Key: "a", Description: "Select all", Category: "Selection", Views: views},
+		Keybinding{Key: "A", Description: "Deselect all", Category: "Selection", Views: views},
+
+		// Actions
+		Keybinding{Key: "Ctrl+S", Description: "Save", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Cancel", Category: "Actions", Views: views},
 	)
 }

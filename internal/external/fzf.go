@@ -153,6 +153,73 @@ func FzfSelectTask(tasks []*models.Task, prompt string, previewCmd string) (*mod
 	return nil, fmt.Errorf("task not found")
 }
 
+// FzfMultiSelectProjects uses fzf to select multiple projects from the list.
+func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselectedIDs map[string]bool) ([]*models.Project, error) {
+	if len(projects) == 0 {
+		return nil, fmt.Errorf("no projects to select from")
+	}
+
+	// Build input for fzf
+	var lines []string
+	projectMap := make(map[string]*models.Project)
+
+	for _, p := range projects {
+		line := fmt.Sprintf("%s\t%s\t%d tasks", p.ID, p.Name, p.CountTasks())
+		lines = append(lines, line)
+		projectMap[p.ID] = p
+	}
+
+	input := strings.Join(lines, "\n")
+
+	cmd := exec.Command("fzf",
+		"--prompt", prompt+" ",
+		"--height", "50%",
+		"--reverse",
+		"--multi",
+		"--delimiter", "\t",
+		"--with-nth", "2,3",
+	)
+
+	cmd.Stdin = strings.NewReader(input)
+	cmd.Stderr = os.Stderr
+
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			if exitErr.ExitCode() == 130 {
+				return nil, fmt.Errorf("canceled")
+			}
+		}
+		return nil, fmt.Errorf("fzf failed: %w", err)
+	}
+
+	output := strings.TrimSpace(stdout.String())
+	if output == "" {
+		return nil, fmt.Errorf("canceled")
+	}
+
+	// Parse selections
+	var selectedProjects []*models.Project
+	for _, line := range strings.Split(output, "\n") {
+		parts := strings.Split(line, "\t")
+		if len(parts) > 0 {
+			id := parts[0]
+			if project, ok := projectMap[id]; ok {
+				selectedProjects = append(selectedProjects, project)
+			}
+		}
+	}
+
+	if len(selectedProjects) == 0 {
+		return nil, fmt.Errorf("no projects selected")
+	}
+
+	return selectedProjects, nil
+}
+
 // FzfMultiSelectTasks uses fzf to select multiple tasks from the list.
 func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, error) {
 	if len(tasks) == 0 {

@@ -231,3 +231,135 @@ func (c *Config) AddCommandToHistory(name string) {
 		c.CommandHistory = c.CommandHistory[:maxHistory]
 	}
 }
+
+// GetCustomContextNames returns a sorted list of custom context names.
+func (c *Config) GetCustomContextNames() []string {
+	if c.CustomContexts == nil {
+		return []string{}
+	}
+	names := make([]string, 0, len(c.CustomContexts))
+	for name := range c.CustomContexts {
+		names = append(names, name)
+	}
+	// Sort alphabetically
+	for i := 0; i < len(names)-1; i++ {
+		for j := i + 1; j < len(names); j++ {
+			if names[i] > names[j] {
+				names[i], names[j] = names[j], names[i]
+			}
+		}
+	}
+	return names
+}
+
+// GetCustomContext returns the project IDs for a custom context.
+// Returns nil if the custom context doesn't exist.
+func (c *Config) GetCustomContext(name string) []string {
+	if c.CustomContexts == nil {
+		return nil
+	}
+	// Case-insensitive lookup
+	nameLower := toLower(name)
+	for k, v := range c.CustomContexts {
+		if toLower(k) == nameLower {
+			return v
+		}
+	}
+	return nil
+}
+
+// SetCustomContext sets the project IDs for a custom context.
+// If the context already exists (case-insensitive), it updates the existing entry.
+func (c *Config) SetCustomContext(name string, projectIDs []string) {
+	if c.CustomContexts == nil {
+		c.CustomContexts = make(map[string][]string)
+	}
+	// Case-insensitive check for existing key
+	nameLower := toLower(name)
+	for k := range c.CustomContexts {
+		if toLower(k) == nameLower {
+			delete(c.CustomContexts, k)
+			break
+		}
+	}
+	c.CustomContexts[name] = projectIDs
+}
+
+// DeleteCustomContext removes a custom context by name (case-insensitive).
+// Returns true if the context existed and was deleted.
+func (c *Config) DeleteCustomContext(name string) bool {
+	if c.CustomContexts == nil {
+		return false
+	}
+	nameLower := toLower(name)
+	for k := range c.CustomContexts {
+		if toLower(k) == nameLower {
+			delete(c.CustomContexts, k)
+			// Clear filter if this was the active custom context
+			if toLower(c.FilterCustomContext) == nameLower {
+				c.FilterCustomContext = ""
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// CustomContextExists checks if a custom context exists (case-insensitive).
+func (c *Config) CustomContextExists(name string) bool {
+	return c.GetCustomContext(name) != nil
+}
+
+// GetCustomContextProjectCount returns the count of active projects in a custom context.
+func (c *Config) GetCustomContextProjectCount(name string) int {
+	projectIDs := c.GetCustomContext(name)
+	if projectIDs == nil {
+		return 0
+	}
+	count := 0
+	for _, id := range projectIDs {
+		if p := c.GetProject(id); p != nil && !p.Archived {
+			count++
+		}
+	}
+	return count
+}
+
+// GetCustomContextProjects returns the active projects in a custom context.
+func (c *Config) GetCustomContextProjects(name string) []*models.Project {
+	projectIDs := c.GetCustomContext(name)
+	if projectIDs == nil {
+		return nil
+	}
+	var projects []*models.Project
+	for _, id := range projectIDs {
+		if p := c.GetProject(id); p != nil && !p.Archived {
+			projects = append(projects, p)
+		}
+	}
+	return projects
+}
+
+// IsProjectInCustomContext checks if a project is in a custom context.
+func (c *Config) IsProjectInCustomContext(customContextName, projectID string) bool {
+	projectIDs := c.GetCustomContext(customContextName)
+	for _, id := range projectIDs {
+		if id == projectID {
+			return true
+		}
+	}
+	return false
+}
+
+// toLower is a simple lowercase conversion for ASCII strings.
+func toLower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		b[i] = c
+	}
+	return string(b)
+}

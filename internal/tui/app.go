@@ -39,6 +39,7 @@ const (
 	ViewSectionManager
 	ViewPriorityPicker
 	ViewContextPicker
+	ViewCustomContextEditor
 	ViewGlobalSearch
 	ViewParentSelector
 	ViewPriorityView

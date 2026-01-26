@@ -45,7 +45,9 @@ type Config struct {
 	CurrentProject          string                       `json:"current_project,omitempty"`
 	Editor                  string                       `json:"editor"`
 	DefaultContext          string                       `json:"default_context"`
-	FilterContext           string                       `json:"filter_context,omitempty"` // Persisted context filter for dashboard/cycling
+	FilterContext           string                       `json:"filter_context,omitempty"`        // Persisted context filter for dashboard/cycling
+	FilterCustomContext     string                       `json:"filter_custom_context,omitempty"` // Custom context filter (mutually exclusive with FilterContext)
+	CustomContexts          map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
 	FzfEnabled              bool                         `json:"fzf_enabled"`
 	GlowEnabled             bool                         `json:"glow_enabled"`
 	UndoHistoryDepth        *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)

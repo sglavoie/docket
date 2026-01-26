@@ -31,7 +31,7 @@ type ShowContextPickerForCycleMsg struct{}
 
 // NewProjectCycleManagerModel creates a new project cycle manager.
 func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *ProjectCycleManagerModel {
-	projects := buildProjectInfoListFiltered(cfg, cfg.FilterContext)
+	projects := buildProjectInfoListFiltered(cfg, cfg.FilterContext, cfg.FilterCustomContext)
 
 	picker := NewBasePicker(projects, PickerConfig{
 		Title:          "Project Cycle Manager",
@@ -44,7 +44,8 @@ func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *P
 	})
 
 	// Pre-select currently configured cycle projects for the current context
-	cycleIDs := cfg.GetCycleProjectIDsForContext(cfg.FilterContext)
+	contextKey := getContextKey(cfg.FilterContext, cfg.FilterCustomContext)
+	cycleIDs := cfg.GetCycleProjectIDsForContext(contextKey)
 	for _, id := range cycleIDs {
 		picker.PreSelectByID(id)
 	}
@@ -56,14 +57,30 @@ func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *P
 	}
 }
 
+// getContextKey returns the context key for cycle project storage.
+// Custom contexts use "+" prefix to distinguish from regular contexts.
+func getContextKey(filterContext, filterCustomContext string) string {
+	if filterCustomContext != "" {
+		return "+" + filterCustomContext
+	}
+	return filterContext
+}
+
 // buildProjectInfoListFiltered gathers active projects filtered by context.
-// If filterContext is empty, returns all active projects.
-func buildProjectInfoListFiltered(cfg *config.Config, filterContext string) []ProjectInfo {
+// If filterCustomContext is set, filters by custom context membership.
+// Otherwise, if filterContext is set, filters by project context.
+// If both are empty, returns all active projects.
+func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCustomContext string) []ProjectInfo {
 	activeProjects := cfg.GetActiveProjects()
 	projects := make([]ProjectInfo, 0, len(activeProjects))
 
 	for _, p := range activeProjects {
-		if filterContext != "" && p.Context != filterContext {
+		// Custom context filter takes precedence
+		if filterCustomContext != "" {
+			if !cfg.IsProjectInCustomContext(filterCustomContext, p.ID) {
+				continue
+			}
+		} else if filterContext != "" && p.Context != filterContext {
 			continue
 		}
 		_ = storage.LoadProject(p)
@@ -83,11 +100,12 @@ func (m *ProjectCycleManagerModel) RefreshWithContext() {
 	if item := m.SelectedItem(); item.Project != nil {
 		currentID = item.Project.ID
 	}
-	m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext))
+	m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext))
 
 	// Clear existing selections and reload from context-specific storage
 	m.Selected = make(map[string]bool)
-	cycleIDs := m.config.GetCycleProjectIDsForContext(m.config.FilterContext)
+	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
 	for _, id := range cycleIDs {
 		m.Selected[id] = true
 	}
@@ -137,7 +155,8 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Save selected projects to config, preserving selection order
 			// Use context-specific storage when a context filter is active
 			ids := m.getSelectedIDsInOrder()
-			m.config.SetCycleProjectsForContext(m.config.FilterContext, ids)
+			contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+			m.config.SetCycleProjectsForContext(contextKey, ids)
 			if err := m.configManager.Save(m.config); err != nil {
 				return m, func() tea.Msg {
 					return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
@@ -169,7 +188,7 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Refresh list (re-sorts with pinned first)
 				currentID := item.Project.ID
-				m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext))
+				m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext))
 				m.SetCursorToID(currentID)
 			}
 			return m, nil
@@ -181,9 +200,10 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "C":
-			// Clear context filter
-			if m.config.FilterContext != "" {
+			// Clear context filter (both regular and custom)
+			if m.config.FilterContext != "" || m.config.FilterCustomContext != "" {
 				m.config.FilterContext = ""
+				m.config.FilterCustomContext = ""
 				if err := m.configManager.Save(m.config); err != nil {
 					return m, func() tea.Msg {
 						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
@@ -260,9 +280,11 @@ func (m *ProjectCycleManagerModel) View() string {
 	// Build subtitle: context indicator + selection count
 	var subtitleParts []string
 
-	// Context indicator (colored)
-	if m.config.FilterContext != "" {
-		contextStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	// Context indicator (colored) - custom context takes precedence
+	contextStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	if m.config.FilterCustomContext != "" {
+		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render("+ "+m.config.FilterCustomContext)))
+	} else if m.config.FilterContext != "" {
 		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render(m.config.FilterContext)))
 	} else {
 		subtitleParts = append(subtitleParts, "Context: All")
