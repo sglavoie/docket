@@ -42,6 +42,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerDailyReviewBindings()
 	r.registerFocusViewBindings()
 	r.registerProjectFocusViewBindings()
+	r.registerTaskAttachmentsBindings()
 	return r
 }
 
@@ -244,6 +245,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations", Views: views},
 		Keybinding{Key: "c", Description: "View/add comments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 
 		// Project Views
@@ -615,5 +617,23 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
+	views := []ViewType{ViewTaskAttachments}
+	r.add(
+		// Navigation
+		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+
+		// Actions
+		Keybinding{Key: "a", Description: "Add attachment", Category: "Actions", Views: views},
+		Keybinding{Key: "o/Enter", Description: "Open attachment", Category: "Actions", Views: views},
+		Keybinding{Key: "d/x", Description: "Delete (removes file)", Category: "Actions", Views: views},
+		Keybinding{Key: "u", Description: "Unlink (keep file)", Category: "Actions", Views: views},
+		Keybinding{Key: "y", Description: "Copy path to clipboard", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Actions", Views: views},
 	)
 }

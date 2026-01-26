@@ -4,6 +4,13 @@ import (
 	"time"
 )
 
+// Attachment represents a file or URL attached to a task.
+type Attachment struct {
+	Filename string    `json:"filename"` // filename (local) or full URL
+	IsURL    bool      `json:"is_url"`   // true for URLs (not stored locally)
+	AddedAt  time.Time `json:"added_at"`
+}
+
 // Task represents a single task, story, epic, bug, or idea.
 type Task struct {
 	ID          string             `json:"id"`
@@ -26,6 +33,7 @@ type Task struct {
 	Active      bool               `json:"active,omitempty"`     // Whether the task is flagged as active
 	Comments    []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Recurrence  *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
+	Attachments []Attachment       `json:"attachments,omitempty"`
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

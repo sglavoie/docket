@@ -35,6 +35,11 @@ func ArchiveTasks(project *models.Project) (int, error) {
 		return 0, fmt.Errorf("failed to rotate archive: %w", err)
 	}
 
+	// Clean up attachment files for completed tasks
+	for _, task := range completedTasks {
+		_ = CleanupTaskAttachments(project, task)
+	}
+
 	// Generate markdown content for archived tasks
 	content := WriteArchivedTasks(project.Name, completedTasks)
 
@@ -170,6 +175,19 @@ func writeArchivedMetadata(task *models.Task) string {
 
 	if task.DueDate != nil {
 		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
+	}
+
+	if len(task.Attachments) > 0 {
+		var attStrings []string
+		for _, att := range task.Attachments {
+			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
+			if att.IsURL {
+				attStrings = append(attStrings, "url:"+att.Filename+timestamp)
+			} else {
+				attStrings = append(attStrings, att.Filename+timestamp)
+			}
+		}
+		parts = append(parts, fmt.Sprintf("attachments: %s", strings.Join(attStrings, ";")))
 	}
 
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))

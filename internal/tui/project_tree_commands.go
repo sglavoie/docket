@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -268,6 +269,13 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 		}
 		collectIDs(task)
 
+		// Clean up attachments for all tasks being deleted
+		for _, t := range m.project.Tasks {
+			if idsToDelete[t.ID] {
+				_ = storage.CleanupTaskAttachments(m.project, t)
+			}
+		}
+
 		// Exit focus mode if focused task is being deleted
 		if m.focusedTask != nil && idsToDelete[m.focusedTask.ID] {
 			m.focusedTask = nil
@@ -362,6 +370,13 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		for _, task := range m.project.Tasks {
 			if m.selectedTasks[task.ID] {
 				collectIDs(task)
+			}
+		}
+
+		// Clean up attachments for all tasks being deleted
+		for _, t := range m.project.Tasks {
+			if idsToDelete[t.ID] {
+				_ = storage.CleanupTaskAttachments(m.project, t)
 			}
 		}
 

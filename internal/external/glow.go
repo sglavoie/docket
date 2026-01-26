@@ -111,6 +111,19 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 		b.WriteString("\n\n")
 	}
 
+	// Attachments
+	if len(task.Attachments) > 0 {
+		b.WriteString("## Attachments\n\n")
+		for i, att := range task.Attachments {
+			if att.IsURL {
+				b.WriteString(fmt.Sprintf("%d. [URL] %s\n", i+1, att.Filename))
+			} else {
+				b.WriteString(fmt.Sprintf("%d. [File] %s\n", i+1, att.Filename))
+			}
+		}
+		b.WriteString("\n")
+	}
+
 	// Children summary
 	if len(task.Children) > 0 {
 		b.WriteString("## Subtasks\n\n")

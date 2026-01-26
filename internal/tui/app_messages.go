@@ -319,6 +319,25 @@ type CommentDeletedMsg struct{ Task *models.Task }
 type CommentEditedMsg struct{ Task *models.Task }
 
 // =============================================================================
+// Task Attachments Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTaskAttachmentsMsg opens the attachments view for a task.
+type ShowTaskAttachmentsMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskAttachmentsMsg closes the attachments view.
+type CloseTaskAttachmentsMsg struct{}
+
+// AttachmentAddedMsg signals an attachment was added.
+type AttachmentAddedMsg struct{ Task *models.Task }
+
+// AttachmentDeletedMsg signals an attachment was deleted.
+type AttachmentDeletedMsg struct{ Task *models.Task }
+
+// =============================================================================
 // Project Cycling Messages
 // =============================================================================
 

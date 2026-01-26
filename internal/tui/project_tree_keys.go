@@ -510,6 +510,18 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
+	case "A":
+		// In Completed view, 'A' is handled by handleMiscActionKeys for archiving
+		// In other views, 'A' opens attachments
+		if m.viewMode != ViewModeCompleted && CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowTaskAttachmentsMsg{Task: task, Project: m.project}
+			}
+		}
+		// Fall through to let handleMiscActionKeys handle archive in Completed view
+		return false, nil
+
 	// Note: "C" (completed view) is now handled via "g" prefix (gc)
 
 	case "ctrl+g":

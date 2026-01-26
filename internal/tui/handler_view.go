@@ -420,6 +420,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		return true, nil
+
+	case ShowTaskAttachmentsMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case CloseTaskAttachmentsMsg:
+		m.popView()
+		return true, nil
+
+	case AttachmentAddedMsg, AttachmentDeletedMsg:
+		// Refresh dashboard to update any indicators
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		return true, nil
 	}
 	return false, nil
 }

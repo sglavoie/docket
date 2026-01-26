@@ -65,6 +65,7 @@ const (
 	ViewFocusView
 	ViewProjectFocusView
 	ViewBlockers
+	ViewTaskAttachments
 )
 
 // AppModel is the main TUI model with a view stack.

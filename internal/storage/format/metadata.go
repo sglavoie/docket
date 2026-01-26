@@ -48,6 +48,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "section", "pinned", "active", "recur",
+	"attachments",
 }
 
 // ParseMetadata parses the metadata string and sets task fields.
@@ -134,6 +135,38 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		case "recur":
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
+			}
+		case "attachments":
+			attachments := strings.Split(value, ";")
+			for _, att := range attachments {
+				att = strings.TrimSpace(att)
+				if att == "" {
+					continue
+				}
+				// Parse timestamp from @epoch suffix if present
+				var addedAt time.Time
+				if idx := strings.LastIndex(att, "@"); idx > 0 {
+					if epoch, err := strconv.ParseInt(att[idx+1:], 10, 64); err == nil {
+						addedAt = time.Unix(epoch, 0)
+						att = att[:idx]
+					}
+				}
+				if addedAt.IsZero() {
+					addedAt = time.Now()
+				}
+				if strings.HasPrefix(att, "url:") {
+					task.Attachments = append(task.Attachments, models.Attachment{
+						Filename: strings.TrimPrefix(att, "url:"),
+						IsURL:    true,
+						AddedAt:  addedAt,
+					})
+				} else {
+					task.Attachments = append(task.Attachments, models.Attachment{
+						Filename: att,
+						IsURL:    false,
+						AddedAt:  addedAt,
+					})
+				}
 			}
 		}
 	}
@@ -237,6 +270,19 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.Recurrence != nil {
 		parts = append(parts, fmt.Sprintf("recur: %s", FormatRecurrence(task.Recurrence)))
+	}
+
+	if len(task.Attachments) > 0 {
+		var attStrings []string
+		for _, att := range task.Attachments {
+			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
+			if att.IsURL {
+				attStrings = append(attStrings, "url:"+att.Filename+timestamp)
+			} else {
+				attStrings = append(attStrings, att.Filename+timestamp)
+			}
+		}
+		parts = append(parts, fmt.Sprintf("attachments: %s", strings.Join(attStrings, ";")))
 	}
 
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
