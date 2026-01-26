@@ -254,18 +254,25 @@ func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) stri
 func (m *ProjectTreeModel) renderAttachmentsCard(task *models.Task, width int) string {
 	var lines []string
 
+	// Calculate max length for filenames/URLs to fit on one line
+	// width - 6 (borders/padding) - 4 (emoji + space, accounting for wide emoji)
+	maxLen := width - 10
+	if maxLen < 20 {
+		maxLen = 20
+	}
+
 	for i, attachment := range task.Attachments {
 		if i > 0 {
 			lines = append(lines, "") // spacer between attachments
 		}
-		filename := attachment.Filename
-		// For URLs, show just the domain or full URL if short enough
+		displayName := util.Truncate(attachment.Filename, maxLen)
 		if attachment.IsURL {
-			filename = MutedStyle.Render("🔗 ") + filename
+			// Use OSC 8 hyperlink so truncated URL still links to full URL
+			link := Hyperlink(attachment.Filename, displayName)
+			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
-			filename = MutedStyle.Render("📎 ") + filename
+			lines = append(lines, MutedStyle.Render("📎 ")+displayName)
 		}
-		lines = append(lines, filename)
 	}
 
 	return renderSidebarCard("Attachments", strings.Join(lines, "\n"), width, false, "")

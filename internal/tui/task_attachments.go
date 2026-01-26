@@ -631,14 +631,16 @@ func (m *TaskAttachmentsModel) View() string {
 			entry.WriteString(name)
 			entry.WriteString("\n")
 
-			// Original path
-			origPath := att.OriginalPath
-			if len(origPath) > maxLen {
-				origPath = origPath[:maxLen-3] + "..."
+			// Original path (only for files, not URLs)
+			if !att.IsURL {
+				origPath := att.OriginalPath
+				if len(origPath) > maxLen {
+					origPath = origPath[:maxLen-3] + "..."
+				}
+				entry.WriteString("      ")
+				entry.WriteString(MutedStyle.Render("from: " + origPath))
+				entry.WriteString("\n")
 			}
-			entry.WriteString("      ")
-			entry.WriteString(MutedStyle.Render("from: " + origPath))
-			entry.WriteString("\n")
 
 			// Size and date (for files)
 			if !att.IsURL {

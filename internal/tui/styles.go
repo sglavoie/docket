@@ -854,3 +854,11 @@ func RenderSelectableRow(selected bool, active bool, content string, width int) 
 	}
 	return row
 }
+
+// Hyperlink creates a clickable OSC 8 hyperlink in supported terminals.
+// The displayed text can differ from the actual URL, so you can show truncated
+// text while linking to the full URL.
+// Format: \033]8;;URL\033\\Display Text\033]8;;\033\\
+func Hyperlink(url, displayText string) string {
+	return "\033]8;;" + url + "\033\\" + displayText + "\033]8;;\033\\"
+}
