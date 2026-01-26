@@ -848,9 +848,9 @@ func RenderSelectableRow(selected bool, active bool, content string, width int) 
 		prefix = "   "
 	}
 
+	row := prefix + content
 	if selected {
-		row := prefix + content
 		return SelectionRowStyle.Width(width).Render(row)
 	}
-	return prefix + content
+	return row
 }

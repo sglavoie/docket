@@ -38,6 +38,7 @@ func NewActionTypePickerModel(actionIndex int, currentType workflow.ActionType) 
 		NoMatchMessage: "No matching actions",
 		MultiSelect:    false,
 		ShowCounts:     false,
+		BoxWidth:       60,
 	})
 
 	currentID := string(currentType)

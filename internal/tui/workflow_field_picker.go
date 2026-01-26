@@ -38,6 +38,7 @@ func NewTriggerFieldPickerModel(triggerIndex int, currentField workflow.TriggerF
 		NoMatchMessage: "No matching fields",
 		MultiSelect:    false,
 		ShowCounts:     false,
+		BoxWidth:       60,
 	})
 
 	currentID := string(currentField)
