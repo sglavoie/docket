@@ -35,36 +35,42 @@ func EnsureTaskAttachmentsDir(project *models.Project, task *models.Task) error 
 
 // CopyAttachment copies a file to the task's attachments directory.
 // Returns the base filename (without path) that was used.
-func CopyAttachment(project *models.Project, task *models.Task, sourcePath string) (string, error) {
-	if err := EnsureTaskAttachmentsDir(project, task); err != nil {
+func CopyAttachment(project *models.Project, task *models.Task, sourcePath string) (filename string, err error) {
+	if err = EnsureTaskAttachmentsDir(project, task); err != nil {
 		return "", fmt.Errorf("failed to create attachments directory: %w", err)
 	}
 
 	// Get the base filename
-	filename := filepath.Base(sourcePath)
+	filename = filepath.Base(sourcePath)
 	destPath := GetAttachmentPath(project, task, filename)
 
 	// Check if file already exists
-	if _, err := os.Stat(destPath); !os.IsNotExist(err) {
+	if _, statErr := os.Stat(destPath); !os.IsNotExist(statErr) {
 		return "", fmt.Errorf("attachment '%s' already exists", filename)
 	}
 
 	// Open source file
-	src, err := os.Open(sourcePath)
+	var src *os.File
+	src, err = os.Open(sourcePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open source file: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	// Create destination file
-	dst, err := os.Create(destPath)
+	var dst *os.File
+	dst, err = os.Create(destPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create destination file: %w", err)
 	}
-	defer dst.Close()
+	defer func() {
+		if cerr := dst.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close destination file: %w", cerr)
+		}
+	}()
 
 	// Copy contents
-	if _, err := io.Copy(dst, src); err != nil {
+	if _, err = io.Copy(dst, src); err != nil {
 		return "", fmt.Errorf("failed to copy file: %w", err)
 	}
 

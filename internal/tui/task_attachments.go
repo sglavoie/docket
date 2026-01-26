@@ -245,7 +245,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 			}
 
 			// Check if file exists
-			if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
 				m.err = fmt.Errorf("file not found: %s", absPath)
 				return nil
 			}

@@ -68,12 +68,12 @@ func runAttach(cmd *cobra.Command, args []string) error {
 
 		task.AddAttachment(url, true, url)
 
-		if err := storage.BackupProject(project); err != nil {
-			return fmt.Errorf("failed to create backup: %w", err)
+		if backupErr := storage.BackupProject(project); backupErr != nil {
+			return fmt.Errorf("failed to create backup: %w", backupErr)
 		}
 
-		if err := storage.SaveProject(project); err != nil {
-			return fmt.Errorf("failed to save project: %w", err)
+		if saveErr := storage.SaveProject(project); saveErr != nil {
+			return fmt.Errorf("failed to save project: %w", saveErr)
 		}
 
 		fmt.Printf("Attached URL to #%d: %s\n", task.ShortID, url)
@@ -85,9 +85,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 
 	// Expand ~ to home directory
 	if strings.HasPrefix(filePath, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to expand home directory: %w", err)
+		home, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return fmt.Errorf("failed to expand home directory: %w", homeErr)
 		}
 		filePath = filepath.Join(home, filePath[2:])
 	}
@@ -99,7 +99,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if file exists
-	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("file not found: %s", absPath)
 	}
 
