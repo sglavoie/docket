@@ -46,6 +46,7 @@ const (
 	ViewQuickCapture
 	ViewBulkCapture
 	ViewInboxProcessor
+	ViewKanban
 	ViewTagSelector
 	ViewBulkTagSelector
 	ViewUndoHistory
