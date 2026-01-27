@@ -216,9 +216,15 @@ func (cs *ColumnState) InBounds(taskCount int) bool {
 	return CursorInBounds(cs.Cursor, taskCount)
 }
 
-// AdjustScrollForViewport adjusts the scroll offset to ensure the cursor
-// remains visible within a viewport of the given height.
-func (cs *ColumnState) AdjustScrollForViewport(taskCount, viewportHeight int) {
+// ValidateScroll adjusts the scroll offset to ensure the cursor row remains
+// visible within the column's viewport. Call this after cursor movement or
+// viewport resize to keep the selected task visible.
+//
+// The method ensures:
+// - Cursor above viewport: scroll up so cursor is at top of viewport
+// - Cursor below viewport: scroll down so cursor is at bottom of viewport
+// - Scroll offset clamped to valid range [0, max(0, taskCount-viewportHeight)]
+func (cs *ColumnState) ValidateScroll(taskCount, viewportHeight int) {
 	if taskCount == 0 || viewportHeight <= 0 {
 		cs.ScrollOffset = 0
 		return
@@ -245,6 +251,12 @@ func (cs *ColumnState) AdjustScrollForViewport(taskCount, viewportHeight int) {
 	if cs.ScrollOffset < 0 {
 		cs.ScrollOffset = 0
 	}
+}
+
+// AdjustScrollForViewport is an alias for ValidateScroll for backwards compatibility.
+// Prefer using ValidateScroll for new code.
+func (cs *ColumnState) AdjustScrollForViewport(taskCount, viewportHeight int) {
+	cs.ValidateScroll(taskCount, viewportHeight)
 }
 
 // Update implements the tea.Model interface. It handles window resize messages
