@@ -41,23 +41,72 @@ type KanbanViewModel struct {
 	// Keys: "" (Active), "Next", "Inbox", "Waiting", "Someday"
 	Columns map[string]*ColumnState
 
+	// Tasks maps section name to the list of non-completed tasks in that section.
+	// This is populated during construction and should be refreshed when tasks change.
+	Tasks map[string][]*models.Task
+
 	// ActiveColumn tracks which column is currently focused (index into KanbanColumnOrder)
 	ActiveColumn int
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
+// It initializes five columns mapped to Active/Next/Inbox/Waiting/Someday
+// and loads non-completed tasks filtered by their Section field.
 func NewKanbanViewModel(project *models.Project) *KanbanViewModel {
 	m := &KanbanViewModel{
 		Project: project,
 		Columns: make(map[string]*ColumnState),
+		Tasks:   make(map[string][]*models.Task),
 	}
 
 	// Initialize column state for each of the five sections
 	for _, section := range KanbanColumnOrder {
 		m.Columns[section] = &ColumnState{}
+		m.Tasks[section] = []*models.Task{}
 	}
 
+	// Load tasks into columns by section, excluding completed tasks
+	m.loadTasks()
+
 	return m
+}
+
+// loadTasks populates the Tasks map by filtering project tasks into columns.
+// Only non-completed tasks are included. Each task is placed in the column
+// matching its Section field (empty string maps to Active column).
+func (m *KanbanViewModel) loadTasks() {
+	// Clear existing tasks
+	for _, section := range KanbanColumnOrder {
+		m.Tasks[section] = []*models.Task{}
+	}
+
+	if m.Project == nil {
+		return
+	}
+
+	// Filter and categorize tasks by section
+	for _, task := range m.Project.Tasks {
+		// Skip completed tasks (done or canceled)
+		if task.Status.IsComplete() {
+			continue
+		}
+
+		// Determine which column this task belongs to
+		section := task.Section
+		// Validate the section is one of our known columns
+		if _, exists := m.Columns[section]; !exists {
+			// Unknown section defaults to Active (empty string)
+			section = KanbanSectionActive
+		}
+
+		m.Tasks[section] = append(m.Tasks[section], task)
+	}
+
+	// Validate cursor positions for each column after loading
+	for _, section := range KanbanColumnOrder {
+		taskCount := len(m.Tasks[section])
+		m.Columns[section].Validate(taskCount)
+	}
 }
 
 // CurrentColumnState returns the ColumnState for the currently active column.
@@ -69,6 +118,20 @@ func (m *KanbanViewModel) CurrentColumnState() *ColumnState {
 // CurrentSection returns the section name of the currently active column.
 func (m *KanbanViewModel) CurrentSection() string {
 	return KanbanColumnOrder[m.ActiveColumn]
+}
+
+// CurrentColumnTasks returns the tasks in the currently active column.
+func (m *KanbanViewModel) CurrentColumnTasks() []*models.Task {
+	section := KanbanColumnOrder[m.ActiveColumn]
+	return m.Tasks[section]
+}
+
+// TasksForSection returns the tasks in the specified section.
+func (m *KanbanViewModel) TasksForSection(section string) []*models.Task {
+	if tasks, exists := m.Tasks[section]; exists {
+		return tasks
+	}
+	return nil
 }
 
 // Validate adjusts Cursor and ScrollOffset to be within valid bounds for the
