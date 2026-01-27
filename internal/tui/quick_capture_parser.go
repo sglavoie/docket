@@ -50,7 +50,8 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 
 	// Extract due date: @value
 	// Require @ to be at start of string or preceded by whitespace
-	dueDateRe := regexp.MustCompile(`(?:^|\s)@(\S+)`)
+	// Supports multi-word patterns: "next <weekday>", "in N days/weeks/months"
+	dueDateRe := regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`)
 	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		date, err := ParseDate(match[1])
 		if err != nil {
@@ -202,7 +203,8 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 
 	// Extract due date (capture error but don't stop)
 	// Require @ to be at start of string or preceded by whitespace
-	dueDateRe := regexp.MustCompile(`(?:^|\s)@(\S+)`)
+	// Supports multi-word patterns: "next <weekday>", "in N days/weeks/months"
+	dueDateRe := regexp.MustCompile(`(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`)
 	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		date, err := ParseDate(match[1])
 		if err != nil {

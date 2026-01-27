@@ -14,6 +14,17 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// weekdays maps weekday name variations to time.Weekday values.
+var weekdays = map[string]time.Weekday{
+	"sun": time.Sunday, "sunday": time.Sunday,
+	"mon": time.Monday, "monday": time.Monday,
+	"tue": time.Tuesday, "tuesday": time.Tuesday,
+	"wed": time.Wednesday, "wednesday": time.Wednesday,
+	"thu": time.Thursday, "thursday": time.Thursday,
+	"fri": time.Friday, "friday": time.Friday,
+	"sat": time.Saturday, "saturday": time.Saturday,
+}
+
 // DateInputModel handles setting a due date for a task.
 type DateInputModel struct {
 	task     *models.Task
@@ -137,6 +148,8 @@ func (m *DateInputModel) View() string {
 			"  +3d            3 days from now\n" +
 			"  +1w            1 week from now\n" +
 			"  mon, tue, ...  Next occurrence of weekday\n" +
+			"  next mon       Next Monday (skips this week)\n" +
+			"  in 2 weeks     2 weeks from now\n" +
 			"  none           Clear due date\n\n" +
 			BoldStyle.Render("Controls") + "\n" +
 			"  Enter          Save\n" +
@@ -208,17 +221,7 @@ func ParseDate(input string) (time.Time, error) {
 		return today.AddDate(0, months, 0), nil
 	}
 
-	// Weekday names
-	weekdays := map[string]time.Weekday{
-		"sun": time.Sunday, "sunday": time.Sunday,
-		"mon": time.Monday, "monday": time.Monday,
-		"tue": time.Tuesday, "tuesday": time.Tuesday,
-		"wed": time.Wednesday, "wednesday": time.Wednesday,
-		"thu": time.Thursday, "thursday": time.Thursday,
-		"fri": time.Friday, "friday": time.Friday,
-		"sat": time.Saturday, "saturday": time.Saturday,
-	}
-
+	// Weekday names (e.g., "mon", "friday") - next occurrence within 1-7 days
 	if targetDay, ok := weekdays[input]; ok {
 		// Find next occurrence of this weekday
 		daysUntil := int(targetDay) - int(today.Weekday())
@@ -234,6 +237,30 @@ func ParseDate(input string) (time.Time, error) {
 	}
 	if input == "next month" {
 		return today.AddDate(0, 1, 0), nil
+	}
+
+	// "next <weekday>" - always at least 7 days away (skips this week)
+	if match := regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`).FindStringSubmatch(input); len(match) == 2 {
+		targetDay := weekdays[match[1]]
+		daysUntil := int(targetDay) - int(today.Weekday())
+		if daysUntil <= 0 {
+			daysUntil += 7
+		}
+		daysUntil += 7 // "next" means skip this week
+		return today.AddDate(0, 0, daysUntil), nil
+	}
+
+	// "in N days/weeks/months"
+	if match := regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`).FindStringSubmatch(input); len(match) == 3 {
+		n, _ := strconv.Atoi(match[1])
+		switch match[2] {
+		case "day", "days":
+			return today.AddDate(0, 0, n), nil
+		case "week", "weeks":
+			return today.AddDate(0, 0, n*7), nil
+		case "month", "months":
+			return today.AddDate(0, n, 0), nil
+		}
 	}
 
 	return time.Time{}, fmt.Errorf("unrecognized date format: %s", input)

@@ -153,6 +153,11 @@ func (m *QuickCaptureModel) getDateSuggestions(partial string) []suggestion {
 		{"+1m", "in 1 month"},
 		{"monday", "next Monday"},
 		{"friday", "next Friday"},
+		{"next monday", "next Monday (7+ days)"},
+		{"next friday", "next Friday (7+ days)"},
+		{"in 3 days", "3 days from now"},
+		{"in 1 week", "1 week from now"},
+		{"in 2 weeks", "2 weeks from now"},
 	}
 
 	var suggestions []suggestion

@@ -76,6 +76,53 @@ func TestParseDate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "in 3 days",
+			input:   "in 3 days",
+			want:    today.AddDate(0, 0, 3),
+			wantErr: false,
+		},
+		{
+			name:    "in 1 day singular",
+			input:   "in 1 day",
+			want:    today.AddDate(0, 0, 1),
+			wantErr: false,
+		},
+		{
+			name:    "in 1 week",
+			input:   "in 1 week",
+			want:    today.AddDate(0, 0, 7),
+			wantErr: false,
+		},
+		{
+			name:    "in 2 weeks",
+			input:   "in 2 weeks",
+			want:    today.AddDate(0, 0, 14),
+			wantErr: false,
+		},
+		{
+			name:    "in 1 month",
+			input:   "in 1 month",
+			want:    today.AddDate(0, 1, 0),
+			wantErr: false,
+		},
+		{
+			name:    "in 3 months plural",
+			input:   "in 3 months",
+			want:    today.AddDate(0, 3, 0),
+			wantErr: false,
+		},
+		{
+			name:    "IN 2 WEEKS uppercase",
+			input:   "IN 2 WEEKS",
+			want:    today.AddDate(0, 0, 14),
+			wantErr: false,
+		},
+		{
+			name:    "in many weeks invalid",
+			input:   "in many weeks",
+			wantErr: true,
+		},
+		{
 			name:    "invalid input",
 			input:   "not a date",
 			wantErr: true,
@@ -155,6 +202,60 @@ func TestParseDateWeekdays(t *testing.T) {
 			maxDate := today.AddDate(0, 0, 7)
 			if got.After(maxDate) {
 				t.Errorf("ParseDate(%q) = %v, should be within 7 days from today", tt.input, got)
+			}
+		})
+	}
+}
+
+func TestParseDateNextWeekday(t *testing.T) {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	nextWeekdayTests := []struct {
+		input   string
+		weekday time.Weekday
+	}{
+		{"next monday", time.Monday},
+		{"next mon", time.Monday},
+		{"next tuesday", time.Tuesday},
+		{"next tue", time.Tuesday},
+		{"next wednesday", time.Wednesday},
+		{"next wed", time.Wednesday},
+		{"next thursday", time.Thursday},
+		{"next thu", time.Thursday},
+		{"next friday", time.Friday},
+		{"next fri", time.Friday},
+		{"next saturday", time.Saturday},
+		{"next sat", time.Saturday},
+		{"next sunday", time.Sunday},
+		{"next sun", time.Sunday},
+		{"NEXT Monday", time.Monday}, // case insensitive
+		{"Next Friday", time.Friday}, // mixed case
+	}
+
+	for _, tt := range nextWeekdayTests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := ParseDate(tt.input)
+			if err != nil {
+				t.Errorf("ParseDate(%q) unexpected error: %v", tt.input, err)
+				return
+			}
+
+			// The result should be the correct weekday
+			if got.Weekday() != tt.weekday {
+				t.Errorf("ParseDate(%q) weekday = %v, want %v", tt.input, got.Weekday(), tt.weekday)
+			}
+
+			// "next <weekday>" should always be at least 7 days away
+			minDate := today.AddDate(0, 0, 7)
+			if got.Before(minDate) {
+				t.Errorf("ParseDate(%q) = %v, should be at least 7 days from today %v", tt.input, got, today)
+			}
+
+			// It should be at most 14 days from today
+			maxDate := today.AddDate(0, 0, 14)
+			if got.After(maxDate) {
+				t.Errorf("ParseDate(%q) = %v, should be within 14 days from today", tt.input, got)
 			}
 		})
 	}
