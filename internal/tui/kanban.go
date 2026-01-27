@@ -334,3 +334,14 @@ func (m *KanbanViewModel) moveColumnRight() {
 func (m *KanbanViewModel) View() string {
 	return ""
 }
+
+// ShouldCaptureEsc implements ViewCapabilities. The Kanban view does not need
+// to capture esc/q as it has no modal states or text inputs.
+func (m *KanbanViewModel) ShouldCaptureEsc() bool {
+	return false
+}
+
+// HasTextInput implements ViewCapabilities. The Kanban view has no text input fields.
+func (m *KanbanViewModel) HasTextInput() bool {
+	return false
+}
