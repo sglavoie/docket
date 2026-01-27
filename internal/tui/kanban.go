@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -49,6 +50,10 @@ type KanbanViewModel struct {
 	// Project being displayed
 	Project *models.Project
 
+	// Config for workflow rule evaluation
+	config        *config.Config
+	configManager *config.Manager
+
 	// Columns maps section name to column state.
 	// Keys: "" (Active), "Next", "Inbox", "Waiting", "Someday"
 	Columns map[string]*ColumnState
@@ -63,16 +68,21 @@ type KanbanViewModel struct {
 	// ColumnWidth is the calculated width for each column after SetSize.
 	// All columns share the same width for uniform appearance.
 	ColumnWidth int
+
+	// statusMessage holds a transient message to display to the user
+	statusMessage string
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
 // It initializes five columns mapped to Active/Next/Inbox/Waiting/Someday
 // and loads non-completed tasks filtered by their Section field.
-func NewKanbanViewModel(project *models.Project) *KanbanViewModel {
+func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *KanbanViewModel {
 	m := &KanbanViewModel{
-		Project: project,
-		Columns: make(map[string]*ColumnState),
-		Tasks:   make(map[string][]*models.Task),
+		Project:       project,
+		config:        cfg,
+		configManager: cfgManager,
+		Columns:       make(map[string]*ColumnState),
+		Tasks:         make(map[string][]*models.Task),
 	}
 
 	// Initialize column state for each of the five sections
@@ -269,6 +279,16 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
+
+	case KanbanTaskMovedMsg:
+		// Task was moved to a different column - reload tasks and update cursor
+		m.loadTasks()
+		// Move active column to where the task landed
+		m.ActiveColumn = msg.TargetColumnIndex
+		// Position cursor on the moved task in the new column
+		m.positionCursorOnTask(msg.Task, msg.TargetSection)
+		m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(msg.TargetSection))
+		return m, nil
 	}
 
 	return m, nil
@@ -317,6 +337,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cs.Cursor = len(tasks) - 1
 		}
 		return m, nil
+
+	// Task movement between columns
+	case "H":
+		// Move selected task to the left column
+		return m, m.moveTaskLeft()
 	}
 
 	return m, nil
@@ -337,6 +362,24 @@ func (m *KanbanViewModel) moveCursorDown() {
 	if cs.Cursor < len(tasks)-1 {
 		cs.Cursor++
 	}
+}
+
+// positionCursorOnTask positions the cursor on the specified task in the given section.
+// If the task is not found, the cursor is positioned at the first task (or 0 if empty).
+func (m *KanbanViewModel) positionCursorOnTask(task *models.Task, section string) {
+	tasks := m.Tasks[section]
+	cs := m.Columns[section]
+
+	// Find the task in the column
+	for i, t := range tasks {
+		if t.ID == task.ID {
+			cs.Cursor = i
+			return
+		}
+	}
+
+	// Task not found, validate cursor to be in bounds
+	cs.Validate(len(tasks))
 }
 
 // moveColumnLeft moves focus to the previous non-empty column on the left.

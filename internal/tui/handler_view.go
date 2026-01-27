@@ -497,7 +497,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowKanbanMsg:
 		if msg.Project != nil {
-			m.showView(ViewKanban, NewKanbanViewModel(msg.Project))
+			m.showView(ViewKanban, NewKanbanViewModel(msg.Project, m.config, m.configManager))
 		}
 		return true, nil
 
