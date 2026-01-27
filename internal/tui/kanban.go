@@ -346,11 +346,11 @@ func (m *KanbanViewModel) moveColumnLeft() {
 	m.ActiveColumn = m.findNextNonEmptyColumn(-1)
 }
 
-// moveColumnRight moves focus to the column on the right.
+// moveColumnRight moves focus to the next non-empty column on the right.
+// Empty columns are skipped. If no non-empty column exists to the right,
+// focus remains on the current column.
 func (m *KanbanViewModel) moveColumnRight() {
-	if m.ActiveColumn < len(KanbanColumnOrder)-1 {
-		m.ActiveColumn++
-	}
+	m.ActiveColumn = m.findNextNonEmptyColumn(+1)
 }
 
 // View implements the tea.Model interface. Renders five columns with
