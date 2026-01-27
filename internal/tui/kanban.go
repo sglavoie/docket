@@ -360,6 +360,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "J":
 		// Swap selected task with task below
 		return m, m.swapTaskDown()
+
+	case "K":
+		// Swap selected task with task above
+		return m, m.swapTaskUp()
 	}
 
 	return m, nil

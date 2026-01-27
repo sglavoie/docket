@@ -179,6 +179,38 @@ func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
 	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
 }
 
+// swapTaskUp swaps the currently selected task with the task above it.
+// Returns a command that persists the change with workflow rule evaluation.
+// If the task is at the top of the column, the operation is ignored.
+func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	tasks := m.Tasks[currentSection]
+	cs := m.Columns[currentSection]
+
+	// Check bounds: need at least 2 tasks and cursor not at top
+	if len(tasks) < 2 || cs.Cursor <= 0 {
+		return nil
+	}
+
+	task := tasks[cs.Cursor]
+	taskAbove := tasks[cs.Cursor-1]
+	if task == nil || taskAbove == nil {
+		return nil
+	}
+
+	// Capture previous task states for workflow rule evaluation
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Swap the tasks using project's SwapTasks method
+	m.Project.SwapTasks(task, taskAbove)
+
+	// New cursor position follows the task up
+	newPosition := cs.Cursor - 1
+
+	// Persist with workflow rule evaluation
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
+}
+
 // saveWithWorkflowRulesForReorder saves the project with workflow rule evaluation
 // for within-column reordering operations.
 func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]*models.Task, task *models.Task, section string, newPosition int) tea.Cmd {
