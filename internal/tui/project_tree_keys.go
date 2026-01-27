@@ -639,6 +639,12 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return ShowInboxProcessorMsg{Project: m.project}
 		}
 
+	case "ctrl+k":
+		// Open kanban board view
+		return true, func() tea.Msg {
+			return ShowKanbanMsg{Project: m.project}
+		}
+
 	case "A":
 		// Archive completed tasks (only in Completed view)
 		if m.viewMode == ViewModeCompleted {
