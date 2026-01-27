@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // Section name constants for Kanban columns.
 // Active is represented by empty string per existing convention.
@@ -163,6 +167,12 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	}
 
 	m.ColumnWidth = columnWidth
+}
+
+// Init implements the tea.Model interface. The Kanban view does not require
+// any initialization commands as state is set up during construction.
+func (m *KanbanViewModel) Init() tea.Cmd {
+	return nil
 }
 
 // Validate adjusts Cursor and ScrollOffset to be within valid bounds for the
