@@ -11,6 +11,77 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+// KanbanTaskMovedMsg signals that a task was moved to a different column.
+type KanbanTaskMovedMsg struct {
+	Task              *models.Task
+	TargetColumnIndex int
+	TargetSection     string
+}
+
+// KanbanTaskReorderedMsg signals that a task was reordered within its column.
+type KanbanTaskReorderedMsg struct {
+	Task        *models.Task
+	Section     string
+	NewPosition int // New cursor position after reorder
+}
+
+// KanbanStatusChangedMsg signals that a task's status was changed.
+// The task may have moved to a different column if it became completed/cancelled.
+type KanbanStatusChangedMsg struct {
+	TaskID          string
+	PreviousSection string
+}
+
+// getSelectedTask returns the currently selected task, or nil if none.
+func (m *KanbanViewModel) getSelectedTask() *models.Task {
+	tasks := m.CurrentColumnTasks()
+	cs := m.CurrentColumnState()
+
+	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
+		return nil
+	}
+
+	return tasks[cs.Cursor]
+}
+
+// saveWithWorkflow saves the project with workflow rule evaluation and returns
+// a command that produces the given message on success. This is the shared
+// implementation used by all Kanban save operations.
+func (m *KanbanViewModel) saveWithWorkflow(prevStates map[string]*models.Task, makeMsg func() tea.Msg) tea.Cmd {
+	cfg := m.config
+	configManager := m.configManager
+
+	return func() tea.Msg {
+		// Backup before saving
+		if err := storage.BackupProject(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
+		}
+
+		// Evaluate workflow rules
+		if cfg != nil {
+			rules := cfg.GetEnabledWorkflowRules()
+			if len(rules) > 0 {
+				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
+				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
+				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+					_ = configManager.Save(cfg)
+				}
+			}
+		}
+
+		// Save the project
+		if err := storage.SaveProject(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
+		}
+
+		// Reload project to ensure consistency
+		_ = storage.LoadProject(m.Project)
+
+		return makeMsg()
+	}
+}
+
 // moveTaskLeft moves the currently selected task to the column on the left.
 // Returns a command that persists the change with workflow rule evaluation.
 // If the task is already in the leftmost column, the operation is ignored.
@@ -54,43 +125,13 @@ func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 // saveWithWorkflowRules saves the project with workflow rule evaluation,
 // then updates the Kanban view state to reflect the changes.
 func (m *KanbanViewModel) saveWithWorkflowRules(prevStates map[string]*models.Task, task *models.Task, targetColumnIndex int, targetSection string) tea.Cmd {
-	// Capture references for closure
-	cfg := m.config
-	configManager := m.configManager
-
-	return func() tea.Msg {
-		// Backup before saving
-		if err := storage.BackupProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
-		}
-
-		// Evaluate workflow rules
-		if cfg != nil {
-			rules := cfg.GetEnabledWorkflowRules()
-			if len(rules) > 0 {
-				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
-				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
-				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-					_ = configManager.Save(cfg)
-				}
-			}
-		}
-
-		// Save the project
-		if err := storage.SaveProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
-		}
-
-		// Reload project to ensure consistency
-		_ = storage.LoadProject(m.Project)
-
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanTaskMovedMsg{
 			Task:              task,
 			TargetColumnIndex: targetColumnIndex,
 			TargetSection:     targetSection,
 		}
-	}
+	})
 }
 
 // moveTaskRight moves the currently selected task to the column on the right.
@@ -131,20 +172,6 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 
 	// Persist with workflow rule evaluation
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
-}
-
-// KanbanTaskMovedMsg signals that a task was moved to a different column.
-type KanbanTaskMovedMsg struct {
-	Task              *models.Task
-	TargetColumnIndex int
-	TargetSection     string
-}
-
-// KanbanTaskReorderedMsg signals that a task was reordered within its column.
-type KanbanTaskReorderedMsg struct {
-	Task        *models.Task
-	Section     string
-	NewPosition int // New cursor position after reorder
 }
 
 // swapTaskDown swaps the currently selected task with the task below it.
@@ -214,40 +241,11 @@ func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
 // saveWithWorkflowRulesForReorder saves the project with workflow rule evaluation
 // for within-column reordering operations.
 func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]*models.Task, task *models.Task, section string, newPosition int) tea.Cmd {
-	cfg := m.config
-	configManager := m.configManager
-
-	return func() tea.Msg {
-		// Backup before saving
-		if err := storage.BackupProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
-		}
-
-		// Evaluate workflow rules
-		if cfg != nil {
-			rules := cfg.GetEnabledWorkflowRules()
-			if len(rules) > 0 {
-				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
-				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
-				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-					_ = configManager.Save(cfg)
-				}
-			}
-		}
-
-		// Save the project
-		if err := storage.SaveProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
-		}
-
-		// Reload project to ensure consistency
-		_ = storage.LoadProject(m.Project)
-
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanTaskReorderedMsg{
 			Task:        task,
 			Section:     section,
 			NewPosition: newPosition,
 		}
-	}
+	})
 }

@@ -7,8 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // handleStatusStart sets the selected task status to in_progress (started).
@@ -118,70 +116,22 @@ func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
 	return m.saveWithStatusChange(prevStates, task)
 }
 
-// getSelectedTask returns the currently selected task, or nil if none.
-func (m *KanbanViewModel) getSelectedTask() *models.Task {
-	tasks := m.CurrentColumnTasks()
-	cs := m.CurrentColumnState()
-
-	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
-		return nil
-	}
-
-	return tasks[cs.Cursor]
-}
-
 // saveWithStatusChange saves the project after a status change with workflow
 // rule evaluation. Returns a command that persists changes and refreshes the view.
 func (m *KanbanViewModel) saveWithStatusChange(prevStates map[string]*models.Task, task *models.Task) tea.Cmd {
-	cfg := m.config
-	configManager := m.configManager
-
 	// Track current position info for cursor restoration after reload
 	currentSection := m.CurrentSection()
 	taskID := task.ID
 
-	return func() tea.Msg {
-		// Backup before saving
-		if err := storage.BackupProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
-		}
+	// Update timestamp before save
+	task.UpdatedAt = time.Now()
 
-		// Update timestamp
-		task.UpdatedAt = time.Now()
-
-		// Evaluate workflow rules
-		if cfg != nil {
-			rules := cfg.GetEnabledWorkflowRules()
-			if len(rules) > 0 {
-				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
-				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
-				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-					_ = configManager.Save(cfg)
-				}
-			}
-		}
-
-		// Save the project
-		if err := storage.SaveProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
-		}
-
-		// Reload project to ensure consistency
-		_ = storage.LoadProject(m.Project)
-
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{
 			TaskID:          taskID,
 			PreviousSection: currentSection,
 		}
-	}
-}
-
-// KanbanStatusChangedMsg signals that a task's status was changed.
-// The task may have moved to a different column if it became completed/cancelled.
-type KanbanStatusChangedMsg struct {
-	TaskID          string
-	PreviousSection string
+	})
 }
 
 // handleEditTask opens the selected task in the configured editor.

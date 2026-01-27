@@ -633,6 +633,8 @@ func sectionDisplayName(section string) string {
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode.
+// NOTE: If future internal modes are added (e.g., expanded task view, inline
+// editing), update this method to include those states.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
 	return m.pendingPrefix != ""
 }
