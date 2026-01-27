@@ -179,11 +179,19 @@ func (m *KanbanViewModel) Init() tea.Cmd {
 	return nil
 }
 
+// ValidateCursor clamps the cursor position to valid bounds for the given task count.
+// For an empty column (taskCount=0), cursor is set to 0.
+// For non-empty columns, cursor is clamped to [0, taskCount-1].
+// Call this after task mutations that may invalidate the cursor position.
+func (cs *ColumnState) ValidateCursor(taskCount int) {
+	cs.Cursor = ClampCursor(cs.Cursor, taskCount)
+}
+
 // Validate adjusts Cursor and ScrollOffset to be within valid bounds for the
 // given task count. Call this after any mutation that changes the column's
 // task list (task moves, status changes, deletions).
 func (cs *ColumnState) Validate(taskCount int) {
-	cs.Cursor = ClampCursor(cs.Cursor, taskCount)
+	cs.ValidateCursor(taskCount)
 	cs.validateScrollOffset(taskCount)
 }
 
