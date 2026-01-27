@@ -1,11 +1,74 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/models"
+
+// Section name constants for Kanban columns.
+// Active is represented by empty string per existing convention.
+const (
+	KanbanSectionActive  = ""
+	KanbanSectionNext    = "Next"
+	KanbanSectionInbox   = "Inbox"
+	KanbanSectionWaiting = "Waiting"
+	KanbanSectionSomeday = "Someday"
+)
+
+// KanbanColumnOrder defines the left-to-right display order of columns.
+var KanbanColumnOrder = []string{
+	KanbanSectionActive,
+	KanbanSectionNext,
+	KanbanSectionInbox,
+	KanbanSectionWaiting,
+	KanbanSectionSomeday,
+}
+
 // ColumnState encapsulates the cursor position and scroll offset for a single
 // Kanban column. Each column maintains independent state since columns have
 // different task counts.
 type ColumnState struct {
 	Cursor       int
 	ScrollOffset int
+}
+
+// KanbanViewModel manages the Kanban board view state.
+// It displays non-completed tasks organized into five columns by section.
+type KanbanViewModel struct {
+	BaseView
+
+	// Project being displayed
+	Project *models.Project
+
+	// Columns maps section name to column state.
+	// Keys: "" (Active), "Next", "Inbox", "Waiting", "Someday"
+	Columns map[string]*ColumnState
+
+	// ActiveColumn tracks which column is currently focused (index into KanbanColumnOrder)
+	ActiveColumn int
+}
+
+// NewKanbanViewModel creates a new Kanban view model for the given project.
+func NewKanbanViewModel(project *models.Project) *KanbanViewModel {
+	m := &KanbanViewModel{
+		Project: project,
+		Columns: make(map[string]*ColumnState),
+	}
+
+	// Initialize column state for each of the five sections
+	for _, section := range KanbanColumnOrder {
+		m.Columns[section] = &ColumnState{}
+	}
+
+	return m
+}
+
+// CurrentColumnState returns the ColumnState for the currently active column.
+func (m *KanbanViewModel) CurrentColumnState() *ColumnState {
+	section := KanbanColumnOrder[m.ActiveColumn]
+	return m.Columns[section]
+}
+
+// CurrentSection returns the section name of the currently active column.
+func (m *KanbanViewModel) CurrentSection() string {
+	return KanbanColumnOrder[m.ActiveColumn]
 }
 
 // Validate adjusts Cursor and ScrollOffset to be within valid bounds for the
