@@ -417,14 +417,9 @@ func (m *KanbanViewModel) renderTaskRow(task *models.Task, isSelected bool) stri
 	title := task.Title
 
 	// Truncate title to fit in column (accounting for icon and spacing)
-	maxTitleLen := m.ColumnWidth - 4 // Account for icon, space, and potential cursor
-	if len(title) > maxTitleLen && maxTitleLen > 0 {
-		if maxTitleLen > 3 {
-			title = title[:maxTitleLen-3] + "..."
-		} else {
-			title = title[:maxTitleLen]
-		}
-	}
+	// Layout: "  " or "> " (2 chars) + icon (1 char) + " " (1 char) + title
+	maxTitleLen := m.ColumnWidth - 4
+	title = truncateWithEllipsis(title, maxTitleLen)
 
 	statusStyle := GetStatusStyle(string(task.Status))
 	content := statusStyle.Render(statusIcon) + " " + title
@@ -433,6 +428,22 @@ func (m *KanbanViewModel) renderTaskRow(task *models.Task, isSelected bool) stri
 		return SelectionCursorStyle.Render(">") + " " + content
 	}
 	return "  " + content
+}
+
+// truncateWithEllipsis truncates a string to maxLen characters, adding "..."
+// suffix if truncation occurs. Returns original string if it fits within maxLen.
+func truncateWithEllipsis(s string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	if len(s) <= maxLen {
+		return s
+	}
+	// Need at least 4 chars to show something meaningful with ellipsis (1 char + "...")
+	if maxLen < 4 {
+		return s[:maxLen]
+	}
+	return s[:maxLen-3] + "..."
 }
 
 // sectionDisplayName returns the display name for a section.
