@@ -301,6 +301,30 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Validate in case the reload changed task order
 		cs.Validate(len(m.Tasks[msg.Section]))
 		return m, nil
+
+	case KanbanStatusChangedMsg:
+		// Task status changed - reload tasks since task may have moved columns
+		// (completed/cancelled tasks are filtered out of Kanban view)
+		m.loadTasks()
+		// Try to position cursor on the task if it's still visible
+		for _, section := range KanbanColumnOrder {
+			for i, task := range m.Tasks[section] {
+				if task.ID == msg.TaskID {
+					// Found the task - position cursor on it
+					for colIdx, sec := range KanbanColumnOrder {
+						if sec == section {
+							m.ActiveColumn = colIdx
+							m.Columns[section].Cursor = i
+							return m, nil
+						}
+					}
+				}
+			}
+		}
+		// Task not visible (likely completed/cancelled) - validate current cursor
+		cs := m.CurrentColumnState()
+		cs.Validate(len(m.CurrentColumnTasks()))
+		return m, nil
 	}
 
 	return m, nil
@@ -394,8 +418,19 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
-		// Status operations - placeholder for subsequent task implementation
-		_ = key // Will be implemented in status command handler task
+		// Status operations
+		switch key {
+		case "s":
+			return m, m.handleStatusStart()
+		case "d":
+			return m, m.handleStatusDone()
+		case "b":
+			return m, m.handleStatusBlocked()
+		case "o":
+			return m, m.handleStatusOpen()
+		case "x":
+			return m, m.handleStatusCancelled()
+		}
 	}
 
 	return m, nil
