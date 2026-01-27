@@ -285,17 +285,17 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowLinkedTaskSelectorMsg:
 		if msg.Task != nil && msg.Project != nil {
-			selector := NewLinkedTaskSelectorModel(msg.Task, msg.Project)
+			selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config)
 			// If no linked tasks, do nothing
 			if !selector.HasLinkedTasks() {
 				m.statusMessage = "No linked tasks"
 				return true, statusTimeout(2 * time.Second)
 			}
-			// If single linked task, jump directly
+			// If single linked task with same project, jump directly
 			if singleTask := selector.GetSingleLinkedTask(); singleTask != nil {
 				return m.handleLinkedTaskNavigation(singleTask, msg.Project)
 			}
-			// Multiple linked tasks: show selector
+			// Multiple linked tasks or cross-project: show selector
 			m.showView(ViewLinkedTaskSelector, selector)
 		}
 		return true, nil
@@ -306,9 +306,69 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case LinkedTaskSelectedMsg:
 		m.popView()
+		// Check if this is a cross-project reference
+		if msg.TaskRef != "" {
+			return m.handleCrossProjectNavigation(msg.TaskRef)
+		}
 		return m.handleLinkedTaskNavigation(msg.Task, msg.Project)
+
+	case ShowCrossProjectLinkerMsg:
+		if msg.SourceTask != nil && msg.SourceProject != nil {
+			linker := NewCrossProjectLinkerModel(msg.SourceTask, msg.SourceProject, m.config)
+			m.showView(ViewCrossProjectLinker, linker)
+		}
+		return true, nil
+
+	case CloseCrossProjectLinkerMsg:
+		m.popView()
+		return true, nil
+
+	case CrossProjectLinkCreatedMsg:
+		m.popView()
+		m.refreshProjectTree()
+		// Determine link type name for status message
+		var linkName string
+		switch msg.LinkType {
+		case LinkTypeBlocker:
+			linkName = "blocker"
+		case LinkTypeDependent:
+			linkName = "dependency"
+		case LinkTypeFollowUp:
+			linkName = "related"
+		}
+		m.statusMessage = fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName)
+		return true, statusTimeout(3 * time.Second)
 	}
 	return false, nil
+}
+
+// handleCrossProjectNavigation navigates to a task in another project using a qualified ref.
+func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) {
+	ref := models.ParseTaskRef(taskRef)
+	if ref.IsEmpty() {
+		return true, errorCmd("invalid task reference")
+	}
+
+	// Get target project
+	targetProject := m.config.GetProject(ref.ProjectID)
+	if targetProject == nil {
+		m.statusMessage = "Project not found (link may be broken)"
+		return true, statusTimeout(2 * time.Second)
+	}
+
+	// Load the project
+	if err := m.persister.Load(targetProject); err != nil {
+		return true, errorCmd("failed to load project: %w", err)
+	}
+
+	// Find the task
+	task := targetProject.GetTaskByID(ref.TaskID)
+	if task == nil {
+		m.statusMessage = fmt.Sprintf("Task not found in %s (link may be broken)", targetProject.Name)
+		return true, statusTimeout(2 * time.Second)
+	}
+
+	return m.handleLinkedTaskNavigation(task, targetProject)
 }
 
 // handleLinkedTaskNavigation navigates to a linked task, switching projects if needed.

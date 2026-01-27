@@ -181,6 +181,7 @@ var (
 		{Key: "d", Description: "dependent"},
 		{Key: "s", Description: "subtask"},
 		{Key: "f", Description: "follow-up"},
+		{Key: "p", Description: "cross-project"},
 		{Key: "n", Description: "navigate"},
 	}
 )

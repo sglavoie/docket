@@ -437,6 +437,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			}
 		}
 
+		// Cross-project linking
+		if key == "p" {
+			return m, func() tea.Msg {
+				return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
+			}
+		}
+
 		var linkType LinkType
 		switch key {
 		case "b":

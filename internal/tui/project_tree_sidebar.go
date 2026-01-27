@@ -6,8 +6,17 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+// sidebarLinkedTask represents a resolved task reference for sidebar display.
+type sidebarLinkedTask struct {
+	Task      *models.Task    // nil if not found (broken link)
+	Project   *models.Project // nil for same-project links
+	Ref       string          // Original reference string
+	IsMissing bool            // True if the task/project couldn't be found
+}
 
 // renderSidebarCard renders a card with a titled border for sidebar sections.
 // Uses the shared renderCard utility with sidebar-specific configuration.
@@ -153,11 +162,12 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sect
 }
 
 // renderDependenciesCard renders the dependencies card with navigation support.
+// Supports cross-project task references.
 func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
 	var lines []string
 	const maxVisiblePerSection = 5
 
-	// Blocked by (tasks this depends on)
+	// Blocked by (tasks this depends on) - may include cross-project refs
 	if len(task.DependsOn) > 0 {
 		header := "Blocked by:"
 		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
@@ -167,22 +177,23 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		}
 		lines = append(lines, header)
 
-		blockingTasks := m.project.GetBlockingTasks(task)
+		// Resolve all blocking task references (including cross-project)
+		var blockingTasks []sidebarLinkedTask
+		for _, depRef := range task.DependsOn {
+			blockingTasks = append(blockingTasks, m.resolveSidebarTaskRef(depRef))
+		}
 
 		// Calculate scroll offset for this section when it's active
-		// Always recalculate to ensure cursor is visible
 		sectionScroll := 0
 		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
 			cursor := m.sidebar.GetDependencyCursor()
 			sectionScroll = m.sidebar.GetDepsScrollOffset()
-			// Ensure cursor is within visible window
 			if cursor >= sectionScroll+maxVisiblePerSection {
 				sectionScroll = cursor - maxVisiblePerSection + 1
 			}
 			if cursor < sectionScroll {
 				sectionScroll = cursor
 			}
-			// Update stored offset if it changed
 			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
 				m.sidebar.SetDepsScrollOffset(sectionScroll)
 			}
@@ -200,21 +211,8 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		}
 
 		for i := sectionScroll; i < visibleEnd; i++ {
-			dep := blockingTasks[i]
-			depStatus := GetStatusStyle(string(dep.Status))
-			cursorStr := "  "
-			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
-				cursorStr = "> "
-			}
-
-			depLine := fmt.Sprintf("%s#%-3d %s %s",
-				cursorStr, dep.ShortID, depStatus.Render(dep.Status.Icon()),
-				util.Truncate(dep.Title, innerWidth-12))
-
-			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
-				depLine = BoldStyle.Render(depLine)
-			}
-			lines = append(lines, depLine)
+			isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor()
+			lines = append(lines, m.formatSidebarLinkedTask(blockingTasks[i], innerWidth, isCursor, m.sidebar.IsFocused()))
 		}
 
 		// Show indicator if items hidden below
@@ -223,7 +221,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		}
 	}
 
-	// Blocking (tasks that depend on this)
+	// Blocking (tasks that depend on this) - same-project only
 	blockedBy := m.project.GetBlockedByTasks(task)
 	if len(blockedBy) > 0 {
 		if len(task.DependsOn) > 0 {
@@ -239,19 +237,16 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		lines = append(lines, header)
 
 		// Calculate scroll offset for this section when it's active
-		// Always recalculate to ensure cursor is visible
 		sectionScroll := 0
 		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 {
 			cursor := m.sidebar.GetDependencyCursor()
 			sectionScroll = m.sidebar.GetDepsScrollOffset()
-			// Ensure cursor is within visible window
 			if cursor >= sectionScroll+maxVisiblePerSection {
 				sectionScroll = cursor - maxVisiblePerSection + 1
 			}
 			if cursor < sectionScroll {
 				sectionScroll = cursor
 			}
-			// Update stored offset if it changed
 			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
 				m.sidebar.SetDepsScrollOffset(sectionScroll)
 			}
@@ -270,20 +265,10 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 
 		for i := sectionScroll; i < visibleEnd; i++ {
 			blocked := blockedBy[i]
-			blockStatus := GetStatusStyle(string(blocked.Status))
-			cursorStr := "  "
-			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
-				cursorStr = "> "
-			}
-
-			blockLine := fmt.Sprintf("%s#%-3d %s %s",
-				cursorStr, blocked.ShortID, blockStatus.Render(blocked.Status.Icon()),
-				util.Truncate(blocked.Title, innerWidth-12))
-
-			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
-				blockLine = BoldStyle.Render(blockLine)
-			}
-			lines = append(lines, blockLine)
+			// Wrap as sidebarLinkedTask for consistent formatting
+			linked := sidebarLinkedTask{Task: blocked, Project: nil, Ref: blocked.ID, IsMissing: false}
+			isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor()
+			lines = append(lines, m.formatSidebarLinkedTask(linked, innerWidth, isCursor, m.sidebar.IsFocused()))
 		}
 
 		// Show indicator if items hidden below
@@ -297,6 +282,7 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 }
 
 // renderRelatedCard renders the related tasks card with navigation support.
+// Supports cross-project task references.
 func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidth int) string {
 	const maxVisiblePerSection = 5
 	var lines []string
@@ -310,25 +296,26 @@ func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidt
 	}
 	lines = append(lines, header)
 
-	relatedTasks := m.getRelatedTasks(task)
+	// Resolve all related task references (including cross-project)
+	var relatedTasks []sidebarLinkedTask
+	for _, relRef := range task.RelatedTo {
+		relatedTasks = append(relatedTasks, m.resolveSidebarTaskRef(relRef))
+	}
 	if len(relatedTasks) == 0 {
 		return ""
 	}
 
 	// Calculate scroll offset for this section when it's active
-	// Always recalculate to ensure cursor is visible
 	sectionScroll := 0
 	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 {
 		cursor := m.sidebar.GetDependencyCursor()
 		sectionScroll = m.sidebar.GetDepsScrollOffset()
-		// Ensure cursor is within visible window
 		if cursor >= sectionScroll+maxVisiblePerSection {
 			sectionScroll = cursor - maxVisiblePerSection + 1
 		}
 		if cursor < sectionScroll {
 			sectionScroll = cursor
 		}
-		// Update stored offset if it changed
 		if sectionScroll != m.sidebar.GetDepsScrollOffset() {
 			m.sidebar.SetDepsScrollOffset(sectionScroll)
 		}
@@ -346,21 +333,8 @@ func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidt
 	}
 
 	for i := sectionScroll; i < visibleEnd; i++ {
-		relatedTask := relatedTasks[i]
-		relatedStatus := GetStatusStyle(string(relatedTask.Status))
-		cursorStr := "  "
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor() {
-			cursorStr = "> "
-		}
-
-		relatedLine := fmt.Sprintf("%s#%-3d %s %s",
-			cursorStr, relatedTask.ShortID, relatedStatus.Render(relatedTask.Status.Icon()),
-			util.Truncate(relatedTask.Title, innerWidth-12))
-
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor() {
-			relatedLine = BoldStyle.Render(relatedLine)
-		}
-		lines = append(lines, relatedLine)
+		isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor()
+		lines = append(lines, m.formatSidebarLinkedTask(relatedTasks[i], innerWidth, isCursor, m.sidebar.IsFocused()))
 	}
 
 	// Show indicator if items hidden below
@@ -447,6 +421,131 @@ func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) s
 	}
 
 	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false, "")
+}
+
+// resolveSidebarTaskRef resolves a task reference (local or cross-project) for sidebar display.
+func (m *ProjectTreeModel) resolveSidebarTaskRef(ref string) sidebarLinkedTask {
+	taskRef := models.ParseTaskRef(ref)
+
+	if !taskRef.IsCrossProject() {
+		// Same-project reference
+		task := m.project.GetTaskByID(taskRef.TaskID)
+		if task != nil {
+			return sidebarLinkedTask{
+				Task:      task,
+				Project:   nil,
+				Ref:       ref,
+				IsMissing: false,
+			}
+		}
+		return sidebarLinkedTask{
+			Task:      nil,
+			Project:   nil,
+			Ref:       ref,
+			IsMissing: true,
+		}
+	}
+
+	// Cross-project reference
+	if m.config == nil {
+		return sidebarLinkedTask{
+			Task:      nil,
+			Project:   nil,
+			Ref:       ref,
+			IsMissing: true,
+		}
+	}
+
+	targetProject := m.config.GetProject(taskRef.ProjectID)
+	if targetProject == nil {
+		return sidebarLinkedTask{
+			Task:      nil,
+			Project:   nil,
+			Ref:       ref,
+			IsMissing: true,
+		}
+	}
+
+	// Load the project if not already loaded
+	if len(targetProject.Tasks) == 0 {
+		_ = storage.LoadProject(targetProject)
+	}
+
+	task := targetProject.GetTaskByID(taskRef.TaskID)
+	if task == nil {
+		return sidebarLinkedTask{
+			Task:      nil,
+			Project:   targetProject,
+			Ref:       ref,
+			IsMissing: true,
+		}
+	}
+
+	return sidebarLinkedTask{
+		Task:      task,
+		Project:   targetProject,
+		Ref:       ref,
+		IsMissing: false,
+	}
+}
+
+// formatSidebarLinkedTask formats a linked task line for sidebar display.
+func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, isFocused bool) string {
+	cursorStr := "  "
+	if cursor {
+		cursorStr = "> "
+	}
+
+	if linked.IsMissing {
+		// Show broken link indicator
+		ref := models.ParseTaskRef(linked.Ref)
+		var label string
+		if ref.IsCrossProject() {
+			if linked.Project != nil {
+				label = fmt.Sprintf("[%s] (missing)", linked.Project.Name)
+			} else {
+				label = fmt.Sprintf("[%s] (missing)", ref.ProjectID)
+			}
+		} else {
+			label = "(missing)"
+		}
+		line := cursorStr + ValidationErrorStyle.Render(label)
+		if cursor && isFocused {
+			line = BoldStyle.Render(line)
+		}
+		return line
+	}
+
+	// Format found task
+	depStatus := GetStatusStyle(string(linked.Task.Status))
+
+	// Calculate available width for title
+	titleWidth := innerWidth - 12
+	if linked.Project != nil {
+		titleWidth -= len(linked.Project.Name) + 3 // "[ProjectName] "
+	}
+	if titleWidth < 10 {
+		titleWidth = 10
+	}
+
+	var line string
+	if linked.Project != nil {
+		// Cross-project: show project name
+		projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", linked.Project.Name))
+		line = fmt.Sprintf("%s%s#%-3d %s %s",
+			cursorStr, projectLabel, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
+			util.Truncate(linked.Task.Title, titleWidth))
+	} else {
+		// Same-project
+		line = fmt.Sprintf("%s#%-3d %s %s",
+			cursorStr, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
+			util.Truncate(linked.Task.Title, titleWidth))
+	}
+
+	if cursor && isFocused {
+		line = BoldStyle.Render(line)
+	}
+	return line
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.

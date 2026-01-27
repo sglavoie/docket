@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleNavigationKeys handles j/k, G, arrow keys, and page navigation.
@@ -166,10 +167,20 @@ func (m *ProjectTreeModel) handleSidebarKeys(key string, selectedTask *models.Ta
 
 	case "enter":
 		if selectedTask != nil {
-			linkedTask := m.getSelectedSidebarLinkedTask(selectedTask)
-			if linkedTask != nil {
+			result := m.getSelectedSidebarLinkedTaskWithProject(selectedTask)
+			if result.Task != nil && !result.IsMissing {
 				m.sidebar.SetFocused(false)
-				m.NavigateToTask(linkedTask)
+				// For cross-project links, emit message so app can switch projects
+				if result.Project != nil {
+					project := result.Project
+					task := result.Task
+					taskRef := result.TaskRef
+					return true, func() tea.Msg {
+						return LinkedTaskSelectedMsg{Task: task, Project: project, TaskRef: taskRef}
+					}
+				}
+				// Same-project link, navigate directly
+				m.NavigateToTask(result.Task)
 			}
 		}
 		return true, nil
@@ -188,11 +199,17 @@ func (m *ProjectTreeModel) hasLinkedTasks(task *models.Task) bool {
 	return len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0 || len(task.RelatedTo) > 0
 }
 
-// getRelatedTasks returns the tasks that are related to the given task.
+// getRelatedTasks returns the tasks that are related to the given task (same-project only).
+// For cross-project display, use resolveSidebarTaskRef instead.
 func (m *ProjectTreeModel) getRelatedTasks(task *models.Task) []*models.Task {
 	var related []*models.Task
-	for _, relID := range task.RelatedTo {
-		if t := m.project.GetTaskByID(relID); t != nil {
+	for _, relRef := range task.RelatedTo {
+		taskRef := models.ParseTaskRef(relRef)
+		if taskRef.IsCrossProject() {
+			// Skip cross-project refs for backward compatibility
+			continue
+		}
+		if t := m.project.GetTaskByID(taskRef.TaskID); t != nil {
 			related = append(related, t)
 		}
 	}
@@ -217,8 +234,8 @@ func (m *ProjectTreeModel) getAvailableSections(task *models.Task) []int {
 
 // moveSidebarDependencyCursorDown moves the dependency cursor down.
 func (m *ProjectTreeModel) moveSidebarDependencyCursorDown(task *models.Task) {
-	items := m.getCurrentSidebarLinkedItems(task)
-	if m.sidebar.GetDependencyCursor() < len(items)-1 {
+	count := m.getCurrentSidebarLinkedItemCount(task)
+	if m.sidebar.GetDependencyCursor() < count-1 {
 		m.sidebar.SetDependencyCursor(m.sidebar.GetDependencyCursor() + 1)
 	}
 }
@@ -250,7 +267,23 @@ func (m *ProjectTreeModel) switchSidebarDependencySection(task *models.Task) {
 	m.sidebar.SetDependencyCursor(0)
 }
 
+// getCurrentSidebarLinkedItemCount returns the count of items in the current linked section.
+// This correctly counts cross-project refs for navigation purposes.
+func (m *ProjectTreeModel) getCurrentSidebarLinkedItemCount(task *models.Task) int {
+	switch m.sidebar.GetDependencySection() {
+	case 0:
+		return len(task.DependsOn)
+	case 1:
+		return len(m.project.GetBlockedByTasks(task))
+	case 2:
+		return len(task.RelatedTo)
+	}
+	return 0
+}
+
 // getCurrentSidebarLinkedItems returns the tasks in the current linked section.
+// Note: This only returns same-project tasks and is used for backward compatibility.
+// For cross-project support, use getSelectedSidebarLinkedTask directly.
 func (m *ProjectTreeModel) getCurrentSidebarLinkedItems(task *models.Task) []*models.Task {
 	switch m.sidebar.GetDependencySection() {
 	case 0:
@@ -263,13 +296,111 @@ func (m *ProjectTreeModel) getCurrentSidebarLinkedItems(task *models.Task) []*mo
 	return nil
 }
 
-// getSelectedSidebarLinkedTask returns the currently selected linked task.
-func (m *ProjectTreeModel) getSelectedSidebarLinkedTask(task *models.Task) *models.Task {
-	items := m.getCurrentSidebarLinkedItems(task)
-	if m.sidebar.GetDependencyCursor() >= 0 && m.sidebar.GetDependencyCursor() < len(items) {
-		return items[m.sidebar.GetDependencyCursor()]
+// sidebarLinkedTaskResult holds the result of resolving a sidebar linked task.
+type sidebarLinkedTaskResult struct {
+	Task      *models.Task
+	Project   *models.Project // nil for same-project links
+	TaskRef   string          // qualified ref for cross-project links
+	IsMissing bool
+}
+
+// getSelectedSidebarLinkedTaskWithProject returns the currently selected linked task with its project.
+// For cross-project links, loads and returns the task and project.
+func (m *ProjectTreeModel) getSelectedSidebarLinkedTaskWithProject(task *models.Task) sidebarLinkedTaskResult {
+	cursor := m.sidebar.GetDependencyCursor()
+
+	switch m.sidebar.GetDependencySection() {
+	case 0: // Blocked by (DependsOn refs)
+		if cursor >= 0 && cursor < len(task.DependsOn) {
+			ref := task.DependsOn[cursor]
+			return m.resolveTaskRefWithProject(ref)
+		}
+	case 1: // Blocking (tasks that depend on this - same project only)
+		blockedBy := m.project.GetBlockedByTasks(task)
+		if cursor >= 0 && cursor < len(blockedBy) {
+			return sidebarLinkedTaskResult{Task: blockedBy[cursor], Project: nil}
+		}
+	case 2: // Related
+		if cursor >= 0 && cursor < len(task.RelatedTo) {
+			ref := task.RelatedTo[cursor]
+			return m.resolveTaskRefWithProject(ref)
+		}
 	}
-	return nil
+	return sidebarLinkedTaskResult{IsMissing: true}
+}
+
+// resolveTaskRefWithProject resolves a task reference and returns the task with its project.
+func (m *ProjectTreeModel) resolveTaskRefWithProject(ref string) sidebarLinkedTaskResult {
+	taskRef := models.ParseTaskRef(ref)
+
+	if !taskRef.IsCrossProject() {
+		task := m.project.GetTaskByID(taskRef.TaskID)
+		if task != nil {
+			return sidebarLinkedTaskResult{Task: task, Project: nil}
+		}
+		return sidebarLinkedTaskResult{IsMissing: true}
+	}
+
+	// Cross-project reference
+	if m.config == nil {
+		return sidebarLinkedTaskResult{IsMissing: true}
+	}
+
+	targetProject := m.config.GetProject(taskRef.ProjectID)
+	if targetProject == nil {
+		return sidebarLinkedTaskResult{IsMissing: true}
+	}
+
+	// Load the project if not already loaded
+	if len(targetProject.Tasks) == 0 {
+		_ = storage.LoadProject(targetProject)
+	}
+
+	task := targetProject.GetTaskByID(taskRef.TaskID)
+	if task == nil {
+		return sidebarLinkedTaskResult{IsMissing: true, Project: targetProject}
+	}
+
+	return sidebarLinkedTaskResult{
+		Task:    task,
+		Project: targetProject,
+		TaskRef: ref,
+	}
+}
+
+// getSelectedSidebarLinkedTask returns the currently selected linked task.
+// For cross-project links, loads and returns the task from the target project.
+// Deprecated: Use getSelectedSidebarLinkedTaskWithProject for cross-project support.
+func (m *ProjectTreeModel) getSelectedSidebarLinkedTask(task *models.Task) *models.Task {
+	result := m.getSelectedSidebarLinkedTaskWithProject(task)
+	return result.Task
+}
+
+// resolveTaskRefForNavigation resolves a task reference and returns the task.
+// For cross-project refs, it loads the target project first.
+func (m *ProjectTreeModel) resolveTaskRefForNavigation(ref string) *models.Task {
+	taskRef := models.ParseTaskRef(ref)
+
+	if !taskRef.IsCrossProject() {
+		return m.project.GetTaskByID(taskRef.TaskID)
+	}
+
+	// Cross-project reference
+	if m.config == nil {
+		return nil
+	}
+
+	targetProject := m.config.GetProject(taskRef.ProjectID)
+	if targetProject == nil {
+		return nil
+	}
+
+	// Load the project if not already loaded
+	if len(targetProject.Tasks) == 0 {
+		_ = storage.LoadProject(targetProject)
+	}
+
+	return targetProject.GetTaskByID(taskRef.TaskID)
 }
 
 // JumpToTask moves the cursor to the specified task in the visible list.

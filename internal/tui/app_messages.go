@@ -547,4 +547,27 @@ type CloseLinkedTaskSelectorMsg struct{}
 type LinkedTaskSelectedMsg struct {
 	Task    *models.Task
 	Project *models.Project
+	TaskRef string // Optional: qualified ref for cross-project links (projectID:taskID)
+}
+
+// =============================================================================
+// Cross-Project Linking Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowCrossProjectLinkerMsg opens the cross-project linker for a task.
+type ShowCrossProjectLinkerMsg struct {
+	SourceTask    *models.Task
+	SourceProject *models.Project
+}
+
+// CloseCrossProjectLinkerMsg closes the cross-project linker.
+type CloseCrossProjectLinkerMsg struct{}
+
+// CrossProjectLinkCreatedMsg signals a cross-project link was created.
+type CrossProjectLinkCreatedMsg struct {
+	SourceTask    *models.Task
+	SourceProject *models.Project
+	TargetTask    *models.Task
+	TargetProject *models.Project
+	LinkType      LinkType
 }
