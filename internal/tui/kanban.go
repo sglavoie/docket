@@ -29,6 +29,10 @@ type ColumnState struct {
 	ScrollOffset int
 }
 
+// Minimum width for a Kanban column to remain legible.
+// This ensures column headers and truncated task titles are readable.
+const KanbanMinColumnWidth = 15
+
 // KanbanViewModel manages the Kanban board view state.
 // It displays non-completed tasks organized into five columns by section.
 type KanbanViewModel struct {
@@ -47,6 +51,10 @@ type KanbanViewModel struct {
 
 	// ActiveColumn tracks which column is currently focused (index into KanbanColumnOrder)
 	ActiveColumn int
+
+	// ColumnWidth is the calculated width for each column after SetSize.
+	// All columns share the same width for uniform appearance.
+	ColumnWidth int
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -132,6 +140,29 @@ func (m *KanbanViewModel) TasksForSection(section string) []*models.Task {
 		return tasks
 	}
 	return nil
+}
+
+// SetSize distributes the available width across five columns.
+// Each column gets an equal share of the available width minus gaps between columns.
+// If the calculated width falls below the minimum, columns use the minimum width
+// which may cause horizontal overflow on very narrow terminals.
+func (m *KanbanViewModel) SetSize(width, height int) {
+	m.BaseView.SetSize(width, height)
+
+	// Account for gaps between columns (1 char gap between each pair)
+	numColumns := len(KanbanColumnOrder)
+	numGaps := numColumns - 1
+	availableWidth := width - numGaps
+
+	// Distribute width evenly across columns
+	columnWidth := availableWidth / numColumns
+
+	// Enforce minimum width to keep columns legible
+	if columnWidth < KanbanMinColumnWidth {
+		columnWidth = KanbanMinColumnWidth
+	}
+
+	m.ColumnWidth = columnWidth
 }
 
 // Validate adjusts Cursor and ScrollOffset to be within valid bounds for the
