@@ -401,6 +401,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ",":
 		m.pendingPrefix = ","
 		return m, nil
+
+	// Open task detail view via glow
+	case "enter":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			}
+		}
+		return m, nil
 	}
 
 	return m, nil
