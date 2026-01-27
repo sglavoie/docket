@@ -340,6 +340,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key {
+	case "?":
+		return m, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewKanban,
+				ViewName:   "Kanban",
+				Items:      m.GetHelpItems(),
+			}
+		}
+
 	case "esc", "q":
 		return m, func() tea.Msg {
 			return CloseKanbanMsg{}

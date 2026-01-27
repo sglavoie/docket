@@ -44,6 +44,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerProjectFocusViewBindings()
 	r.registerTaskAttachmentsBindings()
 	r.registerCustomContextEditorBindings()
+	r.registerKanbanBindings()
 	return r
 }
 
@@ -687,5 +688,39 @@ func (r *KeybindingRegistry) registerCustomContextEditorBindings() {
 		// Actions
 		Keybinding{Key: "Ctrl+S", Description: "Save", Category: "Actions", Views: views},
 		Keybinding{Key: "Esc", Description: "Cancel", Category: "Actions", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerKanbanBindings() {
+	views := []ViewType{ViewKanban}
+	r.add(
+		// Column Navigation
+		Keybinding{Key: "h/l", Description: "Navigate between columns", Category: "Navigation", Views: views},
+		Keybinding{Key: "←/→", Description: "Navigate between columns", Category: "Navigation", Views: views},
+
+		// Task Navigation
+		Keybinding{Key: "j/k", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Jump to first/last task in column", Category: "Navigation", Views: views},
+
+		// Task Movement Between Columns
+		Keybinding{Key: "H", Description: "Move task to left column", Category: "Task Movement", Views: views},
+		Keybinding{Key: "L", Description: "Move task to right column", Category: "Task Movement", Views: views},
+
+		// Task Reordering Within Column
+		Keybinding{Key: "J", Description: "Move task down in column", Category: "Task Movement", Views: views},
+		Keybinding{Key: "K", Description: "Move task up in column", Category: "Task Movement", Views: views},
+
+		// Status Changes (, prefix)
+		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
+		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
+		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
+		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
+
+		// Actions
+		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 	)
 }
