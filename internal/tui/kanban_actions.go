@@ -139,3 +139,83 @@ type KanbanTaskMovedMsg struct {
 	TargetColumnIndex int
 	TargetSection     string
 }
+
+// KanbanTaskReorderedMsg signals that a task was reordered within its column.
+type KanbanTaskReorderedMsg struct {
+	Task        *models.Task
+	Section     string
+	NewPosition int // New cursor position after reorder
+}
+
+// swapTaskDown swaps the currently selected task with the task below it.
+// Returns a command that persists the change with workflow rule evaluation.
+// If the task is at the bottom of the column, the operation is ignored.
+func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	tasks := m.Tasks[currentSection]
+	cs := m.Columns[currentSection]
+
+	// Check bounds: need at least 2 tasks and cursor not at bottom
+	if len(tasks) < 2 || cs.Cursor >= len(tasks)-1 {
+		return nil
+	}
+
+	task := tasks[cs.Cursor]
+	taskBelow := tasks[cs.Cursor+1]
+	if task == nil || taskBelow == nil {
+		return nil
+	}
+
+	// Capture previous task states for workflow rule evaluation
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Swap the tasks using project's SwapTasks method
+	m.Project.SwapTasks(task, taskBelow)
+
+	// New cursor position follows the task down
+	newPosition := cs.Cursor + 1
+
+	// Persist with workflow rule evaluation
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
+}
+
+// saveWithWorkflowRulesForReorder saves the project with workflow rule evaluation
+// for within-column reordering operations.
+func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]*models.Task, task *models.Task, section string, newPosition int) tea.Cmd {
+	cfg := m.config
+	configManager := m.configManager
+
+	return func() tea.Msg {
+		// Backup before saving
+		if err := storage.BackupProject(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
+		}
+
+		// Evaluate workflow rules
+		if cfg != nil {
+			rules := cfg.GetEnabledWorkflowRules()
+			if len(rules) > 0 {
+				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
+				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
+				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
+					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+					_ = configManager.Save(cfg)
+				}
+			}
+		}
+
+		// Save the project
+		if err := storage.SaveProject(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
+		}
+
+		// Reload project to ensure consistency
+		_ = storage.LoadProject(m.Project)
+
+		return KanbanTaskReorderedMsg{
+			Task:        task,
+			Section:     section,
+			NewPosition: newPosition,
+		}
+	}
+}

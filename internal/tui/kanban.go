@@ -289,6 +289,15 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.positionCursorOnTask(msg.Task, msg.TargetSection)
 		m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(msg.TargetSection))
 		return m, nil
+
+	case KanbanTaskReorderedMsg:
+		// Task was reordered within its column - reload and position cursor
+		m.loadTasks()
+		cs := m.Columns[msg.Section]
+		cs.Cursor = msg.NewPosition
+		// Validate in case the reload changed task order
+		cs.Validate(len(m.Tasks[msg.Section]))
+		return m, nil
 	}
 
 	return m, nil
@@ -346,6 +355,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "L":
 		// Move selected task to the right column
 		return m, m.moveTaskRight()
+
+	// Task reordering within column
+	case "J":
+		// Swap selected task with task below
+		return m, m.swapTaskDown()
 	}
 
 	return m, nil
