@@ -183,3 +183,16 @@ type KanbanStatusChangedMsg struct {
 	TaskID          string
 	PreviousSection string
 }
+
+// handleEditTask opens the selected task in the configured editor.
+// Returns an EditTaskMsg that the app will handle to launch the editor.
+func (m *KanbanViewModel) handleEditTask() tea.Cmd {
+	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	return func() tea.Msg {
+		return EditTaskMsg{Task: task}
+	}
+}

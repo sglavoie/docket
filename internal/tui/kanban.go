@@ -411,6 +411,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	// Edit task in configured editor
+	case "e":
+		return m, m.handleEditTask()
 	}
 
 	return m, nil
