@@ -503,6 +503,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseKanbanMsg:
 		m.popView()
+		m.reloadAndRefreshProjectTree()
 		return true, nil
 	}
 	return false, nil

@@ -313,7 +313,7 @@ var (
 				Padding(0, 1)
 
 	ViewModeNextStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("241")).
+				Background(lipgloss.Color("61")).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
 				Padding(0, 1)
@@ -659,6 +659,26 @@ var SectionColorPalette = []SectionColorEntry{
 	{"purple", lipgloss.Color("135")},
 	{"magenta", lipgloss.Color("198")},
 	{"white", lipgloss.Color("255")},
+}
+
+// GetViewModeStyleForSection returns the ViewMode style for a section name.
+// This maps section strings to their corresponding ViewMode styles, providing
+// consistent styling between the view mode indicator and kanban column headers.
+func GetViewModeStyleForSection(section string) lipgloss.Style {
+	switch section {
+	case "": // Active section
+		return ViewModeActiveStyle
+	case "Next":
+		return ViewModeNextStyle
+	case "Inbox":
+		return ViewModeInboxStyle
+	case "Waiting":
+		return ViewModeWaitingStyle
+	case "Someday":
+		return ViewModeSomedayStyle
+	default:
+		return ViewModeActiveStyle
+	}
 }
 
 // GetSectionColorStyle returns a style for a section badge given a color name.

@@ -349,7 +349,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "esc", "q":
+	case "esc", "q", "ctrl+k":
 		return m, func() tea.Msg {
 			return CloseKanbanMsg{}
 		}
@@ -567,17 +567,16 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 }
 
 // renderColumnHeader renders the column header with appropriate section color.
+// Uses the same ViewMode styles as the project tree view mode indicator for consistency.
 func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) string {
 	displayName := sectionDisplayName(section)
 	taskCount := len(m.Tasks[section])
 	headerText := fmt.Sprintf("%s (%d)", displayName, taskCount)
 
-	// Get the section color from the project
-	colorName := m.Project.GetSectionColor(section)
-	style := GetSectionColorStyle(colorName)
+	// Use the same ViewMode style as the view mode indicator
+	style := GetViewModeStyleForSection(section)
 
-	// Make header bold and add indicator if this column is active
-	style = style.Bold(true)
+	// Add indicator if this column is active
 	if isActive {
 		headerText = "▸ " + headerText
 	}
