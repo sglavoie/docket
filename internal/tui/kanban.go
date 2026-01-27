@@ -1,7 +1,11 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -329,10 +333,115 @@ func (m *KanbanViewModel) moveColumnRight() {
 	}
 }
 
-// View implements the tea.Model interface. This is a placeholder that will be
-// replaced with the full Kanban board rendering implementation.
+// View implements the tea.Model interface. Renders five columns with
+// section-colored headers: Active, Next, Inbox, Waiting, Someday.
 func (m *KanbanViewModel) View() string {
-	return ""
+	if m.Project == nil {
+		return MutedStyle.Render("No project loaded")
+	}
+
+	var columns []string
+	gap := " " // Single space gap between columns
+
+	for i, section := range KanbanColumnOrder {
+		columnContent := m.renderColumn(section, i == m.ActiveColumn)
+		columns = append(columns, columnContent)
+	}
+
+	// Join columns horizontally with gaps
+	var parts []string
+	for i, col := range columns {
+		parts = append(parts, col)
+		if i < len(columns)-1 {
+			parts = append(parts, gap)
+		}
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
+}
+
+// renderColumn renders a single Kanban column with header and task list.
+func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
+	var b strings.Builder
+
+	// Render header with section color
+	header := m.renderColumnHeader(section, isActive)
+	b.WriteString(header)
+	b.WriteString("\n")
+
+	// Render tasks in this column
+	tasks := m.Tasks[section]
+	cs := m.Columns[section]
+
+	if len(tasks) == 0 {
+		b.WriteString(MutedStyle.Render("(empty)"))
+	} else {
+		for i, task := range tasks {
+			isSelected := i == cs.Cursor && isActive
+			line := m.renderTaskRow(task, isSelected)
+			b.WriteString(line)
+			if i < len(tasks)-1 {
+				b.WriteString("\n")
+			}
+		}
+	}
+
+	// Apply column width styling
+	columnStyle := lipgloss.NewStyle().Width(m.ColumnWidth)
+	return columnStyle.Render(b.String())
+}
+
+// renderColumnHeader renders the column header with appropriate section color.
+func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) string {
+	displayName := sectionDisplayName(section)
+	taskCount := len(m.Tasks[section])
+	headerText := fmt.Sprintf("%s (%d)", displayName, taskCount)
+
+	// Get the section color from the project
+	colorName := m.Project.GetSectionColor(section)
+	style := GetSectionColorStyle(colorName)
+
+	// Make header bold and add indicator if this column is active
+	style = style.Bold(true)
+	if isActive {
+		headerText = "▸ " + headerText
+	}
+
+	return style.Render(headerText)
+}
+
+// renderTaskRow renders a single task row, with selection indicator if selected.
+func (m *KanbanViewModel) renderTaskRow(task *models.Task, isSelected bool) string {
+	// Build task display: status icon + truncated title
+	statusIcon := task.Status.Icon()
+	title := task.Title
+
+	// Truncate title to fit in column (accounting for icon and spacing)
+	maxTitleLen := m.ColumnWidth - 4 // Account for icon, space, and potential cursor
+	if len(title) > maxTitleLen && maxTitleLen > 0 {
+		if maxTitleLen > 3 {
+			title = title[:maxTitleLen-3] + "..."
+		} else {
+			title = title[:maxTitleLen]
+		}
+	}
+
+	statusStyle := GetStatusStyle(string(task.Status))
+	content := statusStyle.Render(statusIcon) + " " + title
+
+	if isSelected {
+		return SelectionCursorStyle.Render(">") + " " + content
+	}
+	return "  " + content
+}
+
+// sectionDisplayName returns the display name for a section.
+// The Active section (empty string) displays as "Active".
+func sectionDisplayName(section string) string {
+	if section == "" {
+		return "Active"
+	}
+	return section
 }
 
 // ShouldCaptureEsc implements ViewCapabilities. The Kanban view does not need
