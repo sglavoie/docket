@@ -497,12 +497,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowKanbanMsg:
 		if msg.Project != nil {
-			m.showView(ViewKanban, NewKanbanViewModel(msg.Project, m.config, m.configManager))
+			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
+			m.showView(ViewKanban, m.kanban)
 		}
 		return true, nil
 
 	case CloseKanbanMsg:
 		m.popView()
+		m.kanban = nil
 		m.reloadAndRefreshProjectTree()
 		return true, nil
 	}

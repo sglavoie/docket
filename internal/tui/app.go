@@ -100,6 +100,7 @@ type AppModel struct {
 	globalSearch         *GlobalSearchModel
 	inboxProcessor       *InboxProcessorModel
 	globalInboxProcessor *GlobalInboxProcessorModel
+	kanban               *KanbanViewModel
 
 	// Current project context
 	currentProject *models.Project

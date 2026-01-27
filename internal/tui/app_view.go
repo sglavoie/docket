@@ -134,6 +134,12 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Search"
 	case ViewWorkflowRules:
 		status = "Workflow Rules"
+	case ViewKanban:
+		if m.currentProject != nil {
+			status = fmt.Sprintf("Kanban: %s", m.currentProject.Name)
+		} else {
+			status = "Kanban"
+		}
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply
@@ -152,6 +158,14 @@ func (m *AppModel) renderStatusBar() string {
 	help := ""
 	if showHelp {
 		help = "Press : for commands, ? for help"
+		// Add Kanban-specific help when in Kanban view
+		if currentView == ViewKanban && m.kanban != nil {
+			if m.kanban.detailsPaneFocused {
+				help = "j/k: scroll | Enter: glow | Esc/q: back | " + help
+			} else {
+				help = "Tab: details | " + help
+			}
+		}
 	}
 
 	left := StatusBarStyle.Render(status)

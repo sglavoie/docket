@@ -74,6 +74,11 @@ type KanbanViewModel struct {
 
 	// Prefix key state for Vim-style two-key sequences (e.g., ",s" for status)
 	pendingPrefix string
+
+	// Split view state: top half is kanban, bottom half is task details
+	detailsPaneFocused bool // which pane has focus (false=kanban, true=details)
+	detailsScroll      int  // scroll offset for description in details pane
+	kanbanHeight       int  // computed height for kanban pane (excludes divider)
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -163,10 +168,9 @@ func (m *KanbanViewModel) TasksForSection(section string) []*models.Task {
 	return nil
 }
 
-// SetSize distributes the available width across five columns.
-// Each column gets an equal share of the available width minus gaps between columns.
-// If the calculated width falls below the minimum, columns use the minimum width
-// which may cause horizontal overflow on very narrow terminals.
+// SetSize distributes the available width across five columns and computes
+// the split view heights. The view is split 50/50 vertically: top half for
+// the kanban board, bottom half for task details.
 func (m *KanbanViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 
@@ -184,6 +188,13 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	}
 
 	m.ColumnWidth = columnWidth
+
+	// Compute split view heights: 50/50 split minus 1 for the divider line
+	// kanbanHeight = (height - 1) / 2, leaving rest for details pane
+	m.kanbanHeight = (height - 1) / 2
+	if m.kanbanHeight < 3 {
+		m.kanbanHeight = 3 // Minimum height for header + 1 task
+	}
 }
 
 // Init implements the tea.Model interface. The Kanban view does not require
@@ -339,6 +350,21 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePrefixKey(key)
 	}
 
+	// TAB toggles focus between kanban and details panes
+	if key == "tab" {
+		m.detailsPaneFocused = !m.detailsPaneFocused
+		if m.detailsPaneFocused {
+			m.detailsScroll = 0 // Reset scroll when focusing details
+		}
+		return m, nil
+	}
+
+	// When details pane is focused, handle its specific keys
+	if m.detailsPaneFocused {
+		return m.handleDetailsPaneKey(key)
+	}
+
+	// Kanban pane key handling
 	switch key {
 	case "?":
 		return m, func() tea.Msg {
@@ -349,7 +375,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "esc", "q", "ctrl+k":
+	case "esc", "ctrl+k":
+		return m, func() tea.Msg {
+			return CloseKanbanMsg{}
+		}
+
+	case "q":
 		return m, func() tea.Msg {
 			return CloseKanbanMsg{}
 		}
@@ -426,6 +457,66 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.handleEditTask()
 	}
 
+	return m, nil
+}
+
+// handleDetailsPaneKey handles keys when the details pane has focus.
+func (m *KanbanViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "esc":
+		// Return focus to kanban pane
+		m.detailsPaneFocused = false
+		return m, nil
+
+	case "q":
+		// Close the kanban view entirely
+		return m, func() tea.Msg {
+			return CloseKanbanMsg{}
+		}
+
+	case "enter":
+		// Open task detail view via glow
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return GlowViewMsg{Task: task}
+			}
+		}
+		return m, nil
+
+	case "j", "down":
+		// Scroll description down
+		task := m.getSelectedTask()
+		if task != nil && task.Description != "" {
+			descLines := strings.Split(task.Description, "\n")
+			maxScroll := len(descLines) - 3 // Keep at least 3 lines visible
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+			if m.detailsScroll < maxScroll {
+				m.detailsScroll++
+			}
+		}
+		return m, nil
+
+	case "k", "up":
+		// Scroll description up
+		if m.detailsScroll > 0 {
+			m.detailsScroll--
+		}
+		return m, nil
+
+	case "?":
+		return m, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewKanban,
+				ViewName:   "Kanban",
+				Items:      m.GetHelpItems(),
+			}
+		}
+	}
+
+	// Other keys are no-op when details pane is focused
 	return m, nil
 }
 
@@ -508,8 +599,10 @@ func (m *KanbanViewModel) moveColumnRight() {
 	m.ActiveColumn = m.findNextNonEmptyColumn(+1)
 }
 
-// View implements the tea.Model interface. Renders five columns with
-// section-colored headers: Active, Next, Inbox, Waiting, Someday.
+// View implements the tea.Model interface. Renders a split view with:
+// - Top half: kanban columns with section-colored headers
+// - Horizontal divider
+// - Bottom half: task details panel for the selected task
 func (m *KanbanViewModel) View() string {
 	if m.Project == nil {
 		return MutedStyle.Render("No project loaded")
@@ -532,10 +625,29 @@ func (m *KanbanViewModel) View() string {
 		}
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
+	kanbanPane := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
+
+	// Render the horizontal divider
+	dividerStyle := MutedStyle
+	if m.detailsPaneFocused {
+		dividerStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+	}
+	divider := dividerStyle.Render(strings.Repeat("─", m.Width()))
+
+	// Render the details panel for the selected task
+	detailsHeight := m.Height() - m.kanbanHeight - 1 // -1 for divider
+	if detailsHeight < 3 {
+		detailsHeight = 3
+	}
+	selectedTask := m.getSelectedTask()
+	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
+
+	// Join vertically: kanban + divider + details
+	return lipgloss.JoinVertical(lipgloss.Left, kanbanPane, divider, detailsPane)
 }
 
 // renderColumn renders a single Kanban column with header and task list.
+// Applies viewport scrolling when tasks exceed the available height.
 func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 	var b strings.Builder
 
@@ -548,22 +660,68 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 	tasks := m.Tasks[section]
 	cs := m.Columns[section]
 
+	// Calculate viewport height for tasks (kanbanHeight minus header line)
+	viewportHeight := m.kanbanHeight - 1
+	if viewportHeight < 1 {
+		viewportHeight = 1
+	}
+
+	// Validate scroll to ensure cursor remains visible
+	cs.ValidateScroll(len(tasks), viewportHeight)
+
 	if len(tasks) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)"))
 	} else {
-		for i, task := range tasks {
-			isSelected := i == cs.Cursor && isActive
+		// Calculate visible range based on scroll offset
+		startIdx := cs.ScrollOffset
+		endIdx := startIdx + viewportHeight
+		if endIdx > len(tasks) {
+			endIdx = len(tasks)
+		}
+
+		// Show "↑ N more" indicator if tasks are hidden above
+		if startIdx > 0 {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more", startIdx)))
+			b.WriteString("\n")
+			// Adjust visible range since we used a line for the indicator
+			viewportHeight--
+			endIdx = startIdx + viewportHeight
+			if endIdx > len(tasks) {
+				endIdx = len(tasks)
+			}
+		}
+
+		// Render visible tasks
+		for i := startIdx; i < endIdx; i++ {
+			task := tasks[i]
+			isSelected := i == cs.Cursor && isActive && !m.detailsPaneFocused
 			line := m.renderTaskRow(task, isSelected)
 			b.WriteString(line)
-			if i < len(tasks)-1 {
+			if i < endIdx-1 {
 				b.WriteString("\n")
 			}
 		}
+
+		// Show "↓ N more" indicator if tasks are hidden below
+		if endIdx < len(tasks) {
+			b.WriteString("\n")
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(tasks)-endIdx)))
+		}
+	}
+
+	// Pad column to exact height for consistent layout
+	content := b.String()
+	lines := strings.Split(content, "\n")
+	for len(lines) < m.kanbanHeight {
+		lines = append(lines, "")
+	}
+	if len(lines) > m.kanbanHeight {
+		lines = lines[:m.kanbanHeight]
 	}
 
 	// Apply column width styling
 	columnStyle := lipgloss.NewStyle().Width(m.ColumnWidth)
-	return columnStyle.Render(b.String())
+	return columnStyle.Render(strings.Join(lines, "\n"))
 }
 
 // renderColumnHeader renders the column header with appropriate section color.
@@ -629,13 +787,169 @@ func sectionDisplayName(section string) string {
 	return section
 }
 
+// renderDetailsPanel renders the task details panel for the bottom half of the split view.
+// Displays task info in cards: Task | Info+Due stacked | Description (double width)
+func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height int) string {
+	if task == nil {
+		// Center "No task selected" message
+		emptyMsg := MutedStyle.Render("No task selected")
+		lines := make([]string, height)
+		midLine := height / 2
+		for i := range lines {
+			if i == midLine {
+				// Center horizontally
+				padding := (width - lipgloss.Width(emptyMsg)) / 2
+				if padding < 0 {
+					padding = 0
+				}
+				lines[i] = strings.Repeat(" ", padding) + emptyMsg
+			} else {
+				lines[i] = ""
+			}
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	// Get section color for accent
+	sectionColor := m.Project.GetSectionColor(task.Section)
+
+	// Calculate column widths: 3 columns, but Description takes 2 columns worth
+	col1Width := width / 4                     // Task card
+	col2Width := width / 4                     // Info + Due stacked
+	col3Width := width - col1Width - col2Width // Description (remaining ~half)
+
+	// Column 1: Task card
+	taskCard := m.renderDetailsTaskCard(task, col1Width, sectionColor)
+
+	// Column 2: Info + Due stacked vertically
+	infoCard := m.renderDetailsInfoCard(task, col2Width, sectionColor)
+	var col2Content string
+	if task.DueDate != nil {
+		dueCard := m.renderDetailsDueCard(task, col2Width)
+		col2Content = lipgloss.JoinVertical(lipgloss.Left, infoCard, dueCard)
+	} else {
+		col2Content = infoCard
+	}
+
+	// Column 3: Description (double width)
+	var descCard string
+	if task.Description != "" {
+		descCard = m.renderDetailsDescriptionCard(task, col3Width, height)
+	} else {
+		descCard = renderSidebarCard("Description", MutedStyle.Render("(none)"), col3Width, false, "")
+	}
+
+	// Join columns horizontally
+	content := lipgloss.JoinHorizontal(lipgloss.Top, taskCard, col2Content, descCard)
+
+	// Pad to exact height (minus 1 for help hint line which is part of app status bar)
+	return m.padDetailsToHeight(content, width, height)
+}
+
+// renderDetailsTaskCard renders the main task info card for the details panel.
+func (m *KanbanViewModel) renderDetailsTaskCard(task *models.Task, width int, sectionColor string) string {
+	typeStyle := GetTypeStyle(string(task.Type))
+	statusStyle := GetStatusStyle(string(task.Status))
+
+	if m.Project.HasIncompleteDependencies(task) {
+		statusStyle = BlockedByDepsStyle
+	}
+
+	title := SidebarHeaderStyle.Render(task.Title)
+	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
+	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
+	priorityBadge := formatPriorityBadge(task.Priority)
+	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
+
+	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+	return renderSidebarCard("Task", content, width, m.detailsPaneFocused, sectionColor)
+}
+
+// renderDetailsInfoCard renders tags and section info for the details panel.
+func (m *KanbanViewModel) renderDetailsInfoCard(task *models.Task, width int, sectionColor string) string {
+	var lines []string
+
+	// Tags line
+	if len(task.Tags) > 0 {
+		var tagParts []string
+		for _, tag := range task.Tags {
+			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
+		}
+		lines = append(lines, strings.Join(tagParts, " "))
+	}
+
+	// Section line
+	sectionName := task.Section
+	if sectionName == "" {
+		sectionName = "Active"
+	}
+	sectionStyle := GetSectionColorStyle(sectionColor)
+	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
+	lines = append(lines, sectionLine)
+
+	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
+}
+
+// renderDetailsDueCard renders the due date card for the details panel.
+func (m *KanbanViewModel) renderDetailsDueCard(task *models.Task, width int) string {
+	dueAbsolute := task.DueDate.Format("2006-01-02")
+	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
+	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
+
+	if isOverdue(task) && !task.Status.IsComplete() {
+		dueLine = OverdueStyle.Render(dueLine)
+	} else if isDueToday(task) {
+		dueLine = DueTodayStyle.Render(dueLine)
+	} else {
+		dueLine = DueDateStyle.Render(dueLine)
+	}
+
+	return renderSidebarCard("Due", dueLine, width, false, "")
+}
+
+// renderDetailsDescriptionCard renders the scrollable description card.
+func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width, availableHeight int) string {
+	lines := strings.Split(task.Description, "\n")
+
+	// Apply scroll offset
+	if m.detailsScroll < len(lines) {
+		lines = lines[m.detailsScroll:]
+	} else {
+		lines = []string{}
+	}
+
+	// Limit visible lines
+	maxLines := 5
+	if len(lines) > maxLines {
+		lines = lines[:maxLines]
+		lines = append(lines, MutedStyle.Render("..."))
+	}
+
+	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false, "")
+}
+
+// padDetailsToHeight ensures the details panel fills the exact height.
+func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) string {
+	lines := strings.Split(content, "\n")
+
+	// Truncate if too tall
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+
+	// Pad if too short
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
-// navigation. Currently tracks pending status prefix mode.
-// NOTE: If future internal modes are added (e.g., expanded task view, inline
-// editing), update this method to include those states.
+// navigation. Currently tracks pending status prefix mode and details pane focus.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != ""
+	return m.pendingPrefix != "" || m.detailsPaneFocused
 }
 
 // HasTextInput implements ViewCapabilities. The Kanban view has no text input fields.

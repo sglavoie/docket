@@ -703,6 +703,12 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "↑/↓", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
 		Keybinding{Key: "g/G", Description: "Jump to first/last task in column", Category: "Navigation", Views: views},
 
+		// Split View
+		Keybinding{Key: "Tab", Description: "Toggle focus between kanban/details", Category: "Navigation", Views: views},
+		Keybinding{Key: "j/k (details)", Description: "Scroll description", Category: "Details Pane", Views: views},
+		Keybinding{Key: "Enter (details)", Description: "View task details (glow)", Category: "Details Pane", Views: views},
+		Keybinding{Key: "Esc (details)", Description: "Return to kanban", Category: "Details Pane", Views: views},
+
 		// Task Movement Between Columns
 		Keybinding{Key: "H", Description: "Move task to left column", Category: "Task Movement", Views: views},
 		Keybinding{Key: "L", Description: "Move task to right column", Category: "Task Movement", Views: views},
