@@ -342,6 +342,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "H":
 		// Move selected task to the left column
 		return m, m.moveTaskLeft()
+
+	case "L":
+		// Move selected task to the right column
+		return m, m.moveTaskRight()
 	}
 
 	return m, nil

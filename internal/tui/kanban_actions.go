@@ -93,6 +93,46 @@ func (m *KanbanViewModel) saveWithWorkflowRules(prevStates map[string]*models.Ta
 	}
 }
 
+// moveTaskRight moves the currently selected task to the column on the right.
+// Returns a command that persists the change with workflow rule evaluation.
+// If the task is already in the rightmost column, the operation is ignored.
+func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
+	// Get current column and check if we're at rightmost
+	if m.ActiveColumn >= len(KanbanColumnOrder)-1 {
+		// Already at rightmost column, ignore
+		return nil
+	}
+
+	// Get the selected task in the current column
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	tasks := m.Tasks[currentSection]
+	cs := m.Columns[currentSection]
+
+	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
+		// No task selected or cursor out of bounds
+		return nil
+	}
+
+	task := tasks[cs.Cursor]
+	if task == nil {
+		return nil
+	}
+
+	// Determine target column (one to the right)
+	targetColumnIndex := m.ActiveColumn + 1
+	targetSection := KanbanColumnOrder[targetColumnIndex]
+
+	// Capture previous task states for workflow rule evaluation
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Update the task's section
+	task.Section = targetSection
+	task.UpdatedAt = time.Now()
+
+	// Persist with workflow rule evaluation
+	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
+}
+
 // KanbanTaskMovedMsg signals that a task was moved to a different column.
 type KanbanTaskMovedMsg struct {
 	Task              *models.Task
