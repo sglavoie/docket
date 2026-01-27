@@ -339,11 +339,11 @@ func (m *KanbanViewModel) moveCursorDown() {
 	}
 }
 
-// moveColumnLeft moves focus to the column on the left.
+// moveColumnLeft moves focus to the previous non-empty column on the left.
+// Empty columns are skipped. If no non-empty column exists to the left,
+// focus remains on the current column.
 func (m *KanbanViewModel) moveColumnLeft() {
-	if m.ActiveColumn > 0 {
-		m.ActiveColumn--
-	}
+	m.ActiveColumn = m.findNextNonEmptyColumn(-1)
 }
 
 // moveColumnRight moves focus to the column on the right.
