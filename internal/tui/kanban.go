@@ -71,6 +71,9 @@ type KanbanViewModel struct {
 
 	// statusMessage holds a transient message to display to the user
 	statusMessage string
+
+	// Prefix key state for Vim-style two-key sequences (e.g., ",s" for status)
+	pendingPrefix string
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -307,6 +310,11 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle pending prefix keys first (two-key sequences like ",s")
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key)
+	}
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -364,6 +372,30 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "K":
 		// Swap selected task with task above
 		return m, m.swapTaskUp()
+
+	// Prefix key activation for Vim-style two-key sequences
+	case ",":
+		m.pendingPrefix = ","
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+// It clears the pending prefix and processes the combined command.
+func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations - placeholder for subsequent task implementation
+		_ = key // Will be implemented in status command handler task
 	}
 
 	return m, nil
@@ -540,10 +572,11 @@ func sectionDisplayName(section string) string {
 	return section
 }
 
-// ShouldCaptureEsc implements ViewCapabilities. The Kanban view does not need
-// to capture esc/q as it has no modal states or text inputs.
+// ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
+// internal mode that should capture Esc instead of allowing app-level
+// navigation. Currently tracks pending status prefix mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return false
+	return m.pendingPrefix != ""
 }
 
 // HasTextInput implements ViewCapabilities. The Kanban view has no text input fields.
