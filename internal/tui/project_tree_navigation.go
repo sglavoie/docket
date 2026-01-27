@@ -184,6 +184,12 @@ func (m *ProjectTreeModel) handleSidebarKeys(key string, selectedTask *models.Ta
 			}
 		}
 		return true, nil
+
+	case "x":
+		if selectedTask != nil && m.hasLinkedTasks(selectedTask) {
+			return true, m.unlinkSelectedSidebarTask(selectedTask)
+		}
+		return true, nil
 	}
 
 	return false, nil
@@ -415,5 +421,98 @@ func (m *ProjectTreeModel) JumpToTask(task *models.Task) {
 			m.cursor = i
 			return
 		}
+	}
+}
+
+// unlinkSelectedSidebarTask removes the currently selected link from the sidebar.
+// Section 0: Blocked by (source task's DependsOn) - remove from current task
+// Section 1: Blocking (other task's DependsOn) - remove from the OTHER task
+// Section 2: Related (bidirectional) - remove from both tasks
+func (m *ProjectTreeModel) unlinkSelectedSidebarTask(sourceTask *models.Task) tea.Cmd {
+	section := m.sidebar.GetDependencySection()
+	cursor := m.sidebar.GetDependencyCursor()
+
+	return func() tea.Msg {
+		switch section {
+		case 0: // Blocked by - remove from sourceTask.DependsOn
+			if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
+				return nil
+			}
+			ref := sourceTask.DependsOn[cursor]
+			sourceTask.RemoveDependency(ref)
+
+			// Backup and save
+			if err := m.projectService.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := m.projectService.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+
+		case 1: // Blocking - remove from the other task's DependsOn
+			blockedTasks := m.project.GetBlockedByTasks(sourceTask)
+			if cursor < 0 || cursor >= len(blockedTasks) {
+				return nil
+			}
+			blockedTask := blockedTasks[cursor]
+			blockedTask.RemoveDependency(sourceTask.ID)
+
+			// Backup and save
+			if err := m.projectService.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := m.projectService.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+
+		case 2: // Related - bidirectional, remove from both
+			if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
+				return nil
+			}
+			ref := sourceTask.RelatedTo[cursor]
+			taskRef := models.ParseTaskRef(ref)
+
+			// Remove from source task
+			sourceTask.RemoveRelatedTo(ref)
+
+			// Remove the reverse link from target task
+			if taskRef.IsCrossProject() {
+				// Cross-project: load target project, modify, save both
+				if m.config != nil {
+					targetProject := m.config.GetProject(taskRef.ProjectID)
+					if targetProject != nil {
+						if len(targetProject.Tasks) == 0 {
+							_ = storage.LoadProject(targetProject)
+						}
+						if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
+							// Build reverse ref: sourceProject:sourceTaskID
+							reverseRef := m.project.ID + ":" + sourceTask.ID
+							targetTask.RemoveRelatedTo(reverseRef)
+
+							// Backup and save target project
+							_ = storage.BackupProject(targetProject)
+							_ = storage.SaveProject(targetProject)
+						}
+					}
+				}
+			} else {
+				// Same project: find and update target task
+				if targetTask := m.project.GetTaskByID(taskRef.TaskID); targetTask != nil {
+					targetTask.RemoveRelatedTo(sourceTask.ID)
+				}
+			}
+
+			// Backup and save source project
+			if err := m.projectService.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := m.projectService.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+		}
+
+		// Reload project and return message
+		_ = m.projectService.Load(m.project)
+		return LinkRemovedMsg{SourceTask: sourceTask, Section: section}
 	}
 }

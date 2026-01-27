@@ -183,5 +183,6 @@ var (
 		{Key: "f", Description: "follow-up"},
 		{Key: "p", Description: "cross-project"},
 		{Key: "n", Description: "navigate"},
+		{Key: "x", Description: "unlink"},
 	}
 )

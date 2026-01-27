@@ -254,6 +254,8 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "x (sidebar)", Description: "Remove link", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 
 		// Project Views

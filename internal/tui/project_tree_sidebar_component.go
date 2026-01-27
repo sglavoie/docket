@@ -210,6 +210,13 @@ func (s *SidebarComponent) HandleKeys(m *ProjectTreeModel, msg tea.KeyMsg) (bool
 		}
 		return true, nil
 
+	case "x":
+		// Remove selected linked task
+		if m.hasLinkedTasks(task) {
+			return true, m.unlinkSelectedSidebarTask(task)
+		}
+		return true, nil
+
 	case "esc", "q":
 		// Unfocus sidebar
 		s.focused = false

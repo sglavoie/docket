@@ -86,7 +86,7 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	// Help hint at bottom if sidebar focused
 	helpHint := ""
 	if m.sidebar.IsFocused() && m.hasLinkedTasks(task) {
-		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump")
+		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump | x: unlink")
 	} else if m.sidebar.IsFocused() {
 		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
 	}

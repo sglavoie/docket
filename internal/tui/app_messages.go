@@ -536,8 +536,9 @@ type LinkedTaskCreatedMsg struct {
 
 // ShowLinkedTaskSelectorMsg opens the linked task selector for a task.
 type ShowLinkedTaskSelectorMsg struct {
-	Task    *models.Task
-	Project *models.Project
+	Task      *models.Task
+	Project   *models.Project
+	ForUnlink bool // If true, always show selector (don't jump on single task)
 }
 
 // CloseLinkedTaskSelectorMsg closes the linked task selector.
@@ -570,4 +571,10 @@ type CrossProjectLinkCreatedMsg struct {
 	TargetTask    *models.Task
 	TargetProject *models.Project
 	LinkType      LinkType
+}
+
+// LinkRemovedMsg signals a task link was removed from the sidebar.
+type LinkRemovedMsg struct {
+	SourceTask *models.Task
+	Section    int // 0=blocked by, 1=blocking, 2=related
 }

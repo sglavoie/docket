@@ -437,6 +437,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			}
 		}
 
+		// Unlink linked task (opens selector where user can press x to unlink)
+		if key == "x" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
+			}
+		}
+
 		// Cross-project linking
 		if key == "p" {
 			return m, func() tea.Msg {

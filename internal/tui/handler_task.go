@@ -291,11 +291,13 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.statusMessage = "No linked tasks"
 				return true, statusTimeout(2 * time.Second)
 			}
-			// If single linked task with same project, jump directly
-			if singleTask := selector.GetSingleLinkedTask(); singleTask != nil {
-				return m.handleLinkedTaskNavigation(singleTask, msg.Project)
+			// If single linked task with same project, jump directly (unless unlinking)
+			if !msg.ForUnlink {
+				if singleTask := selector.GetSingleLinkedTask(); singleTask != nil {
+					return m.handleLinkedTaskNavigation(singleTask, msg.Project)
+				}
 			}
-			// Multiple linked tasks or cross-project: show selector
+			// Multiple linked tasks, cross-project, or unlinking: show selector
 			m.showView(ViewLinkedTaskSelector, selector)
 		}
 		return true, nil
@@ -338,6 +340,63 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.statusMessage = fmt.Sprintf("Linked #%d → %s #%d (%s)", msg.SourceTask.ShortID, msg.TargetProject.Name, msg.TargetTask.ShortID, linkName)
 		return true, statusTimeout(3 * time.Second)
+
+	case LinkRemovedMsg:
+		// Save task ID before refresh (project reload creates new task objects)
+		sourceTaskID := msg.SourceTask.ID
+		m.refreshProjectTree()
+		// Adjust cursors after link removal
+		if m.projectTree != nil && m.currentProject != nil {
+			// Find the task again after refresh (refresh reloads project)
+			task := m.currentProject.GetTaskByID(sourceTaskID)
+			if task != nil {
+				// Restore main tree cursor to the source task
+				m.projectTree.JumpToTask(task)
+
+				sections := m.projectTree.getAvailableSections(task)
+				sidebar := m.projectTree.sidebar
+
+				if len(sections) == 0 {
+					// No links remaining, unfocus sidebar
+					sidebar.SetFocused(false)
+				} else {
+					// Check if current section still has items
+					currentSection := sidebar.GetDependencySection()
+					sectionHasItems := false
+					for _, s := range sections {
+						if s == currentSection {
+							sectionHasItems = true
+							break
+						}
+					}
+					if !sectionHasItems {
+						// Switch to first available section
+						sidebar.SetDependencySection(sections[0])
+					}
+					// Clamp cursor to valid range
+					count := m.projectTree.getCurrentSidebarLinkedItemCount(task)
+					if sidebar.GetDependencyCursor() >= count {
+						if count > 0 {
+							sidebar.SetDependencyCursor(count - 1)
+						} else {
+							sidebar.SetDependencyCursor(0)
+						}
+					}
+				}
+			}
+		}
+		// Determine section name for status message
+		var sectionName string
+		switch msg.Section {
+		case 0:
+			sectionName = "blocker"
+		case 1:
+			sectionName = "dependent"
+		case 2:
+			sectionName = "related"
+		}
+		m.statusMessage = fmt.Sprintf("Removed %s link", sectionName)
+		return true, statusTimeout(2 * time.Second)
 	}
 	return false, nil
 }
