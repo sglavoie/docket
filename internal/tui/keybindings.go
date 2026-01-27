@@ -722,5 +722,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
+		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
 	)
 }
