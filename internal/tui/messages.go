@@ -88,3 +88,9 @@ package tui
 //   2. Place near the view that generates/consumes it
 //   3. Include doc comments explaining purpose
 //   4. For Show/Close pairs, keep them together
+//
+
+// GlowViewDoneMsg signals that glow pager has exited and views should refresh.
+// This is needed because tea.ExecProcess suspends the TUI, and views may need
+// to re-render their layout after returning from an external process.
+type GlowViewDoneMsg struct{}

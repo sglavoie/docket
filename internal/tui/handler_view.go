@@ -201,6 +201,13 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlowViewMsg:
 		return m.handleGlowView(msg)
 
+	case GlowViewDoneMsg:
+		// Force re-layout of kanban view after returning from glow pager
+		if m.kanban != nil {
+			m.kanban.SetSize(m.width, m.height-2)
+		}
+		return true, nil
+
 	case ShowScratchpadMsg:
 		return m.handleShowScratchpad(msg)
 
@@ -572,7 +579,7 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
 		}
-		return nil
+		return GlowViewDoneMsg{}
 	})
 }
 
@@ -615,7 +622,7 @@ func (m *AppModel) handleShowScratchpad(msg ShowScratchpadMsg) (bool, tea.Cmd) {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
 		}
-		return nil
+		return GlowViewDoneMsg{}
 	})
 }
 
