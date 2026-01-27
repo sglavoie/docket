@@ -21,10 +21,10 @@ func TestTaskNextDueDateNilCases(t *testing.T) {
 			true,
 		},
 		{
-			"no due date",
+			"no due date but has recurrence",
 			&RecurrencePattern{Interval: 1, Unit: RecurrenceDaily},
 			nil,
-			true,
+			false, // Now calculates from today
 		},
 		{
 			"both nil",
@@ -229,7 +229,7 @@ func TestGenerateRecurringInstances(t *testing.T) {
 }
 
 func TestGenerateRecurringInstancesNoDueDate(t *testing.T) {
-	// Recurring task without due date should not generate new instance
+	// Recurring task without due date should generate with due date based on today
 	task := &Task{
 		ID:         "task-1",
 		ShortID:    1,
@@ -247,8 +247,6 @@ func TestGenerateRecurringInstancesNoDueDate(t *testing.T) {
 
 	count := project.GenerateRecurringInstances()
 
-	// Should still generate (NextDueDate returns nil, but instance is created)
-	// Looking at the implementation, it will create instance with nil DueDate
 	if count != 1 {
 		t.Errorf("GenerateRecurringInstances() = %d, want 1", count)
 	}
@@ -257,8 +255,18 @@ func TestGenerateRecurringInstancesNoDueDate(t *testing.T) {
 	}
 
 	newTask := project.Tasks[0]
+	// When original has no due date, new instance should get due date based on today
+	if newTask.DueDate == nil {
+		t.Error("new task DueDate should not be nil - should be calculated from today")
+	}
+	// Verify it's tomorrow (daily recurrence from today)
+	tomorrow := time.Now().AddDate(0, 0, 1)
 	if newTask.DueDate != nil {
-		t.Errorf("new task DueDate should be nil when original had no due date")
+		gotDay := newTask.DueDate.Truncate(24 * time.Hour)
+		wantDay := tomorrow.Truncate(24 * time.Hour)
+		if !gotDay.Equal(wantDay) {
+			t.Errorf("new task DueDate = %v, want tomorrow (%v)", gotDay, wantDay)
+		}
 	}
 	if newTask.Recurrence == nil {
 		t.Error("new task should still have recurrence pattern")

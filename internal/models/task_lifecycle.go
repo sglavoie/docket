@@ -154,13 +154,18 @@ func (t *Task) ClearRecurrence() {
 
 // NextDueDate calculates the next due date based on the recurrence pattern.
 // Uses fixed interval scheduling: next date is calculated from the current due date.
-// If the task has no due date, returns nil.
+// If the task has no due date, calculates from today.
 // If the task is not recurring, returns nil.
 func (t *Task) NextDueDate() *time.Time {
-	if t.Recurrence == nil || t.DueDate == nil {
+	if t.Recurrence == nil {
 		return nil
 	}
 
-	next := calculateNextDate(*t.DueDate, t.Recurrence)
+	baseDate := time.Now()
+	if t.DueDate != nil {
+		baseDate = *t.DueDate
+	}
+
+	next := calculateNextDate(baseDate, t.Recurrence)
 	return &next
 }
