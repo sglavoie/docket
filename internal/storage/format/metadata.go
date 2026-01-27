@@ -47,7 +47,7 @@ type ParseWarning struct {
 // metadataKeys lists all known metadata keys for smart splitting.
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
-	"completed", "due", "depends", "section", "pinned", "active", "recur",
+	"completed", "due", "depends", "related", "section", "pinned", "active", "recur",
 	"attachments",
 }
 
@@ -124,6 +124,14 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				dep = strings.TrimSpace(dep)
 				if dep != "" {
 					task.DependsOn = append(task.DependsOn, dep)
+				}
+			}
+		case "related":
+			related := strings.Split(value, ";")
+			for _, rel := range related {
+				rel = strings.TrimSpace(rel)
+				if rel != "" {
+					task.RelatedTo = append(task.RelatedTo, rel)
 				}
 			}
 		case "section":
@@ -274,6 +282,10 @@ func WriteMetadata(task *models.Task) string {
 
 	if len(task.DependsOn) > 0 {
 		parts = append(parts, fmt.Sprintf("depends: %s", strings.Join(task.DependsOn, ";")))
+	}
+
+	if len(task.RelatedTo) > 0 {
+		parts = append(parts, fmt.Sprintf("related: %s", strings.Join(task.RelatedTo, ";")))
 	}
 
 	if task.Pinned {

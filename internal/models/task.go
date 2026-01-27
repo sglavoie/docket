@@ -29,6 +29,7 @@ type Task struct {
 	CompletedAt *time.Time         `json:"completed_at,omitempty"`
 	DueDate     *time.Time         `json:"due_date,omitempty"`
 	DependsOn   []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
+	RelatedTo   []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
 	Pinned      bool               `json:"pinned,omitempty"`     // Whether the task is pinned
 	PinnedAt    *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
 	Active      bool               `json:"active,omitempty"`     // Whether the task is flagged as active
@@ -56,6 +57,7 @@ func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
 		Tags:      []string{},
 		Section:   "", // Empty section = Active view (default for new tasks)
 		DependsOn: []string{},
+		RelatedTo: []string{},
 		CreatedAt: now,
 		UpdatedAt: now,
 		Children:  []*Task{},

@@ -80,13 +80,17 @@ func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) 
 			m.sidebar.SetFocused(true)
 			m.sidebar.SetScroll(0)
 			m.sidebar.SetDependencyCursor(0)
-			// Start in first non-empty dependency section
-			m.sidebar.SetDependencySection(0)
+			// Start in first non-empty linked section
 			if CursorInBounds(m.cursor, len(visible)) {
 				task := visible[m.cursor].Task
-				if len(task.DependsOn) == 0 && len(m.project.GetBlockedByTasks(task)) > 0 {
-					m.sidebar.SetDependencySection(1) // Start in "Blocking" section
+				sections := m.getAvailableSections(task)
+				if len(sections) > 0 {
+					m.sidebar.SetDependencySection(sections[0])
+				} else {
+					m.sidebar.SetDependencySection(0)
 				}
+			} else {
+				m.sidebar.SetDependencySection(0)
 			}
 		} else {
 			// State 3 -> State 1: Hide sidebar
@@ -133,7 +137,7 @@ func (m *ProjectTreeModel) handleSidebarKeys(key string, selectedTask *models.Ta
 		return true, nil
 
 	case "j", "down":
-		if selectedTask != nil && m.hasDependencies(selectedTask) {
+		if selectedTask != nil && m.hasLinkedTasks(selectedTask) {
 			m.moveSidebarDependencyCursorDown(selectedTask)
 		} else if selectedTask != nil && selectedTask.Description != "" {
 			// Only scroll if there's a description to scroll
@@ -145,7 +149,7 @@ func (m *ProjectTreeModel) handleSidebarKeys(key string, selectedTask *models.Ta
 		return true, nil
 
 	case "k", "up":
-		if selectedTask != nil && m.hasDependencies(selectedTask) {
+		if selectedTask != nil && m.hasLinkedTasks(selectedTask) {
 			m.moveSidebarDependencyCursorUp()
 		} else {
 			if m.sidebar.GetScroll() > 0 {
@@ -155,17 +159,17 @@ func (m *ProjectTreeModel) handleSidebarKeys(key string, selectedTask *models.Ta
 		return true, nil
 
 	case "h", "left", "l", "right":
-		if selectedTask != nil && m.hasDependencies(selectedTask) {
+		if selectedTask != nil && m.hasLinkedTasks(selectedTask) {
 			m.switchSidebarDependencySection(selectedTask)
 		}
 		return true, nil
 
 	case "enter":
 		if selectedTask != nil {
-			depTask := m.getSelectedSidebarDependency(selectedTask)
-			if depTask != nil {
+			linkedTask := m.getSelectedSidebarLinkedTask(selectedTask)
+			if linkedTask != nil {
 				m.sidebar.SetFocused(false)
-				m.NavigateToTask(depTask)
+				m.NavigateToTask(linkedTask)
 			}
 		}
 		return true, nil
@@ -179,9 +183,41 @@ func (m *ProjectTreeModel) hasDependencies(task *models.Task) bool {
 	return len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0
 }
 
+// hasLinkedTasks returns true if the task has any linked tasks (dependencies or related).
+func (m *ProjectTreeModel) hasLinkedTasks(task *models.Task) bool {
+	return len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0 || len(task.RelatedTo) > 0
+}
+
+// getRelatedTasks returns the tasks that are related to the given task.
+func (m *ProjectTreeModel) getRelatedTasks(task *models.Task) []*models.Task {
+	var related []*models.Task
+	for _, relID := range task.RelatedTo {
+		if t := m.project.GetTaskByID(relID); t != nil {
+			related = append(related, t)
+		}
+	}
+	return related
+}
+
+// getAvailableSections returns the non-empty section indices for a task.
+// Section 0 = Blocked by, 1 = Blocking, 2 = Related
+func (m *ProjectTreeModel) getAvailableSections(task *models.Task) []int {
+	var sections []int
+	if len(task.DependsOn) > 0 {
+		sections = append(sections, 0)
+	}
+	if len(m.project.GetBlockedByTasks(task)) > 0 {
+		sections = append(sections, 1)
+	}
+	if len(task.RelatedTo) > 0 {
+		sections = append(sections, 2)
+	}
+	return sections
+}
+
 // moveSidebarDependencyCursorDown moves the dependency cursor down.
 func (m *ProjectTreeModel) moveSidebarDependencyCursorDown(task *models.Task) {
-	items := m.getCurrentSidebarDependencyItems(task)
+	items := m.getCurrentSidebarLinkedItems(task)
 	if m.sidebar.GetDependencyCursor() < len(items)-1 {
 		m.sidebar.SetDependencyCursor(m.sidebar.GetDependencyCursor() + 1)
 	}
@@ -194,37 +230,59 @@ func (m *ProjectTreeModel) moveSidebarDependencyCursorUp() {
 	}
 }
 
-// switchSidebarDependencySection switches between "Blocked by" and "Blocking" sections.
+// switchSidebarDependencySection cycles through sections (0=Blocked by, 1=Blocking, 2=Related).
 func (m *ProjectTreeModel) switchSidebarDependencySection(task *models.Task) {
-	if m.sidebar.GetDependencySection() == 0 {
-		m.sidebar.SetDependencySection(1)
-	} else {
-		m.sidebar.SetDependencySection(0)
+	sections := m.getAvailableSections(task)
+	if len(sections) <= 1 {
+		return
 	}
-	// Reset cursor to valid position
-	items := m.getCurrentSidebarDependencyItems(task)
-	if m.sidebar.GetDependencyCursor() >= len(items) {
-		if len(items) > 0 {
-			m.sidebar.SetDependencyCursor(len(items) - 1)
-		} else {
-			m.sidebar.SetDependencyCursor(0)
+
+	// Find current section index and move to next
+	currentIdx := 0
+	for i, sec := range sections {
+		if sec == m.sidebar.GetDependencySection() {
+			currentIdx = i
+			break
 		}
 	}
+	nextIdx := (currentIdx + 1) % len(sections)
+	m.sidebar.SetDependencySection(sections[nextIdx])
+	m.sidebar.SetDependencyCursor(0)
 }
 
-// getCurrentSidebarDependencyItems returns the tasks in the current dependency section.
-func (m *ProjectTreeModel) getCurrentSidebarDependencyItems(task *models.Task) []*models.Task {
-	if m.sidebar.GetDependencySection() == 0 {
+// getCurrentSidebarLinkedItems returns the tasks in the current linked section.
+func (m *ProjectTreeModel) getCurrentSidebarLinkedItems(task *models.Task) []*models.Task {
+	switch m.sidebar.GetDependencySection() {
+	case 0:
 		return m.project.GetBlockingTasks(task)
+	case 1:
+		return m.project.GetBlockedByTasks(task)
+	case 2:
+		return m.getRelatedTasks(task)
 	}
-	return m.project.GetBlockedByTasks(task)
+	return nil
 }
 
-// getSelectedSidebarDependency returns the currently selected dependency task.
-func (m *ProjectTreeModel) getSelectedSidebarDependency(task *models.Task) *models.Task {
-	items := m.getCurrentSidebarDependencyItems(task)
+// getSelectedSidebarLinkedTask returns the currently selected linked task.
+func (m *ProjectTreeModel) getSelectedSidebarLinkedTask(task *models.Task) *models.Task {
+	items := m.getCurrentSidebarLinkedItems(task)
 	if m.sidebar.GetDependencyCursor() >= 0 && m.sidebar.GetDependencyCursor() < len(items) {
 		return items[m.sidebar.GetDependencyCursor()]
 	}
 	return nil
+}
+
+// JumpToTask moves the cursor to the specified task in the visible list.
+func (m *ProjectTreeModel) JumpToTask(task *models.Task) {
+	if task == nil {
+		return
+	}
+	m.buildTree()
+	visible := m.visibleNodes()
+	for i, node := range visible {
+		if node.Task.ID == task.ID {
+			m.cursor = i
+			return
+		}
+	}
 }

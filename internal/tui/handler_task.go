@@ -251,8 +251,85 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.statusMessage = statusMsg
 		return true, statusTimeout(3 * time.Second)
+
+	case CreateLinkedTaskMsg:
+		if msg.SourceTask != nil && msg.Project != nil {
+			m.showView(ViewLinkedTaskCreator, NewLinkedTaskCreatorModel(msg.SourceTask, msg.Project, msg.LinkType))
+		}
+		return true, nil
+
+	case LinkedTaskCreatedMsg:
+		m.popView()
+		m.refreshProjectTree()
+
+		// Determine link type name for status message
+		var linkName string
+		switch msg.LinkType {
+		case LinkTypeBlocker:
+			linkName = "blocker"
+		case LinkTypeDependent:
+			linkName = "dependent"
+		case LinkTypeSubtask:
+			linkName = "subtask"
+		case LinkTypeFollowUp:
+			linkName = "follow-up"
+		}
+		m.statusMessage = fmt.Sprintf("Created %s #%d", linkName, msg.NewTask.ShortID)
+
+		// Jump to new task if configured
+		if m.config.GetLinkedTaskJumpToNew() && m.projectTree != nil && msg.NewTask != nil {
+			m.projectTree.JumpToTask(msg.NewTask)
+		}
+
+		return true, statusTimeout(2 * time.Second)
+
+	case ShowLinkedTaskSelectorMsg:
+		if msg.Task != nil && msg.Project != nil {
+			selector := NewLinkedTaskSelectorModel(msg.Task, msg.Project)
+			// If no linked tasks, do nothing
+			if !selector.HasLinkedTasks() {
+				m.statusMessage = "No linked tasks"
+				return true, statusTimeout(2 * time.Second)
+			}
+			// If single linked task, jump directly
+			if singleTask := selector.GetSingleLinkedTask(); singleTask != nil {
+				return m.handleLinkedTaskNavigation(singleTask, msg.Project)
+			}
+			// Multiple linked tasks: show selector
+			m.showView(ViewLinkedTaskSelector, selector)
+		}
+		return true, nil
+
+	case CloseLinkedTaskSelectorMsg:
+		m.popView()
+		return true, nil
+
+	case LinkedTaskSelectedMsg:
+		m.popView()
+		return m.handleLinkedTaskNavigation(msg.Task, msg.Project)
 	}
 	return false, nil
+}
+
+// handleLinkedTaskNavigation navigates to a linked task, switching projects if needed.
+func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models.Project) (bool, tea.Cmd) {
+	// If we're in the project tree for this project, just jump to the task
+	if m.currentView() == ViewProjectTree && m.currentProject != nil && m.currentProject.ID == project.ID {
+		if m.projectTree != nil {
+			m.projectTree.JumpToTask(task)
+			m.statusMessage = fmt.Sprintf("Jumped to #%d", task.ShortID)
+		}
+		return true, statusTimeout(2 * time.Second)
+	}
+
+	// Otherwise, switch to the project and jump
+	m.switchToProject(project, true)
+	m.pushView(ViewProjectTree)
+	if m.projectTree != nil {
+		m.projectTree.JumpToTask(task)
+		m.statusMessage = fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name)
+	}
+	return true, statusTimeout(2 * time.Second)
 }
 
 // handleCommandPaletteTaskAction handles inline task actions from the command palette.

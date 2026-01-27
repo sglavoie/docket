@@ -422,6 +422,38 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, nil
 		}
 
+	case "c":
+		// Create linked task or navigate
+		if !CursorInBounds(m.cursor, len(visible)) {
+			return m, nil
+		}
+		task := visible[m.cursor].Task
+		project := m.project
+
+		// Navigate to linked tasks
+		if key == "n" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
+			}
+		}
+
+		var linkType LinkType
+		switch key {
+		case "b":
+			linkType = LinkTypeBlocker
+		case "d":
+			linkType = LinkTypeDependent
+		case "s":
+			linkType = LinkTypeSubtask
+		case "f":
+			linkType = LinkTypeFollowUp
+		default:
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
+		}
+
 	case "d":
 		// Due date quick actions
 		now := time.Now()
@@ -519,7 +551,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		}
 	}
 
-	// Prefix key activation (status, fold, go/section, priority, due date)
+	// Prefix key activation (status, fold, go/section, priority, due date, create linked)
 	switch key {
 	case ",":
 		m.pendingPrefix = ","
@@ -535,6 +567,12 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	case "d":
 		m.pendingPrefix = "d"
+		return m, nil
+	case "c":
+		if CursorInBounds(m.cursor, len(visible)) {
+			m.pendingPrefix = "c"
+			return m, nil
+		}
 		return m, nil
 	}
 

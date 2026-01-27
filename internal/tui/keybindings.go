@@ -245,8 +245,15 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations", Views: views},
-		Keybinding{Key: "c", Description: "View/add comments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 
 		// Project Views
@@ -389,6 +396,13 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
 }
 
@@ -541,6 +555,13 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
 }
 
@@ -580,6 +601,13 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
 }
 

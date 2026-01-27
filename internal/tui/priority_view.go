@@ -349,6 +349,13 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		m.pendingPrefix = "d"
 		return m, nil
 
+	case "c":
+		// Start prefix sequence for create linked task
+		if m.getTaskAtCursor() != nil {
+			m.pendingPrefix = "c"
+		}
+		return m, nil
+
 	case "G":
 		if m.totalTasks > 0 {
 			m.cursor = m.totalTasks - 1
@@ -501,6 +508,38 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		}
+	case "c":
+		// Create linked task or navigate
+		pt := m.getTaskAtCursor()
+		if pt == nil {
+			return m, nil
+		}
+		task := pt.Task
+		project := m.project
+
+		// Navigate to linked tasks
+		if key == "n" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
+			}
+		}
+
+		var linkType LinkType
+		switch key {
+		case "b":
+			linkType = LinkTypeBlocker
+		case "d":
+			linkType = LinkTypeDependent
+		case "s":
+			linkType = LinkTypeSubtask
+		case "f":
+			linkType = LinkTypeFollowUp
+		default:
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
 	}
 

@@ -14,6 +14,7 @@ func (m *PriorityViewModel) renderPrefixPopup() string {
 		",": StatusPrefixHints,
 		"g": PriorityViewNavigationPrefixHints,
 		"d": DueDatePrefixHints,
+		"c": CreateLinkedPrefixHints,
 	}, m.width)
 }
 

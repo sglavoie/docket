@@ -500,3 +500,51 @@ type CloseProjectFocusViewMsg struct{}
 type TasksArchivedMsg struct {
 	Count int // Number of tasks archived
 }
+
+// =============================================================================
+// Linked Task Creation Messages
+// =============================================================================
+
+// LinkType represents the type of link between tasks.
+type LinkType int
+
+const (
+	LinkTypeBlocker   LinkType = iota // New task blocks source
+	LinkTypeDependent                 // New task depends on source
+	LinkTypeSubtask                   // New task is a subtask of source
+	LinkTypeFollowUp                  // New task is a follow-up (bidirectional related)
+)
+
+// CreateLinkedTaskMsg opens the linked task creator.
+type CreateLinkedTaskMsg struct {
+	SourceTask *models.Task
+	Project    *models.Project
+	LinkType   LinkType
+}
+
+// LinkedTaskCreatedMsg signals a linked task was created.
+type LinkedTaskCreatedMsg struct {
+	SourceTask *models.Task
+	NewTask    *models.Task
+	Project    *models.Project
+	LinkType   LinkType
+}
+
+// =============================================================================
+// Linked Task Navigation Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowLinkedTaskSelectorMsg opens the linked task selector for a task.
+type ShowLinkedTaskSelectorMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseLinkedTaskSelectorMsg closes the linked task selector.
+type CloseLinkedTaskSelectorMsg struct{}
+
+// LinkedTaskSelectedMsg signals a linked task was selected for navigation.
+type LinkedTaskSelectedMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}

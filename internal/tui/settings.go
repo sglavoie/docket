@@ -25,10 +25,11 @@ type SettingsModel struct {
 	futureInput         textinput.Model
 	oldDaysInput        textinput.Model
 	completedHoursInput textinput.Model
+	linkedTaskJump      bool // Whether to jump to new task after linked creation
 	contexts            []string
 	contextCursor       int // -1 for custom mode, 0+ for selecting from list
 
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=linkedTaskJump
 	validationErr string
 
 	width  int
@@ -106,6 +107,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		futureInput:         futureInput,
 		oldDaysInput:        oldDaysInput,
 		completedHoursInput: completedHoursInput,
+		linkedTaskJump:      cfg.GetLinkedTaskJumpToNew(),
 		contexts:            contexts,
 		contextCursor:       contextCursor,
 		focusIndex:          0,
@@ -139,15 +141,22 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (7 fields total)
+			// Move focus (8 fields total)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 7
+				m.focusIndex = (m.focusIndex + 1) % 8
 			} else {
-				m.focusIndex = (m.focusIndex + 6) % 7 // +6 is -1 mod 7
+				m.focusIndex = (m.focusIndex + 7) % 8 // +7 is -1 mod 8
 			}
 
 			// Focus new field
 			m.focusCurrentField()
+			return m, nil
+
+		case " ":
+			// Toggle linkedTaskJump when on that field
+			if m.focusIndex == 7 {
+				m.linkedTaskJump = !m.linkedTaskJump
+			}
 			return m, nil
 
 		case "enter":
@@ -264,6 +273,8 @@ func (m *SettingsModel) blurCurrentField() {
 		m.oldDaysInput.Blur()
 	case 6:
 		m.completedHoursInput.Blur()
+	case 7:
+		// Toggle field - no blur needed
 	}
 }
 
@@ -284,6 +295,8 @@ func (m *SettingsModel) focusCurrentField() {
 		m.oldDaysInput.Focus()
 	case 6:
 		m.completedHoursInput.Focus()
+	case 7:
+		// Toggle field - no focus needed
 	}
 }
 
@@ -430,6 +443,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.ReviewFutureDays = &futureDays
 		m.config.ReviewOldDays = &oldDays
 		m.config.ReviewCompletedHours = &completedHours
+		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
@@ -577,15 +591,41 @@ func (m *SettingsModel) View() string {
 	b.WriteString("\n")
 
 	// Validation error for review settings
-	if m.focusIndex >= 3 && m.validationErr != "" {
+	if m.focusIndex >= 3 && m.focusIndex <= 6 && m.validationErr != "" {
 		b.WriteString("                   ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
+	b.WriteString("\n")
+
+	// Linked Task section header
+	b.WriteString(SubtitleStyle.Render("Linked Task Creation"))
+	b.WriteString("\n\n")
+
+	// Linked Task Jump Toggle
+	var linkedLabel string
+	if m.focusIndex == 7 {
+		linkedLabel = FieldLabelFocusedStyle.Render("After creation: ")
+	} else {
+		linkedLabel = FieldLabelStyle.Render("After creation: ")
+	}
+	b.WriteString(linkedLabel)
+	if m.linkedTaskJump {
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[Jump to new]"))
+		b.WriteString(MutedStyle.Render("  Stay on source"))
+	} else {
+		b.WriteString(MutedStyle.Render("Jump to new  "))
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[Stay on source]"))
+	}
+	if m.focusIndex == 7 {
+		b.WriteString(HelpStyle.Render("  (Space to toggle)"))
+	}
+	b.WriteString("\n")
+
 	// Help footer
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: context · Enter: save · Esc: cancel"))
+	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
 
 	cardWidth := 70
 	if m.width-4 < cardWidth {

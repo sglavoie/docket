@@ -12,7 +12,8 @@ type SidebarComponent struct {
 	focused           bool // When true, sidebar has focus for scrolling
 	scroll            int  // Scroll offset for sidebar content
 	dependencyCursor  int  // Cursor position within active dependency section
-	dependencySection int  // 0 = "Blocked by", 1 = "Blocking"
+	dependencySection int  // 0 = "Blocked by", 1 = "Blocking", 2 = "Related"
+	depsScrollOffset  int  // Scroll offset for deps/related sections
 }
 
 // NewSidebarComponent creates a new sidebar component.
@@ -66,7 +67,7 @@ func (s *SidebarComponent) SetDependencyCursor(cursor int) {
 	s.dependencyCursor = cursor
 }
 
-// GetDependencySection returns the active dependency section (0=Blocked by, 1=Blocking).
+// GetDependencySection returns the active dependency section (0=Blocked by, 1=Blocking, 2=Related).
 func (s *SidebarComponent) GetDependencySection() int {
 	return s.dependencySection
 }
@@ -76,11 +77,22 @@ func (s *SidebarComponent) SetDependencySection(section int) {
 	s.dependencySection = section
 }
 
+// GetDepsScrollOffset returns the scroll offset for deps/related sections.
+func (s *SidebarComponent) GetDepsScrollOffset() int {
+	return s.depsScrollOffset
+}
+
+// SetDepsScrollOffset sets the scroll offset for deps/related sections.
+func (s *SidebarComponent) SetDepsScrollOffset(offset int) {
+	s.depsScrollOffset = offset
+}
+
 // ResetScroll resets the scroll position to the top.
 func (s *SidebarComponent) ResetScroll() {
 	s.scroll = 0
 	s.dependencyCursor = 0
 	s.dependencySection = 0
+	s.depsScrollOffset = 0
 }
 
 // Focus focuses the sidebar and resets scroll position.
@@ -89,6 +101,7 @@ func (s *SidebarComponent) Focus() {
 	s.scroll = 0
 	s.dependencyCursor = 0
 	s.dependencySection = 0
+	s.depsScrollOffset = 0
 }
 
 // Blur removes focus from the sidebar.
@@ -114,6 +127,7 @@ func (s *SidebarComponent) CycleState(task *models.Task) bool {
 		s.focused = true
 		s.scroll = 0
 		s.dependencyCursor = 0
+		s.depsScrollOffset = 0
 		// If task has blocking tasks, start in "Blocking" section
 		if task != nil && len(task.DependsOn) == 0 {
 			s.dependencySection = 1 // Start in "Blocking" section
@@ -162,39 +176,37 @@ func (s *SidebarComponent) HandleKeys(m *ProjectTreeModel, msg tea.KeyMsg) (bool
 
 	switch msg.String() {
 	case "j", "down":
-		// Move down in dependencies or scroll
-		if m.hasDependencies(task) {
+		// Move down in linked tasks or scroll
+		if m.hasLinkedTasks(task) {
 			s.moveDependencyCursor(m, task, 1)
 		}
 		return true, nil
 
 	case "k", "up":
-		// Move up in dependencies or scroll
-		if m.hasDependencies(task) {
+		// Move up in linked tasks or scroll
+		if m.hasLinkedTasks(task) {
 			s.moveDependencyCursor(m, task, -1)
 		}
 		return true, nil
 
 	case "h", "left":
-		// Switch to "Blocked by" section
-		if m.hasDependencies(task) && s.dependencySection != 0 {
-			s.dependencySection = 0
-			s.dependencyCursor = 0
+		// Cycle sections backward: Related -> Blocking -> Blocked by -> Related
+		if m.hasLinkedTasks(task) {
+			s.cycleSectionBackward(m, task)
 		}
 		return true, nil
 
 	case "l", "right":
-		// Switch to "Blocking" section
-		if m.hasDependencies(task) && s.dependencySection != 1 {
-			s.dependencySection = 1
-			s.dependencyCursor = 0
+		// Cycle sections forward: Blocked by -> Blocking -> Related -> Blocked by
+		if m.hasLinkedTasks(task) {
+			s.cycleSectionForward(m, task)
 		}
 		return true, nil
 
 	case "enter":
-		// Jump to selected dependency
-		if m.hasDependencies(task) {
-			return true, s.jumpToSelectedDependency(m, task)
+		// Jump to selected linked task
+		if m.hasLinkedTasks(task) {
+			return true, s.jumpToSelectedLinkedTask(m, task)
 		}
 		return true, nil
 
@@ -210,10 +222,13 @@ func (s *SidebarComponent) HandleKeys(m *ProjectTreeModel, msg tea.KeyMsg) (bool
 // moveDependencyCursor moves the dependency cursor by delta.
 func (s *SidebarComponent) moveDependencyCursor(m *ProjectTreeModel, task *models.Task, delta int) {
 	var maxCursor int
-	if s.dependencySection == 0 {
+	switch s.dependencySection {
+	case 0:
 		maxCursor = len(m.project.GetBlockingTasks(task)) - 1
-	} else {
+	case 1:
 		maxCursor = len(m.project.GetBlockedByTasks(task)) - 1
+	case 2:
+		maxCursor = len(m.getRelatedTasks(task)) - 1
 	}
 
 	s.dependencyCursor += delta
@@ -223,23 +238,81 @@ func (s *SidebarComponent) moveDependencyCursor(m *ProjectTreeModel, task *model
 	if s.dependencyCursor > maxCursor {
 		s.dependencyCursor = maxCursor
 	}
+
+	// Update scroll offset to keep cursor visible (max 5 visible items per section)
+	maxVisible := 5
+	if s.dependencyCursor >= s.depsScrollOffset+maxVisible {
+		s.depsScrollOffset = s.dependencyCursor - maxVisible + 1
+	}
+	if s.dependencyCursor < s.depsScrollOffset {
+		s.depsScrollOffset = s.dependencyCursor
+	}
 }
 
-// jumpToSelectedDependency jumps to the selected dependency task.
-func (s *SidebarComponent) jumpToSelectedDependency(m *ProjectTreeModel, task *models.Task) tea.Cmd {
+// cycleSectionForward cycles to the next non-empty section (0 -> 1 -> 2 -> 0).
+func (s *SidebarComponent) cycleSectionForward(m *ProjectTreeModel, task *models.Task) {
+	sections := m.getAvailableSections(task)
+	if len(sections) <= 1 {
+		return
+	}
+
+	// Find current section index and move to next
+	currentIdx := 0
+	for i, sec := range sections {
+		if sec == s.dependencySection {
+			currentIdx = i
+			break
+		}
+	}
+	nextIdx := (currentIdx + 1) % len(sections)
+	s.dependencySection = sections[nextIdx]
+	s.dependencyCursor = 0
+	s.depsScrollOffset = 0
+}
+
+// cycleSectionBackward cycles to the previous non-empty section (0 -> 2 -> 1 -> 0).
+func (s *SidebarComponent) cycleSectionBackward(m *ProjectTreeModel, task *models.Task) {
+	sections := m.getAvailableSections(task)
+	if len(sections) <= 1 {
+		return
+	}
+
+	// Find current section index and move to previous
+	currentIdx := 0
+	for i, sec := range sections {
+		if sec == s.dependencySection {
+			currentIdx = i
+			break
+		}
+	}
+	prevIdx := (currentIdx - 1 + len(sections)) % len(sections)
+	s.dependencySection = sections[prevIdx]
+	s.dependencyCursor = 0
+	s.depsScrollOffset = 0
+}
+
+// jumpToSelectedLinkedTask jumps to the selected linked task.
+func (s *SidebarComponent) jumpToSelectedLinkedTask(m *ProjectTreeModel, task *models.Task) tea.Cmd {
 	var targetTask *models.Task
 
-	if s.dependencySection == 0 {
+	switch s.dependencySection {
+	case 0:
 		// Jump to blocking task
 		blockingTasks := m.project.GetBlockingTasks(task)
 		if s.dependencyCursor < len(blockingTasks) {
 			targetTask = blockingTasks[s.dependencyCursor]
 		}
-	} else {
+	case 1:
 		// Jump to blocked task
 		blockedTasks := m.project.GetBlockedByTasks(task)
 		if s.dependencyCursor < len(blockedTasks) {
 			targetTask = blockedTasks[s.dependencyCursor]
+		}
+	case 2:
+		// Jump to related task
+		relatedTasks := m.getRelatedTasks(task)
+		if s.dependencyCursor < len(relatedTasks) {
+			targetTask = relatedTasks[s.dependencyCursor]
 		}
 	}
 

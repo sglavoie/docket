@@ -174,4 +174,13 @@ var (
 		{Key: "f", Description: "future"},
 		{Key: "o", Description: "old"},
 	}
+
+	// CreateLinkedPrefixHints contains hints for the "c" (create linked) prefix.
+	CreateLinkedPrefixHints = []PrefixHint{
+		{Key: "b", Description: "blocker"},
+		{Key: "d", Description: "dependent"},
+		{Key: "s", Description: "subtask"},
+		{Key: "f", Description: "follow-up"},
+		{Key: "n", Description: "navigate"},
+	}
 )

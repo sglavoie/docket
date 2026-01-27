@@ -123,6 +123,11 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ",", "d", "g", "s":
 		m.pendingPrefix = key
 		return m, nil
+	case "c":
+		if m.getTaskAtCursor() != nil {
+			m.pendingPrefix = "c"
+		}
+		return m, nil
 	}
 
 	switch key {
@@ -352,6 +357,39 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 		if targetSection != nil {
 			return m.toggleSectionFocus(*targetSection)
+		}
+
+	case "c":
+		// Create linked task or navigate
+		dt := m.getTaskAtCursor()
+		if dt == nil {
+			return m, nil
+		}
+		task := dt.Task
+		project := dt.Project
+
+		// Navigate to linked tasks
+		if key == "n" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
+			}
+		}
+
+		var linkType LinkType
+		switch key {
+		case "b":
+			linkType = LinkTypeBlocker
+		case "d":
+			linkType = LinkTypeDependent
+		case "s":
+			linkType = LinkTypeSubtask
+		case "f":
+			linkType = LinkTypeFollowUp
+		default:
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
 	}
 

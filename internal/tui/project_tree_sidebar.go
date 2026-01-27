@@ -51,6 +51,11 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 		cards = append(cards, m.renderDependenciesCard(task, width, cardInnerWidth))
 	}
 
+	// Related tasks card (only if has related tasks)
+	if len(task.RelatedTo) > 0 {
+		cards = append(cards, m.renderRelatedCard(task, width, cardInnerWidth))
+	}
+
 	// Activity card
 	cards = append(cards, m.renderActivityCard(task, width))
 
@@ -71,7 +76,7 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 
 	// Help hint at bottom if sidebar focused
 	helpHint := ""
-	if m.sidebar.IsFocused() && m.hasDependencies(task) {
+	if m.sidebar.IsFocused() && m.hasLinkedTasks(task) {
 		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump")
 	} else if m.sidebar.IsFocused() {
 		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
@@ -150,6 +155,7 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sect
 // renderDependenciesCard renders the dependencies card with navigation support.
 func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
 	var lines []string
+	const maxVisiblePerSection = 5
 
 	// Blocked by (tasks this depends on)
 	if len(task.DependsOn) > 0 {
@@ -162,21 +168,58 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		lines = append(lines, header)
 
 		blockingTasks := m.project.GetBlockingTasks(task)
-		for i, dep := range blockingTasks {
+
+		// Calculate scroll offset for this section when it's active
+		// Always recalculate to ensure cursor is visible
+		sectionScroll := 0
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
+			cursor := m.sidebar.GetDependencyCursor()
+			sectionScroll = m.sidebar.GetDepsScrollOffset()
+			// Ensure cursor is within visible window
+			if cursor >= sectionScroll+maxVisiblePerSection {
+				sectionScroll = cursor - maxVisiblePerSection + 1
+			}
+			if cursor < sectionScroll {
+				sectionScroll = cursor
+			}
+			// Update stored offset if it changed
+			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
+				m.sidebar.SetDepsScrollOffset(sectionScroll)
+			}
+		}
+
+		// Show indicator if items hidden above
+		if sectionScroll > 0 {
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
+		}
+
+		// Render visible items
+		visibleEnd := sectionScroll + maxVisiblePerSection
+		if visibleEnd > len(blockingTasks) {
+			visibleEnd = len(blockingTasks)
+		}
+
+		for i := sectionScroll; i < visibleEnd; i++ {
+			dep := blockingTasks[i]
 			depStatus := GetStatusStyle(string(dep.Status))
-			cursor := "  "
+			cursorStr := "  "
 			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
-				cursor = "> "
+				cursorStr = "> "
 			}
 
 			depLine := fmt.Sprintf("%s#%-3d %s %s",
-				cursor, dep.ShortID, depStatus.Render(dep.Status.Icon()),
+				cursorStr, dep.ShortID, depStatus.Render(dep.Status.Icon()),
 				util.Truncate(dep.Title, innerWidth-12))
 
 			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor() {
 				depLine = BoldStyle.Render(depLine)
 			}
 			lines = append(lines, depLine)
+		}
+
+		// Show indicator if items hidden below
+		if visibleEnd < len(blockingTasks) {
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(blockingTasks)-visibleEnd)))
 		}
 	}
 
@@ -195,15 +238,46 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 		}
 		lines = append(lines, header)
 
-		for i, blocked := range blockedBy {
+		// Calculate scroll offset for this section when it's active
+		// Always recalculate to ensure cursor is visible
+		sectionScroll := 0
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 {
+			cursor := m.sidebar.GetDependencyCursor()
+			sectionScroll = m.sidebar.GetDepsScrollOffset()
+			// Ensure cursor is within visible window
+			if cursor >= sectionScroll+maxVisiblePerSection {
+				sectionScroll = cursor - maxVisiblePerSection + 1
+			}
+			if cursor < sectionScroll {
+				sectionScroll = cursor
+			}
+			// Update stored offset if it changed
+			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
+				m.sidebar.SetDepsScrollOffset(sectionScroll)
+			}
+		}
+
+		// Show indicator if items hidden above
+		if sectionScroll > 0 {
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
+		}
+
+		// Render visible items
+		visibleEnd := sectionScroll + maxVisiblePerSection
+		if visibleEnd > len(blockedBy) {
+			visibleEnd = len(blockedBy)
+		}
+
+		for i := sectionScroll; i < visibleEnd; i++ {
+			blocked := blockedBy[i]
 			blockStatus := GetStatusStyle(string(blocked.Status))
-			cursor := "  "
+			cursorStr := "  "
 			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
-				cursor = "> "
+				cursorStr = "> "
 			}
 
 			blockLine := fmt.Sprintf("%s#%-3d %s %s",
-				cursor, blocked.ShortID, blockStatus.Render(blocked.Status.Icon()),
+				cursorStr, blocked.ShortID, blockStatus.Render(blocked.Status.Icon()),
 				util.Truncate(blocked.Title, innerWidth-12))
 
 			if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor() {
@@ -211,10 +285,91 @@ func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, inne
 			}
 			lines = append(lines, blockLine)
 		}
+
+		// Show indicator if items hidden below
+		if visibleEnd < len(blockedBy) {
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(blockedBy)-visibleEnd)))
+		}
 	}
 
 	focused := m.sidebar.IsFocused() && m.hasDependencies(task)
 	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
+}
+
+// renderRelatedCard renders the related tasks card with navigation support.
+func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidth int) string {
+	const maxVisiblePerSection = 5
+	var lines []string
+
+	// Header with focus indicator
+	header := "Related:"
+	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 {
+		header = BoldStyle.Underline(true).Render(header)
+	} else {
+		header = MutedStyle.Render(header)
+	}
+	lines = append(lines, header)
+
+	relatedTasks := m.getRelatedTasks(task)
+	if len(relatedTasks) == 0 {
+		return ""
+	}
+
+	// Calculate scroll offset for this section when it's active
+	// Always recalculate to ensure cursor is visible
+	sectionScroll := 0
+	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 {
+		cursor := m.sidebar.GetDependencyCursor()
+		sectionScroll = m.sidebar.GetDepsScrollOffset()
+		// Ensure cursor is within visible window
+		if cursor >= sectionScroll+maxVisiblePerSection {
+			sectionScroll = cursor - maxVisiblePerSection + 1
+		}
+		if cursor < sectionScroll {
+			sectionScroll = cursor
+		}
+		// Update stored offset if it changed
+		if sectionScroll != m.sidebar.GetDepsScrollOffset() {
+			m.sidebar.SetDepsScrollOffset(sectionScroll)
+		}
+	}
+
+	// Show indicator if items hidden above
+	if sectionScroll > 0 {
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
+	}
+
+	// Render visible items
+	visibleEnd := sectionScroll + maxVisiblePerSection
+	if visibleEnd > len(relatedTasks) {
+		visibleEnd = len(relatedTasks)
+	}
+
+	for i := sectionScroll; i < visibleEnd; i++ {
+		relatedTask := relatedTasks[i]
+		relatedStatus := GetStatusStyle(string(relatedTask.Status))
+		cursorStr := "  "
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor() {
+			cursorStr = "> "
+		}
+
+		relatedLine := fmt.Sprintf("%s#%-3d %s %s",
+			cursorStr, relatedTask.ShortID, relatedStatus.Render(relatedTask.Status.Icon()),
+			util.Truncate(relatedTask.Title, innerWidth-12))
+
+		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor() {
+			relatedLine = BoldStyle.Render(relatedLine)
+		}
+		lines = append(lines, relatedLine)
+	}
+
+	// Show indicator if items hidden below
+	if visibleEnd < len(relatedTasks) {
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(relatedTasks)-visibleEnd)))
+	}
+
+	focused := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2
+	return renderSidebarCard("Related", strings.Join(lines, "\n"), width, focused, "")
 }
 
 // renderActivityCard renders the activity timestamps card.

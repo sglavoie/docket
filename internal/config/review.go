@@ -35,3 +35,12 @@ func (c *Config) GetReviewCompletedHours() int {
 	}
 	return *c.ReviewCompletedHours
 }
+
+// GetLinkedTaskJumpToNew returns whether to jump to new task after linked creation.
+// Returns false (stay on source task) if not set.
+func (c *Config) GetLinkedTaskJumpToNew() bool {
+	if c.LinkedTaskJumpToNew == nil {
+		return false
+	}
+	return *c.LinkedTaskJumpToNew
+}

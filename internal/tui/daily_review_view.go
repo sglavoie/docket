@@ -85,6 +85,7 @@ func (m *DailyReviewModel) renderPrefixPopup() string {
 		"d": DueDatePrefixHints,
 		"g": DailyReviewNavigationPrefixHints,
 		"s": SectionPrefixHints,
+		"c": CreateLinkedPrefixHints,
 	}, m.width)
 }
 

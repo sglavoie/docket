@@ -71,6 +71,7 @@ type Config struct {
 	ReviewFutureDays        *int                         `json:"review_future_days,omitempty"`        // nil=30, 0=hide section (tasks due in >= this many days)
 	ReviewOldDays           *int                         `json:"review_old_days,omitempty"`           // nil=14, 0=hide section (based on UpdatedAt)
 	ReviewCompletedHours    *int                         `json:"review_completed_hours,omitempty"`    // nil=24, 0=hide section
+	LinkedTaskJumpToNew     *bool                        `json:"linked_task_jump_to_new,omitempty"`   // nil=false: stay on source, true=jump to new
 }
 
 // NewConfig creates a new configuration with default values.
