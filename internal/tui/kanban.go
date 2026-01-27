@@ -234,3 +234,103 @@ func (cs *ColumnState) AdjustScrollForViewport(taskCount, viewportHeight int) {
 		cs.ScrollOffset = 0
 	}
 }
+
+// Update implements the tea.Model interface. It handles window resize messages
+// and keyboard navigation, delegating key handling to handleKeyMsg.
+func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.SetSize(msg.Width, msg.Height)
+		return m, nil
+
+	case tea.KeyMsg:
+		return m.handleKeyMsg(msg)
+	}
+
+	return m, nil
+}
+
+// handleKeyMsg processes keyboard input for the Kanban view.
+func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	switch key {
+	case "esc", "q":
+		return m, func() tea.Msg {
+			return CloseKanbanMsg{}
+		}
+
+	// Vertical navigation within current column
+	case "up", "k":
+		m.moveCursorUp()
+		return m, nil
+
+	case "down", "j":
+		m.moveCursorDown()
+		return m, nil
+
+	// Horizontal navigation between columns
+	case "left", "h":
+		m.moveColumnLeft()
+		return m, nil
+
+	case "right", "l":
+		m.moveColumnRight()
+		return m, nil
+
+	// Jump to first/last task in column
+	case "g":
+		// Go to first task in current column
+		cs := m.CurrentColumnState()
+		cs.Cursor = 0
+		return m, nil
+
+	case "G":
+		// Go to last task in current column
+		tasks := m.CurrentColumnTasks()
+		if len(tasks) > 0 {
+			cs := m.CurrentColumnState()
+			cs.Cursor = len(tasks) - 1
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// moveCursorUp moves the cursor up within the current column.
+func (m *KanbanViewModel) moveCursorUp() {
+	cs := m.CurrentColumnState()
+	if cs.Cursor > 0 {
+		cs.Cursor--
+	}
+}
+
+// moveCursorDown moves the cursor down within the current column.
+func (m *KanbanViewModel) moveCursorDown() {
+	cs := m.CurrentColumnState()
+	tasks := m.CurrentColumnTasks()
+	if cs.Cursor < len(tasks)-1 {
+		cs.Cursor++
+	}
+}
+
+// moveColumnLeft moves focus to the column on the left.
+func (m *KanbanViewModel) moveColumnLeft() {
+	if m.ActiveColumn > 0 {
+		m.ActiveColumn--
+	}
+}
+
+// moveColumnRight moves focus to the column on the right.
+func (m *KanbanViewModel) moveColumnRight() {
+	if m.ActiveColumn < len(KanbanColumnOrder)-1 {
+		m.ActiveColumn++
+	}
+}
+
+// View implements the tea.Model interface. This is a placeholder that will be
+// replaced with the full Kanban board rendering implementation.
+func (m *KanbanViewModel) View() string {
+	return ""
+}
