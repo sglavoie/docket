@@ -2149,6 +2149,16 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 		headerText = fmt.Sprintf("%s (%d)", displayName, totalCount)
 	}
 
+	// Append sort indicator if this column has a non-default sort
+	sortField := m.getSortFieldForColumn(section)
+	if sortField != SortByDefault {
+		direction := "↑"
+		if isActive && !m.sortAscending {
+			direction = "↓"
+		}
+		headerText += " " + direction + sortField.ShortString()
+	}
+
 	// Use the same ViewMode style as the view mode indicator
 	style := GetViewModeStyleForSection(section)
 

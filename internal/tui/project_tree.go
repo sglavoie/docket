@@ -76,6 +76,22 @@ func (v ViewMode) String() string {
 }
 
 // String returns the display name for a sort field.
+// ShortString returns an abbreviated label for compact display (e.g. column headers).
+func (s SortField) ShortString() string {
+	switch s {
+	case SortByPriority:
+		return "pri"
+	case SortByDueDate:
+		return "due"
+	case SortByCreatedAt:
+		return "new"
+	case SortByStatus:
+		return "sts"
+	default:
+		return ""
+	}
+}
+
 func (s SortField) String() string {
 	switch s {
 	case SortByPriority:
