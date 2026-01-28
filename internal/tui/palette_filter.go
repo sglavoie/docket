@@ -883,7 +883,7 @@ func (m *CommandPaletteModel) findNextSectionStart() int {
 func (m *CommandPaletteModel) isDirectActionEnabled() bool {
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		return true
+		return false
 	}
 	// Check if query is just a category prefix (e.g., ":task") or task ID jump (#123)
 	if taskIDPattern.MatchString(query) {
