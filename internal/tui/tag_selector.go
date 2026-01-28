@@ -292,7 +292,7 @@ func (m *BulkTagSelectorModel) View() string {
 	}
 
 	// Build custom view with 'a' key support
-	boxWidth := 60
+	boxWidth := 80
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
 	}
@@ -307,6 +307,7 @@ func (m *BulkTagSelectorModel) View() string {
 	if m.Height() > 0 {
 		maxVisible = m.Height() - 14
 	}
+	m.Config.BoxWidth = boxWidth
 	content.WriteString(m.RenderList(maxVisible))
 
 	// Custom footer with 'a' key
@@ -583,7 +584,7 @@ func (m *TagSelectorModel) View() string {
 	}
 
 	// Build custom view with 'a' key support
-	boxWidth := 60
+	boxWidth := 80
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
 	}
@@ -598,6 +599,7 @@ func (m *TagSelectorModel) View() string {
 	if m.Height() > 0 {
 		maxVisible = m.Height() - 14
 	}
+	m.Config.BoxWidth = boxWidth
 	content.WriteString(m.RenderList(maxVisible))
 
 	// Custom footer with 'a' key

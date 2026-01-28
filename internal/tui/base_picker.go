@@ -218,7 +218,7 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 	// Determine width for selection row (use box width or default)
 	rowWidth := p.Config.BoxWidth
 	if rowWidth == 0 {
-		rowWidth = 50
+		rowWidth = 65
 	}
 	if p.Width() > 0 && p.Width() < rowWidth+10 {
 		rowWidth = p.Width() - 10
@@ -311,7 +311,7 @@ func (p *BasePicker[T]) RenderFooter() string {
 func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
 	boxWidth := p.Config.BoxWidth
 	if boxWidth == 0 {
-		boxWidth = 50
+		boxWidth = 65
 	}
 	if p.Width() > 0 && p.Width() < boxWidth+10 {
 		boxWidth = p.Width() - 10
