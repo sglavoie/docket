@@ -123,7 +123,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowSectionManagerMsg:
 		if msg.ProjectTree != nil {
-			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, m.config, m.configManager, msg.StartAddMode))
+			m.showView(ViewSectionManager, NewSectionManagerModel(msg.ProjectTree, nil, m.config, m.configManager, msg.StartAddMode))
+		} else if msg.Project != nil {
+			m.showView(ViewSectionManager, NewSectionManagerModel(nil, msg.Project, m.config, m.configManager, msg.StartAddMode))
 		}
 		return true, nil
 

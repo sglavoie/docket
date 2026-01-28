@@ -1188,7 +1188,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Section manager
 	case "ctrl+s":
 		return m, func() tea.Msg {
-			return ShowSectionManagerMsg{ProjectTree: nil}
+			return ShowSectionManagerMsg{Project: m.Project}
 		}
 
 	// Edit last modified task

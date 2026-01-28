@@ -16,6 +16,7 @@ import (
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
 	projectTree   *ProjectTreeModel
+	project       *models.Project // Used directly when projectTree is nil
 	config        *config.Config
 	configManager *config.Manager
 	sections      []SectionInfo
@@ -34,7 +35,8 @@ type SectionManagerModel struct {
 // ShowSectionManagerMsg is sent to open the section manager view.
 type ShowSectionManagerMsg struct {
 	ProjectTree  *ProjectTreeModel
-	StartAddMode bool // If true, open directly in add mode
+	Project      *models.Project // Used when ProjectTree is nil (e.g., from kanban view)
+	StartAddMode bool            // If true, open directly in add mode
 }
 
 // CloseSectionManagerMsg is sent when the section manager should close.
@@ -63,7 +65,8 @@ type SectionColorChangedMsg struct {
 }
 
 // NewSectionManagerModel creates a new section manager model.
-func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *config.Manager, startAddMode bool) *SectionManagerModel {
+// Either pt or proj must be provided. If pt is provided, proj is ignored.
+func NewSectionManagerModel(pt *ProjectTreeModel, proj *models.Project, cfg *config.Config, mgr *config.Manager, startAddMode bool) *SectionManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new section name"
 	renameInput.CharLimit = 50
@@ -76,6 +79,7 @@ func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *confi
 
 	m := &SectionManagerModel{
 		projectTree:   pt,
+		project:       proj,
 		config:        cfg,
 		configManager: mgr,
 		cursor:        0,
@@ -90,6 +94,14 @@ func NewSectionManagerModel(pt *ProjectTreeModel, cfg *config.Config, mgr *confi
 	return m
 }
 
+// getProject returns the project from projectTree if available, otherwise returns the direct project.
+func (m *SectionManagerModel) getProject() *models.Project {
+	if m.projectTree != nil {
+		return m.projectTree.project
+	}
+	return m.project
+}
+
 // SetSize sets the view dimensions.
 func (m *SectionManagerModel) SetSize(width, height int) {
 	m.width = width
@@ -100,10 +112,11 @@ func (m *SectionManagerModel) SetSize(width, height int) {
 // GTD sections (Next, Inbox, Waiting, Someday) are excluded as they are
 // managed via view modes, not the section manager.
 func (m *SectionManagerModel) buildSectionList() {
-	sectionCounts := m.projectTree.project.CountTasksBySection()
+	proj := m.getProject()
+	sectionCounts := proj.CountTasksBySection()
 
 	// Get sections in project order, excluding GTD sections
-	projectSections := m.projectTree.project.GetSections()
+	projectSections := proj.GetSections()
 
 	m.sections = make([]SectionInfo, 0, len(projectSections))
 	for _, name := range projectSections {
@@ -125,6 +138,7 @@ func (m *SectionManagerModel) buildSectionList() {
 
 // addSection adds a new section to the project.
 func (m *SectionManagerModel) addSection(name string) tea.Cmd {
+	proj := m.getProject()
 	return func() tea.Msg {
 		name = strings.TrimSpace(name)
 		if name == "" {
@@ -137,18 +151,18 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 		}
 
 		// Check if section already exists
-		if m.projectTree.project.HasSection(name) {
+		if proj.HasSection(name) {
 			return ErrorMsg{Err: fmt.Errorf("section '%s' already exists", name)}
 		}
 
-		m.projectTree.project.EnsureSection(name)
+		proj.EnsureSection(name)
 
 		// Apply global color if one exists for this section name
 		if globalColor := m.config.GetGlobalSectionColor(name); globalColor != "gray" {
-			m.projectTree.project.SetSectionColor(name, globalColor)
+			proj.SetSectionColor(name, globalColor)
 		}
 
-		if err := saveProjectSync(m.projectTree.project); err != nil {
+		if err := saveProjectSync(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -158,6 +172,7 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 
 // renameSection renames a section.
 func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
+	proj := m.getProject()
 	return func() tea.Msg {
 		newName = strings.TrimSpace(newName)
 		if newName == "" || newName == oldName {
@@ -175,20 +190,20 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 		}
 
 		// Check if new name already exists
-		if m.projectTree.project.HasSection(newName) {
+		if proj.HasSection(newName) {
 			return ErrorMsg{Err: fmt.Errorf("section '%s' already exists", newName)}
 		}
 
-		if !m.projectTree.project.RenameSection(oldName, newName) {
+		if !proj.RenameSection(oldName, newName) {
 			return ErrorMsg{Err: fmt.Errorf("failed to rename section")}
 		}
 
 		// Apply global color if one exists for the new section name
 		if globalColor := m.config.GetGlobalSectionColor(newName); globalColor != "gray" {
-			m.projectTree.project.SetSectionColor(newName, globalColor)
+			proj.SetSectionColor(newName, globalColor)
 		}
 
-		if err := saveProjectSync(m.projectTree.project); err != nil {
+		if err := saveProjectSync(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -198,17 +213,18 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 
 // removeSection removes a section from the project.
 func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
+	proj := m.getProject()
 	return func() tea.Msg {
 		// Block removing GTD sections (defensive check)
 		if models.IsGTDSection(name) {
 			return ErrorMsg{Err: fmt.Errorf("cannot remove GTD section '%s'", name)}
 		}
 
-		if !m.projectTree.project.RemoveSection(name) {
+		if !proj.RemoveSection(name) {
 			return ErrorMsg{Err: fmt.Errorf("failed to remove section")}
 		}
 
-		if err := saveProjectSync(m.projectTree.project); err != nil {
+		if err := saveProjectSync(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -217,17 +233,21 @@ func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 }
 
 // filterBySection sets the project tree filter and closes the section manager.
+// When opened from kanban view (no projectTree), it just closes without filtering.
 func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 	return func() tea.Msg {
-		m.projectTree.filter.Sections = map[string]bool{sectionName: true}
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
+		if m.projectTree != nil {
+			m.projectTree.filter.Sections = map[string]bool{sectionName: true}
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
+		}
 		return CloseSectionManagerMsg{}
 	}
 }
 
 // setSectionColor sets the color for the current section globally and propagates to all projects.
 func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea.Cmd {
+	proj := m.getProject()
 	return func() tea.Msg {
 		// Update global registry
 		m.config.SetGlobalSectionColor(sectionName, colorName)
@@ -238,26 +258,26 @@ func (m *SectionManagerModel) setSectionColor(sectionName, colorName string) tea
 		}
 
 		// Propagate to all projects that have this section
-		for _, proj := range m.config.Projects {
+		for _, p := range m.config.Projects {
 			// Load project data
-			if err := storage.LoadProject(proj); err != nil {
+			if err := storage.LoadProject(p); err != nil {
 				continue // Skip projects that can't be loaded
 			}
 
 			// Check if project has this section
-			if proj.HasSection(sectionName) {
-				proj.SetSectionColor(sectionName, colorName)
+			if p.HasSection(sectionName) {
+				p.SetSectionColor(sectionName, colorName)
 				// Save project to persist the color in tasks.md
-				if err := storage.SaveProject(proj); err != nil {
+				if err := storage.SaveProject(p); err != nil {
 					continue // Log error but continue with other projects
 				}
 			}
 		}
 
 		// Also update the current project in memory
-		m.projectTree.project.SetSectionColor(sectionName, colorName)
+		proj.SetSectionColor(sectionName, colorName)
 
-		if err := saveProjectSync(m.projectTree.project); err != nil {
+		if err := saveProjectSync(proj); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -381,7 +401,7 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				section := m.sections[m.cursor]
 				m.colorPickMode = true
 				// Initialize cursor to current color
-				currentColor := m.projectTree.project.GetSectionColor(section.Name)
+				currentColor := m.getProject().GetSectionColor(section.Name)
 				m.colorCursor = GetSectionColorIndex(currentColor)
 				return m, nil
 			}
@@ -536,7 +556,7 @@ func (m *SectionManagerModel) View() string {
 				content.WriteString("\n")
 			} else {
 				// Get section color and render swatch
-				sectionColor := m.projectTree.project.GetSectionColor(section.Name)
+				sectionColor := m.getProject().GetSectionColor(section.Name)
 				colorStyle := GetSectionColorStyle(sectionColor)
 				colorSwatch := colorStyle.Render("█") + " "
 
