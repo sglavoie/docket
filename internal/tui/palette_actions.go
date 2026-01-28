@@ -207,6 +207,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 			Icon:    "↺",
 			KeyHint: "r",
 			Handler: func() tea.Msg {
+				project.Unarchive()
 				return ProjectRestoredMsg{Project: project}
 			},
 		})
@@ -216,6 +217,7 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 			Icon:    "📦",
 			KeyHint: "x",
 			Handler: func() tea.Msg {
+				project.Archive()
 				return ProjectArchivedMsg{Project: project}
 			},
 		})

@@ -45,6 +45,16 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ProjectArchivedMsg:
 		m.popView()
+		// Clear current project if archived
+		if msg.Project != nil && m.config != nil && msg.Project.Archived && m.config.CurrentProject == msg.Project.ID {
+			m.config.CurrentProject = ""
+		}
+		if m.configManager != nil {
+			if err := m.configManager.Save(m.config); err != nil {
+				m.err = err
+				return true, nil
+			}
+		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
@@ -77,6 +87,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ProjectRestoredMsg:
+		if m.configManager != nil {
+			if err := m.configManager.Save(m.config); err != nil {
+				m.err = err
+				return true, nil
+			}
+		}
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}

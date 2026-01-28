@@ -144,6 +144,9 @@ type KanbanViewModel struct {
 	confirmNoteConvert bool
 	noteConvertTarget  *models.Task
 
+	// Archive confirmation state
+	confirmArchive bool
+
 	// Sorting state (per-column)
 	sortField     SortField            // current sort field for active column
 	sortAscending bool                 // sort direction
@@ -760,6 +763,20 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle archive confirmation
+	if m.confirmArchive {
+		switch key {
+		case "y", "Y":
+			m.confirmArchive = false
+			return m, m.executeArchiveToggle()
+		case "n", "N", "esc":
+			m.confirmArchive = false
+			m.statusMessage = ""
+			return m, nil
+		}
+		return m, nil
+	}
+
 	// Handle completed view mode input
 	if m.completedViewMode {
 		if handled, _ := m.handleCompletedViewKey(key); handled {
@@ -1200,18 +1217,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Archive/unarchive project
+	// Archive/unarchive project (with confirmation)
 	case "ctrl+a":
-		m.Project.Archived = !m.Project.Archived
+		m.confirmArchive = true
 		if m.Project.Archived {
-			m.statusMessage = "Project archived"
+			m.statusMessage = "Unarchive project? Press 'y' to confirm, 'n' to cancel"
 		} else {
-			m.statusMessage = "Project unarchived"
+			m.statusMessage = "Archive project? Press 'y' to confirm, 'n' to cancel"
 		}
-		prevStates := captureTaskStates(m.Project.Tasks)
-		return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
-			return KanbanStatusChangedMsg{TaskID: "", PreviousSection: ""}
-		})
+		return m, nil
 
 	// External editor for task content
 	case "ctrl+o":
@@ -2004,7 +2018,7 @@ func (m *KanbanViewModel) View() string {
 	// Render status message if set
 	if m.statusMessage != "" {
 		statusStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		if m.confirmDelete {
+		if m.confirmDelete || m.confirmArchive {
 			statusStyle = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 		}
 		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
@@ -2393,9 +2407,9 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
-// focus mode, multi-select mode, quick edit mode, and completed view mode.
+// archive confirmation, focus mode, multi-select mode, quick edit mode, and completed view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmNoteConvert || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmNoteConvert || m.confirmArchive || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
 }
 
 // renderPrefixPopup renders the which-key style popup for pending prefix keys.

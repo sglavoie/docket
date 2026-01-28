@@ -410,3 +410,20 @@ func (m *KanbanViewModel) executeNoteConversion() tea.Cmd {
 		return KanbanStatusChangedMsg{TaskID: task.ID, PreviousSection: section}
 	})
 }
+
+// executeArchiveToggle archives or unarchives the project.
+func (m *KanbanViewModel) executeArchiveToggle() tea.Cmd {
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	if m.Project.Archived {
+		m.Project.Unarchive()
+		m.statusMessage = "Project unarchived"
+	} else {
+		m.Project.Archive()
+		m.statusMessage = "Project archived"
+	}
+
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: ""}
+	})
+}
