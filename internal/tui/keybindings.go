@@ -724,6 +724,15 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
+		// Filters
+		Keybinding{Key: "F", Description: "Toggle filter bar", Category: "Filters", Views: views},
+		Keybinding{Key: "F2", Description: "Toggle high priority filter", Category: "Filters", Views: views},
+		Keybinding{Key: "F3", Description: "Cycle type filter", Category: "Filters", Views: views},
+		Keybinding{Key: "F4", Description: "Cycle status filter", Category: "Filters", Views: views},
+		Keybinding{Key: "F5", Description: "Tag filter selector", Category: "Filters", Views: views},
+		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filters", Views: views},
+		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
+
 		// Actions
 		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Actions", Views: views},

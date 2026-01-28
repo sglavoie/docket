@@ -118,6 +118,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Tags"
 	case ViewTagFilterSelector:
 		status = "Filter by Tags"
+	case ViewKanbanTagFilterSelector:
+		status = "Kanban: Filter by Tags"
 	case ViewSectionFilterSelector:
 		status = "Filter by Sections"
 	case ViewSectionPicker:

@@ -71,6 +71,7 @@ const (
 	ViewLinkedTaskCreator
 	ViewLinkedTaskSelector
 	ViewCrossProjectLinker
+	ViewKanbanTagFilterSelector
 )
 
 // AppModel is the main TUI model with a view stack.

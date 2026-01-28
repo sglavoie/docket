@@ -67,6 +67,23 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowKanbanTagFilterSelectorMsg:
+		if m.kanban != nil {
+			m.showView(ViewKanbanTagFilterSelector, NewKanbanTagFilterSelectorModel(m.kanban))
+		}
+		return true, nil
+
+	case KanbanTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled && m.kanban != nil {
+			m.kanban.filter.Tags = make(map[string]bool)
+			for _, tag := range msg.SelectedTags {
+				m.kanban.filter.Tags[tag] = true
+			}
+			m.kanban.loadTasks()
+		}
+		return true, nil
+
 	case TagRenamedMsg:
 		m.popView()
 		m.reloadAndRefreshProjectTree()

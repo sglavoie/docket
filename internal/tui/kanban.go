@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -79,18 +80,36 @@ type KanbanViewModel struct {
 	detailsPaneFocused bool // which pane has focus (false=kanban, true=details)
 	detailsScroll      int  // scroll offset for description in details pane
 	kanbanHeight       int  // computed height for kanban pane (excludes divider)
+
+	// Filter state for filtering tasks across all columns
+	filter    KanbanFilterState
+	filterBar *KanbanFilterBarComponent
+
+	// Search mode state
+	searchMode  bool
+	searchInput textinput.Model
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
 // It initializes five columns mapped to Active/Next/Inbox/Waiting/Someday
 // and loads non-completed tasks filtered by their Section field.
 func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *KanbanViewModel {
+	searchInput := textinput.New()
+	searchInput.Placeholder = "Search tasks..."
+	searchInput.CharLimit = 100
+	searchInput.Width = 40
+
 	m := &KanbanViewModel{
 		Project:       project,
 		config:        cfg,
 		configManager: cfgManager,
 		Columns:       make(map[string]*ColumnState),
 		Tasks:         make(map[string][]*models.Task),
+		filter: KanbanFilterState{
+			Tags: make(map[string]bool),
+		},
+		filterBar:   NewKanbanFilterBarComponent(),
+		searchInput: searchInput,
 	}
 
 	// Initialize column state for each of the five sections
@@ -108,6 +127,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 // loadTasks populates the Tasks map by filtering project tasks into columns.
 // Only non-completed tasks are included. Each task is placed in the column
 // matching its Section field (empty string maps to Active column).
+// Filters are applied to determine which tasks are visible.
 func (m *KanbanViewModel) loadTasks() {
 	// Clear existing tasks
 	for _, section := range KanbanColumnOrder {
@@ -122,6 +142,11 @@ func (m *KanbanViewModel) loadTasks() {
 	for _, task := range m.Project.Tasks {
 		// Skip completed tasks (done or canceled)
 		if task.Status.IsComplete() {
+			continue
+		}
+
+		// Apply filters - skip tasks that don't pass
+		if !m.passesFilters(task) {
 			continue
 		}
 
@@ -141,6 +166,9 @@ func (m *KanbanViewModel) loadTasks() {
 		taskCount := len(m.Tasks[section])
 		m.Columns[section].Validate(taskCount)
 	}
+
+	// Calculate filter counts for the filter bar
+	m.calculateFilterCounts()
 }
 
 // CurrentColumnState returns the ColumnState for the currently active column.
@@ -189,9 +217,16 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 
 	m.ColumnWidth = columnWidth
 
+	// Account for filter bar height when enabled (2 lines)
+	filterBarHeight := 0
+	if m.filterBar != nil && m.filterBar.IsEnabled() {
+		filterBarHeight = 2
+	}
+
 	// Compute split view heights: 50/50 split minus 1 for the divider line
-	// kanbanHeight = (height - 1) / 2, leaving rest for details pane
-	m.kanbanHeight = (height - 1) / 2
+	// kanbanHeight = (height - 1 - filterBarHeight) / 2, leaving rest for details pane
+	availableHeight := height - 1 - filterBarHeight // -1 for divider
+	m.kanbanHeight = availableHeight / 2
 	if m.kanbanHeight < 3 {
 		m.kanbanHeight = 3 // Minimum height for header + 1 task
 	}
@@ -345,6 +380,11 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle search mode input first
+	if m.searchMode {
+		return m.handleSearchInput(msg)
+	}
+
 	// Handle pending prefix keys first (two-key sequences like ",s")
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
@@ -455,9 +495,83 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Edit task in configured editor
 	case "e":
 		return m, m.handleEditTask()
+
+	// Filter keybindings
+	case "F":
+		// Toggle filter bar visibility
+		if m.filterBar != nil {
+			m.filterBar.Toggle()
+		}
+		return m, nil
+
+	case "f2":
+		// Toggle high priority filter
+		m.toggleKanbanPriorityFilter()
+		m.loadTasks()
+		return m, nil
+
+	case "f3":
+		// Cycle type filter
+		m.cycleKanbanTypeFilter()
+		m.loadTasks()
+		return m, nil
+
+	case "f4":
+		// Cycle status filter
+		m.cycleKanbanStatusFilter()
+		m.loadTasks()
+		return m, nil
+
+	case "f5":
+		// Tag filter selector
+		return m, func() tea.Msg {
+			return ShowKanbanTagFilterSelectorMsg{}
+		}
+
+	case "f7":
+		// Cycle due date filter
+		m.cycleKanbanDueDateFilter()
+		m.loadTasks()
+		return m, nil
+
+	case "/":
+		// Activate search mode
+		m.searchMode = true
+		m.searchInput.SetValue(m.filter.Search)
+		m.searchInput.Focus()
+		return m, textinput.Blink
 	}
 
 	return m, nil
+}
+
+// handleSearchInput processes keyboard input while in search mode.
+func (m *KanbanViewModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		// Cancel search
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.searchInput.SetValue("")
+		return m, nil
+
+	case "enter":
+		// Confirm search
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.filter.Search = m.searchInput.Value()
+		m.loadTasks()
+		return m, nil
+
+	default:
+		// Update search input
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		// Live filtering as user types
+		m.filter.Search = m.searchInput.Value()
+		m.loadTasks()
+		return m, cmd
+	}
 }
 
 // handleDetailsPaneKey handles keys when the details pane has focus.
@@ -600,12 +714,29 @@ func (m *KanbanViewModel) moveColumnRight() {
 }
 
 // View implements the tea.Model interface. Renders a split view with:
+// - Filter bar (when enabled): filter badges and column counts
 // - Top half: kanban columns with section-colored headers
 // - Horizontal divider
 // - Bottom half: task details panel for the selected task
 func (m *KanbanViewModel) View() string {
 	if m.Project == nil {
 		return MutedStyle.Render("No project loaded")
+	}
+
+	var viewParts []string
+
+	// Render filter bar if enabled
+	if m.filterBar != nil && m.filterBar.IsEnabled() {
+		filterBar := m.renderKanbanFilterBar()
+		if filterBar != "" {
+			viewParts = append(viewParts, strings.TrimSuffix(filterBar, "\n"))
+		}
+	}
+
+	// Render search input if in search mode
+	if m.searchMode {
+		searchLine := "Search: " + m.searchInput.View()
+		viewParts = append(viewParts, searchLine)
 	}
 
 	var columns []string
@@ -627,23 +758,45 @@ func (m *KanbanViewModel) View() string {
 
 	kanbanPane := lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 
+	// Check if all columns are empty (no tasks match filters)
+	totalTasks := 0
+	for _, section := range KanbanColumnOrder {
+		totalTasks += len(m.Tasks[section])
+	}
+	if totalTasks == 0 && m.HasActiveFilters() {
+		// Show message when filters result in no tasks
+		emptyMsg := MutedStyle.Render("No tasks match current filters")
+		kanbanPane = lipgloss.Place(m.Width(), m.kanbanHeight, lipgloss.Center, lipgloss.Center, emptyMsg)
+	}
+
+	viewParts = append(viewParts, kanbanPane)
+
 	// Render the horizontal divider
 	dividerStyle := MutedStyle
 	if m.detailsPaneFocused {
 		dividerStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
 	}
 	divider := dividerStyle.Render(strings.Repeat("─", m.Width()))
+	viewParts = append(viewParts, divider)
 
 	// Render the details panel for the selected task
-	detailsHeight := m.Height() - m.kanbanHeight - 1 // -1 for divider
+	filterBarHeight := 0
+	if m.filterBar != nil && m.filterBar.IsEnabled() {
+		filterBarHeight = 2
+	}
+	if m.searchMode {
+		filterBarHeight++
+	}
+	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight // -1 for divider
 	if detailsHeight < 3 {
 		detailsHeight = 3
 	}
 	selectedTask := m.getSelectedTask()
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
+	viewParts = append(viewParts, detailsPane)
 
-	// Join vertically: kanban + divider + details
-	return lipgloss.JoinVertical(lipgloss.Left, kanbanPane, divider, detailsPane)
+	// Join vertically: filterBar + kanban + divider + details
+	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
 }
 
 // renderColumn renders a single Kanban column with header and task list.
@@ -947,12 +1100,13 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
-// navigation. Currently tracks pending status prefix mode and details pane focus.
+// navigation. Currently tracks pending status prefix mode, details pane focus,
+// and search mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode
 }
 
-// HasTextInput implements ViewCapabilities. The Kanban view has no text input fields.
+// HasTextInput implements ViewCapabilities. Returns true when in search mode.
 func (m *KanbanViewModel) HasTextInput() bool {
-	return false
+	return m.searchMode
 }
