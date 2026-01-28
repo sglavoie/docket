@@ -236,6 +236,52 @@ func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 	})
 }
 
+// handleBulkPriorityChange applies a priority change to all selected tasks.
+func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
+	tasks := m.getSelectedTasksList()
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	for _, task := range tasks {
+		task.Priority = priority
+		task.UpdatedAt = time.Now()
+	}
+
+	count := len(tasks)
+	m.selectedTasks = make(map[string]bool)
+	m.multiSelectMode = false
+	m.statusMessage = fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+	})
+}
+
+// handleBulkDueDateChange applies a due date change to all selected tasks.
+func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc string) tea.Cmd {
+	tasks := m.getSelectedTasksList()
+	if len(tasks) == 0 {
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	for _, task := range tasks {
+		task.DueDate = dueDate
+		task.UpdatedAt = time.Now()
+	}
+
+	count := len(tasks)
+	m.selectedTasks = make(map[string]bool)
+	m.multiSelectMode = false
+	m.statusMessage = fmt.Sprintf("Due date %s on %d tasks", desc, count)
+
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+	})
+}
+
 // pruneInvisibleSelections removes selected tasks that are no longer visible.
 func (m *KanbanViewModel) pruneInvisibleSelections() {
 	if !m.multiSelectMode {

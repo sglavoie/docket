@@ -741,6 +741,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch key {
 		case "y", "Y":
 			m.confirmDelete = false
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkDelete()
+			}
 			return m, m.executeDelete()
 		case "n", "N", "esc":
 			m.confirmDelete = false
@@ -999,6 +1002,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Edit task in configured editor
 	case "e":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			project := m.Project
+			return m, func() tea.Msg {
+				return ShowBulkEditMsg{
+					Tasks:   tasks,
+					Project: project,
+				}
+			}
+		}
 		return m, m.handleEditTask()
 
 	// Quick edit (inline with modifiers)
@@ -1063,11 +1076,41 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.toggleActionableFilter()
 		return m, nil
 
-	// Tag filter selector
+	// Tag filter selector (or bulk tag assignment in multi-select)
 	case "T":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			project := m.Project
+			return m, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+			}
+		}
 		return m, func() tea.Msg {
 			return ShowKanbanTagFilterSelectorMsg{}
 		}
+
+	// Quick tag assignment
+	case "ctrl+g":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			project := m.Project
+			return m, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+			}
+		}
+		task := m.getSelectedTask()
+		if task != nil {
+			project := m.Project
+			tags := append([]string{}, task.Tags...)
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        task,
+					Project:     project,
+					CurrentTags: tags,
+				}
+			}
+		}
+		return m, nil
 
 	case "/":
 		// Activate search mode
@@ -1096,6 +1139,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "D":
 		// Initiate delete confirmation
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			m.confirmDelete = true
+			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
+			return m, nil
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			m.confirmDelete = true
@@ -1106,6 +1154,14 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "y":
 		// Copy task title to clipboard
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			m.selectedTasks = make(map[string]bool)
+			m.multiSelectMode = false
+			return m, func() tea.Msg {
+				return CopyTasksTitleMsg{Tasks: tasks}
+			}
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			return m, func() tea.Msg {
@@ -1116,6 +1172,14 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "Y":
 		// Copy task description to clipboard
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			m.selectedTasks = make(map[string]bool)
+			m.multiSelectMode = false
+			return m, func() tea.Msg {
+				return CopyTasksDetailsMsg{Tasks: tasks}
+			}
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			return m, func() tea.Msg {
@@ -1126,6 +1190,14 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+y":
 		// Copy task title and description to clipboard
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			m.selectedTasks = make(map[string]bool)
+			m.multiSelectMode = false
+			return m, func() tea.Msg {
+				return CopyTasksTitleAndDescMsg{Tasks: tasks}
+			}
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			return m, func() tea.Msg {
@@ -1260,6 +1332,19 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle pinned
 	case "ctrl+p":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			prevStates := captureTaskStates(m.Project.Tasks)
+			count := m.selectedCount()
+			for _, task := range m.getSelectedTasksList() {
+				task.TogglePinned()
+			}
+			m.selectedTasks = make(map[string]bool)
+			m.multiSelectMode = false
+			m.statusMessage = fmt.Sprintf("Toggled pin on %d tasks", count)
+			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
+				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+			})
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			prevStates := captureTaskStates(m.Project.Tasks)
@@ -1271,6 +1356,19 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			prevStates := captureTaskStates(m.Project.Tasks)
+			count := m.selectedCount()
+			for _, task := range m.getSelectedTasksList() {
+				task.ToggleActive()
+			}
+			m.selectedTasks = make(map[string]bool)
+			m.multiSelectMode = false
+			m.statusMessage = fmt.Sprintf("Toggled active on %d tasks", count)
+			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
+				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+			})
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			prevStates := captureTaskStates(m.Project.Tasks)
@@ -1575,6 +1673,9 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		switch key {
 		case "1", "2", "3", "4", "5":
 			priority := int(key[0] - '0')
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkPriorityChange(priority)
+			}
 			task := m.getSelectedTask()
 			if task != nil {
 				prevStates := captureTaskStates(m.Project.Tasks)
@@ -1587,42 +1688,39 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "d":
 		// Due date quick actions
-		task := m.getSelectedTask()
-		if task == nil {
-			return m, nil
-		}
-
 		now := time.Now()
 		var dueDate *time.Time
 		var desc string
 
 		switch key {
 		case "t":
-			// Today
 			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
 			dueDate = &today
 			desc = "today"
 		case "m":
-			// Tomorrow
 			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
 			dueDate = &tomorrow
 			desc = "tomorrow"
 		case "w":
-			// Next week (+7 days)
 			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
 			dueDate = &nextWeek
 			desc = "+7 days"
 		case "n":
-			// Next month (+30 days)
 			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
 			dueDate = &nextMonth
 			desc = "+30 days"
 		case "0":
-			// Clear due date
 			dueDate = nil
 			desc = "cleared"
 		case "d":
-			// Open full date picker
+			// Open full date picker (single task only)
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, nil
+			}
+			task := m.getSelectedTask()
+			if task == nil {
+				return m, nil
+			}
 			project := m.Project
 			return m, func() tea.Msg {
 				return SetDueDateMsg{Task: task, Project: project}
@@ -1631,6 +1729,13 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			return m, m.handleBulkDueDateChange(dueDate, desc)
+		}
+		task := m.getSelectedTask()
+		if task == nil {
+			return m, nil
+		}
 		prevStates := captureTaskStates(m.Project.Tasks)
 		task.DueDate = dueDate
 		task.UpdatedAt = time.Now()
@@ -2213,12 +2318,12 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 
 	// Calculate available space for title
-	// Layout: cursor (2) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
+	// Layout: cursor (3) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
 	checkboxLen := 0
 	if m.multiSelectMode {
 		checkboxLen = 4 // "[x] " or "[ ] "
 	}
-	prefixLen := 2 + checkboxLen + len(indent) + 1 + 1 + 1 + 1
+	prefixLen := 3 + checkboxLen + len(indent) + 1 + 1 + 1 + 1
 	badgeLen := 0
 	if badge != "" {
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
@@ -2229,16 +2334,35 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 	title = truncateWithEllipsis(title, maxTitleLen)
 
+	// Apply active/pinned title styling
+	if isSelected {
+		if task.Active {
+			title = BoldStyle.Foreground(lipgloss.Color("226")).Render(title)
+		} else if task.Pinned {
+			title = BoldStyle.Foreground(ColorSuccess).Render(title)
+		}
+	} else if task.Active {
+		title = ActiveStyle.Render(title)
+	} else if task.Pinned {
+		title = lipgloss.NewStyle().Foreground(ColorSuccess).Render(title)
+	}
+
 	statusStyle := GetStatusStyle(string(task.Status))
 	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
 	if badge != "" {
 		content += " " + badge
 	}
 
-	if isSelected {
-		return SelectionCursorStyle.Render(">") + " " + content
+	// Build cursor prefix with active marker (matches RenderSelectableRow)
+	activeMarker := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("226")).Render("*")
+	if isSelected && task.Active {
+		return SelectionCursorStyle.Render(">") + activeMarker + " " + content
+	} else if isSelected {
+		return SelectionCursorStyle.Render(">") + "  " + content
+	} else if task.Active {
+		return " " + activeMarker + " " + content
 	}
-	return "  " + content
+	return "   " + content
 }
 
 // truncateWithEllipsis truncates a string to maxLen characters, adding "..."

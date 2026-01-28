@@ -163,6 +163,10 @@ func (m *AppModel) handleEscKey() bool {
 				m.dashboard.Refresh(m.config)
 			}
 		}
+		// Refresh project tree when closing Kanban since tasks may have changed
+		if closingView == ViewKanban {
+			m.reloadAndRefreshProjectTree()
+		}
 		return true
 	}
 	return false
