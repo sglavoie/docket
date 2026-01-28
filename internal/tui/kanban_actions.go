@@ -34,14 +34,26 @@ type KanbanStatusChangedMsg struct {
 
 // getSelectedTask returns the currently selected task, or nil if none.
 func (m *KanbanViewModel) getSelectedTask() *models.Task {
-	tasks := m.CurrentColumnTasks()
+	visibleNodes := m.currentVisibleNodes()
 	cs := m.CurrentColumnState()
 
-	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
+	if len(visibleNodes) == 0 || !cs.InBounds(len(visibleNodes)) {
 		return nil
 	}
 
-	return tasks[cs.Cursor]
+	return visibleNodes[cs.Cursor].Task
+}
+
+// getSelectedNode returns the currently selected KanbanNode, or nil if none.
+func (m *KanbanViewModel) getSelectedNode() *KanbanNode {
+	visibleNodes := m.currentVisibleNodes()
+	cs := m.CurrentColumnState()
+
+	if len(visibleNodes) == 0 || !cs.InBounds(len(visibleNodes)) {
+		return nil
+	}
+
+	return visibleNodes[cs.Cursor]
 }
 
 // saveWithWorkflow saves the project with workflow rule evaluation and returns
@@ -92,17 +104,8 @@ func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 		return nil
 	}
 
-	// Get the selected task in the current column
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	tasks := m.Tasks[currentSection]
-	cs := m.Columns[currentSection]
-
-	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
-		// No task selected or cursor out of bounds
-		return nil
-	}
-
-	task := tasks[cs.Cursor]
+	// Get the selected task via visible nodes
+	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
@@ -144,17 +147,8 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 		return nil
 	}
 
-	// Get the selected task in the current column
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	tasks := m.Tasks[currentSection]
-	cs := m.Columns[currentSection]
-
-	if len(tasks) == 0 || !cs.InBounds(len(tasks)) {
-		// No task selected or cursor out of bounds
-		return nil
-	}
-
-	task := tasks[cs.Cursor]
+	// Get the selected task via visible nodes
+	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
@@ -179,16 +173,16 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 // If the task is at the bottom of the column, the operation is ignored.
 func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
 	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	tasks := m.Tasks[currentSection]
+	visibleNodes := m.visibleNodesForSection(currentSection)
 	cs := m.Columns[currentSection]
 
-	// Check bounds: need at least 2 tasks and cursor not at bottom
-	if len(tasks) < 2 || cs.Cursor >= len(tasks)-1 {
+	// Check bounds: need at least 2 visible nodes and cursor not at bottom
+	if len(visibleNodes) < 2 || cs.Cursor >= len(visibleNodes)-1 {
 		return nil
 	}
 
-	task := tasks[cs.Cursor]
-	taskBelow := tasks[cs.Cursor+1]
+	task := visibleNodes[cs.Cursor].Task
+	taskBelow := visibleNodes[cs.Cursor+1].Task
 	if task == nil || taskBelow == nil {
 		return nil
 	}
@@ -211,16 +205,16 @@ func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
 // If the task is at the top of the column, the operation is ignored.
 func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
 	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	tasks := m.Tasks[currentSection]
+	visibleNodes := m.visibleNodesForSection(currentSection)
 	cs := m.Columns[currentSection]
 
-	// Check bounds: need at least 2 tasks and cursor not at top
-	if len(tasks) < 2 || cs.Cursor <= 0 {
+	// Check bounds: need at least 2 visible nodes and cursor not at top
+	if len(visibleNodes) < 2 || cs.Cursor <= 0 {
 		return nil
 	}
 
-	task := tasks[cs.Cursor]
-	taskAbove := tasks[cs.Cursor-1]
+	task := visibleNodes[cs.Cursor].Task
+	taskAbove := visibleNodes[cs.Cursor-1].Task
 	if task == nil || taskAbove == nil {
 		return nil
 	}

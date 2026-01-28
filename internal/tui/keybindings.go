@@ -718,6 +718,12 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "J", Description: "Move task down in column", Category: "Task Movement", Views: views},
 		Keybinding{Key: "K", Description: "Move task up in column", Category: "Task Movement", Views: views},
 
+		// Folds (z prefix)
+		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
+		Keybinding{Key: "zo/zc", Description: "Expand/collapse fold", Category: "Folds", Views: views},
+		Keybinding{Key: "zR/zM", Description: "Expand/collapse all in column", Category: "Folds", Views: views},
+		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
+
 		// Status Changes (, prefix)
 		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
 		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},

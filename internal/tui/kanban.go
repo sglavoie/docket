@@ -41,6 +41,21 @@ type ColumnState struct {
 	ScrollOffset int
 }
 
+// KanbanNode represents a task in the kanban view with hierarchy information.
+// This is similar to TreeNode in project_tree.go but optimized for kanban display.
+type KanbanNode struct {
+	Task              *models.Task
+	Level             int  // Nesting depth (0 = root, 1 = child, 2 = grandchild)
+	Expanded          bool // Whether children in this column are visible
+	Visible           bool // Whether this node should be rendered
+	HasChildrenHere   bool // Has children in this same column
+	ChildrenElsewhere int  // Count of children in other columns
+}
+
+// MaxKanbanDisplayLevel is the maximum nesting depth shown in kanban view.
+// Deeper levels are flattened under their grandparent.
+const MaxKanbanDisplayLevel = 2
+
 // Minimum width for a Kanban column to remain legible.
 // This ensures column headers and truncated task titles are readable.
 const KanbanMinColumnWidth = 15
@@ -64,6 +79,18 @@ type KanbanViewModel struct {
 	// Tasks maps section name to the list of non-completed tasks in that section.
 	// This is populated during construction and should be refreshed when tasks change.
 	Tasks map[string][]*models.Task
+
+	// Nodes maps section name to hierarchical node list for rendering.
+	// This provides nesting information for each task in the column.
+	Nodes map[string][]*KanbanNode
+
+	// ExpandState tracks expand/collapse state per task ID.
+	// Default is true (expanded). Resets when kanban view opens.
+	ExpandState map[string]bool
+
+	// FocusedTask is the root of the currently focused subtree (nil = no focus).
+	// When set, only this task and its descendants are shown.
+	FocusedTask *models.Task
 
 	// ActiveColumn tracks which column is currently focused (index into KanbanColumnOrder)
 	ActiveColumn int
@@ -134,6 +161,8 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		configManager: cfgManager,
 		Columns:       make(map[string]*ColumnState),
 		Tasks:         make(map[string][]*models.Task),
+		Nodes:         make(map[string][]*KanbanNode),
+		ExpandState:   make(map[string]bool),
 		filter: KanbanFilterState{
 			Tags: make(map[string]bool),
 		},
@@ -146,6 +175,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 	for _, section := range KanbanColumnOrder {
 		m.Columns[section] = &ColumnState{}
 		m.Tasks[section] = []*models.Task{}
+		m.Nodes[section] = []*KanbanNode{}
 	}
 
 	// Load tasks into columns by section, excluding completed tasks
@@ -158,17 +188,19 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 // Only non-completed tasks are included. Each task is placed in the column
 // matching its Section field (empty string maps to Active column).
 // Filters are applied to determine which tasks are visible.
+// After filtering, hierarchical nodes are built for each column.
 func (m *KanbanViewModel) loadTasks() {
-	// Clear existing tasks
+	// Clear existing tasks and nodes
 	for _, section := range KanbanColumnOrder {
 		m.Tasks[section] = []*models.Task{}
+		m.Nodes[section] = []*KanbanNode{}
 	}
 
 	if m.Project == nil {
 		return
 	}
 
-	// Filter and categorize tasks by section
+	// Pass 1: Filter and categorize tasks by section
 	for _, task := range m.Project.Tasks {
 		// Skip completed tasks (done or canceled)
 		if task.Status.IsComplete() {
@@ -177,6 +209,11 @@ func (m *KanbanViewModel) loadTasks() {
 
 		// Apply filters - skip tasks that don't pass
 		if !m.passesFilters(task) {
+			continue
+		}
+
+		// In focus mode, only include focused task and its descendants
+		if m.FocusedTask != nil && !m.isInFocusedSubtree(task) {
 			continue
 		}
 
@@ -191,14 +228,199 @@ func (m *KanbanViewModel) loadTasks() {
 		m.Tasks[section] = append(m.Tasks[section], task)
 	}
 
+	// Pass 2: Build hierarchical nodes for each section
+	for _, section := range KanbanColumnOrder {
+		m.buildColumnNodes(section)
+	}
+
+	// Pass 3: Compute ChildrenElsewhere counts
+	m.computeChildrenElsewhere()
+
+	// Update node visibility based on expand state
+	m.updateNodeVisibility()
+
 	// Validate cursor positions for each column after loading
 	for _, section := range KanbanColumnOrder {
-		taskCount := len(m.Tasks[section])
-		m.Columns[section].Validate(taskCount)
+		visibleCount := m.visibleNodeCount(section)
+		m.Columns[section].Validate(visibleCount)
 	}
 
 	// Calculate filter counts for the filter bar
 	m.calculateFilterCounts()
+}
+
+// isInFocusedSubtree checks if a task is the focused task or one of its descendants.
+func (m *KanbanViewModel) isInFocusedSubtree(task *models.Task) bool {
+	if m.FocusedTask == nil {
+		return true
+	}
+	if task.ID == m.FocusedTask.ID {
+		return true
+	}
+	// Walk up the parent chain
+	current := task
+	for current.Parent != nil {
+		if current.Parent.ID == m.FocusedTask.ID {
+			return true
+		}
+		current = current.Parent
+	}
+	return false
+}
+
+// buildColumnNodes creates hierarchical KanbanNode entries for a section.
+// Root tasks (no parent or parent not in section) appear at level 0.
+// Children are nested below their parents with increasing levels.
+func (m *KanbanViewModel) buildColumnNodes(section string) {
+	tasks := m.Tasks[section]
+	if len(tasks) == 0 {
+		return
+	}
+
+	// Build a set of task IDs in this section for quick lookup
+	taskIDsInSection := make(map[string]bool)
+	for _, task := range tasks {
+		taskIDsInSection[task.ID] = true
+	}
+
+	// Identify root tasks: no parent, or parent not in this section
+	var rootTasks []*models.Task
+	for _, task := range tasks {
+		isRoot := task.ParentID == nil || !taskIDsInSection[*task.ParentID]
+		// In focus mode, the focused task is always a root
+		if m.FocusedTask != nil && task.ID == m.FocusedTask.ID {
+			isRoot = true
+		}
+		if isRoot {
+			rootTasks = append(rootTasks, task)
+		}
+	}
+
+	// Add nodes recursively starting from root tasks
+	for _, root := range rootTasks {
+		m.addKanbanNode(root, 0, section, taskIDsInSection)
+	}
+}
+
+// addKanbanNode recursively adds a task and its children to the Nodes list.
+func (m *KanbanViewModel) addKanbanNode(task *models.Task, level int, section string, taskIDsInSection map[string]bool) {
+	// Cap level at MaxKanbanDisplayLevel
+	displayLevel := level
+	if displayLevel > MaxKanbanDisplayLevel {
+		displayLevel = MaxKanbanDisplayLevel
+	}
+
+	// Check if this task has children in the same section
+	hasChildrenHere := false
+	for _, child := range task.Children {
+		if taskIDsInSection[child.ID] {
+			hasChildrenHere = true
+			break
+		}
+	}
+
+	// Get or default expand state (default = expanded)
+	expanded := true
+	if state, ok := m.ExpandState[task.ID]; ok {
+		expanded = state
+	} else {
+		m.ExpandState[task.ID] = true
+	}
+
+	node := &KanbanNode{
+		Task:            task,
+		Level:           displayLevel,
+		Expanded:        expanded,
+		Visible:         true, // Will be updated in updateNodeVisibility
+		HasChildrenHere: hasChildrenHere,
+	}
+	m.Nodes[section] = append(m.Nodes[section], node)
+
+	// Recursively add children that are in this section
+	for _, child := range task.Children {
+		if taskIDsInSection[child.ID] {
+			m.addKanbanNode(child, level+1, section, taskIDsInSection)
+		}
+	}
+}
+
+// computeChildrenElsewhere calculates how many children are in other columns.
+func (m *KanbanViewModel) computeChildrenElsewhere() {
+	// Build a map of which section each task is in
+	taskSections := make(map[string]string)
+	for section, tasks := range m.Tasks {
+		for _, task := range tasks {
+			taskSections[task.ID] = section
+		}
+	}
+
+	// For each node, count children in other sections
+	for _, section := range KanbanColumnOrder {
+		for _, node := range m.Nodes[section] {
+			count := 0
+			for _, child := range node.Task.Children {
+				// Skip completed children
+				if child.Status.IsComplete() {
+					continue
+				}
+				childSection, inView := taskSections[child.ID]
+				if inView && childSection != section {
+					count++
+				}
+			}
+			node.ChildrenElsewhere = count
+		}
+	}
+}
+
+// updateNodeVisibility sets Visible based on parent expand state.
+func (m *KanbanViewModel) updateNodeVisibility() {
+	for _, section := range KanbanColumnOrder {
+		nodes := m.Nodes[section]
+		for i, node := range nodes {
+			// Root nodes (level 0) are always visible
+			if node.Level == 0 {
+				node.Visible = true
+				continue
+			}
+
+			// Find parent node (must be earlier in list with lower level)
+			parentVisible := false
+			parentExpanded := false
+			for j := i - 1; j >= 0; j-- {
+				if nodes[j].Level < node.Level {
+					parentVisible = nodes[j].Visible
+					parentExpanded = nodes[j].Expanded
+					break
+				}
+			}
+
+			// Visible if parent is visible AND expanded
+			node.Visible = parentVisible && parentExpanded
+		}
+	}
+}
+
+// visibleNodeCount returns the count of visible nodes in a section.
+func (m *KanbanViewModel) visibleNodeCount(section string) int {
+	count := 0
+	for _, node := range m.Nodes[section] {
+		if node.Visible {
+			count++
+		}
+	}
+	return count
+}
+
+// visibleNodes returns only visible nodes for a section.
+func (m *KanbanViewModel) visibleNodesForSection(section string) []*KanbanNode {
+	var visible []*KanbanNode
+	for _, node := range m.Nodes[section] {
+		if node.Visible {
+			visible = append(visible, node)
+		}
+	}
+	return visible
 }
 
 // CurrentColumnState returns the ColumnState for the currently active column.
@@ -375,7 +597,7 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cs := m.Columns[msg.Section]
 		cs.Cursor = msg.NewPosition
 		// Validate in case the reload changed task order
-		cs.Validate(len(m.Tasks[msg.Section]))
+		cs.Validate(m.visibleNodeCount(msg.Section))
 		return m, nil
 
 	case KanbanStatusChangedMsg:
@@ -384,8 +606,9 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		// Try to position cursor on the task if it's still visible
 		for _, section := range KanbanColumnOrder {
-			for i, task := range m.Tasks[section] {
-				if task.ID == msg.TaskID {
+			visibleNodes := m.visibleNodesForSection(section)
+			for i, node := range visibleNodes {
+				if node.Task.ID == msg.TaskID {
 					// Found the task - position cursor on it
 					for colIdx, sec := range KanbanColumnOrder {
 						if sec == section {
@@ -399,7 +622,7 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Task not visible (likely completed/cancelled) - validate current cursor
 		cs := m.CurrentColumnState()
-		cs.Validate(len(m.CurrentColumnTasks()))
+		cs.Validate(m.currentVisibleNodeCount())
 		return m, nil
 
 	case KanbanQuickAddCreatedMsg:
@@ -430,7 +653,7 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		// Validate cursor position in the section where task was deleted
 		cs := m.Columns[msg.Section]
-		cs.Validate(len(m.Tasks[msg.Section]))
+		cs.Validate(m.visibleNodeCount(msg.Section))
 		m.statusMessage = "Task deleted"
 		return m, nil
 
@@ -515,11 +738,21 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "esc", "ctrl+k":
+		// Exit focus mode first if active
+		if m.FocusedTask != nil {
+			m.exitFocusMode()
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseKanbanMsg{}
 		}
 
 	case "q":
+		// Exit focus mode first if active
+		if m.FocusedTask != nil {
+			m.exitFocusMode()
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseKanbanMsg{}
 		}
@@ -544,11 +777,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Jump to last task in column
 	case "G":
-		// Go to last task in current column
-		tasks := m.CurrentColumnTasks()
-		if len(tasks) > 0 {
+		// Go to last visible node in current column
+		visibleCount := m.currentVisibleNodeCount()
+		if visibleCount > 0 {
 			cs := m.CurrentColumnState()
-			cs.Cursor = len(tasks) - 1
+			cs.Cursor = visibleCount - 1
 		}
 		return m, nil
 
@@ -592,6 +825,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if task != nil {
 			m.pendingPrefix = "c"
 		}
+		return m, nil
+
+	case "z":
+		// Fold prefix for expand/collapse operations
+		m.pendingPrefix = "z"
 		return m, nil
 
 	// Open task detail view via glow
@@ -1190,9 +1428,116 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
+
+	case "z":
+		// Fold/expand operations
+		switch key {
+		case "a":
+			// Toggle expand on current node
+			m.toggleCurrentExpand()
+			return m, nil
+		case "o":
+			// Expand current node
+			m.expandCurrent()
+			return m, nil
+		case "c":
+			// Collapse current node
+			m.collapseCurrent()
+			return m, nil
+		case "R":
+			// Expand all in column
+			m.expandAllInColumn()
+			return m, nil
+		case "M":
+			// Collapse all in column
+			m.collapseAllInColumn()
+			return m, nil
+		case "v":
+			// Focus subtree (zoom into selected task)
+			m.focusSubtree()
+			return m, nil
+		}
 	}
 
 	return m, nil
+}
+
+// toggleCurrentExpand toggles the expand state of the selected node.
+func (m *KanbanViewModel) toggleCurrentExpand() {
+	node := m.getSelectedNode()
+	if node == nil || !node.HasChildrenHere {
+		return
+	}
+	m.ExpandState[node.Task.ID] = !node.Expanded
+	m.updateNodeVisibility()
+	// Validate cursor after visibility change
+	section := m.CurrentSection()
+	m.Columns[section].Validate(m.visibleNodeCount(section))
+}
+
+// expandCurrent expands the selected node.
+func (m *KanbanViewModel) expandCurrent() {
+	node := m.getSelectedNode()
+	if node == nil || !node.HasChildrenHere {
+		return
+	}
+	m.ExpandState[node.Task.ID] = true
+	m.updateNodeVisibility()
+}
+
+// collapseCurrent collapses the selected node.
+func (m *KanbanViewModel) collapseCurrent() {
+	node := m.getSelectedNode()
+	if node == nil || !node.HasChildrenHere {
+		return
+	}
+	m.ExpandState[node.Task.ID] = false
+	m.updateNodeVisibility()
+	// Validate cursor after visibility change
+	section := m.CurrentSection()
+	m.Columns[section].Validate(m.visibleNodeCount(section))
+}
+
+// expandAllInColumn expands all nodes in the current column.
+func (m *KanbanViewModel) expandAllInColumn() {
+	section := m.CurrentSection()
+	for _, node := range m.Nodes[section] {
+		if node.HasChildrenHere {
+			m.ExpandState[node.Task.ID] = true
+		}
+	}
+	m.updateNodeVisibility()
+}
+
+// collapseAllInColumn collapses all nodes in the current column.
+func (m *KanbanViewModel) collapseAllInColumn() {
+	section := m.CurrentSection()
+	for _, node := range m.Nodes[section] {
+		if node.HasChildrenHere {
+			m.ExpandState[node.Task.ID] = false
+		}
+	}
+	m.updateNodeVisibility()
+	// Validate cursor after collapsing
+	m.Columns[section].Validate(m.visibleNodeCount(section))
+}
+
+// focusSubtree enters focus mode, showing only the selected task and its descendants.
+func (m *KanbanViewModel) focusSubtree() {
+	task := m.getSelectedTask()
+	if task == nil {
+		return
+	}
+	m.FocusedTask = task
+	m.loadTasks()
+	m.statusMessage = "Focus mode: " + task.Title
+}
+
+// exitFocusMode exits focus mode and shows all tasks.
+func (m *KanbanViewModel) exitFocusMode() {
+	m.FocusedTask = nil
+	m.loadTasks()
+	m.statusMessage = ""
 }
 
 // moveCursorUp moves the cursor up within the current column.
@@ -1206,8 +1551,8 @@ func (m *KanbanViewModel) moveCursorUp() {
 // moveCursorDown moves the cursor down within the current column.
 func (m *KanbanViewModel) moveCursorDown() {
 	cs := m.CurrentColumnState()
-	tasks := m.CurrentColumnTasks()
-	if cs.Cursor < len(tasks)-1 {
+	visibleCount := m.currentVisibleNodeCount()
+	if cs.Cursor < visibleCount-1 {
 		cs.Cursor++
 	}
 }
@@ -1215,19 +1560,19 @@ func (m *KanbanViewModel) moveCursorDown() {
 // positionCursorOnTask positions the cursor on the specified task in the given section.
 // If the task is not found, the cursor is positioned at the first task (or 0 if empty).
 func (m *KanbanViewModel) positionCursorOnTask(task *models.Task, section string) {
-	tasks := m.Tasks[section]
+	visibleNodes := m.visibleNodesForSection(section)
 	cs := m.Columns[section]
 
-	// Find the task in the column
-	for i, t := range tasks {
-		if t.ID == task.ID {
+	// Find the task among visible nodes
+	for i, node := range visibleNodes {
+		if node.Task.ID == task.ID {
 			cs.Cursor = i
 			return
 		}
 	}
 
-	// Task not found, validate cursor to be in bounds
-	cs.Validate(len(tasks))
+	// Task not found (possibly collapsed), validate cursor to be in bounds
+	cs.Validate(len(visibleNodes))
 }
 
 // moveColumnLeft moves focus to the previous non-empty column on the left.
@@ -1368,8 +1713,8 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 	b.WriteString(header)
 	b.WriteString("\n")
 
-	// Render tasks in this column
-	tasks := m.Tasks[section]
+	// Render visible nodes in this column
+	visibleNodes := m.visibleNodesForSection(section)
 	cs := m.Columns[section]
 
 	// Calculate viewport height for tasks (kanbanHeight minus header line)
@@ -1385,7 +1730,7 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 	if reducedHeight < 1 {
 		reducedHeight = 1
 	}
-	cs.ValidateScroll(len(tasks), reducedHeight)
+	cs.ValidateScroll(len(visibleNodes), reducedHeight)
 
 	// Determine if indicator is actually needed after validation
 	hasUpIndicator := cs.ScrollOffset > 0
@@ -1394,14 +1739,14 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		effectiveHeight = reducedHeight
 	}
 
-	if len(tasks) == 0 {
+	if len(visibleNodes) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)"))
 	} else {
 		// Calculate visible range based on scroll offset
 		startIdx := cs.ScrollOffset
 		endIdx := startIdx + viewportHeight
-		if endIdx > len(tasks) {
-			endIdx = len(tasks)
+		if endIdx > len(visibleNodes) {
+			endIdx = len(visibleNodes)
 		}
 
 		// Show "↑ N more" indicator if tasks are hidden above
@@ -1410,16 +1755,16 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 			b.WriteString("\n")
 			// Adjust visible range since we used a line for the indicator
 			endIdx = startIdx + effectiveHeight
-			if endIdx > len(tasks) {
-				endIdx = len(tasks)
+			if endIdx > len(visibleNodes) {
+				endIdx = len(visibleNodes)
 			}
 		}
 
-		// Render visible tasks
+		// Render visible nodes
 		for i := startIdx; i < endIdx; i++ {
-			task := tasks[i]
+			node := visibleNodes[i]
 			isSelected := i == cs.Cursor && isActive && !m.detailsPaneFocused
-			line := m.renderTaskRow(task, isSelected)
+			line := m.renderTaskRow(node, isSelected)
 			b.WriteString(line)
 			if i < endIdx-1 {
 				b.WriteString("\n")
@@ -1427,9 +1772,9 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		}
 
 		// Show "↓ N more" indicator if tasks are hidden below
-		if endIdx < len(tasks) {
+		if endIdx < len(visibleNodes) {
 			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(tasks)-endIdx)))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(visibleNodes)-endIdx)))
 		}
 	}
 
@@ -1452,8 +1797,16 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 // Uses the same ViewMode styles as the project tree view mode indicator for consistency.
 func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) string {
 	displayName := sectionDisplayName(section)
-	taskCount := len(m.Tasks[section])
-	headerText := fmt.Sprintf("%s (%d)", displayName, taskCount)
+	visibleCount := m.visibleNodeCount(section)
+	totalCount := len(m.Tasks[section])
+
+	// Show visible/total if different (collapsed nodes)
+	var headerText string
+	if visibleCount != totalCount {
+		headerText = fmt.Sprintf("%s (%d/%d)", displayName, visibleCount, totalCount)
+	} else {
+		headerText = fmt.Sprintf("%s (%d)", displayName, totalCount)
+	}
 
 	// Use the same ViewMode style as the view mode indicator
 	style := GetViewModeStyleForSection(section)
@@ -1466,19 +1819,55 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 	return style.Render(headerText)
 }
 
-// renderTaskRow renders a single task row, with selection indicator if selected.
-func (m *KanbanViewModel) renderTaskRow(task *models.Task, isSelected bool) string {
-	// Build task display: status icon + truncated title
+// renderTaskRow renders a single task row with hierarchy indicators.
+// Shows indentation, expand/collapse icons, and children-elsewhere badges.
+func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) string {
+	task := node.Task
 	statusIcon := task.Status.Icon()
 	title := task.Title
 
-	// Truncate title to fit in column (accounting for icon and spacing)
-	// Layout: "  " or "> " (2 chars) + icon (1 char) + " " (1 char) + title
-	maxTitleLen := m.ColumnWidth - 4
+	// Build indent prefix: "└" for nested items
+	var indent string
+	if node.Level > 0 {
+		indent = strings.Repeat(" ", node.Level) + "└"
+	}
+
+	// Build expand/collapse icon
+	var expandIcon string
+	if node.HasChildrenHere {
+		if node.Expanded {
+			expandIcon = "▼"
+		} else {
+			expandIcon = "▶"
+		}
+	} else {
+		expandIcon = " "
+	}
+
+	// Build children-elsewhere badge
+	var badge string
+	if node.ChildrenElsewhere > 0 {
+		badge = MutedStyle.Render(fmt.Sprintf("+%d", node.ChildrenElsewhere))
+	}
+
+	// Calculate available space for title
+	// Layout: cursor (2) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
+	prefixLen := 2 + len(indent) + 1 + 1 + 1 + 1
+	badgeLen := 0
+	if badge != "" {
+		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
+	}
+	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen
+	if maxTitleLen < 5 {
+		maxTitleLen = 5
+	}
 	title = truncateWithEllipsis(title, maxTitleLen)
 
 	statusStyle := GetStatusStyle(string(task.Status))
-	content := statusStyle.Render(statusIcon) + " " + title
+	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
+	if badge != "" {
+		content += " " + badge
+	}
 
 	if isSelected {
 		return SelectionCursorStyle.Render(">") + " " + content
@@ -1672,9 +2061,9 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
-// search mode, quick add mode, and delete confirmation.
+// search mode, quick add mode, delete confirmation, and focus mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.FocusedTask != nil
 }
 
 // HasTextInput implements ViewCapabilities. Returns true when in search or quick add mode.
@@ -1690,5 +2079,6 @@ func (m *KanbanViewModel) renderPrefixPopup() string {
 		"d": DueDatePrefixHints,
 		"g": KanbanNavigationPrefixHints,
 		"c": CreateLinkedPrefixHints,
+		"z": KanbanFoldPrefixHints,
 	}, m.Width())
 }

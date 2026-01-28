@@ -171,18 +171,26 @@ func TestFindNextNonEmptyColumn(t *testing.T) {
 				Project:      &models.Project{},
 				Columns:      make(map[string]*ColumnState),
 				Tasks:        make(map[string][]*models.Task),
+				Nodes:        make(map[string][]*KanbanNode),
+				ExpandState:  make(map[string]bool),
 				ActiveColumn: tt.activeColumn,
 			}
 
-			// Initialize columns and populate tasks based on taskCounts
+			// Initialize columns and populate tasks/nodes based on taskCounts
 			for _, section := range KanbanColumnOrder {
 				m.Columns[section] = &ColumnState{}
 				count := tt.taskCounts[section]
 				tasks := make([]*models.Task, count)
+				nodes := make([]*KanbanNode, count)
 				for i := range tasks {
 					tasks[i] = makeTask()
+					nodes[i] = &KanbanNode{
+						Task:    tasks[i],
+						Visible: true,
+					}
 				}
 				m.Tasks[section] = tasks
+				m.Nodes[section] = nodes
 			}
 
 			got := m.findNextNonEmptyColumn(tt.direction)

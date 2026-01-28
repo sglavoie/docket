@@ -201,4 +201,14 @@ var (
 		{Key: "W", Description: "→Waiting"},
 		{Key: "S", Description: "→Someday"},
 	}
+
+	// KanbanFoldPrefixHints contains "z" prefix hints for kanban fold operations.
+	KanbanFoldPrefixHints = []PrefixHint{
+		{Key: "a", Description: "toggle"},
+		{Key: "o", Description: "expand"},
+		{Key: "c", Description: "collapse"},
+		{Key: "R", Description: "expand-all"},
+		{Key: "M", Description: "collapse-all"},
+		{Key: "v", Description: "focus"},
+	}
 )
