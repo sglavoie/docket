@@ -767,13 +767,20 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Horizontal navigation between columns
-	case "left", "h":
+	case "h":
 		m.moveColumnLeft()
 		return m, nil
 
-	case "right", "l":
+	case "l":
 		m.moveColumnRight()
 		return m, nil
+
+	// Indent/outdent (hierarchy adjustment)
+	case "left":
+		return m, m.outdentTask()
+
+	case "right":
+		return m, m.indentTask()
 
 	// Jump to last task in column
 	case "G":

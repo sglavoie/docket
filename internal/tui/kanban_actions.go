@@ -326,3 +326,60 @@ func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
 	m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(targetSection))
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
 }
+
+// indentTask makes the selected task a child of a valid parent above it.
+// Returns a command that persists the change with workflow rule evaluation.
+// If no valid parent is found, the operation is silently ignored.
+func (m *KanbanViewModel) indentTask() tea.Cmd {
+	visibleNodes := m.currentVisibleNodes()
+	cs := m.CurrentColumnState()
+
+	// Need cursor > 0 to have a potential parent above
+	if len(visibleNodes) == 0 || cs.Cursor <= 0 {
+		return nil
+	}
+
+	task := visibleNodes[cs.Cursor].Task
+	if task == nil {
+		return nil
+	}
+
+	// Walk up from the node above to find a valid parent
+	candidate := visibleNodes[cs.Cursor-1].Task
+	for candidate != nil {
+		if ok, _ := task.CanIndent(candidate); ok {
+			prevStates := captureTaskStates(m.Project.Tasks)
+			task.ParentID = &candidate.ID
+			task.UpdatedAt = time.Now()
+			m.Project.BuildTaskTree()
+
+			currentSection := KanbanColumnOrder[m.ActiveColumn]
+			return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, cs.Cursor)
+		}
+		candidate = candidate.Parent
+	}
+
+	return nil
+}
+
+// outdentTask moves the selected task to be a sibling of its current parent.
+// Returns a command that persists the change with workflow rule evaluation.
+// If the task cannot be outdented, the operation is silently ignored.
+func (m *KanbanViewModel) outdentTask() tea.Cmd {
+	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Check if outdent is valid
+	if ok, _ := task.CanOutdent(); !ok {
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	_ = m.Project.OutdentTask(task)
+
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	cs := m.CurrentColumnState()
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, cs.Cursor)
+}
