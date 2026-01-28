@@ -433,6 +433,23 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cs.Validate(len(m.Tasks[msg.Section]))
 		m.statusMessage = "Task deleted"
 		return m, nil
+
+	case TaskCreatedMsg:
+		// Task was created via modal quick capture - reload and position cursor
+		m.loadTasks()
+		// Position cursor on the newly created task
+		if msg.Task != nil {
+			section := msg.Task.Section
+			// Find the column for this section
+			for colIdx, sec := range KanbanColumnOrder {
+				if sec == section {
+					m.ActiveColumn = colIdx
+					break
+				}
+			}
+			m.positionCursorOnTask(msg.Task, section)
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -636,22 +653,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 		return m, textinput.Blink
 
-	case "a":
-		// Activate quick add mode
-		m.quickAddMode = true
-		m.initQuickAddCaches()
-		section := m.CurrentSection()
-		// Pre-fill section based on current column
-		// Active column (empty string) doesn't need a section prefix
-		if section != "" {
-			m.quickAddInput.SetValue("/" + strings.ToLower(section) + " ")
-			m.quickAddInput.SetCursor(len(m.quickAddInput.Value()))
-		} else {
-			m.quickAddInput.SetValue("")
+	case "i":
+		// Open modal quick capture view
+		return m, func() tea.Msg {
+			return ShowQuickCaptureMsg{Project: m.Project, AllProjects: m.config.Projects}
 		}
-		m.quickAddInput.Focus()
-		m.updateQuickAddPreview()
-		return m, textinput.Blink
 
 	case "D":
 		// Initiate delete confirmation

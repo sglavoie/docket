@@ -781,7 +781,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
 		// Task Operations
-		Keybinding{Key: "a", Description: "Quick add task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "o", Description: "Add new note", Category: "Task Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
