@@ -19,8 +19,12 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.filterBar.SetEnabled(!m.filterBar.IsEnabled())
 		return true, nil
 	case "f1":
-		// F1 now switches to Completed view (since completed tasks have their own view)
-		m.viewMode = ViewModeCompleted
+		// F1 toggles Completed view
+		if m.viewMode == ViewModeCompleted {
+			m.viewMode = ViewModeActive
+		} else {
+			m.viewMode = ViewModeCompleted
+		}
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
