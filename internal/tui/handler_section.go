@@ -104,6 +104,12 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 
 			m.config.ApplyGlobalColorsToProject(msg.Project)
+
+			// Refresh kanban view if open
+			if m.kanban != nil {
+				m.kanban.loadTasks()
+			}
+
 			successMsg := fmt.Sprintf("Moved to %s", msg.Section)
 			if msg.Section == "" {
 				successMsg = "Removed from section"

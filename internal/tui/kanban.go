@@ -1343,7 +1343,12 @@ func (m *KanbanViewModel) View() string {
 		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
 	}
 
-	// Join vertically: filterBar + kanban + divider + details + quickAdd + status
+	// Render prefix popup if a prefix key is pending
+	if popup := m.renderPrefixPopup(); popup != "" {
+		viewParts = append(viewParts, popup)
+	}
+
+	// Join vertically: filterBar + kanban + divider + details + quickAdd + status + popup
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
 }
 
@@ -1367,8 +1372,21 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		viewportHeight = 1
 	}
 
-	// Validate scroll to ensure cursor remains visible
-	cs.ValidateScroll(len(tasks), viewportHeight)
+	// Always validate with reduced height to ensure cursor remains visible when
+	// the "↑ N more" indicator appears. The indicator takes 1 line, so we
+	// conservatively assume it will be shown during validation.
+	reducedHeight := viewportHeight - 1
+	if reducedHeight < 1 {
+		reducedHeight = 1
+	}
+	cs.ValidateScroll(len(tasks), reducedHeight)
+
+	// Determine if indicator is actually needed after validation
+	hasUpIndicator := cs.ScrollOffset > 0
+	effectiveHeight := viewportHeight
+	if hasUpIndicator {
+		effectiveHeight = reducedHeight
+	}
 
 	if len(tasks) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)"))
@@ -1381,12 +1399,11 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		}
 
 		// Show "↑ N more" indicator if tasks are hidden above
-		if startIdx > 0 {
+		if hasUpIndicator {
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more", startIdx)))
 			b.WriteString("\n")
 			// Adjust visible range since we used a line for the indicator
-			viewportHeight--
-			endIdx = startIdx + viewportHeight
+			endIdx = startIdx + effectiveHeight
 			if endIdx > len(tasks) {
 				endIdx = len(tasks)
 			}
@@ -1657,4 +1674,15 @@ func (m *KanbanViewModel) ShouldCaptureEsc() bool {
 // HasTextInput implements ViewCapabilities. Returns true when in search or quick add mode.
 func (m *KanbanViewModel) HasTextInput() bool {
 	return m.searchMode || m.quickAddMode
+}
+
+// renderPrefixPopup renders the which-key style popup for pending prefix keys.
+func (m *KanbanViewModel) renderPrefixPopup() string {
+	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
+		",": StatusPrefixHints,
+		"!": PriorityPrefixHints,
+		"d": DueDatePrefixHints,
+		"g": KanbanNavigationPrefixHints,
+		"c": CreateLinkedPrefixHints,
+	}, m.Width())
 }

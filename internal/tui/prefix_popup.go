@@ -185,4 +185,20 @@ var (
 		{Key: "n", Description: "navigate"},
 		{Key: "x", Description: "unlink"},
 	}
+
+	// KanbanNavigationPrefixHints contains "g" prefix hints for kanban view.
+	// Supports column navigation and send-to-section operations.
+	KanbanNavigationPrefixHints = []PrefixHint{
+		{Key: "g", Description: "first"},
+		{Key: "a", Description: "active"},
+		{Key: "n", Description: "next"},
+		{Key: "i", Description: "inbox"},
+		{Key: "w", Description: "waiting"},
+		{Key: "s", Description: "someday"},
+		{Key: "A", Description: "→Active"},
+		{Key: "N", Description: "→Next"},
+		{Key: "I", Description: "→Inbox"},
+		{Key: "W", Description: "→Waiting"},
+		{Key: "S", Description: "→Someday"},
+	}
 )

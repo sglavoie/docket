@@ -58,10 +58,15 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 func buildSectionPickerList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
-	// Count tasks per section
+	// Count tasks per section (including empty string for Active)
 	for _, task := range project.Tasks {
-		if task.Section != "" {
-			sectionCounts[task.Section]++
+		sectionCounts[task.Section]++
+	}
+
+	// Include all standard kanban sections, even if empty
+	for _, section := range KanbanColumnOrder {
+		if _, exists := sectionCounts[section]; !exists {
+			sectionCounts[section] = 0
 		}
 	}
 
@@ -69,14 +74,6 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {
 			sectionCounts[section] = 0
-		}
-	}
-
-	// Add special "No Section" option
-	sectionCounts[""] = 0
-	for _, task := range project.Tasks {
-		if task.Section == "" {
-			sectionCounts[""]++
 		}
 	}
 

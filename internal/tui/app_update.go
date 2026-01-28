@@ -76,6 +76,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingMessage = ""
 		m.statusMessage = msg.SuccessMessage
 		m.refreshProjectTree()
+		// Refresh kanban if open (async save reloads project from disk)
+		if m.kanban != nil {
+			m.kanban.loadTasks()
+		}
 		return m, statusTimeout(2 * time.Second)
 
 	case SaveErrorMsg:
