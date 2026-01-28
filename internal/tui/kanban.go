@@ -88,6 +88,24 @@ type KanbanViewModel struct {
 	// Search mode state
 	searchMode  bool
 	searchInput textinput.Model
+
+	// Quick add mode state
+	quickAddMode    bool
+	quickAddInput   textinput.Model
+	quickAddPreview *quickCaptureResult
+	quickAddError   string
+
+	// Quick add autocomplete state (reuse patterns from QuickCaptureModel)
+	quickAddAcMode        int          // acModeNone, acModeTag, etc.
+	quickAddSuggestions   []suggestion // Current autocomplete suggestions
+	quickAddAcCursor      int          // Selected suggestion index
+	quickAddAcViewportTop int          // First visible suggestion (for scrolling)
+	quickAddAcTriggerPos  int          // Position of trigger character in input
+
+	// Caches for autocomplete
+	quickAddTagCache     []string
+	quickAddParentCache  []*models.Task
+	quickAddSectionCache []string
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -99,6 +117,11 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 
+	quickAddInput := textinput.New()
+	quickAddInput.Placeholder = "Task title ^type !priority #tag @due /section"
+	quickAddInput.CharLimit = 200
+	quickAddInput.Width = 60
+
 	m := &KanbanViewModel{
 		Project:       project,
 		config:        cfg,
@@ -108,8 +131,9 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		filter: KanbanFilterState{
 			Tags: make(map[string]bool),
 		},
-		filterBar:   NewKanbanFilterBarComponent(),
-		searchInput: searchInput,
+		filterBar:     NewKanbanFilterBarComponent(),
+		searchInput:   searchInput,
+		quickAddInput: quickAddInput,
 	}
 
 	// Initialize column state for each of the five sections
@@ -371,6 +395,29 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cs := m.CurrentColumnState()
 		cs.Validate(len(m.CurrentColumnTasks()))
 		return m, nil
+
+	case KanbanQuickAddCreatedMsg:
+		// Task was created via quick add - exit quick add mode, reload, position cursor
+		m.quickAddMode = false
+		m.quickAddInput.Blur()
+		m.quickAddInput.SetValue("")
+		m.quickAddPreview = nil
+		m.quickAddError = ""
+		m.loadTasks()
+		// Position cursor on the newly created task
+		if msg.Task != nil {
+			section := msg.Task.Section
+			// Find the column for this section
+			for colIdx, sec := range KanbanColumnOrder {
+				if sec == section {
+					m.ActiveColumn = colIdx
+					break
+				}
+			}
+			m.positionCursorOnTask(msg.Task, section)
+		}
+		m.statusMessage = fmt.Sprintf("Created: %s", msg.Task.Title)
+		return m, nil
 	}
 
 	return m, nil
@@ -379,6 +426,11 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKeyMsg processes keyboard input for the Kanban view.
 func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Handle quick add mode input first
+	if m.quickAddMode {
+		return m.handleQuickAddInput(msg)
+	}
 
 	// Handle search mode input first
 	if m.searchMode {
@@ -539,6 +591,23 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchMode = true
 		m.searchInput.SetValue(m.filter.Search)
 		m.searchInput.Focus()
+		return m, textinput.Blink
+
+	case "a":
+		// Activate quick add mode
+		m.quickAddMode = true
+		m.initQuickAddCaches()
+		section := m.CurrentSection()
+		// Pre-fill section based on current column
+		// Active column (empty string) doesn't need a section prefix
+		if section != "" {
+			m.quickAddInput.SetValue("/" + strings.ToLower(section) + " ")
+			m.quickAddInput.SetCursor(len(m.quickAddInput.Value()))
+		} else {
+			m.quickAddInput.SetValue("")
+		}
+		m.quickAddInput.Focus()
+		m.updateQuickAddPreview()
 		return m, textinput.Blink
 	}
 
@@ -787,7 +856,11 @@ func (m *KanbanViewModel) View() string {
 	if m.searchMode {
 		filterBarHeight++
 	}
-	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight // -1 for divider
+	quickAddHeight := 0
+	if m.quickAddMode {
+		quickAddHeight = m.getQuickAddHeight()
+	}
+	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight // -1 for divider
 	if detailsHeight < 3 {
 		detailsHeight = 3
 	}
@@ -795,7 +868,13 @@ func (m *KanbanViewModel) View() string {
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
 	viewParts = append(viewParts, detailsPane)
 
-	// Join vertically: filterBar + kanban + divider + details
+	// Render quick add input if in quick add mode
+	if m.quickAddMode {
+		quickAddBar := m.renderQuickAddInput()
+		viewParts = append(viewParts, quickAddBar)
+	}
+
+	// Join vertically: filterBar + kanban + divider + details + quickAdd
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
 }
 
@@ -1101,12 +1180,12 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
-// and search mode.
+// search mode, and quick add mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode
 }
 
-// HasTextInput implements ViewCapabilities. Returns true when in search mode.
+// HasTextInput implements ViewCapabilities. Returns true when in search or quick add mode.
 func (m *KanbanViewModel) HasTextInput() bool {
-	return m.searchMode
+	return m.searchMode || m.quickAddMode
 }
