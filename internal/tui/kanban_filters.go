@@ -124,7 +124,41 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 		}
 	}
 
+	// Apply actionable filter (hide blocked tasks and tasks with incomplete dependencies)
+	if m.actionableFilter {
+		if !m.isActionable(task) {
+			return false
+		}
+	}
+
 	return true
+}
+
+// isActionable returns true if a task is ready to work on.
+// A task is actionable if it's not blocked and has no incomplete dependencies.
+func (m *KanbanViewModel) isActionable(task *models.Task) bool {
+	// Blocked tasks are not actionable
+	if task.Status == models.StatusBlocked {
+		return false
+	}
+
+	// Tasks with incomplete dependencies are not actionable
+	if m.Project.HasIncompleteDependencies(task) {
+		return false
+	}
+
+	return true
+}
+
+// toggleActionableFilter toggles the actionable filter.
+func (m *KanbanViewModel) toggleActionableFilter() {
+	m.actionableFilter = !m.actionableFilter
+	m.loadTasks()
+	if m.actionableFilter {
+		m.statusMessage = "Actionable filter: ON (hiding blocked/dependent)"
+	} else {
+		m.statusMessage = "Actionable filter: OFF"
+	}
 }
 
 // matchesSearch returns true if the task matches the search query.

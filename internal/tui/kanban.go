@@ -139,6 +139,34 @@ type KanbanViewModel struct {
 	// Delete confirmation state
 	confirmDelete bool
 	deleteTarget  *models.Task
+
+	// Note conversion confirmation state
+	confirmNoteConvert bool
+	noteConvertTarget  *models.Task
+
+	// Sorting state (per-column)
+	sortField     SortField            // current sort field for active column
+	sortAscending bool                 // sort direction
+	columnSort    map[string]SortField // per-column sort field override
+
+	// Multi-select state
+	multiSelectMode bool
+	selectedTasks   map[string]bool // task IDs currently selected
+
+	// Quick edit component
+	quickEdit *QuickEditComponent
+
+	// Completed view state
+	completedViewMode bool
+	completedNodes    []*KanbanNode
+	completedCursor   int
+	completedScroll   int
+
+	// Additional filter state
+	actionableFilter bool
+
+	// Last modified task tracking
+	lastModifiedTaskID string
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -169,6 +197,14 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		filterBar:     NewKanbanFilterBarComponent(),
 		searchInput:   searchInput,
 		quickAddInput: quickAddInput,
+		// Sorting state
+		sortField:     SortByDefault,
+		sortAscending: true,
+		columnSort:    make(map[string]SortField),
+		// Multi-select state
+		selectedTasks: make(map[string]bool),
+		// Quick edit component
+		quickEdit: NewQuickEditComponent(),
 	}
 
 	// Initialize column state for each of the five sections
@@ -231,6 +267,8 @@ func (m *KanbanViewModel) loadTasks() {
 	// Pass 2: Build hierarchical nodes for each section
 	for _, section := range KanbanColumnOrder {
 		m.buildColumnNodes(section)
+		// Apply sorting after building nodes
+		m.sortColumnNodes(section)
 	}
 
 	// Pass 3: Compute ChildrenElsewhere counts
@@ -682,6 +720,11 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle quick edit mode input first
+	if m.quickEdit != nil && m.quickEdit.IsActive() {
+		return m.handleQuickEditInput(msg)
+	}
+
 	// Handle quick add mode input first
 	if m.quickAddMode {
 		return m.handleQuickAddInput(msg)
@@ -700,6 +743,32 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, nil
+	}
+
+	// Handle note conversion confirmation
+	if m.confirmNoteConvert {
+		switch key {
+		case "y", "Y":
+			m.confirmNoteConvert = false
+			return m, m.executeNoteConversion()
+		case "n", "N", "esc":
+			m.confirmNoteConvert = false
+			m.noteConvertTarget = nil
+			m.statusMessage = ""
+			return m, nil
+		}
+		return m, nil
+	}
+
+	// Handle completed view mode input
+	if m.completedViewMode {
+		if handled, _ := m.handleCompletedViewKey(key); handled {
+			// Check for pending prefix from completed view
+			if m.pendingPrefix != "" {
+				return m, nil
+			}
+			return m, nil
+		}
 	}
 
 	// Handle search mode input first
@@ -738,7 +807,26 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "esc", "ctrl+k":
-		// Exit focus mode first if active
+		// Exit multi-select mode first
+		if m.multiSelectMode {
+			m.multiSelectMode = false
+			m.selectedTasks = make(map[string]bool)
+			m.statusMessage = ""
+			return m, nil
+		}
+		// Exit completed view mode
+		if m.completedViewMode {
+			m.completedViewMode = false
+			m.statusMessage = ""
+			return m, nil
+		}
+		// Exit quick edit mode
+		if m.quickEdit != nil && m.quickEdit.IsActive() {
+			m.quickEdit.Exit()
+			m.statusMessage = ""
+			return m, nil
+		}
+		// Exit focus mode if active
 		if m.FocusedTask != nil {
 			m.exitFocusMode()
 			return m, nil
@@ -839,6 +927,46 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = "z"
 		return m, nil
 
+	// Sorting keys (1-4 for sort field, 0 to reset)
+	case "1":
+		m.cycleSortField(SortByPriority)
+		return m, nil
+
+	case "2":
+		m.cycleSortField(SortByDueDate)
+		return m, nil
+
+	case "3":
+		m.cycleSortField(SortByCreatedAt)
+		return m, nil
+
+	case "4":
+		m.cycleSortField(SortByStatus)
+		return m, nil
+
+	case "0":
+		m.resetSort()
+		return m, nil
+
+	// Multi-select mode
+	case "v":
+		m.toggleMultiSelectMode()
+		return m, nil
+
+	case " ":
+		// Space: toggle selection in multi-select mode
+		if m.multiSelectMode {
+			m.toggleTaskSelection()
+		}
+		return m, nil
+
+	case "a":
+		// Select all in column (only in multi-select mode)
+		if m.multiSelectMode {
+			m.selectAllInColumn()
+		}
+		return m, nil
+
 	// Open task detail view via glow
 	case "enter":
 		task := m.getSelectedTask()
@@ -853,8 +981,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		return m, m.handleEditTask()
 
+	// Quick edit (inline with modifiers)
+	case "E":
+		return m, m.handleQuickEditKey()
+
+	// Rename (inline title only)
+	case "r":
+		return m, m.handleRenameKey()
+
 	// Filter keybindings
-	case "F":
+	case "F", "ctrl+f":
 		// Toggle filter bar visibility
 		if m.filterBar != nil {
 			m.filterBar.Toggle()
@@ -885,11 +1021,27 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowKanbanTagFilterSelectorMsg{}
 		}
 
+	case "f1":
+		// Toggle completed view
+		m.toggleCompletedView()
+		return m, nil
+
 	case "f7":
 		// Cycle due date filter
 		m.cycleKanbanDueDateFilter()
 		m.loadTasks()
 		return m, nil
+
+	case "f8":
+		// Toggle actionable filter
+		m.toggleActionableFilter()
+		return m, nil
+
+	// Tag filter selector
+	case "T":
+		return m, func() tea.Msg {
+			return ShowKanbanTagFilterSelectorMsg{}
+		}
 
 	case "/":
 		// Activate search mode
@@ -966,8 +1118,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Attachments view
+	// Attachments view (or select all in multi-select mode)
 	case "A":
+		if m.multiSelectMode {
+			m.selectAllAcrossColumns()
+			return m, nil
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			return m, func() tea.Msg {
@@ -1011,6 +1167,51 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowTagManagerMsg{ProjectTree: nil}
 		}
+
+	// Section manager
+	case "ctrl+s":
+		return m, func() tea.Msg {
+			return ShowSectionManagerMsg{ProjectTree: nil}
+		}
+
+	// Edit last modified task
+	case "ctrl+l":
+		if m.lastModifiedTaskID != "" {
+			// Find the task and navigate to it
+			for _, section := range KanbanColumnOrder {
+				visibleNodes := m.visibleNodesForSection(section)
+				for i, node := range visibleNodes {
+					if node.Task.ID == m.lastModifiedTaskID {
+						// Navigate to column and position
+						for colIdx, sec := range KanbanColumnOrder {
+							if sec == section {
+								m.ActiveColumn = colIdx
+								m.Columns[section].Cursor = i
+								m.statusMessage = "Jumped to last modified"
+								return m, m.handleEditTask()
+							}
+						}
+					}
+				}
+			}
+			m.statusMessage = "Last modified task not visible"
+		} else {
+			m.statusMessage = "No recently modified task"
+		}
+		return m, nil
+
+	// Archive/unarchive project
+	case "ctrl+a":
+		m.Project.Archived = !m.Project.Archived
+		if m.Project.Archived {
+			m.statusMessage = "Project archived"
+		} else {
+			m.statusMessage = "Project unarchived"
+		}
+		prevStates := captureTaskStates(m.Project.Tasks)
+		return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
+			return KanbanStatusChangedMsg{TaskID: "", PreviousSection: ""}
+		})
 
 	// External editor for task content
 	case "ctrl+o":
@@ -1078,6 +1279,38 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowBlockersMsg{Project: m.Project}
 		}
+
+	// Priority view
+	case "p":
+		return m, func() tea.Msg {
+			return ShowPriorityViewMsg{Project: m.Project}
+		}
+
+	// Inbox processor
+	case "w":
+		return m, func() tea.Msg {
+			return ShowInboxProcessorMsg{Project: m.Project}
+		}
+
+	// Focus shortcut (alias for zv)
+	case "f":
+		m.focusSubtree()
+		return m, nil
+
+	// Convert to note (with confirmation)
+	case "O":
+		task := m.getSelectedTask()
+		if task != nil {
+			if allowed, reason := task.CanTurnIntoNote(); allowed {
+				// Enter confirmation mode
+				m.confirmNoteConvert = true
+				m.noteConvertTarget = task
+				m.statusMessage = "Convert to note? Press 'y' to confirm, 'n' to cancel"
+			} else {
+				m.statusMessage = "Cannot convert: " + reason
+			}
+		}
+		return m, nil
 
 	// Bulk capture
 	case "I":
@@ -1283,17 +1516,32 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
-		// Status operations
+		// Status operations (support bulk in multi-select mode)
 		switch key {
 		case "s":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusInProgress)
+			}
 			return m, m.handleStatusStart()
 		case "d":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusDone)
+			}
 			return m, m.handleStatusDone()
 		case "b":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusBlocked)
+			}
 			return m, m.handleStatusBlocked()
 		case "o":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusTodo)
+			}
 			return m, m.handleStatusOpen()
 		case "x":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusCanceled)
+			}
 			return m, m.handleStatusCancelled()
 		}
 
@@ -1369,8 +1617,16 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		switch key {
 		case "g":
 			// Go to first task in current column (vim-style gg)
+			if m.completedViewMode {
+				m.completedCursor = 0
+				return m, nil
+			}
 			cs := m.CurrentColumnState()
 			cs.Cursor = 0
+			return m, nil
+		case "c":
+			// Toggle completed view
+			m.toggleCompletedView()
 			return m, nil
 		case "a":
 			// Go to Active column
@@ -1393,20 +1649,41 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.ActiveColumn = 4
 			return m, nil
 		case "A":
-			// Send task to Active section
+			// Send task(s) to Active section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionActive)
+			}
 			return m, m.sendTaskToSection(KanbanSectionActive)
 		case "N":
-			// Send task to Next section
+			// Send task(s) to Next section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionNext)
+			}
 			return m, m.sendTaskToSection(KanbanSectionNext)
 		case "I":
-			// Send task to Inbox section
+			// Send task(s) to Inbox section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionInbox)
+			}
 			return m, m.sendTaskToSection(KanbanSectionInbox)
 		case "W":
-			// Send task to Waiting section
+			// Send task(s) to Waiting section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionWaiting)
+			}
 			return m, m.sendTaskToSection(KanbanSectionWaiting)
 		case "S":
-			// Send task to Someday section
+			// Send task(s) to Someday section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionSomeday)
+			}
 			return m, m.sendTaskToSection(KanbanSectionSomeday)
+		case "X":
+			// Deselect all in multi-select mode
+			if m.multiSelectMode {
+				m.deselectAll()
+			}
+			return m, nil
 		}
 
 	case "c":
@@ -1428,6 +1705,13 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if key == "x" {
 			return m, func() tea.Msg {
 				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
+			}
+		}
+
+		// Cross-project linking
+		if key == "p" {
+			return m, func() tea.Msg {
+				return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
 			}
 		}
 
@@ -1613,9 +1897,15 @@ func (m *KanbanViewModel) moveColumnRight() {
 // - Top half: kanban columns with section-colored headers
 // - Horizontal divider
 // - Bottom half: task details panel for the selected task
+// When in completed view mode, renders a full-width list of completed tasks.
 func (m *KanbanViewModel) View() string {
 	if m.Project == nil {
 		return MutedStyle.Render("No project loaded")
+	}
+
+	// Render completed view if in completed view mode
+	if m.completedViewMode {
+		return m.renderCompletedView()
 	}
 
 	var viewParts []string
@@ -1686,11 +1976,12 @@ func (m *KanbanViewModel) View() string {
 	if m.quickAddMode {
 		quickAddHeight = m.getQuickAddHeight()
 	}
+	quickEditHeight := m.getQuickEditHeight()
 	statusBarHeight := 0
 	if m.statusMessage != "" {
 		statusBarHeight = 1
 	}
-	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight - statusBarHeight // -1 for divider
+	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight - quickEditHeight - statusBarHeight // -1 for divider
 	if detailsHeight < 3 {
 		detailsHeight = 3
 	}
@@ -1702,6 +1993,12 @@ func (m *KanbanViewModel) View() string {
 	if m.quickAddMode {
 		quickAddBar := m.renderQuickAddInput()
 		viewParts = append(viewParts, quickAddBar)
+	}
+
+	// Render quick edit bar if in quick edit mode
+	if m.quickEdit != nil && m.quickEdit.IsActive() {
+		quickEditBar := m.renderQuickEditBar()
+		viewParts = append(viewParts, quickEditBar)
 	}
 
 	// Render status message if set
@@ -1840,10 +2137,21 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 
 // renderTaskRow renders a single task row with hierarchy indicators.
 // Shows indentation, expand/collapse icons, and children-elsewhere badges.
+// In multi-select mode, shows [x] or [ ] checkbox prefix.
 func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) string {
 	task := node.Task
 	statusIcon := task.Status.Icon()
 	title := task.Title
+
+	// Build selection checkbox for multi-select mode
+	var checkbox string
+	if m.multiSelectMode {
+		if m.isTaskSelected(task.ID) {
+			checkbox = SelectionStyle.Render("[x]") + " "
+		} else {
+			checkbox = MutedStyle.Render("[ ]") + " "
+		}
+	}
 
 	// Build indent prefix: "└" for nested items
 	var indent string
@@ -1870,8 +2178,12 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 
 	// Calculate available space for title
-	// Layout: cursor (2) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
-	prefixLen := 2 + len(indent) + 1 + 1 + 1 + 1
+	// Layout: cursor (2) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
+	checkboxLen := 0
+	if m.multiSelectMode {
+		checkboxLen = 4 // "[x] " or "[ ] "
+	}
+	prefixLen := 2 + checkboxLen + len(indent) + 1 + 1 + 1 + 1
 	badgeLen := 0
 	if badge != "" {
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
@@ -1883,7 +2195,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	title = truncateWithEllipsis(title, maxTitleLen)
 
 	statusStyle := GetStatusStyle(string(task.Status))
-	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
+	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
 	if badge != "" {
 		content += " " + badge
 	}
@@ -2080,14 +2392,10 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
-// search mode, quick add mode, delete confirmation, and focus mode.
+// search mode, quick add mode, delete confirmation, note conversion confirmation,
+// focus mode, multi-select mode, quick edit mode, and completed view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.FocusedTask != nil
-}
-
-// HasTextInput implements ViewCapabilities. Returns true when in search or quick add mode.
-func (m *KanbanViewModel) HasTextInput() bool {
-	return m.searchMode || m.quickAddMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmNoteConvert || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
 }
 
 // renderPrefixPopup renders the which-key style popup for pending prefix keys.
