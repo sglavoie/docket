@@ -141,6 +141,7 @@ var (
 		{Key: "I", Description: "→Inbox"},
 		{Key: "W", Description: "→Waiting"},
 		{Key: "S", Description: "→Someday"},
+		{Key: "o", Description: "origin"},
 		{Key: "d", Description: "due-filter"},
 		{Key: "v", Description: "view-cycle"},
 		{Key: "X", Description: "deselect"},

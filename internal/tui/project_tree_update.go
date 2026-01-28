@@ -348,6 +348,36 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
+		case "o":
+			// Jump to context node's home section
+			if m.cursor < len(visible) {
+				node := visible[m.cursor]
+				if node.IsContextNode {
+					task := node.Task
+					// Switch to the task's home section first so NavigateToTask
+					// finds it as intrinsically visible rather than a context node.
+					if task.IsComplete() {
+						m.viewMode = ViewModeCompleted
+					} else {
+						switch task.Section {
+						case models.SectionNext:
+							m.viewMode = ViewModeNext
+						case models.SectionInbox:
+							m.viewMode = ViewModeInbox
+						case models.SectionWaiting:
+							m.viewMode = ViewModeWaiting
+						case models.SectionSomeday:
+							m.viewMode = ViewModeSomeday
+						default:
+							m.viewMode = ViewModeActive
+						}
+					}
+					m.buildTree()
+					m.NavigateToTask(task)
+					return m, nil
+				}
+			}
+			return m, nil
 		case "A":
 			// Send to Active section
 			_, cmd := m.sendTasksToActive(visible)
