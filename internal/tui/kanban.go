@@ -72,6 +72,9 @@ type KanbanViewModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
+	// projectTree is a reference to the project tree model for filter overlay support.
+	projectTree *ProjectTreeModel
+
 	// Columns maps section name to column state.
 	// Keys: "" (Active), "Next", "Inbox", "Waiting", "Someday"
 	Columns map[string]*ColumnState
@@ -1007,12 +1010,18 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.handleRenameKey()
 
 	// Filter keybindings
-	case "F", "ctrl+f":
+	case "F":
 		// Toggle filter bar visibility
 		if m.filterBar != nil {
 			m.filterBar.Toggle()
 		}
 		return m, nil
+
+	case "ctrl+f":
+		// Show active filters overlay (same as project tree)
+		return m, func() tea.Msg {
+			return ShowFilterMsg{ProjectTree: m.projectTree}
+		}
 
 	case "f2":
 		// Toggle high priority filter

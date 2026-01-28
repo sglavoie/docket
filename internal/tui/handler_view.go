@@ -505,6 +505,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowKanbanMsg:
 		if msg.Project != nil {
 			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
+			m.kanban.projectTree = m.projectTree
 			m.showView(ViewKanban, m.kanban)
 		}
 		return true, nil
