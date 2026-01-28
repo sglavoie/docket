@@ -696,7 +696,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 	r.add(
 		// Column Navigation
 		Keybinding{Key: "h/l", Description: "Navigate between columns", Category: "Navigation", Views: views},
-		Keybinding{Key: "←/→", Description: "Navigate between columns", Category: "Navigation", Views: views},
 
 		// Task Navigation
 		Keybinding{Key: "j/k", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
@@ -717,6 +716,8 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		// Task Reordering Within Column
 		Keybinding{Key: "J", Description: "Move task down in column", Category: "Task Movement", Views: views},
 		Keybinding{Key: "K", Description: "Move task up in column", Category: "Task Movement", Views: views},
+		Keybinding{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
+		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
 
 		// Folds (z prefix)
 		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
@@ -787,6 +788,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
 		// Task Operations
+		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "o", Description: "Add new note", Category: "Task Operations", Views: views},

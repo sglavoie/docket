@@ -898,6 +898,18 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 		return m, textinput.Blink
 
+	case "n":
+		// Add new task with selected task as parent
+		var parentTask *models.Task
+		if m.FocusedTask != nil {
+			parentTask = m.FocusedTask
+		} else {
+			parentTask = m.getSelectedTask()
+		}
+		return m, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: parentTask}
+		}
+
 	case "i":
 		// Open modal quick capture view
 		return m, func() tea.Msg {
