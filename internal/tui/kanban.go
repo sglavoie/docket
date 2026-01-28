@@ -1193,12 +1193,14 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Edit last modified task
 	case "ctrl+l":
-		if m.lastModifiedTaskID != "" {
+		recentTasks := storage.GetRecentTasks(m.Project.Tasks, 1)
+		if len(recentTasks) > 0 {
+			recentTask := recentTasks[0]
 			// Find the task and navigate to it
 			for _, section := range KanbanColumnOrder {
 				visibleNodes := m.visibleNodesForSection(section)
 				for i, node := range visibleNodes {
-					if node.Task.ID == m.lastModifiedTaskID {
+					if node.Task.ID == recentTask.ID {
 						// Navigate to column and position
 						for colIdx, sec := range KanbanColumnOrder {
 							if sec == section {
