@@ -740,5 +740,10 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
+
+		// Clipboard
+		Keybinding{Key: "y", Description: "Copy title", Category: "Clipboard", Views: views},
+		Keybinding{Key: "Y", Description: "Copy description", Category: "Clipboard", Views: views},
+		Keybinding{Key: "ctrl+y", Description: "Copy title and description", Category: "Clipboard", Views: views},
 	)
 }

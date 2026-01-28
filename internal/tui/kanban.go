@@ -647,6 +647,36 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
 		}
 		return m, nil
+
+	case "y":
+		// Copy task title to clipboard
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleMsg{Task: task}
+			}
+		}
+		return m, nil
+
+	case "Y":
+		// Copy task description to clipboard
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return CopyTaskDetailsMsg{Task: task}
+			}
+		}
+		return m, nil
+
+	case "ctrl+y":
+		// Copy task title and description to clipboard
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return CopyTaskTitleAndDescMsg{Task: task}
+			}
+		}
+		return m, nil
 	}
 
 	return m, nil
