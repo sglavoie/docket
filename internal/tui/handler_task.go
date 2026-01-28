@@ -80,6 +80,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskDeletedMsg:
 		return true, m.handleWithRefresh(false, false, "")
 
+	case ArchiveCompletedTasksMsg:
+		return m.handleArchiveCompletedTasks()
+
 	case TasksArchivedMsg:
 		return true, m.handleWithRefresh(false, false, fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count))
 
@@ -687,4 +690,48 @@ func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *m
 			OldShortID:    oldShortID,
 		}
 	}
+}
+
+// handleArchiveCompletedTasks archives completed tasks from the current project.
+func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
+	if m.currentProject == nil {
+		return true, nil
+	}
+
+	project := m.currentProject
+	undoDepth := 0
+	if m.config.UndoHistoryDepth != nil {
+		undoDepth = *m.config.UndoHistoryDepth
+	}
+	completedCount := project.CountCompletedTasks()
+
+	cmd := func() tea.Msg {
+		if completedCount == 0 {
+			return TasksArchivedMsg{Count: 0}
+		}
+
+		// Record undo snapshot before archiving
+		if undoDepth > 0 {
+			_ = m.persister.RecordUndoSnapshot(project, "Archive Tasks",
+				fmt.Sprintf("%d tasks", completedCount), undoDepth)
+		}
+
+		// Create backup before archiving
+		if err := m.persister.Backup(project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		// Archive the tasks
+		count, err := m.persister.ArchiveTasks(project)
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
+		}
+
+		// Reload project
+		_ = m.persister.Load(project)
+
+		return TasksArchivedMsg{Count: count}
+	}
+
+	return true, cmd
 }

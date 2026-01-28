@@ -677,6 +677,16 @@ func (m *AppModel) registerGlobalCommands() {
 				return nil
 			},
 		},
+		{
+			Name:        "archive completed tasks",
+			Description: "Move completed tasks to archive file",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree, ViewKanban},
+			Aliases:     []string{"archive", "archive done", "archive completed"},
+			Handler: func() tea.Msg {
+				return ArchiveCompletedTasksMsg{}
+			},
+		},
 	}
 
 	// Project commands (Dashboard view)

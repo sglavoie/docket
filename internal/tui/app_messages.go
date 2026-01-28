@@ -497,6 +497,9 @@ type CloseProjectFocusViewMsg struct{}
 // Archive Messages
 // =============================================================================
 
+// ArchiveCompletedTasksMsg requests archiving all completed tasks in the current project.
+type ArchiveCompletedTasksMsg struct{}
+
 // TasksArchivedMsg signals that completed tasks were archived.
 type TasksArchivedMsg struct {
 	Count int // Number of tasks archived
