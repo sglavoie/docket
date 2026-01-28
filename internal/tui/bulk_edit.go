@@ -291,7 +291,7 @@ func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 // fieldStartLine returns the starting line number of a field (0-indexed).
 func (m *BulkEditModel) fieldStartLine(fieldIndex int) int {
 	// Header: title + blank line = 2 lines
-	line := 2
+	line := 0
 	for i := 0; i < fieldIndex; i++ {
 		line += m.fieldHeight(i)
 	}
@@ -302,7 +302,7 @@ func (m *BulkEditModel) fieldStartLine(fieldIndex int) int {
 func (m *BulkEditModel) viewportHeight() int {
 	// Account for box border (2 lines) and some padding
 	// The centered box adds vertical padding, so we need to be conservative
-	vh := m.Height() - 6
+	vh := m.Height() - 8
 	if vh < 15 {
 		vh = 15
 	}
