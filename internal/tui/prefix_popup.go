@@ -200,6 +200,7 @@ var (
 		{Key: "I", Description: "→Inbox"},
 		{Key: "W", Description: "→Waiting"},
 		{Key: "S", Description: "→Someday"},
+		{Key: "X", Description: "deselect"},
 	}
 
 	// KanbanFoldPrefixHints contains "z" prefix hints for kanban fold operations.
