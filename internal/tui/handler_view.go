@@ -343,7 +343,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowQuickCaptureMsg:
 		if msg.Project != nil {
-			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project))
+			m.showView(ViewQuickCapture, NewQuickCaptureModel(msg.Project, msg.AllProjects))
 		}
 		return true, nil
 

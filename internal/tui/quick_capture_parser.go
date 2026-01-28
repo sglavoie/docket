@@ -6,12 +6,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
 // parseQuickCapture extracts metadata from the input string.
-// Syntax: "^bug Task title !1 #backend #urgent @tomorrow >3"
-func parseQuickCapture(input string, project *models.Project) (*quickCaptureResult, error) {
+// Syntax: "^bug Task title !1 #backend #urgent @tomorrow >3 %projectname"
+func parseQuickCapture(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, error) {
 	result := &quickCaptureResult{
 		taskType: models.TaskTypeTask, // default type
 		priority: 3,                   // default priority
@@ -71,6 +72,23 @@ func parseQuickCapture(input string, project *models.Project) (*quickCaptureResu
 		}
 		result.recurrence = pattern
 		input = recurRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract target project: %projectslug (for cross-project capture)
+	// Require % to be at start of string or preceded by whitespace
+	// Must be parsed before parent since parent is resolved against target project
+	projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
+	if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
+		ref := match[1]
+		targetProject := resolveProject(ref, allProjects)
+		if targetProject == nil {
+			return nil, fmt.Errorf("project not found: %s", ref)
+		}
+		result.targetProjectID = &targetProject.ID
+		result.targetProjectName = targetProject.Name
+		// Use target project for parent and section resolution
+		project = targetProject
+		input = projectRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract parent: >ref (short ID or title prefix)
@@ -163,9 +181,51 @@ func resolveParent(ref string, project *models.Project) *models.Task {
 	return nil
 }
 
+// resolveProject finds a project by slug (exact match) or fuzzy name match.
+func resolveProject(ref string, allProjects []*models.Project) *models.Project {
+	// Try exact slug match first (case-insensitive)
+	refLower := strings.ToLower(ref)
+	for _, p := range allProjects {
+		if !p.Archived && strings.ToLower(p.Slug) == refLower {
+			return p
+		}
+	}
+
+	// Fall back to fuzzy name match
+	type scoredProject struct {
+		project *models.Project
+		score   int
+	}
+	var scored []scoredProject
+	for _, p := range allProjects {
+		if p.Archived {
+			continue
+		}
+		// Match against name and slug
+		searchText := p.Name + " " + p.Slug
+		score := fuzzy.Score(searchText, ref)
+		if score > 0 {
+			scored = append(scored, scoredProject{project: p, score: score})
+		}
+	}
+
+	if len(scored) == 0 {
+		return nil
+	}
+
+	// Return highest scoring match
+	best := scored[0]
+	for _, s := range scored[1:] {
+		if s.score > best.score {
+			best = s
+		}
+	}
+	return best.project
+}
+
 // parseQuickCaptureForPreview parses input for live preview without failing early.
 // Returns partial results and any validation error string.
-func parseQuickCaptureForPreview(input string, project *models.Project) (*quickCaptureResult, string) {
+func parseQuickCaptureForPreview(input string, project *models.Project, allProjects []*models.Project) (*quickCaptureResult, string) {
 	result := &quickCaptureResult{
 		taskType: models.TaskTypeTask,
 		priority: 3,
@@ -226,6 +286,24 @@ func parseQuickCaptureForPreview(input string, project *models.Project) (*quickC
 			result.recurrence = pattern
 		}
 		input = recurRe.ReplaceAllString(input, " ")
+	}
+
+	// Extract target project (for cross-project capture)
+	// Require % to be at start of string or preceded by whitespace
+	// Must be parsed before parent since parent is resolved against target project
+	projectRe := regexp.MustCompile(`(?:^|\s)%(\S+)`)
+	if match := projectRe.FindStringSubmatch(input); len(match) > 1 {
+		ref := match[1]
+		targetProject := resolveProject(ref, allProjects)
+		if targetProject == nil && errMsg == "" {
+			errMsg = fmt.Sprintf("project not found: %s", ref)
+		} else if targetProject != nil {
+			result.targetProjectID = &targetProject.ID
+			result.targetProjectName = targetProject.Name
+			// Use target project for parent and section resolution
+			project = targetProject
+		}
+		input = projectRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract parent

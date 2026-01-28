@@ -49,6 +49,8 @@ func (m *QuickCaptureModel) detectAutocompleteTrigger() (int, int, string) {
 			return acModeSection, i, partial
 		case '$':
 			return acModeStatus, i, partial
+		case '%':
+			return acModeProject, i, partial
 		}
 	}
 	return acModeNone, 0, ""
@@ -74,12 +76,12 @@ func (m *QuickCaptureModel) getTagSuggestions(partial string) []suggestion {
 		return scored[i].score > scored[j].score
 	})
 
-	// Return top 5
-	suggestions := make([]suggestion, 0, 5)
-	for i := 0; i < len(scored) && i < 5; i++ {
+	// Return top matches (no hard limit, scrollable)
+	suggestions := make([]suggestion, 0, len(scored))
+	for _, s := range scored {
 		suggestions = append(suggestions, suggestion{
-			display: "#" + scored[i].tag,
-			value:   scored[i].tag,
+			display: "#" + s.tag,
+			value:   s.tag,
 		})
 	}
 	return suggestions
@@ -216,9 +218,6 @@ func (m *QuickCaptureModel) getSectionSuggestions(partial string) []suggestion {
 				value:   section,
 			})
 		}
-		if len(suggestions) >= 8 {
-			break
-		}
 	}
 	return suggestions
 }
@@ -272,10 +271,10 @@ func (m *QuickCaptureModel) getParentSuggestions(partial string) []suggestion {
 		return scored[i].score > scored[j].score
 	})
 
-	// Return top 5
-	suggestions := make([]suggestion, 0, 5)
-	for i := 0; i < len(scored) && i < 5; i++ {
-		task := scored[i].task
+	// Return all matches (scrollable)
+	suggestions := make([]suggestion, 0, len(scored))
+	for _, s := range scored {
+		task := s.task
 		// Truncate title if too long
 		title := task.Title
 		if len(title) > 30 {
@@ -284,6 +283,45 @@ func (m *QuickCaptureModel) getParentSuggestions(partial string) []suggestion {
 		suggestions = append(suggestions, suggestion{
 			display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
 			value:   strconv.Itoa(task.ShortID),
+		})
+	}
+	return suggestions
+}
+
+// getProjectSuggestions returns matching projects for the partial query.
+func (m *QuickCaptureModel) getProjectSuggestions(partial string) []suggestion {
+	type scoredProject struct {
+		project *models.Project
+		score   int
+	}
+
+	var scored []scoredProject
+	for _, project := range m.projectCache {
+		// Build searchable text: "Name [context]"
+		searchText := fmt.Sprintf("%s %s", project.Name, project.Context)
+		score := fuzzy.Score(searchText, partial)
+		if score > 0 {
+			scored = append(scored, scoredProject{project: project, score: score})
+		}
+	}
+
+	// Sort by score descending
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	// Return all matches (scrollable)
+	suggestions := make([]suggestion, 0, len(scored))
+	for _, s := range scored {
+		project := s.project
+		// Truncate name if too long
+		name := project.Name
+		if len(name) > 25 {
+			name = name[:22] + "..."
+		}
+		suggestions = append(suggestions, suggestion{
+			display: fmt.Sprintf("%%%s [%s]", name, project.Context),
+			value:   project.Slug,
 		})
 	}
 	return suggestions
@@ -317,6 +355,8 @@ func (m *QuickCaptureModel) acceptSuggestion() {
 		newInput = input[:m.acTriggerPos] + "/" + selected.value + " "
 	case acModeStatus:
 		newInput = input[:m.acTriggerPos] + "$" + selected.value + " "
+	case acModeProject:
+		newInput = input[:m.acTriggerPos] + "%" + selected.value + " "
 	}
 
 	m.input.SetValue(newInput)
@@ -327,4 +367,5 @@ func (m *QuickCaptureModel) acceptSuggestion() {
 	m.acMode = acModeNone
 	m.suggestions = nil
 	m.acCursor = 0
+	m.acViewportTop = 0
 }

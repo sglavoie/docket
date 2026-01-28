@@ -252,7 +252,7 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 
 	case "i":
 		return true, func() tea.Msg {
-			return ShowQuickCaptureMsg{Project: m.project}
+			return ShowQuickCaptureMsg{Project: m.project, AllProjects: m.config.Projects}
 		}
 
 	case "I":

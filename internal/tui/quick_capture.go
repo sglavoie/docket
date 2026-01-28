@@ -25,7 +25,11 @@ const (
 	acModeRecur           // Completing a ~recurrence
 	acModeSection         // Completing a /section
 	acModeStatus          // Completing a $status
+	acModeProject         // Completing a %project
 )
+
+// acVisibleCount is the number of suggestions visible at once (scrollable window size)
+const acVisibleCount = 7
 
 // suggestion represents an autocomplete suggestion
 type suggestion struct {
@@ -35,20 +39,23 @@ type suggestion struct {
 
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
-	project *models.Project
-	input   textarea.Model
-	err     error
-	width   int
-	height  int
+	project     *models.Project
+	allProjects []*models.Project // All non-archived projects for cross-project capture
+	input       textarea.Model
+	err         error
+	width       int
+	height      int
 
 	// Autocomplete state
-	acMode       int            // Current autocomplete mode
-	suggestions  []suggestion   // Current suggestions
-	acCursor     int            // Selected suggestion index
-	acTriggerPos int            // Position of trigger character in input
-	tagCache     []string       // Cached project tags
-	parentCache  []*models.Task // Cached valid parent tasks
-	sectionCache []string       // Cached project sections
+	acMode        int               // Current autocomplete mode
+	suggestions   []suggestion      // Current suggestions
+	acCursor      int               // Selected suggestion index
+	acViewportTop int               // First visible suggestion index (for scrolling)
+	acTriggerPos  int               // Position of trigger character in input
+	tagCache      []string          // Cached project tags
+	parentCache   []*models.Task    // Cached valid parent tasks
+	sectionCache  []string          // Cached project sections
+	projectCache  []*models.Project // Cached non-archived projects for autocomplete
 
 	// Live preview
 	preview    *quickCaptureResult // Parsed preview (may be partial)
@@ -57,22 +64,24 @@ type QuickCaptureModel struct {
 
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
-	title      string
-	taskType   models.TaskType
-	priority   int
-	tags       []string
-	dueDate    *time.Time
-	parentID   *string
-	recurrence *models.RecurrencePattern
-	section    string            // Target section (empty = Inbox)
-	status     models.TaskStatus // Initial status (empty = todo)
-	activate   bool              // Whether to activate task (for $start)
+	title             string
+	taskType          models.TaskType
+	priority          int
+	tags              []string
+	dueDate           *time.Time
+	parentID          *string
+	recurrence        *models.RecurrencePattern
+	section           string            // Target section (empty = Inbox)
+	status            models.TaskStatus // Initial status (empty = todo)
+	activate          bool              // Whether to activate task (for $start)
+	targetProjectID   *string           // Target project ID for cross-project capture
+	targetProjectName string            // Target project name (for preview display)
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
-func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
+func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project) *QuickCaptureModel {
 	input := textarea.New()
-	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status"
+	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status %project"
 	input.CharLimit = 200
 	input.SetHeight(3)
 	input.ShowLineNumbers = false
@@ -81,6 +90,7 @@ func NewQuickCaptureModel(project *models.Project) *QuickCaptureModel {
 
 	m := &QuickCaptureModel{
 		project:     project,
+		allProjects: allProjects,
 		input:       input,
 		width:       80, // sensible default until SetSize is called
 		acMode:      acModeNone,
@@ -118,6 +128,14 @@ func (m *QuickCaptureModel) initCaches() {
 
 	// Cache sections
 	m.sectionCache = m.project.GetSections()
+
+	// Cache non-archived projects for cross-project capture
+	m.projectCache = make([]*models.Project, 0)
+	for _, p := range m.allProjects {
+		if !p.Archived {
+			m.projectCache = append(m.projectCache, p)
+		}
+	}
 }
 
 // SetSize sets the view dimensions.
@@ -149,15 +167,24 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.acMode = acModeNone
 				m.suggestions = nil
 				m.acCursor = 0
+				m.acViewportTop = 0
 				return m, nil
 			case "up", "ctrl+p":
 				if m.acCursor > 0 {
 					m.acCursor--
+					// Scroll viewport up if cursor moves above visible area
+					if m.acCursor < m.acViewportTop {
+						m.acViewportTop = m.acCursor
+					}
 				}
 				return m, nil
 			case "down", "ctrl+n":
 				if m.acCursor < len(m.suggestions)-1 {
 					m.acCursor++
+					// Scroll viewport down if cursor moves below visible area
+					if m.acCursor >= m.acViewportTop+acVisibleCount {
+						m.acViewportTop = m.acCursor - acVisibleCount + 1
+					}
 				}
 				return m, nil
 			}
@@ -188,6 +215,7 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// (different mode or different trigger position)
 		if mode != m.acMode || pos != m.acTriggerPos {
 			m.acCursor = 0
+			m.acViewportTop = 0
 		}
 		m.acMode = mode
 		m.acTriggerPos = pos
@@ -208,10 +236,18 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.suggestions = m.getSectionSuggestions(partial)
 		case acModeStatus:
 			m.suggestions = m.getStatusSuggestions(partial)
+		case acModeProject:
+			m.suggestions = m.getProjectSuggestions(partial)
 		}
-		// Clamp cursor if suggestions list shrunk
+		// Clamp cursor and viewport if suggestions list shrunk
 		if m.acCursor >= len(m.suggestions) {
 			m.acCursor = max(0, len(m.suggestions)-1)
+		}
+		// Ensure viewport keeps cursor visible
+		if m.acCursor < m.acViewportTop {
+			m.acViewportTop = m.acCursor
+		} else if m.acCursor >= m.acViewportTop+acVisibleCount {
+			m.acViewportTop = m.acCursor - acVisibleCount + 1
 		}
 		// If no suggestions, exit autocomplete mode
 		if len(m.suggestions) == 0 {
@@ -230,15 +266,37 @@ func (m *QuickCaptureModel) View() string {
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 
-	// Show autocomplete suggestions if active
+	// Show autocomplete suggestions if active (scrollable window)
 	if m.acMode != acModeNone && len(m.suggestions) > 0 {
 		b.WriteString("\n")
-		for i, s := range m.suggestions {
+
+		// Show scroll indicator if there are items above
+		if m.acViewportTop > 0 {
+			b.WriteString(MutedStyle.Render("  ↑ " + fmt.Sprintf("%d more", m.acViewportTop)))
+			b.WriteString("\n")
+		}
+
+		// Calculate visible range
+		visibleEnd := m.acViewportTop + acVisibleCount
+		if visibleEnd > len(m.suggestions) {
+			visibleEnd = len(m.suggestions)
+		}
+
+		// Render visible suggestions
+		for i := m.acViewportTop; i < visibleEnd; i++ {
+			s := m.suggestions[i]
 			if i == m.acCursor {
 				b.WriteString(SelectedStyle.Render("> " + s.display))
 			} else {
 				b.WriteString(MutedStyle.Render("  " + s.display))
 			}
+			b.WriteString("\n")
+		}
+
+		// Show scroll indicator if there are items below
+		remaining := len(m.suggestions) - visibleEnd
+		if remaining > 0 {
+			b.WriteString(MutedStyle.Render("  ↓ " + fmt.Sprintf("%d more", remaining)))
 			b.WriteString("\n")
 		}
 	}
@@ -255,7 +313,7 @@ func (m *QuickCaptureModel) View() string {
 	}
 
 	// Help text
-	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status"))
+	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
 	b.WriteString("\n")
 	if m.acMode != acModeNone {
 		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
@@ -296,7 +354,7 @@ func (m *QuickCaptureModel) updatePreview() {
 		m.previewErr = ""
 		return
 	}
-	m.preview, m.previewErr = parseQuickCaptureForPreview(input, m.project)
+	m.preview, m.previewErr = parseQuickCaptureForPreview(input, m.project, m.allProjects)
 }
 
 // renderPreview formats the parsed preview for display.
@@ -348,6 +406,11 @@ func (m *QuickCaptureModel) renderPreview() string {
 		parts = append(parts, m.preview.status.Icon()+" $"+string(m.preview.status))
 	}
 
+	// Target project (only show if different from current)
+	if m.preview.targetProjectName != "" {
+		parts = append(parts, "→ "+m.preview.targetProjectName)
+	}
+
 	return MutedStyle.Render(strings.Join(parts, " · "))
 }
 
@@ -361,10 +424,26 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 			return nil
 		}
 
-		result, err := parseQuickCapture(input, m.project)
+		result, err := parseQuickCapture(input, m.project, m.allProjects)
 		if err != nil {
 			m.err = err
 			return nil
+		}
+
+		// Determine target project (may be different for cross-project capture)
+		targetProject := m.project
+		if result.targetProjectID != nil {
+			// Find the target project
+			for _, p := range m.allProjects {
+				if p.ID == *result.targetProjectID {
+					targetProject = p
+					// Load the target project to get its tasks
+					if err := storage.LoadProject(targetProject); err != nil {
+						return ErrorMsg{Err: fmt.Errorf("failed to load target project: %w", err)}
+					}
+					break
+				}
+			}
 		}
 
 		// Determine target section
@@ -374,17 +453,17 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 		}
 
 		// Ensure target section exists (Inbox gets red color)
-		if !m.project.HasSection(targetSection) {
-			m.project.EnsureSection(targetSection)
+		if !targetProject.HasSection(targetSection) {
+			targetProject.EnsureSection(targetSection)
 			if targetSection == models.SectionInbox {
-				m.project.SetSectionColor(models.SectionInbox, "red")
+				targetProject.SetSectionColor(models.SectionInbox, "red")
 			}
 		}
 
 		// Create task
 		task := &models.Task{
 			ID:         uuid.New().String(),
-			ShortID:    m.project.GetNextShortID(),
+			ShortID:    targetProject.GetNextShortID(),
 			Type:       result.taskType,
 			Title:      result.title,
 			Status:     models.StatusTodo,
@@ -417,20 +496,26 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 		}
 
 		// Add to project at the beginning so it's prominently visible
-		m.project.Tasks = append([]*models.Task{task}, m.project.Tasks...)
-		m.project.BuildTaskTree()
-		m.project.ReorderRootTasksByCompletion()
+		targetProject.Tasks = append([]*models.Task{task}, targetProject.Tasks...)
+		targetProject.BuildTaskTree()
+		targetProject.ReorderRootTasksByCompletion()
 
 		// Backup and save
-		if err := storage.BackupProject(m.project); err != nil {
+		if err := storage.BackupProject(targetProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := storage.SaveProject(targetProject); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
 		// Reload to rebuild tree properly
-		_ = storage.LoadProject(m.project)
+		_ = storage.LoadProject(targetProject)
+
+		// Also reload the current project if it's different from the target
+		// (so that the view refreshes correctly)
+		if result.targetProjectID != nil && m.project.ID != *result.targetProjectID {
+			_ = storage.LoadProject(m.project)
+		}
 
 		return TaskCreatedMsg{Task: task}
 	}

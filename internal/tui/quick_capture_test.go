@@ -510,7 +510,7 @@ func TestParseQuickCapture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, project)
+			result, err := parseQuickCapture(tt.input, project, nil)
 
 			if tt.wantErr {
 				if err == nil {
@@ -728,4 +728,166 @@ func slicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestCrossProjectCapture(t *testing.T) {
+	currentProject := &models.Project{
+		ID:   "current-project",
+		Slug: "current-project",
+		Name: "Current Project",
+	}
+	targetProject := &models.Project{
+		ID:   "other-project",
+		Slug: "other-project",
+		Name: "Other Project",
+	}
+	allProjects := []*models.Project{currentProject, targetProject}
+
+	tests := []struct {
+		name           string
+		input          string
+		wantTitle      string
+		wantTargetID   *string
+		wantTargetName string
+		wantErr        bool
+		errContains    string
+	}{
+		{
+			name:           "no target project",
+			input:          "Simple task",
+			wantTitle:      "Simple task",
+			wantTargetID:   nil,
+			wantTargetName: "",
+		},
+		{
+			name:           "target project by slug",
+			input:          "Task for other %other-project",
+			wantTitle:      "Task for other",
+			wantTargetID:   strPtr("other-project"),
+			wantTargetName: "Other Project",
+		},
+		{
+			name:           "target project by fuzzy name",
+			input:          "%other Task in other project",
+			wantTitle:      "Task in other project",
+			wantTargetID:   strPtr("other-project"),
+			wantTargetName: "Other Project",
+		},
+		{
+			name:        "nonexistent project",
+			input:       "%nonexistent Some task",
+			wantErr:     true,
+			errContains: "project not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseQuickCapture(tt.input, currentProject, allProjects)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("expected error but got none")
+					return
+				}
+				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+					t.Errorf("error %q should contain %q", err.Error(), tt.errContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+
+			if result.title != tt.wantTitle {
+				t.Errorf("title = %q, want %q", result.title, tt.wantTitle)
+			}
+
+			if tt.wantTargetID == nil {
+				if result.targetProjectID != nil {
+					t.Errorf("targetProjectID = %q, want nil", *result.targetProjectID)
+				}
+			} else {
+				if result.targetProjectID == nil {
+					t.Errorf("targetProjectID = nil, want %q", *tt.wantTargetID)
+				} else if *result.targetProjectID != *tt.wantTargetID {
+					t.Errorf("targetProjectID = %q, want %q", *result.targetProjectID, *tt.wantTargetID)
+				}
+			}
+
+			if result.targetProjectName != tt.wantTargetName {
+				t.Errorf("targetProjectName = %q, want %q", result.targetProjectName, tt.wantTargetName)
+			}
+		})
+	}
+}
+
+func TestResolveProject(t *testing.T) {
+	projects := []*models.Project{
+		{ID: "proj-1", Slug: "project-alpha", Name: "Project Alpha"},
+		{ID: "proj-2", Slug: "my-app", Name: "My Application"},
+		{ID: "proj-3", Slug: "archived-proj", Name: "Old Project", Archived: true},
+	}
+
+	tests := []struct {
+		name    string
+		ref     string
+		wantID  string
+		wantNil bool
+	}{
+		{
+			name:   "exact slug match",
+			ref:    "project-alpha",
+			wantID: "proj-1",
+		},
+		{
+			name:   "exact slug match case insensitive",
+			ref:    "Project-Alpha",
+			wantID: "proj-1",
+		},
+		{
+			name:   "fuzzy name match",
+			ref:    "alpha",
+			wantID: "proj-1",
+		},
+		{
+			name:   "fuzzy name match my-app",
+			ref:    "myapp",
+			wantID: "proj-2",
+		},
+		{
+			name:    "archived project should not match",
+			ref:     "archived-proj",
+			wantNil: true,
+		},
+		{
+			name:    "nonexistent project",
+			ref:     "doesnotexist",
+			wantNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolveProject(tt.ref, projects)
+
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("expected nil, got project %q", result.ID)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Errorf("expected project %q, got nil", tt.wantID)
+				return
+			}
+
+			if result.ID != tt.wantID {
+				t.Errorf("got project ID %q, want %q", result.ID, tt.wantID)
+			}
+		})
+	}
 }

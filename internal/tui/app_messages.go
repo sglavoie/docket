@@ -278,7 +278,8 @@ type PriorityViewSelectMsg struct {
 
 // ShowQuickCaptureMsg opens the quick capture input.
 type ShowQuickCaptureMsg struct {
-	Project *models.Project
+	Project     *models.Project
+	AllProjects []*models.Project // All non-archived projects for cross-project capture
 }
 
 // CloseQuickCaptureMsg closes quick capture.

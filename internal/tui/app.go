@@ -605,7 +605,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"capture", "inbox"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
-					return ShowQuickCaptureMsg{Project: m.currentProject}
+					return ShowQuickCaptureMsg{Project: m.currentProject, AllProjects: m.config.Projects}
 				}
 				return nil
 			},
