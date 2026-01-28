@@ -55,7 +55,7 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	score := m.computeUrgencyScore(task)
 
 	// Leaf task bonus: prefer actionable leaf tasks over containers
-	if task.IsLeaf() && !task.IsNote() {
+	if task.IsLeaf() {
 		score += 800
 	}
 
@@ -101,12 +101,9 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	return score
 }
 
-// allChildrenComplete returns true if all non-note children of the task are complete.
+// allChildrenComplete returns true if all children of the task are complete.
 func (m *PriorityViewModel) allChildrenComplete(task *models.Task) bool {
 	for _, child := range task.Children {
-		if child.IsNote() {
-			continue
-		}
 		if !child.Status.IsComplete() {
 			return false
 		}

@@ -50,7 +50,7 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 
 	projects := cfg.GetActiveProjects()
 
-	// Load all tasks from all projects
+	// Load all tasks and notes from all projects
 	var allTasks []models.SearchResult
 	for _, project := range projects {
 		if err := storage.LoadProject(project); err != nil {
@@ -61,6 +61,16 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 				Task:    task,
 				Project: project,
 			})
+		}
+		// Load notes for search
+		notes, err := storage.ListNotes(project)
+		if err == nil {
+			for _, note := range notes {
+				allTasks = append(allTasks, models.SearchResult{
+					Note:    note,
+					Project: project,
+				})
+			}
 		}
 	}
 
@@ -194,9 +204,15 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return CloseGlobalSearchMsg{}
 			}
 		case "enter":
-			// Only select task if not in autocomplete mode
+			// Only select if not in autocomplete mode
 			if m.acMode == acSearchModeNone && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				result := m.filtered[m.cursor].result
+				if result.IsNote() {
+					// Open notes view for the project containing the note
+					return m, func() tea.Msg {
+						return ShowNotesMsg{Project: result.Project}
+					}
+				}
 				return m, func() tea.Msg {
 					return GlobalSearchSelectMsg{
 						Task:    result.Task,

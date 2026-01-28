@@ -569,21 +569,6 @@ func TestUnhandledMessages(t *testing.T) {
 // Additional handler_task.go Tests
 // =============================================================================
 
-func TestHandleTaskMessagesCreateNote(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	parentTask := project.Tasks[0]
-
-	msg := CreateNoteMsg{ParentTask: parentTask}
-	handled, _ := app.handleTaskMessages(msg)
-
-	if !handled {
-		t.Error("CreateNoteMsg should be handled")
-	}
-	if app.currentView() != ViewNoteCreator {
-		t.Errorf("currentView should be NoteCreator, got %v", app.currentView())
-	}
-}
-
 func TestHandleTaskMessagesTaskDeleted(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	app.projectTree = NewProjectTreeModel(project, app.config, nil)
@@ -1330,31 +1315,5 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	}
 	if app.currentView() != ViewDashboard {
 		t.Errorf("currentView should be Dashboard after text editor done, got %v", app.currentView())
-	}
-}
-
-func TestHandleViewMessagesScratchpadEdited(t *testing.T) {
-	app, project := newTestAppModelWithProject()
-	app.projectTree = NewProjectTreeModel(project, app.config, nil)
-
-	msg := ScratchpadEditedMsg{Project: project, Err: nil}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ScratchpadEditedMsg should be handled")
-	}
-}
-
-func TestHandleViewMessagesScratchpadEditedWithError(t *testing.T) {
-	app := newTestAppModel()
-
-	msg := ScratchpadEditedMsg{Err: errors.New("edit failed")}
-	handled, cmd := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("ScratchpadEditedMsg with error should be handled")
-	}
-	if cmd == nil {
-		t.Error("ScratchpadEditedMsg with error should return error command")
 	}
 }

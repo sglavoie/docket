@@ -45,7 +45,6 @@ var (
 	addIsStory    bool
 	addIsBug      bool
 	addIsIdea     bool
-	addIsNote     bool
 )
 
 func init() {
@@ -60,7 +59,6 @@ func init() {
 	addCmd.Flags().BoolVar(&addIsStory, "story", false, "create a story")
 	addCmd.Flags().BoolVar(&addIsBug, "bug", false, "create a bug")
 	addCmd.Flags().BoolVar(&addIsIdea, "idea", false, "create an idea")
-	addCmd.Flags().BoolVar(&addIsNote, "note", false, "create a note")
 }
 
 // parseInlineMetadata extracts priority (!N) and tags (#tag) from the title.
@@ -106,7 +104,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Determine task type
-	taskType, err := ParseTaskTypeFlags(addIsEpic, addIsStory, addIsBug, addIsIdea, addIsNote, addTypeFlag)
+	taskType, err := ParseTaskTypeFlags(addIsEpic, addIsStory, addIsBug, addIsIdea, addTypeFlag)
 	if err != nil {
 		return err
 	}

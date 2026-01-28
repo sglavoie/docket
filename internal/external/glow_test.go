@@ -156,16 +156,4 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 		}
 	})
 
-	t.Run("note children shown with dot checkbox", func(t *testing.T) {
-		parent := models.NewTask("parent-uuid", 1, models.TaskTypeTask, "Parent Task")
-		note := models.NewTask("note-uuid", 2, models.TaskTypeNote, "My Note")
-
-		parent.AddChild(note)
-
-		result := FormatTaskAsMarkdown(parent)
-
-		if !strings.Contains(result, "[·]") {
-			t.Error("output should contain dot checkbox for note children")
-		}
-	})
 }

@@ -301,9 +301,8 @@ func TestProjectGetTasksByType_AllTypes(t *testing.T) {
 	task := NewTask("task", 3, TaskTypeTask, "Task")
 	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
 	idea := NewTask("idea", 5, TaskTypeIdea, "Idea")
-	note := NewTask("note", 6, TaskTypeNote, "Note")
 
-	project.Tasks = []*Task{epic, story, task, bug, idea, note}
+	project.Tasks = []*Task{epic, story, task, bug, idea}
 
 	tests := []struct {
 		taskType TaskType
@@ -314,7 +313,6 @@ func TestProjectGetTasksByType_AllTypes(t *testing.T) {
 		{TaskTypeTask, 1},
 		{TaskTypeBug, 1},
 		{TaskTypeIdea, 1},
-		{TaskTypeNote, 1},
 	}
 
 	for _, tt := range tests {

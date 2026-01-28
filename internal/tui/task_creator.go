@@ -61,7 +61,6 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		models.TaskTypeEpic,
 		models.TaskTypeBug,
 		models.TaskTypeIdea,
-		models.TaskTypeNote,
 	}
 
 	// Get available sections from project

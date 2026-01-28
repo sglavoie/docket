@@ -17,7 +17,7 @@ func TestParseQuickCapture(t *testing.T) {
 			{ID: "epic-1", ShortID: 1, Type: models.TaskTypeEpic, Title: "User Authentication"},
 			{ID: "story-2", ShortID: 2, Type: models.TaskTypeStory, Title: "Login Flow"},
 			{ID: "task-3", ShortID: 3, Type: models.TaskTypeTask, Title: "Implement button"},
-			{ID: "note-4", ShortID: 4, Type: models.TaskTypeNote, Title: "Meeting notes"},
+			{ID: "task-4", ShortID: 4, Type: models.TaskTypeTask, Title: "Implement search"},
 		},
 	}
 
@@ -220,12 +220,6 @@ func TestParseQuickCapture(t *testing.T) {
 			errContains: "parent not found",
 		},
 		{
-			name:        "invalid parent type (note cannot have task children)",
-			input:       "Task under note >4",
-			wantErr:     true,
-			errContains: "cannot be child",
-		},
-		{
 			name:         "extra whitespace handling",
 			input:        "  Fix   the   bug   !2   #backend   ",
 			wantTitle:    "Fix the bug",
@@ -359,13 +353,6 @@ func TestParseQuickCapture(t *testing.T) {
 			wantTitle:    "Add dark mode",
 			wantPriority: 3,
 			wantTaskType: models.TaskTypeIdea,
-		},
-		{
-			name:         "task type note",
-			input:        "^note Meeting summary",
-			wantTitle:    "Meeting summary",
-			wantPriority: 3,
-			wantTaskType: models.TaskTypeNote,
 		},
 		{
 			name:         "task type case insensitive",

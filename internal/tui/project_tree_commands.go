@@ -304,33 +304,6 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 	}
 }
 
-// turnTaskIntoNote converts the noteTarget task to a Note type.
-func (m *ProjectTreeModel) turnTaskIntoNote() tea.Cmd {
-	if m.noteTarget == nil {
-		return nil
-	}
-
-	task := m.noteTarget
-	m.noteTarget = nil
-
-	childCount := len(task.Children)
-	prevStates := captureTaskStates(m.project.Tasks)
-
-	if err := task.TurnIntoNote(); err != nil {
-		return func() tea.Msg {
-			return ErrorMsg{Err: err}
-		}
-	}
-
-	if childCount > 0 {
-		m.setUndoContext("Turn into Note", fmt.Sprintf("%s (reparented %d children)", task.Title, childCount))
-	} else {
-		m.setUndoContext("Turn into Note", task.Title)
-	}
-
-	return m.saveAndRefreshWithPrevStates(prevStates)
-}
-
 // bulkDeleteTasks removes all selected tasks and their children from the project.
 func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 	// Capture config value and count before returning command

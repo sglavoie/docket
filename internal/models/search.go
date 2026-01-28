@@ -2,10 +2,16 @@ package models
 
 import "strings"
 
-// SearchResult holds a task and its parent project for search results.
+// SearchResult holds a task or note and its parent project for search results.
 type SearchResult struct {
 	Task    *Task
 	Project *Project
+	Note    *Note // Non-nil for note results
+}
+
+// IsNote returns true if this search result is a note rather than a task.
+func (r SearchResult) IsNote() bool {
+	return r.Note != nil
 }
 
 // MatchesSearchQuery checks if a task matches the search query (case-insensitive).

@@ -68,9 +68,6 @@ type SetCurrentProjectMsg struct{ Project *models.Project }
 // CreateTaskMsg opens the task creator, optionally with a parent task.
 type CreateTaskMsg struct{ ParentTask *models.Task }
 
-// CreateNoteMsg opens the note creator under a parent task.
-type CreateNoteMsg struct{ ParentTask *models.Task }
-
 // EditTaskMsg opens the task editor for the given task.
 type EditTaskMsg struct{ Task *models.Task }
 
@@ -82,9 +79,6 @@ type TaskUpdatedMsg struct{ Task *models.Task }
 
 // TaskDeletedMsg signals a task was deleted.
 type TaskDeletedMsg struct{ Task *models.Task }
-
-// TurnIntoNoteMsg triggers the turn-into-note confirmation for the selected task.
-type TurnIntoNoteMsg struct{}
 
 // TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
 type TaskStatusChangedMsg struct{ Task *models.Task }
@@ -112,24 +106,36 @@ type TaskContentEditedMsg struct {
 type GlowViewMsg struct{ Task *models.Task }
 
 // =============================================================================
-// Scratchpad Messages (Show/Close Pattern)
+// Notes Messages (Show/Close Pattern)
 // =============================================================================
 
-// ShowScratchpadMsg opens the scratchpad viewer.
-type ShowScratchpadMsg struct {
+// ShowNotesMsg opens the notes view.
+type ShowNotesMsg struct {
 	Project *models.Project
 }
 
-// EditScratchpadMsg launches external editor for scratchpad.
-type EditScratchpadMsg struct {
+// CloseNotesMsg closes the notes view.
+type CloseNotesMsg struct{}
+
+// NotesRefreshMsg refreshes the notes list.
+type NotesRefreshMsg struct{}
+
+// ShowNoteCreatorMsg opens a quick note creation prompt.
+type ShowNoteCreatorMsg struct {
 	Project *models.Project
 }
 
-// ScratchpadEditedMsg returns results from scratchpad editor.
-type ScratchpadEditedMsg struct {
+// ShowNoteTaskLinkerMsg opens the task picker to link a note to a task.
+type ShowNoteTaskLinkerMsg struct {
 	Project *models.Project
-	Err     error
+	Note    *models.Note
 }
+
+// CloseNoteTaskLinkerMsg closes the note task linker.
+type CloseNoteTaskLinkerMsg struct{}
+
+// NoteTaskLinkedMsg signals a note was linked to a task.
+type NoteTaskLinkedMsg struct{}
 
 // =============================================================================
 // Settings Messages

@@ -224,7 +224,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 
 		case LinkTypeSubtask:
 			// Promote leaf types to Story so they can have subtasks
-			if m.sourceTask.Type.IsLeafType() && !m.sourceTask.Type.IsNoteType() {
+			if m.sourceTask.Type.IsLeafType() {
 				m.sourceTask.Type = models.TaskTypeStory
 				m.sourceTask.UpdatedAt = time.Now()
 			}

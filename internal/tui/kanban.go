@@ -144,8 +144,6 @@ type KanbanViewModel struct {
 	deleteTarget  *models.Task
 
 	// Note conversion confirmation state
-	confirmNoteConvert bool
-	noteConvertTarget  *models.Task
 
 	// Archive confirmation state
 	confirmArchive bool
@@ -748,21 +746,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "n", "N", "esc":
 			m.confirmDelete = false
 			m.deleteTarget = nil
-			m.statusMessage = ""
-			return m, nil
-		}
-		return m, nil
-	}
-
-	// Handle note conversion confirmation
-	if m.confirmNoteConvert {
-		switch key {
-		case "y", "Y":
-			m.confirmNoteConvert = false
-			return m, m.executeNoteConversion()
-		case "n", "N", "esc":
-			m.confirmNoteConvert = false
-			m.noteConvertTarget = nil
 			m.statusMessage = ""
 			return m, nil
 		}
@@ -1385,16 +1368,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Refreshed from disk"
 		return m, nil
 
-	// View scratchpad
+	// Notes view
 	case "[":
 		return m, func() tea.Msg {
-			return ShowScratchpadMsg{Project: m.Project}
+			return ShowNotesMsg{Project: m.Project}
 		}
 
-	// Edit scratchpad
+	// Create note
 	case "]":
 		return m, func() tea.Msg {
-			return EditScratchpadMsg{Project: m.Project}
+			return ShowNoteCreatorMsg{Project: m.Project}
 		}
 
 	// Blockers view
@@ -1420,36 +1403,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusSubtree()
 		return m, nil
 
-	// Convert to note (with confirmation)
-	case "O":
-		task := m.getSelectedTask()
-		if task != nil {
-			if allowed, reason := task.CanTurnIntoNote(); allowed {
-				// Enter confirmation mode
-				m.confirmNoteConvert = true
-				m.noteConvertTarget = task
-				m.statusMessage = "Convert to note? Press 'y' to confirm, 'n' to cancel"
-			} else {
-				m.statusMessage = "Cannot convert: " + reason
-			}
-		}
-		return m, nil
-
 	// Bulk capture
 	case "I":
 		return m, func() tea.Msg {
 			return ShowBulkCaptureMsg{Project: m.Project}
-		}
-
-	// Create note
-	case "o":
-		var parentTask *models.Task
-		task := m.getSelectedTask()
-		if task != nil {
-			parentTask = task
-		}
-		return m, func() tea.Msg {
-			return CreateNoteMsg{ParentTask: parentTask}
 		}
 
 	// Task jumper
@@ -2554,7 +2511,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, and completed view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmNoteConvert || m.confirmArchive || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmArchive || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
 }
 
 // renderPrefixPopup renders the which-key style popup for pending prefix keys.

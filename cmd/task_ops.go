@@ -40,7 +40,7 @@ func FindTaskByIdentifier(project *models.Project, identifier string) *models.Ta
 
 // ParseTaskTypeFlags determines the task type from boolean flags or a string flag.
 // Returns an error if the type flag is invalid.
-func ParseTaskTypeFlags(epic, story, bug, idea, note bool, typeFlag string) (models.TaskType, error) {
+func ParseTaskTypeFlags(epic, story, bug, idea bool, typeFlag string) (models.TaskType, error) {
 	if epic {
 		return models.TaskTypeEpic, nil
 	}
@@ -52,9 +52,6 @@ func ParseTaskTypeFlags(epic, story, bug, idea, note bool, typeFlag string) (mod
 	}
 	if idea {
 		return models.TaskTypeIdea, nil
-	}
-	if note {
-		return models.TaskTypeNote, nil
 	}
 	if typeFlag != "" {
 		t, ok := models.ParseTaskType(typeFlag)

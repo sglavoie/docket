@@ -208,17 +208,63 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
-	case ShowScratchpadMsg:
-		return m.handleShowScratchpad(msg)
-
-	case EditScratchpadMsg:
-		return m.handleEditScratchpad(msg)
-
-	case ScratchpadEditedMsg:
-		if msg.Err != nil {
-			return true, errorCmd("scratchpad edit failed: %w", msg.Err)
+	case ShowNotesMsg:
+		if msg.Project != nil {
+			m.showView(ViewNotes, NewNotesViewModel(msg.Project))
 		}
-		m.refreshProjectTree()
+		return true, nil
+
+	case CloseNotesMsg:
+		m.popView()
+		return true, nil
+
+	case ShowNotesSearchMsg:
+		if msg.Project != nil {
+			m.showView(ViewNotesSearch, NewNotesSearchModel(msg.Project))
+		}
+		return true, nil
+
+	case CloseNotesSearchMsg:
+		m.popView()
+		return true, nil
+
+	case NotesSearchSelectMsg:
+		// Pop search view, then select the note in the notes view
+		m.popView()
+		// Find the note index in the notes view and set cursor
+		if v := m.views.Get(ViewNotes); v != nil {
+			if notesView, ok := v.(*NotesViewModel); ok {
+				for i, n := range notesView.notes {
+					if n.Filename == msg.Note.Filename {
+						notesView.cursor = i
+						break
+					}
+				}
+			}
+		}
+		return true, nil
+
+	case ShowNoteTaskLinkerMsg:
+		if msg.Project != nil && msg.Note != nil {
+			m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModel(msg.Project, msg.Note))
+		}
+		return true, nil
+
+	case CloseNoteTaskLinkerMsg:
+		m.popView()
+		return true, nil
+
+	case NoteTaskLinkedMsg:
+		m.popView()
+		// Forward to notes view to refresh
+		cmd := m.views.Update(ViewNotes, msg)
+		return true, cmd
+
+	case ShowNoteCreatorMsg:
+		if msg.Project != nil {
+			// Create a new note with a default title and open in editor
+			return m.handleCreateNote(msg.Project)
+		}
 		return true, nil
 
 	case ShowContextPickerMsg:
@@ -584,58 +630,11 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	})
 }
 
-// handleShowScratchpad opens the project scratchpad in glow pager.
-func (m *AppModel) handleShowScratchpad(msg ShowScratchpadMsg) (bool, tea.Cmd) {
-	if msg.Project == nil {
-		return true, nil
-	}
-
-	content, err := storage.LoadScratchpad(msg.Project)
-	if err != nil {
-		return true, errorCmd("failed to load scratchpad: %w", err)
-	}
-
-	if content == "" || strings.TrimSpace(content) == strings.TrimSpace(storage.DefaultScratchpadTemplate) {
-		m.statusMessage = "Scratchpad is empty. Press ] to edit."
-		return true, statusTimeout(3 * time.Second)
-	}
-
-	if !external.GlowAvailable() {
-		// Fallback: just show a message
-		m.statusMessage = "Scratchpad exists but glow not available"
-		return true, statusTimeout(3 * time.Second)
-	}
-
-	// Add header for nicer display
-	displayContent := fmt.Sprintf("# 🗒️ Scratchpad: %s\n\n%s", msg.Project.Name, content)
-
-	tmpFile, err := os.CreateTemp("", "tt-scratchpad-*.md")
-	if err != nil {
-		return true, errorCmd("failed to create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(displayContent)
-	_ = tmpFile.Close()
-
-	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
-	return true, tea.ExecProcess(c, func(err error) tea.Msg {
-		_ = os.Remove(tmpPath)
-		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("glow failed: %w", err)}
-		}
-		return GlowViewDoneMsg{}
-	})
-}
-
-// handleEditScratchpad opens the project scratchpad in an external editor.
-func (m *AppModel) handleEditScratchpad(msg EditScratchpadMsg) (bool, tea.Cmd) {
-	if msg.Project == nil {
-		return true, nil
-	}
-
-	scratchpadPath, err := storage.EnsureScratchpadFile(msg.Project)
-	if err != nil {
-		return true, errorCmd("failed to create scratchpad: %w", err)
+// handleCreateNote creates a new note and opens it in the editor.
+func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
+	note := models.NewNote("Untitled Note")
+	if err := storage.SaveNote(project, note); err != nil {
+		return true, errorCmd("failed to create note: %w", err)
 	}
 
 	editor := m.config.Editor
@@ -646,18 +645,19 @@ func (m *AppModel) handleEditScratchpad(msg EditScratchpadMsg) (bool, tea.Cmd) {
 		editor = "code"
 	}
 
+	path := storage.NoteFilePath(project, note.Filename)
 	var c *exec.Cmd
 	if editor == "code" {
-		c = exec.Command(editor, "--wait", scratchpadPath)
+		c = exec.Command(editor, "--wait", path)
 	} else {
-		c = exec.Command(editor, scratchpadPath)
+		c = exec.Command(editor, path)
 	}
 
-	project := msg.Project
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
-		if err != nil {
-			return ScratchpadEditedMsg{Project: project, Err: err}
+		reloaded, loadErr := storage.LoadNote(project, note.Filename)
+		if loadErr == nil && reloaded.Title == "Untitled Note" && strings.TrimSpace(reloaded.Body) == "" {
+			_ = storage.DeleteNote(project, note.Filename)
 		}
-		return ScratchpadEditedMsg{Project: project, Err: nil}
+		return NotesRefreshMsg{}
 	})
 }

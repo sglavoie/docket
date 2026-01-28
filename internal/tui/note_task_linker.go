@@ -1,0 +1,183 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// noteTaskItem wraps a task for use with BasePicker.
+type noteTaskItem struct {
+	task *models.Task
+}
+
+func (i noteTaskItem) FilterText() string { return i.task.Title }
+func (i noteTaskItem) DisplayText() string {
+	return fmt.Sprintf("#%d %s", i.task.ShortID, i.task.Title)
+}
+func (i noteTaskItem) CountValue() int { return 0 }
+func (i noteTaskItem) ItemID() string  { return i.task.ID }
+
+// NoteTaskLinkerModel is a task picker for linking notes to tasks.
+type NoteTaskLinkerModel struct {
+	picker  *BasePicker[noteTaskItem]
+	project *models.Project
+	note    *models.Note
+	changed bool
+	width   int
+	height  int
+}
+
+// NewNoteTaskLinkerModel creates a new note-to-task linker.
+func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTaskLinkerModel {
+	var items []noteTaskItem
+	for _, t := range project.Tasks {
+		items = append(items, noteTaskItem{task: t})
+	}
+
+	picker := NewBasePicker[noteTaskItem](items, PickerConfig{
+		Title:          "Link Note to Task",
+		Subtitle:       note.Title,
+		EmptyMessage:   "No tasks in project",
+		NoMatchMessage: "No matching tasks",
+	})
+
+	return &NoteTaskLinkerModel{
+		picker:  picker,
+		project: project,
+		note:    note,
+	}
+}
+
+func (m *NoteTaskLinkerModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m *NoteTaskLinkerModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+	m.picker.SetSize(width, height)
+}
+
+func (m *NoteTaskLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		// Let picker handle search mode first
+		handled, cmd := m.picker.HandleKeyMsg(msg)
+		if handled {
+			return m, cmd
+		}
+
+		switch msg.String() {
+		case "q", "esc":
+			return m, m.close()
+		case "enter":
+			return m, m.close()
+		case " ":
+			selected := m.picker.SelectedItem()
+			if selected.task != nil {
+				m.toggleLink(selected.task)
+			}
+		}
+	case tea.WindowSizeMsg:
+		m.SetSize(msg.Width, msg.Height)
+	}
+	return m, nil
+}
+
+func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) {
+	if m.note.HasLink(task.ID) {
+		m.note.RemoveLink(task.ID)
+	} else {
+		m.note.AddLink(task.ID)
+	}
+	_ = storage.SaveNote(m.project, m.note)
+	m.changed = true
+}
+
+func (m *NoteTaskLinkerModel) close() tea.Cmd {
+	if m.changed {
+		return func() tea.Msg { return NoteTaskLinkedMsg{} }
+	}
+	return func() tea.Msg { return CloseNoteTaskLinkerMsg{} }
+}
+
+func (m *NoteTaskLinkerModel) View() string {
+	// Already-linked task IDs for display
+	linkedSet := map[string]bool{}
+	for _, id := range m.note.LinkedTasks {
+		linkedSet[id] = true
+	}
+
+	subtitle := m.picker.Config.Subtitle
+	if len(m.note.LinkedTasks) > 0 {
+		subtitle += fmt.Sprintf(" (%d linked)", len(m.note.LinkedTasks))
+	}
+
+	// Show linked indicator on items
+	var content strings.Builder
+	content.WriteString(m.picker.RenderSearchBar())
+
+	maxVisible := 15
+	if m.height > 0 {
+		maxVisible = m.height - 14
+	}
+
+	// Custom render to show linked status
+	if len(m.picker.Filtered) == 0 {
+		if len(m.picker.Items) == 0 {
+			content.WriteString(MutedStyle.Render(m.picker.Config.EmptyMessage))
+		} else {
+			content.WriteString(MutedStyle.Render(m.picker.Config.NoMatchMessage))
+		}
+		content.WriteString("\n")
+	} else {
+		start := 0
+		if m.picker.Cursor >= maxVisible {
+			start = m.picker.Cursor - maxVisible + 1
+		}
+		end := start + maxVisible
+		if end > len(m.picker.Filtered) {
+			end = len(m.picker.Filtered)
+		}
+
+		for i := start; i < end; i++ {
+			item := m.picker.Filtered[i]
+			selected := i == m.picker.Cursor
+
+			isLinked := linkedSet[item.ItemID()]
+			display := item.DisplayText()
+			if isLinked {
+				display = lipgloss.NewStyle().Foreground(lipgloss.Color("135")).Render(display + " ✓")
+			}
+
+			line := RenderSelectableRow(selected, false, display, 55)
+			content.WriteString(line)
+			content.WriteString("\n")
+		}
+
+		if remaining := len(m.picker.Filtered) - end; remaining > 0 {
+			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", remaining)))
+			content.WriteString("\n")
+		}
+	}
+
+	content.WriteString("\n")
+	if m.picker.IsSearchMode() {
+		content.WriteString(MutedStyle.Render("enter done | esc clear"))
+	} else {
+		content.WriteString(MutedStyle.Render("space toggle | / search | enter close"))
+	}
+
+	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
+		Title:    "Link Note to Task",
+		Subtitle: subtitle,
+		Width:    65,
+		Centered: true,
+	})
+}

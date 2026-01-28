@@ -339,15 +339,7 @@ func (m *CrossProjectLinkerModel) filterTasks() {
 
 // getSelectableTasks returns tasks from target project that can be linked.
 func (m *CrossProjectLinkerModel) getSelectableTasks() []*models.Task {
-	var tasks []*models.Task
-	for _, t := range m.targetProject.Tasks {
-		// Skip notes
-		if t.IsNote() {
-			continue
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks
+	return m.targetProject.Tasks
 }
 
 func (m *CrossProjectLinkerModel) createLink() tea.Cmd {

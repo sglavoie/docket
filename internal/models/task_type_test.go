@@ -12,7 +12,6 @@ func TestTaskTypeValid(t *testing.T) {
 		{TaskTypeTask, true},
 		{TaskTypeBug, true},
 		{TaskTypeIdea, true},
-		{TaskTypeNote, true},
 		{TaskType("invalid"), false},
 		{TaskType(""), false},
 	}
@@ -31,12 +30,11 @@ func TestTaskTypeAllowedChildren(t *testing.T) {
 		taskType TaskType
 		expected []TaskType
 	}{
-		{TaskTypeEpic, []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeNote}},
-		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeNote}},
-		{TaskTypeTask, []TaskType{TaskTypeNote}},
-		{TaskTypeBug, []TaskType{TaskTypeNote}},
-		{TaskTypeIdea, []TaskType{TaskTypeNote}},
-		{TaskTypeNote, []TaskType{}},
+		{TaskTypeEpic, []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}},
+		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug}},
+		{TaskTypeTask, []TaskType{}},
+		{TaskTypeBug, []TaskType{}},
+		{TaskTypeIdea, []TaskType{}},
 	}
 
 	for _, tc := range tests {
@@ -62,10 +60,9 @@ func TestTaskTypeCanHaveChildren(t *testing.T) {
 	}{
 		{TaskTypeEpic, true},
 		{TaskTypeStory, true},
-		{TaskTypeTask, true},  // Can have Note children
-		{TaskTypeBug, true},   // Can have Note children
-		{TaskTypeIdea, true},  // Can have Note children
-		{TaskTypeNote, false}, // Note is a true leaf
+		{TaskTypeTask, false},
+		{TaskTypeBug, false},
+		{TaskTypeIdea, false},
 	}
 
 	for _, tc := range tests {
@@ -108,14 +105,6 @@ func TestTaskTypeCanBeChildOf(t *testing.T) {
 		{TaskTypeIdea, TaskTypeEpic, true},
 		{TaskTypeIdea, TaskTypeStory, false},
 		{TaskTypeIdea, TaskTypeTask, false},
-
-		// Note can be child of any type (except Note itself)
-		{TaskTypeNote, TaskTypeEpic, true},
-		{TaskTypeNote, TaskTypeStory, true},
-		{TaskTypeNote, TaskTypeTask, true},
-		{TaskTypeNote, TaskTypeBug, true},
-		{TaskTypeNote, TaskTypeIdea, true},
-		{TaskTypeNote, TaskTypeNote, false},
 	}
 
 	for _, tc := range tests {
@@ -138,7 +127,6 @@ func TestTaskTypeIcon(t *testing.T) {
 		{TaskTypeTask, "T"},
 		{TaskTypeBug, "B"},
 		{TaskTypeIdea, "I"},
-		{TaskTypeNote, "N"},
 		{TaskType("invalid"), "?"},
 	}
 
@@ -161,7 +149,6 @@ func TestTaskTypeHeadingPrefix(t *testing.T) {
 		{TaskTypeTask, "Task"},
 		{TaskTypeBug, "Bug"},
 		{TaskTypeIdea, "Idea"},
-		{TaskTypeNote, "Note"},
 		{TaskType("invalid"), "Task"},
 	}
 
@@ -185,7 +172,6 @@ func TestParseTaskType(t *testing.T) {
 		{"task", TaskTypeTask, true},
 		{"bug", TaskTypeBug, true},
 		{"idea", TaskTypeIdea, true},
-		{"note", TaskTypeNote, true},
 		{"invalid", TaskType("invalid"), false},
 		{"", TaskType(""), false},
 	}
@@ -205,7 +191,7 @@ func TestParseTaskType(t *testing.T) {
 
 func TestAllTaskTypes(t *testing.T) {
 	types := AllTaskTypes()
-	expected := []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeNote}
+	expected := []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}
 
 	if len(types) != len(expected) {
 		t.Errorf("AllTaskTypes() has %d items, want %d", len(types), len(expected))
@@ -229,7 +215,6 @@ func TestTaskTypeIsLeafType(t *testing.T) {
 		{TaskTypeTask, true},
 		{TaskTypeBug, true},
 		{TaskTypeIdea, true},
-		{TaskTypeNote, true},
 	}
 
 	for _, tc := range tests {
@@ -251,7 +236,6 @@ func TestTaskTypePromote(t *testing.T) {
 		{TaskTypeTask, TaskTypeStory}, // Task promotes to Story
 		{TaskTypeBug, TaskTypeStory},  // Bug promotes to Story
 		{TaskTypeIdea, TaskTypeStory}, // Idea promotes to Story
-		{TaskTypeNote, TaskTypeNote},  // Note doesn't participate in hierarchy
 	}
 
 	for _, tc := range tests {
@@ -273,7 +257,6 @@ func TestTaskTypeDemote(t *testing.T) {
 		{TaskTypeTask, TaskTypeTask},  // Already leaf, stays Task
 		{TaskTypeBug, TaskTypeBug},    // Already leaf, stays Bug
 		{TaskTypeIdea, TaskTypeIdea},  // Already leaf, stays Idea
-		{TaskTypeNote, TaskTypeNote},  // Note doesn't participate in hierarchy
 	}
 
 	for _, tc := range tests {
@@ -295,7 +278,6 @@ func TestTaskTypeCycleLeafLeft(t *testing.T) {
 		{TaskTypeIdea, TaskTypeBug},    // Idea cycles left to Bug
 		{TaskTypeEpic, TaskTypeEpic},   // Non-leaf stays same
 		{TaskTypeStory, TaskTypeStory}, // Non-leaf stays same
-		{TaskTypeNote, TaskTypeNote},   // Note doesn't participate in leaf cycling
 	}
 
 	for _, tc := range tests {
@@ -317,7 +299,6 @@ func TestTaskTypeCycleLeafRight(t *testing.T) {
 		{TaskTypeIdea, TaskTypeTask},   // Idea cycles right to Task
 		{TaskTypeEpic, TaskTypeEpic},   // Non-leaf stays same
 		{TaskTypeStory, TaskTypeStory}, // Non-leaf stays same
-		{TaskTypeNote, TaskTypeNote},   // Note doesn't participate in leaf cycling
 	}
 
 	for _, tc := range tests {

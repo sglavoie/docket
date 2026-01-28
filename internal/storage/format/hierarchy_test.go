@@ -94,23 +94,6 @@ func TestBuildHierarchy(t *testing.T) {
 			wantNoParent: []string{"task1", "epic1"}, // Epic can't be child of Task
 		},
 		{
-			name: "notes can be children of tasks",
-			parsedTasks: []*ParsedTask{
-				{
-					Task:  &models.Task{ID: "task1", Type: models.TaskTypeTask, Title: "Task 1"},
-					Level: 2,
-				},
-				{
-					Task:  &models.Task{ID: "note1", Type: models.TaskTypeNote, Title: "Note 1"},
-					Level: 3,
-				},
-			},
-			wantParents: map[string]*string{
-				"note1": strPtr("task1"),
-			},
-			wantNoParent: []string{"task1"},
-		},
-		{
 			name: "level skip - find parent at multiple levels up",
 			parsedTasks: []*ParsedTask{
 				{
@@ -143,10 +126,6 @@ func TestBuildHierarchy(t *testing.T) {
 					Level: 4,
 				},
 				{
-					Task:  &models.Task{ID: "note1", Type: models.TaskTypeNote, Title: "Note 1"},
-					Level: 5,
-				},
-				{
 					Task:  &models.Task{ID: "task2", Type: models.TaskTypeTask, Title: "Task 2"},
 					Level: 4,
 				},
@@ -158,7 +137,6 @@ func TestBuildHierarchy(t *testing.T) {
 			wantParents: map[string]*string{
 				"story1": strPtr("epic1"),
 				"task1":  strPtr("story1"),
-				"note1":  strPtr("task1"),
 				"task2":  strPtr("story1"),
 				"story2": strPtr("epic1"),
 			},
@@ -257,12 +235,6 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 			wantParent: true,
 		},
 		{
-			name:       "Epic can contain Note",
-			parentType: models.TaskTypeEpic,
-			childType:  models.TaskTypeNote,
-			wantParent: true,
-		},
-		{
 			name:       "Story can contain Task",
 			parentType: models.TaskTypeStory,
 			childType:  models.TaskTypeTask,
@@ -272,12 +244,6 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 			name:       "Story can contain Bug",
 			parentType: models.TaskTypeStory,
 			childType:  models.TaskTypeBug,
-			wantParent: true,
-		},
-		{
-			name:       "Story can contain Note",
-			parentType: models.TaskTypeStory,
-			childType:  models.TaskTypeNote,
 			wantParent: true,
 		},
 		{
@@ -293,27 +259,9 @@ func TestBuildHierarchy_TypeRestrictions(t *testing.T) {
 			wantParent: false,
 		},
 		{
-			name:       "Task can contain Note",
-			parentType: models.TaskTypeTask,
-			childType:  models.TaskTypeNote,
-			wantParent: true,
-		},
-		{
 			name:       "Task cannot contain Task",
 			parentType: models.TaskTypeTask,
 			childType:  models.TaskTypeTask,
-			wantParent: false,
-		},
-		{
-			name:       "Bug can contain Note",
-			parentType: models.TaskTypeBug,
-			childType:  models.TaskTypeNote,
-			wantParent: true,
-		},
-		{
-			name:       "Note cannot contain anything",
-			parentType: models.TaskTypeNote,
-			childType:  models.TaskTypeNote,
 			wantParent: false,
 		},
 	}

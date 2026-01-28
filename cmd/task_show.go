@@ -137,15 +137,12 @@ func displayTaskDetail(task *models.Task) {
 		fmt.Println(task.Description)
 	}
 
-	// Children summary (exclude notes from progress)
+	// Children summary
 	if task.HasProgressChildren() {
 		fmt.Println()
 		total := 0
 		completed := 0
 		for _, child := range task.Children {
-			if child.IsNote() {
-				continue
-			}
 			total++
 			if child.IsComplete() {
 				completed++

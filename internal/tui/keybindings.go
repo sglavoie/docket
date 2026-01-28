@@ -45,6 +45,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerTaskAttachmentsBindings()
 	r.registerCustomContextEditorBindings()
 	r.registerKanbanBindings()
+	r.registerNotesBindings()
 	return r
 }
 
@@ -232,8 +233,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
-		Keybinding{Key: "o", Description: "Add new note", Category: "Task Operations", Views: views},
-		Keybinding{Key: "O", Description: "Turn into note", Category: "Type Changes", Views: views},
+		Keybinding{Key: "o", Description: "Reopen task / expand node", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "r", Description: "Rename task (inline)", Category: "Task Operations", Views: views},
@@ -324,9 +324,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar", Views: views},
 		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filter Bar", Views: views},
 
-		// Scratchpad
-		Keybinding{Key: "[", Description: "View scratchpad", Category: "🗒️ Scratchpad", Views: views},
-		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "🗒️ Scratchpad", Views: views},
+		// Notes
+		Keybinding{Key: "[", Description: "Open notes view", Category: "Notes", Views: views},
+		Keybinding{Key: "]", Description: "Create new note", Category: "Notes", Views: views},
 
 		// Recurring Tasks
 		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "🔁 Recurring Tasks", Views: views},
@@ -692,6 +692,25 @@ func (r *KeybindingRegistry) registerCustomContextEditorBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerNotesBindings() {
+	views := []ViewType{ViewNotes}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "View note (glow)", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit note", Category: "Actions", Views: views},
+		Keybinding{Key: "n", Description: "Create new note", Category: "Actions", Views: views},
+		Keybinding{Key: "d", Description: "Delete note (confirm)", Category: "Actions", Views: views},
+		Keybinding{Key: "u", Description: "Undo last delete", Category: "Actions", Views: views},
+		Keybinding{Key: "l", Description: "Link note to task", Category: "Actions", Views: views},
+		Keybinding{Key: "p", Description: "Toggle pin", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Edit note tags", Category: "Tags", Views: views},
+		Keybinding{Key: "T", Description: "Cycle tag filter", Category: "Tags", Views: views},
+		Keybinding{Key: "/", Description: "Search notes", Category: "Filters", Views: views},
+		Keybinding{Key: "q", Description: "Close notes view", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerKanbanBindings() {
 	views := []ViewType{ViewKanban}
 	r.add(
@@ -817,8 +836,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
-		Keybinding{Key: "o", Description: "Add new note", Category: "Task Operations", Views: views},
-		Keybinding{Key: "O", Description: "Convert to note", Category: "Task Operations", Views: views},
+		Keybinding{Key: "o", Description: "Reopen task / expand node", Category: "Task Operations", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Task Operations", Views: views},
@@ -841,9 +859,9 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
 
-		// Scratchpad
-		Keybinding{Key: "[", Description: "View scratchpad", Category: "🗒️ Scratchpad", Views: views},
-		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "🗒️ Scratchpad", Views: views},
+		// Notes
+		Keybinding{Key: "[", Description: "Open notes view", Category: "Notes", Views: views},
+		Keybinding{Key: "]", Description: "Create new note", Category: "Notes", Views: views},
 
 		// Undo
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},

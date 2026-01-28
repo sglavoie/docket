@@ -384,33 +384,6 @@ func (m *KanbanViewModel) outdentTask() tea.Cmd {
 	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, cs.Cursor)
 }
 
-// executeNoteConversion converts the targeted task to a note.
-func (m *KanbanViewModel) executeNoteConversion() tea.Cmd {
-	if m.noteConvertTarget == nil {
-		return nil
-	}
-
-	task := m.noteConvertTarget
-	section := task.Section
-	m.noteConvertTarget = nil
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-
-	// Convert the task to a note
-	if err := task.TurnIntoNote(); err != nil {
-		m.statusMessage = "Failed to convert: " + err.Error()
-		return nil
-	}
-
-	m.statusMessage = "Converted to note"
-	m.lastModifiedTaskID = task.ID
-
-	// Save with workflow rules
-	return m.saveWithWorkflow(prevStates, func() tea.Msg {
-		return KanbanStatusChangedMsg{TaskID: task.ID, PreviousSection: section}
-	})
-}
-
 // executeArchiveToggle archives or unarchives the project.
 func (m *KanbanViewModel) executeArchiveToggle() tea.Cmd {
 	prevStates := captureTaskStates(m.Project.Tasks)

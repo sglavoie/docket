@@ -4,41 +4,37 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
-var (
-	noteParentFlag string
-)
+var noteAddTags []string
 
 var noteAddCmd = &cobra.Command{
-	Use:   "add <title>",
-	Short: "Add a new note",
-	Long: `Add a new note to the current project.
+	Use:     "add <title>",
+	Aliases: []string{"a", "new"},
+	Short:   "Create a new note",
+	Long: `Create a new structured note in the current project.
 
-Notes are informational items without status, priority, or tags.
-They can be attached to any item type as children.
+Notes are project-level markdown documents stored in the notes/ directory.
 
 Examples:
-  tt note add "Meeting notes from standup"
-  tt note add "Design considerations" --parent 1
-  tt n a "Quick note"`,
+  tt note add "Meeting notes"
+  tt note add "Design ideas" --tag design --tag architecture
+  tt note add "Quick thought" --edit`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runNoteAdd,
 }
 
 func init() {
 	noteCmd.AddCommand(noteAddCmd)
-
-	noteAddCmd.Flags().StringVarP(&noteParentFlag, "parent", "p", "", "parent task ID or short ID")
+	noteAddCmd.Flags().StringSliceVarP(&noteAddTags, "tag", "t", nil, "tags for the note")
 }
 
 func runNoteAdd(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
+	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -48,35 +44,15 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("note title is required")
 	}
 
-	// Create note
-	noteID := uuid.New().String()
-	shortID := project.GetNextShortID()
-	note := models.NewTask(noteID, shortID, models.TaskTypeNote, title)
-
-	// Handle parent
-	if noteParentFlag != "" {
-		parent := FindTaskByIdentifier(project, noteParentFlag)
-		if parent == nil {
-			return tterrors.NewParentTaskNotFoundError(noteParentFlag)
-		}
-
-		if !models.TaskTypeNote.CanBeChildOf(parent.Type) {
-			return fmt.Errorf("note cannot be a child of %s", parent.Type.HeadingPrefix())
-		}
-
-		note.ParentID = &parent.ID
+	note := models.NewNote(title)
+	if len(noteAddTags) > 0 {
+		note.Tags = noteAddTags
 	}
 
-	// Add to project
-	project.Tasks = append(project.Tasks, note)
-
-	// Save with workflow rules evaluation
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
+	if err := storage.SaveNote(project, note); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 
-	msg := fmt.Sprintf("[%s] Created Note #%d: %s", project.Name, shortID, title)
-	fmt.Println(msg)
-
+	fmt.Printf("[%s] Created note: %s (%s)\n", project.Name, title, note.Filename)
 	return nil
 }

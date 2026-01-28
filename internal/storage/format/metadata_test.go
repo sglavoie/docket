@@ -333,15 +333,6 @@ func TestWriteMetadata(t *testing.T) {
 			want: "<!-- id: task-6, status: todo, priority: 2, recur: 2w:mon,wed,fri -->",
 		},
 		{
-			name: "note without status, priority, or tags",
-			task: &models.Task{
-				ID:        "note-1",
-				Type:      models.TaskTypeNote,
-				CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
-			},
-			want: "<!-- id: note-1, created: 2025-01-15 10:30 -->",
-		},
-		{
 			name: "task with updated same as created",
 			task: &models.Task{
 				ID:        "task-7",

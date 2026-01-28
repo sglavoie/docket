@@ -388,50 +388,6 @@ func TestCanCycleLeafTypeReturnsReason(t *testing.T) {
 	}
 }
 
-func TestNoteCannotPromote(t *testing.T) {
-	project := testutil.NewTestProject("Note Test")
-
-	note := models.NewTask("note-1", project.GetNextShortID(), models.TaskTypeNote, "Note")
-	project.Tasks = append(project.Tasks, note)
-	project.BuildTaskTree()
-
-	err := note.Promote()
-	if err == nil {
-		t.Error("expected error when promoting note")
-	}
-
-	testutil.AssertEqual(t, note.Type, models.TaskTypeNote)
-}
-
-func TestNoteCannotDemote(t *testing.T) {
-	project := testutil.NewTestProject("Note Test")
-
-	note := models.NewTask("note-1", project.GetNextShortID(), models.TaskTypeNote, "Note")
-	project.Tasks = append(project.Tasks, note)
-	project.BuildTaskTree()
-
-	err := note.Demote()
-	if err == nil {
-		t.Error("expected error when demoting note")
-	}
-
-	testutil.AssertEqual(t, note.Type, models.TaskTypeNote)
-}
-
-func TestNoteCyclesLeafTypeToItself(t *testing.T) {
-	project := testutil.NewTestProject("Note Test")
-
-	note := models.NewTask("note-1", project.GetNextShortID(), models.TaskTypeNote, "Note")
-	project.Tasks = append(project.Tasks, note)
-	project.BuildTaskTree()
-
-	// Notes are considered leaf types but cycle to themselves (no-op)
-	err := note.CycleLeafType(false)
-	testutil.AssertNoError(t, err)
-
-	testutil.AssertEqual(t, note.Type, models.TaskTypeNote)
-}
-
 func TestPromoteUpdatesTimestamp(t *testing.T) {
 	project := testutil.NewTestProject("Timestamp Test")
 

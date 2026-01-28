@@ -94,8 +94,6 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Edit Project"
 	case ViewTaskCreator:
 		status = "New Task"
-	case ViewNoteCreator:
-		status = "New Note"
 	case ViewTaskEditor:
 		status = "Edit Task"
 	case ViewSettings:
@@ -142,12 +140,17 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			status = "Kanban"
 		}
+	case ViewNotes:
+		status = "Notes"
+	case ViewNotesSearch:
+		status = "Notes Search"
+	case ViewNoteTagFilterSelector:
+		status = "Filter Notes by Tags"
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply
 	currentView := m.currentView()
 	showHelp := currentView != ViewTaskCreator &&
-		currentView != ViewNoteCreator &&
 		currentView != ViewTaskEditor &&
 		currentView != ViewProjectCreator &&
 		currentView != ViewProjectEditor &&

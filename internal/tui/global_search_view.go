@@ -197,13 +197,46 @@ func (m *GlobalSearchModel) renderTaskList() string {
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
 		fr := m.filtered[i]
 		result := fr.result
-		task := result.Task
 
 		// Cursor indicator
 		cursor := "  "
 		if i == m.cursor {
 			cursor = "> "
 		}
+
+		// Handle note results
+		if result.IsNote() {
+			note := result.Note
+			projectSlug := util.Truncate(result.Project.Slug, 8)
+			projectName := MutedStyle.Render(fmt.Sprintf("[%s]", projectSlug))
+			noteIcon := MutedStyle.Render("[N]")
+			prefix := fmt.Sprintf("%s%s %s ", cursor, noteIcon, projectName)
+			prefixWidth := lipgloss.Width(prefix)
+			maxTitleLen := m.listWidth - prefixWidth - 2
+			if maxTitleLen < 10 {
+				maxTitleLen = 10
+			}
+			title := util.Truncate(note.Title, maxTitleLen)
+			var titleRendered string
+			if len(fr.titlePositions) > 0 {
+				titleRunes := []rune(title)
+				var validPositions []int
+				for _, p := range fr.titlePositions {
+					if p < len(titleRunes) {
+						validPositions = append(validPositions, p)
+					}
+				}
+				titleRendered = HighlightText(title, validPositions, NormalStyle)
+			} else {
+				titleRendered = title
+			}
+			line := prefix + titleRendered
+			b.WriteString(line)
+			b.WriteString("\n")
+			continue
+		}
+
+		task := result.Task
 
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
@@ -289,8 +322,32 @@ func (m *GlobalSearchModel) renderPreview() string {
 	}
 
 	result := m.filtered[m.cursor].result
-	task := result.Task
 	project := result.Project
+
+	// Handle note preview
+	if result.IsNote() {
+		var b strings.Builder
+		b.WriteString(MutedStyle.Render("Project: "))
+		b.WriteString(BoldStyle.Render(project.Name))
+		b.WriteString("\n\n")
+		b.WriteString(TaskJumperPreviewHeaderStyle.Render("Note: " + result.Note.Title))
+		b.WriteString("\n\n")
+		if len(result.Note.Tags) > 0 {
+			b.WriteString(fmt.Sprintf("%s %s\n", MutedStyle.Render("Tags:"), strings.Join(result.Note.Tags, ", ")))
+		}
+		if len(result.Note.LinkedTasks) > 0 {
+			b.WriteString(fmt.Sprintf("%s %d\n", MutedStyle.Render("Linked tasks:"), len(result.Note.LinkedTasks)))
+		}
+		b.WriteString("\n")
+		body := result.Note.Body
+		if len(body) > 500 {
+			body = body[:500] + "..."
+		}
+		b.WriteString(body)
+		return b.String()
+	}
+
+	task := result.Task
 	var b strings.Builder
 
 	// Project header

@@ -683,13 +683,6 @@ func TestCountChildrenBySection(t *testing.T) {
 		Children: []*models.Task{},
 	}
 
-	note := &models.Task{
-		ID:       "note",
-		Section:  models.SectionInbox,
-		Type:     models.TaskTypeNote, // Notes should be excluded
-		Children: []*models.Task{},
-	}
-
 	childEmptySection := &models.Task{
 		ID:       "empty-section",
 		Section:  "", // Empty section should be normalized to "Active"
@@ -697,7 +690,7 @@ func TestCountChildrenBySection(t *testing.T) {
 		Children: []*models.Task{},
 	}
 
-	parentTask.Children = []*models.Task{child1, child2, child3, note, childEmptySection}
+	parentTask.Children = []*models.Task{child1, child2, child3, childEmptySection}
 	child1.Children = []*models.Task{grandchild}
 
 	m := &ProjectTreeModel{}
@@ -712,7 +705,7 @@ func TestCountChildrenBySection(t *testing.T) {
 			task: parentTask,
 			expected: map[string]int{
 				models.SectionNext:    2, // child1 and child3
-				models.SectionInbox:   1, // child2 (note is excluded)
+				models.SectionInbox:   1, // child2
 				models.SectionWaiting: 1, // grandchild
 				"Active":              1, // childEmptySection (empty normalized to Active)
 			},

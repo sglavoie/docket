@@ -87,7 +87,6 @@ func TestParseTaskTypeFlags(t *testing.T) {
 		story    bool
 		bug      bool
 		idea     bool
-		note     bool
 		typeFlag string
 		want     models.TaskType
 		wantErr  bool
@@ -117,11 +116,6 @@ func TestParseTaskTypeFlags(t *testing.T) {
 			want: models.TaskTypeIdea,
 		},
 		{
-			name: "note flag",
-			note: true,
-			want: models.TaskTypeNote,
-		},
-		{
 			name:     "type flag epic",
 			typeFlag: "epic",
 			want:     models.TaskTypeEpic,
@@ -147,11 +141,6 @@ func TestParseTaskTypeFlags(t *testing.T) {
 			want:     models.TaskTypeIdea,
 		},
 		{
-			name:     "type flag note",
-			typeFlag: "note",
-			want:     models.TaskTypeNote,
-		},
-		{
 			name:     "invalid type flag",
 			typeFlag: "invalid",
 			wantErr:  true,
@@ -166,7 +155,7 @@ func TestParseTaskTypeFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseTaskTypeFlags(tt.epic, tt.story, tt.bug, tt.idea, tt.note, tt.typeFlag)
+			got, err := ParseTaskTypeFlags(tt.epic, tt.story, tt.bug, tt.idea, tt.typeFlag)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseTaskTypeFlags() error = %v, wantErr %v", err, tt.wantErr)

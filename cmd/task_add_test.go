@@ -61,8 +61,6 @@ func TestTaskTypeParentValidation(t *testing.T) {
 		{"task under task", models.TaskTypeTask, models.TaskTypeTask, false},
 		{"task under bug", models.TaskTypeTask, models.TaskTypeBug, false},
 		{"task under idea", models.TaskTypeTask, models.TaskTypeIdea, false},
-		{"note under epic", models.TaskTypeNote, models.TaskTypeEpic, true},
-		{"note under story", models.TaskTypeNote, models.TaskTypeStory, true},
 	}
 
 	for _, tt := range tests {
@@ -196,7 +194,6 @@ func TestTaskTypeHeadingPrefix(t *testing.T) {
 		{models.TaskTypeTask, "Task"},
 		{models.TaskTypeBug, "Bug"},
 		{models.TaskTypeIdea, "Idea"},
-		{models.TaskTypeNote, "Note"},
 	}
 
 	for _, tt := range tests {

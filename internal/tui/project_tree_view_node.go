@@ -61,9 +61,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	var statusIcon string
-	if task.IsNote() {
-		statusIcon = MutedStyle.Render("·")
-	} else if node.IsContextNode {
+	if node.IsContextNode {
 		statusIcon = statusStyle.Render(task.Status.Icon())
 	} else if m.project.HasIncompleteDependencies(task) {
 		statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
@@ -127,7 +125,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Priority indicator (compact)
-	if !task.IsNote() && task.Priority <= 2 {
+	if task.Priority <= 2 {
 		indicators += formatPriorityBadge(task.Priority) + " "
 	}
 

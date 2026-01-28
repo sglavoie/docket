@@ -1,6 +1,12 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/storage"
+)
 
 // handleTagMessages handles tag-related messages.
 // Returns true if the message was handled.
@@ -103,6 +109,54 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		return true, nil
+
+	case ShowNoteTagFilterSelectorMsg:
+		if msg.Project != nil {
+			var currentFilterTags map[string]bool
+			if v := m.views.Get(ViewNotes); v != nil {
+				if notesView, ok := v.(*NotesViewModel); ok {
+					currentFilterTags = notesView.filterTags
+				}
+			}
+			if currentFilterTags == nil {
+				currentFilterTags = make(map[string]bool)
+			}
+			m.showView(ViewNoteTagFilterSelector, NewNoteTagFilterSelectorModel(msg.Project, currentFilterTags))
+		}
+		return true, nil
+
+	case NoteTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewNotes); v != nil {
+				if notesView, ok := v.(*NotesViewModel); ok {
+					notesView.filterTags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						notesView.filterTags[tag] = true
+					}
+					notesView.loadNotes()
+				}
+			}
+		}
+		return true, nil
+
+	case ShowNoteTagSelectorMsg:
+		selector := NewNoteTagSelectorModel(msg.Note, msg.Project, msg.CurrentTags)
+		m.showView(ViewNoteTagSelector, selector)
+		return true, nil
+
+	case NoteTagSelectorDoneMsg:
+		m.popView()
+		if msg.Canceled {
+			return true, nil
+		}
+		// Apply tags to the note and save
+		msg.Note.Tags = msg.SelectedTags
+		msg.Note.ModifiedAt = time.Now()
+		if err := storage.SaveNote(msg.Project, msg.Note); err != nil {
+			return true, errorCmd("failed to save note tags: %w", err)
+		}
+		return true, func() tea.Msg { return NotesRefreshMsg{} }
 
 	case GlobalTagNavigateMsg:
 		m.popView()

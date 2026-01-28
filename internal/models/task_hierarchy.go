@@ -15,11 +15,6 @@ func (t *Task) IsRoot() bool {
 	return t.ParentID == nil
 }
 
-// IsNote returns true if this is a Note type task.
-func (t *Task) IsNote() bool {
-	return t.Type == TaskTypeNote
-}
-
 // GetProgress returns the completion percentage based on children.
 // For leaf tasks, returns 100 if complete, 0 otherwise.
 // For parent tasks, returns percentage of completed children.
@@ -35,9 +30,6 @@ func (t *Task) GetProgress() float64 {
 	total := 0
 	completed := 0
 	for _, child := range t.Children {
-		if child.IsNote() {
-			continue
-		}
 		total++
 		if child.IsComplete() {
 			completed++
@@ -70,15 +62,10 @@ func (t *Task) CountCompletedChildren() int {
 	return count
 }
 
-// HasProgressChildren returns true if the task has non-note children.
+// HasProgressChildren returns true if the task has children.
 // Used to determine whether to display progress indicators.
 func (t *Task) HasProgressChildren() bool {
-	for _, child := range t.Children {
-		if !child.IsNote() {
-			return true
-		}
-	}
-	return false
+	return len(t.Children) > 0
 }
 
 // CanAddChild returns true if the given task type can be added as a child.
@@ -258,56 +245,6 @@ func (t *Task) CycleLeafType(left bool) error {
 	} else {
 		t.Type = t.Type.CycleLeafRight()
 	}
-	t.UpdatedAt = time.Now()
-	return nil
-}
-
-// CanTurnIntoNote checks if this task can be converted to a Note.
-// Returns (allowed, reason) where reason explains why if not allowed.
-func (t *Task) CanTurnIntoNote() (bool, string) {
-	// Already a note
-	if t.Type == TaskTypeNote {
-		return false, "already a note"
-	}
-
-	// Root task with children would orphan them (Note can't have children)
-	if len(t.Children) > 0 && t.Parent == nil {
-		return false, "root task with children cannot become note"
-	}
-
-	// If task has children, verify parent can adopt them
-	if len(t.Children) > 0 && t.Parent != nil {
-		for _, child := range t.Children {
-			if !child.Type.CanBeChildOf(t.Parent.Type) {
-				return false, child.Type.String() + " cannot be reparented to " + t.Parent.Type.String()
-			}
-		}
-	}
-
-	return true, ""
-}
-
-// TurnIntoNote converts this task to a Note type.
-// If the task has children, they are reparented to this task's parent.
-// Returns an error if conversion is not allowed.
-func (t *Task) TurnIntoNote() error {
-	if allowed, reason := t.CanTurnIntoNote(); !allowed {
-		return fmt.Errorf("cannot convert to note: %s", reason)
-	}
-
-	// Reparent children to this task's parent before converting
-	if len(t.Children) > 0 && t.Parent != nil {
-		for _, child := range t.Children {
-			child.ParentID = t.ParentID
-			child.Parent = t.Parent
-			child.Level = t.Level
-			t.Parent.Children = append(t.Parent.Children, child)
-		}
-		// Clear this task's children
-		t.Children = []*Task{}
-	}
-
-	t.Type = TaskTypeNote
 	t.UpdatedAt = time.Now()
 	return nil
 }

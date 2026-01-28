@@ -196,35 +196,3 @@ This is a second paragraph.
 		t.Error("description should contain list items")
 	}
 }
-
-func TestParseTasksMarkdown_Note(t *testing.T) {
-	content := `# Project: Test Project
-
-## Note: My Meeting Notes
-<!-- id: note1, section: Backlog, created: 2024-01-15 10:30 -->
-
-Discussion points from standup.
-`
-	_, tasks, err := ParseTasksMarkdown(content)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(tasks) != 1 {
-		t.Fatalf("expected 1 task, got %d", len(tasks))
-	}
-
-	note := tasks[0]
-	if note.ID != "note1" {
-		t.Errorf("expected ID 'note1', got '%s'", note.ID)
-	}
-	if note.Type != models.TaskTypeNote {
-		t.Errorf("expected Type 'note', got '%s'", note.Type)
-	}
-	if note.Title != "My Meeting Notes" {
-		t.Errorf("expected Title 'My Meeting Notes', got '%s'", note.Title)
-	}
-	if note.Description != "Discussion points from standup." {
-		t.Errorf("expected Description 'Discussion points from standup.', got '%s'", note.Description)
-	}
-}

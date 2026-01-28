@@ -37,6 +37,22 @@ func (m *GlobalSearchModel) filterTasks() {
 	var scored []scoredResult
 
 	for _, result := range m.allTasks {
+		if result.IsNote() {
+			// Score notes by title and body
+			textQuery := m.parsedFilters.TextQuery
+			if textQuery != "" {
+				score, titlePositions := m.scoreNote(result.Note, textQuery)
+				if score > 0 {
+					scored = append(scored, scoredResult{
+						result:         result,
+						score:          score,
+						titlePositions: titlePositions,
+					})
+				}
+			}
+			continue
+		}
+
 		// First apply structured filters
 		if !TaskMatchesFilters(result.Task, m.parsedFilters) {
 			continue
@@ -84,6 +100,19 @@ func (m *GlobalSearchModel) filterTasks() {
 	if m.cursor < 0 {
 		m.cursor = 0
 	}
+}
+
+// scoreNote returns a fuzzy match score for a note against the query.
+func (m *GlobalSearchModel) scoreNote(note *models.Note, query string) (int, []int) {
+	titleScore, titlePositions := fuzzy.ScoreTermsWithPositions(note.Title, query)
+	if titleScore > 0 {
+		titleScore *= 2
+	}
+	bodyScore := fuzzy.ScoreTerms(note.Body, query)
+	if titleScore > bodyScore {
+		return titleScore, titlePositions
+	}
+	return bodyScore, nil
 }
 
 // scoreTask returns a fuzzy match score for a task against the query,

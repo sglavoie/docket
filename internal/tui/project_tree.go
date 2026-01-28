@@ -42,7 +42,6 @@ const (
 	ConfirmArchiveTasks
 	ConfirmArchive
 	ConfirmUnarchive
-	ConfirmTurnIntoNote
 )
 
 // ViewMode represents the view mode filter for the project tree.
@@ -174,7 +173,6 @@ type ProjectTreeModel struct {
 	// Confirmation state for destructive actions
 	confirmAction ConfirmActionType
 	deleteTarget  *models.Task // Task to delete when confirmAction=ConfirmDelete
-	noteTarget    *models.Task // Task to convert when confirmAction=ConfirmTurnIntoNote
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string // ",", "z", or "g" when waiting for second key

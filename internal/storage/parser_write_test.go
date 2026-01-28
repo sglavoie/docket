@@ -127,30 +127,6 @@ func TestWriteTasksMarkdown_WithDependencies(t *testing.T) {
 	}
 }
 
-func TestWriteTasksMarkdown_Note(t *testing.T) {
-	note := models.NewTask("note-id", 1, models.TaskTypeNote, "My Note")
-	note.Description = "Note content here."
-
-	tasks := []*models.Task{note}
-	content := WriteTasksMarkdown("Test", tasks)
-
-	// Notes should not have status or priority in metadata
-	if strings.Contains(content, "status:") {
-		t.Error("Note should not have status in metadata")
-	}
-	if strings.Contains(content, "priority:") {
-		t.Error("Note should not have priority in metadata")
-	}
-	// Should have the heading
-	if !strings.Contains(content, "## Note: My Note") {
-		t.Error("Note should have proper heading")
-	}
-	// Should have id
-	if !strings.Contains(content, "id: note-id") {
-		t.Error("Note should have id in metadata")
-	}
-}
-
 func TestRoundTrip(t *testing.T) {
 	// Create original tasks
 	original := []*models.Task{
@@ -239,36 +215,5 @@ func TestDependenciesRoundTrip(t *testing.T) {
 		if i >= len(parsed.DependsOn) || parsed.DependsOn[i] != dep {
 			t.Errorf("dependency mismatch at index %d: expected %s", i, dep)
 		}
-	}
-}
-
-func TestRoundTrip_Note(t *testing.T) {
-	// Create a note
-	note := models.NewTask("note-abc", 1, models.TaskTypeNote, "Test Note")
-	note.Description = "This is a test note."
-	note.Section = "Active"
-
-	tasks := []*models.Task{note}
-	content := WriteTasksMarkdown("Test Project", tasks)
-
-	// Parse it back
-	_, parsed, err := ParseTasksMarkdown(content)
-	if err != nil {
-		t.Fatalf("failed to parse: %v", err)
-	}
-
-	if len(parsed) != 1 {
-		t.Fatalf("expected 1 task, got %d", len(parsed))
-	}
-
-	parsedNote := parsed[0]
-	if parsedNote.Type != models.TaskTypeNote {
-		t.Errorf("expected Type 'note', got '%s'", parsedNote.Type)
-	}
-	if parsedNote.ID != "note-abc" {
-		t.Errorf("expected ID 'note-abc', got '%s'", parsedNote.ID)
-	}
-	if parsedNote.Title != "Test Note" {
-		t.Errorf("expected Title 'Test Note', got '%s'", parsedNote.Title)
 	}
 }

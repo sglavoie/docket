@@ -21,7 +21,6 @@ const (
 	ViewProjectEditor
 	ViewTaskCreator
 	ViewTaskEditor
-	ViewNoteCreator
 	ViewSettings
 	ViewHelp
 	ViewDateInput
@@ -72,6 +71,11 @@ const (
 	ViewLinkedTaskSelector
 	ViewCrossProjectLinker
 	ViewKanbanTagFilterSelector
+	ViewNotes
+	ViewNoteTaskLinker
+	ViewNoteTagSelector
+	ViewNotesSearch
+	ViewNoteTagFilterSelector
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -572,28 +576,6 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"create task", "add task"},
 			Handler: func() tea.Msg {
 				return CreateTaskMsg{}
-			},
-		},
-		{
-			Name:        "new note",
-			Description: "Create a new note",
-			Shortcut:    "o",
-			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"create note", "add note"},
-			Handler: func() tea.Msg {
-				return CreateNoteMsg{}
-			},
-		},
-		{
-			Name:        "turn into note",
-			Description: "Convert current task to a note",
-			Shortcut:    "O",
-			Category:    CategoryTasks,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"convert to note", "make note"},
-			Handler: func() tea.Msg {
-				return TurnIntoNoteMsg{}
 			},
 		},
 		{

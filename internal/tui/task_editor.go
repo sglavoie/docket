@@ -80,7 +80,6 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		models.TaskTypeEpic,
 		models.TaskTypeBug,
 		models.TaskTypeIdea,
-		models.TaskTypeNote,
 	}
 
 	typeCursor := 0
