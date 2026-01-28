@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // Section name constants for Kanban columns.
@@ -523,13 +525,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.moveColumnRight()
 		return m, nil
 
-	// Jump to first/last task in column
-	case "g":
-		// Go to first task in current column
-		cs := m.CurrentColumnState()
-		cs.Cursor = 0
-		return m, nil
-
+	// Jump to last task in column
 	case "G":
 		// Go to last task in current column
 		tasks := m.CurrentColumnTasks()
@@ -539,12 +535,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Task movement between columns
-	case "H":
+	// Task movement between columns (use {/} to free H/L for type cycling)
+	case "{":
 		// Move selected task to the left column
 		return m, m.moveTaskLeft()
 
-	case "L":
+	case "}":
 		// Move selected task to the right column
 		return m, m.moveTaskRight()
 
@@ -560,6 +556,25 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Prefix key activation for Vim-style two-key sequences
 	case ",":
 		m.pendingPrefix = ","
+		return m, nil
+
+	case "!":
+		m.pendingPrefix = "!"
+		return m, nil
+
+	case "d":
+		m.pendingPrefix = "d"
+		return m, nil
+
+	case "g":
+		m.pendingPrefix = "g"
+		return m, nil
+
+	case "c":
+		task := m.getSelectedTask()
+		if task != nil {
+			m.pendingPrefix = "c"
+		}
 		return m, nil
 
 	// Open task detail view via glow
@@ -677,6 +692,228 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	// Comments view
+	case "C":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowTaskCommentsMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Attachments view
+	case "A":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowTaskAttachmentsMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Dependency viewer (read-only)
+	case "R":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowDependencyViewerMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Dependency manager
+	case "ctrl+b":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ManageDependenciesMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Section picker
+	case "ctrl+n":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowSectionPickerMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Tag manager
+	case "ctrl+t":
+		return m, func() tea.Msg {
+			return ShowTagManagerMsg{ProjectTree: nil}
+		}
+
+	// External editor for task content
+	case "ctrl+o":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return EditTaskContentMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
+	// Move task to another project
+	case "M":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: m.Project}
+			}
+		}
+		return m, nil
+
+	// Toggle pinned
+	case "ctrl+p":
+		task := m.getSelectedTask()
+		if task != nil {
+			prevStates := captureTaskStates(m.Project.Tasks)
+			task.TogglePinned()
+			m.statusMessage = fmt.Sprintf("Pinned: %v", task.Pinned)
+			return m, m.saveWithStatusChange(prevStates, task)
+		}
+		return m, nil
+
+	// Toggle active flag
+	case "*":
+		task := m.getSelectedTask()
+		if task != nil {
+			prevStates := captureTaskStates(m.Project.Tasks)
+			task.ToggleActive()
+			m.statusMessage = fmt.Sprintf("Active: %v", task.Active)
+			return m, m.saveWithStatusChange(prevStates, task)
+		}
+		return m, nil
+
+	// Refresh from disk
+	case "ctrl+r":
+		_ = storage.LoadProject(m.Project)
+		m.loadTasks()
+		m.statusMessage = "Refreshed from disk"
+		return m, nil
+
+	// View scratchpad
+	case "[":
+		return m, func() tea.Msg {
+			return ShowScratchpadMsg{Project: m.Project}
+		}
+
+	// Edit scratchpad
+	case "]":
+		return m, func() tea.Msg {
+			return EditScratchpadMsg{Project: m.Project}
+		}
+
+	// Blockers view
+	case "b":
+		return m, func() tea.Msg {
+			return ShowBlockersMsg{Project: m.Project}
+		}
+
+	// Bulk capture
+	case "I":
+		return m, func() tea.Msg {
+			return ShowBulkCaptureMsg{Project: m.Project}
+		}
+
+	// Create note
+	case "o":
+		var parentTask *models.Task
+		task := m.getSelectedTask()
+		if task != nil {
+			parentTask = task
+		}
+		return m, func() tea.Msg {
+			return CreateNoteMsg{ParentTask: parentTask}
+		}
+
+	// Task jumper
+	case "\\":
+		return m, func() tea.Msg {
+			return ShowTaskJumperMsg{Project: m.Project}
+		}
+
+	// Project cycling
+	case "`":
+		return m, func() tea.Msg {
+			return CycleProjectMsg{Forward: true}
+		}
+
+	case "~":
+		return m, func() tea.Msg {
+			return CycleProjectMsg{Forward: false}
+		}
+
+	case "@":
+		return m, func() tea.Msg {
+			return ShowProjectCycleManagerMsg{}
+		}
+
+	// Type management: promote/demote
+	case "<":
+		task := m.getSelectedTask()
+		if task != nil {
+			if ok, _ := task.CanPromote(); ok {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				_ = task.Promote()
+				m.statusMessage = fmt.Sprintf("Promoted to %s", task.Type.HeadingPrefix())
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+		return m, nil
+
+	case ">":
+		task := m.getSelectedTask()
+		if task != nil {
+			if ok, _ := task.CanDemote(); ok {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				_ = task.Demote()
+				m.statusMessage = fmt.Sprintf("Demoted to %s", task.Type.HeadingPrefix())
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+		return m, nil
+
+	// Type management: cycle leaf types (Task/Bug/Idea)
+	case "H":
+		task := m.getSelectedTask()
+		if task != nil {
+			if ok, _ := task.CanCycleLeafType(true); ok {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				_ = task.CycleLeafType(true)
+				m.statusMessage = fmt.Sprintf("Changed to %s", task.Type.HeadingPrefix())
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+		return m, nil
+
+	case "L":
+		task := m.getSelectedTask()
+		if task != nil {
+			if ok, _ := task.CanCycleLeafType(false); ok {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				_ = task.CycleLeafType(false)
+				m.statusMessage = fmt.Sprintf("Changed to %s", task.Type.HeadingPrefix())
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+		return m, nil
+
+	// Undo
+	case "u":
+		return m, m.performUndo()
+
+	// Undo history
+	case "ctrl+z":
+		return m, func() tea.Msg {
+			return ShowUndoHistoryMsg{Project: m.Project}
+		}
 	}
 
 	return m, nil
@@ -795,6 +1032,157 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, m.handleStatusOpen()
 		case "x":
 			return m, m.handleStatusCancelled()
+		}
+
+	case "!":
+		// Priority quick actions
+		switch key {
+		case "1", "2", "3", "4", "5":
+			priority := int(key[0] - '0')
+			task := m.getSelectedTask()
+			if task != nil {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				task.Priority = priority
+				task.UpdatedAt = time.Now()
+				m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+
+	case "d":
+		// Due date quick actions
+		task := m.getSelectedTask()
+		if task == nil {
+			return m, nil
+		}
+
+		now := time.Now()
+		var dueDate *time.Time
+		var desc string
+
+		switch key {
+		case "t":
+			// Today
+			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
+			dueDate = &today
+			desc = "today"
+		case "m":
+			// Tomorrow
+			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
+			dueDate = &tomorrow
+			desc = "tomorrow"
+		case "w":
+			// Next week (+7 days)
+			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
+			dueDate = &nextWeek
+			desc = "+7 days"
+		case "n":
+			// Next month (+30 days)
+			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
+			dueDate = &nextMonth
+			desc = "+30 days"
+		case "0":
+			// Clear due date
+			dueDate = nil
+			desc = "cleared"
+		case "d":
+			// Open full date picker
+			project := m.Project
+			return m, func() tea.Msg {
+				return SetDueDateMsg{Task: task, Project: project}
+			}
+		default:
+			return m, nil
+		}
+
+		prevStates := captureTaskStates(m.Project.Tasks)
+		task.DueDate = dueDate
+		task.UpdatedAt = time.Now()
+		m.statusMessage = fmt.Sprintf("Due date %s", desc)
+		return m, m.saveWithStatusChange(prevStates, task)
+
+	case "g":
+		// Go/section navigation and send operations
+		switch key {
+		case "g":
+			// Go to first task in current column (vim-style gg)
+			cs := m.CurrentColumnState()
+			cs.Cursor = 0
+			return m, nil
+		case "a":
+			// Go to Active column
+			m.ActiveColumn = 0
+			return m, nil
+		case "n":
+			// Go to Next column
+			m.ActiveColumn = 1
+			return m, nil
+		case "i":
+			// Go to Inbox column
+			m.ActiveColumn = 2
+			return m, nil
+		case "w":
+			// Go to Waiting column
+			m.ActiveColumn = 3
+			return m, nil
+		case "s":
+			// Go to Someday column
+			m.ActiveColumn = 4
+			return m, nil
+		case "A":
+			// Send task to Active section
+			return m, m.sendTaskToSection(KanbanSectionActive)
+		case "N":
+			// Send task to Next section
+			return m, m.sendTaskToSection(KanbanSectionNext)
+		case "I":
+			// Send task to Inbox section
+			return m, m.sendTaskToSection(KanbanSectionInbox)
+		case "W":
+			// Send task to Waiting section
+			return m, m.sendTaskToSection(KanbanSectionWaiting)
+		case "S":
+			// Send task to Someday section
+			return m, m.sendTaskToSection(KanbanSectionSomeday)
+		}
+
+	case "c":
+		// Create linked task operations
+		task := m.getSelectedTask()
+		if task == nil {
+			return m, nil
+		}
+		project := m.Project
+
+		// Navigate to linked tasks
+		if key == "n" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
+			}
+		}
+
+		// Unlink linked task
+		if key == "x" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
+			}
+		}
+
+		var linkType LinkType
+		switch key {
+		case "b":
+			linkType = LinkTypeBlocker
+		case "d":
+			linkType = LinkTypeDependent
+		case "s":
+			linkType = LinkTypeSubtask
+		case "f":
+			linkType = LinkTypeFollowUp
+		default:
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
 	}
 

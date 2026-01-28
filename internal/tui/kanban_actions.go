@@ -288,3 +288,47 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 		}
 	})
 }
+
+// performUndo restores the project from backup.
+func (m *KanbanViewModel) performUndo() tea.Cmd {
+	return func() tea.Msg {
+		if !storage.BackupExists(m.Project) {
+			return ErrorMsg{Err: fmt.Errorf("no backup available to undo")}
+		}
+
+		if err := storage.RestoreFromBackup(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to undo: %w", err)}
+		}
+
+		if err := storage.LoadProject(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
+		}
+
+		m.loadTasks()
+		return UndoPerformedMsg{Action: "Undo"}
+	}
+}
+
+// sendTaskToSection moves the selected task to the specified section.
+func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
+	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Find target column index
+	targetColumnIndex := 0
+	for i, section := range KanbanColumnOrder {
+		if section == targetSection {
+			targetColumnIndex = i
+			break
+		}
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	task.Section = targetSection
+	task.UpdatedAt = time.Now()
+
+	m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(targetSection))
+	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
+}

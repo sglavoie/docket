@@ -701,7 +701,8 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		// Task Navigation
 		Keybinding{Key: "j/k", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
-		Keybinding{Key: "g/G", Description: "Jump to first/last task in column", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to first/last task in column", Category: "Navigation", Views: views},
+		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 
 		// Split View
 		Keybinding{Key: "Tab", Description: "Toggle focus between kanban/details", Category: "Navigation", Views: views},
@@ -710,8 +711,8 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "Esc (details)", Description: "Return to kanban", Category: "Details Pane", Views: views},
 
 		// Task Movement Between Columns
-		Keybinding{Key: "H", Description: "Move task to left column", Category: "Task Movement", Views: views},
-		Keybinding{Key: "L", Description: "Move task to right column", Category: "Task Movement", Views: views},
+		Keybinding{Key: "{", Description: "Move task to left column", Category: "Task Movement", Views: views},
+		Keybinding{Key: "}", Description: "Move task to right column", Category: "Task Movement", Views: views},
 
 		// Task Reordering Within Column
 		Keybinding{Key: "J", Description: "Move task down in column", Category: "Task Movement", Views: views},
@@ -724,6 +725,52 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
+		// Priority Quick Actions (! prefix)
+		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority", Views: views},
+		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority", Views: views},
+
+		// Due Date Quick Actions (d prefix)
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
+
+		// Section Navigation (g prefix)
+		Keybinding{Key: "ga", Description: "Go to Active column", Category: "Sections", Views: views},
+		Keybinding{Key: "gn", Description: "Go to Next column", Category: "Sections", Views: views},
+		Keybinding{Key: "gi", Description: "Go to Inbox column", Category: "Sections", Views: views},
+		Keybinding{Key: "gw", Description: "Go to Waiting column", Category: "Sections", Views: views},
+		Keybinding{Key: "gs", Description: "Go to Someday column", Category: "Sections", Views: views},
+		Keybinding{Key: "gA", Description: "Send task to Active", Category: "Sections", Views: views},
+		Keybinding{Key: "gN", Description: "Send task to Next", Category: "Sections", Views: views},
+		Keybinding{Key: "gI", Description: "Send task to Inbox", Category: "Sections", Views: views},
+		Keybinding{Key: "gW", Description: "Send task to Waiting", Category: "Sections", Views: views},
+		Keybinding{Key: "gS", Description: "Send task to Someday", Category: "Sections", Views: views},
+
+		// Type Changes
+		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},
+		Keybinding{Key: ">", Description: "Demote type", Category: "Type Changes", Views: views},
+		Keybinding{Key: "H", Description: "Cycle leaf left", Category: "Type Changes", Views: views},
+		Keybinding{Key: "L", Description: "Cycle leaf right", Category: "Type Changes", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
+
+		// Project Cycling
+		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
+
 		// Filters
 		Keybinding{Key: "F", Description: "Toggle filter bar", Category: "Filters", Views: views},
 		Keybinding{Key: "F2", Description: "Toggle high priority filter", Category: "Filters", Views: views},
@@ -733,17 +780,43 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
+		// Task Operations
+		Keybinding{Key: "a", Description: "Quick add task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
+		Keybinding{Key: "o", Description: "Add new note", Category: "Task Operations", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Task Operations", Views: views},
+		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Task Operations", Views: views},
+		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
+		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "M", Description: "Move to another project", Category: "Task Operations", Views: views},
+
+		// Project Views
+		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
+
+		// Scratchpad
+		Keybinding{Key: "[", Description: "View scratchpad", Category: "🗒️ Scratchpad", Views: views},
+		Keybinding{Key: "]", Description: "Edit scratchpad", Category: "🗒️ Scratchpad", Views: views},
+
+		// Undo
+		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
+		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
+		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
+
 		// Actions
-		Keybinding{Key: "a", Description: "Quick add task", Category: "Actions", Views: views},
-		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
-		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Actions", Views: views},
-		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
 
 		// Clipboard
-		Keybinding{Key: "y", Description: "Copy title", Category: "Clipboard", Views: views},
-		Keybinding{Key: "Y", Description: "Copy description", Category: "Clipboard", Views: views},
-		Keybinding{Key: "ctrl+y", Description: "Copy title and description", Category: "Clipboard", Views: views},
+		Keybinding{Key: "y", Description: "Copy title", Category: "📋 Clipboard", Views: views},
+		Keybinding{Key: "Y", Description: "Copy description", Category: "📋 Clipboard", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard", Views: views},
 	)
 }
