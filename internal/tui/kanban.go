@@ -106,6 +106,10 @@ type KanbanViewModel struct {
 	quickAddTagCache     []string
 	quickAddParentCache  []*models.Task
 	quickAddSectionCache []string
+
+	// Delete confirmation state
+	confirmDelete bool
+	deleteTarget  *models.Task
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.
@@ -418,6 +422,15 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.statusMessage = fmt.Sprintf("Created: %s", msg.Task.Title)
 		return m, nil
+
+	case KanbanTaskDeletedMsg:
+		// Task was deleted - reload tasks and validate cursor
+		m.loadTasks()
+		// Validate cursor position in the section where task was deleted
+		cs := m.Columns[msg.Section]
+		cs.Validate(len(m.Tasks[msg.Section]))
+		m.statusMessage = "Task deleted"
+		return m, nil
 	}
 
 	return m, nil
@@ -430,6 +443,21 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle quick add mode input first
 	if m.quickAddMode {
 		return m.handleQuickAddInput(msg)
+	}
+
+	// Handle delete confirmation
+	if m.confirmDelete {
+		switch key {
+		case "y", "Y":
+			m.confirmDelete = false
+			return m, m.executeDelete()
+		case "n", "N", "esc":
+			m.confirmDelete = false
+			m.deleteTarget = nil
+			m.statusMessage = ""
+			return m, nil
+		}
+		return m, nil
 	}
 
 	// Handle search mode input first
@@ -609,6 +637,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quickAddInput.Focus()
 		m.updateQuickAddPreview()
 		return m, textinput.Blink
+
+	case "D":
+		// Initiate delete confirmation
+		task := m.getSelectedTask()
+		if task != nil {
+			m.confirmDelete = true
+			m.deleteTarget = task
+			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -860,7 +898,11 @@ func (m *KanbanViewModel) View() string {
 	if m.quickAddMode {
 		quickAddHeight = m.getQuickAddHeight()
 	}
-	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight // -1 for divider
+	statusBarHeight := 0
+	if m.statusMessage != "" {
+		statusBarHeight = 1
+	}
+	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight - statusBarHeight // -1 for divider
 	if detailsHeight < 3 {
 		detailsHeight = 3
 	}
@@ -874,7 +916,16 @@ func (m *KanbanViewModel) View() string {
 		viewParts = append(viewParts, quickAddBar)
 	}
 
-	// Join vertically: filterBar + kanban + divider + details + quickAdd
+	// Render status message if set
+	if m.statusMessage != "" {
+		statusStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+		if m.confirmDelete {
+			statusStyle = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+		}
+		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
+	}
+
+	// Join vertically: filterBar + kanban + divider + details + quickAdd + status
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
 }
 
@@ -1180,9 +1231,9 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
-// search mode, and quick add mode.
+// search mode, quick add mode, and delete confirmation.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete
 }
 
 // HasTextInput implements ViewCapabilities. Returns true when in search or quick add mode.

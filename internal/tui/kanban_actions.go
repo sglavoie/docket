@@ -249,3 +249,42 @@ func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]
 		}
 	})
 }
+
+// KanbanTaskDeletedMsg signals that a task was deleted from the Kanban view.
+type KanbanTaskDeletedMsg struct {
+	TaskID  string
+	Section string
+}
+
+// executeDelete deletes the currently targeted task.
+func (m *KanbanViewModel) executeDelete() tea.Cmd {
+	if m.deleteTarget == nil {
+		return nil
+	}
+
+	task := m.deleteTarget
+	section := task.Section
+	m.deleteTarget = nil
+
+	// Capture previous task states for workflow rule evaluation
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Remove the task from the project
+	for i, t := range m.Project.Tasks {
+		if t.ID == task.ID {
+			m.Project.Tasks = append(m.Project.Tasks[:i], m.Project.Tasks[i+1:]...)
+			break
+		}
+	}
+
+	// Rebuild the task tree
+	m.Project.BuildTaskTree()
+
+	// Save with workflow rules and return message
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanTaskDeletedMsg{
+			TaskID:  task.ID,
+			Section: section,
+		}
+	})
+}
