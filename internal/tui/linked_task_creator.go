@@ -15,30 +15,23 @@ import (
 
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
 type LinkedTaskCreatorModel struct {
+	quickCaptureInput
 	sourceTask *models.Task
-	project    *models.Project
 	linkType   LinkType
-	input      textarea.Model
-	err        error
 	width      int
 	height     int
 }
 
 // NewLinkedTaskCreatorModel creates a new linked task creator.
 func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project, linkType LinkType) *LinkedTaskCreatorModel {
-	input := textarea.New()
-	input.Placeholder = "Enter task title..."
-	input.CharLimit = 200
-	input.SetHeight(2)
-	input.ShowLineNumbers = false
-	input.SetPromptFunc(0, func(lineIdx int) string { return "" })
-	input.Focus()
-
 	return &LinkedTaskCreatorModel{
+		quickCaptureInput: newQuickCaptureInput(
+			project,
+			nil, // no cross-project capture for linked tasks
+			"^type Title !priority #tag @due ~recur /section $status",
+		),
 		sourceTask: sourceTask,
-		project:    project,
 		linkType:   linkType,
-		input:      input,
 		width:      80,
 	}
 }
@@ -47,7 +40,7 @@ func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project,
 func (m *LinkedTaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextarea(&m.input, width)
+	m.resizeTextarea(width)
 }
 
 func (m *LinkedTaskCreatorModel) Init() tea.Cmd {
@@ -59,17 +52,23 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		key := msg.String()
 
+		// Handle autocomplete navigation when active
+		if m.handleAutocompleteKey(key) {
+			return m, nil
+		}
+
 		switch key {
 		case "esc":
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":
-			return m, m.createTask()
+			if m.acMode == acModeNone {
+				return m, m.createTask()
+			}
 		}
 	}
 
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
+	cmd := m.updateInput(msg)
 	return m, cmd
 }
 
@@ -87,16 +86,30 @@ func (m *LinkedTaskCreatorModel) View() string {
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 
-	// Error display
+	// Show autocomplete suggestions if active
+	if ac := m.renderAutocomplete(); ac != "" {
+		b.WriteString(ac)
+	}
+
+	b.WriteString("\n")
+
+	// Show live preview or error
 	if m.err != nil {
-		b.WriteString("\n")
 		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
+		b.WriteString("\n\n")
+	} else if preview := m.renderPreview(); preview != "" {
+		b.WriteString(preview)
+		b.WriteString("\n\n")
 	}
 
 	// Help text
+	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · /section · $status"))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
+	if m.isAutocompleteActive() {
+		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
+	} else {
+		b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
+	}
 
 	cardWidth := m.width - 4
 	if cardWidth > 70 {
@@ -138,34 +151,65 @@ func (m *LinkedTaskCreatorModel) linkTypeName() string {
 
 func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		title := strings.ReplaceAll(m.input.Value(), "\n", " ")
-		title = strings.TrimSpace(title)
-		if title == "" {
+		input := m.inputValue()
+		if input == "" {
 			m.err = fmt.Errorf("task title cannot be empty")
 			return nil
 		}
 
-		// Determine task type based on link type
-		taskType := models.TaskTypeTask
-		if m.linkType == LinkTypeSubtask {
-			// Subtasks default to task type
-			taskType = models.TaskTypeTask
+		// Parse inline metadata from input
+		result, err := parseQuickCapture(input, m.project, nil)
+		if err != nil {
+			m.err = err
+			return nil
 		}
 
-		// Create the new task
+		// Create the new task with parsed metadata
 		newTask := &models.Task{
-			ID:        uuid.New().String(),
-			ShortID:   m.project.GetNextShortID(),
-			Type:      taskType,
-			Title:     title,
-			Status:    models.StatusTodo,
-			Priority:  models.PriorityDefault,
-			Section:   m.sourceTask.Section, // Inherit section from source
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			DependsOn: []string{},
-			RelatedTo: []string{},
-			Tags:      []string{},
+			ID:         uuid.New().String(),
+			ShortID:    m.project.GetNextShortID(),
+			Type:       result.taskType,
+			Title:      result.title,
+			Status:     models.StatusTodo,
+			Priority:   result.priority,
+			Section:    m.sourceTask.Section, // Inherit section from source by default
+			DueDate:    result.dueDate,
+			Recurrence: result.recurrence,
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+			DependsOn:  []string{},
+			RelatedTo:  []string{},
+			Tags:       []string{},
+		}
+
+		// Apply parsed section if explicitly set, otherwise keep inherited
+		if result.section != "" {
+			newTask.Section = result.section
+		}
+
+		// Apply parsed parent if set (for non-subtask link types)
+		if result.parentID != nil && m.linkType != LinkTypeSubtask {
+			newTask.ParentID = result.parentID
+		}
+
+		// Apply tags from parsing
+		for _, tag := range result.tags {
+			newTask.AddTag(tag)
+		}
+
+		// Apply status transition
+		switch result.status {
+		case models.StatusInProgress:
+			newTask.Start()
+			if result.activate {
+				newTask.Activate()
+			}
+		case models.StatusBlocked:
+			newTask.Block()
+		case models.StatusDone:
+			newTask.Complete()
+		case models.StatusCanceled:
+			newTask.Cancel()
 		}
 
 		// Establish the relationship based on link type
@@ -191,7 +235,7 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 			// Bidirectional relationship + inherit tags
 			m.sourceTask.AddRelatedTo(newTask.ID)
 			newTask.AddRelatedTo(m.sourceTask.ID)
-			// Copy tags from source task
+			// Copy tags from source task (in addition to any parsed tags)
 			for _, tag := range m.sourceTask.Tags {
 				newTask.AddTag(tag)
 			}

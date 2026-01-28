@@ -2,11 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
@@ -14,140 +12,35 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// Autocomplete mode constants
-const (
-	acModeNone     = iota // No autocomplete active
-	acModeTag             // Completing a #tag
-	acModeParent          // Completing a >parent
-	acModeType            // Completing a ^type
-	acModePriority        // Completing a !priority
-	acModeDate            // Completing a @date
-	acModeRecur           // Completing a ~recurrence
-	acModeSection         // Completing a /section
-	acModeStatus          // Completing a $status
-	acModeProject         // Completing a %project
-)
-
-// acVisibleCount is the number of suggestions visible at once (scrollable window size)
-const acVisibleCount = 7
-
-// suggestion represents an autocomplete suggestion
-type suggestion struct {
-	display string // Text shown in dropdown
-	value   string // Text to insert
-}
-
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
-	project     *models.Project
-	allProjects []*models.Project // All non-archived projects for cross-project capture
-	input       textarea.Model
-	err         error
-	width       int
-	height      int
-
-	// Autocomplete state
-	acMode        int               // Current autocomplete mode
-	suggestions   []suggestion      // Current suggestions
-	acCursor      int               // Selected suggestion index
-	acViewportTop int               // First visible suggestion index (for scrolling)
-	acTriggerPos  int               // Position of trigger character in input
-	tagCache      []string          // Cached project tags
-	parentCache   []*models.Task    // Cached valid parent tasks
-	sectionCache  []string          // Cached project sections
-	projectCache  []*models.Project // Cached non-archived projects for autocomplete
-
-	// Live preview
-	preview    *quickCaptureResult // Parsed preview (may be partial)
-	previewErr string              // Preview validation error
-}
-
-// quickCaptureResult holds parsed metadata from quick capture input.
-type quickCaptureResult struct {
-	title             string
-	taskType          models.TaskType
-	priority          int
-	tags              []string
-	dueDate           *time.Time
-	parentID          *string
-	recurrence        *models.RecurrencePattern
-	section           string            // Target section (empty = Inbox)
-	status            models.TaskStatus // Initial status (empty = todo)
-	activate          bool              // Whether to activate task (for $start)
-	targetProjectID   *string           // Target project ID for cross-project capture
-	targetProjectName string            // Target project name (for preview display)
+	quickCaptureInput
+	width  int
+	height int
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
 func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project) *QuickCaptureModel {
-	input := textarea.New()
-	input.Placeholder = "^type Task title !priority #tag @due ~recur >parent /section $status %project"
-	input.CharLimit = 200
-	input.SetHeight(3)
-	input.ShowLineNumbers = false
-	input.SetPromptFunc(0, func(lineIdx int) string { return "" })
-	input.Focus()
-
 	m := &QuickCaptureModel{
-		project:     project,
-		allProjects: allProjects,
-		input:       input,
-		width:       80, // sensible default until SetSize is called
-		acMode:      acModeNone,
-		suggestions: make([]suggestion, 0),
+		quickCaptureInput: newQuickCaptureInput(
+			project,
+			allProjects,
+			"^type Task title !priority #tag @due ~recur >parent /section $status %project",
+		),
+		width: 80,
 	}
-
-	// Initialize caches
-	m.initCaches()
-
 	return m
-}
-
-// initCaches builds tag and parent caches for autocomplete.
-func (m *QuickCaptureModel) initCaches() {
-	// Cache all tags from the project
-	tagSet := make(map[string]bool)
-	for _, task := range m.project.Tasks {
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
-	}
-	m.tagCache = make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		m.tagCache = append(m.tagCache, tag)
-	}
-	sort.Strings(m.tagCache)
-
-	// Cache potential parent tasks (non-completed, can have children)
-	m.parentCache = make([]*models.Task, 0)
-	for _, task := range m.project.Tasks {
-		if !task.Status.IsComplete() && task.Type.CanHaveChildren() {
-			m.parentCache = append(m.parentCache, task)
-		}
-	}
-
-	// Cache sections
-	m.sectionCache = m.project.GetSections()
-
-	// Cache non-archived projects for cross-project capture
-	m.projectCache = make([]*models.Project, 0)
-	for _, p := range m.allProjects {
-		if !p.Archived {
-			m.projectCache = append(m.projectCache, p)
-		}
-	}
 }
 
 // SetSize sets the view dimensions.
 func (m *QuickCaptureModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	// Use same resize logic as task_creator
-	formFactory.ResizeTextarea(&m.input, width)
+	m.resizeTextarea(width)
 }
 
 func (m *QuickCaptureModel) Init() tea.Cmd {
-	return textarea.Blink
+	return nil
 }
 
 func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -156,38 +49,8 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		key := msg.String()
 
 		// Handle autocomplete navigation when active
-		if m.acMode != acModeNone && len(m.suggestions) > 0 {
-			switch key {
-			case "tab", "enter":
-				m.acceptSuggestion()
-				m.updatePreview()
-				return m, nil
-			case "esc":
-				// Dismiss autocomplete
-				m.acMode = acModeNone
-				m.suggestions = nil
-				m.acCursor = 0
-				m.acViewportTop = 0
-				return m, nil
-			case "up", "ctrl+p":
-				if m.acCursor > 0 {
-					m.acCursor--
-					// Scroll viewport up if cursor moves above visible area
-					if m.acCursor < m.acViewportTop {
-						m.acViewportTop = m.acCursor
-					}
-				}
-				return m, nil
-			case "down", "ctrl+n":
-				if m.acCursor < len(m.suggestions)-1 {
-					m.acCursor++
-					// Scroll viewport down if cursor moves below visible area
-					if m.acCursor >= m.acViewportTop+acVisibleCount {
-						m.acViewportTop = m.acCursor - acVisibleCount + 1
-					}
-				}
-				return m, nil
-			}
+		if m.handleAutocompleteKey(key) {
+			return m, nil
 		}
 
 		// Regular key handling
@@ -203,61 +66,8 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Update textarea
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-
-	// Update preview and detect autocomplete triggers
-	m.updatePreview()
-	mode, pos, partial := m.detectAutocompleteTrigger()
-	if mode != acModeNone {
-		// Only reset cursor if entering new autocomplete context
-		// (different mode or different trigger position)
-		if mode != m.acMode || pos != m.acTriggerPos {
-			m.acCursor = 0
-			m.acViewportTop = 0
-		}
-		m.acMode = mode
-		m.acTriggerPos = pos
-		switch mode {
-		case acModeTag:
-			m.suggestions = m.getTagSuggestions(partial)
-		case acModeParent:
-			m.suggestions = m.getParentSuggestions(partial)
-		case acModeType:
-			m.suggestions = m.getTypeSuggestions(partial)
-		case acModePriority:
-			m.suggestions = m.getPrioritySuggestions(partial)
-		case acModeDate:
-			m.suggestions = m.getDateSuggestions(partial)
-		case acModeRecur:
-			m.suggestions = m.getRecurrenceSuggestions(partial)
-		case acModeSection:
-			m.suggestions = m.getSectionSuggestions(partial)
-		case acModeStatus:
-			m.suggestions = m.getStatusSuggestions(partial)
-		case acModeProject:
-			m.suggestions = m.getProjectSuggestions(partial)
-		}
-		// Clamp cursor and viewport if suggestions list shrunk
-		if m.acCursor >= len(m.suggestions) {
-			m.acCursor = max(0, len(m.suggestions)-1)
-		}
-		// Ensure viewport keeps cursor visible
-		if m.acCursor < m.acViewportTop {
-			m.acViewportTop = m.acCursor
-		} else if m.acCursor >= m.acViewportTop+acVisibleCount {
-			m.acViewportTop = m.acCursor - acVisibleCount + 1
-		}
-		// If no suggestions, exit autocomplete mode
-		if len(m.suggestions) == 0 {
-			m.acMode = acModeNone
-		}
-	} else {
-		m.acMode = acModeNone
-		m.suggestions = nil
-	}
-
+	// Update textarea and refresh autocomplete/preview
+	cmd := m.updateInput(msg)
 	return m, cmd
 }
 
@@ -266,39 +76,9 @@ func (m *QuickCaptureModel) View() string {
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 
-	// Show autocomplete suggestions if active (scrollable window)
-	if m.acMode != acModeNone && len(m.suggestions) > 0 {
-		b.WriteString("\n")
-
-		// Show scroll indicator if there are items above
-		if m.acViewportTop > 0 {
-			b.WriteString(MutedStyle.Render("  ↑ " + fmt.Sprintf("%d more", m.acViewportTop)))
-			b.WriteString("\n")
-		}
-
-		// Calculate visible range
-		visibleEnd := m.acViewportTop + acVisibleCount
-		if visibleEnd > len(m.suggestions) {
-			visibleEnd = len(m.suggestions)
-		}
-
-		// Render visible suggestions
-		for i := m.acViewportTop; i < visibleEnd; i++ {
-			s := m.suggestions[i]
-			if i == m.acCursor {
-				b.WriteString(SelectedStyle.Render("> " + s.display))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + s.display))
-			}
-			b.WriteString("\n")
-		}
-
-		// Show scroll indicator if there are items below
-		remaining := len(m.suggestions) - visibleEnd
-		if remaining > 0 {
-			b.WriteString(MutedStyle.Render("  ↓ " + fmt.Sprintf("%d more", remaining)))
-			b.WriteString("\n")
-		}
+	// Show autocomplete suggestions if active
+	if ac := m.renderAutocomplete(); ac != "" {
+		b.WriteString(ac)
 	}
 
 	b.WriteString("\n")
@@ -315,7 +95,7 @@ func (m *QuickCaptureModel) View() string {
 	// Help text
 	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
 	b.WriteString("\n")
-	if m.acMode != acModeNone {
+	if m.isAutocompleteActive() {
 		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
 	} else {
 		b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
@@ -345,80 +125,9 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 	return false
 }
 
-// updatePreview updates the live preview state.
-func (m *QuickCaptureModel) updatePreview() {
-	input := strings.ReplaceAll(m.input.Value(), "\n", " ")
-	input = strings.TrimSpace(input)
-	if input == "" {
-		m.preview = nil
-		m.previewErr = ""
-		return
-	}
-	m.preview, m.previewErr = parseQuickCaptureForPreview(input, m.project, m.allProjects)
-}
-
-// renderPreview formats the parsed preview for display.
-func (m *QuickCaptureModel) renderPreview() string {
-	if m.previewErr != "" {
-		return ValidationErrorStyle.Render(m.previewErr)
-	}
-	if m.preview == nil || m.preview.title == "" {
-		return ""
-	}
-
-	var parts []string
-
-	// Type and title
-	typeStyle := GetTypeStyle(string(m.preview.taskType))
-	parts = append(parts, typeStyle.Render(m.preview.taskType.Icon())+" "+m.preview.title)
-
-	// Priority (only show if not default)
-	if m.preview.priority != 3 {
-		parts = append(parts, fmt.Sprintf("!%d", m.preview.priority))
-	}
-
-	// Tags
-	if len(m.preview.tags) > 0 {
-		tagStrs := make([]string, len(m.preview.tags))
-		for i, t := range m.preview.tags {
-			tagStrs[i] = "#" + t
-		}
-		parts = append(parts, strings.Join(tagStrs, " "))
-	}
-
-	// Due date
-	if m.preview.dueDate != nil {
-		parts = append(parts, "@"+m.preview.dueDate.Format("Jan 2"))
-	}
-
-	// Recurrence
-	if m.preview.recurrence != nil {
-		parts = append(parts, "~"+m.preview.recurrence.String())
-	}
-
-	// Section (only show if explicitly set)
-	if m.preview.section != "" {
-		parts = append(parts, "/"+m.preview.section)
-	}
-
-	// Status (only show if not default todo)
-	if m.preview.status != "" && m.preview.status != models.StatusTodo {
-		parts = append(parts, m.preview.status.Icon()+" $"+string(m.preview.status))
-	}
-
-	// Target project (only show if different from current)
-	if m.preview.targetProjectName != "" {
-		parts = append(parts, "→ "+m.preview.targetProjectName)
-	}
-
-	return MutedStyle.Render(strings.Join(parts, " · "))
-}
-
 func (m *QuickCaptureModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		// Replace newlines with spaces since this is a single task title
-		input := strings.ReplaceAll(m.input.Value(), "\n", " ")
-		input = strings.TrimSpace(input)
+		input := m.inputValue()
 		if input == "" {
 			m.err = fmt.Errorf("task title cannot be empty")
 			return nil

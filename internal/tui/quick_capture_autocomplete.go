@@ -12,8 +12,8 @@ import (
 
 // detectAutocompleteTrigger scans the input for autocomplete triggers.
 // Returns the trigger type, trigger position, and partial text after trigger.
-func (m *QuickCaptureModel) detectAutocompleteTrigger() (int, int, string) {
-	input := m.input.Value()
+func (q *quickCaptureInput) detectAutocompleteTrigger() (int, int, string) {
+	input := q.input.Value()
 	if len(input) == 0 {
 		return acModeNone, 0, ""
 	}
@@ -57,14 +57,14 @@ func (m *QuickCaptureModel) detectAutocompleteTrigger() (int, int, string) {
 }
 
 // getTagSuggestions returns matching tags for the partial query.
-func (m *QuickCaptureModel) getTagSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getTagSuggestions(partial string) []suggestion {
 	type scoredTag struct {
 		tag   string
 		score int
 	}
 
 	var scored []scoredTag
-	for _, tag := range m.tagCache {
+	for _, tag := range q.tagCache {
 		score := fuzzy.Score(tag, partial)
 		if score > 0 {
 			scored = append(scored, scoredTag{tag: tag, score: score})
@@ -88,7 +88,7 @@ func (m *QuickCaptureModel) getTagSuggestions(partial string) []suggestion {
 }
 
 // getTypeSuggestions returns matching task type options for the partial query.
-func (m *QuickCaptureModel) getTypeSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getTypeSuggestions(partial string) []suggestion {
 	types := []struct {
 		name string
 		icon string
@@ -116,7 +116,7 @@ func (m *QuickCaptureModel) getTypeSuggestions(partial string) []suggestion {
 }
 
 // getPrioritySuggestions returns matching priority options for the partial query.
-func (m *QuickCaptureModel) getPrioritySuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getPrioritySuggestions(partial string) []suggestion {
 	priorities := []struct {
 		value string
 		desc  string
@@ -141,7 +141,7 @@ func (m *QuickCaptureModel) getPrioritySuggestions(partial string) []suggestion 
 }
 
 // getDateSuggestions returns common due date options for the partial query.
-func (m *QuickCaptureModel) getDateSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getDateSuggestions(partial string) []suggestion {
 	options := []struct {
 		value string
 		desc  string
@@ -177,7 +177,7 @@ func (m *QuickCaptureModel) getDateSuggestions(partial string) []suggestion {
 }
 
 // getRecurrenceSuggestions returns recurrence pattern options for the partial query.
-func (m *QuickCaptureModel) getRecurrenceSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getRecurrenceSuggestions(partial string) []suggestion {
 	options := []struct {
 		value string
 		desc  string
@@ -207,11 +207,11 @@ func (m *QuickCaptureModel) getRecurrenceSuggestions(partial string) []suggestio
 }
 
 // getSectionSuggestions returns matching sections for the partial query.
-func (m *QuickCaptureModel) getSectionSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getSectionSuggestions(partial string) []suggestion {
 	var suggestions []suggestion
 	partialLower := strings.ToLower(partial)
 
-	for _, section := range m.sectionCache {
+	for _, section := range q.sectionCache {
 		if partial == "" || strings.Contains(strings.ToLower(section), partialLower) {
 			suggestions = append(suggestions, suggestion{
 				display: "/" + section,
@@ -223,7 +223,7 @@ func (m *QuickCaptureModel) getSectionSuggestions(partial string) []suggestion {
 }
 
 // getStatusSuggestions returns matching status options for the partial query.
-func (m *QuickCaptureModel) getStatusSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getStatusSuggestions(partial string) []suggestion {
 	statuses := []struct {
 		name string
 		icon string
@@ -250,14 +250,14 @@ func (m *QuickCaptureModel) getStatusSuggestions(partial string) []suggestion {
 }
 
 // getParentSuggestions returns matching parent tasks for the partial query.
-func (m *QuickCaptureModel) getParentSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getParentSuggestions(partial string) []suggestion {
 	type scoredParent struct {
 		task  *models.Task
 		score int
 	}
 
 	var scored []scoredParent
-	for _, task := range m.parentCache {
+	for _, task := range q.parentCache {
 		// Build searchable text: "#ShortID Type Title"
 		searchText := fmt.Sprintf("#%d %s %s", task.ShortID, task.Type.HeadingPrefix(), task.Title)
 		score := fuzzy.Score(searchText, partial)
@@ -289,14 +289,14 @@ func (m *QuickCaptureModel) getParentSuggestions(partial string) []suggestion {
 }
 
 // getProjectSuggestions returns matching projects for the partial query.
-func (m *QuickCaptureModel) getProjectSuggestions(partial string) []suggestion {
+func (q *quickCaptureInput) getProjectSuggestions(partial string) []suggestion {
 	type scoredProject struct {
 		project *models.Project
 		score   int
 	}
 
 	var scored []scoredProject
-	for _, project := range m.projectCache {
+	for _, project := range q.projectCache {
 		// Build searchable text: "Name [context]"
 		searchText := fmt.Sprintf("%s %s", project.Name, project.Context)
 		score := fuzzy.Score(searchText, partial)
@@ -328,44 +328,44 @@ func (m *QuickCaptureModel) getProjectSuggestions(partial string) []suggestion {
 }
 
 // acceptSuggestion inserts the selected suggestion into the input.
-func (m *QuickCaptureModel) acceptSuggestion() {
-	if m.acMode == acModeNone || len(m.suggestions) == 0 {
+func (q *quickCaptureInput) acceptSuggestion() {
+	if q.acMode == acModeNone || len(q.suggestions) == 0 {
 		return
 	}
 
-	selected := m.suggestions[m.acCursor]
-	input := m.input.Value()
+	selected := q.suggestions[q.acCursor]
+	input := q.input.Value()
 
 	// Replace from trigger position to end with the completed value
 	var newInput string
-	switch m.acMode {
+	switch q.acMode {
 	case acModeTag:
-		newInput = input[:m.acTriggerPos] + "#" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "#" + selected.value + " "
 	case acModeParent:
-		newInput = input[:m.acTriggerPos] + ">" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + ">" + selected.value + " "
 	case acModeType:
-		newInput = input[:m.acTriggerPos] + "^" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "^" + selected.value + " "
 	case acModePriority:
-		newInput = input[:m.acTriggerPos] + "!" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "!" + selected.value + " "
 	case acModeDate:
-		newInput = input[:m.acTriggerPos] + "@" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "@" + selected.value + " "
 	case acModeRecur:
-		newInput = input[:m.acTriggerPos] + "~" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "~" + selected.value + " "
 	case acModeSection:
-		newInput = input[:m.acTriggerPos] + "/" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "/" + selected.value + " "
 	case acModeStatus:
-		newInput = input[:m.acTriggerPos] + "$" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "$" + selected.value + " "
 	case acModeProject:
-		newInput = input[:m.acTriggerPos] + "%" + selected.value + " "
+		newInput = input[:q.acTriggerPos] + "%" + selected.value + " "
 	}
 
-	m.input.SetValue(newInput)
+	q.input.SetValue(newInput)
 	// Move cursor to end
-	m.input.CursorEnd()
+	q.input.CursorEnd()
 
 	// Reset autocomplete state
-	m.acMode = acModeNone
-	m.suggestions = nil
-	m.acCursor = 0
-	m.acViewportTop = 0
+	q.acMode = acModeNone
+	q.suggestions = nil
+	q.acCursor = 0
+	q.acViewportTop = 0
 }
