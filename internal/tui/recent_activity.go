@@ -199,6 +199,11 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 
+	case "c":
+		return m, func() tea.Msg {
+			return ToggleRecentActivityCompletedMsg{}
+		}
+
 	case "r":
 		m.loadTasks()
 		m.clampCursor()

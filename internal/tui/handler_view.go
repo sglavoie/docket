@@ -189,6 +189,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ToggleRecentActivityCompletedMsg:
+		newValue := !m.config.GetRecentActivityShowAll()
+		m.config.RecentActivityShowAll = &newValue
+		_ = m.configManager.Save(m.config)
+		if v := m.views.Get(ViewRecentActivity); v != nil {
+			if ra, ok := v.(*RecentActivityModel); ok {
+				ra.loadTasks()
+				ra.clampCursor()
+			}
+		}
+		if newValue {
+			m.statusMessage = "Showing completed tasks"
+		} else {
+			m.statusMessage = "Hiding completed tasks"
+		}
+		return true, statusTimeout(2 * time.Second)
+
 	case ShowRecentActivityPreviewMsg:
 		preview := NewRecentActivityPreviewModel(msg.Task, msg.Project)
 		m.showView(ViewRecentActivityPreview, preview)
