@@ -36,6 +36,24 @@ func (c *Config) GetReviewCompletedHours() int {
 	return *c.ReviewCompletedHours
 }
 
+// GetRecentActivityLimit returns the max number of tasks in the recent activity view.
+// Returns 20 if not set.
+func (c *Config) GetRecentActivityLimit() int {
+	if c.RecentActivityLimit == nil {
+		return 20
+	}
+	return *c.RecentActivityLimit
+}
+
+// GetRecentActivityShowAll returns whether to include completed tasks in recent activity.
+// Returns true if not set.
+func (c *Config) GetRecentActivityShowAll() bool {
+	if c.RecentActivityShowAll == nil {
+		return true
+	}
+	return *c.RecentActivityShowAll
+}
+
 // GetLinkedTaskJumpToNew returns whether to jump to new task after linked creation.
 // Returns false (stay on source task) if not set.
 func (c *Config) GetLinkedTaskJumpToNew() bool {

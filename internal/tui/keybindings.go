@@ -46,6 +46,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerCustomContextEditorBindings()
 	r.registerKanbanBindings()
 	r.registerNotesBindings()
+	r.registerRecentActivityBindings()
 	return r
 }
 
@@ -144,6 +145,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		// Views
 		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "🎯 Focus view", Category: "Views", Views: views},
+		Keybinding{Key: "l", Description: "Latest activity", Category: "Views", Views: views},
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Views", Views: views},
 
 		// Actions
@@ -710,6 +712,20 @@ func (r *KeybindingRegistry) registerNotesBindings() {
 		Keybinding{Key: "T", Description: "Cycle tag filter", Category: "Tags", Views: views},
 		Keybinding{Key: "/", Description: "Search notes", Category: "Filters", Views: views},
 		Keybinding{Key: "q", Description: "Close notes view", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerRecentActivityBindings() {
+	views := []ViewType{ViewRecentActivity}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Open task in project", Category: "Actions", Views: views},
+		Keybinding{Key: "/", Description: "Filter tasks", Category: "Filters", Views: views},
+		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
 

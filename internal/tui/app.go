@@ -78,6 +78,7 @@ const (
 	ViewNotesSearch
 	ViewNoteTagFilterSelector
 	ViewTaskActivity
+	ViewRecentActivity
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -468,6 +469,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"planning", "today", "morning review"},
 			Handler: func() tea.Msg {
 				return ShowDailyReviewMsg{}
+			},
+		},
+		{
+			Name:        "latest activity",
+			Description: "View recently modified tasks across all projects",
+			Shortcut:    "l",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"recent", "activity", "latest", "recent tasks"},
+			Handler: func() tea.Msg {
+				return ShowRecentActivityMsg{}
 			},
 		},
 		{

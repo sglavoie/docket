@@ -534,6 +534,22 @@ type FocusViewSelectMsg struct {
 }
 
 // =============================================================================
+// Recent Activity Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowRecentActivityMsg opens the recent activity view.
+type ShowRecentActivityMsg struct{}
+
+// CloseRecentActivityMsg closes the recent activity view.
+type CloseRecentActivityMsg struct{}
+
+// RecentActivitySelectMsg navigates to a task from recent activity.
+type RecentActivitySelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// =============================================================================
 // Project Focus View Messages (Show/Close Pattern)
 // =============================================================================
 

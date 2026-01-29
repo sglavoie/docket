@@ -18,19 +18,22 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput         textinput.Model
-	contextInput        textinput.Model
-	undoDepthInput      textinput.Model
-	dueSoonInput        textinput.Model
-	futureInput         textinput.Model
-	oldDaysInput        textinput.Model
-	completedHoursInput textinput.Model
-	linkedTaskJump      bool // Whether to jump to new task after linked creation
-	contexts            []string
-	contextCursor       int // -1 for custom mode, 0+ for selecting from list
+	editorInput           textinput.Model
+	contextInput          textinput.Model
+	undoDepthInput        textinput.Model
+	dueSoonInput          textinput.Model
+	futureInput           textinput.Model
+	oldDaysInput          textinput.Model
+	completedHoursInput   textinput.Model
+	recentActivityInput   textinput.Model
+	linkedTaskJump        bool // Whether to jump to new task after linked creation
+	recentActivityShowAll bool // Whether to show completed tasks in recent activity
+	contexts              []string
+	contextCursor         int // -1 for custom mode, 0+ for selecting from list
 
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=linkedTaskJump
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=recentActivityShowAll, 9=linkedTaskJump
 	validationErr string
+	scrollOffset  int
 
 	width  int
 	height int
@@ -85,6 +88,12 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	completedHoursInput.Width = 6
 	completedHoursInput.SetValue(strconv.Itoa(cfg.GetReviewCompletedHours()))
 
+	recentActivityInput := textinput.New()
+	recentActivityInput.Placeholder = "20"
+	recentActivityInput.CharLimit = 3
+	recentActivityInput.Width = 6
+	recentActivityInput.SetValue(strconv.Itoa(cfg.GetRecentActivityLimit()))
+
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
 
@@ -98,21 +107,23 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:              cfg,
-		configManager:       manager,
-		editorInput:         editorInput,
-		contextInput:        contextInput,
-		undoDepthInput:      undoDepthInput,
-		dueSoonInput:        dueSoonInput,
-		futureInput:         futureInput,
-		oldDaysInput:        oldDaysInput,
-		completedHoursInput: completedHoursInput,
-		linkedTaskJump:      cfg.GetLinkedTaskJumpToNew(),
-		contexts:            contexts,
-		contextCursor:       contextCursor,
-		focusIndex:          0,
-		width:               80,
-		height:              24,
+		config:                cfg,
+		configManager:         manager,
+		editorInput:           editorInput,
+		contextInput:          contextInput,
+		undoDepthInput:        undoDepthInput,
+		dueSoonInput:          dueSoonInput,
+		futureInput:           futureInput,
+		oldDaysInput:          oldDaysInput,
+		completedHoursInput:   completedHoursInput,
+		recentActivityInput:   recentActivityInput,
+		linkedTaskJump:        cfg.GetLinkedTaskJumpToNew(),
+		recentActivityShowAll: cfg.GetRecentActivityShowAll(),
+		contexts:              contexts,
+		contextCursor:         contextCursor,
+		focusIndex:            0,
+		width:                 80,
+		height:                24,
 	}
 }
 
@@ -141,11 +152,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (8 fields total)
+			// Move focus (10 fields total)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 8
+				m.focusIndex = (m.focusIndex + 1) % 10
 			} else {
-				m.focusIndex = (m.focusIndex + 7) % 8 // +7 is -1 mod 8
+				m.focusIndex = (m.focusIndex + 9) % 10 // +9 is -1 mod 10
 			}
 
 			// Focus new field
@@ -153,8 +164,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case " ":
-			// Toggle linkedTaskJump when on that field
-			if m.focusIndex == 7 {
+			// Toggle fields
+			if m.focusIndex == 8 {
+				m.recentActivityShowAll = !m.recentActivityShowAll
+			}
+			if m.focusIndex == 9 {
 				m.linkedTaskJump = !m.linkedTaskJump
 			}
 			return m, nil
@@ -173,6 +187,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if err := m.validateReviewSettings(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+			if err := m.validateRecentActivityLimit(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}
@@ -230,6 +248,8 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.oldDaysInput, cmd = m.oldDaysInput.Update(msg)
 	case 6:
 		m.completedHoursInput, cmd = m.completedHoursInput.Update(msg)
+	case 7:
+		m.recentActivityInput, cmd = m.recentActivityInput.Update(msg)
 	}
 
 	// Validate on each keystroke
@@ -249,6 +269,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case 3, 4, 5, 6:
 		if err := m.validateReviewSettings(); err != nil {
+			m.validationErr = err.Error()
+		}
+	case 7:
+		if err := m.validateRecentActivityLimit(); err != nil {
 			m.validationErr = err.Error()
 		}
 	}
@@ -274,7 +298,9 @@ func (m *SettingsModel) blurCurrentField() {
 	case 6:
 		m.completedHoursInput.Blur()
 	case 7:
-		// Toggle field - no blur needed
+		m.recentActivityInput.Blur()
+	case 8, 9:
+		// Toggle fields - no blur needed
 	}
 }
 
@@ -296,7 +322,9 @@ func (m *SettingsModel) focusCurrentField() {
 	case 6:
 		m.completedHoursInput.Focus()
 	case 7:
-		// Toggle field - no focus needed
+		m.recentActivityInput.Focus()
+	case 8, 9:
+		// Toggle fields - no focus needed
 	}
 }
 
@@ -426,6 +454,21 @@ func (m *SettingsModel) validateReviewSettings() error {
 	return nil
 }
 
+func (m *SettingsModel) validateRecentActivityLimit() error {
+	value := strings.TrimSpace(m.recentActivityInput.Value())
+	if value == "" {
+		return fmt.Errorf("recent activity limit is required")
+	}
+	limit, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("must be a number")
+	}
+	if limit < 0 {
+		return fmt.Errorf("must be 0 or greater")
+	}
+	return nil
+}
+
 func (m *SettingsModel) saveSettings() tea.Cmd {
 	return func() tea.Msg {
 		editor := strings.TrimSpace(m.editorInput.Value())
@@ -443,6 +486,9 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.ReviewFutureDays = &futureDays
 		m.config.ReviewOldDays = &oldDays
 		m.config.ReviewCompletedHours = &completedHours
+		recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
+		m.config.RecentActivityLimit = &recentActivityLimit
+		m.config.RecentActivityShowAll = &m.recentActivityShowAll
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 
 		if err := m.configManager.Save(m.config); err != nil {
@@ -599,13 +645,58 @@ func (m *SettingsModel) View() string {
 
 	b.WriteString("\n")
 
+	// Recent Activity section header
+	b.WriteString(SubtitleStyle.Render("Recent Activity View"))
+	b.WriteString("\n\n")
+
+	// Recent Activity Limit
+	var recentLimitLabel string
+	if m.focusIndex == 7 {
+		recentLimitLabel = FieldLabelFocusedStyle.Render("Task limit: ")
+	} else {
+		recentLimitLabel = FieldLabelStyle.Render("Task limit: ")
+	}
+	b.WriteString(recentLimitLabel)
+	b.WriteString(m.recentActivityInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(0 = no limit)"))
+	b.WriteString("\n")
+
+	if m.focusIndex == 7 && m.validationErr != "" {
+		b.WriteString("            ")
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+
+	// Recent Activity Show All Toggle
+	var recentShowLabel string
+	if m.focusIndex == 8 {
+		recentShowLabel = FieldLabelFocusedStyle.Render("Show completed: ")
+	} else {
+		recentShowLabel = FieldLabelStyle.Render("Show completed: ")
+	}
+	b.WriteString(recentShowLabel)
+	if m.recentActivityShowAll {
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[All tasks]"))
+		b.WriteString(MutedStyle.Render("  Active only"))
+	} else {
+		b.WriteString(MutedStyle.Render("All tasks  "))
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[Active only]"))
+	}
+	if m.focusIndex == 8 {
+		b.WriteString(HelpStyle.Render("  (Space to toggle)"))
+	}
+	b.WriteString("\n")
+
+	b.WriteString("\n")
+
 	// Linked Task section header
 	b.WriteString(SubtitleStyle.Render("Linked Task Creation"))
 	b.WriteString("\n\n")
 
 	// Linked Task Jump Toggle
 	var linkedLabel string
-	if m.focusIndex == 7 {
+	if m.focusIndex == 9 {
 		linkedLabel = FieldLabelFocusedStyle.Render("After creation: ")
 	} else {
 		linkedLabel = FieldLabelStyle.Render("After creation: ")
@@ -618,7 +709,7 @@ func (m *SettingsModel) View() string {
 		b.WriteString(MutedStyle.Render("Jump to new  "))
 		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[Stay on source]"))
 	}
-	if m.focusIndex == 7 {
+	if m.focusIndex == 9 {
 		b.WriteString(HelpStyle.Render("  (Space to toggle)"))
 	}
 	b.WriteString("\n")
@@ -631,6 +722,76 @@ func (m *SettingsModel) View() string {
 	if m.width-4 < cardWidth {
 		cardWidth = m.width - 4
 	}
+
+	// Apply scrolling when content exceeds available height.
+	// Card border (2) + title (1) + top/bottom padding (2) + centering overhead ~ 8 lines reserved.
+	maxVisible := m.height - 8
+	if maxVisible < 5 {
+		maxVisible = 5
+	}
+
+	allLines := strings.Split(b.String(), "\n")
+	if len(allLines) > maxVisible {
+		// Compute line ranges per focus index so we can scroll to keep focused field visible.
+		// Each field occupies roughly: label line + optional validation + blank separator.
+		// Map focusIndex to approximate first line of that field group.
+		fieldStartLine := []int{
+			0,  // 0: editor
+			3,  // 1: context
+			8,  // 2: undo depth
+			12, // 3: due soon (after section header)
+			14, // 4: future
+			16, // 5: old days
+			18, // 6: completed hours
+			23, // 7: recent activity limit (after section header)
+			26, // 8: recent activity show all
+			30, // 9: linked task jump (after section header)
+		}
+		targetLine := 0
+		if m.focusIndex >= 0 && m.focusIndex < len(fieldStartLine) {
+			targetLine = fieldStartLine[m.focusIndex]
+		}
+
+		// Adjust scroll offset to keep target visible
+		if targetLine < m.scrollOffset {
+			m.scrollOffset = targetLine
+		}
+		if targetLine >= m.scrollOffset+maxVisible-2 {
+			m.scrollOffset = targetLine - maxVisible + 3
+		}
+		if m.scrollOffset < 0 {
+			m.scrollOffset = 0
+		}
+		if m.scrollOffset > len(allLines)-maxVisible {
+			m.scrollOffset = len(allLines) - maxVisible
+		}
+
+		visible := allLines[m.scrollOffset:]
+		if len(visible) > maxVisible {
+			visible = visible[:maxVisible]
+		}
+
+		// Add scroll indicators
+		var out strings.Builder
+		if m.scrollOffset > 0 {
+			out.WriteString(MutedStyle.Render("↑ more above"))
+			out.WriteString("\n")
+		}
+		out.WriteString(strings.Join(visible, "\n"))
+		if m.scrollOffset+maxVisible < len(allLines) {
+			out.WriteString("\n")
+			out.WriteString(MutedStyle.Render("↓ more below"))
+		}
+
+		cfg := OverlayCardConfig{
+			Title:        "Settings",
+			Width:        cardWidth,
+			Centered:     true,
+			NoTruncation: true,
+		}
+		return renderOverlayCard(out.String(), m.width, m.height, cfg)
+	}
+
 	cfg := OverlayCardConfig{
 		Title:        "Settings",
 		Width:        cardWidth,
