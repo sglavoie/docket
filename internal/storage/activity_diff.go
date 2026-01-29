@@ -148,6 +148,60 @@ func diffTask(old, new *models.Task) {
 			NewValue:  "updated",
 		})
 	}
+
+	// Comments
+	oldComments := len(old.Comments)
+	newComments := len(new.Comments)
+	if oldComments != newComments {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "comments",
+			OldValue:  fmt.Sprintf("%d", oldComments),
+			NewValue:  fmt.Sprintf("%d", newComments),
+		})
+	}
+
+	// Dependencies (DependsOn)
+	if !stringSlicesEqual(old.DependsOn, new.DependsOn) {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "dependencies",
+			NewValue:  "updated",
+		})
+	}
+
+	// Related tasks
+	if !stringSlicesEqual(old.RelatedTo, new.RelatedTo) {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "related",
+			NewValue:  "updated",
+		})
+	}
+
+	// Attachments
+	oldAttach := len(old.Attachments)
+	newAttach := len(new.Attachments)
+	if oldAttach != newAttach {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "attachments",
+			OldValue:  fmt.Sprintf("%d", oldAttach),
+			NewValue:  fmt.Sprintf("%d", newAttach),
+		})
+	}
+
+	// ParentID
+	oldParent := ptrStringVal(old.ParentID)
+	newParent := ptrStringVal(new.ParentID)
+	if oldParent != newParent {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "parent",
+			OldValue:  oldParent,
+			NewValue:  newParent,
+		})
+	}
 }
 
 // diffTags returns a string like "+backend +api -frontend" for tag changes.
@@ -209,4 +263,23 @@ func hasCreatedEntry(t *models.Task) bool {
 		}
 	}
 	return false
+}
+
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func ptrStringVal(p *string) string {
+	if p == nil {
+		return "none"
+	}
+	return *p
 }
