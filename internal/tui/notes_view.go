@@ -74,6 +74,9 @@ type NotesViewModel struct {
 	renaming    bool
 	renameInput textinput.Model
 
+	// Fullscreen pane toggle
+	fullscreenPane bool
+
 	// Scroll indicator (set by renderDetailsPane)
 	detailsMaxScroll int
 
@@ -267,6 +270,18 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Z toggles fullscreen (no-op during rename/delete/multiselect)
+		if key == "Z" && !m.renaming && !m.confirmDelete && !m.multiSelectMode {
+			m.fullscreenPane = !m.fullscreenPane
+			return m, nil
+		}
+
+		// Esc exits fullscreen before anything else
+		if key == "esc" && m.fullscreenPane {
+			m.fullscreenPane = false
+			return m, nil
+		}
+
 		// Multi-select exit takes priority over details pane routing
 		if m.multiSelectMode && (key == "esc" || key == "q") {
 			m.multiSelectMode = false
@@ -396,7 +411,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode || m.renaming
+	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode || m.renaming || m.fullscreenPane
 }
 
 // HasTextInput returns false since search is now a separate view.
@@ -430,37 +445,74 @@ func (m *NotesViewModel) View() string {
 	b.WriteString(MutedStyle.Render(countInfo))
 	b.WriteString("\n\n")
 
-	b.WriteString(m.renderListPane())
-	b.WriteString(m.renderFooter())
-	b.WriteString("\n")
-
-	// Details pane (render first so scroll values are clamped before building divider)
-	detailsHeight := m.detailsHeight
-	if detailsHeight < 1 {
-		detailsHeight = 5
-	}
-	var detailsContent string
-	if len(m.notes) > 0 && m.cursor < len(m.notes) {
-		detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
+	// Fullscreen mode: show only the focused pane using full usable height
+	usable := m.height - 6
+	if usable < 4 {
+		usable = 4
 	}
 
-	b.WriteString(m.renderDivider())
-	b.WriteString("\n")
-
-	// Output pre-rendered details
-	if detailsContent != "" {
-		b.WriteString(detailsContent)
-		detailLines := strings.Count(detailsContent, "\n") + 1
-		for i := detailLines; i < detailsHeight; i++ {
-			b.WriteString("\n")
+	if m.fullscreenPane && m.detailsPaneFocused {
+		// Fullscreen details pane
+		fullHeight := usable
+		var detailsContent string
+		if len(m.notes) > 0 && m.cursor < len(m.notes) {
+			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, fullHeight)
 		}
+		if detailsContent != "" {
+			b.WriteString(detailsContent)
+			detailLines := strings.Count(detailsContent, "\n") + 1
+			for i := detailLines; i < fullHeight; i++ {
+				b.WriteString("\n")
+			}
+		} else {
+			for i := 0; i < fullHeight; i++ {
+				b.WriteString("\n")
+			}
+		}
+		b.WriteString(m.renderStatusBar())
+	} else if m.fullscreenPane && !m.detailsPaneFocused {
+		// Fullscreen list pane: temporarily override listHeight
+		origListHeight := m.listHeight
+		m.listHeight = usable
+		b.WriteString(m.renderListPane())
+		m.listHeight = origListHeight
+		b.WriteString(m.renderFooter())
+		b.WriteString("\n")
+		b.WriteString(m.renderStatusBar())
 	} else {
-		for i := 0; i < detailsHeight; i++ {
-			b.WriteString("\n")
-		}
-	}
+		// Normal split view
+		b.WriteString(m.renderListPane())
+		b.WriteString(m.renderFooter())
+		b.WriteString("\n")
 
-	b.WriteString(m.renderStatusBar())
+		// Details pane (render first so scroll values are clamped before building divider)
+		detailsHeight := m.detailsHeight
+		if detailsHeight < 1 {
+			detailsHeight = 5
+		}
+		var detailsContent string
+		if len(m.notes) > 0 && m.cursor < len(m.notes) {
+			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
+		}
+
+		b.WriteString(m.renderDivider())
+		b.WriteString("\n")
+
+		// Output pre-rendered details
+		if detailsContent != "" {
+			b.WriteString(detailsContent)
+			detailLines := strings.Count(detailsContent, "\n") + 1
+			for i := detailLines; i < detailsHeight; i++ {
+				b.WriteString("\n")
+			}
+		} else {
+			for i := 0; i < detailsHeight; i++ {
+				b.WriteString("\n")
+			}
+		}
+
+		b.WriteString(m.renderStatusBar())
+	}
 	return b.String()
 }
 
@@ -561,12 +613,20 @@ func (m *NotesViewModel) renderFooter() string {
 		return MutedStyle.Render("Enter: confirm  Esc: cancel")
 	}
 	if m.detailsPaneFocused {
-		return MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close")
+		zHint := "Z:fullscreen"
+		if m.fullscreenPane {
+			zHint = "Z:exit fullscreen"
+		}
+		return MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  " + zHint + "  q: close")
 	}
 	if m.multiSelectMode {
 		return MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select")
 	}
-	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  p: pin  t: tags  T: filter  V: multi  /: search"
+	zHint := "Z:fullscreen"
+	if m.fullscreenPane {
+		zHint = "Z:exit fullscreen"
+	}
+	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint + "  /: search"
 	if len(m.filterTags) > 0 {
 		footer += "  C: clear filter"
 	}
@@ -1130,6 +1190,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "space", Description: "Toggle selection (multi-select)"},
 		{Key: "a", Description: "Select all (multi-select)"},
 		{Key: "gX", Description: "Deselect all (multi-select)"},
+		{Key: "Z", Description: "Toggle fullscreen pane"},
 		{Key: "q", Description: "Close notes view"},
 	}
 }

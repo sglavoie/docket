@@ -3690,6 +3690,19 @@ func (m *AppModel) GetCommandRegistry() *CommandRegistry {
 	return m.commandRegistry
 }
 
+// isNotesFullscreen returns true when the notes view is in fullscreen pane mode.
+func (m *AppModel) isNotesFullscreen() bool {
+	if m.currentView() != ViewNotes {
+		return false
+	}
+	if v := m.views.Get(ViewNotes); v != nil {
+		if nv, ok := v.(*NotesViewModel); ok {
+			return nv.fullscreenPane
+		}
+	}
+	return false
+}
+
 // currentView returns the current view type.
 func (m *AppModel) currentView() ViewType {
 	if len(m.viewStack) == 0 {

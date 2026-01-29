@@ -711,6 +711,7 @@ func (r *KeybindingRegistry) registerNotesBindings() {
 		Keybinding{Key: "t", Description: "Edit note tags", Category: "Tags", Views: views},
 		Keybinding{Key: "T", Description: "Cycle tag filter", Category: "Tags", Views: views},
 		Keybinding{Key: "/", Description: "Search notes", Category: "Filters", Views: views},
+		Keybinding{Key: "Z", Description: "Toggle fullscreen pane", Category: "Navigation", Views: views},
 		Keybinding{Key: "q", Description: "Close notes view", Category: "Navigation", Views: views},
 	)
 }

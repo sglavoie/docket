@@ -167,6 +167,9 @@ func (m *AppModel) renderStatusBar() string {
 		currentView != ViewTaskActivity
 
 	help := ""
+	if showHelp && m.isNotesFullscreen() {
+		showHelp = false
+	}
 	if showHelp {
 		help = "Press : for commands, ? for help"
 		// Add Kanban-specific help when in Kanban view
