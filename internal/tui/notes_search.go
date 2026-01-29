@@ -527,7 +527,16 @@ func (m *NotesSearchModel) renderPreview() string {
 		}
 		snippetText := strings.Join(lines, "\n")
 		if len(fr.bodyPositions) > 0 {
-			snippetText = HighlightText(snippetText, fr.bodyPositions, NormalStyle)
+			snippetRunes := len([]rune(snippetText))
+			var validPositions []int
+			for _, p := range fr.bodyPositions {
+				if p < snippetRunes {
+					validPositions = append(validPositions, p)
+				}
+			}
+			if len(validPositions) > 0 {
+				snippetText = HighlightText(snippetText, validPositions, NormalStyle)
+			}
 		}
 		b.WriteString(snippetText)
 	} else if note.Body != "" {

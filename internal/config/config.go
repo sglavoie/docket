@@ -92,6 +92,11 @@ func NewConfig() *Config {
 	}
 }
 
+// GetEditor returns the configured editor.
+func (c *Config) GetEditor() string {
+	return c.Editor
+}
+
 // EnsureDataDir creates the data directory if it doesn't exist.
 func (c *Config) EnsureDataDir() error {
 	return os.MkdirAll(c.DataDir, 0755)

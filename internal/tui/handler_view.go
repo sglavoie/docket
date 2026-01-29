@@ -210,7 +210,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowNotesMsg:
 		if msg.Project != nil {
-			m.showView(ViewNotes, NewNotesViewModel(msg.Project))
+			m.showView(ViewNotes, NewNotesViewModel(msg.Project, m.config))
 		}
 		return true, nil
 

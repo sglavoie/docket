@@ -50,7 +50,8 @@ type NotesViewModel struct {
 	pendingDeleteIdx int
 
 	// Undo state
-	lastDeleted *models.Note
+	lastDeleted     *models.Note
+	lastBulkDeleted []*models.Note
 
 	// Details pane state
 	detailsPaneFocused bool
@@ -72,11 +73,14 @@ type notesConfig interface {
 }
 
 // NewNotesViewModel creates a new notes view.
-func NewNotesViewModel(project *models.Project) *NotesViewModel {
+func NewNotesViewModel(project *models.Project, cfg ...notesConfig) *NotesViewModel {
 	m := &NotesViewModel{
 		project:       project,
 		filterTags:    make(map[string]bool),
 		selectedNotes: make(map[string]bool),
+	}
+	if len(cfg) > 0 && cfg[0] != nil {
+		m.config = cfg[0]
 	}
 	m.loadNotes()
 	return m
@@ -588,7 +592,13 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
-	editor := os.Getenv("EDITOR")
+	editor := ""
+	if m.config != nil {
+		editor = m.config.GetEditor()
+	}
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
 	if editor == "" {
 		editor = "code"
 	}
@@ -635,12 +645,32 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 	}
 
 	m.lastDeleted = note
+	m.lastBulkDeleted = nil
 	m.statusMessage = "Deleted: " + note.Title
 	m.loadNotes()
 	return nil
 }
 
 func (m *NotesViewModel) undoDelete() tea.Cmd {
+	if m.lastBulkDeleted != nil {
+		var restored, failed int
+		for _, note := range m.lastBulkDeleted {
+			if err := storage.SaveNote(m.project, note); err != nil {
+				failed++
+			} else {
+				restored++
+			}
+		}
+		m.lastBulkDeleted = nil
+		if failed > 0 {
+			m.statusMessage = fmt.Sprintf("Restored %d notes (%d failed)", restored, failed)
+		} else {
+			m.statusMessage = fmt.Sprintf("Restored %d notes", restored)
+		}
+		m.loadNotes()
+		return nil
+	}
+
 	if m.lastDeleted == nil {
 		m.statusMessage = "Nothing to undo"
 		return nil
@@ -706,16 +736,27 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 		return nil
 	}
 
-	count := 0
+	var deleted []*models.Note
+	var errors int
 	for _, note := range selected {
 		if err := storage.DeleteNote(m.project, note.Filename); err == nil {
-			count++
+			deleted = append(deleted, note)
+		} else {
+			errors++
 		}
 	}
 
 	m.selectedNotes = make(map[string]bool)
 	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Deleted %d notes", count)
+
+	if errors > 0 {
+		m.statusMessage = fmt.Sprintf("Deleted %d/%d notes (%d failed)", len(deleted), len(selected), errors)
+	} else {
+		m.statusMessage = fmt.Sprintf("Deleted %d notes", len(deleted))
+	}
+
+	m.lastBulkDeleted = deleted
+	m.lastDeleted = nil
 	m.loadNotes()
 	return nil
 }
