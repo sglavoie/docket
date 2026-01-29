@@ -93,6 +93,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.globalSearch != nil {
 			m.globalSearch.Rebuild()
 		}
+		// Mark notes search as stale so it reloads on next activation
+		if v := m.views.Get(ViewNotesSearch); v != nil {
+			if ns, ok := v.(*NotesSearchModel); ok {
+				ns.MarkStale()
+			}
+		}
 	}
 
 	// Try each handler group in sequence

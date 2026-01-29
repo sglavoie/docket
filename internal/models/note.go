@@ -102,6 +102,11 @@ func slugify(s string) string {
 	return result
 }
 
+// GenerateNoteFilename creates a dated slug filename from a title and time.
+func GenerateNoteFilename(title string, t time.Time) string {
+	return generateFilename(title, t)
+}
+
 // generateFilename creates a dated slug filename from a title.
 func generateFilename(title string, t time.Time) string {
 	slug := slugify(title)

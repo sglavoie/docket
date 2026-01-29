@@ -131,6 +131,32 @@ func NotesExist(project *models.Project) bool {
 	return false
 }
 
+// RenameNote changes a note's title and filename atomically.
+// It saves the note with the new title (generating a new filename) and deletes the old file.
+func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.Note, error) {
+	note, err := LoadNote(project, oldFilename)
+	if err != nil {
+		return nil, fmt.Errorf("load note: %w", err)
+	}
+
+	note.Title = newTitle
+	note.ModifiedAt = time.Now()
+	// Generate a new filename from the new title, using the original creation time
+	note.Filename = models.GenerateNoteFilename(newTitle, note.CreatedAt)
+
+	if err := SaveNote(project, note); err != nil {
+		return nil, fmt.Errorf("save renamed note: %w", err)
+	}
+
+	// Delete old file only if the filename actually changed
+	if note.Filename != oldFilename {
+		oldPath := filepath.Join(NotesDir(project), oldFilename)
+		_ = os.Remove(oldPath) // best-effort cleanup
+	}
+
+	return note, nil
+}
+
 // NoteFilePath returns the full path to a note file.
 func NoteFilePath(project *models.Project, filename string) string {
 	return filepath.Join(NotesDir(project), filename)

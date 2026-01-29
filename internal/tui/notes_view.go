@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -66,7 +68,42 @@ type NotesViewModel struct {
 	selectedNotes   map[string]bool // keyed by filename
 	pendingGKey     bool            // waiting for second key after 'g'
 
+	// Sort state
+	sortMode noteSortMode
+
+	// Rename state
+	renaming    bool
+	renameInput textinput.Model
+
+	// Scroll indicator (set by renderDetailsPane)
+	detailsMaxScroll int
+
 	statusMessage string
+}
+
+// noteSortMode defines how notes are sorted.
+type noteSortMode int
+
+const (
+	noteSortModified noteSortMode = iota
+	noteSortCreated
+	noteSortTitleAZ
+	noteSortTitleZA
+)
+
+func (s noteSortMode) String() string {
+	switch s {
+	case noteSortModified:
+		return "modified"
+	case noteSortCreated:
+		return "created"
+	case noteSortTitleAZ:
+		return "title A-Z"
+	case noteSortTitleZA:
+		return "title Z-A"
+	default:
+		return "modified"
+	}
 }
 
 // noteTagUndoEntry stores a note's previous tags for undo.
@@ -118,10 +155,30 @@ func (m *NotesViewModel) loadNotes() {
 		}
 		notes = filtered
 	}
+	// Apply sort mode (pinned notes always first)
+	m.sortNotes(notes)
 	m.notes = notes
 	if m.cursor >= len(m.notes) {
 		m.cursor = max(0, len(m.notes)-1)
 	}
+}
+
+func (m *NotesViewModel) sortNotes(notes []*models.Note) {
+	sort.SliceStable(notes, func(i, j int) bool {
+		if notes[i].Pinned != notes[j].Pinned {
+			return notes[i].Pinned
+		}
+		switch m.sortMode {
+		case noteSortCreated:
+			return notes[i].CreatedAt.After(notes[j].CreatedAt)
+		case noteSortTitleAZ:
+			return strings.ToLower(notes[i].Title) < strings.ToLower(notes[j].Title)
+		case noteSortTitleZA:
+			return strings.ToLower(notes[i].Title) > strings.ToLower(notes[j].Title)
+		default: // noteSortModified
+			return notes[i].ModifiedAt.After(notes[j].ModifiedAt)
+		}
+	})
 }
 
 func (m *NotesViewModel) Init() tea.Cmd {
@@ -151,6 +208,11 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		key := msg.String()
+
+		// Handle rename input mode
+		if m.renaming {
+			return m.handleRenameKey(msg)
+		}
 
 		// Handle delete confirmation mode
 		if m.confirmDelete {
@@ -271,6 +333,18 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.undoDelete()
 		case "p":
 			m.togglePin()
+		case "s":
+			m.cycleSortMode()
+			return m, nil
+		case "y":
+			return m, m.copyNoteTitle()
+		case "Y":
+			return m, m.copyNoteBody()
+		case "ctrl+y":
+			return m, m.copyNoteTitleAndBody()
+		case "r":
+			m.startRename()
+			return m, nil
 		case "t":
 			if m.multiSelectMode && m.selectedNoteCount() > 0 {
 				return m, m.bulkTagNotes()
@@ -313,12 +387,12 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode
+	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode || m.renaming
 }
 
 // HasTextInput returns false since search is now a separate view.
 func (m *NotesViewModel) HasTextInput() bool {
-	return false
+	return m.renaming
 }
 
 func (m *NotesViewModel) View() string {
@@ -341,8 +415,12 @@ func (m *NotesViewModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Note count
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d notes", len(m.notes))))
+	// Note count and sort mode
+	countInfo := fmt.Sprintf("%d notes", len(m.notes))
+	if m.sortMode != noteSortModified {
+		countInfo += fmt.Sprintf(" (sort: %s)", m.sortMode)
+	}
+	b.WriteString(MutedStyle.Render(countInfo))
 	b.WriteString("\n\n")
 
 	if len(m.notes) == 0 {
@@ -351,17 +429,22 @@ func (m *NotesViewModel) View() string {
 	}
 
 	// Calculate visible area for the list pane
+	// Reserve 1 line at the bottom of the list area for the footer help
 	listHeight := m.listHeight
 	if listHeight < 1 {
 		listHeight = 10
 	}
+	noteListHeight := listHeight - 1 // -1 for footer in list pane
+	if noteListHeight < 1 {
+		noteListHeight = 1
+	}
 
 	// Scrolling window
 	startIdx := 0
-	if m.cursor >= listHeight {
-		startIdx = m.cursor - listHeight + 1
+	if m.cursor >= noteListHeight {
+		startIdx = m.cursor - noteListHeight + 1
 	}
-	endIdx := startIdx + listHeight
+	endIdx := startIdx + noteListHeight
 	if endIdx > len(m.notes) {
 		endIdx = len(m.notes)
 	}
@@ -427,10 +510,36 @@ func (m *NotesViewModel) View() string {
 		}
 		b.WriteString("\n")
 	}
-	// Pad remaining list lines if list is shorter than listHeight
+	// Pad remaining list lines if list is shorter than noteListHeight
 	rendered := endIdx - startIdx
-	for i := rendered; i < listHeight; i++ {
+	for i := rendered; i < noteListHeight; i++ {
 		b.WriteString("\n")
+	}
+
+	// Footer help (rendered in the list pane to maximize details pane space)
+	if m.renaming {
+		b.WriteString(MutedStyle.Render("Enter: confirm  Esc: cancel"))
+	} else if m.detailsPaneFocused {
+		b.WriteString(MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close"))
+	} else if m.multiSelectMode {
+		b.WriteString(MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select"))
+	} else {
+		footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  p: pin  t: tags  T: filter  V: multi  /: search"
+		if len(m.filterTags) > 0 {
+			footer += "  C: clear filter"
+		}
+		b.WriteString(MutedStyle.Render(footer))
+	}
+	b.WriteString("\n")
+
+	// Details pane (render first so scroll values are clamped before building divider)
+	detailsHeight := m.detailsHeight
+	if detailsHeight < 1 {
+		detailsHeight = 5
+	}
+	var detailsContent string
+	if len(m.notes) > 0 && m.cursor < len(m.notes) {
+		detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
 	}
 
 	// Divider
@@ -443,19 +552,21 @@ func (m *NotesViewModel) View() string {
 	if dividerWidth <= 0 {
 		dividerWidth = 80
 	}
-	b.WriteString(dividerStyle.Render(strings.Repeat("─", dividerWidth)))
+	dividerLine := strings.Repeat("─", dividerWidth)
+	// Add scroll position indicator when content overflows
+	if m.detailsMaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
+		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsScroll+1, m.detailsMaxScroll+1)
+		if len(indicator) < dividerWidth {
+			dividerLine = strings.Repeat("─", dividerWidth-len(indicator)) + indicator
+		}
+	}
+	b.WriteString(dividerStyle.Render(dividerLine))
 	b.WriteString("\n")
 
-	// Details pane
-	detailsHeight := m.detailsHeight
-	if detailsHeight < 1 {
-		detailsHeight = 5
-	}
-	if len(m.notes) > 0 && m.cursor < len(m.notes) {
-		details := m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
-		b.WriteString(details)
-		// Pad to fill details height
-		detailLines := strings.Count(details, "\n") + 1
+	// Output pre-rendered details
+	if detailsContent != "" {
+		b.WriteString(detailsContent)
+		detailLines := strings.Count(detailsContent, "\n") + 1
 		for i := detailLines; i < detailsHeight; i++ {
 			b.WriteString("\n")
 		}
@@ -466,26 +577,15 @@ func (m *NotesViewModel) View() string {
 	}
 
 	// Status message
-	if m.confirmDelete {
+	if m.renaming {
+		b.WriteString("Rename: ")
+		b.WriteString(m.renameInput.View())
+	} else if m.confirmDelete {
 		if m.pendingDeleteIdx < len(m.notes) {
 			b.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title)))
 		}
 	} else if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
-	}
-
-	// Footer help
-	b.WriteString("\n")
-	if m.detailsPaneFocused {
-		b.WriteString(MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close"))
-	} else if m.multiSelectMode {
-		b.WriteString(MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  V/Esc: exit multi-select"))
-	} else {
-		footer := "j/k: nav  Tab: switch pane  Enter: view  e: edit  n: new  d: del  u: undo  l: link  p: pin  t: tags  T: filter  V: multi  /: search"
-		if len(m.filterTags) > 0 {
-			footer += "  C: clear filter"
-		}
-		b.WriteString(MutedStyle.Render(footer))
 	}
 
 	return b.String()
@@ -572,6 +672,7 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	if maxScroll < 0 {
 		maxScroll = 0
 	}
+	m.detailsMaxScroll = maxScroll
 	if m.detailsScroll > maxScroll {
 		m.detailsScroll = maxScroll
 	}
@@ -866,6 +967,134 @@ func (m *NotesViewModel) bulkLinkNotes() tea.Cmd {
 	}
 }
 
+func (m *NotesViewModel) cycleSortMode() {
+	m.sortMode = (m.sortMode + 1) % 4
+	m.loadNotes()
+	m.statusMessage = fmt.Sprintf("Sort: %s", m.sortMode)
+}
+
+func (m *NotesViewModel) startRename() {
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return
+	}
+	ti := textinput.New()
+	ti.SetValue(m.notes[m.cursor].Title)
+	ti.CharLimit = 100
+	ti.Width = 50
+	ti.Focus()
+	m.renameInput = ti
+	m.renaming = true
+}
+
+func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		newTitle := strings.TrimSpace(m.renameInput.Value())
+		if newTitle == "" {
+			m.statusMessage = "Rename cancelled: empty title"
+			m.renaming = false
+			return m, nil
+		}
+		if m.cursor >= len(m.notes) {
+			m.renaming = false
+			return m, nil
+		}
+		note := m.notes[m.cursor]
+		oldTitle := note.Title
+		if newTitle == oldTitle {
+			m.renaming = false
+			m.statusMessage = "Rename cancelled: same title"
+			return m, nil
+		}
+		_, err := storage.RenameNote(m.project, note.Filename, newTitle)
+		if err != nil {
+			m.statusMessage = "Rename failed: " + err.Error()
+		} else {
+			m.statusMessage = fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle)
+			m.loadNotes()
+		}
+		m.renaming = false
+		return m, nil
+	case "esc":
+		m.renaming = false
+		m.statusMessage = "Rename cancelled"
+		return m, nil
+	default:
+		var cmd tea.Cmd
+		m.renameInput, cmd = m.renameInput.Update(msg)
+		return m, cmd
+	}
+}
+
+func (m *NotesViewModel) copyNoteTitle() tea.Cmd {
+	if m.multiSelectMode && m.selectedNoteCount() > 0 {
+		selected := m.getSelectedNotesList()
+		_, err := external.CopyNoteTitles(selected)
+		if err != nil {
+			m.statusMessage = "Copy failed: " + err.Error()
+		} else {
+			m.statusMessage = fmt.Sprintf("Copied %d titles to clipboard", len(selected))
+		}
+		return nil
+	}
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return nil
+	}
+	_, err := external.CopyNoteTitle(m.notes[m.cursor])
+	if err != nil {
+		m.statusMessage = "Copy failed: " + err.Error()
+	} else {
+		m.statusMessage = "Copied title to clipboard"
+	}
+	return nil
+}
+
+func (m *NotesViewModel) copyNoteBody() tea.Cmd {
+	if m.multiSelectMode && m.selectedNoteCount() > 0 {
+		selected := m.getSelectedNotesList()
+		_, err := external.CopyNoteBodies(selected)
+		if err != nil {
+			m.statusMessage = "Copy failed: " + err.Error()
+		} else {
+			m.statusMessage = fmt.Sprintf("Copied %d note bodies to clipboard", len(selected))
+		}
+		return nil
+	}
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return nil
+	}
+	_, err := external.CopyNoteBody(m.notes[m.cursor])
+	if err != nil {
+		m.statusMessage = "Copy failed: " + err.Error()
+	} else {
+		m.statusMessage = "Copied body to clipboard"
+	}
+	return nil
+}
+
+func (m *NotesViewModel) copyNoteTitleAndBody() tea.Cmd {
+	if m.multiSelectMode && m.selectedNoteCount() > 0 {
+		selected := m.getSelectedNotesList()
+		_, err := external.CopyNoteTitlesAndBodies(selected)
+		if err != nil {
+			m.statusMessage = "Copy failed: " + err.Error()
+		} else {
+			m.statusMessage = fmt.Sprintf("Copied %d notes to clipboard", len(selected))
+		}
+		return nil
+	}
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return nil
+	}
+	_, err := external.CopyNoteTitleAndBody(m.notes[m.cursor])
+	if err != nil {
+		m.statusMessage = "Copy failed: " + err.Error()
+	} else {
+		m.statusMessage = "Copied title and body to clipboard"
+	}
+	return nil
+}
+
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
@@ -876,6 +1105,11 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "n", Description: "Create new note"},
 		{Key: "d", Description: "Delete note (confirm)"},
 		{Key: "u", Description: "Undo last delete"},
+		{Key: "r", Description: "Rename note"},
+		{Key: "s", Description: "Cycle sort mode"},
+		{Key: "y", Description: "Copy title to clipboard"},
+		{Key: "Y", Description: "Copy body to clipboard"},
+		{Key: "Ctrl+y", Description: "Copy title and body to clipboard"},
 		{Key: "l", Description: "Link note to task"},
 		{Key: "p", Description: "Toggle pin"},
 		{Key: "t", Description: "Edit note tags"},

@@ -52,6 +52,8 @@ type NotesSearchModel struct {
 	height       int
 	listWidth    int
 	previewWidth int
+
+	stale bool // set true when notes are mutated; reloads on next activation
 }
 
 // NewNotesSearchModel creates a new notes search model.
@@ -69,6 +71,21 @@ func NewNotesSearchModel(project *models.Project) *NotesSearchModel {
 		notes:       notes,
 		searchInput: searchInput,
 	}
+}
+
+// MarkStale flags the search index for reload on next activation.
+func (m *NotesSearchModel) MarkStale() {
+	m.stale = true
+}
+
+// RefreshIfStale reloads notes from storage if the index is stale.
+func (m *NotesSearchModel) RefreshIfStale() {
+	if !m.stale {
+		return
+	}
+	m.stale = false
+	m.notes, _ = storage.ListNotes(m.project)
+	m.filterNotes()
 }
 
 // HasTextInput returns true because search always has input focus.
@@ -107,6 +124,9 @@ func (m *NotesSearchModel) Init() tea.Cmd {
 
 // Update handles messages.
 func (m *NotesSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Reload notes if they were mutated while this view was inactive
+	m.RefreshIfStale()
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)

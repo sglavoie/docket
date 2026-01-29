@@ -52,6 +52,56 @@ func CopyTasksDetails(tasks []*models.Task) (string, error) {
 	return text, clipboard.WriteAll(text)
 }
 
+// CopyNoteTitle copies a note's title to the clipboard.
+func CopyNoteTitle(note *models.Note) (string, error) {
+	return note.Title, clipboard.WriteAll(note.Title)
+}
+
+// CopyNoteTitles copies multiple note titles to the clipboard, one per line.
+func CopyNoteTitles(notes []*models.Note) (string, error) {
+	titles := make([]string, len(notes))
+	for i, n := range notes {
+		titles[i] = n.Title
+	}
+	text := strings.Join(titles, "\n")
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyNoteBody copies a note's body to the clipboard.
+func CopyNoteBody(note *models.Note) (string, error) {
+	text := note.Body
+	if text == "" {
+		text = note.Title
+	}
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyNoteBodies copies multiple notes' bodies to the clipboard, separated by dividers.
+func CopyNoteBodies(notes []*models.Note) (string, error) {
+	var parts []string
+	for _, note := range notes {
+		parts = append(parts, note.Body)
+	}
+	text := strings.Join(parts, "\n---\n\n")
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyNoteTitleAndBody copies a note's title and body to the clipboard.
+func CopyNoteTitleAndBody(note *models.Note) (string, error) {
+	text := fmt.Sprintf("# %s\n\n%s", note.Title, note.Body)
+	return text, clipboard.WriteAll(text)
+}
+
+// CopyNoteTitlesAndBodies copies multiple notes' title and body to the clipboard.
+func CopyNoteTitlesAndBodies(notes []*models.Note) (string, error) {
+	var parts []string
+	for _, note := range notes {
+		parts = append(parts, fmt.Sprintf("# %s\n\n%s", note.Title, note.Body))
+	}
+	text := strings.Join(parts, "\n---\n\n")
+	return text, clipboard.WriteAll(text)
+}
+
 // CopyTaskTitleAndDescription copies task title and description to the clipboard.
 // Format: title + blank line + description
 // Returns the copied text and any error.
