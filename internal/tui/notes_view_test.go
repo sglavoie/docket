@@ -137,8 +137,8 @@ func TestRenameFlowCancel(t *testing.T) {
 	if m.renaming {
 		t.Error("expected renaming=false after Esc")
 	}
-	if m.statusMessage != "Rename cancelled" {
-		t.Errorf("expected 'Rename cancelled' status, got %q", m.statusMessage)
+	if m.statusMessage != "Rename canceled" {
+		t.Errorf("expected 'Rename canceled' status, got %q", m.statusMessage)
 	}
 }
 

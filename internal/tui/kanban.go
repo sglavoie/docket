@@ -644,7 +644,7 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case KanbanStatusChangedMsg:
 		// Task status changed - reload tasks since task may have moved columns
-		// (completed/cancelled tasks are filtered out of Kanban view)
+		// (completed/canceled tasks are filtered out of Kanban view)
 		m.loadTasks()
 		// Try to position cursor on the task if it's still visible
 		for _, section := range KanbanColumnOrder {
@@ -662,7 +662,7 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		// Task not visible (likely completed/cancelled) - validate current cursor
+		// Task not visible (likely completed/canceled) - validate current cursor
 		cs := m.CurrentColumnState()
 		cs.Validate(m.currentVisibleNodeCount())
 		return m, nil

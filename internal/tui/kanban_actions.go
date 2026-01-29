@@ -26,7 +26,7 @@ type KanbanTaskReorderedMsg struct {
 }
 
 // KanbanStatusChangedMsg signals that a task's status was changed.
-// The task may have moved to a different column if it became completed/cancelled.
+// The task may have moved to a different column if it became completed/canceled.
 type KanbanStatusChangedMsg struct {
 	TaskID          string
 	PreviousSection string

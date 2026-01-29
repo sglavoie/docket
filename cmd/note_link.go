@@ -34,7 +34,7 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := storage.LoadProject(project); err != nil {
+	if err = storage.LoadProject(project); err != nil {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 

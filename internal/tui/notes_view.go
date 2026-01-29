@@ -238,7 +238,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.statusMessage = "Delete failed: note no longer exists"
 				return m, nil
 			}
-			m.statusMessage = "Delete cancelled"
+			m.statusMessage = "Delete canceled"
 			return m, nil
 		}
 
@@ -1013,7 +1013,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		newTitle := strings.TrimSpace(m.renameInput.Value())
 		if newTitle == "" {
-			m.statusMessage = "Rename cancelled: empty title"
+			m.statusMessage = "Rename canceled: empty title"
 			m.renaming = false
 			return m, nil
 		}
@@ -1025,7 +1025,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		oldTitle := note.Title
 		if newTitle == oldTitle {
 			m.renaming = false
-			m.statusMessage = "Rename cancelled: same title"
+			m.statusMessage = "Rename canceled: same title"
 			return m, nil
 		}
 		_, err := storage.RenameNote(m.project, note.Filename, newTitle)
@@ -1040,7 +1040,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return NotesRefreshMsg{} }
 	case "esc":
 		m.renaming = false
-		m.statusMessage = "Rename cancelled"
+		m.statusMessage = "Rename canceled"
 		return m, nil
 	default:
 		var cmd tea.Cmd

@@ -96,7 +96,7 @@ func (m *KanbanViewModel) handleStatusOpen() tea.Cmd {
 	return m.saveWithStatusChange(prevStates, task)
 }
 
-// handleStatusCancelled sets the selected task status to cancelled.
+// handleStatusCancelled sets the selected task status to canceled.
 func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
 	task := m.getSelectedTask()
 	if task == nil {
@@ -111,7 +111,7 @@ func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
 
 	prevStates := captureTaskStates(m.Project.Tasks)
 	task.Cancel()
-	m.statusMessage = fmt.Sprintf("Cancelled: %s", task.Title)
+	m.statusMessage = fmt.Sprintf("Canceled: %s", task.Title)
 
 	return m.saveWithStatusChange(prevStates, task)
 }
