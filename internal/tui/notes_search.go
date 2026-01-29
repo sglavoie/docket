@@ -40,8 +40,9 @@ type notesSearchResult struct {
 
 // NotesSearchModel provides search across notes in a project.
 type NotesSearchModel struct {
-	project *models.Project
-	notes   []*models.Note
+	project     *models.Project
+	tasksLoaded bool
+	notes       []*models.Note
 
 	filtered []notesSearchResult
 	cursor   int
@@ -66,11 +67,16 @@ func NewNotesSearchModel(project *models.Project) *NotesSearchModel {
 
 	notes, _ := storage.ListNotes(project)
 
-	return &NotesSearchModel{
+	m := &NotesSearchModel{
 		project:     project,
 		notes:       notes,
 		searchInput: searchInput,
 	}
+	// Load project tasks for displaying linked task titles
+	if loadErr := storage.LoadProject(project); loadErr == nil {
+		m.tasksLoaded = true
+	}
+	return m
 }
 
 // MarkStale flags the search index for reload on next activation.
@@ -528,7 +534,15 @@ func (m *NotesSearchModel) renderPreview() string {
 		b.WriteString(fmt.Sprintf("%s %s\n", MutedStyle.Render("Tags:"), strings.Join(note.Tags, ", ")))
 	}
 	if len(note.LinkedTasks) > 0 {
-		b.WriteString(fmt.Sprintf("%s %d\n", MutedStyle.Render("Linked tasks:"), len(note.LinkedTasks)))
+		b.WriteString(MutedStyle.Render("Linked tasks:"))
+		b.WriteString("\n")
+		for _, taskID := range note.LinkedTasks {
+			taskTitle := "[deleted]"
+			if task := m.project.GetTaskByID(taskID); task != nil {
+				taskTitle = task.Title
+			}
+			b.WriteString(fmt.Sprintf("  → %s\n", taskTitle))
+		}
 	}
 	if note.Pinned {
 		b.WriteString(fmt.Sprintf("%s Yes\n", MutedStyle.Render("Pinned:")))

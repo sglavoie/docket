@@ -142,7 +142,24 @@ func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.
 	note.Title = newTitle
 	note.ModifiedAt = time.Now()
 	// Generate a new filename from the new title, using the original creation time
-	note.Filename = models.GenerateNoteFilename(newTitle, note.CreatedAt)
+	newFilename := models.GenerateNoteFilename(newTitle, note.CreatedAt)
+
+	// Check for collision: if the new filename differs from the old one and already exists,
+	// append -2, -3, etc. to avoid overwriting a different note.
+	if newFilename != oldFilename {
+		dir := NotesDir(project)
+		base := strings.TrimSuffix(newFilename, ".md")
+		candidate := newFilename
+		for i := 2; ; i++ {
+			candidatePath := filepath.Join(dir, candidate)
+			if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
+				break
+			}
+			candidate = fmt.Sprintf("%s-%d.md", base, i)
+		}
+		newFilename = candidate
+	}
+	note.Filename = newFilename
 
 	if err := SaveNote(project, note); err != nil {
 		return nil, fmt.Errorf("save renamed note: %w", err)

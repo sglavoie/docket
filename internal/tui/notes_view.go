@@ -78,6 +78,10 @@ type NotesViewModel struct {
 	// Scroll indicator (set by renderDetailsPane)
 	detailsMaxScroll int
 
+	// Cached tasks for displaying linked task titles
+	tasksLoaded bool
+	cachedTasks []*models.Task
+
 	statusMessage string
 }
 
@@ -142,6 +146,13 @@ func (m *NotesViewModel) loadNotes() {
 	if err != nil {
 		m.notes = nil
 		return
+	}
+	// Load project tasks once for displaying linked task titles
+	if !m.tasksLoaded {
+		if loadErr := storage.LoadProject(m.project); loadErr == nil {
+			m.cachedTasks = m.project.Tasks
+		}
+		m.tasksLoaded = true
 	}
 	if len(m.filterTags) > 0 {
 		var filtered []*models.Note
@@ -233,21 +244,17 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.statusMessage = ""
 
-		// Handle pending 'g' prefix key
+		// Handle pending 'g' prefix key — always consume the second keystroke
 		if m.pendingGKey {
 			m.pendingGKey = false
 			if key == "X" && m.multiSelectMode {
 				m.deselectAllNotes()
 				return m, nil
 			}
-			// 'g' alone means jump to top
+			// Any other key after 'g' means jump to top
 			m.cursor = 0
 			m.detailsScroll = 0
-			// If the second key wasn't consumed, don't process it further
-			if key == "X" {
-				return m, nil
-			}
-			// Fall through only if the key wasn't 'X' — let the key be handled normally below
+			return m, nil
 		}
 
 		// Tab toggles focus between list and details pane
@@ -398,8 +405,6 @@ func (m *NotesViewModel) HasTextInput() bool {
 func (m *NotesViewModel) View() string {
 	var b strings.Builder
 
-	pinnedStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
-
 	// Title
 	title := fmt.Sprintf("%s - Notes", m.project.Name)
 	if len(m.filterTags) > 0 {
@@ -423,13 +428,48 @@ func (m *NotesViewModel) View() string {
 	b.WriteString(MutedStyle.Render(countInfo))
 	b.WriteString("\n\n")
 
-	if len(m.notes) == 0 {
-		b.WriteString(MutedStyle.Render("No notes yet. Press 'n' to create one."))
-		b.WriteString("\n")
+	b.WriteString(m.renderListPane())
+	b.WriteString(m.renderFooter())
+	b.WriteString("\n")
+
+	// Details pane (render first so scroll values are clamped before building divider)
+	detailsHeight := m.detailsHeight
+	if detailsHeight < 1 {
+		detailsHeight = 5
+	}
+	var detailsContent string
+	if len(m.notes) > 0 && m.cursor < len(m.notes) {
+		detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
 	}
 
-	// Calculate visible area for the list pane
-	// Reserve 1 line at the bottom of the list area for the footer help
+	b.WriteString(m.renderDivider())
+	b.WriteString("\n")
+
+	// Output pre-rendered details
+	if detailsContent != "" {
+		b.WriteString(detailsContent)
+		detailLines := strings.Count(detailsContent, "\n") + 1
+		for i := detailLines; i < detailsHeight; i++ {
+			b.WriteString("\n")
+		}
+	} else {
+		for i := 0; i < detailsHeight; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString(m.renderStatusBar())
+	return b.String()
+}
+
+func (m *NotesViewModel) renderListPane() string {
+	if len(m.notes) == 0 {
+		return MutedStyle.Render("No notes yet. Press 'n' to create one.") + "\n"
+	}
+
+	var b strings.Builder
+	pinnedStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
+
 	listHeight := m.listHeight
 	if listHeight < 1 {
 		listHeight = 10
@@ -439,7 +479,6 @@ func (m *NotesViewModel) View() string {
 		noteListHeight = 1
 	}
 
-	// Scrolling window
 	startIdx := 0
 	if m.cursor >= noteListHeight {
 		startIdx = m.cursor - noteListHeight + 1
@@ -449,7 +488,6 @@ func (m *NotesViewModel) View() string {
 		endIdx = len(m.notes)
 	}
 
-	// Dim the selected style when details pane is focused
 	selectedStyle := TaskJumperSelectedStyle
 	if m.detailsPaneFocused {
 		selectedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
@@ -459,7 +497,6 @@ func (m *NotesViewModel) View() string {
 		note := m.notes[i]
 		isCurrent := i == m.cursor
 
-		// Build row
 		checkbox := ""
 		if m.multiSelectMode {
 			if m.isNoteSelected(note.Filename) {
@@ -477,12 +514,11 @@ func (m *NotesViewModel) View() string {
 		titleStr := note.Title
 		maxTitle := 40
 		if m.multiSelectMode {
-			maxTitle = 36 // account for checkbox width
+			maxTitle = 36
 		}
 		if len(titleStr) > maxTitle {
 			titleStr = titleStr[:maxTitle-3] + "..."
 		}
-		// Pad to fixed width before applying color so ANSI escapes don't break alignment
 		paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
 
 		tags := ""
@@ -510,39 +546,32 @@ func (m *NotesViewModel) View() string {
 		}
 		b.WriteString("\n")
 	}
-	// Pad remaining list lines if list is shorter than noteListHeight
+	// Pad remaining list lines
 	rendered := endIdx - startIdx
 	for i := rendered; i < noteListHeight; i++ {
 		b.WriteString("\n")
 	}
+	return b.String()
+}
 
-	// Footer help (rendered in the list pane to maximize details pane space)
+func (m *NotesViewModel) renderFooter() string {
 	if m.renaming {
-		b.WriteString(MutedStyle.Render("Enter: confirm  Esc: cancel"))
-	} else if m.detailsPaneFocused {
-		b.WriteString(MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close"))
-	} else if m.multiSelectMode {
-		b.WriteString(MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select"))
-	} else {
-		footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  p: pin  t: tags  T: filter  V: multi  /: search"
-		if len(m.filterTags) > 0 {
-			footer += "  C: clear filter"
-		}
-		b.WriteString(MutedStyle.Render(footer))
+		return MutedStyle.Render("Enter: confirm  Esc: cancel")
 	}
-	b.WriteString("\n")
+	if m.detailsPaneFocused {
+		return MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close")
+	}
+	if m.multiSelectMode {
+		return MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select")
+	}
+	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  p: pin  t: tags  T: filter  V: multi  /: search"
+	if len(m.filterTags) > 0 {
+		footer += "  C: clear filter"
+	}
+	return MutedStyle.Render(footer)
+}
 
-	// Details pane (render first so scroll values are clamped before building divider)
-	detailsHeight := m.detailsHeight
-	if detailsHeight < 1 {
-		detailsHeight = 5
-	}
-	var detailsContent string
-	if len(m.notes) > 0 && m.cursor < len(m.notes) {
-		detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
-	}
-
-	// Divider
+func (m *NotesViewModel) renderDivider() string {
 	dividerColor := ColorMuted
 	if m.detailsPaneFocused {
 		dividerColor = ColorPrimary
@@ -553,42 +582,29 @@ func (m *NotesViewModel) View() string {
 		dividerWidth = 80
 	}
 	dividerLine := strings.Repeat("─", dividerWidth)
-	// Add scroll position indicator when content overflows
 	if m.detailsMaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
 		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsScroll+1, m.detailsMaxScroll+1)
 		if len(indicator) < dividerWidth {
 			dividerLine = strings.Repeat("─", dividerWidth-len(indicator)) + indicator
 		}
 	}
-	b.WriteString(dividerStyle.Render(dividerLine))
-	b.WriteString("\n")
+	return dividerStyle.Render(dividerLine)
+}
 
-	// Output pre-rendered details
-	if detailsContent != "" {
-		b.WriteString(detailsContent)
-		detailLines := strings.Count(detailsContent, "\n") + 1
-		for i := detailLines; i < detailsHeight; i++ {
-			b.WriteString("\n")
-		}
-	} else {
-		for i := 0; i < detailsHeight; i++ {
-			b.WriteString("\n")
-		}
-	}
-
-	// Status message
+func (m *NotesViewModel) renderStatusBar() string {
 	if m.renaming {
-		b.WriteString("Rename: ")
-		b.WriteString(m.renameInput.View())
-	} else if m.confirmDelete {
-		if m.pendingDeleteIdx < len(m.notes) {
-			b.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title)))
-		}
-	} else if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
+		return "Rename: " + m.renameInput.View()
 	}
-
-	return b.String()
+	if m.confirmDelete {
+		if m.pendingDeleteIdx < len(m.notes) {
+			return lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title))
+		}
+		return ""
+	}
+	if m.statusMessage != "" {
+		return SuccessStyle.Render(m.statusMessage)
+	}
+	return ""
 }
 
 func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
@@ -641,6 +657,17 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	// Tags
 	if len(note.Tags) > 0 {
 		lines = append(lines, MutedStyle.Render("Tags: "+strings.Join(note.Tags, ", ")))
+	}
+
+	// Linked tasks
+	if len(note.LinkedTasks) > 0 {
+		for _, taskID := range note.LinkedTasks {
+			taskTitle := "[deleted]"
+			if task := m.project.GetTaskByID(taskID); task != nil {
+				taskTitle = task.Title
+			}
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle)))
+		}
 	}
 
 	lines = append(lines, "")
@@ -790,22 +817,27 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 	return nil
 }
 
+// batchSaveNotes saves a slice of notes and returns the count of failures.
+func (m *NotesViewModel) batchSaveNotes(notes []*models.Note) int {
+	var failed int
+	for _, note := range notes {
+		if err := storage.SaveNote(m.project, note); err != nil {
+			failed++
+		}
+	}
+	return failed
+}
+
 func (m *NotesViewModel) undoDelete() tea.Cmd {
 	// Priority: delete > tag > link
 	if m.lastBulkDeleted != nil {
-		var restored, failed int
-		for _, note := range m.lastBulkDeleted {
-			if err := storage.SaveNote(m.project, note); err != nil {
-				failed++
-			} else {
-				restored++
-			}
-		}
+		count := len(m.lastBulkDeleted)
+		failed := m.batchSaveNotes(m.lastBulkDeleted)
 		m.lastBulkDeleted = nil
 		if failed > 0 {
-			m.statusMessage = fmt.Sprintf("Restored %d notes (%d failed)", restored, failed)
+			m.statusMessage = fmt.Sprintf("Restored %d notes (%d failed)", count-failed, failed)
 		} else {
-			m.statusMessage = fmt.Sprintf("Restored %d notes", restored)
+			m.statusMessage = fmt.Sprintf("Restored %d notes", count)
 		}
 		m.loadNotes()
 		return nil
@@ -823,15 +855,14 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 	}
 
 	if len(m.lastTagUndo) > 0 {
-		var failed int
-		for _, entry := range m.lastTagUndo {
+		notes := make([]*models.Note, len(m.lastTagUndo))
+		for i, entry := range m.lastTagUndo {
 			entry.Note.Tags = entry.OldTags
 			entry.Note.ModifiedAt = time.Now()
-			if err := storage.SaveNote(m.project, entry.Note); err != nil {
-				failed++
-			}
+			notes[i] = entry.Note
 		}
 		count := len(m.lastTagUndo)
+		failed := m.batchSaveNotes(notes)
 		m.lastTagUndo = nil
 		if failed > 0 {
 			m.statusMessage = fmt.Sprintf("Undid tags on %d notes (%d failed)", count, failed)
@@ -843,15 +874,14 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 	}
 
 	if len(m.lastLinkUndo) > 0 {
-		var failed int
-		for _, entry := range m.lastLinkUndo {
+		notes := make([]*models.Note, len(m.lastLinkUndo))
+		for i, entry := range m.lastLinkUndo {
 			entry.Note.LinkedTasks = entry.OldLinks
 			entry.Note.ModifiedAt = time.Now()
-			if err := storage.SaveNote(m.project, entry.Note); err != nil {
-				failed++
-			}
+			notes[i] = entry.Note
 		}
 		count := len(m.lastLinkUndo)
+		failed := m.batchSaveNotes(notes)
 		m.lastLinkUndo = nil
 		if failed > 0 {
 			m.statusMessage = fmt.Sprintf("Undid links on %d notes (%d failed)", count, failed)
@@ -1026,73 +1056,55 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m *NotesViewModel) copyNoteTitle() tea.Cmd {
+// copyNoteContent is a generic helper for clipboard copy operations. It handles
+// both single-note and bulk (multi-select) copying, reducing duplication across
+// the three copy commands.
+func (m *NotesViewModel) copyNoteContent(
+	singleFn func(*models.Note) (string, error),
+	bulkFn func([]*models.Note) (string, error),
+	singleMsg, bulkMsg string,
+) tea.Cmd {
 	if m.multiSelectMode && m.selectedNoteCount() > 0 {
 		selected := m.getSelectedNotesList()
-		_, err := external.CopyNoteTitles(selected)
+		_, err := bulkFn(selected)
 		if err != nil {
 			m.statusMessage = "Copy failed: " + err.Error()
 		} else {
-			m.statusMessage = fmt.Sprintf("Copied %d titles to clipboard", len(selected))
+			m.statusMessage = fmt.Sprintf(bulkMsg, len(selected))
 		}
 		return nil
 	}
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return nil
 	}
-	_, err := external.CopyNoteTitle(m.notes[m.cursor])
+	_, err := singleFn(m.notes[m.cursor])
 	if err != nil {
 		m.statusMessage = "Copy failed: " + err.Error()
 	} else {
-		m.statusMessage = "Copied title to clipboard"
+		m.statusMessage = singleMsg
 	}
 	return nil
+}
+
+func (m *NotesViewModel) copyNoteTitle() tea.Cmd {
+	return m.copyNoteContent(
+		external.CopyNoteTitle, external.CopyNoteTitles,
+		"Copied title to clipboard", "Copied %d titles to clipboard",
+	)
 }
 
 func (m *NotesViewModel) copyNoteBody() tea.Cmd {
-	if m.multiSelectMode && m.selectedNoteCount() > 0 {
-		selected := m.getSelectedNotesList()
-		_, err := external.CopyNoteBodies(selected)
-		if err != nil {
-			m.statusMessage = "Copy failed: " + err.Error()
-		} else {
-			m.statusMessage = fmt.Sprintf("Copied %d note bodies to clipboard", len(selected))
-		}
-		return nil
-	}
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	_, err := external.CopyNoteBody(m.notes[m.cursor])
-	if err != nil {
-		m.statusMessage = "Copy failed: " + err.Error()
-	} else {
-		m.statusMessage = "Copied body to clipboard"
-	}
-	return nil
+	return m.copyNoteContent(
+		external.CopyNoteBody, external.CopyNoteBodies,
+		"Copied body to clipboard", "Copied %d note bodies to clipboard",
+	)
 }
 
 func (m *NotesViewModel) copyNoteTitleAndBody() tea.Cmd {
-	if m.multiSelectMode && m.selectedNoteCount() > 0 {
-		selected := m.getSelectedNotesList()
-		_, err := external.CopyNoteTitlesAndBodies(selected)
-		if err != nil {
-			m.statusMessage = "Copy failed: " + err.Error()
-		} else {
-			m.statusMessage = fmt.Sprintf("Copied %d notes to clipboard", len(selected))
-		}
-		return nil
-	}
-	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return nil
-	}
-	_, err := external.CopyNoteTitleAndBody(m.notes[m.cursor])
-	if err != nil {
-		m.statusMessage = "Copy failed: " + err.Error()
-	} else {
-		m.statusMessage = "Copied title and body to clipboard"
-	}
-	return nil
+	return m.copyNoteContent(
+		external.CopyNoteTitleAndBody, external.CopyNoteTitlesAndBodies,
+		"Copied title and body to clipboard", "Copied %d notes to clipboard",
+	)
 }
 
 // GetHelpItems returns keybinding help for the notes view.
