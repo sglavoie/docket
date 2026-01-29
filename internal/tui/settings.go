@@ -9,9 +9,27 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 )
+
+var (
+	settingsTabNames = []string{"General", "Review", "Behavior"}
+
+	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-9
+	tabFieldStart = []int{0, 3, 7}
+)
+
+// tabForField returns which tab a given focusIndex belongs to.
+func tabForField(focusIndex int) int {
+	for t := len(tabFieldStart) - 1; t >= 0; t-- {
+		if focusIndex >= tabFieldStart[t] {
+			return t
+		}
+	}
+	return 0
+}
 
 // SettingsModel handles the settings view in the TUI.
 type SettingsModel struct {
@@ -31,9 +49,9 @@ type SettingsModel struct {
 	contexts              []string
 	contextCursor         int // -1 for custom mode, 0+ for selecting from list
 
+	activeTab     int
 	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=recentActivityShowAll, 9=linkedTaskJump
 	validationErr string
-	scrollOffset  int
 
 	width  int
 	height int
@@ -122,6 +140,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		contexts:              contexts,
 		contextCursor:         contextCursor,
 		focusIndex:            0,
+		activeTab:             0,
 		width:                 80,
 		height:                24,
 	}
@@ -159,8 +178,29 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusIndex = (m.focusIndex + 9) % 10 // +9 is -1 mod 10
 			}
 
+			// Auto-switch tab to follow focus
+			m.activeTab = tabForField(m.focusIndex)
+
 			// Focus new field
 			m.focusCurrentField()
+			return m, nil
+
+		case "[":
+			if m.activeTab > 0 {
+				m.blurCurrentField()
+				m.activeTab--
+				m.focusIndex = tabFieldStart[m.activeTab]
+				m.focusCurrentField()
+			}
+			return m, nil
+
+		case "]":
+			if m.activeTab < len(settingsTabNames)-1 {
+				m.blurCurrentField()
+				m.activeTab++
+				m.focusIndex = tabFieldStart[m.activeTab]
+				m.focusCurrentField()
+			}
 			return m, nil
 
 		case " ":
@@ -499,7 +539,55 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 	}
 }
 
-func (m *SettingsModel) View() string {
+// renderTabBar renders a tab bar with the active tab highlighted.
+func (m *SettingsModel) renderTabBar() string {
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 2).
+		BorderBottom(true).
+		BorderStyle(lipgloss.ThickBorder()).
+		BorderForeground(ColorPrimary)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 2).
+		BorderBottom(true).
+		BorderStyle(lipgloss.Border{Bottom: "─"}).
+		BorderForeground(ColorBorder)
+
+	var tabs []string
+	for i, name := range settingsTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	// Extend the bottom border line to fill remaining width
+	tabWidth := lipgloss.Width(row)
+	cardWidth := 66
+	if m.width-8 < cardWidth {
+		cardWidth = m.width - 8
+	}
+	remaining := cardWidth - tabWidth - 2
+	if remaining > 0 {
+		filler := lipgloss.NewStyle().
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder).
+			Width(remaining).
+			Render("")
+		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+	}
+
+	return row
+}
+
+func (m *SettingsModel) renderGeneralTab() string {
 	var b strings.Builder
 
 	// Editor input
@@ -513,7 +601,6 @@ func (m *SettingsModel) View() string {
 	b.WriteString(m.editorInput.View())
 	b.WriteString("\n")
 
-	// Validation error for editor
 	if m.focusIndex == 0 && m.validationErr != "" {
 		b.WriteString("        ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
@@ -533,7 +620,6 @@ func (m *SettingsModel) View() string {
 	b.WriteString(m.contextInput.View())
 	b.WriteString("\n")
 
-	// Show available contexts
 	if len(m.contexts) > 0 {
 		b.WriteString("                 ")
 		b.WriteString(MutedStyle.Render("Available: "))
@@ -553,7 +639,6 @@ func (m *SettingsModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Validation error for context
 	if m.focusIndex == 1 && m.validationErr != "" {
 		b.WriteString("                 ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
@@ -575,16 +660,18 @@ func (m *SettingsModel) View() string {
 	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
 	b.WriteString("\n")
 
-	// Validation error for undo depth
 	if m.focusIndex == 2 && m.validationErr != "" {
 		b.WriteString("                    ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n")
+	return b.String()
+}
 
-	// Review Settings section header
+func (m *SettingsModel) renderReviewTab() string {
+	var b strings.Builder
+
 	b.WriteString(SubtitleStyle.Render("Review View Thresholds"))
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0 = hide section)"))
@@ -636,17 +723,19 @@ func (m *SettingsModel) View() string {
 	b.WriteString(m.completedHoursInput.View())
 	b.WriteString("\n")
 
-	// Validation error for review settings
 	if m.focusIndex >= 3 && m.focusIndex <= 6 && m.validationErr != "" {
 		b.WriteString("                   ")
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n")
+	return b.String()
+}
 
-	// Recent Activity section header
-	b.WriteString(SubtitleStyle.Render("Recent Activity View"))
+func (m *SettingsModel) renderBehaviorTab() string {
+	var b strings.Builder
+
+	b.WriteString(SubtitleStyle.Render("Recent Activity"))
 	b.WriteString("\n\n")
 
 	// Recent Activity Limit
@@ -690,7 +779,6 @@ func (m *SettingsModel) View() string {
 
 	b.WriteString("\n")
 
-	// Linked Task section header
 	b.WriteString(SubtitleStyle.Render("Linked Task Creation"))
 	b.WriteString("\n\n")
 
@@ -714,82 +802,33 @@ func (m *SettingsModel) View() string {
 	}
 	b.WriteString("\n")
 
+	return b.String()
+}
+
+func (m *SettingsModel) View() string {
+	var b strings.Builder
+
+	// Tab bar
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n\n")
+
+	// Tab content
+	switch m.activeTab {
+	case 0:
+		b.WriteString(m.renderGeneralTab())
+	case 1:
+		b.WriteString(m.renderReviewTab())
+	case 2:
+		b.WriteString(m.renderBehaviorTab())
+	}
+
 	// Help footer
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
+	b.WriteString(MutedStyle.Render("[/]: tabs · Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
 
 	cardWidth := 70
 	if m.width-4 < cardWidth {
 		cardWidth = m.width - 4
-	}
-
-	// Apply scrolling when content exceeds available height.
-	// Card border (2) + title (1) + top/bottom padding (2) + centering overhead ~ 8 lines reserved.
-	maxVisible := m.height - 8
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
-
-	allLines := strings.Split(b.String(), "\n")
-	if len(allLines) > maxVisible {
-		// Compute line ranges per focus index so we can scroll to keep focused field visible.
-		// Each field occupies roughly: label line + optional validation + blank separator.
-		// Map focusIndex to approximate first line of that field group.
-		fieldStartLine := []int{
-			0,  // 0: editor
-			3,  // 1: context
-			8,  // 2: undo depth
-			12, // 3: due soon (after section header)
-			14, // 4: future
-			16, // 5: old days
-			18, // 6: completed hours
-			23, // 7: recent activity limit (after section header)
-			26, // 8: recent activity show all
-			30, // 9: linked task jump (after section header)
-		}
-		targetLine := 0
-		if m.focusIndex >= 0 && m.focusIndex < len(fieldStartLine) {
-			targetLine = fieldStartLine[m.focusIndex]
-		}
-
-		// Adjust scroll offset to keep target visible
-		if targetLine < m.scrollOffset {
-			m.scrollOffset = targetLine
-		}
-		if targetLine >= m.scrollOffset+maxVisible-2 {
-			m.scrollOffset = targetLine - maxVisible + 3
-		}
-		if m.scrollOffset < 0 {
-			m.scrollOffset = 0
-		}
-		if m.scrollOffset > len(allLines)-maxVisible {
-			m.scrollOffset = len(allLines) - maxVisible
-		}
-
-		visible := allLines[m.scrollOffset:]
-		if len(visible) > maxVisible {
-			visible = visible[:maxVisible]
-		}
-
-		// Add scroll indicators
-		var out strings.Builder
-		if m.scrollOffset > 0 {
-			out.WriteString(MutedStyle.Render("↑ more above"))
-			out.WriteString("\n")
-		}
-		out.WriteString(strings.Join(visible, "\n"))
-		if m.scrollOffset+maxVisible < len(allLines) {
-			out.WriteString("\n")
-			out.WriteString(MutedStyle.Render("↓ more below"))
-		}
-
-		cfg := OverlayCardConfig{
-			Title:        "Settings",
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(out.String(), m.width, m.height, cfg)
 	}
 
 	cfg := OverlayCardConfig{
