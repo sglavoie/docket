@@ -22,6 +22,10 @@ func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteActio
 		return m.getSectionActions(item)
 	case ItemCategorySavedSearch:
 		return m.getSavedSearchActions(item)
+	case ItemCategoryNotes:
+		return m.getNoteActions(item)
+	case ItemCategoryViews:
+		return m.getViewActions(item)
 	default:
 		return nil
 	}
@@ -423,6 +427,40 @@ func (m *CommandPaletteModel) getSectionActions(item PaletteItem) []PaletteActio
 	}
 
 	return actions
+}
+
+// getNoteActions returns inline actions for a note item.
+func (m *CommandPaletteModel) getNoteActions(item PaletteItem) []PaletteAction {
+	if item.Note == nil || item.Project == nil {
+		return nil
+	}
+	project := item.Project
+
+	return []PaletteAction{
+		{
+			Name:    "Open notes view",
+			Icon:    "→",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return ShowNotesMsg{Project: project}
+			},
+		},
+	}
+}
+
+// getViewActions returns inline actions for a view item.
+func (m *CommandPaletteModel) getViewActions(item PaletteItem) []PaletteAction {
+	viewType := item.ViewTarget
+	return []PaletteAction{
+		{
+			Name:    "Navigate",
+			Icon:    "→",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return NavigateToViewMsg{ViewType: viewType}
+			},
+		},
+	}
 }
 
 // getSavedSearchActions returns inline actions for a saved search item.

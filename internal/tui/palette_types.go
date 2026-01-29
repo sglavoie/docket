@@ -22,6 +22,8 @@ const (
 	ItemCategoryTags        ItemCategory = "Tags"
 	ItemCategorySections    ItemCategory = "Sections"
 	ItemCategorySavedSearch ItemCategory = "Saved"
+	ItemCategoryNotes       ItemCategory = "Notes"
+	ItemCategoryViews       ItemCategory = "Views"
 )
 
 // categoryPrefixes maps short prefixes to item categories for filtering.
@@ -34,6 +36,8 @@ var categoryPrefixes = map[string]ItemCategory{
 	"sec":    ItemCategorySections,
 	"saved":  ItemCategorySavedSearch,
 	"recent": ItemCategoryCommands, // Special: filters to recently executed commands
+	"note":   ItemCategoryNotes,
+	"view":   ItemCategoryViews,
 }
 
 // categoryOrder defines the display order for categories when showing headers.
@@ -44,6 +48,8 @@ var categoryOrder = []ItemCategory{
 	ItemCategoryTasks,
 	ItemCategoryTags,
 	ItemCategorySections,
+	ItemCategoryNotes,
+	ItemCategoryViews,
 }
 
 // recentSelection tracks a recently selected item for boosting in search results.
@@ -77,6 +83,8 @@ type PaletteItem struct {
 	Tag         string          // Set when Category is CategoryTags
 	Section     string          // Set when Category is CategorySections
 	SavedSearch string          // Set when Category is CategorySavedSearch (the query)
+	Note        *models.Note    // Set when Category is CategoryNotes
+	ViewTarget  ViewType        // Set when Category is CategoryViews
 }
 
 // CommandPaletteItem represents a searchable item in the command palette.
@@ -323,6 +331,11 @@ type PaletteBulkDueDateMsg struct {
 	Tasks []PaletteBulkTaskItem
 }
 
+// NavigateToViewMsg is sent when a view is selected from the command palette.
+type NavigateToViewMsg struct {
+	ViewType ViewType
+}
+
 // Category weight multipliers for fuzzy scoring.
 // Commands rank highest for short queries, projects next, others equal.
 const (
@@ -340,6 +353,8 @@ func categoryWeight(cat ItemCategory) int {
 		return weightProjects
 	case ItemCategorySavedSearch:
 		return weightCommands // Saved searches rank high like commands
+	case ItemCategoryViews:
+		return weightProjects // Views are navigational like projects
 	default:
 		return weightDefault
 	}
@@ -360,6 +375,10 @@ func getCategoryDisplayName(cat ItemCategory) string {
 		return "Sections"
 	case ItemCategorySavedSearch:
 		return "Saved Searches"
+	case ItemCategoryNotes:
+		return "Notes"
+	case ItemCategoryViews:
+		return "Views"
 	default:
 		return "Other"
 	}

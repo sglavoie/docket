@@ -39,6 +39,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.err = msg.Err
 		return true, statusTimeout(5 * time.Second)
 
+	case NavigateToViewMsg:
+		return m.handleNavigateToView(msg)
+
 	case SettingsMsg:
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 		return true, nil
@@ -676,4 +679,49 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 		}
 		return NotesRefreshMsg{}
 	})
+}
+
+// handleNavigateToView dispatches a NavigateToViewMsg to the appropriate Show message.
+func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
+	project := m.config.GetCurrentProject()
+
+	switch msg.ViewType {
+	case ViewKanban:
+		if project != nil {
+			_ = storage.LoadProject(project)
+			return m.handleViewMessages(ShowKanbanMsg{Project: project})
+		}
+	case ViewDailyReview:
+		return m.handleViewMessages(ShowDailyReviewMsg{})
+	case ViewFocusView:
+		return m.handleViewMessages(ShowFocusViewMsg{})
+	case ViewDueDateOverview:
+		return m.handleViewMessages(ShowDueDateOverviewMsg{})
+	case ViewPriorityView:
+		if project != nil {
+			_ = storage.LoadProject(project)
+			return m.handleViewMessages(ShowPriorityViewMsg{Project: project})
+		}
+	case ViewBlockers:
+		if project != nil {
+			_ = storage.LoadProject(project)
+			return m.handleViewMessages(ShowBlockersMsg{Project: project})
+		}
+	case ViewGlobalInboxProcessor:
+		return m.handleViewMessages(ShowGlobalInboxProcessorMsg{})
+	case ViewGlobalTagManager:
+		return m.handleViewMessages(ShowGlobalTagManagerMsg{})
+	case ViewNotes:
+		if project != nil {
+			return m.handleViewMessages(ShowNotesMsg{Project: project})
+		}
+	case ViewSettings:
+		return m.handleViewMessages(SettingsMsg{})
+	case ViewUndoHistory:
+		if project != nil {
+			_ = storage.LoadProject(project)
+			return m.handleViewMessages(ShowUndoHistoryMsg{Project: project})
+		}
+	}
+	return true, nil
 }

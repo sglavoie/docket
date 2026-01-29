@@ -48,6 +48,10 @@ func (m *CommandPaletteModel) renderPreview() string {
 		preview = m.renderSectionPreview(item)
 	case ItemCategorySavedSearch:
 		preview = m.renderSavedSearchPreview(item)
+	case ItemCategoryNotes:
+		preview = m.renderNotePreview(item)
+	case ItemCategoryViews:
+		preview = m.renderViewPreview(item)
 	default:
 		return MutedStyle.Render("Unknown item type.")
 	}
@@ -105,6 +109,8 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("  :tag    Tags only\n")
 	b.WriteString("  :sec    Sections only\n")
 	b.WriteString("  :saved  Saved searches\n")
+	b.WriteString("  :note   Notes only\n")
+	b.WriteString("  :view   Views only\n")
 	b.WriteString("  :recent Recent commands\n")
 	b.WriteString("\n")
 
@@ -751,6 +757,82 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 
 	b.WriteString("\n")
 	b.WriteString(HelpStyle.Render("Press Enter to run • Tab for actions • d to delete"))
+
+	return b.String()
+}
+
+// renderNotePreview shows details for a note.
+func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
+	if item.Note == nil {
+		return MutedStyle.Render("No note details.")
+	}
+	note := item.Note
+	var b strings.Builder
+
+	// Header
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(note.Title))
+	b.WriteString("\n\n")
+
+	// Project
+	if item.Project != nil {
+		b.WriteString(MutedStyle.Render("Project: "))
+		b.WriteString(BoldStyle.Render(item.Project.Name))
+		b.WriteString("\n")
+	}
+
+	// Tags
+	if len(note.Tags) > 0 {
+		tags := make([]string, len(note.Tags))
+		for i, tag := range note.Tags {
+			tags[i] = TagInlineStyle.Render("#" + tag)
+		}
+		b.WriteString(fmt.Sprintf("%s %s\n",
+			MutedStyle.Render("Tags:"),
+			strings.Join(tags, " ")))
+	}
+
+	// Pinned
+	if note.Pinned {
+		b.WriteString(MutedStyle.Render("Pinned: "))
+		b.WriteString("yes\n")
+	}
+
+	// Linked tasks
+	if len(note.LinkedTasks) > 0 {
+		b.WriteString(fmt.Sprintf("%s %d\n",
+			MutedStyle.Render("Linked tasks:"),
+			len(note.LinkedTasks)))
+	}
+
+	// Body excerpt
+	if note.Body != "" {
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Content"))
+		b.WriteString("\n")
+		excerpt := util.Truncate(strings.TrimSpace(note.Body), m.previewWidth*3)
+		b.WriteString(excerpt)
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderViewPreview shows details for a navigable view.
+func (m *CommandPaletteModel) renderViewPreview(item PaletteItem) string {
+	var b strings.Builder
+
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(item.Name))
+	b.WriteString("\n\n")
+
+	if item.Description != "" {
+		b.WriteString(SubtitleStyle.Render("Description"))
+		b.WriteString("\n")
+		b.WriteString(item.Description)
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(HelpStyle.Render("Press Enter to navigate"))
 
 	return b.String()
 }

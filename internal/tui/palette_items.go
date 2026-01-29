@@ -21,7 +21,7 @@ import (
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved • Alt+↑↓ history"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved :note :view • Alt+↑↓ history"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -241,6 +241,54 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		})
 	}
 
+	// Load notes from all projects
+	for _, project := range projects {
+		notes, err := storage.ListNotes(project)
+		if err != nil {
+			continue
+		}
+		for _, note := range notes {
+			desc := project.Name
+			if len(note.Tags) > 0 {
+				desc += " · " + strings.Join(note.Tags, ", ")
+			}
+			items = append(items, PaletteItem{
+				Name:        note.Title,
+				Description: desc,
+				Category:    ItemCategoryNotes,
+				Note:        note,
+				Project:     project,
+			})
+		}
+	}
+
+	// Add navigable views as static items
+	viewItems := []struct {
+		name        string
+		description string
+		viewType    ViewType
+	}{
+		{"Kanban Board", "Visual board with task columns", ViewKanban},
+		{"Daily Review", "Review and plan your day", ViewDailyReview},
+		{"Focus View", "Distraction-free task focus", ViewFocusView},
+		{"Due Date Overview", "Tasks organized by due date", ViewDueDateOverview},
+		{"Priority View", "Tasks sorted by priority level", ViewPriorityView},
+		{"Blockers", "View blocked and blocking tasks", ViewBlockers},
+		{"Global Inbox", "Process unassigned tasks across projects", ViewGlobalInboxProcessor},
+		{"Global Tag Manager", "Manage tags across all projects", ViewGlobalTagManager},
+		{"Notes", "Project notes and documents", ViewNotes},
+		{"Settings", "Application preferences and configuration", ViewSettings},
+		{"Undo History", "View and restore previous changes", ViewUndoHistory},
+	}
+	for _, v := range viewItems {
+		items = append(items, PaletteItem{
+			Name:        v.name,
+			Description: v.description,
+			Category:    ItemCategoryViews,
+			ViewTarget:  v.viewType,
+		})
+	}
+
 	return items
 }
 
@@ -333,6 +381,12 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 		return item.Section
 	case ItemCategorySavedSearch:
 		return item.Name // Use the saved search name as ID
+	case ItemCategoryNotes:
+		if item.Note != nil {
+			return item.Note.Filename
+		}
+	case ItemCategoryViews:
+		return item.Name
 	}
 	return ""
 }
@@ -619,6 +673,18 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			m.filterItems()
 			// Don't close the palette - let user see the results
 			return m, nil
+		}
+	case ItemCategoryNotes:
+		if item.Project != nil {
+			project := item.Project
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: ShowNotesMsg{Project: project}}
+			}
+		}
+	case ItemCategoryViews:
+		viewType := item.ViewTarget
+		return m, func() tea.Msg {
+			return CommandPaletteExecuteMsg{ResultMsg: NavigateToViewMsg{ViewType: viewType}}
 		}
 	}
 	return m, nil

@@ -819,6 +819,8 @@ var (
 	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySectionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
 	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
+	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108")) // Sage green
+	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))  // Sky blue
 
 	// Selection indicators
 	SelectedCheckboxStyle = lipgloss.NewStyle().Foreground(ColorSuccess)

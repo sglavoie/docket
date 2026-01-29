@@ -56,7 +56,7 @@ func (m *CommandPaletteModel) View() string {
 		content.WriteString("\n\n")
 		content.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
 		content.WriteString("\n")
-		content.WriteString(HelpStyle.Render("     :tag for tags • :sec for sections • or clear to browse all"))
+		content.WriteString(HelpStyle.Render("     :tag :sec :note :view • or clear to browse all"))
 
 		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
 			Title:    "Command Palette",
@@ -180,6 +180,12 @@ func (m *CommandPaletteModel) buildFooter() string {
 	}
 	if c := counts[ItemCategorySections]; c > 0 {
 		countParts = append(countParts, fmt.Sprintf("%ds", c))
+	}
+	if c := counts[ItemCategoryNotes]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%dn", c))
+	}
+	if c := counts[ItemCategoryViews]; c > 0 {
+		countParts = append(countParts, fmt.Sprintf("%dv", c))
 	}
 
 	countSummary := strings.Join(countParts, " ")
@@ -676,6 +682,12 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	case ItemCategorySavedSearch:
 		badge = "★ SAV"
 		style = CategorySavedSearchStyle
+	case ItemCategoryNotes:
+		badge = "✎ NTE"
+		style = CategoryNoteStyle
+	case ItemCategoryViews:
+		badge = "⊞ VEW"
+		style = CategoryViewStyle
 	default:
 		badge = "? ???"
 		style = MutedStyle
@@ -815,7 +827,7 @@ func (m *CommandPaletteModel) getContextualHint() string {
 
 	// Default tips when browsing with no specific selection context
 	if query == "" {
-		return "Tip: Type to search, or use :cmd :task :prj :tag :sec to filter by type"
+		return "Tip: Type to search, or use :cmd :task :prj :tag :sec :note :view to filter"
 	}
 
 	// Category prefix hints

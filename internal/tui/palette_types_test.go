@@ -60,6 +60,8 @@ func TestCategoryPrefixes(t *testing.T) {
 		"sec":    ItemCategorySections,
 		"saved":  ItemCategorySavedSearch,
 		"recent": ItemCategoryCommands,
+		"note":   ItemCategoryNotes,
+		"view":   ItemCategoryViews,
 	}
 
 	for prefix, expectedCat := range expectedPrefixes {
@@ -90,6 +92,8 @@ func TestCategoryOrder(t *testing.T) {
 		ItemCategoryTasks,
 		ItemCategoryTags,
 		ItemCategorySections,
+		ItemCategoryNotes,
+		ItemCategoryViews,
 	}
 
 	if len(categoryOrder) != len(expectedCategories) {
