@@ -258,6 +258,10 @@ var (
 				Bold(true).
 				Foreground(ColorPrimary)
 
+	FieldDescriptionStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted).
+				Faint(true)
+
 	// Selector option styles
 	SelectorOptionStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted).
