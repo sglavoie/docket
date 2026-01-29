@@ -39,6 +39,14 @@ func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCate
 	if spaceIdx == -1 {
 		// No space yet - check if it's a partial prefix (user still typing)
 		prefix := strings.ToLower(query[1:])
+
+		// Check command category prefixes first
+		for p := range commandCategoryPrefixes {
+			if strings.HasPrefix(p, prefix) {
+				return ItemCategoryCommands, "", false
+			}
+		}
+
 		for p := range categoryPrefixes {
 			if strings.HasPrefix(p, prefix) {
 				// Partial match - filter to this category but no search query yet
@@ -50,12 +58,45 @@ func (m *CommandPaletteModel) parseQueryPrefixWithRecent(query string) (ItemCate
 
 	// Extract the prefix (without the colon)
 	prefix := strings.ToLower(query[1:spaceIdx])
+
+	// Check command category prefixes first
+	if _, ok := commandCategoryPrefixes[prefix]; ok {
+		return ItemCategoryCommands, strings.TrimSpace(query[spaceIdx+1:]), false
+	}
+
 	if cat, ok := categoryPrefixes[prefix]; ok {
 		return cat, strings.TrimSpace(query[spaceIdx+1:]), prefix == "recent"
 	}
 
 	// Unknown prefix - treat as regular search
 	return "", query, false
+}
+
+// parseCommandCategoryPrefix returns the CommandCategory if the query uses a command category prefix.
+// Returns empty string if no command category prefix is found.
+func parseCommandCategoryPrefix(query string) CommandCategory {
+	if !strings.HasPrefix(query, ":") {
+		return ""
+	}
+	spaceIdx := strings.Index(query, " ")
+	var prefix string
+	if spaceIdx == -1 {
+		prefix = strings.ToLower(query[1:])
+	} else {
+		prefix = strings.ToLower(query[1:spaceIdx])
+	}
+	if cat, ok := commandCategoryPrefixes[prefix]; ok {
+		return cat
+	}
+	// Check partial match (user still typing)
+	if spaceIdx == -1 {
+		for p, cat := range commandCategoryPrefixes {
+			if strings.HasPrefix(p, prefix) {
+				return cat
+			}
+		}
+	}
+	return ""
 }
 
 // parseFieldFilters extracts field-specific filters from the query.
@@ -588,6 +629,17 @@ func (m *CommandPaletteModel) filterItems() {
 		var filtered []PaletteItem
 		for _, item := range m.allItems {
 			if item.Category == categoryFilter {
+				filtered = append(filtered, item)
+			}
+		}
+		itemsToSearch = filtered
+	}
+
+	// Additionally filter by CommandCategory if a command category prefix was used
+	if cmdCat := parseCommandCategoryPrefix(query); cmdCat != "" {
+		var filtered []PaletteItem
+		for _, item := range itemsToSearch {
+			if item.Command != nil && item.Command.Category == cmdCat {
 				filtered = append(filtered, item)
 			}
 		}

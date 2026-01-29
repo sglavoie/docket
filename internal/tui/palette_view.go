@@ -102,7 +102,7 @@ func (m *CommandPaletteModel) View() string {
 	// Footer with controls - different for each mode
 	var footer string
 	if m.actionMode {
-		footer = HelpStyle.Render("↑/↓ navigate • Enter execute • Tab/Esc back")
+		footer = HelpStyle.Render(m.buildActionModeFooter())
 	} else {
 		footer = HelpStyle.Render(m.buildFooter())
 	}
@@ -221,10 +221,23 @@ func (m *CommandPaletteModel) buildFooter() string {
 		return fmt.Sprintf("+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N")
 	}
 
+	// Show keyhint bar when direct actions are enabled and cursor is on a task
+	if m.isDirectActionEnabled() && len(m.filteredItems) > 0 && m.cursor < len(m.filteredItems) {
+		item := m.filteredItems[m.cursor].Item
+		if item.Category == ItemCategoryTasks && item.Task != nil {
+			return fmt.Sprintf("e=Edit g=View x=Complete s=Start b=Block r=Reopen | %s%s", countSummary, toggleSummary)
+		}
+	}
+
 	// Build compact hints
 	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • Esc"
 
 	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
+}
+
+// buildActionModeFooter builds a compact footer for action mode.
+func (m *CommandPaletteModel) buildActionModeFooter() string {
+	return "↑↓ Enter Tab Esc"
 }
 
 // renderActionList renders the list of available actions for the selected item.
