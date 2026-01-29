@@ -23,7 +23,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
 	}
 	if storage.NotesExist(m.project) {
-		b.WriteString(" [N]")
+		b.WriteString(" ✎ Notes")
 	}
 
 	// Show archived badge
@@ -388,7 +388,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
 	}
 	if storage.NotesExist(m.project) {
-		b.WriteString(" [N]")
+		b.WriteString(" ✎ Notes")
 	}
 
 	// Show archived badge
