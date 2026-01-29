@@ -35,6 +35,7 @@ type notesSearchResult struct {
 	score          int
 	titlePositions []int
 	bodySnippet    string // snippet of matched body content
+	bodyPositions  []int  // match positions within bodySnippet for highlighting
 }
 
 // NotesSearchModel provides search across notes in a project.
@@ -179,7 +180,7 @@ func (m *NotesSearchModel) filterNotes() {
 			titleScore *= 2 // title matches weigh more
 		}
 
-		bodyScore := fuzzy.ScoreTerms(note.Body, query)
+		bodyScore := scoreBodyTerms(note.Body, query)
 
 		tagScore := 0
 		for _, tag := range note.Tags {
@@ -199,8 +200,9 @@ func (m *NotesSearchModel) filterNotes() {
 
 		if bestScore > 0 {
 			snippet := ""
+			var bodyPos []int
 			if bodyScore > 0 {
-				snippet = extractSnippet(note.Body, query)
+				snippet, bodyPos = extractSnippets(note.Body, query)
 			}
 
 			positions := titlePositions
@@ -213,6 +215,7 @@ func (m *NotesSearchModel) filterNotes() {
 				score:          bestScore,
 				titlePositions: positions,
 				bodySnippet:    snippet,
+				bodyPositions:  bodyPos,
 			})
 		}
 	}
@@ -230,52 +233,148 @@ func (m *NotesSearchModel) filterNotes() {
 	}
 }
 
-// extractSnippet extracts a short snippet around the first match in body text.
-func extractSnippet(body, query string) string {
+// scoreBodyTerms scores body text against a multi-term query using substring
+// matching. The fuzzy scorer can reject valid body matches because its
+// "too scattered" heuristic fires when early characters in a long text match
+// before the actual contiguous occurrence. This function checks for case-
+// insensitive substring containment of each term, requiring all terms to match.
+func scoreBodyTerms(body, query string) int {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return 1
+	}
+	terms := strings.Fields(strings.ToLower(query))
+	if len(terms) == 0 {
+		return 1
+	}
+
+	lowerBody := strings.ToLower(body)
+	total := 0
+	for _, term := range terms {
+		idx := strings.Index(lowerBody, term)
+		if idx < 0 {
+			// Fall back to fuzzy for this term
+			s := fuzzy.Score(body, term)
+			if s == 0 {
+				return 0
+			}
+			total += s
+		} else {
+			total += len(term) * 4 // base score proportional to term length
+		}
+	}
+	return total
+}
+
+// extractSnippets extracts up to 3 snippet windows (one per distinct term match)
+// and returns the joined snippet text along with rune-based highlight positions.
+func extractSnippets(body, query string) (string, []int) {
 	lowerBody := strings.ToLower(body)
 	terms := strings.Fields(strings.ToLower(query))
 	if len(terms) == 0 {
-		return ""
+		return "", nil
 	}
 
-	// Find the first occurrence of any term
-	bestIdx := -1
-	for _, term := range terms {
+	type window struct {
+		start, end int
+		termIdx    int // index of the matching term
+	}
+
+	// Find one window per distinct term (up to 3)
+	seen := make(map[int]bool)
+	var windows []window
+	for ti, term := range terms {
 		idx := strings.Index(lowerBody, term)
-		if idx >= 0 && (bestIdx < 0 || idx < bestIdx) {
-			bestIdx = idx
+		if idx < 0 || seen[idx] {
+			continue
+		}
+		seen[idx] = true
+		start := idx - 30
+		if start < 0 {
+			start = 0
+		}
+		end := idx + len(term) + 50
+		if end > len(body) {
+			end = len(body)
+		}
+		windows = append(windows, window{start: start, end: end, termIdx: ti})
+		if len(windows) >= 3 {
+			break
 		}
 	}
 
-	if bestIdx < 0 {
+	if len(windows) == 0 {
 		// No exact substring match; return beginning of body
 		if len(body) > 120 {
-			return body[:120] + "..."
+			return body[:120] + "...", nil
 		}
-		return body
+		return body, nil
 	}
 
-	// Extract context around the match
-	start := bestIdx - 40
-	if start < 0 {
-		start = 0
-	}
-	end := bestIdx + 80
-	if end > len(body) {
-		end = len(body)
+	// Sort windows by position
+	sort.Slice(windows, func(i, j int) bool {
+		return windows[i].start < windows[j].start
+	})
+
+	// Merge overlapping windows
+	merged := []window{windows[0]}
+	for i := 1; i < len(windows); i++ {
+		last := &merged[len(merged)-1]
+		if windows[i].start <= last.end {
+			if windows[i].end > last.end {
+				last.end = windows[i].end
+			}
+		} else {
+			merged = append(merged, windows[i])
+		}
 	}
 
-	snippet := body[start:end]
-	// Trim to word boundaries
-	snippet = strings.TrimSpace(snippet)
-	if start > 0 {
-		snippet = "..." + snippet
-	}
-	if end < len(body) {
-		snippet = snippet + "..."
+	// Build combined snippet and compute highlight positions
+	var result strings.Builder
+	var positions []int
+
+	for i, w := range merged {
+		if i > 0 {
+			result.WriteString(" … ")
+		}
+
+		segment := body[w.start:w.end]
+		prefix := ""
+		suffix := ""
+		if w.start > 0 {
+			prefix = "..."
+		}
+		if w.end < len(body) {
+			suffix = "..."
+		}
+
+		segmentStart := result.Len() + len(prefix)
+		result.WriteString(prefix)
+		result.WriteString(segment)
+		result.WriteString(suffix)
+
+		// Find all term occurrences within this segment for highlighting
+		lowerSegment := strings.ToLower(segment)
+		for _, term := range terms {
+			offset := 0
+			for {
+				idx := strings.Index(lowerSegment[offset:], term)
+				if idx < 0 {
+					break
+				}
+				absOffset := segmentStart + offset + idx
+				segRunes := []rune(result.String()[:absOffset])
+				runeStart := len(segRunes)
+				termRunes := []rune(term)
+				for ri := 0; ri < len(termRunes); ri++ {
+					positions = append(positions, runeStart+ri)
+				}
+				offset += idx + len(term)
+			}
+		}
 	}
 
-	return snippet
+	return result.String(), positions
 }
 
 // View renders the notes search view.
@@ -426,7 +525,11 @@ func (m *NotesSearchModel) renderPreview() string {
 		for i, line := range lines {
 			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
-		b.WriteString(strings.Join(lines, "\n"))
+		snippetText := strings.Join(lines, "\n")
+		if len(fr.bodyPositions) > 0 {
+			snippetText = HighlightText(snippetText, fr.bodyPositions, NormalStyle)
+		}
+		b.WriteString(snippetText)
 	} else if note.Body != "" {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Content"))

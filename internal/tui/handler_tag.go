@@ -140,6 +140,26 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case BulkNoteTagMsg:
+		if msg.Project != nil && len(msg.Notes) > 0 {
+			// Use first note's tags as current; open the standard note tag selector
+			selector := NewNoteTagSelectorModel(msg.Notes[0], msg.Project, msg.Notes[0].Tags)
+			m.pendingBulkNotes = msg.Notes
+			m.showView(ViewNoteTagSelector, selector)
+		}
+		return true, nil
+
+	case BulkNoteTagDoneMsg:
+		if !msg.Canceled {
+			for _, note := range msg.Notes {
+				note.Tags = msg.SelectedTags
+				note.ModifiedAt = time.Now()
+				_ = storage.SaveNote(msg.Project, note)
+			}
+		}
+		m.pendingBulkNotes = nil
+		return true, func() tea.Msg { return NotesRefreshMsg{} }
+
 	case ShowNoteTagSelectorMsg:
 		selector := NewNoteTagSelectorModel(msg.Note, msg.Project, msg.CurrentTags)
 		m.showView(ViewNoteTagSelector, selector)
@@ -148,9 +168,20 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case NoteTagSelectorDoneMsg:
 		m.popView()
 		if msg.Canceled {
+			m.pendingBulkNotes = nil
 			return true, nil
 		}
-		// Apply tags to the note and save
+		// Bulk mode: apply tags to all pending notes
+		if len(m.pendingBulkNotes) > 0 {
+			for _, note := range m.pendingBulkNotes {
+				note.Tags = msg.SelectedTags
+				note.ModifiedAt = time.Now()
+				_ = storage.SaveNote(msg.Project, note)
+			}
+			m.pendingBulkNotes = nil
+			return true, func() tea.Msg { return NotesRefreshMsg{} }
+		}
+		// Single note mode
 		msg.Note.Tags = msg.SelectedTags
 		msg.Note.ModifiedAt = time.Now()
 		if err := storage.SaveNote(msg.Project, msg.Note); err != nil {

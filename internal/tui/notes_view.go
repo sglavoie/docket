@@ -58,6 +58,11 @@ type NotesViewModel struct {
 	listHeight         int
 	detailsHeight      int
 
+	// Multi-select state
+	multiSelectMode bool
+	selectedNotes   map[string]bool // keyed by filename
+	pendingGKey     bool            // waiting for second key after 'g'
+
 	statusMessage string
 }
 
@@ -69,8 +74,9 @@ type notesConfig interface {
 // NewNotesViewModel creates a new notes view.
 func NewNotesViewModel(project *models.Project) *NotesViewModel {
 	m := &NotesViewModel{
-		project:    project,
-		filterTags: make(map[string]bool),
+		project:       project,
+		filterTags:    make(map[string]bool),
+		selectedNotes: make(map[string]bool),
 	}
 	m.loadNotes()
 	return m
@@ -132,6 +138,9 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.confirmDelete {
 			m.confirmDelete = false
 			if key == "d" {
+				if m.multiSelectMode && m.selectedNoteCount() > 0 {
+					return m, m.performBulkDelete()
+				}
 				return m, m.performDelete()
 			}
 			m.statusMessage = "Delete cancelled"
@@ -139,6 +148,23 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.statusMessage = ""
+
+		// Handle pending 'g' prefix key
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if key == "X" && m.multiSelectMode {
+				m.deselectAllNotes()
+				return m, nil
+			}
+			// 'g' alone means jump to top
+			m.cursor = 0
+			m.detailsScroll = 0
+			// If the second key wasn't consumed, don't process it further
+			if key == "X" {
+				return m, nil
+			}
+			// Fall through only if the key wasn't 'X' — let the key be handled normally below
+		}
 
 		// Tab toggles focus between list and details pane
 		if key == "tab" {
@@ -156,20 +182,48 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch key {
 		case "q", "esc":
+			if m.multiSelectMode {
+				m.multiSelectMode = false
+				m.selectedNotes = make(map[string]bool)
+				m.statusMessage = ""
+				return m, nil
+			}
 			return m, func() tea.Msg { return CloseNotesMsg{} }
 		case "j", "down":
 			if m.cursor < len(m.notes)-1 {
 				m.cursor++
+				m.detailsScroll = 0
 			}
 		case "k", "up":
 			if m.cursor > 0 {
 				m.cursor--
+				m.detailsScroll = 0
 			}
 		case "g":
-			m.cursor = 0
+			m.pendingGKey = true
+			return m, nil
 		case "G":
 			if len(m.notes) > 0 {
 				m.cursor = len(m.notes) - 1
+				m.detailsScroll = 0
+			}
+		case "V":
+			m.toggleNoteMultiSelectMode()
+			return m, nil
+		case " ":
+			if m.multiSelectMode {
+				m.toggleNoteSelection()
+				// Move cursor down after toggle
+				if m.cursor < len(m.notes)-1 {
+					m.cursor++
+					m.detailsScroll = 0
+				}
+				return m, nil
+			}
+		case "a":
+			if m.multiSelectMode {
+				m.selectAllNotes()
+				return m, nil
 			}
 		case "enter":
 			return m, m.viewCurrentNote()
@@ -178,14 +232,25 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			return m, m.createNote()
 		case "d":
+			if m.multiSelectMode && m.selectedNoteCount() > 0 {
+				m.confirmDelete = true
+				m.statusMessage = fmt.Sprintf("Press d again to delete %d notes", m.selectedNoteCount())
+				return m, nil
+			}
 			return m, m.deleteCurrentNote()
 		case "l":
+			if m.multiSelectMode && m.selectedNoteCount() > 0 {
+				return m, m.bulkLinkNotes()
+			}
 			return m, m.linkCurrentNote()
 		case "u":
 			return m, m.undoDelete()
 		case "p":
 			m.togglePin()
 		case "t":
+			if m.multiSelectMode && m.selectedNoteCount() > 0 {
+				return m, m.bulkTagNotes()
+			}
 			return m, m.showTagSelector()
 		case "T":
 			return m, func() tea.Msg {
@@ -215,9 +280,9 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ShouldCaptureEsc returns true when delete confirmation is active.
+// ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirmDelete || m.detailsPaneFocused
+	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode
 }
 
 // HasTextInput returns false since search is now a separate view.
@@ -278,17 +343,30 @@ func (m *NotesViewModel) View() string {
 		isCurrent := i == m.cursor
 
 		// Build row
+		checkbox := ""
+		if m.multiSelectMode {
+			if m.isNoteSelected(note.Filename) {
+				checkbox = "[x] "
+			} else {
+				checkbox = "[ ] "
+			}
+		}
+
 		pin := " "
 		if note.Pinned {
 			pin = pinnedStyle.Render("P")
 		}
 
 		titleStr := note.Title
-		if len(titleStr) > 40 {
-			titleStr = titleStr[:37] + "..."
+		maxTitle := 40
+		if m.multiSelectMode {
+			maxTitle = 36 // account for checkbox width
+		}
+		if len(titleStr) > maxTitle {
+			titleStr = titleStr[:maxTitle-3] + "..."
 		}
 		// Pad to fixed width before applying color so ANSI escapes don't break alignment
-		paddedTitle := fmt.Sprintf("%-40s", titleStr)
+		paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
 
 		tags := ""
 		if len(note.Tags) > 0 {
@@ -365,9 +443,11 @@ func (m *NotesViewModel) View() string {
 	// Footer help
 	b.WriteString("\n")
 	if m.detailsPaneFocused {
-		b.WriteString(MutedStyle.Render("j/k: scroll  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close"))
+		b.WriteString(MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  q: close"))
+	} else if m.multiSelectMode {
+		b.WriteString(MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  V/Esc: exit multi-select"))
 	} else {
-		b.WriteString(MutedStyle.Render("j/k: nav  Tab: switch pane  Enter: view  e: edit  n: new  d: del  u: undo  l: link  p: pin  t: tags  T: filter  /: search"))
+		b.WriteString(MutedStyle.Render("j/k: nav  Tab: switch pane  Enter: view  e: edit  n: new  d: del  u: undo  l: link  p: pin  t: tags  T: filter  V: multi  /: search"))
 	}
 
 	return b.String()
@@ -392,6 +472,11 @@ func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
 		if m.detailsScroll < 0 {
 			m.detailsScroll = 0
 		}
+	case "g":
+		m.detailsScroll = 0
+	case "G":
+		// Scroll to bottom; renderDetailsPane will clamp to maxScroll
+		m.detailsScroll = 99999
 	case "esc":
 		m.detailsPaneFocused = false
 	case "q":
@@ -615,6 +700,53 @@ func (m *NotesViewModel) togglePin() {
 	m.loadNotes()
 }
 
+func (m *NotesViewModel) performBulkDelete() tea.Cmd {
+	selected := m.getSelectedNotesList()
+	if len(selected) == 0 {
+		return nil
+	}
+
+	count := 0
+	for _, note := range selected {
+		if err := storage.DeleteNote(m.project, note.Filename); err == nil {
+			count++
+		}
+	}
+
+	m.selectedNotes = make(map[string]bool)
+	m.multiSelectMode = false
+	m.statusMessage = fmt.Sprintf("Deleted %d notes", count)
+	m.loadNotes()
+	return nil
+}
+
+func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
+	selected := m.getSelectedNotesList()
+	if len(selected) == 0 {
+		return nil
+	}
+	// Use first note to open tag selector; results applied to all via BulkNoteTagDoneMsg
+	return func() tea.Msg {
+		return BulkNoteTagMsg{
+			Notes:   selected,
+			Project: m.project,
+		}
+	}
+}
+
+func (m *NotesViewModel) bulkLinkNotes() tea.Cmd {
+	selected := m.getSelectedNotesList()
+	if len(selected) == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		return BulkNoteLinkMsg{
+			Notes:   selected,
+			Project: m.project,
+		}
+	}
+}
+
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
@@ -631,6 +763,10 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "T", Description: "Filter by tags"},
 		{Key: "/", Description: "Search notes"},
 		{Key: "g/G", Description: "Jump to top/bottom"},
+		{Key: "V", Description: "Toggle multi-select mode"},
+		{Key: "space", Description: "Toggle selection (multi-select)"},
+		{Key: "a", Description: "Select all (multi-select)"},
+		{Key: "gX", Description: "Deselect all (multi-select)"},
 		{Key: "q", Description: "Close notes view"},
 	}
 }

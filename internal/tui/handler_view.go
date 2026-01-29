@@ -244,6 +244,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case BulkNoteLinkMsg:
+		if msg.Project != nil && len(msg.Notes) > 0 {
+			// Open linker for first note; result applied to all via pendingBulkNotes
+			m.pendingBulkNotes = msg.Notes
+			m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModel(msg.Project, msg.Notes[0]))
+		}
+		return true, nil
+
 	case ShowNoteTaskLinkerMsg:
 		if msg.Project != nil && msg.Note != nil {
 			m.showView(ViewNoteTaskLinker, NewNoteTaskLinkerModel(msg.Project, msg.Note))
@@ -252,10 +260,32 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseNoteTaskLinkerMsg:
 		m.popView()
+		m.pendingBulkNotes = nil
 		return true, nil
 
 	case NoteTaskLinkedMsg:
 		m.popView()
+		// If in bulk mode, link all pending notes to the same task
+		if len(m.pendingBulkNotes) > 0 {
+			// The first note was already linked by the linker.
+			// We need the linked task ID. Read it from the first note.
+			if v := m.views.Get(ViewNotes); v != nil {
+				if notesView, ok := v.(*NotesViewModel); ok {
+					// Reload first note to get new linked task
+					firstNote := m.pendingBulkNotes[0]
+					reloaded, err := storage.LoadNote(notesView.project, firstNote.Filename)
+					if err == nil && len(reloaded.LinkedTasks) > 0 {
+						lastLinked := reloaded.LinkedTasks[len(reloaded.LinkedTasks)-1]
+						for i := 1; i < len(m.pendingBulkNotes); i++ {
+							note := m.pendingBulkNotes[i]
+							note.AddLink(lastLinked)
+							_ = storage.SaveNote(notesView.project, note)
+						}
+					}
+				}
+			}
+			m.pendingBulkNotes = nil
+		}
 		// Forward to notes view to refresh
 		cmd := m.views.Update(ViewNotes, msg)
 		return true, cmd

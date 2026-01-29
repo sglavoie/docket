@@ -122,6 +122,9 @@ type AppModel struct {
 
 	// Pending bulk tasks for palette operations (priority, date assignment)
 	pendingBulkTasks []PaletteBulkTaskItem
+
+	// Pending bulk notes for multi-select operations
+	pendingBulkNotes []*models.Note
 }
 
 // AppOption is a functional option for configuring AppModel.

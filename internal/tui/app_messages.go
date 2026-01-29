@@ -131,6 +131,34 @@ type ShowNoteTaskLinkerMsg struct {
 	Note    *models.Note
 }
 
+// BulkNoteTagMsg opens the tag selector for multiple notes.
+type BulkNoteTagMsg struct {
+	Notes   []*models.Note
+	Project *models.Project
+}
+
+// BulkNoteTagDoneMsg returns the result from bulk note tagging.
+type BulkNoteTagDoneMsg struct {
+	Notes        []*models.Note
+	Project      *models.Project
+	SelectedTags []string
+	Canceled     bool
+}
+
+// BulkNoteLinkMsg opens the task linker for multiple notes.
+type BulkNoteLinkMsg struct {
+	Notes   []*models.Note
+	Project *models.Project
+}
+
+// BulkNoteLinkDoneMsg returns the result from bulk note linking.
+type BulkNoteLinkDoneMsg struct {
+	Notes    []*models.Note
+	Project  *models.Project
+	TaskID   string
+	Canceled bool
+}
+
 // CloseNoteTaskLinkerMsg closes the note task linker.
 type CloseNoteTaskLinkerMsg struct{}
 
