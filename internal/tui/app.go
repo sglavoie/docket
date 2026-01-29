@@ -2750,6 +2750,147 @@ func (m *AppModel) registerGlobalCommands() {
 		},
 	}
 
+	// Extended Kanban commands — task operations, status, priority, due dates,
+	// linked tasks, copy, flags, tags/sections, sort, filters, fold, multi-select,
+	// type management, structure, views/nav
+	kanbanExtCommands := []Command{
+		// Task operations
+		{Name: "edit task", Description: "Edit selected task", Shortcut: "e", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"open editor"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}} }},
+		{Name: "quick edit", Description: "Inline quick edit with modifier syntax", Shortcut: "E", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"inline edit"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}} }},
+		{Name: "rename task", Description: "Inline rename task title", Shortcut: "r", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"rename"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}} }},
+		{Name: "delete task", Description: "Delete selected task", Shortcut: "D", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"remove task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'D'}} }},
+		{Name: "new task", Description: "Create a new task", Shortcut: "n", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"create task", "add task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}} }},
+		{Name: "quick capture", Description: "Quick capture a single task", Shortcut: "i", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"capture", "inbox"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}} }},
+		{Name: "bulk capture", Description: "Bulk capture multiple tasks", Shortcut: "I", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"multi capture"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'I'}} }},
+		{Name: "view task detail", Description: "Open task detail view", Shortcut: "enter", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"open task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+		{Name: "task comments", Description: "View and add task comments", Shortcut: "C", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"comments"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}} }},
+		{Name: "task attachments", Description: "View and manage task attachments", Shortcut: "A", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"attachments"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}} }},
+		{Name: "dependency viewer", Description: "View task dependency graph", Shortcut: "R", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"dependency graph"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'R'}} }},
+		{Name: "edit content", Description: "Edit task description in external editor", Shortcut: "ctrl+o", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"edit description"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlO} }},
+		{Name: "move to project", Description: "Move task to another project", Shortcut: "M", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"transfer task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'M'}} }},
+		{Name: "undo", Description: "Undo last change", Shortcut: "u", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"undo change", "revert"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}} }},
+		{Name: "undo history", Description: "View undo history", Shortcut: "ctrl+z", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"undo list"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlZ} }},
+		// Status (comma prefix)
+		{Name: "start task", Description: "Set task status to in progress", Shortcut: ",s", Category: CategoryStatus, Views: []ViewType{ViewKanban}, Aliases: []string{"begin task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}} }},
+		{Name: "complete task", Description: "Set task status to done", Shortcut: ",d", Category: CategoryStatus, Views: []ViewType{ViewKanban}, Aliases: []string{"done task", "finish task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}} }},
+		{Name: "block task", Description: "Set task status to blocked", Shortcut: ",b", Category: CategoryStatus, Views: []ViewType{ViewKanban}, Aliases: []string{"blocked task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}} }},
+		{Name: "cancel task", Description: "Set task status to canceled", Shortcut: ",x", Category: CategoryStatus, Views: []ViewType{ViewKanban}, Aliases: []string{"canceled task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}} }},
+		{Name: "reopen task", Description: "Reopen a completed or canceled task", Shortcut: ",o", Category: CategoryStatus, Views: []ViewType{ViewKanban}, Aliases: []string{"reopen"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}} }},
+		// Priority (! prefix)
+		{Name: "priority critical", Description: "Set priority to Critical (1)", Shortcut: "!1", Category: CategoryPriority, Views: []ViewType{ViewKanban}, Aliases: []string{"p1"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}} }},
+		{Name: "priority high", Description: "Set priority to High (2)", Shortcut: "!2", Category: CategoryPriority, Views: []ViewType{ViewKanban}, Aliases: []string{"p2"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}} }},
+		{Name: "priority normal", Description: "Set priority to Normal (3)", Shortcut: "!3", Category: CategoryPriority, Views: []ViewType{ViewKanban}, Aliases: []string{"p3"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}} }},
+		{Name: "priority low", Description: "Set priority to Low (4)", Shortcut: "!4", Category: CategoryPriority, Views: []ViewType{ViewKanban}, Aliases: []string{"p4"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}} }},
+		{Name: "priority someday", Description: "Set priority to Someday (5)", Shortcut: "!5", Category: CategoryPriority, Views: []ViewType{ViewKanban}, Aliases: []string{"p5"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}} }},
+		// Due date (d prefix)
+		{Name: "due today", Description: "Set due date to today", Shortcut: "dt", Category: CategoryDueDate, Views: []ViewType{ViewKanban}, Aliases: []string{"today"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "due tomorrow", Description: "Set due date to tomorrow", Shortcut: "dm", Category: CategoryDueDate, Views: []ViewType{ViewKanban}, Aliases: []string{"tomorrow"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "due next week", Description: "Set due date to +7 days", Shortcut: "dw", Category: CategoryDueDate, Views: []ViewType{ViewKanban}, Aliases: []string{"next week"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "due next month", Description: "Set due date to +30 days", Shortcut: "dn", Category: CategoryDueDate, Views: []ViewType{ViewKanban}, Aliases: []string{"next month"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "clear due date", Description: "Remove due date from task", Shortcut: "d0", Category: CategoryDueDate, Views: []ViewType{ViewKanban}, Aliases: []string{"remove due date"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		// Linked tasks (c prefix)
+		{Name: "create blocker", Description: "Create blocker linked task", Shortcut: "cb", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"add blocker"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "create dependent", Description: "Create dependent linked task", Shortcut: "cd", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"add dependent"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "create subtask", Description: "Create subtask linked task", Shortcut: "cs", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"add subtask"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "create follow-up", Description: "Create follow-up linked task", Shortcut: "cf", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"add follow-up"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "navigate linked tasks", Description: "Navigate to linked tasks", Shortcut: "cn", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"show linked"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "unlink task", Description: "Remove linked task relationship", Shortcut: "cx", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"remove link"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		{Name: "cross-project link", Description: "Link task across projects", Shortcut: "cp", Category: CategoryLinkedTasks, Views: []ViewType{ViewKanban}, Aliases: []string{"cross link"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}} }},
+		// Copy
+		{Name: "copy title", Description: "Copy task title to clipboard", Shortcut: "y", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"yank title"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}} }},
+		{Name: "copy details", Description: "Copy task with details to clipboard", Shortcut: "Y", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"yank details"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}} }},
+		{Name: "copy with description", Description: "Copy task title and description", Shortcut: "ctrl+y", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"yank description"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlY} }},
+		// Flags
+		{Name: "toggle active", Description: "Toggle active flag on task", Shortcut: "*", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"star task", "flag task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'*'}} }},
+		{Name: "toggle pin", Description: "Toggle pinned status on task", Shortcut: "ctrl+p", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"pin task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlP} }},
+		// Tags/sections
+		{Name: "manage tags", Description: "Add or remove tags on task", Shortcut: "ctrl+g", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"tag task", "edit tags"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlG} }},
+		{Name: "section picker", Description: "Pick section for task", Shortcut: "ctrl+n", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"change section"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlN} }},
+		{Name: "tag manager", Description: "Manage project tags", Shortcut: "ctrl+t", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"manage project tags"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlT} }},
+		{Name: "section manager", Description: "Manage project sections", Shortcut: "ctrl+s", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"manage sections"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlS} }},
+		{Name: "tag filter", Description: "Filter tasks by tag", Shortcut: "T", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"filter tag"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}} }},
+		{Name: "manage dependencies", Description: "Manage task dependencies", Shortcut: "ctrl+b", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"add dependency"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlB} }},
+		// Sort
+		{Name: "sort by priority", Description: "Sort tasks by priority", Shortcut: "1", Category: CategorySort, Views: []ViewType{ViewKanban}, Aliases: []string{"priority sort"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}} }},
+		{Name: "sort by due date", Description: "Sort tasks by due date", Shortcut: "2", Category: CategorySort, Views: []ViewType{ViewKanban}, Aliases: []string{"due date sort"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}} }},
+		{Name: "sort by created", Description: "Sort tasks by creation date", Shortcut: "3", Category: CategorySort, Views: []ViewType{ViewKanban}, Aliases: []string{"created sort"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}} }},
+		{Name: "sort by status", Description: "Sort tasks by status", Shortcut: "4", Category: CategorySort, Views: []ViewType{ViewKanban}, Aliases: []string{"status sort"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'4'}} }},
+		{Name: "reset sort", Description: "Reset sort to default order", Shortcut: "0", Category: CategorySort, Views: []ViewType{ViewKanban}, Aliases: []string{"default sort"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}} }},
+		// Filters
+		{Name: "toggle filter bar", Description: "Show/hide the filter bar", Shortcut: "F", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"filter bar"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'F'}} }},
+		{Name: "filter overlay", Description: "Open active filters overlay", Shortcut: "ctrl+f", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"advanced filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlF} }},
+		{Name: "completed view toggle", Description: "Toggle completed view (F1)", Shortcut: "F1", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"show completed"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF1} }},
+		{Name: "high priority filter", Description: "Toggle high priority filter (F2)", Shortcut: "F2", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"priority filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF2} }},
+		{Name: "type filter cycle", Description: "Cycle type filter (F3)", Shortcut: "F3", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"f3 filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF3} }},
+		{Name: "status filter cycle", Description: "Cycle status filter (F4)", Shortcut: "F4", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"f4 filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF4} }},
+		{Name: "tag filter selector", Description: "Open tag filter (F5)", Shortcut: "F5", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"f5 filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF5} }},
+		{Name: "due date filter cycle", Description: "Cycle due date filter (F7)", Shortcut: "F7", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"f7 filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF7} }},
+		{Name: "actionable filter", Description: "Toggle actionable filter (F8)", Shortcut: "F8", Category: CategoryFilters, Views: []ViewType{ViewKanban}, Aliases: []string{"f8 filter"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyF8} }},
+		// Fold (z prefix)
+		{Name: "toggle fold", Description: "Toggle expand/collapse current node", Shortcut: "za", Category: CategoryFold, Views: []ViewType{ViewKanban}, Aliases: []string{"toggle expand"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}} }},
+		{Name: "open fold", Description: "Expand current node", Shortcut: "zo", Category: CategoryFold, Views: []ViewType{ViewKanban}, Aliases: []string{"expand node"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}} }},
+		{Name: "close fold", Description: "Collapse current node", Shortcut: "zc", Category: CategoryFold, Views: []ViewType{ViewKanban}, Aliases: []string{"collapse node"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}} }},
+		{Name: "focus subtree", Description: "Focus on current subtree only", Shortcut: "zv", Category: CategoryFold, Views: []ViewType{ViewKanban}, Aliases: []string{"zoom subtree"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}} }},
+		// Multi-select
+		{Name: "toggle multi-select", Description: "Toggle multi-select mode", Shortcut: "v", Category: CategoryMultiSelect, Views: []ViewType{ViewKanban}, Aliases: []string{"multi select"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}} }},
+		{Name: "select all in column", Description: "Select all tasks in column", Shortcut: "a", Category: CategoryMultiSelect, Views: []ViewType{ViewKanban}, Aliases: []string{"select all column"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}} }},
+		{Name: "toggle selection", Description: "Toggle selection of current task", Shortcut: "space", Category: CategoryMultiSelect, Views: []ViewType{ViewKanban}, Aliases: []string{"select task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeySpace} }},
+		// Type management
+		{Name: "promote type", Description: "Promote task type (task → story → epic)", Shortcut: "<", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"promote", "type up"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'<'}} }},
+		{Name: "demote type", Description: "Demote task type (epic → story → task)", Shortcut: ">", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"demote", "type down"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'>'}} }},
+		{Name: "cycle leaf type left", Description: "Cycle leaf type left", Shortcut: "H", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"type left"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'H'}} }},
+		{Name: "cycle leaf type right", Description: "Cycle leaf type right", Shortcut: "L", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"type right"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'L'}} }},
+		// Structure
+		{Name: "outdent task", Description: "Outdent task (move to parent's level)", Shortcut: "←", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"unnest task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyLeft} }},
+		{Name: "indent task", Description: "Indent task (nest under task above)", Shortcut: "→", Category: CategoryStructure, Views: []ViewType{ViewKanban}, Aliases: []string{"nest task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRight} }},
+		// Views/nav
+		{Name: "show notes", Description: "Open notes view", Shortcut: "[", Category: CategoryNotes, Views: []ViewType{ViewKanban}, Aliases: []string{"notes"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'['}} }},
+		{Name: "create note", Description: "Create a new note", Shortcut: "]", Category: CategoryNotes, Views: []ViewType{ViewKanban}, Aliases: []string{"new note"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}} }},
+		{Name: "blockers view", Description: "Show blockers and blocked tasks", Shortcut: "b", Category: CategoryViews, Views: []ViewType{ViewKanban}, Aliases: []string{"blockers"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}} }},
+		{Name: "priority view", Description: "View tasks by priority", Shortcut: "p", Category: CategoryViews, Views: []ViewType{ViewKanban}, Aliases: []string{"priority"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}} }},
+		{Name: "inbox processor", Description: "Process inbox items", Shortcut: "w", Category: CategoryViews, Views: []ViewType{ViewKanban}, Aliases: []string{"inbox"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}} }},
+		{Name: "focus subtree view", Description: "Focus on current subtree", Shortcut: "f", Category: CategoryViews, Views: []ViewType{ViewKanban}, Aliases: []string{"focus mode"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}} }},
+		{Name: "task jumper", Description: "Jump to task by ID or name", Shortcut: "\\", Category: CategorySearch, Views: []ViewType{ViewKanban}, Aliases: []string{"find task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\\'}} }},
+		{Name: "cycle forward project", Description: "Switch to next project in cycle", Shortcut: "`", Category: CategoryNavigation, Views: []ViewType{ViewKanban}, Aliases: []string{"next project"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'`'}} }},
+		{Name: "cycle backward project", Description: "Switch to previous project in cycle", Shortcut: "~", Category: CategoryNavigation, Views: []ViewType{ViewKanban}, Aliases: []string{"previous project"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'~'}} }},
+		{Name: "project cycle manager", Description: "Configure project cycle", Shortcut: "@", Category: CategoryNavigation, Views: []ViewType{ViewKanban}, Aliases: []string{"cycle manager"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'@'}} }},
+		{Name: "archive completed", Description: "Move completed tasks to archive", Shortcut: "ctrl+a", Category: CategoryActions, Views: []ViewType{ViewKanban}, Aliases: []string{"archive"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlA} }},
+		{Name: "edit last modified", Description: "Edit the most recently modified task", Shortcut: "ctrl+l", Category: CategoryKanban, Views: []ViewType{ViewKanban}, Aliases: []string{"recent task"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlL} }},
+		{Name: "reload project", Description: "Reload project data from storage", Shortcut: "ctrl+r", Category: CategoryActions, Views: []ViewType{ViewKanban}, Aliases: []string{"refresh"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyCtrlR} }},
+	}
+
+	// Blockers view commands (ViewBlockers)
+	blockersCommands := []Command{
+		{Name: "add blocker", Description: "Add a new blocker", Shortcut: "a", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"new blocker", "n"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}} }},
+		{Name: "edit blocker", Description: "Edit selected blocker", Shortcut: "e", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"modify blocker"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}} }},
+		{Name: "edit in editor", Description: "Edit blocker in external editor", Shortcut: "E", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"external editor"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}} }},
+		{Name: "toggle resolve", Description: "Toggle resolve/unresolve blocker", Shortcut: "R", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"resolve blocker", "unresolve"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'R'}} }},
+		{Name: "delete blocker", Description: "Delete selected blocker", Shortcut: "d", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"remove blocker", "x"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "toggle show resolved", Description: "Toggle showing resolved blockers", Shortcut: "tab", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"show resolved"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyTab} }},
+		{Name: "expand blocker", Description: "Expand/view blocker details", Shortcut: "enter", Category: CategoryBlockers, Views: []ViewType{ViewBlockers}, Aliases: []string{"view blocker"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+	}
+
+	// Task Comments view commands (ViewTaskComments)
+	taskCommentsCommands := []Command{
+		{Name: "add comment", Description: "Add a new comment", Shortcut: "a", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"new comment", "n"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}} }},
+		{Name: "edit comment", Description: "Edit selected comment", Shortcut: "e", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"modify comment"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}} }},
+		{Name: "edit in editor", Description: "Edit comment in external editor", Shortcut: "E", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"external editor"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}} }},
+		{Name: "delete comment", Description: "Delete selected comment", Shortcut: "d", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"remove comment", "x"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
+		{Name: "expand comment", Description: "Expand/view comment details", Shortcut: "enter", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"view comment"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+	}
+
+	// Undo History view commands (ViewUndoHistory)
+	undoHistoryCommands := []Command{
+		{Name: "perform undo", Description: "Undo selected entry or view detail", Shortcut: "enter", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"undo entry", "view detail"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+		{Name: "switch pane", Description: "Switch between entry list and diff pane", Shortcut: "tab", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"toggle pane"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyTab} }},
+	}
+
+	// Global Tag Manager view commands (ViewGlobalTagManager)
+	globalTagManagerCommands := []Command{
+		{Name: "navigate to tag project", Description: "Navigate to tag's project", Shortcut: "enter", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"open tag project"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+		{Name: "rename tag", Description: "Rename selected tag", Shortcut: "r", Category: CategoryActions, Views: []ViewType{ViewGlobalTagManager}, Aliases: []string{"edit tag name"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}} }},
+	}
+
 	// Task Attachments view commands (ViewTaskAttachments)
 	attachmentCommands := []Command{
 		{
@@ -3177,6 +3318,11 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(priorityViewCommands)
 	_ = m.commandRegistry.RegisterBatch(inboxProcessorCommands)
 	_ = m.commandRegistry.RegisterBatch(dueDateOverviewCommands)
+	_ = m.commandRegistry.RegisterBatch(kanbanExtCommands)
+	_ = m.commandRegistry.RegisterBatch(blockersCommands)
+	_ = m.commandRegistry.RegisterBatch(taskCommentsCommands)
+	_ = m.commandRegistry.RegisterBatch(undoHistoryCommands)
+	_ = m.commandRegistry.RegisterBatch(globalTagManagerCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

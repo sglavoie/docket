@@ -43,15 +43,18 @@ var categoryPrefixes = map[string]ItemCategory{
 // commandCategoryPrefixes maps short prefixes to CommandCategory for sub-filtering commands.
 // Users can type ":nav " to filter commands to Navigation category only, etc.
 var commandCategoryPrefixes = map[string]CommandCategory{
-	"nav":    CategoryNavigation,
-	"sort":   CategorySort,
-	"pri":    CategoryPriority,
-	"status": CategoryStatus,
-	"due":    CategoryDueDate,
-	"fold":   CategoryFold,
-	"link":   CategoryLinkedTasks,
-	"attach": CategoryAttachments,
-	"kanban": CategoryKanban,
+	"nav":       CategoryNavigation,
+	"sort":      CategorySort,
+	"pri":       CategoryPriority,
+	"status":    CategoryStatus,
+	"due":       CategoryDueDate,
+	"fold":      CategoryFold,
+	"link":      CategoryLinkedTasks,
+	"attach":    CategoryAttachments,
+	"kanban":    CategoryKanban,
+	"block":     CategoryBlockers,
+	"comment":   CategoryComments,
+	"structure": CategoryStructure,
 }
 
 // categoryOrder defines the display order for categories when showing headers.

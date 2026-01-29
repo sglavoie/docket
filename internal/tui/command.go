@@ -26,6 +26,9 @@ const (
 	CategoryFold        CommandCategory = "Fold"
 	CategoryAttachments CommandCategory = "Attachments"
 	CategoryKanban      CommandCategory = "Kanban"
+	CategoryBlockers    CommandCategory = "Blockers"
+	CategoryComments    CommandCategory = "Comments"
+	CategoryUndoHistory CommandCategory = "Undo History"
 )
 
 // Command represents an executable action in the command palette.
