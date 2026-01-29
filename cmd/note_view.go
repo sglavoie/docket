@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var noteViewNoGlow bool
@@ -28,14 +31,32 @@ func init() {
 }
 
 func runNoteView(cmd *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	var note *models.Note
+	var glowEnabled bool
 
-	note, err := findNote(project, args[0])
-	if err != nil {
-		return err
+	if noteGlobal {
+		dir, gErr := globalNotesDir()
+		if gErr != nil {
+			return gErr
+		}
+		var err error
+		note, err = findNoteIn(dir, args[0])
+		if err != nil {
+			return err
+		}
+		mgr := config.NewManager(GetConfigPath())
+		cfg, _ := mgr.Load()
+		glowEnabled = cfg.GlowEnabled
+	} else {
+		project, cfg, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		note, err = findNote(project, args[0])
+		if err != nil {
+			return err
+		}
+		glowEnabled = cfg.GlowEnabled
 	}
 
 	content := fmt.Sprintf("# %s\n\n%s", note.Title, note.Body)
@@ -43,7 +64,7 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		content = fmt.Sprintf("# %s\n\nTags: %s\n\n%s", note.Title, strings.Join(note.Tags, ", "), note.Body)
 	}
 
-	useGlow := cfg.GlowEnabled && Deps.Renderer.Available() && !noteViewNoGlow
+	useGlow := glowEnabled && Deps.Renderer.Available() && !noteViewNoGlow
 	if useGlow {
 		return Deps.Renderer.PageMarkdown(content)
 	}

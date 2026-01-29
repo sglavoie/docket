@@ -80,6 +80,7 @@ const (
 	ViewTaskActivity
 	ViewRecentActivity
 	ViewRecentActivityPreview
+	ViewGlobalNotes
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -129,6 +130,15 @@ type AppModel struct {
 
 	// Pending bulk notes for multi-select operations
 	pendingBulkNotes []*models.Note
+
+	// Pending global note move operation
+	pendingGlobalNoteMove *pendingNoteMove
+}
+
+// pendingNoteMove holds state for a global note move operation.
+type pendingNoteMove struct {
+	Note      *models.Note
+	SourceDir string
 }
 
 // AppOption is a functional option for configuring AppModel.
@@ -543,6 +553,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"global inbox", "all inbox", "process all inbox"},
 			Handler: func() tea.Msg {
 				return ShowGlobalInboxProcessorMsg{}
+			},
+		},
+		{
+			Name:        "global notes",
+			Description: "Open global notes (not tied to any project)",
+			Shortcut:    "N",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"global notes", "notes", "scratch notes"},
+			Handler: func() tea.Msg {
+				return ShowGlobalNotesMsg{}
 			},
 		},
 		{
@@ -2520,7 +2541,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Edit note in external editor",
 			Shortcut:    "e",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"open note editor", "modify note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
@@ -2531,7 +2552,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Delete selected note",
 			Shortcut:    "d",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"remove note", "trash note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
@@ -2542,7 +2563,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Undo last note deletion",
 			Shortcut:    "u",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"restore note", "undelete note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
@@ -2564,7 +2585,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Toggle pin status on note",
 			Shortcut:    "p",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"pin note", "unpin note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}}
@@ -2575,7 +2596,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Add or remove tags on note",
 			Shortcut:    "t",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"tag note", "note tags"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}}
@@ -2608,7 +2629,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Create a new note",
 			Shortcut:    "n",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"new note", "add note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
@@ -2619,7 +2640,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Rename selected note inline",
 			Shortcut:    "r",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"note rename", "change note title"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
@@ -2630,7 +2651,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Cycle sort mode (date/title/pinned)",
 			Shortcut:    "s",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"sort notes", "note sort mode"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
@@ -2641,7 +2662,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Clear all note tag filters",
 			Shortcut:    "C",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"reset note filters", "clear note tags"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}}
@@ -2652,7 +2673,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Copy note title to clipboard",
 			Shortcut:    "y",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note title"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
@@ -2663,7 +2684,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Copy note body to clipboard",
 			Shortcut:    "Y",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note body"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
@@ -2674,7 +2695,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Copy title and body to clipboard",
 			Shortcut:    "ctrl+y",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"yank note full"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyCtrlY}
@@ -2685,7 +2706,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "Toggle note multi-select mode",
 			Shortcut:    "V",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"multi select notes"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'V'}}
@@ -2696,7 +2717,7 @@ func (m *AppModel) registerGlobalCommands() {
 			Description: "View selected note",
 			Shortcut:    "enter",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewNotes},
+			Views:       []ViewType{ViewNotes, ViewGlobalNotes},
 			Aliases:     []string{"open note", "read note"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyEnter}
@@ -3692,15 +3713,43 @@ func (m *AppModel) GetCommandRegistry() *CommandRegistry {
 
 // isNotesFullscreen returns true when the notes view is in fullscreen pane mode.
 func (m *AppModel) isNotesFullscreen() bool {
-	if m.currentView() != ViewNotes {
+	cv := m.currentView()
+	if cv != ViewNotes && cv != ViewGlobalNotes {
 		return false
 	}
-	if v := m.views.Get(ViewNotes); v != nil {
-		if nv, ok := v.(*NotesViewModel); ok {
-			return nv.fullscreenPane
-		}
+	if nv := m.getActiveNotesView(); nv != nil {
+		return nv.fullscreenPane
 	}
 	return false
+}
+
+// getActiveNotesView returns the currently active NotesViewModel (project or global).
+func (m *AppModel) getActiveNotesView() *NotesViewModel {
+	cv := m.currentView()
+	var viewType ViewType
+	switch cv {
+	case ViewNotes:
+		viewType = ViewNotes
+	case ViewGlobalNotes:
+		viewType = ViewGlobalNotes
+	default:
+		// Check if either is on the stack
+		for i := len(m.viewStack) - 1; i >= 0; i-- {
+			if m.viewStack[i] == ViewNotes || m.viewStack[i] == ViewGlobalNotes {
+				viewType = m.viewStack[i]
+				break
+			}
+		}
+		if viewType == 0 {
+			return nil
+		}
+	}
+	if v := m.views.Get(viewType); v != nil {
+		if nv, ok := v.(*NotesViewModel); ok {
+			return nv
+		}
+	}
+	return nil
 }
 
 // currentView returns the current view type.

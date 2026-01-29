@@ -282,6 +282,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		{"Global Inbox", "Process unassigned tasks across projects", ViewGlobalInboxProcessor},
 		{"Global Tag Manager", "Manage tags across all projects", ViewGlobalTagManager},
 		{"Notes", "Project notes and documents", ViewNotes},
+		{"Global Notes", "Notes not tied to any project", ViewGlobalNotes},
 		{"Workflow Rules", "Manage workflow automation rules", ViewWorkflowRules},
 		{"Settings", "Application preferences and configuration", ViewSettings},
 		{"Undo History", "View and restore previous changes", ViewUndoHistory},

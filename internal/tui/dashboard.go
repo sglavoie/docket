@@ -235,6 +235,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return CreateProjectMsg{}
 			}
+		case "N":
+			return m, func() tea.Msg {
+				return ShowGlobalNotesMsg{}
+			}
 		case "a":
 			m.showArchived = !m.showArchived
 			m.cursor = 0

@@ -161,7 +161,13 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			var failed int
 			for _, note := range msg.Notes {
 				note.SetTags(msg.SelectedTags)
-				if err := storage.SaveNote(msg.Project, note); err != nil {
+				var saveErr error
+				if msg.IsGlobal {
+					saveErr = storage.SaveNoteTo(msg.NotesDir, note)
+				} else {
+					saveErr = storage.SaveNote(msg.Project, note)
+				}
+				if saveErr != nil {
 					failed++
 				}
 			}
@@ -172,11 +178,9 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
 			}
 			// Store undo state on notes view
-			if v := m.views.Get(ViewNotes); v != nil {
-				if nv, ok := v.(*NotesViewModel); ok {
-					nv.lastTagUndo = undoEntries
-					nv.lastLinkUndo = nil
-				}
+			if nv := m.getActiveNotesView(); nv != nil {
+				nv.lastTagUndo = undoEntries
+				nv.lastLinkUndo = nil
 			}
 		}
 		m.pendingBulkNotes = nil
@@ -205,7 +209,13 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			var failed int
 			for _, note := range m.pendingBulkNotes {
 				note.SetTags(msg.SelectedTags)
-				if err := storage.SaveNote(msg.Project, note); err != nil {
+				var saveErr error
+				if msg.IsGlobal {
+					saveErr = storage.SaveNoteTo(msg.NotesDir, note)
+				} else {
+					saveErr = storage.SaveNote(msg.Project, note)
+				}
+				if saveErr != nil {
 					failed++
 				}
 			}
@@ -216,19 +226,23 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
 			}
 			// Store undo state on notes view
-			if v := m.views.Get(ViewNotes); v != nil {
-				if nv, ok := v.(*NotesViewModel); ok {
-					nv.lastTagUndo = undoEntries
-					nv.lastLinkUndo = nil
-				}
+			if nv := m.getActiveNotesView(); nv != nil {
+				nv.lastTagUndo = undoEntries
+				nv.lastLinkUndo = nil
 			}
 			m.pendingBulkNotes = nil
 			return true, func() tea.Msg { return NotesRefreshMsg{} }
 		}
 		// Single note mode
 		msg.Note.SetTags(msg.SelectedTags)
-		if err := storage.SaveNote(msg.Project, msg.Note); err != nil {
-			return true, errorCmd("failed to save note tags: %w", err)
+		var saveErr error
+		if msg.IsGlobal {
+			saveErr = storage.SaveNoteTo(msg.NotesDir, msg.Note)
+		} else {
+			saveErr = storage.SaveNote(msg.Project, msg.Note)
+		}
+		if saveErr != nil {
+			return true, errorCmd("failed to save note tags: %w", saveErr)
 		}
 		return true, func() tea.Msg { return NotesRefreshMsg{} }
 

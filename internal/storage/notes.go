@@ -21,14 +21,29 @@ func NotesDir(project *models.Project) string {
 	return filepath.Join(project.Path, notesDirName)
 }
 
+// GlobalNotesDir returns the path to the global notes directory.
+func GlobalNotesDir(dataDir string) string {
+	return filepath.Join(dataDir, "global-notes")
+}
+
 // EnsureNotesDir creates the notes directory if it doesn't exist.
 func EnsureNotesDir(project *models.Project) error {
 	return os.MkdirAll(NotesDir(project), 0755)
 }
 
+// ensureDirPath creates a directory if it doesn't exist.
+func ensureDirPath(dir string) error {
+	return os.MkdirAll(dir, 0755)
+}
+
 // LoadNote reads a single note from its file.
 func LoadNote(project *models.Project, filename string) (*models.Note, error) {
-	path := filepath.Join(NotesDir(project), filename)
+	return LoadNoteFrom(NotesDir(project), filename)
+}
+
+// LoadNoteFrom reads a single note from a directory path.
+func LoadNoteFrom(dir, filename string) (*models.Note, error) {
+	path := filepath.Join(dir, filename)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -40,21 +55,22 @@ func LoadNote(project *models.Project, filename string) (*models.Note, error) {
 // If the note is new (file doesn't exist yet) and a collision is detected,
 // it appends -2, -3 etc. to the base name to avoid overwriting.
 func SaveNote(project *models.Project, note *models.Note) error {
-	if err := EnsureNotesDir(project); err != nil {
+	return SaveNoteTo(NotesDir(project), note)
+}
+
+// SaveNoteTo writes a note to a directory path.
+func SaveNoteTo(dir string, note *models.Note) error {
+	if err := ensureDirPath(dir); err != nil {
 		return err
 	}
 
-	dir := NotesDir(project)
 	path := filepath.Join(dir, note.Filename)
 
 	// Check for collision: if file exists but this is a new note (no prior content on disk)
 	// we need to deduplicate the filename.
 	if _, err := os.Stat(path); err == nil {
-		// File exists. Check if this note "owns" it by trying to load and compare created time.
-		// If the existing file has a different creation time, it's a collision.
-		existing, loadErr := LoadNote(project, note.Filename)
+		existing, loadErr := LoadNoteFrom(dir, note.Filename)
 		if loadErr == nil && !existing.CreatedAt.Equal(note.CreatedAt) {
-			// Collision: find a unique name
 			base := strings.TrimSuffix(note.Filename, ".md")
 			for i := 2; ; i++ {
 				candidate := fmt.Sprintf("%s-%d.md", base, i)
@@ -78,7 +94,11 @@ func SaveNote(project *models.Project, note *models.Note) error {
 // ListNotes returns all notes in a project sorted by modified date (newest first),
 // with pinned notes always appearing first.
 func ListNotes(project *models.Project) ([]*models.Note, error) {
-	dir := NotesDir(project)
+	return ListNotesFrom(NotesDir(project))
+}
+
+// ListNotesFrom returns all notes from a directory path.
+func ListNotesFrom(dir string) ([]*models.Note, error) {
 	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -92,7 +112,7 @@ func ListNotes(project *models.Project) ([]*models.Note, error) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		note, err := LoadNote(project, entry.Name())
+		note, err := LoadNoteFrom(dir, entry.Name())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "tt: skipping unparseable note %s: %v\n", entry.Name(), err)
 			continue
@@ -112,13 +132,22 @@ func ListNotes(project *models.Project) ([]*models.Note, error) {
 
 // DeleteNote removes a note file from disk.
 func DeleteNote(project *models.Project, filename string) error {
-	path := filepath.Join(NotesDir(project), filename)
+	return DeleteNoteFrom(NotesDir(project), filename)
+}
+
+// DeleteNoteFrom removes a note file from a directory path.
+func DeleteNoteFrom(dir, filename string) error {
+	path := filepath.Join(dir, filename)
 	return os.Remove(path)
 }
 
 // NotesExist returns true if the project has any notes.
 func NotesExist(project *models.Project) bool {
-	dir := NotesDir(project)
+	return NotesExistIn(NotesDir(project))
+}
+
+// NotesExistIn returns true if the given directory has any notes.
+func NotesExistIn(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false
@@ -134,20 +163,21 @@ func NotesExist(project *models.Project) bool {
 // RenameNote changes a note's title and filename atomically.
 // It saves the note with the new title (generating a new filename) and deletes the old file.
 func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.Note, error) {
-	note, err := LoadNote(project, oldFilename)
+	return RenameNoteIn(NotesDir(project), oldFilename, newTitle)
+}
+
+// RenameNoteIn changes a note's title and filename in a directory path.
+func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
+	note, err := LoadNoteFrom(dir, oldFilename)
 	if err != nil {
 		return nil, fmt.Errorf("load note: %w", err)
 	}
 
 	note.Title = newTitle
 	note.ModifiedAt = time.Now()
-	// Generate a new filename from the new title, using the original creation time
 	newFilename := models.GenerateNoteFilename(newTitle, note.CreatedAt)
 
-	// Check for collision: if the new filename differs from the old one and already exists,
-	// append -2, -3, etc. to avoid overwriting a different note.
 	if newFilename != oldFilename {
-		dir := NotesDir(project)
 		base := strings.TrimSuffix(newFilename, ".md")
 		candidate := newFilename
 		for i := 2; ; i++ {
@@ -161,14 +191,13 @@ func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.
 	}
 	note.Filename = newFilename
 
-	if err := SaveNote(project, note); err != nil {
+	if err := SaveNoteTo(dir, note); err != nil {
 		return nil, fmt.Errorf("save renamed note: %w", err)
 	}
 
-	// Delete old file only if the filename actually changed
 	if note.Filename != oldFilename {
-		oldPath := filepath.Join(NotesDir(project), oldFilename)
-		_ = os.Remove(oldPath) // best-effort cleanup
+		oldPath := filepath.Join(dir, oldFilename)
+		_ = os.Remove(oldPath)
 	}
 
 	return note, nil
@@ -176,7 +205,12 @@ func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.
 
 // NoteFilePath returns the full path to a note file.
 func NoteFilePath(project *models.Project, filename string) string {
-	return filepath.Join(NotesDir(project), filename)
+	return NoteFilePathIn(NotesDir(project), filename)
+}
+
+// NoteFilePathIn returns the full path to a note file in a directory.
+func NoteFilePathIn(dir, filename string) string {
+	return filepath.Join(dir, filename)
 }
 
 // RenderNoteContent serializes a Note to markdown with YAML frontmatter.

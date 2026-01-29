@@ -34,11 +34,6 @@ func init() {
 }
 
 func runNoteAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
 	title := strings.Join(args, " ")
 	if title == "" {
 		return fmt.Errorf("note title is required")
@@ -49,10 +44,25 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 		note.SetTags(noteAddTags)
 	}
 
+	if noteGlobal {
+		dir, err := globalNotesDir()
+		if err != nil {
+			return err
+		}
+		if err := storage.SaveNoteTo(dir, note); err != nil {
+			return fmt.Errorf("failed to save note: %w", err)
+		}
+		fmt.Printf("[global] Created note: %s (%s)\n", title, note.Filename)
+		return nil
+	}
+
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
 	if err := storage.SaveNote(project, note); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
-
 	fmt.Printf("[%s] Created note: %s (%s)\n", project.Name, title, note.Filename)
 	return nil
 }

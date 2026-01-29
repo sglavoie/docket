@@ -5,7 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -36,22 +38,43 @@ func init() {
 }
 
 func runNoteEdit(cmd *cobra.Command, args []string) error {
-	project, cfg, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	var note *models.Note
+	var editor string
+	var saveDir string
+
+	if noteGlobal {
+		dir, gErr := globalNotesDir()
+		if gErr != nil {
+			return gErr
+		}
+		var err error
+		note, err = findNoteIn(dir, args[0])
+		if err != nil {
+			return err
+		}
+		saveDir = dir
+		mgr := config.NewManager(GetConfigPath())
+		cfg, _ := mgr.Load()
+		editor = noteEditEditor
+		if editor == "" {
+			editor = cfg.Editor
+		}
+	} else {
+		project, cfg, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		note, err = findNote(project, args[0])
+		if err != nil {
+			return err
+		}
+		saveDir = storage.NotesDir(project)
+		editor = noteEditEditor
+		if editor == "" {
+			editor = cfg.Editor
+		}
 	}
 
-	note, err := findNote(project, args[0])
-	if err != nil {
-		return err
-	}
-
-	editor := noteEditEditor
-	if editor == "" {
-		editor = cfg.Editor
-	}
-
-	// Read current content
 	content, err := storage.RenderNoteContent(note)
 	if err != nil {
 		return fmt.Errorf("failed to render note: %w", err)
@@ -67,13 +90,12 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Re-parse and save
 	updatedNote, err := storage.ParseNoteContent(note.Filename, modified)
 	if err != nil {
 		return fmt.Errorf("failed to parse edited note: %w", err)
 	}
 
-	if err := storage.SaveNote(project, updatedNote); err != nil {
+	if err := storage.SaveNoteTo(saveDir, updatedNote); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 

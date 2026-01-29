@@ -123,6 +123,18 @@ type CloseNotesMsg struct{}
 // NotesRefreshMsg refreshes the notes list.
 type NotesRefreshMsg struct{}
 
+// ShowGlobalNotesMsg opens the global notes view.
+type ShowGlobalNotesMsg struct{}
+
+// CloseGlobalNotesMsg closes the global notes view.
+type CloseGlobalNotesMsg struct{}
+
+// MoveNoteToProjectMsg moves a note from global notes to a project.
+type MoveNoteToProjectMsg struct {
+	Note    *models.Note
+	Project *models.Project
+}
+
 // ShowNoteCreatorMsg opens a quick note creation prompt.
 type ShowNoteCreatorMsg struct {
 	Project *models.Project
@@ -136,14 +148,18 @@ type ShowNoteTaskLinkerMsg struct {
 
 // BulkNoteTagMsg opens the tag selector for multiple notes.
 type BulkNoteTagMsg struct {
-	Notes   []*models.Note
-	Project *models.Project
+	Notes    []*models.Note
+	Project  *models.Project
+	NotesDir string
+	IsGlobal bool
 }
 
 // BulkNoteTagDoneMsg returns the result from bulk note tagging.
 type BulkNoteTagDoneMsg struct {
 	Notes        []*models.Note
 	Project      *models.Project
+	NotesDir     string
+	IsGlobal     bool
 	SelectedTags []string
 	Canceled     bool
 }

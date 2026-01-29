@@ -147,6 +147,8 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	case ViewNotes:
 		status = "Notes"
+	case ViewGlobalNotes:
+		status = "Global Notes"
 	case ViewNotesSearch:
 		status = "Notes Search"
 	case ViewNoteTagFilterSelector:

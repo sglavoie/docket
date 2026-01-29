@@ -21,6 +21,8 @@ import (
 type ShowNoteTagSelectorMsg struct {
 	Note        *models.Note
 	Project     *models.Project
+	NotesDir    string
+	IsGlobal    bool
 	CurrentTags []string
 }
 
@@ -28,6 +30,8 @@ type ShowNoteTagSelectorMsg struct {
 type NoteTagSelectorDoneMsg struct {
 	Note         *models.Note
 	Project      *models.Project
+	NotesDir     string
+	IsGlobal     bool
 	SelectedTags []string
 	Canceled     bool
 }
@@ -37,8 +41,10 @@ type NotesViewModel struct {
 	width  int
 	height int
 
-	project *models.Project
-	config  interface{ GetEditor() string }
+	project  *models.Project
+	notesDir string // when set, use path-based storage (global notes mode)
+	isGlobal bool   // true when operating on global notes
+	config   interface{ GetEditor() string }
 
 	notes  []*models.Note
 	cursor int
@@ -144,14 +150,43 @@ func NewNotesViewModel(project *models.Project, cfg ...notesConfig) *NotesViewMo
 	return m
 }
 
+// NewGlobalNotesViewModel creates a notes view for global notes.
+func NewGlobalNotesViewModel(notesDir string, cfg ...notesConfig) *NotesViewModel {
+	m := &NotesViewModel{
+		notesDir:      notesDir,
+		isGlobal:      true,
+		filterTags:    make(map[string]bool),
+		selectedNotes: make(map[string]bool),
+	}
+	if len(cfg) > 0 && cfg[0] != nil {
+		m.config = cfg[0]
+	}
+	m.loadNotes()
+	return m
+}
+
+// effectiveDir returns the notes directory path for either global or project notes.
+func (m *NotesViewModel) effectiveDir() string {
+	if m.isGlobal {
+		return m.notesDir
+	}
+	return storage.NotesDir(m.project)
+}
+
 func (m *NotesViewModel) loadNotes() {
-	notes, err := storage.ListNotes(m.project)
+	var notes []*models.Note
+	var err error
+	if m.isGlobal {
+		notes, err = storage.ListNotesFrom(m.notesDir)
+	} else {
+		notes, err = storage.ListNotes(m.project)
+	}
 	if err != nil {
 		m.notes = nil
 		return
 	}
 	// Load project tasks once for displaying linked task titles
-	if !m.tasksLoaded {
+	if !m.isGlobal && !m.tasksLoaded {
 		if loadErr := storage.LoadProject(m.project); loadErr == nil {
 			m.cachedTasks = m.project.Tasks
 		}
@@ -297,6 +332,9 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch key {
 		case "q", "esc":
+			if m.isGlobal {
+				return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
+			}
 			return m, func() tea.Msg { return CloseNotesMsg{} }
 		case "j", "down":
 			if m.cursor < len(m.notes)-1 {
@@ -348,10 +386,17 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.deleteCurrentNote()
 		case "l":
+			if m.isGlobal {
+				return m, nil // no task linking in global notes
+			}
 			if m.multiSelectMode && m.selectedNoteCount() > 0 {
 				return m, m.bulkLinkNotes()
 			}
 			return m, m.linkCurrentNote()
+		case "m":
+			if m.isGlobal {
+				return m, m.moveNoteToProject()
+			}
 		case "u":
 			return m, m.undoDelete()
 		case "p":
@@ -374,6 +419,9 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.showTagSelector()
 		case "T":
+			if m.isGlobal {
+				return m, nil // tag filter not available for global notes (no project)
+			}
 			return m, func() tea.Msg {
 				return ShowNoteTagFilterSelectorMsg{Project: m.project}
 			}
@@ -385,15 +433,24 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "/":
+			if m.isGlobal {
+				return m, nil // search not yet available for global notes
+			}
 			return m, func() tea.Msg {
 				return ShowNotesSearchMsg{Project: m.project}
 			}
 		case "?":
+			sourceView := ViewNotes
+			viewName := "Notes"
+			if m.isGlobal {
+				sourceView = ViewGlobalNotes
+				viewName = "Global Notes"
+			}
 			return m, func() tea.Msg {
 				return ShowHelpMsg{
 					Items:      m.GetHelpItems(),
-					SourceView: ViewNotes,
-					ViewName:   "Notes",
+					SourceView: sourceView,
+					ViewName:   viewName,
 				}
 			}
 		}
@@ -423,7 +480,12 @@ func (m *NotesViewModel) View() string {
 	var b strings.Builder
 
 	// Title
-	title := fmt.Sprintf("%s - Notes", m.project.Name)
+	var title string
+	if m.isGlobal {
+		title = "Global Notes"
+	} else {
+		title = fmt.Sprintf("%s - Notes", m.project.Name)
+	}
 	if len(m.filterTags) > 0 {
 		title += " [filtered]"
 	}
@@ -581,7 +643,7 @@ func (m *NotesViewModel) renderListPane() string {
 		}
 
 		linked := ""
-		if len(note.LinkedTasks) > 0 {
+		if len(note.LinkedTasks) > 0 && !m.isGlobal {
 			linked = fmt.Sprintf(" (%d)", len(note.LinkedTasks))
 		}
 
@@ -626,9 +688,14 @@ func (m *NotesViewModel) renderFooter() string {
 	if m.fullscreenPane {
 		zHint = "Z:exit fullscreen"
 	}
-	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint + "  /: search"
-	if len(m.filterTags) > 0 {
-		footer += "  C: clear filter"
+	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint
+	if m.isGlobal {
+		footer += "  m: move to project"
+	} else {
+		footer += "  /: search"
+		if len(m.filterTags) > 0 {
+			footer += "  C: clear filter"
+		}
 	}
 	return MutedStyle.Render(footer)
 }
@@ -699,6 +766,9 @@ func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.detailsPaneFocused = false
 	case "q":
+		if m.isGlobal {
+			return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
+		}
 		return m, func() tea.Msg { return CloseNotesMsg{} }
 	case "e":
 		return m, m.editCurrentNote()
@@ -725,11 +795,13 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	}
 
 	// Linked tasks
-	if len(note.LinkedTasks) > 0 {
+	if len(note.LinkedTasks) > 0 && !m.isGlobal {
 		for _, taskID := range note.LinkedTasks {
 			taskTitle := "[deleted]"
-			if task := m.project.GetTaskByID(taskID); task != nil {
-				taskTitle = task.Title
+			if m.project != nil {
+				if task := m.project.GetTaskByID(taskID); task != nil {
+					taskTitle = task.Title
+				}
 			}
 			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle)))
 		}
@@ -827,7 +899,7 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 		configEditor = m.config.GetEditor()
 	}
 	editor := external.ResolveEditor(configEditor)
-	path := storage.NoteFilePath(m.project, note.Filename)
+	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
 	c := external.EditorCommand(editor, path)
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
@@ -836,6 +908,11 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 }
 
 func (m *NotesViewModel) createNote() tea.Cmd {
+	if m.isGlobal {
+		return func() tea.Msg {
+			return ShowGlobalNoteCreatorMsg{NotesDir: m.notesDir}
+		}
+	}
 	return func() tea.Msg {
 		return ShowNoteCreatorMsg{Project: m.project}
 	}
@@ -857,7 +934,7 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 	}
 	note := m.notes[m.pendingDeleteIdx]
 
-	if err := storage.DeleteNote(m.project, note.Filename); err != nil {
+	if err := storage.DeleteNoteFrom(m.effectiveDir(), note.Filename); err != nil {
 		m.statusMessage = "Failed to delete: " + err.Error()
 		return nil
 	}
@@ -871,9 +948,10 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 
 // batchSaveNotes saves a slice of notes and returns the count of failures.
 func (m *NotesViewModel) batchSaveNotes(notes []*models.Note) int {
+	dir := m.effectiveDir()
 	var failed int
 	for _, note := range notes {
-		if err := storage.SaveNote(m.project, note); err != nil {
+		if err := storage.SaveNoteTo(dir, note); err != nil {
 			failed++
 		}
 	}
@@ -896,7 +974,7 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 	}
 
 	if m.lastDeleted != nil {
-		if err := storage.SaveNote(m.project, m.lastDeleted); err != nil {
+		if err := storage.SaveNoteTo(m.effectiveDir(), m.lastDeleted); err != nil {
 			m.statusMessage = "Failed to restore: " + err.Error()
 			return nil
 		}
@@ -967,6 +1045,8 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 		return ShowNoteTagSelectorMsg{
 			Note:        note,
 			Project:     m.project,
+			NotesDir:    m.notesDir,
+			IsGlobal:    m.isGlobal,
 			CurrentTags: note.Tags,
 		}
 	}
@@ -979,7 +1059,7 @@ func (m *NotesViewModel) togglePin() {
 	note := m.notes[m.cursor]
 	note.Pinned = !note.Pinned
 	note.ModifiedAt = time.Now()
-	if err := storage.SaveNote(m.project, note); err != nil {
+	if err := storage.SaveNoteTo(m.effectiveDir(), note); err != nil {
 		m.statusMessage = "Failed to save: " + err.Error()
 		return
 	}
@@ -997,10 +1077,11 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 		return nil
 	}
 
+	dir := m.effectiveDir()
 	var deleted []*models.Note
 	var errors int
 	for _, note := range selected {
-		if err := storage.DeleteNote(m.project, note.Filename); err == nil {
+		if err := storage.DeleteNoteFrom(dir, note.Filename); err == nil {
 			deleted = append(deleted, note)
 		} else {
 			errors++
@@ -1027,11 +1108,12 @@ func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
 	if len(selected) == 0 {
 		return nil
 	}
-	// Use first note to open tag selector; results applied to all via BulkNoteTagDoneMsg
 	return func() tea.Msg {
 		return BulkNoteTagMsg{
-			Notes:   selected,
-			Project: m.project,
+			Notes:    selected,
+			Project:  m.project,
+			NotesDir: m.notesDir,
+			IsGlobal: m.isGlobal,
 		}
 	}
 }
@@ -1088,7 +1170,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusMessage = "Rename canceled: same title"
 			return m, nil
 		}
-		_, err := storage.RenameNote(m.project, note.Filename, newTitle)
+		_, err := storage.RenameNoteIn(m.effectiveDir(), note.Filename, newTitle)
 		if err != nil {
 			m.statusMessage = "Rename failed: " + err.Error()
 			m.renaming = false
@@ -1164,9 +1246,36 @@ func (m *NotesViewModel) copyNoteTitleAndBody() tea.Cmd {
 	)
 }
 
+// ShowGlobalNoteCreatorMsg opens a note creator in global notes mode.
+type ShowGlobalNoteCreatorMsg struct {
+	NotesDir string
+}
+
+func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
+	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
+		return nil
+	}
+	note := m.notes[m.cursor]
+	return func() tea.Msg {
+		return ShowGlobalNoteMoveMsg{Note: note, SourceDir: m.notesDir}
+	}
+}
+
+// ShowGlobalNoteMoveMsg requests a project picker to move a global note.
+type ShowGlobalNoteMoveMsg struct {
+	Note      *models.Note
+	SourceDir string
+}
+
+// GlobalNoteMoveCompleteMsg indicates a global note was moved to a project.
+type GlobalNoteMoveCompleteMsg struct {
+	NoteTitle   string
+	ProjectName string
+}
+
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
+	items := []HelpItem{
 		{Key: "j/k", Description: "Navigate up/down"},
 		{Key: "Tab", Description: "Switch pane (list/details)"},
 		{Key: "Enter", Description: "View note (glow)"},
@@ -1179,20 +1288,33 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "y", Description: "Copy title to clipboard"},
 		{Key: "Y", Description: "Copy body to clipboard"},
 		{Key: "Ctrl+y", Description: "Copy title and body to clipboard"},
-		{Key: "l", Description: "Link note to task"},
-		{Key: "p", Description: "Toggle pin"},
-		{Key: "t", Description: "Edit note tags"},
-		{Key: "T", Description: "Filter by tags"},
-		{Key: "C", Description: "Clear tag filter"},
-		{Key: "/", Description: "Search notes"},
-		{Key: "g/G", Description: "Jump to top/bottom"},
-		{Key: "V", Description: "Toggle multi-select mode"},
-		{Key: "space", Description: "Toggle selection (multi-select)"},
-		{Key: "a", Description: "Select all (multi-select)"},
-		{Key: "gX", Description: "Deselect all (multi-select)"},
-		{Key: "Z", Description: "Toggle fullscreen pane"},
-		{Key: "q", Description: "Close notes view"},
 	}
+	if m.isGlobal {
+		items = append(items, HelpItem{Key: "m", Description: "Move note to project"})
+	} else {
+		items = append(items, HelpItem{Key: "l", Description: "Link note to task"})
+	}
+	items = append(items,
+		HelpItem{Key: "p", Description: "Toggle pin"},
+		HelpItem{Key: "t", Description: "Edit note tags"},
+	)
+	if !m.isGlobal {
+		items = append(items,
+			HelpItem{Key: "T", Description: "Filter by tags"},
+			HelpItem{Key: "C", Description: "Clear tag filter"},
+			HelpItem{Key: "/", Description: "Search notes"},
+		)
+	}
+	items = append(items,
+		HelpItem{Key: "g/G", Description: "Jump to top/bottom"},
+		HelpItem{Key: "V", Description: "Toggle multi-select mode"},
+		HelpItem{Key: "space", Description: "Toggle selection (multi-select)"},
+		HelpItem{Key: "a", Description: "Select all (multi-select)"},
+		HelpItem{Key: "gX", Description: "Deselect all (multi-select)"},
+		HelpItem{Key: "Z", Description: "Toggle fullscreen pane"},
+		HelpItem{Key: "q", Description: "Close notes view"},
+	)
+	return items
 }
 
 func formatNoteAge(t time.Time) string {

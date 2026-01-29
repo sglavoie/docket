@@ -247,6 +247,57 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowGlobalNotesMsg:
+		dir := storage.GlobalNotesDir(m.config.DataDir)
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
+		return true, nil
+
+	case CloseGlobalNotesMsg:
+		m.popView()
+		return true, nil
+
+	case ShowGlobalNoteCreatorMsg:
+		return m.handleCreateGlobalNote(msg.NotesDir)
+
+	case ShowGlobalNoteMoveMsg:
+		// Open a project picker for moving the note
+		projects := m.config.GetActiveProjects()
+		if len(projects) == 0 {
+			m.statusMessage = "No projects available"
+			return true, nil
+		}
+		m.pendingGlobalNoteMove = &pendingNoteMove{Note: msg.Note, SourceDir: msg.SourceDir}
+		m.showView(ViewProjectSelector, NewGlobalNoteMoveProjectSelectorModel(projects))
+		return true, nil
+
+	case GlobalNoteMoveDoneMsg:
+		if msg.Project == nil {
+			m.pendingGlobalNoteMove = nil
+			m.popView()
+			return true, nil
+		}
+		if m.pendingGlobalNoteMove != nil {
+			note := m.pendingGlobalNoteMove.Note
+			sourceDir := m.pendingGlobalNoteMove.SourceDir
+			m.pendingGlobalNoteMove = nil
+			m.popView()
+			// Copy note to project, delete from global
+			if err := storage.SaveNote(msg.Project, note); err != nil {
+				m.statusMessage = "Failed to move note: " + err.Error()
+				return true, nil
+			}
+			if err := storage.DeleteNoteFrom(sourceDir, note.Filename); err != nil {
+				m.statusMessage = "Moved but failed to delete original: " + err.Error()
+				return true, nil
+			}
+			m.statusMessage = fmt.Sprintf("Moved '%s' to %s", note.Title, msg.Project.Name)
+			// Refresh global notes view
+			if nv := m.getActiveNotesView(); nv != nil {
+				nv.loadNotes()
+			}
+		}
+		return true, nil
+
 	case ShowNotesSearchMsg:
 		if msg.Project != nil {
 			m.showView(ViewNotesSearch, NewNotesSearchModel(msg.Project))
@@ -666,6 +717,25 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	})
 }
 
+func (m *AppModel) handleCreateGlobalNote(notesDir string) (bool, tea.Cmd) {
+	note := models.NewNote("Untitled Note")
+	if err := storage.SaveNoteTo(notesDir, note); err != nil {
+		return true, errorCmd("failed to create note: %w", err)
+	}
+
+	editor := external.ResolveEditor(m.config.Editor)
+	path := storage.NoteFilePathIn(notesDir, note.Filename)
+	c := external.EditorCommand(editor, path)
+
+	return true, tea.ExecProcess(c, func(err error) tea.Msg {
+		reloaded, loadErr := storage.LoadNoteFrom(notesDir, note.Filename)
+		if loadErr == nil && reloaded.Title == "Untitled Note" && strings.TrimSpace(reloaded.Body) == "" {
+			_ = storage.DeleteNoteFrom(notesDir, note.Filename)
+		}
+		return NotesRefreshMsg{}
+	})
+}
+
 // handleGlowView opens task in glow pager.
 func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	if msg.Task == nil || !external.GlowAvailable() {
@@ -741,6 +811,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowGlobalInboxProcessorMsg{})
 	case ViewGlobalTagManager:
 		return m.handleViewMessages(ShowGlobalTagManagerMsg{})
+	case ViewGlobalNotes:
+		return m.handleViewMessages(ShowGlobalNotesMsg{})
 	case ViewNotes:
 		if project != nil {
 			return m.handleViewMessages(ShowNotesMsg{Project: project})

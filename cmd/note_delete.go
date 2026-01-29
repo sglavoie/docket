@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -30,14 +31,30 @@ func init() {
 }
 
 func runNoteDelete(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	var note *models.Note
+	var deleteDir string
 
-	note, err := findNote(project, args[0])
-	if err != nil {
-		return err
+	if noteGlobal {
+		dir, gErr := globalNotesDir()
+		if gErr != nil {
+			return gErr
+		}
+		var err error
+		note, err = findNoteIn(dir, args[0])
+		if err != nil {
+			return err
+		}
+		deleteDir = dir
+	} else {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		note, err = findNote(project, args[0])
+		if err != nil {
+			return err
+		}
+		deleteDir = storage.NotesDir(project)
 	}
 
 	if !noteDeleteForce {
@@ -50,7 +67,7 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := storage.DeleteNote(project, note.Filename); err != nil {
+	if err := storage.DeleteNoteFrom(deleteDir, note.Filename); err != nil {
 		return fmt.Errorf("failed to delete note: %w", err)
 	}
 
