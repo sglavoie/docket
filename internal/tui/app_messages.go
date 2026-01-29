@@ -27,6 +27,9 @@ type ErrorMsg struct{ Err error }
 // StatusClearMsg clears the status message after a timeout.
 type StatusClearMsg struct{}
 
+// StatusMsg sets a temporary status message (used by command palette handlers).
+type StatusMsg string
+
 // =============================================================================
 // Project CRUD Messages
 // =============================================================================

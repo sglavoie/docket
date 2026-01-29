@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -745,6 +746,838 @@ func (m *AppModel) registerGlobalCommands() {
 		},
 	}
 
+	// Task action commands (ProjectTree view) - operations on the selected task
+	taskActionCommands := []Command{
+		{
+			Name:        "edit task",
+			Description: "Edit selected task or bulk edit if multi-select",
+			Shortcut:    "e",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"open editor", "modify task"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
+					return ShowBulkEditMsg{
+						Tasks:   m.projectTree.getSelectedTasks(),
+						Project: m.currentProject,
+					}
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return EditTaskMsg{Task: visible[m.projectTree.cursor].Task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "quick edit",
+			Description: "Inline quick edit with modifier syntax",
+			Shortcut:    "E",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"inline edit", "fast edit"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					m.projectTree.enterQuickEditMode(visible[m.projectTree.cursor].Task, false)
+					return nil
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "rename task",
+			Description: "Inline rename task title",
+			Shortcut:    "r",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"rename", "change title"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					m.projectTree.enterQuickEditMode(visible[m.projectTree.cursor].Task, true)
+					return nil
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "delete task",
+			Description: "Delete selected task(s)",
+			Shortcut:    "D",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"remove task", "trash task"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
+					m.projectTree.confirmAction = ConfirmBulkDelete
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					if task.IsRecurring() {
+						m.projectTree.confirmAction = ConfirmDeleteRecurring
+					} else {
+						m.projectTree.confirmAction = ConfirmDelete
+					}
+					m.projectTree.deleteTarget = task
+					return nil
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "copy title",
+			Description: "Copy task title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"yank title", "clipboard title"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return CopyTaskTitleMsg{Task: visible[m.projectTree.cursor].Task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "copy details",
+			Description: "Copy task with details to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"yank details", "clipboard details"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return CopyTaskDetailsMsg{Task: visible[m.projectTree.cursor].Task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "copy with description",
+			Description: "Copy task title and description to clipboard",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"yank description", "clipboard description"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return CopyTaskTitleAndDescMsg{Task: visible[m.projectTree.cursor].Task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "move to project",
+			Description: "Move task to another project",
+			Shortcut:    "M",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"transfer task", "relocate task"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ShowProjectSelectorForMoveMsg{
+						Task:          visible[m.projectTree.cursor].Task,
+						SourceProject: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "toggle active",
+			Description: "Toggle active flag on task",
+			Shortcut:    "*",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"star task", "flag task", "active flag"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					task.ToggleActive()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "toggle pin",
+			Description: "Toggle pinned status on task",
+			Shortcut:    "ctrl+p",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"pin task", "unpin task"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					task.TogglePinned()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "set due date",
+			Description: "Open date picker for task",
+			Shortcut:    "ctrl+d",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"deadline", "due date picker"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return SetDueDateMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "move to section",
+			Description: "Pick section for task",
+			Shortcut:    "ctrl+n",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"change section", "assign section"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ShowSectionPickerMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "manage tags",
+			Description: "Add or remove tags on task",
+			Shortcut:    "ctrl+g",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"tag task", "edit tags"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return ShowTagSelectorMsg{
+						Task:        task,
+						Project:     m.currentProject,
+						CurrentTags: task.Tags,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "manage dependencies",
+			Description: "Manage task dependencies",
+			Shortcut:    "ctrl+b",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"add dependency", "link dependency"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ManageDependenciesMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "view dependencies",
+			Description: "View task dependency graph",
+			Shortcut:    "R",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"dependency graph", "show dependencies"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ShowDependencyViewerMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "edit content",
+			Description: "Edit task description in external editor",
+			Shortcut:    "ctrl+o",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"edit description", "open editor"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return EditTaskContentMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "task comments",
+			Description: "View and add task comments",
+			Shortcut:    "C",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"comments", "add comment"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ShowTaskCommentsMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "task attachments",
+			Description: "View and manage task attachments",
+			Shortcut:    "A",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"attachments", "add attachment"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return ShowTaskAttachmentsMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "task activity",
+			Description: "View task activity log",
+			Shortcut:    "gh",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"activity log", "task history"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					return OpenTaskActivityMsg{
+						Task:    visible[m.projectTree.cursor].Task,
+						Project: m.currentProject,
+					}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "undo",
+			Description: "Undo last change",
+			Shortcut:    "u",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"undo change", "revert"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					return m.projectTree.performUndo()()
+				}
+				return StatusMsg("No project open")
+			},
+		},
+		{
+			Name:        "filter overlay",
+			Description: "Open advanced filter overlay",
+			Shortcut:    "ctrl+f",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"advanced filter", "filter panel"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					return ShowFilterMsg{ProjectTree: m.projectTree}
+				}
+				return nil
+			},
+		},
+	}
+
+	// View mode commands (ProjectTree, via `g` prefix)
+	viewModeCommands := []Command{
+		{
+			Name:        "active view",
+			Description: "Switch to Active view mode",
+			Shortcut:    "ga",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"view active", "active tasks"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeActive
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "next view",
+			Description: "Switch to Next view mode",
+			Shortcut:    "gn",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"view next", "next actions"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeNext
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "inbox view",
+			Description: "Switch to Inbox view mode",
+			Shortcut:    "gi",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"view inbox"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeInbox
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "waiting view",
+			Description: "Switch to Waiting view mode",
+			Shortcut:    "gw",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"view waiting", "waiting for"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeWaiting
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "someday view",
+			Description: "Switch to Someday view mode",
+			Shortcut:    "gs",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"view someday", "someday maybe"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeSomeday
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "cycle view mode",
+			Description: "Cycle through all view modes",
+			Shortcut:    "gv",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"next view mode", "toggle view"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeCompleted + 1)
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+	}
+
+	// Status commands (ProjectTree, via `,` prefix)
+	statusCommands := []Command{
+		{
+			Name:        "start task",
+			Description: "Set task status to in progress",
+			Shortcut:    ",s",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"begin task", "in progress"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleStartTask(visible)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "complete task",
+			Description: "Set task status to done",
+			Shortcut:    ",d",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"done task", "finish task", "mark done"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleCompleteTask(visible)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "block task",
+			Description: "Set task status to blocked",
+			Shortcut:    ",b",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"blocked task", "mark blocked"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleBlockTask(visible)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "cancel task",
+			Description: "Set task status to canceled",
+			Shortcut:    ",x",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"canceled task", "mark canceled"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleCancelTask(visible)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "reopen task",
+			Description: "Reopen a completed or canceled task",
+			Shortcut:    ",o",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"reopen", "undo complete", "mark todo"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleReopenTask(visible)
+				}
+				return nil
+			},
+		},
+	}
+
+	// Due date quick commands (ProjectTree, via `d` prefix)
+	dueDateCommands := []Command{
+		{
+			Name:        "due today",
+			Description: "Set due date to today",
+			Shortcut:    "dt",
+			Category:    CategoryDueDate,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"today", "due now"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					now := time.Now()
+					today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+					task.DueDate = &today
+					task.UpdatedAt = time.Now()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "due tomorrow",
+			Description: "Set due date to tomorrow",
+			Shortcut:    "dm",
+			Category:    CategoryDueDate,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"tomorrow"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					now := time.Now()
+					tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+					task.DueDate = &tomorrow
+					task.UpdatedAt = time.Now()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "due next week",
+			Description: "Set due date to +7 days",
+			Shortcut:    "dw",
+			Category:    CategoryDueDate,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"next week"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					now := time.Now()
+					nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
+					task.DueDate = &nextWeek
+					task.UpdatedAt = time.Now()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "due next month",
+			Description: "Set due date to +30 days",
+			Shortcut:    "dn",
+			Category:    CategoryDueDate,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"next month"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					now := time.Now()
+					nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 0, 0, 0, 0, now.Location())
+					task.DueDate = &nextMonth
+					task.UpdatedAt = time.Now()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+		{
+			Name:        "clear due date",
+			Description: "Remove due date from task",
+			Shortcut:    "d0",
+			Category:    CategoryDueDate,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"remove due date", "no due date"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					task.DueDate = nil
+					task.UpdatedAt = time.Now()
+					return TaskUpdatedMsg{Task: task}
+				}
+				return StatusMsg("No task selected")
+			},
+		},
+	}
+
+	// Notes commands (ProjectTree)
+	notesCommands := []Command{
+		{
+			Name:        "show notes",
+			Description: "Open notes view",
+			Shortcut:    "[",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"notes", "view notes", "open notes"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowNotesMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "create note",
+			Description: "Create a new note",
+			Shortcut:    "]",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"new note", "add note"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowNoteCreatorMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+	}
+
+	// Other missing commands
+	otherCommands := []Command{
+		{
+			Name:        "project focus",
+			Description: "Project-scoped focus view",
+			Shortcut:    "f",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"focus mode", "project active tasks"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowProjectFocusViewMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "blockers view",
+			Description: "Show blockers and blocked tasks",
+			Shortcut:    "b",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"blockers", "blocked tasks"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowBlockersMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "blockers view",
+			Description: "Show blockers across all projects",
+			Shortcut:    "b",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"blockers", "all blockers"},
+			Handler: func() tea.Msg {
+				return ShowBlockersMsg{}
+			},
+		},
+		{
+			Name:        "reload project",
+			Description: "Reload project data from storage",
+			Shortcut:    "ctrl+r",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"refresh", "reload data", "sync"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.clearSelection()
+					_ = storage.LoadProject(m.projectTree.project)
+					m.projectTree.buildTree()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "archive project",
+			Description: "Archive or unarchive the current project",
+			Shortcut:    "ctrl+a",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"unarchive project"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil || m.currentProject == nil {
+					return nil
+				}
+				if m.currentProject.Sandbox {
+					return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
+				}
+				if m.currentProject.Archived {
+					m.projectTree.confirmAction = ConfirmUnarchive
+				} else {
+					m.projectTree.confirmAction = ConfirmArchive
+				}
+				return nil
+			},
+		},
+	}
+
 	// Register all command batches
 	_ = m.commandRegistry.RegisterBatch(globalCommands)
 	_ = m.commandRegistry.RegisterBatch(filterCommands)
@@ -752,6 +1585,12 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(navCommands)
 	_ = m.commandRegistry.RegisterBatch(taskCommands)
 	_ = m.commandRegistry.RegisterBatch(projectCommands)
+	_ = m.commandRegistry.RegisterBatch(taskActionCommands)
+	_ = m.commandRegistry.RegisterBatch(viewModeCommands)
+	_ = m.commandRegistry.RegisterBatch(statusCommands)
+	_ = m.commandRegistry.RegisterBatch(dueDateCommands)
+	_ = m.commandRegistry.RegisterBatch(notesCommands)
+	_ = m.commandRegistry.RegisterBatch(otherCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

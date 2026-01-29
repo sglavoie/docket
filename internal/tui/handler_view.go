@@ -408,6 +408,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.statusMessage = ""
 		return true, nil
 
+	case StatusMsg:
+		m.statusMessage = string(msg)
+		return true, statusTimeout(2 * time.Second)
+
 	case MoveBlockedMsg:
 		m.statusMessage = msg.Reason
 		return true, statusTimeout(2 * time.Second)

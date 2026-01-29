@@ -15,6 +15,9 @@ const (
 	CategoryView       CommandCategory = "View"
 	CategoryFilters    CommandCategory = "Filters"
 	CategoryHelp       CommandCategory = "Help"
+	CategoryStatus     CommandCategory = "Status"
+	CategoryDueDate    CommandCategory = "Due Date"
+	CategoryNotes      CommandCategory = "Notes"
 )
 
 // Command represents an executable action in the command palette.
