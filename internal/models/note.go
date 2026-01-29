@@ -38,6 +38,40 @@ func NewNote(title string) *Note {
 	}
 }
 
+// AddTag adds a tag if it is non-empty and not already present.
+func (n *Note) AddTag(tag string) {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return
+	}
+	for _, t := range n.Tags {
+		if t == tag {
+			return
+		}
+	}
+	n.Tags = append(n.Tags, tag)
+	n.ModifiedAt = time.Now()
+}
+
+// SetTags replaces the note's tags, filtering out empty strings and duplicates.
+func (n *Note) SetTags(tags []string) {
+	seen := make(map[string]bool)
+	var cleaned []string
+	for _, t := range tags {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		cleaned = append(cleaned, t)
+	}
+	if cleaned == nil {
+		cleaned = []string{}
+	}
+	n.Tags = cleaned
+	n.ModifiedAt = time.Now()
+}
+
 // AddLink adds a task UUID to the linked tasks list if not already present.
 func (n *Note) AddLink(taskID string) {
 	for _, id := range n.LinkedTasks {

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -161,8 +160,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			var failed int
 			for _, note := range msg.Notes {
-				note.Tags = msg.SelectedTags
-				note.ModifiedAt = time.Now()
+				note.SetTags(msg.SelectedTags)
 				if err := storage.SaveNote(msg.Project, note); err != nil {
 					failed++
 				}
@@ -206,8 +204,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			var failed int
 			for _, note := range m.pendingBulkNotes {
-				note.Tags = msg.SelectedTags
-				note.ModifiedAt = time.Now()
+				note.SetTags(msg.SelectedTags)
 				if err := storage.SaveNote(msg.Project, note); err != nil {
 					failed++
 				}
@@ -229,8 +226,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, func() tea.Msg { return NotesRefreshMsg{} }
 		}
 		// Single note mode
-		msg.Note.Tags = msg.SelectedTags
-		msg.Note.ModifiedAt = time.Now()
+		msg.Note.SetTags(msg.SelectedTags)
 		if err := storage.SaveNote(msg.Project, msg.Note); err != nil {
 			return true, errorCmd("failed to save note tags: %w", err)
 		}

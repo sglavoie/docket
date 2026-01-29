@@ -69,6 +69,27 @@ func CreateTempFileWithContent(content string, prefix string, suffix string) (st
 	return f.Name(), nil
 }
 
+// ResolveEditor returns the editor command to use, applying the fallback chain:
+// configEditor → EDITOR env → "code".
+func ResolveEditor(configEditor string) string {
+	if configEditor != "" {
+		return configEditor
+	}
+	if env := os.Getenv("EDITOR"); env != "" {
+		return env
+	}
+	return "code"
+}
+
+// EditorCommand builds an exec.Cmd for the given editor and file path,
+// adding --wait for VS Code.
+func EditorCommand(editor, path string) *exec.Cmd {
+	if editor == "code" {
+		return exec.Command(editor, "--wait", path)
+	}
+	return exec.Command(editor, path)
+}
+
 // EditInExternalEditor opens content in an external editor and returns the modified content.
 func EditInExternalEditor(editor string, content string, extension string) (string, error) {
 	// Create temp file
@@ -79,20 +100,8 @@ func EditInExternalEditor(editor string, content string, extension string) (stri
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	// Get editor command
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	// For VS Code, we need to wait for the file to be saved
-	var cmd *exec.Cmd
-	if editor == "code" {
-		cmd = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		cmd = exec.Command(editor, tmpPath)
-	}
+	editor = ResolveEditor(editor)
+	cmd := EditorCommand(editor, tmpPath)
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

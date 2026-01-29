@@ -46,7 +46,7 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 
 	note := models.NewNote(title)
 	if len(noteAddTags) > 0 {
-		note.Tags = noteAddTags
+		note.SetTags(noteAddTags)
 	}
 
 	if err := storage.SaveNote(project, note); err != nil {

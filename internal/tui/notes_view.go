@@ -83,6 +83,7 @@ type NotesViewModel struct {
 	cachedTasks []*models.Task
 
 	statusMessage string
+	statusIsError bool
 }
 
 // noteSortMode defines how notes are sorted.
@@ -243,6 +244,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.statusMessage = ""
+		m.statusIsError = false
 
 		// Handle pending 'g' prefix key — always consume the second keystroke
 		if m.pendingGKey {
@@ -384,6 +386,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 	case NotesRefreshMsg:
+		m.tasksLoaded = false
 		m.loadNotes()
 	case NoteTaskLinkedMsg:
 		m.loadNotes()
@@ -602,6 +605,9 @@ func (m *NotesViewModel) renderStatusBar() string {
 		return ""
 	}
 	if m.statusMessage != "" {
+		if m.statusIsError {
+			return lipgloss.NewStyle().Foreground(ColorWarning).Render(m.statusMessage)
+		}
 		return SuccessStyle.Render(m.statusMessage)
 	}
 	return ""
@@ -679,10 +685,9 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 			if len(bl) <= width && width > 0 {
 				lines = append(lines, bl)
 			} else if width > 0 {
-				// Simple word wrap
+				// Word wrap; forces break when no space found (e.g. URLs)
 				for len(bl) > width {
 					cut := width
-					// Try to break at space
 					if idx := strings.LastIndex(bl[:cut], " "); idx > 0 {
 						cut = idx + 1
 					}
@@ -758,25 +763,13 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
-	editor := ""
+	configEditor := ""
 	if m.config != nil {
-		editor = m.config.GetEditor()
+		configEditor = m.config.GetEditor()
 	}
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
+	editor := external.ResolveEditor(configEditor)
 	path := storage.NoteFilePath(m.project, note.Filename)
-
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", path)
-	} else {
-		c = exec.Command(editor, path)
-	}
+	c := external.EditorCommand(editor, path)
 
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		return NotesRefreshMsg{}
@@ -814,7 +807,7 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 	m.lastBulkDeleted = nil
 	m.statusMessage = "Deleted: " + note.Title
 	m.loadNotes()
-	return nil
+	return func() tea.Msg { return NotesRefreshMsg{} }
 }
 
 // batchSaveNotes saves a slice of notes and returns the count of failures.
@@ -967,7 +960,7 @@ func (m *NotesViewModel) performBulkDelete() tea.Cmd {
 	m.lastBulkDeleted = deleted
 	m.lastDeleted = nil
 	m.loadNotes()
-	return nil
+	return func() tea.Msg { return NotesRefreshMsg{} }
 }
 
 func (m *NotesViewModel) bulkTagNotes() tea.Cmd {
@@ -1039,12 +1032,13 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		_, err := storage.RenameNote(m.project, note.Filename, newTitle)
 		if err != nil {
 			m.statusMessage = "Rename failed: " + err.Error()
-		} else {
-			m.statusMessage = fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle)
-			m.loadNotes()
+			m.renaming = false
+			return m, nil
 		}
+		m.statusMessage = fmt.Sprintf("Renamed: %s → %s", oldTitle, newTitle)
+		m.loadNotes()
 		m.renaming = false
-		return m, nil
+		return m, func() tea.Msg { return NotesRefreshMsg{} }
 	case "esc":
 		m.renaming = false
 		m.statusMessage = "Rename cancelled"
@@ -1069,8 +1063,10 @@ func (m *NotesViewModel) copyNoteContent(
 		_, err := bulkFn(selected)
 		if err != nil {
 			m.statusMessage = "Copy failed: " + err.Error()
+			m.statusIsError = true
 		} else {
 			m.statusMessage = fmt.Sprintf(bulkMsg, len(selected))
+			m.statusIsError = false
 		}
 		return nil
 	}
@@ -1080,8 +1076,10 @@ func (m *NotesViewModel) copyNoteContent(
 	_, err := singleFn(m.notes[m.cursor])
 	if err != nil {
 		m.statusMessage = "Copy failed: " + err.Error()
+		m.statusIsError = true
 	} else {
 		m.statusMessage = singleMsg
+		m.statusIsError = false
 	}
 	return nil
 }

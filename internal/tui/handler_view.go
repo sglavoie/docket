@@ -615,20 +615,8 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	_, _ = tmpFile.WriteString(msg.CurrentValue)
 	_ = tmpFile.Close()
 
-	editor := m.config.Editor
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		c = exec.Command(editor, tmpPath)
-	}
+	editor := external.ResolveEditor(m.config.Editor)
+	c := external.EditorCommand(editor, tmpPath)
 
 	fieldName := msg.FieldName
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
@@ -677,21 +665,9 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 		return true, errorCmd("failed to create note: %w", err)
 	}
 
-	editor := m.config.Editor
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
+	editor := external.ResolveEditor(m.config.Editor)
 	path := storage.NoteFilePath(project, note.Filename)
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", path)
-	} else {
-		c = exec.Command(editor, path)
-	}
+	c := external.EditorCommand(editor, path)
 
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		reloaded, loadErr := storage.LoadNote(project, note.Filename)
