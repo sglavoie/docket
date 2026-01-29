@@ -675,6 +675,9 @@ func applyAction(task *models.Task, action RuleAction) bool {
 			return true
 		}
 	case ActionSetDueRelative:
+		if task.DueDate != nil {
+			return false
+		}
 		days, err := ParseRelativeDuration(action.Value)
 		if err == nil {
 			newDue := time.Now().AddDate(0, 0, days)
@@ -706,7 +709,14 @@ func applyAction(task *models.Task, action RuleAction) bool {
 			return true
 		}
 	case ActionAddComment:
-		task.AddComment("[Workflow] " + action.Value)
+		commentText := "[Workflow] " + action.Value
+		if len(task.Comments) > 0 {
+			last := task.Comments[len(task.Comments)-1]
+			if last.Text == commentText {
+				return false
+			}
+		}
+		task.AddComment(commentText)
 		return true
 	case ActionSetType:
 		newType := models.TaskType(action.Value)

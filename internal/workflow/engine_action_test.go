@@ -213,6 +213,44 @@ func TestApplyAction_NewActions(t *testing.T) {
 			shouldModify: true,
 		},
 		{
+			name:   "add comment idempotent when last comment matches",
+			action: RuleAction{ActionType: ActionAddComment, Value: "Test comment"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Comments: []*models.Comment{
+					{Text: "[Workflow] Test comment", CreatedAt: time.Now()},
+				}}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return len(t.Comments) == 1
+			},
+			shouldModify: false,
+		},
+		{
+			name:   "add comment when last comment differs",
+			action: RuleAction{ActionType: ActionAddComment, Value: "New comment"},
+			setupTask: func() *models.Task {
+				return &models.Task{ID: "1", Comments: []*models.Comment{
+					{Text: "[Workflow] Old comment", CreatedAt: time.Now()},
+				}}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return len(t.Comments) == 2 && t.Comments[1].Text == "[Workflow] New comment"
+			},
+			shouldModify: true,
+		},
+		{
+			name:   "set due relative idempotent when due date exists",
+			action: RuleAction{ActionType: ActionSetDueRelative, Value: "+3d"},
+			setupTask: func() *models.Task {
+				due := time.Now().Add(48 * time.Hour)
+				return &models.Task{ID: "1", DueDate: &due}
+			},
+			expectedChange: func(t *models.Task) bool {
+				return t.DueDate != nil
+			},
+			shouldModify: false,
+		},
+		{
 			name:   "set type to bug",
 			action: RuleAction{ActionType: ActionSetType, Value: "bug"},
 			setupTask: func() *models.Task {

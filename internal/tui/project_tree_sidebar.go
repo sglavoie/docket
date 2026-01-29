@@ -350,7 +350,9 @@ func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidt
 func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) string {
 	var lines []string
 
-	lines = append(lines, formatActivityEntry("Created", task.CreatedAt))
+	if !task.CreatedAt.IsZero() {
+		lines = append(lines, formatActivityEntry("Created", task.CreatedAt))
+	}
 
 	if task.CompletedAt != nil {
 		lines = append(lines, formatActivityEntry("Completed", *task.CompletedAt))

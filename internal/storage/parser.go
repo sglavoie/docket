@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
@@ -113,8 +114,14 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 				taskType = models.TaskTypeTask
 			}
 
+			task := models.NewTask("", nextShortID, taskType, title)
+			// Zero out timestamps so they come from metadata parsing.
+			// NewTask sets these to time.Now(), which is wrong for tasks
+			// loaded from disk — their real timestamps are in the metadata.
+			task.CreatedAt = time.Time{}
+			task.UpdatedAt = time.Time{}
 			currentTask = &format.ParsedTask{
-				Task:  models.NewTask("", nextShortID, taskType, title),
+				Task:  task,
 				Level: level,
 			}
 			nextShortID++

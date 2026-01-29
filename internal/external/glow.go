@@ -88,7 +88,9 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 		b.WriteString(fmt.Sprintf("| Tags | %s |\n", strings.Join(task.Tags, ", ")))
 	}
 
-	b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format(util.DateTimeFormat)))
+	if !task.CreatedAt.IsZero() {
+		b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format(util.DateTimeFormat)))
+	}
 
 	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
 		b.WriteString(fmt.Sprintf("| Updated | %s |\n", task.UpdatedAt.Format(util.DateTimeFormat)))
