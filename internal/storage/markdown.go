@@ -97,6 +97,13 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	return &ProjectLoadResult{Warnings: result.Warnings}, nil
 }
 
+// DefaultMaxActivityEntries is the default maximum number of activity entries per task.
+const DefaultMaxActivityEntries = 50
+
+// MaxActivityEntries controls the maximum number of activity entries per task.
+// Set by the application during startup from config. Falls back to DefaultMaxActivityEntries.
+var MaxActivityEntries = DefaultMaxActivityEntries
+
 // SaveProject saves a project's tasks to its tasks.md file.
 func SaveProject(project *models.Project) error {
 	// If using a non-filesystem repository (e.g., mock), delegate to it
@@ -108,9 +115,16 @@ func SaveProject(project *models.Project) error {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
+	// Diff activity: load old state and compare to detect field changes
+	tasksPath := filepath.Join(project.Path, tasksFileName)
+	if oldContent, err := os.ReadFile(tasksPath); err == nil {
+		if oldResult, err := ParseTasksMarkdownWithSections(string(oldContent)); err == nil {
+			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+		}
+	}
+
 	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
 
-	tasksPath := filepath.Join(project.Path, tasksFileName)
 	if err := writeFileAtomic(tasksPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}
@@ -184,6 +198,12 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 	if task.Description != "" {
 		b.WriteString(task.Description)
 		b.WriteString("\n")
+	}
+
+	// Write activity block if task has activity
+	if len(task.Activity) > 0 {
+		b.WriteString("\n")
+		b.WriteString(format.WriteActivity(task))
 	}
 
 	// Write comments block if task has comments

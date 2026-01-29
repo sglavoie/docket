@@ -416,6 +416,16 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
+		case "h":
+			// Go to task activity history
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				project := m.project
+				return m, func() tea.Msg {
+					return OpenTaskActivityMsg{Task: task, Project: project}
+				}
+			}
+			return m, nil
 		}
 
 	case "!":

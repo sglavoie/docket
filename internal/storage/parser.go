@@ -155,8 +155,9 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	// Build parent-child relationships using levels captured during initial parse
 	tasks := format.BuildHierarchy(parsedTasks)
 
-	// Extract comments from task descriptions
+	// Extract activity and comments from task descriptions
 	for _, t := range tasks {
+		format.ExtractActivityFromDescription(t)
 		format.ExtractCommentsFromDescription(t)
 	}
 

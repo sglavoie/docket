@@ -497,6 +497,15 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		case "h":
+			// gh: Go to task activity history
+			if pt := m.getTaskAtCursor(); pt != nil {
+				project := m.project
+				return m, func() tea.Msg {
+					return OpenTaskActivityMsg{Task: pt.Task, Project: project}
+				}
+			}
+			return m, nil
 		}
 	case "d":
 		switch key {

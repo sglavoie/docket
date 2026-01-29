@@ -36,6 +36,7 @@ type Task struct {
 	Comments    []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
 	Recurrence  *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
 	Attachments []Attachment       `json:"attachments,omitempty"`
+	Activity    []*ActivityEntry   `json:"activity,omitempty"` // Persistent changelog of field changes
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

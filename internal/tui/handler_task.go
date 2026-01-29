@@ -188,6 +188,16 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case OpenTaskActivityMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewTaskActivity, NewTaskActivityModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case CloseTaskActivityMsg:
+		m.popView()
+		return true, nil
+
 	case CommentAddedMsg:
 		m.statusMessage = "Comment added"
 		return true, statusTimeout(2 * time.Second)

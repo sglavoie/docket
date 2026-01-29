@@ -356,6 +356,19 @@ type CommentDeletedMsg struct{ Task *models.Task }
 type CommentEditedMsg struct{ Task *models.Task }
 
 // =============================================================================
+// Task Activity Messages (Show/Close Pattern)
+// =============================================================================
+
+// OpenTaskActivityMsg opens the activity log view for a task.
+type OpenTaskActivityMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskActivityMsg closes the activity log view.
+type CloseTaskActivityMsg struct{}
+
+// =============================================================================
 // Task Attachments Messages (Show/Close Pattern)
 // =============================================================================
 

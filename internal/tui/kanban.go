@@ -1771,6 +1771,16 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				m.deselectAll()
 			}
 			return m, nil
+		case "h":
+			// Go to task activity history
+			task := m.getSelectedTask()
+			if task != nil {
+				project := m.Project
+				return m, func() tea.Msg {
+					return OpenTaskActivityMsg{Task: task, Project: project}
+				}
+			}
+			return m, nil
 		}
 
 	case "c":

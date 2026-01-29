@@ -28,6 +28,11 @@ func RunApp(cfg *config.Config, manager *config.Manager) error {
 		startupResult = evaluateWorkflowAtStartup(cfg, manager, current)
 	}
 
+	// Apply config-driven storage settings
+	if cfg.MaxActivityEntries != nil {
+		storage.MaxActivityEntries = *cfg.MaxActivityEntries
+	}
+
 	model := NewAppModel(cfg, manager)
 
 	// Pass startup eval result to model for status display

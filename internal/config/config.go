@@ -72,6 +72,7 @@ type Config struct {
 	ReviewOldDays           *int                         `json:"review_old_days,omitempty"`           // nil=14, 0=hide section (based on UpdatedAt)
 	ReviewCompletedHours    *int                         `json:"review_completed_hours,omitempty"`    // nil=24, 0=hide section
 	LinkedTaskJumpToNew     *bool                        `json:"linked_task_jump_to_new,omitempty"`   // nil=false: stay on source, true=jump to new
+	MaxActivityEntries      *int                         `json:"max_activity_entries,omitempty"`      // nil=50, 0=disabled, max activity log entries per task
 }
 
 // NewConfig creates a new configuration with default values.

@@ -54,6 +54,10 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
 	}
+	// Apply config-driven storage settings
+	if cfg.MaxActivityEntries != nil {
+		storage.MaxActivityEntries = *cfg.MaxActivityEntries
+	}
 	return cfg, configManager, nil
 }
 

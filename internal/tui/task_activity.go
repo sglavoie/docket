@@ -1,0 +1,224 @@
+package tui
+
+import (
+	"fmt"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// TaskActivityModel displays the activity log for a task.
+type TaskActivityModel struct {
+	task    *models.Task
+	project *models.Project
+
+	cursor  int
+	sortAsc bool
+	width   int
+	height  int
+}
+
+// NewTaskActivityModel creates a new task activity viewer.
+func NewTaskActivityModel(task *models.Task, project *models.Project) *TaskActivityModel {
+	return &TaskActivityModel{
+		task:    task,
+		project: project,
+	}
+}
+
+func (m *TaskActivityModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m *TaskActivityModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}
+
+func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc":
+			return m, func() tea.Msg { return CloseTaskActivityMsg{} }
+
+		case "j", "down":
+			entries := m.getEntries()
+			if m.cursor < len(entries)-1 {
+				m.cursor++
+			}
+
+		case "k", "up":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+
+		case "g":
+			m.cursor = 0
+
+		case "G":
+			entries := m.getEntries()
+			if len(entries) > 0 {
+				m.cursor = len(entries) - 1
+			}
+
+		case "s":
+			m.sortAsc = !m.sortAsc
+			m.cursor = 0
+
+		case "y":
+			// Copy current entry as text
+			entries := m.getEntries()
+			if m.cursor < len(entries) {
+				entry := entries[m.cursor]
+				text := formatEntryText(entry)
+				return m, func() tea.Msg {
+					return CopyTaskTitleMsg{Task: &models.Task{Title: text}}
+				}
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m *TaskActivityModel) View() string {
+	var b strings.Builder
+
+	b.WriteString(TitleStyle.Render(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title)))
+	b.WriteString("\n")
+
+	entries := m.getEntries()
+
+	sortDir := "newest first"
+	if m.sortAsc {
+		sortDir = "oldest first"
+	}
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d entries (%s)", len(entries), sortDir)))
+	b.WriteString("\n\n")
+
+	if len(entries) == 0 {
+		b.WriteString(MutedStyle.Render("No activity recorded yet."))
+		b.WriteString("\n")
+	} else {
+		headerLines := 6
+		availableHeight := m.height - headerLines
+		maxVisible := availableHeight / 2
+		if maxVisible < 3 {
+			maxVisible = 3
+		}
+
+		scrollOffset := 0
+		if m.cursor >= maxVisible {
+			scrollOffset = m.cursor - maxVisible + 1
+		}
+
+		for i := scrollOffset; i < len(entries) && i < scrollOffset+maxVisible; i++ {
+			entry := entries[i]
+
+			cursor := "  "
+			if i == m.cursor {
+				cursor = "> "
+			}
+
+			relTime := storage.FormatRelativeTime(entry.Timestamp)
+			ts := fmt.Sprintf("[%s] %s", entry.Timestamp.Format("2006-01-02 15:04"), relTime)
+
+			var line strings.Builder
+			line.WriteString(cursor)
+
+			fieldStyle := fieldColorStyle(entry.Field)
+
+			if i == m.cursor {
+				line.WriteString(fieldStyle.Render(formatEntryText(entry)))
+				line.WriteString("  ")
+				line.WriteString(MutedStyle.Render(ts))
+			} else {
+				line.WriteString(MutedStyle.Render(formatEntryText(entry)))
+				line.WriteString("  ")
+				line.WriteString(MutedStyle.Render(ts))
+			}
+
+			b.WriteString(line.String())
+			b.WriteString("\n")
+		}
+
+		if len(entries) > maxVisible {
+			remaining := len(entries) - scrollOffset - maxVisible
+			if remaining > 0 {
+				b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
+				b.WriteString("\n")
+			}
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("j/k: navigate | s: sort | y: copy entry | q/Esc: close"))
+
+	return b.String()
+}
+
+// getEntries returns entries in the current sort order.
+// Default (sortAsc=false) is reverse chronological (newest first).
+func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
+	entries := make([]*models.ActivityEntry, len(m.task.Activity))
+	if m.sortAsc {
+		for i, e := range m.task.Activity {
+			entries[len(m.task.Activity)-1-i] = e
+		}
+	} else {
+		copy(entries, m.task.Activity)
+	}
+	return entries
+}
+
+// formatEntryText formats an activity entry as a human-readable string.
+func formatEntryText(entry *models.ActivityEntry) string {
+	if entry.Field == "created" {
+		return "created"
+	}
+	if entry.OldValue == "" {
+		return fmt.Sprintf("%s: %s", entry.Field, entry.NewValue)
+	}
+	return fmt.Sprintf("%s: %s > %s", entry.Field, entry.OldValue, entry.NewValue)
+}
+
+// fieldColorStyle returns a lipgloss style for the given field type.
+func fieldColorStyle(field string) lipgloss.Style {
+	switch field {
+	case "status":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green
+	case "priority":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // yellow
+	case "section":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("6")) // cyan
+	case "tags":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("5")) // magenta
+	case "due":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("1")) // red
+	case "title":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("4")) // blue
+	case "created":
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // gray
+	default:
+		return lipgloss.NewStyle()
+	}
+}
+
+// HasTextInput returns false - no text input in activity view.
+func (m *TaskActivityModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns false - esc should navigate back.
+func (m *TaskActivityModel) ShouldCaptureEsc() bool {
+	return false
+}

@@ -247,6 +247,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations", Views: views},
 		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
 
 		// Create Linked Tasks (c prefix)
@@ -851,6 +852,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
+		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "M", Description: "Move to another project", Category: "Task Operations", Views: views},
 		Keybinding{Key: "cp", Description: "Cross-project linking", Category: "Task Operations", Views: views},

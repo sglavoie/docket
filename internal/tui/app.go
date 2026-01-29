@@ -76,6 +76,7 @@ const (
 	ViewNoteTagSelector
 	ViewNotesSearch
 	ViewNoteTagFilterSelector
+	ViewTaskActivity
 )
 
 // AppModel is the main TUI model with a view stack.

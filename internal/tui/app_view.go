@@ -158,7 +158,8 @@ func (m *AppModel) renderStatusBar() string {
 		currentView != ViewTaskJumper &&
 		currentView != ViewGlobalSearch &&
 		currentView != ViewDependencyViewer &&
-		currentView != ViewCustomContextEditor
+		currentView != ViewCustomContextEditor &&
+		currentView != ViewTaskActivity
 
 	help := ""
 	if showHelp {
