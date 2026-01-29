@@ -155,9 +155,10 @@ type CommandPaletteModel struct {
 	filteredItems []filteredPaletteItem
 
 	// Navigation state
-	cursor       int
-	scrollOffset int // Current scroll offset (persisted between renders)
-	scrollAnchor int // When >= 0, forces scroll to position this item at top of view, then resets to -1
+	cursor           int
+	scrollOffset     int    // Current scroll offset (persisted between renders)
+	scrollAnchor     int    // When >= 0, forces scroll to position this item at top of view, then resets to -1
+	lastCursorItemID string // ID of item at cursor before filtering, for restoration
 
 	// Action mode state - when true, showing inline actions for selected item
 	actionMode         bool
@@ -188,7 +189,8 @@ type CommandPaletteModel struct {
 	categoryCursors map[ItemCategory]int
 
 	// View mode toggle - compact mode hides preview pane
-	compactMode bool
+	compactMode    bool
+	userSetCompact bool // true when user explicitly toggled compact via Ctrl+P
 
 	// Search history navigation
 	searchHistory      []string // Copy of history from config

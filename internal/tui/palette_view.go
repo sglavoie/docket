@@ -214,6 +214,13 @@ func (m *CommandPaletteModel) buildFooter() string {
 		toggleSummary = " [" + strings.Join(toggles, " ") + "]"
 	}
 
+	query := strings.TrimSpace(m.searchInput.Value())
+
+	// When browsing (empty query), show syntax cheat sheet instead of key hints
+	if query == "" {
+		return fmt.Sprintf("+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N")
+	}
+
 	// Build compact hints
 	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • Esc"
 

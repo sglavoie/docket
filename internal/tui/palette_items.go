@@ -116,6 +116,11 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 		m.listWidth = innerWidth - 25
 	}
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
+
+	// Auto-enable compact mode on narrow terminals unless user explicitly toggled
+	if !m.userSetCompact {
+		m.compactMode = width < 100 || m.previewWidth < 25
+	}
 }
 
 // loadAllItems aggregates commands, tasks, projects, tags, and sections into PaletteItems.

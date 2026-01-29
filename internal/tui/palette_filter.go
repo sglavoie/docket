@@ -532,9 +532,24 @@ func (m *CommandPaletteModel) itemMatchesPositiveGroups(item PaletteItem, positi
 func (m *CommandPaletteModel) filterItems() {
 	query := strings.TrimSpace(m.searchInput.Value())
 
+	// Save current cursor item ID for restoration after filtering
+	if m.cursor >= 0 && m.cursor < len(m.filteredItems) {
+		m.lastCursorItemID = m.getItemID(m.filteredItems[m.cursor].Item)
+	} else {
+		m.lastCursorItemID = ""
+	}
+
 	// Reset inline task mode
 	m.inlineTaskMode = false
 	m.inlineTaskParsed = nil
+
+	// Check for :help prefix - show syntax help as palette entries
+	if query == ":help" || strings.HasPrefix(query, ":help ") {
+		m.filteredItems = m.buildHelpItems()
+		m.cursor = 0
+		m.scrollOffset = 0
+		return
+	}
 
 	// Check for inline task creation (+Title syntax)
 	if matches := inlineTaskPattern.FindStringSubmatch(query); matches != nil {
@@ -630,8 +645,7 @@ func (m *CommandPaletteModel) filterItems() {
 		for i, item := range sorted {
 			m.filteredItems[i] = filteredPaletteItem{Item: item}
 		}
-		m.cursor = 0
-		m.scrollOffset = 0
+		m.restoreCursorPosition()
 		return
 	}
 
@@ -724,14 +738,7 @@ func (m *CommandPaletteModel) filterItems() {
 		}
 	}
 
-	// Reset cursor and scroll if out of bounds
-	if m.cursor >= len(m.filteredItems) {
-		m.cursor = len(m.filteredItems) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-	m.scrollOffset = 0
+	m.restoreCursorPosition()
 }
 
 // filterByTaskID filters items to show only tasks matching the given ShortID.
@@ -876,6 +883,65 @@ func (m *CommandPaletteModel) findNextSectionStart() int {
 	}
 
 	return -1
+}
+
+// restoreCursorPosition tries to keep the previously selected item under the cursor.
+// If the item is found in the new filtered results, cursor moves to its new position.
+// Otherwise cursor and scroll reset to 0.
+func (m *CommandPaletteModel) restoreCursorPosition() {
+	if m.lastCursorItemID != "" && len(m.filteredItems) > 0 {
+		for i, filtered := range m.filteredItems {
+			if m.getItemID(filtered.Item) == m.lastCursorItemID {
+				m.cursor = i
+				// Let calculateScrollOffset handle repositioning naturally
+				return
+			}
+		}
+	}
+	// Item not found - reset
+	m.cursor = 0
+	m.scrollOffset = 0
+}
+
+// buildHelpItems returns a list of filteredPaletteItems that serve as a syntax reference.
+func (m *CommandPaletteModel) buildHelpItems() []filteredPaletteItem {
+	helpEntries := []struct {
+		name string
+		desc string
+	}{
+		{"+Buy milk !2 #errand @tomorrow", "Inline task creation with priority, tag, due date"},
+		{":cmd, :task, :prj, :tag, :sec, :note, :view", "Category prefix filters"},
+		{":recent", "Show recently executed commands"},
+		{"#123", "Jump directly to task by short ID"},
+		{"\"exact phrase\"", "Quoted exact substring match"},
+		{"-exclude", "Exclude items matching a term"},
+		{"bug|fix", "OR search: match either term"},
+		{"priority:1 or priority:1-3", "Filter tasks by priority value or range"},
+		{"status:todo or status:todo|progress", "Filter tasks by status"},
+		{"tag:name or tag:bug|feature", "Filter tasks by tag"},
+		{"section:backlog", "Filter tasks by section"},
+		{"@overdue @today @tomorrow @this-week", "Filter tasks by due date"},
+		{"Ctrl+H", "Toggle completed/canceled tasks"},
+		{"Ctrl+O", "Cycle sort: score → priority → due date"},
+		{"Ctrl+P", "Toggle compact mode (hide preview)"},
+		{"Ctrl+N", "Jump to next category section"},
+		{"Ctrl+B", "Save current search as bookmark"},
+		{"Ctrl+F", "Pin/unpin a command"},
+		{"Tab", "Show actions for selected item"},
+		{"Space", "Multi-select tasks for bulk actions"},
+	}
+
+	items := make([]filteredPaletteItem, len(helpEntries))
+	for i, entry := range helpEntries {
+		items[i] = filteredPaletteItem{
+			Item: PaletteItem{
+				Name:        entry.name,
+				Description: entry.desc,
+				Category:    ItemCategoryCommands, // Use commands category for badge styling
+			},
+		}
+	}
+	return items
 }
 
 // isDirectActionEnabled returns true if single-key actions (e, g, x, s, r) should work directly.

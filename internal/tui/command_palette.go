@@ -184,6 +184,7 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 	case "ctrl+p":
 		// Toggle compact view mode (hide/show preview pane)
 		m.compactMode = !m.compactMode
+		m.userSetCompact = true
 		return m, nil
 	case "ctrl+f":
 		// Toggle pin on current command
