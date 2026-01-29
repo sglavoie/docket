@@ -2590,6 +2590,105 @@ func (m *AppModel) registerGlobalCommands() {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
 			},
 		},
+		{
+			Name:        "create note",
+			Description: "Create a new note",
+			Shortcut:    "n",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"new note", "add note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+			},
+		},
+		{
+			Name:        "rename note",
+			Description: "Rename selected note inline",
+			Shortcut:    "r",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"note rename", "change note title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+			},
+		},
+		{
+			Name:        "cycle note sort",
+			Description: "Cycle sort mode (date/title/pinned)",
+			Shortcut:    "s",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"sort notes", "note sort mode"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "clear tag filter",
+			Description: "Clear all note tag filters",
+			Shortcut:    "C",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"reset note filters", "clear note tags"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'C'}}
+			},
+		},
+		{
+			Name:        "copy note title",
+			Description: "Copy note title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"yank note title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+		{
+			Name:        "copy note body",
+			Description: "Copy note body to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"yank note body"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+			},
+		},
+		{
+			Name:        "copy note title and body",
+			Description: "Copy title and body to clipboard",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"yank note full"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlY}
+			},
+		},
+		{
+			Name:        "toggle multi-select",
+			Description: "Toggle note multi-select mode",
+			Shortcut:    "V",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"multi select notes"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'V'}}
+			},
+		},
+		{
+			Name:        "view note",
+			Description: "View selected note",
+			Shortcut:    "enter",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"open note", "read note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyEnter}
+			},
+		},
 	}
 
 	// Kanban view commands (ViewKanban)
@@ -2883,6 +2982,8 @@ func (m *AppModel) registerGlobalCommands() {
 	undoHistoryCommands := []Command{
 		{Name: "perform undo", Description: "Undo selected entry or view detail", Shortcut: "enter", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"undo entry", "view detail"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
 		{Name: "switch pane", Description: "Switch between entry list and diff pane", Shortcut: "tab", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"toggle pane"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyTab} }},
+		{Name: "scroll diff left", Description: "Scroll diff pane left", Shortcut: "h", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff left"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}} }},
+		{Name: "scroll diff right", Description: "Scroll diff pane right", Shortcut: "l", Category: CategoryUndoHistory, Views: []ViewType{ViewUndoHistory}, Aliases: []string{"diff right"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}} }},
 	}
 
 	// Global Tag Manager view commands (ViewGlobalTagManager)
@@ -2996,6 +3097,39 @@ func (m *AppModel) registerGlobalCommands() {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
 			},
 		},
+		{
+			Name:        "copy task title",
+			Description: "Copy task title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Aliases:     []string{"yank title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+		{
+			Name:        "copy task details",
+			Description: "Copy task with details to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Aliases:     []string{"yank details"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+			},
+		},
+		{
+			Name:        "copy task with description",
+			Description: "Copy task title and description",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Aliases:     []string{"yank description"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlY}
+			},
+		},
 	}
 
 	// Daily review commands (ViewDailyReview)
@@ -3099,6 +3233,39 @@ func (m *AppModel) registerGlobalCommands() {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
 			},
 		},
+		{
+			Name:        "copy task title",
+			Description: "Copy task title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"yank title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+		{
+			Name:        "copy task details",
+			Description: "Copy task with details to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"yank details"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+			},
+		},
+		{
+			Name:        "copy task with description",
+			Description: "Copy task title and description",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"yank description"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlY}
+			},
+		},
 	}
 
 	// Priority view commands (ViewPriorityView)
@@ -3156,6 +3323,39 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"reload priorities"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+			},
+		},
+		{
+			Name:        "copy task title",
+			Description: "Copy task title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"yank title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+		{
+			Name:        "copy task details",
+			Description: "Copy task with details to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"yank details"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+			},
+		},
+		{
+			Name:        "copy task with description",
+			Description: "Copy task title and description",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"yank description"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlY}
 			},
 		},
 	}
@@ -3287,6 +3487,87 @@ func (m *AppModel) registerGlobalCommands() {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
 			},
 		},
+		{
+			Name:        "copy task title",
+			Description: "Copy task title to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDueDateOverview},
+			Aliases:     []string{"yank title"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+		{
+			Name:        "copy task details",
+			Description: "Copy task with details to clipboard",
+			Shortcut:    "Y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDueDateOverview},
+			Aliases:     []string{"yank details"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Y'}}
+			},
+		},
+		{
+			Name:        "copy task with description",
+			Description: "Copy task title and description",
+			Shortcut:    "ctrl+y",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDueDateOverview},
+			Aliases:     []string{"yank description"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlY}
+			},
+		},
+	}
+
+	// Workflow rules view commands (ViewWorkflowRules)
+	workflowRulesCommands := []Command{
+		{
+			Name:        "create workflow rule",
+			Description: "Create a new workflow rule",
+			Shortcut:    "n",
+			Category:    CategoryWorkflowRules,
+			Views:       []ViewType{ViewWorkflowRules},
+			Aliases:     []string{"new rule", "add rule"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+			},
+		},
+		{
+			Name:        "edit workflow rule",
+			Description: "Edit selected workflow rule",
+			Shortcut:    "e",
+			Category:    CategoryWorkflowRules,
+			Views:       []ViewType{ViewWorkflowRules},
+			Aliases:     []string{"modify rule"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+			},
+		},
+		{
+			Name:        "delete workflow rule",
+			Description: "Delete selected workflow rule",
+			Shortcut:    "d",
+			Category:    CategoryWorkflowRules,
+			Views:       []ViewType{ViewWorkflowRules},
+			Aliases:     []string{"remove rule"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+			},
+		},
+		{
+			Name:        "view workflow rule",
+			Description: "View rule details",
+			Shortcut:    "enter",
+			Category:    CategoryWorkflowRules,
+			Views:       []ViewType{ViewWorkflowRules},
+			Aliases:     []string{"open rule", "rule details"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyEnter}
+			},
+		},
 	}
 
 	// Register all command batches
@@ -3323,6 +3604,7 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(taskCommentsCommands)
 	_ = m.commandRegistry.RegisterBatch(undoHistoryCommands)
 	_ = m.commandRegistry.RegisterBatch(globalTagManagerCommands)
+	_ = m.commandRegistry.RegisterBatch(workflowRulesCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
