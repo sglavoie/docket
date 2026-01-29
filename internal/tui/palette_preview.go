@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -274,15 +275,15 @@ func (m *CommandPaletteModel) renderCommandPreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(cmd.Description)
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(cmd.Description))
 		b.WriteString("\n")
 	}
 
 	// Aliases
 	if len(cmd.Aliases) > 0 {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("Also searchable as: "))
-		b.WriteString(strings.Join(cmd.Aliases, ", "))
+		aliasText := "Also searchable as: " + strings.Join(cmd.Aliases, ", ")
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(MutedStyle.Render(aliasText)))
 		b.WriteString("\n")
 	}
 
@@ -310,7 +311,8 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
 		task.Title)
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(header))
+	styledHeader := TaskJumperPreviewHeaderStyle.Render(header)
+	b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(styledHeader))
 	b.WriteString("\n\n")
 
 	// Status
@@ -365,7 +367,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
 		b.WriteString(fmt.Sprintf("%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10))))
+			MutedStyle.Render(parentRef)))
 	}
 
 	// Subtasks count
@@ -428,13 +430,12 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		}
 	}
 
-	// Description (truncated)
+	// Description
 	if task.Description != "" {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		desc := util.Truncate(task.Description, m.previewWidth*3) // Allow ~3 lines
-		b.WriteString(desc)
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(task.Description))
 		b.WriteString("\n")
 	}
 
@@ -491,7 +492,7 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(util.Truncate(project.Description, m.previewWidth*2))
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(project.Description))
 		b.WriteString("\n")
 	}
 
@@ -626,12 +627,15 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 	if len(tasksWithTag) < maxShow {
 		maxShow = len(tasksWithTag)
 	}
+	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
 	for i := 0; i < maxShow; i++ {
 		task := tasksWithTag[i].Task
-		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
+		line := fmt.Sprintf("  %s #%d: %s",
 			GetTypeBadge(string(task.Type), task.Type.Icon()),
 			task.ShortID,
-			util.Truncate(task.Title, m.previewWidth-15)))
+			task.Title)
+		b.WriteString(wrapStyle.Render(line))
+		b.WriteString("\n")
 	}
 	if len(tasksWithTag) > maxShow {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(tasksWithTag)-maxShow)))
@@ -675,12 +679,15 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 	if len(tasksInSection) < maxShow {
 		maxShow = len(tasksInSection)
 	}
+	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
 	for i := 0; i < maxShow; i++ {
 		task := tasksInSection[i].Task
-		b.WriteString(fmt.Sprintf("  %s #%d: %s\n",
+		line := fmt.Sprintf("  %s #%d: %s",
 			GetTypeBadge(string(task.Type), task.Type.Icon()),
 			task.ShortID,
-			util.Truncate(task.Title, m.previewWidth-15)))
+			task.Title)
+		b.WriteString(wrapStyle.Render(line))
+		b.WriteString("\n")
 	}
 	if len(tasksInSection) > maxShow {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more", len(tasksInSection)-maxShow)))
@@ -809,8 +816,7 @@ func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Content"))
 		b.WriteString("\n")
-		excerpt := util.Truncate(strings.TrimSpace(note.Body), m.previewWidth*3)
-		b.WriteString(excerpt)
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(strings.TrimSpace(note.Body)))
 		b.WriteString("\n")
 	}
 
@@ -827,7 +833,7 @@ func (m *CommandPaletteModel) renderViewPreview(item PaletteItem) string {
 	if item.Description != "" {
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(item.Description)
+		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(item.Description))
 		b.WriteString("\n")
 	}
 

@@ -107,8 +107,8 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 
 	m.searchInput.Width = innerWidth - 4
 
-	// Calculate split pane widths: 55% list, 45% preview based on inner width
-	m.listWidth = innerWidth * 55 / 100
+	// Calculate split pane widths: 65% list, 35% preview based on inner width
+	m.listWidth = innerWidth * 65 / 100
 	if m.listWidth < 35 {
 		m.listWidth = 35
 	}

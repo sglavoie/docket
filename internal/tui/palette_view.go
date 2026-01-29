@@ -610,17 +610,21 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 
 	// Shortcut string for right alignment
 	shortcutText := ""
-	shortcutLen := 0
 	if item.Shortcut != "" {
 		shortcutText = item.Shortcut
-		shortcutLen = len(shortcutText) + 2
 	} else if item.Category != ItemCategoryCommands {
 		shortcutText = "Tab"
-		shortcutLen = 5
+	}
+
+	// Use a fixed shortcut column width so all shortcuts right-align neatly
+	const shortcutColWidth = 8
+	shortcutReserved := 0
+	if shortcutText != "" {
+		shortcutReserved = shortcutColWidth
 	}
 
 	// Calculate space for name + extra info + description
-	fixedWidth := 2 + checkboxLen + pinLen + catBadgeLen + 1 + shortcutLen + 2
+	fixedWidth := 2 + checkboxLen + pinLen + catBadgeLen + 1 + shortcutReserved
 	remainingWidth := width - fixedWidth
 	if remainingWidth < 20 {
 		remainingWidth = 20
@@ -629,10 +633,17 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	// Build the left content with highlighting
 	leftContent, leftLen := m.renderItemContentWithHighlight(item, filtered.NamePositions, remainingWidth)
 
-	// Calculate gap to right-align shortcut
+	// Calculate gap to right-align shortcut within the fixed column
 	gap := remainingWidth - leftLen
-	if gap < 1 {
-		gap = 1
+	shortcutDisplayLen := len(shortcutText)
+	// Right-align the shortcut text within the reserved column
+	shortcutPad := shortcutColWidth - shortcutDisplayLen
+	if shortcutPad < 0 {
+		shortcutPad = 0
+	}
+	totalGap := gap + shortcutPad
+	if totalGap < 1 {
+		totalGap = 1
 	}
 
 	// Build the complete line
@@ -645,7 +656,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	line.WriteString(leftContent)
 
 	if shortcutText != "" {
-		line.WriteString(strings.Repeat(" ", gap))
+		line.WriteString(strings.Repeat(" ", totalGap))
 		line.WriteString(HelpKeyStyle.Render(shortcutText))
 	}
 
@@ -744,14 +755,8 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 		totalLen += 4
 	}
 
-	// Calculate max name length
+	// Give the name its full length; description gets whatever space remains
 	maxNameLen := maxWidth - totalLen
-	if item.Description != "" && maxNameLen > 25 {
-		maxNameLen = maxWidth/2 - totalLen
-		if maxNameLen < 15 {
-			maxNameLen = 15
-		}
-	}
 	if maxNameLen < 10 {
 		maxNameLen = 10
 	}

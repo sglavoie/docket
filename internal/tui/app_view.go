@@ -17,6 +17,11 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
+	// Hide status bar for command palette (reclaim space for the overlay)
+	if m.currentView() == ViewCommandPalette {
+		return content
+	}
+
 	// Add status bar
 	statusBar := m.renderStatusBar()
 
