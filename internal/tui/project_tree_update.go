@@ -652,6 +652,11 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 
 	// Special case for ctrl+a (archive project)
 	if key == "ctrl+a" {
+		if m.project.Sandbox {
+			return m, func() tea.Msg {
+				return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
+			}
+		}
 		if m.project.Archived {
 			m.confirmAction = ConfirmUnarchive
 		} else {

@@ -201,26 +201,28 @@ func (m *CommandPaletteModel) getProjectActions(item PaletteItem) []PaletteActio
 		},
 	}
 
-	if project.Archived {
-		actions = append(actions, PaletteAction{
-			Name:    "Restore",
-			Icon:    "↺",
-			KeyHint: "r",
-			Handler: func() tea.Msg {
-				project.Unarchive()
-				return ProjectRestoredMsg{Project: project}
-			},
-		})
-	} else {
-		actions = append(actions, PaletteAction{
-			Name:    "Archive",
-			Icon:    "📦",
-			KeyHint: "x",
-			Handler: func() tea.Msg {
-				project.Archive()
-				return ProjectArchivedMsg{Project: project}
-			},
-		})
+	if !project.Sandbox {
+		if project.Archived {
+			actions = append(actions, PaletteAction{
+				Name:    "Restore",
+				Icon:    "↺",
+				KeyHint: "r",
+				Handler: func() tea.Msg {
+					project.Unarchive()
+					return ProjectRestoredMsg{Project: project}
+				},
+			})
+		} else {
+			actions = append(actions, PaletteAction{
+				Name:    "Archive",
+				Icon:    "📦",
+				KeyHint: "x",
+				Handler: func() tea.Msg {
+					project.Archive()
+					return ProjectArchivedMsg{Project: project}
+				},
+			})
+		}
 	}
 
 	// Pin/unpin action

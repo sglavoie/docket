@@ -51,6 +51,10 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 		return tterrors.NewProjectNotFoundError(args[0])
 	}
 
+	if project.Sandbox {
+		return fmt.Errorf("cannot archive the sandbox project")
+	}
+
 	if project.Archived {
 		return fmt.Errorf("project '%s' is already archived", project.Name)
 	}

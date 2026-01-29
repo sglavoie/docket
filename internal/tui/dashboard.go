@@ -243,10 +243,23 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return SettingsMsg{}
 			}
+		case "S":
+			sandbox := m.config.GetSandboxProject()
+			if sandbox != nil {
+				return m, func() tea.Msg {
+					return SelectProjectMsg{Project: sandbox}
+				}
+			}
 		case "D":
 			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
+				if project.Sandbox {
+					return m, func() tea.Msg {
+						return ErrorMsg{Err: fmt.Errorf("cannot delete the sandbox project")}
+					}
+				}
 				m.confirmAction = "delete"
-				m.deleteTarget = visible[m.cursor]
+				m.deleteTarget = project
 			}
 		case "e":
 			if CursorInBounds(m.cursor, len(visible)) {

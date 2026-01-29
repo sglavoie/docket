@@ -93,6 +93,33 @@ func NewConfig() *Config {
 	}
 }
 
+// EnsureSandboxProject checks if a sandbox project exists and creates one if not.
+// Returns true if a new sandbox project was created.
+func (c *Config) EnsureSandboxProject() bool {
+	for _, p := range c.Projects {
+		if p.Sandbox {
+			return false
+		}
+	}
+	now := time.Now()
+	project := &models.Project{
+		ID:            "sandbox-" + now.Format("20060102150405"),
+		Slug:          "_sandbox",
+		Name:          "Sandbox",
+		Context:       "personal",
+		Path:          c.GetProjectPath("_sandbox"),
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Sandbox:       true,
+		Tasks:         []*models.Task{},
+		NextShortID:   1,
+		Sections:      []string{models.SectionNext},
+		SectionColors: make(map[string]string),
+	}
+	c.Projects = append(c.Projects, project)
+	return true
+}
+
 // GetEditor returns the configured editor.
 func (c *Config) GetEditor() string {
 	return c.Editor

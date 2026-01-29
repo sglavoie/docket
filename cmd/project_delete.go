@@ -39,6 +39,10 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 		return tterrors.NewProjectNotFoundError(args[0])
 	}
 
+	if project.Sandbox {
+		return fmt.Errorf("cannot delete the sandbox project")
+	}
+
 	// Purge any existing trash entry with same slug
 	if err := storage.PurgeFromTrash(project.Slug, cfg.DataDir); err != nil {
 		return fmt.Errorf("failed to purge old trash entry: %w", err)

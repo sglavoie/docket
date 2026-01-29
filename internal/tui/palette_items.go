@@ -144,6 +144,10 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	// Load tasks, projects, tags, and sections from active projects
 	// When currentProject is set, only load tasks from that project
 	projects := m.config.GetActiveProjects()
+	// Include sandbox if it's the current project (GetActiveProjects excludes it)
+	if m.currentProject != nil && m.currentProject.Sandbox {
+		projects = append(projects, m.currentProject)
+	}
 	for _, project := range projects {
 		// Add project as searchable item (always include all projects for switching)
 		items = append(items, PaletteItem{

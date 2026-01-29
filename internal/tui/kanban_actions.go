@@ -386,6 +386,11 @@ func (m *KanbanViewModel) outdentTask() tea.Cmd {
 
 // executeArchiveToggle archives or unarchives the project.
 func (m *KanbanViewModel) executeArchiveToggle() tea.Cmd {
+	if m.Project.Sandbox {
+		m.statusMessage = "Cannot archive the sandbox project"
+		return nil
+	}
+
 	prevStates := captureTaskStates(m.Project.Tasks)
 
 	if m.Project.Archived {

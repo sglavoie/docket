@@ -62,11 +62,21 @@ func sortProjectsWithPinnedFirst(projects []*models.Project) {
 	})
 }
 
-// GetActiveProjects returns non-archived projects sorted with pinned first, then alphabetically.
+// GetSandboxProject returns the sandbox project, or nil if none exists.
+func (c *Config) GetSandboxProject() *models.Project {
+	for _, p := range c.Projects {
+		if p.Sandbox {
+			return p
+		}
+	}
+	return nil
+}
+
+// GetActiveProjects returns non-archived, non-sandbox projects sorted with pinned first, then alphabetically.
 func (c *Config) GetActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range c.Projects {
-		if !p.Archived {
+		if !p.Archived && !p.Sandbox {
 			active = append(active, p)
 		}
 	}
@@ -78,7 +88,7 @@ func (c *Config) GetActiveProjects() []*models.Project {
 func (c *Config) GetArchivedProjects() []*models.Project {
 	var archived []*models.Project
 	for _, p := range c.Projects {
-		if p.Archived {
+		if p.Archived && !p.Sandbox {
 			archived = append(archived, p)
 		}
 	}

@@ -158,6 +158,11 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		opt(app)
 	}
 
+	// Ensure sandbox project exists
+	if cfg.EnsureSandboxProject() {
+		_ = manager.Save(cfg)
+	}
+
 	// Initialize dashboard and register it
 	app.dashboard = NewDashboardModel(cfg)
 	app.views.Register(ViewDashboard, app.dashboard)
@@ -711,6 +716,20 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"recent", "show recent"},
 			Handler: func() tea.Msg {
 				return ToggleRecentTasksMsg{}
+			},
+		},
+		{
+			Name:        "open sandbox",
+			Description: "Open the sandbox project",
+			Shortcut:    "S",
+			Category:    CategoryProjects,
+			Aliases:     []string{"sandbox", "scratch", "scratchpad"},
+			Handler: func() tea.Msg {
+				sandbox := m.config.GetSandboxProject()
+				if sandbox != nil {
+					return SelectProjectMsg{Project: sandbox}
+				}
+				return nil
 			},
 		},
 		{

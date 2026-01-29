@@ -20,6 +20,7 @@ type Project struct {
 	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
 	Pinned      bool       `json:"pinned"`
 	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
+	Sandbox     bool       `json:"sandbox,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks         []*Task           `json:"-"`
