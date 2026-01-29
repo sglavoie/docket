@@ -281,14 +281,3 @@ func (m *KanbanViewModel) renderCompletedTaskRow(node *KanbanNode, isSelected bo
 	}
 	return "  " + content
 }
-
-// getSelectedCompletedTask returns the currently selected task in completed view.
-func (m *KanbanViewModel) getSelectedCompletedTask() *KanbanNode {
-	if !m.completedViewMode || len(m.completedNodes) == 0 {
-		return nil
-	}
-	if m.completedCursor < 0 || m.completedCursor >= len(m.completedNodes) {
-		return nil
-	}
-	return m.completedNodes[m.completedCursor]
-}

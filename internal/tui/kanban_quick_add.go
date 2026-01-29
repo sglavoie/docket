@@ -89,33 +89,6 @@ func (m *KanbanViewModel) handleQuickAddInput(msg tea.KeyMsg) (tea.Model, tea.Cm
 	return m, cmd
 }
 
-// initQuickAddCaches builds tag, parent, and section caches for autocomplete.
-func (m *KanbanViewModel) initQuickAddCaches() {
-	// Cache all tags from the project
-	tagSet := make(map[string]bool)
-	for _, task := range m.Project.Tasks {
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
-	}
-	m.quickAddTagCache = make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		m.quickAddTagCache = append(m.quickAddTagCache, tag)
-	}
-	sort.Strings(m.quickAddTagCache)
-
-	// Cache potential parent tasks (non-completed, can have children)
-	m.quickAddParentCache = make([]*models.Task, 0)
-	for _, task := range m.Project.Tasks {
-		if !task.Status.IsComplete() && task.Type.CanHaveChildren() {
-			m.quickAddParentCache = append(m.quickAddParentCache, task)
-		}
-	}
-
-	// Cache sections from project
-	m.quickAddSectionCache = m.Project.GetSections()
-}
-
 // updateQuickAddPreview updates the live preview state.
 func (m *KanbanViewModel) updateQuickAddPreview() {
 	input := strings.TrimSpace(m.quickAddInput.Value())

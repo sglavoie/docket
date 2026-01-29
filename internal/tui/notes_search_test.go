@@ -69,7 +69,7 @@ func TestExtractSnippets(t *testing.T) {
 	}
 
 	// Empty query
-	snippet, positions = extractSnippets(body, "")
+	snippet, _ = extractSnippets(body, "")
 	if snippet != "" {
 		t.Errorf("expected empty snippet for empty query, got %q", snippet)
 	}

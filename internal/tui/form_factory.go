@@ -47,28 +47,10 @@ func (f *FormFieldFactory) NewTitleInput(placeholder string) textarea.Model {
 	return ti
 }
 
-// NewTitleInputFocused creates a focused title input.
-func (f *FormFieldFactory) NewTitleInputFocused(placeholder string) textarea.Model {
-	ti := f.NewTitleInput(placeholder)
-	ti.Focus()
-	return ti
-}
-
 // NewTitleInputWithValue creates a title input with an initial value.
 func (f *FormFieldFactory) NewTitleInputWithValue(value string) textarea.Model {
 	ti := f.NewTitleInput("")
 	ti.SetValue(value)
-	return ti
-}
-
-// NewDescriptionInput creates a textarea for descriptions.
-func (f *FormFieldFactory) NewDescriptionInput(placeholder string) textarea.Model {
-	ti := textarea.New()
-	ti.Placeholder = placeholder
-	ti.CharLimit = f.DefaultCharLimit
-	ti.SetWidth(f.DefaultWidth)
-	ti.SetHeight(f.DescriptionHeight)
-	ti.ShowLineNumbers = false
 	return ti
 }
 

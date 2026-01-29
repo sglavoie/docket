@@ -46,21 +46,6 @@ type CommandContext struct {
 	ConfigManager *config.Manager
 }
 
-// LoadCommandContext loads the config and current project, returning them bundled together.
-// Use this when a command needs the current project with its tasks loaded.
-// Returns an error if no project is selected or if loading fails.
-func LoadCommandContext() (*CommandContext, error) {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return nil, err
-	}
-	return &CommandContext{
-		Project:       project,
-		Config:        cfg,
-		ConfigManager: configManager,
-	}, nil
-}
-
 // LoadConfig loads the configuration file.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {

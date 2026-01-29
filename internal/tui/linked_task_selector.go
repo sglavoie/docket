@@ -33,18 +33,6 @@ type LinkedTaskSelectorModel struct {
 	scrollOffset int
 }
 
-// NewLinkedTaskSelectorModel creates a new linked task selector.
-func NewLinkedTaskSelectorModel(task *models.Task, project *models.Project) *LinkedTaskSelectorModel {
-	m := &LinkedTaskSelectorModel{
-		sourceTask: task,
-		project:    project,
-	}
-	m.InitSearchInput("Search linked tasks...", 50, 30)
-	m.loadRelations()
-	m.filtered = m.relations
-	return m
-}
-
 // NewLinkedTaskSelectorModelWithConfig creates a new linked task selector with config for cross-project support.
 func NewLinkedTaskSelectorModelWithConfig(task *models.Task, project *models.Project, cfg *config.Config) *LinkedTaskSelectorModel {
 	m := &LinkedTaskSelectorModel{
@@ -363,11 +351,6 @@ func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
 		_ = storage.LoadProject(m.project)
 		return CloseLinkedTaskSelectorMsg{}
 	}
-}
-
-// unlinkMissingTask handles unlinking a broken/missing link.
-func (m *LinkedTaskSelectorModel) unlinkMissingTask(idx int) tea.Cmd {
-	return m.unlinkTask(idx)
 }
 
 // unlinkTaskFromFiltered removes the link at the given index in the filtered list.

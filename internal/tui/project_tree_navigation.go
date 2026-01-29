@@ -287,21 +287,6 @@ func (m *ProjectTreeModel) getCurrentSidebarLinkedItemCount(task *models.Task) i
 	return 0
 }
 
-// getCurrentSidebarLinkedItems returns the tasks in the current linked section.
-// Note: This only returns same-project tasks and is used for backward compatibility.
-// For cross-project support, use getSelectedSidebarLinkedTask directly.
-func (m *ProjectTreeModel) getCurrentSidebarLinkedItems(task *models.Task) []*models.Task {
-	switch m.sidebar.GetDependencySection() {
-	case 0:
-		return m.project.GetBlockingTasks(task)
-	case 1:
-		return m.project.GetBlockedByTasks(task)
-	case 2:
-		return m.getRelatedTasks(task)
-	}
-	return nil
-}
-
 // sidebarLinkedTaskResult holds the result of resolving a sidebar linked task.
 type sidebarLinkedTaskResult struct {
 	Task      *models.Task
@@ -372,41 +357,6 @@ func (m *ProjectTreeModel) resolveTaskRefWithProject(ref string) sidebarLinkedTa
 		Project: targetProject,
 		TaskRef: ref,
 	}
-}
-
-// getSelectedSidebarLinkedTask returns the currently selected linked task.
-// For cross-project links, loads and returns the task from the target project.
-// Deprecated: Use getSelectedSidebarLinkedTaskWithProject for cross-project support.
-func (m *ProjectTreeModel) getSelectedSidebarLinkedTask(task *models.Task) *models.Task {
-	result := m.getSelectedSidebarLinkedTaskWithProject(task)
-	return result.Task
-}
-
-// resolveTaskRefForNavigation resolves a task reference and returns the task.
-// For cross-project refs, it loads the target project first.
-func (m *ProjectTreeModel) resolveTaskRefForNavigation(ref string) *models.Task {
-	taskRef := models.ParseTaskRef(ref)
-
-	if !taskRef.IsCrossProject() {
-		return m.project.GetTaskByID(taskRef.TaskID)
-	}
-
-	// Cross-project reference
-	if m.config == nil {
-		return nil
-	}
-
-	targetProject := m.config.GetProject(taskRef.ProjectID)
-	if targetProject == nil {
-		return nil
-	}
-
-	// Load the project if not already loaded
-	if len(targetProject.Tasks) == 0 {
-		_ = storage.LoadProject(targetProject)
-	}
-
-	return targetProject.GetTaskByID(taskRef.TaskID)
 }
 
 // JumpToTask moves the cursor to the specified task in the visible list.

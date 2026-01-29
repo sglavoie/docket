@@ -45,7 +45,6 @@ type NotesViewModel struct {
 
 	// Filter state
 	filterTags map[string]bool
-	filtering  bool
 
 	// Delete confirmation state
 	confirmDelete    bool

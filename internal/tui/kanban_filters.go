@@ -363,26 +363,6 @@ func (m *KanbanViewModel) ClearAllFilters() {
 	m.filter.Search = ""
 }
 
-// getAllTags returns all unique tags from the project's tasks.
-func (m *KanbanViewModel) getAllTags() []string {
-	tagSet := make(map[string]bool)
-	for _, task := range m.Project.Tasks {
-		// Only consider non-completed tasks
-		if task.Status.IsComplete() {
-			continue
-		}
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
-	}
-
-	var tags []string
-	for tag := range tagSet {
-		tags = append(tags, tag)
-	}
-	return tags
-}
-
 // cycleKanbanTypeFilter cycles through task types for filtering.
 func (m *KanbanViewModel) cycleKanbanTypeFilter() {
 	// Cycle order: "" -> epic -> story -> task -> bug -> idea -> ""

@@ -281,21 +281,3 @@ func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc strin
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
 	})
 }
-
-// pruneInvisibleSelections removes selected tasks that are no longer visible.
-func (m *KanbanViewModel) pruneInvisibleSelections() {
-	if !m.multiSelectMode {
-		return
-	}
-	visibleIDs := make(map[string]bool)
-	for _, section := range KanbanColumnOrder {
-		for _, node := range m.visibleNodesForSection(section) {
-			visibleIDs[node.Task.ID] = true
-		}
-	}
-	for id := range m.selectedTasks {
-		if !visibleIDs[id] {
-			delete(m.selectedTasks, id)
-		}
-	}
-}

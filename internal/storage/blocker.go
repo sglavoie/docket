@@ -69,38 +69,6 @@ func GetActiveBlockerCount(project *models.Project) int {
 	return count
 }
 
-// GetActiveBlockers returns only the unresolved blockers for a project.
-func GetActiveBlockers(project *models.Project) ([]*models.Blocker, error) {
-	blockers, err := LoadBlockers(project)
-	if err != nil {
-		return nil, err
-	}
-
-	var active []*models.Blocker
-	for _, b := range blockers {
-		if !b.IsResolved() {
-			active = append(active, b)
-		}
-	}
-	return active, nil
-}
-
-// GetResolvedBlockers returns only the resolved blockers for a project.
-func GetResolvedBlockers(project *models.Project) ([]*models.Blocker, error) {
-	blockers, err := LoadBlockers(project)
-	if err != nil {
-		return nil, err
-	}
-
-	var resolved []*models.Blocker
-	for _, b := range blockers {
-		if b.IsResolved() {
-			resolved = append(resolved, b)
-		}
-	}
-	return resolved, nil
-}
-
 // parseBlockersMarkdown parses blockers.md content into Blocker structs.
 func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
@@ -210,16 +178,6 @@ func renderBlockersMarkdown(blockers []*models.Blocker) string {
 	}
 
 	return b.String()
-}
-
-// FindBlockerByID finds a blocker by its full UUID.
-func FindBlockerByID(blockers []*models.Blocker, id string) *models.Blocker {
-	for _, b := range blockers {
-		if b.ID == id {
-			return b
-		}
-	}
-	return nil
 }
 
 // FindBlockerByPrefix finds a blocker by ID prefix (for CLI convenience).
