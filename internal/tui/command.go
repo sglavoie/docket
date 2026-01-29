@@ -24,6 +24,8 @@ const (
 	CategoryStructure   CommandCategory = "Structure"
 	CategoryMultiSelect CommandCategory = "Multi-Select"
 	CategoryFold        CommandCategory = "Fold"
+	CategoryAttachments CommandCategory = "Attachments"
+	CategoryKanban      CommandCategory = "Kanban"
 )
 
 // Command represents an executable action in the command palette.

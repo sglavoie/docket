@@ -2500,6 +2500,654 @@ func (m *AppModel) registerGlobalCommands() {
 		},
 	}
 
+	// Notes view commands (ViewNotes)
+	notesViewCommands := []Command{
+		{
+			Name:        "edit note",
+			Description: "Edit note in external editor",
+			Shortcut:    "e",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"open note editor", "modify note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+			},
+		},
+		{
+			Name:        "delete note",
+			Description: "Delete selected note",
+			Shortcut:    "d",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"remove note", "trash note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+			},
+		},
+		{
+			Name:        "undo delete note",
+			Description: "Undo last note deletion",
+			Shortcut:    "u",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"restore note", "undelete note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+			},
+		},
+		{
+			Name:        "link note to task",
+			Description: "Link note to a task",
+			Shortcut:    "l",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"attach note", "note task link"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}}
+			},
+		},
+		{
+			Name:        "toggle note pin",
+			Description: "Toggle pin status on note",
+			Shortcut:    "p",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"pin note", "unpin note"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}}
+			},
+		},
+		{
+			Name:        "edit note tags",
+			Description: "Add or remove tags on note",
+			Shortcut:    "t",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"tag note", "note tags"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}}
+			},
+		},
+		{
+			Name:        "cycle note tag filter",
+			Description: "Open note tag filter selector",
+			Shortcut:    "T",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"filter notes by tag"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}}
+			},
+		},
+		{
+			Name:        "search notes",
+			Description: "Search notes by title or content",
+			Shortcut:    "/",
+			Category:    CategoryNotes,
+			Views:       []ViewType{ViewNotes},
+			Aliases:     []string{"find note", "note search"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+			},
+		},
+	}
+
+	// Kanban view commands (ViewKanban)
+	kanbanCommands := []Command{
+		{
+			Name:        "move task left column",
+			Description: "Move task to left column",
+			Shortcut:    "{",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"column left", "move left"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'{'}}
+			},
+		},
+		{
+			Name:        "move task right column",
+			Description: "Move task to right column",
+			Shortcut:    "}",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"column right", "move right"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'}'}}
+			},
+		},
+		{
+			Name:        "swap task up in column",
+			Description: "Swap task with one above in column",
+			Shortcut:    "K",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"reorder up column", "move up column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'K'}}
+			},
+		},
+		{
+			Name:        "swap task down in column",
+			Description: "Swap task with one below in column",
+			Shortcut:    "J",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"reorder down column", "move down column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'J'}}
+			},
+		},
+		{
+			Name:        "go to active column",
+			Description: "Jump to Active column",
+			Shortcut:    "ga",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"active column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "go to next column",
+			Description: "Jump to Next column",
+			Shortcut:    "gn",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"next column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "go to inbox column",
+			Description: "Jump to Inbox column",
+			Shortcut:    "gi",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"inbox column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "go to waiting column",
+			Description: "Jump to Waiting column",
+			Shortcut:    "gw",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"waiting column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "go to someday column",
+			Description: "Jump to Someday column",
+			Shortcut:    "gs",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"someday column"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "send to active section",
+			Description: "Move task to Active section",
+			Shortcut:    "gA",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"kanban send active"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "send to next section",
+			Description: "Move task to Next section",
+			Shortcut:    "gN",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"kanban send next"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "send to inbox section",
+			Description: "Move task to Inbox section",
+			Shortcut:    "gI",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"kanban send inbox"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "send to waiting section",
+			Description: "Move task to Waiting section",
+			Shortcut:    "gW",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"kanban send waiting"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "send to someday section",
+			Description: "Move task to Someday section",
+			Shortcut:    "gS",
+			Category:    CategoryKanban,
+			Views:       []ViewType{ViewKanban},
+			Aliases:     []string{"kanban send someday"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+	}
+
+	// Task Attachments view commands (ViewTaskAttachments)
+	attachmentCommands := []Command{
+		{
+			Name:        "add attachment",
+			Description: "Add a new attachment to task",
+			Shortcut:    "a",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"attach file", "new attachment"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
+			},
+		},
+		{
+			Name:        "open attachment",
+			Description: "Open selected attachment",
+			Shortcut:    "o",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"view attachment", "launch attachment"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}}
+			},
+		},
+		{
+			Name:        "open attachments directory",
+			Description: "Open directory containing attachments",
+			Shortcut:    "O",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"reveal attachments", "attachments folder"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'O'}}
+			},
+		},
+		{
+			Name:        "open original path",
+			Description: "Open attachment at its original path",
+			Shortcut:    "ctrl+o",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"original location", "source path"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyCtrlO}
+			},
+		},
+		{
+			Name:        "delete attachment",
+			Description: "Delete selected attachment",
+			Shortcut:    "d",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"remove attachment"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}}
+			},
+		},
+		{
+			Name:        "unlink attachment",
+			Description: "Unlink attachment but keep file",
+			Shortcut:    "u",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"detach file", "keep and unlink"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+			},
+		},
+		{
+			Name:        "copy attachment path",
+			Description: "Copy attachment path to clipboard",
+			Shortcut:    "y",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"yank path", "clipboard path"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}}
+			},
+		},
+	}
+
+	// Focus view commands (ViewFocusView, ViewProjectFocusView)
+	focusViewCommands := []Command{
+		{
+			Name:        "remove from focus",
+			Description: "Remove active flag from task",
+			Shortcut:    "*",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Aliases:     []string{"unflag task", "unstar task", "deactivate"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'*'}}
+			},
+		},
+		{
+			Name:        "go to task in project",
+			Description: "Navigate to task in project tree",
+			Shortcut:    "gp",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewFocusView, ViewProjectFocusView},
+			Aliases:     []string{"open in project", "show in tree"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+	}
+
+	// Daily review commands (ViewDailyReview)
+	dailyReviewCommands := []Command{
+		{
+			Name:        "focus on due today",
+			Description: "Focus on due today section",
+			Shortcut:    "sd",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"due today section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "focus on top priority",
+			Description: "Focus on top priority section",
+			Shortcut:    "st",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"top priority section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "focus on stale tasks",
+			Description: "Focus on stale tasks section",
+			Shortcut:    "ss",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"stale section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "focus on recently logged",
+			Description: "Focus on recently logged section",
+			Shortcut:    "sl",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"recently logged section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "focus on flagged tasks",
+			Description: "Focus on flagged/active tasks section",
+			Shortcut:    "sf",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"flagged section", "active section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "focus on overdue tasks",
+			Description: "Focus on overdue tasks section",
+			Shortcut:    "so",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"overdue section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "collapse/expand section",
+			Description: "Toggle section collapse/expand",
+			Shortcut:    "tab",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"fold section", "toggle section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyTab}
+			},
+		},
+		{
+			Name:        "next section",
+			Description: "Jump to next section",
+			Shortcut:    "n",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"section forward"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+			},
+		},
+		{
+			Name:        "previous section",
+			Description: "Jump to previous section",
+			Shortcut:    "N",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDailyReview},
+			Aliases:     []string{"section backward"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}}
+			},
+		},
+	}
+
+	// Priority view commands (ViewPriorityView)
+	priorityViewCommands := []Command{
+		{
+			Name:        "start suggested task",
+			Description: "Start the suggested task",
+			Shortcut:    "s",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"begin suggestion", "accept suggestion"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "dismiss suggestion",
+			Description: "Dismiss the current suggestion",
+			Shortcut:    "x",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"skip suggestion", "reject suggestion"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}}
+			},
+		},
+		{
+			Name:        "go to task in tree",
+			Description: "Navigate to task in project tree",
+			Shortcut:    "gt",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"open in tree", "show in tree"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+		{
+			Name:        "toggle waiting section",
+			Description: "Toggle waiting-on section visibility",
+			Shortcut:    "tab",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"show waiting", "hide waiting"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyTab}
+			},
+		},
+		{
+			Name:        "refresh priority view",
+			Description: "Refresh priority data",
+			Shortcut:    "r",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewPriorityView},
+			Aliases:     []string{"reload priorities"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+			},
+		},
+	}
+
+	// Inbox processor commands (ViewInboxProcessor)
+	inboxProcessorCommands := []Command{
+		{
+			Name:        "skip task",
+			Description: "Skip current inbox task",
+			Shortcut:    "n",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"next inbox task", "pass"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}}
+			},
+		},
+		{
+			Name:        "assign section",
+			Description: "Assign task to a section",
+			Shortcut:    "s",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"pick section", "move to section"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+			},
+		},
+		{
+			Name:        "send to waiting",
+			Description: "Send task to Waiting section",
+			Shortcut:    "w",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"waiting", "defer task"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}}
+			},
+		},
+		{
+			Name:        "manage inbox task tags",
+			Description: "Add or remove tags on task",
+			Shortcut:    "t",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"tag inbox task"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}}
+			},
+		},
+		{
+			Name:        "create subtask from inbox",
+			Description: "Create a subtask for current task",
+			Shortcut:    "c",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"add subtask inbox"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}}
+			},
+		},
+		{
+			Name:        "set inbox task due date",
+			Description: "Set due date for current task",
+			Shortcut:    "D",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"inbox due date", "deadline"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'D'}}
+			},
+		},
+		{
+			Name:        "manage inbox dependencies",
+			Description: "Manage task dependencies",
+			Shortcut:    "b",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"inbox dependencies", "add dependency"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}}
+			},
+		},
+		{
+			Name:        "delete inbox task",
+			Description: "Delete current inbox task",
+			Shortcut:    "x",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"remove inbox task"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}}
+			},
+		},
+		{
+			Name:        "undo inbox action",
+			Description: "Undo last inbox processing action",
+			Shortcut:    "u",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewInboxProcessor},
+			Aliases:     []string{"inbox undo", "revert inbox"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'u'}}
+			},
+		},
+	}
+
+	// Due date overview commands (ViewDueDateOverview)
+	dueDateOverviewCommands := []Command{
+		{
+			Name:        "refresh due dates",
+			Description: "Refresh due date overview data",
+			Shortcut:    "r",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewDueDateOverview},
+			Aliases:     []string{"reload due dates"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}}
+			},
+		},
+		{
+			Name:        "go to task project",
+			Description: "Navigate to task in project tree",
+			Shortcut:    "gp",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewDueDateOverview},
+			Aliases:     []string{"open in project", "show in tree"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+			},
+		},
+	}
+
 	// Register all command batches
 	_ = m.commandRegistry.RegisterBatch(globalCommands)
 	_ = m.commandRegistry.RegisterBatch(filterCommands)
@@ -2521,6 +3169,14 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(multiSelectCommands)
 	_ = m.commandRegistry.RegisterBatch(foldCommands)
 	_ = m.commandRegistry.RegisterBatch(filterBarCommands)
+	_ = m.commandRegistry.RegisterBatch(notesViewCommands)
+	_ = m.commandRegistry.RegisterBatch(kanbanCommands)
+	_ = m.commandRegistry.RegisterBatch(attachmentCommands)
+	_ = m.commandRegistry.RegisterBatch(focusViewCommands)
+	_ = m.commandRegistry.RegisterBatch(dailyReviewCommands)
+	_ = m.commandRegistry.RegisterBatch(priorityViewCommands)
+	_ = m.commandRegistry.RegisterBatch(inboxProcessorCommands)
+	_ = m.commandRegistry.RegisterBatch(dueDateOverviewCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
