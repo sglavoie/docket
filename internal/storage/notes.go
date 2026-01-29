@@ -37,13 +37,41 @@ func LoadNote(project *models.Project, filename string) (*models.Note, error) {
 }
 
 // SaveNote writes a note to disk as a markdown file with YAML frontmatter.
+// If the note is new (file doesn't exist yet) and a collision is detected,
+// it appends -2, -3 etc. to the base name to avoid overwriting.
 func SaveNote(project *models.Project, note *models.Note) error {
 	if err := EnsureNotesDir(project); err != nil {
 		return err
 	}
 
-	content := renderNote(note)
-	path := filepath.Join(NotesDir(project), note.Filename)
+	dir := NotesDir(project)
+	path := filepath.Join(dir, note.Filename)
+
+	// Check for collision: if file exists but this is a new note (no prior content on disk)
+	// we need to deduplicate the filename.
+	if _, err := os.Stat(path); err == nil {
+		// File exists. Check if this note "owns" it by trying to load and compare created time.
+		// If the existing file has a different creation time, it's a collision.
+		existing, loadErr := LoadNote(project, note.Filename)
+		if loadErr == nil && !existing.CreatedAt.Equal(note.CreatedAt) {
+			// Collision: find a unique name
+			base := strings.TrimSuffix(note.Filename, ".md")
+			for i := 2; ; i++ {
+				candidate := fmt.Sprintf("%s-%d.md", base, i)
+				candidatePath := filepath.Join(dir, candidate)
+				if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
+					note.Filename = candidate
+					path = candidatePath
+					break
+				}
+			}
+		}
+	}
+
+	content, err := renderNote(note)
+	if err != nil {
+		return err
+	}
 	return util.AtomicWriteFile(path, []byte(content), 0644)
 }
 
@@ -66,7 +94,8 @@ func ListNotes(project *models.Project) ([]*models.Note, error) {
 		}
 		note, err := LoadNote(project, entry.Name())
 		if err != nil {
-			continue // skip unparseable files
+			fmt.Fprintf(os.Stderr, "tt: skipping unparseable note %s: %v\n", entry.Name(), err)
+			continue
 		}
 		notes = append(notes, note)
 	}
@@ -108,7 +137,7 @@ func NoteFilePath(project *models.Project, filename string) string {
 }
 
 // RenderNoteContent serializes a Note to markdown with YAML frontmatter.
-func RenderNoteContent(note *models.Note) string {
+func RenderNoteContent(note *models.Note) (string, error) {
 	return renderNote(note)
 }
 
@@ -172,7 +201,7 @@ func parseNote(filename, content string) (*models.Note, error) {
 }
 
 // renderNote serializes a Note to markdown with YAML frontmatter.
-func renderNote(note *models.Note) string {
+func renderNote(note *models.Note) (string, error) {
 	meta := frontmatter{
 		Title:       note.Title,
 		Tags:        note.Tags,
@@ -182,7 +211,10 @@ func renderNote(note *models.Note) string {
 		Pinned:      note.Pinned,
 	}
 
-	yamlBytes, _ := yaml.Marshal(&meta)
+	yamlBytes, err := yaml.Marshal(&meta)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal note frontmatter: %w", err)
+	}
 	fm := strings.TrimSpace(string(yamlBytes))
 
 	var b strings.Builder
@@ -196,7 +228,7 @@ func renderNote(note *models.Note) string {
 			b.WriteString("\n")
 		}
 	}
-	return b.String()
+	return b.String(), nil
 }
 
 // splitFrontmatter splits "---\n...\n---\n" from the rest of the content.

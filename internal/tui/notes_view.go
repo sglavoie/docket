@@ -52,6 +52,8 @@ type NotesViewModel struct {
 	// Undo state
 	lastDeleted     *models.Note
 	lastBulkDeleted []*models.Note
+	lastTagUndo     []noteTagUndoEntry
+	lastLinkUndo    []noteLinkUndoEntry
 
 	// Details pane state
 	detailsPaneFocused bool
@@ -65,6 +67,18 @@ type NotesViewModel struct {
 	pendingGKey     bool            // waiting for second key after 'g'
 
 	statusMessage string
+}
+
+// noteTagUndoEntry stores a note's previous tags for undo.
+type noteTagUndoEntry struct {
+	Note    *models.Note
+	OldTags []string
+}
+
+// noteLinkUndoEntry stores a note's previous links for undo.
+type noteLinkUndoEntry struct {
+	Note     *models.Note
+	OldLinks []string
 }
 
 // notesConfig is a minimal interface for config access.
@@ -145,7 +159,11 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.multiSelectMode && m.selectedNoteCount() > 0 {
 					return m, m.performBulkDelete()
 				}
-				return m, m.performDelete()
+				if m.pendingDeleteIdx < len(m.notes) {
+					return m, m.performDelete()
+				}
+				m.statusMessage = "Delete failed: note no longer exists"
+				return m, nil
 			}
 			m.statusMessage = "Delete cancelled"
 			return m, nil
@@ -179,6 +197,14 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Multi-select exit takes priority over details pane routing
+		if m.multiSelectMode && (key == "esc" || key == "q") {
+			m.multiSelectMode = false
+			m.selectedNotes = make(map[string]bool)
+			m.statusMessage = ""
+			return m, nil
+		}
+
 		// Route keys when details pane is focused
 		if m.detailsPaneFocused {
 			return m.handleDetailsPaneKey(key)
@@ -186,12 +212,6 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch key {
 		case "q", "esc":
-			if m.multiSelectMode {
-				m.multiSelectMode = false
-				m.selectedNotes = make(map[string]bool)
-				m.statusMessage = ""
-				return m, nil
-			}
 			return m, func() tea.Msg { return CloseNotesMsg{} }
 		case "j", "down":
 			if m.cursor < len(m.notes)-1 {
@@ -260,6 +280,13 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowNoteTagFilterSelectorMsg{Project: m.project}
 			}
+		case "C":
+			if len(m.filterTags) > 0 {
+				m.filterTags = make(map[string]bool)
+				m.loadNotes()
+				m.statusMessage = "Filter cleared"
+				return m, nil
+			}
 		case "/":
 			return m, func() tea.Msg {
 				return ShowNotesSearchMsg{Project: m.project}
@@ -301,6 +328,9 @@ func (m *NotesViewModel) View() string {
 
 	// Title
 	title := fmt.Sprintf("%s - Notes", m.project.Name)
+	if len(m.filterTags) > 0 {
+		title += " [filtered]"
+	}
 	b.WriteString(TitleStyle.Render(title))
 	if len(m.filterTags) > 0 {
 		tags := make([]string, 0, len(m.filterTags))
@@ -451,7 +481,11 @@ func (m *NotesViewModel) View() string {
 	} else if m.multiSelectMode {
 		b.WriteString(MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  V/Esc: exit multi-select"))
 	} else {
-		b.WriteString(MutedStyle.Render("j/k: nav  Tab: switch pane  Enter: view  e: edit  n: new  d: del  u: undo  l: link  p: pin  t: tags  T: filter  V: multi  /: search"))
+		footer := "j/k: nav  Tab: switch pane  Enter: view  e: edit  n: new  d: del  u: undo  l: link  p: pin  t: tags  T: filter  V: multi  /: search"
+		if len(m.filterTags) > 0 {
+			footer += "  C: clear filter"
+		}
+		b.WriteString(MutedStyle.Render(footer))
 	}
 
 	return b.String()
@@ -576,8 +610,12 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
+	_, writeErr := tmpFile.WriteString(content)
+	closeErr := tmpFile.Close()
+	if writeErr != nil || closeErr != nil {
+		_ = os.Remove(tmpPath)
+		return nil
+	}
 
 	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
 	return tea.ExecProcess(c, func(err error) tea.Msg {
@@ -652,6 +690,7 @@ func (m *NotesViewModel) performDelete() tea.Cmd {
 }
 
 func (m *NotesViewModel) undoDelete() tea.Cmd {
+	// Priority: delete > tag > link
 	if m.lastBulkDeleted != nil {
 		var restored, failed int
 		for _, note := range m.lastBulkDeleted {
@@ -671,19 +710,58 @@ func (m *NotesViewModel) undoDelete() tea.Cmd {
 		return nil
 	}
 
-	if m.lastDeleted == nil {
-		m.statusMessage = "Nothing to undo"
+	if m.lastDeleted != nil {
+		if err := storage.SaveNote(m.project, m.lastDeleted); err != nil {
+			m.statusMessage = "Failed to restore: " + err.Error()
+			return nil
+		}
+		m.statusMessage = "Restored: " + m.lastDeleted.Title
+		m.lastDeleted = nil
+		m.loadNotes()
 		return nil
 	}
 
-	if err := storage.SaveNote(m.project, m.lastDeleted); err != nil {
-		m.statusMessage = "Failed to restore: " + err.Error()
+	if len(m.lastTagUndo) > 0 {
+		var failed int
+		for _, entry := range m.lastTagUndo {
+			entry.Note.Tags = entry.OldTags
+			entry.Note.ModifiedAt = time.Now()
+			if err := storage.SaveNote(m.project, entry.Note); err != nil {
+				failed++
+			}
+		}
+		count := len(m.lastTagUndo)
+		m.lastTagUndo = nil
+		if failed > 0 {
+			m.statusMessage = fmt.Sprintf("Undid tags on %d notes (%d failed)", count, failed)
+		} else {
+			m.statusMessage = fmt.Sprintf("Undid tags on %d notes", count)
+		}
+		m.loadNotes()
 		return nil
 	}
 
-	m.statusMessage = "Restored: " + m.lastDeleted.Title
-	m.lastDeleted = nil
-	m.loadNotes()
+	if len(m.lastLinkUndo) > 0 {
+		var failed int
+		for _, entry := range m.lastLinkUndo {
+			entry.Note.LinkedTasks = entry.OldLinks
+			entry.Note.ModifiedAt = time.Now()
+			if err := storage.SaveNote(m.project, entry.Note); err != nil {
+				failed++
+			}
+		}
+		count := len(m.lastLinkUndo)
+		m.lastLinkUndo = nil
+		if failed > 0 {
+			m.statusMessage = fmt.Sprintf("Undid links on %d notes (%d failed)", count, failed)
+		} else {
+			m.statusMessage = fmt.Sprintf("Undid links on %d notes", count)
+		}
+		m.loadNotes()
+		return nil
+	}
+
+	m.statusMessage = "Nothing to undo"
 	return nil
 }
 
@@ -802,6 +880,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "p", Description: "Toggle pin"},
 		{Key: "t", Description: "Edit note tags"},
 		{Key: "T", Description: "Filter by tags"},
+		{Key: "C", Description: "Clear tag filter"},
 		{Key: "/", Description: "Search notes"},
 		{Key: "g/G", Description: "Jump to top/bottom"},
 		{Key: "V", Description: "Toggle multi-select mode"},

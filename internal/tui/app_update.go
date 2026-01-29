@@ -87,6 +87,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingMessage = ""
 		m.err = msg.Err
 		return m, statusTimeout(5 * time.Second)
+
+	case NotesRefreshMsg:
+		// Rebuild global search index when notes change
+		if m.globalSearch != nil {
+			m.globalSearch.Rebuild()
+		}
 	}
 
 	// Try each handler group in sequence

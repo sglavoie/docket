@@ -52,7 +52,10 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Read current content
-	content := storage.RenderNoteContent(note)
+	content, err := storage.RenderNoteContent(note)
+	if err != nil {
+		return fmt.Errorf("failed to render note: %w", err)
+	}
 
 	modified, err := external.EditInExternalEditor(editor, content, ".md")
 	if err != nil {

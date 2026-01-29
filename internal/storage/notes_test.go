@@ -155,6 +155,57 @@ func TestListNotesEmptyDir(t *testing.T) {
 	}
 }
 
+func TestSaveNoteFilenameCollision(t *testing.T) {
+	project := newTestProject(t)
+
+	// Create two notes with the same filename but different creation times
+	note1 := models.NewNote("Collision Test")
+	if err := SaveNote(project, note1); err != nil {
+		t.Fatalf("SaveNote note1 failed: %v", err)
+	}
+	originalFilename := note1.Filename
+
+	note2 := &models.Note{
+		Title:       "Collision Test 2",
+		Tags:        []string{},
+		CreatedAt:   time.Now().Add(time.Second), // different creation time
+		ModifiedAt:  time.Now().Add(time.Second),
+		LinkedTasks: []string{},
+		Filename:    originalFilename, // same filename as note1
+		Body:        "different content",
+	}
+
+	if err := SaveNote(project, note2); err != nil {
+		t.Fatalf("SaveNote note2 failed: %v", err)
+	}
+
+	// note2 should have gotten a deduplicated filename
+	if note2.Filename == originalFilename {
+		t.Error("note2 should have a different filename after collision detection")
+	}
+	if !strings.HasSuffix(note2.Filename, ".md") {
+		t.Errorf("note2 filename should end with .md, got %q", note2.Filename)
+	}
+
+	// Both notes should exist on disk
+	notes, err := ListNotes(project)
+	if err != nil {
+		t.Fatalf("ListNotes failed: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("expected 2 notes, got %d", len(notes))
+	}
+
+	// Verify original note is unchanged
+	loaded1, err := LoadNote(project, originalFilename)
+	if err != nil {
+		t.Fatalf("LoadNote original failed: %v", err)
+	}
+	if loaded1.Title != "Collision Test" {
+		t.Errorf("original note title = %q, want %q", loaded1.Title, "Collision Test")
+	}
+}
+
 func TestParseNoteRoundtrip(t *testing.T) {
 	note := models.NewNote("Roundtrip Test")
 	note.Tags = []string{"go", "test"}
@@ -162,7 +213,10 @@ func TestParseNoteRoundtrip(t *testing.T) {
 	note.Pinned = true
 	note.Body = "Some body content.\n\nWith paragraphs.\n"
 
-	content := renderNote(note)
+	content, err := renderNote(note)
+	if err != nil {
+		t.Fatalf("renderNote failed: %v", err)
+	}
 	if !strings.HasPrefix(content, "---\n") {
 		t.Error("rendered note should start with ---")
 	}

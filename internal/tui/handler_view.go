@@ -266,22 +266,32 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case NoteTaskLinkedMsg:
 		m.popView()
 		// If in bulk mode, link all pending notes to the same task
-		if len(m.pendingBulkNotes) > 0 {
-			// The first note was already linked by the linker.
-			// We need the linked task ID. Read it from the first note.
+		if len(m.pendingBulkNotes) > 0 && msg.TaskID != "" {
 			if v := m.views.Get(ViewNotes); v != nil {
 				if notesView, ok := v.(*NotesViewModel); ok {
-					// Reload first note to get new linked task
-					firstNote := m.pendingBulkNotes[0]
-					reloaded, err := storage.LoadNote(notesView.project, firstNote.Filename)
-					if err == nil && len(reloaded.LinkedTasks) > 0 {
-						lastLinked := reloaded.LinkedTasks[len(reloaded.LinkedTasks)-1]
-						for i := 1; i < len(m.pendingBulkNotes); i++ {
-							note := m.pendingBulkNotes[i]
-							note.AddLink(lastLinked)
-							_ = storage.SaveNote(notesView.project, note)
+					// Snapshot for undo (all notes including first)
+					var undoEntries []noteLinkUndoEntry
+					for _, note := range m.pendingBulkNotes {
+						oldLinks := make([]string, len(note.LinkedTasks))
+						copy(oldLinks, note.LinkedTasks)
+						undoEntries = append(undoEntries, noteLinkUndoEntry{Note: note, OldLinks: oldLinks})
+					}
+					var failed int
+					for i := 1; i < len(m.pendingBulkNotes); i++ {
+						note := m.pendingBulkNotes[i]
+						note.AddLink(msg.TaskID)
+						if err := storage.SaveNote(notesView.project, note); err != nil {
+							failed++
 						}
 					}
+					total := len(m.pendingBulkNotes)
+					if failed > 0 {
+						m.statusMessage = fmt.Sprintf("Linked %d notes (%d failed)", total, failed)
+					} else {
+						m.statusMessage = fmt.Sprintf("Linked %d notes", total)
+					}
+					notesView.lastLinkUndo = undoEntries
+					notesView.lastTagUndo = nil
 				}
 			}
 			m.pendingBulkNotes = nil

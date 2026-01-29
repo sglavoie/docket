@@ -163,7 +163,9 @@ type BulkNoteLinkDoneMsg struct {
 type CloseNoteTaskLinkerMsg struct{}
 
 // NoteTaskLinkedMsg signals a note was linked to a task.
-type NoteTaskLinkedMsg struct{}
+type NoteTaskLinkedMsg struct {
+	TaskID string // Last toggled task ID, used for bulk linking
+}
 
 // =============================================================================
 // Settings Messages

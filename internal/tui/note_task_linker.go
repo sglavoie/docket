@@ -25,12 +25,13 @@ func (i noteTaskItem) ItemID() string  { return i.task.ID }
 
 // NoteTaskLinkerModel is a task picker for linking notes to tasks.
 type NoteTaskLinkerModel struct {
-	picker  *BasePicker[noteTaskItem]
-	project *models.Project
-	note    *models.Note
-	changed bool
-	width   int
-	height  int
+	picker      *BasePicker[noteTaskItem]
+	project     *models.Project
+	note        *models.Note
+	changed     bool
+	lastToggled string // ID of the last toggled task
+	width       int
+	height      int
 }
 
 // NewNoteTaskLinkerModel creates a new note-to-task linker.
@@ -98,11 +99,13 @@ func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) {
 	}
 	_ = storage.SaveNote(m.project, m.note)
 	m.changed = true
+	m.lastToggled = task.ID
 }
 
 func (m *NoteTaskLinkerModel) close() tea.Cmd {
 	if m.changed {
-		return func() tea.Msg { return NoteTaskLinkedMsg{} }
+		taskID := m.lastToggled
+		return func() tea.Msg { return NoteTaskLinkedMsg{TaskID: taskID} }
 	}
 	return func() tea.Msg { return CloseNoteTaskLinkerMsg{} }
 }

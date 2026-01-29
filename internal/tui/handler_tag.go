@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -151,10 +152,33 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case BulkNoteTagDoneMsg:
 		if !msg.Canceled {
+			// Snapshot for undo
+			var undoEntries []noteTagUndoEntry
+			for _, note := range msg.Notes {
+				oldTags := make([]string, len(note.Tags))
+				copy(oldTags, note.Tags)
+				undoEntries = append(undoEntries, noteTagUndoEntry{Note: note, OldTags: oldTags})
+			}
+			var failed int
 			for _, note := range msg.Notes {
 				note.Tags = msg.SelectedTags
 				note.ModifiedAt = time.Now()
-				_ = storage.SaveNote(msg.Project, note)
+				if err := storage.SaveNote(msg.Project, note); err != nil {
+					failed++
+				}
+			}
+			total := len(msg.Notes)
+			if failed > 0 {
+				m.statusMessage = fmt.Sprintf("Tagged %d notes (%d failed)", total, failed)
+			} else {
+				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
+			}
+			// Store undo state on notes view
+			if v := m.views.Get(ViewNotes); v != nil {
+				if nv, ok := v.(*NotesViewModel); ok {
+					nv.lastTagUndo = undoEntries
+					nv.lastLinkUndo = nil
+				}
 			}
 		}
 		m.pendingBulkNotes = nil
@@ -173,10 +197,33 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		// Bulk mode: apply tags to all pending notes
 		if len(m.pendingBulkNotes) > 0 {
+			// Snapshot for undo
+			var undoEntries []noteTagUndoEntry
+			for _, note := range m.pendingBulkNotes {
+				oldTags := make([]string, len(note.Tags))
+				copy(oldTags, note.Tags)
+				undoEntries = append(undoEntries, noteTagUndoEntry{Note: note, OldTags: oldTags})
+			}
+			var failed int
 			for _, note := range m.pendingBulkNotes {
 				note.Tags = msg.SelectedTags
 				note.ModifiedAt = time.Now()
-				_ = storage.SaveNote(msg.Project, note)
+				if err := storage.SaveNote(msg.Project, note); err != nil {
+					failed++
+				}
+			}
+			total := len(m.pendingBulkNotes)
+			if failed > 0 {
+				m.statusMessage = fmt.Sprintf("Tagged %d notes (%d failed)", total, failed)
+			} else {
+				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
+			}
+			// Store undo state on notes view
+			if v := m.views.Get(ViewNotes); v != nil {
+				if nv, ok := v.(*NotesViewModel); ok {
+					nv.lastTagUndo = undoEntries
+					nv.lastLinkUndo = nil
+				}
 			}
 			m.pendingBulkNotes = nil
 			return true, func() tea.Msg { return NotesRefreshMsg{} }

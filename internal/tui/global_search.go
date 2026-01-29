@@ -103,6 +103,15 @@ func (m *GlobalSearchModel) buildCaches() {
 				tagSet[tag] = true
 			}
 		}
+		// Collect tags from notes
+		notes, err := storage.ListNotes(project)
+		if err == nil {
+			for _, note := range notes {
+				for _, tag := range note.Tags {
+					tagSet[tag] = true
+				}
+			}
+		}
 		// Collect sections
 		for _, section := range project.GetSections() {
 			sectionSet[section] = true
@@ -118,6 +127,36 @@ func (m *GlobalSearchModel) buildCaches() {
 	for section := range sectionSet {
 		m.sectionCache = append(m.sectionCache, section)
 	}
+}
+
+// Rebuild reloads notes for all projects to refresh the search index.
+func (m *GlobalSearchModel) Rebuild() {
+	projects := m.config.GetActiveProjects()
+	var allTasks []models.SearchResult
+	for _, project := range projects {
+		if err := storage.LoadProject(project); err != nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			allTasks = append(allTasks, models.SearchResult{
+				Task:    task,
+				Project: project,
+			})
+		}
+		notes, err := storage.ListNotes(project)
+		if err == nil {
+			for _, note := range notes {
+				allTasks = append(allTasks, models.SearchResult{
+					Note:    note,
+					Project: project,
+				})
+			}
+		}
+	}
+	m.projects = projects
+	m.allTasks = allTasks
+	m.buildCaches()
+	m.filterTasks()
 }
 
 // HasActiveSearch returns true (search input is always active).
