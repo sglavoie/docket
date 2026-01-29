@@ -179,6 +179,34 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	return app
 }
 
+// makePriorityHandler creates a command handler that sets task priority.
+func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
+	return func() tea.Msg {
+		if m.projectTree == nil {
+			return nil
+		}
+		visible := m.projectTree.visibleNodes()
+		if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
+			for id := range m.projectTree.selectedTasks {
+				if task := m.projectTree.project.GetTaskByID(id); task != nil {
+					task.Priority = priority
+					task.UpdatedAt = time.Now()
+				}
+			}
+			m.projectTree.clearSelection()
+			m.projectTree.buildTree()
+			return nil
+		}
+		if CursorInBounds(m.projectTree.cursor, len(visible)) {
+			task := visible[m.projectTree.cursor].Task
+			task.Priority = priority
+			task.UpdatedAt = time.Now()
+			return TaskUpdatedMsg{Task: task}
+		}
+		return nil
+	}
+}
+
 // registerGlobalCommands registers commands that are available from any view.
 func (m *AppModel) registerGlobalCommands() {
 	// Global commands (available in all views)
@@ -1578,6 +1606,900 @@ func (m *AppModel) registerGlobalCommands() {
 		},
 	}
 
+	// Priority commands (ProjectTree, via `!` prefix)
+	priorityCommands := []Command{
+		{
+			Name:        "priority critical",
+			Description: "Set task priority to Critical (1)",
+			Shortcut:    "!1",
+			Category:    CategoryPriority,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"p1", "critical priority"},
+			Handler:     m.makePriorityHandler(1),
+		},
+		{
+			Name:        "priority high",
+			Description: "Set task priority to High (2)",
+			Shortcut:    "!2",
+			Category:    CategoryPriority,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"p2", "high priority"},
+			Handler:     m.makePriorityHandler(2),
+		},
+		{
+			Name:        "priority normal",
+			Description: "Set task priority to Normal (3)",
+			Shortcut:    "!3",
+			Category:    CategoryPriority,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"p3", "normal priority"},
+			Handler:     m.makePriorityHandler(3),
+		},
+		{
+			Name:        "priority low",
+			Description: "Set task priority to Low (4)",
+			Shortcut:    "!4",
+			Category:    CategoryPriority,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"p4", "low priority"},
+			Handler:     m.makePriorityHandler(4),
+		},
+		{
+			Name:        "priority someday",
+			Description: "Set task priority to Someday (5)",
+			Shortcut:    "!5",
+			Category:    CategoryPriority,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"p5", "someday priority"},
+			Handler:     m.makePriorityHandler(5),
+		},
+	}
+
+	// Sort commands (ProjectTree)
+	sortCommands := []Command{
+		{
+			Name:        "sort by priority",
+			Description: "Sort tasks by priority",
+			Shortcut:    "1",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"priority sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.toggleSort(SortByPriority)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "sort by due date",
+			Description: "Sort tasks by due date",
+			Shortcut:    "2",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"due date sort", "deadline sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.toggleSort(SortByDueDate)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "sort by created",
+			Description: "Sort tasks by creation date",
+			Shortcut:    "3",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"created sort", "creation date sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.toggleSort(SortByCreatedAt)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "sort by status",
+			Description: "Sort tasks by status",
+			Shortcut:    "4",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"status sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.toggleSort(SortByStatus)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "reset sort",
+			Description: "Reset sort to default order",
+			Shortcut:    "0",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"default sort", "clear sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.sortField = SortByDefault
+					m.projectTree.sortAscending = true
+					m.projectTree.buildTree()
+				}
+				return nil
+			},
+		},
+	}
+
+	// Structure commands (type changes and task movement)
+	structureCommands := []Command{
+		{
+			Name:        "promote type",
+			Description: "Promote task type (task → story → epic)",
+			Shortcut:    "<",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"promote", "type up"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleTypeKeys("<", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "demote type",
+			Description: "Demote task type (epic → story → task)",
+			Shortcut:    ">",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"demote", "type down"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleTypeKeys(">", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "cycle leaf type left",
+			Description: "Cycle leaf type left (task ← bug ← idea)",
+			Shortcut:    "H",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"type left", "previous type"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleTypeKeys("H", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "cycle leaf type right",
+			Description: "Cycle leaf type right (task → bug → idea)",
+			Shortcut:    "L",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"type right", "next type"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleTypeKeys("L", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "move task up",
+			Description: "Move task up among siblings",
+			Shortcut:    "K",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"reorder up", "task up"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleMovementKeys("K", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "move task down",
+			Description: "Move task down among siblings",
+			Shortcut:    "J",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"reorder down", "task down"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleMovementKeys("J", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "indent task",
+			Description: "Indent task (nest under task above)",
+			Shortcut:    "→",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"nest task", "make child"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleMovementKeys("right", visible)
+				return nil
+			},
+		},
+		{
+			Name:        "outdent task",
+			Description: "Outdent task (move to parent's level)",
+			Shortcut:    "←",
+			Category:    CategoryStructure,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"unnest task", "make sibling"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.handleMovementKeys("left", visible)
+				return nil
+			},
+		},
+	}
+
+	// Section send commands (ProjectTree, via `g` prefix uppercase)
+	sectionSendCommands := []Command{
+		{
+			Name:        "send to active",
+			Description: "Move task to Active section",
+			Shortcut:    "gA",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"active section", "move to active"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.sendTasksToActive(visible)
+				return nil
+			},
+		},
+		{
+			Name:        "send to next",
+			Description: "Move task to Next section",
+			Shortcut:    "gN",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"next section", "move to next"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.sendTasksToSection(models.SectionNext, visible)
+				return nil
+			},
+		},
+		{
+			Name:        "send to inbox",
+			Description: "Move task to Inbox section",
+			Shortcut:    "gI",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"inbox section", "move to inbox"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.sendTasksToSection(models.SectionInbox, visible)
+				return nil
+			},
+		},
+		{
+			Name:        "send to waiting",
+			Description: "Move task to Waiting section",
+			Shortcut:    "gW",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"waiting section", "move to waiting"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.sendTasksToSection(models.SectionWaiting, visible)
+				return nil
+			},
+		},
+		{
+			Name:        "send to someday",
+			Description: "Move task to Someday section",
+			Shortcut:    "gS",
+			Category:    CategoryActions,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"someday section", "move to someday"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				m.projectTree.sendTasksToSection(models.SectionSomeday, visible)
+				return nil
+			},
+		},
+		{
+			Name:        "completed view",
+			Description: "Go to Completed view mode",
+			Shortcut:    "gc",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"show completed", "view completed tasks"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = ViewModeCompleted
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "jump to home section",
+			Description: "Jump to context node's home section",
+			Shortcut:    "go",
+			Category:    CategoryNavigation,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"home section", "origin section"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					node := visible[m.projectTree.cursor]
+					section := node.Task.Section
+					if section == "" {
+						section = models.SectionInbox
+					}
+					for i, n := range visible {
+						if n.Task.Section == section && n.Task.IsRoot() {
+							m.projectTree.cursor = i
+							break
+						}
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "cycle due date filter",
+			Description: "Cycle through due date filter options",
+			Shortcut:    "gd",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"due date filter", "filter due"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.DueDate = (m.projectTree.filter.DueDate + 1) % 5
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+	}
+
+	// Linked task commands (ProjectTree, via `c` prefix)
+	linkedTaskCommands := []Command{
+		{
+			Name:        "create blocker",
+			Description: "Create a new blocker linked task",
+			Shortcut:    "cb",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"add blocker", "new blocker"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeBlocker}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "create dependent",
+			Description: "Create a new dependent linked task",
+			Shortcut:    "cd",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"add dependent", "new dependent"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeDependent}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "create subtask",
+			Description: "Create a new subtask linked task",
+			Shortcut:    "cs",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"add subtask", "new subtask"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeSubtask}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "create follow-up",
+			Description: "Create a new follow-up linked task",
+			Shortcut:    "cf",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"add follow-up", "new follow-up"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeFollowUp}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "navigate linked tasks",
+			Description: "Navigate to linked tasks",
+			Shortcut:    "cn",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"show linked", "go to linked"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "unlink task",
+			Description: "Remove a linked task relationship",
+			Shortcut:    "cx",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"remove link", "delete link"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project, ForUnlink: true}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "cross-project link",
+			Description: "Link task across projects",
+			Shortcut:    "cp",
+			Category:    CategoryLinkedTasks,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"cross link", "inter-project link"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: m.projectTree.project}
+				}
+				return nil
+			},
+		},
+	}
+
+	// Multi-select commands (ProjectTree)
+	multiSelectCommands := []Command{
+		{
+			Name:        "toggle multi-select",
+			Description: "Toggle multi-select mode",
+			Shortcut:    "v",
+			Category:    CategoryMultiSelect,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"multi select", "select mode"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				if m.projectTree.multiSelectMode {
+					m.projectTree.clearSelection()
+				} else {
+					m.projectTree.multiSelectMode = true
+					visible := m.projectTree.visibleNodes()
+					if CursorInBounds(m.projectTree.cursor, len(visible)) {
+						m.projectTree.toggleSelection(visible[m.projectTree.cursor].Task)
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "select all visible",
+			Description: "Select all visible tasks",
+			Shortcut:    "a",
+			Category:    CategoryMultiSelect,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"select all"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil && m.projectTree.multiSelectMode {
+					m.projectTree.selectAllVisible()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "deselect all",
+			Description: "Deselect all tasks",
+			Shortcut:    "A",
+			Category:    CategoryMultiSelect,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"clear selection", "deselect"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil && m.projectTree.multiSelectMode {
+					m.projectTree.deselectAllVisible()
+				}
+				return nil
+			},
+		},
+	}
+
+	// Fold commands (ProjectTree, via `z` prefix)
+	foldCommands := []Command{
+		{
+			Name:        "toggle fold",
+			Description: "Toggle expand/collapse current node",
+			Shortcut:    "za",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"toggle expand", "toggle collapse"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					node := visible[m.projectTree.cursor]
+					if len(node.Task.Children) > 0 {
+						node.Expanded = !node.Expanded
+						m.projectTree.updateVisibility()
+					}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "open fold",
+			Description: "Expand current node",
+			Shortcut:    "zo",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"expand node", "unfold"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					visible[m.projectTree.cursor].Expanded = true
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "close fold",
+			Description: "Collapse current node",
+			Shortcut:    "zc",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"collapse node", "fold"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					visible[m.projectTree.cursor].Expanded = false
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "expand all folds",
+			Description: "Expand all nodes in tree",
+			Shortcut:    "zR",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"unfold all", "open all folds"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					for _, node := range m.projectTree.nodes {
+						node.Expanded = true
+					}
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "collapse all folds",
+			Description: "Collapse all nodes in tree",
+			Shortcut:    "zM",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"fold all", "close all folds"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					for _, node := range m.projectTree.nodes {
+						if node.Level > 0 {
+							node.Expanded = false
+						}
+					}
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "focus subtree",
+			Description: "Focus on current subtree only",
+			Shortcut:    "zv",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"zoom subtree", "subtree focus"},
+			Handler: func() tea.Msg {
+				if m.projectTree == nil {
+					return nil
+				}
+				visible := m.projectTree.visibleNodes()
+				if CursorInBounds(m.projectTree.cursor, len(visible)) {
+					task := visible[m.projectTree.cursor].Task
+					if task.Type.CanHaveChildren() {
+						m.projectTree.focusedTask = task
+						m.projectTree.cursor = 0
+						m.projectTree.buildTree()
+					}
+				}
+				return nil
+			},
+		},
+	}
+
+	// Filter bar F-key commands (ProjectTree)
+	filterBarCommands := []Command{
+		{
+			Name:        "filter by type",
+			Description: "Cycle through type filter options",
+			Shortcut:    "t",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"type filter", "cycle type"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.Type = cycleFilter(m.projectTree.filter.Type, models.AllTaskTypes())
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "filter by status",
+			Description: "Cycle through status filter options",
+			Shortcut:    "S",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"status filter", "cycle status"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.Status = cycleFilter(m.projectTree.filter.Status, models.AllTaskStatuses())
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "completed view toggle",
+			Description: "Toggle Completed view (F1)",
+			Shortcut:    "F1",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f1 filter", "show completed"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					if m.projectTree.viewMode == ViewModeCompleted {
+						m.projectTree.viewMode = ViewModeActive
+					} else {
+						m.projectTree.viewMode = ViewModeCompleted
+					}
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "high priority filter",
+			Description: "Toggle high priority filter (F2)",
+			Shortcut:    "F2",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f2 filter", "priority filter toggle"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					if m.projectTree.filter.Priority == 0 {
+						m.projectTree.filter.Priority = 1
+					} else {
+						m.projectTree.filter.Priority = 0
+					}
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "type filter cycle",
+			Description: "Cycle type filter (F3)",
+			Shortcut:    "F3",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f3 filter"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.Type = cycleFilter(m.projectTree.filter.Type, models.AllTaskTypes())
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "status filter cycle",
+			Description: "Cycle status filter (F4)",
+			Shortcut:    "F4",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f4 filter"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.Status = cycleFilter(m.projectTree.filter.Status, models.AllTaskStatuses())
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "tag filter selector",
+			Description: "Open tag filter (F5)",
+			Shortcut:    "F5",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f5 filter"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					return ShowTagFilterSelectorMsg{ProjectTree: m.projectTree}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "section filter selector",
+			Description: "Open section filter (F6)",
+			Shortcut:    "F6",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f6 filter"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					return ShowSectionFilterSelectorMsg{ProjectTree: m.projectTree}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "due date filter cycle",
+			Description: "Cycle due date filter (F7)",
+			Shortcut:    "F7",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f7 filter"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.DueDate = (m.projectTree.filter.DueDate + 1) % 5
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "actionable filter",
+			Description: "Toggle actionable filter (F8)",
+			Shortcut:    "F8",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"f8 filter", "actionable only"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.filter.Actionable = !m.projectTree.filter.Actionable
+					m.projectTree.updateVisibility()
+					m.projectTree.pruneInvisibleSelections()
+					m.projectTree.clampCursor()
+				}
+				return nil
+			},
+		},
+	}
+
 	// Register all command batches
 	_ = m.commandRegistry.RegisterBatch(globalCommands)
 	_ = m.commandRegistry.RegisterBatch(filterCommands)
@@ -1591,6 +2513,14 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(dueDateCommands)
 	_ = m.commandRegistry.RegisterBatch(notesCommands)
 	_ = m.commandRegistry.RegisterBatch(otherCommands)
+	_ = m.commandRegistry.RegisterBatch(priorityCommands)
+	_ = m.commandRegistry.RegisterBatch(sortCommands)
+	_ = m.commandRegistry.RegisterBatch(structureCommands)
+	_ = m.commandRegistry.RegisterBatch(sectionSendCommands)
+	_ = m.commandRegistry.RegisterBatch(linkedTaskCommands)
+	_ = m.commandRegistry.RegisterBatch(multiSelectCommands)
+	_ = m.commandRegistry.RegisterBatch(foldCommands)
+	_ = m.commandRegistry.RegisterBatch(filterBarCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
