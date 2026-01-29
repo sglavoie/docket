@@ -3605,6 +3605,48 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(undoHistoryCommands)
 	_ = m.commandRegistry.RegisterBatch(globalTagManagerCommands)
 	_ = m.commandRegistry.RegisterBatch(workflowRulesCommands)
+
+	sidebarCommands := []Command{
+		{
+			Name:        "enable sidebar for all projects",
+			Description: "Turn on sidebar for every active project",
+			Category:    CategoryView,
+			Views:       []ViewType{},
+			Aliases:     []string{"sidebar on all", "show sidebar all"},
+			Handler: func() tea.Msg {
+				for _, p := range m.config.GetActiveProjects() {
+					state, _ := m.config.GetProjectViewState(p.ID)
+					state.SidebarEnabled = true
+					m.config.SetProjectViewState(p.ID, state)
+				}
+				_ = m.configManager.Save(m.config)
+				if m.projectTree != nil {
+					m.projectTree.sidebar.SetEnabled(true)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "disable sidebar for all projects",
+			Description: "Turn off sidebar for every active project",
+			Category:    CategoryView,
+			Views:       []ViewType{},
+			Aliases:     []string{"sidebar off all", "hide sidebar all"},
+			Handler: func() tea.Msg {
+				for _, p := range m.config.GetActiveProjects() {
+					state, _ := m.config.GetProjectViewState(p.ID)
+					state.SidebarEnabled = false
+					m.config.SetProjectViewState(p.ID, state)
+				}
+				_ = m.configManager.Save(m.config)
+				if m.projectTree != nil {
+					m.projectTree.sidebar.SetEnabled(false)
+				}
+				return nil
+			},
+		},
+	}
+	_ = m.commandRegistry.RegisterBatch(sidebarCommands)
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
