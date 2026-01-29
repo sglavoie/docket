@@ -189,6 +189,15 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowRecentActivityPreviewMsg:
+		preview := NewRecentActivityPreviewModel(msg.Task, msg.Project)
+		m.showView(ViewRecentActivityPreview, preview)
+		return true, nil
+
+	case CloseRecentActivityPreviewMsg:
+		m.popView()
+		return true, nil
+
 	case RecentActivitySelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {

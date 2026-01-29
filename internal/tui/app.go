@@ -79,6 +79,7 @@ const (
 	ViewNoteTagFilterSelector
 	ViewTaskActivity
 	ViewRecentActivity
+	ViewRecentActivityPreview
 )
 
 // AppModel is the main TUI model with a view stack.

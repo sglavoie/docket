@@ -191,6 +191,14 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			m.cursor = 0
 		}
 
+	case "p":
+		if m.cursor >= 0 && m.cursor < len(m.filtered) {
+			dt := m.filtered[m.cursor]
+			return m, func() tea.Msg {
+				return ShowRecentActivityPreviewMsg{Task: dt, Project: dt.Project}
+			}
+		}
+
 	case "r":
 		m.loadTasks()
 		m.clampCursor()
@@ -283,7 +291,7 @@ func (m *RecentActivityModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	footer := HelpStyle.Render("j/k nav | Enter open | / filter | r refresh | ? help")
+	footer := HelpStyle.Render("j/k nav | Enter open | p preview | / filter | r refresh | ? help")
 	b.WriteString(footer)
 
 	subtitle := fmt.Sprintf("%d tasks", len(m.filtered))

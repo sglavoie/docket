@@ -543,6 +543,15 @@ type ShowRecentActivityMsg struct{}
 // CloseRecentActivityMsg closes the recent activity view.
 type CloseRecentActivityMsg struct{}
 
+// ShowRecentActivityPreviewMsg opens a task preview from recent activity.
+type ShowRecentActivityPreviewMsg struct {
+	Task    DailyReviewTask
+	Project *models.Project
+}
+
+// CloseRecentActivityPreviewMsg closes the recent activity task preview.
+type CloseRecentActivityPreviewMsg struct{}
+
 // RecentActivitySelectMsg navigates to a task from recent activity.
 type RecentActivitySelectMsg struct {
 	Task    *models.Task
