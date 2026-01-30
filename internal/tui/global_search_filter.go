@@ -10,8 +10,10 @@ import (
 
 // filteredSearchResult holds a search result with match positions for highlighting.
 type filteredSearchResult struct {
-	result         models.SearchResult
-	titlePositions []int // Match positions within the title for highlighting
+	result            models.SearchResult
+	titlePositions    []int  // Match positions within the title for highlighting
+	matchSource       string // "title", "description", or "comment"
+	matchedCommentIdx int    // Index of the matched comment (when matchSource == "comment")
 }
 
 // filterTasks filters tasks based on the current search query.
@@ -30,9 +32,11 @@ func (m *GlobalSearchModel) filterTasks() {
 
 	// Score each task and collect matches with title positions
 	type scoredResult struct {
-		result         models.SearchResult
-		score          int
-		titlePositions []int
+		result            models.SearchResult
+		score             int
+		titlePositions    []int
+		matchSource       string
+		matchedCommentIdx int
 	}
 	var scored []scoredResult
 
@@ -69,12 +73,14 @@ func (m *GlobalSearchModel) filterTasks() {
 		// If there's a text query, apply fuzzy scoring
 		textQuery := m.parsedFilters.TextQuery
 		if textQuery != "" {
-			score, titlePositions := m.scoreTask(result.Task, textQuery)
+			score, titlePositions, matchSource, matchedCommentIdx := m.scoreTask(result.Task, textQuery)
 			if score > 0 {
 				scored = append(scored, scoredResult{
-					result:         result,
-					score:          score,
-					titlePositions: titlePositions,
+					result:            result,
+					score:             score,
+					titlePositions:    titlePositions,
+					matchSource:       matchSource,
+					matchedCommentIdx: matchedCommentIdx,
 				})
 			}
 		} else {
@@ -96,8 +102,10 @@ func (m *GlobalSearchModel) filterTasks() {
 	m.filtered = make([]filteredSearchResult, len(scored))
 	for i, s := range scored {
 		m.filtered[i] = filteredSearchResult{
-			result:         s.result,
-			titlePositions: s.titlePositions,
+			result:            s.result,
+			titlePositions:    s.titlePositions,
+			matchSource:       s.matchSource,
+			matchedCommentIdx: s.matchedCommentIdx,
 		}
 	}
 
@@ -125,8 +133,10 @@ func (m *GlobalSearchModel) scoreNote(note *models.Note, query string) (int, []i
 
 // scoreTask returns a fuzzy match score for a task against the query,
 // along with match positions within the title for highlighting.
-// Returns 0 and nil if no match, higher scores indicate better matches.
-func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) (int, []int) {
+// Also returns the match source ("title", "description", or "comment") and
+// the index of the best-matching comment when applicable.
+// Returns 0, nil, "", -1 if no match; higher scores indicate better matches.
+func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) (int, []int, string, int) {
 	// Score against title (weighted higher)
 	titleScore, titlePositions := fuzzy.ScoreTermsWithPositions(task.Title, query)
 	if titleScore > 0 {
@@ -136,9 +146,38 @@ func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) (int, []i
 	// Score against description
 	descScore := fuzzy.ScoreTerms(task.Description, query)
 
-	// Return the best score with title positions (for highlighting)
-	if titleScore > descScore {
-		return titleScore, titlePositions
+	// Score against comments (same weight as description)
+	bestCommentScore := 0
+	bestCommentIdx := -1
+	for i, comment := range task.Comments {
+		score := fuzzy.ScoreTerms(comment.Text, query)
+		if score > bestCommentScore {
+			bestCommentScore = score
+			bestCommentIdx = i
+		}
 	}
-	return descScore, nil // No title highlighting if description matched better
+
+	// Return the best score with source info
+	bestScore := titleScore
+	bestSource := "title"
+	var bestPositions []int = titlePositions
+
+	if descScore > bestScore {
+		bestScore = descScore
+		bestSource = "description"
+		bestPositions = nil
+	}
+	if bestCommentScore > bestScore {
+		bestScore = bestCommentScore
+		bestSource = "comment"
+		bestPositions = nil
+	}
+
+	if bestScore == 0 {
+		return 0, nil, "", -1
+	}
+	if bestSource != "comment" {
+		bestCommentIdx = -1
+	}
+	return bestScore, bestPositions, bestSource, bestCommentIdx
 }

@@ -290,6 +290,12 @@ func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
 	if fuzzy.MatchTerms(task.Description, query) {
 		return true
 	}
+	// Check comments
+	for _, comment := range task.Comments {
+		if fuzzy.MatchTerms(comment.Text, query) {
+			return true
+		}
+	}
 	return false
 }
 

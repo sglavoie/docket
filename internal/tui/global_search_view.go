@@ -344,6 +344,11 @@ func (m *GlobalSearchModel) renderTaskList() string {
 		}
 
 		// Build line and verify total width doesn't exceed listWidth
+		// Append comment indicator if match came from a comment
+		if fr.matchSource == "comment" {
+			titleRendered += MutedStyle.Render(" [c]")
+		}
+
 		line := prefix + titleRendered
 		lineWidth := lipgloss.Width(line)
 		if lineWidth > m.listWidth {
@@ -502,6 +507,23 @@ func (m *GlobalSearchModel) renderPreview() string {
 			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
 		b.WriteString(strings.Join(lines, "\n"))
+	}
+
+	// Matched comment (when the match came from a comment)
+	fr := m.filtered[m.cursor]
+	if fr.matchSource == "comment" && fr.matchedCommentIdx >= 0 && fr.matchedCommentIdx < len(task.Comments) {
+		comment := task.Comments[fr.matchedCommentIdx]
+		b.WriteString("\n")
+		b.WriteString(SubtitleStyle.Render("Matched Comment"))
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(comment.CreatedAt.Format("2006-01-02 15:04")))
+		b.WriteString("\n")
+		text := comment.Text
+		if len(text) > 300 {
+			text = text[:300] + "..."
+		}
+		b.WriteString(text)
+		b.WriteString("\n")
 	}
 
 	// Children summary
