@@ -82,6 +82,7 @@ const (
 	ViewRecentActivityPreview
 	ViewGlobalNotes
 	ViewWeeklyReview
+	ViewGlobalBlockers
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -565,6 +566,17 @@ func (m *AppModel) registerGlobalCommands() {
 			Aliases:     []string{"global notes", "notes", "scratch notes"},
 			Handler: func() tea.Msg {
 				return ShowGlobalNotesMsg{}
+			},
+		},
+		{
+			Name:        "global blockers",
+			Description: "View blockers across all projects",
+			Shortcut:    "B",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"all blockers", "blockers overview"},
+			Handler: func() tea.Msg {
+				return ShowGlobalBlockersMsg{}
 			},
 		},
 		{

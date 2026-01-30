@@ -673,6 +673,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowGlobalBlockersMsg:
+		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config))
+		return true, nil
+
+	case CloseGlobalBlockersMsg:
+		m.popView()
+		return true, nil
+
+	case BlockerGoToProjectMsg:
+		// Pop blockers view(s) back to dashboard, then navigate to project
+		m.popView()
+		if msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case BlockerAddedMsg, BlockerEditedMsg, BlockerDeletedMsg:
 		// Blockers were modified, refresh dashboard to update indicators
 		if m.dashboard != nil {
@@ -840,6 +857,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowGlobalTagManagerMsg{})
 	case ViewGlobalNotes:
 		return m.handleViewMessages(ShowGlobalNotesMsg{})
+	case ViewGlobalBlockers:
+		return m.handleViewMessages(ShowGlobalBlockersMsg{})
 	case ViewNotes:
 		if project != nil {
 			return m.handleViewMessages(ShowNotesMsg{Project: project})

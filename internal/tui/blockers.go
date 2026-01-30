@@ -237,7 +237,9 @@ func (m *BlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "g":
-			m.cursor = 0
+			return m, func() tea.Msg {
+				return BlockerGoToProjectMsg{Project: m.project}
+			}
 
 		case "G":
 			if len(visible) > 0 {
@@ -943,7 +945,7 @@ func (m *BlockersModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(MutedStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | Enter: expand | h/l/[/] tabs | Esc: close"))
+	b.WriteString(MutedStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | g: go to project | Enter: expand | h/l/[/] tabs | Esc: close"))
 
 	return b.String()
 }
@@ -980,5 +982,10 @@ type BlockerEditedMsg struct {
 
 // BlockerDeletedMsg signals a blocker was deleted.
 type BlockerDeletedMsg struct {
+	Project *models.Project
+}
+
+// BlockerGoToProjectMsg navigates to a project from the blockers view.
+type BlockerGoToProjectMsg struct {
 	Project *models.Project
 }

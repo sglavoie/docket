@@ -346,6 +346,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ShowBlockersMsg{Project: project}
 				}
 			}
+		case "B":
+			return m, func() tea.Msg {
+				return ShowGlobalBlockersMsg{}
+			}
 		case "ctrl+w":
 			return m, func() tea.Msg {
 				return ShowWorkflowRulesMsg{}
