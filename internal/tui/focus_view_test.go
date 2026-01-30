@@ -201,6 +201,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 			{Task: task1, Project: project},
 			{Task: task2, Project: project},
 		}
+		m.applyFilter()
 
 		ft := m.getTaskAtCursor()
 		if ft == nil || ft.Task.Title != "Task 1" {
@@ -218,6 +219,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 		cfg := newTestFocusConfig(nil)
 		m := &FocusViewModel{config: cfg, cursor: 10}
 		m.tasks = []FocusTask{}
+		m.applyFilter()
 
 		if ft := m.getTaskAtCursor(); ft != nil {
 			t.Errorf("expected nil for out of bounds, got %v", ft)
@@ -228,6 +230,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 		cfg := newTestFocusConfig(nil)
 		m := &FocusViewModel{config: cfg, cursor: -1}
 		m.tasks = []FocusTask{}
+		m.applyFilter()
 
 		if ft := m.getTaskAtCursor(); ft != nil {
 			t.Errorf("expected nil for negative cursor, got %v", ft)
@@ -259,6 +262,7 @@ func TestFocusViewClampCursor(t *testing.T) {
 			for i := 0; i < tt.taskCount; i++ {
 				m.tasks = append(m.tasks, FocusTask{})
 			}
+			m.applyFilter()
 
 			m.clampCursor()
 

@@ -9,9 +9,20 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
+)
+
+var focusTabNames = []string{"All", "By Project", "By Priority", "Due Soon"}
+
+const (
+	focusTabAll        = 0
+	focusTabByProject  = 1
+	focusTabByPriority = 2
+	focusTabDueSoon    = 3
 )
 
 // FocusTask wraps a task with its parent project for cross-project display.
@@ -26,7 +37,11 @@ type FocusViewModel struct {
 	projectService *ProjectService
 
 	// Tasks
-	tasks []FocusTask
+	tasks    []FocusTask
+	filtered []FocusTask
+
+	// Tabs
+	activeTab int
 
 	// Navigation
 	cursor int
@@ -82,14 +97,53 @@ func (m *FocusViewModel) loadTasks() {
 		}
 		return m.tasks[i].Task.UpdatedAt.After(m.tasks[j].Task.UpdatedAt)
 	})
+
+	m.applyFilter()
+}
+
+// applyFilter filters and sorts tasks based on the active tab.
+func (m *FocusViewModel) applyFilter() {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	switch m.activeTab {
+	case focusTabByProject:
+		m.filtered = make([]FocusTask, len(m.tasks))
+		copy(m.filtered, m.tasks)
+		sort.SliceStable(m.filtered, func(i, j int) bool {
+			return m.filtered[i].Project.Name < m.filtered[j].Project.Name
+		})
+	case focusTabByPriority:
+		m.filtered = nil
+		for _, ft := range m.tasks {
+			if ft.Task.Priority <= 2 {
+				m.filtered = append(m.filtered, ft)
+			}
+		}
+	case focusTabDueSoon:
+		m.filtered = nil
+		sevenDaysLater := today.AddDate(0, 0, 7)
+		for _, ft := range m.tasks {
+			if ft.Task.DueDate == nil {
+				continue
+			}
+			dueDay := time.Date(ft.Task.DueDate.Year(), ft.Task.DueDate.Month(), ft.Task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+			if dueDay.Before(sevenDaysLater) {
+				m.filtered = append(m.filtered, ft)
+			}
+		}
+	default:
+		m.filtered = make([]FocusTask, len(m.tasks))
+		copy(m.filtered, m.tasks)
+	}
 }
 
 // getTaskAtCursor returns the task at the current cursor position.
 func (m *FocusViewModel) getTaskAtCursor() *FocusTask {
-	if m.cursor < 0 || m.cursor >= len(m.tasks) {
+	if m.cursor < 0 || m.cursor >= len(m.filtered) {
 		return nil
 	}
-	return &m.tasks[m.cursor]
+	return &m.filtered[m.cursor]
 }
 
 // HasActiveSearch returns false (no search in this view).
@@ -178,14 +232,14 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "down", "j":
-		if m.cursor < len(m.tasks)-1 {
+		if m.cursor < len(m.filtered)-1 {
 			m.cursor++
 		}
 		return m, nil
 
 	case "G":
-		if len(m.tasks) > 0 {
-			m.cursor = len(m.tasks) - 1
+		if len(m.filtered) > 0 {
+			m.cursor = len(m.filtered) - 1
 		}
 		return m, nil
 
@@ -198,11 +252,28 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+d":
 		m.cursor += 10
-		if m.cursor >= len(m.tasks) {
-			m.cursor = len(m.tasks) - 1
+		if m.cursor >= len(m.filtered) {
+			m.cursor = len(m.filtered) - 1
 		}
 		if m.cursor < 0 {
 			m.cursor = 0
+		}
+		return m, nil
+
+	// Tab navigation
+	case "[", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+			m.applyFilter()
+			m.clampCursor()
+		}
+		return m, nil
+
+	case "]", "l":
+		if m.activeTab < len(focusTabNames)-1 {
+			m.activeTab++
+			m.applyFilter()
+			m.clampCursor()
 		}
 		return m, nil
 
@@ -631,8 +702,8 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {
-	if m.cursor >= len(m.tasks) {
-		m.cursor = len(m.tasks) - 1
+	if m.cursor >= len(m.filtered) {
+		m.cursor = len(m.filtered) - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0
@@ -677,17 +748,25 @@ func (m *FocusViewModel) View() string {
 
 	var b strings.Builder
 
+	// Tab bar
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n")
+
 	// Calculate available height for task list
-	contentHeight := m.height - 12
+	contentHeight := m.height - 13
 
 	// Render task lines
 	var lines []string
 	maxTitleLen := m.width - 45
 
-	for i, ft := range m.tasks {
+	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
 		line := m.renderTaskLine(ft, isSelected, maxTitleLen)
 		lines = append(lines, line)
+	}
+
+	if len(m.filtered) == 0 {
+		lines = append(lines, MutedStyle.Render("No matching tasks."))
 	}
 
 	// Apply scrolling if needed
@@ -726,14 +805,79 @@ func (m *FocusViewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due | Enter go to | ? help")
+	footer := HelpStyle.Render("j/k nav | h/l [/] tabs | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due | Enter go to | ? help")
 	b.WriteString(footer)
+
+	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
+	if len(m.filtered) != len(m.tasks) {
+		subtitle = fmt.Sprintf("%d/%d active tasks", len(m.filtered), len(m.tasks))
+	}
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
 		Title:    "Focus View",
-		Subtitle: fmt.Sprintf("%d active tasks", len(m.tasks)),
+		Subtitle: subtitle,
 		Centered: true,
 	})
+}
+
+// renderTabBar renders the tab bar for filtering.
+func (m *FocusViewModel) renderTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range focusTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range focusTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
