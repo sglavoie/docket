@@ -2553,14 +2553,22 @@ func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width,
 		lines = []string{}
 	}
 
-	// Limit visible lines
-	maxLines := 5
-	if len(lines) > maxLines {
-		lines = lines[:maxLines]
-		lines = append(lines, MutedStyle.Render("..."))
+	// Render with all visible lines, then iteratively reduce until the card
+	// fits within availableHeight. This accounts for text wrapping by lipgloss.
+	count := len(lines)
+	for count > 0 {
+		content := strings.Join(lines[:count], "\n")
+		if count < len(lines) {
+			content += "\n" + MutedStyle.Render("...")
+		}
+		rendered := renderSidebarCard("Description", content, width, false, "")
+		if lipgloss.Height(rendered) <= availableHeight {
+			return rendered
+		}
+		count--
 	}
 
-	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false, "")
+	return renderSidebarCard("Description", MutedStyle.Render("..."), width, false, "")
 }
 
 // padDetailsToHeight ensures the details panel fills the exact height.
