@@ -416,7 +416,27 @@ func (m *DashboardModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Filter bar: search and context on same line when both present
+	filterBar, chromeHeight := m.renderFilterBar()
+	b.WriteString(filterBar)
+
+	visible := m.visibleProjects()
+
+	// Determine if we use split-pane layout
+	useSplitPane := m.width >= DashboardSplitPaneMinWidth
+
+	if useSplitPane {
+		b.WriteString(m.renderSplitPane(visible, chromeHeight))
+	} else {
+		b.WriteString(m.renderFullWidthDashboard(visible, chromeHeight))
+	}
+
+	return b.String()
+}
+
+// renderFilterBar renders the search and context filter bar.
+// Returns the rendered string and the number of chrome lines consumed.
+func (m *DashboardModel) renderFilterBar() (string, int) {
+	var b strings.Builder
 	chromeHeight := 0
 	hasSearch := m.IsSearchMode() || m.SearchQuery() != ""
 	hasContext := m.filterContext != ""
@@ -451,18 +471,7 @@ func (m *DashboardModel) View() string {
 		chromeHeight++
 	}
 
-	visible := m.visibleProjects()
-
-	// Determine if we use split-pane layout
-	useSplitPane := m.width >= DashboardSplitPaneMinWidth
-
-	if useSplitPane {
-		b.WriteString(m.renderSplitPane(visible, chromeHeight))
-	} else {
-		b.WriteString(m.renderFullWidthDashboard(visible, chromeHeight))
-	}
-
-	return b.String()
+	return b.String(), chromeHeight
 }
 
 // renderSplitPane renders the dashboard as a left (project list) + right (info panel) layout.
