@@ -397,4 +397,6 @@ func (m *DailyReviewModel) formatDueDateContext(dueDate *time.Time, section Dail
 }
 
 // DailyReviewSectionHeaderStyle is the style for section headers.
-var DailyReviewSectionHeaderStyle = SubtitleStyle.Bold(true)
+var DailyReviewSectionHeaderStyle = lipgloss.NewStyle().
+	Foreground(ColorSecondary).
+	Bold(true)
