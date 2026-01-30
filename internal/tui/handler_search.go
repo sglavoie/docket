@@ -41,7 +41,7 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		keepPalette := false
 		if msg.ResultMsg != nil {
 			switch msg.ResultMsg.(type) {
-			case EditTaskMsg, SetDueDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg, GlowViewMsg:
+			case EditTaskMsg, SetDueDateMsg, SetSnoozeDateMsg, ShowSectionPickerMsg, ShowPriorityPickerMsg, GlowViewMsg:
 				keepPalette = true
 			}
 		}

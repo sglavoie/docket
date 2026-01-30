@@ -113,6 +113,11 @@ func (m *PriorityViewModel) loadActionableTasks() {
 			continue
 		}
 
+		// Skip snoozed tasks
+		if task.IsSnoozed() {
+			continue
+		}
+
 		// Check if blocked (status=blocked or has incomplete dependencies)
 		isBlocked := task.Status == models.StatusBlocked || m.project.HasIncompleteDependencies(task)
 

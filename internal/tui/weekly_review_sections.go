@@ -47,6 +47,9 @@ func (m *WeeklyReviewModel) loadData() {
 			if task.Status.IsComplete() {
 				continue
 			}
+			if task.IsSnoozed() {
+				continue
+			}
 
 			// Track latest update
 			if task.UpdatedAt.After(latestUpdate) {

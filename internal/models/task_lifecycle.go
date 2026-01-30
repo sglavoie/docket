@@ -104,6 +104,23 @@ func (t *Task) ToggleActive() {
 	}
 }
 
+// IsSnoozed returns true if the task is snoozed (SnoozedUntil is set and after today).
+func (t *Task) IsSnoozed() bool {
+	if t.SnoozedUntil == nil {
+		return false
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	snoozeDay := time.Date(t.SnoozedUntil.Year(), t.SnoozedUntil.Month(), t.SnoozedUntil.Day(), 0, 0, 0, 0, now.Location())
+	return snoozeDay.After(today)
+}
+
+// ClearSnooze removes the snooze date from the task.
+func (t *Task) ClearSnooze() {
+	t.SnoozedUntil = nil
+	t.UpdatedAt = time.Now()
+}
+
 // IsRecurring returns true if the task has a recurrence pattern.
 func (t *Task) IsRecurring() bool {
 	return t.Recurrence != nil

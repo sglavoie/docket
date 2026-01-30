@@ -54,6 +54,7 @@ const (
 	ViewModeWaiting                   // Only Waiting section tasks (GTD "Waiting For")
 	ViewModeSomeday                   // Only Someday section tasks (GTD "Someday/Maybe")
 	ViewModeCompleted                 // Only completed tasks (done or canceled)
+	ViewModeSnoozed                   // Only snoozed tasks
 )
 
 // String returns the display name for a view mode.
@@ -69,6 +70,8 @@ func (v ViewMode) String() string {
 		return "Someday"
 	case ViewModeCompleted:
 		return "Completed"
+	case ViewModeSnoozed:
+		return "Snoozed"
 	default:
 		return "Active"
 	}

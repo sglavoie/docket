@@ -207,6 +207,16 @@ type SetDueDateMsg struct {
 }
 
 // =============================================================================
+// Snooze Messages
+// =============================================================================
+
+// SetSnoozeDateMsg opens the date input view for snoozing a task.
+type SetSnoozeDateMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// =============================================================================
 // Dependency Messages (Show/Close Pattern)
 // =============================================================================
 

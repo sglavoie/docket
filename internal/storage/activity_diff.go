@@ -119,6 +119,18 @@ func diffTask(old, new *models.Task) {
 		})
 	}
 
+	// Snoozed
+	oldSnoozed := formatSnoozedDate(old.SnoozedUntil)
+	newSnoozed := formatSnoozedDate(new.SnoozedUntil)
+	if oldSnoozed != newSnoozed {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "snoozed",
+			OldValue:  oldSnoozed,
+			NewValue:  newSnoozed,
+		})
+	}
+
 	// Pinned
 	if old.Pinned != new.Pinned {
 		new.Activity = append(new.Activity, &models.ActivityEntry{
@@ -242,6 +254,13 @@ func diffTags(oldTags, newTags []string) string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+func formatSnoozedDate(d *time.Time) string {
+	if d == nil {
+		return "none"
+	}
+	return d.Format(util.DateFormat)
 }
 
 func formatDueDate(d *time.Time) string {

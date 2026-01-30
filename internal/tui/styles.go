@@ -346,6 +346,12 @@ var (
 				Bold(true).
 				Padding(0, 1)
 
+	ViewModeSnoozedStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("95")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1)
+
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

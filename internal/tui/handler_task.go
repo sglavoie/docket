@@ -86,6 +86,16 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case SetSnoozeDateMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewSnoozeInput, NewSnoozeInputModel(msg.Task, msg.Project))
+		}
+		return true, nil
+
+	case SnoozeDateChangedMsg:
+		m.popView()
+		return true, nil
+
 	case DueDateChangedMsg:
 		m.popView()
 

@@ -116,6 +116,15 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionC
 	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+
+	if task.IsSnoozed() {
+		snoozeStr := task.SnoozedUntil.Format("Jan 2")
+		if task.SnoozedUntil.Year() != time.Now().Year() {
+			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+		}
+		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
+	}
+
 	return renderSidebarCard("Task", content, width, false, sectionColor)
 }
 

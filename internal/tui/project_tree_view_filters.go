@@ -11,8 +11,12 @@ import (
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Count by section: active, next, inbox, waiting, someday, completed
-	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, completedCount int
+	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, completedCount, snoozedCount int
 	for _, task := range m.project.Tasks {
+		if task.IsSnoozed() {
+			snoozedCount++
+			continue
+		}
 		if task.IsComplete() {
 			completedCount++
 			continue
@@ -73,6 +77,16 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, ViewModeSomedayStyle.Render(somedayLabel))
 	} else {
 		parts = append(parts, MutedStyle.Render(somedayLabel))
+	}
+
+	// Snoozed indicator (only show if there are snoozed tasks)
+	if snoozedCount > 0 {
+		snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
+		if m.viewMode == ViewModeSnoozed {
+			parts = append(parts, ViewModeSnoozedStyle.Render(snoozedLabel))
+		} else {
+			parts = append(parts, MutedStyle.Render(snoozedLabel))
+		}
 	}
 
 	// Blockers indicator (only show if there are active blockers)
@@ -235,6 +249,7 @@ func (m *ProjectTreeModel) renderPrefixPopup() string {
 		"g": ProjectTreeNavigationPrefixHints,
 		"!": PriorityPrefixHints,
 		"d": DueDatePrefixHints,
+		"s": SnoozePrefixHints,
 		"c": CreateLinkedPrefixHints,
 	}, m.width)
 }
@@ -256,6 +271,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 		base = "Someday"
 	case ViewModeCompleted:
 		base = "Completed"
+	case ViewModeSnoozed:
+		base = "Snoozed"
 	default:
 		base = "Tasks"
 	}

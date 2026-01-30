@@ -48,7 +48,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "pinned", "active", "recur",
-	"attachments",
+	"attachments", "snoozed",
 }
 
 // ParseMetadata parses the metadata string and sets task fields.
@@ -143,6 +143,10 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		case "recur":
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
+			}
+		case "snoozed":
+			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
+				task.SnoozedUntil = &t
 			}
 		case "attachments":
 			attachments := strings.Split(value, ";")
@@ -291,6 +295,10 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.Active {
 		parts = append(parts, "active: true")
+	}
+
+	if task.SnoozedUntil != nil {
+		parts = append(parts, fmt.Sprintf("snoozed: %s", task.SnoozedUntil.Format(util.DateFormat)))
 	}
 
 	if task.Recurrence != nil {

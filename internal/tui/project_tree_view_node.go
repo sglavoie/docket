@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -132,6 +133,15 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Due date display (compact)
 	if dueStr := formatDueDate(task); dueStr != "" {
 		indicators += dueStr + " "
+	}
+
+	// Snooze indicator (shown in snoozed view)
+	if task.SnoozedUntil != nil {
+		snoozeStr := task.SnoozedUntil.Format("Jan 2")
+		if task.SnoozedUntil.Year() != time.Now().Year() {
+			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+		}
+		indicators += MutedStyle.Render("zzz "+snoozeStr) + " "
 	}
 
 	// Recurrence indicator

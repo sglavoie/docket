@@ -57,6 +57,10 @@ func (m *ProjectFocusViewModel) loadTasks() {
 		if task.Status.IsComplete() {
 			continue
 		}
+		// Skip snoozed tasks
+		if task.IsSnoozed() {
+			continue
+		}
 		m.tasks = append(m.tasks, task)
 	}
 

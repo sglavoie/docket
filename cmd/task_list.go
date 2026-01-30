@@ -18,6 +18,7 @@ var (
 	listTag        string
 	listShowAll    bool
 	listTreeView   bool
+	listSnoozed    bool
 )
 
 var taskListCmd = &cobra.Command{
@@ -47,6 +48,7 @@ func init() {
 	taskListCmd.Flags().StringVar(&listTag, "tag", "", "filter by tag")
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
+	taskListCmd.Flags().BoolVar(&listSnoozed, "snoozed", false, "include snoozed tasks (hidden by default)")
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
@@ -83,6 +85,11 @@ func filterTasks(tasks []*models.Task) []*models.Task {
 	for _, task := range tasks {
 		// Filter by completed status
 		if !listShowAll && task.Status.IsComplete() {
+			continue
+		}
+
+		// Hide snoozed tasks unless --snoozed flag is set
+		if !listSnoozed && task.IsSnoozed() {
 			continue
 		}
 

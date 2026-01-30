@@ -136,6 +136,7 @@ var (
 		{Key: "w", Description: "waiting"},
 		{Key: "s", Description: "someday"},
 		{Key: "c", Description: "completed"},
+		{Key: "z", Description: "snoozed"},
 		{Key: "A", Description: "→Active"},
 		{Key: "N", Description: "→Next"},
 		{Key: "I", Description: "→Inbox"},
@@ -163,6 +164,16 @@ var (
 		{Key: "m", Description: "tomorrow"},
 		{Key: "w", Description: "+week"},
 		{Key: "n", Description: "+month"},
+		{Key: "0", Description: "clear"},
+		{Key: "d", Description: "picker"},
+	}
+
+	// SnoozePrefixHints contains hints for the "s" (snooze) prefix.
+	SnoozePrefixHints = []PrefixHint{
+		{Key: "t", Description: "tomorrow"},
+		{Key: "w", Description: "+week"},
+		{Key: "m", Description: "+month"},
+		{Key: "n", Description: "next Mon"},
 		{Key: "0", Description: "clear"},
 		{Key: "d", Description: "picker"},
 	}

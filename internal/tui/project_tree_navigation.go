@@ -30,25 +30,52 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		}
 		return true, nil
 	case "h":
-		// Cycle backward through views: Active -> Someday -> Waiting -> Inbox -> Next -> Active
-		// Skip if sidebar is focused (handled by handleSidebarKeys)
 		if !m.sidebar.IsFocused() {
-			m.viewMode = (m.viewMode + 4) % 5
+			modes := m.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
+				m.viewMode = modes[(idx+len(modes)-1)%len(modes)]
+			} else {
+				m.viewMode = modes[len(modes)-1]
+			}
 			m.updateVisibility()
 			m.clampCursor()
 			return true, nil
 		}
 	case "l":
-		// Cycle forward through views: Active -> Next -> Inbox -> Waiting -> Someday -> Active
-		// Skip if sidebar is focused (handled by handleSidebarKeys)
 		if !m.sidebar.IsFocused() {
-			m.viewMode = (m.viewMode + 1) % 5
+			modes := m.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
+				m.viewMode = modes[(idx+1)%len(modes)]
+			} else {
+				m.viewMode = modes[0]
+			}
 			m.updateVisibility()
 			m.clampCursor()
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+// cyclableViewModes returns the view modes that h/l should cycle through.
+// Snoozed is included only when the project has snoozed tasks.
+func (m *ProjectTreeModel) cyclableViewModes() []ViewMode {
+	modes := []ViewMode{ViewModeActive, ViewModeNext, ViewModeInbox, ViewModeWaiting, ViewModeSomeday}
+	for _, task := range m.project.Tasks {
+		if task.IsSnoozed() {
+			return append(modes, ViewModeSnoozed)
+		}
+	}
+	return modes
+}
+
+func viewModeIndex(modes []ViewMode, mode ViewMode) int {
+	for i, m := range modes {
+		if m == mode {
+			return i
+		}
+	}
+	return -1
 }
 
 // handleSelectionKeys handles v, a, space - selection operations.

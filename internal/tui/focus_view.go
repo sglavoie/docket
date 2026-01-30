@@ -86,6 +86,10 @@ func (m *FocusViewModel) loadTasks() {
 			if task.Status.IsComplete() {
 				continue
 			}
+			// Skip snoozed tasks
+			if task.IsSnoozed() {
+				continue
+			}
 			m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
 		}
 	}

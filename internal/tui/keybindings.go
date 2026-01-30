@@ -217,6 +217,15 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
 		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
 
+		// Snooze Quick Actions (s prefix)
+		Keybinding{Key: "st", Description: "Snooze until tomorrow", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "sw", Description: "Snooze 1 week", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "sm", Description: "Snooze 1 month", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "sn", Description: "Snooze until next Monday", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "s0", Description: "Clear snooze", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
+
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
 		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
@@ -269,7 +278,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
 
 		// Views (g prefix)
-		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed)", Category: "Views", Views: views},
+		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed/Snoozed)", Category: "Views", Views: views},
 		Keybinding{Key: "ga", Description: "Go to Active view", Category: "Views", Views: views},
 		Keybinding{Key: "gn", Description: "Go to Next view", Category: "Views", Views: views},
 		Keybinding{Key: "gi", Description: "Go to Inbox view", Category: "Views", Views: views},

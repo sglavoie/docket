@@ -250,6 +250,11 @@ func (m *KanbanViewModel) loadTasks() {
 			continue
 		}
 
+		// Skip snoozed tasks
+		if task.IsSnoozed() {
+			continue
+		}
+
 		// Apply filters - skip tasks that don't pass
 		if !m.passesFilters(task) {
 			continue

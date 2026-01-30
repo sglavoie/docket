@@ -337,6 +337,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
+		case "z":
+			// Go to Snoozed view
+			m.viewMode = ViewModeSnoozed
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
 		case "c":
 			// Go to Completed view
 			m.viewMode = ViewModeCompleted
@@ -402,8 +409,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.clampCursor()
 			return m, nil
 		case "v":
-			// Cycle view modes (including Completed)
-			m.viewMode = (m.viewMode + 1) % 6
+			// Cycle view modes (including Completed and Snoozed)
+			m.viewMode = (m.viewMode + 1) % 7
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()
@@ -573,6 +580,81 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		return m, nil
+
+	case "s":
+		// Snooze quick actions
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		var snoozeDate *time.Time
+		var desc string
+
+		switch key {
+		case "t":
+			// Tomorrow
+			d := today.AddDate(0, 0, 1)
+			snoozeDate = &d
+			desc = "tomorrow"
+		case "w":
+			// 1 week
+			d := today.AddDate(0, 0, 7)
+			snoozeDate = &d
+			desc = "+1 week"
+		case "m":
+			// 1 month
+			d := today.AddDate(0, 1, 0)
+			snoozeDate = &d
+			desc = "+1 month"
+		case "n":
+			// Next Monday
+			daysUntilMon := (8 - int(today.Weekday())) % 7
+			if daysUntilMon == 0 {
+				daysUntilMon = 7
+			}
+			d := today.AddDate(0, 0, daysUntilMon)
+			snoozeDate = &d
+			desc = "next Monday"
+		case "0":
+			// Clear snooze
+			snoozeDate = nil
+			desc = "cleared"
+		case "d":
+			// Open date picker for snooze
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := visible[m.cursor].Task
+				project := m.project
+				return m, func() tea.Msg {
+					return SetSnoozeDateMsg{Task: task, Project: project}
+				}
+			}
+			return m, nil
+		default:
+			return m, nil
+		}
+
+		// Capture task states before changes for event-based workflow triggers
+		prevStates := captureTaskStates(m.project.Tasks)
+
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			count := 0
+			for id := range m.selectedTasks {
+				if task := m.project.GetTaskByID(id); task != nil {
+					task.SnoozedUntil = snoozeDate
+					task.UpdatedAt = time.Now()
+					count++
+				}
+			}
+			m.clearSelection()
+			m.setUndoContext("Snooze", fmt.Sprintf("%s on %d tasks", desc, count))
+			return m, m.saveAndRefreshWithPrevStates(prevStates)
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.SnoozedUntil = snoozeDate
+			task.UpdatedAt = time.Now()
+			m.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, task.Title))
+			return m, m.saveAndRefreshWithPrevStates(prevStates)
+		}
+		return m, nil
 	}
 
 	// Invalid prefix sequence - silently ignore
@@ -617,6 +699,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	case "d":
 		m.pendingPrefix = "d"
+		return m, nil
+	case "s":
+		m.pendingPrefix = "s"
 		return m, nil
 	case "c":
 		if CursorInBounds(m.cursor, len(visible)) {

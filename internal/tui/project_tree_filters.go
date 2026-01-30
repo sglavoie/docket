@@ -120,6 +120,26 @@ func (m *ProjectTreeModel) updateVisibility() {
 // passesFilters checks if a node passes all current filters (view mode, status, etc.)
 // without considering parent visibility. This determines "intrinsic" visibility.
 func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
+	// Handle snoozed view mode
+	if m.viewMode == ViewModeSnoozed {
+		// In Snoozed view, ONLY show snoozed tasks
+		if !node.Task.IsSnoozed() {
+			return false
+		}
+		// Apply search filter in snoozed view
+		if m.SearchQuery() != "" {
+			if !m.matchesSearch(node.Task) && !m.hasMatchingDescendant(node.Task) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Hide snoozed tasks from all other views
+	if node.Task.IsSnoozed() {
+		return false
+	}
+
 	// Handle completion status based on view mode
 	if m.viewMode == ViewModeCompleted {
 		// In Completed view, ONLY show completed tasks

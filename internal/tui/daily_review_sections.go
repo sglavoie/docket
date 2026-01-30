@@ -62,6 +62,11 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
+			// Skip snoozed tasks
+			if task.IsSnoozed() {
+				continue
+			}
+
 			// 3. Overdue: DueDate < today
 			if task.DueDate != nil {
 				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
