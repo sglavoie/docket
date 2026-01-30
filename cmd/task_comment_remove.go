@@ -52,7 +52,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		}
 		count := len(task.Comments)
 		task.ClearComments()
-		if saveErr := SaveProjectWithBackup(project); saveErr != nil {
+		if saveErr := SaveProject(project, nil); saveErr != nil {
 			return fmt.Errorf("failed to save: %w", saveErr)
 		}
 		fmt.Printf("Cleared %d comment(s) from #%d: %s\n", count, task.ShortID, task.Title)
@@ -78,7 +78,7 @@ func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to remove comment at index %d", index)
 	}
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

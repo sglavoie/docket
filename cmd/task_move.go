@@ -119,7 +119,7 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -160,7 +160,7 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to move task: %w", err)
 	}
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -199,7 +199,7 @@ func runTaskIndent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to indent task: %w", err)
 	}
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
@@ -235,7 +235,7 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to outdent task: %w", err)
 	}
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

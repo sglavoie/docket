@@ -70,7 +70,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		task.ClearRecurrence()
-		if err := SaveProjectWithBackup(project); err != nil {
+		if err := SaveProject(project, nil); err != nil {
 			return fmt.Errorf("failed to save project: %w", err)
 		}
 		fmt.Printf("Removed recurrence from task #%d (%s)\n", taskID, task.Title)
@@ -99,7 +99,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 
 	task.SetRecurrence(pattern)
 
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

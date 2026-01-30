@@ -128,7 +128,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	project.Tasks = append(project.Tasks, task)
 
 	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
-	if err := SaveProjectWithRules(project, cfg, configManager); err != nil {
+	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager}); err != nil {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 

@@ -203,7 +203,7 @@ func WithTaskUpdate(taskIdentifier string, updateFn func(*models.Task) error) (*
 	task.UpdatedAt = time.Now()
 
 	// Save with workflow rules evaluation
-	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
+	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
 		return nil, err
 	}
 
@@ -238,7 +238,7 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	task.UpdatedAt = time.Now()
 
 	// Save with workflow rules evaluation
-	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
+	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
 		return nil, err
 	}
 

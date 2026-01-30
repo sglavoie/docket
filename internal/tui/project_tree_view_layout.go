@@ -60,7 +60,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	// Focus mode indicator
 	if m.focusedTask != nil {
-		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, 40))
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, FocusTitleMaxWidth))
 		b.WriteString(FocusModeStyle.Render(focusIndicator))
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(Esc to exit)"))
@@ -156,8 +156,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	// Build card content (task list + scroll indicator)
 	var cardContent strings.Builder
 
-	// Card has 4 chars horizontal overhead (2 border + 2 padding)
-	cardContentWidth := m.width - 4
+	cardContentWidth := m.width - CardBorderOverhead
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
@@ -169,11 +168,11 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		// Calculate available height for task list
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
-		headerOffset := 7
+		headerOffset := TreeHeaderOffset
 		if m.filterBar.IsEnabled() {
-			headerOffset = 8
+			headerOffset = TreeHeaderOffsetWithFilterBar
 		}
-		availableHeight := m.height - headerOffset - 2 // -2 for card borders
+		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
 		// Determine visible range
 		startIdx := 0
@@ -326,8 +325,8 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	treeWidth := (m.width * 55) / 100
 
 	// Ensure minimum width for tree
-	if treeWidth < 35 {
-		treeWidth = 35
+	if treeWidth < TreeMinWidth {
+		treeWidth = TreeMinWidth
 	}
 
 	// Account for divider (1 char)
@@ -337,8 +336,8 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	sidebarWidth := m.width - treeWidth - dividerWidth
 
 	// Ensure minimum width for sidebar
-	if sidebarWidth < 25 {
-		sidebarWidth = 25
+	if sidebarWidth < SidebarMinWidth {
+		sidebarWidth = SidebarMinWidth
 		// If sidebar needs more space, reduce tree width
 		treeWidth = m.width - sidebarWidth - dividerWidth
 	}
@@ -357,7 +356,7 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Note: SidebarStyle has border (2 chars) + padding (2 chars) = 4 chars overhead
 	// lipgloss .Width() sets CONTENT width, so subtract overhead to get desired total width
 	// Add 1 to account for rounding to ensure we use full width
-	sidebarContent := m.renderSidebar(selectedTask, sidebarWidth-3, m.height-2)
+	sidebarContent := m.renderSidebar(selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
 
 	// Apply width constraint to tree to ensure it fills its allocated space
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
@@ -432,7 +431,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	// Focus mode indicator
 	if m.focusedTask != nil {
-		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, 40))
+		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, FocusTitleMaxWidth))
 		b.WriteString(FocusModeStyle.Render(focusIndicator))
 		b.WriteString(" ")
 		b.WriteString(HelpStyle.Render("(Esc to exit)"))
@@ -537,11 +536,11 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		// Calculate available height for task list
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
-		headerOffset := 7
+		headerOffset := TreeHeaderOffset
 		if m.filterBar.IsEnabled() {
-			headerOffset = 8
+			headerOffset = TreeHeaderOffsetWithFilterBar
 		}
-		availableHeight := m.height - headerOffset - 2 // -2 for card borders
+		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
 		// Card has 4 chars horizontal overhead (2 border + 2 padding)
 		cardContentWidth := width - 4

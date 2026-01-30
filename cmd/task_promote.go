@@ -151,7 +151,7 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 	}
 
 	// Save with workflow rules evaluation
-	if err := SaveProjectWithRulesAndChanges(project, cfg, configManager, prevStates); err != nil {
+	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

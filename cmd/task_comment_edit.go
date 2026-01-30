@@ -96,7 +96,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 	comment.Text = newText
 
 	// Save
-	if err := SaveProjectWithBackup(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

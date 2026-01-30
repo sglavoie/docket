@@ -75,40 +75,6 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	return storage.SaveProject(project)
 }
 
-// SaveProjectWithBackup saves the project after creating a backup.
-// It also runs auto-unblock checks and reorders root tasks by completion status.
-// Deprecated: Use SaveProject with nil opts instead.
-func SaveProjectWithBackup(project *models.Project) error {
-	return SaveProject(project, nil)
-}
-
-// SaveProjectWithRules saves the project after evaluating workflow rules.
-// It runs auto-unblock checks, evaluates rules, creates a backup, and saves.
-// Prints warnings to stderr if there are rule conflicts.
-// If configManager is provided, trigger counts are persisted.
-// This version does not support event-based triggers (use SaveProjectWithRulesAndChanges).
-// Deprecated: Use SaveProject with SaveOptions instead.
-func SaveProjectWithRules(project *models.Project, cfg *config.Config, configManager *config.Manager) error {
-	return SaveProject(project, &SaveOptions{
-		EvaluateRules: true,
-		Config:        cfg,
-		ConfigManager: configManager,
-	})
-}
-
-// SaveProjectWithRulesAndChanges saves the project after evaluating workflow rules.
-// If prevStates is provided, it enables event-based triggers by comparing current
-// state against previous state. Pass nil for prevStates to disable event triggers.
-// Deprecated: Use SaveProject with SaveOptions instead.
-func SaveProjectWithRulesAndChanges(project *models.Project, cfg *config.Config, configManager *config.Manager, prevStates map[string]*models.Task) error {
-	return SaveProject(project, &SaveOptions{
-		EvaluateRules: true,
-		Config:        cfg,
-		ConfigManager: configManager,
-		PrevStates:    prevStates,
-	})
-}
-
 // GetProjectFromSelector safely extracts a Project from a selector.Item.
 // Returns an error if the data is not a *models.Project.
 func GetProjectFromSelector(item *selector.Item) (*models.Project, error) {

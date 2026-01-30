@@ -459,7 +459,7 @@ func (m *DashboardModel) View() string {
 	visible := m.visibleProjects()
 
 	// Determine if we use split-pane layout
-	useSplitPane := m.width >= 81
+	useSplitPane := m.width >= DashboardSplitPaneMinWidth
 
 	if useSplitPane {
 		b.WriteString(m.renderSplitPane(visible, chromeHeight))
@@ -481,8 +481,8 @@ func (m *DashboardModel) renderSplitPane(visible []*models.Project, chromeHeight
 	rightWidth := m.width - leftWidth - 1 // 1 char divider
 
 	cardWidth := leftWidth - 1
-	if cardWidth < 20 {
-		cardWidth = 20
+	if cardWidth < MinCardWidth {
+		cardWidth = MinCardWidth
 	}
 
 	// Build project card
@@ -518,12 +518,12 @@ func (m *DashboardModel) renderSplitPaneStacked(visible []*models.Project, chrom
 	var b strings.Builder
 
 	cardWidth := m.width - 2
-	if cardWidth < 20 {
-		cardWidth = 20
+	if cardWidth < MinCardWidth {
+		cardWidth = MinCardWidth
 	}
 
 	// Reserve space for the alerts card below
-	alertsHeight := 8
+	alertsHeight := AlertsCardHeight
 	cfg := DashboardCardConfig()
 
 	cardTitle := m.projectCardTitle(visible)
@@ -532,7 +532,7 @@ func (m *DashboardModel) renderSplitPaneStacked(visible []*models.Project, chrom
 	b.WriteString("\n")
 
 	// Alerts card
-	alertsContent := m.renderGlobalAlerts(cardWidth - 4)
+	alertsContent := m.renderGlobalAlerts(cardWidth - CardBorderOverhead)
 	if alertsContent != "" {
 		b.WriteString(renderCard("Alerts", alertsContent, cardWidth, cfg))
 	}
@@ -545,8 +545,8 @@ func (m *DashboardModel) renderFullWidthDashboard(visible []*models.Project, chr
 	var b strings.Builder
 
 	cardWidth := m.width - 2
-	if cardWidth < 20 {
-		cardWidth = 20
+	if cardWidth < MinCardWidth {
+		cardWidth = MinCardWidth
 	}
 
 	// Calculate space for bottom section (Recent Tasks + Stats cards)
@@ -555,7 +555,7 @@ func (m *DashboardModel) renderFullWidthDashboard(visible []*models.Project, chr
 	if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
 		current := m.config.GetCurrentProject()
 		if current != nil && len(current.Tasks) > 0 {
-			bottomHeight = 14
+			bottomHeight = DashboardBottomSectionHeight
 		}
 	}
 
@@ -612,7 +612,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		return cardContent.String()
 	}
 
-	narrowMode := cardWidth < 50
+	narrowMode := cardWidth < DashboardNarrowModeWidth
 
 	// First pass: compute max widths for alignment
 	showContext := m.filterContext == ""
@@ -679,7 +679,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		// In narrow mode each project takes 2 lines
 		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
 	}
-	if maxVisible < 3 {
+	if maxVisible < DashboardMinVisibleProjects {
 		maxVisible = 3
 	}
 
@@ -906,8 +906,8 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Project) string {
 	cfg := DashboardCardConfig()
 	cardWidth := width
-	if cardWidth < 20 {
-		cardWidth = 20
+	if cardWidth < MinCardWidth {
+		cardWidth = MinCardWidth
 	}
 
 	// Split height: recent activity gets top portion, alerts get bottom
@@ -926,8 +926,8 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 		recentContent = MutedStyle.Render("No tasks yet.")
 	} else {
 		// Adapt truncation width to available panel width
-		truncWidth := cardWidth - 30 // space for #ID, badges, time
-		if truncWidth < 15 {
+		truncWidth := cardWidth - RecentTasksMetadataWidth // space for #ID, badges, time
+		if truncWidth < MinTitleTruncWidth {
 			truncWidth = 15
 		}
 		recentContent = m.renderRecentTasksContentWithWidth(selected, truncWidth)
