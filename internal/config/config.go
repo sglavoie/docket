@@ -41,40 +41,45 @@ type ProjectViewState struct {
 
 // Config holds the application configuration.
 type Config struct {
-	DataDir                 string                       `json:"data_dir"`
-	CurrentProject          string                       `json:"current_project,omitempty"`
-	Editor                  string                       `json:"editor"`
-	DefaultContext          string                       `json:"default_context"`
-	FilterContext           string                       `json:"filter_context,omitempty"`        // Persisted context filter for dashboard/cycling
-	FilterCustomContext     string                       `json:"filter_custom_context,omitempty"` // Custom context filter (mutually exclusive with FilterContext)
-	CustomContexts          map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
-	FzfEnabled              bool                         `json:"fzf_enabled"`
-	GlowEnabled             bool                         `json:"glow_enabled"`
-	UndoHistoryDepth        *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
-	Projects                []*models.Project            `json:"projects"`
-	SectionColors           map[string]string            `json:"section_colors,omitempty"`            // Global section color registry
-	ProjectViewStates       map[string]ProjectViewState  `json:"project_view_states,omitempty"`       // Per-project filter/sort state
-	CycleProjects           []string                     `json:"cycle_projects,omitempty"`            // Project IDs for quick cycling with ` and ~ (global, when no context filter)
-	ContextCycleProjects    map[string][]string          `json:"context_cycle_projects,omitempty"`    // Per-context cycle project IDs (context name -> project IDs)
-	ShowRecentTasks         *bool                        `json:"show_recent_tasks,omitempty"`         // Show Recent Tasks section on dashboard (default: true)
-	RecentPaletteItems      []RecentPaletteItem          `json:"recent_palette_items,omitempty"`      // Recently selected items in command palette
-	LastPaletteCategory     string                       `json:"last_palette_category,omitempty"`     // Last category filter used (e.g., ":task ")
-	PaletteSearchHistory    []string                     `json:"palette_search_history,omitempty"`    // Recent search queries in command palette
-	PinnedCommands          []string                     `json:"pinned_commands,omitempty"`           // Pinned command names for quick access
-	SavedSearches           map[string]string            `json:"saved_searches,omitempty"`            // Named saved searches (name -> query)
-	CommandHistory          []string                     `json:"command_history,omitempty"`           // Recently executed command names
-	WorkflowRules           []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`            // Automation rules for task changes
-	DefaultRulesInitialized bool                         `json:"default_rules_initialized,omitempty"` // True after tt workflow init has run
-	WorkflowEvalStates      map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`      // Per-project workflow evaluation state
-	WorkflowEvalInterval    *int                         `json:"workflow_eval_interval,omitempty"`    // Minutes between auto-evals (nil=60, 0=disabled)
-	ReviewDueSoonDays       *int                         `json:"review_due_soon_days,omitempty"`      // nil=7, 0=hide section
-	ReviewFutureDays        *int                         `json:"review_future_days,omitempty"`        // nil=30, 0=hide section (tasks due in >= this many days)
-	ReviewOldDays           *int                         `json:"review_old_days,omitempty"`           // nil=14, 0=hide section (based on UpdatedAt)
-	ReviewCompletedHours    *int                         `json:"review_completed_hours,omitempty"`    // nil=24, 0=hide section
-	LinkedTaskJumpToNew     *bool                        `json:"linked_task_jump_to_new,omitempty"`   // nil=false: stay on source, true=jump to new
-	MaxActivityEntries      *int                         `json:"max_activity_entries,omitempty"`      // nil=50, 0=disabled, max activity log entries per task
-	RecentActivityLimit     *int                         `json:"recent_activity_limit,omitempty"`     // nil=20, max tasks in recent activity view
-	RecentActivityShowAll   *bool                        `json:"recent_activity_show_all,omitempty"`  // nil=true, show completed tasks too
+	DataDir                   string                       `json:"data_dir"`
+	CurrentProject            string                       `json:"current_project,omitempty"`
+	Editor                    string                       `json:"editor"`
+	DefaultContext            string                       `json:"default_context"`
+	FilterContext             string                       `json:"filter_context,omitempty"`        // Persisted context filter for dashboard/cycling
+	FilterCustomContext       string                       `json:"filter_custom_context,omitempty"` // Custom context filter (mutually exclusive with FilterContext)
+	CustomContexts            map[string][]string          `json:"custom_contexts,omitempty"`       // Custom context name → project IDs
+	FzfEnabled                bool                         `json:"fzf_enabled"`
+	GlowEnabled               bool                         `json:"glow_enabled"`
+	UndoHistoryDepth          *int                         `json:"undo_history_depth,omitempty"` // Max undo snapshots (nil=50, 0 disables, max 1000)
+	Projects                  []*models.Project            `json:"projects"`
+	SectionColors             map[string]string            `json:"section_colors,omitempty"`               // Global section color registry
+	ProjectViewStates         map[string]ProjectViewState  `json:"project_view_states,omitempty"`          // Per-project filter/sort state
+	CycleProjects             []string                     `json:"cycle_projects,omitempty"`               // Project IDs for quick cycling with ` and ~ (global, when no context filter)
+	ContextCycleProjects      map[string][]string          `json:"context_cycle_projects,omitempty"`       // Per-context cycle project IDs (context name -> project IDs)
+	ShowRecentTasks           *bool                        `json:"show_recent_tasks,omitempty"`            // Show Recent Tasks section on dashboard (default: true)
+	RecentPaletteItems        []RecentPaletteItem          `json:"recent_palette_items,omitempty"`         // Recently selected items in command palette
+	LastPaletteCategory       string                       `json:"last_palette_category,omitempty"`        // Last category filter used (e.g., ":task ")
+	PaletteSearchHistory      []string                     `json:"palette_search_history,omitempty"`       // Recent search queries in command palette
+	PinnedCommands            []string                     `json:"pinned_commands,omitempty"`              // Pinned command names for quick access
+	SavedSearches             map[string]string            `json:"saved_searches,omitempty"`               // Named saved searches (name -> query)
+	CommandHistory            []string                     `json:"command_history,omitempty"`              // Recently executed command names
+	WorkflowRules             []workflow.WorkflowRule      `json:"workflow_rules,omitempty"`               // Automation rules for task changes
+	DefaultRulesInitialized   bool                         `json:"default_rules_initialized,omitempty"`    // True after tt workflow init has run
+	WorkflowEvalStates        map[string]WorkflowEvalState `json:"workflow_eval_states,omitempty"`         // Per-project workflow evaluation state
+	WorkflowEvalInterval      *int                         `json:"workflow_eval_interval,omitempty"`       // Minutes between auto-evals (nil=60, 0=disabled)
+	ReviewDueSoonDays         *int                         `json:"review_due_soon_days,omitempty"`         // nil=7, 0=hide section
+	ReviewFutureDays          *int                         `json:"review_future_days,omitempty"`           // nil=30, 0=hide section (tasks due in >= this many days)
+	ReviewOldDays             *int                         `json:"review_old_days,omitempty"`              // nil=14, 0=hide section (based on UpdatedAt)
+	ReviewCompletedHours      *int                         `json:"review_completed_hours,omitempty"`       // nil=24, 0=hide section
+	LinkedTaskJumpToNew       *bool                        `json:"linked_task_jump_to_new,omitempty"`      // nil=false: stay on source, true=jump to new
+	MaxActivityEntries        *int                         `json:"max_activity_entries,omitempty"`         // nil=50, 0=disabled, max activity log entries per task
+	RecentActivityLimit       *int                         `json:"recent_activity_limit,omitempty"`        // nil=20, max tasks in recent activity view
+	RecentActivityShowAll     *bool                        `json:"recent_activity_show_all,omitempty"`     // nil=true, show completed tasks too
+	WeeklyStaleProjectDays    *int                         `json:"weekly_stale_project_days,omitempty"`    // nil=14, days without updates for stale projects
+	WeeklyStaleTaskDays       *int                         `json:"weekly_stale_task_days,omitempty"`       // nil=21, days without updates for stale tasks
+	WeeklyInboxThreshold      *int                         `json:"weekly_inbox_threshold,omitempty"`       // nil=5, inbox count threshold
+	WeeklyBlockedThreshold    *int                         `json:"weekly_blocked_threshold,omitempty"`     // nil=3, blocked count threshold
+	WeeklyInProgressThreshold *int                         `json:"weekly_in_progress_threshold,omitempty"` // nil=5, in-progress count threshold
 }
 
 // NewConfig creates a new configuration with default values.

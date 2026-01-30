@@ -142,7 +142,9 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Activate prefix mode
 	switch key {
 	case ",", "d", "g", "s":
-		m.pendingPrefix = key
+		if m.getTaskAtCursor() != nil {
+			m.pendingPrefix = key
+		}
 		return m, nil
 	case "c":
 		if m.getTaskAtCursor() != nil {

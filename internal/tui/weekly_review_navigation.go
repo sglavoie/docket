@@ -1,0 +1,219 @@
+package tui
+
+import tea "github.com/charmbracelet/bubbletea"
+
+// weeklyReviewTabNames are the tab labels for the weekly review view.
+var weeklyReviewTabNames = []string{"Projects", "Tasks", "Planning"}
+
+// weeklyReviewTabSections maps each tab index to the sections it contains.
+var weeklyReviewTabSections = [][]WeeklyReviewSection{
+	{WeeklySectionStaleProjects, WeeklySectionInboxBacklog, WeeklySectionBlockedWork, WeeklySectionOvercommitted},
+	{WeeklySectionStaleTasks, WeeklySectionPriorityMismatch},
+	{WeeklySectionUpcomingWeek},
+}
+
+// sectionInTab returns true if the given section belongs to the active tab.
+func (m *WeeklyReviewModel) sectionInTab(section WeeklyReviewSection) bool {
+	if m.activeTab < 0 || m.activeTab >= len(weeklyReviewTabSections) {
+		return true
+	}
+	for _, s := range weeklyReviewTabSections[m.activeTab] {
+		if s == section {
+			return true
+		}
+	}
+	return false
+}
+
+// calculateNavigation builds navigation indices including section headers.
+func (m *WeeklyReviewModel) calculateNavigation() {
+	m.sectionOrder = nil
+	m.sectionStarts = nil
+	m.totalItems = 0
+
+	sections := []struct {
+		section WeeklyReviewSection
+		count   int
+	}{
+		{WeeklySectionStaleProjects, len(m.staleProjects)},
+		{WeeklySectionInboxBacklog, len(m.inboxBacklog)},
+		{WeeklySectionBlockedWork, len(m.blockedWork)},
+		{WeeklySectionOvercommitted, len(m.overcommitted)},
+		{WeeklySectionStaleTasks, len(m.staleTasks)},
+		{WeeklySectionPriorityMismatch, len(m.priorityMismatch)},
+		{WeeklySectionUpcomingWeek, len(m.upcomingWeek)},
+	}
+
+	for _, s := range sections {
+		if s.count > 0 {
+			if !m.sectionInTab(s.section) {
+				continue
+			}
+			if m.focusedSection != nil && *m.focusedSection != s.section {
+				continue
+			}
+			m.sectionOrder = append(m.sectionOrder, s.section)
+			m.sectionStarts = append(m.sectionStarts, m.totalItems)
+			m.totalItems++ // header
+			if !m.collapsedSections[int(s.section)] {
+				m.totalItems += s.count
+			}
+		}
+	}
+}
+
+// getSectionItemCount returns the number of items in a section.
+func (m *WeeklyReviewModel) getSectionItemCount(section WeeklyReviewSection) int {
+	switch section {
+	case WeeklySectionStaleProjects:
+		return len(m.staleProjects)
+	case WeeklySectionInboxBacklog:
+		return len(m.inboxBacklog)
+	case WeeklySectionBlockedWork:
+		return len(m.blockedWork)
+	case WeeklySectionOvercommitted:
+		return len(m.overcommitted)
+	case WeeklySectionStaleTasks:
+		return len(m.staleTasks)
+	case WeeklySectionPriorityMismatch:
+		return len(m.priorityMismatch)
+	case WeeklySectionUpcomingWeek:
+		return len(m.upcomingWeek)
+	}
+	return 0
+}
+
+// getProjectAtCursor returns the project at the current cursor position, or nil.
+func (m *WeeklyReviewModel) getProjectAtCursor() *WeeklyReviewProject {
+	if m.totalItems == 0 || len(m.sectionOrder) == 0 {
+		return nil
+	}
+
+	pos := 0
+	for _, section := range m.sectionOrder {
+		if m.cursor == pos {
+			return nil // On header
+		}
+		pos++
+
+		if m.collapsedSections[int(section)] {
+			continue
+		}
+
+		count := m.getSectionItemCount(section)
+		if m.cursor >= pos && m.cursor < pos+count {
+			idx := m.cursor - pos
+			switch section {
+			case WeeklySectionStaleProjects:
+				if idx < len(m.staleProjects) {
+					return &m.staleProjects[idx]
+				}
+			case WeeklySectionInboxBacklog:
+				if idx < len(m.inboxBacklog) {
+					return &m.inboxBacklog[idx]
+				}
+			case WeeklySectionBlockedWork:
+				if idx < len(m.blockedWork) {
+					return &m.blockedWork[idx]
+				}
+			case WeeklySectionOvercommitted:
+				if idx < len(m.overcommitted) {
+					return &m.overcommitted[idx]
+				}
+			}
+			return nil // Task sections don't return projects
+		}
+
+		pos += count
+	}
+
+	return nil
+}
+
+// getTaskAtCursor returns the task at the current cursor position, or nil.
+func (m *WeeklyReviewModel) getTaskAtCursor() *WeeklyReviewTask {
+	if m.totalItems == 0 || len(m.sectionOrder) == 0 {
+		return nil
+	}
+
+	pos := 0
+	for _, section := range m.sectionOrder {
+		if m.cursor == pos {
+			return nil // On header
+		}
+		pos++
+
+		if m.collapsedSections[int(section)] {
+			continue
+		}
+
+		count := m.getSectionItemCount(section)
+		if m.cursor >= pos && m.cursor < pos+count {
+			idx := m.cursor - pos
+			switch section {
+			case WeeklySectionStaleTasks:
+				if idx < len(m.staleTasks) {
+					return &m.staleTasks[idx]
+				}
+			case WeeklySectionPriorityMismatch:
+				if idx < len(m.priorityMismatch) {
+					return &m.priorityMismatch[idx]
+				}
+			case WeeklySectionUpcomingWeek:
+				if idx < len(m.upcomingWeek) {
+					return &m.upcomingWeek[idx]
+				}
+			}
+			return nil // Project sections don't return tasks
+		}
+
+		pos += count
+	}
+
+	return nil
+}
+
+// getCurrentSectionIndex returns the index of the section containing the cursor.
+func (m *WeeklyReviewModel) getCurrentSectionIndex() int {
+	for i := len(m.sectionStarts) - 1; i >= 0; i-- {
+		if m.cursor >= m.sectionStarts[i] {
+			return i
+		}
+	}
+	return 0
+}
+
+// goToNextSection moves cursor to next section header (with wrap).
+func (m *WeeklyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
+	if len(m.sectionOrder) <= 1 {
+		return m, nil
+	}
+	currentSectionIdx := m.getCurrentSectionIndex()
+	nextSectionIdx := (currentSectionIdx + 1) % len(m.sectionOrder)
+	m.cursor = m.sectionStarts[nextSectionIdx]
+	return m, nil
+}
+
+// goToPrevSection moves cursor to previous section header (with wrap).
+func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
+	if len(m.sectionOrder) <= 1 {
+		return m, nil
+	}
+	currentSectionIdx := m.getCurrentSectionIndex()
+	prevSectionIdx := currentSectionIdx - 1
+	if prevSectionIdx < 0 {
+		prevSectionIdx = len(m.sectionOrder) - 1
+	}
+	m.cursor = m.sectionStarts[prevSectionIdx]
+	return m, nil
+}
+
+// clampCursor ensures cursor is within valid range.
+func (m *WeeklyReviewModel) clampCursor() {
+	if m.cursor >= m.totalItems {
+		m.cursor = m.totalItems - 1
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+}

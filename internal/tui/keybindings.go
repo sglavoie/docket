@@ -40,6 +40,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerGlobalInboxProcessorBindings()
 	r.registerDueDateOverviewBindings()
 	r.registerDailyReviewBindings()
+	r.registerWeeklyReviewBindings()
 	r.registerFocusViewBindings()
 	r.registerProjectFocusViewBindings()
 	r.registerTaskAttachmentsBindings()
@@ -147,6 +148,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "N", Description: "Global notes", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "🎯 Focus view", Category: "Views", Views: views},
 		Keybinding{Key: "l", Description: "Latest activity", Category: "Views", Views: views},
+		Keybinding{Key: "W", Description: "Weekly review", Category: "Views", Views: views},
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Views", Views: views},
 
 		// Actions
@@ -565,6 +567,63 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
+
+		// Create Linked Tasks (c prefix)
+		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
+	views := []ViewType{ViewWeeklyReview}
+	r.add(
+		// Navigation
+		Keybinding{Key: "↑/k", Description: "Move up", Category: "Navigation", Views: views},
+		Keybinding{Key: "↓/j", Description: "Move down", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
+		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
+
+		// Section Focus
+		Keybinding{Key: "sp", Description: "Focus Stale Projects", Category: "Sections", Views: views},
+		Keybinding{Key: "si", Description: "Focus Inbox Backlog", Category: "Sections", Views: views},
+		Keybinding{Key: "sb", Description: "Focus Blocked Work", Category: "Sections", Views: views},
+		Keybinding{Key: "so", Description: "Focus Overcommitted", Category: "Sections", Views: views},
+		Keybinding{Key: "st", Description: "Focus Stale Tasks", Category: "Sections", Views: views},
+		Keybinding{Key: "sm", Description: "Focus Priority Mismatch", Category: "Sections", Views: views},
+		Keybinding{Key: "sw", Description: "Focus Upcoming Week", Category: "Sections", Views: views},
+
+		// Actions
+		Keybinding{Key: "Enter", Description: "Jump to project/task", Category: "Actions", Views: views},
+		Keybinding{Key: "*", Description: "Toggle active flag (tasks)", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
+		Keybinding{Key: "1-5", Description: "Set priority (tasks)", Category: "Actions", Views: views},
+		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
+		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+
+		// Status
+		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
+		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
+		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
+		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
+
+		// Due Date
+		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
+		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
+
+		// View
+		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close weekly review", Category: "View", Views: views},
 
 		// Create Linked Tasks (c prefix)
 		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},

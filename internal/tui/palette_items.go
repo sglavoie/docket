@@ -275,6 +275,7 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 	}{
 		{"Kanban Board", "Visual board with task columns", ViewKanban},
 		{"Daily Review", "Review and plan your day", ViewDailyReview},
+		{"Weekly Review", "Strategic project health review", ViewWeeklyReview},
 		{"Focus View", "Distraction-free task focus", ViewFocusView},
 		{"Due Date Overview", "Tasks organized by due date", ViewDueDateOverview},
 		{"Priority View", "Tasks sorted by priority level", ViewPriorityView},

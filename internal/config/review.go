@@ -54,6 +54,51 @@ func (c *Config) GetRecentActivityShowAll() bool {
 	return *c.RecentActivityShowAll
 }
 
+// GetWeeklyStaleProjectDays returns the number of days for stale project detection.
+// Returns 14 if not set.
+func (c *Config) GetWeeklyStaleProjectDays() int {
+	if c.WeeklyStaleProjectDays == nil {
+		return 14
+	}
+	return *c.WeeklyStaleProjectDays
+}
+
+// GetWeeklyStaleTaskDays returns the number of days for stale task detection.
+// Returns 21 if not set.
+func (c *Config) GetWeeklyStaleTaskDays() int {
+	if c.WeeklyStaleTaskDays == nil {
+		return 21
+	}
+	return *c.WeeklyStaleTaskDays
+}
+
+// GetWeeklyInboxThreshold returns the inbox count threshold for weekly review.
+// Returns 5 if not set.
+func (c *Config) GetWeeklyInboxThreshold() int {
+	if c.WeeklyInboxThreshold == nil {
+		return 5
+	}
+	return *c.WeeklyInboxThreshold
+}
+
+// GetWeeklyBlockedThreshold returns the blocked count threshold for weekly review.
+// Returns 3 if not set.
+func (c *Config) GetWeeklyBlockedThreshold() int {
+	if c.WeeklyBlockedThreshold == nil {
+		return 3
+	}
+	return *c.WeeklyBlockedThreshold
+}
+
+// GetWeeklyInProgressThreshold returns the in-progress count threshold for weekly review.
+// Returns 5 if not set.
+func (c *Config) GetWeeklyInProgressThreshold() int {
+	if c.WeeklyInProgressThreshold == nil {
+		return 5
+	}
+	return *c.WeeklyInProgressThreshold
+}
+
 // GetLinkedTaskJumpToNew returns whether to jump to new task after linked creation.
 // Returns false (stay on source task) if not set.
 func (c *Config) GetLinkedTaskJumpToNew() bool {

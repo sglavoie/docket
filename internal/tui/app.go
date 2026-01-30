@@ -81,6 +81,7 @@ const (
 	ViewRecentActivity
 	ViewRecentActivityPreview
 	ViewGlobalNotes
+	ViewWeeklyReview
 )
 
 // AppModel is the main TUI model with a view stack.

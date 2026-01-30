@@ -155,6 +155,31 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowWeeklyReviewMsg:
+		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
+		return true, nil
+
+	case CloseWeeklyReviewMsg:
+		m.popView()
+		return true, nil
+
+	case WeeklyReviewSelectProjectMsg:
+		m.popView()
+		if msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
+	case WeeklyReviewSelectTaskMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case DailyReviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
@@ -793,6 +818,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		}
 	case ViewDailyReview:
 		return m.handleViewMessages(ShowDailyReviewMsg{})
+	case ViewWeeklyReview:
+		return m.handleViewMessages(ShowWeeklyReviewMsg{})
 	case ViewFocusView:
 		return m.handleViewMessages(ShowFocusViewMsg{})
 	case ViewDueDateOverview:
