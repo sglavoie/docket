@@ -80,7 +80,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		titleStyle = MutedStyle
 	} else if selected {
 		if task.Active {
-			titleStyle = BoldStyle.Foreground(lipgloss.Color("226"))
+			titleStyle = ActiveStyle.Bold(true)
 		} else if task.Pinned {
 			titleStyle = BoldStyle.Foreground(ColorSuccess)
 		} else {

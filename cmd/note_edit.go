@@ -5,9 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -38,41 +36,19 @@ func init() {
 }
 
 func runNoteEdit(cmd *cobra.Command, args []string) error {
-	var note *models.Note
-	var editor string
-	var saveDir string
+	ctx, err := resolveNoteContext()
+	if err != nil {
+		return err
+	}
 
-	if noteGlobal {
-		dir, gErr := globalNotesDir()
-		if gErr != nil {
-			return gErr
-		}
-		var err error
-		note, err = findNoteIn(dir, args[0])
-		if err != nil {
-			return err
-		}
-		saveDir = dir
-		mgr := config.NewManager(GetConfigPath())
-		cfg, _ := mgr.Load()
-		editor = noteEditEditor
-		if editor == "" {
-			editor = cfg.Editor
-		}
-	} else {
-		project, cfg, _, err := LoadCurrentProject()
-		if err != nil {
-			return err
-		}
-		note, err = findNote(project, args[0])
-		if err != nil {
-			return err
-		}
-		saveDir = storage.NotesDir(project)
-		editor = noteEditEditor
-		if editor == "" {
-			editor = cfg.Editor
-		}
+	note, err := findNoteIn(ctx.Dir, args[0])
+	if err != nil {
+		return err
+	}
+
+	editor := noteEditEditor
+	if editor == "" && ctx.Config != nil {
+		editor = ctx.Config.Editor
 	}
 
 	content, err := storage.RenderNoteContent(note)
@@ -95,7 +71,7 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to parse edited note: %w", err)
 	}
 
-	if err := storage.SaveNoteTo(saveDir, updatedNote); err != nil {
+	if err := storage.SaveNoteTo(ctx.Dir, updatedNote); err != nil {
 		return fmt.Errorf("failed to save note: %w", err)
 	}
 

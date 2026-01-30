@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -34,30 +33,18 @@ func init() {
 }
 
 func runBlockerAdd(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
 	title := strings.Join(args, " ")
 	if title == "" {
 		return tterrors.NewRequiredFieldError("title")
 	}
 
-	// Load existing blockers
-	blockers, err := storage.LoadBlockers(project)
+	blocker, err := WithBlockerCreate(func() (*models.Blocker, error) {
+		b := models.NewBlocker(title)
+		b.Description = blockerDescription
+		return b, nil
+	})
 	if err != nil {
-		return fmt.Errorf("failed to load blockers: %w", err)
-	}
-
-	// Create new blocker
-	blocker := models.NewBlocker(title)
-	blocker.Description = blockerDescription
-
-	// Add to list and save
-	blockers = append(blockers, blocker)
-	if err := storage.SaveBlockers(project, blockers); err != nil {
-		return fmt.Errorf("failed to save blockers: %w", err)
+		return err
 	}
 
 	fmt.Printf("Created blocker: %s\n", title)

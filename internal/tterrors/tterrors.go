@@ -99,3 +99,8 @@ func NewSaveProjectError(name string, err error) error {
 func NewInvalidTaskTypeError(taskType string) error {
 	return fmt.Errorf("%w: '%s'", ErrInvalidTaskType, taskType)
 }
+
+// NewSaveConfigError creates an error for failing to save the config file.
+func NewSaveConfigError(err error) error {
+	return fmt.Errorf("%w: %w", ErrConfigSaveFailed, err)
+}

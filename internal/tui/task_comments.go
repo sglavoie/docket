@@ -648,7 +648,7 @@ func (m *TaskCommentsModel) View() string {
 		}
 		preview = strings.ReplaceAll(preview, "\n", " ")
 
-		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 		b.WriteString(warningStyle.Render(fmt.Sprintf("Delete comment [%d]?", m.cursor)))
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", preview)))

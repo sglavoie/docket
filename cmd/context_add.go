@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/spf13/cobra"
 )
 
@@ -55,7 +56,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	cfg.SetCustomContext(contextName, projectIDs)
 
 	if err := mgr.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Added '%s' to custom context '%s'\n", project.Name, contextName)

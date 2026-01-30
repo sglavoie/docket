@@ -367,7 +367,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	// Apply active/pinned title styling
 	if isSelected {
 		if task.Active {
-			title = BoldStyle.Foreground(lipgloss.Color("226")).Render(title)
+			title = ActiveStyle.Bold(true).Render(title)
 		} else if task.Pinned {
 			title = BoldStyle.Foreground(ColorSuccess).Render(title)
 		}
@@ -384,7 +384,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 
 	// Build cursor prefix with active marker (matches RenderSelectableRow)
-	activeMarker := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("226")).Render("*")
+	activeMarker := ActiveStyle.Bold(true).Render("*")
 	if isSelected && task.Active {
 		return SelectionCursorStyle.Render(">") + activeMarker + " " + content
 	} else if isSelected {

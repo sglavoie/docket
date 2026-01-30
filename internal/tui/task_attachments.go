@@ -517,7 +517,7 @@ func (m *TaskAttachmentsModel) View() string {
 			name = name[:47] + "..."
 		}
 
-		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 		b.WriteString(warningStyle.Render(fmt.Sprintf("Delete attachment [%d]?", m.cursor)))
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", name)))
@@ -539,7 +539,7 @@ func (m *TaskAttachmentsModel) View() string {
 			name = name[:47] + "..."
 		}
 
-		warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+		warningStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 		b.WriteString(warningStyle.Render(fmt.Sprintf("Unlink attachment [%d]?", m.cursor)))
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", name)))

@@ -65,7 +65,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	if err := configManager.Save(cfg); err != nil {
 		// Try to restore from trash on failure (best effort)
 		_ = storage.RestoreProjectFromTrash(project.Slug, cfg.DataDir)
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Deleted project '%s'\n", project.Name)

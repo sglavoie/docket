@@ -176,7 +176,7 @@ func (m *KanbanViewModel) renderCompletedView() string {
 	// Header
 	header := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("10")). // Green for completed
+		Foreground(ColorSuccess).
 		Render(fmt.Sprintf("Completed Tasks (%d)", len(m.completedNodes)))
 	b.WriteString(header)
 	b.WriteString("\n")

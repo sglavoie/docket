@@ -279,6 +279,33 @@ func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models
 	return nil
 }
 
+// WithBlockerCreate encapsulates the common Load→Create→Save pattern for adding a blocker.
+// It loads the current project's blockers, applies the create function to produce a new blocker,
+// appends it to the list, and saves.
+func WithBlockerCreate(createFn func() (*models.Blocker, error)) (*models.Blocker, error) {
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return nil, err
+	}
+
+	blockers, err := storage.LoadBlockers(project)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load blockers: %w", err)
+	}
+
+	blocker, err := createFn()
+	if err != nil {
+		return nil, err
+	}
+
+	blockers = append(blockers, blocker)
+	if err := storage.SaveBlockers(project, blockers); err != nil {
+		return nil, fmt.Errorf("failed to save blockers: %w", err)
+	}
+
+	return blocker, nil
+}
+
 // ValidateParentTask finds a parent task by identifier and validates that the child type
 // can be nested under it. Returns the parent task or an error.
 func ValidateParentTask(project *models.Project, parentIdentifier string, childType models.TaskType) (*models.Task, error) {

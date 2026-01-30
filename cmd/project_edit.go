@@ -109,7 +109,7 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 
 	// Save config
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Updated project '%s'\n", project.Name)

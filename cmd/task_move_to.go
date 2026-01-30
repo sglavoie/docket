@@ -215,7 +215,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 
 	// Save config if needed (NextShortID is in tasks.md, not config)
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	// Print result

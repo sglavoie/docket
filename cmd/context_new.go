@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var contextNewCmd = &cobra.Command{
@@ -97,7 +98,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 
 	cfg.SetCustomContext(name, selectedIDs)
 	if err := mgr.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Created custom context '%s' with %d project(s)\n", name, len(selectedIDs))

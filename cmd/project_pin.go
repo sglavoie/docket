@@ -40,7 +40,7 @@ func runProjectPin(cmd *cobra.Command, args []string) error {
 	project.TogglePinned()
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	if project.Pinned {

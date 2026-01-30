@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -101,7 +102,7 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 	added := cfg.AddDefaultRules(initEnable, useOriginalEnabled)
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	if added == 0 {

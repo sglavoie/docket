@@ -4,15 +4,16 @@ import "github.com/charmbracelet/lipgloss"
 
 // Color palette
 var (
-	ColorPrimary    = lipgloss.Color("39")  // Blue
-	ColorSecondary  = lipgloss.Color("33")  // Cyan
-	ColorSuccess    = lipgloss.Color("42")  // Green
-	ColorWarning    = lipgloss.Color("214") // Orange
-	ColorError      = lipgloss.Color("196") // Red
-	ColorMuted      = lipgloss.Color("241") // Gray
-	ColorHighlight  = lipgloss.Color("229") // Light yellow
-	ColorBackground = lipgloss.Color("236") // Dark gray
-	ColorBorder     = lipgloss.Color("240") // Border gray
+	ColorPrimary     = lipgloss.Color("39")  // Blue
+	ColorSecondary   = lipgloss.Color("33")  // Cyan
+	ColorSuccess     = lipgloss.Color("42")  // Green
+	ColorWarning     = lipgloss.Color("214") // Orange
+	ColorError       = lipgloss.Color("196") // Red
+	ColorMuted       = lipgloss.Color("241") // Gray
+	ColorHighlight   = lipgloss.Color("229") // Light yellow
+	ColorBackground  = lipgloss.Color("236") // Dark gray
+	ColorBorder      = lipgloss.Color("240") // Border gray
+	ColorDiffContext = lipgloss.Color("245") // Diff context gray
 )
 
 // Base styles
@@ -868,7 +869,7 @@ var (
 // When active=true, adds an asterisk indicator after the cursor position.
 // The content should already have its internal styling (badges, etc).
 func RenderSelectableRow(selected bool, active bool, content string, width int) string {
-	activeMarker := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("226")).Render("*")
+	activeMarker := ActiveStyle.Bold(true).Render("*")
 	var prefix string
 	if selected && active {
 		prefix = SelectionCursorStyle.Render(">") + activeMarker + " "

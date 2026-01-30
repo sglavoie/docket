@@ -835,7 +835,7 @@ func (m *BlockersModel) View() string {
 		visible := m.getVisibleBlockers()
 		if len(visible) > 0 && m.cursor < len(visible) {
 			blocker := visible[m.cursor]
-			warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+			warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 			b.WriteString(warningStyle.Render("Delete blocker?"))
 			b.WriteString("\n\n")
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", blocker.Title)))

@@ -24,9 +24,9 @@ type DiffLine struct {
 
 // Diff styles
 var (
-	DiffAddStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))  // Green
-	DiffRemoveStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("196")) // Red
-	DiffContextStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("245")) // Gray
+	DiffAddStyle     = lipgloss.NewStyle().Foreground(ColorSuccess)
+	DiffRemoveStyle  = lipgloss.NewStyle().Foreground(ColorError)
+	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
 )
 
 // ComputeContextualDiff computes a diff with surrounding context lines using Myers algorithm.

@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -156,7 +155,7 @@ func (m *NoteTaskLinkerModel) View() string {
 			isLinked := linkedSet[item.ItemID()]
 			display := item.DisplayText()
 			if isLinked {
-				display = lipgloss.NewStyle().Foreground(lipgloss.Color("135")).Render(display + " ✓")
+				display = PurpleStyle.Render(display + " ✓")
 			}
 
 			line := RenderSelectableRow(selected, false, display, 55)

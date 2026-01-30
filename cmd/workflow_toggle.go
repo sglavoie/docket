@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var workflowToggleCmd = &cobra.Command{
@@ -49,7 +50,7 @@ func runWorkflowToggle(cmd *cobra.Command, args []string) error {
 	cfg.InvalidateWorkflowEvalStates()
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	status := "enabled"

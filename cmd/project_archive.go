@@ -67,7 +67,7 @@ func runProjectArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Archived project '%s'\n", project.Name)
@@ -100,7 +100,7 @@ func runProjectUnarchive(cmd *cobra.Command, args []string) error {
 	project.Unarchive()
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Unarchived project '%s'\n", project.Name)

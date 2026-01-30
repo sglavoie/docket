@@ -4,9 +4,36 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
+
+// NoteContext holds resolved note directory and optional project context.
+type NoteContext struct {
+	Dir     string          // Notes directory path
+	Project *models.Project // nil for global notes
+	Config  *config.Config  // loaded config (available for both global and project notes)
+}
+
+// resolveNoteContext returns the notes directory and optional project based on the --global flag.
+func resolveNoteContext() (*NoteContext, error) {
+	if noteGlobal {
+		dir, err := globalNotesDir()
+		if err != nil {
+			return nil, err
+		}
+		mgr := config.NewManager(GetConfigPath())
+		cfg, _ := mgr.Load()
+		return &NoteContext{Dir: dir, Config: cfg}, nil
+	}
+
+	project, cfg, _, err := LoadCurrentProject()
+	if err != nil {
+		return nil, err
+	}
+	return &NoteContext{Dir: storage.NotesDir(project), Project: project, Config: cfg}, nil
+}
 
 // findNote locates a note by exact filename or title prefix match.
 func findNote(project *models.Project, query string) (*models.Note, error) {

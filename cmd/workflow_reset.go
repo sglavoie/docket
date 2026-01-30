@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var workflowResetAll bool
@@ -43,7 +44,7 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	if workflowResetAll {
 		cfg.ResetAllRuleTriggerCounts()
 		if err := configManager.Save(cfg); err != nil {
-			return fmt.Errorf("failed to save config: %w", err)
+			return tterrors.NewSaveConfigError(err)
 		}
 		fmt.Printf("Reset trigger counts for all %d rules\n", len(cfg.WorkflowRules))
 		return nil
@@ -63,7 +64,7 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := configManager.Save(cfg); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+		return tterrors.NewSaveConfigError(err)
 	}
 
 	fmt.Printf("Reset trigger count for %q [%s]: %d -> 0\n", ruleName, ruleID, oldCount)

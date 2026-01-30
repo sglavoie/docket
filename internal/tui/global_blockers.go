@@ -933,7 +933,7 @@ func (m *GlobalBlockersModel) View() string {
 		visible := m.getVisibleEntries()
 		if len(visible) > 0 && m.cursor < len(visible) {
 			entry := visible[m.cursor]
-			warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+			warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 			b.WriteString(warningStyle.Render("Delete blocker?"))
 			b.WriteString("\n\n")
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\" (%s)", entry.Blocker.Title, entry.Project.Name)))
