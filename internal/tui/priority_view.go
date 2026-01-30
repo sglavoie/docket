@@ -379,16 +379,20 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "[", "h":
 		if m.activeTab > 0 {
 			m.activeTab--
-			m.recalculateNavigation()
-			m.clampCursor()
+		} else {
+			m.activeTab = len(priorityTabNames) - 1
 		}
+		m.recalculateNavigation()
+		m.clampCursor()
 		return m, nil
 	case "]", "l":
 		if m.activeTab < len(priorityTabNames)-1 {
 			m.activeTab++
-			m.recalculateNavigation()
-			m.clampCursor()
+		} else {
+			m.activeTab = 0
 		}
+		m.recalculateNavigation()
+		m.clampCursor()
 		return m, nil
 	}
 

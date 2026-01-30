@@ -1378,12 +1378,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "[":
 		if m.activeTab > 0 {
 			m.applyTabPreset(m.activeTab - 1)
+		} else {
+			m.applyTabPreset(len(kanbanTabNames) - 1)
 		}
 		return m, nil
 
 	case "]":
 		if m.activeTab < len(kanbanTabNames)-1 {
 			m.applyTabPreset(m.activeTab + 1)
+		} else {
+			m.applyTabPreset(0)
 		}
 		return m, nil
 

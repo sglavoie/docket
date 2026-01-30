@@ -191,18 +191,22 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "[", "h":
 			if m.activeTab > 0 {
 				m.activeTab--
-				m.filterItems()
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
+			} else {
+				m.activeTab = len(m.categories)
 			}
+			m.filterItems()
+			m.viewport.SetContent(m.renderContent())
+			m.viewport.GotoTop()
 			return m, nil
 		case "]", "l":
 			if m.activeTab < len(m.categories) {
 				m.activeTab++
-				m.filterItems()
-				m.viewport.SetContent(m.renderContent())
-				m.viewport.GotoTop()
+			} else {
+				m.activeTab = 0
 			}
+			m.filterItems()
+			m.viewport.SetContent(m.renderContent())
+			m.viewport.GotoTop()
 			return m, nil
 		case "up", "k":
 			m.viewport.ScrollUp(1)

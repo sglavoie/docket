@@ -374,14 +374,18 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "[":
 			if m.activeTab > 0 {
 				m.activeTab--
-				m.loadNotes()
+			} else {
+				m.activeTab = len(noteTabNames) - 1
 			}
+			m.loadNotes()
 			return m, nil
 		case "]":
 			if m.activeTab < len(noteTabNames)-1 {
 				m.activeTab++
-				m.loadNotes()
+			} else {
+				m.activeTab = 0
 			}
+			m.loadNotes()
 			return m, nil
 		case "q", "esc":
 			if m.isGlobal {

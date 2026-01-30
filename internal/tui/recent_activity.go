@@ -226,17 +226,21 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "[", "h":
 		if m.activeTab > 0 {
 			m.activeTab--
-			m.applyFilter()
-			m.clampCursor()
+		} else {
+			m.activeTab = len(recentActivityTabNames) - 1
 		}
+		m.applyFilter()
+		m.clampCursor()
 		return m, nil
 
 	case "]", "l":
 		if m.activeTab < len(recentActivityTabNames)-1 {
 			m.activeTab++
-			m.applyFilter()
-			m.clampCursor()
+		} else {
+			m.activeTab = 0
 		}
+		m.applyFilter()
+		m.clampCursor()
 		return m, nil
 
 	case "r":

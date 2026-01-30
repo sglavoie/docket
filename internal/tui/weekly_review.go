@@ -153,18 +153,22 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "[", "h":
 		if m.activeTab > 0 {
 			m.activeTab--
-			m.focusedSection = nil
-			m.calculateNavigation()
-			m.clampCursor()
+		} else {
+			m.activeTab = 2
 		}
+		m.focusedSection = nil
+		m.calculateNavigation()
+		m.clampCursor()
 		return m, nil
 	case "]", "l":
 		if m.activeTab < 2 {
 			m.activeTab++
-			m.focusedSection = nil
-			m.calculateNavigation()
-			m.clampCursor()
+		} else {
+			m.activeTab = 0
 		}
+		m.focusedSection = nil
+		m.calculateNavigation()
+		m.clampCursor()
 		return m, nil
 	}
 

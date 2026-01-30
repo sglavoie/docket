@@ -83,14 +83,18 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "[", "h":
 			if m.activeTab > 0 {
 				m.activeTab--
-				m.cursor = 0
+			} else {
+				m.activeTab = len(activityTabNames) - 1
 			}
+			m.cursor = 0
 
 		case "]", "l":
 			if m.activeTab < len(activityTabNames)-1 {
 				m.activeTab++
-				m.cursor = 0
+			} else {
+				m.activeTab = 0
 			}
+			m.cursor = 0
 
 		case "s":
 			m.sortAsc = !m.sortAsc

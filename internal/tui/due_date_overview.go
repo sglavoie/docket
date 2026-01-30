@@ -284,14 +284,18 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	case "[", "h":
 		if m.activeTab > 0 {
 			m.activeTab--
-			m.applyTabFilter()
+		} else {
+			m.activeTab = len(dueDateTabNames) - 1
 		}
+		m.applyTabFilter()
 		return m, nil
 	case "]", "l":
 		if m.activeTab < len(dueDateTabNames)-1 {
 			m.activeTab++
-			m.applyTabFilter()
+		} else {
+			m.activeTab = 0
 		}
+		m.applyTabFilter()
 		return m, nil
 	}
 

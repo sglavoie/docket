@@ -284,14 +284,18 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "[":
 			if m.activeTab > 0 {
 				m.activeTab--
-				m.filterTasks()
+			} else {
+				m.activeTab = len(globalSearchTabNames) - 1
 			}
+			m.filterTasks()
 			return m, nil
 		case "]":
 			if m.activeTab < len(globalSearchTabNames)-1 {
 				m.activeTab++
-				m.filterTasks()
+			} else {
+				m.activeTab = 0
 			}
+			m.filterTasks()
 			return m, nil
 		case "ctrl+u":
 			m.cursor -= 10
