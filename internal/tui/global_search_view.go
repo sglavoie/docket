@@ -13,6 +13,10 @@ import (
 func (m *GlobalSearchModel) View() string {
 	var content strings.Builder
 
+	// Tab bar
+	content.WriteString(m.renderTabBar())
+	content.WriteString("\n\n")
+
 	// Search input
 	content.WriteString(m.searchInput.View())
 	content.WriteString("\n")
@@ -111,6 +115,66 @@ func (m *GlobalSearchModel) View() string {
 	})
 }
 
+// renderTabBar renders the tab bar for filtering.
+func (m *GlobalSearchModel) renderTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range globalSearchTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range globalSearchTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
+}
+
 // renderFilterBadges renders active filters as styled badges.
 func (m *GlobalSearchModel) renderFilterBadges() string {
 	if m.parsedFilters == nil {
@@ -176,7 +240,7 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
 		return HelpStyle.Render("Tab: accept • ↑↓: navigate • Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("↑↓ nav • Enter • Esc • %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("[/] tabs • ↑↓ nav • Enter • Esc • %d results", len(m.filtered)))
 }
 
 // renderTaskList renders the filtered task list.

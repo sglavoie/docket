@@ -37,6 +37,14 @@ func (m *GlobalSearchModel) filterTasks() {
 	var scored []scoredResult
 
 	for _, result := range m.allTasks {
+		// Apply tab filter
+		if m.activeTab == globalSearchTabTasks && result.IsNote() {
+			continue
+		}
+		if m.activeTab == globalSearchTabNotes && !result.IsNote() {
+			continue
+		}
+
 		if result.IsNote() {
 			// Score notes by title and body
 			textQuery := m.parsedFilters.TextQuery

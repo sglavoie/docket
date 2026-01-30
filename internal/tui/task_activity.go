@@ -11,15 +11,25 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+var activityTabNames = []string{"All", "Status", "Edits", "Comments"}
+
+const (
+	activityTabAll      = 0
+	activityTabStatus   = 1
+	activityTabEdits    = 2
+	activityTabComments = 3
+)
+
 // TaskActivityModel displays the activity log for a task.
 type TaskActivityModel struct {
 	task    *models.Task
 	project *models.Project
 
-	cursor  int
-	sortAsc bool
-	width   int
-	height  int
+	activeTab int
+	cursor    int
+	sortAsc   bool
+	width     int
+	height    int
 }
 
 // NewTaskActivityModel creates a new task activity viewer.
@@ -70,6 +80,18 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor = len(entries) - 1
 			}
 
+		case "[", "h":
+			if m.activeTab > 0 {
+				m.activeTab--
+				m.cursor = 0
+			}
+
+		case "]", "l":
+			if m.activeTab < len(activityTabNames)-1 {
+				m.activeTab++
+				m.cursor = 0
+			}
+
 		case "s":
 			m.sortAsc = !m.sortAsc
 			m.cursor = 0
@@ -94,6 +116,9 @@ func (m *TaskActivityModel) View() string {
 	var b strings.Builder
 
 	b.WriteString(TitleStyle.Render(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title)))
+	b.WriteString("\n")
+
+	b.WriteString(m.renderTabBar())
 	b.WriteString("\n")
 
 	entries := m.getEntries()
@@ -161,23 +186,108 @@ func (m *TaskActivityModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("j/k: navigate | s: sort | y: copy entry | q/Esc: close"))
+	b.WriteString(MutedStyle.Render("[/]: tabs | j/k: navigate | s: sort | y: copy entry | q/Esc: close"))
 
 	return b.String()
 }
 
-// getEntries returns entries in the current sort order.
+// getEntries returns entries in the current sort order, filtered by active tab.
 // Default (sortAsc=false) is reverse chronological (newest first).
 func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
-	entries := make([]*models.ActivityEntry, len(m.task.Activity))
+	var source []*models.ActivityEntry
 	if m.sortAsc {
+		source = make([]*models.ActivityEntry, len(m.task.Activity))
 		for i, e := range m.task.Activity {
-			entries[len(m.task.Activity)-1-i] = e
+			source[len(m.task.Activity)-1-i] = e
 		}
 	} else {
-		copy(entries, m.task.Activity)
+		source = make([]*models.ActivityEntry, len(m.task.Activity))
+		copy(source, m.task.Activity)
 	}
-	return entries
+
+	// Apply tab filter
+	if m.activeTab == activityTabAll {
+		return source
+	}
+
+	var filtered []*models.ActivityEntry
+	for _, e := range source {
+		switch m.activeTab {
+		case activityTabStatus:
+			if e.Field == "status" || e.Field == "created" {
+				filtered = append(filtered, e)
+			}
+		case activityTabEdits:
+			if e.Field != "status" && e.Field != "created" && e.Field != "comment" {
+				filtered = append(filtered, e)
+			}
+		case activityTabComments:
+			if e.Field == "comment" {
+				filtered = append(filtered, e)
+			}
+		}
+	}
+	return filtered
+}
+
+// renderTabBar renders the tab bar for filtering.
+func (m *TaskActivityModel) renderTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range activityTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range activityTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
 }
 
 // formatEntryText formats an activity entry as a human-readable string.

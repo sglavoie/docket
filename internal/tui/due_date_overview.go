@@ -31,6 +31,16 @@ const (
 	GroupLater
 )
 
+var dueDateTabNames = []string{"All", "Overdue", "Today", "This Week", "Later"}
+
+const (
+	dueDateTabAll      = 0
+	dueDateTabOverdue  = 1
+	dueDateTabToday    = 2
+	dueDateTabThisWeek = 3
+	dueDateTabLater    = 4
+)
+
 // DueDateOverviewModel displays all tasks with due dates across all projects.
 type DueDateOverviewModel struct {
 	config         *config.Config
@@ -41,6 +51,9 @@ type DueDateOverviewModel struct {
 	today    []DueDateTask
 	thisWeek []DueDateTask
 	later    []DueDateTask
+
+	// Tabs
+	activeTab int
 
 	// Navigation
 	cursor      int // Absolute position across all groups
@@ -112,13 +125,55 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 	sortByDueDate(m.thisWeek)
 	sortByDueDate(m.later)
 
-	// Calculate navigation indices
-	m.totalTasks = len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later)
-	m.groupStarts = []int{
-		0,
-		len(m.overdue),
-		len(m.overdue) + len(m.today),
-		len(m.overdue) + len(m.today) + len(m.thisWeek),
+	// Calculate navigation indices based on active tab
+	m.recalcTotalTasks()
+}
+
+// applyTabFilter recomputes navigation after a tab change.
+func (m *DueDateOverviewModel) applyTabFilter() {
+	m.recalcTotalTasks()
+	m.clampCursor()
+}
+
+// recalcTotalTasks updates totalTasks and groupStarts based on the active tab.
+func (m *DueDateOverviewModel) recalcTotalTasks() {
+	switch m.activeTab {
+	case dueDateTabOverdue:
+		m.totalTasks = len(m.overdue)
+		m.groupStarts = []int{0}
+	case dueDateTabToday:
+		m.totalTasks = len(m.today)
+		m.groupStarts = []int{0}
+	case dueDateTabThisWeek:
+		m.totalTasks = len(m.thisWeek)
+		m.groupStarts = []int{0}
+	case dueDateTabLater:
+		m.totalTasks = len(m.later)
+		m.groupStarts = []int{0}
+	default: // All
+		m.totalTasks = len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later)
+		m.groupStarts = []int{
+			0,
+			len(m.overdue),
+			len(m.overdue) + len(m.today),
+			len(m.overdue) + len(m.today) + len(m.thisWeek),
+		}
+	}
+}
+
+// visibleGroups returns the groups visible under the current tab.
+func (m *DueDateOverviewModel) visibleGroups() (overdue, today, thisWeek, later []DueDateTask) {
+	switch m.activeTab {
+	case dueDateTabOverdue:
+		return m.overdue, nil, nil, nil
+	case dueDateTabToday:
+		return nil, m.today, nil, nil
+	case dueDateTabThisWeek:
+		return nil, nil, m.thisWeek, nil
+	case dueDateTabLater:
+		return nil, nil, nil, m.later
+	default:
+		return m.overdue, m.today, m.thisWeek, m.later
 	}
 }
 
@@ -151,21 +206,23 @@ func (m *DueDateOverviewModel) getTaskAtCursor() *DueDateTask {
 		return nil
 	}
 
+	overdue, today, thisWeek, later := m.visibleGroups()
+
 	cursor := m.cursor
-	if cursor < m.groupStarts[1] {
-		return &m.overdue[cursor]
+	if cursor < len(overdue) {
+		return &overdue[cursor]
 	}
-	cursor -= m.groupStarts[1]
-	if cursor < len(m.today) {
-		return &m.today[cursor]
+	cursor -= len(overdue)
+	if cursor < len(today) {
+		return &today[cursor]
 	}
-	cursor -= len(m.today)
-	if cursor < len(m.thisWeek) {
-		return &m.thisWeek[cursor]
+	cursor -= len(today)
+	if cursor < len(thisWeek) {
+		return &thisWeek[cursor]
 	}
-	cursor -= len(m.thisWeek)
-	if cursor < len(m.later) {
-		return &m.later[cursor]
+	cursor -= len(thisWeek)
+	if cursor < len(later) {
+		return &later[cursor]
 	}
 	return nil
 }
@@ -219,6 +276,22 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	switch key {
 	case ",", "d", "g":
 		m.pendingPrefix = key
+		return m, nil
+	}
+
+	// Tab navigation
+	switch key {
+	case "[", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+			m.applyTabFilter()
+		}
+		return m, nil
+	case "]", "l":
+		if m.activeTab < len(dueDateTabNames)-1 {
+			m.activeTab++
+			m.applyTabFilter()
+		}
 		return m, nil
 	}
 
@@ -633,7 +706,8 @@ func (m *DueDateOverviewModel) GetHelpItems() []HelpItem {
 func (m *DueDateOverviewModel) View() string {
 	var b strings.Builder
 
-	if m.totalTasks == 0 {
+	allTotal := len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later)
+	if allTotal == 0 {
 		b.WriteString(MutedStyle.Render("No tasks with due dates found."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
@@ -645,8 +719,25 @@ func (m *DueDateOverviewModel) View() string {
 		})
 	}
 
-	// Calculate available height for task list (account for card border/padding)
-	contentHeight := m.height - 12
+	// Tab bar
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n\n")
+
+	if m.totalTasks == 0 {
+		b.WriteString(MutedStyle.Render("No tasks in this category."))
+		b.WriteString("\n\n")
+		footer := HelpStyle.Render("[/] h/l tabs • q/Esc close")
+		b.WriteString(footer)
+
+		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Due Dates",
+			Subtitle: fmt.Sprintf("%d tasks across all projects", allTotal),
+			Centered: true,
+		})
+	}
+
+	// Calculate available height for task list (account for card border/padding + tab bar)
+	contentHeight := m.height - 15
 
 	// Render groups with scroll awareness
 	currentIndex := 0
@@ -688,7 +779,7 @@ func (m *DueDateOverviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
+	footer := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
@@ -707,6 +798,66 @@ func (m *DueDateOverviewModel) renderPrefixPopup() string {
 	}, m.width)
 }
 
+// renderTabBar renders the tab bar for filtering.
+func (m *DueDateOverviewModel) renderTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range dueDateTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range dueDateTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
+}
+
 // DueDateOverviewNavigationPrefixHints contains "g" prefix hints for due date overview.
 var DueDateOverviewNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first"},
@@ -719,36 +870,38 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	hasContent := false
 	separatorWidth := min(m.width-10, 50)
 
-	if len(m.overdue) > 0 {
-		lines = append(lines, m.renderGroupHeader("Overdue", len(m.overdue), true))
-		lines = append(lines, m.renderGroup(m.overdue, currentIndex, true)...)
+	overdue, today, thisWeek, later := m.visibleGroups()
+
+	if len(overdue) > 0 {
+		lines = append(lines, m.renderGroupHeader("Overdue", len(overdue), true))
+		lines = append(lines, m.renderGroup(overdue, currentIndex, true)...)
 		hasContent = true
 	}
 
-	if len(m.today) > 0 {
+	if len(today) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("Today", len(m.today), false))
-		lines = append(lines, m.renderGroup(m.today, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("Today", len(today), false))
+		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
 		hasContent = true
 	}
 
-	if len(m.thisWeek) > 0 {
+	if len(thisWeek) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("This Week", len(m.thisWeek), false))
-		lines = append(lines, m.renderGroup(m.thisWeek, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("This Week", len(thisWeek), false))
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
 		hasContent = true
 	}
 
-	if len(m.later) > 0 {
+	if len(later) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("Later", len(m.later), false))
-		lines = append(lines, m.renderGroup(m.later, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("Later", len(later), false))
+		lines = append(lines, m.renderGroup(later, currentIndex, false)...)
 	}
 
 	return lines

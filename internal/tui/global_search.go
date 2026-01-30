@@ -9,6 +9,14 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
+var globalSearchTabNames = []string{"All", "Tasks", "Notes"}
+
+const (
+	globalSearchTabAll   = 0
+	globalSearchTabTasks = 1
+	globalSearchTabNotes = 2
+)
+
 // GlobalSearchModel provides global search across all projects.
 type GlobalSearchModel struct {
 	config   *config.Config
@@ -22,6 +30,9 @@ type GlobalSearchModel struct {
 
 	// Parsed filters from current query
 	parsedFilters *ParsedSearchQuery
+
+	// Tabs
+	activeTab int
 
 	// Autocomplete state
 	acMode       int                // Current autocomplete mode (acSearchMode*)
@@ -268,6 +279,18 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "ctrl+j":
 			if m.acMode == acSearchModeNone && m.cursor < len(m.filtered)-1 {
 				m.cursor++
+			}
+			return m, nil
+		case "[":
+			if m.activeTab > 0 {
+				m.activeTab--
+				m.filterTasks()
+			}
+			return m, nil
+		case "]":
+			if m.activeTab < len(globalSearchTabNames)-1 {
+				m.activeTab++
+				m.filterTasks()
 			}
 			return m, nil
 		case "ctrl+u":
