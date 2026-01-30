@@ -6,10 +6,19 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
+)
+
+var recentActivityTabNames = []string{"All", "Active", "Completed"}
+
+const (
+	recentActivityTabAll       = 0
+	recentActivityTabActive    = 1
+	recentActivityTabCompleted = 2
 )
 
 // RecentActivityModel displays recently modified tasks across all projects.
@@ -20,6 +29,8 @@ type RecentActivityModel struct {
 	tasks    []DailyReviewTask
 	filtered []DailyReviewTask
 	cursor   int
+
+	activeTab int
 }
 
 // NewRecentActivityModel creates a new recent activity model.
@@ -35,7 +46,6 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 // loadTasks aggregates tasks from all active projects, sorted by UpdatedAt desc.
 func (m *RecentActivityModel) loadTasks() {
 	m.tasks = nil
-	showAll := m.config.GetRecentActivityShowAll()
 	limit := m.config.GetRecentActivityLimit()
 
 	projects := m.config.GetActiveProjects()
@@ -44,9 +54,6 @@ func (m *RecentActivityModel) loadTasks() {
 			continue
 		}
 		for _, task := range project.Tasks {
-			if !showAll && task.Status.IsComplete() {
-				continue
-			}
 			m.tasks = append(m.tasks, DailyReviewTask{Task: task, Project: project})
 		}
 	}
@@ -65,16 +72,33 @@ func (m *RecentActivityModel) loadTasks() {
 }
 
 func (m *RecentActivityModel) applyFilter() {
+	// First filter by tab
+	var tabFiltered []DailyReviewTask
+	for _, dt := range m.tasks {
+		switch m.activeTab {
+		case recentActivityTabActive:
+			if dt.Task.Status.IsComplete() {
+				continue
+			}
+		case recentActivityTabCompleted:
+			if !dt.Task.Status.IsComplete() {
+				continue
+			}
+		}
+		tabFiltered = append(tabFiltered, dt)
+	}
+
+	// Then apply search
 	query := strings.ToLower(m.SearchQuery())
 	if query == "" && !m.IsSearchMode() {
 		query = strings.ToLower(m.SearchInputValue())
 	}
 	if query == "" {
-		m.filtered = m.tasks
+		m.filtered = tabFiltered
 		return
 	}
 	m.filtered = nil
-	for _, dt := range m.tasks {
+	for _, dt := range tabFiltered {
 		title := strings.ToLower(dt.Task.Title)
 		project := strings.ToLower(dt.Project.Name)
 		if strings.Contains(title, query) || strings.Contains(project, query) {
@@ -199,10 +223,21 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 
-	case "c":
-		return m, func() tea.Msg {
-			return ToggleRecentActivityCompletedMsg{}
+	case "[", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+			m.applyFilter()
+			m.clampCursor()
 		}
+		return m, nil
+
+	case "]", "l":
+		if m.activeTab < len(recentActivityTabNames)-1 {
+			m.activeTab++
+			m.applyFilter()
+			m.clampCursor()
+		}
+		return m, nil
 
 	case "r":
 		m.loadTasks()
@@ -253,6 +288,10 @@ func (m *RecentActivityModel) View() string {
 
 	var b strings.Builder
 
+	// Tab bar
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n")
+
 	// Search input
 	if m.IsSearchMode() {
 		b.WriteString(m.SearchInputView())
@@ -262,7 +301,7 @@ func (m *RecentActivityModel) View() string {
 		b.WriteString("\n")
 	}
 
-	contentHeight := m.Height() - 10
+	contentHeight := m.Height() - 11 // account for tab bar
 	if m.IsSearchMode() || m.SearchQuery() != "" {
 		contentHeight--
 	}
@@ -296,7 +335,7 @@ func (m *RecentActivityModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	footer := HelpStyle.Render("j/k nav | Enter open | p preview | / filter | r refresh | ? help")
+	footer := HelpStyle.Render("j/k nav | [/] tabs | Enter open | p preview | / filter | r refresh | ? help")
 	b.WriteString(footer)
 
 	subtitle := fmt.Sprintf("%d tasks", len(m.filtered))
@@ -309,6 +348,65 @@ func (m *RecentActivityModel) View() string {
 		Subtitle: subtitle,
 		Centered: true,
 	})
+}
+
+func (m *RecentActivityModel) renderTabBar() string {
+	cardWidth := min(m.Width()-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range recentActivityTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range recentActivityTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
 }
 
 func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {

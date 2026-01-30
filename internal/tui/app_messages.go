@@ -422,9 +422,6 @@ type CycleProjectMsg struct {
 // ToggleRecentTasksMsg toggles recent tasks visibility in dashboard.
 type ToggleRecentTasksMsg struct{}
 
-// ToggleRecentActivityCompletedMsg toggles completed task visibility in recent activity.
-type ToggleRecentActivityCompletedMsg struct{}
-
 // =============================================================================
 // Trash Messages (Show/Close Pattern)
 // =============================================================================

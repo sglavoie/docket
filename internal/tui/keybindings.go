@@ -731,7 +731,7 @@ func (r *KeybindingRegistry) registerRecentActivityBindings() {
 		Keybinding{Key: "Enter", Description: "Open task in project", Category: "Actions", Views: views},
 		Keybinding{Key: "p", Description: "Preview task", Category: "Actions", Views: views},
 		Keybinding{Key: "/", Description: "Filter tasks", Category: "Filters", Views: views},
-		Keybinding{Key: "c", Description: "Toggle completed tasks", Category: "Actions", Views: views},
+		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)

@@ -17,7 +17,7 @@ import (
 var (
 	settingsTabNames = []string{"General", "Review", "Behavior"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-9
+	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-8
 	tabFieldStart = []int{0, 3, 7}
 )
 
@@ -36,21 +36,20 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput           textinput.Model
-	contextInput          textinput.Model
-	undoDepthInput        textinput.Model
-	dueSoonInput          textinput.Model
-	futureInput           textinput.Model
-	oldDaysInput          textinput.Model
-	completedHoursInput   textinput.Model
-	recentActivityInput   textinput.Model
-	linkedTaskJump        bool // Whether to jump to new task after linked creation
-	recentActivityShowAll bool // Whether to show completed tasks in recent activity
-	contexts              []string
-	contextCursor         int // -1 for custom mode, 0+ for selecting from list
+	editorInput         textinput.Model
+	contextInput        textinput.Model
+	undoDepthInput      textinput.Model
+	dueSoonInput        textinput.Model
+	futureInput         textinput.Model
+	oldDaysInput        textinput.Model
+	completedHoursInput textinput.Model
+	recentActivityInput textinput.Model
+	linkedTaskJump      bool // Whether to jump to new task after linked creation
+	contexts            []string
+	contextCursor       int // -1 for custom mode, 0+ for selecting from list
 
 	activeTab     int
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=recentActivityShowAll, 9=linkedTaskJump
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=linkedTaskJump
 	validationErr string
 
 	width  int
@@ -125,24 +124,23 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:                cfg,
-		configManager:         manager,
-		editorInput:           editorInput,
-		contextInput:          contextInput,
-		undoDepthInput:        undoDepthInput,
-		dueSoonInput:          dueSoonInput,
-		futureInput:           futureInput,
-		oldDaysInput:          oldDaysInput,
-		completedHoursInput:   completedHoursInput,
-		recentActivityInput:   recentActivityInput,
-		linkedTaskJump:        cfg.GetLinkedTaskJumpToNew(),
-		recentActivityShowAll: cfg.GetRecentActivityShowAll(),
-		contexts:              contexts,
-		contextCursor:         contextCursor,
-		focusIndex:            0,
-		activeTab:             0,
-		width:                 80,
-		height:                24,
+		config:              cfg,
+		configManager:       manager,
+		editorInput:         editorInput,
+		contextInput:        contextInput,
+		undoDepthInput:      undoDepthInput,
+		dueSoonInput:        dueSoonInput,
+		futureInput:         futureInput,
+		oldDaysInput:        oldDaysInput,
+		completedHoursInput: completedHoursInput,
+		recentActivityInput: recentActivityInput,
+		linkedTaskJump:      cfg.GetLinkedTaskJumpToNew(),
+		contexts:            contexts,
+		contextCursor:       contextCursor,
+		focusIndex:          0,
+		activeTab:           0,
+		width:               80,
+		height:              24,
 	}
 }
 
@@ -173,9 +171,9 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Move focus (10 fields total)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 10
+				m.focusIndex = (m.focusIndex + 1) % 9
 			} else {
-				m.focusIndex = (m.focusIndex + 9) % 10 // +9 is -1 mod 10
+				m.focusIndex = (m.focusIndex + 8) % 9 // +8 is -1 mod 9
 			}
 
 			// Auto-switch tab to follow focus
@@ -206,9 +204,6 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ":
 			// Toggle fields
 			if m.focusIndex == 8 {
-				m.recentActivityShowAll = !m.recentActivityShowAll
-			}
-			if m.focusIndex == 9 {
 				m.linkedTaskJump = !m.linkedTaskJump
 			}
 			return m, nil
@@ -528,7 +523,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.ReviewCompletedHours = &completedHours
 		recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
 		m.config.RecentActivityLimit = &recentActivityLimit
-		m.config.RecentActivityShowAll = &m.recentActivityShowAll
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 
 		if err := m.configManager.Save(m.config); err != nil {
@@ -778,14 +772,6 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString(settingsFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 7))
 
 	b.WriteString("\n")
-
-	// Recent Activity Show All Toggle
-	b.WriteString(settingsFieldLabel("Show completed: ", labelWidth, m.focusIndex == 8))
-	b.WriteString(settingsToggle("All tasks", "Active only", m.recentActivityShowAll, m.focusIndex == 8))
-	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Include completed tasks in recent activity", indent, m.focusIndex == 8))
-
-	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
 	b.WriteString("\n\n")
 
@@ -793,10 +779,10 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString("\n\n")
 
 	// Linked Task Jump Toggle
-	b.WriteString(settingsFieldLabel("After creation: ", labelWidth, m.focusIndex == 9))
-	b.WriteString(settingsToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 9))
+	b.WriteString(settingsFieldLabel("After creation: ", labelWidth, m.focusIndex == 8))
+	b.WriteString(settingsToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 8))
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 9))
+	b.WriteString(settingsFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 8))
 
 	return b.String()
 }
