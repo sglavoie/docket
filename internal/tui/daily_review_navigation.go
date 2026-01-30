@@ -2,6 +2,30 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
+// dailyReviewTabNames are the tab labels for the daily review view.
+var dailyReviewTabNames = []string{"Due", "Active", "Stale", "Done"}
+
+// dailyReviewTabSections maps each tab index to the sections it contains.
+var dailyReviewTabSections = [][]DailyReviewSection{
+	{SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture}, // Due
+	{SectionInProgress, SectionBlocked},                                               // Active
+	{SectionOld},                                                                      // Stale
+	{SectionCompleted},                                                                // Done
+}
+
+// sectionInTab returns true if the given section belongs to the active tab.
+func (m *DailyReviewModel) sectionInTab(section DailyReviewSection) bool {
+	if m.activeTab < 0 || m.activeTab >= len(dailyReviewTabSections) {
+		return true
+	}
+	for _, s := range dailyReviewTabSections[m.activeTab] {
+		if s == section {
+			return true
+		}
+	}
+	return false
+}
+
 // calculateNavigation builds navigation indices including section headers.
 // Each section header is a navigable item, followed by its tasks (if expanded).
 func (m *DailyReviewModel) calculateNavigation() {
@@ -26,6 +50,10 @@ func (m *DailyReviewModel) calculateNavigation() {
 
 	for _, s := range sections {
 		if len(s.tasks) > 0 {
+			// Filter by tab
+			if !m.sectionInTab(s.section) {
+				continue
+			}
 			// If focused on a section, only show that section
 			if m.focusedSection != nil && *m.focusedSection != s.section {
 				continue

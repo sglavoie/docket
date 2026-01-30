@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -26,10 +27,28 @@ func (m *DailyReviewModel) View() string {
 
 	var b strings.Builder
 
-	// Calculate available height for content
-	contentHeight := m.height - 12
+	// Tab bar
+	b.WriteString(m.renderReviewTabBar())
+	b.WriteString("\n\n")
+
+	// Calculate available height for content (subtract tab bar)
+	contentHeight := m.height - 14
 
 	// Render all sections
+	if m.totalTasks == 0 {
+		b.WriteString(MutedStyle.Render("No tasks in this tab."))
+		b.WriteString("\n\n")
+
+		footer := HelpStyle.Render("[/]: tabs | ? help")
+		b.WriteString(footer)
+
+		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
+			Title:    "Review",
+			Subtitle: fmt.Sprintf("%d tasks total", totalCount),
+			Centered: true,
+		})
+	}
+
 	lines, cursorLineIndex := m.renderAllSections()
 
 	// Apply scrolling based on actual line index of cursor
@@ -68,7 +87,7 @@ func (m *DailyReviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | n/N section | s{d,t,s,l,f,o} focus | * active | ,s/d/b/x status | ? help")
+	footer := HelpStyle.Render("h/j/k/l nav | n/N section | * active | ,s/d/b/x status | ? help")
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
@@ -76,6 +95,78 @@ func (m *DailyReviewModel) View() string {
 		Subtitle: fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder)),
 		Centered: true,
 	})
+}
+
+// renderReviewTabBar renders the tab bar for daily review sections.
+func (m *DailyReviewModel) renderReviewTabBar() string {
+	// Count tasks per tab for badge display
+	tabCounts := []int{
+		len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) + len(m.future),
+		len(m.inProgress) + len(m.blocked),
+		len(m.old),
+		len(m.completed),
+	}
+
+	availableWidth := m.width - 10
+
+	// Build labels and measure total width without borders
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	var labels []string
+	totalWidth := 0
+	for i, name := range dailyReviewTabNames {
+		label := fmt.Sprintf("%s (%d)", name, tabCounts[i])
+		labels = append(labels, label)
+		totalWidth += lipgloss.Width(plainStyle.Render(label))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, label := range labels {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(label))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(label))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	// Extend bottom border to fill remaining width (only when tabs fit)
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.

@@ -35,8 +35,10 @@ type HelpViewModel struct {
 	sourceView       ViewType
 	viewName         string
 	ready            bool
-	sectionPositions []int // Line numbers where each section header starts
-	currentSection   int   // Current section index for n/N navigation
+	sectionPositions []int    // Line numbers where each section header starts
+	currentSection   int      // Current section index for n/N navigation
+	activeTab        int      // Current tab (category) index
+	categories       []string // Ordered list of categories derived from items
 }
 
 // NewHelpViewModel creates a new help view model.
@@ -56,7 +58,21 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 		ready:       false,
 	}
 	m.filteredItems = items
+	m.categories = m.buildCategories()
 	return m
+}
+
+// buildCategories extracts ordered unique categories from all items.
+func (m *HelpViewModel) buildCategories() []string {
+	seen := make(map[string]bool)
+	var cats []string
+	for _, item := range m.items {
+		if !seen[item.Category] {
+			seen[item.Category] = true
+			cats = append(cats, item.Category)
+		}
+	}
+	return cats
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
@@ -97,7 +113,8 @@ func (m *HelpViewModel) SetSize(width, height int) {
 	// Card horizontal chrome: border (2) + padding (4) = 6
 	cardHorizontalChrome := 6
 	viewportWidth := cardWidth - cardHorizontalChrome
-	viewportHeight := height - cardVerticalChrome - searchHeight - footerHeight - 4
+	tabBarHeight := 2 // Tab bar + spacing
+	viewportHeight := height - cardVerticalChrome - tabBarHeight - searchHeight - footerHeight - 4
 
 	if viewportWidth < 40 {
 		viewportWidth = 40
@@ -171,6 +188,22 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.GotoTop()
 				return m, nil
 			}
+		case "[", "h":
+			if m.activeTab > 0 {
+				m.activeTab--
+				m.filterItems()
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
+			}
+			return m, nil
+		case "]", "l":
+			if m.activeTab < len(m.categories) {
+				m.activeTab++
+				m.filterItems()
+				m.viewport.SetContent(m.renderContent())
+				m.viewport.GotoTop()
+			}
+			return m, nil
 		case "up", "k":
 			m.viewport.ScrollUp(1)
 		case "down", "j":
@@ -224,15 +257,27 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *HelpViewModel) filterItems() {
+	// Start with all items or tab-filtered items
+	source := m.items
+	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
+		activeCategory := m.categories[m.activeTab-1]
+		source = nil
+		for _, item := range m.items {
+			if item.Category == activeCategory {
+				source = append(source, item)
+			}
+		}
+	}
+
 	if m.searchQuery == "" {
-		m.filteredItems = m.items
+		m.filteredItems = source
 		return
 	}
 
 	query := strings.ToLower(m.searchQuery)
 	var filtered []HelpItem
 
-	for _, item := range m.items {
+	for _, item := range source {
 		keyMatch := strings.Contains(strings.ToLower(item.Key), query)
 		descMatch := strings.Contains(strings.ToLower(item.Description), query)
 		catMatch := strings.Contains(strings.ToLower(item.Category), query)
@@ -374,8 +419,83 @@ func (m *HelpViewModel) goToSection(idx int) {
 	}
 }
 
+func (m *HelpViewModel) renderHelpTabBar(cardWidth int) string {
+	tabNames := append([]string{"All"}, m.categories...)
+	cardHorizontalChrome := 6 // border(2) + padding(4)
+	availableWidth := cardWidth - cardHorizontalChrome
+
+	// Measure tabs without borders to check if they fit
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range tabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range tabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	// Extend bottom border to fill width (only when tabs fit on one line)
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
+}
+
 func (m *HelpViewModel) View() string {
 	var b strings.Builder
+
+	// Calculate card width (same logic used below)
+	cardWidth := m.width - 4
+	if cardWidth > 100 {
+		cardWidth = 100
+	}
+	if cardWidth < 50 {
+		cardWidth = 50
+	}
+
+	// Tab bar
+	b.WriteString(m.renderHelpTabBar(cardWidth))
+	b.WriteString("\n\n")
 
 	// Search bar (inside card content)
 	if m.searchMode {
@@ -400,7 +520,7 @@ func (m *HelpViewModel) View() string {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("Esc back | ? close | / filter | j/k scroll | n/N sections%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("h/l or [/]: tabs | Esc back | ? close | / filter | j/k scroll | n/N sections%s", scrollPercent))
 	b.WriteString(footer)
 
 	// Build card title and subtitle
@@ -408,15 +528,6 @@ func (m *HelpViewModel) View() string {
 	subtitle := ""
 	if m.searchQuery != "" {
 		subtitle = fmt.Sprintf("%d matches", len(m.filteredItems))
-	}
-
-	// Calculate card width
-	cardWidth := m.width - 4
-	if cardWidth > 100 {
-		cardWidth = 100
-	}
-	if cardWidth < 50 {
-		cardWidth = 50
 	}
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{

@@ -541,20 +541,39 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 
 // renderTabBar renders a tab bar with the active tab highlighted.
 func (m *SettingsModel) renderTabBar() string {
+	cardWidth := 66
+	if m.width-8 < cardWidth {
+		cardWidth = m.width - 8
+	}
+	availableWidth := cardWidth - 2
+
+	// Measure tabs without borders to check fit
+	plainStyle := lipgloss.NewStyle().Padding(0, 2)
+	totalWidth := 0
+	for _, name := range settingsTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
 	activeStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(ColorPrimary).
-		Padding(0, 2).
-		BorderBottom(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(ColorPrimary)
+		Padding(0, 2)
 
 	inactiveStyle := lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Padding(0, 2).
-		BorderBottom(true).
-		BorderStyle(lipgloss.Border{Bottom: "─"}).
-		BorderForeground(ColorBorder)
+		Padding(0, 2)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
 
 	var tabs []string
 	for i, name := range settingsTabNames {
@@ -568,20 +587,18 @@ func (m *SettingsModel) renderTabBar() string {
 	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
 
 	// Extend the bottom border line to fill remaining width
-	tabWidth := lipgloss.Width(row)
-	cardWidth := 66
-	if m.width-8 < cardWidth {
-		cardWidth = m.width - 8
-	}
-	remaining := cardWidth - tabWidth - 2
-	if remaining > 0 {
-		filler := lipgloss.NewStyle().
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder).
-			Width(remaining).
-			Render("")
-		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
 	}
 
 	return row

@@ -50,6 +50,7 @@ type DailyReviewModel struct {
 	collapsedSections map[int]bool         // Track collapsed sections
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
+	activeTab         int                  // 0=Due, 1=Active, 2=Stale, 3=Done
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string
@@ -117,6 +118,26 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Clear previous error on any key
 	m.err = nil
+
+	// Tab switching
+	switch key {
+	case "[", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+			m.focusedSection = nil
+			m.calculateNavigation()
+			m.clampCursor()
+		}
+		return m, nil
+	case "]", "l":
+		if m.activeTab < 3 {
+			m.activeTab++
+			m.focusedSection = nil
+			m.calculateNavigation()
+			m.clampCursor()
+		}
+		return m, nil
+	}
 
 	// Activate prefix mode
 	switch key {
