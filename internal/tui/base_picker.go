@@ -258,7 +258,11 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		// Count (optional)
 		countStr := ""
 		if p.Config.ShowCounts {
-			countStr = TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
+			if cd, ok := any(item).(CountDisplayer); ok {
+				countStr = " " + cd.CountDisplayText()
+			} else {
+				countStr = TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
+			}
 		}
 
 		// Build content without cursor

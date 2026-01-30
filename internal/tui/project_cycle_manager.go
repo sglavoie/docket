@@ -85,8 +85,9 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 		}
 		_ = storage.LoadProject(p)
 		projects = append(projects, ProjectInfo{
-			Project:   p,
-			TaskCount: p.CountTasks(),
+			Project:        p,
+			TaskCount:      p.CountActiveTasks(),
+			CompletedCount: p.CountCompletedTasks(),
 		})
 	}
 

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -111,10 +112,18 @@ func (t TaskPickerItem) ItemID() string {
 	return t.Task.ID
 }
 
+// CountDisplayer is implemented by PickerItems that want custom styled count
+// text instead of the default "(N)" format. The returned string is pre-rendered
+// and should not be wrapped in additional styles.
+type CountDisplayer interface {
+	CountDisplayText() string
+}
+
 // ProjectInfo holds project data for picker display.
 type ProjectInfo struct {
-	Project   *models.Project
-	TaskCount int
+	Project        *models.Project
+	TaskCount      int
+	CompletedCount int
 }
 
 // FilterText returns searchable text for project filtering.
@@ -138,6 +147,13 @@ func (p ProjectInfo) CountValue() int {
 // ItemID returns the project ID as its unique identifier.
 func (p ProjectInfo) ItemID() string {
 	return p.Project.ID
+}
+
+// CountDisplayText returns a styled string showing active and completed counts.
+func (p ProjectInfo) CountDisplayText() string {
+	active := lipgloss.NewStyle().Foreground(ColorHighlight).Render(fmt.Sprintf("%d active", p.TaskCount))
+	done := lipgloss.NewStyle().Foreground(ColorMuted).Render(fmt.Sprintf("%d done", p.CompletedCount))
+	return fmt.Sprintf("(%s / %s)", active, done)
 }
 
 // IsPinned returns whether the project is pinned.
