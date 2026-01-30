@@ -34,7 +34,6 @@ type DashboardModel struct {
 	deleteTarget  *models.Project // project to delete
 
 	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string // "g" when waiting for second key
 }
 
 // NewDashboardModel creates a new dashboard model.
@@ -182,11 +181,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			}
 			return m, cmd
-		}
-
-		// Handle pending prefix keys (Vim-style gg)
-		if m.pendingPrefix != "" {
-			return m.handlePrefixKey(msg.String(), visible)
 		}
 
 		switch msg.String() {
@@ -370,8 +364,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "g":
-			// Start prefix sequence for gg (Vim-style)
-			m.pendingPrefix = "g"
+			// Go to first item
+			m.cursor = 0
 			return m, nil
 		case "G":
 			// Go to last item (Vim-style)
@@ -384,30 +378,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handlePrefixKey handles the second key in a prefix key sequence.
-func (m *DashboardModel) handlePrefixKey(key string, visible []*models.Project) (tea.Model, tea.Cmd) {
-	prefix := m.pendingPrefix
-	m.pendingPrefix = "" // Always clear prefix
-
-	if key == "esc" {
-		return m, nil // Cancel prefix mode
-	}
-
-	if prefix == "g" && key == "g" {
-		// gg: Go to first item
-		m.cursor = 0
-		return m, nil
-	}
-
-	// Invalid prefix sequence - ignore
-	return m, nil
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *DashboardModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
-}
-
 // HasTextInput returns true when dashboard search is active.
 func (m *DashboardModel) HasTextInput() bool {
 	return m.HasActiveSearch()
@@ -415,7 +385,7 @@ func (m *DashboardModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when dashboard search or prefix mode is active.
 func (m *DashboardModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch() || m.HasPendingPrefix()
+	return m.HasActiveSearch()
 }
 
 func (m *DashboardModel) deleteProject(project *models.Project) tea.Cmd {
@@ -497,18 +467,16 @@ func (m *DashboardModel) View() string {
 		b.WriteString(m.renderFullWidthDashboard(visible, chromeHeight))
 	}
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString("\n")
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	return b.String()
 }
 
 // renderSplitPane renders the dashboard as a left (project list) + right (info panel) layout.
+// When recent tasks are hidden, it switches to a stacked layout (projects on top, alerts below).
 func (m *DashboardModel) renderSplitPane(visible []*models.Project, chromeHeight int) string {
+	if !m.config.GetShowRecentTasks() {
+		return m.renderSplitPaneStacked(visible, chromeHeight)
+	}
+
 	leftWidth := m.width / 2
 	rightWidth := m.width - leftWidth - 1 // 1 char divider
 
@@ -542,6 +510,34 @@ func (m *DashboardModel) renderSplitPane(visible []*models.Project, chromeHeight
 	// Join horizontally
 	leftStyled := lipgloss.NewStyle().Width(leftWidth).Render(leftContent)
 	return lipgloss.JoinHorizontal(lipgloss.Top, leftStyled, divider, rightContent)
+}
+
+// renderSplitPaneStacked renders projects on top and alerts below, using full width.
+// Used in split-pane mode when recent tasks are hidden.
+func (m *DashboardModel) renderSplitPaneStacked(visible []*models.Project, chromeHeight int) string {
+	var b strings.Builder
+
+	cardWidth := m.width - 2
+	if cardWidth < 20 {
+		cardWidth = 20
+	}
+
+	// Reserve space for the alerts card below
+	alertsHeight := 8
+	cfg := DashboardCardConfig()
+
+	cardTitle := m.projectCardTitle(visible)
+	cardContent := m.renderProjectList(visible, chromeHeight, cardWidth, alertsHeight)
+	b.WriteString(renderCard(cardTitle, cardContent, cardWidth, cfg))
+	b.WriteString("\n")
+
+	// Alerts card
+	alertsContent := m.renderGlobalAlerts(cardWidth - 4)
+	if alertsContent != "" {
+		b.WriteString(renderCard("Alerts", alertsContent, cardWidth, cfg))
+	}
+
+	return b.String()
 }
 
 // renderFullWidthDashboard renders the original full-width dashboard layout.
@@ -616,9 +612,73 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		return cardContent.String()
 	}
 
+	narrowMode := cardWidth < 50
+
+	// First pass: compute max widths for alignment
+	showContext := m.filterContext == ""
+	maxNameWidth := 0
+	maxContextWidth := 0
+	maxStatusWidth := 0
+	dueSoonDays := m.config.GetReviewDueSoonDays()
+	for _, p := range visible {
+		nameStr := p.Name
+		if p.ID == m.config.CurrentProject {
+			nameStr += " *"
+		}
+		if len(nameStr) > maxNameWidth {
+			maxNameWidth = len(nameStr)
+		}
+		if showContext && p.Context != "" {
+			ctxStr := fmt.Sprintf("[%s]", p.Context)
+			if len(ctxStr) > maxContextWidth {
+				maxContextWidth = len(ctxStr)
+			}
+		}
+		// Compute status indicator width (terminal columns) for this project
+		statusW := m.projectStatusWidth(p, dueSoonDays)
+		if statusW > maxStatusWidth {
+			maxStatusWidth = statusW
+		}
+	}
+
+	// Clamp column widths to fit available row width (wide mode only).
+	// In narrow mode, name+context are on their own line with plenty of room.
+	rowWidth := cardWidth - 4
+	if !narrowMode {
+		// Row layout: prefix(3) + numPrefix(2) + name + sp(1) + ctx + sp(1) + active(6) + sp(1) + total(6) + sp(2) + status
+		fixedCols := 20 // 3 (selectable prefix) + 2 (pin#) + 1 + 1 + 6 + 1 + 6
+		if maxStatusWidth > 0 {
+			fixedCols += 2 + maxStatusWidth // 2 for "  " gap before status
+		}
+		availForNameCtx := rowWidth - fixedCols
+		if availForNameCtx < 10 {
+			availForNameCtx = 10
+		}
+		if showContext && maxContextWidth > 0 {
+			needed := maxNameWidth + maxContextWidth
+			if needed > availForNameCtx {
+				// Shrink context first, then name
+				maxContextWidth = availForNameCtx - maxNameWidth
+				if maxContextWidth < 0 {
+					maxContextWidth = 0
+					maxNameWidth = availForNameCtx
+				}
+			}
+		} else {
+			if maxNameWidth > availForNameCtx {
+				maxNameWidth = availForNameCtx
+			}
+		}
+	}
+
 	// Calculate max visible projects
 	cardOverhead := 2
-	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1
+	headerLines := 1 // column header row
+	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
+	if narrowMode {
+		// In narrow mode each project takes 2 lines
+		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
+	}
 	if maxVisible < 3 {
 		maxVisible = 3
 	}
@@ -633,6 +693,25 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 	if scrollOffset < 0 {
 		scrollOffset = 0
+	}
+
+	// Column header row
+	if !narrowMode {
+		// Build header aligned with data columns
+		prefix := strings.Repeat(" ", 5) // 3 (RenderSelectableRow prefix) + 2 (numberPrefix)
+		namePad := strings.Repeat(" ", maxNameWidth)
+		ctxPad := ""
+		if showContext && maxContextWidth > 0 {
+			ctxPad = strings.Repeat(" ", maxContextWidth+1)
+		}
+		header := fmt.Sprintf("%s%s %s %6s %6s", prefix, namePad, ctxPad, "Active", "Total")
+		// Only append "Status" if it fits within the row width
+		withStatus := header + "  Status"
+		if len(withStatus) <= rowWidth {
+			header = withStatus
+		}
+		cardContent.WriteString(MutedStyle.Render(header))
+		cardContent.WriteString("\n")
 	}
 
 	// Scroll-up indicator inside card
@@ -675,13 +754,11 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			style = PinnedProjectStyle
 		}
 
-		total := p.CountTasks()
-		active := p.CountActiveTasks()
-		done := p.CountCompletedTasks()
+		total := p.CountTasks() - p.CountCompletedTasks()
+		active := p.CountActiveSectionTasks()
 
 		// Count urgency indicators
 		overdue := p.CountOverdueTasks()
-		dueSoonDays := m.config.GetReviewDueSoonDays()
 		dueSoon := p.CountDueSoonTasks(dueSoonDays)
 		blocked := p.CountBlockedTasks()
 		blockerCount := storage.GetActiveBlockerCount(p)
@@ -690,15 +767,57 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if p.ID == m.config.CurrentProject {
 			currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
 		}
-		name := style.Render(p.Name) + currentMarker
-		// Only show context badge if no context filter is active (avoids redundancy)
-		context := ""
-		if m.filterContext == "" && p.Context != "" {
-			context = MutedStyle.Render(fmt.Sprintf("[%s]", p.Context))
-		}
-		stats := MutedStyle.Render(fmt.Sprintf("%d tasks, %d active", total, active))
 
-		// Build status indicator: urgency if issues, completion otherwise
+		// Build the name string, padded/truncated to max width
+		nameRaw := p.Name
+		if p.ID == m.config.CurrentProject {
+			nameRaw += " *"
+		}
+		displayName := p.Name
+		if len(nameRaw) > maxNameWidth && maxNameWidth > 2 {
+			// Truncate the display name to fit
+			truncLen := maxNameWidth
+			if p.ID == m.config.CurrentProject {
+				truncLen -= 2 // reserve space for " *"
+			}
+			if truncLen < 1 {
+				truncLen = 1
+			}
+			if truncLen < len(p.Name) {
+				displayName = p.Name[:truncLen-1] + "…"
+				nameRaw = displayName
+				if p.ID == m.config.CurrentProject {
+					nameRaw += " *"
+				}
+			}
+		}
+		namePadding := maxNameWidth - len(nameRaw)
+		if namePadding < 0 {
+			namePadding = 0
+		}
+		nameRendered := style.Render(displayName) + currentMarker + strings.Repeat(" ", namePadding)
+
+		// Context badge, padded/truncated
+		contextRendered := ""
+		if showContext && maxContextWidth > 0 {
+			if p.Context != "" {
+				ctxStr := fmt.Sprintf("[%s]", p.Context)
+				if len(ctxStr) > maxContextWidth && maxContextWidth > 2 {
+					ctxStr = ctxStr[:maxContextWidth-1] + "…"
+				} else if len(ctxStr) > maxContextWidth {
+					ctxStr = ctxStr[:maxContextWidth]
+				}
+				ctxPadding := maxContextWidth - len(ctxStr)
+				if ctxPadding < 0 {
+					ctxPadding = 0
+				}
+				contextRendered = MutedStyle.Render(ctxStr) + strings.Repeat(" ", ctxPadding)
+			} else {
+				contextRendered = strings.Repeat(" ", maxContextWidth)
+			}
+		}
+
+		// Build status indicator: urgency icons only, blank if clean
 		var statusIndicator string
 		if overdue > 0 || dueSoon > 0 || blocked > 0 || blockerCount > 0 {
 			var parts []string
@@ -715,13 +834,33 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 				parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("🚧%d", blockerCount)))
 			}
 			statusIndicator = strings.Join(parts, " ")
-		} else {
-			statusIndicator = MutedStyle.Render(fmt.Sprintf("✓%d/%d", done, total))
 		}
 
-		content := fmt.Sprintf("%s%s %s  %s  %s", numberPrefix, name, context, stats, statusIndicator)
-		line := RenderSelectableRow(selected, false, content, cardWidth-4) // -4 for card padding
-		cardContent.WriteString(line)
+		if narrowMode {
+			// Two-line mode: line 1 = name + context, line 2 = stats + status
+			line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
+			line1 := RenderSelectableRow(selected, false, line1Content, cardWidth-4)
+			cardContent.WriteString(line1)
+			cardContent.WriteString("\n")
+
+			statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
+			if statusIndicator != "" {
+				statsLine += "  " + statusIndicator
+			}
+			cardContent.WriteString(statsLine)
+		} else {
+			// Column-aligned single-line mode
+			activeStr := MutedStyle.Render(fmt.Sprintf("%6d", active))
+			totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
+
+			content := fmt.Sprintf("%s%s %s %s %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr)
+			if statusIndicator != "" {
+				content += "  " + statusIndicator
+			}
+			line := RenderSelectableRow(selected, false, content, cardWidth-4)
+			cardContent.WriteString(line)
+		}
+
 		if i < end-1 || (len(visible)-end) > 0 {
 			cardContent.WriteString("\n")
 		}
@@ -733,6 +872,34 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	return cardContent.String()
+}
+
+// projectStatusWidth returns the terminal column width of the status indicator
+// for a project (emojis are 2 columns wide, digits are 1, spaces are 1).
+func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) int {
+	overdue := p.CountOverdueTasks()
+	dueSoon := p.CountDueSoonTasks(dueSoonDays)
+	blocked := p.CountBlockedTasks()
+	blockerCount := storage.GetActiveBlockerCount(p)
+
+	if overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 {
+		return 0
+	}
+
+	w := 0
+	addPart := func(emojiWidth, count int) {
+		if count > 0 {
+			if w > 0 {
+				w++ // space separator
+			}
+			w += emojiWidth + len(fmt.Sprintf("%d", count))
+		}
+	}
+	addPart(2, overdue)      // 🔥
+	addPart(2, dueSoon)      // ⏰
+	addPart(1, blocked)      // ◈ is 1 col wide
+	addPart(2, blockerCount) // 🚧
+	return w
 }
 
 // renderRightPanel renders the right-side info panel with recent activity and global alerts.
@@ -753,8 +920,10 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 
 	// Recent Activity card
 	var recentContent string
-	if selected == nil || len(selected.Tasks) == 0 {
+	if selected == nil {
 		recentContent = MutedStyle.Render("No project selected.")
+	} else if len(selected.Tasks) == 0 {
+		recentContent = MutedStyle.Render("No tasks yet.")
 	} else {
 		// Adapt truncation width to available panel width
 		truncWidth := cardWidth - 30 // space for #ID, badges, time
@@ -863,13 +1032,6 @@ func renderDashboardVerticalDivider(height int) string {
 		}
 	}
 	return MutedStyle.Render(b.String())
-}
-
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-func (m *DashboardModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		"g": NavigationPrefixHints,
-	}, m.width)
 }
 
 func (m *DashboardModel) renderRecentTasksContent(project *models.Project) string {

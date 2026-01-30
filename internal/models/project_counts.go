@@ -5,6 +5,21 @@ func (p *Project) CountTasks() int {
 	return len(p.Tasks)
 }
 
+// CountActiveSectionTasks returns the number of tasks in the Active section
+// (empty section) or with in_progress status regardless of section.
+func (p *Project) CountActiveSectionTasks() int {
+	count := 0
+	for _, task := range p.Tasks {
+		if task.IsComplete() {
+			continue
+		}
+		if task.Section == "" || task.Status == StatusInProgress {
+			count++
+		}
+	}
+	return count
+}
+
 // CountActiveTasks returns the number of non-completed tasks.
 func (p *Project) CountActiveTasks() int {
 	count := 0

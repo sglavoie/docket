@@ -3707,8 +3707,7 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: ":", Description: "Command palette", Category: "Navigation"},
 		{Key: "j/k", Description: "Move cursor down/up", Category: "Navigation"},
 		{Key: "↑/↓", Description: "Move cursor up/down", Category: "Navigation"},
-		{Key: "g", Description: "Go to first item", Category: "Navigation"},
-		{Key: "G", Description: "Go to last item", Category: "Navigation"},
+		{Key: "g/G", Description: "Go to first/last item", Category: "Navigation"},
 		{Key: "Enter", Description: "Select / confirm", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},
 	}
