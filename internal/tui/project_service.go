@@ -67,7 +67,9 @@ func (s *ProjectService) SaveWithBackup(project *models.Project, successMsg stri
 		if err := storage.SaveProject(project); err != nil {
 			return SaveErrorMsg{Err: err}
 		}
-		_ = storage.LoadProject(project)
+		if err := storage.LoadProject(project); err != nil {
+			return SaveErrorMsg{Err: err}
+		}
 		return SaveCompleteMsg{SuccessMessage: successMsg}
 	}
 }
@@ -84,7 +86,9 @@ func (s *ProjectService) SaveMultiple(projects []*models.Project, successMsg str
 			if err := storage.SaveProject(project); err != nil {
 				return SaveErrorMsg{Err: err}
 			}
-			_ = storage.LoadProject(project)
+			if err := storage.LoadProject(project); err != nil {
+				return SaveErrorMsg{Err: err}
+			}
 		}
 		return SaveCompleteMsg{SuccessMessage: successMsg}
 	}
@@ -100,8 +104,7 @@ func (s *ProjectService) SaveWithBackupSync(project *models.Project) error {
 	if err := storage.SaveProject(project); err != nil {
 		return err
 	}
-	_ = storage.LoadProject(project)
-	return nil
+	return storage.LoadProject(project)
 }
 
 // SaveMultipleSync saves multiple projects synchronously with backup.
@@ -114,7 +117,9 @@ func (s *ProjectService) SaveMultipleSync(projects []*models.Project) error {
 		if err := storage.SaveProject(project); err != nil {
 			return err
 		}
-		_ = storage.LoadProject(project)
+		if err := storage.LoadProject(project); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -167,6 +172,5 @@ func saveProjectSync(project *models.Project) error {
 	if err := storage.SaveProject(project); err != nil {
 		return err
 	}
-	_ = storage.LoadProject(project)
-	return nil
+	return storage.LoadProject(project)
 }

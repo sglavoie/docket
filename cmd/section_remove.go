@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var sectionRemoveCmd = &cobra.Command{
@@ -51,7 +50,7 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to remove section '%s'", sectionName)
 	}
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

@@ -32,10 +32,10 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 const tasksFileName = "tasks.md"
 const backupFileName = ".tasks.md.bak"
 
-// File permission constants.
+// File permission constants (from util for consistency).
 const (
-	DirPermissions  = 0755
-	FilePermissions = 0644
+	DirPermissions  = util.DirPermissions
+	FilePermissions = util.FilePermissions
 )
 
 // ProjectLoadResult contains the result of loading a project, including any warnings.

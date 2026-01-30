@@ -1,14 +1,13 @@
 package models
 
 import (
+	"slices"
 	"time"
-
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // AddDependency adds a dependency on another task if not already present.
 func (t *Task) AddDependency(blockerID string) {
-	if util.SliceContains(t.DependsOn, blockerID) {
+	if slices.Contains(t.DependsOn, blockerID) {
 		return
 	}
 	t.DependsOn = append(t.DependsOn, blockerID)
@@ -17,15 +16,15 @@ func (t *Task) AddDependency(blockerID string) {
 
 // RemoveDependency removes a dependency if present.
 func (t *Task) RemoveDependency(blockerID string) {
-	if newDeps, removed := util.SliceRemove(t.DependsOn, blockerID); removed {
-		t.DependsOn = newDeps
+	if i := slices.Index(t.DependsOn, blockerID); i >= 0 {
+		t.DependsOn = slices.Delete(t.DependsOn, i, i+1)
 		t.UpdatedAt = time.Now()
 	}
 }
 
 // HasDependency returns true if the task depends on the given task ID.
 func (t *Task) HasDependency(blockerID string) bool {
-	return util.SliceContains(t.DependsOn, blockerID)
+	return slices.Contains(t.DependsOn, blockerID)
 }
 
 // ClearDependencies removes all dependencies.

@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var sectionAddCmd = &cobra.Command{
@@ -42,7 +40,7 @@ func runSectionAdd(cmd *cobra.Command, args []string) error {
 
 	project.EnsureSection(sectionName)
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 

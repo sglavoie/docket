@@ -6,6 +6,12 @@ import (
 	"path/filepath"
 )
 
+// File permission constants used across the codebase.
+const (
+	DirPermissions  = 0755
+	FilePermissions = 0644
+)
+
 // AtomicWriteFile writes data to a file atomically using a temporary file and rename.
 // This prevents data corruption if the write is interrupted (e.g., power loss, crash).
 // The file is created with the specified permissions.

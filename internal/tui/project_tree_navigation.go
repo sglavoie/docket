@@ -459,7 +459,9 @@ func (m *ProjectTreeModel) unlinkSelectedSidebarTask(sourceTask *models.Task) te
 					targetProject := m.config.GetProject(taskRef.ProjectID)
 					if targetProject != nil {
 						if len(targetProject.Tasks) == 0 {
-							_ = storage.LoadProject(targetProject)
+							if err := storage.LoadProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
 						}
 						if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
 							// Build reverse ref: sourceProject:sourceTaskID
@@ -467,8 +469,12 @@ func (m *ProjectTreeModel) unlinkSelectedSidebarTask(sourceTask *models.Task) te
 							targetTask.RemoveRelatedTo(reverseRef)
 
 							// Backup and save target project
-							_ = storage.BackupProject(targetProject)
-							_ = storage.SaveProject(targetProject)
+							if err := storage.BackupProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
+							if err := storage.SaveProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
 						}
 					}
 				}
@@ -489,7 +495,9 @@ func (m *ProjectTreeModel) unlinkSelectedSidebarTask(sourceTask *models.Task) te
 		}
 
 		// Reload project and return message
-		_ = m.projectService.Load(m.project)
+		if err := m.projectService.Load(m.project); err != nil {
+			return ErrorMsg{Err: err}
+		}
 		return LinkRemovedMsg{SourceTask: sourceTask, Section: section}
 	}
 }

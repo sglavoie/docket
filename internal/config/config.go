@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -127,10 +128,10 @@ func (c *Config) EnsureSandboxProject() bool {
 	return true
 }
 
-// File permission constants.
+// File permission constants (re-exported from util for backward compatibility).
 const (
-	DirPermissions  = 0755
-	FilePermissions = 0644
+	DirPermissions  = util.DirPermissions
+	FilePermissions = util.FilePermissions
 )
 
 // DefaultUndoHistoryDepth is the default number of undo snapshots to keep.

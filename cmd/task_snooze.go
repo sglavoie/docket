@@ -48,9 +48,7 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		snoozeDate = nil
 		desc = "cleared"
 	} else {
-		// Use the TUI's ParseDate function via a local reimplementation
-		// to avoid importing the TUI package from cmd
-		parsed, err := parseSnoozeDate(dateStr)
+		parsed, err := util.ParseRelativeDate(dateStr)
 		if err != nil {
 			return fmt.Errorf("invalid date: %w", err)
 		}
@@ -74,41 +72,4 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// parseSnoozeDate parses date strings for the snooze CLI command.
-func parseSnoozeDate(input string) (time.Time, error) {
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-
-	// Exact date: YYYY-MM-DD
-	if date, err := time.ParseInLocation(util.DateFormat, input, time.Local); err == nil {
-		return date, nil
-	}
-
-	switch input {
-	case "today":
-		return today, nil
-	case "tomorrow":
-		return today.AddDate(0, 0, 1), nil
-	}
-
-	// Relative: +Nd, +Nw, +Nm
-	if len(input) >= 3 && input[0] == '+' {
-		unit := input[len(input)-1]
-		numStr := input[1 : len(input)-1]
-		var n int
-		if _, err := fmt.Sscanf(numStr, "%d", &n); err == nil {
-			switch unit {
-			case 'd':
-				return today.AddDate(0, 0, n), nil
-			case 'w':
-				return today.AddDate(0, 0, n*7), nil
-			case 'm':
-				return today.AddDate(0, n, 0), nil
-			}
-		}
-	}
-
-	return time.Time{}, fmt.Errorf("unrecognized date format: %s (use YYYY-MM-DD, tomorrow, +Nd, +Nw, +Nm, or clear)", input)
 }
