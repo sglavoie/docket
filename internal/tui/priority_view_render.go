@@ -4,9 +4,71 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+// renderPriorityTabBar renders the tab bar for the priority view.
+func (m *PriorityViewModel) renderPriorityTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range priorityTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range priorityTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
+}
 
 // renderPrefixPopup renders the prefix key popup.
 func (m *PriorityViewModel) renderPrefixPopup() string {
@@ -78,57 +140,65 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	hasContent := false
 	separatorWidth := min(m.width-10, 50)
 
-	if len(m.overdue) > 0 {
-		lines = append(lines, m.renderGroupHeader("OVERDUE", len(m.overdue), true))
-		lines = append(lines, m.renderGroup(m.overdue, currentIndex, true)...)
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+
+	if len(overdue) > 0 {
+		lines = append(lines, m.renderGroupHeader("OVERDUE", len(overdue), true))
+		lines = append(lines, m.renderGroup(overdue, currentIndex, true)...)
 		hasContent = true
 	}
 
-	if len(m.today) > 0 {
+	if len(today) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("DUE TODAY", len(m.today), false))
-		lines = append(lines, m.renderGroup(m.today, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("DUE TODAY", len(today), false))
+		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
 		hasContent = true
 	}
 
-	if len(m.thisWeek) > 0 {
+	if len(thisWeek) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("THIS WEEK", len(m.thisWeek), false))
-		lines = append(lines, m.renderGroup(m.thisWeek, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("THIS WEEK", len(thisWeek), false))
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
 		hasContent = true
 	}
 
-	if len(m.later) > 0 {
+	if len(later) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroupHeader("LATER", len(m.later), false))
-		lines = append(lines, m.renderGroup(m.later, currentIndex, false)...)
+		lines = append(lines, m.renderGroupHeader("LATER", len(later), false))
+		lines = append(lines, m.renderGroup(later, currentIndex, false)...)
 		hasContent = true
 	}
 
-	if len(m.backlog) > 0 {
+	if len(backlog) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderGroup(m.backlog, currentIndex, false)...)
+		lines = append(lines, m.renderGroup(backlog, currentIndex, false)...)
 		hasContent = true
 	}
 
 	// Waiting On section (blocked tasks)
-	if len(m.waitingOn) > 0 {
+	if len(waitingOn) > 0 {
 		if hasContent {
 			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
 		}
-		lines = append(lines, m.renderWaitingOnHeader())
-		if !m.waitingOnCollapsed {
-			// Waiting on tasks are not navigable
-			for _, pt := range m.waitingOn {
-				lines = append(lines, m.renderWaitingOnTask(pt))
+		// In Blocked tab, tasks are navigable (rendered as regular tasks)
+		if m.activeTab == priorityTabBlocked {
+			lines = append(lines, m.renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false))
+			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false)...)
+		} else {
+			lines = append(lines, m.renderWaitingOnHeader())
+			if !m.waitingOnCollapsed {
+				// Waiting on tasks are not navigable in All tab
+				for _, pt := range waitingOn {
+					lines = append(lines, m.renderWaitingOnTask(pt))
+				}
 			}
 		}
 	}

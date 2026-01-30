@@ -402,6 +402,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
 
 		// View
+		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},

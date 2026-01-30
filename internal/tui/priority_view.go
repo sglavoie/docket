@@ -39,6 +39,17 @@ type SuggestedTask struct {
 	Reason string
 }
 
+// Priority view tab names and indices.
+var priorityTabNames = []string{"All", "Urgent", "Upcoming", "Backlog", "Blocked"}
+
+const (
+	priorityTabAll      = 0
+	priorityTabUrgent   = 1
+	priorityTabUpcoming = 2
+	priorityTabBacklog  = 3
+	priorityTabBlocked  = 4
+)
+
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
 	project        *models.Project
@@ -55,6 +66,9 @@ type PriorityViewModel struct {
 	// Smart suggestion
 	suggestion   *SuggestedTask  // The single most actionable task
 	dismissedIDs map[string]bool // Task IDs dismissed this session
+
+	// Tab filtering
+	activeTab int // Index into priorityTabNames
 
 	// Navigation
 	cursor      int   // Absolute position across all visible groups
@@ -143,18 +157,64 @@ func (m *PriorityViewModel) loadActionableTasks() {
 	sortByUrgency(m.backlog)
 	sortByUrgency(m.waitingOn)
 
-	// Calculate navigation indices (excluding waitingOn which is collapsible)
-	m.totalTasks = len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later) + len(m.backlog)
-	m.groupStarts = []int{
-		0,
-		len(m.overdue),
-		len(m.overdue) + len(m.today),
-		len(m.overdue) + len(m.today) + len(m.thisWeek),
-		len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later),
-	}
+	// Recalculate navigation for the active tab
+	m.recalculateNavigation()
 
 	// Compute the smart suggestion
 	m.computeSuggestion()
+}
+
+// activeTabHint returns a brief description of the active tab's purpose for the footer.
+func (m *PriorityViewModel) activeTabHint() string {
+	switch m.activeTab {
+	case priorityTabUrgent:
+		return " • Showing overdue and due today"
+	case priorityTabUpcoming:
+		return " • Showing this week and later"
+	case priorityTabBacklog:
+		return " • Showing tasks with no due date"
+	case priorityTabBlocked:
+		return " • Showing blocked and waiting tasks"
+	default:
+		return ""
+	}
+}
+
+// filteredGroups returns the task groups visible for the current tab.
+// Returns overdue, today, thisWeek, later, backlog, waitingOn slices filtered by active tab.
+func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, backlog, waitingOn []*PriorityTask) {
+	switch m.activeTab {
+	case priorityTabUrgent:
+		return m.overdue, m.today, nil, nil, nil, nil
+	case priorityTabUpcoming:
+		return nil, nil, m.thisWeek, m.later, nil, nil
+	case priorityTabBacklog:
+		return nil, nil, nil, nil, m.backlog, nil
+	case priorityTabBlocked:
+		return nil, nil, nil, nil, nil, m.waitingOn
+	default: // priorityTabAll
+		return m.overdue, m.today, m.thisWeek, m.later, m.backlog, m.waitingOn
+	}
+}
+
+// recalculateNavigation updates totalTasks and groupStarts based on the active tab.
+func (m *PriorityViewModel) recalculateNavigation() {
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+
+	// For the Blocked tab, waiting tasks are navigable (not collapsible)
+	if m.activeTab == priorityTabBlocked {
+		m.totalTasks = len(waitingOn)
+		m.groupStarts = []int{0}
+	} else {
+		m.totalTasks = len(overdue) + len(today) + len(thisWeek) + len(later) + len(backlog)
+		m.groupStarts = []int{
+			0,
+			len(overdue),
+			len(overdue) + len(today),
+			len(overdue) + len(today) + len(thisWeek),
+			len(overdue) + len(today) + len(thisWeek) + len(later),
+		}
+	}
 }
 
 // jumpToTask moves the cursor to the position of the given task in the list.
@@ -245,28 +305,35 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 		return nil
 	}
 
-	cursor := m.cursor
-	if cursor < m.groupStarts[1] {
-		if cursor < len(m.overdue) {
-			return m.overdue[cursor]
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+
+	// For the Blocked tab, navigate waiting tasks directly
+	if m.activeTab == priorityTabBlocked {
+		if m.cursor < len(waitingOn) {
+			return waitingOn[m.cursor]
 		}
 		return nil
 	}
-	cursor -= m.groupStarts[1]
-	if cursor < len(m.today) {
-		return m.today[cursor]
+
+	cursor := m.cursor
+	if cursor < len(overdue) {
+		return overdue[cursor]
 	}
-	cursor -= len(m.today)
-	if cursor < len(m.thisWeek) {
-		return m.thisWeek[cursor]
+	cursor -= len(overdue)
+	if cursor < len(today) {
+		return today[cursor]
 	}
-	cursor -= len(m.thisWeek)
-	if cursor < len(m.later) {
-		return m.later[cursor]
+	cursor -= len(today)
+	if cursor < len(thisWeek) {
+		return thisWeek[cursor]
 	}
-	cursor -= len(m.later)
-	if cursor < len(m.backlog) {
-		return m.backlog[cursor]
+	cursor -= len(thisWeek)
+	if cursor < len(later) {
+		return later[cursor]
+	}
+	cursor -= len(later)
+	if cursor < len(backlog) {
+		return backlog[cursor]
 	}
 	return nil
 }
@@ -305,6 +372,24 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	// Handle pending prefix keys (Vim-style gg)
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
+	}
+
+	// Tab switching
+	switch key {
+	case "[", "h":
+		if m.activeTab > 0 {
+			m.activeTab--
+			m.recalculateNavigation()
+			m.clampCursor()
+		}
+		return m, nil
+	case "]", "l":
+		if m.activeTab < len(priorityTabNames)-1 {
+			m.activeTab++
+			m.recalculateNavigation()
+			m.clampCursor()
+		}
+		return m, nil
 	}
 
 	switch key {
@@ -668,10 +753,15 @@ func (m *PriorityViewModel) clampCursor() {
 func (m *PriorityViewModel) View() string {
 	var b strings.Builder
 
-	if m.totalTasks == 0 && len(m.waitingOn) == 0 {
-		b.WriteString(MutedStyle.Render("No actionable tasks."))
+	_, _, _, _, _, filteredWaiting := m.filteredGroups()
+
+	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
+		tabBar := m.renderPriorityTabBar()
+		b.WriteString(tabBar)
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
+		b.WriteString(MutedStyle.Render("No tasks in this view."))
+		b.WriteString("\n\n")
+		b.WriteString(HelpStyle.Render("[/]: tabs" + m.activeTabHint()))
 
 		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
 			Title:    "Priority View",
@@ -683,7 +773,8 @@ func (m *PriorityViewModel) View() string {
 	// Pre-render conditional sections to calculate their actual height
 	suggestionSection := m.renderSuggestionSection()
 	prefixPopup := m.renderPrefixPopup()
-	footer := HelpStyle.Render("↑/↓ navigate • s start suggested • x dismiss • ,s/,d status • ? help • q close")
+	tabHint := m.activeTabHint()
+	footer := HelpStyle.Render("↑/↓ navigate • [/] tabs • s start suggested • ,s/,d status" + tabHint)
 
 	// Calculate available height for task list
 	// Card overhead breakdown:
@@ -694,7 +785,8 @@ func (m *PriorityViewModel) View() string {
 	// - Footer: 1 line
 	// Total: 9 lines
 	cardOverhead := 9
-	contentHeight := m.height - cardOverhead
+	tabBarHeight := 2 // tab bar + newline
+	contentHeight := m.height - cardOverhead - tabBarHeight
 
 	// Account for suggestion section if present (use lipgloss.Height for accurate measurement)
 	if suggestionSection != "" {
@@ -742,6 +834,10 @@ func (m *PriorityViewModel) View() string {
 			}
 		}
 	}
+
+	// Write tab bar
+	b.WriteString(m.renderPriorityTabBar())
+	b.WriteString("\n")
 
 	// Write suggestion section
 	if suggestionSection != "" {
