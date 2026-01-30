@@ -793,7 +793,7 @@ func (m *AppModel) handleGlowView(msg GlowViewMsg) (bool, tea.Cmd) {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	c := exec.Command("sh", "-c", fmt.Sprintf("glow --style=dark '%s' | less -R", tmpPath))
+	c := exec.Command("sh", "-c", fmt.Sprintf("CLICOLOR_FORCE=1 glow --style=dark '%s' | less -R", tmpPath))
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		_ = os.Remove(tmpPath)
 		if err != nil {
