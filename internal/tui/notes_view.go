@@ -73,6 +73,9 @@ type NotesViewModel struct {
 	selectedNotes   map[string]bool // keyed by filename
 	pendingGKey     bool            // waiting for second key after 'g'
 
+	// Tab state
+	activeTab int
+
 	// Sort state
 	sortMode noteSortMode
 
@@ -93,6 +96,16 @@ type NotesViewModel struct {
 	statusMessage string
 	statusIsError bool
 }
+
+// Tab constants for notes view filtering.
+var noteTabNames = []string{"All", "Pinned", "Recent", "Tagged"}
+
+const (
+	noteTabAll    = 0
+	noteTabPinned = 1
+	noteTabRecent = 2
+	noteTabTagged = 3
+)
 
 // noteSortMode defines how notes are sorted.
 type noteSortMode int
@@ -204,6 +217,33 @@ func (m *NotesViewModel) loadNotes() {
 		}
 		notes = filtered
 	}
+	// Apply tab filter
+	switch m.activeTab {
+	case noteTabPinned:
+		var filtered []*models.Note
+		for _, n := range notes {
+			if n.Pinned {
+				filtered = append(filtered, n)
+			}
+		}
+		notes = filtered
+	case noteTabRecent:
+		var filtered []*models.Note
+		for _, n := range notes {
+			if time.Since(n.ModifiedAt) < 7*24*time.Hour {
+				filtered = append(filtered, n)
+			}
+		}
+		notes = filtered
+	case noteTabTagged:
+		var filtered []*models.Note
+		for _, n := range notes {
+			if len(n.Tags) > 0 {
+				filtered = append(filtered, n)
+			}
+		}
+		notes = filtered
+	}
 	// Apply sort mode (pinned notes always first)
 	m.sortNotes(notes)
 	m.notes = notes
@@ -238,8 +278,8 @@ func (m *NotesViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	// Split: top half for list, 1 for divider, bottom half for details
-	// Reserve 4 lines for title/count header and 2 for footer
-	usable := height - 6
+	// Reserve 4 lines for title/count header, 2 for tab bar, and 2 for footer
+	usable := height - 8
 	if usable < 4 {
 		usable = 4
 	}
@@ -331,6 +371,18 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch key {
+		case "[":
+			if m.activeTab > 0 {
+				m.activeTab--
+				m.loadNotes()
+			}
+			return m, nil
+		case "]":
+			if m.activeTab < len(noteTabNames)-1 {
+				m.activeTab++
+				m.loadNotes()
+			}
+			return m, nil
 		case "q", "esc":
 			if m.isGlobal {
 				return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
@@ -499,6 +551,10 @@ func (m *NotesViewModel) View() string {
 	}
 	b.WriteString("\n")
 
+	// Tab bar
+	b.WriteString(m.renderNotesTabBar())
+	b.WriteString("\n")
+
 	// Note count and sort mode
 	countInfo := fmt.Sprintf("%d notes", len(m.notes))
 	if m.sortMode != noteSortModified {
@@ -508,7 +564,7 @@ func (m *NotesViewModel) View() string {
 	b.WriteString("\n\n")
 
 	// Fullscreen mode: show only the focused pane using full usable height
-	usable := m.height - 6
+	usable := m.height - 8
 	if usable < 4 {
 		usable = 4
 	}
@@ -737,6 +793,65 @@ func (m *NotesViewModel) renderStatusBar() string {
 		return SuccessStyle.Render(m.statusMessage)
 	}
 	return ""
+}
+
+func (m *NotesViewModel) renderNotesTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range noteTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range noteTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
 }
 
 func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
@@ -1276,6 +1391,7 @@ type GlobalNoteMoveCompleteMsg struct {
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	items := []HelpItem{
+		{Key: "[/]", Description: "Switch tab"},
 		{Key: "j/k", Description: "Navigate up/down"},
 		{Key: "Tab", Description: "Switch pane (list/details)"},
 		{Key: "Enter", Description: "View note (glow)"},
