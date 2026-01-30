@@ -25,6 +25,13 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	if storage.NotesExist(m.project) {
 		b.WriteString(" ✎ Notes")
 	}
+	if m.config.FilterCustomContext != "" {
+		b.WriteString(" ")
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", m.config.FilterCustomContext)))
+	} else if m.config.FilterContext != "" {
+		b.WriteString(" ")
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.config.FilterContext)))
+	}
 
 	// Show archived badge
 	if m.project.Archived {
@@ -389,6 +396,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 	if storage.NotesExist(m.project) {
 		b.WriteString(" ✎ Notes")
+	}
+	if m.config.FilterCustomContext != "" {
+		b.WriteString(" ")
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", m.config.FilterCustomContext)))
+	} else if m.config.FilterContext != "" {
+		b.WriteString(" ")
+		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.config.FilterContext)))
 	}
 
 	// Show archived badge
