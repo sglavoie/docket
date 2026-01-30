@@ -119,7 +119,7 @@ func (m *KanbanViewModel) View() string {
 	// Render status message if set
 	if m.statusMessage != "" {
 		statusStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		if m.confirmDelete || m.confirmArchive {
+		if m.confirm.IsActive() {
 			statusStyle = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
 		}
 		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
@@ -592,7 +592,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, and completed view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirmDelete || m.confirmArchive || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
 }
 
 // renderPrefixPopup renders the which-key style popup for pending prefix keys.

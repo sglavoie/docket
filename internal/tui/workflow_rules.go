@@ -21,8 +21,8 @@ type WorkflowRulesModel struct {
 	defaultCount  int // Number of default rules (at start of allRules slice)
 	cursor        int
 
-	confirmDelete bool
-	expandedView  bool
+	confirm      ConfirmDialog
+	expandedView bool
 }
 
 // NewWorkflowRulesModel creates a new workflow rules model.
@@ -64,14 +64,9 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if m.confirmDelete {
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDelete = false
+		if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+			if confirmed {
 				return m, m.deleteCurrentRule()
-			case "n", "N", "esc":
-				m.confirmDelete = false
-				return m, nil
 			}
 			return m, nil
 		}
@@ -147,7 +142,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			// Delete rule (with confirmation)
 			if len(m.filteredRules) > 0 {
-				m.confirmDelete = true
+				m.confirm.Show("delete", fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name))
 			}
 			return m, nil
 
@@ -482,9 +477,9 @@ func (m *WorkflowRulesModel) View() string {
 	}
 
 	// Confirmation dialog
-	if m.confirmDelete && len(m.filteredRules) > 0 {
+	if m.confirm.IsActive() {
 		b.WriteString("\n\n")
-		b.WriteString(ConfirmStyle.Render(fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name)))
+		b.WriteString(m.confirm.Render())
 	}
 
 	// Help footer
@@ -517,7 +512,7 @@ func (m *WorkflowRulesModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when expanded view, delete confirmation, or search is active.
 func (m *WorkflowRulesModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirmDelete || m.searchActive || m.searchQuery != ""
+	return m.expandedView || m.confirm.IsActive() || m.searchActive || m.searchQuery != ""
 }
 
 // WorkflowRulesUpdatedMsg is sent when rules are modified.

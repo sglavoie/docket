@@ -25,36 +25,25 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuickAddInput(msg)
 	}
 
-	// Handle delete confirmation
-	if m.confirmDelete {
-		switch key {
-		case "y", "Y":
-			m.confirmDelete = false
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkDelete()
+	// Handle confirmation
+	if m.confirm.IsActive() {
+		action := m.confirm.Action()
+		if confirmed, handled := m.confirm.HandleKey(key); handled {
+			if confirmed {
+				switch action {
+				case "delete":
+					if m.multiSelectMode && m.selectedCount() > 0 {
+						return m, m.handleBulkDelete()
+					}
+					return m, m.executeDelete()
+				case "archive":
+					return m, m.executeArchiveToggle()
+				}
 			}
-			return m, m.executeDelete()
-		case "n", "N", "esc":
-			m.confirmDelete = false
 			m.deleteTarget = nil
 			m.statusMessage = ""
 			return m, nil
 		}
-		return m, nil
-	}
-
-	// Handle archive confirmation
-	if m.confirmArchive {
-		switch key {
-		case "y", "Y":
-			m.confirmArchive = false
-			return m, m.executeArchiveToggle()
-		case "n", "N", "esc":
-			m.confirmArchive = false
-			m.statusMessage = ""
-			return m, nil
-		}
-		return m, nil
 	}
 
 	// Handle completed view mode input
@@ -414,15 +403,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "D":
 		// Initiate delete confirmation
 		if m.multiSelectMode && m.selectedCount() > 0 {
-			m.confirmDelete = true
 			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
+			m.confirm.Show("delete", m.statusMessage)
 			return m, nil
 		}
 		task := m.getSelectedTask()
 		if task != nil {
-			m.confirmDelete = true
 			m.deleteTarget = task
 			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
+			m.confirm.Show("delete", m.statusMessage)
 		}
 		return m, nil
 
@@ -576,12 +565,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Archive/unarchive project (with confirmation)
 	case "ctrl+a":
-		m.confirmArchive = true
 		if m.Project.Archived {
 			m.statusMessage = "Unarchive project? Press 'y' to confirm, 'n' to cancel"
 		} else {
 			m.statusMessage = "Archive project? Press 'y' to confirm, 'n' to cancel"
 		}
+		m.confirm.Show("archive", m.statusMessage)
 		return m, nil
 
 	// External editor for task content

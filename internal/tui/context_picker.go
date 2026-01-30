@@ -27,7 +27,7 @@ type ContextPickerModel struct {
 	currentFilter       string         // Current filter context for highlighting
 	currentCustomFilter string         // Current custom context filter for highlighting
 	fromCycle           bool           // True if opened from Project Cycle Manager
-	confirmDelete       bool           // True when waiting for delete confirmation
+	confirm             ConfirmDialog  // confirmation dialog
 	statusMessage       string         // Status message to display
 	renameMode          bool           // True when renaming a context
 	renameInput         textinput.Model
@@ -228,11 +228,9 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Handle delete confirmation
-		if m.confirmDelete {
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDelete = false
+		// Handle confirmation
+		if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+			if confirmed {
 				if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 					selected := m.Filtered[m.Cursor]
 					if selected.IsCustom && m.config != nil {
@@ -262,10 +260,6 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						}
 					}
 				}
-				return m, nil
-			case "n", "N", "esc":
-				m.confirmDelete = false
-				return m, nil
 			}
 			return m, nil
 		}
@@ -317,7 +311,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
 				if selected.IsCustom && m.config != nil {
-					m.confirmDelete = true
+					m.confirm.Show("delete", "Delete this custom context? y/n")
 					m.statusMessage = ""
 				} else if selected.Name != "" {
 					// Can't delete regular contexts
@@ -462,8 +456,8 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 		content.WriteString(m.renameInput.View())
 		content.WriteString("\n")
 		content.WriteString(MutedStyle.Render("enter save | esc cancel"))
-	} else if m.confirmDelete {
-		content.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render("Delete this custom context? y/n"))
+	} else if m.confirm.IsActive() {
+		content.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(m.confirm.Prompt()))
 	} else if m.statusMessage != "" {
 		content.WriteString(MutedStyle.Render(m.statusMessage))
 	} else {
@@ -505,7 +499,7 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 
 // ShouldCaptureEsc returns true when in rename mode or delete confirmation.
 func (m *ContextPickerModel) ShouldCaptureEsc() bool {
-	return m.renameMode || m.confirmDelete
+	return m.renameMode || m.confirm.IsActive()
 }
 
 // HasTextInput returns true when in rename mode.

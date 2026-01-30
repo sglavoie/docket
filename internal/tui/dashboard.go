@@ -30,8 +30,8 @@ type DashboardModel struct {
 	contexts            []string // Dynamically discovered contexts from projects
 
 	// Confirmation state
-	confirmAction string          // "delete" when confirming deletion
-	deleteTarget  *models.Project // project to delete
+	confirm      ConfirmDialog   // confirmation dialog
+	deleteTarget *models.Project // project to delete
 
 	// Prefix key state for Vim-style two-key sequences
 }
@@ -153,21 +153,16 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Handle confirmation mode
-		if m.confirmAction != "" {
-			switch msg.String() {
-			case "y", "Y":
-				if m.confirmAction == "delete" && m.deleteTarget != nil {
-					project := m.deleteTarget
-					m.confirmAction = ""
+		if m.confirm.IsActive() {
+			project := m.deleteTarget
+			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+				if confirmed && project != nil {
 					m.deleteTarget = nil
 					return m, m.deleteProject(project)
 				}
-			case "n", "N", "esc":
-				m.confirmAction = ""
 				m.deleteTarget = nil
 				return m, nil
 			}
-			return m, nil
 		}
 
 		// Handle search mode
@@ -257,8 +252,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return ErrorMsg{Err: fmt.Errorf("cannot delete the sandbox project")}
 					}
 				}
-				m.confirmAction = "delete"
 				m.deleteTarget = project
+				m.confirm.Show("delete", fmt.Sprintf("Delete project '%s'? (y/n)", project.Name))
 			}
 		case "e":
 			if CursorInBounds(m.cursor, len(visible)) {
@@ -415,9 +410,9 @@ func (m *DashboardModel) View() string {
 	var b strings.Builder
 
 	// Confirmation prompt
-	if m.confirmAction == "delete" && m.deleteTarget != nil {
+	if m.confirm.IsActive() {
 		b.WriteString("\n")
-		b.WriteString(ConfirmStyle.Render(fmt.Sprintf("Delete project '%s'? (y/n)", m.deleteTarget.Name)))
+		b.WriteString(m.confirm.Render())
 		b.WriteString("\n\n")
 	}
 

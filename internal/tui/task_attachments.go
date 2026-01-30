@@ -28,11 +28,8 @@ type TaskAttachmentsModel struct {
 	addMode   bool
 	textInput textinput.Model
 
-	// Delete confirmation
-	confirmDelete bool
-
-	// Keep-file (unlink) confirmation
-	confirmKeep bool
+	// Confirmation state (actions: "delete", "unlink")
+	confirm ConfirmDialog
 
 	// Dimensions
 	width  int
@@ -73,33 +70,20 @@ func (m *TaskAttachmentsModel) SetSize(width, height int) {
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	// Handle delete confirmation mode
-	if m.confirmDelete {
+	// Handle confirmation mode
+	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDelete = false
-				return m, m.executeDelete()
-			case "n", "N", "esc":
-				m.confirmDelete = false
-				m.err = nil
-				return m, nil
-			}
-		}
-		return m, nil
-	}
-
-	// Handle keep-file (unlink) confirmation mode
-	if m.confirmKeep {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmKeep = false
-				return m, m.executeKeep()
-			case "n", "N", "esc":
-				m.confirmKeep = false
+			action := m.confirm.Action()
+			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+				if confirmed {
+					switch action {
+					case "delete":
+						return m, m.executeDelete()
+					case "unlink":
+						return m, m.executeKeep()
+					}
+				}
 				m.err = nil
 				return m, nil
 			}
@@ -168,14 +152,14 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirmDelete = true
+				m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.cursor))
 				return m, nil
 			}
 
 		case "u":
 			// Request unlink (keep file) confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirmKeep = true
+				m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.cursor))
 				return m, nil
 			}
 
@@ -526,7 +510,7 @@ func (m *TaskAttachmentsModel) View() string {
 	}
 
 	// Delete confirmation
-	if m.confirmDelete && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+	if m.confirm.Action() == "delete" && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
 		att := m.task.Attachments[m.cursor]
 		name := att.Filename
 		if len(name) > 50 {
@@ -548,7 +532,7 @@ func (m *TaskAttachmentsModel) View() string {
 	}
 
 	// Keep-file (unlink) confirmation
-	if m.confirmKeep && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+	if m.confirm.Action() == "unlink" && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
 		att := m.task.Attachments[m.cursor]
 		name := att.Filename
 		if len(name) > 50 {
@@ -697,7 +681,7 @@ func (m *TaskAttachmentsModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when in add, delete, or unlink confirmation modes.
 func (m *TaskAttachmentsModel) ShouldCaptureEsc() bool {
-	return m.confirmDelete || m.confirmKeep || m.addMode
+	return m.confirm.IsActive() || m.addMode
 }
 
 // GetHelpItems returns help items for the attachments view.

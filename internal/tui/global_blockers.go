@@ -40,8 +40,8 @@ type GlobalBlockersModel struct {
 	editIndex     int // index into entries
 	editTextInput textarea.Model
 
-	// Delete confirmation
-	confirmDelete bool
+	// Confirmation state
+	confirm ConfirmDialog
 
 	// Expanded view mode
 	expandedView bool
@@ -205,16 +205,14 @@ func (m *GlobalBlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle delete confirmation mode
-	if m.confirmDelete {
+	// Handle confirmation mode
+	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDelete = false
-				return m, m.executeDelete()
-			case "n", "N", "esc":
-				m.confirmDelete = false
+			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+				if confirmed {
+					return m, m.executeDelete()
+				}
 				m.err = nil
 				return m, nil
 			}
@@ -318,7 +316,7 @@ func (m *GlobalBlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d", "x":
 			if len(visible) > 0 && m.cursor < len(visible) {
-				m.confirmDelete = true
+				m.confirm.Show("delete", "Delete blocker?")
 				return m, nil
 			}
 
@@ -931,7 +929,7 @@ func (m *GlobalBlockersModel) View() string {
 	}
 
 	// Delete confirmation
-	if m.confirmDelete {
+	if m.confirm.IsActive() {
 		visible := m.getVisibleEntries()
 		if len(visible) > 0 && m.cursor < len(visible) {
 			entry := visible[m.cursor]
@@ -1054,7 +1052,7 @@ func (m *GlobalBlockersModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
 func (m *GlobalBlockersModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirmDelete || m.addMode || m.editMode
+	return m.expandedView || m.confirm.IsActive() || m.addMode || m.editMode
 }
 
 // ShowGlobalBlockersMsg requests opening the global blockers view.

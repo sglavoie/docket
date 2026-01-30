@@ -37,8 +37,8 @@ type GlobalInboxProcessorModel struct {
 	err           error
 	statusMessage string // Temporary feedback message
 
-	// Delete confirmation state
-	confirmDelete bool
+	// Confirmation state
+	confirm ConfirmDialog
 
 	// Prefix key state (which-key style)
 	pendingPrefix string
@@ -171,17 +171,12 @@ func (m *GlobalInboxProcessorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *GlobalInboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	// Handle delete confirmation
-	if m.confirmDelete {
-		switch key {
-		case "y", "Y":
-			m.confirmDelete = false
+	// Handle confirmation
+	if confirmed, handled := m.confirm.HandleKey(key); handled {
+		if confirmed {
 			return m, m.executeDelete()
-		case "n", "N", "esc":
-			m.confirmDelete = false
-			m.statusMessage = ""
-			return m, nil
 		}
+		m.statusMessage = ""
 		return m, nil
 	}
 

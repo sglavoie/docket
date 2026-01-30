@@ -32,8 +32,8 @@ type TaskCommentsModel struct {
 	editIndex     int
 	editTextInput textarea.Model
 
-	// Delete confirmation
-	confirmDelete bool
+	// Confirmation state
+	confirm ConfirmDialog
 
 	// Expanded view mode (show full comment)
 	expandedView bool
@@ -113,16 +113,14 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle delete confirmation mode
-	if m.confirmDelete {
+	// Handle confirmation mode
+	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDelete = false
-				return m, m.executeDelete()
-			case "n", "N", "esc":
-				m.confirmDelete = false
+			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+				if confirmed {
+					return m, m.executeDelete()
+				}
 				m.err = nil
 				return m, nil
 			}
@@ -218,7 +216,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
-				m.confirmDelete = true
+				m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
 				return m, nil
 			}
 
@@ -642,7 +640,7 @@ func (m *TaskCommentsModel) View() string {
 	}
 
 	// Delete confirmation
-	if m.confirmDelete && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+	if m.confirm.IsActive() && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
 		comment := m.task.Comments[m.cursor]
 		preview := comment.Text
 		if len(preview) > 50 {
@@ -763,5 +761,5 @@ func (m *TaskCommentsModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
 func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirmDelete || m.addMode || m.editMode
+	return m.expandedView || m.confirm.IsActive() || m.addMode || m.editMode
 }

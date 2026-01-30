@@ -140,8 +140,8 @@ func (m *GlobalInboxProcessorModel) deleteCurrentTask() tea.Cmd {
 		return nil
 	}
 
-	m.confirmDelete = true
 	m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", git.Task.ShortID)
+	m.confirm.Show("delete", m.statusMessage)
 
 	return nil
 }
