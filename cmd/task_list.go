@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -134,9 +135,9 @@ func displayTaskTable(tasks []*models.Task) {
 		tagsStr := ""
 		if len(task.Tags) > 0 {
 			if len(task.Tags) <= 3 {
-				tagsStr = joinStrings(task.Tags, ", ")
+				tagsStr = strings.Join(task.Tags, ", ")
 			} else {
-				tagsStr = fmt.Sprintf("%s +%d", joinStrings(task.Tags[:3], ", "), len(task.Tags)-3)
+				tagsStr = fmt.Sprintf("%s +%d", strings.Join(task.Tags[:3], ", "), len(task.Tags)-3)
 			}
 		}
 

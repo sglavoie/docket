@@ -44,13 +44,13 @@ func LoadBlockers(project *models.Project) ([]*models.Blocker, error) {
 
 // SaveBlockers writes blockers to a project's blockers.md file.
 func SaveBlockers(project *models.Project, blockers []*models.Blocker) error {
-	if err := os.MkdirAll(project.Path, 0755); err != nil {
+	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return err
 	}
 
 	content := renderBlockersMarkdown(blockers)
 	path := BlockersPath(project)
-	return util.AtomicWriteFile(path, []byte(content), 0644)
+	return util.AtomicWriteFile(path, []byte(content), FilePermissions)
 }
 
 // GetActiveBlockerCount returns the count of unresolved blockers for a project.

@@ -32,6 +32,12 @@ func getChildrenInOrder(parentID string, tasks []*models.Task) []*models.Task {
 const tasksFileName = "tasks.md"
 const backupFileName = ".tasks.md.bak"
 
+// File permission constants.
+const (
+	DirPermissions  = 0755
+	FilePermissions = 0644
+)
+
 // ProjectLoadResult contains the result of loading a project, including any warnings.
 type ProjectLoadResult struct {
 	Warnings []ParseWarning
@@ -111,7 +117,7 @@ func SaveProject(project *models.Project) error {
 		return DefaultRepository.Save(project)
 	}
 	// Otherwise do the actual file saving
-	if err := os.MkdirAll(project.Path, 0755); err != nil {
+	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
@@ -125,7 +131,7 @@ func SaveProject(project *models.Project) error {
 
 	content := WriteTasksMarkdownWithSections(project.Name, project.Tasks, project.GetSections(), project.SectionColors)
 
-	if err := writeFileAtomic(tasksPath, []byte(content), 0644); err != nil {
+	if err := writeFileAtomic(tasksPath, []byte(content), FilePermissions); err != nil {
 		return fmt.Errorf("failed to write tasks file: %w", err)
 	}
 
@@ -254,7 +260,7 @@ func BackupProject(project *models.Project) error {
 		return fmt.Errorf("failed to read tasks file for backup: %w", err)
 	}
 
-	if err := writeFileAtomic(backupPath, content, 0644); err != nil {
+	if err := writeFileAtomic(backupPath, content, FilePermissions); err != nil {
 		return fmt.Errorf("failed to write backup file: %w", err)
 	}
 
@@ -291,12 +297,12 @@ func RestoreFromBackup(project *models.Project) error {
 	}
 
 	// Write backup content to main file
-	if err := writeFileAtomic(tasksPath, backupContent, 0644); err != nil {
+	if err := writeFileAtomic(tasksPath, backupContent, FilePermissions); err != nil {
 		return fmt.Errorf("failed to restore tasks file: %w", err)
 	}
 
 	// Write current content to backup (for reversibility)
-	if err := writeFileAtomic(backupPath, currentContent, 0644); err != nil {
+	if err := writeFileAtomic(backupPath, currentContent, FilePermissions); err != nil {
 		return fmt.Errorf("failed to update backup file: %w", err)
 	}
 
@@ -312,7 +318,7 @@ func ProjectExists(projectPath string) bool {
 
 // CreateProjectDir creates the project directory structure.
 func CreateProjectDir(project *models.Project) error {
-	if err := os.MkdirAll(project.Path, 0755); err != nil {
+	if err := os.MkdirAll(project.Path, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
@@ -426,7 +432,7 @@ func MoveProjectToTrash(project *models.Project, dataDir string) error {
 	trashPath := filepath.Join(trashDir, project.Slug)
 
 	// Create trash directory if needed
-	if err := os.MkdirAll(trashDir, 0755); err != nil {
+	if err := os.MkdirAll(trashDir, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create trash directory: %w", err)
 	}
 

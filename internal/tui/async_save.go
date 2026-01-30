@@ -10,13 +10,11 @@ var projectService = NewProjectService()
 
 // SaveProjectAsync returns a command that saves a project asynchronously.
 // It backs up the project first, then saves it.
-// Deprecated: Use projectService.SaveWithBackup directly.
 func SaveProjectAsync(project *models.Project, successMsg string) tea.Cmd {
 	return projectService.SaveWithBackup(project, successMsg)
 }
 
 // SaveMultipleProjectsAsync returns a command that saves multiple projects asynchronously.
-// Deprecated: Use projectService.SaveMultiple directly.
 func SaveMultipleProjectsAsync(projects []*models.Project, successMsg string) tea.Cmd {
 	return projectService.SaveMultiple(projects, successMsg)
 }

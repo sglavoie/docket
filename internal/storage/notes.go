@@ -26,14 +26,9 @@ func GlobalNotesDir(dataDir string) string {
 	return filepath.Join(dataDir, "global-notes")
 }
 
-// EnsureNotesDir creates the notes directory if it doesn't exist.
-func EnsureNotesDir(project *models.Project) error {
-	return os.MkdirAll(NotesDir(project), 0755)
-}
-
 // ensureDirPath creates a directory if it doesn't exist.
 func ensureDirPath(dir string) error {
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(dir, DirPermissions)
 }
 
 // LoadNote reads a single note from its file.
@@ -88,7 +83,7 @@ func SaveNoteTo(dir string, note *models.Note) error {
 	if err != nil {
 		return err
 	}
-	return util.AtomicWriteFile(path, []byte(content), 0644)
+	return util.AtomicWriteFile(path, []byte(content), FilePermissions)
 }
 
 // ListNotes returns all notes in a project sorted by modified date (newest first),
@@ -158,12 +153,6 @@ func NotesExistIn(dir string) bool {
 		}
 	}
 	return false
-}
-
-// RenameNote changes a note's title and filename atomically.
-// It saves the note with the new title (generating a new filename) and deletes the old file.
-func RenameNote(project *models.Project, oldFilename, newTitle string) (*models.Note, error) {
-	return RenameNoteIn(NotesDir(project), oldFilename, newTitle)
 }
 
 // RenameNoteIn changes a note's title and filename in a directory path.

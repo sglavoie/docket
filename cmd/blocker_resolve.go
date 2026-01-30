@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var blockerResolveCmd = &cobra.Command{
@@ -27,34 +27,14 @@ func init() {
 }
 
 func runBlockerResolve(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
+		if blocker.IsResolved() {
+			fmt.Printf("Blocker '%s' is already resolved.\n", blocker.Title)
+			return blockers, nil
+		}
 
-	idPrefix := args[0]
-
-	blockers, err := storage.LoadBlockers(project)
-	if err != nil {
-		return fmt.Errorf("failed to load blockers: %w", err)
-	}
-
-	blocker := storage.FindBlockerByPrefix(blockers, idPrefix)
-	if blocker == nil {
-		return fmt.Errorf("blocker not found: %s", idPrefix)
-	}
-
-	if blocker.IsResolved() {
-		fmt.Printf("Blocker '%s' is already resolved.\n", blocker.Title)
-		return nil
-	}
-
-	blocker.Resolve()
-
-	if err := storage.SaveBlockers(project, blockers); err != nil {
-		return fmt.Errorf("failed to save blockers: %w", err)
-	}
-
-	fmt.Printf("Resolved blocker: %s\n", blocker.Title)
-	return nil
+		blocker.Resolve()
+		fmt.Printf("Resolved blocker: %s\n", blocker.Title)
+		return blockers, nil
+	})
 }

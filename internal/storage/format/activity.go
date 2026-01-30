@@ -27,41 +27,21 @@ func ExtractActivityFromDescription(task *models.Task) {
 		return
 	}
 
-	lines := strings.Split(task.Description, "\n")
-	var cleanDesc strings.Builder
-	var inActivityBlock bool
+	blockLines, cleanDesc := ExtractBlock(task.Description, activityStartRegex, activityEndRegex)
+	task.Description = cleanDesc
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		if activityStartRegex.MatchString(trimmed) {
-			inActivityBlock = true
-			continue
-		}
-
-		if activityEndRegex.MatchString(trimmed) {
-			inActivityBlock = false
-			continue
-		}
-
-		if inActivityBlock {
-			if matches := activityEntryRegex.FindStringSubmatch(trimmed); matches != nil {
-				timestamp, ok := ParseTimeField(matches[1])
-				if !ok {
-					continue
-				}
-				entry := parseActivityPayload(matches[2], timestamp)
-				if entry != nil {
-					task.Activity = append(task.Activity, entry)
-				}
+	for _, bl := range blockLines {
+		if matches := activityEntryRegex.FindStringSubmatch(bl.Trimmed); matches != nil {
+			timestamp, ok := ParseTimeField(matches[1])
+			if !ok {
+				continue
 			}
-		} else {
-			cleanDesc.WriteString(line)
-			cleanDesc.WriteString("\n")
+			entry := parseActivityPayload(matches[2], timestamp)
+			if entry != nil {
+				task.Activity = append(task.Activity, entry)
+			}
 		}
 	}
-
-	task.Description = strings.TrimSpace(cleanDesc.String())
 }
 
 // parseActivityPayload parses the payload portion of an activity entry.

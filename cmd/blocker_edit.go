@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var (
@@ -39,51 +39,32 @@ func init() {
 }
 
 func runBlockerEdit(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
+		modified := false
 
-	idPrefix := args[0]
-
-	blockers, err := storage.LoadBlockers(project)
-	if err != nil {
-		return fmt.Errorf("failed to load blockers: %w", err)
-	}
-
-	blocker := storage.FindBlockerByPrefix(blockers, idPrefix)
-	if blocker == nil {
-		return fmt.Errorf("blocker not found: %s", idPrefix)
-	}
-
-	modified := false
-
-	if blockerEditTitle != "" {
-		blocker.Title = strings.TrimSpace(blockerEditTitle)
-		modified = true
-	}
-
-	if blockerEditDescription != "" {
-		blocker.Description = strings.TrimSpace(blockerEditDescription)
-		modified = true
-	}
-
-	if blockerUnresolve {
-		if blocker.IsResolved() {
-			blocker.Unresolve()
+		if blockerEditTitle != "" {
+			blocker.Title = strings.TrimSpace(blockerEditTitle)
 			modified = true
 		}
-	}
 
-	if !modified {
-		fmt.Println("No changes specified. Use --title, --description, or --unresolve flags.")
-		return nil
-	}
+		if blockerEditDescription != "" {
+			blocker.Description = strings.TrimSpace(blockerEditDescription)
+			modified = true
+		}
 
-	if err := storage.SaveBlockers(project, blockers); err != nil {
-		return fmt.Errorf("failed to save blockers: %w", err)
-	}
+		if blockerUnresolve {
+			if blocker.IsResolved() {
+				blocker.Unresolve()
+				modified = true
+			}
+		}
 
-	fmt.Printf("Updated blocker: %s\n", blocker.Title)
-	return nil
+		if !modified {
+			fmt.Println("No changes specified. Use --title, --description, or --unresolve flags.")
+			return blockers, nil
+		}
+
+		fmt.Printf("Updated blocker: %s\n", blocker.Title)
+		return blockers, nil
+	})
 }

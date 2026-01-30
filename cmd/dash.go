@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -162,17 +163,6 @@ func displayTaskStats(project *models.Project) {
 	}
 
 	statStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	fmt.Println(statStyle.Render(fmt.Sprintf("Types: %s", joinStrings(typeStats, " "))))
-	fmt.Println(statStyle.Render(fmt.Sprintf("Status: %s", joinStrings(statusStats, " "))))
-}
-
-func joinStrings(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
+	fmt.Println(statStyle.Render(fmt.Sprintf("Types: %s", strings.Join(typeStats, " "))))
+	fmt.Println(statStyle.Render(fmt.Sprintf("Status: %s", strings.Join(statusStats, " "))))
 }

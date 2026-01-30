@@ -26,80 +26,49 @@ func ExtractCommentsFromDescription(task *models.Task) {
 		return
 	}
 
-	lines := strings.Split(task.Description, "\n")
-	var cleanDesc strings.Builder
-	var inCommentsBlock bool
+	blockLines, cleanDesc := ExtractBlock(task.Description, commentsStartRegex, commentsEndRegex)
+	task.Description = cleanDesc
+
+	// Parse block lines into comments (header + accumulated text lines)
 	var currentCommentText strings.Builder
 	var currentCommentTime time.Time
 	var hasCurrentComment bool
 
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		// Check for comments block start
-		if commentsStartRegex.MatchString(trimmed) {
-			inCommentsBlock = true
-			continue
+	flushComment := func() {
+		if !hasCurrentComment {
+			return
 		}
+		text := strings.TrimSpace(currentCommentText.String())
+		if text != "" {
+			task.Comments = append(task.Comments, &models.Comment{
+				Text:      unescapeCommentText(text),
+				CreatedAt: currentCommentTime,
+			})
+		}
+	}
 
-		// Check for comments block end
-		if commentsEndRegex.MatchString(trimmed) {
-			// Save any pending comment
-			if hasCurrentComment {
-				text := strings.TrimSpace(currentCommentText.String())
-				if text != "" {
-					task.Comments = append(task.Comments, &models.Comment{
-						Text:      unescapeCommentText(text),
-						CreatedAt: currentCommentTime,
-					})
-				}
+	for _, bl := range blockLines {
+		if matches := commentHeaderRegex.FindStringSubmatch(bl.Trimmed); matches != nil {
+			flushComment()
+			if t, ok := ParseTimeField(matches[1]); ok {
+				currentCommentTime = t
+			} else {
+				currentCommentTime = time.Time{}
 			}
-			inCommentsBlock = false
-			hasCurrentComment = false
+			hasCurrentComment = true
 			currentCommentText.Reset()
 			continue
 		}
 
-		if inCommentsBlock {
-			// Check for new comment header
-			if matches := commentHeaderRegex.FindStringSubmatch(trimmed); matches != nil {
-				// Save previous comment if exists
-				if hasCurrentComment {
-					text := strings.TrimSpace(currentCommentText.String())
-					if text != "" {
-						task.Comments = append(task.Comments, &models.Comment{
-							Text:      unescapeCommentText(text),
-							CreatedAt: currentCommentTime,
-						})
-					}
-				}
-				// Start new comment
-				if t, ok := ParseTimeField(matches[1]); ok {
-					currentCommentTime = t
-				} else {
-					currentCommentTime = time.Time{}
-				}
-				hasCurrentComment = true
-				currentCommentText.Reset()
-				continue
+		if hasCurrentComment {
+			if currentCommentText.Len() > 0 {
+				currentCommentText.WriteString("\n")
 			}
-
-			// Accumulate comment text
-			if hasCurrentComment {
-				if currentCommentText.Len() > 0 {
-					currentCommentText.WriteString("\n")
-				}
-				currentCommentText.WriteString(line)
-			}
-		} else {
-			// Normal description content
-			cleanDesc.WriteString(line)
-			cleanDesc.WriteString("\n")
+			currentCommentText.WriteString(bl.Original)
 		}
 	}
 
-	// Update description with cleaned version (without comments block)
-	task.Description = strings.TrimSpace(cleanDesc.String())
+	flushComment()
 }
 
 // WriteComments generates the comments block for a task.

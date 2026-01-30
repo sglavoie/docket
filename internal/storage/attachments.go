@@ -30,7 +30,7 @@ func GetAttachmentPath(project *models.Project, task *models.Task, filename stri
 // EnsureTaskAttachmentsDir creates the attachments directory for a task if it doesn't exist.
 func EnsureTaskAttachmentsDir(project *models.Project, task *models.Task) error {
 	dir := GetTaskAttachmentsDir(project, task)
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(dir, DirPermissions)
 }
 
 // CopyAttachment copies a file to the task's attachments directory.

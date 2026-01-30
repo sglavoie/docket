@@ -1,6 +1,10 @@
 package config
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"strings"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // GetCycleProjects returns active projects that are in the cycle list, in order.
 // Filters out archived projects and projects that no longer exist.
@@ -259,9 +263,9 @@ func (c *Config) GetCustomContext(name string) []string {
 		return nil
 	}
 	// Case-insensitive lookup
-	nameLower := toLower(name)
+	nameLower := strings.ToLower(name)
 	for k, v := range c.CustomContexts {
-		if toLower(k) == nameLower {
+		if strings.ToLower(k) == nameLower {
 			return v
 		}
 	}
@@ -275,9 +279,9 @@ func (c *Config) SetCustomContext(name string, projectIDs []string) {
 		c.CustomContexts = make(map[string][]string)
 	}
 	// Case-insensitive check for existing key
-	nameLower := toLower(name)
+	nameLower := strings.ToLower(name)
 	for k := range c.CustomContexts {
-		if toLower(k) == nameLower {
+		if strings.ToLower(k) == nameLower {
 			delete(c.CustomContexts, k)
 			break
 		}
@@ -291,12 +295,12 @@ func (c *Config) DeleteCustomContext(name string) bool {
 	if c.CustomContexts == nil {
 		return false
 	}
-	nameLower := toLower(name)
+	nameLower := strings.ToLower(name)
 	for k := range c.CustomContexts {
-		if toLower(k) == nameLower {
+		if strings.ToLower(k) == nameLower {
 			delete(c.CustomContexts, k)
 			// Clear filter if this was the active custom context
-			if toLower(c.FilterCustomContext) == nameLower {
+			if strings.ToLower(c.FilterCustomContext) == nameLower {
 				c.FilterCustomContext = ""
 			}
 			return true
@@ -349,17 +353,4 @@ func (c *Config) IsProjectInCustomContext(customContextName, projectID string) b
 		}
 	}
 	return false
-}
-
-// toLower is a simple lowercase conversion for ASCII strings.
-func toLower(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
 }

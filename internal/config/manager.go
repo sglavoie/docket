@@ -73,7 +73,7 @@ func (m *Manager) Load() (*Config, error) {
 	}
 	if config.UndoHistoryDepth == nil {
 		// Default for existing configs that don't have this field
-		defaultUndoDepth := 50
+		defaultUndoDepth := DefaultUndoHistoryDepth
 		config.UndoHistoryDepth = &defaultUndoDepth
 	}
 
@@ -83,7 +83,7 @@ func (m *Manager) Load() (*Config, error) {
 // Save saves the configuration to file.
 func (m *Manager) Save(config *Config) error {
 	dir := filepath.Dir(m.configPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, DirPermissions); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -92,7 +92,7 @@ func (m *Manager) Save(config *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := util.AtomicWriteFile(m.configPath, data, 0644); err != nil {
+	if err := util.AtomicWriteFile(m.configPath, data, FilePermissions); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -149,7 +149,7 @@ func (m *Manager) BackupConfig() error {
 		return fmt.Errorf("failed to read config file for backup: %w", err)
 	}
 
-	if err := util.AtomicWriteFile(backupPath, content, 0644); err != nil {
+	if err := util.AtomicWriteFile(backupPath, content, FilePermissions); err != nil {
 		return fmt.Errorf("failed to write config backup file: %w", err)
 	}
 
@@ -181,12 +181,12 @@ func (m *Manager) RestoreConfigFromBackup() error {
 	}
 
 	// Write backup content to main file
-	if err := util.AtomicWriteFile(m.configPath, backupContent, 0644); err != nil {
+	if err := util.AtomicWriteFile(m.configPath, backupContent, FilePermissions); err != nil {
 		return fmt.Errorf("failed to restore config file: %w", err)
 	}
 
 	// Write current content to backup (for reversibility)
-	if err := util.AtomicWriteFile(backupPath, currentContent, 0644); err != nil {
+	if err := util.AtomicWriteFile(backupPath, currentContent, FilePermissions); err != nil {
 		return fmt.Errorf("failed to update config backup file: %w", err)
 	}
 

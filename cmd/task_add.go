@@ -111,16 +111,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 
 	// Handle parent
 	if taskParentFlag != "" {
-		parent := FindTaskByIdentifier(project, taskParentFlag)
-		if parent == nil {
-			return tterrors.NewParentTaskNotFoundError(taskParentFlag)
+		parent, err := ValidateParentTask(project, taskParentFlag, task.Type)
+		if err != nil {
+			return err
 		}
-
-		if !task.Type.CanBeChildOf(parent.Type) {
-			return fmt.Errorf("%w: %s cannot be a child of %s", tterrors.ErrInvalidParent,
-				task.Type.HeadingPrefix(), parent.Type.HeadingPrefix())
-		}
-
 		task.ParentID = &parent.ID
 	}
 

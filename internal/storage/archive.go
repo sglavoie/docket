@@ -195,7 +195,7 @@ func writeArchivedMetadata(task *models.Task) string {
 
 // appendToArchiveFile appends content to the archive file, creating it if necessary.
 func appendToArchiveFile(path, content string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, FilePermissions)
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
 	}

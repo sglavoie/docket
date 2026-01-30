@@ -2,6 +2,8 @@ package models
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -64,19 +66,7 @@ func weekdaysToString(weekdays []int) string {
 	if len(result) == 2 {
 		return result[0] + " and " + result[1]
 	}
-	return fmt.Sprintf("%s, and %s", joinStrings(result[:len(result)-1], ", "), result[len(result)-1])
-}
-
-// joinStrings joins strings with a separator.
-func joinStrings(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	result := strs[0]
-	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
-	}
-	return result
+	return fmt.Sprintf("%s, and %s", strings.Join(result[:len(result)-1], ", "), result[len(result)-1])
 }
 
 // calculateNextDate computes the next occurrence date from a base date.
@@ -115,7 +105,7 @@ func findNextWeekday(base time.Time, weekdays []int, interval int) time.Time {
 	// Sort weekdays for predictable iteration
 	sortedDays := make([]int, len(weekdays))
 	copy(sortedDays, weekdays)
-	sortInts(sortedDays)
+	sort.Ints(sortedDays)
 
 	currentDay := int(base.Weekday())
 
@@ -136,15 +126,6 @@ func findNextWeekday(base time.Time, weekdays []int, interval int) time.Time {
 		daysToFirstDay += (interval - 1) * 7
 	}
 	return base.AddDate(0, 0, daysToFirstDay)
-}
-
-// sortInts sorts a slice of ints in ascending order (simple insertion sort).
-func sortInts(nums []int) {
-	for i := 1; i < len(nums); i++ {
-		for j := i; j > 0 && nums[j] < nums[j-1]; j-- {
-			nums[j], nums[j-1] = nums[j-1], nums[j]
-		}
-	}
 }
 
 // addMonths adds N months to a date, handling end-of-month edge cases.
@@ -298,7 +279,7 @@ func parseWeekdays(s string) []int {
 		if i == len(s) || s[i] == ',' {
 			part := s[start:i]
 			// Trim spaces and convert to lowercase
-			part = trimSpace(toLower(part))
+			part = strings.TrimSpace(strings.ToLower(part))
 			if day, ok := dayMap[part]; ok {
 				if !seen[day] {
 					result = append(result, day)
@@ -310,31 +291,4 @@ func parseWeekdays(s string) []int {
 	}
 
 	return result
-}
-
-// toLower converts a string to lowercase.
-func toLower(s string) string {
-	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			result[i] = c + 32
-		} else {
-			result[i] = c
-		}
-	}
-	return string(result)
-}
-
-// trimSpace removes leading and trailing whitespace.
-func trimSpace(s string) string {
-	start := 0
-	end := len(s)
-	for start < end && (s[start] == ' ' || s[start] == '\t') {
-		start++
-	}
-	for end > start && (s[end-1] == ' ' || s[end-1] == '\t') {
-		end--
-	}
-	return s[start:end]
 }

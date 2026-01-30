@@ -72,10 +72,10 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	contextInput.SetValue(cfg.DefaultContext)
 
 	undoDepthInput := textinput.New()
-	undoDepthInput.Placeholder = "50"
+	undoDepthInput.Placeholder = strconv.Itoa(config.DefaultUndoHistoryDepth)
 	undoDepthInput.CharLimit = 4
 	undoDepthInput.Width = 10
-	undoDepthValue := 50
+	undoDepthValue := config.DefaultUndoHistoryDepth
 	if cfg.UndoHistoryDepth != nil {
 		undoDepthValue = *cfg.UndoHistoryDepth
 	}

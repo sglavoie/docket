@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
@@ -243,4 +244,53 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	}
 
 	return task, nil
+}
+
+// WithBlockerUpdate encapsulates the common Load→Find→Update→Save pattern for blocker commands.
+// It loads the current project's blockers, finds one by ID prefix, applies the update function,
+// and saves the (potentially modified) blocker list back.
+// The update function receives the full blocker list and the matched blocker, and returns
+// the blocker list to save (allowing deletion by returning a filtered list).
+func WithBlockerUpdate(idPrefix string, updateFn func([]*models.Blocker, *models.Blocker) ([]*models.Blocker, error)) error {
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
+	blockers, err := storage.LoadBlockers(project)
+	if err != nil {
+		return fmt.Errorf("failed to load blockers: %w", err)
+	}
+
+	blocker := storage.FindBlockerByPrefix(blockers, idPrefix)
+	if blocker == nil {
+		return fmt.Errorf("blocker not found: %s", idPrefix)
+	}
+
+	blockers, err = updateFn(blockers, blocker)
+	if err != nil {
+		return err
+	}
+
+	if err := storage.SaveBlockers(project, blockers); err != nil {
+		return fmt.Errorf("failed to save blockers: %w", err)
+	}
+
+	return nil
+}
+
+// ValidateParentTask finds a parent task by identifier and validates that the child type
+// can be nested under it. Returns the parent task or an error.
+func ValidateParentTask(project *models.Project, parentIdentifier string, childType models.TaskType) (*models.Task, error) {
+	parent := FindTaskByIdentifier(project, parentIdentifier)
+	if parent == nil {
+		return nil, tterrors.NewParentTaskNotFoundError(parentIdentifier)
+	}
+
+	if !childType.CanBeChildOf(parent.Type) {
+		return nil, fmt.Errorf("%w: %s cannot be a child of %s", tterrors.ErrInvalidParent,
+			childType.HeadingPrefix(), parent.Type.HeadingPrefix())
+	}
+
+	return parent, nil
 }

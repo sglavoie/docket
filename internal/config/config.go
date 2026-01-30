@@ -127,6 +127,15 @@ func (c *Config) EnsureSandboxProject() bool {
 	return true
 }
 
+// File permission constants.
+const (
+	DirPermissions  = 0755
+	FilePermissions = 0644
+)
+
+// DefaultUndoHistoryDepth is the default number of undo snapshots to keep.
+const DefaultUndoHistoryDepth = 50
+
 // GetEditor returns the configured editor.
 func (c *Config) GetEditor() string {
 	return c.Editor
@@ -134,7 +143,7 @@ func (c *Config) GetEditor() string {
 
 // EnsureDataDir creates the data directory if it doesn't exist.
 func (c *Config) EnsureDataDir() error {
-	return os.MkdirAll(c.DataDir, 0755)
+	return os.MkdirAll(c.DataDir, DirPermissions)
 }
 
 // GetProjectPath returns the full path for a project's data directory.

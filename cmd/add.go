@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var addCmd = &cobra.Command{
@@ -138,15 +137,10 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 
 	// Handle parent
 	if addParentFlag != "" {
-		parent := FindTaskByIdentifier(project, addParentFlag)
-		if parent == nil {
-			return tterrors.NewParentTaskNotFoundError(addParentFlag)
+		parent, err := ValidateParentTask(project, addParentFlag, task.Type)
+		if err != nil {
+			return err
 		}
-
-		if !task.Type.CanBeChildOf(parent.Type) {
-			return fmt.Errorf("%s cannot be a child of %s", task.Type.HeadingPrefix(), parent.Type.HeadingPrefix())
-		}
-
 		task.ParentID = &parent.ID
 	}
 

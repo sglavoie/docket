@@ -1034,10 +1034,6 @@ func renderDashboardVerticalDivider(height int) string {
 	return MutedStyle.Render(b.String())
 }
 
-func (m *DashboardModel) renderRecentTasksContent(project *models.Project) string {
-	return m.renderRecentTasksContentWithWidth(project, 40)
-}
-
 func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, truncWidth int) string {
 	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
 	if len(recentTasks) == 0 {
