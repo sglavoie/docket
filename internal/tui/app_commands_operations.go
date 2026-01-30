@@ -11,98 +11,56 @@ import (
 )
 
 func (m *AppModel) viewModeCommands() []Command {
-	return []Command{
-		{
-			Name:        "active view",
-			Description: "Switch to Active view mode",
-			Shortcut:    "ga",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"view active", "active tasks"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeActive
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "next view",
-			Description: "Switch to Next view mode",
-			Shortcut:    "gn",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"view next", "next actions"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeNext
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "inbox view",
-			Description: "Switch to Inbox view mode",
-			Shortcut:    "gi",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"view inbox"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeInbox
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "waiting view",
-			Description: "Switch to Waiting view mode",
-			Shortcut:    "gw",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"view waiting", "waiting for"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeWaiting
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "someday view",
-			Description: "Switch to Someday view mode",
-			Shortcut:    "gs",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"view someday", "someday maybe"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = ViewModeSomeday
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
-		{
-			Name:        "cycle view mode",
-			Description: "Cycle through all view modes",
-			Shortcut:    "gv",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"next view mode", "toggle view"},
-			Handler: func() tea.Msg {
-				if m.projectTree != nil {
-					m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeCompleted + 1)
-					m.projectTree.updateVisibility()
-				}
-				return nil
-			},
-		},
+	type viewModeEntry struct {
+		name, desc, shortcut string
+		aliases              []string
+		mode                 ViewMode
 	}
+	entries := []viewModeEntry{
+		{"active view", "Switch to Active view mode", "ga", []string{"view active", "active tasks"}, ViewModeActive},
+		{"next view", "Switch to Next view mode", "gn", []string{"view next", "next actions"}, ViewModeNext},
+		{"inbox view", "Switch to Inbox view mode", "gi", []string{"view inbox"}, ViewModeInbox},
+		{"waiting view", "Switch to Waiting view mode", "gw", []string{"view waiting", "waiting for"}, ViewModeWaiting},
+		{"someday view", "Switch to Someday view mode", "gs", []string{"view someday", "someday maybe"}, ViewModeSomeday},
+	}
+
+	cmds := make([]Command, 0, len(entries)+1)
+	for _, e := range entries {
+		mode := e.mode
+		cmds = append(cmds, Command{
+			Name:        e.name,
+			Description: e.desc,
+			Shortcut:    e.shortcut,
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     e.aliases,
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.viewMode = mode
+					m.projectTree.updateVisibility()
+				}
+				return nil
+			},
+		})
+	}
+
+	cmds = append(cmds, Command{
+		Name:        "cycle view mode",
+		Description: "Cycle through all view modes",
+		Shortcut:    "gv",
+		Category:    CategoryViews,
+		Views:       []ViewType{ViewProjectTree},
+		Aliases:     []string{"next view mode", "toggle view"},
+		Handler: func() tea.Msg {
+			if m.projectTree != nil {
+				m.projectTree.viewMode = (m.projectTree.viewMode + 1) % (ViewModeCompleted + 1)
+				m.projectTree.updateVisibility()
+			}
+			return nil
+		},
+	})
+
+	return cmds
 }
 
 func (m *AppModel) statusCommands() []Command {
