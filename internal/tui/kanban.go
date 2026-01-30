@@ -166,6 +166,9 @@ type KanbanViewModel struct {
 	completedCursor   int
 	completedScroll   int
 
+	// Tab filtering
+	activeTab int // Index into kanbanTabNames
+
 	// Additional filter state
 	actionableFilter bool
 
@@ -511,6 +514,9 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 
 	m.ColumnWidth = columnWidth
 
+	// Account for tab bar height (always shown, 2 lines: text + bottom border)
+	tabBarHeight := 2
+
 	// Account for filter bar height when enabled (2 lines)
 	filterBarHeight := 0
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
@@ -518,8 +524,8 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	}
 
 	// Compute split view heights: 50/50 split minus 1 for the divider line
-	// kanbanHeight = (height - 1 - filterBarHeight) / 2, leaving rest for details pane
-	availableHeight := height - 1 - filterBarHeight // -1 for divider
+	// kanbanHeight = (height - 1 - tabBarHeight - filterBarHeight) / 2, leaving rest for details pane
+	availableHeight := height - 1 - tabBarHeight - filterBarHeight // -1 for divider
 	m.kanbanHeight = availableHeight / 2
 	if m.kanbanHeight < 3 {
 		m.kanbanHeight = 3 // Minimum height for header + 1 task
@@ -1368,17 +1374,18 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Refreshed from disk"
 		return m, nil
 
-	// Notes view
+	// Tab switching
 	case "[":
-		return m, func() tea.Msg {
-			return ShowNotesMsg{Project: m.Project}
+		if m.activeTab > 0 {
+			m.applyTabPreset(m.activeTab - 1)
 		}
+		return m, nil
 
-	// Create note
 	case "]":
-		return m, func() tea.Msg {
-			return ShowNoteCreatorMsg{Project: m.Project}
+		if m.activeTab < len(kanbanTabNames)-1 {
+			m.applyTabPreset(m.activeTab + 1)
 		}
+		return m, nil
 
 	// Blockers view
 	case "b":
@@ -2007,6 +2014,9 @@ func (m *KanbanViewModel) View() string {
 
 	var viewParts []string
 
+	// Render tab bar at the top
+	viewParts = append(viewParts, m.renderKanbanTabBar())
+
 	// Render filter bar if enabled
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
 		filterBar := m.renderKanbanFilterBar()
@@ -2062,6 +2072,7 @@ func (m *KanbanViewModel) View() string {
 	viewParts = append(viewParts, divider)
 
 	// Render the details panel for the selected task
+	tabBarHeight := 2 // Tab bar is always shown (text + bottom border)
 	filterBarHeight := 0
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
 		filterBarHeight = 2
@@ -2078,7 +2089,7 @@ func (m *KanbanViewModel) View() string {
 	if m.statusMessage != "" {
 		statusBarHeight = 1
 	}
-	detailsHeight := m.Height() - m.kanbanHeight - 1 - filterBarHeight - quickAddHeight - quickEditHeight - statusBarHeight // -1 for divider
+	detailsHeight := m.Height() - m.kanbanHeight - 1 - tabBarHeight - filterBarHeight - quickAddHeight - quickEditHeight - statusBarHeight // -1 for divider
 	if detailsHeight < 3 {
 		detailsHeight = 3
 	}
@@ -2114,6 +2125,51 @@ func (m *KanbanViewModel) View() string {
 
 	// Join vertically: filterBar + kanban + divider + details + quickAdd + status + popup
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
+}
+
+// renderKanbanTabBar renders the tab bar at the top of the kanban view.
+func (m *KanbanViewModel) renderKanbanTabBar() string {
+	availableWidth := m.Width()
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1).
+		BorderBottom(true).
+		BorderStyle(lipgloss.ThickBorder()).
+		BorderForeground(ColorPrimary)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1).
+		BorderBottom(true).
+		BorderStyle(lipgloss.Border{Bottom: "─"}).
+		BorderForeground(ColorBorder)
+
+	var tabs []string
+	for i, name := range kanbanTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	tabWidth := lipgloss.Width(row)
+	remaining := availableWidth - tabWidth
+	if remaining > 0 {
+		filler := lipgloss.NewStyle().
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder).
+			Width(remaining).
+			Render("")
+		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+	}
+
+	return row
 }
 
 // renderColumn renders a single Kanban column with header and task list.

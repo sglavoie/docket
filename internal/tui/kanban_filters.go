@@ -8,6 +8,20 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// Kanban tab names and indices.
+var kanbanTabNames = []string{"All", "Actionable", "Due Soon", "High Pri", "Epics", "Stories", "Tasks", "Bugs"}
+
+const (
+	kanbanTabAll        = 0
+	kanbanTabActionable = 1
+	kanbanTabDueSoon    = 2
+	kanbanTabHighPri    = 3
+	kanbanTabEpics      = 4
+	kanbanTabStories    = 5
+	kanbanTabTasks      = 6
+	kanbanTabBugs       = 7
+)
+
 // ShowKanbanTagFilterSelectorMsg requests opening the tag filter selector for kanban.
 type ShowKanbanTagFilterSelectorMsg struct{}
 
@@ -127,6 +141,13 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 	// Apply actionable filter (hide blocked tasks and tasks with incomplete dependencies)
 	if m.actionableFilter {
 		if !m.isActionable(task) {
+			return false
+		}
+	}
+
+	// Apply "Due Soon" tab filter (overdue + today + this week)
+	if m.activeTab == kanbanTabDueSoon {
+		if !isDueSoon(task) {
 			return false
 		}
 	}
@@ -411,4 +432,37 @@ func (m *KanbanViewModel) toggleKanbanPriorityFilter() {
 	} else {
 		m.filter.Priority = 1
 	}
+}
+
+// applyTabPreset resets manual filters and applies the preset for the given tab.
+func (m *KanbanViewModel) applyTabPreset(tab int) {
+	m.activeTab = tab
+	// Reset manual filters
+	m.ClearAllFilters()
+	m.actionableFilter = false
+
+	switch tab {
+	case kanbanTabActionable:
+		m.actionableFilter = true
+	case kanbanTabDueSoon:
+		// Handled in passesFilters via dueSoonFilter flag
+		// No standard filter field; we use a special flag
+	case kanbanTabHighPri:
+		m.filter.Priority = 1
+	case kanbanTabEpics:
+		m.filter.Type = models.TaskTypeEpic
+	case kanbanTabStories:
+		m.filter.Type = models.TaskTypeStory
+	case kanbanTabTasks:
+		m.filter.Type = models.TaskTypeTask
+	case kanbanTabBugs:
+		m.filter.Type = models.TaskTypeBug
+	}
+
+	m.loadTasks()
+}
+
+// isDueSoon returns true if a task is overdue, due today, or due this week.
+func isDueSoon(task *models.Task) bool {
+	return isOverdue(task) || isDueToday(task) || isDueThisWeek(task)
 }
