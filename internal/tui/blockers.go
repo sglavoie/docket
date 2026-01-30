@@ -15,6 +15,14 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+var blockersTabNames = []string{"Active", "Resolved", "All"}
+
+const (
+	blockersTabActive   = 0
+	blockersTabResolved = 1
+	blockersTabAll      = 2
+)
+
 // BlockersModel displays and manages blockers for a project.
 type BlockersModel struct {
 	project *models.Project
@@ -23,8 +31,8 @@ type BlockersModel struct {
 	blockers []*models.Blocker
 	cursor   int
 
-	// Section visibility
-	showResolved bool
+	// Tab filtering
+	activeTab int
 
 	// Add mode
 	addMode   bool
@@ -72,7 +80,7 @@ func NewBlockersModel(project *models.Project) *BlockersModel {
 		project:       project,
 		blockers:      blockers,
 		cursor:        0,
-		showResolved:  false,
+		activeTab:     blockersTabActive,
 		addMode:       false,
 		textInput:     ti,
 		editTextInput: editTi,
@@ -98,15 +106,18 @@ func (m *BlockersModel) SetSize(width, height int) {
 	m.editTextInput.SetWidth(width - 4)
 }
 
-// getVisibleBlockers returns blockers based on current filter state.
+// getVisibleBlockers returns blockers based on current tab.
 func (m *BlockersModel) getVisibleBlockers() []*models.Blocker {
-	var visible []*models.Blocker
-	for _, b := range m.blockers {
-		if m.showResolved || !b.IsResolved() {
-			visible = append(visible, b)
-		}
+	switch m.activeTab {
+	case blockersTabResolved:
+		return m.getResolvedBlockers()
+	case blockersTabAll:
+		var all []*models.Blocker
+		all = append(all, m.blockers...)
+		return all
+	default:
+		return m.getActiveBlockers()
 	}
-	return visible
 }
 
 // getActiveBlockers returns only active blockers.
@@ -261,9 +272,26 @@ func (m *BlockersModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case "tab", "Tab":
-			m.showResolved = !m.showResolved
-			// Clamp cursor
+		case "[", "h":
+			if m.activeTab > 0 {
+				m.activeTab--
+			} else {
+				m.activeTab = len(blockersTabNames) - 1
+			}
+			visible = m.getVisibleBlockers()
+			if m.cursor >= len(visible) {
+				m.cursor = len(visible) - 1
+				if m.cursor < 0 {
+					m.cursor = 0
+				}
+			}
+
+		case "]", "l":
+			if m.activeTab < len(blockersTabNames)-1 {
+				m.activeTab++
+			} else {
+				m.activeTab = 0
+			}
 			visible = m.getVisibleBlockers()
 			if m.cursor >= len(visible) {
 				m.cursor = len(visible) - 1
@@ -414,8 +442,8 @@ func (m *BlockersModel) toggleResolve(blocker *models.Blocker) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save blockers: %w", err)}
 		}
 
-		// Adjust cursor if we just resolved and are not showing resolved
-		if !m.showResolved {
+		// Adjust cursor if item disappears from current tab
+		if m.activeTab == blockersTabActive || m.activeTab == blockersTabResolved {
 			visible := m.getVisibleBlockers()
 			if m.cursor >= len(visible) && m.cursor > 0 {
 				m.cursor--
@@ -664,6 +692,65 @@ func (m *BlockersModel) editBlockerInExternalEditor() tea.Cmd {
 	})
 }
 
+func (m *BlockersModel) renderBlockersTabBar() string {
+	cardWidth := min(m.width-6, 54)
+	availableWidth := cardWidth - 2
+
+	plainStyle := lipgloss.NewStyle().Padding(0, 1)
+	totalWidth := 0
+	for _, name := range blockersTabNames {
+		totalWidth += lipgloss.Width(plainStyle.Render(name))
+	}
+	fitsSingleLine := totalWidth <= availableWidth
+
+	activeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, 1)
+
+	inactiveStyle := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, 1)
+
+	if fitsSingleLine {
+		activeStyle = activeStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+		inactiveStyle = inactiveStyle.
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+
+	var tabs []string
+	for i, name := range blockersTabNames {
+		if i == m.activeTab {
+			tabs = append(tabs, activeStyle.Render(name))
+		} else {
+			tabs = append(tabs, inactiveStyle.Render(name))
+		}
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+
+	if fitsSingleLine {
+		tabWidth := lipgloss.Width(row)
+		remaining := availableWidth - tabWidth
+		if remaining > 0 {
+			filler := lipgloss.NewStyle().
+				BorderBottom(true).
+				BorderStyle(lipgloss.Border{Bottom: "─"}).
+				BorderForeground(ColorBorder).
+				Width(remaining).
+				Render("")
+			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
+		}
+	}
+
+	return row
+}
+
 func (m *BlockersModel) View() string {
 	var b strings.Builder
 
@@ -766,19 +853,18 @@ func (m *BlockersModel) View() string {
 
 	visible := m.getVisibleBlockers()
 
-	// Section header
-	if m.showResolved {
-		b.WriteString(SubtitleStyle.Render("All Blockers"))
-	} else {
-		b.WriteString(SubtitleStyle.Render("Active Blockers"))
-	}
+	// Tab bar
+	b.WriteString(m.renderBlockersTabBar())
 	b.WriteString("\n")
 
 	if len(visible) == 0 {
-		if m.showResolved {
+		switch m.activeTab {
+		case blockersTabActive:
+			b.WriteString(MutedStyle.Render("No active blockers. Press 'a' to add one."))
+		case blockersTabResolved:
+			b.WriteString(MutedStyle.Render("No resolved blockers."))
+		default:
 			b.WriteString(MutedStyle.Render("No blockers. Press 'a' to add one."))
-		} else {
-			b.WriteString(MutedStyle.Render("No active blockers. Press Tab to show resolved."))
 		}
 		b.WriteString("\n")
 	} else {
@@ -857,11 +943,7 @@ func (m *BlockersModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	tabHint := "Tab: show resolved"
-	if m.showResolved {
-		tabHint = "Tab: hide resolved"
-	}
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("a: add | e: edit | R: resolve/unresolve | d: delete | Enter: expand | %s | Esc: close", tabHint)))
+	b.WriteString(MutedStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | Enter: expand | h/l/[/] tabs | Esc: close"))
 
 	return b.String()
 }
