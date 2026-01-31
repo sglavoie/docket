@@ -29,6 +29,7 @@ type TutorModel struct {
 	searchQuery    string
 	activeTab      int
 	categories     []string
+	listOffset     int
 	width          int
 	height         int
 	ready          bool
@@ -51,15 +52,7 @@ func NewTutorModel() *TutorModel {
 }
 
 func (m *TutorModel) buildCategories() []string {
-	seen := make(map[string]bool)
-	var cats []string
-	for _, t := range m.topics {
-		if !seen[t.Category] {
-			seen[t.Category] = true
-			cats = append(cats, t.Category)
-		}
-	}
-	return cats
+	return []string{"Concepts", "CLI", "TUI"}
 }
 
 // HasTextInput returns true when search is active.
@@ -99,6 +92,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchQuery = m.searchInput.Value()
 				m.filterTopics()
 				m.selectedIndex = 0
+				m.listOffset = 0
 				m.updateViewport()
 				return m, cmd
 			}
@@ -111,6 +105,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.SetValue("")
 				m.filterTopics()
 				m.selectedIndex = 0
+				m.listOffset = 0
 				m.updateViewport()
 				return m, nil
 			}
@@ -132,6 +127,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.filterTopics()
 				m.selectedIndex = 0
+				m.listOffset = 0
 				m.updateViewport()
 			}
 			return m, nil
@@ -145,6 +141,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.filterTopics()
 				m.selectedIndex = 0
+				m.listOffset = 0
 				m.updateViewport()
 			}
 			return m, nil
@@ -156,6 +153,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.filterTopics()
 			m.selectedIndex = 0
+			m.listOffset = 0
 			m.updateViewport()
 			return m, nil
 		case "]":
@@ -166,6 +164,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.filterTopics()
 			m.selectedIndex = 0
+			m.listOffset = 0
 			m.updateViewport()
 			return m, nil
 		case "up", "k":
@@ -315,9 +314,68 @@ func (m *TutorModel) SetSize(width, height int) {
 	m.viewport.SetContent(m.renderTopicContent())
 }
 
+// topicLineIndex returns the line number (0-based) of the given topic index
+// in the rendered list, accounting for category headers and blank separators.
+func (m *TutorModel) topicLineIndex(topicIdx int) int {
+	line := 0
+	lastCat := ""
+	for i, t := range m.filteredTopics {
+		if t.Category != lastCat {
+			if lastCat != "" {
+				line++ // blank separator between categories
+			}
+			line++ // category header
+			lastCat = t.Category
+		}
+		if i == topicIdx {
+			return line
+		}
+		line++
+	}
+	return line
+}
+
+// listViewHeight returns the visible height for the topic list pane.
+func (m *TutorModel) listViewHeight() int {
+	return m.viewport.Height
+}
+
+// ensureSelectedVisible adjusts listOffset so the selected item is visible.
+// When the selected item is the first in its category, the category header
+// (and any blank separator above it) is also kept visible.
+func (m *TutorModel) ensureSelectedVisible() {
+	if len(m.filteredTopics) == 0 {
+		m.listOffset = 0
+		return
+	}
+	h := m.listViewHeight()
+	line := m.topicLineIndex(m.selectedIndex)
+
+	// If this is the first topic in its category, include the header above it.
+	headerLine := line
+	if m.selectedIndex == 0 || m.filteredTopics[m.selectedIndex].Category != m.filteredTopics[m.selectedIndex-1].Category {
+		// The category header is the line right before this topic.
+		// For non-first categories there's also a blank separator line before the header.
+		if m.selectedIndex > 0 {
+			headerLine = line - 2 // blank + header
+		} else {
+			headerLine = line - 1 // just header
+		}
+		if headerLine < 0 {
+			headerLine = 0
+		}
+	}
+
+	if headerLine < m.listOffset {
+		m.listOffset = headerLine
+	} else if line >= m.listOffset+h {
+		m.listOffset = line - h + 1
+	}
+}
+
 func (m *TutorModel) renderTopicList() string {
 	listW := m.listWidth()
-	var b strings.Builder
+	var lines []string
 
 	cursorStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
@@ -327,43 +385,54 @@ func (m *TutorModel) renderTopicList() string {
 		return MutedStyle.Render("No topics found.")
 	}
 
-	// Group by category for display
+	// Build all lines with category headers
 	lastCat := ""
 	idx := 0
 	for _, t := range m.filteredTopics {
 		if t.Category != lastCat {
 			if lastCat != "" {
-				b.WriteString("\n")
+				lines = append(lines, "")
 			}
 			header := t.Category
 			if lipgloss.Width(header) > listW {
 				header = header[:listW-1] + "…"
 			}
-			b.WriteString(mutedCat.Render(header))
-			b.WriteString("\n")
+			lines = append(lines, mutedCat.Render(header))
 			lastCat = t.Category
 		}
 
 		title := t.Title
-		maxTitleW := listW - 3 // cursor + space + padding
+		maxTitleW := listW - 3
 		if lipgloss.Width(title) > maxTitleW {
 			title = title[:maxTitleW-1] + "…"
 		}
 
 		if idx == m.selectedIndex {
 			if m.activePane == 0 {
-				b.WriteString(cursorStyle.Render("▸ " + title))
+				lines = append(lines, cursorStyle.Render("▸ "+title))
 			} else {
-				b.WriteString(normalStyle.Bold(true).Render("▸ " + title))
+				lines = append(lines, normalStyle.Bold(true).Render("▸ "+title))
 			}
 		} else {
-			b.WriteString("  " + normalStyle.Render(title))
+			lines = append(lines, "  "+normalStyle.Render(title))
 		}
-		b.WriteString("\n")
 		idx++
 	}
 
-	return b.String()
+	// Apply scroll offset
+	m.ensureSelectedVisible()
+	h := m.listViewHeight()
+	start := m.listOffset
+	if start > len(lines) {
+		start = len(lines)
+	}
+	end := start + h
+	if end > len(lines) {
+		end = len(lines)
+	}
+	visible := lines[start:end]
+
+	return strings.Join(visible, "\n")
 }
 
 func (m *TutorModel) renderTopicContent() string {
@@ -402,7 +471,7 @@ func renderTutorContent(topic TutorTopic, width int) string {
 		switch {
 		case strings.HasPrefix(trimmed, "# "):
 			b.WriteString(headingStyle.Render(trimmed[2:]))
-		case strings.HasPrefix(trimmed, "tt ") || strings.HasPrefix(trimmed, "$ "):
+		case strings.HasPrefix(line, "  ") && (strings.HasPrefix(trimmed, "tt ") || strings.HasPrefix(trimmed, "$ ")):
 			b.WriteString("  " + codeStyle.Render(trimmed))
 		case trimmed == "":
 			// blank line
@@ -572,91 +641,11 @@ func (m *TutorModel) View() string {
 // tutorTopics returns all tutor topics organized by category.
 func tutorTopics() []TutorTopic {
 	return []TutorTopic{
-		// Getting Started
-		{
-			Title:    "Projects",
-			Category: "Getting Started",
-			Content: `# Creating Projects
+		// ── Concepts ──────────────────────────────────────────
 
-Every task in tt belongs to a project. Create your first project and
-start organizing work immediately.
-
-  tt project new "My Project"
-  tt project new "Work Tasks" --context work
-
-# Selecting Projects
-
-Switch between projects to focus on different areas of work. The
-selected project is used by all task commands.
-
-  tt select
-  tt project list
-
-# Pinning and Archiving
-
-Pin frequently-used projects so they appear at the top of your
-dashboard. Archive completed projects to keep things tidy.
-
-  tt project pin "My Project"
-  tt project archive "Old Project"`,
-		},
-		{
-			Title:    "Quick Capture",
-			Category: "Getting Started",
-			Content: `# Inline Syntax
-
-Add tasks quickly with inline modifiers. Priority is set with !,
-tags with #, and section assignment with @.
-
-  tt add "Fix login bug !1 #backend @active"
-  tt add "Update docs !3 #frontend"
-  tt add "Research caching #perf @next"
-
-# Priority Shorthand
-
-Priority ranges from 1 (highest) to 4 (lowest). Use ! followed by
-the number anywhere in the task title.
-
-  tt add "Critical fix !1"
-  tt add "Nice to have !4"
-
-# Tags and Sections
-
-Tags help you categorize tasks across projects. Sections follow
-GTD methodology for workflow organization.
-
-  tt add "Deploy service #ops #urgent @active"`,
-		},
-		{
-			Title:    "TUI Overview",
-			Category: "Getting Started",
-			Content: `# View Stack
-
-The TUI uses a stack-based navigation model. Each screen you open
-is pushed onto a stack. Press q to go back to the previous screen,
-or Esc to dismiss the current action.
-
-# Command Palette
-
-Press Ctrl+K from any view to open the command palette. Type to
-filter commands and press Enter to execute. This is the fastest
-way to access any feature.
-
-# Getting Help
-
-Press ? in any view to see all available keybindings for that
-screen. Help is context-sensitive and shows only relevant actions.
-
-# Navigation Basics
-
-Most views use j/k or arrow keys for movement. Enter opens or
-selects items. Tab switches between panes in split views.`,
-		},
-
-		// Task Management
 		{
 			Title:    "Task Types",
-			Category: "Task Management",
+			Category: "Concepts",
 			Content: `# Type Hierarchy
 
 tt supports five task types organized in a hierarchy. Epics are
@@ -664,22 +653,16 @@ the largest unit, containing stories, tasks, bugs, and ideas.
 Stories can contain tasks and bugs. Tasks, bugs, and ideas are
 leaf nodes that cannot contain children.
 
-  tt task add --type epic "User Authentication"
-  tt task add --type story "Login Flow" --parent <epic-id>
-  tt task add --type bug "Fix timeout" --parent <story-id>
-
 # When to Use Each
 
 Epics represent large features or initiatives spanning weeks.
 Stories are user-facing deliverables within an epic. Tasks are
 concrete work items. Bugs track defects. Ideas capture future
-possibilities without commitment.
-
-  tt task add --type idea "Consider GraphQL migration"`,
+possibilities without commitment.`,
 		},
 		{
 			Title:    "Statuses",
-			Category: "Task Management",
+			Category: "Concepts",
 			Content: `# Available Statuses
 
 Tasks move through five statuses: todo, in_progress, done,
@@ -687,74 +670,58 @@ blocked, and canceled.
 
 # Transitions
 
-Use dedicated commands for common transitions. These update the
-status and record the timestamp.
+todo is the default status for new tasks. Moving to in_progress
+means work has started. done marks a task as finished. blocked
+indicates the task cannot proceed until an external dependency
+is resolved. canceled removes the task from active work without
+completing it.
 
-  tt task start <id>
-  tt task complete <id>
-  tt task cancel <id>
-  tt task block <id>
+# Status Flow
 
-# Manual Status Setting
-
-You can also set status directly for any transition.
-
-  tt task status <id> todo
-  tt task status <id> in_progress
-
-In the TUI, press s on a selected task to cycle through
-statuses, or use the command palette for direct access.`,
+A typical task flows from todo to in_progress to done. Tasks
+can be blocked at any point and reopened back to todo. Canceled
+tasks are terminal and do not appear in active views.`,
 		},
 		{
 			Title:    "Priority",
-			Category: "Task Management",
+			Category: "Concepts",
 			Content: `# Priority Scale
 
-tt uses a 1-4 priority scale where 1 is the highest (critical)
-and 4 is the lowest (someday). Priority affects sort order in
+tt uses a 1-5 priority scale where 1 is the highest (critical)
+and 5 is the lowest (someday). Priority affects sort order in
 all views, with higher-priority tasks appearing first.
 
-# Setting Priority
+# What Each Level Means
 
-Set priority when creating a task or update it later.
-
-  tt add "Fix crash !1"
-  tt task priority <id> 2
-
-# Display
-
-In the TUI, priority is shown with colored indicators next to
-each task. Priority 1 tasks are highlighted in red, priority 2
-in orange, priority 3 in yellow, and priority 4 uses the
-default color.`,
+Priority 1 (critical) is for urgent, drop-everything items.
+Priority 2 (high) is important work that should be done soon.
+Priority 3 (normal) is regular work with no special urgency.
+Priority 4 (low) is less important work. Priority 5 (someday)
+is for things you might do eventually.`,
 		},
 		{
 			Title:    "Dependencies",
-			Category: "Task Management",
-			Content: `# Blocking Relationships
+			Category: "Concepts",
+			Content: `# Blocking Model
 
 Tasks can depend on other tasks. When a task is blocked by
 another, it cannot progress until the blocker is resolved.
 
-  tt task depends <task-id> <blocker-id>
-
 # How Blocking Works
 
 When all blockers of a task are completed or canceled, the
-task automatically becomes unblocked. The TUI shows blocked
-tasks with a distinct indicator.
+task automatically becomes unblocked. Blocked tasks are shown
+with a distinct indicator in all views.
 
-# Viewing Dependencies
+# Dependency Chains
 
-In the project tree view, dependencies are visible in the
-task detail sidebar. Use the task detail view to see the
-full dependency chain.`,
+Dependencies can form chains where task A blocks B which
+blocks C. Completing A unblocks B, and completing B then
+unblocks C.`,
 		},
-
-		// Organization
 		{
 			Title:    "Sections (GTD)",
-			Category: "Organization",
+			Category: "Concepts",
 			Content: `# Section Overview
 
 Sections follow the Getting Things Done methodology to organize
@@ -768,80 +735,57 @@ tasks queued up to start soon. Inbox is for unsorted incoming
 tasks. Waiting is for tasks blocked on external input. Someday
 captures tasks you might do eventually.
 
-# Assigning Sections
+# Custom Sections
 
-  tt task section <id> active
-  tt task section <id> next
-  tt add "New idea @someday"
-
-In the TUI, press @ on a selected task to open the section
-picker and reassign quickly.`,
+Beyond the built-in sections, you can create your own to match
+your workflow. Custom sections behave like built-in ones and
+can receive tasks, be renamed, or be removed. Assigning a task
+to a section that does not exist yet creates it automatically.`,
 		},
 		{
 			Title:    "Tags",
-			Category: "Organization",
-			Content: `# Creating Tags
+			Category: "Concepts",
+			Content: `# What Are Tags
 
 Tags are lightweight labels for cross-cutting categorization.
-Create them inline when adding tasks, or add them to existing
-tasks.
+A task can have multiple tags, and tags work across projects.
 
-  tt add "Setup CI #devops #infrastructure"
-  tt task tag <id> backend
+# Use Cases
 
-# Filtering by Tag
-
-Filter your task list to show only tasks with a specific tag.
-This works in both CLI and TUI.
-
-  tt task list --tag backend
-
-In the TUI, use the filter view (f key) to filter by tags
-across all tasks in the current project.`,
+Use tags for themes that cut across your project hierarchy:
+backend, frontend, urgent, tech-debt, design. Tags complement
+sections and priority by adding a free-form dimension to task
+organization.`,
 		},
 		{
 			Title:    "Contexts",
-			Category: "Organization",
+			Category: "Concepts",
 			Content: `# What Are Contexts
 
 Contexts group related projects together. You might have a
 "work" context, a "personal" context, and a "side-projects"
 context. Switching contexts changes which projects appear
-in your dashboard.
+in your dashboard and when cycling through projects.
 
-  tt context new work
-  tt context new personal
-
-# Managing Projects in Contexts
-
-  tt context add work "Project Alpha"
-  tt context add work "Project Beta"
-
-# Switching Contexts
-
-  tt context select work
+# How Contexts Work
 
 When a context is active, only projects in that context
-appear in the dashboard and project list.`,
+appear in the dashboard and project list. This keeps your
+view focused on the relevant area of your life.`,
 		},
 		{
 			Title:    "Notes",
-			Category: "Organization",
-			Content: `# Project Notes
+			Category: "Concepts",
+			Content: `# What Are Notes
 
 Each project can have associated notes for documentation,
 meeting minutes, or reference material. Notes are stored
 as markdown files alongside your tasks.
 
-  tt note add "Sprint Planning Notes"
-  tt note list
-
 # Global Notes
 
 Global notes are not tied to any project. Use them for
 cross-project references or general documentation.
-
-  tt note add --global "Architecture Decisions"
 
 # Linking Notes to Tasks
 
@@ -849,18 +793,14 @@ Notes can be linked to specific tasks for context. This
 creates a bidirectional reference visible in both the
 note and task views.`,
 		},
-
-		// Automation
 		{
 			Title:    "Workflow Rules",
-			Category: "Automation",
+			Category: "Concepts",
 			Content: `# What Are Workflow Rules
 
 Workflow rules automate repetitive actions. When a trigger
 condition is met, the associated action executes automatically.
 Triggers can be state changes or events.
-
-  tt workflow add
 
 # Practical Examples
 
@@ -872,29 +812,16 @@ Auto-move tasks to Active section when started:
 Auto-tag completed tasks:
 
   Trigger: status changes to done
-  Action: add tag "completed"
-
-# Managing Rules
-
-  tt workflow list
-  tt workflow delete <id>
-
-In the TUI, access workflow rules through the command palette
-or the project settings.`,
+  Action: add tag "completed"`,
 		},
 		{
 			Title:    "Recurrence",
-			Category: "Automation",
+			Category: "Concepts",
 			Content: `# Recurring Tasks
 
-Create tasks that automatically repeat on a schedule. When a
+Recurring tasks automatically repeat on a schedule. When a
 recurring task is completed, a new instance is created with
 the next due date.
-
-  tt task add --recur daily "Daily standup"
-  tt task add --recur weekly "Weekly review"
-  tt task add --recur 3d "Check metrics every 3 days"
-  tt task add --recur 2w "Biweekly retrospective"
 
 # Recurrence Patterns
 
@@ -910,14 +837,11 @@ history.`,
 		},
 		{
 			Title:    "Snooze",
-			Category: "Automation",
+			Category: "Concepts",
 			Content: `# Snoozing Tasks
 
-Snooze a task to temporarily hide it from active views. The
-task reappears automatically when the snooze period expires.
-
-  tt task snooze <id> 2d
-  tt task snooze <id> 1w
+Snooze temporarily hides a task from active views. The task
+reappears automatically when the snooze period expires.
 
 # How Snoozed Tasks Reappear
 
@@ -931,11 +855,9 @@ Snooze is useful for tasks you cannot act on right now but
 do not want to forget. Instead of leaving them in your active
 list as noise, snooze them until the right time.`,
 		},
-
-		// Storage & Advanced
 		{
 			Title:    "Markdown Format",
-			Category: "Storage & Advanced",
+			Category: "Concepts",
 			Content: `# How Tasks Are Stored
 
 tt stores all tasks in human-readable markdown files. Each
@@ -962,9 +884,99 @@ Task metadata like ID, status, priority, tags, and dates is
 stored in HTML comments immediately after the heading. This
 keeps the markdown readable while preserving all task data.`,
 		},
+
+		// ── CLI ───────────────────────────────────────────────
+
+		{
+			Title:    "Projects",
+			Category: "CLI",
+			Content: `# Creating Projects
+
+Every task in tt belongs to a project. Create your first project
+and start organizing work immediately.
+
+  tt project new "My Project"
+  tt project new "Work Tasks" --context work
+
+# Selecting Projects
+
+Switch between projects to focus on different areas of work. The
+selected project is used by all task commands.
+
+  tt select
+  tt project list
+
+# Pinning and Archiving
+
+Pin frequently-used projects so they appear at the top of your
+dashboard. Archive completed projects to keep things tidy.
+
+  tt project pin "My Project"
+  tt project archive "Old Project"`,
+		},
+		{
+			Title:    "Quick Capture",
+			Category: "CLI",
+			Content: `# Inline Syntax
+
+Add tasks quickly with inline modifiers. Priority is set with !,
+tags with #, and section assignment with @.
+
+  tt add "Fix login bug !1 #backend @active"
+  tt add "Update docs !3 #frontend"
+  tt add "Research caching #perf @next"
+
+# Priority Shorthand
+
+Priority ranges from 1 (highest) to 5 (lowest). Use ! followed by
+the number anywhere in the task title.
+
+  tt add "Critical fix !1"
+  tt add "Nice to have !4"
+
+# Tags and Sections
+
+Tags help you categorize tasks across projects. Sections follow
+GTD methodology for workflow organization.
+
+  tt add "Deploy service #ops #urgent @active"`,
+		},
+		{
+			Title:    "Task Management",
+			Category: "CLI",
+			Content: `# Creating Tasks
+
+Add tasks with type and parent options for hierarchy.
+
+  tt task add --type epic "User Authentication"
+  tt task add --type story "Login Flow" --parent <epic-id>
+  tt task add --type bug "Fix timeout" --parent <story-id>
+
+# Status Transitions
+
+  tt task start <id>
+  tt task complete <id>
+  tt task cancel <id>
+  tt task block <id>
+
+# Priority and Sections
+
+  tt task priority <id> 2
+  tt task section <id> active
+  tt task section <id> next
+
+# Dependencies
+
+  tt task depends <task-id> <blocker-id>
+
+# Snooze
+
+  tt task snooze <id> 2d
+  tt task snooze <id> 1w`,
+		},
 		{
 			Title:    "Search",
-			Category: "Storage & Advanced",
+			Category: "CLI",
 			Content: `# Searching Tasks
 
 Search across all tasks in the current project or globally
@@ -979,13 +991,159 @@ Combine search with filters to narrow results by status,
 priority, tag, or section.
 
   tt task list --status todo --tag backend
-  tt task list --priority 1
+  tt task list --priority 1`,
+		},
+		{
+			Title:    "Workflow Rules",
+			Category: "CLI",
+			Content: `# Managing Workflow Rules
 
-# TUI Search
+Create, list, and delete workflow rules from the command line.
 
-In the TUI, press Ctrl+F or use the command palette to
-open global search. Results update as you type and you
-can jump directly to any matching task.`,
+  tt workflow add
+  tt workflow list
+  tt workflow delete <id>`,
+		},
+		{
+			Title:    "Notes",
+			Category: "CLI",
+			Content: `# Managing Notes
+
+  tt note add "Sprint Planning Notes"
+  tt note list
+  tt note view <id>
+
+# Global Notes
+
+  tt note add --global "Architecture Decisions"`,
+		},
+		{
+			Title:    "Contexts",
+			Category: "CLI",
+			Content: `# Creating Contexts
+
+  tt context new work
+  tt context new personal
+
+# Managing Projects in Contexts
+
+  tt context add work "Project Alpha"
+  tt context add work "Project Beta"
+
+# Switching Contexts
+
+Use tt select to switch between projects and contexts.
+
+  tt select`,
+		},
+
+		// ── TUI ───────────────────────────────────────────────
+
+		{
+			Title:    "Navigation",
+			Category: "TUI",
+			Content: `# View Stack
+
+The TUI uses a stack-based navigation model. Each screen you open
+is pushed onto a stack. Press q to go back to the previous screen,
+or Esc to dismiss the current action.
+
+# Movement
+
+Most views use j/k or arrow keys for movement. Enter opens or
+selects items. Tab switches between panes in split views.
+
+# Getting Help
+
+Press ? in any view to see all available keybindings for that
+screen. Help is context-sensitive and shows only relevant actions.`,
+		},
+		{
+			Title:    "Command Palette",
+			Category: "TUI",
+			Content: `# Opening the Palette
+
+Press : (colon) from any view to open the command palette.
+Type to filter commands and press Enter to execute.
+
+# What It Contains
+
+The command palette lists all available actions for the current
+view. It is the fastest way to discover and access features
+without memorizing keybindings.`,
+		},
+		{
+			Title:    "Status Changes",
+			Category: "TUI",
+			Content: `# Comma-Prefix Bindings
+
+Change task status using , followed by a letter:
+
+  ,s  Start (set to in_progress)
+  ,d  Mark done
+  ,b  Block task
+  ,o  Reopen (set to todo)
+  ,x  Cancel task
+
+Each binding sets the status directly. Select a task first,
+then press the key combination.`,
+		},
+		{
+			Title:    "Snooze",
+			Category: "TUI",
+			Content: `# Snooze Bindings
+
+Snooze a selected task using the s prefix followed by a
+duration key. The task will be hidden until the snooze
+period expires.`,
+		},
+		{
+			Title:    "Priority",
+			Category: "TUI",
+			Content: `# Setting Priority in TUI
+
+Use ! followed by a number to set priority on the selected task:
+
+  !1  Critical (highest)
+  !2  High
+  !3  Normal
+  !4  Low
+  !5  Someday (lowest)`,
+		},
+		{
+			Title:    "Sections",
+			Category: "TUI",
+			Content: `# Section Picker
+
+Press @ on a selected task to open the section picker. Choose
+from Active, Next, Inbox, Waiting, or Someday to reassign
+the task quickly.`,
+		},
+		{
+			Title:    "Tags",
+			Category: "TUI",
+			Content: `# Filtering by Tag
+
+Press f to open the filter view. From there you can filter
+tasks by tag across all tasks in the current project.`,
+		},
+		{
+			Title:    "Kanban",
+			Category: "TUI",
+			Content: `# Kanban Board
+
+Press Ctrl+K in the project tree view to open the kanban board.
+Tasks are displayed in columns by status, giving a visual
+overview of work in progress.`,
+		},
+		{
+			Title:    "Help",
+			Category: "TUI",
+			Content: `# Context-Sensitive Help
+
+Press ? in any view to see all keybindings available in that
+screen. The help overlay shows only the actions relevant to
+your current view.`,
 		},
 	}
 }
