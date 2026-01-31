@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -23,6 +24,11 @@ type ProjectFocusViewModel struct {
 
 	// Navigation
 	cursor int
+
+	// Sub-tabs
+	subTab           int
+	subTabRowFocused bool
+	subTabNames      []string
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string
@@ -71,14 +77,66 @@ func (m *ProjectFocusViewModel) loadTasks() {
 		}
 		return m.tasks[i].UpdatedAt.After(m.tasks[j].UpdatedAt)
 	})
+
+	m.computeSubTabs()
+}
+
+// computeSubTabs builds dynamic sub-tab names from unique CustomSection values.
+func (m *ProjectFocusViewModel) computeSubTabs() {
+	seen := map[string]bool{}
+	var names []string
+	for _, task := range m.tasks {
+		section := task.CustomSection
+		if section == "" {
+			section = "(none)"
+		}
+		if !seen[section] {
+			seen[section] = true
+			names = append(names, section)
+		}
+	}
+	sort.Strings(names)
+	m.subTabNames = names
+
+	if m.subTab > len(m.subTabNames) {
+		m.subTab = 0
+	}
+}
+
+// activeSubTabFilter returns the selected sub-tab value, or "" if no sub-tab filtering.
+func (m *ProjectFocusViewModel) activeSubTabFilter() string {
+	if len(m.subTabNames) <= 1 || m.subTab <= 0 || m.subTab > len(m.subTabNames) {
+		return ""
+	}
+	return m.subTabNames[m.subTab-1]
+}
+
+// filteredTasks returns tasks filtered by the active sub-tab.
+func (m *ProjectFocusViewModel) filteredTasks() []*models.Task {
+	filter := m.activeSubTabFilter()
+	if filter == "" {
+		return m.tasks
+	}
+	var result []*models.Task
+	for _, task := range m.tasks {
+		section := task.CustomSection
+		if section == "" {
+			section = "(none)"
+		}
+		if section == filter {
+			result = append(result, task)
+		}
+	}
+	return result
 }
 
 // getTaskAtCursor returns the task at the current cursor position.
 func (m *ProjectFocusViewModel) getTaskAtCursor() *models.Task {
-	if m.cursor < 0 || m.cursor >= len(m.tasks) {
+	tasks := m.filteredTasks()
+	if m.cursor < 0 || m.cursor >= len(tasks) {
 		return nil
 	}
-	return m.tasks[m.cursor]
+	return tasks[m.cursor]
 }
 
 // HasActiveSearch returns false (no search in this view).
@@ -136,6 +194,39 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
+	// Sub-tab navigation
+	switch key {
+	case "(", ")":
+		if len(m.subTabNames) > 1 {
+			m.subTabRowFocused = !m.subTabRowFocused
+		}
+		return m, nil
+	case "[", "h":
+		if len(m.subTabNames) > 1 {
+			total := len(m.subTabNames) + 1
+			if m.subTab > 0 {
+				m.subTab--
+			} else {
+				m.subTab = total - 1
+			}
+			m.clampCursor()
+			return m, nil
+		}
+	case "]", "l":
+		if len(m.subTabNames) > 1 {
+			total := len(m.subTabNames) + 1
+			if m.subTab < total-1 {
+				m.subTab++
+			} else {
+				m.subTab = 0
+			}
+			m.clampCursor()
+			return m, nil
+		}
+	}
+
+	tasks := m.filteredTasks()
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -156,14 +247,14 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, nil
 
 	case "down", "j":
-		if m.cursor < len(m.tasks)-1 {
+		if m.cursor < len(tasks)-1 {
 			m.cursor++
 		}
 		return m, nil
 
 	case "G":
-		if len(m.tasks) > 0 {
-			m.cursor = len(m.tasks) - 1
+		if len(tasks) > 0 {
+			m.cursor = len(tasks) - 1
 		}
 		return m, nil
 
@@ -176,8 +267,8 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	case "ctrl+d":
 		m.cursor += 10
-		if m.cursor >= len(m.tasks) {
-			m.cursor = len(m.tasks) - 1
+		if m.cursor >= len(tasks) {
+			m.cursor = len(tasks) - 1
 		}
 		if m.cursor < 0 {
 			m.cursor = 0
@@ -555,8 +646,9 @@ func (m *ProjectFocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *ProjectFocusViewModel) clampCursor() {
-	if m.cursor >= len(m.tasks) {
-		m.cursor = len(m.tasks) - 1
+	tasks := m.filteredTasks()
+	if m.cursor >= len(tasks) {
+		m.cursor = len(tasks) - 1
 	}
 	if m.cursor < 0 {
 		m.cursor = 0
@@ -574,6 +666,8 @@ func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
 }
 
 func (m *ProjectFocusViewModel) View() string {
+	tasks := m.filteredTasks()
+
 	if len(m.tasks) == 0 {
 		var b strings.Builder
 		b.WriteString(MutedStyle.Render("No tasks in focus."))
@@ -594,32 +688,45 @@ func (m *ProjectFocusViewModel) View() string {
 	// Calculate available height for task list
 	contentHeight := m.height - 12
 
+	// Sub-tab bar
+	subTabBar := m.renderSubTabBar()
+	if subTabBar != "" {
+		b.WriteString(subTabBar)
+		b.WriteString("\n")
+		contentHeight -= 2
+	}
+
 	// Render task lines
 	var lines []string
 	maxTitleLen := m.width - 35 // Less space needed without project name
 
-	for i, task := range m.tasks {
+	for i, task := range tasks {
 		isSelected := i == m.cursor
 		line := m.renderTaskLine(task, isSelected, maxTitleLen)
 		lines = append(lines, line)
 	}
 
-	// Apply scrolling if needed
-	scrollOffset := 0
-	if m.cursor >= contentHeight {
-		scrollOffset = m.cursor - contentHeight + 1
-	}
+	if len(tasks) == 0 {
+		b.WriteString(MutedStyle.Render("No tasks match this filter."))
+		b.WriteString("\n\n")
+	} else {
+		// Apply scrolling if needed
+		scrollOffset := 0
+		if m.cursor >= contentHeight {
+			scrollOffset = m.cursor - contentHeight + 1
+		}
 
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
+		visibleLines := lines
+		if scrollOffset > 0 && scrollOffset < len(lines) {
+			visibleLines = lines[scrollOffset:]
+		}
+		if len(visibleLines) > contentHeight {
+			visibleLines = visibleLines[:contentHeight]
+		}
 
-	b.WriteString(strings.Join(visibleLines, "\n"))
-	b.WriteString("\n\n")
+		b.WriteString(strings.Join(visibleLines, "\n"))
+		b.WriteString("\n\n")
+	}
 
 	// Prefix popup
 	if popup := m.renderPrefixPopup(); popup != "" {
@@ -640,7 +747,12 @@ func (m *ProjectFocusViewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due | ? help")
+	footerParts := "j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due"
+	if len(m.subTabNames) > 1 {
+		footerParts += " | [/] sections"
+	}
+	footerParts += " | ? help"
+	footer := HelpStyle.Render(footerParts)
 	b.WriteString(footer)
 
 	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
@@ -648,6 +760,28 @@ func (m *ProjectFocusViewModel) View() string {
 		Subtitle: fmt.Sprintf("%d active tasks", len(m.tasks)),
 		Centered: true,
 	})
+}
+
+// renderSubTabBar renders the dynamic sub-tab row when applicable.
+func (m *ProjectFocusViewModel) renderSubTabBar() string {
+	if len(m.subTabNames) <= 1 {
+		return ""
+	}
+
+	tabs := make([]string, 0, len(m.subTabNames)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, m.subTabNames...)
+
+	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
+
+	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+	unfocusedPad := " "
+	if m.subTabRowFocused {
+		bar = focusIndicator + bar
+	} else {
+		bar = unfocusedPad + bar
+	}
+	return bar
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
@@ -687,6 +821,14 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	}
 	title := util.Truncate(task.Title, maxTitleLen)
 
+	// Custom section badge
+	csStr := ""
+	if task.CustomSection != "" {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		csStr = " " + csStyle.Render("@ "+task.CustomSection)
+	}
+
 	// Tags (show first 2)
 	tagsStr := ""
 	if len(task.Tags) > 0 {
@@ -704,7 +846,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	}
 
 	// Build line (no project name needed)
-	line := fmt.Sprintf("%s%s %s %s %s%s", cursor, statusIcon, typeIcon, priorityBadge, title, tagsStr)
+	line := fmt.Sprintf("%s%s %s %s %s%s%s", cursor, statusIcon, typeIcon, priorityBadge, title, csStr, tagsStr)
 	if dueStr != "" {
 		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
 	}

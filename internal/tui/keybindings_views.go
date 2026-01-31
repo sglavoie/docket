@@ -240,6 +240,8 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "Navigation", Views: views},
+		Keybinding{Key: "[/]", Description: "Navigate sub-tabs", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
