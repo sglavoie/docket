@@ -294,7 +294,7 @@ func (m *TutorModel) SetSize(width, height int) {
 	tabBarHeight := 2
 	searchHeight := 2
 	footerHeight := 2
-	vpHeight := height - tabBarHeight - searchHeight - footerHeight - 1
+	vpHeight := height - tabBarHeight - searchHeight - footerHeight - 2 // -2: 1 for spacing, 1 for focus bar
 
 	if vpWidth < 30 {
 		vpWidth = 30
@@ -524,6 +524,22 @@ func (m *TutorModel) View() string {
 		lw := m.listWidth()
 		rw := m.innerWidth() - lw - 1
 		vpH := m.viewport.Height
+
+		// Focus indicator bar
+		activeBarStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+		inactiveBarStyle := lipgloss.NewStyle().Foreground(ColorBorder)
+		leftBarStyle, rightBarStyle := inactiveBarStyle, inactiveBarStyle
+		if m.activePane == 0 {
+			leftBarStyle = activeBarStyle
+		} else {
+			rightBarStyle = activeBarStyle
+		}
+		leftBar := leftBarStyle.Render(strings.Repeat("━", lw))
+		rightBar := rightBarStyle.Render(strings.Repeat("━", rw))
+		divider := lipgloss.NewStyle().Foreground(ColorBorder).Render("│")
+		b.WriteString(pad)
+		b.WriteString(leftBar + divider + rightBar)
+		b.WriteString("\n")
 
 		pane := renderOverlaySplitPane(leftContent, rightContent, lw, rw, vpH)
 		// Add left padding to each line of the split pane
