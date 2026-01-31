@@ -160,6 +160,10 @@ type KanbanViewModel struct {
 	// Tab filtering
 	activeTab int // Index into kanbanTabNames
 
+	// Custom section tab filtering
+	customSectionTab        int  // selected custom section tab index (0 = All)
+	customSectionRowFocused bool // true when focus is on custom section row (vs preset row)
+
 	// Additional filter state
 	actionableFilter bool
 
@@ -224,6 +228,12 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 // Filters are applied to determine which tasks are visible.
 // After filtering, hierarchical nodes are built for each column.
 func (m *KanbanViewModel) loadTasks() {
+	// Reset custom section row focus if no custom sections exist
+	if m.customSectionTabs() == nil {
+		m.customSectionRowFocused = false
+		m.customSectionTab = 0
+	}
+
 	// Clear existing tasks and nodes
 	for _, section := range KanbanColumnOrder {
 		m.Tasks[section] = []*models.Task{}
@@ -511,6 +521,9 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	m.ColumnWidth = columnWidth
 
 	tabBarHeight := TabBarHeight
+	if m.customSectionTabs() != nil {
+		tabBarHeight += TabBarHeight
+	}
 	filterBarHeight := 0
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
 		filterBarHeight = FilterBarHeight
@@ -845,6 +858,30 @@ func (m *KanbanViewModel) moveColumnLeft() {
 // focus remains on the current column.
 func (m *KanbanViewModel) moveColumnRight() {
 	m.ActiveColumn = m.findNextNonEmptyColumn(+1)
+}
+
+// customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
+func (m *KanbanViewModel) customSectionTabs() []string {
+	if m.Project == nil {
+		return nil
+	}
+	custom := m.Project.GetCustomSections()
+	if len(custom) == 0 {
+		return nil
+	}
+	tabs := make([]string, 0, len(custom)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, custom...)
+	return tabs
+}
+
+// activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
+func (m *KanbanViewModel) activeCustomSectionFilter() string {
+	tabs := m.customSectionTabs()
+	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
+		return ""
+	}
+	return tabs[m.customSectionTab]
 }
 
 // View implements the tea.Model interface. Renders a split view with:

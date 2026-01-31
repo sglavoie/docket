@@ -85,6 +85,13 @@ func (f *KanbanFilterBarComponent) SetCounts(counts map[string]int) {
 // passesFilters checks if a task passes all current filters.
 // Returns true if the task should be displayed.
 func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
+	// Apply custom section filter
+	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
+		if task.CustomSection != csFilter {
+			return false
+		}
+	}
+
 	// Apply type filter
 	if m.filter.Type != "" && task.Type != m.filter.Type {
 		return false

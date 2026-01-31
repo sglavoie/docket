@@ -646,20 +646,49 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Refreshed from disk"
 		return m, nil
 
-	// Tab switching
+	// Tab row focus switching
+	case "(", ")":
+		if tabs := m.customSectionTabs(); tabs != nil {
+			m.customSectionRowFocused = !m.customSectionRowFocused
+		}
+		return m, nil
+
+	// Tab switching within focused row
 	case "[":
-		if m.activeTab > 0 {
-			m.applyTabPreset(m.activeTab - 1)
+		if m.customSectionRowFocused {
+			if tabs := m.customSectionTabs(); tabs != nil {
+				if m.customSectionTab > 0 {
+					m.customSectionTab--
+				} else {
+					m.customSectionTab = len(tabs) - 1
+				}
+				m.loadTasks()
+			}
 		} else {
-			m.applyTabPreset(len(kanbanTabNames) - 1)
+			if m.activeTab > 0 {
+				m.applyTabPreset(m.activeTab - 1)
+			} else {
+				m.applyTabPreset(len(kanbanTabNames) - 1)
+			}
 		}
 		return m, nil
 
 	case "]":
-		if m.activeTab < len(kanbanTabNames)-1 {
-			m.applyTabPreset(m.activeTab + 1)
+		if m.customSectionRowFocused {
+			if tabs := m.customSectionTabs(); tabs != nil {
+				if m.customSectionTab < len(tabs)-1 {
+					m.customSectionTab++
+				} else {
+					m.customSectionTab = 0
+				}
+				m.loadTasks()
+			}
 		} else {
-			m.applyTabPreset(0)
+			if m.activeTab < len(kanbanTabNames)-1 {
+				m.applyTabPreset(m.activeTab + 1)
+			} else {
+				m.applyTabPreset(0)
+			}
 		}
 		return m, nil
 

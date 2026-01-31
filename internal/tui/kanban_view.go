@@ -21,8 +21,33 @@ func (m *KanbanViewModel) View() string {
 
 	var viewParts []string
 
+	// Render custom section tab bar above preset tabs (when custom sections exist)
+	hasCustomSections := m.customSectionTabs() != nil
+	if hasCustomSections {
+		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+		unfocusedPad := " "
+
+		csBar := RenderColoredTabBar(m.customSectionTabs(), m.customSectionTab, m.Width()-1, 1, m.Project.SectionColors)
+		if m.customSectionRowFocused {
+			csBar = focusIndicator + csBar
+		} else {
+			csBar = unfocusedPad + csBar
+		}
+		viewParts = append(viewParts, csBar)
+	}
+
 	// Render tab bar at the top
-	viewParts = append(viewParts, m.renderKanbanTabBar())
+	presetBar := m.renderKanbanTabBar()
+	if hasCustomSections {
+		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+		unfocusedPad := " "
+		if !m.customSectionRowFocused {
+			presetBar = focusIndicator + presetBar
+		} else {
+			presetBar = unfocusedPad + presetBar
+		}
+	}
+	viewParts = append(viewParts, presetBar)
 
 	// Render filter bar if enabled
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
@@ -80,6 +105,9 @@ func (m *KanbanViewModel) View() string {
 
 	// Render the details panel for the selected task
 	tabBarHeight := TabBarHeight
+	if m.customSectionTabs() != nil {
+		tabBarHeight += TabBarHeight
+	}
 	filterBarHeight := 0
 	if m.filterBar != nil && m.filterBar.IsEnabled() {
 		filterBarHeight = FilterBarHeight
@@ -137,6 +165,13 @@ func (m *KanbanViewModel) View() string {
 // renderKanbanTabBar renders the tab bar at the top of the kanban view.
 func (m *KanbanViewModel) renderKanbanTabBar() string {
 	availableWidth := m.Width()
+	if m.customSectionTabs() != nil {
+		availableWidth-- // Reserve space for focus indicator
+	}
+
+	// When custom sections exist and focus is on the custom section row,
+	// dim the preset tab bar to indicate it's not the focused row.
+	dimmed := m.customSectionTabs() != nil && m.customSectionRowFocused
 
 	activeStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -145,6 +180,15 @@ func (m *KanbanViewModel) renderKanbanTabBar() string {
 		BorderBottom(true).
 		BorderStyle(lipgloss.ThickBorder()).
 		BorderForeground(ColorPrimary)
+
+	if dimmed {
+		activeStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted).
+			Padding(0, 1).
+			BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
 
 	inactiveStyle := lipgloss.NewStyle().
 		Foreground(ColorMuted).
