@@ -330,7 +330,11 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 			contextStr = MutedStyle.Render("blocked")
 		}
 	case SectionOld:
-		contextStr = MutedStyle.Render(formatRelativeTime(task.UpdatedAt))
+		displayTime := task.UpdatedAt
+		if displayTime.IsZero() {
+			displayTime = task.CreatedAt
+		}
+		contextStr = MutedStyle.Render(formatRelativeTime(displayTime))
 	}
 
 	// Build line

@@ -112,8 +112,12 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
-			// 10. Old: UpdatedAt older than oldDays
-			if oldDays > 0 && task.UpdatedAt.Before(oldThreshold) {
+			// 10. Old: UpdatedAt older than oldDays (fall back to CreatedAt when UpdatedAt is zero)
+			effectiveUpdate := task.UpdatedAt
+			if effectiveUpdate.IsZero() {
+				effectiveUpdate = task.CreatedAt
+			}
+			if oldDays > 0 && effectiveUpdate.Before(oldThreshold) {
 				m.old = append(m.old, dt)
 			}
 		}
@@ -173,9 +177,17 @@ func (m *DailyReviewModel) sortSections() {
 		return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
 	})
 
-	// Old: by UpdatedAt (oldest first)
+	// Old: by UpdatedAt (oldest first), falling back to CreatedAt when zero
 	sort.Slice(m.old, func(i, j int) bool {
-		return m.old[i].Task.UpdatedAt.Before(m.old[j].Task.UpdatedAt)
+		ti := m.old[i].Task.UpdatedAt
+		if ti.IsZero() {
+			ti = m.old[i].Task.CreatedAt
+		}
+		tj := m.old[j].Task.UpdatedAt
+		if tj.IsZero() {
+			tj = m.old[j].Task.CreatedAt
+		}
+		return ti.Before(tj)
 	})
 
 	// Completed: most recent first

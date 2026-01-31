@@ -51,9 +51,13 @@ func (m *WeeklyReviewModel) loadData() {
 				continue
 			}
 
-			// Track latest update
-			if task.UpdatedAt.After(latestUpdate) {
-				latestUpdate = task.UpdatedAt
+			// Track latest update (fall back to CreatedAt when UpdatedAt is zero)
+			tu := task.UpdatedAt
+			if tu.IsZero() {
+				tu = task.CreatedAt
+			}
+			if tu.After(latestUpdate) {
+				latestUpdate = tu
 			}
 
 			// Inbox count
@@ -82,8 +86,12 @@ func (m *WeeklyReviewModel) loadData() {
 			}
 
 			// Task-level sections
-			// Stale tasks
-			if !task.Status.IsComplete() && task.UpdatedAt.Before(staleTaskThreshold) {
+			// Stale tasks (fall back to CreatedAt when UpdatedAt is zero)
+			effectiveUpdate := task.UpdatedAt
+			if effectiveUpdate.IsZero() {
+				effectiveUpdate = task.CreatedAt
+			}
+			if !task.Status.IsComplete() && effectiveUpdate.Before(staleTaskThreshold) {
 				m.staleTasks = append(m.staleTasks, WeeklyReviewTask{Task: task, Project: project})
 			}
 
@@ -149,9 +157,17 @@ func (m *WeeklyReviewModel) sortSections() {
 		return m.overcommitted[i].InProgressCount > m.overcommitted[j].InProgressCount
 	})
 
-	// Stale tasks: oldest first
+	// Stale tasks: oldest first (fall back to CreatedAt when UpdatedAt is zero)
 	sort.Slice(m.staleTasks, func(i, j int) bool {
-		return m.staleTasks[i].Task.UpdatedAt.Before(m.staleTasks[j].Task.UpdatedAt)
+		ti := m.staleTasks[i].Task.UpdatedAt
+		if ti.IsZero() {
+			ti = m.staleTasks[i].Task.CreatedAt
+		}
+		tj := m.staleTasks[j].Task.UpdatedAt
+		if tj.IsZero() {
+			tj = m.staleTasks[j].Task.CreatedAt
+		}
+		return ti.Before(tj)
 	})
 
 	// Priority mismatch: by priority then due date
