@@ -327,7 +327,7 @@ func (m *GlobalInboxProcessorModel) View() string {
 
 	// Header with progress
 	b.WriteString(m.renderHeader())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Current task display
 	if git := m.getCurrentTask(); git != nil {
@@ -336,7 +336,7 @@ func (m *GlobalInboxProcessorModel) View() string {
 		b.WriteString(m.renderEmptyState())
 	}
 
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Operations panel
 	b.WriteString(m.renderOperationsPanel())
