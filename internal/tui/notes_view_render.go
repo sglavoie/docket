@@ -34,17 +34,19 @@ func (m *NotesViewModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Tab bar
-	b.WriteString(m.renderNotesTabBar())
-	b.WriteString("\n")
+	// Tab bar and count info (hidden when bottom pane is fullscreen)
+	if !(m.fullscreenPane && m.detailsPaneFocused) {
+		b.WriteString(m.renderNotesTabBar())
+		b.WriteString("\n")
 
-	// Note count and sort mode
-	countInfo := fmt.Sprintf("%d notes", len(m.notes))
-	if m.sortMode != noteSortModified {
-		countInfo += fmt.Sprintf(" (sort: %s)", m.sortMode)
+		// Note count and sort mode
+		countInfo := fmt.Sprintf("%d notes", len(m.notes))
+		if m.sortMode != noteSortModified {
+			countInfo += fmt.Sprintf(" (sort: %s)", m.sortMode)
+		}
+		b.WriteString(MutedStyle.Render(countInfo))
+		b.WriteString("\n\n")
 	}
-	b.WriteString(MutedStyle.Render(countInfo))
-	b.WriteString("\n\n")
 
 	// Fullscreen mode: show only the focused pane using full usable height
 	usable := m.height - 8
