@@ -3,12 +3,12 @@ package tui
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -544,17 +544,8 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	editor := m.config.Editor
-	if editor == "" {
-		editor = "code"
-	}
-
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		c = exec.Command(editor, tmpPath)
-	}
+	editor := external.ResolveEditor(m.config.Editor)
+	c := external.EditorCommand(editor, tmpPath)
 
 	task := msg.Task
 	project := msg.Project

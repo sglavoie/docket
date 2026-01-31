@@ -7,45 +7,33 @@ import (
 )
 
 // parseTaskContent extracts the title and description from edited content.
+// It extracts the title from the first "# " line and treats all remaining
+// non-comment lines as description, regardless of their position relative
+// to the comment marker.
 func parseTaskContent(content string, task *models.Task) (title, description string) {
 	lines := strings.Split(content, "\n")
 	var descLines []string
 	title = task.Title // Default to original title
-	inDescription := false
-	foundComment := false
 
 	for _, line := range lines {
-		// Already in description section
-		if inDescription {
-			descLines = append(descLines, line)
-			continue
-		}
-
-		// Look for title line (first # line)
+		// Extract title from the first "# " heading
 		if len(line) >= 2 && line[0] == '#' && line[1] == ' ' {
 			title = strings.TrimSpace(line[2:])
 			continue
 		}
 
-		// Look for the HTML comment marker
+		// Skip the instruction comment line
 		if len(line) >= 4 && line[:4] == "<!--" {
-			foundComment = true
 			continue
 		}
 
-		// After comment, skip empty lines until description starts
-		if foundComment && line == "" {
-			continue
-		}
-
-		// Start of description content
-		if foundComment {
-			inDescription = true
-			descLines = append(descLines, line)
-		}
+		descLines = append(descLines, line)
 	}
 
-	// Trim trailing empty lines
+	// Trim leading and trailing empty lines
+	for len(descLines) > 0 && descLines[0] == "" {
+		descLines = descLines[1:]
+	}
 	for len(descLines) > 0 && descLines[len(descLines)-1] == "" {
 		descLines = descLines[:len(descLines)-1]
 	}

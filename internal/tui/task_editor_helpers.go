@@ -239,6 +239,7 @@ func (m *TaskEditorModel) saveTask() error {
 			t.Priority = m.task.Priority
 			t.ParentID = m.task.ParentID
 			t.Section = m.task.Section
+			t.CustomSection = m.task.CustomSection
 			t.DueDate = m.task.DueDate
 			t.Pinned = m.task.Pinned
 			t.PinnedAt = m.task.PinnedAt
