@@ -64,7 +64,13 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	path := storage.NoteFilePathIn(m.effectiveDir(), note.Filename)
 	c := external.EditorCommand(editor, path)
 
+	oldFilename := note.Filename
+	dir := m.effectiveDir()
 	return tea.ExecProcess(c, func(err error) tea.Msg {
+		reloaded, loadErr := storage.LoadNoteFrom(dir, oldFilename)
+		if loadErr == nil && reloaded.Title != note.Title {
+			_, _ = storage.RenameNoteIn(dir, oldFilename, reloaded.Title)
+		}
 		return NotesRefreshMsg{}
 	})
 }

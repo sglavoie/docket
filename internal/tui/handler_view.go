@@ -773,6 +773,8 @@ func (m *AppModel) handleCreateGlobalNote(notesDir string) (bool, tea.Cmd) {
 		reloaded, loadErr := storage.LoadNoteFrom(notesDir, note.Filename)
 		if loadErr == nil && reloaded.Title == "Untitled Note" && strings.TrimSpace(reloaded.Body) == "" {
 			_ = storage.DeleteNoteFrom(notesDir, note.Filename)
+		} else if loadErr == nil && reloaded.Title != "Untitled Note" {
+			_, _ = storage.RenameNoteIn(notesDir, note.Filename, reloaded.Title)
 		}
 		return NotesRefreshMsg{}
 	})
@@ -818,6 +820,8 @@ func (m *AppModel) handleCreateNote(project *models.Project) (bool, tea.Cmd) {
 		reloaded, loadErr := storage.LoadNote(project, note.Filename)
 		if loadErr == nil && reloaded.Title == "Untitled Note" && strings.TrimSpace(reloaded.Body) == "" {
 			_ = storage.DeleteNote(project, note.Filename)
+		} else if loadErr == nil && reloaded.Title != "Untitled Note" {
+			_, _ = storage.RenameNoteIn(storage.NotesDir(project), note.Filename, reloaded.Title)
 		}
 		return NotesRefreshMsg{}
 	})
