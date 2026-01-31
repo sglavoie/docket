@@ -49,6 +49,15 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "tutor",
+			Description: "Open the interactive tutor",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"tutorial", "learn", "guide"},
+			Handler: func() tea.Msg {
+				return ShowTutorMsg{}
+			},
+		},
+		{
 			Name:        "back",
 			Description: "Go back to previous view",
 			Shortcut:    "esc",

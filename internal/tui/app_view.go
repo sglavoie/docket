@@ -17,8 +17,8 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
-	// Hide status bar for command palette (reclaim space for the overlay)
-	if m.currentView() == ViewCommandPalette {
+	// Hide status bar for command palette and tutor (reclaim space for the overlay)
+	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor {
 		return content
 	}
 
@@ -184,7 +184,13 @@ func (m *AppModel) renderStatusBar() string {
 		}
 	}
 
-	left := StatusBarStyle.Render(status)
+	var left string
+	if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
+		blue := lipgloss.NewStyle().Foreground(ColorPrimary)
+		left = StatusBarStyle.Render("Dashboard") + ": Run " + blue.Render("tutor") + " command to start. Dismiss with " + blue.Render("|")
+	} else {
+		left = StatusBarStyle.Render(status)
+	}
 	right := HelpStyle.Render(help)
 
 	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)

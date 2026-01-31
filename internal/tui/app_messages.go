@@ -700,6 +700,12 @@ type CrossProjectLinkCreatedMsg struct {
 	LinkType      LinkType
 }
 
+// ShowTutorMsg opens the tutor view.
+type ShowTutorMsg struct{}
+
+// TutorDismissedMsg dismisses the tutor prompt on the dashboard.
+type TutorDismissedMsg struct{}
+
 // LinkRemovedMsg signals a task link was removed from the sidebar.
 type LinkRemovedMsg struct {
 	SourceTask *models.Task

@@ -155,6 +155,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowTutorMsg:
+		m.showView(ViewTutor, NewTutorModel())
+		return true, nil
+
 	case ShowWeeklyReviewMsg:
 		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
 		return true, nil

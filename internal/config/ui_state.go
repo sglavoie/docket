@@ -92,6 +92,20 @@ func (c *Config) SetShowRecentTasks(show bool) {
 	c.ShowRecentTasks = &show
 }
 
+// GetTutorDismissed returns whether the tutor prompt has been dismissed.
+// Defaults to false if not set.
+func (c *Config) GetTutorDismissed() bool {
+	if c.TutorDismissed == nil {
+		return false
+	}
+	return *c.TutorDismissed
+}
+
+// SetTutorDismissed sets whether the tutor prompt has been dismissed.
+func (c *Config) SetTutorDismissed(dismissed bool) {
+	c.TutorDismissed = &dismissed
+}
+
 // GetRecentPaletteItems returns the list of recently selected items in the command palette.
 func (c *Config) GetRecentPaletteItems() []RecentPaletteItem {
 	if c.RecentPaletteItems == nil {

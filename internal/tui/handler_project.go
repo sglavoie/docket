@@ -138,6 +138,15 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, defaultStatusTimeout()
 
+	case TutorDismissedMsg:
+		m.config.SetTutorDismissed(true)
+		if err := m.configManager.Save(m.config); err != nil {
+			m.err = err
+			return true, nil
+		}
+		m.statusMessage = "Tutor prompt dismissed"
+		return true, defaultStatusTimeout()
+
 	case ShowTrashedProjectsMsg:
 		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.config.DataDir))
 		return true, nil

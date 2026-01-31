@@ -197,6 +197,12 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ShowBlockersMsg{Project: project}
 				}
 			}
+		case "|":
+			if !m.config.GetTutorDismissed() {
+				return m, func() tea.Msg {
+					return TutorDismissedMsg{}
+				}
+			}
 		case "B":
 			return m, func() tea.Msg {
 				return ShowGlobalBlockersMsg{}

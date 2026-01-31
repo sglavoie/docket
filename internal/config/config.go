@@ -82,6 +82,7 @@ type Config struct {
 	WeeklyInboxThreshold      *int                         `json:"weekly_inbox_threshold,omitempty"`       // nil=5, inbox count threshold
 	WeeklyBlockedThreshold    *int                         `json:"weekly_blocked_threshold,omitempty"`     // nil=3, blocked count threshold
 	WeeklyInProgressThreshold *int                         `json:"weekly_in_progress_threshold,omitempty"` // nil=5, in-progress count threshold
+	TutorDismissed            *bool                        `json:"tutor_dismissed,omitempty"`              // nil=false, tutor prompt dismissed on dashboard
 }
 
 // NewConfig creates a new configuration with default values.
