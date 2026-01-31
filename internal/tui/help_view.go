@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
 // HelpItem represents a single help entry.
@@ -15,6 +17,13 @@ type HelpItem struct {
 	Key         string // e.g., "j/k", "ctrl+O"
 	Description string // e.g., "Move cursor"
 	Category    string // e.g., "Navigation", "Actions"
+}
+
+// filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
+type filteredHelpItem struct {
+	HelpItem
+	keyPositions  []int
+	descPositions []int
 }
 
 // HelpProvider is an interface for views that can provide help items.
@@ -25,7 +34,7 @@ type HelpProvider interface {
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
 	items            []HelpItem
-	filteredItems    []HelpItem
+	filteredItems    []filteredHelpItem
 	viewport         viewport.Model
 	searchInput      textinput.Model
 	searchMode       bool
@@ -57,7 +66,10 @@ func NewHelpViewModel(items []HelpItem, sourceView ViewType, viewName string) *H
 		searchQuery: "",
 		ready:       false,
 	}
-	m.filteredItems = items
+	m.filteredItems = make([]filteredHelpItem, len(items))
+	for i, item := range items {
+		m.filteredItems[i] = filteredHelpItem{HelpItem: item}
+	}
 	m.categories = m.buildCategories()
 	return m
 }
@@ -271,20 +283,26 @@ func (m *HelpViewModel) filterItems() {
 	}
 
 	if m.searchQuery == "" {
-		m.filteredItems = source
+		m.filteredItems = make([]filteredHelpItem, len(source))
+		for i, item := range source {
+			m.filteredItems[i] = filteredHelpItem{HelpItem: item}
+		}
 		return
 	}
 
-	query := strings.ToLower(m.searchQuery)
-	var filtered []HelpItem
+	var filtered []filteredHelpItem
 
 	for _, item := range source {
-		keyMatch := strings.Contains(strings.ToLower(item.Key), query)
-		descMatch := strings.Contains(strings.ToLower(item.Description), query)
-		catMatch := strings.Contains(strings.ToLower(item.Category), query)
+		keyScore, keyPos := fuzzy.ScoreTermsWithPositions(item.Key, m.searchQuery)
+		descScore, descPos := fuzzy.ScoreTermsWithPositions(item.Description, m.searchQuery)
+		catScore, _ := fuzzy.ScoreTermsWithPositions(item.Category, m.searchQuery)
 
-		if keyMatch || descMatch || catMatch {
-			filtered = append(filtered, item)
+		if keyScore > 0 || descScore > 0 || catScore > 0 {
+			filtered = append(filtered, filteredHelpItem{
+				HelpItem:      item,
+				keyPositions:  keyPos,
+				descPositions: descPos,
+			})
 		}
 	}
 
@@ -300,7 +318,7 @@ func (m *HelpViewModel) renderContent() string {
 	var b strings.Builder
 
 	// Group items by category
-	categories := make(map[string][]HelpItem)
+	categories := make(map[string][]filteredHelpItem)
 	var categoryOrder []string
 
 	for _, item := range m.filteredItems {
@@ -339,7 +357,15 @@ func (m *HelpViewModel) renderContent() string {
 	columnStyle := lipgloss.NewStyle().Width(columnWidth)
 
 	// renderHelpItem renders a single key+description pair with proper wrapping
-	renderHelpItem := func(key, desc string) string {
+	renderHelpItem := func(key, desc string, keyPos, descPos []int) string {
+		// Render key with highlight if positions present
+		var renderedKey string
+		if len(keyPos) > 0 {
+			renderedKey = keyStyle.Render(HighlightText(key, keyPos, lipgloss.NewStyle().Foreground(ColorSecondary)))
+		} else {
+			renderedKey = keyStyle.Render(key)
+		}
+
 		// Wrap description with indentation for continuation lines
 		// Indent = keyWidth + separator(2) so wrapped text aligns under description
 		wrappedDesc := wrapDescriptionWithIndent(desc, descWidth, keyWidth+2)
@@ -351,9 +377,13 @@ func (m *HelpViewModel) renderContent() string {
 		for i, line := range descLines {
 			if i == 0 {
 				// First line: key + separator + description
-				result.WriteString(keyStyle.Render(key))
+				result.WriteString(renderedKey)
 				result.WriteString("  ")
-				result.WriteString(line)
+				if len(descPos) > 0 {
+					result.WriteString(HighlightText(line, descPos, lipgloss.NewStyle()))
+				} else {
+					result.WriteString(line)
+				}
 			} else {
 				// Continuation lines are already indented by wrapDescriptionWithIndent
 				result.WriteString("\n")
@@ -388,13 +418,13 @@ func (m *HelpViewModel) renderContent() string {
 		for j := 0; j < len(items); j += 2 {
 			// First column - wrap in columnStyle to ensure fixed width for proper alignment
 			item1 := items[j]
-			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description))
+			col1 := columnStyle.Render(renderHelpItem(item1.Key, item1.Description, item1.keyPositions, item1.descPositions))
 
 			// Second column (if exists)
 			var col2 string
 			if j+1 < len(items) {
 				item2 := items[j+1]
-				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description))
+				col2 = columnStyle.Render(renderHelpItem(item2.Key, item2.Description, item2.keyPositions, item2.descPositions))
 			}
 
 			row := lipgloss.JoinHorizontal(lipgloss.Top, col1, strings.Repeat(" ", columnGap), col2)
