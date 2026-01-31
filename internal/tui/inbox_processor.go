@@ -47,16 +47,7 @@ type processingAction struct {
 	taskID       string
 	actionType   string // "section", "priority", "tags", "delete", etc.
 	timestamp    time.Time
-	prevSnapshot *taskSnapshot
-}
-
-// taskSnapshot stores task state for undo.
-type taskSnapshot struct {
-	section   string
-	priority  int
-	tags      []string
-	dueDate   *time.Time
-	dependsOn []string
+	prevSnapshot *inboxSnapshot
 }
 
 // NewInboxProcessorModel creates a new inbox processor model.
@@ -408,24 +399,12 @@ func (m *InboxProcessorModel) skipCurrent() tea.Cmd {
 }
 
 // captureSnapshot creates a snapshot of task state for undo.
-func (m *InboxProcessorModel) captureSnapshot(task *models.Task) *taskSnapshot {
-	var dueDate *time.Time
-	if task.DueDate != nil {
-		d := *task.DueDate
-		dueDate = &d
-	}
-
-	return &taskSnapshot{
-		section:   task.Section,
-		priority:  task.Priority,
-		tags:      append([]string{}, task.Tags...),
-		dueDate:   dueDate,
-		dependsOn: append([]string{}, task.DependsOn...),
-	}
+func (m *InboxProcessorModel) captureSnapshot(task *models.Task) *inboxSnapshot {
+	return captureInboxSnapshot(task)
 }
 
 // recordAction records an action in the undo history.
-func (m *InboxProcessorModel) recordAction(actionType string, snapshot *taskSnapshot) {
+func (m *InboxProcessorModel) recordAction(actionType string, snapshot *inboxSnapshot) {
 	task := m.getCurrentTask()
 	if task == nil {
 		return
@@ -459,17 +438,7 @@ func (m *InboxProcessorModel) undoLastAction() tea.Cmd {
 
 	// Restore snapshot
 	if action.prevSnapshot != nil {
-		task.Section = action.prevSnapshot.section
-		task.Priority = action.prevSnapshot.priority
-		task.Tags = append([]string{}, action.prevSnapshot.tags...)
-		task.DependsOn = append([]string{}, action.prevSnapshot.dependsOn...)
-		if action.prevSnapshot.dueDate != nil {
-			d := *action.prevSnapshot.dueDate
-			task.DueDate = &d
-		} else {
-			task.DueDate = nil
-		}
-		task.UpdatedAt = time.Now()
+		restoreInboxSnapshot(task, action.prevSnapshot)
 	}
 
 	m.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
@@ -695,7 +664,6 @@ func (m *InboxProcessorModel) GetHelpItems() []HelpItem {
 }
 
 // willLeaveInbox returns true if the task will no longer appear in inbox after save.
-// A task leaves inbox when its section is changed from Inbox or when it's completed/canceled.
 func (m *InboxProcessorModel) willLeaveInbox(task *models.Task) bool {
-	return task.Section != models.SectionInbox || task.IsComplete()
+	return willLeaveInbox(task)
 }

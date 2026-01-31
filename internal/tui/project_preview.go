@@ -180,7 +180,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 
 		// Overdue count
 		overdueCount := 0
-		today := time.Now().Truncate(24 * time.Hour)
+		today := time.Now().Truncate(util.Day)
 		for _, task := range p.Tasks {
 			if task.DueDate != nil && !task.Status.IsComplete() && task.DueDate.Before(today) {
 				overdueCount++

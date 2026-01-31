@@ -80,7 +80,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.kanban != nil {
 			m.kanban.loadTasks()
 		}
-		return m, statusTimeout(2 * time.Second)
+		return m, defaultStatusTimeout()
 
 	case SaveErrorMsg:
 		m.isLoading = false

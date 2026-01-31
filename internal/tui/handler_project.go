@@ -73,7 +73,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			statusMsg = "Unpinned"
 		}
 		m.statusMessage = statusMsg
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ProjectDeletedMsg:
 		m.config.RemoveProject(msg.Project.ID)
@@ -122,7 +122,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		m.statusMessage = fmt.Sprintf("Set current: %s", msg.Project.Name)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ToggleRecentTasksMsg:
 		newValue := !m.config.GetShowRecentTasks()
@@ -136,7 +136,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		} else {
 			m.statusMessage = "Recent Tasks hidden"
 		}
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ShowTrashedProjectsMsg:
 		m.showView(ViewTrashedProjects, NewTrashedProjectsModel(m.config.DataDir))
@@ -159,7 +159,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		m.statusMessage = fmt.Sprintf("Restored: %s", msg.Project.Name)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case PurgeFromTrashMsg:
 		m.isLoading = true
@@ -174,7 +174,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		newModel.SetSize(m.width, m.height-2)
 		m.views.Register(ViewTrashedProjects, newModel)
 		m.statusMessage = fmt.Sprintf("Permanently deleted: %s", msg.Slug)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 	return false, nil
 }

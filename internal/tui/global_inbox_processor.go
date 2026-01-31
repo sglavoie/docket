@@ -50,16 +50,7 @@ type globalProcessingAction struct {
 	projectID    string
 	actionType   string // "section", "priority", "tags", "delete", etc.
 	timestamp    time.Time
-	prevSnapshot *globalTaskSnapshot
-}
-
-// globalTaskSnapshot stores task state for undo.
-type globalTaskSnapshot struct {
-	section   string
-	priority  int
-	tags      []string
-	dueDate   *time.Time
-	dependsOn []string
+	prevSnapshot *inboxSnapshot
 }
 
 // NewGlobalInboxProcessorModel creates a new global inbox processor model.
@@ -446,24 +437,12 @@ func (m *GlobalInboxProcessorModel) skipCurrent() tea.Cmd {
 }
 
 // captureSnapshot creates a snapshot of task state for undo.
-func (m *GlobalInboxProcessorModel) captureSnapshot(task *models.Task) *globalTaskSnapshot {
-	var dueDate *time.Time
-	if task.DueDate != nil {
-		d := *task.DueDate
-		dueDate = &d
-	}
-
-	return &globalTaskSnapshot{
-		section:   task.Section,
-		priority:  task.Priority,
-		tags:      append([]string{}, task.Tags...),
-		dueDate:   dueDate,
-		dependsOn: append([]string{}, task.DependsOn...),
-	}
+func (m *GlobalInboxProcessorModel) captureSnapshot(task *models.Task) *inboxSnapshot {
+	return captureInboxSnapshot(task)
 }
 
 // recordAction records an action in the undo history.
-func (m *GlobalInboxProcessorModel) recordAction(actionType string, snapshot *globalTaskSnapshot) {
+func (m *GlobalInboxProcessorModel) recordAction(actionType string, snapshot *inboxSnapshot) {
 	git := m.getCurrentTask()
 	if git == nil {
 		return
@@ -498,17 +477,7 @@ func (m *GlobalInboxProcessorModel) undoLastAction() tea.Cmd {
 
 	// Restore snapshot
 	if action.prevSnapshot != nil {
-		git.Task.Section = action.prevSnapshot.section
-		git.Task.Priority = action.prevSnapshot.priority
-		git.Task.Tags = append([]string{}, action.prevSnapshot.tags...)
-		git.Task.DependsOn = append([]string{}, action.prevSnapshot.dependsOn...)
-		if action.prevSnapshot.dueDate != nil {
-			d := *action.prevSnapshot.dueDate
-			git.Task.DueDate = &d
-		} else {
-			git.Task.DueDate = nil
-		}
-		git.Task.UpdatedAt = time.Now()
+		restoreInboxSnapshot(git.Task, action.prevSnapshot)
 	}
 
 	m.statusMessage = fmt.Sprintf("Undone: %s", action.actionType)
@@ -593,5 +562,5 @@ func (m *GlobalInboxProcessorModel) GetHelpItems() []HelpItem {
 
 // willLeaveInbox returns true if the task will no longer appear in inbox after save.
 func (m *GlobalInboxProcessorModel) willLeaveInbox(task *models.Task) bool {
-	return task.Section != models.SectionInbox || task.IsComplete()
+	return willLeaveInbox(task)
 }

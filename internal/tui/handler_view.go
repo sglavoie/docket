@@ -474,7 +474,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		m.statusMessage = "Deleted custom context: " + msg.Name
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case CustomContextSavedMsg:
 		// Save config and go back to context picker
@@ -494,7 +494,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		} else {
 			m.statusMessage = fmt.Sprintf("Updated custom context '%s' with %d projects", msg.Name, msg.ProjectCount)
 		}
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ContextRenamedMsg:
 		// Save config after renaming a context
@@ -504,7 +504,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.Refresh(m.config)
 		}
 		m.statusMessage = fmt.Sprintf("Renamed '%s' to '%s' (%d projects)", msg.OldName, msg.NewName, msg.ProjectCount)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case StatusClearMsg:
 		m.statusMessage = ""
@@ -512,11 +512,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case StatusMsg:
 		m.statusMessage = string(msg)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case MoveBlockedMsg:
 		m.statusMessage = msg.Reason
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {

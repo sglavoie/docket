@@ -40,7 +40,7 @@ func (m *GlobalInboxProcessorModel) renderTaskDisplay(git *GlobalInboxTask) stri
 	metadata := fmt.Sprintf("%s %s · Created %s · Priority %s",
 		typeIcon, statusIcon,
 		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
-		MutedStyle.Render(renderGlobalPriorityStars(task.Priority)),
+		MutedStyle.Render(renderPriorityStars(task.Priority)),
 	)
 	b.WriteString(metadata)
 
@@ -140,14 +140,6 @@ func (m *GlobalInboxProcessorModel) renderEmptyInbox() string {
 	b.WriteString("\n\n")
 	b.WriteString(MutedStyle.Render("Press 'q' to return to dashboard"))
 	return b.String()
-}
-
-// renderGlobalPriorityStars renders priority as stars.
-func renderGlobalPriorityStars(priority int) string {
-	if priority <= 0 {
-		return ""
-	}
-	return strings.Repeat("★", priority)
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.

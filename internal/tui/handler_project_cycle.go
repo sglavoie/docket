@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -52,7 +51,7 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 				m.statusMessage = fmt.Sprintf("Project cycle updated%s: %d projects", contextInfo, count)
 			}
-			return true, statusTimeout(2 * time.Second)
+			return true, defaultStatusTimeout()
 		}
 		return true, nil
 
@@ -80,7 +79,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 		} else {
 			m.statusMessage = "No projects in cycle. Press @ to configure."
 		}
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 
 	if len(cycleProjects) == 1 {
@@ -89,7 +88,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 			return m.switchToCycleProject(cycleProjects[0], len(cycleProjects))
 		}
 		m.statusMessage = "Only one project in cycle"
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 
 	// Find current project's index in cycle list
@@ -141,5 +140,5 @@ func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int)
 
 	// Show cycle position in status (using filtered count)
 	m.statusMessage = fmt.Sprintf("Switched to: %s [%d projects in cycle]", project.Name, cycleTotal)
-	return true, statusTimeout(2 * time.Second)
+	return true, defaultStatusTimeout()
 }

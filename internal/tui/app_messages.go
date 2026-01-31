@@ -484,11 +484,19 @@ type SaveErrorMsg struct {
 // Helper Functions
 // =============================================================================
 
+// StatusUpdateTimeout is the default duration for status messages before they auto-clear.
+const StatusUpdateTimeout = 2 * time.Second
+
 // statusTimeout returns a command that clears the status message after the given duration.
 func statusTimeout(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg {
 		return StatusClearMsg{}
 	})
+}
+
+// defaultStatusTimeout returns a command that clears the status message after the default timeout.
+func defaultStatusTimeout() tea.Cmd {
+	return statusTimeout(StatusUpdateTimeout)
 }
 
 // =============================================================================

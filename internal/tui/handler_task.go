@@ -150,7 +150,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			m.statusMessage = successMsg
 			m.refreshProjectTree()
-			return true, statusTimeout(2 * time.Second)
+			return true, defaultStatusTimeout()
 		}
 
 		m.pendingBulkTasks = nil
@@ -210,15 +210,15 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CommentAddedMsg:
 		m.statusMessage = "Comment added"
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case CommentDeletedMsg:
 		m.statusMessage = "Comment deleted"
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case CommentEditedMsg:
 		m.statusMessage = "Comment updated"
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ShowProjectSelectorForMoveMsg:
 		if msg.Task != nil && msg.SourceProject != nil {
@@ -280,7 +280,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.projectTree.JumpToTask(msg.NewTask)
 		}
 
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case ShowLinkedTaskSelectorMsg:
 		if msg.Task != nil && msg.Project != nil {
@@ -288,7 +288,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			// If no linked tasks, do nothing
 			if !selector.HasLinkedTasks() {
 				m.statusMessage = "No linked tasks"
-				return true, statusTimeout(2 * time.Second)
+				return true, defaultStatusTimeout()
 			}
 			// If single linked task with same project, jump directly (unless unlinking)
 			if !msg.ForUnlink {
@@ -395,7 +395,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			sectionName = "related"
 		}
 		m.statusMessage = fmt.Sprintf("Removed %s link", sectionName)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 	return false, nil
 }
@@ -411,7 +411,7 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	targetProject := m.config.GetProject(ref.ProjectID)
 	if targetProject == nil {
 		m.statusMessage = "Project not found (link may be broken)"
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 
 	// Load the project
@@ -423,7 +423,7 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	task := targetProject.GetTaskByID(ref.TaskID)
 	if task == nil {
 		m.statusMessage = fmt.Sprintf("Task not found in %s (link may be broken)", targetProject.Name)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 
 	return m.handleLinkedTaskNavigation(task, targetProject)
@@ -437,7 +437,7 @@ func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models
 			m.projectTree.JumpToTask(task)
 			m.statusMessage = fmt.Sprintf("Jumped to #%d", task.ShortID)
 		}
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 
 	// Otherwise, switch to the project and jump
@@ -447,7 +447,7 @@ func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models
 		m.projectTree.JumpToTask(task)
 		m.statusMessage = fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name)
 	}
-	return true, statusTimeout(2 * time.Second)
+	return true, defaultStatusTimeout()
 }
 
 // handleCommandPaletteTaskAction handles inline task actions from the command palette.

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -31,7 +30,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if msg.Task.Description == "" {
 			m.statusMessage = "No description to copy"
-			return true, statusTimeout(2 * time.Second)
+			return true, defaultStatusTimeout()
 		}
 		_, err := external.CopyTaskDetails(msg.Task)
 		if err != nil {
@@ -50,7 +49,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, errorCmd("copy failed: %w", err)
 		}
 		m.statusMessage = fmt.Sprintf("Copied \"%s\" to clipboard", ref)
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 
 	case CopyTasksTitleMsg:
 		if len(msg.Tasks) == 0 {
@@ -78,7 +77,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if !hasDescription {
 			m.statusMessage = "No descriptions to copy"
-			return true, statusTimeout(2 * time.Second)
+			return true, defaultStatusTimeout()
 		}
 		_, err := external.CopyTasksDetails(msg.Tasks)
 		if err != nil {
@@ -128,7 +127,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		} else {
 			m.statusMessage = fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count)
 		}
-		return true, statusTimeout(2 * time.Second)
+		return true, defaultStatusTimeout()
 	}
 	return false, nil
 }

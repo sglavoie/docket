@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"time"
-
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -25,7 +23,7 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	m.refreshProjectTree()
 	if statusMsg != "" {
 		m.statusMessage = statusMsg
-		return statusTimeout(2 * time.Second)
+		return defaultStatusTimeout()
 	}
 	return nil
 }
