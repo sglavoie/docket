@@ -91,30 +91,27 @@ func (m *HelpViewModel) ShouldCaptureEsc() bool {
 }
 
 // SetSize sets the view dimensions.
+func (m *HelpViewModel) innerWidth() int {
+	w := m.width - 2 // 1 char padding each side
+	if w < 40 {
+		w = 40
+	}
+	return w
+}
+
 func (m *HelpViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	// Card chrome: border (2 vertical) + padding (2 vertical) = 4 vertical
-	// Plus search bar (2 lines when active) + footer (2 lines) + spacing
-	cardVerticalChrome := 4
-	searchHeight := 2 // Search bar + spacing (shown inside card)
-	footerHeight := 2 // Footer hint
-
-	// Calculate card width using same logic as View() to ensure consistency
-	cardWidth := width - 4
-	if cardWidth > 100 {
-		cardWidth = 100
+	searchHeight := 0
+	if m.searchMode || m.searchQuery != "" {
+		searchHeight = 2
 	}
-	if cardWidth < 50 {
-		cardWidth = 50
-	}
+	statusBarHeight := 3 // blank line + separator + bar
+	tabBarHeight := m.tabBarLines()
 
-	// Card horizontal chrome: border (2) + padding (4) = 6
-	cardHorizontalChrome := 6
-	viewportWidth := cardWidth - cardHorizontalChrome
-	tabBarHeight := 2 // Tab bar + spacing
-	viewportHeight := height - cardVerticalChrome - tabBarHeight - searchHeight - footerHeight - 4
+	viewportWidth := m.innerWidth()
+	viewportHeight := height - tabBarHeight - searchHeight - statusBarHeight + 1
 
 	if viewportWidth < 40 {
 		viewportWidth = 40
@@ -423,91 +420,93 @@ func (m *HelpViewModel) goToSection(idx int) {
 	}
 }
 
-func (m *HelpViewModel) renderHelpTabBar(cardWidth int) string {
-	tabNames := append([]string{"All"}, m.categories...)
-	cardHorizontalChrome := 6 // border(2) + padding(4)
-	availableWidth := cardWidth - cardHorizontalChrome
+// tabBarLines returns the number of visual lines the tab bar occupies.
+func (m *HelpViewModel) tabBarLines() int {
+	return lipgloss.Height(m.renderHelpTabBar())
+}
 
-	// Measure tabs without borders to check if they fit
+func (m *HelpViewModel) renderHelpTabBar() string {
+	tabNames := append([]string{"All"}, m.categories...)
+	availableWidth := m.innerWidth()
+
 	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	totalWidth := 0
-	for _, name := range tabNames {
-		totalWidth += lipgloss.Width(plainStyle.Render(name))
-	}
-	fitsSingleLine := totalWidth <= availableWidth
 
 	activeStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(ColorPrimary).
-		Padding(0, 1)
+		Padding(0, 1).
+		BorderBottom(true).
+		BorderStyle(lipgloss.ThickBorder()).
+		BorderForeground(ColorPrimary)
 
 	inactiveStyle := lipgloss.NewStyle().
 		Foreground(ColorMuted).
-		Padding(0, 1)
+		Padding(0, 1).
+		BorderBottom(true).
+		BorderStyle(lipgloss.Border{Bottom: "─"}).
+		BorderForeground(ColorBorder)
 
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
+	// Build rows of tabs that fit within available width
+	var rows []string
+	var currentRow []string
+	currentWidth := 0
+
+	for i, name := range tabNames {
+		tabWidth := lipgloss.Width(plainStyle.Render(name))
+		if currentWidth+tabWidth > availableWidth && len(currentRow) > 0 {
+			rows = append(rows, m.finishTabRow(currentRow, availableWidth))
+			currentRow = nil
+			currentWidth = 0
+		}
+		if i == m.activeTab {
+			currentRow = append(currentRow, activeStyle.Render(name))
+		} else {
+			currentRow = append(currentRow, inactiveStyle.Render(name))
+		}
+		currentWidth += tabWidth
+	}
+	if len(currentRow) > 0 {
+		rows = append(rows, m.finishTabRow(currentRow, availableWidth))
+	}
+
+	return strings.Join(rows, "\n")
+}
+
+// finishTabRow joins a row of rendered tabs and fills remaining width with a border.
+func (m *HelpViewModel) finishTabRow(tabs []string, availableWidth int) string {
+	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
+	tabWidth := lipgloss.Width(row)
+	remaining := availableWidth - tabWidth
+	if remaining > 0 {
+		filler := lipgloss.NewStyle().
 			BorderBottom(true).
 			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
+			BorderForeground(ColorBorder).
+			Width(remaining).
+			Render("")
+		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
 	}
-
-	var tabs []string
-	for i, name := range tabNames {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	// Extend bottom border to fill width (only when tabs fit on one line)
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
 	return row
 }
 
 func (m *HelpViewModel) View() string {
+	pad := " "
 	var b strings.Builder
 
-	// Calculate card width (same logic used below)
-	cardWidth := m.width - 4
-	if cardWidth > 100 {
-		cardWidth = 100
-	}
-	if cardWidth < 50 {
-		cardWidth = 50
-	}
-
 	// Tab bar
-	b.WriteString(m.renderHelpTabBar(cardWidth))
-	b.WriteString("\n\n")
+	b.WriteString(pad)
+	b.WriteString(m.renderHelpTabBar())
+	b.WriteString("\n")
 
-	// Search bar (inside card content)
+	// Search bar
 	if m.searchMode {
+		b.WriteString(pad)
 		b.WriteString(SubtitleStyle.Render("Filter: "))
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n\n")
 	} else if m.searchQuery != "" {
 		filterInfo := fmt.Sprintf("Filter: \"%s\" ", m.searchQuery)
+		b.WriteString(pad)
 		b.WriteString(HelpFilterActiveStyle.Render(filterInfo))
 		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
 		b.WriteString("\n\n")
@@ -515,32 +514,38 @@ func (m *HelpViewModel) View() string {
 
 	// Viewport with content
 	if m.ready {
-		b.WriteString(m.viewport.View())
+		for i, line := range strings.Split(m.viewport.View(), "\n") {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+			b.WriteString(pad)
+			b.WriteString(line)
+		}
 	}
 
-	// Footer
-	b.WriteString("\n\n")
+	// Status bar footer
+	b.WriteString("\n")
+	separator := MutedStyle.Render(strings.Repeat("─", m.width))
+	b.WriteString(separator)
+	b.WriteString("\n")
+
+	title := fmt.Sprintf("Help - %s", m.viewName)
+	left := StatusBarStyle.Render(title)
+
 	scrollPercent := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("h/l or [/]: tabs | Esc back | ? close | / filter | j/k scroll | n/N sections%s", scrollPercent))
-	b.WriteString(footer)
+	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs | / filter | j/k scroll | n/N sections | ? close%s", scrollPercent))
 
-	// Build card title and subtitle
-	title := fmt.Sprintf("Help - %s", m.viewName)
-	subtitle := ""
-	if m.searchQuery != "" {
-		subtitle = fmt.Sprintf("%d matches", len(m.filteredItems))
+	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
 	}
+	spacer := lipgloss.NewStyle().Width(gap).Render("")
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
 
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:        title,
-		Subtitle:     subtitle,
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	})
+	return b.String()
 }
 
 // wrapDescriptionWithIndent wraps text to fit within width, indenting continuation

@@ -189,6 +189,15 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.views.SetSize(msg.Width, msg.Height-2)
+	// Views that skip the external status bar get the full terminal height
+	if m.helpView != nil {
+		m.helpView.SetSize(msg.Width, msg.Height)
+	}
+	for _, vt := range []ViewType{ViewCommandPalette, ViewTutor} {
+		if v := m.views.Get(vt); v != nil {
+			v.SetSize(msg.Width, msg.Height)
+		}
+	}
 }
 
 // delegateToCurrentView forwards messages to the active view model.

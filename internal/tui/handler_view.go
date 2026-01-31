@@ -94,6 +94,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)
+		// Give help view full height since it renders its own footer (no external status bar)
+		m.helpView.SetSize(m.width, m.height)
 		return true, nil
 
 	case CloseHelpMsg:
@@ -156,7 +158,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowTutorMsg:
-		m.showView(ViewTutor, NewTutorModel())
+		tutor := NewTutorModel()
+		m.showView(ViewTutor, tutor)
+		// Give tutor full height since it renders without an external status bar
+		tutor.SetSize(m.width, m.height)
 		return true, nil
 
 	case ShowWeeklyReviewMsg:

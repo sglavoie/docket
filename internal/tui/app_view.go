@@ -17,15 +17,23 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
-	// Hide status bar for command palette and tutor (reclaim space for the overlay)
-	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor {
+	// Hide status bar for command palette, tutor, and help (they render their own footer)
+	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor || m.currentView() == ViewHelp {
 		return content
 	}
 
 	// Add status bar
 	statusBar := m.renderStatusBar()
+	statusBarHeight := lipgloss.Height(statusBar)
 
-	return lipgloss.JoinVertical(lipgloss.Left, content, statusBar)
+	// Pad content so the status bar is always at the bottom of the terminal
+	contentHeight := lipgloss.Height(content)
+	targetContentHeight := m.height - statusBarHeight
+	if contentHeight < targetContentHeight {
+		content += strings.Repeat("\n", targetContentHeight-contentHeight)
+	}
+
+	return content + "\n" + statusBar
 }
 
 func (m *AppModel) renderStatusBar() string {
@@ -104,7 +112,7 @@ func (m *AppModel) renderStatusBar() string {
 	case ViewSettings:
 		status = "Settings"
 	case ViewHelp:
-		status = "Help"
+		status = "Help" // fallback; help view renders its own status bar
 	case ViewDateInput:
 		status = "Set Due Date"
 	case ViewFilter:
