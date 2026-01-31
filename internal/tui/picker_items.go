@@ -17,12 +17,19 @@ func (s SectionInfo) FilterText() string {
 	return s.Name
 }
 
-// DisplayText returns the section name for display.
+// DisplayText returns the section name for display, colored if a color is set.
 func (s SectionInfo) DisplayText() string {
-	if s.Name == "" {
-		return "(no section)"
+	name := s.Name
+	if name == "" {
+		name = "(no section)"
 	}
-	return s.Name
+	if s.ColorName != "" && s.ColorName != "gray" {
+		colorVal := GetSectionColorValue(s.ColorName)
+		if colorVal != "" {
+			return lipgloss.NewStyle().Foreground(colorVal).Render(name)
+		}
+	}
+	return name
 }
 
 // CountValue returns the task count for this section.

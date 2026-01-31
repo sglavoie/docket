@@ -116,9 +116,8 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
 
-		// Notes
-		Keybinding{Key: "[", Description: "Open notes view", Category: "Notes", Views: views},
-		Keybinding{Key: "]", Description: "Create new note", Category: "Notes", Views: views},
+		// Tab Switching
+		Keybinding{Key: "[/]", Description: "Cycle preset tabs", Category: "Navigation", Views: views},
 
 		// Undo
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},

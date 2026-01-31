@@ -12,6 +12,7 @@ import (
 type SectionInfo struct {
 	Name      string
 	TaskCount int
+	ColorName string // Optional color name from the section color palette
 }
 
 // SectionFilterSelectorModel allows selecting multiple sections to filter by.

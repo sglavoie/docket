@@ -93,7 +93,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case SectionPickerDoneMsg:
 		m.popView()
 		if !msg.Canceled && msg.Task != nil && msg.Project != nil {
-			msg.Task.Section = msg.Section
+			if models.IsGTDSection(msg.Section) || msg.Section == "" {
+				msg.Task.Section = msg.Section
+			} else {
+				msg.Task.CustomSection = msg.Section
+			}
 			msg.Task.UpdatedAt = time.Now()
 
 			if msg.Section != "" {

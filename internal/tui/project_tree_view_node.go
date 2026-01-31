@@ -167,6 +167,13 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())) + " "
 	}
 
+	// Custom section badge (only when sidebar is hidden)
+	if task.CustomSection != "" && !m.sidebar.IsEnabled() {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		indicators += csStyle.Render("@ "+task.CustomSection) + " "
+	}
+
 	// Tag badges (compact, show first 2 tags + count if more)
 	if len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
 		maxTags := 2

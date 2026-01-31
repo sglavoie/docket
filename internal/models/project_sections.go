@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // GetSections returns the project's sections, ensuring Next is always first.
 func (p *Project) GetSections() []string {
@@ -133,6 +136,24 @@ func (p *Project) CountTasksBySection() map[string]int {
 		counts[task.Section]++
 	}
 	return counts
+}
+
+// GetCustomSections returns sections that are not built-in (Inbox, Next, Waiting, Someday), sorted alphabetically.
+func (p *Project) GetCustomSections() []string {
+	builtIn := map[string]bool{
+		SectionInbox:   true,
+		SectionNext:    true,
+		SectionWaiting: true,
+		SectionSomeday: true,
+	}
+	var custom []string
+	for _, s := range p.Sections {
+		if !builtIn[s] {
+			custom = append(custom, s)
+		}
+	}
+	sort.Strings(custom)
+	return custom
 }
 
 // GetSectionColor returns the color for a section, defaulting to "gray".

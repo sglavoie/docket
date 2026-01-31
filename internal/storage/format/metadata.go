@@ -47,7 +47,7 @@ type ParseWarning struct {
 // metadataKeys lists all known metadata keys for smart splitting.
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
-	"completed", "due", "depends", "related", "section", "pinned", "active", "recur",
+	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
 	"attachments", "snoozed",
 }
 
@@ -136,6 +136,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			}
 		case "section":
 			task.Section = value
+		case "custom_section":
+			task.CustomSection = value
 		case "pinned":
 			task.Pinned = value == "true"
 		case "active":
@@ -198,6 +200,12 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			}
 		}
 	}
+	// Migration: move non-GTD section values to CustomSection
+	if task.Section != "" && !models.IsGTDSection(task.Section) && task.CustomSection == "" {
+		task.CustomSection = task.Section
+		task.Section = ""
+	}
+
 	return warnings
 }
 
@@ -263,6 +271,10 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.Section != "" {
 		parts = append(parts, fmt.Sprintf("section: %s", task.Section))
+	}
+
+	if task.CustomSection != "" {
+		parts = append(parts, fmt.Sprintf("custom_section: %s", task.CustomSection))
 	}
 
 	if !task.CreatedAt.IsZero() {

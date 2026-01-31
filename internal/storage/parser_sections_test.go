@@ -91,14 +91,14 @@ Description here.
 		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].Section != "Active" {
-		t.Errorf("expected task section 'Active', got '%s'", result.Tasks[0].Section)
+	if result.Tasks[0].CustomSection != "Active" {
+		t.Errorf("expected task custom section 'Active', got '%s'", result.Tasks[0].CustomSection)
 	}
 }
 
 func TestWriteTasksMarkdownWithSections(t *testing.T) {
 	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
-	task.Section = "Active"
+	task.CustomSection = "Active"
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}
 
@@ -114,9 +114,9 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 		t.Error("content should contain sections metadata")
 	}
 
-	// Check task section
-	if !strings.Contains(content, "section: Active") {
-		t.Error("content should contain task section")
+	// Check task custom section
+	if !strings.Contains(content, "custom_section: Active") {
+		t.Error("content should contain task custom_section")
 	}
 }
 
@@ -141,11 +141,11 @@ func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
 
 func TestSectionsRoundTrip(t *testing.T) {
 	task1 := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Active")
-	task1.Section = "Active"
+	task1.CustomSection = "Active"
 	task2 := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Backlog")
-	task2.Section = "Backlog"
+	task2.CustomSection = "Backlog"
 	task3 := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Done")
-	task3.Section = "Done"
+	task3.CustomSection = "Done"
 
 	tasks := []*models.Task{task1, task2, task3}
 	sections := []string{"Backlog", "Active", "Review", "Done"}
@@ -179,20 +179,20 @@ func TestSectionsRoundTrip(t *testing.T) {
 		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
 	}
 
-	if result.Tasks[0].Section != "Active" {
-		t.Errorf("task1 section should be Active, got %s", result.Tasks[0].Section)
+	if result.Tasks[0].CustomSection != "Active" {
+		t.Errorf("task1 custom section should be Active, got %s", result.Tasks[0].CustomSection)
 	}
-	if result.Tasks[1].Section != "Backlog" {
-		t.Errorf("task2 section should be Backlog, got %s", result.Tasks[1].Section)
+	if result.Tasks[1].CustomSection != "Backlog" {
+		t.Errorf("task2 custom section should be Backlog, got %s", result.Tasks[1].CustomSection)
 	}
-	if result.Tasks[2].Section != "Done" {
-		t.Errorf("task3 section should be Done, got %s", result.Tasks[2].Section)
+	if result.Tasks[2].CustomSection != "Done" {
+		t.Errorf("task3 custom section should be Done, got %s", result.Tasks[2].CustomSection)
 	}
 }
 
 func TestSectionColorsRoundTrip(t *testing.T) {
 	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
-	task.Section = "Active"
+	task.CustomSection = "Active"
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}
 	colors := map[string]string{

@@ -660,9 +660,16 @@ func applyAction(task *models.Task, action RuleAction) bool {
 			return true
 		}
 	case ActionSetSection:
-		if task.Section != action.Value {
-			task.Section = action.Value
-			return true
+		if models.IsGTDSection(action.Value) || action.Value == "" {
+			if task.Section != action.Value {
+				task.Section = action.Value
+				return true
+			}
+		} else {
+			if task.CustomSection != action.Value {
+				task.CustomSection = action.Value
+				return true
+			}
 		}
 	case ActionAddTag:
 		if !task.HasTag(action.Value) {

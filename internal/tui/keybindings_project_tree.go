@@ -132,9 +132,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar", Views: views},
 		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filter Bar", Views: views},
 
+		// Custom Section Tabs
+		Keybinding{Key: "[/]", Description: "Cycle custom section tabs", Category: "Navigation", Views: views},
+
 		// Notes
-		Keybinding{Key: "[", Description: "Open notes view", Category: "Notes", Views: views},
-		Keybinding{Key: "]", Description: "Create new note", Category: "Notes", Views: views},
+		Keybinding{Key: "{", Description: "Open notes view", Category: "Notes", Views: views},
+		Keybinding{Key: "}", Description: "Create new note", Category: "Notes", Views: views},
 
 		// Recurring Tasks
 		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "🔁 Recurring Tasks", Views: views},

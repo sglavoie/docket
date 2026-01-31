@@ -36,7 +36,11 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	}
 
 	// Get section color for accent on Task and Info cards
+	// Prefer custom section color when available
 	sectionColor := m.project.GetSectionColor(task.Section)
+	if task.CustomSection != "" {
+		sectionColor = m.project.GetSectionColor(task.CustomSection)
+	}
 
 	// Calculate inner width for card content (width minus card borders and padding)
 	cardInnerWidth := width - 6 // 2 border + 2 padding + 2 margin
@@ -158,7 +162,7 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sect
 		lines = append(lines, strings.Join(tagParts, " "))
 	}
 
-	// Section line
+	// Section line (GTD section)
 	sectionName := task.Section
 	if sectionName == "" {
 		sectionName = "None"
@@ -166,6 +170,14 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sect
 	sectionStyle := GetSectionColorStyle(sectionColor)
 	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 	lines = append(lines, sectionLine)
+
+	// Custom section line
+	if task.CustomSection != "" {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
+		lines = append(lines, csLine)
+	}
 
 	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
 }

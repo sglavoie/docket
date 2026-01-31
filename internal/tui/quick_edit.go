@@ -291,7 +291,11 @@ func applyQuickEdit(task *models.Task, result *quickEditResult) {
 	}
 
 	if result.sectionSet {
-		task.Section = result.section
+		if models.IsGTDSection(result.section) || result.section == "" {
+			task.Section = result.section
+		} else {
+			task.CustomSection = result.section
+		}
 	}
 
 	if result.statusSet {

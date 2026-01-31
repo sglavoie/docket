@@ -76,7 +76,7 @@ func TestSaveProject_WithSections(t *testing.T) {
 	}
 
 	task := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
-	task.Section = "Active"
+	task.CustomSection = "Active"
 	project.Tasks = []*models.Task{task}
 
 	if err := SaveProject(project); err != nil {
@@ -103,8 +103,8 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Fatalf("expected 1 task, got %d", len(loadedProject.Tasks))
 	}
 
-	if loadedProject.Tasks[0].Section != "Active" {
-		t.Errorf("expected task section Active, got %s", loadedProject.Tasks[0].Section)
+	if loadedProject.Tasks[0].CustomSection != "Active" {
+		t.Errorf("expected task custom section Active, got %s", loadedProject.Tasks[0].CustomSection)
 	}
 }
 

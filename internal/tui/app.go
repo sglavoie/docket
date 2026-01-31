@@ -419,6 +419,7 @@ func (m *AppModel) saveProjectTreeState() {
 		SidebarEnabled:   m.projectTree.sidebar.IsEnabled(),
 		FilterBarEnabled: m.projectTree.filterBar.IsEnabled(),
 		ViewMode:         int(m.projectTree.viewMode),
+		CustomSectionTab: m.projectTree.activeCustomSectionFilter(),
 	}
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	_ = m.configManager.Save(m.config)
@@ -484,6 +485,18 @@ func (m *AppModel) restoreProjectTreeState() {
 	for _, section := range state.FilterSections {
 		if sectionSet[section] {
 			m.projectTree.filter.Sections[section] = true
+		}
+	}
+
+	// Restore custom section tab - validate it still exists
+	if state.CustomSectionTab != "" {
+		if tabs := m.projectTree.customSectionTabs(); tabs != nil {
+			for i, tab := range tabs {
+				if tab == state.CustomSectionTab {
+					m.projectTree.customSectionTab = i
+					break
+				}
+			}
 		}
 	}
 

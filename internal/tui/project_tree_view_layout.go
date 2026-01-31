@@ -44,6 +44,12 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 	b.WriteString("\n")
 
+	// Custom section tab bar
+	if tabs := m.customSectionTabs(); tabs != nil {
+		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTab, m.width, 1, m.project.SectionColors))
+		b.WriteString("\n")
+	}
+
 	// Filter bar
 	b.WriteString(m.renderFilterBar())
 
@@ -171,6 +177,9 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		headerOffset := TreeHeaderOffset
 		if m.filterBar.IsEnabled() {
 			headerOffset = TreeHeaderOffsetWithFilterBar
+		}
+		if m.customSectionTabs() != nil {
+			headerOffset++
 		}
 		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
@@ -415,6 +424,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 	b.WriteString("\n")
 
+	// Custom section tab bar
+	if tabs := m.customSectionTabs(); tabs != nil {
+		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors))
+		b.WriteString("\n")
+	}
+
 	// Filter bar
 	b.WriteString(m.renderFilterBar())
 
@@ -539,6 +554,9 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		headerOffset := TreeHeaderOffset
 		if m.filterBar.IsEnabled() {
 			headerOffset = TreeHeaderOffsetWithFilterBar
+		}
+		if m.customSectionTabs() != nil {
+			headerOffset++
 		}
 		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 

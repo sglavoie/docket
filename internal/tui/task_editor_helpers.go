@@ -203,7 +203,11 @@ func (m *TaskEditorModel) saveTask() error {
 	m.task.Type = m.taskType
 	m.task.Priority = m.priority
 	m.task.ParentID = m.parentID
-	m.task.Section = m.section
+	if models.IsGTDSection(m.section) || m.section == "" {
+		m.task.Section = m.section
+	} else {
+		m.task.CustomSection = m.section
+	}
 	m.task.DueDate = m.dueDate
 	m.task.UpdatedAt = now
 

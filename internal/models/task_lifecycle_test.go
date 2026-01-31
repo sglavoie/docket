@@ -52,11 +52,11 @@ func TestCompleteAutoTriagesFromSomeday(t *testing.T) {
 
 func TestCompleteKeepsCustomSection(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
-	task.Section = "CustomSection"
+	task.CustomSection = "CustomSection"
 	task.Complete()
 
-	if task.Section != "CustomSection" {
-		t.Errorf("expected custom section preserved, got %q", task.Section)
+	if task.CustomSection != "CustomSection" {
+		t.Errorf("expected custom section preserved, got %q", task.CustomSection)
 	}
 }
 

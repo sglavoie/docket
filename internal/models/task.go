@@ -14,30 +14,31 @@ type Attachment struct {
 
 // Task represents a single task, story, epic, bug, or idea.
 type Task struct {
-	ID           string             `json:"id"`
-	ShortID      int                `json:"short_id"`
-	Type         TaskType           `json:"type"`
-	Title        string             `json:"title"`
-	Description  string             `json:"description"`
-	Status       TaskStatus         `json:"status"`
-	Priority     int                `json:"priority"`
-	ParentID     *string            `json:"parent_id,omitempty"`
-	Tags         []string           `json:"tags,omitempty"`
-	Section      string             `json:"section,omitempty"` // Section for organizing tasks (e.g., "Next", "Inbox", "Waiting", "Someday")
-	CreatedAt    time.Time          `json:"created_at"`
-	UpdatedAt    time.Time          `json:"updated_at"`
-	CompletedAt  *time.Time         `json:"completed_at,omitempty"`
-	DueDate      *time.Time         `json:"due_date,omitempty"`
-	DependsOn    []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
-	RelatedTo    []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
-	Pinned       bool               `json:"pinned,omitempty"`     // Whether the task is pinned
-	PinnedAt     *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
-	Active       bool               `json:"active,omitempty"`     // Whether the task is flagged as active
-	Comments     []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
-	Recurrence   *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
-	Attachments  []Attachment       `json:"attachments,omitempty"`
-	SnoozedUntil *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
-	Activity     []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
+	ID            string             `json:"id"`
+	ShortID       int                `json:"short_id"`
+	Type          TaskType           `json:"type"`
+	Title         string             `json:"title"`
+	Description   string             `json:"description"`
+	Status        TaskStatus         `json:"status"`
+	Priority      int                `json:"priority"`
+	ParentID      *string            `json:"parent_id,omitempty"`
+	Tags          []string           `json:"tags,omitempty"`
+	Section       string             `json:"section,omitempty"`        // GTD section (e.g., "Next", "Inbox", "Waiting", "Someday")
+	CustomSection string             `json:"custom_section,omitempty"` // User-defined section orthogonal to GTD sections
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+	CompletedAt   *time.Time         `json:"completed_at,omitempty"`
+	DueDate       *time.Time         `json:"due_date,omitempty"`
+	DependsOn     []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
+	RelatedTo     []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
+	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned
+	PinnedAt      *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
+	Active        bool               `json:"active,omitempty"`     // Whether the task is flagged as active
+	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
+	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
+	Attachments   []Attachment       `json:"attachments,omitempty"`
+	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
+	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

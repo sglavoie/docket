@@ -211,6 +211,13 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		}
 	}
 
+	// Apply custom section tab filter (must belong to the selected custom section)
+	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
+		if node.Task.CustomSection != csFilter {
+			return false
+		}
+	}
+
 	// Apply section filter (OR logic: task must be in ANY selected section)
 	// In Completed view, section filter is already applied above for sub-filtering
 	// In other views, view mode already controls section visibility

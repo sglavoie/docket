@@ -194,6 +194,9 @@ type ProjectTreeModel struct {
 	bulkOp    *BulkOperationComponent
 	sidebar   *SidebarComponent
 
+	// Custom section tab (0 = "All", 1+ = custom section index)
+	customSectionTab int
+
 	// Focus mode state
 	focusedTask *models.Task // When non-nil, only show this task and descendants
 
@@ -237,6 +240,27 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
 	return m
+}
+
+// customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
+func (m *ProjectTreeModel) customSectionTabs() []string {
+	custom := m.project.GetCustomSections()
+	if len(custom) == 0 {
+		return nil
+	}
+	tabs := make([]string, 0, len(custom)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, custom...)
+	return tabs
+}
+
+// activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
+func (m *ProjectTreeModel) activeCustomSectionFilter() string {
+	tabs := m.customSectionTabs()
+	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
+		return ""
+	}
+	return tabs[m.customSectionTab]
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.

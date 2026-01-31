@@ -444,7 +444,11 @@ func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height in
 	}
 
 	// Get section color for accent
+	// Prefer custom section color when available
 	sectionColor := m.Project.GetSectionColor(task.Section)
+	if task.CustomSection != "" {
+		sectionColor = m.Project.GetSectionColor(task.CustomSection)
+	}
 
 	// Calculate column widths: 3 columns, but Description takes 2 columns worth
 	col1Width := width / 4                     // Task card
@@ -511,7 +515,7 @@ func (m *KanbanViewModel) renderDetailsInfoCard(task *models.Task, width int, se
 		lines = append(lines, strings.Join(tagParts, " "))
 	}
 
-	// Section line
+	// Section line (GTD section)
 	sectionName := task.Section
 	if sectionName == "" {
 		sectionName = "Active"
@@ -519,6 +523,14 @@ func (m *KanbanViewModel) renderDetailsInfoCard(task *models.Task, width int, se
 	sectionStyle := GetSectionColorStyle(sectionColor)
 	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
 	lines = append(lines, sectionLine)
+
+	// Custom section line
+	if task.CustomSection != "" {
+		csColor := m.Project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
+		lines = append(lines, csLine)
+	}
 
 	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
 }

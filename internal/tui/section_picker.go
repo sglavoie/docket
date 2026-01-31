@@ -44,8 +44,12 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 		ShowCounts:     true,
 	})
 
-	// Pre-select current section
-	picker.SetCursorToID(task.Section)
+	// Pre-select current section (check CustomSection for non-GTD sections)
+	currentSection := task.Section
+	if currentSection == "" && task.CustomSection != "" {
+		currentSection = task.CustomSection
+	}
+	picker.SetCursorToID(currentSection)
 
 	return &SectionPickerModel{
 		BasePicker: picker,
@@ -61,6 +65,9 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 	// Count tasks per section (including empty string for Active)
 	for _, task := range project.Tasks {
 		sectionCounts[task.Section]++
+		if task.CustomSection != "" {
+			sectionCounts[task.CustomSection]++
+		}
 	}
 
 	// Include all standard kanban sections, even if empty
@@ -79,7 +86,8 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 
 	sections := make([]SectionInfo, 0, len(sectionCounts))
 	for name, count := range sectionCounts {
-		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
+		colorName := project.GetSectionColor(name)
+		sections = append(sections, SectionInfo{Name: name, TaskCount: count, ColorName: colorName})
 	}
 
 	// Sort: Next first, then alphabetically, with empty last
@@ -170,6 +178,9 @@ func (m *SectionPickerModel) View() string {
 
 	// Current section
 	currentSection := m.task.Section
+	if currentSection == "" && m.task.CustomSection != "" {
+		currentSection = m.task.CustomSection
+	}
 	if currentSection == "" {
 		currentSection = "(no section)"
 	}

@@ -505,6 +505,15 @@ func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyMsg) (tea.Model, te
 		// Jump backward 5 colors
 		m.colorCursor = (m.colorCursor - 5 + paletteLen) % paletteLen
 		return m, nil
+
+	case "x":
+		// Clear color (reset to gray)
+		if len(m.sections) > 0 && m.cursor < len(m.sections) {
+			sectionName := m.sections[m.cursor].Name
+			m.colorPickMode = false
+			return m, m.setSectionColor(sectionName, "gray")
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -602,7 +611,7 @@ func (m *SectionManagerModel) View() string {
 	// Footer hint
 	content.WriteString("\n")
 	if m.colorPickMode {
-		content.WriteString(MutedStyle.Render("h/l nav | c cycle | enter confirm | esc cancel"))
+		content.WriteString(MutedStyle.Render("h/l nav | c cycle | x clear | enter confirm | esc cancel"))
 	} else if m.renameMode {
 		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
 	} else if m.addMode {

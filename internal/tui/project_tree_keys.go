@@ -579,11 +579,37 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		}
 
 	case "[":
+		tabs := m.customSectionTabs()
+		if tabs != nil {
+			if m.customSectionTab > 0 {
+				m.customSectionTab--
+			} else {
+				m.customSectionTab = len(tabs) - 1
+			}
+			m.updateVisibility()
+			m.clampCursor()
+		}
+		return true, nil
+
+	case "]":
+		tabs := m.customSectionTabs()
+		if tabs != nil {
+			if m.customSectionTab < len(tabs)-1 {
+				m.customSectionTab++
+			} else {
+				m.customSectionTab = 0
+			}
+			m.updateVisibility()
+			m.clampCursor()
+		}
+		return true, nil
+
+	case "{":
 		return true, func() tea.Msg {
 			return ShowNotesMsg{Project: m.project}
 		}
 
-	case "]":
+	case "}":
 		return true, func() tea.Msg {
 			return ShowNoteCreatorMsg{Project: m.project}
 		}
