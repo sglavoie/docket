@@ -156,9 +156,8 @@ func (m *AppModel) dueDateCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					now := time.Now()
 					today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 					task.DueDate = &today
@@ -179,9 +178,8 @@ func (m *AppModel) dueDateCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					now := time.Now()
 					tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 					task.DueDate = &tomorrow
@@ -202,9 +200,8 @@ func (m *AppModel) dueDateCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					now := time.Now()
 					nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
 					task.DueDate = &nextWeek
@@ -225,9 +222,8 @@ func (m *AppModel) dueDateCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					now := time.Now()
 					nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 0, 0, 0, 0, now.Location())
 					task.DueDate = &nextMonth
@@ -248,9 +244,8 @@ func (m *AppModel) dueDateCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					task.DueDate = nil
 					task.UpdatedAt = time.Now()
 					return TaskUpdatedMsg{Task: task}
@@ -746,14 +741,13 @@ func (m *AppModel) sectionSendCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					node := visible[m.projectTree.cursor]
+				node := m.projectTree.getSelectedNode()
+				if node != nil {
 					section := node.Task.Section
 					if section == "" {
 						section = models.SectionInbox
 					}
-					for i, n := range visible {
+					for i, n := range m.projectTree.visibleNodes() {
 						if n.Task.Section == section && n.Task.IsRoot() {
 							m.projectTree.cursor = i
 							break
@@ -796,9 +790,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeBlocker}
 				}
 				return nil
@@ -815,9 +808,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeDependent}
 				}
 				return nil
@@ -834,9 +826,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeSubtask}
 				}
 				return nil
@@ -853,9 +844,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return CreateLinkedTaskMsg{SourceTask: task, Project: m.projectTree.project, LinkType: LinkTypeFollowUp}
 				}
 				return nil
@@ -872,9 +862,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project}
 				}
 				return nil
@@ -891,9 +880,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return ShowLinkedTaskSelectorMsg{Task: task, Project: m.projectTree.project, ForUnlink: true}
 				}
 				return nil
@@ -910,9 +898,8 @@ func (m *AppModel) linkedTaskCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: m.projectTree.project}
 				}
 				return nil
@@ -938,9 +925,9 @@ func (m *AppModel) multiSelectCommands() []Command {
 					m.projectTree.clearSelection()
 				} else {
 					m.projectTree.multiSelectMode = true
-					visible := m.projectTree.visibleNodes()
-					if CursorInBounds(m.projectTree.cursor, len(visible)) {
-						m.projectTree.toggleSelection(visible[m.projectTree.cursor].Task)
+					task := m.projectTree.getSelectedTask()
+					if task != nil {
+						m.projectTree.toggleSelection(task)
 					}
 				}
 				return nil
@@ -990,9 +977,8 @@ func (m *AppModel) foldCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					node := visible[m.projectTree.cursor]
+				node := m.projectTree.getSelectedNode()
+				if node != nil {
 					if len(node.Task.Children) > 0 {
 						node.Expanded = !node.Expanded
 						m.projectTree.updateVisibility()
@@ -1012,9 +998,9 @@ func (m *AppModel) foldCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					visible[m.projectTree.cursor].Expanded = true
+				node := m.projectTree.getSelectedNode()
+				if node != nil {
+					node.Expanded = true
 					m.projectTree.updateVisibility()
 				}
 				return nil
@@ -1031,9 +1017,9 @@ func (m *AppModel) foldCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					visible[m.projectTree.cursor].Expanded = false
+				node := m.projectTree.getSelectedNode()
+				if node != nil {
+					node.Expanded = false
 					m.projectTree.updateVisibility()
 				}
 				return nil
@@ -1086,9 +1072,8 @@ func (m *AppModel) foldCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				if CursorInBounds(m.projectTree.cursor, len(visible)) {
-					task := visible[m.projectTree.cursor].Task
+				task := m.projectTree.getSelectedTask()
+				if task != nil {
 					if task.Type.CanHaveChildren() {
 						m.projectTree.focusedTask = task
 						m.projectTree.cursor = 0

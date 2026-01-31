@@ -9,7 +9,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 )
@@ -543,63 +542,7 @@ func (m *SettingsModel) renderTabBar() string {
 	if m.width-8 < cardWidth {
 		cardWidth = m.width - 8
 	}
-	availableWidth := cardWidth - 2
-
-	// Measure tabs without borders to check fit
-	plainStyle := lipgloss.NewStyle().Padding(0, 2)
-	totalWidth := 0
-	for _, name := range settingsTabNames {
-		totalWidth += lipgloss.Width(plainStyle.Render(name))
-	}
-	fitsSingleLine := totalWidth <= availableWidth
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 2)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 2)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
-
-	var tabs []string
-	for i, name := range settingsTabNames {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	// Extend the bottom border line to fill remaining width
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
-	return row
+	return RenderTabBar(settingsTabNames, m.activeTab, cardWidth-2, 2)
 }
 
 // settingsFieldLabel renders a field label with focus arrow indicator and padding to a fixed width.

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
@@ -355,62 +354,7 @@ func (m *RecentActivityModel) View() string {
 }
 
 func (m *RecentActivityModel) renderTabBar() string {
-	cardWidth := min(m.Width()-6, 54)
-	availableWidth := cardWidth - 2
-
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	totalWidth := 0
-	for _, name := range recentActivityTabNames {
-		totalWidth += lipgloss.Width(plainStyle.Render(name))
-	}
-	fitsSingleLine := totalWidth <= availableWidth
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
-
-	var tabs []string
-	for i, name := range recentActivityTabNames {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
-	return row
+	return RenderTabBar(recentActivityTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
 }
 
 func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {

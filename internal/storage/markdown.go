@@ -365,7 +365,7 @@ func FormatRelativeTime(t time.Time) string {
 			return "1 minute ago"
 		}
 		return fmt.Sprintf("%d minutes ago", minutes)
-	} else if diff < 24*time.Hour {
+	} else if diff < util.Day {
 		hours := int(diff.Hours())
 		if hours == 1 {
 			return "1 hour ago"

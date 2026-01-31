@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -56,16 +53,9 @@ func runProjectPurge(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirmation unless --force
-	if !purgeForce {
-		fmt.Printf("PERMANENTLY delete '%s'? This cannot be undone.\n", slug)
-		fmt.Print("Type 'yes' to confirm: ")
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "yes" {
-			fmt.Println("Canceled.")
-			return nil
-		}
+	if !ConfirmStrict(fmt.Sprintf("PERMANENTLY delete '%s'? This cannot be undone.", slug), purgeForce) {
+		fmt.Println("Canceled.")
+		return nil
 	}
 
 	// Purge the project

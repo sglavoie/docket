@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -112,65 +111,11 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 		len(m.staleTasks) + len(m.priorityMismatch),
 		len(m.upcomingWeek),
 	}
-
-	availableWidth := m.width - 10
-
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	var labels []string
-	totalWidth := 0
+	labels := make([]string, len(weeklyReviewTabNames))
 	for i, name := range weeklyReviewTabNames {
-		label := fmt.Sprintf("%s (%d)", name, tabCounts[i])
-		labels = append(labels, label)
-		totalWidth += lipgloss.Width(plainStyle.Render(label))
+		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
-	fitsSingleLine := totalWidth <= availableWidth
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
-
-	var tabs []string
-	for i, label := range labels {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(label))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(label))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
-	return row
+	return RenderTabBar(labels, m.activeTab, m.width-10, 1)
 }
 
 // renderPrefixPopup renders the which-key style popup.

@@ -40,14 +40,9 @@ func runNoteDelete(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !noteDeleteForce {
-		fmt.Printf("Delete note '%s'? [y/N] ", note.Title)
-		var confirm string
-		_, _ = fmt.Scanln(&confirm)
-		if confirm != "y" && confirm != "Y" {
-			fmt.Println("Canceled.")
-			return nil
-		}
+	if !ConfirmYN(fmt.Sprintf("Delete note '%s'? [y/N] ", note.Title), noteDeleteForce) {
+		fmt.Println("Canceled.")
+		return nil
 	}
 
 	if err := storage.DeleteNoteFrom(ctx.Dir, note.Filename); err != nil {

@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -47,16 +44,9 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirmation unless --force
-	if !archiveForce {
-		fmt.Printf("Archive %d completed task(s) to completed.md?\n", len(completedTasks))
-		fmt.Print("Type 'yes' to confirm: ")
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-		if response != "yes" {
-			fmt.Println("Canceled.")
-			return nil
-		}
+	if !ConfirmStrict(fmt.Sprintf("Archive %d completed task(s) to completed.md?", len(completedTasks)), archiveForce) {
+		fmt.Println("Canceled.")
+		return nil
 	}
 
 	// Create backup before archiving

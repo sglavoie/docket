@@ -21,6 +21,24 @@ func (m *ProjectTreeModel) clearSelection() {
 	m.selectedTasks = make(map[string]bool)
 }
 
+// getSelectedTask returns the task under the cursor, or nil if none.
+func (m *ProjectTreeModel) getSelectedTask() *models.Task {
+	visible := m.visibleNodes()
+	if CursorInBounds(m.cursor, len(visible)) {
+		return visible[m.cursor].Task
+	}
+	return nil
+}
+
+// getSelectedNode returns the tree node under the cursor, or nil if none.
+func (m *ProjectTreeModel) getSelectedNode() *TreeNode {
+	visible := m.visibleNodes()
+	if CursorInBounds(m.cursor, len(visible)) {
+		return visible[m.cursor]
+	}
+	return nil
+}
+
 // getSelectedTasks returns a slice of selected tasks from the project.
 func (m *ProjectTreeModel) getSelectedTasks() []*models.Task {
 	var tasks []*models.Task

@@ -645,25 +645,25 @@ func formatRelativeTime(t time.Time) string {
 			return "1 minute ago"
 		}
 		return fmt.Sprintf("%d minutes ago", mins)
-	case duration < 24*time.Hour:
+	case duration < util.Day:
 		hours := int(duration.Hours())
 		if hours == 1 {
 			return "1 hour ago"
 		}
 		return fmt.Sprintf("%d hours ago", hours)
-	case duration < 7*24*time.Hour:
+	case duration < util.Week:
 		days := int(duration.Hours() / 24)
 		if days == 1 {
 			return "1 day ago"
 		}
 		return fmt.Sprintf("%d days ago", days)
-	case duration < 30*24*time.Hour:
+	case duration < util.Month:
 		weeks := int(duration.Hours() / 24 / 7)
 		if weeks == 1 {
 			return "1 week ago"
 		}
 		return fmt.Sprintf("%d weeks ago", weeks)
-	case duration < 365*24*time.Hour:
+	case duration < util.Year:
 		months := int(duration.Hours() / 24 / 30)
 		if months == 1 {
 			return "1 month ago"

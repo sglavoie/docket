@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -35,15 +32,9 @@ func init() {
 func runBlockerDelete(cmd *cobra.Command, args []string) error {
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		// Confirmation
-		if !blockerDeleteForce {
-			fmt.Printf("Delete blocker '%s'? (y/N): ", blocker.Title)
-			reader := bufio.NewReader(os.Stdin)
-			response, _ := reader.ReadString('\n')
-			response = strings.TrimSpace(strings.ToLower(response))
-			if response != "y" && response != "yes" {
-				fmt.Println("Canceled.")
-				return blockers, nil
-			}
+		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {
+			fmt.Println("Canceled.")
+			return blockers, nil
 		}
 
 		// Remove the blocker from list

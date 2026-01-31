@@ -14,6 +14,14 @@ const (
 	DateTimeFormat = "2006-01-02 15:04" // Date and time (YYYY-MM-DD HH:MM)
 )
 
+// Common time durations for date arithmetic and comparisons.
+const (
+	Day   = 24 * time.Hour
+	Week  = 7 * Day
+	Month = 30 * Day
+	Year  = 365 * Day
+)
+
 // FormatDate formats a time as date only (YYYY-MM-DD).
 func FormatDate(t time.Time) string {
 	return t.Format(DateFormat)

@@ -1,0 +1,288 @@
+package tui
+
+import (
+	"fmt"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+// It clears the pending prefix and processes the combined command.
+func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = "" // Always clear prefix
+
+	if key == "esc" {
+		return m, nil // Cancel prefix mode
+	}
+
+	switch prefix {
+	case ",":
+		// Status operations (support bulk in multi-select mode)
+		switch key {
+		case "s":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusInProgress)
+			}
+			return m, m.handleStatusStart()
+		case "d":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusDone)
+			}
+			return m, m.handleStatusDone()
+		case "b":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusBlocked)
+			}
+			return m, m.handleStatusBlocked()
+		case "o":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusTodo)
+			}
+			return m, m.handleStatusOpen()
+		case "x":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusCanceled)
+			}
+			return m, m.handleStatusCancelled()
+		}
+
+	case "!":
+		// Priority quick actions
+		switch key {
+		case "1", "2", "3", "4", "5":
+			priority := int(key[0] - '0')
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkPriorityChange(priority)
+			}
+			task := m.getSelectedTask()
+			if task != nil {
+				prevStates := captureTaskStates(m.Project.Tasks)
+				task.Priority = priority
+				task.UpdatedAt = time.Now()
+				m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
+				return m, m.saveWithStatusChange(prevStates, task)
+			}
+		}
+
+	case "d":
+		// Due date quick actions
+		now := time.Now()
+		var dueDate *time.Time
+		var desc string
+
+		switch key {
+		case "t":
+			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
+			dueDate = &today
+			desc = "today"
+		case "m":
+			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
+			dueDate = &tomorrow
+			desc = "tomorrow"
+		case "w":
+			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
+			dueDate = &nextWeek
+			desc = "+7 days"
+		case "n":
+			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
+			dueDate = &nextMonth
+			desc = "+30 days"
+		case "0":
+			dueDate = nil
+			desc = "cleared"
+		case "d":
+			// Open full date picker (single task only)
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, nil
+			}
+			task := m.getSelectedTask()
+			if task == nil {
+				return m, nil
+			}
+			project := m.Project
+			return m, func() tea.Msg {
+				return SetDueDateMsg{Task: task, Project: project}
+			}
+		default:
+			return m, nil
+		}
+
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			return m, m.handleBulkDueDateChange(dueDate, desc)
+		}
+		task := m.getSelectedTask()
+		if task == nil {
+			return m, nil
+		}
+		prevStates := captureTaskStates(m.Project.Tasks)
+		task.DueDate = dueDate
+		task.UpdatedAt = time.Now()
+		m.statusMessage = fmt.Sprintf("Due date %s", desc)
+		return m, m.saveWithStatusChange(prevStates, task)
+
+	case "g":
+		// Go/section navigation and send operations
+		switch key {
+		case "g":
+			// Go to first task in current column (vim-style gg)
+			if m.completedViewMode {
+				m.completedCursor = 0
+				return m, nil
+			}
+			cs := m.CurrentColumnState()
+			cs.Cursor = 0
+			return m, nil
+		case "c":
+			// Toggle completed view
+			m.toggleCompletedView()
+			return m, nil
+		case "a":
+			// Go to Active column
+			m.ActiveColumn = 0
+			return m, nil
+		case "n":
+			// Go to Next column
+			m.ActiveColumn = 1
+			return m, nil
+		case "i":
+			// Go to Inbox column
+			m.ActiveColumn = 2
+			return m, nil
+		case "w":
+			// Go to Waiting column
+			m.ActiveColumn = 3
+			return m, nil
+		case "s":
+			// Go to Someday column
+			m.ActiveColumn = 4
+			return m, nil
+		case "A":
+			// Send task(s) to Active section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionActive)
+			}
+			return m, m.sendTaskToSection(KanbanSectionActive)
+		case "N":
+			// Send task(s) to Next section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionNext)
+			}
+			return m, m.sendTaskToSection(KanbanSectionNext)
+		case "I":
+			// Send task(s) to Inbox section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionInbox)
+			}
+			return m, m.sendTaskToSection(KanbanSectionInbox)
+		case "W":
+			// Send task(s) to Waiting section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionWaiting)
+			}
+			return m, m.sendTaskToSection(KanbanSectionWaiting)
+		case "S":
+			// Send task(s) to Someday section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionSomeday)
+			}
+			return m, m.sendTaskToSection(KanbanSectionSomeday)
+		case "X":
+			// Deselect all in multi-select mode
+			if m.multiSelectMode {
+				m.deselectAll()
+			}
+			return m, nil
+		case "h":
+			// Go to task activity history
+			task := m.getSelectedTask()
+			if task != nil {
+				project := m.Project
+				return m, func() tea.Msg {
+					return OpenTaskActivityMsg{Task: task, Project: project}
+				}
+			}
+			return m, nil
+		}
+
+	case "c":
+		// Create linked task operations
+		task := m.getSelectedTask()
+		if task == nil {
+			return m, nil
+		}
+		project := m.Project
+
+		// Navigate to linked tasks
+		if key == "n" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
+			}
+		}
+
+		// Unlink linked task
+		if key == "x" {
+			return m, func() tea.Msg {
+				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
+			}
+		}
+
+		// Cross-project linking
+		if key == "p" {
+			return m, func() tea.Msg {
+				return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
+			}
+		}
+
+		var linkType LinkType
+		switch key {
+		case "b":
+			linkType = LinkTypeBlocker
+		case "d":
+			linkType = LinkTypeDependent
+		case "s":
+			linkType = LinkTypeSubtask
+		case "f":
+			linkType = LinkTypeFollowUp
+		default:
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
+		}
+
+	case "z":
+		// Fold/expand operations
+		switch key {
+		case "a":
+			// Toggle expand on current node
+			m.toggleCurrentExpand()
+			return m, nil
+		case "o":
+			// Expand current node
+			m.expandCurrent()
+			return m, nil
+		case "c":
+			// Collapse current node
+			m.collapseCurrent()
+			return m, nil
+		case "R":
+			// Expand all in column
+			m.expandAllInColumn()
+			return m, nil
+		case "M":
+			// Collapse all in column
+			m.collapseAllInColumn()
+			return m, nil
+		case "v":
+			// Focus subtree (zoom into selected task)
+			m.focusSubtree()
+			return m, nil
+		}
+	}
+
+	return m, nil
+}

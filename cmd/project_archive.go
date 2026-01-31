@@ -41,14 +41,9 @@ func init() {
 }
 
 func runProjectArchive(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	project, cfg, configManager, err := LoadConfigAndProject(args[0])
 	if err != nil {
 		return err
-	}
-
-	project := cfg.GetProject(args[0])
-	if project == nil {
-		return tterrors.NewProjectNotFoundError(args[0])
 	}
 
 	if project.Sandbox {

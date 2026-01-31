@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
@@ -44,6 +46,34 @@ type CommandContext struct {
 	Project       *models.Project
 	Config        *config.Config
 	ConfigManager *config.Manager
+}
+
+// ConfirmYN prompts the user with a [y/N] question. Returns true if the user
+// answers y or yes (case-insensitive). When force is true, skips the prompt and
+// returns true immediately.
+func ConfirmYN(prompt string, force bool) bool {
+	if force {
+		return true
+	}
+	fmt.Print(prompt)
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	response = strings.TrimSpace(strings.ToLower(response))
+	return response == "y" || response == "yes"
+}
+
+// ConfirmStrict prompts the user to type "yes" to confirm a destructive action.
+// Returns true only if the user types exactly "yes". When force is true, skips
+// the prompt and returns true immediately.
+func ConfirmStrict(prompt string, force bool) bool {
+	if force {
+		return true
+	}
+	fmt.Println(prompt)
+	fmt.Print("Type 'yes' to confirm: ")
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	return strings.TrimSpace(strings.ToLower(response)) == "yes"
 }
 
 // LoadConfig loads the configuration file.
@@ -97,4 +127,40 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	}
 
 	return project, cfg, configManager, nil
+}
+
+// LoadConfigAndProject loads the config and looks up a project by slug.
+// Returns an error if the project is not found.
+func LoadConfigAndProject(slug string) (*models.Project, *config.Config, *config.Manager, error) {
+	cfg, mgr, err := LoadConfig()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	project := cfg.GetProject(slug)
+	if project == nil {
+		return nil, nil, nil, tterrors.NewProjectNotFoundError(slug)
+	}
+	return project, cfg, mgr, nil
+}
+
+// LoadConfigAndProjectOrCurrent loads the config and looks up a project by slug
+// if args is non-empty, otherwise falls back to the current project.
+func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Config, *config.Manager, error) {
+	cfg, mgr, err := LoadConfig()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var project *models.Project
+	if len(args) > 0 {
+		project = cfg.GetProject(args[0])
+		if project == nil {
+			return nil, nil, nil, tterrors.NewProjectNotFoundError(args[0])
+		}
+	} else {
+		project = cfg.GetCurrentProject()
+		if project == nil {
+			return nil, nil, nil, fmt.Errorf("%w. Specify a project or select one with: tt select", tterrors.ErrNoCurrentProject)
+		}
+	}
+	return project, cfg, mgr, nil
 }

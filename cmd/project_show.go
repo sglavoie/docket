@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -33,23 +32,9 @@ func init() {
 }
 
 func runProjectShow(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	project, _, _, err := LoadConfigAndProjectOrCurrent(args)
 	if err != nil {
 		return err
-	}
-
-	var project *models.Project
-
-	if len(args) > 0 {
-		project = cfg.GetProject(args[0])
-		if project == nil {
-			return fmt.Errorf("project '%s': %w", args[0], tterrors.ErrProjectNotFound)
-		}
-	} else {
-		project = cfg.GetCurrentProject()
-		if project == nil {
-			return fmt.Errorf("%w. Specify a project or select one with: tt select", tterrors.ErrNoCurrentProject)
-		}
 	}
 
 	// Load tasks

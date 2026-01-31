@@ -178,12 +178,9 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirm if dependencies will be cleared
-	if depsToBeCleared > 0 && !taskMoveToForce {
+	if depsToBeCleared > 0 {
 		fmt.Printf("Warning: %d dependencies will be cleared (they point to tasks not being moved).\n", depsToBeCleared)
-		fmt.Print("Continue? [y/N]: ")
-		var response string
-		_, _ = fmt.Scanln(&response)
-		if response != "y" && response != "Y" {
+		if !ConfirmYN("Continue? [y/N]: ", taskMoveToForce) {
 			fmt.Println("Canceled.")
 			return nil
 		}

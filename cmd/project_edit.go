@@ -43,23 +43,9 @@ func init() {
 }
 
 func runProjectEdit(cmd *cobra.Command, args []string) error {
-	cfg, configManager, err := LoadConfig()
+	project, cfg, configManager, err := LoadConfigAndProjectOrCurrent(args)
 	if err != nil {
 		return err
-	}
-
-	// Find the target project
-	var project *models.Project
-	if len(args) > 0 {
-		project = cfg.GetProject(args[0])
-		if project == nil {
-			return fmt.Errorf("project '%s': %w", args[0], tterrors.ErrProjectNotFound)
-		}
-	} else {
-		project = cfg.GetCurrentProject()
-		if project == nil {
-			return fmt.Errorf("%w; specify a project or use 'tt project switch'", tterrors.ErrNoCurrentProject)
-		}
 	}
 
 	// Check if any flags were provided

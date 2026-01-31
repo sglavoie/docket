@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 var taskActivityCmd = &cobra.Command{
@@ -116,9 +117,9 @@ func parseDuration(s string) (time.Duration, error) {
 	case 'h':
 		return time.Duration(num) * time.Hour, nil
 	case 'd':
-		return time.Duration(num) * 24 * time.Hour, nil
+		return time.Duration(num) * util.Day, nil
 	case 'w':
-		return time.Duration(num) * 7 * 24 * time.Hour, nil
+		return time.Duration(num) * util.Week, nil
 	default:
 		return 0, fmt.Errorf("unknown unit: %c (use h, d, or w)", unit)
 	}
