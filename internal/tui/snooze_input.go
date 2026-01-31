@@ -14,13 +14,12 @@ import (
 
 // SnoozeInputModel handles setting a snooze date for a task.
 type SnoozeInputModel struct {
-	task     *models.Task
-	project  *models.Project
-	input    textinput.Model
-	err      error
-	width    int
-	height   int
-	canceled bool
+	task    *models.Task
+	project *models.Project
+	input   textinput.Model
+	err     error
+	width   int
+	height  int
 }
 
 // NewSnoozeInputModel creates a new snooze input model.

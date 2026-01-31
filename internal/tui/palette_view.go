@@ -218,7 +218,7 @@ func (m *CommandPaletteModel) buildFooter() string {
 
 	// When browsing (empty query), show syntax cheat sheet instead of key hints
 	if query == "" {
-		return fmt.Sprintf("+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N")
+		return "+ create | : filter | # jump | \"exact\" | -exclude | @due | priority:N"
 	}
 
 	// Show keyhint bar when direct actions are enabled and cursor is on a task

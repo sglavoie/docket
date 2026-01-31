@@ -177,7 +177,7 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		if m.cursor >= 0 && m.cursor < len(m.filtered) {
 			dt := m.filtered[m.cursor]
 			return m, func() tea.Msg {
-				return RecentActivitySelectMsg{Task: dt.Task, Project: dt.Project}
+				return RecentActivitySelectMsg(dt)
 			}
 		}
 

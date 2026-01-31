@@ -2,6 +2,27 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
+// makeBadgeStyle creates a badge style with the given foreground and background ANSI colors.
+func makeBadgeStyle(fg, bg string) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(fg)).
+		Background(lipgloss.Color(bg))
+}
+
+// makeViewModeStyle creates a view mode tab style with the given background ANSI color.
+func makeViewModeStyle(bg string) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Background(lipgloss.Color(bg)).
+		Foreground(lipgloss.Color("15")).
+		Bold(true).
+		Padding(0, 1)
+}
+
+// makeColorStyle creates a style with just a foreground color.
+func makeColorStyle(color lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(color)
+}
+
 // Color palette
 var (
 	ColorPrimary     = lipgloss.Color("39")  // Blue
@@ -105,50 +126,19 @@ var (
 			Foreground(lipgloss.Color("248")) // Gray
 
 	// Task type badge styles (icon with background for visual distinction)
-	EpicBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("135")). // Purple
-			Background(lipgloss.Color("53"))   // Dark purple
-
-	StoryBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("39")). // Blue
-			Background(lipgloss.Color("17"))  // Dark blue
-
-	TaskBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42")). // Green
-			Background(lipgloss.Color("22"))  // Dark green
-
-	BugBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")). // Red
-			Background(lipgloss.Color("52"))   // Dark red
-
-	IdeaBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("214")). // Orange
-			Background(lipgloss.Color("94"))   // Dark orange
-
-	NoteBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("248")). // Gray
-			Background(lipgloss.Color("237"))  // Dark gray
+	EpicBadgeStyle  = makeBadgeStyle("135", "53")  // Purple
+	StoryBadgeStyle = makeBadgeStyle("39", "17")   // Blue
+	TaskBadgeStyle  = makeBadgeStyle("42", "22")   // Green
+	BugBadgeStyle   = makeBadgeStyle("196", "52")  // Red
+	IdeaBadgeStyle  = makeBadgeStyle("214", "94")  // Orange
+	NoteBadgeStyle  = makeBadgeStyle("248", "237") // Gray
 
 	// Task status badge styles (icon with background for visual distinction)
-	TodoBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241")). // Gray
-			Background(lipgloss.Color("236"))  // Dark gray
-
-	InProgressBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("214")). // Orange
-				Background(lipgloss.Color("94"))   // Dark orange
-
-	DoneBadgeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("42")). // Green
-			Background(lipgloss.Color("22"))  // Dark green
-
-	BlockedBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("196")). // Red
-				Background(lipgloss.Color("52"))   // Dark red
-
-	CanceledBadgeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("241")). // Gray
-				Background(lipgloss.Color("236"))  // Dark gray
+	TodoBadgeStyle       = makeBadgeStyle("241", "236") // Gray
+	InProgressBadgeStyle = makeBadgeStyle("214", "94")  // Orange
+	DoneBadgeStyle       = makeBadgeStyle("42", "22")   // Green
+	BlockedBadgeStyle    = makeBadgeStyle("196", "52")  // Red
+	CanceledBadgeStyle   = makeBadgeStyle("241", "236") // Gray
 
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
@@ -311,47 +301,13 @@ var (
 			Background(lipgloss.Color("236"))
 
 	// View mode styles
-	ViewModeActiveStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("34")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeNextStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("61")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeInboxStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("33")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeWaitingStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("214")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeSomedayStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("135")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeCompletedStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("28")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
-
-	ViewModeSnoozedStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("95")).
-				Foreground(lipgloss.Color("15")).
-				Bold(true).
-				Padding(0, 1)
+	ViewModeActiveStyle    = makeViewModeStyle("34")
+	ViewModeNextStyle      = makeViewModeStyle("61")
+	ViewModeInboxStyle     = makeViewModeStyle("33")
+	ViewModeWaitingStyle   = makeViewModeStyle("214")
+	ViewModeSomedayStyle   = makeViewModeStyle("135")
+	ViewModeCompletedStyle = makeViewModeStyle("28")
+	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().
@@ -526,10 +482,10 @@ var (
 
 	// Priority level styles (for priority picker and palette)
 	Priority1Style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-	Priority2Style = lipgloss.NewStyle().Foreground(ColorWarning)
-	Priority3Style = lipgloss.NewStyle().Foreground(ColorPrimary)
-	Priority4Style = lipgloss.NewStyle().Foreground(ColorMuted)
-	Priority5Style = lipgloss.NewStyle().Foreground(ColorMuted).Faint(true)
+	Priority2Style = makeColorStyle(ColorWarning)
+	Priority3Style = makeColorStyle(ColorPrimary)
+	Priority4Style = makeColorStyle(ColorMuted)
+	Priority5Style = makeColorStyle(ColorMuted).Faint(true)
 
 	// Common inline styles used across multiple files
 	MatchHighlightStyle = lipgloss.NewStyle().Foreground(ColorHighlight)

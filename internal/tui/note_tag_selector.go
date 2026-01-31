@@ -3,9 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -15,14 +13,10 @@ import (
 // NoteTagSelectorModel allows multi-selecting tags for a note.
 type NoteTagSelectorModel struct {
 	*BasePicker[TagInfo]
+	TagAdder
 	note         *models.Note
 	project      *models.Project
 	originalTags []string
-
-	// Add tag mode
-	addTagMode  bool
-	addTagInput textinput.Model
-	addTagError string
 }
 
 // NewNoteTagSelectorModel creates a new tag selector for a note.
@@ -42,7 +36,6 @@ func NewNoteTagSelectorModel(note *models.Note, project *models.Project, current
 		ShowCounts:     true,
 	})
 
-	// Pre-select current tags
 	for _, tag := range currentTags {
 		picker.PreSelectByID(tag)
 	}
@@ -50,15 +43,12 @@ func NewNoteTagSelectorModel(note *models.Note, project *models.Project, current
 		picker.SetCursorToID(currentTags[0])
 	}
 
-	addInput := textinput.New()
-	addInput.CharLimit = 50
-
 	return &NoteTagSelectorModel{
 		BasePicker:   picker,
+		TagAdder:     NewTagAdder(),
 		note:         note,
 		project:      project,
 		originalTags: append([]string{}, currentTags...),
-		addTagInput:  addInput,
 	}
 }
 
@@ -108,8 +98,11 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.addTagMode {
-			return m.handleAddTagMode(msg)
+		if m.AddTagMode {
+			handled, cmd := m.TagAdder.HandleAddTagKey(msg, m.BasePicker)
+			if handled {
+				return m, cmd
+			}
 		}
 
 		switch msg.String() {
@@ -135,12 +128,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			m.addTagMode = true
-			m.addTagError = ""
-			m.addTagInput.Reset()
-			m.addTagInput.SetValue("")
-			m.addTagInput.Focus()
-			return m, textinput.Blink
+			return m, m.TagAdder.EnterAddMode()
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
@@ -153,146 +141,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *NoteTagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	case "enter":
-		tagName := strings.TrimSpace(m.addTagInput.Value())
-		if tagName == "" {
-			m.addTagError = "Tag name cannot be empty"
-			return m, nil
-		}
-
-		isDuplicate := false
-		for _, item := range m.Items {
-			if item.Name == tagName {
-				isDuplicate = true
-				break
-			}
-		}
-
-		if isDuplicate {
-			m.PreSelectByID(tagName)
-			m.SetCursorToID(tagName)
-			m.addTagError = fmt.Sprintf("Tag '%s' already exists - selected it", tagName)
-			m.addTagMode = false
-			m.addTagInput.Blur()
-			return m, nil
-		}
-
-		newTag := TagInfo{Name: tagName, TaskCount: 0}
-		m.Items = append(m.Items, newTag)
-		sort.Slice(m.Items, func(i, j int) bool {
-			return m.Items[i].Name < m.Items[j].Name
-		})
-
-		m.Filter(m.SearchQuery())
-		m.PreSelectByID(tagName)
-		m.SetCursorToID(tagName)
-
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	default:
-		var cmd tea.Cmd
-		m.addTagInput, cmd = m.addTagInput.Update(msg)
-		return m, cmd
-	}
-}
-
-// HasActiveInput returns true when in add tag mode.
-func (m *NoteTagSelectorModel) HasActiveInput() bool {
-	return m.addTagMode
-}
-
-// HasTextInput returns true when the add-tag input is active.
-func (m *NoteTagSelectorModel) HasTextInput() bool {
-	return m.HasActiveInput()
-}
-
-// ShouldCaptureEsc returns true when the add-tag input is active.
-func (m *NoteTagSelectorModel) ShouldCaptureEsc() bool {
-	return m.HasActiveInput()
-}
-
 // View renders the note tag selector.
 func (m *NoteTagSelectorModel) View() string {
-	if m.addTagMode {
-		return m.renderAddTagMode()
-	}
-
-	boxWidth := 80
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
-	var content strings.Builder
-
-	content.WriteString(m.RenderSearchBar())
-
-	maxVisible := 15
-	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
-	}
-	m.Config.BoxWidth = boxWidth
-	content.WriteString(m.RenderList(maxVisible))
-
-	content.WriteString("\n")
-	content.WriteString(m.renderCustomFooter())
-
-	selectedCount := len(m.Selected)
-	var subtitle string
-	if selectedCount == 0 {
-		subtitle = "No tags selected"
-	} else {
-		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
-	}
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    m.Config.Title,
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
-}
-
-func (m *NoteTagSelectorModel) renderCustomFooter() string {
-	if m.IsSearchMode() {
-		return MutedStyle.Render("enter done | esc clear")
-	}
-	if len(m.Filtered) == 0 {
-		return MutedStyle.Render("a add tag | esc cancel")
-	}
-	return MutedStyle.Render("space toggle | a add tag | / search | c clear | enter apply | esc cancel")
-}
-
-func (m *NoteTagSelectorModel) renderAddTagMode() string {
-	var content strings.Builder
-
-	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
-	content.WriteString("\n\n")
-
-	content.WriteString(m.addTagInput.View())
-	content.WriteString("\n\n")
-
-	if m.addTagError != "" {
-		errorStyle := BoldStyle.Foreground(ColorError)
-		content.WriteString(errorStyle.Render(m.addTagError))
-		content.WriteString("\n\n")
-	}
-
-	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Add New Tag",
-		Width:    50,
-		Centered: true,
-	})
+	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
 }

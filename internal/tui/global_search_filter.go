@@ -160,7 +160,7 @@ func (m *GlobalSearchModel) scoreTask(task *models.Task, query string) (int, []i
 	// Return the best score with source info
 	bestScore := titleScore
 	bestSource := "title"
-	var bestPositions []int = titlePositions
+	bestPositions := titlePositions
 
 	if descScore > bestScore {
 		bestScore = descScore

@@ -104,14 +104,6 @@ type PaletteItem struct {
 	ViewTarget  ViewType        // Set when Category is CategoryViews
 }
 
-// CommandPaletteItem represents a searchable item in the command palette.
-// This wraps Command to allow future extension with other searchable types
-// (tasks, projects, tags, sections) as per the requirement.
-// Deprecated: Use PaletteItem instead for unified search result representation.
-type CommandPaletteItem struct {
-	Command Command
-}
-
 // PaletteAction represents an inline action that can be performed on a palette item.
 // When a user presses Tab on a non-command item, a submenu of available actions is shown.
 type PaletteAction struct {

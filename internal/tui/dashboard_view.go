@@ -468,12 +468,6 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 		cardWidth = MinCardWidth
 	}
 
-	alertsCardHeight := 8
-	recentHeight := height - alertsCardHeight
-	if recentHeight < 6 {
-		recentHeight = 6
-	}
-
 	// Recent Activity card
 	var recentContent string
 	if selected == nil {

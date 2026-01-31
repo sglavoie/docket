@@ -109,6 +109,73 @@ func (r *KeybindingRegistry) add(bindings ...Keybinding) {
 	r.bindings = append(r.bindings, bindings...)
 }
 
+// addForViews stamps a slice of partially-constructed bindings with the given views and adds them.
+func (r *KeybindingRegistry) addForViews(views []ViewType, bindings []Keybinding) {
+	for i := range bindings {
+		bindings[i].Views = views
+	}
+	r.add(bindings...)
+}
+
+// Shared keybinding groups reused across multiple views.
+
+func statusBindings() []Keybinding {
+	return []Keybinding{
+		{Key: ",s", Description: "Start (in progress)", Category: "Status"},
+		{Key: ",d", Description: "Mark done", Category: "Status"},
+		{Key: ",b", Description: "Block task", Category: "Status"},
+		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
+		{Key: ",x", Description: "Cancel task", Category: "Status"},
+	}
+}
+
+func priorityBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority"},
+		{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority"},
+		{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority"},
+		{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority"},
+		{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority"},
+	}
+}
+
+func dueDateBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "dt", Description: "Due today", Category: "⏰ Due Date"},
+		{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date"},
+		{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date"},
+		{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date"},
+		{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date"},
+		{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date"},
+	}
+}
+
+func clipboardBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "y", Description: "Copy title", Category: "📋 Clipboard"},
+		{Key: "Y", Description: "Copy description", Category: "📋 Clipboard"},
+		{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard"},
+	}
+}
+
+func linkedTaskBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks"},
+		{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks"},
+		{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks"},
+		{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks"},
+		{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks"},
+	}
+}
+
+func projectCyclingBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
+		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
+		{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling"},
+	}
+}
+
 func (r *KeybindingRegistry) registerGlobalBindings() {
 	r.add(
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},
@@ -195,28 +262,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "Enter (sidebar)", Description: "Jump to dependency", Category: "Sidebar", Views: views},
 		Keybinding{Key: "Esc (sidebar)", Description: "Return focus to tree", Category: "Sidebar", Views: views},
 
-		// Status Changes (, prefix)
-		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
-
-		// Priority Quick Actions (! prefix)
-		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority", Views: views},
-
-		// Due Date Quick Actions (d prefix)
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// Snooze Quick Actions (s prefix)
 		Keybinding{Key: "st", Description: "Snooze until tomorrow", Category: "💤 Snooze", Views: views},
 		Keybinding{Key: "sw", Description: "Snooze 1 week", Category: "💤 Snooze", Views: views},
@@ -225,11 +270,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "s0", Description: "Clear snooze", Category: "💤 Snooze", Views: views},
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "💤 Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
-
-		// Project Cycling
-		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
 
 		// Type Changes
 		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},
@@ -264,12 +304,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
 
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "x (sidebar)", Description: "Remove link", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
@@ -320,11 +354,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Project
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
 
-		// Clipboard
-		Keybinding{Key: "y", Description: "Copy title", Category: "📋 Clipboard", Views: views},
-		Keybinding{Key: "Y", Description: "Copy description", Category: "📋 Clipboard", Views: views},
-		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard", Views: views},
-
 		// Cross-Project
 		Keybinding{Key: "M", Description: "Move to another project", Category: "Cross-Project", Views: views},
 
@@ -356,6 +385,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, clipboardBindings())
+	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, projectCyclingBindings())
 }
 
 func (r *KeybindingRegistry) registerProjectCycleManagerBindings() {
@@ -404,26 +439,14 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
 		// View
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
-
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerInboxProcessorBindings() {
@@ -507,26 +530,13 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close due date overview", Category: "View", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
 }
 
 func (r *KeybindingRegistry) registerDailyReviewBindings() {
@@ -556,33 +566,14 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
-
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
@@ -613,33 +604,14 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close weekly review", Category: "View", Views: views},
-
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerFocusViewBindings() {
@@ -659,33 +631,14 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
-
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
@@ -705,25 +658,12 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 
-		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark task done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen task (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Due Date
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in 1 week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in 1 month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// View
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
 }
 
 func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
@@ -838,28 +778,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all in column", Category: "Folds", Views: views},
 		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
 
-		// Status Changes (, prefix)
-		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
-		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
-		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
-		Keybinding{Key: ",o", Description: "Reopen (todo)", Category: "Status", Views: views},
-		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
-
-		// Priority Quick Actions (! prefix)
-		Keybinding{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority", Views: views},
-		Keybinding{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority", Views: views},
-
-		// Due Date Quick Actions (d prefix)
-		Keybinding{Key: "dt", Description: "Due today", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date", Views: views},
-		Keybinding{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date", Views: views},
-
 		// Views
 		Keybinding{Key: "gc", Description: "Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "F1", Description: "Completed view", Category: "Views", Views: views},
@@ -885,18 +803,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "H", Description: "Cycle leaf left", Category: "Type Changes", Views: views},
 		Keybinding{Key: "L", Description: "Cycle leaf right", Category: "Type Changes", Views: views},
 
-		// Create Linked Tasks (c prefix)
-		Keybinding{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks", Views: views},
 		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
-
-		// Project Cycling
-		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
 
 		// Sort
 		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},
@@ -965,10 +872,11 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		// Actions
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
-
-		// Clipboard
-		Keybinding{Key: "y", Description: "Copy title", Category: "📋 Clipboard", Views: views},
-		Keybinding{Key: "Y", Description: "Copy description", Category: "📋 Clipboard", Views: views},
-		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard", Views: views},
 	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
+	r.addForViews(views, projectCyclingBindings())
+	r.addForViews(views, clipboardBindings())
 }

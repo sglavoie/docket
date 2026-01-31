@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -44,7 +43,6 @@ func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorM
 		ShowCounts:     true,
 	})
 
-	// Pre-select currently filtered sections
 	for section := range pt.filter.Sections {
 		picker.PreSelectByID(section)
 	}
@@ -59,17 +57,14 @@ func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorM
 func buildSectionList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
-	// Count tasks per section
 	for _, task := range project.Tasks {
 		if task.Section != "" {
 			sectionCounts[task.Section]++
 		}
 	}
 
-	// Include all project-defined sections, even if empty
 	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {
-			// Skip empty Next
 			if section == models.SectionNext {
 				continue
 			}
@@ -82,7 +77,6 @@ func buildSectionList(project *models.Project) []SectionInfo {
 		sections = append(sections, SectionInfo{Name: name, TaskCount: count})
 	}
 
-	// Sort: Next first (if present), then alphabetically
 	sort.Slice(sections, func(i, j int) bool {
 		if sections[i].Name == models.SectionNext {
 			return true
@@ -103,49 +97,16 @@ func (m *SectionFilterSelectorModel) Init() tea.Cmd {
 
 // Update handles messages.
 func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "esc":
-			return m, func() tea.Msg {
-				return SectionFilterSelectorDoneMsg{Canceled: true}
-			}
-
-		case "enter":
-			selectedSections := m.SelectedIDs()
-			sort.Strings(selectedSections)
-			return m, func() tea.Msg {
-				return SectionFilterSelectorDoneMsg{
-					SelectedSections: selectedSections,
-					Canceled:         false,
-				}
-			}
-
-		default:
-			handled, cmd := m.HandleKeyMsg(msg)
-			if handled {
-				return m, cmd
-			}
-		}
-	}
-
-	return m, nil
+	cmd := filterSelectorUpdate(m.BasePicker, msg,
+		func() tea.Msg { return SectionFilterSelectorDoneMsg{Canceled: true} },
+		func(selected []string) tea.Msg {
+			return SectionFilterSelectorDoneMsg{SelectedSections: selected, Canceled: false}
+		},
+	)
+	return m, cmd
 }
 
 // View renders the section filter selector.
 func (m *SectionFilterSelectorModel) View() string {
-	// Selection count header
-	selectedCount := len(m.Selected)
-	var headerContent string
-	if selectedCount == 0 {
-		headerContent = MutedStyle.Render("No sections selected (showing all)")
-	} else {
-		headerContent = MutedStyle.Render(fmt.Sprintf("%d section%s selected", selectedCount, pluralize(selectedCount, "", "s")))
-	}
-
-	return m.RenderInBox(m.Config.Title, headerContent, 0)
+	return filterSelectorView(m.BasePicker, "section")
 }

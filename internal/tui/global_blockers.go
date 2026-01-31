@@ -81,17 +81,17 @@ func (m *GlobalBlockersModel) getVisibleItems(tab int) []blockerItem {
 	case blockersTabResolved:
 		for _, e := range m.entries {
 			if e.Blocker.IsResolved() {
-				result = append(result, blockerItem{Blocker: e.Blocker, Project: e.Project})
+				result = append(result, blockerItem(e))
 			}
 		}
 	case blockersTabAll:
 		for _, e := range m.entries {
-			result = append(result, blockerItem{Blocker: e.Blocker, Project: e.Project})
+			result = append(result, blockerItem(e))
 		}
 	default:
 		for _, e := range m.entries {
 			if !e.Blocker.IsResolved() {
-				result = append(result, blockerItem{Blocker: e.Blocker, Project: e.Project})
+				result = append(result, blockerItem(e))
 			}
 		}
 	}

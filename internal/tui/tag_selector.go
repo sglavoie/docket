@@ -3,9 +3,7 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -14,14 +12,10 @@ import (
 // TagSelectorModel allows multi-selecting tags and adding new ones.
 type TagSelectorModel struct {
 	*BasePicker[TagInfo]
+	TagAdder
 	task         *models.Task
 	project      *models.Project
 	originalTags []string
-
-	// Add tag mode
-	addTagMode  bool
-	addTagInput textinput.Model
-	addTagError string
 }
 
 // ShowTagSelectorMsg is sent to open the tag selector.
@@ -56,25 +50,18 @@ type BulkTagSelectorDoneMsg struct {
 // BulkTagSelectorModel allows multi-selecting tags for multiple tasks.
 type BulkTagSelectorModel struct {
 	*BasePicker[TagInfo]
+	TagAdder
 	tasks        []*models.Task
 	project      *models.Project
 	originalTags map[string][]string // taskID -> original tags
-
-	// Add tag mode
-	addTagMode  bool
-	addTagInput textinput.Model
-	addTagError string
 }
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
 func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *BulkTagSelectorModel {
 	tags := buildTagListForSelector(project)
-
-	// Find common tags (present on all tasks)
 	commonTags := findCommonTags(tasks)
 
 	title := fmt.Sprintf("Tags for %d tasks", len(tasks))
-
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          title,
 		EmptyMessage:   "No tags in project (press 'a' to add)",
@@ -83,21 +70,13 @@ func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *Bul
 		ShowCounts:     true,
 	})
 
-	// Pre-select common tags
 	for _, tag := range commonTags {
 		picker.PreSelectByID(tag)
 	}
-
-	// Position cursor on first common tag if any
 	if len(commonTags) > 0 {
 		picker.SetCursorToID(commonTags[0])
 	}
 
-	// Create add tag input
-	addInput := textinput.New()
-	addInput.CharLimit = 50
-
-	// Save original tags for each task
 	originalTags := make(map[string][]string)
 	for _, task := range tasks {
 		originalTags[task.ID] = append([]string{}, task.Tags...)
@@ -105,10 +84,10 @@ func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *Bul
 
 	return &BulkTagSelectorModel{
 		BasePicker:   picker,
+		TagAdder:     NewTagAdder(),
 		tasks:        tasks,
 		project:      project,
 		originalTags: originalTags,
-		addTagInput:  addInput,
 	}
 }
 
@@ -118,7 +97,6 @@ func findCommonTags(tasks []*models.Task) []string {
 		return nil
 	}
 
-	// Count tag occurrences
 	tagCount := make(map[string]int)
 	for _, task := range tasks {
 		for _, tag := range task.Tags {
@@ -126,7 +104,6 @@ func findCommonTags(tasks []*models.Task) []string {
 		}
 	}
 
-	// Find tags present on all tasks
 	var common []string
 	for tag, count := range tagCount {
 		if count == len(tasks) {
@@ -155,9 +132,11 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Handle add tag mode first
-		if m.addTagMode {
-			return m.handleAddTagMode(msg)
+		if m.AddTagMode {
+			handled, cmd := m.TagAdder.HandleAddTagKey(msg, m.BasePicker)
+			if handled {
+				return m, cmd
+			}
 		}
 
 		switch msg.String() {
@@ -183,13 +162,7 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			// Enter add tag mode
-			m.addTagMode = true
-			m.addTagError = ""
-			m.addTagInput.Reset()
-			m.addTagInput.SetValue("")
-			m.addTagInput.Focus()
-			return m, textinput.Blink
+			return m, m.TagAdder.EnterAddMode()
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
@@ -202,175 +175,9 @@ func (m *BulkTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleAddTagMode handles keyboard input when in add tag mode.
-func (m *BulkTagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		// Cancel add mode
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	case "enter":
-		// Add the tag
-		tagName := strings.TrimSpace(m.addTagInput.Value())
-
-		// Validate
-		if tagName == "" {
-			m.addTagError = "Tag name cannot be empty"
-			return m, nil
-		}
-
-		// Check for duplicate (case-sensitive)
-		isDuplicate := false
-		for _, item := range m.Items {
-			if item.Name == tagName {
-				isDuplicate = true
-				break
-			}
-		}
-
-		if isDuplicate {
-			// Auto-select the existing tag
-			m.PreSelectByID(tagName)
-			m.SetCursorToID(tagName)
-			m.addTagError = fmt.Sprintf("Tag '%s' already exists - selected it", tagName)
-			m.addTagMode = false
-			m.addTagInput.Blur()
-			return m, nil
-		}
-
-		// Add new tag to the list
-		newTag := TagInfo{Name: tagName, TaskCount: 0}
-		m.Items = append(m.Items, newTag)
-
-		// Re-sort items
-		sort.Slice(m.Items, func(i, j int) bool {
-			return m.Items[i].Name < m.Items[j].Name
-		})
-
-		// Update filtered list and select the new tag
-		m.Filter(m.SearchQuery())
-		m.PreSelectByID(tagName)
-		m.SetCursorToID(tagName)
-
-		// Exit add mode
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	default:
-		// Update text input
-		var cmd tea.Cmd
-		m.addTagInput, cmd = m.addTagInput.Update(msg)
-		return m, cmd
-	}
-}
-
-// HasActiveInput returns true when in add tag mode.
-func (m *BulkTagSelectorModel) HasActiveInput() bool {
-	return m.addTagMode
-}
-
-// HasTextInput returns true when the add-tag input is active.
-func (m *BulkTagSelectorModel) HasTextInput() bool {
-	return m.HasActiveInput()
-}
-
-// ShouldCaptureEsc returns true when the add-tag input is active.
-func (m *BulkTagSelectorModel) ShouldCaptureEsc() bool {
-	return m.HasActiveInput()
-}
-
 // View renders the bulk tag selector.
 func (m *BulkTagSelectorModel) View() string {
-	// If in add tag mode, show add tag UI
-	if m.addTagMode {
-		return m.renderAddTagMode()
-	}
-
-	// Build custom view with 'a' key support
-	boxWidth := 80
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
-	var content strings.Builder
-
-	// Search bar
-	content.WriteString(m.RenderSearchBar())
-
-	// List
-	maxVisible := 15
-	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
-	}
-	m.Config.BoxWidth = boxWidth
-	content.WriteString(m.RenderList(maxVisible))
-
-	// Custom footer with 'a' key
-	content.WriteString("\n")
-	content.WriteString(m.renderCustomFooter())
-
-	// Build subtitle from selection count
-	selectedCount := len(m.Selected)
-	var subtitle string
-	if selectedCount == 0 {
-		subtitle = "No tags selected"
-	} else {
-		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
-	}
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    m.Config.Title,
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
-}
-
-// renderCustomFooter renders the footer with 'a' key for adding tags.
-func (m *BulkTagSelectorModel) renderCustomFooter() string {
-	if m.IsSearchMode() {
-		return MutedStyle.Render("enter done | esc clear")
-	}
-
-	if len(m.Filtered) == 0 {
-		return MutedStyle.Render("a add tag | esc cancel")
-	}
-
-	return MutedStyle.Render("space toggle | a add tag | / search | c clear | enter apply | esc cancel")
-}
-
-// renderAddTagMode renders the add tag input UI.
-func (m *BulkTagSelectorModel) renderAddTagMode() string {
-	var content strings.Builder
-
-	// Instructions
-	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
-	content.WriteString("\n\n")
-
-	// Input field
-	content.WriteString(m.addTagInput.View())
-	content.WriteString("\n\n")
-
-	// Error message if any
-	if m.addTagError != "" {
-		errorStyle := BoldStyle.Foreground(ColorError)
-		content.WriteString(errorStyle.Render(m.addTagError))
-		content.WriteString("\n\n")
-	}
-
-	// Footer
-	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Add New Tag",
-		Width:    50,
-		Centered: true,
-	})
+	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
 }
 
 // NewTagSelectorModel creates a new tag selector.
@@ -385,26 +192,19 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		ShowCounts:     true,
 	})
 
-	// Pre-select current tags
 	for _, tag := range currentTags {
 		picker.PreSelectByID(tag)
 	}
-
-	// Position cursor on first selected tag if any
 	if len(currentTags) > 0 {
 		picker.SetCursorToID(currentTags[0])
 	}
 
-	// Create add tag input
-	addInput := textinput.New()
-	addInput.CharLimit = 50
-
 	return &TagSelectorModel{
 		BasePicker:   picker,
+		TagAdder:     NewTagAdder(),
 		task:         task,
 		project:      project,
-		originalTags: append([]string{}, currentTags...), // Copy
-		addTagInput:  addInput,
+		originalTags: append([]string{}, currentTags...),
 	}
 }
 
@@ -447,9 +247,11 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Handle add tag mode first
-		if m.addTagMode {
-			return m.handleAddTagMode(msg)
+		if m.AddTagMode {
+			handled, cmd := m.TagAdder.HandleAddTagKey(msg, m.BasePicker)
+			if handled {
+				return m, cmd
+			}
 		}
 
 		switch msg.String() {
@@ -475,13 +277,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			// Enter add tag mode
-			m.addTagMode = true
-			m.addTagError = ""
-			m.addTagInput.Reset()
-			m.addTagInput.SetValue("")
-			m.addTagInput.Focus()
-			return m, textinput.Blink
+			return m, m.TagAdder.EnterAddMode()
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)
@@ -494,173 +290,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleAddTagMode handles keyboard input when in add tag mode.
-func (m *TagSelectorModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		// Cancel add mode
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	case "enter":
-		// Add the tag
-		tagName := strings.TrimSpace(m.addTagInput.Value())
-
-		// Validate
-		if tagName == "" {
-			m.addTagError = "Tag name cannot be empty"
-			return m, nil
-		}
-
-		// Check for duplicate (case-sensitive)
-		isDuplicate := false
-		for _, item := range m.Items {
-			if item.Name == tagName {
-				isDuplicate = true
-				break
-			}
-		}
-
-		if isDuplicate {
-			// Auto-select the existing tag
-			m.PreSelectByID(tagName)
-			m.SetCursorToID(tagName)
-			m.addTagError = fmt.Sprintf("Tag '%s' already exists - selected it", tagName)
-			m.addTagMode = false
-			m.addTagInput.Blur()
-			return m, nil
-		}
-
-		// Add new tag to the list
-		newTag := TagInfo{Name: tagName, TaskCount: 0}
-		m.Items = append(m.Items, newTag)
-
-		// Re-sort items
-		sort.Slice(m.Items, func(i, j int) bool {
-			return m.Items[i].Name < m.Items[j].Name
-		})
-
-		// Update filtered list and select the new tag
-		m.Filter(m.SearchQuery())
-		m.PreSelectByID(tagName)
-		m.SetCursorToID(tagName)
-
-		// Exit add mode
-		m.addTagMode = false
-		m.addTagError = ""
-		m.addTagInput.Blur()
-		return m, nil
-
-	default:
-		// Update text input
-		var cmd tea.Cmd
-		m.addTagInput, cmd = m.addTagInput.Update(msg)
-		return m, cmd
-	}
-}
-
-// HasActiveInput returns true when in add tag mode.
-func (m *TagSelectorModel) HasActiveInput() bool {
-	return m.addTagMode
-}
-
-// HasTextInput returns true when the add-tag input is active.
-func (m *TagSelectorModel) HasTextInput() bool {
-	return m.HasActiveInput()
-}
-
-// ShouldCaptureEsc returns true when the add-tag input is active.
-func (m *TagSelectorModel) ShouldCaptureEsc() bool {
-	return m.HasActiveInput()
-}
-
 // View renders the tag selector.
 func (m *TagSelectorModel) View() string {
-	// If in add tag mode, show add tag UI
-	if m.addTagMode {
-		return m.renderAddTagMode()
-	}
-
-	// Build custom view with 'a' key support
-	boxWidth := 80
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
-	var content strings.Builder
-
-	// Search bar
-	content.WriteString(m.RenderSearchBar())
-
-	// List
-	maxVisible := 15
-	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
-	}
-	m.Config.BoxWidth = boxWidth
-	content.WriteString(m.RenderList(maxVisible))
-
-	// Custom footer with 'a' key
-	content.WriteString("\n")
-	content.WriteString(m.renderCustomFooter())
-
-	// Build subtitle from selection count
-	selectedCount := len(m.Selected)
-	var subtitle string
-	if selectedCount == 0 {
-		subtitle = "No tags selected"
-	} else {
-		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
-	}
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    m.Config.Title,
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
-}
-
-// renderCustomFooter renders the footer with 'a' key for adding tags.
-func (m *TagSelectorModel) renderCustomFooter() string {
-	if m.IsSearchMode() {
-		return MutedStyle.Render("enter done | esc clear")
-	}
-
-	if len(m.Filtered) == 0 {
-		return MutedStyle.Render("a add tag | esc cancel")
-	}
-
-	return MutedStyle.Render("space toggle | a add tag | / search | c clear | enter apply | esc cancel")
-}
-
-// renderAddTagMode renders the add tag input UI.
-func (m *TagSelectorModel) renderAddTagMode() string {
-	var content strings.Builder
-
-	// Instructions
-	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
-	content.WriteString("\n\n")
-
-	// Input field
-	content.WriteString(m.addTagInput.View())
-	content.WriteString("\n\n")
-
-	// Error message if any
-	if m.addTagError != "" {
-		errorStyle := BoldStyle.Foreground(ColorError)
-		content.WriteString(errorStyle.Render(m.addTagError))
-		content.WriteString("\n\n")
-	}
-
-	// Footer
-	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Add New Tag",
-		Width:    50,
-		Centered: true,
-	})
+	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
 }

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,7 +24,6 @@ func NewKanbanTagFilterSelectorModel(kanban *KanbanViewModel) *KanbanTagFilterSe
 		ShowCounts:     true,
 	})
 
-	// Pre-select currently filtered tags
 	for tag := range kanban.filter.Tags {
 		picker.PreSelectByID(tag)
 	}
@@ -40,7 +38,6 @@ func NewKanbanTagFilterSelectorModel(kanban *KanbanViewModel) *KanbanTagFilterSe
 func buildKanbanTagList(kanban *KanbanViewModel) []TagInfo {
 	tagCounts := make(map[string]int)
 	for _, task := range kanban.Project.Tasks {
-		// Only count non-completed tasks (consistent with kanban view)
 		if task.Status.IsComplete() {
 			continue
 		}
@@ -73,49 +70,16 @@ func (m *KanbanTagFilterSelectorModel) Init() tea.Cmd {
 
 // Update handles messages.
 func (m *KanbanTagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "esc":
-			return m, func() tea.Msg {
-				return KanbanTagFilterSelectorDoneMsg{Canceled: true}
-			}
-
-		case "enter":
-			selectedTags := m.SelectedIDs()
-			sort.Strings(selectedTags)
-			return m, func() tea.Msg {
-				return KanbanTagFilterSelectorDoneMsg{
-					SelectedTags: selectedTags,
-					Canceled:     false,
-				}
-			}
-
-		default:
-			handled, cmd := m.HandleKeyMsg(msg)
-			if handled {
-				return m, cmd
-			}
-		}
-	}
-
-	return m, nil
+	cmd := filterSelectorUpdate(m.BasePicker, msg,
+		func() tea.Msg { return KanbanTagFilterSelectorDoneMsg{Canceled: true} },
+		func(selected []string) tea.Msg {
+			return KanbanTagFilterSelectorDoneMsg{SelectedTags: selected, Canceled: false}
+		},
+	)
+	return m, cmd
 }
 
 // View renders the tag filter selector.
 func (m *KanbanTagFilterSelectorModel) View() string {
-	// Selection count header
-	selectedCount := len(m.Selected)
-	var headerContent string
-	if selectedCount == 0 {
-		headerContent = MutedStyle.Render("No tags selected (showing all)")
-	} else {
-		headerContent = MutedStyle.Render(fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s")))
-	}
-
-	return m.RenderInBox(m.Config.Title, headerContent, 0)
+	return filterSelectorView(m.BasePicker, "tag")
 }
