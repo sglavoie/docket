@@ -72,6 +72,10 @@ func (p *Project) RemoveSection(name string) bool {
 					task.Section = ""
 					task.UpdatedAt = time.Now()
 				}
+				if task.CustomSection == name {
+					task.CustomSection = ""
+					task.UpdatedAt = time.Now()
+				}
 			}
 			// Remove color mapping
 			if p.SectionColors != nil {

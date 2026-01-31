@@ -548,7 +548,7 @@ func (m *SectionManagerModel) View() string {
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Section Manager"))
+	content.WriteString(titleStyle.Render("Custom Section Manager"))
 	content.WriteString("\n\n")
 
 	// Add mode input

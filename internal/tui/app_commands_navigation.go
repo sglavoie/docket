@@ -196,8 +196,8 @@ func (m *AppModel) filterCommands() []Command {
 			},
 		},
 		{
-			Name:        "section manager",
-			Description: "Manage project sections",
+			Name:        "custom section manager",
+			Description: "Manage custom project sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
 			Views:       []ViewType{ViewProjectTree},

@@ -138,7 +138,7 @@ func (m *AppModel) renderStatusBar() string {
 	case ViewPriorityPicker:
 		status = "Set Priority"
 	case ViewSectionManager:
-		status = "Section Manager"
+		status = "Custom Section Manager"
 	case ViewContextPicker:
 		status = "Filter by Context"
 	case ViewCustomContextEditor:

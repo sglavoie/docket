@@ -102,7 +102,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Filters", Views: views},
-		Keybinding{Key: "ctrl+S", Description: "Section manager", Category: "Filters", Views: views},
+		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 
 		// Sort
 		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},

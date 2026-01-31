@@ -85,7 +85,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Tag filter selector", Category: "Filters", Views: views},
-		Keybinding{Key: "ctrl+S", Description: "Section manager", Category: "Filters", Views: views},
+		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
 		// Task Operations

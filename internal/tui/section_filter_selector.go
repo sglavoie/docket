@@ -13,6 +13,7 @@ type SectionInfo struct {
 	Name      string
 	TaskCount int
 	ColorName string // Optional color name from the section color palette
+	IsCustom  bool   // True if this is a user-defined section (not GTD)
 }
 
 // SectionFilterSelectorModel allows selecting multiple sections to filter by.
