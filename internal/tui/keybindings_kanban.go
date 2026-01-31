@@ -104,6 +104,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Task Operations", Views: views},
+		Keybinding{Key: "ctrl+G", Description: "Assign tags (multi-select)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
 		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},

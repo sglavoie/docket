@@ -165,6 +165,7 @@ func linkedTaskBindings() []Keybinding {
 		{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks"},
 		{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks"},
 		{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks"},
+		{Key: "cp", Description: "Cross-project link", Category: "🔗 Linked Tasks"},
 	}
 }
 

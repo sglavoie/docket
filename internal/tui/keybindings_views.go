@@ -45,6 +45,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "dd", Description: "Set due date", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
 
 		// View
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
@@ -85,6 +86,8 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
 		Keybinding{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
+
+		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 
 		// Recurring Tasks
 		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
@@ -134,6 +137,8 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close due date overview", Category: "View", Views: views},
@@ -163,6 +168,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
@@ -194,6 +200,7 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "1-5", Description: "Set priority (tasks)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close weekly review", Category: "View", Views: views},
@@ -217,6 +224,7 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
@@ -298,6 +306,13 @@ func (r *KeybindingRegistry) registerNotesBindings() {
 		Keybinding{Key: "T", Description: "Cycle tag filter", Category: "Tags", Views: projectOnly},
 		Keybinding{Key: "/", Description: "Search notes", Category: "Filters", Views: projectOnly},
 		Keybinding{Key: "Z", Description: "Toggle fullscreen pane", Category: "Navigation", Views: views},
+		Keybinding{Key: "V", Description: "Toggle multi-select mode", Category: "Multi-select", Views: views},
+		Keybinding{Key: "Space", Description: "Toggle note selection (multi-select)", Category: "Multi-select", Views: views},
+		Keybinding{Key: "a", Description: "Select all notes (multi-select)", Category: "Multi-select", Views: views},
+		Keybinding{Key: "s", Description: "Cycle sort mode", Category: "Filters", Views: views},
+		Keybinding{Key: "r", Description: "Rename note (inline)", Category: "Actions", Views: views},
+		Keybinding{Key: "C", Description: "Clear tag filters", Category: "Tags", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and body", Category: "Actions", Views: views},
 		Keybinding{Key: "q", Description: "Close notes view", Category: "Navigation", Views: views},
 	)
 }

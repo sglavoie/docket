@@ -34,6 +34,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "s0", Description: "Clear snooze", Category: "💤 Snooze", Views: views},
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "💤 Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
+		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
 
 		// Type Changes
 		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},
