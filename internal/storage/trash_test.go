@@ -9,9 +9,9 @@ import (
 )
 
 func TestGetTrashDir(t *testing.T) {
-	dataDir := "/home/user/.tt-data"
+	dataDir := "/home/user/.tt"
 	trashDir := GetTrashDir(dataDir)
-	expected := "/home/user/.tt-data/.trash"
+	expected := "/home/user/.tt/.tt/trash"
 
 	if trashDir != expected {
 		t.Errorf("expected trash dir '%s', got '%s'", expected, trashDir)
@@ -50,7 +50,7 @@ func TestMoveProjectToTrash(t *testing.T) {
 	}
 
 	// Trash directory should exist with content
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
 	if _, err := os.Stat(trashPath); os.IsNotExist(err) {
 		t.Error("project should exist in trash")
 	}
@@ -70,7 +70,7 @@ func TestMoveProjectToTrash_AlreadyExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
 	projectDir := filepath.Join(dataDir, "my-project")
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
 
 	// Create project directory
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
@@ -99,7 +99,7 @@ func TestMoveProjectToTrash_AlreadyExists(t *testing.T) {
 func TestPurgeFromTrash(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
 
 	// Create trash entry with content
 	if err := os.MkdirAll(trashPath, 0755); err != nil {
@@ -134,7 +134,7 @@ func TestPurgeAndMoveRoundTrip(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
 	projectDir := filepath.Join(dataDir, "my-project")
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
 
 	// Create old trash entry (simulating a previously deleted project)
 	if err := os.MkdirAll(trashPath, 0755); err != nil {
@@ -183,12 +183,16 @@ func TestPurgeAndMoveRoundTrip(t *testing.T) {
 func TestRestoreProjectFromTrash(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
-	projectDir := filepath.Join(dataDir, "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
+	projectDir := filepath.Join(dataDir, "projects", "my-project")
 
 	// Create trash entry with tasks.md
 	if err := os.MkdirAll(trashPath, 0755); err != nil {
 		t.Fatalf("failed to create trash dir: %v", err)
+	}
+	// Create projects dir (needed for restore destination)
+	if err := os.MkdirAll(filepath.Join(dataDir, "projects"), 0755); err != nil {
+		t.Fatalf("failed to create projects dir: %v", err)
 	}
 	tasksContent := "# Project: My Project\n"
 	if err := os.WriteFile(filepath.Join(trashPath, "tasks.md"), []byte(tasksContent), 0644); err != nil {
@@ -240,8 +244,8 @@ func TestRestoreProjectFromTrash_NotExists(t *testing.T) {
 func TestRestoreProjectFromTrash_ConflictWithActive(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
-	trashPath := filepath.Join(dataDir, ".trash", "my-project")
-	projectDir := filepath.Join(dataDir, "my-project")
+	trashPath := filepath.Join(dataDir, ".tt", "trash", "my-project")
+	projectDir := filepath.Join(dataDir, "projects", "my-project")
 
 	// Create both trash entry and active project directory
 	if err := os.MkdirAll(trashPath, 0755); err != nil {
@@ -261,7 +265,7 @@ func TestRestoreProjectFromTrash_ConflictWithActive(t *testing.T) {
 func TestTrashEntryExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
-	trashDir := filepath.Join(dataDir, ".trash")
+	trashDir := filepath.Join(dataDir, ".tt", "trash")
 
 	// No trash dir yet
 	if TrashEntryExists("my-project", dataDir) {
@@ -299,7 +303,7 @@ func TestListTrashedProjects(t *testing.T) {
 	}
 
 	// Create trash dir with some projects
-	trashDir := filepath.Join(dataDir, ".trash")
+	trashDir := filepath.Join(dataDir, ".tt", "trash")
 	if mkdirErr := os.MkdirAll(filepath.Join(trashDir, "project-a"), 0755); mkdirErr != nil {
 		t.Fatalf("failed to create project-a: %v", mkdirErr)
 	}
@@ -338,7 +342,7 @@ func TestListTrashedProjects(t *testing.T) {
 func TestMoveAndRestoreRoundTrip(t *testing.T) {
 	tmpDir := t.TempDir()
 	dataDir := filepath.Join(tmpDir, "tt-data")
-	projectDir := filepath.Join(dataDir, "my-project")
+	projectDir := filepath.Join(dataDir, "projects", "my-project")
 
 	// Create project with content
 	if err := os.MkdirAll(projectDir, 0755); err != nil {

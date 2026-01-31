@@ -247,7 +247,7 @@ func SetupTestDepsWithProject(t *testing.T, projectName string) (*TestDeps, *mod
 	deps := SetupTestDeps(t)
 
 	project := NewTestProjectWithTasks(projectName)
-	project.Path = filepath.Join(deps.Config.DataDir, project.Slug)
+	project.Path = deps.Config.GetProjectPath(project.Slug)
 	deps.Config.Projects = []*models.Project{project}
 	deps.Config.CurrentProject = project.ID
 	deps.Repository.Projects[project.ID] = project

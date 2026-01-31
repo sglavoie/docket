@@ -69,7 +69,7 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Reconstruct project metadata
-	projectPath := filepath.Join(cfg.DataDir, slug)
+	projectPath := cfg.GetProjectPath(slug)
 	project, err := reconstructProjectFromDir(slug, projectPath)
 	if err != nil {
 		// Move back to trash on failure (best effort)

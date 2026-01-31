@@ -89,7 +89,7 @@ func NewConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	defaultUndoDepth := 50
 	return &Config{
-		DataDir:           filepath.Join(homeDir, ".tt-data"),
+		DataDir:           filepath.Join(homeDir, ".tt"),
 		CurrentProject:    "",
 		Editor:            "code",
 		DefaultContext:    "personal",
@@ -116,7 +116,7 @@ func (c *Config) EnsureSandboxProject() bool {
 		Slug:          "_sandbox",
 		Name:          "Sandbox",
 		Context:       "personal",
-		Path:          c.GetProjectPath("_sandbox"),
+		Path:          filepath.Join(c.GetInternalDir(), "sandbox"),
 		CreatedAt:     now,
 		UpdatedAt:     now,
 		Sandbox:       true,
@@ -143,14 +143,25 @@ func (c *Config) GetEditor() string {
 	return c.Editor
 }
 
-// EnsureDataDir creates the data directory if it doesn't exist.
+// EnsureDataDir creates the data directory and its standard subdirectories if they don't exist.
 func (c *Config) EnsureDataDir() error {
-	return os.MkdirAll(c.DataDir, DirPermissions)
+	if err := os.MkdirAll(c.DataDir, DirPermissions); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(c.GetInternalDir(), DirPermissions); err != nil {
+		return err
+	}
+	return os.MkdirAll(filepath.Join(c.DataDir, "projects"), DirPermissions)
 }
 
 // GetProjectPath returns the full path for a project's data directory.
 func (c *Config) GetProjectPath(slug string) string {
-	return filepath.Join(c.DataDir, slug)
+	return filepath.Join(c.DataDir, "projects", slug)
+}
+
+// GetInternalDir returns the path to the internal .tt directory within the data directory.
+func (c *Config) GetInternalDir() string {
+	return filepath.Join(c.DataDir, ".tt")
 }
 
 // GetGlobalSectionColor returns the color for a section from the global registry.

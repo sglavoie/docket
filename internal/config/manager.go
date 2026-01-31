@@ -26,7 +26,7 @@ func NewManager(customPath string) *Manager {
 		if err != nil {
 			configPath = ".tt.json"
 		} else {
-			configPath = filepath.Join(homeDir, ".tt.json")
+			configPath = filepath.Join(homeDir, ".tt", ".tt.json")
 		}
 	}
 
@@ -54,7 +54,7 @@ func (m *Manager) Load() (*Config, error) {
 	// Ensure defaults for missing fields
 	if config.DataDir == "" {
 		homeDir, _ := os.UserHomeDir()
-		config.DataDir = filepath.Join(homeDir, ".tt-data")
+		config.DataDir = filepath.Join(homeDir, ".tt")
 	}
 	if config.Editor == "" {
 		config.Editor = "code"

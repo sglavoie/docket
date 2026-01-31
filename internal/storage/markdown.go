@@ -380,11 +380,9 @@ func FormatRelativeTime(t time.Time) string {
 	}
 }
 
-const trashDirName = ".trash"
-
 // GetTrashDir returns the path to the trash directory within the data directory.
 func GetTrashDir(dataDir string) string {
-	return filepath.Join(dataDir, trashDirName)
+	return filepath.Join(dataDir, ".tt", "trash")
 }
 
 // TrashEntryExists checks if a project exists in the trash.
@@ -401,8 +399,8 @@ func RenameProjectDir(project *models.Project, oldSlug, newSlug, dataDir string)
 		return nil
 	}
 
-	oldPath := filepath.Join(dataDir, oldSlug)
-	newPath := filepath.Join(dataDir, newSlug)
+	oldPath := filepath.Join(dataDir, "projects", oldSlug)
+	newPath := filepath.Join(dataDir, "projects", newSlug)
 
 	// Check if old directory exists
 	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
@@ -458,7 +456,7 @@ func PurgeFromTrash(slug, dataDir string) error {
 // Returns an error if the trash entry doesn't exist or if an active project with the same slug exists.
 func RestoreProjectFromTrash(slug, dataDir string) error {
 	trashPath := filepath.Join(GetTrashDir(dataDir), slug)
-	projectPath := filepath.Join(dataDir, slug)
+	projectPath := filepath.Join(dataDir, "projects", slug)
 
 	// Check if trash entry exists
 	if !TrashEntryExists(slug, dataDir) {

@@ -267,10 +267,10 @@ func TestConfig_EnsureDataDir(t *testing.T) {
 
 func TestConfig_GetProjectPath(t *testing.T) {
 	cfg := NewConfig()
-	cfg.DataDir = "/home/user/.tt-data"
+	cfg.DataDir = "/home/user/.tt"
 
 	path := cfg.GetProjectPath("my-project")
-	expected := "/home/user/.tt-data/my-project"
+	expected := "/home/user/.tt/projects/my-project"
 
 	if path != expected {
 		t.Errorf("expected path '%s', got '%s'", expected, path)

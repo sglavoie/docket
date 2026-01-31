@@ -18,7 +18,7 @@ func TestListTrashedProjects_Empty(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	trashDir := filepath.Join(tempDir, ".trash")
+	trashDir := filepath.Join(tempDir, ".tt", "trash")
 	if err := os.MkdirAll(trashDir, 0755); err != nil {
 		t.Fatalf("failed to create trash dir: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestListTrashedProjects_WithProjects(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	trashDir := filepath.Join(tempDir, ".trash")
+	trashDir := filepath.Join(tempDir, ".tt", "trash")
 	if err := os.MkdirAll(trashDir, 0755); err != nil {
 		t.Fatalf("failed to create trash dir: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestTrashEntryExists_True(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	trashDir := filepath.Join(tempDir, ".trash")
+	trashDir := filepath.Join(tempDir, ".tt", "trash")
 	projectDir := filepath.Join(trashDir, "existing-project")
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
 		t.Fatalf("failed to create project dir: %v", err)
@@ -72,7 +72,7 @@ func TestTrashEntryExists_False(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	trashDir := filepath.Join(tempDir, ".trash")
+	trashDir := filepath.Join(tempDir, ".tt", "trash")
 	if err := os.MkdirAll(trashDir, 0755); err != nil {
 		t.Fatalf("failed to create trash dir: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestRestoreProjectFromTrash(t *testing.T) {
 	tempDir, cleanup := testutil.TempProjectDir(t)
 	defer cleanup()
 
-	trashDir := filepath.Join(tempDir, ".trash")
+	trashDir := filepath.Join(tempDir, ".tt", "trash")
 	projectTrashDir := filepath.Join(trashDir, "to-restore")
 	if err := os.MkdirAll(projectTrashDir, 0755); err != nil {
 		t.Fatalf("failed to create trash project dir: %v", err)
@@ -333,10 +333,15 @@ func TestRestoreProjectFromTrash(t *testing.T) {
 		t.Fatalf("failed to write tasks.md: %v", err)
 	}
 
+	// Create projects dir for restore destination
+	if err := os.MkdirAll(filepath.Join(tempDir, "projects"), 0755); err != nil {
+		t.Fatalf("failed to create projects dir: %v", err)
+	}
+
 	err := storage.RestoreProjectFromTrash("to-restore", tempDir)
 	testutil.AssertNoError(t, err)
 
-	restoredDir := filepath.Join(tempDir, "to-restore")
+	restoredDir := filepath.Join(tempDir, "projects", "to-restore")
 	if _, err := os.Stat(restoredDir); os.IsNotExist(err) {
 		t.Error("expected restored project dir to exist")
 	}

@@ -203,7 +203,7 @@ func (m *AppModel) restoreProjectFromTrash(slug string) tea.Cmd {
 		}
 
 		// Reconstruct project metadata
-		projectPath := filepath.Join(m.config.DataDir, slug)
+		projectPath := m.config.GetProjectPath(slug)
 		project, err := reconstructProjectFromDir(slug, projectPath)
 		if err != nil {
 			// Move back to trash on failure (best effort)

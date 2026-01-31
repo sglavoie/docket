@@ -57,6 +57,12 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	// Check for duplicate slug
 	slug := models.Slugify(name)
+
+	// Reject reserved slugs
+	if slug == ".tt" || slug == "projects" {
+		return fmt.Errorf("%w: '%s' is a reserved name", tterrors.ErrInvalidValue, slug)
+	}
+
 	for _, p := range cfg.Projects {
 		if p.Slug == slug {
 			return fmt.Errorf("%w: '%s'", tterrors.ErrProjectExists, slug)

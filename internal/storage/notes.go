@@ -23,7 +23,7 @@ func NotesDir(project *models.Project) string {
 
 // GlobalNotesDir returns the path to the global notes directory.
 func GlobalNotesDir(dataDir string) string {
-	return filepath.Join(dataDir, "global-notes")
+	return filepath.Join(dataDir, ".tt", "global-notes")
 }
 
 // ensureDirPath creates a directory if it doesn't exist.
