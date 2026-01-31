@@ -1,4 +1,4 @@
-# tt - Terminal Task Manager
+# tt - Terminal Tasks
 
 A CLI-first project and task management tool with a TUI built on BubbleTea. Designed for testability, with all operations available as CLI commands that the TUI invokes.
 
