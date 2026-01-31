@@ -39,6 +39,11 @@ type FocusViewModel struct {
 	// Tabs
 	activeTab int
 
+	// Sub-tabs
+	subTab           int
+	subTabRowFocused bool
+	subTabNames      []string
+
 	// Navigation
 	cursor int
 
@@ -101,7 +106,7 @@ func (m *FocusViewModel) loadTasks() {
 	m.applyFilter()
 }
 
-// applyFilter filters and sorts tasks based on the active tab.
+// applyFilter filters and sorts tasks based on the active tab, then applies sub-tab narrowing.
 func (m *FocusViewModel) applyFilter() {
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -114,12 +119,11 @@ func (m *FocusViewModel) applyFilter() {
 			return m.filtered[i].Project.Name < m.filtered[j].Project.Name
 		})
 	case focusTabByPriority:
-		m.filtered = nil
-		for _, ft := range m.tasks {
-			if ft.Task.Priority <= 2 {
-				m.filtered = append(m.filtered, ft)
-			}
-		}
+		m.filtered = make([]FocusTask, len(m.tasks))
+		copy(m.filtered, m.tasks)
+		sort.SliceStable(m.filtered, func(i, j int) bool {
+			return m.filtered[i].Task.Priority < m.filtered[j].Task.Priority
+		})
 	case focusTabDueSoon:
 		m.filtered = nil
 		sevenDaysLater := today.AddDate(0, 0, 7)
@@ -135,6 +139,116 @@ func (m *FocusViewModel) applyFilter() {
 	default:
 		m.filtered = make([]FocusTask, len(m.tasks))
 		copy(m.filtered, m.tasks)
+	}
+
+	// Compute sub-tabs based on the filtered list
+	m.computeSubTabs()
+
+	// Apply sub-tab narrowing
+	if filter := m.activeSubTabFilter(); filter != "" {
+		var narrowed []FocusTask
+		for _, ft := range m.filtered {
+			switch m.activeTab {
+			case focusTabByProject:
+				if ft.Project.Name == filter {
+					narrowed = append(narrowed, ft)
+				}
+			case focusTabByPriority:
+				if fmt.Sprintf("P%d", ft.Task.Priority) == filter {
+					narrowed = append(narrowed, ft)
+				}
+			case focusTabDueSoon:
+				bucket := m.dueBucket(ft.Task, now, today)
+				if bucket == filter {
+					narrowed = append(narrowed, ft)
+				}
+			}
+		}
+		m.filtered = narrowed
+	}
+}
+
+// computeSubTabs builds the dynamic sub-tab names based on active tab and filtered tasks.
+func (m *FocusViewModel) computeSubTabs() {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	switch m.activeTab {
+	case focusTabByProject:
+		seen := map[string]bool{}
+		var names []string
+		for _, ft := range m.filtered {
+			if !seen[ft.Project.Name] {
+				seen[ft.Project.Name] = true
+				names = append(names, ft.Project.Name)
+			}
+		}
+		sort.Strings(names)
+		m.subTabNames = names
+
+	case focusTabByPriority:
+		seen := map[int]bool{}
+		var priorities []int
+		for _, ft := range m.filtered {
+			if !seen[ft.Task.Priority] {
+				seen[ft.Task.Priority] = true
+				priorities = append(priorities, ft.Task.Priority)
+			}
+		}
+		sort.Ints(priorities)
+		m.subTabNames = nil
+		for _, p := range priorities {
+			m.subTabNames = append(m.subTabNames, fmt.Sprintf("P%d", p))
+		}
+
+	case focusTabDueSoon:
+		bucketOrder := []string{"Today", "Tomorrow", "This Week", "Later"}
+		seen := map[string]bool{}
+		for _, ft := range m.filtered {
+			bucket := m.dueBucket(ft.Task, now, today)
+			seen[bucket] = true
+		}
+		m.subTabNames = nil
+		for _, b := range bucketOrder {
+			if seen[b] {
+				m.subTabNames = append(m.subTabNames, b)
+			}
+		}
+
+	default:
+		m.subTabNames = nil
+	}
+
+	// Clamp sub-tab index (0=All, 1..N map to subTabNames[0..N-1])
+	if m.subTab > len(m.subTabNames) {
+		m.subTab = 0
+	}
+}
+
+// activeSubTabFilter returns the selected sub-tab value, or "" if no sub-tab filtering.
+func (m *FocusViewModel) activeSubTabFilter() string {
+	if len(m.subTabNames) <= 1 || m.subTab <= 0 || m.subTab > len(m.subTabNames) {
+		return ""
+	}
+	return m.subTabNames[m.subTab-1]
+}
+
+// dueBucket categorizes a task into a due date bucket.
+func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) string {
+	if task.DueDate == nil {
+		return "Later"
+	}
+	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+	switch {
+	case daysUntil <= 0:
+		return "Today"
+	case daysUntil == 1:
+		return "Tomorrow"
+	case daysUntil <= 7:
+		return "This Week"
+	default:
+		return "Later"
 	}
 }
 
@@ -260,25 +374,59 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Tab navigation
-	case "[", "h":
-		if m.activeTab > 0 {
-			m.activeTab--
-		} else {
-			m.activeTab = len(focusTabNames) - 1
+	// Tab row focus switching
+	case "(", ")":
+		if len(m.subTabNames) > 1 {
+			m.subTabRowFocused = !m.subTabRowFocused
 		}
-		m.applyFilter()
-		m.clampCursor()
+		return m, nil
+
+	// Tab navigation within focused row
+	case "[", "h":
+		if m.subTabRowFocused && len(m.subTabNames) > 1 {
+			// Cycle sub-tabs (0=All, 1..N=specific)
+			total := len(m.subTabNames) + 1 // +1 for "All"
+			if m.subTab > 0 {
+				m.subTab--
+			} else {
+				m.subTab = total - 1
+			}
+			m.applyFilter()
+			m.clampCursor()
+		} else {
+			if m.activeTab > 0 {
+				m.activeTab--
+			} else {
+				m.activeTab = len(focusTabNames) - 1
+			}
+			m.subTab = 0
+			m.subTabRowFocused = false
+			m.applyFilter()
+			m.clampCursor()
+		}
 		return m, nil
 
 	case "]", "l":
-		if m.activeTab < len(focusTabNames)-1 {
-			m.activeTab++
+		if m.subTabRowFocused && len(m.subTabNames) > 1 {
+			total := len(m.subTabNames) + 1
+			if m.subTab < total-1 {
+				m.subTab++
+			} else {
+				m.subTab = 0
+			}
+			m.applyFilter()
+			m.clampCursor()
 		} else {
-			m.activeTab = 0
+			if m.activeTab < len(focusTabNames)-1 {
+				m.activeTab++
+			} else {
+				m.activeTab = 0
+			}
+			m.subTab = 0
+			m.subTabRowFocused = false
+			m.applyFilter()
+			m.clampCursor()
 		}
-		m.applyFilter()
-		m.clampCursor()
 		return m, nil
 
 	// Toggle active flag (remove from focus)

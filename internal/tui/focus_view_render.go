@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -30,8 +32,18 @@ func (m *FocusViewModel) View() string {
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n")
 
+	// Sub-tab bar
+	subTabBar := m.renderSubTabBar()
+	if subTabBar != "" {
+		b.WriteString(subTabBar)
+		b.WriteString("\n")
+	}
+
 	// Calculate available height for task list
 	contentHeight := m.height - 13
+	if subTabBar != "" {
+		contentHeight -= 2 // sub-tab row + newline
+	}
 
 	// Render task lines
 	var lines []string
@@ -83,7 +95,7 @@ func (m *FocusViewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | h/l [/] tabs | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due | Enter go to | ? help")
+	footer := HelpStyle.Render("j/k nav | [/] tabs | (/) row focus | * unfocus | ,s/d/b/x status | 1-5 priority | ? help")
 	b.WriteString(footer)
 
 	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
@@ -100,7 +112,41 @@ func (m *FocusViewModel) View() string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *FocusViewModel) renderTabBar() string {
-	return RenderTabBar(focusTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	hasSubTabs := len(m.subTabNames) > 1
+	bar := RenderTabBar(focusTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	if hasSubTabs {
+		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+		unfocusedPad := " "
+		if !m.subTabRowFocused {
+			bar = focusIndicator + bar
+		} else {
+			bar = unfocusedPad + bar
+		}
+	}
+	return bar
+}
+
+// renderSubTabBar renders the dynamic sub-tab row when applicable.
+func (m *FocusViewModel) renderSubTabBar() string {
+	if len(m.subTabNames) <= 1 {
+		return ""
+	}
+
+	// Build tab list: "All" + sub-tab names
+	tabs := make([]string, 0, len(m.subTabNames)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, m.subTabNames...)
+
+	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
+
+	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+	unfocusedPad := " "
+	if m.subTabRowFocused {
+		bar = focusIndicator + bar
+	} else {
+		bar = unfocusedPad + bar
+	}
+	return bar
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.

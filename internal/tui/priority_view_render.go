@@ -12,62 +12,40 @@ import (
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	cardWidth := min(m.width-6, 54)
-	availableWidth := cardWidth - 2
-
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	totalWidth := 0
-	for _, name := range priorityTabNames {
-		totalWidth += lipgloss.Width(plainStyle.Render(name))
-	}
-	fitsSingleLine := totalWidth <= availableWidth
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
-
-	var tabs []string
-	for i, name := range priorityTabNames {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
+	bar := RenderTabBar(priorityTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	hasSubTabs := len(m.subTabNames) > 1
+	if hasSubTabs {
+		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+		unfocusedPad := " "
+		if !m.subTabRowFocused {
+			bar = focusIndicator + bar
 		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
+			bar = unfocusedPad + bar
 		}
 	}
+	return bar
+}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
+// renderSubTabBar renders the dynamic sub-tab row when applicable.
+func (m *PriorityViewModel) renderSubTabBar() string {
+	if len(m.subTabNames) <= 1 {
+		return ""
 	}
 
-	return row
+	tabs := make([]string, 0, len(m.subTabNames)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, m.subTabNames...)
+
+	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
+
+	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+	unfocusedPad := " "
+	if m.subTabRowFocused {
+		bar = focusIndicator + bar
+	} else {
+		bar = unfocusedPad + bar
+	}
+	return bar
 }
 
 // renderPrefixPopup renders the prefix key popup.
@@ -140,7 +118,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	hasContent := false
 	separatorWidth := min(m.width-10, 50)
 
-	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	if len(overdue) > 0 {
 		lines = append(lines, m.renderGroupHeader("OVERDUE", len(overdue), true))
@@ -276,6 +254,14 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	}
 	title := util.Truncate(task.Title, adjustedMaxTitleLen)
 
+	// Custom section badge
+	csStr := ""
+	if task.CustomSection != "" {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		csStr = " " + csStyle.Render("@ "+task.CustomSection)
+	}
+
 	// Tags
 	tagsStr := ""
 	if len(task.Tags) > 0 {
@@ -299,7 +285,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	}
 
 	// Build line with star indicator before cursor
-	line := fmt.Sprintf("%s%s%s %s %s %s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, tagsStr)
+	line := fmt.Sprintf("%s%s%s %s %s %s%s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, csStr, tagsStr)
 	if dueStr != "" {
 		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
 	}

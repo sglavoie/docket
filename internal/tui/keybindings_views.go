@@ -48,6 +48,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 
 		// View
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
+		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
@@ -216,6 +217,7 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)

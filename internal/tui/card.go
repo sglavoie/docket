@@ -133,10 +133,13 @@ func renderOverlayCard(content string, viewWidth, viewHeight int, config Overlay
 			result.WriteString("\n")
 		}
 		padding := strings.Repeat(" ", leftPadding)
-		for _, line := range strings.Split(box, "\n") {
+		boxLines := strings.Split(box, "\n")
+		for i, line := range boxLines {
+			if i > 0 {
+				result.WriteString("\n")
+			}
 			result.WriteString(padding)
 			result.WriteString(line)
-			result.WriteString("\n")
 		}
 		return result.String()
 	}

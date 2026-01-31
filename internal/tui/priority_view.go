@@ -70,6 +70,11 @@ type PriorityViewModel struct {
 	// Tab filtering
 	activeTab int // Index into priorityTabNames
 
+	// Sub-tabs
+	subTab           int
+	subTabRowFocused bool
+	subTabNames      []string
+
 	// Navigation
 	cursor      int   // Absolute position across all visible groups
 	totalTasks  int   // Total count of visible actionable tasks
@@ -202,9 +207,84 @@ func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, b
 	}
 }
 
+// computeSubTabs builds dynamic sub-tab names based on active tab and current groups.
+func (m *PriorityViewModel) computeSubTabs() {
+	if m.project == nil || m.activeTab == priorityTabAll {
+		m.subTabNames = nil
+		if m.subTab > len(m.subTabNames) {
+			m.subTab = 0
+		}
+		return
+	}
+
+	// Collect tasks visible for the current tab
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+	var tasks []*PriorityTask
+	tasks = append(tasks, overdue...)
+	tasks = append(tasks, today...)
+	tasks = append(tasks, thisWeek...)
+	tasks = append(tasks, later...)
+	tasks = append(tasks, backlog...)
+	tasks = append(tasks, waitingOn...)
+
+	// Extract unique custom sections from these tasks
+	seen := map[string]bool{}
+	var names []string
+	for _, pt := range tasks {
+		section := pt.Task.CustomSection
+		if section == "" {
+			section = "(none)"
+		}
+		if !seen[section] {
+			seen[section] = true
+			names = append(names, section)
+		}
+	}
+	sort.Strings(names)
+	m.subTabNames = names
+
+	if m.subTab > len(m.subTabNames) {
+		m.subTab = 0
+	}
+}
+
+// activeSubTabFilter returns the selected sub-tab value, or "" if no sub-tab filtering.
+func (m *PriorityViewModel) activeSubTabFilter() string {
+	if len(m.subTabNames) <= 1 || m.subTab <= 0 || m.subTab > len(m.subTabNames) {
+		return ""
+	}
+	return m.subTabNames[m.subTab-1]
+}
+
+// filterBySubTab narrows a task slice by the active sub-tab custom section filter.
+func (m *PriorityViewModel) filterBySubTab(tasks []*PriorityTask) []*PriorityTask {
+	filter := m.activeSubTabFilter()
+	if filter == "" {
+		return tasks
+	}
+	var result []*PriorityTask
+	for _, pt := range tasks {
+		section := pt.Task.CustomSection
+		if section == "" {
+			section = "(none)"
+		}
+		if section == filter {
+			result = append(result, pt)
+		}
+	}
+	return result
+}
+
+// filteredGroupsWithSubTab returns filtered groups further narrowed by the active sub-tab.
+func (m *PriorityViewModel) filteredGroupsWithSubTab() (overdue, today, thisWeek, later, backlog, waitingOn []*PriorityTask) {
+	o, td, tw, l, bl, wo := m.filteredGroups()
+	return m.filterBySubTab(o), m.filterBySubTab(td), m.filterBySubTab(tw), m.filterBySubTab(l), m.filterBySubTab(bl), m.filterBySubTab(wo)
+}
+
 // recalculateNavigation updates totalTasks and groupStarts based on the active tab.
 func (m *PriorityViewModel) recalculateNavigation() {
-	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+	m.computeSubTabs()
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	// For the Blocked tab, waiting tasks are navigable (not collapsible)
 	if m.activeTab == priorityTabBlocked {
@@ -310,7 +390,7 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 		return nil
 	}
 
-	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroups()
+	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	// For the Blocked tab, navigate waiting tasks directly
 	if m.activeTab == priorityTabBlocked {
@@ -379,25 +459,56 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m.handlePrefixKey(key)
 	}
 
-	// Tab switching
+	// Tab row focus switching
 	switch key {
-	case "[", "h":
-		if m.activeTab > 0 {
-			m.activeTab--
-		} else {
-			m.activeTab = len(priorityTabNames) - 1
+	case "(", ")":
+		if len(m.subTabNames) > 1 {
+			m.subTabRowFocused = !m.subTabRowFocused
 		}
-		m.recalculateNavigation()
-		m.clampCursor()
+		return m, nil
+	case "[", "h":
+		if m.subTabRowFocused && len(m.subTabNames) > 1 {
+			total := len(m.subTabNames) + 1
+			if m.subTab > 0 {
+				m.subTab--
+			} else {
+				m.subTab = total - 1
+			}
+			m.recalculateNavigation()
+			m.clampCursor()
+		} else {
+			if m.activeTab > 0 {
+				m.activeTab--
+			} else {
+				m.activeTab = len(priorityTabNames) - 1
+			}
+			m.subTab = 0
+			m.subTabRowFocused = false
+			m.recalculateNavigation()
+			m.clampCursor()
+		}
 		return m, nil
 	case "]", "l":
-		if m.activeTab < len(priorityTabNames)-1 {
-			m.activeTab++
+		if m.subTabRowFocused && len(m.subTabNames) > 1 {
+			total := len(m.subTabNames) + 1
+			if m.subTab < total-1 {
+				m.subTab++
+			} else {
+				m.subTab = 0
+			}
+			m.recalculateNavigation()
+			m.clampCursor()
 		} else {
-			m.activeTab = 0
+			if m.activeTab < len(priorityTabNames)-1 {
+				m.activeTab++
+			} else {
+				m.activeTab = 0
+			}
+			m.subTab = 0
+			m.subTabRowFocused = false
+			m.recalculateNavigation()
+			m.clampCursor()
 		}
-		m.recalculateNavigation()
-		m.clampCursor()
 		return m, nil
 	}
 
@@ -762,7 +873,7 @@ func (m *PriorityViewModel) clampCursor() {
 func (m *PriorityViewModel) View() string {
 	var b strings.Builder
 
-	_, _, _, _, _, filteredWaiting := m.filteredGroups()
+	_, _, _, _, _, filteredWaiting := m.filteredGroupsWithSubTab()
 
 	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
 		tabBar := m.renderPriorityTabBar()
@@ -790,16 +901,16 @@ func (m *PriorityViewModel) View() string {
 	// - OverlayCardStyle border: 2 lines (top + bottom)
 	// - OverlayCardStyle padding: 2 lines (1 top + 1 bottom)
 	// - Subtitle + blank line: 2 lines
-	// - Blank line before footer (\n\n): 2 lines
+	// - Newline before footer: 1 line
 	// - Footer: 1 line
-	// Total: 9 lines
-	cardOverhead := 9
+	// Total: 8 lines
+	cardOverhead := 8
 	tabBarHeight := 2 // tab bar + newline
 	contentHeight := m.height - cardOverhead - tabBarHeight
 
 	// Account for suggestion section if present (use lipgloss.Height for accurate measurement)
 	if suggestionSection != "" {
-		suggestionLines := lipgloss.Height(suggestionSection) + 2 // +2 for trailing \n\n
+		suggestionLines := lipgloss.Height(suggestionSection)
 		contentHeight -= suggestionLines
 	}
 
@@ -848,10 +959,18 @@ func (m *PriorityViewModel) View() string {
 	b.WriteString(m.renderPriorityTabBar())
 	b.WriteString("\n")
 
+	// Write sub-tab bar
+	subTabBar := m.renderSubTabBar()
+	if subTabBar != "" {
+		b.WriteString(subTabBar)
+		b.WriteString("\n")
+		contentHeight -= 2 // sub-tab row + newline
+	}
+
 	// Write suggestion section
 	if suggestionSection != "" {
 		b.WriteString(suggestionSection)
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 	}
 
 	// Write visible task lines
@@ -864,7 +983,7 @@ func (m *PriorityViewModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render(scrollInfo))
 	}
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Prefix popup
 	if prefixPopup != "" {
