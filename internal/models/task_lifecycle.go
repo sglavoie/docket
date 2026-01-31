@@ -127,25 +127,27 @@ func (t *Task) IsRecurring() bool {
 }
 
 // IsOverdue returns true if the task has a due date in the past and is not complete.
-// Uses day-level comparison (normalizes to midnight UTC).
+// Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsOverdue() bool {
 	if t.DueDate == nil || t.Status.IsComplete() {
 		return false
 	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	dueDay := t.DueDate.UTC().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
 	return dueDay.Before(today)
 }
 
 // IsDueSoon returns true if the task has a due date within the specified number
 // of days (inclusive) and is not overdue or complete.
-// Uses day-level comparison (normalizes to midnight UTC).
+// Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsDueSoon(days int) bool {
 	if t.DueDate == nil || t.Status.IsComplete() {
 		return false
 	}
-	today := time.Now().UTC().Truncate(24 * time.Hour)
-	dueDay := t.DueDate.UTC().Truncate(24 * time.Hour)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
 	// Not overdue
 	if dueDay.Before(today) {
 		return false
