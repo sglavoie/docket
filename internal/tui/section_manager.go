@@ -58,6 +58,11 @@ type SectionRemovedMsg struct {
 	Name string
 }
 
+// GoToSectionMsg is sent to navigate to a section tab in the project tree.
+type GoToSectionMsg struct {
+	SectionName string
+}
+
 // SectionColorChangedMsg is sent after a section's color has been changed.
 type SectionColorChangedMsg struct {
 	SectionName string
@@ -365,6 +370,14 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "g":
+			if len(m.sections) > 0 && m.cursor < len(m.sections) {
+				return m, func() tea.Msg {
+					return GoToSectionMsg{SectionName: m.sections[m.cursor].Name}
+				}
+			}
+			return m, nil
+
 		case "a":
 			m.addMode = true
 			m.addInput.SetValue("")
@@ -617,7 +630,7 @@ func (m *SectionManagerModel) View() string {
 	} else if m.addMode {
 		content.WriteString(MutedStyle.Render("enter add | esc cancel"))
 	} else if len(m.sections) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | a add | r rename | c color | d del | q close"))
+		content.WriteString(MutedStyle.Render("j/k nav | enter filter | g go to | a add | r rename | c color | d del | q close"))
 	} else {
 		content.WriteString(MutedStyle.Render("a add | q close"))
 	}

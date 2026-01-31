@@ -137,6 +137,21 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case GoToSectionMsg:
+		m.popView()
+		if m.projectTree != nil {
+			tabs := m.projectTree.customSectionTabs()
+			for i, tab := range tabs {
+				if tab == msg.SectionName {
+					m.projectTree.customSectionTab = i
+					m.projectTree.updateVisibility()
+					m.projectTree.clampCursor()
+					break
+				}
+			}
+		}
+		return true, nil
+
 	case SectionRenamedMsg, SectionAddedMsg, SectionRemovedMsg:
 		m.popView()
 		m.reloadAndRefreshProjectTree()
