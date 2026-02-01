@@ -2,6 +2,7 @@ package external
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -26,7 +27,8 @@ func ClaudeAsk(ctx context.Context, query, systemPrompt string) (string, error) 
 	cmd := exec.CommandContext(ctx, "claude", args...)
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("claude exited with code %d: %s", exitErr.ExitCode(), string(exitErr.Stderr))
 		}
 		return "", fmt.Errorf("failed to run claude: %w", err)

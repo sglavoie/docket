@@ -99,7 +99,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.AddTagMode {
-			handled, cmd := m.TagAdder.HandleAddTagKey(msg, m.BasePicker)
+			handled, cmd := m.HandleAddTagKey(msg, m.BasePicker)
 			if handled {
 				return m, cmd
 			}
@@ -128,7 +128,7 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "a":
-			return m, m.TagAdder.EnterAddMode()
+			return m, m.EnterAddMode()
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)

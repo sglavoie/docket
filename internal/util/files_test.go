@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -103,7 +104,7 @@ func TestWithFileLock_PropagatesFnError(t *testing.T) {
 	err := WithFileLock(lockPath, true, func() error {
 		return os.ErrPermission
 	})
-	if err != os.ErrPermission {
+	if !errors.Is(err, os.ErrPermission) {
 		t.Errorf("expected ErrPermission, got %v", err)
 	}
 }

@@ -74,7 +74,7 @@ func WithFileLock(lockPath string, exclusive bool, fn func() error) error {
 	if err != nil {
 		return fmt.Errorf("failed to open lock file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	how := syscall.LOCK_SH
 	if exclusive {

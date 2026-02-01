@@ -35,7 +35,7 @@ func (m *NotesViewModel) View() string {
 	b.WriteString("\n")
 
 	// Tab bar and count info (hidden when bottom pane is fullscreen)
-	if !(m.fullscreenPane && m.detailsPaneFocused) {
+	if !m.fullscreenPane || !m.detailsPaneFocused {
 		b.WriteString(m.renderNotesTabBar())
 		b.WriteString("\n")
 

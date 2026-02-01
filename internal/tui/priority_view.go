@@ -964,7 +964,6 @@ func (m *PriorityViewModel) View() string {
 	if subTabBar != "" {
 		b.WriteString(subTabBar)
 		b.WriteString("\n")
-		contentHeight -= 2 // sub-tab row + newline
 	}
 
 	// Write suggestion section
