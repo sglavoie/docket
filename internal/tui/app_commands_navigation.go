@@ -77,6 +77,16 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "switch project",
+			Description: "Open project picker to switch projects",
+			Shortcut:    "ctrl+X",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"project picker", "change project", "open project"},
+			Handler: func() tea.Msg {
+				return ShowProjectPickerMsg{}
+			},
+		},
+		{
 			Name:        "workflow rules",
 			Description: "Manage workflow automation rules",
 			Shortcut:    "ctrl+W",
