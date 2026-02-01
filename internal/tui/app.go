@@ -84,6 +84,7 @@ const (
 	ViewGlobalBlockers
 	ViewSnoozeInput
 	ViewTutor
+	ViewAsk
 )
 
 // AppModel is the main TUI model with a view stack.

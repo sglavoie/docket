@@ -193,7 +193,7 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	if m.helpView != nil {
 		m.helpView.SetSize(msg.Width, msg.Height)
 	}
-	for _, vt := range []ViewType{ViewCommandPalette, ViewTutor} {
+	for _, vt := range []ViewType{ViewCommandPalette, ViewTutor, ViewAsk} {
 		if v := m.views.Get(vt); v != nil {
 			v.SetSize(msg.Width, msg.Height)
 		}

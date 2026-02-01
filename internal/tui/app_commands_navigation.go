@@ -58,6 +58,15 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "ask ai",
+			Description: "Ask the AI assistant about your tasks",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"ask", "ai", "claude"},
+			Handler: func() tea.Msg {
+				return ShowAskMsg{}
+			},
+		},
+		{
 			Name:        "back",
 			Description: "Go back to previous view",
 			Shortcut:    "esc",

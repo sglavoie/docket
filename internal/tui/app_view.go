@@ -18,7 +18,7 @@ func (m *AppModel) View() string {
 	}
 
 	// Hide status bar for command palette, tutor, and help (they render their own footer)
-	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor || m.currentView() == ViewHelp {
+	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor || m.currentView() == ViewHelp || m.currentView() == ViewAsk {
 		return content
 	}
 
@@ -161,6 +161,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Notes Search"
 	case ViewNoteTagFilterSelector:
 		status = "Filter Notes by Tags"
+	case ViewAsk:
+		status = "AI Assistant"
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply

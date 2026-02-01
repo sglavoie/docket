@@ -164,6 +164,12 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		tutor.SetSize(m.width, m.height)
 		return true, nil
 
+	case ShowAskMsg:
+		askView := NewAskViewModel(m.currentProject)
+		m.showView(ViewAsk, askView)
+		askView.SetSize(m.width, m.height)
+		return true, askView.Init()
+
 	case ShowWeeklyReviewMsg:
 		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
 		return true, nil
