@@ -436,13 +436,7 @@ func (m *TaskCreatorModel) View() string {
 	var b strings.Builder
 
 	// Title field (single line, truncated, Enter to edit)
-	var titleLabel string
-	if m.focusIndex == 0 {
-		titleLabel = FieldLabelFocusedStyle.Render("Title: ")
-	} else {
-		titleLabel = FieldLabelStyle.Render("Title: ")
-	}
-	b.WriteString(titleLabel)
+	b.WriteString(renderFormLabelShared("Title", 0, m.focusIndex))
 	titleDisplay := m.titleValue
 	if titleDisplay == "" {
 		titleDisplay = MutedStyle.Render("(press Enter to edit)")
@@ -454,175 +448,44 @@ func (m *TaskCreatorModel) View() string {
 	} else {
 		b.WriteString(titleDisplay)
 	}
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Type selector
-	var typeLabel string
-	if m.focusIndex == 1 {
-		typeLabel = FieldLabelFocusedStyle.Render("Type: ")
-	} else {
-		typeLabel = FieldLabelStyle.Render("Type: ")
-	}
-	b.WriteString(typeLabel)
-	for i, t := range m.types {
-		var style = SelectorOptionStyle
-		if i == m.typeCursor {
-			if m.focusIndex == 1 {
-				style = SelectorOptionSelectedStyle
-			} else {
-				style = BoldStyle
-			}
-			b.WriteString(style.Render(fmt.Sprintf("[%s]", t.HeadingPrefix())))
-		} else {
-			b.WriteString(style.Render(fmt.Sprintf(" %s ", t.HeadingPrefix())))
-		}
-	}
-	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelShared("Type", 1, m.focusIndex))
+	b.WriteString(renderTypeSelectorShared(m.types, m.typeCursor, m.focusIndex == 1))
+	b.WriteString("\n")
 
 	// Parent selector
-	var parentLabel string
-	if m.focusIndex == 2 {
-		parentLabel = FieldLabelFocusedStyle.Render("Parent: ")
-	} else {
-		parentLabel = FieldLabelStyle.Render("Parent: ")
-	}
-	b.WriteString(parentLabel)
-
-	// "None" option
-	if m.parentCursor == 0 {
-		if m.focusIndex == 2 {
-			b.WriteString(SelectorOptionSelectedStyle.Render("[None]"))
-		} else {
-			b.WriteString(BoldStyle.Render("[None]"))
-		}
-	} else {
-		b.WriteString(SelectorOptionStyle.Render(" None "))
-	}
-
-	// Show a few valid parents
-	maxShow := 3
-	startIdx := 0
-	if m.parentCursor > maxShow {
-		startIdx = m.parentCursor - maxShow
-	}
-
-	for i := startIdx; i < len(m.validParents) && i < startIdx+maxShow+1; i++ {
-		p := m.validParents[i]
-		display := util.Truncate(fmt.Sprintf("#%d %s", p.ShortID, p.Title), 20)
-		if m.parentCursor == i+1 {
-			if m.focusIndex == 2 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf(" [%s]", display)))
-			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf(" [%s]", display)))
-			}
-		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", display)))
-		}
-	}
-
-	if len(m.validParents) > maxShow+1 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" ... (%d more)", len(m.validParents)-maxShow-1)))
-	}
-	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelShared("Parent", 2, m.focusIndex))
+	b.WriteString(renderParentSelectorShared(m.validParents, m.parentCursor, m.focusIndex == 2))
+	b.WriteString("\n")
 
 	// Priority selector
-	var priorityLabel string
-	if m.focusIndex == 3 {
-		priorityLabel = FieldLabelFocusedStyle.Render("Priority: ")
-	} else {
-		priorityLabel = FieldLabelStyle.Render("Priority: ")
-	}
-	b.WriteString(priorityLabel)
-	for i := 1; i <= 5; i++ {
-		if i == m.priority {
-			if m.focusIndex == 3 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%d]", i)))
-			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%d]", i)))
-			}
-		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %d ", i)))
-		}
-	}
-	b.WriteString(MutedStyle.Render(" (1=highest)"))
-	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelShared("Priority", 3, m.focusIndex))
+	b.WriteString(renderPrioritySelectorShared(m.priority, m.focusIndex == 3))
+	b.WriteString("\n")
 
 	// Section selector
-	var sectionLabel string
-	if m.focusIndex == 4 {
-		sectionLabel = FieldLabelFocusedStyle.Render("Section: ")
-	} else {
-		sectionLabel = FieldLabelStyle.Render("Section: ")
-	}
-	b.WriteString(sectionLabel)
-	for i, s := range m.sections {
-		if i == m.sectionCursor {
-			if m.focusIndex == 4 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", s)))
-			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", s)))
-			}
-		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", s)))
-		}
-	}
-	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelShared("Section", 4, m.focusIndex))
+	b.WriteString(renderSectionSelectorShared(m.sections, m.sectionCursor, m.focusIndex == 4))
+	b.WriteString("\n")
 
 	// Recurrence selector
-	var recurLabel string
-	if m.focusIndex == 5 {
-		recurLabel = FieldLabelFocusedStyle.Render("Recurrence: ")
-	} else {
-		recurLabel = FieldLabelStyle.Render("Recurrence: ")
-	}
-	b.WriteString(recurLabel)
-	for i, opt := range m.recurrenceOpts {
-		display := opt
-		// For "Custom..." option, show the actual pattern if we have one
-		if i == 6 && m.recurrenceCursor == 6 && m.recurrence != nil {
-			display = m.recurrence.String()
-		}
-		if i == m.recurrenceCursor {
-			if m.focusIndex == 5 {
-				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", display)))
-			} else {
-				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", display)))
-			}
-		} else {
-			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
-		}
-	}
-	// Add hint for 'r' keybind
-	if m.focusIndex == 5 {
-		b.WriteString("  ")
-		b.WriteString(HelpStyle.Render("r: edit"))
-	}
-	b.WriteString("\n\n")
+	b.WriteString(renderFormLabelShared("Recur", 5, m.focusIndex))
+	b.WriteString(renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 5, m.recurrence))
+	b.WriteString("\n")
 
 	// Tags input
-	var tagsLabel string
-	if m.focusIndex == 6 {
-		tagsLabel = FieldLabelFocusedStyle.Render("Tags: ")
-	} else {
-		tagsLabel = FieldLabelStyle.Render("Tags: ")
-	}
-	b.WriteString(tagsLabel)
+	b.WriteString(renderFormLabelShared("Tags", 6, m.focusIndex))
 	b.WriteString(m.tagsInput.View())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	// Description field (single line, truncated, Enter to edit)
-	var descLabel string
-	if m.focusIndex == 7 {
-		descLabel = FieldLabelFocusedStyle.Render("Description: ")
-	} else {
-		descLabel = FieldLabelStyle.Render("Description: ")
-	}
-	b.WriteString(descLabel)
+	b.WriteString(renderFormLabelShared("Desc", 7, m.focusIndex))
 	descDisplay := m.descValue
 	if descDisplay == "" {
 		descDisplay = MutedStyle.Render("(press Enter to edit)")
 	} else {
-		// Replace newlines with spaces for display and truncate
 		descDisplay = strings.ReplaceAll(descDisplay, "\n", " ")
 		descDisplay = util.Truncate(descDisplay, 50)
 	}
@@ -638,22 +501,22 @@ func (m *TaskCreatorModel) View() string {
 		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	// Help footer
+	// Help footer inside card
 	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Tab: fields · Enter: edit text · ←/→: options · /: search parents · Ctrl+S: save · Esc: cancel"))
+	b.WriteString(renderFormHelpFooter("Tab: fields · Enter: edit text · ←/→: options · /: search parents · Ctrl+S: save · Esc: cancel"))
 
 	// Wrap in overlay card
 	cardWidth := m.width - 4
 	if cardWidth > 80 {
 		cardWidth = 80
 	}
-	config := OverlayCardConfig{
+	cfg := OverlayCardConfig{
 		Title:        "Create Task",
 		Width:        cardWidth,
 		Centered:     true,
 		NoTruncation: true,
 	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	return renderOverlayCard(b.String(), m.width, m.height, cfg)
 }
 
 // HasTextInput returns true because the task creator always has inputs.

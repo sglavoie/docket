@@ -460,7 +460,7 @@ func (m *TaskEditorModel) View() string {
 	content.WriteString(m.renderFormLabel("Title", 0))
 	content.WriteString("\n")
 	content.WriteString(m.titleInput.View())
-	content.WriteString("\n\n")
+	content.WriteString("\n")
 
 	// Type selector row
 	content.WriteString(m.renderFormLabel("Type", 1))
@@ -495,7 +495,7 @@ func (m *TaskEditorModel) View() string {
 	// Recurrence row
 	content.WriteString(m.renderFormLabel("Recur", 7))
 	content.WriteString(m.renderRecurrenceSelector())
-	content.WriteString("\n\n")
+	content.WriteString("\n")
 
 	// Tags row (read-only)
 	content.WriteString(m.renderFormLabel("Tags", -1))
@@ -526,37 +526,28 @@ func (m *TaskEditorModel) View() string {
 		content.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
+	// Help footer inside card
+	content.WriteString("\n\n")
+	content.WriteString(renderFormHelpFooter("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel"))
+
 	// Build card title
 	cardTitle := fmt.Sprintf("Edit Task #%d", m.task.ShortID)
 	if m.hasChanges {
 		cardTitle += " *"
 	}
 
-	// Wrap content in card
+	// Wrap in overlay card
 	cardWidth := m.width - 4
-	if cardWidth < 40 {
-		cardWidth = 40
-	}
 	if cardWidth > 80 {
 		cardWidth = 80
 	}
-
-	// Use renderCard for proper titled border
-	config := CardConfig{
-		Style:      FormCardStyle,
-		TitleStyle: TitleStyle,
-		Focused:    false,
+	cfg := OverlayCardConfig{
+		Title:        cardTitle,
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
 	}
-	card := renderCard(cardTitle, content.String(), cardWidth, config)
-
-	var result strings.Builder
-	result.WriteString(card)
-	result.WriteString("\n")
-
-	// Help footer outside card
-	result.WriteString(HelpStyle.Render("  Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel"))
-
-	return result.String()
+	return renderOverlayCard(content.String(), m.width, m.height, cfg)
 }
 
 // HasTextInput returns true because the task editor contains inputs.
