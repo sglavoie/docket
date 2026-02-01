@@ -17,6 +17,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Generate CLI reference
+        run: go run ./scripts/gen-api-ref > cmd/cli-reference.md
+
       - name: Run tests with race detector
         run: go test -race -coverprofile=coverage.out ./...
 
@@ -44,6 +47,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Generate CLI reference
+        run: go run ./scripts/gen-api-ref > cmd/cli-reference.md
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -58,6 +64,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+
+      - name: Generate CLI reference
+        run: go run ./scripts/gen-api-ref > cmd/cli-reference.md
 
       - name: Build
         run: go build -v ./...
