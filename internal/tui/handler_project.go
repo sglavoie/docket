@@ -184,6 +184,24 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.views.Register(ViewTrashedProjects, newModel)
 		m.statusMessage = fmt.Sprintf("Permanently deleted: %s", msg.Slug)
 		return true, defaultStatusTimeout()
+
+	case ShowProjectPickerMsg:
+		projects := m.config.GetActiveProjects()
+		picker := NewProjectPickerModel(projects)
+		m.showView(ViewProjectPicker, picker)
+		return true, picker.Init()
+
+	case ProjectPickerDoneMsg:
+		m.popView() // Close picker
+		if !msg.Canceled && msg.Project != nil {
+			// Save current project ID so we can restore it when navigating back
+			if m.currentProject != nil {
+				m.projectStack = append(m.projectStack, m.currentProject.ID)
+			}
+			m.switchToProject(msg.Project, true)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
 	}
 	return false, nil
 }

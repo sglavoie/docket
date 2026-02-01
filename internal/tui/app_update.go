@@ -40,6 +40,13 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if handled := m.handleEscKey(); handled {
 				return m, nil
 			}
+		case "ctrl+x":
+			// Open project picker if no view has an active text input
+			if !m.hasActiveTextInput() {
+				return m, func() tea.Msg {
+					return ShowProjectPickerMsg{}
+				}
+			}
 		case ":":
 			// Open command palette if no view has an active text input
 			if !m.hasActiveTextInput() {
@@ -178,6 +185,14 @@ func (m *AppModel) handleEscKey() bool {
 		// Refresh project tree when closing Kanban since tasks may have changed
 		if closingView == ViewKanban {
 			m.reloadAndRefreshProjectTree()
+		}
+		// Restore previous project when popping a stacked project tree
+		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
+			prevID := m.projectStack[len(m.projectStack)-1]
+			m.projectStack = m.projectStack[:len(m.projectStack)-1]
+			if prev := m.config.GetProject(prevID); prev != nil {
+				m.switchToProject(prev, true)
+			}
 		}
 		return true
 	}

@@ -180,6 +180,7 @@ func projectCyclingBindings() []Keybinding {
 func (r *KeybindingRegistry) registerGlobalBindings() {
 	r.add(
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},
+		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Back / close", Category: "Navigation"},
 		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation"},

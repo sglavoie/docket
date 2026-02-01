@@ -85,6 +85,7 @@ const (
 	ViewSnoozeInput
 	ViewTutor
 	ViewAsk
+	ViewProjectPicker
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -118,6 +119,11 @@ type AppModel struct {
 
 	// Current project context
 	currentProject *models.Project
+
+	// Project stack tracks project IDs for stacked ViewProjectTree entries.
+	// When the project picker pushes a new project tree, the previous project ID
+	// is saved so it can be restored when navigating back.
+	projectStack []string
 
 	// State
 	err           error
