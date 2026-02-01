@@ -5,6 +5,7 @@
 	clean \
 	coverage \
 	dead \
+	docs \
 	fmt \
 	help \
 	install \
@@ -30,7 +31,12 @@ help: ## Show this help message
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-build: ## Build the binary in the current directory
+docs: ## Generate CLI reference for embedding
+	@echo "📝 Generating CLI reference..."
+	go run ./scripts/gen-api-ref > cmd/cli-reference.md
+	@echo "✅ Generated cmd/cli-reference.md"
+
+build: docs ## Build the binary in the current directory
 	@echo "🔨 Building $(BINARY_NAME)..."
 	go build $(LDFLAGS) -o $(BINARY_NAME) .
 	@echo "✅ Built $(BINARY_NAME)"

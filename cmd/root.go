@@ -38,6 +38,11 @@ Examples:
 	RunE: runRoot,
 }
 
+// RootCmd returns the root cobra command for use by code generators.
+func RootCmd() *cobra.Command {
+	return rootCmd
+}
+
 func Execute() {
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
@@ -88,7 +93,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	return tui.RunApp(cfg, configManager)
+	return tui.RunApp(cfg, configManager, tui.WithCLIReference(CLIReference))
 }
 
 func printVersion() {

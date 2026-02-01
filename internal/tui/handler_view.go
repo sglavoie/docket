@@ -165,7 +165,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowAskMsg:
-		askView := NewAskViewModel(m.currentProject)
+		askView := NewAskViewModel(m.currentProject, m.cliReference)
 		m.showView(ViewAsk, askView)
 		askView.SetSize(m.width, m.height)
 		return true, askView.Init()

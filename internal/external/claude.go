@@ -95,6 +95,8 @@ func BuildTaskContext(project *models.Project) string {
 
 When suggesting changes, output the exact tt commands the user should run.
 Wrap commands in a fenced code block.
+
+Always respond using valid Markdown formatting.
 `)
 
 	return b.String()

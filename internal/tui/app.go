@@ -137,6 +137,9 @@ type AppModel struct {
 
 	// Pending global note move operation
 	pendingGlobalNoteMove *pendingNoteMove
+
+	// CLI reference for AI assistant context
+	cliReference string
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -153,6 +156,13 @@ type AppOption func(*AppModel)
 func WithPersister(p Persister) AppOption {
 	return func(app *AppModel) {
 		app.persister = p
+	}
+}
+
+// WithCLIReference sets the CLI reference text for AI assistant context.
+func WithCLIReference(ref string) AppOption {
+	return func(app *AppModel) {
+		app.cliReference = ref
 	}
 }
 

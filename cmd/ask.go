@@ -58,6 +58,10 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if CLIReference != "" {
+		systemPrompt += "\n\n" + external.BuildCLIContext(CLIReference, query)
+	}
+
 	ctx := context.Background()
 	response, err := external.ClaudeAsk(ctx, query, systemPrompt)
 	if err != nil {

@@ -21,7 +21,7 @@ type StartupEvalResult struct {
 }
 
 // RunApp starts the TUI application.
-func RunApp(cfg *config.Config, manager *config.Manager) error {
+func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) error {
 	// Evaluate workflow rules at startup if needed
 	var startupResult *StartupEvalResult
 	if current := cfg.GetCurrentProject(); current != nil {
@@ -33,7 +33,7 @@ func RunApp(cfg *config.Config, manager *config.Manager) error {
 		storage.MaxActivityEntries = *cfg.MaxActivityEntries
 	}
 
-	model := NewAppModel(cfg, manager)
+	model := NewAppModel(cfg, manager, opts...)
 
 	// Pass startup eval result to model for status display
 	if startupResult != nil && startupResult.Evaluated && startupResult.ModifiedTasks > 0 {

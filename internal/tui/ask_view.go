@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/external"
@@ -38,13 +39,19 @@ type AskViewModel struct {
 	commands []string
 	cancelFn context.CancelFunc
 
+	// CLI reference for selective injection
+	cliReference string
+
+	// Markdown renderer for prettifying responses
+	mdRenderer *glamour.TermRenderer
+
 	// Streaming state
 	streamReader io.ReadCloser
 	streamCmd    *exec.Cmd
 }
 
 // NewAskViewModel creates a new AI assistant view.
-func NewAskViewModel(project *models.Project) *AskViewModel {
+func NewAskViewModel(project *models.Project, cliReference string) *AskViewModel {
 	ta := textarea.New()
 	ta.Placeholder = "Ask about your tasks... (Ctrl+S to submit)"
 	ta.CharLimit = 500
@@ -53,11 +60,18 @@ func NewAskViewModel(project *models.Project) *AskViewModel {
 	ta.SetPromptFunc(0, func(lineIdx int) string { return "" })
 	ta.Focus()
 
+	renderer, _ := glamour.NewTermRenderer(
+		glamour.WithStylePath("dark"),
+		glamour.WithWordWrap(0),
+	)
+
 	return &AskViewModel{
-		state:    askStateInput,
-		textarea: ta,
-		spinner:  NewSpinner(),
-		project:  project,
+		state:        askStateInput,
+		textarea:     ta,
+		spinner:      NewSpinner(),
+		project:      project,
+		cliReference: cliReference,
+		mdRenderer:   renderer,
 	}
 }
 
@@ -99,6 +113,7 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.commands = external.ExtractTTCommands(m.response)
 		m.viewport.SetContent(m.renderResponse())
+		m.viewport.GotoTop()
 		return m, nil
 
 	case AskCommandResultMsg:
@@ -192,6 +207,9 @@ func (m *AskViewModel) submitQuery(query string) tea.Cmd {
 	if m.project != nil {
 		systemPrompt = external.BuildTaskContext(m.project)
 	}
+	if m.cliReference != "" {
+		systemPrompt += "\n\n" + external.BuildCLIContext(m.cliReference, query)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancelFn = cancel
@@ -259,71 +277,20 @@ func (m *AskViewModel) applyCommands() tea.Cmd {
 	}
 }
 
-// wrapResponse word-wraps response text, preserving code blocks verbatim.
-func (m *AskViewModel) wrapResponse() string {
-	wrapWidth := m.viewport.Width - 2
-	if wrapWidth < 20 {
-		wrapWidth = 20
-	}
-
-	var b strings.Builder
-	lines := strings.Split(m.response, "\n")
-	inCodeBlock := false
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") {
-			inCodeBlock = !inCodeBlock
-			b.WriteString(line)
-			b.WriteString("\n")
-			continue
-		}
-		if inCodeBlock || len(line) <= wrapWidth {
-			b.WriteString(line)
-			b.WriteString("\n")
-			continue
-		}
-		b.WriteString(wordWrap(line, wrapWidth))
-		b.WriteString("\n")
-	}
-
-	return strings.TrimRight(b.String(), "\n")
-}
-
-// wordWrap wraps a single line at word boundaries.
-func wordWrap(text string, width int) string {
-	if width <= 0 || len(text) <= width {
-		return text
-	}
-	var lines []string
-	for len(text) > width {
-		bp := width
-		for i := width; i > 0; i-- {
-			if text[i-1] == ' ' {
-				bp = i - 1
-				break
-			}
-		}
-		if bp == width {
-			// No space found, force break
-			bp = width
-		}
-		lines = append(lines, text[:bp])
-		text = strings.TrimLeft(text[bp:], " ")
-	}
-	if text != "" {
-		lines = append(lines, text)
-	}
-	return strings.Join(lines, "\n")
-}
-
 func (m *AskViewModel) renderResponse() string {
 	if m.response == "" {
 		return ""
 	}
 
 	var b strings.Builder
-	b.WriteString(m.wrapResponse())
+
+	rendered := m.response
+	if m.mdRenderer != nil {
+		if out, err := m.mdRenderer.Render(m.response); err == nil {
+			rendered = strings.TrimSpace(out)
+		}
+	}
+	b.WriteString(rendered)
 
 	if m.state == askStateResult && len(m.commands) > 0 {
 		b.WriteString("\n\n")
@@ -331,7 +298,53 @@ func (m *AskViewModel) renderResponse() string {
 		b.WriteString(cmdStyle.Render(fmt.Sprintf("── %d command(s) extracted ──", len(m.commands))))
 		b.WriteString("\n")
 		for i, c := range m.commands {
-			b.WriteString(fmt.Sprintf("  %d. %s\n", i+1, c))
+			prefix := fmt.Sprintf("  %d. ", i+1)
+			wrapWidth := m.viewport.Width - 2
+			if wrapWidth < 40 {
+				wrapWidth = 40
+			}
+			indent := strings.Repeat(" ", len(prefix))
+			line := prefix + c
+			if len(line) > wrapWidth {
+				b.WriteString(prefix)
+				remaining := c
+				first := true
+				for len(remaining) > 0 {
+					avail := wrapWidth - len(prefix)
+					if !first {
+						avail = wrapWidth - len(indent)
+					}
+					if avail <= 0 {
+						avail = 20
+					}
+					chunk := remaining
+					if len(chunk) > avail {
+						// Break at last space within avail
+						bp := avail
+						for j := avail; j > 0; j-- {
+							if chunk[j-1] == ' ' {
+								bp = j - 1
+								break
+							}
+						}
+						chunk = remaining[:bp]
+						remaining = strings.TrimLeft(remaining[bp:], " ")
+					} else {
+						remaining = ""
+					}
+					if first {
+						b.WriteString(chunk)
+						first = false
+					} else {
+						b.WriteString(indent)
+						b.WriteString(chunk)
+					}
+					b.WriteString("\n")
+				}
+			} else {
+				b.WriteString(line)
+				b.WriteString("\n")
+			}
 		}
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render("Press 'a' to apply commands"))
@@ -351,13 +364,21 @@ func (m *AskViewModel) SetSize(width, height int) {
 	}
 	m.textarea.SetWidth(taWidth)
 
-	vpHeight := height - 10
+	vpHeight := height - 5
 	if vpHeight < 5 {
 		vpHeight = 5
 	}
 	vpWidth := width - 2
 	if vpWidth < 30 {
 		vpWidth = 30
+	}
+
+	// Recreate renderer with updated word wrap width
+	if r, err := glamour.NewTermRenderer(
+		glamour.WithStylePath("dark"),
+		glamour.WithWordWrap(vpWidth),
+	); err == nil {
+		m.mdRenderer = r
 	}
 
 	if !m.ready {
@@ -377,9 +398,6 @@ func (m *AskViewModel) View() string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	b.WriteString(pad)
 	b.WriteString(titleStyle.Render("AI Assistant"))
-	if m.project != nil {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" (%s)", m.project.Name)))
-	}
 	if !external.ClaudeAvailable() {
 		b.WriteString(" ")
 		b.WriteString(ErrorStatusStyle.Render("claude CLI not found"))
