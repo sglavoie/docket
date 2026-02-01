@@ -534,6 +534,8 @@ func init() {
 		// "set with !", "with #", "with @"
 		{`(?:set |tags )with ([!#@])`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 		{`assignment with (@)`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		// Command palette commands
+		{`type (ask ai) to`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 	}
 
 	for _, r := range rules {
@@ -1331,7 +1333,14 @@ overview of work in progress.`,
 
 Press ? in any view to see all keybindings available in that
 screen. The help overlay shows only the actions relevant to
-your current view.`,
+your current view.
+
+# AI Assistant
+
+Press : to open the command palette, then type ask ai to launch
+the AI assistant. It can answer questions about your tasks,
+suggest next steps, and generate tt commands. Requires the
+claude CLI to be installed.`,
 		},
 	}
 }
