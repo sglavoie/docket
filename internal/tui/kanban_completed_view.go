@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // toggleCompletedView toggles the completed view mode.
@@ -174,13 +172,12 @@ func (m *KanbanViewModel) renderCompletedView() string {
 	var b strings.Builder
 
 	// Header
-	header := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorSuccess).
-		Render(fmt.Sprintf("Completed Tasks (%d)", len(m.completedNodes)))
-	b.WriteString(header)
+	b.WriteString(renderFullscreenTitle(
+		fmt.Sprintf("Completed Tasks (%d)", len(m.completedNodes)),
+		"",
+	))
 	b.WriteString("\n")
-	b.WriteString(strings.Repeat("─", m.Width()))
+	b.WriteString(renderHorizontalDivider(m.Width()))
 	b.WriteString("\n")
 
 	// Calculate viewport height (full height minus header, divider, status)
@@ -232,6 +229,11 @@ func (m *KanbanViewModel) renderCompletedView() string {
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(m.completedNodes)-endIdx)))
 	}
+
+	// Footer
+	b.WriteString("\n")
+	leftFooter := HelpStyle.Render("j/k: navigate | Space: expand/collapse | q: close")
+	b.WriteString(renderStatusBarFooter(leftFooter, "", m.Width()))
 
 	return b.String()
 }

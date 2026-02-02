@@ -12,11 +12,10 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// renderFullWidth renders the traditional full-width tree view (sidebar disabled).
-func (m *ProjectTreeModel) renderFullWidth() string {
+// renderProjectTreeTitle renders the project title line with context, notes indicator,
+// filter badges, and archived status. Used by both full-width and sidebar layouts.
+func (m *ProjectTreeModel) renderProjectTreeTitle() string {
 	var b strings.Builder
-
-	// Title
 	title := fmt.Sprintf("%s - Tasks", m.project.Name)
 	b.WriteString(TitleStyle.Render(title))
 	if m.project.Context != "" {
@@ -32,8 +31,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString(" ")
 		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.config.FilterContext)))
 	}
-
-	// Show archived badge
 	if m.project.Archived {
 		b.WriteString(" ")
 		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))
@@ -42,6 +39,15 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", m.project.ArchivedAt.Format(util.DateFormat))))
 		}
 	}
+	return b.String()
+}
+
+// renderFullWidth renders the traditional full-width tree view (sidebar disabled).
+func (m *ProjectTreeModel) renderFullWidth() string {
+	var b strings.Builder
+
+	// Title
+	b.WriteString(m.renderProjectTreeTitle())
 	b.WriteString("\n")
 
 	// Custom section tab bar
@@ -397,31 +403,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	var b strings.Builder
 
 	// Title
-	title := fmt.Sprintf("%s - Tasks", m.project.Name)
-	b.WriteString(TitleStyle.Render(title))
-	if m.project.Context != "" {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%s]", m.project.Context)))
-	}
-	if storage.NotesExist(m.project) {
-		b.WriteString(" ✎ Notes")
-	}
-	if m.config.FilterCustomContext != "" {
-		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[+ %s]", m.config.FilterCustomContext)))
-	} else if m.config.FilterContext != "" {
-		b.WriteString(" ")
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", m.config.FilterContext)))
-	}
-
-	// Show archived badge
-	if m.project.Archived {
-		b.WriteString(" ")
-		b.WriteString(ArchivedBadgeStyle.Render("ARCHIVED"))
-		if m.project.ArchivedAt != nil {
-			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("since %s", m.project.ArchivedAt.Format(util.DateFormat))))
-		}
-	}
+	b.WriteString(m.renderProjectTreeTitle())
 	b.WriteString("\n")
 
 	// Custom section tab bar

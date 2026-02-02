@@ -24,14 +24,15 @@ func (m *NotesViewModel) View() string {
 	if len(m.filterTags) > 0 {
 		title += " [filtered]"
 	}
-	b.WriteString(TitleStyle.Render(title))
+	subtitle := ""
 	if len(m.filterTags) > 0 {
 		tags := make([]string, 0, len(m.filterTags))
 		for t := range m.filterTags {
 			tags = append(tags, t)
 		}
-		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [tags: %s]", strings.Join(tags, ", "))))
+		subtitle = fmt.Sprintf("[tags: %s]", strings.Join(tags, ", "))
 	}
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n")
 
 	// Tab bar and count info (hidden when bottom pane is fullscreen)
@@ -212,33 +213,33 @@ func (m *NotesViewModel) renderListPane() string {
 }
 
 func (m *NotesViewModel) renderFooter() string {
+	var left string
 	if m.renaming {
-		return MutedStyle.Render("Enter: confirm  Esc: cancel")
-	}
-	if m.detailsPaneFocused {
+		left = "Enter: confirm  Esc: cancel"
+	} else if m.detailsPaneFocused {
 		zHint := "Z:fullscreen"
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
-		return MutedStyle.Render("j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  " + zHint + "  q: close")
-	}
-	if m.multiSelectMode {
-		return MutedStyle.Render("space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select")
-	}
-	zHint := "Z:fullscreen"
-	if m.fullscreenPane {
-		zHint = "Z:exit fullscreen"
-	}
-	footer := "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint
-	if m.isGlobal {
-		footer += "  m: move to project"
+		left = "j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  " + zHint + "  q: close"
+	} else if m.multiSelectMode {
+		left = "space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select"
 	} else {
-		footer += "  /: search"
-		if len(m.filterTags) > 0 {
-			footer += "  C: clear filter"
+		zHint := "Z:fullscreen"
+		if m.fullscreenPane {
+			zHint = "Z:exit fullscreen"
+		}
+		left = "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint
+		if m.isGlobal {
+			left += "  m: move to project"
+		} else {
+			left += "  /: search"
+			if len(m.filterTags) > 0 {
+				left += "  C: clear filter"
+			}
 		}
 	}
-	return MutedStyle.Render(footer)
+	return renderStatusBarFooter(HelpStyle.Render(left), "", m.width)
 }
 
 func (m *NotesViewModel) renderDivider() string {

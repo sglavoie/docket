@@ -701,55 +701,7 @@ func wrapTutorText(text string, width int) string {
 
 func (m *TutorModel) renderTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
-	availWidth := m.innerWidth()
-
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	totalWidth := 0
-	for _, name := range tabNames {
-		totalWidth += lipgloss.Width(plainStyle.Render(name))
-	}
-	fitsSingleLine := totalWidth <= availWidth
-
-	activeStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Padding(0, 1)
-	inactiveStyle := lipgloss.NewStyle().Foreground(ColorMuted).Padding(0, 1)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
-
-	var tabs []string
-	for i, name := range tabNames {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
-	return row
+	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
 func (m *TutorModel) View() string {
@@ -785,16 +737,15 @@ func (m *TutorModel) View() string {
 		vpH := m.viewport.Height
 
 		// Focus indicator bar
-		activeBarStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-		inactiveBarStyle := lipgloss.NewStyle().Foreground(ColorBorder)
-		leftBarStyle, rightBarStyle := inactiveBarStyle, inactiveBarStyle
+		leftColor := lipgloss.TerminalColor(ColorBorder)
+		rightColor := lipgloss.TerminalColor(ColorBorder)
 		if m.activePane == 0 {
-			leftBarStyle = activeBarStyle
+			leftColor = ColorPrimary
 		} else {
-			rightBarStyle = activeBarStyle
+			rightColor = ColorPrimary
 		}
-		leftBar := leftBarStyle.Render(strings.Repeat("━", lw))
-		rightBar := rightBarStyle.Render(strings.Repeat("━", rw))
+		leftBar := renderHorizontalDivider(lw, WithDividerColor(leftColor))
+		rightBar := renderHorizontalDivider(rw, WithDividerColor(rightColor))
 		divider := lipgloss.NewStyle().Foreground(ColorBorder).Render("│")
 		b.WriteString(pad)
 		b.WriteString(leftBar + divider + rightBar)
@@ -812,18 +763,18 @@ func (m *TutorModel) View() string {
 	}
 
 	// Footer
-	b.WriteString("\n\n")
-	scrollPercent := ""
-	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
-		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
-	}
+	b.WriteString("\n")
 	paneHint := "list"
 	if m.activePane == 1 {
 		paneHint = "content"
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) | [/]: tabs | /: search | j/k: navigate | q: close%s", paneHint, scrollPercent))
+	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) | [/]: tabs | /: search | j/k: navigate | q: close", paneHint))
+	rightFooter := ""
+	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
+		rightFooter = MutedStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))
+	}
 	b.WriteString(pad)
-	b.WriteString(footer)
+	b.WriteString(renderStatusBarFooter(leftFooter, rightFooter, m.innerWidth()))
 
 	return b.String()
 }
