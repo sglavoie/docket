@@ -334,7 +334,7 @@ func (m *KanbanViewModel) renderQuickAddInput() string {
 	var b strings.Builder
 
 	// Divider line
-	b.WriteString(MutedStyle.Render(strings.Repeat("─", m.Width())))
+	b.WriteString(renderHorizontalDivider(m.Width()))
 	b.WriteString("\n")
 
 	// Input line with label
