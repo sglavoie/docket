@@ -36,7 +36,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 
 		// Views
 		Keybinding{Key: "gc", Description: "Completed view", Category: "Views", Views: views},
-		Keybinding{Key: "F1", Description: "Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Views", Views: views},
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "Focus on subtree (alias for zv)", Category: "Views", Views: views},
@@ -75,15 +74,16 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "A", Description: "Select all across columns (in multi-select)", Category: "Multi-select", Views: views},
 		Keybinding{Key: "gX", Description: "Deselect all (in multi-select)", Category: "Multi-select", Views: views},
 
-		// Filters
-		Keybinding{Key: "F", Description: "Toggle filter bar", Category: "Filters", Views: views},
-		Keybinding{Key: "ctrl+F", Description: "Toggle filter bar", Category: "Filters", Views: views},
-		Keybinding{Key: "F2", Description: "Toggle high priority filter", Category: "Filters", Views: views},
-		Keybinding{Key: "F3", Description: "Cycle type filter", Category: "Filters", Views: views},
-		Keybinding{Key: "F4", Description: "Cycle status filter", Category: "Filters", Views: views},
-		Keybinding{Key: "F5", Description: "Tag filter selector", Category: "Filters", Views: views},
-		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filters", Views: views},
-		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filters", Views: views},
+		// Filter Popup (F prefix)
+		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},
+		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
+		Keybinding{Key: "Fp", Description: "Toggle high priority filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Ft", Description: "Filter by type (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Fs", Description: "Filter by status (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
+		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Tag filter selector", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},

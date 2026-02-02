@@ -49,12 +49,10 @@ func (m *KanbanViewModel) View() string {
 	}
 	viewParts = append(viewParts, presetBar)
 
-	// Render filter bar if enabled
-	if m.filterBar != nil && m.filterBar.IsEnabled() {
-		filterBar := m.renderKanbanFilterBar()
-		if filterBar != "" {
-			viewParts = append(viewParts, strings.TrimSuffix(filterBar, "\n"))
-		}
+	// Render active filter indicator (only shown when filters are active)
+	filterBar := m.renderKanbanFilterBar()
+	if filterBar != "" {
+		viewParts = append(viewParts, strings.TrimSuffix(filterBar, "\n"))
 	}
 
 	// Render search input if in search mode
@@ -109,8 +107,8 @@ func (m *KanbanViewModel) View() string {
 		tabBarHeight += TabBarHeight
 	}
 	filterBarHeight := 0
-	if m.filterBar != nil && m.filterBar.IsEnabled() {
-		filterBarHeight = FilterBarHeight
+	if m.HasActiveFilters() || m.actionableFilter {
+		filterBarHeight = 1
 	}
 	if m.searchMode {
 		filterBarHeight++
@@ -654,12 +652,16 @@ func (m *KanbanViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"!": PriorityPrefixHints,
-			"d": DueDatePrefixHints,
-			"g": KanbanNavigationPrefixHints,
-			"c": CreateLinkedPrefixHints,
-			"z": KanbanFoldPrefixHints,
+			",":  StatusPrefixHints,
+			"!":  PriorityPrefixHints,
+			"d":  DueDatePrefixHints,
+			"g":  KanbanNavigationPrefixHints,
+			"c":  CreateLinkedPrefixHints,
+			"z":  KanbanFoldPrefixHints,
+			"F":  m.buildKanbanFilterPrefixHints(),
+			"Ft": FilterTypePrefixHints,
+			"Fs": FilterStatusPrefixHints,
+			"Fd": FilterDuePrefixHints,
 		},
 	}
 }

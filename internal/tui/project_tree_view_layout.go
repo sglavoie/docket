@@ -175,7 +175,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := TreeHeaderOffset
-		if m.filterBar.IsEnabled() {
+		if m.hasActiveFilters() {
 			headerOffset = TreeHeaderOffsetWithFilterBar
 		}
 		if m.customSectionTabs() != nil {
@@ -522,7 +522,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := TreeHeaderOffset
-		if m.filterBar.IsEnabled() {
+		if m.hasActiveFilters() {
 			headerOffset = TreeHeaderOffsetWithFilterBar
 		}
 		if m.customSectionTabs() != nil {

@@ -10,15 +10,18 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// handleFilterBarKeys handles F, F1-F7 - filter bar toggle and quick filter operations.
+// handleFilterBarKeys handles F - filter prefix popup activation.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
+	// F is now handled as a prefix key in handleKeyMsg
+	return false, nil
+}
+
+// handleFilterPrefix handles the second key after pressing F (filter prefix).
+func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	switch key {
-	case "F":
-		m.filterBar.SetEnabled(!m.filterBar.IsEnabled())
-		return true, nil
-	case "f1":
-		// F1 toggles Completed view
+	case "c":
+		// Toggle completed view
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		} else {
@@ -27,8 +30,9 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
-		return true, nil
-	case "f2":
+		return m, nil
+	case "p":
+		// Toggle high priority filter
 		if m.filter.Priority == 0 {
 			m.filter.Priority = 1
 		} else {
@@ -37,41 +41,124 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
-		return true, nil
-	case "f3":
-		m.filter.Type = cycleFilter(m.filter.Type, models.AllTaskTypes())
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-	case "f4":
-		m.filter.Status = cycleFilter(m.filter.Status, models.AllTaskStatuses())
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-	case "f5":
-		return true, func() tea.Msg {
+		return m, nil
+	case "t":
+		// Open type sub-popup
+		m.pendingPrefix = "Ft"
+		return m, nil
+	case "s":
+		// Open status sub-popup
+		m.pendingPrefix = "Fs"
+		return m, nil
+	case "#":
+		// Tag filter selector
+		return m, func() tea.Msg {
 			return ShowTagFilterSelectorMsg{ProjectTree: m}
 		}
-	case "f6":
-		return true, func() tea.Msg {
+	case "@":
+		// Section filter selector
+		return m, func() tea.Msg {
 			return ShowSectionFilterSelectorMsg{ProjectTree: m}
 		}
-	case "f7":
-		m.filter.DueDate = (m.filter.DueDate + 1) % 5
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-	case "f8":
+	case "d":
+		// Open due-date sub-popup
+		m.pendingPrefix = "Fd"
+		return m, nil
+	case "r":
+		// Toggle actionable/ready filter
 		m.filter.Actionable = !m.filter.Actionable
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
-		return true, nil
+		return m, nil
+	case "x":
+		// Clear all filters
+		m.filter.Type = ""
+		m.filter.Status = ""
+		m.filter.Priority = 0
+		m.filter.Tags = make(map[string]bool)
+		m.filter.Sections = make(map[string]bool)
+		m.filter.DueDate = DueDateAll
+		m.filter.Actionable = false
+		if m.viewMode == ViewModeCompleted {
+			m.viewMode = ViewModeActive
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return m, nil
 	}
-	return false, nil
+	return m, nil
+}
+
+// handleFilterTypePrefix handles the third key after pressing Ft (filter type sub-prefix).
+func (m *ProjectTreeModel) handleFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "e":
+		m.filter.Type = models.TaskTypeEpic
+	case "s":
+		m.filter.Type = models.TaskTypeStory
+	case "t":
+		m.filter.Type = models.TaskTypeTask
+	case "b":
+		m.filter.Type = models.TaskTypeBug
+	case "i":
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		m.filter.Type = ""
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterStatusPrefix handles the third key after pressing Fs (filter status sub-prefix).
+func (m *ProjectTreeModel) handleFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "t":
+		m.filter.Status = models.StatusTodo
+	case "s":
+		m.filter.Status = models.StatusInProgress
+	case "b":
+		m.filter.Status = models.StatusBlocked
+	case "d":
+		m.filter.Status = models.StatusDone
+	case "x":
+		m.filter.Status = models.StatusCanceled
+	case "0":
+		m.filter.Status = ""
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterDuePrefix handles the third key after pressing Fd (filter due-date sub-prefix).
+func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "o":
+		m.filter.DueDate = DueDateOverdue
+	case "t":
+		m.filter.DueDate = DueDateToday
+	case "w":
+		m.filter.DueDate = DueDateThisWeek
+	case "n":
+		m.filter.DueDate = DueDateNone
+	case "0":
+		m.filter.DueDate = DueDateAll
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
 }
 
 // handleFilterKeys handles P, t, S, T, N, u - filter operations.

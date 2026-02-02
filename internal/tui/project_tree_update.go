@@ -597,6 +597,22 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 		return m, nil
 
+	case "F":
+		// Filter prefix - first level
+		return m.handleFilterPrefix(key)
+
+	case "Ft":
+		// Filter type sub-prefix
+		return m.handleFilterTypePrefix(key)
+
+	case "Fs":
+		// Filter status sub-prefix
+		return m.handleFilterStatusPrefix(key)
+
+	case "Fd":
+		// Filter due-date sub-prefix
+		return m.handleFilterDuePrefix(key)
+
 	case "s":
 		// Snooze quick actions
 		now := time.Now()
@@ -728,6 +744,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 			m.pendingPrefix = "c"
 			return m, nil
 		}
+		return m, nil
+	case "F":
+		m.pendingPrefix = "F"
 		return m, nil
 	}
 

@@ -102,115 +102,81 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 func (m *ProjectTreeModel) renderFilterBar() string {
 	var result strings.Builder
 
-	// If filterBar component is not initialized, return empty string
-	if m.filterBar == nil {
-		return ""
-	}
-
-	if !m.filterBar.IsEnabled() {
-		// When filter bar is disabled, just show view mode indicator
-		result.WriteString(m.renderViewModeIndicator())
+	// Active filter indicator line (only shown when filters are active)
+	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
+		result.WriteString(indicator)
 		result.WriteString("\n")
-		return result.String()
 	}
 
-	// Line 1: Filter badges (F1-F7)
-	var badges []string
-
-	// F1: Completed view (switch to Completed view)
-	count := m.filterBar.GetCounts()["completed"]
-	active := m.viewMode == ViewModeCompleted
-	badges = append(badges, m.renderFilterBadge("F1", "Done", count, active))
-
-	// F2: High Priority
-	count = m.filterBar.GetCounts()["highPriority"]
-	active = m.filter.Priority == 1
-	badges = append(badges, m.renderFilterBadge("F2", "!Hi", count, active))
-
-	// F3: Type (show current type if filtered)
-	typeName := "Type"
-	if m.filter.Type != "" {
-		typeName = string(m.filter.Type)
-		count = m.filterBar.GetCounts()["type:"+string(m.filter.Type)]
-	} else {
-		count = len(m.project.Tasks)
-	}
-	active = m.filter.Type != ""
-	badges = append(badges, m.renderFilterBadge("F3", typeName, count, active))
-
-	// F4: Status (show current status if filtered)
-	statusName := "Status"
-	if m.filter.Status != "" {
-		statusName = string(m.filter.Status)
-		count = m.filterBar.GetCounts()["status:"+string(m.filter.Status)]
-	} else {
-		count = len(m.project.Tasks)
-	}
-	active = m.filter.Status != ""
-	badges = append(badges, m.renderFilterBadge("F4", statusName, count, active))
-
-	// F5: Tags (show count of selected tags)
-	tagCount := len(m.filter.Tags)
-	if tagCount > 0 {
-		badges = append(badges, m.renderFilterBadge("F5", fmt.Sprintf("#%dtag", tagCount), tagCount, true))
-	} else {
-		badges = append(badges, m.renderFilterBadge("F5", "Tags", 0, false))
-	}
-
-	// F6: Section (show count of selected sections)
-	sectionCount := len(m.filter.Sections)
-	if sectionCount > 0 {
-		badges = append(badges, m.renderFilterBadge("F6", fmt.Sprintf("@%dsec", sectionCount), sectionCount, true))
-	} else {
-		badges = append(badges, m.renderFilterBadge("F6", "Sect", 0, false))
-	}
-
-	// F7: Due Date
-	dueName := "Due"
-	switch m.filter.DueDate {
-	case DueDateOverdue:
-		dueName = "Ovrd"
-		count = m.filterBar.GetCounts()["overdue"]
-	case DueDateToday:
-		dueName = "Today"
-		count = m.filterBar.GetCounts()["today"]
-	case DueDateThisWeek:
-		dueName = "Week"
-		count = m.filterBar.GetCounts()["thisWeek"]
-	default:
-		count = 0
-	}
-	active = m.filter.DueDate != DueDateAll
-	badges = append(badges, m.renderFilterBadge("F7", dueName, count, active))
-
-	// F8: Actionable (tasks ready to work on)
-	count = m.filterBar.GetCounts()["actionable"]
-	active = m.filter.Actionable
-	badges = append(badges, m.renderFilterBadge("F8", "Ready", count, active))
-
-	result.WriteString(strings.Join(badges, " "))
-	result.WriteString("\n")
-
-	// Line 2: View mode indicator
+	// View mode indicator (always shown)
 	result.WriteString(m.renderViewModeIndicator())
 	result.WriteString("\n")
 
 	return result.String()
 }
 
-// renderFilterBadge renders a single filter badge with key, name, count, and active state.
-func (m *ProjectTreeModel) renderFilterBadge(key, name string, count int, active bool) string {
-	var countStr string
-	if count > 0 {
-		countStr = fmt.Sprintf("[%d]", count)
+// hasActiveFilters returns true if any filter is currently active.
+func (m *ProjectTreeModel) hasActiveFilters() bool {
+	return m.viewMode == ViewModeCompleted ||
+		m.filter.Priority != 0 ||
+		m.filter.Type != "" ||
+		m.filter.Status != "" ||
+		len(m.filter.Tags) > 0 ||
+		len(m.filter.Sections) > 0 ||
+		m.filter.DueDate != DueDateAll ||
+		m.filter.Actionable
+}
+
+// renderActiveFilterIndicator returns a compact indicator of all active filters.
+// Returns empty string when no filters are active.
+func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
+	var parts []string
+
+	if m.viewMode == ViewModeCompleted {
+		parts = append(parts, "completed")
+	}
+	if m.filter.Priority == 1 {
+		parts = append(parts, "!Hi")
+	}
+	if m.filter.Type != "" {
+		parts = append(parts, "type:"+string(m.filter.Type))
+	}
+	if m.filter.Status != "" {
+		parts = append(parts, "status:"+string(m.filter.Status))
+	}
+	if len(m.filter.Tags) > 0 {
+		var tagNames []string
+		for tag := range m.filter.Tags {
+			tagNames = append(tagNames, "#"+tag)
+		}
+		parts = append(parts, strings.Join(tagNames, " "))
+	}
+	if len(m.filter.Sections) > 0 {
+		var secNames []string
+		for sec := range m.filter.Sections {
+			secNames = append(secNames, "@"+sec)
+		}
+		parts = append(parts, strings.Join(secNames, " "))
+	}
+	switch m.filter.DueDate {
+	case DueDateOverdue:
+		parts = append(parts, "due:overdue")
+	case DueDateToday:
+		parts = append(parts, "due:today")
+	case DueDateThisWeek:
+		parts = append(parts, "due:week")
+	case DueDateNone:
+		parts = append(parts, "due:none")
+	}
+	if m.filter.Actionable {
+		parts = append(parts, "ready")
 	}
 
-	label := fmt.Sprintf("%s:%s%s", key, name, countStr)
-
-	if active {
-		return FilterBadgeStyle.Render(label)
+	if len(parts) == 0 {
+		return ""
 	}
-	return FilterBadgeInactiveStyle.Render(label)
+
+	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
 }
 
 // renderChildrenInOtherSectionsBadge returns a badge showing how many children
@@ -248,14 +214,81 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"z": FoldPrefixHints,
-			"g": ProjectTreeNavigationPrefixHints,
-			"!": PriorityPrefixHints,
-			"d": DueDatePrefixHints,
-			"s": SnoozePrefixHints,
-			"c": CreateLinkedPrefixHints,
+			",":  StatusPrefixHints,
+			"z":  FoldPrefixHints,
+			"g":  ProjectTreeNavigationPrefixHints,
+			"!":  PriorityPrefixHints,
+			"d":  DueDatePrefixHints,
+			"s":  SnoozePrefixHints,
+			"c":  CreateLinkedPrefixHints,
+			"F":  m.buildFilterPrefixHints(),
+			"Ft": FilterTypePrefixHints,
+			"Fs": FilterStatusPrefixHints,
+			"Fd": FilterDuePrefixHints,
 		},
+	}
+}
+
+// buildFilterPrefixHints builds dynamic filter hints showing current filter state.
+func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
+	completedDetail := "off"
+	if m.viewMode == ViewModeCompleted {
+		completedCount := m.project.CountCompletedTasks()
+		completedDetail = fmt.Sprintf("[%d]", completedCount)
+	}
+
+	priorityDetail := "(all)"
+	if m.filter.Priority == 1 {
+		priorityDetail = "!Hi"
+	}
+
+	typeDetail := "(all)"
+	if m.filter.Type != "" {
+		typeDetail = string(m.filter.Type)
+	}
+
+	statusDetail := "(all)"
+	if m.filter.Status != "" {
+		statusDetail = string(m.filter.Status)
+	}
+
+	tagDetail := "(none)"
+	if len(m.filter.Tags) > 0 {
+		tagDetail = fmt.Sprintf("%d tags", len(m.filter.Tags))
+	}
+
+	sectionDetail := "(none)"
+	if len(m.filter.Sections) > 0 {
+		sectionDetail = fmt.Sprintf("%d sections", len(m.filter.Sections))
+	}
+
+	dueDetail := "(all)"
+	switch m.filter.DueDate {
+	case DueDateOverdue:
+		dueDetail = "overdue"
+	case DueDateToday:
+		dueDetail = "today"
+	case DueDateThisWeek:
+		dueDetail = "week"
+	case DueDateNone:
+		dueDetail = "no-date"
+	}
+
+	readyDetail := "off"
+	if m.filter.Actionable {
+		readyDetail = "on"
+	}
+
+	return []PrefixHint{
+		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.viewMode == ViewModeCompleted},
+		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
+		{Key: "t", Description: "type", Detail: typeDetail, Active: m.filter.Type != ""},
+		{Key: "s", Description: "status", Detail: statusDetail, Active: m.filter.Status != ""},
+		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
+		{Key: "@", Description: "section", Detail: sectionDetail, Active: len(m.filter.Sections) > 0},
+		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
+		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
+		{Key: "x", Description: "clear-all"},
 	}
 }
 

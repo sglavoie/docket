@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -258,105 +260,52 @@ func (m *KanbanViewModel) calculateFilterCounts() {
 	m.filterBar.SetCounts(counts)
 }
 
-// renderKanbanFilterBar renders the filter bar for the kanban view.
+// renderKanbanFilterBar renders a compact active filter indicator for the kanban view.
 func (m *KanbanViewModel) renderKanbanFilterBar() string {
-	if m.filterBar == nil || !m.filterBar.IsEnabled() {
+	var parts []string
+
+	if m.filter.Priority == 1 {
+		parts = append(parts, "!Hi")
+	}
+	if m.filter.Type != "" {
+		parts = append(parts, "type:"+string(m.filter.Type))
+	}
+	if m.filter.Status != "" {
+		parts = append(parts, "status:"+string(m.filter.Status))
+	}
+	if len(m.filter.Tags) > 0 {
+		var tagNames []string
+		for tag := range m.filter.Tags {
+			tagNames = append(tagNames, "#"+tag)
+		}
+		parts = append(parts, strings.Join(tagNames, " "))
+	}
+	switch m.filter.DueDate {
+	case DueDateOverdue:
+		parts = append(parts, "due:overdue")
+	case DueDateToday:
+		parts = append(parts, "due:today")
+	case DueDateThisWeek:
+		parts = append(parts, "due:week")
+	case DueDateNone:
+		parts = append(parts, "due:none")
+	}
+	if m.actionableFilter {
+		parts = append(parts, "ready")
+	}
+	if m.filter.Search != "" {
+		searchStr := "/" + m.filter.Search
+		if len(searchStr) > 15 {
+			searchStr = searchStr[:12] + "..."
+		}
+		parts = append(parts, searchStr)
+	}
+
+	if len(parts) == 0 {
 		return ""
 	}
 
-	var result strings.Builder
-
-	// Line 1: Filter badges (F2-F5, F7 - skip F1/F6/F8 which don't apply to kanban)
-	var badges []string
-
-	// F2: High Priority
-	count := m.filterBar.GetCounts()["highPriority"]
-	active := m.filter.Priority == 1
-	badges = append(badges, m.renderKanbanFilterBadge("F2", "!Hi", count, active))
-
-	// F3: Type (show current type if filtered)
-	typeName := "Type"
-	if m.filter.Type != "" {
-		typeName = string(m.filter.Type)
-		count = m.filterBar.GetCounts()["type:"+string(m.filter.Type)]
-	} else {
-		count = 0
-	}
-	active = m.filter.Type != ""
-	badges = append(badges, m.renderKanbanFilterBadge("F3", typeName, count, active))
-
-	// F4: Status (show current status if filtered)
-	statusName := "Status"
-	if m.filter.Status != "" {
-		statusName = string(m.filter.Status)
-		count = m.filterBar.GetCounts()["status:"+string(m.filter.Status)]
-	} else {
-		count = 0
-	}
-	active = m.filter.Status != ""
-	badges = append(badges, m.renderKanbanFilterBadge("F4", statusName, count, active))
-
-	// F5: Tags (show count of selected tags)
-	tagCount := len(m.filter.Tags)
-	if tagCount > 0 {
-		badges = append(badges, m.renderKanbanFilterBadge("F5", fmt.Sprintf("#%dtag", tagCount), tagCount, true))
-	} else {
-		badges = append(badges, m.renderKanbanFilterBadge("F5", "Tags", 0, false))
-	}
-
-	// F7: Due Date
-	dueName := "Due"
-	switch m.filter.DueDate {
-	case DueDateOverdue:
-		dueName = "Ovrd"
-		count = m.filterBar.GetCounts()["overdue"]
-	case DueDateToday:
-		dueName = "Today"
-		count = m.filterBar.GetCounts()["today"]
-	case DueDateThisWeek:
-		dueName = "Week"
-		count = m.filterBar.GetCounts()["thisWeek"]
-	case DueDateNone:
-		dueName = "None"
-		count = m.filterBar.GetCounts()["noDueDate"]
-	default:
-		count = 0
-	}
-	active = m.filter.DueDate != DueDateAll
-	badges = append(badges, m.renderKanbanFilterBadge("F7", dueName, count, active))
-
-	// Search indicator
-	if m.filter.Search != "" {
-		searchBadge := fmt.Sprintf("/%s", m.filter.Search)
-		if len(searchBadge) > 15 {
-			searchBadge = searchBadge[:12] + "..."
-		}
-		badges = append(badges, FilterBadgeStyle.Render(searchBadge))
-	}
-
-	result.WriteString(strings.Join(badges, " "))
-	result.WriteString("\n")
-
-	// Line 2: Column counts header (already shown in column headers, but summarize here)
-	result.WriteString(m.renderKanbanColumnCounts())
-	result.WriteString("\n")
-
-	return result.String()
-}
-
-// renderKanbanFilterBadge renders a single filter badge.
-func (m *KanbanViewModel) renderKanbanFilterBadge(key, name string, count int, active bool) string {
-	var countStr string
-	if count > 0 {
-		countStr = fmt.Sprintf("[%d]", count)
-	}
-
-	label := fmt.Sprintf("%s:%s%s", key, name, countStr)
-
-	if active {
-		return FilterBadgeStyle.Render(label)
-	}
-	return FilterBadgeInactiveStyle.Render(label)
+	return FilterBadgeStyle.Render("Filters: "+strings.Join(parts, " ")) + "\n"
 }
 
 // renderKanbanColumnCounts renders the column task counts summary.
@@ -472,4 +421,167 @@ func (m *KanbanViewModel) applyTabPreset(tab int) {
 // isDueSoon returns true if a task is overdue, due today, or due this week.
 func isDueSoon(task *models.Task) bool {
 	return isOverdue(task) || isDueToday(task) || isDueThisWeek(task)
+}
+
+// buildKanbanFilterPrefixHints builds dynamic filter hints for kanban view.
+func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
+	completedDetail := "off"
+	if m.completedViewMode {
+		completedDetail = "on"
+	}
+
+	priorityDetail := "(all)"
+	if m.filter.Priority == 1 {
+		priorityDetail = "!Hi"
+	}
+
+	typeDetail := "(all)"
+	if m.filter.Type != "" {
+		typeDetail = string(m.filter.Type)
+	}
+
+	statusDetail := "(all)"
+	if m.filter.Status != "" {
+		statusDetail = string(m.filter.Status)
+	}
+
+	tagDetail := "(none)"
+	if len(m.filter.Tags) > 0 {
+		tagDetail = fmt.Sprintf("%d tags", len(m.filter.Tags))
+	}
+
+	dueDetail := "(all)"
+	switch m.filter.DueDate {
+	case DueDateOverdue:
+		dueDetail = "overdue"
+	case DueDateToday:
+		dueDetail = "today"
+	case DueDateThisWeek:
+		dueDetail = "week"
+	case DueDateNone:
+		dueDetail = "no-date"
+	}
+
+	readyDetail := "off"
+	if m.actionableFilter {
+		readyDetail = "on"
+	}
+
+	return []PrefixHint{
+		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.completedViewMode},
+		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
+		{Key: "t", Description: "type", Detail: typeDetail, Active: m.filter.Type != ""},
+		{Key: "s", Description: "status", Detail: statusDetail, Active: m.filter.Status != ""},
+		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
+		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
+		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter},
+		{Key: "x", Description: "clear-all"},
+	}
+}
+
+// handleKanbanFilterPrefix handles the second key after pressing F (filter prefix) in kanban.
+func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "c":
+		// Toggle completed view
+		m.toggleCompletedView()
+		return m, nil
+	case "p":
+		// Toggle high priority filter
+		m.toggleKanbanPriorityFilter()
+		m.loadTasks()
+		return m, nil
+	case "t":
+		// Open type sub-popup
+		m.pendingPrefix = "Ft"
+		return m, nil
+	case "s":
+		// Open status sub-popup
+		m.pendingPrefix = "Fs"
+		return m, nil
+	case "#":
+		// Tag filter selector
+		return m, func() tea.Msg {
+			return ShowKanbanTagFilterSelectorMsg{}
+		}
+	case "d":
+		// Open due-date sub-popup
+		m.pendingPrefix = "Fd"
+		return m, nil
+	case "r":
+		// Toggle actionable filter
+		m.toggleActionableFilter()
+		return m, nil
+	case "x":
+		// Clear all filters
+		m.ClearAllFilters()
+		m.actionableFilter = false
+		m.loadTasks()
+		return m, nil
+	}
+	return m, nil
+}
+
+// handleKanbanFilterTypePrefix handles filter type sub-prefix in kanban.
+func (m *KanbanViewModel) handleKanbanFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "e":
+		m.filter.Type = models.TaskTypeEpic
+	case "s":
+		m.filter.Type = models.TaskTypeStory
+	case "t":
+		m.filter.Type = models.TaskTypeTask
+	case "b":
+		m.filter.Type = models.TaskTypeBug
+	case "i":
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		m.filter.Type = ""
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterStatusPrefix handles filter status sub-prefix in kanban.
+func (m *KanbanViewModel) handleKanbanFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "t":
+		m.filter.Status = models.StatusTodo
+	case "s":
+		m.filter.Status = models.StatusInProgress
+	case "b":
+		m.filter.Status = models.StatusBlocked
+	case "d":
+		m.filter.Status = models.StatusDone
+	case "x":
+		m.filter.Status = models.StatusCanceled
+	case "0":
+		m.filter.Status = ""
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterDuePrefix handles filter due-date sub-prefix in kanban.
+func (m *KanbanViewModel) handleKanbanFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "o":
+		m.filter.DueDate = DueDateOverdue
+	case "t":
+		m.filter.DueDate = DueDateToday
+	case "w":
+		m.filter.DueDate = DueDateThisWeek
+	case "n":
+		m.filter.DueDate = DueDateNone
+	case "0":
+		m.filter.DueDate = DueDateAll
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
 }

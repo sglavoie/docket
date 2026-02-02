@@ -525,8 +525,8 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 		tabBarHeight += TabBarHeight
 	}
 	filterBarHeight := 0
-	if m.filterBar != nil && m.filterBar.IsEnabled() {
-		filterBarHeight = FilterBarHeight
+	if m.HasActiveFilters() || m.actionableFilter {
+		filterBarHeight = 1
 	}
 
 	// Compute split view heights: 50/50 split minus divider

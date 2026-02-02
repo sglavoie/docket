@@ -285,10 +285,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Filter keybindings
 	case "F":
-		// Toggle filter bar visibility
-		if m.filterBar != nil {
-			m.filterBar.Toggle()
-		}
+		// Open filter prefix popup
+		m.pendingPrefix = "F"
 		return m, nil
 
 	case "ctrl+f":
@@ -296,46 +294,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowFilterMsg{ProjectTree: m.projectTree}
 		}
-
-	case "f2":
-		// Toggle high priority filter
-		m.toggleKanbanPriorityFilter()
-		m.loadTasks()
-		return m, nil
-
-	case "f3":
-		// Cycle type filter
-		m.cycleKanbanTypeFilter()
-		m.loadTasks()
-		return m, nil
-
-	case "f4":
-		// Cycle status filter
-		m.cycleKanbanStatusFilter()
-		m.loadTasks()
-		return m, nil
-
-	case "f5":
-		// Tag filter selector
-		return m, func() tea.Msg {
-			return ShowKanbanTagFilterSelectorMsg{}
-		}
-
-	case "f1":
-		// Toggle completed view
-		m.toggleCompletedView()
-		return m, nil
-
-	case "f7":
-		// Cycle due date filter
-		m.cycleKanbanDueDateFilter()
-		m.loadTasks()
-		return m, nil
-
-	case "f8":
-		// Toggle actionable filter
-		m.toggleActionableFilter()
-		return m, nil
 
 	// Tag filter selector (or bulk tag assignment in multi-select)
 	case "T":

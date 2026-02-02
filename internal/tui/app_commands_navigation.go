@@ -402,14 +402,14 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "toggle filter bar",
-			Description: "Show/hide the filter bar",
+			Name:        "filter popup",
+			Description: "Open the filter popup",
 			Shortcut:    "F",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.filterBar.Toggle()
+					m.projectTree.pendingPrefix = "F"
 				}
 				return nil
 			},

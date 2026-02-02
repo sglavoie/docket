@@ -122,16 +122,17 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Cross-Project
 		Keybinding{Key: "M", Description: "Move to another project", Category: "Cross-Project", Views: views},
 
-		// Filter Bar
-		Keybinding{Key: "F", Description: "Toggle filter bar", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F1", Description: "Switch to Completed view", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F2", Description: "Toggle high priority filter", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F3", Description: "Cycle type filter", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F4", Description: "Cycle status filter", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F5", Description: "Tag filter selector", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F6", Description: "Section filter selector", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F7", Description: "Cycle due date filter", Category: "Filter Bar", Views: views},
-		Keybinding{Key: "F8", Description: "Toggle actionable filter", Category: "Filter Bar", Views: views},
+		// Filter Popup (F prefix)
+		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},
+		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
+		Keybinding{Key: "Fp", Description: "Toggle high priority filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Ft", Description: "Filter by type (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Fs", Description: "Filter by status (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
+		Keybinding{Key: "F@", Description: "Filter by section", Category: "Filters", Views: views},
+		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 
 		// Custom Section Tabs
 		Keybinding{Key: "[/]", Description: "Cycle custom section tabs", Category: "Navigation", Views: views},

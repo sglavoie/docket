@@ -256,6 +256,22 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
 
+	case "F":
+		// Filter prefix - first level
+		return m.handleKanbanFilterPrefix(key)
+
+	case "Ft":
+		// Filter type sub-prefix
+		return m.handleKanbanFilterTypePrefix(key)
+
+	case "Fs":
+		// Filter status sub-prefix
+		return m.handleKanbanFilterStatusPrefix(key)
+
+	case "Fd":
+		// Filter due-date sub-prefix
+		return m.handleKanbanFilterDuePrefix(key)
+
 	case "z":
 		// Fold/expand operations
 		switch key {

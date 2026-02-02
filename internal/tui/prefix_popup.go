@@ -13,6 +13,7 @@ type PrefixHint struct {
 	Key         string
 	Description string
 	Detail      string
+	Active      bool // When true, description and detail are rendered in orange
 }
 
 // PrefixHints maps prefix characters to their available key hints.
@@ -31,13 +32,17 @@ type PrefixPopupProvider interface {
 
 // prefixCategoryNames maps prefix characters to human-readable category names.
 var prefixCategoryNames = map[string]string{
-	",": "status",
-	"z": "fold",
-	"g": "go-to",
-	"!": "priority",
-	"d": "due-date",
-	"s": "snooze",
-	"c": "create",
+	",":  "status",
+	"z":  "fold",
+	"g":  "go-to",
+	"!":  "priority",
+	"d":  "due-date",
+	"s":  "snooze",
+	"c":  "create",
+	"F":  "filter",
+	"Ft": "filter-type",
+	"Fs": "filter-status",
+	"Fd": "filter-due",
 }
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
@@ -113,18 +118,28 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 			}
 		}
 
+		activeDescStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+		activeDetailStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+
 		contentWidth := 0
 		for _, h := range keyHints {
+			descStyle := PrefixDescStyle
+			detailStyle := MutedStyle
+			if h.Active {
+				descStyle = activeDescStyle
+				detailStyle = activeDetailStyle
+			}
+
 			var line string
 			var rendered string
 			if hasDetail {
 				line = fmt.Sprintf("%-*s  %-*s  %s", maxKeyWidth, h.Key, maxDescWidth, h.Description, h.Detail)
 				rendered = PrefixKeyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " +
-					PrefixDescStyle.Render(fmt.Sprintf("%-*s", maxDescWidth, h.Description)) + "  " +
-					MutedStyle.Render(h.Detail)
+					descStyle.Render(fmt.Sprintf("%-*s", maxDescWidth, h.Description)) + "  " +
+					detailStyle.Render(h.Detail)
 			} else {
 				line = fmt.Sprintf("%-*s  %s", maxKeyWidth, h.Key, h.Description)
-				rendered = PrefixKeyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + PrefixDescStyle.Render(h.Description)
+				rendered = PrefixKeyStyle.Render(fmt.Sprintf("%-*s", maxKeyWidth, h.Key)) + "  " + descStyle.Render(h.Description)
 			}
 			contentLines = append(contentLines, rendered)
 			if len(line) > contentWidth {
@@ -440,5 +455,34 @@ var (
 		{Key: "R", Description: "expand-all", Detail: "Expand all nodes"},
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
+	}
+
+	// FilterTypePrefixHints contains hints for the "Ft" (filter type) sub-prefix.
+	FilterTypePrefixHints = []PrefixHint{
+		{Key: "e", Description: "epic"},
+		{Key: "s", Description: "story"},
+		{Key: "t", Description: "task"},
+		{Key: "b", Description: "bug"},
+		{Key: "i", Description: "idea"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterStatusPrefixHints contains hints for the "Fs" (filter status) sub-prefix.
+	FilterStatusPrefixHints = []PrefixHint{
+		{Key: "t", Description: "todo"},
+		{Key: "s", Description: "in-progress"},
+		{Key: "b", Description: "blocked"},
+		{Key: "d", Description: "done"},
+		{Key: "x", Description: "cancelled"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterDuePrefixHints contains hints for the "Fd" (filter due-date) sub-prefix.
+	FilterDuePrefixHints = []PrefixHint{
+		{Key: "o", Description: "overdue"},
+		{Key: "t", Description: "today"},
+		{Key: "w", Description: "this-week"},
+		{Key: "n", Description: "no-due-date"},
+		{Key: "0", Description: "clear"},
 	}
 )
