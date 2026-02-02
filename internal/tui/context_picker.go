@@ -353,11 +353,6 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the context picker.
 func (m *ContextPickerModel) View() string {
-	boxWidth := 50
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
 	// Current filter indicator
 	var headerContent string
 	if m.currentCustomFilter != "" {
@@ -369,28 +364,56 @@ func (m *ContextPickerModel) View() string {
 	}
 
 	// Custom render since context picker has special highlighting for active filter
-	return m.renderContextPicker(boxWidth, headerContent)
+	return m.renderContextPicker(headerContent)
 }
 
 // renderContextPicker renders the context picker with custom active highlighting.
-func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent string) string {
-	var content strings.Builder
+func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
+	var b strings.Builder
+
+	// Build subtitle showing count
+	customCount := 0
+	projectContextCount := 0
+	for _, ctx := range m.Items {
+		if ctx.Name == "" {
+			continue // Skip "All Contexts"
+		}
+		if ctx.IsCustom {
+			customCount++
+		} else {
+			projectContextCount++
+		}
+	}
+	var subtitle string
+	if customCount > 0 && projectContextCount > 0 {
+		subtitle = fmt.Sprintf("%d custom, %d project contexts", customCount, projectContextCount)
+	} else if customCount > 0 {
+		subtitle = fmt.Sprintf("%d custom contexts", customCount)
+	} else if projectContextCount > 0 {
+		subtitle = fmt.Sprintf("%d contexts", projectContextCount)
+	} else {
+		subtitle = "No contexts defined"
+	}
+
+	// Title
+	b.WriteString(renderFullscreenTitle("Filter by Context", subtitle))
+	b.WriteString("\n\n")
 
 	// Search bar
-	content.WriteString(m.RenderSearchBar())
+	b.WriteString(m.RenderSearchBar())
 
 	// Header
-	content.WriteString(headerContent)
-	content.WriteString("\n\n")
+	b.WriteString(headerContent)
+	b.WriteString("\n\n")
 
 	// List
 	if len(m.Filtered) == 0 {
-		content.WriteString(MutedStyle.Render(m.Config.NoMatchMessage))
-		content.WriteString("\n")
+		b.WriteString(MutedStyle.Render(m.Config.NoMatchMessage))
+		b.WriteString("\n")
 	} else {
 		maxVisible := 15
 		if m.Height() > 0 {
-			maxVisible = m.Height() - 14
+			maxVisible = m.Height() - 10
 		}
 		if maxVisible < 5 {
 			maxVisible = 5
@@ -433,68 +456,48 @@ func (m *ContextPickerModel) renderContextPicker(boxWidth int, headerContent str
 			countStr := fmt.Sprintf("(%d)", ctx.ProjectCount)
 
 			if i == m.Cursor {
-				content.WriteString(TagManagerItemSelectedStyle.Render(line))
+				b.WriteString(TagManagerItemSelectedStyle.Render(line))
 			} else if isActive {
-				content.WriteString(lipgloss.NewStyle().Foreground(ColorPrimary).Render(line))
+				b.WriteString(lipgloss.NewStyle().Foreground(ColorPrimary).Render(line))
 			} else {
-				content.WriteString(TagManagerItemStyle.Render(line))
+				b.WriteString(TagManagerItemStyle.Render(line))
 			}
-			content.WriteString(TagManagerCountStyle.Render(countStr))
-			content.WriteString("\n")
+			b.WriteString(TagManagerCountStyle.Render(countStr))
+			b.WriteString("\n")
 		}
 
 		if len(m.Filtered) > maxVisible {
-			content.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.Filtered)-maxVisible)))
-			content.WriteString("\n")
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("\n... and %d more (use j/k to scroll)", len(m.Filtered)-maxVisible)))
+			b.WriteString("\n")
 		}
 	}
 
 	// Status message or delete confirmation or rename input
-	content.WriteString("\n")
+	b.WriteString("\n")
 	if m.renameMode {
-		content.WriteString("Rename to: ")
-		content.WriteString(m.renameInput.View())
-		content.WriteString("\n")
-		content.WriteString(MutedStyle.Render("enter save | esc cancel"))
+		b.WriteString("Rename to: ")
+		b.WriteString(m.renameInput.View())
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("enter save | esc cancel"))
 	} else if m.confirm.IsActive() {
-		content.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(m.confirm.Prompt()))
+		b.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(m.confirm.Prompt()))
 	} else if m.statusMessage != "" {
-		content.WriteString(MutedStyle.Render(m.statusMessage))
-	} else {
-		// Shortened footer
-		content.WriteString(MutedStyle.Render("n:new | e:edit | d:del | r:rename | enter | esc"))
+		b.WriteString(MutedStyle.Render(m.statusMessage))
 	}
 
-	// Build subtitle showing count
-	customCount := 0
-	projectContextCount := 0
-	for _, ctx := range m.Items {
-		if ctx.Name == "" {
-			continue // Skip "All Contexts"
-		}
-		if ctx.IsCustom {
-			customCount++
-		} else {
-			projectContextCount++
-		}
-	}
-	var subtitle string
-	if customCount > 0 && projectContextCount > 0 {
-		subtitle = fmt.Sprintf("%d custom, %d project contexts", customCount, projectContextCount)
-	} else if customCount > 0 {
-		subtitle = fmt.Sprintf("%d custom contexts", customCount)
-	} else if projectContextCount > 0 {
-		subtitle = fmt.Sprintf("%d contexts", projectContextCount)
+	// Footer
+	var footerLeft string
+	if m.renameMode {
+		footerLeft = ""
+	} else if m.confirm.IsActive() {
+		footerLeft = ""
 	} else {
-		subtitle = "No contexts defined"
+		footerLeft = HelpStyle.Render("n:new | e:edit | d:del | r:rename | enter | esc")
 	}
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(footerLeft, right, m.Width()))
 
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Filter by Context",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return b.String()
 }
 
 // ShouldCaptureEsc returns true when in rename mode or delete confirmation.

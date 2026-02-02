@@ -668,25 +668,27 @@ func (m *ProjectFocusViewModel) GetHelpItems() []HelpItem {
 func (m *ProjectFocusViewModel) View() string {
 	tasks := m.filteredTasks()
 
+	var b strings.Builder
+
+	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
 	if len(m.tasks) == 0 {
-		var b strings.Builder
+		subtitle = "no active tasks"
+	}
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Focus: %s", m.project.Name), subtitle))
+	b.WriteString("\n\n")
+
+	if len(m.tasks) == 0 {
 		b.WriteString(MutedStyle.Render("No tasks in focus."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Mark tasks as active with * in the project tree."))
 		b.WriteString("\n")
-		b.WriteString(HelpStyle.Render("Press q to return."))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    fmt.Sprintf("Focus: %s", m.project.Name),
-			Subtitle: "no active tasks",
-			Centered: true,
-		})
+		left := HelpStyle.Render("q return")
+		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		return b.String()
 	}
 
-	var b strings.Builder
-
 	// Calculate available height for task list
-	contentHeight := m.height - 12
+	contentHeight := m.height - 8
 
 	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()
@@ -698,7 +700,7 @@ func (m *ProjectFocusViewModel) View() string {
 
 	// Render task lines
 	var lines []string
-	maxTitleLen := m.width - 35 // Less space needed without project name
+	maxTitleLen := m.width - 35
 
 	for i, task := range tasks {
 		isSelected := i == m.cursor
@@ -752,14 +754,11 @@ func (m *ProjectFocusViewModel) View() string {
 		footerParts += " | [/] sections"
 	}
 	footerParts += " | ? help"
-	footer := HelpStyle.Render(footerParts)
-	b.WriteString(footer)
+	left := HelpStyle.Render(footerParts)
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(tasks)))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    fmt.Sprintf("Focus: %s", m.project.Name),
-		Subtitle: fmt.Sprintf("%d active tasks", len(m.tasks)),
-		Centered: true,
-	})
+	return b.String()
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.

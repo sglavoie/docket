@@ -220,15 +220,14 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the section picker.
 func (m *SectionPickerModel) View() string {
-	boxWidth := 50
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
+	var b strings.Builder
 
-	var content strings.Builder
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))
+	b.WriteString(renderFullscreenTitle("Assign Section", subtitle))
+	b.WriteString("\n\n")
 
 	// Search bar
-	content.WriteString(m.RenderSearchBar())
+	b.WriteString(m.RenderSearchBar())
 
 	// Current section
 	currentSection := m.task.Section
@@ -238,38 +237,42 @@ func (m *SectionPickerModel) View() string {
 	if currentSection == "" {
 		currentSection = "(no section)"
 	}
-	content.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentSection)))
-	content.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentSection)))
+	b.WriteString("\n\n")
 
 	// List
 	maxVisible := 12
 	if m.Height() > 0 {
-		maxVisible = m.Height() - 16
+		maxVisible = m.Height() - 10
 	}
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
-	content.WriteString(m.renderSectionList(maxVisible, boxWidth))
+	rowWidth := m.Width() - 4
+	if rowWidth < 30 {
+		rowWidth = 30
+	}
+	b.WriteString(m.renderSectionList(maxVisible, rowWidth))
 
-	// Footer
-	content.WriteString("\n")
+	// Add mode input
 	if m.addMode {
-		content.WriteString("New section: ")
-		content.WriteString(m.addInput.View())
-		content.WriteString("\n")
-		content.WriteString(MutedStyle.Render("enter save | esc cancel"))
-	} else {
-		content.WriteString(m.RenderFooter())
+		b.WriteString("\n")
+		b.WriteString("New section: ")
+		b.WriteString(m.addInput.View())
+		b.WriteString("\n")
 	}
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 30))
+	// Footer
+	var footerLeft string
+	if m.addMode {
+		footerLeft = HelpStyle.Render("enter save | esc cancel")
+	} else {
+		footerLeft = HelpStyle.Render(m.RenderFooter())
+	}
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(footerLeft, right, m.Width()))
 
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Assign Section",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return b.String()
 }
 
 // renderSectionList renders the section list with gutter symbols for custom sections.

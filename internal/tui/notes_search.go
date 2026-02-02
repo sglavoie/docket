@@ -405,37 +405,44 @@ func extractSnippets(body, query string) (string, []int) {
 
 // View renders the notes search view.
 func (m *NotesSearchModel) View() string {
-	var content strings.Builder
-
-	content.WriteString(m.searchInput.View())
-	content.WriteString("\n\n")
+	var b strings.Builder
 
 	query := strings.TrimSpace(m.searchInput.Value())
-	if query == "" {
-		content.WriteString(MutedStyle.Render("Type to search note titles, tags, and body content..."))
-		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Esc close"))
 
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    fmt.Sprintf("Notes Search - %s", m.project.Name),
-			Subtitle: fmt.Sprintf("%d notes", len(m.notes)),
-			Centered: false,
-		})
+	// Subtitle
+	var subtitle string
+	if query == "" {
+		subtitle = fmt.Sprintf("%d notes", len(m.notes))
+	} else if len(m.filtered) == 0 {
+		subtitle = fmt.Sprintf("0/%d matching", len(m.notes))
+	} else {
+		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.notes))
+	}
+
+	// Title
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Notes Search - %s", m.project.Name), subtitle))
+	b.WriteString("\n\n")
+
+	b.WriteString(m.searchInput.View())
+	b.WriteString("\n\n")
+
+	if query == "" {
+		b.WriteString(MutedStyle.Render("Type to search note titles, tags, and body content..."))
+		b.WriteString("\n")
+		left := HelpStyle.Render("Esc close")
+		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		return b.String()
 	}
 
 	if len(m.filtered) == 0 {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("No notes match \"%s\".", query)))
-		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Esc close"))
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    fmt.Sprintf("Notes Search - %s", m.project.Name),
-			Subtitle: fmt.Sprintf("0/%d matching", len(m.notes)),
-			Centered: false,
-		})
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("No notes match \"%s\".", query)))
+		b.WriteString("\n")
+		left := HelpStyle.Render("Esc close")
+		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		return b.String()
 	}
 
-	paneHeight := m.height - 10
+	paneHeight := m.height - 8
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
@@ -444,17 +451,14 @@ func (m *NotesSearchModel) View() string {
 	previewContent := m.renderPreview()
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
-	content.WriteString(splitPane)
-	content.WriteString("\n")
-	content.WriteString(HelpStyle.Render(fmt.Sprintf("up/down nav | Enter select | Esc close | %d results", len(m.filtered))))
+	b.WriteString(splitPane)
+	b.WriteString("\n")
 
-	subtitle := fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.notes))
+	// Footer
+	left := HelpStyle.Render(fmt.Sprintf("up/down nav | Enter select | Esc close | %d results", len(m.filtered)))
+	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    fmt.Sprintf("Notes Search - %s", m.project.Name),
-		Subtitle: subtitle,
-		Centered: false,
-	})
+	return b.String()
 }
 
 // renderNoteList renders the filtered note list.

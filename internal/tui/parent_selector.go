@@ -249,27 +249,23 @@ func (m *ParentSelectorModel) selectCurrent() tea.Cmd {
 func (m *ParentSelectorModel) View() string {
 	var b strings.Builder
 
+	subtitle := fmt.Sprintf("%d parent%s available", len(m.allItems), pluralize(len(m.allItems), "", "s"))
+	b.WriteString(renderFullscreenTitle("Select Parent", subtitle))
+	b.WriteString("\n\n")
+
 	// Search input
 	b.WriteString(m.SearchInputView())
 	b.WriteString("\n\n")
 
 	// Render the list
 	b.WriteString(m.renderList())
-	b.WriteString("\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel")
-	b.WriteString(footer)
+	left := HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel")
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	boxWidth := 80
-	subtitle := fmt.Sprintf("%d parent%s available", len(m.allItems), pluralize(len(m.allItems), "", "s"))
-
-	return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Select Parent",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		CenterH:  true,
-	})
+	return b.String()
 }
 
 // renderList renders the filtered parent list.

@@ -254,29 +254,7 @@ func (m *ProjectCycleManagerModel) getSelectedIDsInOrder() []string {
 
 // View renders the project cycle manager.
 func (m *ProjectCycleManagerModel) View() string {
-	boxWidth := 60
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
-
-	var content strings.Builder
-
-	// Search bar
-	content.WriteString(m.RenderSearchBar())
-
-	// List
-	maxVisible := 15
-	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
-	}
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
-	content.WriteString(m.RenderList(maxVisible))
-
-	// Footer
-	content.WriteString("\n")
-	content.WriteString(m.RenderFooter())
+	var b strings.Builder
 
 	// Build subtitle: context indicator + selection count
 	var subtitleParts []string
@@ -291,7 +269,6 @@ func (m *ProjectCycleManagerModel) View() string {
 		subtitleParts = append(subtitleParts, "Context: All")
 	}
 
-	// Selection count
 	selectedCount := len(m.Selected)
 	if selectedCount == 0 {
 		subtitleParts = append(subtitleParts, "No projects selected")
@@ -301,12 +278,29 @@ func (m *ProjectCycleManagerModel) View() string {
 
 	subtitle := strings.Join(subtitleParts, " · ")
 
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Project Cycle",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	// Title
+	b.WriteString(renderFullscreenTitle("Project Cycle", subtitle))
+	b.WriteString("\n\n")
+
+	// Search bar
+	b.WriteString(m.RenderSearchBar())
+
+	// List
+	maxVisible := 15
+	if m.Height() > 0 {
+		maxVisible = m.Height() - 8
+	}
+	if maxVisible < 5 {
+		maxVisible = 5
+	}
+	b.WriteString(m.RenderList(maxVisible))
+
+	// Footer
+	left := HelpStyle.Render(m.RenderFooter())
+	right := MutedStyle.Render(fmt.Sprintf("%d projects", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+
+	return b.String()
 }
 
 // ShouldCaptureEsc returns true when in search mode or has active filter.

@@ -103,30 +103,22 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *TextEditorModel) View() string {
 	var b strings.Builder
-	b.WriteString(m.textarea.View())
-	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"))
 
-	// Determine card title
+	// Determine title
 	title := "Edit Title"
 	if m.fieldName == "description" {
 		title = "Edit Description"
 	}
 
-	// Same card width calculation as quick_capture
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
+	b.WriteString(renderFullscreenTitle(title, ""))
+	b.WriteString("\n\n")
+	b.WriteString(m.textarea.View())
+	b.WriteString("\n")
 
-	cfg := OverlayCardConfig{
-		Title:        title,
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
+	left := HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel")
+	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	return renderOverlayCard(b.String(), m.width, m.height, cfg)
+	return b.String()
 }
 
 // HasTextInput returns true because the text editor uses a textarea input.

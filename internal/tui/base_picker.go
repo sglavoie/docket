@@ -215,15 +215,12 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 		end = len(p.Filtered)
 	}
 
-	// Determine width for selection row (use box width or default)
-	rowWidth := p.Config.BoxWidth
-	if rowWidth == 0 {
-		rowWidth = 65
+	// Determine width for selection row
+	rowWidth := p.Width()
+	if rowWidth <= 0 {
+		rowWidth = 80
 	}
-	if p.Width() > 0 && p.Width() < rowWidth+10 {
-		rowWidth = p.Width() - 10
-	}
-	rowWidth -= 6 // Account for box padding/borders
+	rowWidth -= 4 // Account for padding
 
 	for i := start; i < end; i++ {
 		item := p.Filtered[i]
@@ -311,40 +308,32 @@ func (p *BasePicker[T]) RenderFooter() string {
 	return MutedStyle.Render("enter select | / search | esc cancel")
 }
 
-// RenderInBox renders the complete picker UI in a centered box with titled border.
+// RenderInBox renders the complete picker UI as a fullscreen view with title and footer.
 func (p *BasePicker[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
-	boxWidth := p.Config.BoxWidth
-	if boxWidth == 0 {
-		boxWidth = 65
-	}
-	if p.Width() > 0 && p.Width() < boxWidth+10 {
-		boxWidth = p.Width() - 10
-	}
+	var b strings.Builder
 
-	var content strings.Builder
+	// Title
+	b.WriteString(renderFullscreenTitle(titleContent, headerContent))
+	b.WriteString("\n\n")
 
 	// Search bar
-	content.WriteString(p.RenderSearchBar())
+	b.WriteString(p.RenderSearchBar())
 
 	// List
 	if maxVisible == 0 {
 		maxVisible = 15
 		if p.Height() > 0 {
-			maxVisible = p.Height() - 14
+			maxVisible = p.Height() - 8
 		}
 	}
-	content.WriteString(p.RenderList(maxVisible))
+	b.WriteString(p.RenderList(maxVisible))
 
 	// Footer
-	content.WriteString("\n")
-	content.WriteString(p.RenderFooter())
+	left := HelpStyle.Render(p.RenderFooter())
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(p.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, p.Width()))
 
-	return renderOverlayCard(content.String(), p.Width(), p.Height(), OverlayCardConfig{
-		Title:    titleContent,
-		Subtitle: headerContent,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return b.String()
 }
 
 // pluralize returns singular if count is 1, plural otherwise.

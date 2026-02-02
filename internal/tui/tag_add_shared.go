@@ -100,53 +100,37 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyMsg, picker *BasePicker[TagInfo]) 
 	}
 }
 
-// RenderAddTagMode renders the add tag input UI as an overlay card.
+// RenderAddTagMode renders the add tag input UI as a fullscreen view.
 func (a *TagAdder) RenderAddTagMode(width, height int) string {
-	var content strings.Builder
+	var b strings.Builder
 
-	content.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
-	content.WriteString("\n\n")
-	content.WriteString(a.AddTagInput.View())
-	content.WriteString("\n\n")
+	b.WriteString(renderFullscreenTitle("Add New Tag", ""))
+	b.WriteString("\n\n")
+
+	b.WriteString(MutedStyle.Render("Enter a tag name (max 50 characters)"))
+	b.WriteString("\n\n")
+	b.WriteString(a.AddTagInput.View())
+	b.WriteString("\n\n")
 
 	if a.AddTagError != "" {
 		errorStyle := BoldStyle.Foreground(ColorError)
-		content.WriteString(errorStyle.Render(a.AddTagError))
-		content.WriteString("\n\n")
+		b.WriteString(errorStyle.Render(a.AddTagError))
+		b.WriteString("\n")
 	}
 
-	content.WriteString(MutedStyle.Render("enter add tag | esc cancel"))
+	left := HelpStyle.Render("enter add tag | esc cancel")
+	b.WriteString(renderStatusBarFooter(left, "", width))
 
-	return renderOverlayCard(content.String(), width, height, OverlayCardConfig{
-		Title:    "Add New Tag",
-		Width:    50,
-		Centered: true,
-	})
+	return b.String()
 }
 
-// RenderTagSelectorView renders the standard tag selector view with search, list, footer, and overlay card.
+// RenderTagSelectorView renders the standard tag selector view as a fullscreen layout.
 func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title string, width, height int) string {
 	if adder.AddTagMode {
 		return adder.RenderAddTagMode(width, height)
 	}
 
-	boxWidth := 80
-	if width > 0 && width < boxWidth+10 {
-		boxWidth = width - 10
-	}
-
-	var content strings.Builder
-	content.WriteString(picker.RenderSearchBar())
-
-	maxVisible := 15
-	if height > 0 {
-		maxVisible = height - 14
-	}
-	picker.Config.BoxWidth = boxWidth
-	content.WriteString(picker.RenderList(maxVisible))
-
-	content.WriteString("\n")
-	content.WriteString(renderTagSelectorFooter(picker))
+	var b strings.Builder
 
 	selectedCount := len(picker.Selected)
 	var subtitle string
@@ -156,12 +140,22 @@ func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title s
 		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
 	}
 
-	return renderOverlayCard(content.String(), width, height, OverlayCardConfig{
-		Title:    title,
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	b.WriteString(renderFullscreenTitle(title, subtitle))
+	b.WriteString("\n\n")
+
+	b.WriteString(picker.RenderSearchBar())
+
+	maxVisible := 15
+	if height > 0 {
+		maxVisible = height - 8
+	}
+	b.WriteString(picker.RenderList(maxVisible))
+
+	left := HelpStyle.Render(renderTagSelectorFooter(picker))
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, width))
+
+	return b.String()
 }
 
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -125,33 +126,27 @@ func (m *TriggerFieldPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the trigger field picker.
 func (m *TriggerFieldPickerModel) View() string {
-	boxWidth := 60
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
+	var b strings.Builder
 
-	var content strings.Builder
+	b.WriteString(renderFullscreenTitle("Select Trigger Field", "Type to search"))
+	b.WriteString("\n\n")
 
-	content.WriteString(m.RenderSearchBar())
+	b.WriteString(m.RenderSearchBar())
 
 	if m.currentFieldID != "" {
-		content.WriteString(MutedStyle.Render("Current: " + m.currentFieldID))
-		content.WriteString("\n\n")
+		b.WriteString(MutedStyle.Render("Current: " + m.currentFieldID))
+		b.WriteString("\n\n")
 	}
 
 	maxVisible := 15
 	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
+		maxVisible = m.Height() - 8
 	}
-	content.WriteString(m.RenderList(maxVisible))
+	b.WriteString(m.RenderList(maxVisible))
 
-	content.WriteString("\n")
-	content.WriteString(m.RenderFooter())
+	left := HelpStyle.Render(m.RenderFooter())
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Select Trigger Field",
-		Subtitle: "Type to search",
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return b.String()
 }

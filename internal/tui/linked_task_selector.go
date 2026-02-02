@@ -374,20 +374,25 @@ func (m *LinkedTaskSelectorModel) unlinkMissingTaskFromFiltered(idx int) tea.Cmd
 }
 
 func (m *LinkedTaskSelectorModel) View() string {
+	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30))
+
+	var b strings.Builder
+
 	if len(m.relations) == 0 {
-		return renderOverlayCard(
-			MutedStyle.Render("No linked tasks."),
-			m.width, m.height,
-			OverlayCardConfig{
-				Title:    "Linked Tasks",
-				Subtitle: fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30)),
-				Centered: true,
-			},
-		)
+		b.WriteString(renderFullscreenTitle("Linked Tasks", taskSubtitle))
+		b.WriteString("\n\n")
+		b.WriteString(MutedStyle.Render("No linked tasks."))
+		b.WriteString("\n")
+		left := HelpStyle.Render("q close")
+		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		return b.String()
 	}
 
-	// Max visible ITEMS (not lines) - cap at 8 for reasonable overlay size
-	const maxVisibleItems = 8
+	// Max visible ITEMS - use available height
+	maxVisibleItems := m.height - 10
+	if maxVisibleItems < 8 {
+		maxVisibleItems = 8
+	}
 
 	// Update scroll offset to keep cursor visible within the item window
 	if m.cursor >= m.scrollOffset+maxVisibleItems {
@@ -417,7 +422,9 @@ func (m *LinkedTaskSelectorModel) View() string {
 		visibleEnd = len(m.filtered)
 	}
 
-	var b strings.Builder
+	// Title
+	b.WriteString(renderFullscreenTitle("Navigate Linked Tasks", taskSubtitle))
+	b.WriteString("\n\n")
 
 	// Show search input when active
 	if m.IsSearchMode() {
@@ -431,18 +438,10 @@ func (m *LinkedTaskSelectorModel) View() string {
 	// Show "no matches" if filtering resulted in empty list
 	if len(m.filtered) == 0 && len(m.relations) > 0 {
 		b.WriteString(MutedStyle.Render("No matching linked tasks."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Esc clear filter • q close"))
-		cardWidth := m.width - 4
-		if cardWidth > 70 {
-			cardWidth = 70
-		}
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Navigate Linked Tasks",
-			Subtitle: fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30)),
-			Width:    cardWidth,
-			Centered: true,
-		})
+		b.WriteString("\n")
+		left := HelpStyle.Render("Esc clear filter • q close")
+		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		return b.String()
 	}
 
 	// Show scroll indicator at top if items are hidden above
@@ -460,7 +459,6 @@ func (m *LinkedTaskSelectorModel) View() string {
 		sectionStart := itemIndex
 		sectionEnd := itemIndex + len(blocksItems)
 
-		// Check if any items from this section are in visible range
 		if sectionEnd > visibleStart && sectionStart < visibleEnd {
 			if needSpacer {
 				b.WriteString("\n")
@@ -541,25 +539,17 @@ func (m *LinkedTaskSelectorModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Footer - adjust based on search state
-	b.WriteString("\n")
+	// Footer
+	var footerLeft string
 	if m.IsSearchMode() {
-		b.WriteString(HelpStyle.Render("Type to filter • Enter confirm • Esc cancel"))
+		footerLeft = HelpStyle.Render("Type to filter • Enter confirm • Esc cancel")
 	} else {
-		b.WriteString(HelpStyle.Render("/ search • j/k navigate • Enter select • x unlink • Esc cancel"))
+		footerLeft = HelpStyle.Render("/ search • j/k navigate • Enter select • x unlink • Esc cancel")
 	}
+	right := MutedStyle.Render(fmt.Sprintf("%d links", len(m.filtered)))
+	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width))
 
-	cardWidth := m.width - 4
-	if cardWidth > 70 {
-		cardWidth = 70
-	}
-
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Navigate Linked Tasks",
-		Subtitle: fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30)),
-		Width:    cardWidth,
-		Centered: true,
-	})
+	return b.String()
 }
 
 func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isSelected bool) string {

@@ -153,16 +153,15 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the priority picker.
 func (m *PriorityPickerModel) View() string {
-	boxWidth := 40
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
+	var b strings.Builder
 
-	var content strings.Builder
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
+	b.WriteString(renderFullscreenTitle("Set Priority", subtitle))
+	b.WriteString("\n\n")
 
 	// Current priority
-	content.WriteString(MutedStyle.Render(fmt.Sprintf("Current: Priority %d", m.task.Priority)))
-	content.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: Priority %d", m.task.Priority)))
+	b.WriteString("\n\n")
 
 	// List with priority colors
 	for i, p := range m.Filtered {
@@ -171,28 +170,20 @@ func (m *PriorityPickerModel) View() string {
 			cursor = "> "
 		}
 
-		// Color based on priority
 		style := GetPriorityStyle(p.Priority)
 
 		line := fmt.Sprintf("%s%d: %s", cursor, p.Priority, p.Description)
 		if i == m.Cursor {
-			content.WriteString(TaskJumperSelectedStyle.Render(style.Render(line)))
+			b.WriteString(TaskJumperSelectedStyle.Render(style.Render(line)))
 		} else {
-			content.WriteString(style.Render(line))
+			b.WriteString(style.Render(line))
 		}
-		content.WriteString("\n")
+		b.WriteString("\n")
 	}
 
 	// Footer
-	content.WriteString("\n")
-	content.WriteString(HelpStyle.Render("1-5 to select • ↑/↓ navigate • Enter confirm • Esc cancel"))
+	left := HelpStyle.Render("1-5 to select • ↑/↓ navigate • Enter confirm • Esc cancel")
+	b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Set Priority",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return b.String()
 }

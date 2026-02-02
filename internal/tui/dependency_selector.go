@@ -150,6 +150,10 @@ func mapsEqual(a, b map[string]bool) bool {
 func (m *DependencySelectorModel) View() string {
 	var b strings.Builder
 
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, truncateTitle(m.task.Title, 40))
+	b.WriteString(renderFullscreenTitle("Dependencies", subtitle))
+	b.WriteString("\n\n")
+
 	// Search bar
 	b.WriteString(m.RenderSearchBar())
 
@@ -165,18 +169,12 @@ func (m *DependencySelectorModel) View() string {
 	// Custom list rendering with task status icons
 	b.WriteString(m.renderTaskList())
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel"))
+	// Footer
+	left := HelpStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel")
+	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	boxWidth := 80
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, truncateTitle(m.task.Title, 40))
-
-	return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Dependencies",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		CenterH:  true,
-	})
+	return b.String()
 }
 
 // renderTaskList renders the task list with status icons.
