@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -22,6 +24,12 @@ type StartupEvalResult struct {
 
 // RunApp starts the TUI application.
 func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) error {
+	lockPath := filepath.Join(cfg.DataDir, "pid.lock")
+	if err := util.AcquirePIDLock(lockPath); err != nil {
+		return err
+	}
+	defer util.ReleasePIDLock(lockPath)
+
 	// Evaluate workflow rules at startup if needed
 	var startupResult *StartupEvalResult
 	if current := cfg.GetCurrentProject(); current != nil {
