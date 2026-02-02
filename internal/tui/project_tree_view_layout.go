@@ -84,13 +84,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString(m.renderMultiSelectIndicator(m.width))
 	}
 
-	// Tag input prompt
-	if m.tagInputMode {
-		b.WriteString(SubtitleStyle.Render("Add tag: "))
-		b.WriteString(m.tagInput.View())
-		b.WriteString("\n")
-	}
-
 	// Confirmation prompt
 	if m.confirmAction != ConfirmNone {
 		var prompt string
@@ -432,13 +425,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Multi-select mode indicator
 	if m.multiSelectMode {
 		b.WriteString(m.renderMultiSelectIndicator(width))
-	}
-
-	// Tag input prompt
-	if m.tagInputMode {
-		b.WriteString(SubtitleStyle.Render("Add tag: "))
-		b.WriteString(m.tagInput.View())
-		b.WriteString("\n")
 	}
 
 	// Confirmation prompt

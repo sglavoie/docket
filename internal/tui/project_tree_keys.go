@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -192,9 +191,10 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 
 	case "T":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.tagInputMode = true
-			m.tagInput.Focus()
-			return true, textinput.Blink
+			tasks := m.getSelectedTasks()
+			return true, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
+			}
 		}
 		return true, func() tea.Msg {
 			return ShowTagFilterSelectorMsg{ProjectTree: m}

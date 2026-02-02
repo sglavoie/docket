@@ -383,13 +383,6 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 	}
 }
 
-// applyBulkTag adds a tag to all selected tasks.
-func (m *ProjectTreeModel) applyBulkTag(tag string) {
-	for _, task := range m.getSelectedTasks() {
-		task.AddTag(tag)
-	}
-}
-
 // applyBulkChanges applies bulk edit changes to the given tasks.
 func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*models.Task) tea.Cmd {
 	if !changes.HasChanges() || len(tasks) == 0 {

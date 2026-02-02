@@ -184,10 +184,6 @@ type ProjectTreeModel struct {
 	multiSelectMode bool
 	selectedTasks   map[string]bool // task IDs currently selected
 
-	// Tag input for bulk tagging
-	tagInputMode bool
-	tagInput     textinput.Model
-
 	// Components
 	quickEdit *QuickEditComponent
 	filterBar *FilterBarComponent
@@ -207,11 +203,6 @@ type ProjectTreeModel struct {
 
 // NewProjectTreeModel creates a new project tree model.
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
-	tagInput := textinput.New()
-	tagInput.Placeholder = "Enter tag name..."
-	tagInput.CharLimit = 50
-	tagInput.Width = 30
-
 	m := &ProjectTreeModel{
 		project:        project,
 		config:         cfg,
@@ -231,7 +222,6 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		sortAscending: true,
 		confirmAction: ConfirmNone,
 		selectedTasks: make(map[string]bool),
-		tagInput:      tagInput,
 		quickEdit:     NewQuickEditComponent(),
 		filterBar:     NewFilterBarComponent(),
 		bulkOp:        NewBulkOperationComponent(),

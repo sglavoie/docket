@@ -30,11 +30,6 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchMode(msg)
 		}
 
-		// Handle tag input mode for bulk tagging
-		if m.tagInputMode {
-			return m.handleTagInputMode(msg)
-		}
-
 		// Handle quick edit mode for inline task editing
 		if m.quickEdit.IsActive() {
 			return m.handleQuickEditMode(msg)
@@ -115,34 +110,6 @@ func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return m, cmd
 	}
 	return m, cmd
-}
-
-// handleTagInputMode handles input while in tag input mode.
-func (m *ProjectTreeModel) handleTagInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.tagInputMode = false
-		m.tagInput.Blur()
-		m.tagInput.SetValue("")
-		return m, nil
-	case "enter":
-		tag := strings.TrimSpace(m.tagInput.Value())
-		m.tagInputMode = false
-		m.tagInput.Blur()
-		m.tagInput.SetValue("")
-		if tag == "" {
-			return m, nil
-		}
-		m.applyBulkTag(tag)
-		count := len(m.selectedTasks)
-		m.clearSelection()
-		m.setUndoContext("Add Tag", fmt.Sprintf("'%s' to %d tasks", tag, count))
-		return m, m.saveAndRefresh()
-	default:
-		var cmd tea.Cmd
-		m.tagInput, cmd = m.tagInput.Update(msg)
-		return m, cmd
-	}
 }
 
 // handleQuickEditMode handles input while in quick edit mode.
