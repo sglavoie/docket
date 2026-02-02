@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -146,9 +145,9 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for id := range m.selectedTasks {
-			if task := m.project.GetTaskByID(id); task != nil {
-				task.Section = ""
-				task.UpdatedAt = time.Now()
+			if m.project.MutateTask(id, func(t *models.Task) {
+				t.Section = ""
+			}) {
 				count++
 			}
 		}
@@ -162,9 +161,14 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 	if !CursorInBounds(m.cursor, len(visible)) {
 		return false, nil
 	}
-	task := visible[m.cursor].Task
-	task.Section = ""
-	task.UpdatedAt = time.Now()
+	taskID := visible[m.cursor].Task.ID
+	task := m.project.GetTaskByID(taskID)
+	if task == nil {
+		return false, nil
+	}
+	m.project.MutateTask(taskID, func(t *models.Task) {
+		t.Section = ""
+	})
 	m.pendingUndoAction = "Move to Active"
 	m.pendingUndoContext = task.Title
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
@@ -179,9 +183,9 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
 		for id := range m.selectedTasks {
-			if task := m.project.GetTaskByID(id); task != nil {
-				task.Section = section
-				task.UpdatedAt = time.Now()
+			if m.project.MutateTask(id, func(t *models.Task) {
+				t.Section = section
+			}) {
 				count++
 			}
 		}
@@ -195,9 +199,14 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	if !CursorInBounds(m.cursor, len(visible)) {
 		return false, nil
 	}
-	task := visible[m.cursor].Task
-	task.Section = section
-	task.UpdatedAt = time.Now()
+	taskID := visible[m.cursor].Task.ID
+	task := m.project.GetTaskByID(taskID)
+	if task == nil {
+		return false, nil
+	}
+	m.project.MutateTask(taskID, func(t *models.Task) {
+		t.Section = section
+	})
 	m.pendingUndoAction = "Move to " + section
 	m.pendingUndoContext = task.Title
 	return true, m.saveAndRefreshWithPrevStates(prevStates)

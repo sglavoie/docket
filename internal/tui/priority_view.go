@@ -796,14 +796,15 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 	}
 
 	// Update task status
-	task.Status = newStatus
-	task.UpdatedAt = time.Now()
-	if newStatus.IsComplete() {
-		now := time.Now()
-		task.CompletedAt = &now
-	} else {
-		task.CompletedAt = nil
-	}
+	m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Status = newStatus
+		if newStatus.IsComplete() {
+			now := time.Now()
+			t.CompletedAt = &now
+		} else {
+			t.CompletedAt = nil
+		}
+	})
 
 	// Save project
 	if err := m.projectService.Save(m.project); err != nil {
@@ -842,8 +843,9 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 	}
 
 	// Update task priority
-	task.Priority = newPriority
-	task.UpdatedAt = time.Now()
+	m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Priority = newPriority
+	})
 
 	// Save project
 	if err := m.projectService.Save(m.project); err != nil {

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -12,6 +11,12 @@ import (
 // handleStatusStart sets the selected task status to in_progress (started).
 func (m *KanbanViewModel) handleStatusStart() tea.Cmd {
 	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
 	if task == nil {
 		return nil
 	}
@@ -32,6 +37,12 @@ func (m *KanbanViewModel) handleStatusStart() tea.Cmd {
 // handleStatusDone sets the selected task status to done (completed).
 func (m *KanbanViewModel) handleStatusDone() tea.Cmd {
 	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
 	if task == nil {
 		return nil
 	}
@@ -63,6 +74,12 @@ func (m *KanbanViewModel) handleStatusBlocked() tea.Cmd {
 		return nil
 	}
 
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
+	if task == nil {
+		return nil
+	}
+
 	// Only block active tasks that aren't already blocked
 	if !task.Status.IsActive() || task.Status == models.StatusBlocked {
 		m.statusMessage = "Cannot block: task is not active or already blocked"
@@ -79,6 +96,12 @@ func (m *KanbanViewModel) handleStatusBlocked() tea.Cmd {
 // handleStatusOpen sets the selected task status to todo (reopened/open).
 func (m *KanbanViewModel) handleStatusOpen() tea.Cmd {
 	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
 	if task == nil {
 		return nil
 	}
@@ -103,6 +126,12 @@ func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
 		return nil
 	}
 
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
+	if task == nil {
+		return nil
+	}
+
 	// Only cancel active tasks
 	if !task.Status.IsActive() {
 		m.statusMessage = "Cannot cancel: task is not active"
@@ -122,9 +151,6 @@ func (m *KanbanViewModel) saveWithStatusChange(prevStates map[string]*models.Tas
 	// Track current position info for cursor restoration after reload
 	currentSection := m.CurrentSection()
 	taskID := task.ID
-
-	// Update timestamp before save
-	task.UpdatedAt = time.Now()
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{

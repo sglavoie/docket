@@ -105,38 +105,37 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 	changedCount := 0
 
 	for _, task := range tasks {
-		// Apply status change based on type
-		switch newStatus {
-		case models.StatusInProgress:
-			if task.Status == models.StatusTodo || task.Status == models.StatusBlocked {
-				task.Start()
-				changedCount++
-			}
-		case models.StatusDone:
-			if task.Status.IsActive() {
-				// Skip tasks with incomplete dependencies
-				if len(m.Project.GetIncompleteDependencies(task)) == 0 {
-					task.Complete()
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			switch newStatus {
+			case models.StatusInProgress:
+				if t.Status == models.StatusTodo || t.Status == models.StatusBlocked {
+					t.Start()
+					changedCount++
+				}
+			case models.StatusDone:
+				if t.Status.IsActive() {
+					if len(m.Project.GetIncompleteDependencies(t)) == 0 {
+						t.Complete()
+						changedCount++
+					}
+				}
+			case models.StatusBlocked:
+				if t.Status.IsActive() && t.Status != models.StatusBlocked {
+					t.Block()
+					changedCount++
+				}
+			case models.StatusTodo:
+				if t.Status != models.StatusTodo {
+					t.Reopen()
+					changedCount++
+				}
+			case models.StatusCanceled:
+				if t.Status.IsActive() {
+					t.Cancel()
 					changedCount++
 				}
 			}
-		case models.StatusBlocked:
-			if task.Status.IsActive() && task.Status != models.StatusBlocked {
-				task.Block()
-				changedCount++
-			}
-		case models.StatusTodo:
-			if task.Status != models.StatusTodo {
-				task.Reopen()
-				changedCount++
-			}
-		case models.StatusCanceled:
-			if task.Status.IsActive() {
-				task.Cancel()
-				changedCount++
-			}
-		}
-		task.UpdatedAt = time.Now()
+		})
 	}
 
 	if changedCount == 0 {
@@ -166,8 +165,9 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 
 	for _, task := range tasks {
 		if task.Section != targetSection {
-			task.Section = targetSection
-			task.UpdatedAt = time.Now()
+			m.Project.MutateTask(task.ID, func(t *models.Task) {
+				t.Section = targetSection
+			})
 			changedCount++
 		}
 	}
@@ -245,8 +245,9 @@ func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
 
 	prevStates := captureTaskStates(m.Project.Tasks)
 	for _, task := range tasks {
-		task.Priority = priority
-		task.UpdatedAt = time.Now()
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			t.Priority = priority
+		})
 	}
 
 	count := len(tasks)
@@ -268,8 +269,9 @@ func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc strin
 
 	prevStates := captureTaskStates(m.Project.Tasks)
 	for _, task := range tasks {
-		task.DueDate = dueDate
-		task.UpdatedAt = time.Now()
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			t.DueDate = dueDate
+		})
 	}
 
 	count := len(tasks)

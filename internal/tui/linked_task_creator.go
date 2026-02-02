@@ -225,8 +225,9 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		case LinkTypeSubtask:
 			// Promote leaf types to Story so they can have subtasks
 			if m.sourceTask.Type.IsLeafType() {
-				m.sourceTask.Type = models.TaskTypeStory
-				m.sourceTask.UpdatedAt = time.Now()
+				m.project.MutateTask(m.sourceTask.ID, func(t *models.Task) {
+					t.Type = models.TaskTypeStory
+				})
 			}
 			// New task is a child of source
 			newTask.ParentID = &m.sourceTask.ID

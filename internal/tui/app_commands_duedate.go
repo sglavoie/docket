@@ -4,6 +4,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AppModel) dueDateCommands() []Command {
@@ -23,8 +25,9 @@ func (m *AppModel) dueDateCommands() []Command {
 				if task != nil {
 					now := time.Now()
 					today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-					task.DueDate = &today
-					task.UpdatedAt = time.Now()
+					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+						t.DueDate = &today
+					})
 					return TaskUpdatedMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
@@ -45,8 +48,9 @@ func (m *AppModel) dueDateCommands() []Command {
 				if task != nil {
 					now := time.Now()
 					tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-					task.DueDate = &tomorrow
-					task.UpdatedAt = time.Now()
+					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+						t.DueDate = &tomorrow
+					})
 					return TaskUpdatedMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
@@ -67,8 +71,9 @@ func (m *AppModel) dueDateCommands() []Command {
 				if task != nil {
 					now := time.Now()
 					nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 0, 0, 0, 0, now.Location())
-					task.DueDate = &nextWeek
-					task.UpdatedAt = time.Now()
+					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+						t.DueDate = &nextWeek
+					})
 					return TaskUpdatedMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
@@ -89,8 +94,9 @@ func (m *AppModel) dueDateCommands() []Command {
 				if task != nil {
 					now := time.Now()
 					nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 0, 0, 0, 0, now.Location())
-					task.DueDate = &nextMonth
-					task.UpdatedAt = time.Now()
+					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+						t.DueDate = &nextMonth
+					})
 					return TaskUpdatedMsg{Task: task}
 				}
 				return StatusMsg("No task selected")
@@ -109,8 +115,9 @@ func (m *AppModel) dueDateCommands() []Command {
 				}
 				task := m.projectTree.getSelectedTask()
 				if task != nil {
-					task.DueDate = nil
-					task.UpdatedAt = time.Now()
+					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+						t.DueDate = nil
+					})
 					return TaskUpdatedMsg{Task: task}
 				}
 				return StatusMsg("No task selected")

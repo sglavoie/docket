@@ -61,8 +61,9 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			task := m.getSelectedTask()
 			if task != nil {
 				prevStates := captureTaskStates(m.Project.Tasks)
-				task.Priority = priority
-				task.UpdatedAt = time.Now()
+				m.Project.MutateTask(task.ID, func(t *models.Task) {
+					t.Priority = priority
+				})
 				m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
 				return m, m.saveWithStatusChange(prevStates, task)
 			}
@@ -119,8 +120,9 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		prevStates := captureTaskStates(m.Project.Tasks)
-		task.DueDate = dueDate
-		task.UpdatedAt = time.Now()
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			t.DueDate = dueDate
+		})
 		m.statusMessage = fmt.Sprintf("Due date %s", desc)
 		return m, m.saveWithStatusChange(prevStates, task)
 

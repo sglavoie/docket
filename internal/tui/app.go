@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -224,10 +223,9 @@ func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 		visible := m.projectTree.visibleNodes()
 		if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
 			for id := range m.projectTree.selectedTasks {
-				if task := m.projectTree.project.GetTaskByID(id); task != nil {
-					task.Priority = priority
-					task.UpdatedAt = time.Now()
-				}
+				m.projectTree.project.MutateTask(id, func(t *models.Task) {
+					t.Priority = priority
+				})
 			}
 			m.projectTree.clearSelection()
 			m.projectTree.buildTree()
@@ -235,8 +233,9 @@ func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 		}
 		if CursorInBounds(m.projectTree.cursor, len(visible)) {
 			task := visible[m.projectTree.cursor].Task
-			task.Priority = priority
-			task.UpdatedAt = time.Now()
+			m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
+				t.Priority = priority
+			})
 			return TaskUpdatedMsg{Task: task}
 		}
 		return nil

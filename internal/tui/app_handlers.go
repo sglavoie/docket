@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -19,9 +18,12 @@ func (m *AppModel) reloadAndRefreshProjectTree() {
 
 // applyTagsToTask applies selected tags to a single task and saves the project.
 func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, selectedTags []string) tea.Cmd {
-	// Update task tags
-	task.Tags = selectedTags
-	task.UpdatedAt = time.Now()
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	if !project.MutateTask(task.ID, func(t *models.Task) {
+		t.Tags = selectedTags
+	}) {
+		return errorCmd("task no longer exists in project")
+	}
 
 	// Create backup and save
 	if err := saveProjectSync(project); err != nil {
@@ -41,8 +43,9 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Project, selectedTags []string) tea.Cmd {
 	// Update all tasks with the selected tags
 	for _, task := range tasks {
-		task.Tags = selectedTags
-		task.UpdatedAt = time.Now()
+		project.MutateTask(task.ID, func(t *models.Task) {
+			t.Tags = selectedTags
+		})
 	}
 
 	// Create backup and save

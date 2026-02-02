@@ -30,12 +30,15 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 	var projects []*models.Project
 	for _, items := range projectTasks {
 		for _, item := range items {
-			switch msg.Action {
-			case "complete":
-				item.Task.Complete()
-				count++
-			case "start":
-				item.Task.Start()
+			mutated := item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+				switch msg.Action {
+				case "complete":
+					t.Complete()
+				case "start":
+					t.Start()
+				}
+			})
+			if mutated {
 				count++
 			}
 		}

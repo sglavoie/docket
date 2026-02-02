@@ -3,9 +3,10 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // openSectionPicker opens the section picker for assignment.
@@ -34,9 +35,20 @@ func (m *InboxProcessorModel) handleSectionPickerDone(msg SectionPickerDoneMsg) 
 		return m, nil
 	}
 
-	snapshot := m.captureSnapshot(task)
-	task.Section = msg.Section
-	task.UpdatedAt = time.Now()
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	current := m.project.GetTaskByID(task.ID)
+	if current == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
+
+	snapshot := m.captureSnapshot(current)
+	if !m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = msg.Section
+	}) {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
 
 	sectionName := msg.Section
 	if sectionName == "" {
@@ -202,9 +214,20 @@ func (m *InboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg) (*In
 		return m, nil
 	}
 
-	snapshot := m.captureSnapshot(task)
-	task.Tags = msg.SelectedTags
-	task.UpdatedAt = time.Now()
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	current := m.project.GetTaskByID(task.ID)
+	if current == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
+
+	snapshot := m.captureSnapshot(current)
+	if !m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Tags = msg.SelectedTags
+	}) {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
 
 	m.recordAction("tags updated", snapshot)
 	if len(msg.SelectedTags) == 0 {

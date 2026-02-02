@@ -422,30 +422,32 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 		// Apply changes to each task
 		for _, task := range tasks {
-			if changes.SetStatus != nil {
-				task.Status = *changes.SetStatus
-			}
-			if changes.SetPriority != nil {
-				task.Priority = *changes.SetPriority
-			}
-			for _, tag := range changes.AddTags {
-				task.AddTag(tag)
-			}
-			for _, tag := range changes.RemoveTags {
-				task.RemoveTag(tag)
-			}
-			if changes.SetSection != nil {
-				if models.IsGTDSection(*changes.SetSection) || *changes.SetSection == "" {
-					task.Section = *changes.SetSection
-				} else {
-					task.CustomSection = *changes.SetSection
+			m.project.MutateTask(task.ID, func(t *models.Task) {
+				if changes.SetStatus != nil {
+					t.Status = *changes.SetStatus
 				}
-			}
-			if changes.ClearDueDate {
-				task.DueDate = nil
-			} else if changes.SetDueDate != nil {
-				task.DueDate = changes.SetDueDate
-			}
+				if changes.SetPriority != nil {
+					t.Priority = *changes.SetPriority
+				}
+				for _, tag := range changes.AddTags {
+					t.AddTag(tag)
+				}
+				for _, tag := range changes.RemoveTags {
+					t.RemoveTag(tag)
+				}
+				if changes.SetSection != nil {
+					if models.IsGTDSection(*changes.SetSection) || *changes.SetSection == "" {
+						t.Section = *changes.SetSection
+					} else {
+						t.CustomSection = *changes.SetSection
+					}
+				}
+				if changes.ClearDueDate {
+					t.DueDate = nil
+				} else if changes.SetDueDate != nil {
+					t.DueDate = changes.SetDueDate
+				}
+			})
 		}
 
 		// Check for auto-unblocking

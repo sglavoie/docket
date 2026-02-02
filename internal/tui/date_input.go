@@ -67,8 +67,12 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear due date
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-				m.task.DueDate = nil
-				m.task.UpdatedAt = time.Now()
+				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
+					t.DueDate = nil
+				}) {
+					m.err = fmt.Errorf("task no longer exists in project")
+					return m, func() tea.Msg { return BackMsg{} }
+				}
 				return m, m.saveAndReturn()
 			}
 
@@ -79,8 +83,12 @@ func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			m.task.DueDate = &date
-			m.task.UpdatedAt = time.Now()
+			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
+				t.DueDate = &date
+			}) {
+				m.err = fmt.Errorf("task no longer exists in project")
+				return m, func() tea.Msg { return BackMsg{} }
+			}
 			return m, m.saveAndReturn()
 		}
 	}

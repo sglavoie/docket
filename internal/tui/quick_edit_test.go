@@ -159,10 +159,14 @@ func TestParseQuickEdit_Combined(t *testing.T) {
 
 func TestApplyQuickEdit(t *testing.T) {
 	task := &models.Task{
+		ID:       "test-task-id",
 		Title:    "Original",
 		Priority: 3,
 		Tags:     []string{"old"},
 		Status:   models.StatusTodo,
+	}
+	project := &models.Project{
+		Tasks: []*models.Task{task},
 	}
 
 	tomorrow := time.Now().AddDate(0, 0, 1)
@@ -179,7 +183,7 @@ func TestApplyQuickEdit(t *testing.T) {
 		statusSet:    true,
 	}
 
-	applyQuickEdit(task, result)
+	applyQuickEdit(task, project, result)
 
 	if task.Title != "Updated" {
 		t.Errorf("expected title 'Updated', got '%s'", task.Title)

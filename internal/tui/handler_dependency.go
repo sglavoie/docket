@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"time"
-
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleDependencyMessages handles dependency-related messages (manage, view, navigate).
@@ -19,8 +19,11 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case DependencySelectorDoneMsg:
 		m.popView()
 		if msg.HasChanges && msg.Task != nil && msg.Project != nil {
-			msg.Task.DependsOn = msg.NewDepsOn
-			msg.Task.UpdatedAt = time.Now()
+			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+				t.DependsOn = msg.NewDepsOn
+			}) {
+				return true, errorCmd("task no longer exists in project")
+			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
 				SaveProjectAsync(msg.Project, "Dependencies updated"),

@@ -159,21 +159,29 @@ func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.C
 			return m, nil
 		}
 
+		// Re-lookup task to avoid stale pointer after concurrent reload
+		task := m.project.GetTaskByID(m.quickEdit.GetTask().ID)
+		if task == nil {
+			m.exitQuickEditMode()
+			return m, nil
+		}
+
 		// Parse and apply the edit
 		if m.quickEdit.IsRenameOnly() {
 			// Rename-only mode: just update title, no modifier parsing
-			m.quickEdit.GetTask().Title = input
-			m.quickEdit.GetTask().UpdatedAt = time.Now()
-			m.setUndoContext("Rename Task", m.quickEdit.GetTask().Title)
+			m.project.MutateTask(task.ID, func(t *models.Task) {
+				t.Title = input
+			})
+			m.setUndoContext("Rename Task", task.Title)
 		} else {
 			// Full quick edit mode: parse modifiers
-			result, err := parseQuickEdit(input, m.quickEdit.GetTask(), m.project)
+			result, err := parseQuickEdit(input, task, m.project)
 			if err != nil {
 				// Keep edit mode open with error displayed
 				return m, nil
 			}
-			applyQuickEdit(m.quickEdit.GetTask(), result)
-			m.setUndoContext("Quick Edit", m.quickEdit.GetTask().Title)
+			applyQuickEdit(task, m.project, result)
+			m.setUndoContext("Quick Edit", task.Title)
 		}
 
 		m.exitQuickEditMode()
@@ -445,9 +453,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				count := 0
 				for id := range m.selectedTasks {
-					if task := m.project.GetTaskByID(id); task != nil {
-						task.Priority = priority
-						task.UpdatedAt = time.Now()
+					if m.project.MutateTask(id, func(t *models.Task) {
+						t.Priority = priority
+					}) {
 						count++
 					}
 				}
@@ -456,9 +464,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 			if CursorInBounds(m.cursor, len(visible)) {
-				task := visible[m.cursor].Task
-				task.Priority = priority
-				task.UpdatedAt = time.Now()
+				task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
+				if task == nil {
+					return m, nil
+				}
+				m.project.MutateTask(task.ID, func(t *models.Task) {
+					t.Priority = priority
+				})
 				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
@@ -562,9 +574,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			count := 0
 			for id := range m.selectedTasks {
-				if task := m.project.GetTaskByID(id); task != nil {
-					task.DueDate = dueDate
-					task.UpdatedAt = time.Now()
+				if m.project.MutateTask(id, func(t *models.Task) {
+					t.DueDate = dueDate
+				}) {
 					count++
 				}
 			}
@@ -573,9 +585,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			task.DueDate = dueDate
-			task.UpdatedAt = time.Now()
+			task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
+			if task == nil {
+				return m, nil
+			}
+			m.project.MutateTask(task.ID, func(t *models.Task) {
+				t.DueDate = dueDate
+			})
 			m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
@@ -637,9 +653,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			count := 0
 			for id := range m.selectedTasks {
-				if task := m.project.GetTaskByID(id); task != nil {
-					task.SnoozedUntil = snoozeDate
-					task.UpdatedAt = time.Now()
+				if m.project.MutateTask(id, func(t *models.Task) {
+					t.SnoozedUntil = snoozeDate
+				}) {
 					count++
 				}
 			}
@@ -648,9 +664,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			task.SnoozedUntil = snoozeDate
-			task.UpdatedAt = time.Now()
+			task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
+			if task == nil {
+				return m, nil
+			}
+			m.project.MutateTask(task.ID, func(t *models.Task) {
+				t.SnoozedUntil = snoozeDate
+			})
 			m.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, task.Title))
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}

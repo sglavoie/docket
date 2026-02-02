@@ -114,15 +114,17 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 					continue
 				}
 				if item.Task != nil && item.Project != nil {
-					if newDate != nil {
-						dateCopy := *newDate
-						item.Task.DueDate = &dateCopy
-					} else {
-						item.Task.DueDate = nil
+					if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+						if newDate != nil {
+							dateCopy := *newDate
+							t.DueDate = &dateCopy
+						} else {
+							t.DueDate = nil
+						}
+					}) {
+						projectMap[item.Project.ID] = item.Project
+						count++
 					}
-					item.Task.UpdatedAt = time.Now()
-					projectMap[item.Project.ID] = item.Project
-					count++
 				}
 			}
 
@@ -457,24 +459,29 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 		return true, nil
 	}
 
+	current := msg.Project.GetTaskByID(msg.Task.ID)
+	if current == nil {
+		return true, errorCmd("task no longer exists in project")
+	}
+
 	// Apply the status change
 	switch msg.Action {
 	case "complete":
-		msg.Task.Complete()
+		current.Complete()
 	case "start":
-		msg.Task.Start()
+		current.Start()
 	case "block":
-		msg.Task.Block()
+		current.Block()
 	case "cancel":
-		msg.Task.Cancel()
+		current.Cancel()
 	case "reopen":
-		msg.Task.Reopen()
+		current.Reopen()
 	default:
 		return true, nil
 	}
 
 	// Async save with loading indicator
-	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, msg.Task.Title)
+	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, current.Title)
 	return true, tea.Batch(
 		startLoading("Saving..."),
 		SaveProjectAsync(msg.Project, successMsg),
@@ -579,14 +586,19 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		titleChanged := msg.NewTitle != msg.Task.Title
 		descChanged := msg.NewDescription != msg.Task.Description
 		if titleChanged || descChanged {
-			msg.Task.Title = msg.NewTitle
-			msg.Task.Description = msg.NewDescription
-			msg.Task.UpdatedAt = time.Now()
-
 			if msg.Project != nil {
+				// Re-lookup task in project to avoid stale pointer after concurrent reload
+				if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+					t.Title = msg.NewTitle
+					t.Description = msg.NewDescription
+				}) {
+					return true, errorCmd("task no longer exists in project")
+				}
+
 				// Refresh task editor view first if it's open
 				if m.currentView() == ViewTaskEditor {
-					taskEditor := NewTaskEditorModel(msg.Project, msg.Task, m.config, m.configManager)
+					current := msg.Project.GetTaskByID(msg.Task.ID)
+					taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
 					taskEditor.SetSize(m.width, m.height-2)
 					m.views.Register(ViewTaskEditor, taskEditor)
 				}
@@ -599,9 +611,12 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	}
 
 	if m.currentView() == ViewTaskEditor && msg.Task != nil {
-		taskEditor := NewTaskEditorModel(msg.Project, msg.Task, m.config, m.configManager)
-		taskEditor.SetSize(m.width, m.height-2)
-		m.views.Register(ViewTaskEditor, taskEditor)
+		current := msg.Project.GetTaskByID(msg.Task.ID)
+		if current != nil {
+			taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
+			taskEditor.SetSize(m.width, m.height-2)
+			m.views.Register(ViewTaskEditor, taskEditor)
+		}
 	}
 	return true, nil
 }

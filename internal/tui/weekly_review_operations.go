@@ -18,8 +18,14 @@ func (m *WeeklyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if task.Status.IsComplete() && newStatus != models.StatusTodo {
 		m.statusMessage = "Cannot change status of completed task"
@@ -63,14 +69,15 @@ func (m *WeeklyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 		return m, nil
 	}
 
-	task.Status = newStatus
-	task.UpdatedAt = time.Now()
-	if newStatus.IsComplete() {
-		now := time.Now()
-		task.CompletedAt = &now
-	} else {
-		task.CompletedAt = nil
-	}
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Status = newStatus
+		if newStatus.IsComplete() {
+			now := time.Now()
+			t.CompletedAt = &now
+		} else {
+			t.CompletedAt = nil
+		}
+	})
 
 	if err := storage.SaveProject(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
@@ -96,8 +103,14 @@ func (m *WeeklyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) 
 	}
 
 	priority, _ := strconv.Atoi(key)
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if task.Priority == priority {
 		return m, nil
@@ -108,8 +121,9 @@ func (m *WeeklyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
-	task.Priority = priority
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
 
 	if err := storage.SaveProject(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
@@ -132,18 +146,26 @@ func (m *WeeklyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if err := storage.BackupProject(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
 
-	newDate := time.Now().AddDate(0, 0, daysFromNow)
+	now := time.Now()
+	newDate := now.AddDate(0, 0, daysFromNow)
 	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
-	task.DueDate = &newDate
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = &newDate
+	})
 
 	if err := storage.SaveProject(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
@@ -175,8 +197,14 @@ func (m *WeeklyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if task.DueDate == nil {
 		m.statusMessage = "Task has no due date"
@@ -188,8 +216,9 @@ func (m *WeeklyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task.DueDate = nil
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = nil
+	})
 
 	if err := storage.SaveProject(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)
@@ -212,16 +241,23 @@ func (m *WeeklyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if err := storage.BackupProject(project); err != nil {
 		m.err = fmt.Errorf("backup failed: %w", err)
 		return m, nil
 	}
 
-	task.Active = !task.Active
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Active = !t.Active
+	})
 
 	if err := storage.SaveProject(project); err != nil {
 		m.err = fmt.Errorf("save failed: %w", err)

@@ -265,44 +265,44 @@ func parseQuickEditForPreview(input string, task *models.Task, project *models.P
 }
 
 // applyQuickEdit applies the parsed changes to the task.
-func applyQuickEdit(task *models.Task, result *quickEditResult) {
-	if result.titleSet && result.title != "" {
-		task.Title = result.title
-	}
-
-	if result.prioritySet {
-		task.Priority = result.priority
-	}
-
-	// Handle tag changes
-	for _, tag := range result.tagsToRemove {
-		task.RemoveTag(tag)
-	}
-	for _, tag := range result.tagsToAdd {
-		task.AddTag(tag)
-	}
-
-	if result.dueDateSet {
-		if result.dueDateClear {
-			task.DueDate = nil
-		} else {
-			task.DueDate = result.dueDate
+func applyQuickEdit(task *models.Task, project *models.Project, result *quickEditResult) {
+	project.MutateTask(task.ID, func(t *models.Task) {
+		if result.titleSet && result.title != "" {
+			t.Title = result.title
 		}
-	}
 
-	if result.sectionSet {
-		if models.IsGTDSection(result.section) || result.section == "" {
-			task.Section = result.section
-		} else {
-			task.CustomSection = result.section
+		if result.prioritySet {
+			t.Priority = result.priority
 		}
-	}
 
-	if result.statusSet {
-		task.Status = result.status
-	}
+		// Handle tag changes
+		for _, tag := range result.tagsToRemove {
+			t.RemoveTag(tag)
+		}
+		for _, tag := range result.tagsToAdd {
+			t.AddTag(tag)
+		}
 
-	task.UpdatedAt = time.Now()
+		if result.dueDateSet {
+			if result.dueDateClear {
+				t.DueDate = nil
+			} else {
+				t.DueDate = result.dueDate
+			}
+		}
+
+		if result.sectionSet {
+			if models.IsGTDSection(result.section) || result.section == "" {
+				t.Section = result.section
+			} else {
+				t.CustomSection = result.section
+			}
+		}
+
+		if result.statusSet {
+			t.Status = result.status
+		}
+	})
 }
 
 // hasChanges returns true if the edit result differs from the original.

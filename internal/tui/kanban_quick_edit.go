@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleQuickEditKey handles the E key for quick edit mode.
@@ -77,6 +79,7 @@ func (m *KanbanViewModel) confirmQuickEdit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	taskID := task.ID
 	inputValue := m.quickEdit.GetInput().Value()
 
 	if m.quickEdit.IsRenameOnly() {
@@ -88,12 +91,24 @@ func (m *KanbanViewModel) confirmQuickEdit() (tea.Model, tea.Cmd) {
 		}
 
 		prevStates := captureTaskStates(m.Project.Tasks)
-		task.Title = newTitle
+		if !m.Project.MutateTask(taskID, func(t *models.Task) {
+			t.Title = newTitle
+		}) {
+			m.quickEdit.Exit()
+			return m, nil
+		}
 		m.quickEdit.Exit()
 		m.statusMessage = "Renamed"
-		m.lastModifiedTaskID = task.ID
+		m.lastModifiedTaskID = taskID
 
 		return m, m.saveWithStatusChange(prevStates, task)
+	}
+
+	// Re-lookup task for parseQuickEdit which needs current task state
+	task = m.Project.GetTaskByID(taskID)
+	if task == nil {
+		m.quickEdit.Exit()
+		return m, nil
 	}
 
 	// Full quick edit: parse and apply changes
@@ -112,10 +127,12 @@ func (m *KanbanViewModel) confirmQuickEdit() (tea.Model, tea.Cmd) {
 	}
 
 	prevStates := captureTaskStates(m.Project.Tasks)
-	applyQuickEdit(task, result)
+	m.Project.MutateTask(taskID, func(t *models.Task) {
+		applyQuickEdit(t, m.Project, result)
+	})
 	m.quickEdit.Exit()
 	m.statusMessage = "Updated"
-	m.lastModifiedTaskID = task.ID
+	m.lastModifiedTaskID = taskID
 
 	return m, m.saveWithStatusChange(prevStates, task)
 }

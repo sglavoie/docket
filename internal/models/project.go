@@ -97,6 +97,19 @@ func (p *Project) Unpin() {
 	p.UpdatedAt = time.Now()
 }
 
+// MutateTask looks up a task by ID, calls fn to mutate it, and sets UpdatedAt.
+// Returns false if the task was not found.
+func (p *Project) MutateTask(taskID string, fn func(*Task)) bool {
+	for _, t := range p.Tasks {
+		if t.ID == taskID {
+			fn(t)
+			t.UpdatedAt = time.Now()
+			return true
+		}
+	}
+	return false
+}
+
 // TogglePinned toggles the pinned status.
 func (p *Project) TogglePinned() {
 	if p.Pinned {

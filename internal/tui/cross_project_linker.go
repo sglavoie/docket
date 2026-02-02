@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -374,8 +373,8 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 		}
 
 		// Update timestamps
-		m.sourceTask.UpdatedAt = time.Now()
-		m.targetTask.UpdatedAt = time.Now()
+		m.sourceProject.MutateTask(m.sourceTask.ID, func(t *models.Task) {})
+		m.targetProject.MutateTask(m.targetTask.ID, func(t *models.Task) {})
 
 		// Backup and save source project
 		if err := storage.BackupProject(m.sourceProject); err != nil {

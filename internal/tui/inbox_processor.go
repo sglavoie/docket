@@ -449,8 +449,9 @@ func (m *InboxProcessorModel) setPriorityQuick(key string) tea.Cmd {
 	}
 
 	snapshot := m.captureSnapshot(task)
-	task.Priority = priority
-	task.UpdatedAt = time.Now()
+	m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
 
 	m.recordAction(fmt.Sprintf("priority set to %d", priority), snapshot)
 	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
@@ -640,8 +641,9 @@ func (m *InboxProcessorModel) sendToWaiting() tea.Cmd {
 	}
 
 	snapshot := m.captureSnapshot(task)
-	task.Section = models.SectionWaiting
-	task.UpdatedAt = time.Now()
+	m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = models.SectionWaiting
+	})
 
 	m.recordAction("sent to Waiting", snapshot)
 	m.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", task.ShortID)

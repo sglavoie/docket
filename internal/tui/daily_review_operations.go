@@ -18,8 +18,14 @@ func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mo
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	// Skip completed tasks for most status changes
 	if task.Status.IsComplete() && newStatus != models.StatusTodo {
@@ -68,14 +74,15 @@ func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mo
 	}
 
 	// Update task status
-	task.Status = newStatus
-	task.UpdatedAt = time.Now()
-	if newStatus.IsComplete() {
-		now := time.Now()
-		task.CompletedAt = &now
-	} else {
-		task.CompletedAt = nil
-	}
+	project.MutateTask(dt.Task.ID, func(t *models.Task) {
+		t.Status = newStatus
+		if newStatus.IsComplete() {
+			now := time.Now()
+			t.CompletedAt = &now
+		} else {
+			t.CompletedAt = nil
+		}
+	})
 
 	// Save project
 	if err := storage.SaveProject(project); err != nil {
@@ -103,8 +110,14 @@ func (m *DailyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	priority, _ := strconv.Atoi(key)
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if task.Priority == priority {
 		return m, nil
@@ -117,8 +130,9 @@ func (m *DailyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Update task priority
-	task.Priority = priority
-	task.UpdatedAt = time.Now()
+	project.MutateTask(dt.Task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
 
 	// Save project
 	if err := storage.SaveProject(project); err != nil {
@@ -143,8 +157,14 @@ func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	// Backup before change
 	if err := storage.BackupProject(project); err != nil {
@@ -153,10 +173,11 @@ func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd)
 	}
 
 	// Set due date
-	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
-	task.DueDate = &newDate
-	task.UpdatedAt = time.Now()
+	project.MutateTask(dt.Task.ID, func(t *models.Task) {
+		newDate := time.Now().AddDate(0, 0, daysFromNow)
+		newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
+		t.DueDate = &newDate
+	})
 
 	// Save project
 	if err := storage.SaveProject(project); err != nil {
@@ -190,8 +211,14 @@ func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	if task.DueDate == nil {
 		m.statusMessage = "Task has no due date"
@@ -205,8 +232,9 @@ func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Clear due date
-	task.DueDate = nil
-	task.UpdatedAt = time.Now()
+	project.MutateTask(dt.Task.ID, func(t *models.Task) {
+		t.DueDate = nil
+	})
 
 	// Save project
 	if err := storage.SaveProject(project); err != nil {
@@ -231,8 +259,14 @@ func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := dt.Task
 	project := dt.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(dt.Task.ID)
+	if task == nil {
+		m.statusMessage = "Task no longer exists in project"
+		return m, nil
+	}
 
 	// Backup before change
 	if err := storage.BackupProject(project); err != nil {
@@ -241,8 +275,9 @@ func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
 	}
 
 	// Toggle active flag
-	task.Active = !task.Active
-	task.UpdatedAt = time.Now()
+	project.MutateTask(dt.Task.ID, func(t *models.Task) {
+		t.Active = !t.Active
+	})
 
 	// Save project
 	if err := storage.SaveProject(project); err != nil {

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -118,8 +117,11 @@ func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 	prevStates := captureTaskStates(m.Project.Tasks)
 
 	// Update the task's section
-	task.Section = targetSection
-	task.UpdatedAt = time.Now()
+	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = targetSection
+	}) {
+		return nil
+	}
 
 	// Persist with workflow rule evaluation
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
@@ -161,8 +163,11 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 	prevStates := captureTaskStates(m.Project.Tasks)
 
 	// Update the task's section
-	task.Section = targetSection
-	task.UpdatedAt = time.Now()
+	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = targetSection
+	}) {
+		return nil
+	}
 
 	// Persist with workflow rule evaluation
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
@@ -320,8 +325,11 @@ func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
 	}
 
 	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Section = targetSection
-	task.UpdatedAt = time.Now()
+	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = targetSection
+	}) {
+		return nil
+	}
 
 	m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(targetSection))
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
@@ -344,13 +352,21 @@ func (m *KanbanViewModel) indentTask() tea.Cmd {
 		return nil
 	}
 
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	current := m.Project.GetTaskByID(task.ID)
+	if current == nil {
+		return nil
+	}
+
 	// Walk up from the node above to find a valid parent
 	candidate := visibleNodes[cs.Cursor-1].Task
 	for candidate != nil {
-		if ok, _ := task.CanIndent(candidate); ok {
+		if ok, _ := current.CanIndent(candidate); ok {
 			prevStates := captureTaskStates(m.Project.Tasks)
-			task.ParentID = &candidate.ID
-			task.UpdatedAt = time.Now()
+			candidateID := candidate.ID
+			m.Project.MutateTask(task.ID, func(t *models.Task) {
+				t.ParentID = &candidateID
+			})
 			m.Project.BuildTaskTree()
 
 			currentSection := KanbanColumnOrder[m.ActiveColumn]

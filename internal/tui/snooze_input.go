@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -62,8 +61,12 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Handle "none" or empty to clear snooze
 			if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-				m.task.SnoozedUntil = nil
-				m.task.UpdatedAt = time.Now()
+				if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
+					t.SnoozedUntil = nil
+				}) {
+					m.err = fmt.Errorf("task no longer exists in project")
+					return m, func() tea.Msg { return BackMsg{} }
+				}
 				return m, m.saveAndReturn()
 			}
 
@@ -74,8 +77,12 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			m.task.SnoozedUntil = &date
-			m.task.UpdatedAt = time.Now()
+			if !m.project.MutateTask(m.task.ID, func(t *models.Task) {
+				t.SnoozedUntil = &date
+			}) {
+				m.err = fmt.Errorf("task no longer exists in project")
+				return m, func() tea.Msg { return BackMsg{} }
+			}
 			return m, m.saveAndReturn()
 		}
 	}

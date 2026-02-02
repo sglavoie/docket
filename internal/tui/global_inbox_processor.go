@@ -488,8 +488,9 @@ func (m *GlobalInboxProcessorModel) setPriorityQuick(key string) tea.Cmd {
 	}
 
 	snapshot := m.captureSnapshot(git.Task)
-	git.Task.Priority = priority
-	git.Task.UpdatedAt = time.Now()
+	git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
 
 	m.recordAction(fmt.Sprintf("priority set to %d", priority), snapshot)
 	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)

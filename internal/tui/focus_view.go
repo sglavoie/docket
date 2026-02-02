@@ -610,8 +610,9 @@ func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	}
 
 	// Toggle active flag off
-	task.Active = false
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Active = false
+	})
 
 	// Save project
 	if err := m.projectService.Save(project); err != nil {
@@ -688,16 +689,17 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 	}
 
 	// Update task status
-	task.Status = newStatus
-	task.UpdatedAt = time.Now()
-	if newStatus.IsComplete() {
-		now := time.Now()
-		task.CompletedAt = &now
-		// Clear active flag when completing
-		task.Active = false
-	} else {
-		task.CompletedAt = nil
-	}
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Status = newStatus
+		if newStatus.IsComplete() {
+			now := time.Now()
+			t.CompletedAt = &now
+			// Clear active flag when completing
+			t.Active = false
+		} else {
+			t.CompletedAt = nil
+		}
+	})
 
 	// Save project
 	if err := m.projectService.Save(project); err != nil {
@@ -739,8 +741,9 @@ func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Update task priority
-	task.Priority = priority
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.Priority = priority
+	})
 
 	// Save project
 	if err := m.projectService.Save(project); err != nil {
@@ -779,8 +782,9 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 	// Set due date
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
 	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
-	task.DueDate = &newDate
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = &newDate
+	})
 
 	// Save project
 	if err := m.projectService.Save(project); err != nil {
@@ -831,8 +835,9 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	// Clear due date
-	task.DueDate = nil
-	task.UpdatedAt = time.Now()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DueDate = nil
+	})
 
 	// Save project
 	if err := m.projectService.Save(project); err != nil {

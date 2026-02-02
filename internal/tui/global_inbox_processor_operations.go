@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -36,9 +35,20 @@ func (m *GlobalInboxProcessorModel) handleSectionPickerDone(msg SectionPickerDon
 		return m, nil
 	}
 
-	snapshot := m.captureSnapshot(git.Task)
-	git.Task.Section = msg.Section
-	git.Task.UpdatedAt = time.Now()
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	current := git.Project.GetTaskByID(git.Task.ID)
+	if current == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
+
+	snapshot := m.captureSnapshot(current)
+	if !git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
+		t.Section = msg.Section
+	}) {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
 
 	sectionName := msg.Section
 	if sectionName == "" {
@@ -49,7 +59,7 @@ func (m *GlobalInboxProcessorModel) handleSectionPickerDone(msg SectionPickerDon
 	m.statusMessage = fmt.Sprintf("Section set to '%s'", sectionName)
 
 	// If task is leaving inbox, mark as processed
-	if m.willLeaveInbox(git.Task) {
+	if m.willLeaveInbox(current) {
 		m.processedIDs[git.Task.ID] = true
 		return m, tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
 	}
@@ -213,9 +223,20 @@ func (m *GlobalInboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg
 		return m, nil
 	}
 
-	snapshot := m.captureSnapshot(git.Task)
-	git.Task.Tags = msg.SelectedTags
-	git.Task.UpdatedAt = time.Now()
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	current := git.Project.GetTaskByID(git.Task.ID)
+	if current == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
+
+	snapshot := m.captureSnapshot(current)
+	if !git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
+		t.Tags = msg.SelectedTags
+	}) {
+		m.statusMessage = "Error: task no longer exists in project"
+		return m, nil
+	}
 
 	m.recordAction("tags updated", snapshot)
 	if len(msg.SelectedTags) == 0 {
@@ -234,7 +255,13 @@ func (m *GlobalInboxProcessorModel) startTask() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := git.Project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+
 	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
 		m.statusMessage = "Task must be todo or blocked to start"
 		return nil
@@ -256,8 +283,14 @@ func (m *GlobalInboxProcessorModel) completeTask() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
 	project := git.Project
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
 
 	if !task.Status.IsActive() {
 		m.statusMessage = "Task is not active"
@@ -295,7 +328,13 @@ func (m *GlobalInboxProcessorModel) blockTask() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := git.Project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+
 	if !task.Status.IsActive() || task.Status == models.StatusBlocked {
 		m.statusMessage = "Task must be active and not already blocked"
 		return nil
@@ -317,7 +356,13 @@ func (m *GlobalInboxProcessorModel) cancelTask() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := git.Project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+
 	if !task.Status.IsActive() {
 		m.statusMessage = "Task is not active"
 		return nil
@@ -342,7 +387,13 @@ func (m *GlobalInboxProcessorModel) reopenTask() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := git.Project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+
 	if task.Status == models.StatusTodo {
 		m.statusMessage = "Task is already todo"
 		return nil
@@ -364,10 +415,20 @@ func (m *GlobalInboxProcessorModel) sendToWaiting() tea.Cmd {
 		return nil
 	}
 
-	task := git.Task
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task := git.Project.GetTaskByID(git.Task.ID)
+	if task == nil {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
+
 	snapshot := m.captureSnapshot(task)
-	task.Section = models.SectionWaiting
-	task.UpdatedAt = time.Now()
+	if !git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
+		t.Section = models.SectionWaiting
+	}) {
+		m.statusMessage = "Error: task no longer exists in project"
+		return nil
+	}
 
 	m.recordAction("sent to Waiting", snapshot)
 	m.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", task.ShortID)

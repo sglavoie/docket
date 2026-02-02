@@ -197,58 +197,33 @@ func (m *TaskEditorModel) saveTask() error {
 		return err
 	}
 
-	// Update task fields (description is edited separately via external editor)
-	now := time.Now()
-	m.task.Title = title
-	m.task.Type = m.taskType
-	m.task.Priority = m.priority
-	m.task.ParentID = m.parentID
-	if models.IsGTDSection(m.section) || m.section == "" {
-		m.task.Section = m.section
-	} else {
-		m.task.CustomSection = m.section
-	}
-	m.task.DueDate = m.dueDate
-	m.task.UpdatedAt = now
-
-	// Handle pinned status change
-	if m.pinned != m.task.Pinned {
-		m.task.Pinned = m.pinned
-		if m.pinned {
-			m.task.PinnedAt = &now
+	// Update the task in the project via MutateTask (auto-sets UpdatedAt)
+	m.project.MutateTask(m.task.ID, func(t *models.Task) {
+		t.Title = title
+		t.Type = m.taskType
+		t.Priority = m.priority
+		t.ParentID = m.parentID
+		if models.IsGTDSection(m.section) || m.section == "" {
+			t.Section = m.section
 		} else {
-			m.task.PinnedAt = nil
+			t.CustomSection = m.section
 		}
-	}
+		t.DueDate = m.dueDate
+		t.Tags = append([]string{}, m.tags...)
+		t.Active = m.active
+		t.Recurrence = m.recurrence
 
-	// Handle active status change
-	m.task.Active = m.active
-
-	// Handle recurrence change
-	m.task.Recurrence = m.recurrence
-
-	// Set tags from the selector
-	m.task.Tags = append([]string{}, m.tags...)
-
-	// Update the actual task in the project
-	for _, t := range m.project.Tasks {
-		if t.ID == m.task.ID {
-			t.Tags = m.task.Tags
-			t.Title = m.task.Title
-			t.Type = m.task.Type
-			t.Priority = m.task.Priority
-			t.ParentID = m.task.ParentID
-			t.Section = m.task.Section
-			t.CustomSection = m.task.CustomSection
-			t.DueDate = m.task.DueDate
-			t.Pinned = m.task.Pinned
-			t.PinnedAt = m.task.PinnedAt
-			t.Active = m.task.Active
-			t.Recurrence = m.task.Recurrence
-			t.UpdatedAt = m.task.UpdatedAt
-			break
+		// Handle pinned status change
+		if m.pinned != t.Pinned {
+			t.Pinned = m.pinned
+			if m.pinned {
+				now := time.Now()
+				t.PinnedAt = &now
+			} else {
+				t.PinnedAt = nil
+			}
 		}
-	}
+	})
 
 	// Rebuild task tree
 	m.project.BuildTaskTree()

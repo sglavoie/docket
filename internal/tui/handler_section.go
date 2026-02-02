@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -65,10 +64,12 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 			for _, item := range m.pendingBulkTasks {
 				if item.Task != nil && item.Project != nil {
-					item.Task.Priority = msg.Priority
-					item.Task.UpdatedAt = time.Now()
-					projectMap[item.Project.ID] = item.Project
-					count++
+					if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+						t.Priority = msg.Priority
+					}) {
+						projectMap[item.Project.ID] = item.Project
+						count++
+					}
 				}
 			}
 
@@ -87,8 +88,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 		// Single task operation
 		if msg.Task != nil && msg.Project != nil {
-			msg.Task.Priority = msg.Priority
-			msg.Task.UpdatedAt = time.Now()
+			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+				t.Priority = msg.Priority
+			}) {
+				return true, errorCmd("task no longer exists in project")
+			}
 
 			successMsg := fmt.Sprintf("Set priority %d for task #%d", msg.Priority, msg.Task.ShortID)
 			return true, tea.Batch(
@@ -112,8 +116,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			count := 0
 			for _, task := range m.pendingBulkSectionTasks {
 				if task != nil {
-					assignSection(task, msg.Section)
-					count++
+					if project.MutateTask(task.ID, func(t *models.Task) {
+						assignSection(t, msg.Section)
+					}) {
+						count++
+					}
 				}
 			}
 
@@ -146,7 +153,11 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 		// Single task operation
 		if msg.Task != nil && msg.Project != nil {
-			assignSection(msg.Task, msg.Section)
+			if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+				assignSection(t, msg.Section)
+			}) {
+				return true, errorCmd("task no longer exists in project")
+			}
 
 			if msg.Section != "" && msg.Section != removeCustomSectionSentinel {
 				msg.Project.EnsureSection(msg.Section)
@@ -228,5 +239,4 @@ func assignSection(task *models.Task, section string) {
 	} else {
 		task.CustomSection = section
 	}
-	task.UpdatedAt = time.Now()
 }
