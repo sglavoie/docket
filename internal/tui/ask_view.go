@@ -395,22 +395,22 @@ func (m *AskViewModel) View() string {
 	pad := " "
 	var b strings.Builder
 
-	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	b.WriteString(pad)
-	b.WriteString(titleStyle.Render("AI Assistant"))
+	subtitle := ""
 	if !external.ClaudeAvailable() {
-		b.WriteString(" ")
-		b.WriteString(ErrorStatusStyle.Render("claude CLI not found"))
+		subtitle = ErrorStatusStyle.Render("claude CLI not found")
 	}
+	b.WriteString(renderFullscreenTitle("AI Assistant", subtitle))
 	b.WriteString("\n\n")
+
+	var footerLeft, footerRight string
 
 	switch m.state {
 	case askStateInput:
 		b.WriteString(pad)
 		b.WriteString(m.textarea.View())
-		b.WriteString("\n\n")
-		b.WriteString(pad)
-		b.WriteString(HelpStyle.Render("Ctrl+S: submit | Esc: back"))
+		b.WriteString("\n")
+		footerLeft = HelpStyle.Render("Ctrl+S: submit")
+		footerRight = HelpStyle.Render("Esc: back")
 
 	case askStateLoading:
 		b.WriteString(pad)
@@ -422,27 +422,26 @@ func (m *AskViewModel) View() string {
 			b.WriteString(pad)
 			b.WriteString(m.viewport.View())
 		}
-		b.WriteString("\n\n")
-		b.WriteString(pad)
-		b.WriteString(HelpStyle.Render("Esc: cancel"))
+		b.WriteString("\n")
+		footerLeft = HelpStyle.Render("Esc: cancel")
 
 	case askStateResult:
 		if m.ready {
 			b.WriteString(pad)
 			b.WriteString(m.viewport.View())
 		}
-		b.WriteString("\n\n")
-		footer := "n: new query | q: close"
+		b.WriteString("\n")
+		footer := "n: new query · q: close"
 		if len(m.commands) > 0 {
-			footer = "a: apply commands | " + footer
+			footer = "a: apply commands · " + footer
 		}
-		scrollPercent := ""
+		footerLeft = HelpStyle.Render(footer)
 		if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
-			scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
+			footerRight = HelpStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))
 		}
-		b.WriteString(pad)
-		b.WriteString(HelpStyle.Render(footer + scrollPercent))
 	}
+
+	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
 
 	return b.String()
 }

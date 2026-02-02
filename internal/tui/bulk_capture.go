@@ -79,7 +79,7 @@ func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *BulkCaptureModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Bulk Capture"))
+	b.WriteString(renderFullscreenTitle("Bulk Capture", ""))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.input.View())
@@ -107,8 +107,7 @@ func (m *BulkCaptureModel) View() string {
 	b.WriteString(hint)
 	b.WriteString("\n")
 
-	controls := MutedStyle.Render("Ctrl+S: create · Esc: cancel")
-	b.WriteString(controls)
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: create"), HelpStyle.Render("Esc: cancel"), m.width))
 
 	return b.String()
 }

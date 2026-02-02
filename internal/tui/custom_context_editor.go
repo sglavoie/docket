@@ -283,9 +283,9 @@ func (m *CustomContextEditorModel) View() string {
 
 	// Title
 	if m.editMode {
-		b.WriteString(TitleStyle.Render(fmt.Sprintf("Edit Custom Context: %s", m.originalName)))
+		b.WriteString(renderFullscreenTitle("Edit Custom Context", m.originalName))
 	} else {
-		b.WriteString(TitleStyle.Render("New Custom Context"))
+		b.WriteString(renderFullscreenTitle("New Custom Context", ""))
 	}
 	b.WriteString("\n\n")
 
@@ -369,23 +369,16 @@ func (m *CustomContextEditorModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Help
-	var helpText string
+	// Footer
+	var footerLeft, footerRight string
 	if m.projectListMode {
-		helpText = "  j/k or ↑/↓   Move cursor\n" +
-			"  Space/Enter  Toggle selection\n" +
-			"  a            Select all\n" +
-			"  A            Deselect all\n" +
-			"  Tab          Back to name\n" +
-			"  Ctrl+S       Save\n" +
-			"  Esc          Cancel"
+		footerLeft = HelpStyle.Render("j/k: move · Space: toggle · a/A: all/none · Tab: name")
+		footerRight = HelpStyle.Render("Ctrl+S: save · Esc: cancel")
 	} else {
-		helpText = "  Tab/Enter    Go to project list\n" +
-			"  Ctrl+S       Save\n" +
-			"  Esc          Cancel"
+		footerLeft = HelpStyle.Render("Tab/Enter: project list")
+		footerRight = HelpStyle.Render("Ctrl+S: save · Esc: cancel")
 	}
-	help := BoxStyle.Render(BoldStyle.Render("Controls") + "\n" + helpText)
-	b.WriteString(help)
+	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
 
 	return b.String()
 }
