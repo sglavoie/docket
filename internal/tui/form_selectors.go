@@ -53,7 +53,7 @@ func renderParentSelectorShared(validParents []*models.Task, parentCursor int, f
 	}
 
 	// Show a few valid parents
-	maxShow := 3
+	maxShow := 5
 	startIdx := 0
 	if parentCursor > maxShow {
 		startIdx = parentCursor - maxShow

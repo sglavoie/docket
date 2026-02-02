@@ -184,8 +184,13 @@ func (m *BulkTagSelectorModel) View() string {
 func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags []string) *TagSelectorModel {
 	tags := buildTagListForSelector(project)
 
+	title := "Tags for New Task"
+	if task != nil {
+		title = fmt.Sprintf("Tags for #%d: %s", task.ShortID, task.Title)
+	}
+
 	picker := NewBasePicker(tags, PickerConfig{
-		Title:          fmt.Sprintf("Tags for #%d: %s", task.ShortID, task.Title),
+		Title:          title,
 		EmptyMessage:   "No tags in project (press 'a' to add)",
 		NoMatchMessage: "No matching tags (press 'a' to add)",
 		MultiSelect:    true,

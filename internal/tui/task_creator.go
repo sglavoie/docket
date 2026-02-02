@@ -3,8 +3,9 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
@@ -22,10 +23,10 @@ type TaskCreatorModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	// Form fields (title and description use popup editor)
-	titleValue string
+	// Form fields
+	titleInput textarea.Model
 	descValue  string
-	tagsInput  textinput.Model
+	tags       []string
 
 	// Selectable fields
 	taskType         models.TaskType
@@ -38,12 +39,17 @@ type TaskCreatorModel struct {
 	section          string
 	sectionCursor    int
 	sections         []string
+	dueDate          *time.Time
+	dueDateInput     string
+	pinned           bool
+	active           bool
+	flagFocus        int // 0=pinned, 1=active (within the flags field)
 	recurrence       *models.RecurrencePattern
 	recurrenceCursor int
 	recurrenceOpts   []string
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=recurrence, 6=tags, 7=description
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence, 8=tags, 9=description
 	width      int
 	height     int
 	err        error
@@ -53,7 +59,9 @@ type TaskCreatorModel struct {
 func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *config.Manager, suggestedParent *models.Task) *TaskCreatorModel {
 	factory := DefaultFormFieldFactory()
 
-	tagsInput := factory.NewTextInput("tag1, tag2, tag3")
+	titleInput := factory.NewTitleInput("Enter task title...")
+	titleInput.Focus()
+	titleInput.SetPromptFunc(0, func(lineIdx int) string { return "" })
 
 	types := []models.TaskType{
 		models.TaskTypeTask,
@@ -73,9 +81,9 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		project:          project,
 		config:           cfg,
 		configManager:    manager,
-		titleValue:       "",
+		titleInput:       titleInput,
 		descValue:        "",
-		tagsInput:        tagsInput,
+		tags:             nil,
 		taskType:         models.TaskTypeTask,
 		typeCursor:       0,
 		types:            types,
@@ -85,6 +93,11 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		section:          models.SectionNext,
 		sectionCursor:    0,
 		sections:         sections,
+		dueDate:          nil,
+		dueDateInput:     "",
+		pinned:           false,
+		active:           false,
+		flagFocus:        0,
 		recurrence:       nil,
 		recurrenceCursor: 0,
 		recurrenceOpts:   recurrenceOpts,
@@ -142,11 +155,13 @@ func (m *TaskCreatorModel) updateValidParents() {
 func (m *TaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	formFactory.ResizeTextInput(&m.tagsInput, width)
+	formFactory.ResizeTextarea(&m.titleInput, width)
 }
 
+const creatorFieldCount = 10 // title, type, parent, priority, section, due date, flags, recurrence, tags, description
+
 func (m *TaskCreatorModel) Init() tea.Cmd {
-	return nil
+	return textarea.Blink
 }
 
 func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -179,12 +194,15 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case TagSelectorDoneMsg:
+		if !msg.Canceled {
+			m.tags = msg.SelectedTags
+		}
+		return m, nil
+
 	case TextEditorDoneMsg:
 		if !msg.Canceled {
-			switch msg.FieldName {
-			case "title":
-				m.titleValue = msg.Value
-			case "description":
+			if msg.FieldName == "description" {
 				m.descValue = msg.Value
 			}
 		}
@@ -201,11 +219,10 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (8 fields: title, type, parent, priority, section, recurrence, tags, description)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 8
+				m.focusIndex = (m.focusIndex + 1) % creatorFieldCount
 			} else {
-				m.focusIndex = (m.focusIndex + 7) % 8
+				m.focusIndex = (m.focusIndex + creatorFieldCount - 1) % creatorFieldCount
 			}
 
 			// Focus new field
@@ -213,16 +230,25 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			if m.focusIndex == 0 {
-				// Open title editor popup
+			// For due date field, parse and validate on enter
+			if m.focusIndex == 5 {
+				if err := m.parseDueDate(); err != nil {
+					m.err = err
+					return m, nil
+				}
+				m.err = nil
+			}
+			if m.focusIndex == 8 {
+				// Open tag selector modal
 				return m, func() tea.Msg {
-					return ShowTextEditorMsg{
-						FieldName:    "title",
-						CurrentValue: m.titleValue,
+					return ShowTagSelectorMsg{
+						Task:        nil,
+						Project:     m.project,
+						CurrentTags: m.tags,
 					}
 				}
 			}
-			if m.focusIndex == 7 {
+			if m.focusIndex == 9 {
 				// Open description editor popup
 				return m, func() tea.Msg {
 					return ShowTextEditorMsg{
@@ -232,7 +258,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			// Move to next field for other fields
-			if m.focusIndex < 7 {
+			if m.focusIndex < creatorFieldCount-1 {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -242,6 +268,16 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			// Submit form
 			return m, m.createTask()
+
+		case "ctrl+t":
+			// Open tag selector from any field
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        nil,
+					Project:     m.project,
+					CurrentTags: m.tags,
+				}
+			}
 
 		case "/":
 			// Open parent selector modal when on parent field
@@ -289,9 +325,22 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor--
 					m.section = m.sections[m.sectionCursor]
 				}
-			case 5: // Recurrence selector
+			case 6: // Flags - switch between pinned and active
+				if m.flagFocus > 0 {
+					m.flagFocus--
+				}
+			case 7: // Recurrence selector
 				if m.recurrenceCursor > 0 {
 					m.recurrenceCursor--
+					if m.recurrenceCursor == 6 {
+						// "Custom..." selected - open the editor
+						return m, func() tea.Msg {
+							return ShowRecurrenceEditorMsg{
+								CurrentPattern: m.recurrence,
+								DueDate:        m.dueDate,
+							}
+						}
+					}
 					m.updateRecurrenceFromCursor()
 				}
 			}
@@ -318,7 +367,11 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor++
 					m.section = m.sections[m.sectionCursor]
 				}
-			case 5: // Recurrence selector
+			case 6: // Flags - switch between pinned and active
+				if m.flagFocus < 1 {
+					m.flagFocus++
+				}
+			case 7: // Recurrence selector
 				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
 					m.recurrenceCursor++
 					if m.recurrenceCursor == 6 {
@@ -326,7 +379,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, func() tea.Msg {
 							return ShowRecurrenceEditorMsg{
 								CurrentPattern: m.recurrence,
-								DueDate:        nil, // No due date set during creation
+								DueDate:        m.dueDate,
 							}
 						}
 					}
@@ -334,37 +387,79 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case " ":
+			// Toggle flags with space
+			if m.focusIndex == 6 {
+				if m.flagFocus == 0 {
+					m.pinned = !m.pinned
+				} else {
+					m.active = !m.active
+				}
+			}
+
 		case "r":
 			// Open recurrence editor when on recurrence field
-			if m.focusIndex == 5 {
+			if m.focusIndex == 7 {
 				return m, func() tea.Msg {
 					return ShowRecurrenceEditorMsg{
 						CurrentPattern: m.recurrence,
-						DueDate:        nil,
+						DueDate:        m.dueDate,
 					}
 				}
 			}
 		}
 	}
 
-	// Update the focused input (only tags uses inline text input now)
-	if m.focusIndex == 6 {
-		m.tagsInput, cmd = m.tagsInput.Update(msg)
+	// Update the focused input
+	switch m.focusIndex {
+	case 0:
+		m.titleInput, cmd = m.titleInput.Update(msg)
+	case 5: // Due date text input
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			key := keyMsg.String()
+			// Handle backspace
+			if key == "backspace" && len(m.dueDateInput) > 0 {
+				m.dueDateInput = m.dueDateInput[:len(m.dueDateInput)-1]
+			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
+				// Printable ASCII characters
+				m.dueDateInput += key
+			}
+		}
 	}
 
 	return m, cmd
 }
 
 func (m *TaskCreatorModel) blurCurrentField() {
-	if m.focusIndex == 6 {
-		m.tagsInput.Blur()
+	if m.focusIndex == 0 {
+		m.titleInput.Blur()
 	}
 }
 
 func (m *TaskCreatorModel) focusCurrentField() {
-	if m.focusIndex == 6 {
-		m.tagsInput.Focus()
+	if m.focusIndex == 0 {
+		m.titleInput.Focus()
 	}
+}
+
+// parseDueDate parses the due date input string and updates m.dueDate.
+func (m *TaskCreatorModel) parseDueDate() error {
+	value := strings.TrimSpace(m.dueDateInput)
+
+	// Handle empty or "none" to clear due date
+	if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
+		m.dueDate = nil
+		return nil
+	}
+
+	// Parse the date using the existing ParseDate function
+	date, err := ParseDate(value)
+	if err != nil {
+		return err
+	}
+
+	m.dueDate = &date
+	return nil
 }
 
 // updateRecurrenceFromCursor updates the recurrence pattern based on cursor position.
@@ -387,10 +482,19 @@ func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
 
 func (m *TaskCreatorModel) createTask() tea.Cmd {
 	return func() tea.Msg {
-		title := strings.TrimSpace(m.titleValue)
+		// Replace newlines with spaces since titles should be single logical lines
+		title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
+		title = strings.TrimSpace(title)
 		if title == "" {
 			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
 		}
+
+		// Parse due date before saving
+		if err := m.parseDueDate(); err != nil {
+			return ErrorMsg{Err: err}
+		}
+
+		now := time.Now()
 
 		// Create task
 		task := &models.Task{
@@ -403,20 +507,19 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			Priority:    m.priority,
 			ParentID:    m.parentID,
 			Section:     m.section,
+			DueDate:     m.dueDate,
+			Pinned:      m.pinned,
+			Active:      m.active,
 			Recurrence:  m.recurrence,
 		}
 
-		// Parse and set tags
-		tagsStr := strings.TrimSpace(m.tagsInput.Value())
-		if tagsStr != "" {
-			tags := strings.Split(tagsStr, ",")
-			for _, tag := range tags {
-				tag = strings.TrimSpace(tag)
-				if tag != "" {
-					task.AddTag(tag)
-				}
-			}
+		// Set PinnedAt if pinned
+		if m.pinned {
+			task.PinnedAt = &now
 		}
+
+		// Set tags from the selector
+		task.Tags = append([]string{}, m.tags...)
 
 		// Add task to project
 		m.project.Tasks = append(m.project.Tasks, task)
@@ -435,19 +538,10 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 func (m *TaskCreatorModel) View() string {
 	var b strings.Builder
 
-	// Title field (single line, truncated, Enter to edit)
+	// Title field (inline textarea)
 	b.WriteString(renderFormLabelShared("Title", 0, m.focusIndex))
-	titleDisplay := m.titleValue
-	if titleDisplay == "" {
-		titleDisplay = MutedStyle.Render("(press Enter to edit)")
-	} else {
-		titleDisplay = util.Truncate(titleDisplay, 50)
-	}
-	if m.focusIndex == 0 {
-		b.WriteString(SelectorOptionSelectedStyle.Render(titleDisplay))
-	} else {
-		b.WriteString(titleDisplay)
-	}
+	b.WriteString("\n")
+	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
 	// Type selector
@@ -470,18 +564,34 @@ func (m *TaskCreatorModel) View() string {
 	b.WriteString(renderSectionSelectorShared(m.sections, m.sectionCursor, m.focusIndex == 4))
 	b.WriteString("\n")
 
-	// Recurrence selector
-	b.WriteString(renderFormLabelShared("Recur", 5, m.focusIndex))
-	b.WriteString(renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 5, m.recurrence))
+	// Due date row
+	b.WriteString(renderFormLabelShared("Due", 5, m.focusIndex))
+	b.WriteString(renderDueDateFieldShared(m.dueDateInput, m.focusIndex == 5))
 	b.WriteString("\n")
 
-	// Tags input
-	b.WriteString(renderFormLabelShared("Tags", 6, m.focusIndex))
-	b.WriteString(m.tagsInput.View())
+	// Flags row
+	b.WriteString(renderFormLabelShared("Flags", 6, m.focusIndex))
+	b.WriteString(renderFlagsSelectorShared(m.pinned, m.active, m.flagFocus, m.focusIndex == 6))
+	b.WriteString("\n")
+
+	// Recurrence selector
+	b.WriteString(renderFormLabelShared("Recur", 7, m.focusIndex))
+	b.WriteString(renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 7, m.recurrence))
+	b.WriteString("\n")
+
+	// Tags row (read-only, modal)
+	b.WriteString(renderFormLabelShared("Tags", 8, m.focusIndex))
+	if len(m.tags) == 0 {
+		b.WriteString(MutedStyle.Render("(none)"))
+	} else {
+		b.WriteString(strings.Join(m.tags, ", "))
+	}
+	b.WriteString("  ")
+	b.WriteString(HelpStyle.Render("Ctrl+T"))
 	b.WriteString("\n")
 
 	// Description field (single line, truncated, Enter to edit)
-	b.WriteString(renderFormLabelShared("Desc", 7, m.focusIndex))
+	b.WriteString(renderFormLabelShared("Desc", 9, m.focusIndex))
 	descDisplay := m.descValue
 	if descDisplay == "" {
 		descDisplay = MutedStyle.Render("(press Enter to edit)")
@@ -489,7 +599,7 @@ func (m *TaskCreatorModel) View() string {
 		descDisplay = strings.ReplaceAll(descDisplay, "\n", " ")
 		descDisplay = util.Truncate(descDisplay, 50)
 	}
-	if m.focusIndex == 7 {
+	if m.focusIndex == 9 {
 		b.WriteString(SelectorOptionSelectedStyle.Render(descDisplay))
 	} else {
 		b.WriteString(descDisplay)
@@ -503,7 +613,7 @@ func (m *TaskCreatorModel) View() string {
 
 	// Help footer inside card
 	b.WriteString("\n\n")
-	b.WriteString(renderFormHelpFooter("Tab: fields · Enter: edit text · ←/→: options · /: search parents · Ctrl+S: save · Esc: cancel"))
+	b.WriteString(renderFormHelpFooter("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+T tags · /: search parents · Esc cancel"))
 
 	// Wrap in overlay card
 	cardWidth := m.width - 4

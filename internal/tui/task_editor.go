@@ -357,6 +357,15 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 7: // Recurrence selector
 				if m.recurrenceCursor > 0 {
 					m.recurrenceCursor--
+					if m.recurrenceCursor == 6 {
+						// "Custom..." selected - open the editor
+						return m, func() tea.Msg {
+							return ShowRecurrenceEditorMsg{
+								CurrentPattern: m.recurrence,
+								DueDate:        m.dueDate,
+							}
+						}
+					}
 					m.updateRecurrenceFromCursor()
 				}
 			}
