@@ -545,31 +545,13 @@ func (m *SettingsModel) renderTabBar() string {
 	return RenderTabBar(settingsTabNames, m.activeTab, cardWidth-2, 2)
 }
 
-// settingsFieldLabel renders a field label with focus arrow indicator and padding to a fixed width.
-func settingsFieldLabel(label string, labelWidth int, focused bool) string {
-	padded := fmt.Sprintf("%-*s", labelWidth, label)
-	if focused {
-		return FieldLabelFocusedStyle.Render("▸ " + padded)
-	}
-	return FieldLabelStyle.Render("  " + padded)
-}
-
-// settingsFieldDesc renders a dim description below a field, only when focused.
-func settingsFieldDesc(desc string, indent int, focused bool) string {
-	if !focused {
-		return ""
-	}
-	pad := strings.Repeat(" ", indent)
-	return pad + FieldDescriptionStyle.Render(desc) + "\n"
-}
-
 func (m *SettingsModel) renderGeneralTab() string {
 	var b strings.Builder
 	const labelWidth = 20 // "Undo History Depth: " is the widest
 	const indent = 22     // 2 (arrow prefix) + labelWidth
 
 	// Editor input
-	b.WriteString(settingsFieldLabel("Editor: ", labelWidth, m.focusIndex == 0))
+	b.WriteString(renderFormLabelWithWidth("Editor: ", labelWidth, m.focusIndex == 0))
 	b.WriteString(m.editorInput.View())
 	b.WriteString("\n")
 	if m.focusIndex == 0 && m.validationErr != "" {
@@ -577,12 +559,12 @@ func (m *SettingsModel) renderGeneralTab() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(settingsFieldDesc("Command used to open tasks for editing", indent, m.focusIndex == 0))
+	b.WriteString(renderFormFieldDesc("Command used to open tasks for editing", indent, m.focusIndex == 0))
 
 	b.WriteString("\n")
 
 	// Default context input
-	b.WriteString(settingsFieldLabel("Default Context: ", labelWidth, m.focusIndex == 1))
+	b.WriteString(renderFormLabelWithWidth("Default Context: ", labelWidth, m.focusIndex == 1))
 	b.WriteString(m.contextInput.View())
 	b.WriteString("\n")
 
@@ -610,12 +592,12 @@ func (m *SettingsModel) renderGeneralTab() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(settingsFieldDesc("Default context for new projects", indent, m.focusIndex == 1))
+	b.WriteString(renderFormFieldDesc("Default context for new projects", indent, m.focusIndex == 1))
 
 	b.WriteString("\n")
 
 	// Undo history depth input
-	b.WriteString(settingsFieldLabel("Undo History Depth: ", labelWidth, m.focusIndex == 2))
+	b.WriteString(renderFormLabelWithWidth("Undo History Depth: ", labelWidth, m.focusIndex == 2))
 	b.WriteString(m.undoDepthInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0=disable, max 1000)"))
@@ -626,7 +608,7 @@ func (m *SettingsModel) renderGeneralTab() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(settingsFieldDesc("Number of undo steps to keep in history", indent, m.focusIndex == 2))
+	b.WriteString(renderFormFieldDesc("Number of undo steps to keep in history", indent, m.focusIndex == 2))
 
 	return b.String()
 }
@@ -642,36 +624,36 @@ func (m *SettingsModel) renderReviewTab() string {
 	b.WriteString("\n\n")
 
 	// Due Soon Days
-	b.WriteString(settingsFieldLabel("Due Soon (days): ", labelWidth, m.focusIndex == 3))
+	b.WriteString(renderFormLabelWithWidth("Due Soon (days): ", labelWidth, m.focusIndex == 3))
 	b.WriteString(m.dueSoonInput.View())
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Tasks due within this many days", indent, m.focusIndex == 3))
+	b.WriteString(renderFormFieldDesc("Tasks due within this many days", indent, m.focusIndex == 3))
 
 	b.WriteString("\n")
 
 	// Future Days
-	b.WriteString(settingsFieldLabel("Future (days): ", labelWidth, m.focusIndex == 4))
+	b.WriteString(renderFormLabelWithWidth("Future (days): ", labelWidth, m.focusIndex == 4))
 	b.WriteString(m.futureInput.View())
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Tasks due further out than this", indent, m.focusIndex == 4))
+	b.WriteString(renderFormFieldDesc("Tasks due further out than this", indent, m.focusIndex == 4))
 
 	b.WriteString("\n")
 
 	// Old Days
-	b.WriteString(settingsFieldLabel("Old (days): ", labelWidth, m.focusIndex == 5))
+	b.WriteString(renderFormLabelWithWidth("Old (days): ", labelWidth, m.focusIndex == 5))
 	b.WriteString(m.oldDaysInput.View())
 	b.WriteString("       ")
 	b.WriteString(MutedStyle.Render("(based on last update)"))
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Tasks not updated in this many days", indent, m.focusIndex == 5))
+	b.WriteString(renderFormFieldDesc("Tasks not updated in this many days", indent, m.focusIndex == 5))
 
 	b.WriteString("\n")
 
 	// Completed Hours
-	b.WriteString(settingsFieldLabel("Completed (hours): ", labelWidth, m.focusIndex == 6))
+	b.WriteString(renderFormLabelWithWidth("Completed (hours): ", labelWidth, m.focusIndex == 6))
 	b.WriteString(m.completedHoursInput.View())
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Show recently completed within this window", indent, m.focusIndex == 6))
+	b.WriteString(renderFormFieldDesc("Show recently completed within this window", indent, m.focusIndex == 6))
 
 	if m.focusIndex >= 3 && m.focusIndex <= 6 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
@@ -680,20 +662,6 @@ func (m *SettingsModel) renderReviewTab() string {
 	}
 
 	return b.String()
-}
-
-// settingsToggle renders a toggle switch with filled/empty circle indicators.
-func settingsToggle(optionA, optionB string, aSelected bool, focused bool) string {
-	var s string
-	if aSelected {
-		s = BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionA) + MutedStyle.Render("  ○ "+optionB)
-	} else {
-		s = MutedStyle.Render("○ "+optionA) + "  " + BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionB)
-	}
-	if focused {
-		s += HelpStyle.Render("  (Space to toggle)")
-	}
-	return s
 }
 
 func (m *SettingsModel) renderBehaviorTab() string {
@@ -705,7 +673,7 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString("\n\n")
 
 	// Recent Activity Limit
-	b.WriteString(settingsFieldLabel("Task limit: ", labelWidth, m.focusIndex == 7))
+	b.WriteString(renderFormLabelWithWidth("Task limit: ", labelWidth, m.focusIndex == 7))
 	b.WriteString(m.recentActivityInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(0 = no limit)"))
@@ -716,7 +684,7 @@ func (m *SettingsModel) renderBehaviorTab() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(settingsFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 7))
+	b.WriteString(renderFormFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 7))
 
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
@@ -726,10 +694,10 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString("\n\n")
 
 	// Linked Task Jump Toggle
-	b.WriteString(settingsFieldLabel("After creation: ", labelWidth, m.focusIndex == 8))
-	b.WriteString(settingsToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 8))
+	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 8))
+	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 8))
 	b.WriteString("\n")
-	b.WriteString(settingsFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 8))
+	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 8))
 
 	return b.String()
 }
@@ -753,7 +721,7 @@ func (m *SettingsModel) View() string {
 
 	// Help footer
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("[/]: tabs · Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
+	b.WriteString(renderFormHelpFooter("[/]: tabs · Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
 
 	cardWidth := 70
 	if m.width-4 < cardWidth {

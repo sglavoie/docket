@@ -19,6 +19,39 @@ func renderFormLabelShared(label string, focusIdx int, currentFocus int) string 
 	return FieldLabelStyle.Render(paddedLabel)
 }
 
+// renderFormLabelWithWidth renders a form field label with a custom width and focus arrow indicator.
+// The arrow prefix (▸/space) is prepended to indicate the focused field.
+func renderFormLabelWithWidth(label string, labelWidth int, focused bool) string {
+	padded := fmt.Sprintf("%-*s", labelWidth, label)
+	if focused {
+		return FieldLabelFocusedStyle.Render("▸ " + padded)
+	}
+	return FieldLabelStyle.Render("  " + padded)
+}
+
+// renderFormFieldDesc renders a dim description below a field, only when focused.
+func renderFormFieldDesc(desc string, indent int, focused bool) string {
+	if !focused {
+		return ""
+	}
+	pad := strings.Repeat(" ", indent)
+	return pad + FieldDescriptionStyle.Render(desc) + "\n"
+}
+
+// renderFormToggle renders a toggle switch with filled/empty circle indicators.
+func renderFormToggle(optionA, optionB string, aSelected bool, focused bool) string {
+	var s string
+	if aSelected {
+		s = BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionA) + MutedStyle.Render("  ○ "+optionB)
+	} else {
+		s = MutedStyle.Render("○ "+optionA) + "  " + BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionB)
+	}
+	if focused {
+		s += HelpStyle.Render("  (Space to toggle)")
+	}
+	return s
+}
+
 // renderTypeSelectorShared renders the task type selector options.
 func renderTypeSelectorShared(types []models.TaskType, typeCursor int, focused bool) string {
 	var b strings.Builder
