@@ -324,23 +324,22 @@ func (m *ProjectEditorModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Help footer
-	b.WriteString(renderFormHelpFooter("Tab/Shift+Tab switch · ←/→ context · Ctrl+S save · Esc cancel"))
-
-	// Wrap in overlay card
+	// Build title
 	title := "Edit Project"
 	if m.hasChanges {
 		title += " *"
 	}
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	config := OverlayCardConfig{
-		Title:        title,
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+
+	// Footer
+	left := HelpStyle.Render("Tab/Shift+Tab switch · ←/→ context · Ctrl+S save · Esc cancel")
+	right := MutedStyle.Render(title)
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, right, m.width))
+
+	return out.String()
 }

@@ -478,50 +478,38 @@ func (m *BulkEditModel) View() string {
 	lines := strings.Split(fullContent, "\n")
 	viewportH := m.viewportHeight()
 
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Bulk Edit", subtitle))
+	out.WriteString("\n\n")
+
 	// Only apply scrolling if content exceeds viewport
 	if len(lines) > viewportH {
 		start := m.scrollOffset
 		end := start + viewportH
 
-		// Clamp end to content length
 		if end > len(lines) {
 			end = len(lines)
 		}
 
-		var visible strings.Builder
-
-		// Show scroll-up indicator if content is hidden above
 		if start > 0 {
-			visible.WriteString(MutedStyle.Render("  ↑ scroll up for more"))
-			visible.WriteString("\n")
+			out.WriteString(MutedStyle.Render("  ↑ scroll up for more"))
+			out.WriteString("\n")
 		}
 
-		// Render visible lines
 		for i := start; i < end; i++ {
-			visible.WriteString(lines[i])
+			out.WriteString(lines[i])
 			if i < end-1 {
-				visible.WriteString("\n")
+				out.WriteString("\n")
 			}
 		}
 
-		// Show scroll-down indicator if content is hidden below
 		if end < len(lines) {
-			visible.WriteString("\n")
-			visible.WriteString(MutedStyle.Render("  ↓ scroll down for more"))
+			out.WriteString("\n")
+			out.WriteString(MutedStyle.Render("  ↓ scroll down for more"))
 		}
-
-		return renderOverlayCard(visible.String(), m.Width(), m.Height(), OverlayCardConfig{
-			Title:    "Bulk Edit",
-			Subtitle: subtitle,
-			Width:    boxWidth,
-			Centered: true,
-		})
+	} else {
+		out.WriteString(fullContent)
 	}
 
-	return renderOverlayCard(fullContent, m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Bulk Edit",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return out.String()
 }

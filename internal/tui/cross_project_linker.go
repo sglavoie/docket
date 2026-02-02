@@ -404,28 +404,22 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 }
 
 func (m *CrossProjectLinkerModel) View() string {
-	var b strings.Builder
+	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30))
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(m.getStepTitle(), subtitle))
+	out.WriteString("\n\n")
 
 	switch m.step {
 	case StepSelectProject:
-		b.WriteString(m.viewProjectSelection())
+		out.WriteString(m.viewProjectSelection())
 	case StepSelectTask:
-		b.WriteString(m.viewTaskSelection())
+		out.WriteString(m.viewTaskSelection())
 	case StepSelectLinkType:
-		b.WriteString(m.viewLinkTypeSelection())
+		out.WriteString(m.viewLinkTypeSelection())
 	}
 
-	cardWidth := m.Width() - 4
-	if cardWidth > 70 {
-		cardWidth = 70
-	}
-
-	return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    m.getStepTitle(),
-		Subtitle: fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30)),
-		Width:    cardWidth,
-		Centered: true,
-	})
+	return out.String()
 }
 
 func (m *CrossProjectLinkerModel) getStepTitle() string {

@@ -373,24 +373,16 @@ func (m *RecurrenceEditorModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Wrap in overlay card
-	cardWidth := m.width - 4
-	if cardWidth > 50 {
-		cardWidth = 50
-	}
+	left := HelpStyle.Render("Tab: nav · ←→: select · Space: toggle · Enter: confirm")
 
-	cfg := OverlayCardConfig{
-		Title:        "Custom Recurrence",
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Custom Recurrence", ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, "", m.width))
 
-	content := b.String()
-	content += "\n"
-	content += MutedStyle.Render("Tab: nav · ←→: select · Space: toggle · Enter: confirm")
-
-	return renderOverlayCard(content, m.width, m.height, cfg)
+	return out.String()
 }
 
 // HasTextInput returns false for the recurrence editor.

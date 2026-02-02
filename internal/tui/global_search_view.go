@@ -11,77 +11,70 @@ import (
 
 // View renders the global search view.
 func (m *GlobalSearchModel) View() string {
-	var content strings.Builder
+	var out strings.Builder
+
+	// Title
+	subtitle := fmt.Sprintf("%d tasks", len(m.allTasks))
+	if len(m.filtered) != len(m.allTasks) {
+		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
+	}
+	out.WriteString(renderFullscreenTitle("Global Search", subtitle))
+	out.WriteString("\n")
 
 	// Tab bar
-	content.WriteString(m.renderTabBar())
-	content.WriteString("\n\n")
+	out.WriteString(m.renderTabBar())
+	out.WriteString("\n\n")
 
 	// Search input
-	content.WriteString(m.searchInput.View())
-	content.WriteString("\n")
+	out.WriteString(m.searchInput.View())
+	out.WriteString("\n")
 
 	// Show autocomplete suggestions if active
 	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
 		for i, s := range m.suggestions {
 			if i == m.acCursor {
-				content.WriteString(SelectedStyle.Render("> " + s.display))
+				out.WriteString(SelectedStyle.Render("> " + s.display))
 			} else {
-				content.WriteString(MutedStyle.Render("  " + s.display))
+				out.WriteString(MutedStyle.Render("  " + s.display))
 			}
-			content.WriteString("\n")
+			out.WriteString("\n")
 		}
 	}
-	content.WriteString("\n")
+	out.WriteString("\n")
 
 	// Show active filters as badges
 	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
-		content.WriteString(m.renderFilterBadges())
-		content.WriteString("\n\n")
+		out.WriteString(m.renderFilterBadges())
+		out.WriteString("\n\n")
 	}
 
 	// Handle edge cases
 	if len(m.allTasks) == 0 {
-		content.WriteString(MutedStyle.Render("No tasks found in any project."))
-		content.WriteString("\n\n")
-		content.WriteString(m.renderHelpText())
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Global Search",
-			Subtitle: "0 tasks",
-			Centered: false,
-		})
+		out.WriteString(MutedStyle.Render("No tasks found in any project."))
+		out.WriteString("\n\n")
+		out.WriteString(m.renderHelpText())
+		return out.String()
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		content.WriteString(MutedStyle.Render("Type to search across all tasks..."))
-		content.WriteString("\n\n")
-		content.WriteString(MutedStyle.Render("Filters: !priority #tag @due $status ^type /section *active"))
-		content.WriteString("\n\n")
-		content.WriteString(m.renderHelpText())
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Global Search",
-			Subtitle: fmt.Sprintf("%d tasks", len(m.allTasks)),
-			Centered: false,
-		})
+		out.WriteString(MutedStyle.Render("Type to search across all tasks..."))
+		out.WriteString("\n\n")
+		out.WriteString(MutedStyle.Render("Filters: !priority #tag @due $status ^type /section *active"))
+		out.WriteString("\n\n")
+		out.WriteString(m.renderHelpText())
+		return out.String()
 	}
 
 	if len(m.filtered) == 0 {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
-		content.WriteString("\n\n")
-		content.WriteString(m.renderHelpText())
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Global Search",
-			Subtitle: fmt.Sprintf("0/%d matching", len(m.allTasks)),
-			Centered: false,
-		})
+		out.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
+		out.WriteString("\n\n")
+		out.WriteString(m.renderHelpText())
+		return out.String()
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.height - 10 // Account for card border, title, input, footer
+	paneHeight := m.height - 8 // title + tab bar + input + footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
@@ -99,25 +92,18 @@ func (m *GlobalSearchModel) View() string {
 	previewContent := m.renderPreview()
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
-	content.WriteString(splitPane)
-	content.WriteString("\n")
+	out.WriteString(splitPane)
+	out.WriteString("\n")
 
 	// Footer
-	content.WriteString(m.renderHelpText())
+	out.WriteString(m.renderHelpText())
 
-	// Build subtitle showing count
-	subtitle := fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.allTasks))
-
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Global Search",
-		Subtitle: subtitle,
-		Centered: false,
-	})
+	return out.String()
 }
 
 // renderTabBar renders the tab bar for filtering.
 func (m *GlobalSearchModel) renderTabBar() string {
-	return RenderTabBar(globalSearchTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	return renderWrappingTabBar(globalSearchTabNames, m.activeTab, m.width)
 }
 
 // renderFilterBadges renders active filters as styled badges.

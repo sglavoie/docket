@@ -238,55 +238,46 @@ func (m *TaskJumperModel) scoreTask(task *models.Task, query string) (int, []int
 }
 
 func (m *TaskJumperModel) View() string {
-	var content strings.Builder
+	var out strings.Builder
+
+	// Title
+	subtitle := fmt.Sprintf("%d tasks", len(m.tasks))
+	if len(m.filtered) != len(m.tasks) {
+		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.tasks))
+	}
+	out.WriteString(renderFullscreenTitle("Jump to Task", subtitle))
+	out.WriteString("\n")
 
 	// Search input
-	content.WriteString(m.searchInput.View())
-	content.WriteString("\n\n")
+	out.WriteString(m.searchInput.View())
+	out.WriteString("\n\n")
 
 	// Handle edge cases
 	if len(m.tasks) == 0 {
-		content.WriteString(MutedStyle.Render("No tasks in this project."))
-		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Press Esc to close"))
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Jump to Task",
-			Subtitle: "0 tasks",
-			Centered: false,
-		})
+		out.WriteString(MutedStyle.Render("No tasks in this project."))
+		out.WriteString("\n\n")
+		out.WriteString(HelpStyle.Render("Press Esc to close"))
+		return out.String()
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.height - 10 // Account for card border, title, input, footer
+	paneHeight := m.height - 8 // title + input + footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
 
 	// Split pane: list on left, preview on right
-	// Use m.listWidth and m.previewWidth which are calculated in SetSize
-	// to account for card border and padding
 	listContent := m.renderTaskList()
 	previewContent := m.renderPreview()
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
-	content.WriteString(splitPane)
-	content.WriteString("\n")
+	out.WriteString(splitPane)
+	out.WriteString("\n")
 
 	// Footer
-	content.WriteString(HelpStyle.Render("↑↓ nav • Enter • Esc"))
+	out.WriteString(HelpStyle.Render("↑↓ nav • Enter • Esc"))
 
-	// Build subtitle showing count
-	subtitle := fmt.Sprintf("%d tasks", len(m.tasks))
-	if len(m.filtered) != len(m.tasks) {
-		subtitle = fmt.Sprintf("%d/%d matching", len(m.filtered), len(m.tasks))
-	}
-
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Jump to Task",
-		Subtitle: subtitle,
-		Centered: false,
-	})
+	return out.String()
 }
 
 // renderTaskList renders the filtered task list.

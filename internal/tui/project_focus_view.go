@@ -860,44 +860,10 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 
 // renderPriorityBadge renders a priority indicator.
 func (m *ProjectFocusViewModel) renderPriorityBadge(priority int) string {
-	badge := fmt.Sprintf("!%d", priority)
-	switch priority {
-	case 1:
-		return PriorityHighStyle.Render(badge)
-	case 2:
-		return PriorityMediumStyle.Render(badge)
-	default:
-		return PriorityLowStyle.Render(badge)
-	}
+	return renderPriorityBadge(priority)
 }
 
-// formatRelativeDue formats the due date for display.
+// formatRelativeDue delegates to the shared formatRelativeDue helper.
 func (m *ProjectFocusViewModel) formatRelativeDue(dueDate *time.Time) string {
-	if dueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
-
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
-
-	switch {
-	case daysUntil < -1:
-		return OverdueStyle.Render(fmt.Sprintf("%d days ago", -daysUntil))
-	case daysUntil == -1:
-		return OverdueStyle.Render("yesterday")
-	case daysUntil == 0:
-		return DueTodayStyle.Render("today")
-	case daysUntil == 1:
-		return DueDateStyle.Render("tomorrow")
-	case daysUntil < 7:
-		return DueDateStyle.Render(dueDate.Format("Mon"))
-	default:
-		if dueDate.Year() != now.Year() {
-			return DueDateStyle.Render(dueDate.Format("Jan 2 '06"))
-		}
-		return DueDateStyle.Render(dueDate.Format("Jan 2"))
-	}
+	return formatRelativeDue(dueDate)
 }

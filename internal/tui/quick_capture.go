@@ -95,24 +95,21 @@ func (m *QuickCaptureModel) View() string {
 	// Help text
 	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
 	b.WriteString("\n")
+	var helpText string
 	if m.isAutocompleteActive() {
-		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
+		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
+		helpText = "Enter: create · Esc: cancel"
 	}
 
-	// Same card width calculation as task_creator
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	config := OverlayCardConfig{
-		Title:        "Quick Capture",
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Quick Capture", ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	return out.String()
 }
 
 // HasTextInput returns true because quick capture uses a textarea input.

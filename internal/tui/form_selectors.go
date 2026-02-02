@@ -252,8 +252,3 @@ func renderContextSelectorShared(contexts []string, contextCursor int, focused b
 	}
 	return b.String()
 }
-
-// renderFormHelpFooter renders a muted help line for form views.
-func renderFormHelpFooter(text string) string {
-	return MutedStyle.Render(text)
-}

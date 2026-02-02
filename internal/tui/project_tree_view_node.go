@@ -127,7 +127,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Priority indicator (compact)
 	if task.Priority <= 2 {
-		indicators += formatPriorityBadge(task.Priority) + " "
+		indicators += renderPriorityBadge(task.Priority) + " "
 	}
 
 	// Due date display (compact)

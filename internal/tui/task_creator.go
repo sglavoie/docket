@@ -611,22 +611,19 @@ func (m *TaskCreatorModel) View() string {
 		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	// Help footer inside card
-	b.WriteString("\n\n")
-	b.WriteString(renderFormHelpFooter("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+T tags · /: search parents · Esc cancel"))
+	// Footer
+	left := HelpStyle.Render("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+T tags · /: search parents · Esc cancel")
+	right := MutedStyle.Render("Create Task")
+	content := b.String()
 
-	// Wrap in overlay card
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	cfg := OverlayCardConfig{
-		Title:        "Create Task",
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, cfg)
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Create Task", ""))
+	out.WriteString("\n\n")
+	out.WriteString(content)
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, right, m.width))
+
+	return out.String()
 }
 
 // HasTextInput returns true because the task creator always has inputs.

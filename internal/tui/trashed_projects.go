@@ -132,42 +132,33 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the trashed projects picker.
 func (m *TrashedProjectsModel) View() string {
-	boxWidth := 50
-	if m.Width() > 0 && m.Width() < boxWidth+10 {
-		boxWidth = m.Width() - 10
-	}
+	subtitle := fmt.Sprintf("%d projects", len(m.Items))
 
-	var content strings.Builder
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(m.Config.Title, subtitle))
+	out.WriteString("\n\n")
 
 	// Confirmation prompt or keybinding hints
 	if m.confirm.IsActive() {
-		content.WriteString(m.confirm.Render())
+		out.WriteString(m.confirm.Render())
 	} else {
-		content.WriteString(MutedStyle.Render("Enter: restore | d: delete | q: close"))
+		out.WriteString(MutedStyle.Render("Enter: restore | d: delete | q: close"))
 	}
-	content.WriteString("\n\n")
+	out.WriteString("\n\n")
 
 	// Search bar
-	content.WriteString(m.RenderSearchBar())
+	out.WriteString(m.RenderSearchBar())
 
 	// List
 	maxVisible := 12
 	if m.Height() > 0 {
-		maxVisible = m.Height() - 14
+		maxVisible = m.Height() - 8
 	}
-	content.WriteString(m.RenderList(maxVisible))
+	out.WriteString(m.RenderList(maxVisible))
 
 	// Footer
-	content.WriteString("\n")
-	content.WriteString(m.RenderFooter())
+	out.WriteString("\n")
+	out.WriteString(m.RenderFooter())
 
-	// Build subtitle
-	subtitle := fmt.Sprintf("%d projects", len(m.Items))
-
-	return renderOverlayCard(content.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    m.Config.Title,
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	return out.String()
 }

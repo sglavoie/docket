@@ -116,7 +116,7 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionC
 	title := SidebarHeaderStyle.Render(task.Title)
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
-	priorityBadge := formatPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
@@ -586,19 +586,6 @@ func (m *ProjectTreeModel) padSidebarToHeight(content string, width, height int)
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// formatPriorityBadge returns a styled priority badge.
-func formatPriorityBadge(priority int) string {
-	badge := fmt.Sprintf("!%d", priority)
-	switch priority {
-	case 1:
-		return PriorityHighStyle.Render(badge)
-	case 2:
-		return PriorityMediumStyle.Render(badge)
-	default:
-		return PriorityLowStyle.Render(badge)
-	}
 }
 
 // formatRelativeDueDateVerbose returns a verbose relative due date string.

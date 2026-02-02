@@ -12,41 +12,39 @@ import (
 func (m *DailyReviewModel) View() string {
 	totalCount := m.getTotalTaskCount()
 
+	var b strings.Builder
+
+	// Title
+	subtitle := "all caught up"
+	if totalCount > 0 {
+		subtitle = fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder))
+	}
+	b.WriteString(renderFullscreenTitle("Review", subtitle))
+	b.WriteString("\n")
+
 	if totalCount == 0 {
-		var b strings.Builder
+		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("No tasks to review."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Your inbox is clear. Press q or Esc to close."))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Review",
-			Subtitle: "all caught up",
-			Centered: true,
-		})
+		return b.String()
 	}
-
-	var b strings.Builder
 
 	// Tab bar
 	b.WriteString(m.renderReviewTabBar())
 	b.WriteString("\n\n")
 
-	// Calculate available height for content (subtract tab bar)
-	contentHeight := m.height - 14
+	// Calculate available height for content
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
+	contentHeight := m.height - 7
 
 	// Render all sections
 	if m.totalTasks == 0 {
 		b.WriteString(MutedStyle.Render("No tasks in this tab."))
 		b.WriteString("\n\n")
-
 		footer := HelpStyle.Render("[/]: tabs | ? help")
 		b.WriteString(footer)
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Review",
-			Subtitle: fmt.Sprintf("%d tasks total", totalCount),
-			Centered: true,
-		})
+		return b.String()
 	}
 
 	lines, cursorLineIndex := m.renderAllSections()
@@ -87,19 +85,15 @@ func (m *DailyReviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("h/j/k/l nav | n/N section | * active | ,s/d/b/x status | ? help")
-	b.WriteString(footer)
+	left := HelpStyle.Render("h/j/k/l nav | n/N section | * active | ,s/d/b/x status | ? help")
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Review",
-		Subtitle: fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder)),
-		Centered: true,
-	})
+	return b.String()
 }
 
 // renderReviewTabBar renders the tab bar for daily review sections.
 func (m *DailyReviewModel) renderReviewTabBar() string {
-	// Count tasks per tab for badge display
 	tabCounts := []int{
 		len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) + len(m.future),
 		len(m.inProgress) + len(m.blocked),
@@ -107,66 +101,12 @@ func (m *DailyReviewModel) renderReviewTabBar() string {
 		len(m.completed),
 	}
 
-	availableWidth := m.width - 10
-
-	// Build labels and measure total width without borders
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-	var labels []string
-	totalWidth := 0
+	labels := make([]string, len(dailyReviewTabNames))
 	for i, name := range dailyReviewTabNames {
-		label := fmt.Sprintf("%s (%d)", name, tabCounts[i])
-		labels = append(labels, label)
-		totalWidth += lipgloss.Width(plainStyle.Render(label))
-	}
-	fitsSingleLine := totalWidth <= availableWidth
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
+		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
 
-	var tabs []string
-	for i, label := range labels {
-		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(label))
-		} else {
-			tabs = append(tabs, inactiveStyle.Render(label))
-		}
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-
-	// Extend bottom border to fill remaining width (only when tabs fit)
-	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
-			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-		}
-	}
-
-	return row
+	return renderWrappingTabBar(labels, m.activeTab, m.width)
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
@@ -192,11 +132,11 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 	var lines []string
 	currentIndex := 0
 	cursorLineIndex := 0
-	separatorWidth := min(m.width-10, 50)
+	separator := renderHorizontalDivider(m.width)
 
 	for i, section := range m.sectionOrder {
 		if i > 0 {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 
 		tasks := m.getSectionTasks(section)
@@ -299,7 +239,7 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 	// Priority (only show high priority)
 	priorityStr := ""
 	if task.Priority <= 2 {
-		priorityStr = formatPriorityBadge(task.Priority) + " "
+		priorityStr = renderPriorityBadge(task.Priority) + " "
 	}
 
 	// Title

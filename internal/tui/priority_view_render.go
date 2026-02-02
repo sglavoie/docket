@@ -4,26 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	bar := RenderTabBar(priorityTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
 	hasSubTabs := len(m.subTabNames) > 1
 	if hasSubTabs {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
-		unfocusedPad := " "
-		if !m.subTabRowFocused {
-			bar = focusIndicator + bar
-		} else {
-			bar = unfocusedPad + bar
-		}
+		return renderSubTabBarWithFocus(priorityTabNames, m.activeTab, !m.subTabRowFocused, m.width)
 	}
-	return bar
+	return renderWrappingTabBar(priorityTabNames, m.activeTab, m.width)
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
@@ -36,16 +27,7 @@ func (m *PriorityViewModel) renderSubTabBar() string {
 	tabs = append(tabs, "All")
 	tabs = append(tabs, m.subTabNames...)
 
-	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
-
-	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
-	unfocusedPad := " "
-	if m.subTabRowFocused {
-		bar = focusIndicator + bar
-	} else {
-		bar = unfocusedPad + bar
-	}
-	return bar
+	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
 }
 
 // renderPrefixPopup renders the prefix key popup.
@@ -65,7 +47,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	}
 
 	task := m.suggestion.Task.Task
-	boxWidth := min(m.width-6, 54) // Constrain box width
+	boxWidth := m.width - 4
 
 	// Build task line
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
@@ -116,7 +98,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
 	hasContent := false
-	separatorWidth := min(m.width-10, 50)
+	separator := renderHorizontalDivider(m.width)
 
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
@@ -128,7 +110,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(today) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("DUE TODAY", len(today), false))
 		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
@@ -137,7 +119,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(thisWeek) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("THIS WEEK", len(thisWeek), false))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
@@ -146,7 +128,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(later) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("LATER", len(later), false))
 		lines = append(lines, m.renderGroup(later, currentIndex, false)...)
@@ -155,7 +137,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(backlog) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroup(backlog, currentIndex, false)...)
 		hasContent = true
@@ -164,7 +146,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	// Waiting On section (blocked tasks)
 	if len(waitingOn) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		// In Blocked tab, tasks are navigable (rendered as regular tasks)
 		if m.activeTab == priorityTabBlocked {
@@ -338,15 +320,7 @@ func (m *PriorityViewModel) getBlockingReason(task *models.Task) string {
 	return "(blocked)"
 }
 
-// renderPriorityBadge renders a priority indicator.
+// renderPriorityBadge delegates to the shared renderPriorityBadge helper.
 func (m *PriorityViewModel) renderPriorityBadge(priority int) string {
-	badge := fmt.Sprintf("!%d", priority)
-	switch priority {
-	case 1:
-		return PriorityHighStyle.Render(badge)
-	case 2:
-		return PriorityMediumStyle.Render(badge)
-	default:
-		return PriorityLowStyle.Render(badge)
-	}
+	return renderPriorityBadge(priority)
 }

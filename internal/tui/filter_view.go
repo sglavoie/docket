@@ -280,30 +280,26 @@ func (m *FilterViewModel) View() string {
 		content.WriteString("\n")
 	}
 
-	// Footer hint
-	content.WriteString("\n")
-	if len(m.items) > 0 {
-		content.WriteString(HelpStyle.Render(fmt.Sprintf("q close | 1-%d clear | c clear all", len(m.items))))
-	} else {
-		content.WriteString(HelpStyle.Render("q close"))
-	}
-
-	// Build subtitle showing count
+	// Build subtitle
 	subtitle := ""
 	if len(m.items) > 0 {
 		subtitle = fmt.Sprintf("%d active", len(m.items))
 	}
 
-	// Calculate box width
-	boxWidth := 46
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
+	// Footer
+	var helpText string
+	if len(m.items) > 0 {
+		helpText = fmt.Sprintf("q close | 1-%d clear | c clear all", len(m.items))
+	} else {
+		helpText = "q close"
 	}
 
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Active Filters",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Active Filters", subtitle))
+	out.WriteString("\n\n")
+	out.WriteString(content.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	return out.String()
 }

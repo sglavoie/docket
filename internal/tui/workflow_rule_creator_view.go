@@ -160,28 +160,21 @@ func (m *WorkflowRuleCreatorModel) View() string {
 		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	// Help footer
-	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Ctrl+f: fields | Ctrl+t: types | Tab: nav | +/-: add/remove | Ctrl+S: save | Esc: cancel"))
-
-	// Wrap in overlay card
-	cardWidth := m.width - 4
-	if cardWidth > 85 {
-		cardWidth = 85
-	}
-
 	title := "Create Workflow Rule"
 	if m.editingRule != nil {
 		title = "Edit Workflow Rule"
 	}
 
-	cfg := OverlayCardConfig{
-		Title:        title,
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, cfg)
+	left := HelpStyle.Render("Ctrl+f: fields | Ctrl+t: types | Tab: nav | +/-: add/remove | Ctrl+S: save | Esc: cancel")
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, "", m.width))
+
+	return out.String()
 }
 
 // renderSelector renders a scrollable selector with context around the current selection.

@@ -538,11 +538,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 
 // renderTabBar renders a tab bar with the active tab highlighted.
 func (m *SettingsModel) renderTabBar() string {
-	cardWidth := 66
-	if m.width-8 < cardWidth {
-		cardWidth = m.width - 8
-	}
-	return RenderTabBar(settingsTabNames, m.activeTab, cardWidth-2, 2)
+	return renderWrappingTabBar(settingsTabNames, m.activeTab, m.width)
 }
 
 func (m *SettingsModel) renderGeneralTab() string {
@@ -719,20 +715,16 @@ func (m *SettingsModel) View() string {
 		b.WriteString(m.renderBehaviorTab())
 	}
 
-	// Help footer
-	b.WriteString("\n")
-	b.WriteString(renderFormHelpFooter("[/]: tabs · Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel"))
+	// Footer
+	left := HelpStyle.Render("[/]: tabs · Tab: fields · ←/→: context · Space: toggle · Enter: save · Esc: cancel")
+	right := MutedStyle.Render("Settings")
 
-	cardWidth := 70
-	if m.width-4 < cardWidth {
-		cardWidth = m.width - 4
-	}
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Settings", ""))
+	out.WriteString("\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	cfg := OverlayCardConfig{
-		Title:        "Settings",
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, cfg)
+	return out.String()
 }

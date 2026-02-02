@@ -873,42 +873,38 @@ func (m *PriorityViewModel) clampCursor() {
 func (m *PriorityViewModel) View() string {
 	var b strings.Builder
 
+	// Title
+	subtitle := fmt.Sprintf("%d tasks • %s", m.totalTasks, m.project.Name)
+	b.WriteString(renderFullscreenTitle("Priority View", subtitle))
+	b.WriteString("\n")
+
 	_, _, _, _, _, filteredWaiting := m.filteredGroupsWithSubTab()
 
 	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
-		tabBar := m.renderPriorityTabBar()
-		b.WriteString(tabBar)
+		b.WriteString(m.renderPriorityTabBar())
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render("No tasks in this view."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("[/]: tabs" + m.activeTabHint()))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Priority View",
-			Subtitle: m.project.Name,
-			Centered: true,
-		})
+		return b.String()
 	}
 
 	// Pre-render conditional sections to calculate their actual height
 	suggestionSection := m.renderSuggestionSection()
 	prefixPopup := m.renderPrefixPopup()
 	tabHint := m.activeTabHint()
-	footer := HelpStyle.Render("↑/↓ navigate • [/] tabs • s start suggested • ,s/,d status" + tabHint)
 
 	// Calculate available height for task list
-	// Card overhead breakdown:
-	// - OverlayCardStyle border: 2 lines (top + bottom)
-	// - OverlayCardStyle padding: 2 lines (1 top + 1 bottom)
-	// - Subtitle + blank line: 2 lines
-	// - Newline before footer: 1 line
-	// - Footer: 1 line
-	// Total: 8 lines
-	cardOverhead := 8
-	tabBarHeight := 2 // tab bar + newline
-	contentHeight := m.height - cardOverhead - tabBarHeight
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
+	contentHeight := m.height - 6
 
-	// Account for suggestion section if present (use lipgloss.Height for accurate measurement)
+	// Account for sub-tab bar
+	hasSubTabs := len(m.subTabNames) > 1
+	if hasSubTabs {
+		contentHeight -= 2 // sub-tab row + newline
+	}
+
+	// Account for suggestion section if present
 	if suggestionSection != "" {
 		suggestionLines := lipgloss.Height(suggestionSection)
 		contentHeight -= suggestionLines
@@ -916,7 +912,7 @@ func (m *PriorityViewModel) View() string {
 
 	// Account for prefix popup if present
 	if prefixPopup != "" {
-		popupLines := lipgloss.Height(prefixPopup) + 1 // +1 for newline after
+		popupLines := lipgloss.Height(prefixPopup) + 1
 		contentHeight -= popupLines
 	}
 
@@ -927,10 +923,9 @@ func (m *PriorityViewModel) View() string {
 	// Reserve line for scroll indicator if we'll need to scroll
 	needsScrolling := len(lines) > contentHeight
 	if needsScrolling {
-		contentHeight-- // Reserve 1 line for scroll indicator
+		contentHeight--
 	}
 
-	// Ensure contentHeight is at least 1
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
@@ -955,24 +950,24 @@ func (m *PriorityViewModel) View() string {
 		}
 	}
 
-	// Write tab bar
+	// Tab bar
 	b.WriteString(m.renderPriorityTabBar())
 	b.WriteString("\n")
 
-	// Write sub-tab bar
+	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()
 	if subTabBar != "" {
 		b.WriteString(subTabBar)
 		b.WriteString("\n")
 	}
 
-	// Write suggestion section
+	// Suggestion section
 	if suggestionSection != "" {
 		b.WriteString(suggestionSection)
 		b.WriteString("\n")
 	}
 
-	// Write visible task lines
+	// Visible task lines
 	visibleLines := lines[startIdx:endIdx]
 	b.WriteString(strings.Join(visibleLines, "\n"))
 
@@ -991,13 +986,11 @@ func (m *PriorityViewModel) View() string {
 	}
 
 	// Footer
-	b.WriteString(footer)
+	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • s start suggested • ,s/,d status" + tabHint)
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Priority View",
-		Subtitle: fmt.Sprintf("%d tasks • %s", m.totalTasks, m.project.Name),
-		Centered: true,
-	})
+	return b.String()
 }
 
 // GetHelpItems returns help items for this view.

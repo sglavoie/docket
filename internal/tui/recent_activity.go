@@ -277,19 +277,22 @@ func (m *RecentActivityModel) GetHelpItems() []HelpItem {
 }
 
 func (m *RecentActivityModel) View() string {
+	var b strings.Builder
+
+	subtitle := fmt.Sprintf("%d tasks", len(m.filtered))
+	if m.SearchQuery() != "" || m.IsSearchMode() {
+		subtitle = fmt.Sprintf("%d/%d tasks", len(m.filtered), len(m.tasks))
+	}
+	b.WriteString(renderFullscreenTitle("Latest Activity", subtitle))
+	b.WriteString("\n")
+
 	if len(m.filtered) == 0 && !m.IsSearchMode() && m.SearchQuery() == "" {
-		var b strings.Builder
+		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("No recent activity found."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close."))
-		return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
-			Title:    "Latest Activity",
-			Subtitle: "no tasks",
-			Centered: true,
-		})
+		return b.String()
 	}
-
-	var b strings.Builder
 
 	// Tab bar
 	b.WriteString(m.renderTabBar())
@@ -304,7 +307,8 @@ func (m *RecentActivityModel) View() string {
 		b.WriteString("\n")
 	}
 
-	contentHeight := m.Height() - 11 // account for tab bar
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
+	contentHeight := m.Height() - 6
 	if m.IsSearchMode() || m.SearchQuery() != "" {
 		contentHeight--
 	}
@@ -338,23 +342,15 @@ func (m *RecentActivityModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	footer := HelpStyle.Render("j/k nav | [/] tabs | Enter open | p preview | / filter | r refresh | ? help")
-	b.WriteString(footer)
+	left := HelpStyle.Render("j/k nav | [/] tabs | Enter open | p preview | / filter | r refresh | ? help")
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
-	subtitle := fmt.Sprintf("%d tasks", len(m.filtered))
-	if m.SearchQuery() != "" || m.IsSearchMode() {
-		subtitle = fmt.Sprintf("%d/%d tasks", len(m.filtered), len(m.tasks))
-	}
-
-	return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
-		Title:    "Latest Activity",
-		Subtitle: subtitle,
-		Centered: true,
-	})
+	return b.String()
 }
 
 func (m *RecentActivityModel) renderTabBar() string {
-	return RenderTabBar(recentActivityTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
+	return renderWrappingTabBar(recentActivityTabNames, m.activeTab, m.Width())
 }
 
 func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {

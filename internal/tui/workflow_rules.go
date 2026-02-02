@@ -268,6 +268,9 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 func (m *WorkflowRulesModel) View() string {
 	var b strings.Builder
 
+	b.WriteString(renderFullscreenTitle("Workflow Rules", fmt.Sprintf("%d rules", len(m.filteredRules))))
+	b.WriteString("\n\n")
+
 	// Expanded view mode - show full rule details
 	if m.expandedView && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
 		rule := m.filteredRules[m.cursor]
@@ -367,19 +370,8 @@ func (m *WorkflowRulesModel) View() string {
 		}
 		b.WriteString("\n\n")
 
-		b.WriteString(MutedStyle.Render("Enter/Esc: close"))
-
-		cardWidth := 70
-		if m.Width()-4 < cardWidth {
-			cardWidth = m.Width() - 4
-		}
-		config := OverlayCardConfig{
-			Title:        "Rule Details",
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(b.String(), m.Width(), m.Height(), config)
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close"), "", m.Width()))
+		return b.String()
 	}
 
 	// Show search input when active
@@ -483,26 +475,19 @@ func (m *WorkflowRulesModel) View() string {
 	}
 
 	// Help footer
-	b.WriteString("\n\n")
+	var helpText string
 	if len(m.filteredRules) > 0 {
-		b.WriteString(MutedStyle.Render("/: search · j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"))
+		helpText = "/: search · j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"
 	} else if m.searchQuery == "" {
-		b.WriteString(MutedStyle.Render("/: search · n: new rule · q: close"))
+		helpText = "/: search · n: new rule · q: close"
 	} else {
-		b.WriteString(MutedStyle.Render("Esc: clear search · n: new rule · q: close"))
+		helpText = "Esc: clear search · n: new rule · q: close"
 	}
 
-	cardWidth := 70
-	if m.Width()-4 < cardWidth {
-		cardWidth = m.Width() - 4
-	}
-	config := OverlayCardConfig{
-		Title:        "Workflow Rules",
-		Width:        cardWidth,
-		CenterH:      true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.Width(), m.Height(), config)
+	b.WriteString("\n")
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
+
+	return b.String()
 }
 
 // HasTextInput returns true when search is active.

@@ -535,28 +535,24 @@ func (m *TaskEditorModel) View() string {
 		content.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	// Help footer inside card
-	content.WriteString("\n\n")
-	content.WriteString(renderFormHelpFooter("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel"))
-
-	// Build card title
+	// Build title
 	cardTitle := fmt.Sprintf("Edit Task #%d", m.task.ShortID)
 	if m.hasChanges {
 		cardTitle += " *"
 	}
 
-	// Wrap in overlay card
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	cfg := OverlayCardConfig{
-		Title:        cardTitle,
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(content.String(), m.width, m.height, cfg)
+	// Footer
+	left := HelpStyle.Render("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel")
+	right := MutedStyle.Render(cardTitle)
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(cardTitle, ""))
+	out.WriteString("\n\n")
+	out.WriteString(content.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, right, m.width))
+
+	return out.String()
 }
 
 // HasTextInput returns true because the task editor contains inputs.

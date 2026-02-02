@@ -15,16 +15,18 @@ func (m *DueDateOverviewModel) View() string {
 	var b strings.Builder
 
 	allTotal := len(m.overdue) + len(m.today) + len(m.thisWeek) + len(m.later)
+
+	// Title
+	subtitle := fmt.Sprintf("%d tasks across all projects", allTotal)
+	b.WriteString(renderFullscreenTitle("Due Dates", subtitle))
+	b.WriteString("\n")
+
 	if allTotal == 0 {
+		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("No tasks with due dates found."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Due Dates",
-			Subtitle: "across all projects",
-			Centered: true,
-		})
+		return b.String()
 	}
 
 	// Tab bar
@@ -36,16 +38,12 @@ func (m *DueDateOverviewModel) View() string {
 		b.WriteString("\n\n")
 		footer := HelpStyle.Render("[/] h/l tabs • q/Esc close")
 		b.WriteString(footer)
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Due Dates",
-			Subtitle: fmt.Sprintf("%d tasks across all projects", allTotal),
-			Centered: true,
-		})
+		return b.String()
 	}
 
-	// Calculate available height for task list (account for card border/padding + tab bar)
-	contentHeight := m.height - 15
+	// Calculate available height for task list
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
+	contentHeight := m.height - 7
 
 	// Render groups with scroll awareness
 	currentIndex := 0
@@ -87,14 +85,11 @@ func (m *DueDateOverviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
-	b.WriteString(footer)
+	left := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Due Dates",
-		Subtitle: fmt.Sprintf("%d tasks across all projects", m.totalTasks),
-		Centered: true,
-	})
+	return b.String()
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
@@ -114,14 +109,14 @@ var DueDateOverviewNavigationPrefixHints = []PrefixHint{
 
 // renderTabBar renders the tab bar for filtering.
 func (m *DueDateOverviewModel) renderTabBar() string {
-	return RenderTabBar(dueDateTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	return renderWrappingTabBar(dueDateTabNames, m.activeTab, m.width)
 }
 
 // renderAllGroups renders all task groups and returns the lines.
 func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
 	hasContent := false
-	separatorWidth := min(m.width-10, 50)
+	separator := renderHorizontalDivider(m.width)
 
 	overdue, today, thisWeek, later := m.visibleGroups()
 
@@ -133,7 +128,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(today) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("Today", len(today), false))
 		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
@@ -142,7 +137,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(thisWeek) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("This Week", len(thisWeek), false))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
@@ -151,7 +146,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(later) > 0 {
 		if hasContent {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("Later", len(later), false))
 		lines = append(lines, m.renderGroup(later, currentIndex, false)...)

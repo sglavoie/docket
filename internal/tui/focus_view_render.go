@@ -5,28 +5,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *FocusViewModel) View() string {
+	var b strings.Builder
+
+	// Title
+	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
+	if len(m.filtered) != len(m.tasks) {
+		subtitle = fmt.Sprintf("%d/%d active tasks", len(m.filtered), len(m.tasks))
+	}
+	b.WriteString(renderFullscreenTitle("Focus View", subtitle))
+	b.WriteString("\n")
+
 	if len(m.tasks) == 0 {
-		var b strings.Builder
+		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("No tasks in focus."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Open a project and mark tasks as active with *."))
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render("Press q to return to dashboard."))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Focus View",
-			Subtitle: "no active tasks",
-			Centered: true,
-		})
+		return b.String()
 	}
-
-	var b strings.Builder
 
 	// Tab bar
 	b.WriteString(m.renderTabBar())
@@ -40,9 +41,10 @@ func (m *FocusViewModel) View() string {
 	}
 
 	// Calculate available height for task list
-	contentHeight := m.height - 13
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
+	contentHeight := m.height - 6
 	if subTabBar != "" {
-		contentHeight -= 2 // sub-tab row + newline
+		contentHeight -= 2
 	}
 
 	// Render task lines
@@ -95,35 +97,20 @@ func (m *FocusViewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("j/k nav | [/] tabs | (/) row focus | * unfocus | ,s/d/b/x status | 1-5 priority | ? help")
-	b.WriteString(footer)
+	left := HelpStyle.Render("j/k nav | [/] tabs | (/) row focus | * unfocus | ,s/d/b/x status | 1-5 priority | ? help")
+	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	subtitle := fmt.Sprintf("%d active tasks", len(m.tasks))
-	if len(m.filtered) != len(m.tasks) {
-		subtitle = fmt.Sprintf("%d/%d active tasks", len(m.filtered), len(m.tasks))
-	}
-
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Focus View",
-		Subtitle: subtitle,
-		Centered: true,
-	})
+	return b.String()
 }
 
 // renderTabBar renders the tab bar for filtering.
 func (m *FocusViewModel) renderTabBar() string {
 	hasSubTabs := len(m.subTabNames) > 1
-	bar := RenderTabBar(focusTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
 	if hasSubTabs {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
-		unfocusedPad := " "
-		if !m.subTabRowFocused {
-			bar = focusIndicator + bar
-		} else {
-			bar = unfocusedPad + bar
-		}
+		return renderSubTabBarWithFocus(focusTabNames, m.activeTab, !m.subTabRowFocused, m.width)
 	}
-	return bar
+	return renderWrappingTabBar(focusTabNames, m.activeTab, m.width)
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
@@ -132,21 +119,11 @@ func (m *FocusViewModel) renderSubTabBar() string {
 		return ""
 	}
 
-	// Build tab list: "All" + sub-tab names
 	tabs := make([]string, 0, len(m.subTabNames)+1)
 	tabs = append(tabs, "All")
 	tabs = append(tabs, m.subTabNames...)
 
-	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
-
-	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
-	unfocusedPad := " "
-	if m.subTabRowFocused {
-		bar = focusIndicator + bar
-	} else {
-		bar = unfocusedPad + bar
-	}
-	return bar
+	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
 }
 
 // renderPrefixPopup renders the which-key style popup for prefix key sequences.
@@ -212,46 +189,12 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 	return line
 }
 
-// renderPriorityBadge renders a priority indicator.
+// renderPriorityBadge delegates to the shared renderPriorityBadge helper.
 func (m *FocusViewModel) renderPriorityBadge(priority int) string {
-	badge := fmt.Sprintf("!%d", priority)
-	switch priority {
-	case 1:
-		return PriorityHighStyle.Render(badge)
-	case 2:
-		return PriorityMediumStyle.Render(badge)
-	default:
-		return PriorityLowStyle.Render(badge)
-	}
+	return renderPriorityBadge(priority)
 }
 
-// formatRelativeDue formats the due date for display.
+// formatRelativeDue delegates to the shared formatRelativeDue helper.
 func (m *FocusViewModel) formatRelativeDue(dueDate *time.Time) string {
-	if dueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
-
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
-
-	switch {
-	case daysUntil < -1:
-		return OverdueStyle.Render(fmt.Sprintf("%d days ago", -daysUntil))
-	case daysUntil == -1:
-		return OverdueStyle.Render("yesterday")
-	case daysUntil == 0:
-		return DueTodayStyle.Render("today")
-	case daysUntil == 1:
-		return DueDateStyle.Render("tomorrow")
-	case daysUntil < 7:
-		return DueDateStyle.Render(dueDate.Format("Mon"))
-	default:
-		if dueDate.Year() != now.Year() {
-			return DueDateStyle.Render(dueDate.Format("Jan 2 '06"))
-		}
-		return DueDateStyle.Render(dueDate.Format("Jan 2"))
-	}
+	return formatRelativeDue(dueDate)
 }

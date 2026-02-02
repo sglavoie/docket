@@ -105,23 +105,23 @@ func (m *LinkedTaskCreatorModel) View() string {
 	// Help text
 	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · /section · $status"))
 	b.WriteString("\n")
+	var helpText string
 	if m.isAutocompleteActive() {
-		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
+		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel"))
+		helpText = "Enter: create · Esc: cancel"
 	}
 
-	cardWidth := m.width - 4
-	if cardWidth > 70 {
-		cardWidth = 70
-	}
-	config := OverlayCardConfig{
-		Title:        fmt.Sprintf("New %s", linkName),
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	title := fmt.Sprintf("New %s", linkName)
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	return out.String()
 }
 
 // HasTextInput returns true because this view uses a textarea.

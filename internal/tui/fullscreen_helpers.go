@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -114,6 +115,75 @@ func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int) string {
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
+func renderFullscreenTitle(title, subtitle string) string {
+	t := TitleStyle.Render(title)
+	if subtitle != "" {
+		t += "  " + MutedStyle.Render(subtitle)
+	}
+	return t
+}
+
+// renderPriorityBadge renders a priority indicator with color styling.
+func renderPriorityBadge(priority int) string {
+	badge := fmt.Sprintf("!%d", priority)
+	switch priority {
+	case 1:
+		return PriorityHighStyle.Render(badge)
+	case 2:
+		return PriorityMediumStyle.Render(badge)
+	default:
+		return PriorityLowStyle.Render(badge)
+	}
+}
+
+// formatRelativeDue formats a due date relative to today with appropriate styling.
+func formatRelativeDue(dueDate *time.Time) string {
+	if dueDate == nil {
+		return ""
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
+
+	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+
+	switch {
+	case daysUntil < -1:
+		return OverdueStyle.Render(fmt.Sprintf("%d days ago", -daysUntil))
+	case daysUntil == -1:
+		return OverdueStyle.Render("yesterday")
+	case daysUntil == 0:
+		return DueTodayStyle.Render("today")
+	case daysUntil == 1:
+		return DueDateStyle.Render("tomorrow")
+	case daysUntil < 7:
+		return DueDateStyle.Render(dueDate.Format("Mon"))
+	default:
+		if dueDate.Year() != now.Year() {
+			return DueDateStyle.Render(dueDate.Format("Jan 2 '06"))
+		}
+		return DueDateStyle.Render(dueDate.Format("Jan 2"))
+	}
+}
+
+// renderSubTabBarWithFocus renders a sub-tab bar row with a ▐ focus indicator.
+// tabs is the list of tab names, activeIdx is the active tab, focused indicates
+// whether this row has focus (shows ▐) or not (shows space), and width is the
+// available width for the tab bar.
+func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int) string {
+	bar := RenderTabBar(tabs, activeIdx, width-2, 1)
+
+	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+	if focused {
+		bar = focusIndicator + bar
+	} else {
+		bar = " " + bar
+	}
+	return bar
 }
 
 // finishWrappingTabRow joins a row of rendered tabs and fills remaining width with a border.

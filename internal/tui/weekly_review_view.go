@@ -9,43 +9,39 @@ import (
 
 func (m *WeeklyReviewModel) View() string {
 	totalCount := m.getTotalItemCount()
+	projectCount, taskCount := m.countByType()
+
+	var b strings.Builder
+
+	// Title
+	subtitle := "all clear"
+	if totalCount > 0 {
+		subtitle = fmt.Sprintf("%d projects, %d tasks", projectCount, taskCount)
+	}
+	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle))
+	b.WriteString("\n")
 
 	if totalCount == 0 {
-		var b strings.Builder
+		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("All systems healthy — your projects are on track."))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press q or Esc to close."))
-
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Weekly Review",
-			Subtitle: "all clear",
-			Centered: true,
-		})
+		return b.String()
 	}
-
-	var b strings.Builder
 
 	// Tab bar
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n\n")
 
-	// Calculate available height for content
-	contentHeight := m.height - 14
+	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
+	contentHeight := m.height - 7
 
-	// Render all sections
 	if m.totalItems == 0 {
 		b.WriteString(MutedStyle.Render("No items in this tab."))
 		b.WriteString("\n\n")
-
 		footer := HelpStyle.Render("[/]: tabs")
 		b.WriteString(footer)
-
-		projectCount, taskCount := m.countByType()
-		return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Weekly Review",
-			Subtitle: fmt.Sprintf("%d projects, %d tasks", projectCount, taskCount),
-			Centered: true,
-		})
+		return b.String()
 	}
 
 	lines, cursorLineIndex := m.renderAllSections()
@@ -86,15 +82,11 @@ func (m *WeeklyReviewModel) View() string {
 	}
 
 	// Footer
-	footer := HelpStyle.Render("h/j/k/l nav | n/N section | ,s/d/b/x status")
-	b.WriteString(footer)
+	left := HelpStyle.Render("h/j/k/l nav | n/N section | ,s/d/b/x status")
+	right := MutedStyle.Render(fmt.Sprintf("%d items", totalCount))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
-	projectCount, taskCount := m.countByType()
-	return renderOverlayCard(b.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Weekly Review",
-		Subtitle: fmt.Sprintf("%d projects, %d tasks", projectCount, taskCount),
-		Centered: true,
-	})
+	return b.String()
 }
 
 // countByType returns separate counts of project items and task items.
@@ -115,7 +107,7 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 	for i, name := range weeklyReviewTabNames {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
-	return RenderTabBar(labels, m.activeTab, m.width-10, 1)
+	return renderWrappingTabBar(labels, m.activeTab, m.width)
 }
 
 // renderPrefixPopup renders the which-key style popup.
@@ -151,11 +143,11 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 	var lines []string
 	currentIndex := 0
 	cursorLineIndex := 0
-	separatorWidth := min(m.width-10, 50)
+	separator := renderHorizontalDivider(m.width)
 
 	for i, section := range m.sectionOrder {
 		if i > 0 {
-			lines = append(lines, MutedStyle.Render(strings.Repeat("─", separatorWidth)))
+			lines = append(lines, separator)
 		}
 
 		count := m.getSectionItemCount(section)
@@ -342,7 +334,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 
 	priorityStr := ""
 	if task.Priority <= 2 {
-		priorityStr = formatPriorityBadge(task.Priority) + " "
+		priorityStr = renderPriorityBadge(task.Priority) + " "
 	}
 
 	if maxTitleLen < 10 {

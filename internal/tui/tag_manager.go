@@ -358,36 +358,30 @@ func (m *TagManagerModel) View() string {
 		content.WriteString("\n")
 	}
 
-	// Footer hint
-	content.WriteString("\n")
-	if m.addTagMode {
-		content.WriteString(HelpStyle.Render("enter add tag | esc cancel"))
-	} else if m.renameMode {
-		content.WriteString(HelpStyle.Render("enter confirm | esc cancel"))
-	} else if len(m.tags) > 0 {
-		content.WriteString(HelpStyle.Render("j/k nav | enter filter | a add | r rename"))
-		content.WriteString("\n")
-		content.WriteString(HelpStyle.Render("d del | q close"))
-	} else {
-		content.WriteString(HelpStyle.Render("a add tag | q close"))
-	}
-
-	// Build subtitle showing count
+	// Build subtitle
 	subtitle := ""
 	if len(m.tags) > 0 {
 		subtitle = fmt.Sprintf("%d tags", len(m.tags))
 	}
 
-	// Calculate box width
-	boxWidth := 46
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
+	// Footer
+	var helpText string
+	if m.addTagMode {
+		helpText = "enter add tag | esc cancel"
+	} else if m.renameMode {
+		helpText = "enter confirm | esc cancel"
+	} else if len(m.tags) > 0 {
+		helpText = "j/k nav | enter filter | a add | r rename | d del | q close"
+	} else {
+		helpText = "a add tag | q close"
 	}
 
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Tag Manager",
-		Subtitle: subtitle,
-		Width:    boxWidth,
-		Centered: true,
-	})
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Tag Manager", subtitle))
+	out.WriteString("\n\n")
+	out.WriteString(content.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	return out.String()
 }

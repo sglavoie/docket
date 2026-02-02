@@ -576,11 +576,11 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 func (m *TaskCommentsModel) View() string {
 	var b strings.Builder
 
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	contentWidth := cardWidth - 6 // account for card border + padding
+	commentsTitle := fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title)
+	b.WriteString(renderFullscreenTitle(commentsTitle, ""))
+	b.WriteString("\n\n")
+
+	contentWidth := m.width - 4
 
 	// Expanded view mode - show full comment
 	if m.expandedView && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
@@ -593,7 +593,6 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(MutedStyle.Render(timestamp))
 		b.WriteString("\n\n")
 
-		// Show full comment text with word wrapping
 		maxLen := contentWidth
 		if maxLen < 40 {
 			maxLen = 40
@@ -610,15 +609,8 @@ func (m *TaskCommentsModel) View() string {
 		}
 
 		b.WriteString("\n")
-		b.WriteString(renderFormHelpFooter("Enter/Esc: close expanded view"))
-
-		cfg := OverlayCardConfig{
-			Title:        fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title),
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(b.String(), m.width, m.height, cfg)
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.width))
+		return b.String()
 	}
 
 	// Edit mode input
@@ -631,15 +623,8 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderFormHelpFooter("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"))
-
-		cfg := OverlayCardConfig{
-			Title:        fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title),
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(b.String(), m.width, m.height, cfg)
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"), "", m.width))
+		return b.String()
 	}
 
 	// Add mode input
@@ -648,15 +633,8 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderFormHelpFooter("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"))
-
-		cfg := OverlayCardConfig{
-			Title:        fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title),
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(b.String(), m.width, m.height, cfg)
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"), "", m.width))
+		return b.String()
 	}
 
 	// Delete confirmation
@@ -672,15 +650,8 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", preview)))
 		b.WriteString("\n\n")
-		b.WriteString(renderFormHelpFooter("y: confirm delete · n/Esc: cancel"))
-
-		cfg := OverlayCardConfig{
-			Title:        fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title),
-			Width:        cardWidth,
-			Centered:     true,
-			NoTruncation: true,
-		}
-		return renderOverlayCard(b.String(), m.width, m.height, cfg)
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("y: confirm delete · n/Esc: cancel"), "", m.width))
+		return b.String()
 	}
 
 	// Comment count
@@ -698,15 +669,13 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(MutedStyle.Render("No comments yet. Press 'a' to add one."))
 		b.WriteString("\n")
 	} else {
-		// Calculate visible comments based on height
-		headerLines := 6 // title, count, spacing, help
+		headerLines := 6
 		availableHeight := m.height - headerLines
-		maxVisible := availableHeight / 4 // ~4 lines per comment
+		maxVisible := availableHeight / 4
 		if maxVisible < 3 {
 			maxVisible = 3
 		}
 
-		// Calculate scroll offset
 		scrollOffset := 0
 		if m.cursor >= maxVisible {
 			scrollOffset = m.cursor - maxVisible + 1
@@ -720,21 +689,17 @@ func (m *TaskCommentsModel) View() string {
 		for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
 			comment := m.task.Comments[i]
 
-			// Cursor indicator
 			cursor := "  "
 			if i == m.cursor {
 				cursor = "> "
 			}
 
-			// Timestamp
 			relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
 			timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
 
-			// Build comment entry
 			var entry strings.Builder
 			entry.WriteString(cursor)
 
-			// Style based on selection
 			if i == m.cursor {
 				entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", i)))
 				entry.WriteString(FieldLabelFocusedStyle.Render(timestamp))
@@ -744,10 +709,9 @@ func (m *TaskCommentsModel) View() string {
 			}
 			entry.WriteString("\n")
 
-			// Comment text (indented, possibly truncated)
 			lines := strings.Split(comment.Text, "\n")
 			for j, line := range lines {
-				if j > 1 { // Show first 2 lines
+				if j > 1 {
 					remaining := len(lines) - 2
 					entry.WriteString(fmt.Sprintf("      ... (%d more lines, press Enter to expand)\n", remaining))
 					break
@@ -763,7 +727,6 @@ func (m *TaskCommentsModel) View() string {
 			b.WriteString(entry.String())
 		}
 
-		// Scroll indicator
 		if len(m.task.Comments) > maxVisible {
 			remaining := len(m.task.Comments) - scrollOffset - maxVisible
 			if remaining > 0 {
@@ -774,15 +737,9 @@ func (m *TaskCommentsModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderFormHelpFooter("a/n: add · e: edit · E: external editor · d/x: delete · Enter: expand · Esc: close"))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a/n: add · e: edit · E: external editor · d/x: delete · Enter: expand · Esc: close"), "", m.width))
 
-	cfg := OverlayCardConfig{
-		Title:        fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title),
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, cfg)
+	return b.String()
 }
 
 // HasTextInput returns true when add/edit mode is active.

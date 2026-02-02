@@ -231,20 +231,16 @@ func (m *ProjectCreatorModel) View() string {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s", slug)))
 	}
 
-	// Help footer
-	b.WriteString("\n\n")
-	b.WriteString(renderFormHelpFooter("Tab switch · ←/→ context · Enter submit · Esc cancel"))
+	// Footer
+	left := HelpStyle.Render("Tab switch · ←/→ context · Enter submit · Esc cancel")
+	right := MutedStyle.Render("Create Project")
 
-	// Wrap in overlay card
-	cardWidth := m.width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
-	config := OverlayCardConfig{
-		Title:        "Create Project",
-		Width:        cardWidth,
-		Centered:     true,
-		NoTruncation: true,
-	}
-	return renderOverlayCard(b.String(), m.width, m.height, config)
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Create Project", ""))
+	out.WriteString("\n\n")
+	out.WriteString(b.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(left, right, m.width))
+
+	return out.String()
 }

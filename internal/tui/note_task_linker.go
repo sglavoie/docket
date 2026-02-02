@@ -169,17 +169,19 @@ func (m *NoteTaskLinkerModel) View() string {
 		}
 	}
 
-	content.WriteString("\n")
+	var helpText string
 	if m.picker.IsSearchMode() {
-		content.WriteString(MutedStyle.Render("enter done | esc clear"))
+		helpText = "enter done | esc clear"
 	} else {
-		content.WriteString(MutedStyle.Render("space toggle | / search | enter close"))
+		helpText = "space toggle | / search | enter close"
 	}
 
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    "Link Note to Task",
-		Subtitle: subtitle,
-		Width:    65,
-		Centered: true,
-	})
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle("Link Note to Task", subtitle))
+	out.WriteString("\n\n")
+	out.WriteString(content.String())
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	return out.String()
 }
