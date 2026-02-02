@@ -78,12 +78,6 @@ func (m *FocusViewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
@@ -126,20 +120,26 @@ func (m *FocusViewModel) renderSubTabBar() string {
 	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-func (m *FocusViewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": FocusViewNavigationPrefixHints,
-		"c": CreateLinkedPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": FocusViewNavigationPrefixHints,
+			"c": CreateLinkedPrefixHints,
+		},
+	}
 }
 
 // FocusViewNavigationPrefixHints contains "g" prefix hints for focus view.
 var FocusViewNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first"},
-	{Key: "p", Description: "go to project"},
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
 }
 
 // renderTaskLine renders a single task line.

@@ -199,11 +199,16 @@ func (m *GlobalInboxProcessorModel) renderEmptyInbox() string {
 	return b.String()
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-// Returns empty string if no prefix is pending.
-func (m *GlobalInboxProcessorModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"g": NavigationPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *GlobalInboxProcessorModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"g": NavigationPrefixHints,
+		},
+	}
 }

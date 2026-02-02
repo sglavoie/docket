@@ -135,12 +135,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString("\n")
 	}
 
-	// Prefix key popup (which-key style)
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Stats by status
 	statusCounts := make(map[models.TaskStatus]int)
 	for _, task := range m.project.Tasks {
@@ -487,12 +481,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			prompt = fmt.Sprintf("%s project? (y/n)", action)
 		}
 		b.WriteString(ConfirmStyle.Render(prompt))
-		b.WriteString("\n")
-	}
-
-	// Prefix key popup (which-key style)
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
 		b.WriteString("\n")
 	}
 

@@ -891,7 +891,6 @@ func (m *PriorityViewModel) View() string {
 
 	// Pre-render conditional sections to calculate their actual height
 	suggestionSection := m.renderSuggestionSection()
-	prefixPopup := m.renderPrefixPopup()
 	tabHint := m.activeTabHint()
 
 	// Calculate available height for task list
@@ -908,12 +907,6 @@ func (m *PriorityViewModel) View() string {
 	if suggestionSection != "" {
 		suggestionLines := lipgloss.Height(suggestionSection)
 		contentHeight -= suggestionLines
-	}
-
-	// Account for prefix popup if present
-	if prefixPopup != "" {
-		popupLines := lipgloss.Height(prefixPopup) + 1
-		contentHeight -= popupLines
 	}
 
 	// Render groups
@@ -978,12 +971,6 @@ func (m *PriorityViewModel) View() string {
 		b.WriteString(MutedStyle.Render(scrollInfo))
 	}
 	b.WriteString("\n")
-
-	// Prefix popup
-	if prefixPopup != "" {
-		b.WriteString(prefixPopup)
-		b.WriteString("\n")
-	}
 
 	// Footer
 	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • s start suggested • ,s/,d status" + tabHint)

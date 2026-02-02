@@ -30,14 +30,20 @@ func (m *PriorityViewModel) renderSubTabBar() string {
 	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
 }
 
-// renderPrefixPopup renders the prefix key popup.
-func (m *PriorityViewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"g": PriorityViewNavigationPrefixHints,
-		"d": DueDatePrefixHints,
-		"c": CreateLinkedPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"g": PriorityViewNavigationPrefixHints,
+			"d": DueDatePrefixHints,
+			"c": CreateLinkedPrefixHints,
+		},
+	}
 }
 
 // renderSuggestionSection renders the "SUGGESTED NEXT" section at the top.

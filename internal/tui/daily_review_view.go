@@ -66,12 +66,6 @@ func (m *DailyReviewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
@@ -109,21 +103,27 @@ func (m *DailyReviewModel) renderReviewTabBar() string {
 	return renderWrappingTabBar(labels, m.activeTab, m.width)
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-func (m *DailyReviewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": DailyReviewNavigationPrefixHints,
-		"s": SectionPrefixHints,
-		"c": CreateLinkedPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": DailyReviewNavigationPrefixHints,
+			"s": SectionPrefixHints,
+			"c": CreateLinkedPrefixHints,
+		},
+	}
 }
 
 // DailyReviewNavigationPrefixHints contains "g" prefix hints for daily review.
 var DailyReviewNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first"},
-	{Key: "p", Description: "go to project"},
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
 }
 
 // renderAllSections renders all non-empty sections.

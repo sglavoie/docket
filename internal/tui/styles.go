@@ -35,6 +35,7 @@ var (
 	ColorBackground  = lipgloss.Color("236") // Dark gray
 	ColorBorder      = lipgloss.Color("240") // Border gray
 	ColorDiffContext = lipgloss.Color("245") // Diff context gray
+	ColorPrefixPopup = lipgloss.Color("226") // Yellow for prefix popup border
 )
 
 // Base styles

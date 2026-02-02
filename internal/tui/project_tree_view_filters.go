@@ -240,18 +240,23 @@ func (m *ProjectTreeModel) renderChildrenInOtherSectionsBadge(task *models.Task)
 	return ChildrenBadgeStyle.Render("[" + strings.Join(parts, ", ") + "]")
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-// Returns empty string if no prefix is pending.
-func (m *ProjectTreeModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"z": FoldPrefixHints,
-		"g": ProjectTreeNavigationPrefixHints,
-		"!": PriorityPrefixHints,
-		"d": DueDatePrefixHints,
-		"s": SnoozePrefixHints,
-		"c": CreateLinkedPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"z": FoldPrefixHints,
+			"g": ProjectTreeNavigationPrefixHints,
+			"!": PriorityPrefixHints,
+			"d": DueDatePrefixHints,
+			"s": SnoozePrefixHints,
+			"c": CreateLinkedPrefixHints,
+		},
+	}
 }
 
 // getViewModeTitle returns the card title based on current view mode.

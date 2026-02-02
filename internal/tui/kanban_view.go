@@ -153,11 +153,6 @@ func (m *KanbanViewModel) View() string {
 		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
 	}
 
-	// Render prefix popup if a prefix key is pending
-	if popup := m.renderPrefixPopup(); popup != "" {
-		viewParts = append(viewParts, popup)
-	}
-
 	// Join vertically: filterBar + kanban + divider + details + quickAdd + status + popup
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)
 }
@@ -651,14 +646,20 @@ func (m *KanbanViewModel) ShouldCaptureEsc() bool {
 	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
 }
 
-// renderPrefixPopup renders the which-key style popup for pending prefix keys.
-func (m *KanbanViewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"!": PriorityPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": KanbanNavigationPrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"z": KanbanFoldPrefixHints,
-	}, m.Width())
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *KanbanViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"!": PriorityPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": KanbanNavigationPrefixHints,
+			"c": CreateLinkedPrefixHints,
+			"z": KanbanFoldPrefixHints,
+		},
+	}
 }

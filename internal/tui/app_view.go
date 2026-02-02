@@ -33,7 +33,30 @@ func (m *AppModel) View() string {
 		content += strings.Repeat("\n", targetContentHeight-contentHeight)
 	}
 
+	// Overlay prefix popup if the current view provides one
+	if popup := m.renderPrefixPopupOverlay(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	return content + "\n" + statusBar
+}
+
+// renderPrefixPopupOverlay checks if the current view has a pending prefix and
+// renders the popup box for overlay compositing.
+func (m *AppModel) renderPrefixPopupOverlay() string {
+	view := m.views.Get(m.currentView())
+	if view == nil {
+		return ""
+	}
+	provider, ok := view.(PrefixPopupProvider)
+	if !ok {
+		return ""
+	}
+	info := provider.GetPrefixPopupInfo()
+	if info == nil {
+		return ""
+	}
+	return RenderPrefixPopup(info.Prefix, info.Hints, m.width, m.height)
 }
 
 func (m *AppModel) renderStatusBar() string {

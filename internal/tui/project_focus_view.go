@@ -730,12 +730,6 @@ func (m *ProjectFocusViewModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
@@ -783,18 +777,24 @@ func (m *ProjectFocusViewModel) renderSubTabBar() string {
 	return bar
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-func (m *ProjectFocusViewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": ProjectFocusNavigationPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *ProjectFocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": ProjectFocusNavigationPrefixHints,
+		},
+	}
 }
 
 // ProjectFocusNavigationPrefixHints contains "g" prefix hints for project focus view.
 var ProjectFocusNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first"},
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
 }
 
 // renderTaskLine renders a single task line.

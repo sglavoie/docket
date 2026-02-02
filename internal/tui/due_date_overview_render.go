@@ -66,12 +66,6 @@ func (m *DueDateOverviewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
@@ -92,19 +86,25 @@ func (m *DueDateOverviewModel) View() string {
 	return b.String()
 }
 
-// renderPrefixPopup renders the which-key style popup for prefix key sequences.
-func (m *DueDateOverviewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": DueDateOverviewNavigationPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": DueDateOverviewNavigationPrefixHints,
+		},
+	}
 }
 
 // DueDateOverviewNavigationPrefixHints contains "g" prefix hints for due date overview.
 var DueDateOverviewNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first"},
-	{Key: "p", Description: "go to project"},
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
 }
 
 // renderTabBar renders the tab bar for filtering.

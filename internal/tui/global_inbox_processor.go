@@ -346,12 +346,6 @@ func (m *GlobalInboxProcessorModel) View() string {
 	// Footer with controls
 	b.WriteString(m.renderFooter())
 
-	// Prefix key popup (which-key style)
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString("\n")
-		b.WriteString(popup)
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString("\n")

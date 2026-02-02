@@ -63,12 +63,6 @@ func (m *WeeklyReviewModel) View() string {
 	b.WriteString(strings.Join(visibleLines, "\n"))
 	b.WriteString("\n\n")
 
-	// Prefix popup
-	if popup := m.renderPrefixPopup(); popup != "" {
-		b.WriteString(popup)
-		b.WriteString("\n")
-	}
-
 	// Status message
 	if m.statusMessage != "" {
 		b.WriteString(SuccessStyle.Render(m.statusMessage))
@@ -110,32 +104,38 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 	return renderWrappingTabBar(labels, m.activeTab, m.width)
 }
 
-// renderPrefixPopup renders the which-key style popup.
-func (m *WeeklyReviewModel) renderPrefixPopup() string {
-	return RenderPrefixPopup(m.pendingPrefix, PrefixHints{
-		",": StatusPrefixHints,
-		"d": DueDatePrefixHints,
-		"g": WeeklyReviewNavigationPrefixHints,
-		"s": WeeklyReviewSectionPrefixHints,
-		"c": CreateLinkedPrefixHints,
-	}, m.width)
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			",": StatusPrefixHints,
+			"d": DueDatePrefixHints,
+			"g": WeeklyReviewNavigationPrefixHints,
+			"s": WeeklyReviewSectionPrefixHints,
+			"c": CreateLinkedPrefixHints,
+		},
+	}
 }
 
 // WeeklyReviewNavigationPrefixHints contains "g" prefix hints.
 var WeeklyReviewNavigationPrefixHints = []PrefixHint{
-	{Key: "g", Description: "first"},
-	{Key: "p", Description: "go to project/task"},
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "p", Description: "go to project/task", Detail: "Navigate to project or task"},
 }
 
 // WeeklyReviewSectionPrefixHints contains "s" prefix hints.
 var WeeklyReviewSectionPrefixHints = []PrefixHint{
-	{Key: "p", Description: "stale projects"},
-	{Key: "i", Description: "inbox backlog"},
-	{Key: "b", Description: "blocked work"},
-	{Key: "o", Description: "overcommitted"},
-	{Key: "t", Description: "stale tasks"},
-	{Key: "m", Description: "priority mismatch"},
-	{Key: "w", Description: "upcoming week"},
+	{Key: "p", Description: "stale projects", Detail: "Jump to stale projects"},
+	{Key: "i", Description: "inbox backlog", Detail: "Jump to inbox backlog"},
+	{Key: "b", Description: "blocked work", Detail: "Jump to blocked work"},
+	{Key: "o", Description: "overcommitted", Detail: "Jump to overcommitted"},
+	{Key: "t", Description: "stale tasks", Detail: "Jump to stale tasks"},
+	{Key: "m", Description: "priority mismatch", Detail: "Jump to priority mismatch"},
+	{Key: "w", Description: "upcoming week", Detail: "Jump to upcoming week"},
 }
 
 // renderAllSections renders all non-empty sections.

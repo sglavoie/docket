@@ -10,7 +10,7 @@ func TestRenderPrefixPopup_EmptyPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup("", hints, 200)
+	result := RenderPrefixPopup("", hints, 200, 40)
 	if result != "" {
 		t.Errorf("expected empty string for empty prefix, got %q", result)
 	}
@@ -21,7 +21,7 @@ func TestRenderPrefixPopup_UnknownPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup("x", hints, 200)
+	result := RenderPrefixPopup("x", hints, 200, 40)
 	if result != "" {
 		t.Errorf("expected empty string for unknown prefix, got %q", result)
 	}
@@ -32,7 +32,7 @@ func TestRenderPrefixPopup_EmptyHints(t *testing.T) {
 		",": []PrefixHint{},
 	}
 
-	result := RenderPrefixPopup(",", hints, 200)
+	result := RenderPrefixPopup(",", hints, 200, 40)
 	if result != "" {
 		t.Errorf("expected empty string for prefix with empty hints, got %q", result)
 	}
@@ -43,11 +43,11 @@ func TestRenderPrefixPopup_StatusPrefix(t *testing.T) {
 		",": StatusPrefixHints,
 	}
 
-	result := RenderPrefixPopup(",", hints, 200)
+	result := RenderPrefixPopup(",", hints, 200, 40)
 
 	// Should contain the prefix and arrow
-	if !strings.Contains(result, ", →") {
-		t.Errorf("expected result to contain prefix arrow, got %q", result)
+	if !strings.Contains(result, "→") {
+		t.Errorf("expected result to contain arrow, got %q", result)
 	}
 
 	// Should contain escape hint
@@ -55,14 +55,16 @@ func TestRenderPrefixPopup_StatusPrefix(t *testing.T) {
 		t.Errorf("expected result to contain escape hint, got %q", result)
 	}
 
-	// Should contain status hints
+	// Should contain status hint descriptions
 	for _, hint := range StatusPrefixHints {
 		if !strings.Contains(result, hint.Description) {
 			t.Errorf("expected result to contain description %q, got %q", hint.Description, result)
 		}
-		if !strings.Contains(result, "("+hint.Key+")") {
-			t.Errorf("expected result to contain key (%s), got %q", hint.Key, result)
-		}
+	}
+
+	// Should have a border (rounded corners)
+	if !strings.Contains(result, "╭") || !strings.Contains(result, "╯") {
+		t.Errorf("expected result to have rounded border characters, got %q", result)
 	}
 }
 
@@ -71,7 +73,7 @@ func TestRenderPrefixPopup_FoldPrefix(t *testing.T) {
 		"z": FoldPrefixHints,
 	}
 
-	result := RenderPrefixPopup("z", hints, 200)
+	result := RenderPrefixPopup("z", hints, 200, 40)
 
 	// Should contain fold hints
 	for _, hint := range FoldPrefixHints {
@@ -86,7 +88,7 @@ func TestRenderPrefixPopup_NavigationPrefix(t *testing.T) {
 		"g": NavigationPrefixHints,
 	}
 
-	result := RenderPrefixPopup("g", hints, 200)
+	result := RenderPrefixPopup("g", hints, 200, 40)
 
 	// Should contain navigation hints
 	for _, hint := range NavigationPrefixHints {
@@ -101,7 +103,7 @@ func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 		"g": ProjectTreeNavigationPrefixHints,
 	}
 
-	result := RenderPrefixPopup("g", hints, 200)
+	result := RenderPrefixPopup("g", hints, 200, 40)
 
 	// Should contain extended navigation hints
 	expectedDescriptions := []string{"first", "active", "next", "inbox", "waiting", "someday", "completed"}
@@ -113,13 +115,16 @@ func TestRenderPrefixPopup_ProjectTreeNavigationPrefix(t *testing.T) {
 }
 
 func TestPrefixHint_Structure(t *testing.T) {
-	hint := PrefixHint{Key: "s", Description: "start"}
+	hint := PrefixHint{Key: "s", Description: "start", Detail: "Set task to in-progress"}
 
 	if hint.Key != "s" {
 		t.Errorf("expected Key to be 's', got %q", hint.Key)
 	}
 	if hint.Description != "start" {
 		t.Errorf("expected Description to be 'start', got %q", hint.Description)
+	}
+	if hint.Detail != "Set task to in-progress" {
+		t.Errorf("expected Detail to be 'Set task to in-progress', got %q", hint.Detail)
 	}
 }
 
@@ -198,28 +203,61 @@ func TestProjectTreeNavigationPrefixHints_HasExtendedKeys(t *testing.T) {
 	}
 }
 
-func TestRenderPrefixPopup_WrapsOnNarrowWidth(t *testing.T) {
+func TestRenderPrefixPopup_CompactModeOnSmallHeight(t *testing.T) {
 	hints := PrefixHints{
 		"g": ProjectTreeNavigationPrefixHints,
 	}
 
-	// Use narrow width to force wrapping
-	result := RenderPrefixPopup("g", hints, 50)
+	// Use small height to force compact mode (18 hints won't fit one-per-line)
+	result := RenderPrefixPopup("g", hints, 80, 10)
 
 	// Should still contain all hints
 	for _, hint := range ProjectTreeNavigationPrefixHints {
 		if !strings.Contains(result, hint.Description) {
-			t.Errorf("expected result to contain description %q even with narrow width, got %q", hint.Description, result)
+			t.Errorf("expected result to contain description %q even in compact mode, got %q", hint.Description, result)
 		}
 	}
 
 	// Should contain escape hint
 	if !strings.Contains(result, "Esc to cancel") {
-		t.Errorf("expected result to contain escape hint even with narrow width, got %q", result)
+		t.Errorf("expected result to contain escape hint, got %q", result)
+	}
+}
+
+func TestRenderPrefixPopup_CategoryTitle(t *testing.T) {
+	hints := PrefixHints{
+		",": StatusPrefixHints,
 	}
 
-	// Should wrap to multiple lines (contains newlines)
-	if !strings.Contains(result, "\n") {
-		t.Errorf("expected result to wrap to multiple lines with narrow width, got %q", result)
+	result := RenderPrefixPopup(",", hints, 200, 40)
+
+	// Should contain "status" category name
+	if !strings.Contains(result, "tatus") {
+		t.Errorf("expected result to contain category name 'status', got %q", result)
+	}
+}
+
+func TestOverlayPopup_EmptyPopup(t *testing.T) {
+	base := "line1\nline2\nline3"
+	result := OverlayPopup(base, "", 20, 3)
+	if result != base {
+		t.Errorf("expected base unchanged for empty popup, got %q", result)
+	}
+}
+
+func TestOverlayPopup_PlacesAtBottom(t *testing.T) {
+	base := strings.Repeat("x", 20) + "\n" +
+		strings.Repeat("x", 20) + "\n" +
+		strings.Repeat("x", 20) + "\n" +
+		strings.Repeat("x", 20) + "\n" +
+		strings.Repeat("x", 20)
+	popup := "POPUP"
+
+	result := OverlayPopup(base, popup, 20, 5)
+	lines := strings.Split(result, "\n")
+
+	// Popup should be near the bottom (line 3 of 5, since bottom-1)
+	if !strings.Contains(lines[3], "POPUP") {
+		t.Errorf("expected popup in line 3, lines: %v", lines)
 	}
 }
