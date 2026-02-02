@@ -29,6 +29,12 @@ type ShowSectionPickerMsg struct {
 	Project *models.Project
 }
 
+// ShowBulkSectionPickerMsg is sent to open the section picker for bulk assignment.
+type ShowBulkSectionPickerMsg struct {
+	Tasks   []*models.Task
+	Project *models.Project
+}
+
 // SectionPickerDoneMsg is sent when the section picker is done.
 type SectionPickerDoneMsg struct {
 	Task     *models.Task

@@ -138,6 +138,10 @@ type AppModel struct {
 	// Pending bulk tasks for palette operations (priority, date assignment)
 	pendingBulkTasks []PaletteBulkTaskItem
 
+	// Pending bulk section assignment from multi-select
+	pendingBulkSectionTasks   []*models.Task
+	pendingBulkSectionProject *models.Project
+
 	// Pending bulk notes for multi-select operations
 	pendingBulkNotes []*models.Note
 

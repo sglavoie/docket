@@ -31,6 +31,14 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowBulkSectionPickerMsg:
+		if len(msg.Tasks) > 0 && msg.Project != nil {
+			m.pendingBulkSectionTasks = msg.Tasks
+			m.pendingBulkSectionProject = msg.Project
+			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Tasks[0], msg.Project))
+		}
+		return true, nil
+
 	case ShowSectionPickerMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.showView(ViewSectionPicker, NewSectionPickerModel(msg.Task, msg.Project))
@@ -92,13 +100,51 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case SectionPickerDoneMsg:
 		m.popView()
-		if !msg.Canceled && msg.Task != nil && msg.Project != nil {
-			if models.IsGTDSection(msg.Section) || msg.Section == "" {
-				msg.Task.Section = msg.Section
-			} else {
-				msg.Task.CustomSection = msg.Section
+		if msg.Canceled {
+			m.pendingBulkSectionTasks = nil
+			m.pendingBulkSectionProject = nil
+			return true, nil
+		}
+
+		// Check if this is a bulk operation
+		if len(m.pendingBulkSectionTasks) > 0 && m.pendingBulkSectionProject != nil {
+			project := m.pendingBulkSectionProject
+			count := 0
+			for _, task := range m.pendingBulkSectionTasks {
+				if task != nil {
+					assignSection(task, msg.Section)
+					count++
+				}
 			}
-			msg.Task.UpdatedAt = time.Now()
+
+			if msg.Section != "" {
+				project.EnsureSection(msg.Section)
+				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
+					project.SetSectionColor(msg.Section, globalColor)
+				}
+			}
+			m.config.ApplyGlobalColorsToProject(project)
+
+			if m.kanban != nil {
+				m.kanban.loadTasks()
+			}
+
+			m.pendingBulkSectionTasks = nil
+			m.pendingBulkSectionProject = nil
+
+			successMsg := fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
+			if msg.Section == "" {
+				successMsg = fmt.Sprintf("Removed %d tasks from section", count)
+			}
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveProjectAsync(project, successMsg),
+			)
+		}
+
+		// Single task operation
+		if msg.Task != nil && msg.Project != nil {
+			assignSection(msg.Task, msg.Section)
 
 			if msg.Section != "" {
 				msg.Project.EnsureSection(msg.Section)
@@ -166,4 +212,16 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 	}
 	return false, nil
+}
+
+// assignSection sets the section on a task, clearing the other section field.
+func assignSection(task *models.Task, section string) {
+	if models.IsGTDSection(section) || section == "" {
+		task.Section = section
+		task.CustomSection = ""
+	} else {
+		task.CustomSection = section
+		task.Section = ""
+	}
+	task.UpdatedAt = time.Now()
 }

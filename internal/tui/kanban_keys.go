@@ -513,6 +513,13 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Section picker
 	case "ctrl+n":
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			tasks := m.getSelectedTasksList()
+			project := m.Project
+			return m, func() tea.Msg {
+				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
+			}
+		}
 		task := m.getSelectedTask()
 		if task != nil {
 			return m, func() tea.Msg {
