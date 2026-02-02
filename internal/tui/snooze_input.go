@@ -97,9 +97,7 @@ func (m *SnoozeInputModel) saveAndReturn() tea.Cmd {
 func (m *SnoozeInputModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Snooze Task #%d", m.task.ShortID)))
-	b.WriteString("\n")
-	b.WriteString(SubtitleStyle.Render(m.task.Title))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Snooze Task #%d", m.task.ShortID), m.task.Title))
 	b.WriteString("\n\n")
 
 	// Current snooze date

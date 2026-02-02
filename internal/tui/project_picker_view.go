@@ -10,7 +10,7 @@ import (
 func (m *ProjectPickerModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render("Switch Project"))
+	b.WriteString(renderFullscreenTitle("Switch Project", ""))
 	b.WriteString("\n\n")
 
 	// Search input
@@ -22,8 +22,7 @@ func (m *ProjectPickerModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel")
-	b.WriteString(footer)
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel"), "", m.Width()))
 
 	return b.String()
 }

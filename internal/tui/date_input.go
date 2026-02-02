@@ -103,9 +103,7 @@ func (m *DateInputModel) saveAndReturn() tea.Cmd {
 func (m *DateInputModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Set Due Date for #%d", m.task.ShortID)))
-	b.WriteString("\n")
-	b.WriteString(SubtitleStyle.Render(m.task.Title))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Set Due Date for #%d", m.task.ShortID), m.task.Title))
 	b.WriteString("\n\n")
 
 	// Current due date

@@ -489,11 +489,7 @@ func (m *TaskAttachmentsModel) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Attachments for #%d: %s", m.task.ShortID, m.task.Title)))
-	b.WriteString("\n")
-
-	// Attachment count
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d attachment(s)", len(m.task.Attachments))))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Attachments for #%d: %s", m.task.ShortID, m.task.Title), fmt.Sprintf("%d attachment(s)", len(m.task.Attachments))))
 	b.WriteString("\n\n")
 
 	// Add mode input
@@ -569,7 +565,7 @@ func (m *TaskAttachmentsModel) View() string {
 		b.WriteString("\n")
 	} else {
 		// Calculate visible attachments based on height
-		headerLines := 6 // title, count, spacing, help
+		headerLines := 5 // title+subtitle, spacing, help
 		availableHeight := m.height - headerLines
 		maxVisible := availableHeight / 3 // ~3 lines per attachment
 		if maxVisible < 3 {
@@ -664,12 +660,7 @@ func (m *TaskAttachmentsModel) View() string {
 		}
 	}
 
-	b.WriteString("\n")
-
-	// Help footer
-	b.WriteString(MutedStyle.Render("a: add | o: open | O: open dir | Ctrl+O: open original"))
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("d: delete | u: unlink | y: copy | ?: help | Esc: close"))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add | o: open | O: open dir | Ctrl+O: original | d: del | u: unlink | y: copy | ?: help | Esc: close"), "", m.width))
 
 	return b.String()
 }

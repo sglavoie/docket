@@ -119,26 +119,23 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TaskActivityModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title)))
-	b.WriteString("\n")
-
-	b.WriteString(m.renderTabBar())
-	b.WriteString("\n")
-
 	entries := m.getEntries()
-
 	sortDir := "newest first"
 	if m.sortAsc {
 		sortDir = "oldest first"
 	}
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d entries (%s)", len(entries), sortDir)))
+	subtitle := fmt.Sprintf("%d entries (%s)", len(entries), sortDir)
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Activity Log for #%d: %s", m.task.ShortID, m.task.Title), subtitle))
+	b.WriteString("\n")
+
+	b.WriteString(m.renderTabBar())
 	b.WriteString("\n\n")
 
 	if len(entries) == 0 {
 		b.WriteString(MutedStyle.Render("No activity recorded yet."))
 		b.WriteString("\n")
 	} else {
-		headerLines := 6
+		headerLines := 5
 		availableHeight := m.height - headerLines
 		maxVisible := availableHeight / 2
 		if maxVisible < 3 {
@@ -189,8 +186,7 @@ func (m *TaskActivityModel) View() string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("[/]: tabs | j/k: navigate | s: sort | y: copy entry | q/Esc: close"))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("[/]: tabs | j/k: navigate | s: sort | y: copy entry | q/Esc: close"), "", m.width))
 
 	return b.String()
 }

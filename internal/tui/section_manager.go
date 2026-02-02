@@ -536,31 +536,19 @@ func (m *SectionManagerModel) handleColorPickMode(msg tea.KeyMsg) (tea.Model, te
 func (m *SectionManagerModel) View() string {
 	var b strings.Builder
 
-	// Calculate box width
-	boxWidth := 50
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
-	}
-
-	// Build content
-	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Custom Section Manager"))
-	content.WriteString("\n\n")
+	b.WriteString(renderFullscreenTitle("Custom Section Manager", ""))
+	b.WriteString("\n\n")
 
 	// Add mode input
 	if m.addMode {
-		content.WriteString("New section: ")
-		content.WriteString(m.addInput.View())
-		content.WriteString("\n\n")
+		b.WriteString("New section: ")
+		b.WriteString(m.addInput.View())
+		b.WriteString("\n\n")
 	}
 
 	if len(m.sections) == 0 {
-		content.WriteString(MutedStyle.Render("No sections in project"))
-		content.WriteString("\n")
+		b.WriteString(MutedStyle.Render("No sections in project"))
+		b.WriteString("\n")
 	} else {
 		for i, section := range m.sections {
 			cursor := "  "
@@ -572,10 +560,10 @@ func (m *SectionManagerModel) View() string {
 
 			// Check if this is the section being renamed
 			if m.renameMode && i == m.cursor {
-				content.WriteString(cursor)
-				content.WriteString("Rename to: ")
-				content.WriteString(m.renameInput.View())
-				content.WriteString("\n")
+				b.WriteString(cursor)
+				b.WriteString("Rename to: ")
+				b.WriteString(m.renameInput.View())
+				b.WriteString("\n")
 			} else {
 				// Get section color and render swatch
 				sectionColor := m.getProject().GetSectionColor(section.Name)
@@ -583,19 +571,19 @@ func (m *SectionManagerModel) View() string {
 				colorSwatch := colorStyle.Render("█") + " "
 
 				line := fmt.Sprintf("%s%s%s ", cursor, colorSwatch, section.Name)
-				content.WriteString(style.Render(line))
+				b.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", section.TaskCount)
-				content.WriteString(TagManagerCountStyle.Render(countStr))
-				content.WriteString("\n")
+				b.WriteString(TagManagerCountStyle.Render(countStr))
+				b.WriteString("\n")
 			}
 		}
 	}
 
 	// Show color picker when in color pick mode
 	if m.colorPickMode {
-		content.WriteString("\n")
-		content.WriteString(MutedStyle.Render("Select color:"))
-		content.WriteString("\n")
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Select color:"))
+		b.WriteString("\n")
 
 		for i, pc := range SectionColorPalette {
 			style := lipgloss.NewStyle().Foreground(pc.Color)
@@ -605,62 +593,36 @@ func (m *SectionManagerModel) View() string {
 				swatch = "[█]"
 				style = style.Bold(true)
 			}
-			content.WriteString(style.Render(swatch))
+			b.WriteString(style.Render(swatch))
 		}
-		content.WriteString("\n")
+		b.WriteString("\n")
 		// Show selected color name
 		selectedColor := SectionColorPalette[m.colorCursor]
-		content.WriteString(MutedStyle.Render(selectedColor.Name))
-		content.WriteString("\n")
+		b.WriteString(MutedStyle.Render(selectedColor.Name))
+		b.WriteString("\n")
 	}
 
 	// Error message
 	if m.errorMsg != "" {
-		content.WriteString("\n")
-		content.WriteString(TagManagerErrorStyle.Render(m.errorMsg))
-		content.WriteString("\n")
+		b.WriteString("\n")
+		b.WriteString(TagManagerErrorStyle.Render(m.errorMsg))
+		b.WriteString("\n")
 	}
 
-	// Footer hint
-	content.WriteString("\n")
+	// Footer
+	var footerHelp string
 	if m.colorPickMode {
-		content.WriteString(MutedStyle.Render("h/l nav | c cycle | x clear | enter confirm | esc cancel"))
+		footerHelp = "h/l nav | c cycle | x clear | enter confirm | esc cancel"
 	} else if m.renameMode {
-		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
+		footerHelp = "enter confirm | esc cancel"
 	} else if m.addMode {
-		content.WriteString(MutedStyle.Render("enter add | esc cancel"))
+		footerHelp = "enter add | esc cancel"
 	} else if len(m.sections) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | g go to | a add | r rename | c color | d del | q close"))
+		footerHelp = "j/k nav | enter filter | g go to | a add | r rename | c color | d del | q close"
 	} else {
-		content.WriteString(MutedStyle.Render("a add | q close"))
+		footerHelp = "a add | q close"
 	}
-
-	// Apply box styling
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	// Center the box
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	// Build final output with padding
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
-	}
-
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
 
 	return b.String()
 }

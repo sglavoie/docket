@@ -610,11 +610,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(TitleStyle.Render(ds.titleText()))
-	b.WriteString("\n")
-
-	// Counts
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d active, %d resolved", ds.activeCount(), ds.resolvedCount())))
+	b.WriteString(renderFullscreenTitle(ds.titleText(), fmt.Sprintf("%d active, %d resolved", ds.activeCount(), ds.resolvedCount())))
 	b.WriteString("\n\n")
 
 	// Expanded view mode
@@ -738,7 +734,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 		b.WriteString("\n")
 	} else {
-		headerLines := 8
+		headerLines := 7
 		availableHeight := s.height - headerLines
 		maxVisible := availableHeight / 3
 		if maxVisible < 3 {
@@ -816,8 +812,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 	}
 
-	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | g: go to project | Enter: expand | h/l/[/] tabs | Esc: close"))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | g: go to project | Enter: expand | h/l/[/] tabs | Esc: close"), "", s.width))
 
 	return b.String()
 }

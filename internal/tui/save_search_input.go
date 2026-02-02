@@ -75,7 +75,7 @@ func (m *SaveSearchInputModel) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(TitleStyle.Render("Save Search"))
+	b.WriteString(renderFullscreenTitle("Save Search", ""))
 	b.WriteString("\n\n")
 
 	// Show the query being saved
@@ -96,9 +96,8 @@ func (m *SaveSearchInputModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Help text
-	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("Enter to save • Esc to cancel"))
+	// Help footer
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save • Esc to cancel"), "", m.width))
 
 	return b.String()
 }

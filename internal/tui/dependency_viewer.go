@@ -147,11 +147,11 @@ func (m *DependencyViewerModel) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title)))
+	b.WriteString(renderFullscreenTitle(fmt.Sprintf("Dependencies for #%d: %s", m.task.ShortID, m.task.Title), ""))
 	b.WriteString("\n\n")
 
 	// Calculate available height for each section
-	headerLines := 4    // title + 2 newlines + help line
+	headerLines := 4    // title + newline + footer
 	sectionHeaders := 4 // 2 headers with newlines
 	availableHeight := m.height - headerLines - sectionHeaders
 	maxPerSection := availableHeight / 2
@@ -168,7 +168,7 @@ func (m *DependencyViewerModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(MutedStyle.Render("Tab: switch section | j/k: navigate | Enter: go to task | d: view deps | Esc: close"))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch section | j/k: navigate | Enter: go to task | d: view deps | Esc: close"), "", m.width))
 
 	return b.String()
 }

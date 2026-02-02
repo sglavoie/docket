@@ -274,7 +274,7 @@ func (m *UndoHistoryModel) View() string {
 	var b strings.Builder
 
 	// Title
-	b.WriteString(TitleStyle.Render("Undo History"))
+	b.WriteString(renderFullscreenTitle("Undo History", ""))
 	b.WriteString("\n\n")
 
 	// Handle error state
@@ -327,7 +327,7 @@ func (m *UndoHistoryModel) View() string {
 	}
 	helpParts = append(helpParts, "Tab: switch pane")
 	helpParts = append(helpParts, "Esc: close")
-	b.WriteString(HelpStyle.Render(strings.Join(helpParts, " | ")))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " | ")), "", m.width))
 
 	return b.String()
 }

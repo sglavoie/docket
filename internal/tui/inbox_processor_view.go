@@ -28,7 +28,9 @@ func inboxSelectedBoxStyle() lipgloss.Style {
 // renderHeader renders the header with progress information.
 func (m *InboxProcessorModel) renderHeader() string {
 	processed, skipped, remaining, total := m.getProgressStats()
-	title := TitleStyle.Render("Inbox Processing")
+	subtitle := fmt.Sprintf("%d/%d tasks (%d processed, %d skipped, %d remaining)",
+		m.currentIndex+1, total, processed, skipped, remaining)
+	title := renderFullscreenTitle("Inbox Processing", subtitle)
 
 	// Progress bar based on current position
 	var percent float64
@@ -39,11 +41,7 @@ func (m *InboxProcessorModel) renderHeader() string {
 	bar := RenderProgressBar(percent, barWidth)
 	progressBar := fmt.Sprintf("%s %.0f%%", bar, percent)
 
-	progress := MutedStyle.Render(fmt.Sprintf(
-		"Processing %d/%d tasks (%d processed, %d skipped, %d remaining)",
-		m.currentIndex+1, total, processed, skipped, remaining,
-	))
-	return fmt.Sprintf("%s\n%s\n%s", title, progressBar, progress)
+	return fmt.Sprintf("%s\n%s", title, progressBar)
 }
 
 // innerWidth returns the available content width inside a box (border + padding).
@@ -195,7 +193,7 @@ func (m *InboxProcessorModel) renderFooter() string {
 	for _, c := range controls {
 		parts = append(parts, HelpKeyStyle.Render(c.key)+MutedStyle.Render(": "+c.desc))
 	}
-	return strings.Join(parts, "  ")
+	return renderStatusBarFooter(strings.Join(parts, "  "), "", m.width)
 }
 
 // renderEmptyState renders the state when current task is nil.
@@ -207,7 +205,7 @@ func (m *InboxProcessorModel) renderEmptyState() string {
 // renderEmptyInbox renders the view when no inbox tasks exist.
 func (m *InboxProcessorModel) renderEmptyInbox() string {
 	var b strings.Builder
-	b.WriteString(TitleStyle.Render("Inbox Processing"))
+	b.WriteString(renderFullscreenTitle("Inbox Processing", ""))
 	b.WriteString("\n\n")
 	content := SuccessStyle.Render("✓ Inbox is empty! All tasks have been triaged.")
 	b.WriteString(BoxStyle.Render(content))

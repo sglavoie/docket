@@ -11,7 +11,9 @@ import (
 // renderHeader renders the header with progress information.
 func (m *GlobalInboxProcessorModel) renderHeader() string {
 	processed, skipped, remaining, total := m.getProgressStats()
-	title := TitleStyle.Render("Global Inbox Processing")
+	subtitle := fmt.Sprintf("%d/%d tasks from %d projects (%d processed, %d skipped, %d remaining)",
+		m.currentIndex+1, total, len(m.projectCache), processed, skipped, remaining)
+	title := renderFullscreenTitle("Global Inbox Processing", subtitle)
 
 	// Progress bar based on current position
 	var percent float64
@@ -22,11 +24,7 @@ func (m *GlobalInboxProcessorModel) renderHeader() string {
 	bar := RenderProgressBar(percent, barWidth)
 	progressBar := fmt.Sprintf("%s %.0f%%", bar, percent)
 
-	progress := MutedStyle.Render(fmt.Sprintf(
-		"Processing %d/%d tasks from %d projects (%d processed, %d skipped, %d remaining)",
-		m.currentIndex+1, total, len(m.projectCache), processed, skipped, remaining,
-	))
-	return fmt.Sprintf("%s\n%s\n%s", title, progressBar, progress)
+	return fmt.Sprintf("%s\n%s", title, progressBar)
 }
 
 // innerWidth returns the available content width inside a box (border + padding).
@@ -180,7 +178,7 @@ func (m *GlobalInboxProcessorModel) renderFooter() string {
 	for _, c := range controls {
 		parts = append(parts, HelpKeyStyle.Render(c.key)+MutedStyle.Render(": "+c.desc))
 	}
-	return strings.Join(parts, "  ")
+	return renderStatusBarFooter(strings.Join(parts, "  "), "", m.width)
 }
 
 // renderEmptyState renders the state when current task is nil.
@@ -192,7 +190,7 @@ func (m *GlobalInboxProcessorModel) renderEmptyState() string {
 // renderEmptyInbox renders the view when no inbox tasks exist.
 func (m *GlobalInboxProcessorModel) renderEmptyInbox() string {
 	var b strings.Builder
-	b.WriteString(TitleStyle.Render("Global Inbox Processing"))
+	b.WriteString(renderFullscreenTitle("Global Inbox Processing", ""))
 	b.WriteString("\n\n")
 	content := SuccessStyle.Render("✓ All inboxes are empty! No tasks to process across any project.")
 	b.WriteString(BoxStyle.Render(content))

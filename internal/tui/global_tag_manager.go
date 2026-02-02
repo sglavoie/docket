@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -390,28 +389,16 @@ func (m *GlobalTagManagerModel) handleProjectPickerMode(msg tea.KeyMsg) (tea.Mod
 func (m *GlobalTagManagerModel) View() string {
 	var b strings.Builder
 
-	boxWidth := 50
-	if m.width > 0 && m.width < boxWidth+10 {
-		boxWidth = m.width - 10
-	}
-
-	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Global Tag Manager"))
-	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render("across all projects"))
-	content.WriteString("\n\n")
-
 	if m.showProjectPicker {
-		return m.renderProjectPicker(boxWidth)
+		return m.renderProjectPicker()
 	}
+
+	b.WriteString(renderFullscreenTitle("Global Tag Manager", "across all projects"))
+	b.WriteString("\n\n")
 
 	if len(m.tags) == 0 {
-		content.WriteString(MutedStyle.Render("No tags found in any project"))
-		content.WriteString("\n")
+		b.WriteString(MutedStyle.Render("No tags found in any project"))
+		b.WriteString("\n")
 	} else {
 		for i, tag := range m.tags {
 			cursor := "  "
@@ -422,70 +409,47 @@ func (m *GlobalTagManagerModel) View() string {
 			}
 
 			if m.renameMode && tag.Name == m.renameTarget {
-				content.WriteString(cursor)
-				content.WriteString("Rename to: ")
-				content.WriteString(m.renameInput.View())
-				content.WriteString("\n")
+				b.WriteString(cursor)
+				b.WriteString("Rename to: ")
+				b.WriteString(m.renameInput.View())
+				b.WriteString("\n")
 			} else {
 				line := fmt.Sprintf("%s%s ", cursor, tag.Name)
-				content.WriteString(style.Render(line))
+				b.WriteString(style.Render(line))
 				countStr := fmt.Sprintf("(%d)", tag.TaskCount)
-				content.WriteString(TagManagerCountStyle.Render(countStr))
+				b.WriteString(TagManagerCountStyle.Render(countStr))
 				projectStr := fmt.Sprintf(" [%d project", len(tag.Projects))
 				if len(tag.Projects) != 1 {
 					projectStr += "s"
 				}
 				projectStr += "]"
-				content.WriteString(MutedStyle.Render(projectStr))
-				content.WriteString("\n")
+				b.WriteString(MutedStyle.Render(projectStr))
+				b.WriteString("\n")
 			}
 		}
 	}
 
 	if m.errorMsg != "" {
-		content.WriteString("\n")
-		content.WriteString(TagManagerErrorStyle.Render(m.errorMsg))
-		content.WriteString("\n")
+		b.WriteString("\n")
+		b.WriteString(TagManagerErrorStyle.Render(m.errorMsg))
+		b.WriteString("\n")
 	}
 
-	content.WriteString("\n")
+	var footerHelp string
 	if m.renameMode {
-		content.WriteString(MutedStyle.Render("enter confirm | esc cancel"))
+		footerHelp = "enter confirm | esc cancel"
 	} else if len(m.tags) > 0 {
-		content.WriteString(MutedStyle.Render("j/k nav | enter filter | r rename | q close"))
+		footerHelp = "j/k nav | enter filter | r rename | q close"
 	} else {
-		content.WriteString(MutedStyle.Render("q close"))
+		footerHelp = "q close"
 	}
-
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	for i := 0; i < topPadding; i++ {
-		b.WriteString("\n")
-	}
-
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
 
 	return b.String()
 }
 
 // renderProjectPicker renders the project picker overlay.
-func (m *GlobalTagManagerModel) renderProjectPicker(boxWidth int) string {
+func (m *GlobalTagManagerModel) renderProjectPicker() string {
 	var b strings.Builder
 
 	var projects []TagProjectUsage
@@ -496,15 +460,8 @@ func (m *GlobalTagManagerModel) renderProjectPicker(boxWidth int) string {
 		}
 	}
 
-	var content strings.Builder
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary)
-	content.WriteString(titleStyle.Render("Select Project"))
-	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render(fmt.Sprintf("for tag \"%s\"", m.selectedTag)))
-	content.WriteString("\n\n")
+	b.WriteString(renderFullscreenTitle("Select Project", fmt.Sprintf("for tag \"%s\"", m.selectedTag)))
+	b.WriteString("\n\n")
 
 	for i, usage := range projects {
 		cursor := "  "
@@ -515,38 +472,13 @@ func (m *GlobalTagManagerModel) renderProjectPicker(boxWidth int) string {
 		}
 
 		line := fmt.Sprintf("%s%s ", cursor, usage.Project.Name)
-		content.WriteString(style.Render(line))
+		b.WriteString(style.Render(line))
 		countStr := fmt.Sprintf("(%d tasks)", usage.TaskCount)
-		content.WriteString(TagManagerCountStyle.Render(countStr))
-		content.WriteString("\n")
-	}
-
-	content.WriteString("\n")
-	content.WriteString(MutedStyle.Render("j/k nav | enter select | esc back"))
-
-	box := TagManagerBoxStyle.Width(boxWidth).Render(content.String())
-
-	boxHeight := lipgloss.Height(box)
-	topPadding := (m.height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (m.width - lipgloss.Width(box)) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	for i := 0; i < topPadding; i++ {
+		b.WriteString(TagManagerCountStyle.Render(countStr))
 		b.WriteString("\n")
 	}
 
-	lines := strings.Split(box, "\n")
-	padding := strings.Repeat(" ", leftPadding)
-	for _, line := range lines {
-		b.WriteString(padding)
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k nav | enter select | esc back"), "", m.width))
 
 	return b.String()
 }
