@@ -117,7 +117,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				}
 			}
 
-			if msg.Section != "" {
+			if msg.Section != "" && msg.Section != removeCustomSectionSentinel {
 				project.EnsureSection(msg.Section)
 				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
 					project.SetSectionColor(msg.Section, globalColor)
@@ -134,7 +134,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 			successMsg := fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
 			if msg.Section == "" {
-				successMsg = fmt.Sprintf("Removed %d tasks from section", count)
+				successMsg = fmt.Sprintf("Removed %d tasks from GTD section", count)
+			} else if msg.Section == removeCustomSectionSentinel {
+				successMsg = fmt.Sprintf("Removed custom section from %d tasks", count)
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
@@ -146,7 +148,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task != nil && msg.Project != nil {
 			assignSection(msg.Task, msg.Section)
 
-			if msg.Section != "" {
+			if msg.Section != "" && msg.Section != removeCustomSectionSentinel {
 				msg.Project.EnsureSection(msg.Section)
 				if globalColor := m.config.GetGlobalSectionColor(msg.Section); globalColor != "gray" {
 					msg.Project.SetSectionColor(msg.Section, globalColor)
@@ -162,7 +164,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 			successMsg := fmt.Sprintf("Moved to %s", msg.Section)
 			if msg.Section == "" {
-				successMsg = "Removed from section"
+				successMsg = "Removed from GTD section"
+			} else if msg.Section == removeCustomSectionSentinel {
+				successMsg = "Removed custom section"
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
@@ -214,14 +218,15 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// assignSection sets the section on a task, clearing the other section field.
+// assignSection sets the section on a task. GTD sections and custom sections
+// are independent — assigning one does not clear the other.
 func assignSection(task *models.Task, section string) {
 	if models.IsGTDSection(section) || section == "" {
 		task.Section = section
+	} else if section == removeCustomSectionSentinel {
 		task.CustomSection = ""
 	} else {
 		task.CustomSection = section
-		task.Section = ""
 	}
 	task.UpdatedAt = time.Now()
 }

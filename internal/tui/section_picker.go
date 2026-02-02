@@ -13,6 +13,7 @@ import (
 )
 
 const newSectionSentinel = "+ New Section"
+const removeCustomSectionSentinel = "(remove custom section)"
 
 // SectionPickerModel allows selecting a single section to assign to a task.
 type SectionPickerModel struct {
@@ -74,12 +75,19 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 func buildSectionPickerList(project *models.Project) []SectionInfo {
 	sectionCounts := make(map[string]int)
 
-	// Count tasks per section (including empty string for Active)
+	// Count GTD sections from task.Section, custom sections from task.CustomSection
 	for _, task := range project.Tasks {
 		sectionCounts[task.Section]++
+	}
+	customCounts := make(map[string]int)
+	for _, task := range project.Tasks {
 		if task.CustomSection != "" {
-			sectionCounts[task.CustomSection]++
+			customCounts[task.CustomSection]++
 		}
+	}
+	// Merge custom counts into sectionCounts (custom names won't collide with GTD names)
+	for name, count := range customCounts {
+		sectionCounts[name] = count
 	}
 
 	// Include all standard kanban sections, even if empty
@@ -119,6 +127,18 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		}
 		return sections[i].Name < sections[j].Name
 	})
+
+	// Append sentinel for removing custom section (only if any task has one)
+	hasCustom := false
+	for _, task := range project.Tasks {
+		if task.CustomSection != "" {
+			hasCustom = true
+			break
+		}
+	}
+	if hasCustom {
+		sections = append(sections, SectionInfo{Name: removeCustomSectionSentinel})
+	}
 
 	// Append sentinel for creating a new section
 	sections = append(sections, SectionInfo{Name: newSectionSentinel})
@@ -185,6 +205,17 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
+				// If remove-custom sentinel selected, emit it directly
+				if selected.Name == removeCustomSectionSentinel {
+					return m, func() tea.Msg {
+						return SectionPickerDoneMsg{
+							Task:     m.task,
+							Project:  m.project,
+							Section:  removeCustomSectionSentinel,
+							Canceled: false,
+						}
+					}
+				}
 				// If sentinel selected, switch to add mode
 				if selected.Name == newSectionSentinel {
 					m.addMode = true
@@ -235,15 +266,19 @@ func (m *SectionPickerModel) View() string {
 	// Search bar
 	b.WriteString(m.RenderSearchBar())
 
-	// Current section
-	currentSection := m.task.Section
-	if currentSection == "" && m.task.CustomSection != "" {
-		currentSection = m.task.CustomSection
+	// Current section — show both GTD and custom when both are set
+	var currentParts []string
+	if m.task.Section != "" {
+		currentParts = append(currentParts, m.task.Section)
 	}
-	if currentSection == "" {
-		currentSection = "(no section)"
+	if m.task.CustomSection != "" {
+		currentParts = append(currentParts, "@"+m.task.CustomSection)
 	}
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentSection)))
+	currentDisplay := "(no section)"
+	if len(currentParts) > 0 {
+		currentDisplay = strings.Join(currentParts, " + ")
+	}
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: %s", currentDisplay)))
 	b.WriteString("\n\n")
 
 	// List
@@ -310,10 +345,12 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		item := m.Filtered[i]
 		selected := i == m.Cursor
 
-		// Determine gutter symbol: @ for custom, + for sentinel, space for GTD
+		// Determine gutter symbol: @ for custom, + for sentinel, - for remove, space for GTD
 		var gutter string
 		if item.Name == newSectionSentinel {
 			gutter = "+"
+		} else if item.Name == removeCustomSectionSentinel {
+			gutter = "-"
 		} else if item.IsCustom {
 			gutter = "@"
 		} else {
@@ -332,6 +369,8 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		displayText := item.DisplayText()
 		if item.Name == newSectionSentinel {
 			displayText = "New Section"
+		} else if item.Name == removeCustomSectionSentinel {
+			displayText = "Remove Custom Section"
 		}
 		countStr := TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
 
