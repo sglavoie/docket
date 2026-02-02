@@ -457,66 +457,7 @@ func (m *HelpViewModel) tabBarLines() int {
 
 func (m *HelpViewModel) renderHelpTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
-	availableWidth := m.innerWidth()
-
-	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(ColorPrimary)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.Border{Bottom: "─"}).
-		BorderForeground(ColorBorder)
-
-	// Build rows of tabs that fit within available width
-	var rows []string
-	var currentRow []string
-	currentWidth := 0
-
-	for i, name := range tabNames {
-		tabWidth := lipgloss.Width(plainStyle.Render(name))
-		if currentWidth+tabWidth > availableWidth && len(currentRow) > 0 {
-			rows = append(rows, m.finishTabRow(currentRow, availableWidth))
-			currentRow = nil
-			currentWidth = 0
-		}
-		if i == m.activeTab {
-			currentRow = append(currentRow, activeStyle.Render(name))
-		} else {
-			currentRow = append(currentRow, inactiveStyle.Render(name))
-		}
-		currentWidth += tabWidth
-	}
-	if len(currentRow) > 0 {
-		rows = append(rows, m.finishTabRow(currentRow, availableWidth))
-	}
-
-	return strings.Join(rows, "\n")
-}
-
-// finishTabRow joins a row of rendered tabs and fills remaining width with a border.
-func (m *HelpViewModel) finishTabRow(tabs []string, availableWidth int) string {
-	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-	tabWidth := lipgloss.Width(row)
-	remaining := availableWidth - tabWidth
-	if remaining > 0 {
-		filler := lipgloss.NewStyle().
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder).
-			Width(remaining).
-			Render("")
-		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
-	}
-	return row
+	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
 func (m *HelpViewModel) View() string {
@@ -555,9 +496,6 @@ func (m *HelpViewModel) View() string {
 
 	// Status bar footer
 	b.WriteString("\n")
-	separator := MutedStyle.Render(strings.Repeat("─", m.width))
-	b.WriteString(separator)
-	b.WriteString("\n")
 
 	title := fmt.Sprintf("Help - %s", m.viewName)
 	left := StatusBarStyle.Render(title)
@@ -568,12 +506,7 @@ func (m *HelpViewModel) View() string {
 	}
 	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs | / filter | j/k scroll | n/N sections | ? close%s", scrollPercent))
 
-	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
-	if gap < 1 {
-		gap = 1
-	}
-	spacer := lipgloss.NewStyle().Width(gap).Render("")
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
+	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return b.String()
 }

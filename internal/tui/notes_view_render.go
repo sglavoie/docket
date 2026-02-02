@@ -242,23 +242,20 @@ func (m *NotesViewModel) renderFooter() string {
 }
 
 func (m *NotesViewModel) renderDivider() string {
-	dividerColor := ColorMuted
+	dividerColor := lipgloss.TerminalColor(ColorMuted)
 	if m.detailsPaneFocused {
 		dividerColor = ColorPrimary
 	}
-	dividerStyle := lipgloss.NewStyle().Foreground(dividerColor)
-	dividerWidth := m.width
-	if dividerWidth <= 0 {
-		dividerWidth = 80
-	}
-	dividerLine := strings.Repeat("─", dividerWidth)
+
+	var opts []DividerOption
+	opts = append(opts, WithDividerColor(dividerColor))
+
 	if m.detailsMaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
 		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsScroll+1, m.detailsMaxScroll+1)
-		if len(indicator) < dividerWidth {
-			dividerLine = strings.Repeat("─", dividerWidth-len(indicator)) + indicator
-		}
+		opts = append(opts, WithRightIndicator(indicator))
 	}
-	return dividerStyle.Render(dividerLine)
+
+	return renderHorizontalDivider(m.width, opts...)
 }
 
 func (m *NotesViewModel) renderStatusBar() string {
