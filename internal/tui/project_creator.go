@@ -207,44 +207,20 @@ func (m *ProjectCreatorModel) View() string {
 	var b strings.Builder
 
 	// Name input
-	var nameLabel string
-	if m.focusIndex == 0 {
-		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
-	} else {
-		nameLabel = FieldLabelStyle.Render("Name: ")
-	}
-	b.WriteString(nameLabel)
+	b.WriteString(renderFormLabelShared("Name:", 0, m.focusIndex))
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n\n")
 
 	// Context input with available contexts hint
-	var contextLabel string
-	if m.focusIndex == 1 {
-		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
-	} else {
-		contextLabel = FieldLabelStyle.Render("Context: ")
-	}
-	b.WriteString(contextLabel)
+	b.WriteString(renderFormLabelShared("Context:", 1, m.focusIndex))
 	b.WriteString(m.contextInput.View())
 	b.WriteString("\n")
 
-	// Show available contexts
+	// Show available contexts using shared selector
 	if len(m.contexts) > 0 {
-		b.WriteString("         ")
-		b.WriteString(MutedStyle.Render("Available: "))
-		for i, ctx := range m.contexts {
-			if i == m.contextCursor {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("[%s]", ctx)))
-			} else {
-				b.WriteString(MutedStyle.Render(ctx))
-			}
-			if i < len(m.contexts)-1 {
-				b.WriteString(MutedStyle.Render(", "))
-			}
-		}
-		if m.focusIndex == 1 {
-			b.WriteString(HelpStyle.Render("  (←/→ to select, or type custom)"))
-		}
+		padding := strings.Repeat(" ", FormLabelWidth)
+		b.WriteString(padding)
+		b.WriteString(renderContextSelectorShared(m.contexts, m.contextCursor, m.focusIndex == 1))
 	}
 	b.WriteString("\n\n")
 
@@ -257,12 +233,12 @@ func (m *ProjectCreatorModel) View() string {
 
 	// Help footer
 	b.WriteString("\n\n")
-	b.WriteString(MutedStyle.Render("Tab: switch field · ←/→: select context (or type custom) · Enter: submit · Esc: cancel"))
+	b.WriteString(renderFormHelpFooter("Tab switch · ←/→ context · Enter submit · Esc cancel"))
 
 	// Wrap in overlay card
 	cardWidth := m.width - 4
-	if cardWidth > 60 {
-		cardWidth = 60
+	if cardWidth > 80 {
+		cardWidth = 80
 	}
 	config := OverlayCardConfig{
 		Title:        "Create Project",

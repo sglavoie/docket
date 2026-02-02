@@ -198,6 +198,28 @@ func renderDueDateFieldShared(dueDateInput string, focused bool) string {
 	return b.String()
 }
 
+// renderContextSelectorShared renders a hybrid context selector (predefined list + custom typing).
+// It uses the same [selected] / unselected pattern as other form selectors.
+func renderContextSelectorShared(contexts []string, contextCursor int, focused bool) string {
+	var b strings.Builder
+	for i, ctx := range contexts {
+		if i == contextCursor {
+			if focused {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", ctx)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", ctx)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", ctx)))
+		}
+	}
+	if focused {
+		b.WriteString("  ")
+		b.WriteString(HelpStyle.Render("←/→ select · type custom"))
+	}
+	return b.String()
+}
+
 // renderFormHelpFooter renders a muted help line for form views.
 func renderFormHelpFooter(text string) string {
 	return MutedStyle.Render(text)

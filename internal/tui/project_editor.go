@@ -279,77 +279,42 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 func (m *ProjectEditorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render(fmt.Sprintf("Edit Project: %s", m.originalName)))
-	if m.hasChanges {
-		b.WriteString(" ")
-		b.WriteString(UnsavedChangesStyle.Render("(unsaved changes)"))
-	}
-	b.WriteString("\n\n")
-
 	// Name input with slug preview
-	var nameLabel string
-	if m.focusIndex == 0 {
-		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
-	} else {
-		nameLabel = FieldLabelStyle.Render("Name: ")
-	}
-	b.WriteString(nameLabel)
+	b.WriteString(renderFormLabelShared("Name:", 0, m.focusIndex))
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n")
 
 	// Show slug preview
 	name := strings.TrimSpace(m.nameInput.Value())
+	padding := strings.Repeat(" ", FormLabelWidth)
 	if name != "" {
 		slug := models.Slugify(name)
 		slugChanged := slug != models.Slugify(m.originalName)
 		if slugChanged {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("       Slug: %s ", slug)))
+			b.WriteString(padding)
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s ", slug)))
 			b.WriteString(InProgressStyle.Render("(will change)"))
 		} else {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("       Slug: %s", slug)))
+			b.WriteString(padding)
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("Slug: %s", slug)))
 		}
 	}
 	b.WriteString("\n\n")
 
 	// Context input with available contexts hint
-	var contextLabel string
-	if m.focusIndex == 1 {
-		contextLabel = FieldLabelFocusedStyle.Render("Context: ")
-	} else {
-		contextLabel = FieldLabelStyle.Render("Context: ")
-	}
-	b.WriteString(contextLabel)
+	b.WriteString(renderFormLabelShared("Context:", 1, m.focusIndex))
 	b.WriteString(m.contextInput.View())
 	b.WriteString("\n")
 
-	// Show available contexts
+	// Show available contexts using shared selector
 	if len(m.contexts) > 0 {
-		b.WriteString("         ")
-		b.WriteString(MutedStyle.Render("Available: "))
-		for i, ctx := range m.contexts {
-			if i == m.contextCursor {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("[%s]", ctx)))
-			} else {
-				b.WriteString(MutedStyle.Render(ctx))
-			}
-			if i < len(m.contexts)-1 {
-				b.WriteString(MutedStyle.Render(", "))
-			}
-		}
-		if m.focusIndex == 1 {
-			b.WriteString(HelpStyle.Render("  (←/→ to select, or type custom)"))
-		}
+		b.WriteString(padding)
+		b.WriteString(renderContextSelectorShared(m.contexts, m.contextCursor, m.focusIndex == 1))
 	}
 	b.WriteString("\n\n")
 
 	// Description input
-	var descLabel string
-	if m.focusIndex == 2 {
-		descLabel = FieldLabelFocusedStyle.Render("Description: ")
-	} else {
-		descLabel = FieldLabelStyle.Render("Description: ")
-	}
-	b.WriteString(descLabel)
+	b.WriteString(renderFormLabelShared("Description:", 2, m.focusIndex))
 	b.WriteString(m.descriptionInput.View())
 	b.WriteString("\n\n")
 
@@ -359,15 +324,23 @@ func (m *ProjectEditorModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Help
-	help := BoxStyle.Render(
-		BoldStyle.Render("Controls") + "\n" +
-			"  Tab/Shift+Tab  Switch field\n" +
-			"  Left/Right     Select existing context\n" +
-			"  Ctrl+S         Save changes\n" +
-			"  Esc            Cancel",
-	)
-	b.WriteString(help)
+	// Help footer
+	b.WriteString(renderFormHelpFooter("Tab/Shift+Tab switch · ←/→ context · Ctrl+S save · Esc cancel"))
 
-	return b.String()
+	// Wrap in overlay card
+	title := "Edit Project"
+	if m.hasChanges {
+		title += " *"
+	}
+	cardWidth := m.width - 4
+	if cardWidth > 80 {
+		cardWidth = 80
+	}
+	config := OverlayCardConfig{
+		Title:        title,
+		Width:        cardWidth,
+		Centered:     true,
+		NoTruncation: true,
+	}
+	return renderOverlayCard(b.String(), m.width, m.height, config)
 }
