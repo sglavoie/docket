@@ -229,15 +229,11 @@ func (m *ProjectSelectorModel) View() string {
 	var b strings.Builder
 
 	// Title with task info
-	b.WriteString(TitleStyle.Render("Move to Project"))
-	b.WriteString("\n")
-
-	// Show which task is being moved
 	taskInfo := fmt.Sprintf("Moving: #%d %s", m.task.ShortID, m.task.Title)
 	if len(taskInfo) > m.Width()-4 {
 		taskInfo = util.Truncate(taskInfo, m.Width()-4)
 	}
-	b.WriteString(MutedStyle.Render(taskInfo))
+	b.WriteString(renderFullscreenTitle("Move to Project", taskInfo))
 	b.WriteString("\n\n")
 
 	// Search input
@@ -249,8 +245,7 @@ func (m *ProjectSelectorModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	footer := HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel")
-	b.WriteString(footer)
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel"), "", m.Width()))
 
 	return b.String()
 }

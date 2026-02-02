@@ -96,11 +96,11 @@ func (m *KanbanViewModel) View() string {
 	viewParts = append(viewParts, kanbanPane)
 
 	// Render the horizontal divider
-	dividerStyle := MutedStyle
+	var dividerOpts []DividerOption
 	if m.detailsPaneFocused {
-		dividerStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+		dividerOpts = append(dividerOpts, WithDividerColor(ColorPrimary))
 	}
-	divider := dividerStyle.Render(strings.Repeat("─", m.Width()))
+	divider := renderHorizontalDivider(m.Width(), dividerOpts...)
 	viewParts = append(viewParts, divider)
 
 	// Render the details panel for the selected task

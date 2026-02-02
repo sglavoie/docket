@@ -39,30 +39,28 @@ func (m *CommandPaletteModel) View() string {
 
 	// Handle edge cases
 	if len(m.allItems) == 0 {
-		content.WriteString(MutedStyle.Render("No items available."))
-		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Press Esc to close"))
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Command Palette",
-			Subtitle: "0 items",
-			Centered: false,
-		})
+		var out strings.Builder
+		out.WriteString(renderFullscreenTitle("Command Palette", "0 items"))
+		out.WriteString("\n")
+		out.WriteString(content.String())
+		out.WriteString(MutedStyle.Render("No items available."))
+		out.WriteString("\n\n")
+		out.WriteString(HelpStyle.Render("Press Esc to close"))
+		return out.String()
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
 	if !m.actionMode && len(m.filteredItems) == 0 && query != "" {
-		content.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
-		content.WriteString("\n\n")
-		content.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
-		content.WriteString("\n")
-		content.WriteString(HelpStyle.Render("     :tag :sec :note :view • or clear to browse all"))
-
-		return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-			Title:    "Command Palette",
-			Subtitle: fmt.Sprintf("0/%d matching", len(m.allItems)),
-			Centered: false,
-		})
+		var out strings.Builder
+		out.WriteString(renderFullscreenTitle("Command Palette", fmt.Sprintf("0/%d matching", len(m.allItems))))
+		out.WriteString("\n")
+		out.WriteString(content.String())
+		out.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
+		out.WriteString("\n\n")
+		out.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
+		out.WriteString("\n")
+		out.WriteString(HelpStyle.Render("     :tag :sec :note :view • or clear to browse all"))
+		return out.String()
 	}
 
 	// Render content based on mode
@@ -73,10 +71,22 @@ func (m *CommandPaletteModel) View() string {
 		listContent = m.renderItemList()
 	}
 
-	paneHeight := m.height - 10 // Account for card border, title, input, spacing, and footer
+	paneHeight := m.height - 8 // title + input + spacing + footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
+
+	// Build title
+	title := "Command Palette"
+	if m.actionMode {
+		title = "Actions"
+	}
+	subtitle := m.buildSubtitle()
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(title, subtitle))
+	out.WriteString("\n")
+	out.WriteString(content.String())
 
 	// Compact mode: full-width list, no preview
 	// Use m.listWidth + m.previewWidth for full inner width (calculated in SetSize)
@@ -87,40 +97,28 @@ func (m *CommandPaletteModel) View() string {
 			Height(paneHeight).
 			MaxHeight(paneHeight).
 			Render(listContent)
-		content.WriteString(listPane)
-		content.WriteString("\n")
+		out.WriteString(listPane)
+		out.WriteString("\n")
 	} else {
 		// Split pane: list on left, preview on right
 		// Use m.listWidth and m.previewWidth which are calculated in SetSize
 		// to account for card border and padding
 		previewContent := m.renderPreview()
 		splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
-		content.WriteString(splitPane)
-		content.WriteString("\n")
+		out.WriteString(splitPane)
+		out.WriteString("\n")
 	}
 
 	// Footer with controls - different for each mode
-	var footer string
+	var footerText string
 	if m.actionMode {
-		footer = HelpStyle.Render(m.buildActionModeFooter())
+		footerText = m.buildActionModeFooter()
 	} else {
-		footer = HelpStyle.Render(m.buildFooter())
+		footerText = m.buildFooter()
 	}
-	content.WriteString(footer)
+	out.WriteString(renderStatusBarFooter(HelpStyle.Render(footerText), "", m.width))
 
-	// Build subtitle showing count
-	title := "Command Palette"
-	if m.actionMode {
-		title = "Actions"
-	}
-
-	subtitle := m.buildSubtitle()
-
-	return renderOverlayCard(content.String(), m.width, m.height, OverlayCardConfig{
-		Title:    title,
-		Subtitle: subtitle,
-		Centered: false,
-	})
+	return out.String()
 }
 
 // buildSubtitle builds the subtitle showing item counts.
@@ -253,7 +251,7 @@ func (m *CommandPaletteModel) renderActionList() string {
 	}
 
 	// Calculate max visible items based on pane height
-	paneHeight := m.height - 10
+	paneHeight := m.height - 8
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
@@ -454,8 +452,8 @@ func (m *CommandPaletteModel) renderItemList() string {
 		b.WriteString("\n\n")
 	}
 
-	// Calculate pane height (must match View's paneHeight calculation: m.height - 10)
-	paneHeight := m.height - 10
+	// Calculate pane height (must match View's paneHeight calculation: m.height - 8)
+	paneHeight := m.height - 8
 	if paneHeight < 5 {
 		paneHeight = 5
 	}

@@ -791,19 +791,6 @@ var (
 	// Preview style (warning color for bulk edit, etc.)
 	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
-	// Overlay card styles (for popup/modal views like command palette, task jumper, etc.)
-	OverlayCardStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(ColorPrimary).
-				Padding(1, 2)
-
-	OverlayCardTitleStyle = lipgloss.NewStyle().
-				Foreground(ColorPrimary).
-				Bold(true)
-
-	OverlaySubtitleStyle = lipgloss.NewStyle().
-				Foreground(ColorMuted)
-
 	// Overlay split-pane separator (vertical line between list and preview)
 	OverlaySplitStyle = lipgloss.NewStyle().
 				Foreground(ColorBorder)
