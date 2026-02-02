@@ -150,9 +150,6 @@ func mapsEqual(a, b map[string]bool) bool {
 func (m *DependencySelectorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(TitleStyle.Render(m.Config.Title))
-	b.WriteString("\n\n")
-
 	// Search bar
 	b.WriteString(m.RenderSearchBar())
 
@@ -171,7 +168,15 @@ func (m *DependencySelectorModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel"))
 
-	return b.String()
+	boxWidth := 80
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, truncateTitle(m.task.Title, 40))
+
+	return renderOverlayCard(b.String(), m.Width(), m.Height(), OverlayCardConfig{
+		Title:    "Dependencies",
+		Subtitle: subtitle,
+		Width:    boxWidth,
+		CenterH:  true,
+	})
 }
 
 // renderTaskList renders the task list with status icons.
