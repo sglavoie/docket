@@ -379,7 +379,7 @@ func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) stri
 		lines = append(lines, formatActivityEntry("Completed", *task.CompletedAt))
 	}
 
-	if !task.UpdatedAt.Equal(task.CreatedAt) {
+	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
 		lines = append(lines, formatActivityEntry("Modified", task.UpdatedAt))
 	}
 
