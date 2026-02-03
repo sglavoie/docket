@@ -479,6 +479,10 @@ func (m *TaskEditorModel) View() string {
 	// Parent selector row
 	content.WriteString(m.renderFormLabel("Parent", 2))
 	content.WriteString(m.renderParentSelector())
+	if len(m.validParents) > 0 {
+		content.WriteString("  ")
+		content.WriteString(HelpStyle.Render("/ to search"))
+	}
 	content.WriteString("\n")
 
 	// Priority selector row
