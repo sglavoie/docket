@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -54,11 +55,33 @@ func (m *WorkflowRulesModel) Init() tea.Cmd {
 func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Handle expanded view mode first
-		if m.expandedView {
+		// Handle expanded view mode first (narrow screen only)
+		if m.expandedView && !m.isWideScreen() {
 			switch msg.String() {
 			case "esc", "enter", "q":
 				m.expandedView = false
+				return m, nil
+			case " ":
+				// Toggle enabled/disabled from preview
+				if len(m.filteredRules) > 0 {
+					return m, m.toggleCurrentRule()
+				}
+				return m, nil
+			case "e":
+				// Edit from preview
+				if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+					m.expandedView = false
+					rule := m.filteredRules[m.cursor]
+					return m, func() tea.Msg {
+						return ShowWorkflowRuleEditorMsg{Rule: rule}
+					}
+				}
+				return m, nil
+			case "d", "D":
+				// Delete from preview
+				if len(m.filteredRules) > 0 {
+					m.confirm.Show("delete", fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name))
+				}
 				return m, nil
 			}
 			return m, nil
@@ -66,7 +89,9 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
 			if confirmed {
-				return m, m.deleteCurrentRule()
+				cmd := m.deleteCurrentRule()
+				m.expandedView = false // Close preview after delete
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -133,8 +158,8 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			// Show expanded view with full rule details
-			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+			// Show expanded view with full rule details (narrow screens only)
+			if !m.isWideScreen() && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
 				m.expandedView = true
 			}
 			return m, nil
@@ -265,114 +290,21 @@ func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
 	}
 }
 
+// isWideScreen returns true if the screen is wide enough for split layout (≥81 chars)
+func (m *WorkflowRulesModel) isWideScreen() bool {
+	return m.Width() >= 81
+}
+
 func (m *WorkflowRulesModel) View() string {
 	var b strings.Builder
 
+	// Fullscreen preview mode on narrow screens
+	if m.expandedView && !m.isWideScreen() && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+		return m.renderFullscreenPreview()
+	}
+
 	b.WriteString(renderFullscreenTitle("Workflow Rules", fmt.Sprintf("%d rules", len(m.filteredRules))))
 	b.WriteString("\n\n")
-
-	// Expanded view mode - show full rule details
-	if m.expandedView && len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
-		rule := m.filteredRules[m.cursor]
-		isDefault := m.isDefaultRule(rule.ID)
-
-		// Rule name with default indicator
-		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
-		if isDefault {
-			b.WriteString(" ")
-			b.WriteString(MutedStyle.Render("[Default]"))
-		}
-		b.WriteString("\n\n")
-
-		// Status
-		if rule.Enabled {
-			b.WriteString(DoneStyle.Render("● Enabled"))
-		} else {
-			b.WriteString(MutedStyle.Render("○ Disabled"))
-		}
-		b.WriteString("\n\n")
-
-		// Full summary split into triggers and actions
-		b.WriteString(FieldLabelFocusedStyle.Render("Rule:"))
-		b.WriteString("\n")
-		summary := rule.Summary()
-		maxLen := m.Width() - 12
-		if maxLen < 40 {
-			maxLen = 40
-		}
-
-		// Split triggers and actions at ": "
-		if colonIdx := strings.Index(summary, ": "); colonIdx != -1 {
-			triggers := summary[:colonIdx+1] // Include the colon
-			actions := summary[colonIdx+2:]  // Skip ": "
-
-			// Write triggers line with word wrap
-			for len(triggers) > maxLen {
-				breakAt := maxLen
-				for i := maxLen; i > 0; i-- {
-					if triggers[i] == ' ' {
-						breakAt = i
-						break
-					}
-				}
-				b.WriteString(triggers[:breakAt])
-				b.WriteString("\n")
-				triggers = triggers[breakAt:]
-				if len(triggers) > 0 && triggers[0] == ' ' {
-					triggers = triggers[1:]
-				}
-			}
-			b.WriteString(triggers)
-			b.WriteString("\n")
-
-			// Write actions on new line with indent and word wrap
-			indent := "    "
-			actionMaxLen := maxLen - len(indent)
-			if actionMaxLen < 20 {
-				actionMaxLen = 20
-			}
-			for len(actions) > actionMaxLen {
-				breakAt := actionMaxLen
-				for i := actionMaxLen; i > 0; i-- {
-					if actions[i] == ' ' {
-						breakAt = i
-						break
-					}
-				}
-				b.WriteString(indent)
-				b.WriteString(actions[:breakAt])
-				b.WriteString("\n")
-				actions = actions[breakAt:]
-				if len(actions) > 0 && actions[0] == ' ' {
-					actions = actions[1:]
-				}
-			}
-			b.WriteString(indent)
-			b.WriteString(actions)
-		} else {
-			// No colon found, just write as-is with word wrap
-			for len(summary) > maxLen {
-				breakAt := maxLen
-				for i := maxLen; i > 0; i-- {
-					if summary[i] == ' ' {
-						breakAt = i
-						break
-					}
-				}
-				b.WriteString(summary[:breakAt])
-				b.WriteString("\n")
-				summary = summary[breakAt:]
-				if len(summary) > 0 && summary[0] == ' ' {
-					summary = summary[1:]
-				}
-			}
-			b.WriteString(summary)
-		}
-		b.WriteString("\n\n")
-
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close"), "", m.Width()))
-		return b.String()
-	}
 
 	// Show search input when active
 	if m.searchActive || m.searchQuery != "" {
@@ -384,88 +316,51 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	if len(m.filteredRules) == 0 {
-		if m.searchQuery != "" {
-			b.WriteString(MutedStyle.Render("No rules match your search.\n\n"))
-			b.WriteString(MutedStyle.Render("Press Esc to clear search."))
+	// Build list content
+	listContent := m.renderRulesList()
+
+	// Wide screen: split layout with preview
+	if m.isWideScreen() {
+		listWidth := m.Width() * 45 / 100
+		previewWidth := m.Width() - listWidth - 3 // 3 for separator
+
+		// Calculate available height for content
+		// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
+		availableHeight := m.Height() - 6
+		if m.searchActive || m.searchQuery != "" {
+			availableHeight -= 2
+		}
+		if availableHeight < 5 {
+			availableHeight = 5
+		}
+
+		listPane := lipgloss.NewStyle().
+			Width(listWidth).
+			Height(availableHeight).
+			Render(listContent)
+
+		var previewPane string
+		if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+			previewPane = m.renderPreviewPane(previewWidth)
 		} else {
-			b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
-			b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
+			previewPane = lipgloss.NewStyle().
+				Width(previewWidth).
+				Foreground(ColorMuted).
+				Render("No rule selected")
 		}
+		previewPane = lipgloss.NewStyle().
+			Width(previewWidth).
+			Height(availableHeight).
+			Render(previewPane)
+
+		// Full-height separator
+		separator := SeparatorStyle.Render(strings.Repeat("│\n", availableHeight))
+
+		mainContent := lipgloss.JoinHorizontal(lipgloss.Top, listPane, " ", separator, " ", previewPane)
+		b.WriteString(mainContent)
 	} else {
-		// Calculate visible area
-		// Reserve: borders (2), section headers (3), selected summary (1),
-		// scroll indicators (3), help footer (3), card padding (2), search (2) = 16 lines
-		maxVisible := m.Height() - 16
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
-
-		startIdx := 0
-		if m.cursor >= maxVisible {
-			startIdx = m.cursor - maxVisible + 1
-		}
-		endIdx := startIdx + maxVisible
-		if endIdx > len(m.filteredRules) {
-			endIdx = len(m.filteredRules)
-		}
-
-		// Show scroll indicator for rules above
-		if startIdx > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", startIdx)))
-			b.WriteString("\n")
-		}
-
-		for i := startIdx; i < endIdx; i++ {
-			rule := m.filteredRules[i]
-			isDefault := m.isDefaultRule(rule.ID)
-
-			// Status indicator
-			var status string
-			if rule.Enabled {
-				status = DoneStyle.Render("●")
-			} else {
-				status = MutedStyle.Render("○")
-			}
-
-			// Default marker
-			defaultMarker := ""
-			if isDefault {
-				defaultMarker = MutedStyle.Render("[D]") + " "
-			}
-
-			// Rule name and summary
-			name := rule.Name
-			maxNameLen := 30
-			if isDefault {
-				maxNameLen = 26 // Account for [D] marker
-			}
-			if len(name) > maxNameLen {
-				name = name[:maxNameLen-3] + "..."
-			}
-
-			summary := rule.Summary()
-			if len(summary) > 50 {
-				summary = summary[:47] + "..."
-			}
-
-			if i == m.cursor {
-				line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %s%-*s", status, defaultMarker, maxNameLen, name))
-				b.WriteString(line)
-				b.WriteString("\n")
-				// Show summary for selected rule
-				b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
-			} else {
-				b.WriteString(fmt.Sprintf("  %s %s%-*s", status, defaultMarker, maxNameLen, name))
-			}
-			b.WriteString("\n")
-		}
-
-		// Show scroll indicator if needed
-		if len(m.filteredRules) > maxVisible {
-			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d rules", m.cursor+1, len(m.filteredRules))))
-		}
+		// Narrow screen: list only
+		b.WriteString(listContent)
 	}
 
 	// Confirmation dialog
@@ -475,19 +370,346 @@ func (m *WorkflowRulesModel) View() string {
 	}
 
 	// Help footer
-	var helpText string
-	if len(m.filteredRules) > 0 {
-		helpText = "/: search · j/k: navigate · Enter: details · Space: toggle · n: new · e: edit · d: delete · q: close"
-	} else if m.searchQuery == "" {
-		helpText = "/: search · n: new rule · q: close"
-	} else {
-		helpText = "Esc: clear search · n: new rule · q: close"
-	}
-
+	helpText := m.renderHelpText()
 	b.WriteString("\n")
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
 
 	return b.String()
+}
+
+// renderRulesList renders the list of rules.
+func (m *WorkflowRulesModel) renderRulesList() string {
+	var b strings.Builder
+
+	if len(m.filteredRules) == 0 {
+		if m.searchQuery != "" {
+			b.WriteString(MutedStyle.Render("No rules match your search.\n\n"))
+			b.WriteString(MutedStyle.Render("Press Esc to clear search."))
+		} else {
+			b.WriteString(MutedStyle.Render("No workflow rules configured.\n\n"))
+			b.WriteString(MutedStyle.Render("Use 'tt workflow add' to create rules."))
+		}
+		return b.String()
+	}
+
+	// Calculate visible area - adjust for wide screen (less height needed for summary)
+	maxVisible := m.Height() - 12
+	if m.isWideScreen() {
+		maxVisible = m.Height() - 10 // More room since preview is on the side
+	}
+	if maxVisible < 3 {
+		maxVisible = 3
+	}
+
+	startIdx := 0
+	if m.cursor >= maxVisible {
+		startIdx = m.cursor - maxVisible + 1
+	}
+	endIdx := startIdx + maxVisible
+	if endIdx > len(m.filteredRules) {
+		endIdx = len(m.filteredRules)
+	}
+
+	// Show scroll indicator for rules above
+	if startIdx > 0 {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", startIdx)))
+		b.WriteString("\n")
+	}
+
+	// Calculate max name length based on available width
+	// On wide screen: use list pane width (45% of total)
+	// On narrow screen: use full width minus some padding
+	var maxNameLen int
+	if m.isWideScreen() {
+		listWidth := m.Width() * 45 / 100
+		// Account for: cursor(2) + status(2) + space(1) + padding(2) = 7
+		maxNameLen = listWidth - 7
+	} else {
+		// Account for: cursor(2) + status(2) + space(1) + padding(4) = 9
+		maxNameLen = m.Width() - 9
+	}
+	if maxNameLen < 15 {
+		maxNameLen = 15
+	}
+
+	for i := startIdx; i < endIdx; i++ {
+		rule := m.filteredRules[i]
+		isDefault := m.isDefaultRule(rule.ID)
+
+		// Status indicator
+		var status string
+		if rule.Enabled {
+			status = DoneStyle.Render("●")
+		} else {
+			status = MutedStyle.Render("○")
+		}
+
+		// Default marker
+		defaultMarker := ""
+		effectiveMaxLen := maxNameLen
+		if isDefault {
+			defaultMarker = MutedStyle.Render("[D]") + " "
+			effectiveMaxLen -= 4 // Account for [D] marker
+		}
+
+		// Rule name - use full available width
+		name := rule.Name
+		if len(name) > effectiveMaxLen {
+			name = name[:effectiveMaxLen-3] + "..."
+		}
+
+		if i == m.cursor {
+			line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
+			b.WriteString(line)
+			b.WriteString("\n")
+			// Show summary for selected rule on narrow screens only
+			if !m.isWideScreen() {
+				summary := rule.Summary()
+				maxSummaryLen := m.Width() - 8
+				if maxSummaryLen < 20 {
+					maxSummaryLen = 20
+				}
+				if len(summary) > maxSummaryLen {
+					summary = summary[:maxSummaryLen-3] + "..."
+				}
+				b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
+				b.WriteString("\n")
+			}
+		} else {
+			b.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
+			b.WriteString("\n")
+		}
+	}
+
+	// Show scroll indicator if needed
+	if len(m.filteredRules) > maxVisible {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d rules", m.cursor+1, len(m.filteredRules))))
+	}
+
+	return b.String()
+}
+
+// renderPreviewPane renders the rule preview with syntax highlighting.
+func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
+	if m.cursor >= len(m.filteredRules) {
+		return ""
+	}
+
+	rule := m.filteredRules[m.cursor]
+	isDefault := m.isDefaultRule(rule.ID)
+
+	var b strings.Builder
+
+	// Styles for syntax highlighting
+	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))  // Cyan for IF/AND/OR/THEN
+	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Magenta for =, !=, <, >, :
+
+	// Rule name header
+	b.WriteString(BoldStyle.Render("Preview"))
+	if isDefault {
+		b.WriteString(" ")
+		b.WriteString(MutedStyle.Render("[Default]"))
+	}
+	b.WriteString("\n\n")
+
+	// Rule name
+	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+	b.WriteString("\n")
+
+	// Status
+	if rule.Enabled {
+		b.WriteString(DoneStyle.Render("● Enabled"))
+	} else {
+		b.WriteString(MutedStyle.Render("○ Disabled"))
+	}
+	b.WriteString("\n\n")
+
+	// Render triggers with syntax highlighting
+	triggers := rule.GetTriggers()
+	for i, t := range triggers {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("IF") + " "
+		} else {
+			logic := rule.GetTriggerLogic()
+			if logic == workflow.LogicAnd {
+				prefix = keywordStyle.Render("AND") + " "
+			} else {
+				prefix = keywordStyle.Render("OR") + " "
+			}
+		}
+
+		field := string(t.Field)
+		op := m.getOpSymbol(t.Operation)
+		value := t.Value
+		if value == "" {
+			value = "?"
+		}
+
+		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
+	}
+
+	// Render actions with syntax highlighting
+	for i, a := range rule.Actions {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("THEN") + " "
+		} else {
+			prefix = keywordStyle.Render("AND") + " "
+		}
+
+		actionType := string(a.ActionType)
+		value := a.Value
+
+		if value == "" {
+			b.WriteString(fmt.Sprintf("%s%s\n", prefix, actionType))
+		} else {
+			b.WriteString(fmt.Sprintf("%s%s%s %s\n", prefix, actionType, operatorStyle.Render(":"), value))
+		}
+	}
+
+	// Trigger count if any
+	if rule.TriggerCount > 0 {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Triggered %d times", rule.TriggerCount)))
+	}
+
+	return lipgloss.NewStyle().Width(width).Render(b.String())
+}
+
+// renderFullscreenPreview renders the preview as a fullscreen view for narrow screens.
+func (m *WorkflowRulesModel) renderFullscreenPreview() string {
+	rule := m.filteredRules[m.cursor]
+	isDefault := m.isDefaultRule(rule.ID)
+
+	var b strings.Builder
+
+	// Title
+	b.WriteString(renderFullscreenTitle("Rule Preview", ""))
+	b.WriteString("\n\n")
+
+	// Styles for syntax highlighting
+	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))  // Cyan for IF/AND/OR/THEN
+	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Magenta for =, !=, <, >, :
+
+	// Rule name with default indicator
+	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+	if isDefault {
+		b.WriteString(" ")
+		b.WriteString(MutedStyle.Render("[Default]"))
+	}
+	b.WriteString("\n\n")
+
+	// Status
+	if rule.Enabled {
+		b.WriteString(DoneStyle.Render("● Enabled"))
+	} else {
+		b.WriteString(MutedStyle.Render("○ Disabled"))
+	}
+	b.WriteString("\n\n")
+
+	// Render triggers with syntax highlighting
+	triggers := rule.GetTriggers()
+	for i, t := range triggers {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("IF") + " "
+		} else {
+			logic := rule.GetTriggerLogic()
+			if logic == workflow.LogicAnd {
+				prefix = keywordStyle.Render("AND") + " "
+			} else {
+				prefix = keywordStyle.Render("OR") + " "
+			}
+		}
+
+		field := string(t.Field)
+		op := m.getOpSymbol(t.Operation)
+		value := t.Value
+		if value == "" {
+			value = "?"
+		}
+
+		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
+	}
+
+	// Render actions with syntax highlighting
+	for i, a := range rule.Actions {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("THEN") + " "
+		} else {
+			prefix = keywordStyle.Render("AND") + " "
+		}
+
+		actionType := string(a.ActionType)
+		value := a.Value
+
+		if value == "" {
+			b.WriteString(fmt.Sprintf("%s%s\n", prefix, actionType))
+		} else {
+			b.WriteString(fmt.Sprintf("%s%s%s %s\n", prefix, actionType, operatorStyle.Render(":"), value))
+		}
+	}
+
+	// Trigger count if any
+	if rule.TriggerCount > 0 {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Triggered %d times", rule.TriggerCount)))
+	}
+
+	b.WriteString("\n")
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close | e: edit | Space: toggle | d: delete"), "", m.Width()))
+
+	return b.String()
+}
+
+// getOpSymbol returns a symbol for the operation.
+func (m *WorkflowRulesModel) getOpSymbol(op workflow.TriggerOperation) string {
+	switch op {
+	case workflow.OpEquals:
+		return "="
+	case workflow.OpNotEquals:
+		return "!="
+	case workflow.OpContains:
+		return "has"
+	case workflow.OpGreaterThan:
+		return ">"
+	case workflow.OpLessThan:
+		return "<"
+	default:
+		return string(op)
+	}
+}
+
+// renderHelpText renders the help text for the footer, wrapping if necessary.
+func (m *WorkflowRulesModel) renderHelpText() string {
+	var parts []string
+
+	if len(m.filteredRules) == 0 {
+		if m.searchQuery == "" {
+			parts = []string{"/: search", "n: new rule", "q: close"}
+		} else {
+			parts = []string{"Esc: clear search", "n: new rule", "q: close"}
+		}
+	} else if m.isWideScreen() {
+		parts = []string{"/: search", "j/k: nav", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+	} else {
+		parts = []string{"/: search", "j/k: nav", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+	}
+
+	// Try single line first
+	singleLine := strings.Join(parts, " · ")
+	if lipgloss.Width(singleLine) <= m.Width()-2 {
+		return singleLine
+	}
+
+	// Split into two lines
+	mid := len(parts) / 2
+	line1 := strings.Join(parts[:mid], " · ")
+	line2 := strings.Join(parts[mid:], " · ")
+	return line1 + "\n" + HelpStyle.Render(line2)
 }
 
 // HasTextInput returns true when search is active.

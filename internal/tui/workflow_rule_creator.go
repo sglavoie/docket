@@ -21,6 +21,12 @@ type ActionFormState struct {
 	valueInput textinput.Model
 }
 
+// Tab indices for the workflow rule creator
+const (
+	tabTriggers = iota
+	tabActions
+)
+
 // WorkflowRuleCreatorModel handles creating a new workflow rule via TUI.
 // The implementation is split across multiple files:
 // - workflow_rule_creator.go: core model and constructors
@@ -46,9 +52,17 @@ type WorkflowRuleCreatorModel struct {
 	triggerOps    []workflow.TriggerOperation
 	actionTypes   []workflow.ActionType
 
-	// Focus tracking
-	// 0 = name, then triggers (3 fields each), then logic toggle, then actions (2 fields each)
+	// Tab and layout state
+	activeTab    int  // 0=triggers, 1=actions
+	previewShown bool // for narrow screen toggle (Ctrl+p)
+
+	// Focus tracking (tab-scoped)
+	// Triggers tab: 0=name, then 3 fields per trigger (field, op, value), then logic
+	// Actions tab: 0=name, then 2 fields per action (type, value)
 	focusIndex int
+
+	// Scroll offset for editor pane when content exceeds height
+	editorScrollOffset int
 
 	// For editing existing rules
 	editingRule *workflow.WorkflowRule
@@ -86,19 +100,27 @@ func NewWorkflowRuleCreatorModel(cfg *config.Config, manager *config.Manager) *W
 	}
 
 	return &WorkflowRuleCreatorModel{
-		config:        cfg,
-		configManager: manager,
-		nameInput:     nameInput,
-		triggers:      triggers,
-		triggerLogic:  workflow.LogicAnd,
-		actions:       actions,
-		triggerFields: workflow.ValidTriggerFields(),
-		triggerOps:    workflow.ValidTriggerOperations(),
-		actionTypes:   workflow.ValidActionTypes(),
-		focusIndex:    0,
-		width:         80,
-		height:        24,
+		config:             cfg,
+		configManager:      manager,
+		nameInput:          nameInput,
+		triggers:           triggers,
+		triggerLogic:       workflow.LogicAnd,
+		actions:            actions,
+		triggerFields:      workflow.ValidTriggerFields(),
+		triggerOps:         workflow.ValidTriggerOperations(),
+		actionTypes:        workflow.ValidActionTypes(),
+		activeTab:          tabTriggers,
+		previewShown:       false,
+		focusIndex:         0,
+		editorScrollOffset: 0,
+		width:              80,
+		height:             24,
 	}
+}
+
+// isWideScreen returns true if the screen is wide enough for split layout (≥81 chars)
+func (m *WorkflowRuleCreatorModel) isWideScreen() bool {
+	return m.width >= 81
 }
 
 // NewWorkflowRuleEditorModel creates a model for editing an existing rule.
@@ -194,50 +216,58 @@ func (m *WorkflowRuleCreatorModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// focusFieldCount returns total number of focusable fields.
-// Layout: name(1) + triggers(3 each) + logic(1 if >1 trigger) + actions(2 each)
+// focusFieldCount returns total number of focusable fields for the current tab.
+// Triggers tab: name(1) + triggers(3 each) + logic(1 if >1 trigger)
+// Actions tab: name(1) + actions(2 each)
 func (m *WorkflowRuleCreatorModel) focusFieldCount() int {
-	count := 1 // name
-	count += len(m.triggers) * 3
-	if len(m.triggers) > 1 {
-		count++ // logic toggle
+	count := 1 // name is always first
+	if m.activeTab == tabTriggers {
+		count += len(m.triggers) * 3
+		if len(m.triggers) > 1 {
+			count++ // logic toggle
+		}
+	} else {
+		count += len(m.actions) * 2
 	}
-	count += len(m.actions) * 2
 	return count
 }
 
 // getFocusSection returns which section the current focus is in and the offset within that section.
-// Returns: section ("name", "trigger", "logic", "action"), trigger/action index, field within section.
+// Returns: section ("name", "trigger", "logic", "action"), item index, field within item.
+// Focus is scoped to the current tab.
 func (m *WorkflowRuleCreatorModel) getFocusSection() (section string, itemIdx int, fieldIdx int) {
 	idx := m.focusIndex
 
-	// Name field
+	// Name field (always index 0 on both tabs)
 	if idx == 0 {
 		return "name", 0, 0
 	}
 	idx--
 
-	// Trigger fields (3 per trigger: field, op, value)
-	triggersTotal := len(m.triggers) * 3
-	if idx < triggersTotal {
-		itemIdx = idx / 3
-		fieldIdx = idx % 3
-		return "trigger", itemIdx, fieldIdx
-	}
-	idx -= triggersTotal
+	if m.activeTab == tabTriggers {
+		// Trigger fields (3 per trigger: field, op, value)
+		triggersTotal := len(m.triggers) * 3
+		if idx < triggersTotal {
+			itemIdx = idx / 3
+			fieldIdx = idx % 3
+			return "trigger", itemIdx, fieldIdx
+		}
+		idx -= triggersTotal
 
-	// Logic toggle (only if >1 trigger)
-	if len(m.triggers) > 1 {
-		if idx == 0 {
+		// Logic toggle (only if >1 trigger)
+		if len(m.triggers) > 1 && idx == 0 {
 			return "logic", 0, 0
 		}
-		idx--
+	} else {
+		// Action fields (2 per action: type, value)
+		if idx < len(m.actions)*2 {
+			itemIdx = idx / 2
+			fieldIdx = idx % 2
+			return "action", itemIdx, fieldIdx
+		}
 	}
 
-	// Action fields (2 per action: type, value)
-	itemIdx = idx / 2
-	fieldIdx = idx % 2
-	return "action", itemIdx, fieldIdx
+	return "name", 0, 0 // fallback
 }
 
 // WorkflowRuleCreatedMsg signals a new rule was created.

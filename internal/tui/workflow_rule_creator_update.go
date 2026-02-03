@@ -63,17 +63,51 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			// If showing preview on narrow screen, go back to editor
+			if m.previewShown && !m.isWideScreen() {
+				m.previewShown = false
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
 
-		case "ctrl+f":
-			// Open field picker for current or first trigger
-			section, itemIdx, _ := m.getFocusSection()
-			targetIdx := 0
-			if section == "trigger" {
-				targetIdx = itemIdx
+		case "[":
+			// Switch to Triggers tab
+			if m.activeTab != tabTriggers {
+				m.blurCurrentField()
+				m.activeTab = tabTriggers
+				m.focusIndex = 0
+				m.focusCurrentField()
 			}
+			return m, nil
+
+		case "]":
+			// Switch to Actions tab
+			if m.activeTab != tabActions {
+				m.blurCurrentField()
+				m.activeTab = tabActions
+				m.focusIndex = 0
+				m.focusCurrentField()
+			}
+			return m, nil
+
+		case "ctrl+p":
+			// Toggle preview pane (narrow screens only)
+			if !m.isWideScreen() {
+				m.previewShown = !m.previewShown
+			}
+			return m, nil
+
+		case "ctrl+f":
+			// Switch to triggers tab and open field picker for first trigger
+			m.blurCurrentField()
+			m.activeTab = tabTriggers
+			m.focusIndex = 1 // First trigger's field selector
+			m.focusCurrentField()
+
+			// Open field picker
+			targetIdx := 0
 			if targetIdx < len(m.triggers) {
 				currentField := m.triggerFields[m.triggers[targetIdx].fieldCursor]
 				m.fieldPicker = NewTriggerFieldPickerModel(targetIdx, currentField)
@@ -84,12 +118,14 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "ctrl+t":
-			// Open action type picker for current or first action
-			section, itemIdx, _ := m.getFocusSection()
+			// Switch to actions tab and open type picker for first action
+			m.blurCurrentField()
+			m.activeTab = tabActions
+			m.focusIndex = 1 // First action's type selector
+			m.focusCurrentField()
+
+			// Open action type picker
 			targetIdx := 0
-			if section == "action" {
-				targetIdx = itemIdx
-			}
 			if targetIdx < len(m.actions) {
 				currentType := m.actionTypes[m.actions[targetIdx].typeCursor]
 				m.actionPicker = NewActionTypePickerModel(targetIdx, currentType)
@@ -144,6 +180,12 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "right":
 			return m, m.handleRight()
 
+		case "up":
+			return m, m.handleUp()
+
+		case "down":
+			return m, m.handleDown()
+
 		case "h":
 			// Only handle as navigation if not in a text input field
 			if !m.isInTextInput() {
@@ -154,6 +196,18 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Only handle as navigation if not in a text input field
 			if !m.isInTextInput() {
 				return m, m.handleRight()
+			}
+
+		case "k":
+			// Only handle as navigation if not in a text input field
+			if !m.isInTextInput() {
+				return m, m.handleUp()
+			}
+
+		case "j":
+			// Only handle as navigation if not in a text input field
+			if !m.isInTextInput() {
+				return m, m.handleDown()
 			}
 		}
 	}
@@ -286,17 +340,135 @@ func (m *WorkflowRuleCreatorModel) handleRight() tea.Cmd {
 	return nil
 }
 
-// handleAdd adds a new trigger or action based on current focus.
-func (m *WorkflowRuleCreatorModel) handleAdd() tea.Cmd {
-	section, _, _ := m.getFocusSection()
-	factory := DefaultFormFieldFactory()
+// handleUp moves to the previous item (trigger or action).
+func (m *WorkflowRuleCreatorModel) handleUp() tea.Cmd {
+	section, itemIdx, _ := m.getFocusSection()
+	m.blurCurrentField()
 
 	switch section {
-	case "trigger", "name":
+	case "name":
+		// Already at top, wrap to last item or logic
+		if m.activeTab == tabTriggers {
+			if len(m.triggers) > 1 {
+				// Go to logic toggle
+				m.focusIndex = 1 + len(m.triggers)*3
+			} else {
+				// Go to last trigger's first field
+				m.focusIndex = 1
+			}
+		} else {
+			// Go to last action's first field
+			m.focusIndex = 1 + (len(m.actions)-1)*2
+		}
+	case "trigger":
+		if itemIdx > 0 {
+			// Go to previous trigger's first field
+			m.focusIndex = 1 + (itemIdx-1)*3
+		} else {
+			// Go to name
+			m.focusIndex = 0
+		}
+	case "logic":
+		// Go to last trigger's first field
+		m.focusIndex = 1 + (len(m.triggers)-1)*3
+	case "action":
+		if itemIdx > 0 {
+			// Go to previous action's first field
+			m.focusIndex = 1 + (itemIdx-1)*2
+		} else {
+			// Go to name
+			m.focusIndex = 0
+		}
+	}
+
+	m.focusCurrentField()
+	m.updateScrollForFocus()
+	return nil
+}
+
+// handleDown moves to the next item (trigger or action).
+func (m *WorkflowRuleCreatorModel) handleDown() tea.Cmd {
+	section, itemIdx, _ := m.getFocusSection()
+	m.blurCurrentField()
+
+	switch section {
+	case "name":
+		// Go to first item's first field
+		m.focusIndex = 1
+	case "trigger":
+		if itemIdx < len(m.triggers)-1 {
+			// Go to next trigger's first field
+			m.focusIndex = 1 + (itemIdx+1)*3
+		} else if len(m.triggers) > 1 {
+			// Go to logic toggle
+			m.focusIndex = 1 + len(m.triggers)*3
+		} else {
+			// Wrap to name
+			m.focusIndex = 0
+		}
+	case "logic":
+		// Wrap to name
+		m.focusIndex = 0
+	case "action":
+		if itemIdx < len(m.actions)-1 {
+			// Go to next action's first field
+			m.focusIndex = 1 + (itemIdx+1)*2
+		} else {
+			// Wrap to name
+			m.focusIndex = 0
+		}
+	}
+
+	m.focusCurrentField()
+	m.updateScrollForFocus()
+	return nil
+}
+
+// updateScrollForFocus adjusts scroll offset to keep focused item visible.
+func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
+	section, itemIdx, _ := m.getFocusSection()
+
+	// Estimate line position of focused item
+	// Name takes ~2 lines, section header ~2 lines
+	// Each trigger takes ~4 lines, each action ~3 lines
+	var focusLine int
+	switch section {
+	case "name":
+		focusLine = 0
+	case "trigger":
+		focusLine = 4 + itemIdx*4
+	case "logic":
+		focusLine = 4 + len(m.triggers)*4
+	case "action":
+		focusLine = 4 + itemIdx*3
+	}
+
+	// Keep focused item visible with some margin
+	visibleHeight := m.height - 10 // Approximate visible area
+	if visibleHeight < 5 {
+		visibleHeight = 5
+	}
+
+	if focusLine < m.editorScrollOffset {
+		m.editorScrollOffset = focusLine
+	} else if focusLine >= m.editorScrollOffset+visibleHeight-2 {
+		m.editorScrollOffset = focusLine - visibleHeight + 3
+	}
+
+	if m.editorScrollOffset < 0 {
+		m.editorScrollOffset = 0
+	}
+}
+
+// handleAdd adds a new trigger or action based on current tab.
+func (m *WorkflowRuleCreatorModel) handleAdd() tea.Cmd {
+	factory := DefaultFormFieldFactory()
+
+	if m.activeTab == tabTriggers {
 		// Add a new trigger
 		valueInput := factory.NewTextInput("Value")
 		m.triggers = append(m.triggers, TriggerFormState{valueInput: valueInput})
-	case "action", "logic":
+	} else {
 		// Add a new action
 		valueInput := factory.NewTextInput("Value")
 		m.actions = append(m.actions, ActionFormState{valueInput: valueInput})
@@ -304,13 +476,13 @@ func (m *WorkflowRuleCreatorModel) handleAdd() tea.Cmd {
 	return nil
 }
 
-// handleRemove removes the current trigger or action.
+// handleRemove removes the current trigger or action based on current tab.
 func (m *WorkflowRuleCreatorModel) handleRemove() tea.Cmd {
 	section, itemIdx, _ := m.getFocusSection()
 
-	switch section {
-	case "trigger":
-		if len(m.triggers) > 1 && itemIdx < len(m.triggers) {
+	if m.activeTab == tabTriggers {
+		// Remove trigger (must have at least one)
+		if section == "trigger" && len(m.triggers) > 1 && itemIdx < len(m.triggers) {
 			m.triggers = append(m.triggers[:itemIdx], m.triggers[itemIdx+1:]...)
 			// Adjust focus if needed
 			total := m.focusFieldCount()
@@ -318,8 +490,9 @@ func (m *WorkflowRuleCreatorModel) handleRemove() tea.Cmd {
 				m.focusIndex = total - 1
 			}
 		}
-	case "action":
-		if len(m.actions) > 1 && itemIdx < len(m.actions) {
+	} else {
+		// Remove action (must have at least one)
+		if section == "action" && len(m.actions) > 1 && itemIdx < len(m.actions) {
 			m.actions = append(m.actions[:itemIdx], m.actions[itemIdx+1:]...)
 			// Adjust focus if needed
 			total := m.focusFieldCount()

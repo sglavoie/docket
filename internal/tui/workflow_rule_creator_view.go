@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -17,10 +19,145 @@ func (m *WorkflowRuleCreatorModel) View() string {
 		return m.actionPicker.View()
 	}
 
+	// Narrow screen with preview toggle: show fullscreen preview
+	if !m.isWideScreen() && m.previewShown {
+		return m.renderFullscreenPreview()
+	}
+
+	title := "Edit Workflow Rule"
+	if m.editingRule == nil {
+		title = "Create Workflow Rule"
+	}
+
+	// Tab bar
+	tabs := []string{"Triggers", "Actions"}
+	tabBar := RenderTabBar(tabs, m.activeTab, m.width, 1)
+
+	// Calculate available height for editor content
+	// Title(1) + blank(1) + tabBar(1) + blank(2) + footer(2) = 7 lines overhead
+	availableHeight := m.height - 7
+
+	// Editor content with scrolling
+	editorContent := m.renderEditorPane()
+	editorContent = m.applyEditorScroll(editorContent, availableHeight)
+
+	var mainContent string
+	if m.isWideScreen() {
+		// Split layout: editor left, preview right
+		editorWidth := m.width * 55 / 100
+		previewWidth := m.width - editorWidth - 3 // 3 for separator
+
+		// Calculate pane height
+		paneHeight := availableHeight
+		if paneHeight < 5 {
+			paneHeight = 5
+		}
+
+		editorPane := lipgloss.NewStyle().
+			Width(editorWidth).
+			Height(paneHeight).
+			Render(editorContent)
+
+		previewPane := lipgloss.NewStyle().
+			Width(previewWidth).
+			Height(paneHeight).
+			Render(m.renderPreviewPane(previewWidth))
+
+		// Full-height separator
+		separator := SeparatorStyle.Render(strings.Repeat("│\n", paneHeight))
+
+		mainContent = lipgloss.JoinHorizontal(lipgloss.Top, editorPane, " ", separator, " ", previewPane)
+	} else {
+		// Narrow: fullscreen editor only
+		mainContent = editorContent
+	}
+
+	// Help text with wrapping support
+	helpText := m.renderHelpText()
+
+	var out strings.Builder
+	out.WriteString(renderFullscreenTitle(title, ""))
+	out.WriteString("\n")
+	out.WriteString(tabBar)
+	out.WriteString("\n\n")
+	out.WriteString(mainContent)
+	out.WriteString("\n")
+	out.WriteString(renderStatusBarFooter(helpText, "", m.width))
+
+	return out.String()
+}
+
+// renderHelpText renders the help text, wrapping if necessary.
+func (m *WorkflowRuleCreatorModel) renderHelpText() string {
+	var parts []string
+	if m.isWideScreen() {
+		parts = []string{
+			"[ ]: tabs",
+			"Ctrl+f/t: pickers",
+			"Tab: nav",
+			"↑↓: items",
+			"+/-: add/rem",
+			"Ctrl+S: save",
+			"Esc: cancel",
+		}
+	} else {
+		parts = []string{
+			"[ ]: tabs",
+			"Ctrl+p: preview",
+			"↑↓: items",
+			"+/-: add/rem",
+			"Ctrl+S: save",
+			"Esc: cancel",
+		}
+	}
+
+	// Try single line first
+	singleLine := strings.Join(parts, " | ")
+	if lipgloss.Width(singleLine) <= m.width-2 {
+		return HelpStyle.Render(singleLine)
+	}
+
+	// Split into two lines
+	mid := len(parts) / 2
+	line1 := strings.Join(parts[:mid], " | ")
+	line2 := strings.Join(parts[mid:], " | ")
+	return HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
+}
+
+// applyEditorScroll applies vertical scrolling to the editor content.
+func (m *WorkflowRuleCreatorModel) applyEditorScroll(content string, availableHeight int) string {
+	lines := strings.Split(content, "\n")
+	totalLines := len(lines)
+
+	if totalLines <= availableHeight {
+		return content
+	}
+
+	// Ensure scroll offset is valid
+	maxOffset := totalLines - availableHeight
+	if m.editorScrollOffset > maxOffset {
+		m.editorScrollOffset = maxOffset
+	}
+	if m.editorScrollOffset < 0 {
+		m.editorScrollOffset = 0
+	}
+
+	// Extract visible lines
+	endLine := m.editorScrollOffset + availableHeight
+	if endLine > totalLines {
+		endLine = totalLines
+	}
+	visibleLines := lines[m.editorScrollOffset:endLine]
+
+	return strings.Join(visibleLines, "\n")
+}
+
+// renderEditorPane renders the editor content based on active tab.
+func (m *WorkflowRuleCreatorModel) renderEditorPane() string {
 	var b strings.Builder
 	section, itemIdx, fieldIdx := m.getFocusSection()
 
-	// Name input
+	// Name input (always shown)
 	var nameLabel string
 	if section == "name" {
 		nameLabel = FieldLabelFocusedStyle.Render("Name: ")
@@ -31,7 +168,26 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n\n")
 
-	// Triggers section
+	if m.activeTab == tabTriggers {
+		b.WriteString(m.renderTriggersSection(section, itemIdx, fieldIdx))
+	} else {
+		b.WriteString(m.renderActionsSection(section, itemIdx, fieldIdx))
+	}
+
+	// Error display
+	if m.err != nil {
+		b.WriteString("\n")
+		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+	}
+
+	return b.String()
+}
+
+// renderTriggersSection renders the triggers form fields.
+func (m *WorkflowRuleCreatorModel) renderTriggersSection(section string, itemIdx, fieldIdx int) string {
+	var b strings.Builder
+
+	// Triggers section header
 	b.WriteString(BoldStyle.Render("Triggers"))
 	if len(m.triggers) > 1 {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" (%d)", len(m.triggers))))
@@ -109,8 +265,14 @@ func (m *WorkflowRuleCreatorModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Actions section
-	b.WriteString("\n")
+	return b.String()
+}
+
+// renderActionsSection renders the actions form fields.
+func (m *WorkflowRuleCreatorModel) renderActionsSection(section string, itemIdx, fieldIdx int) string {
+	var b strings.Builder
+
+	// Actions section header
 	b.WriteString(BoldStyle.Render("Actions"))
 	if len(m.actions) > 1 {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" (%d)", len(m.actions))))
@@ -154,27 +316,156 @@ func (m *WorkflowRuleCreatorModel) View() string {
 		}
 	}
 
-	// Error display
-	if m.err != nil {
+	return b.String()
+}
+
+// renderPreviewPane renders the rule preview on the right side.
+func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
+	var b strings.Builder
+	section, itemIdx, fieldIdx := m.getFocusSection()
+
+	// Styles for syntax highlighting
+	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))              // Cyan for IF/AND/OR/THEN
+	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))             // Magenta for =, !=, <, >, :
+	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true) // Yellow for focused field
+
+	b.WriteString(BoldStyle.Render("Preview"))
+	b.WriteString("\n\n")
+
+	// Render IF conditions (triggers)
+	for i, t := range m.triggers {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("IF") + " "
+		} else {
+			if m.triggerLogic == workflow.LogicAnd {
+				prefix = keywordStyle.Render("AND") + " "
+			} else {
+				prefix = keywordStyle.Render("OR") + " "
+			}
+		}
+
+		field := string(m.triggerFields[t.fieldCursor])
+		op := m.getOpSymbol(m.triggerOps[t.opCursor])
+		value := t.valueInput.Value()
+		if value == "" {
+			value = "?"
+		}
+
+		// Highlight if this trigger is being edited
+		isFocused := section == "trigger" && itemIdx == i
+		var fieldStr, opStr, valueStr string
+		if isFocused {
+			switch fieldIdx {
+			case 0:
+				fieldStr = highlightStyle.Render(field)
+				opStr = operatorStyle.Render(op)
+				valueStr = value
+			case 1:
+				fieldStr = field
+				opStr = highlightStyle.Render(op)
+				valueStr = value
+			case 2:
+				fieldStr = field
+				opStr = operatorStyle.Render(op)
+				valueStr = highlightStyle.Render(value)
+			default:
+				fieldStr = field
+				opStr = operatorStyle.Render(op)
+				valueStr = value
+			}
+		} else {
+			fieldStr = field
+			opStr = operatorStyle.Render(op)
+			valueStr = value
+		}
+
+		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, fieldStr, opStr, valueStr))
+	}
+
+	// Render THEN actions
+	for i, a := range m.actions {
+		var prefix string
+		if i == 0 {
+			prefix = keywordStyle.Render("THEN") + " "
+		} else {
+			prefix = keywordStyle.Render("AND") + " "
+		}
+
+		actionType := string(m.actionTypes[a.typeCursor])
+		value := a.valueInput.Value()
+
+		// Highlight if this action is being edited
+		isFocused := section == "action" && itemIdx == i
+		noValue := m.actionNeedsNoValue(m.actionTypes[a.typeCursor])
+
+		var line string
+		if noValue {
+			if isFocused && fieldIdx == 0 {
+				line = fmt.Sprintf("%s%s", prefix, highlightStyle.Render(actionType))
+			} else {
+				line = fmt.Sprintf("%s%s", prefix, actionType)
+			}
+		} else {
+			if value == "" {
+				value = "?"
+			}
+			colonStr := operatorStyle.Render(":")
+			if isFocused {
+				switch fieldIdx {
+				case 0:
+					line = fmt.Sprintf("%s%s%s %s", prefix, highlightStyle.Render(actionType), colonStr, value)
+				case 1:
+					line = fmt.Sprintf("%s%s%s %s", prefix, actionType, colonStr, highlightStyle.Render(value))
+				default:
+					line = fmt.Sprintf("%s%s%s %s", prefix, actionType, colonStr, value)
+				}
+			} else {
+				line = fmt.Sprintf("%s%s%s %s", prefix, actionType, colonStr, value)
+			}
+		}
+
+		b.WriteString(line)
 		b.WriteString("\n")
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
 	}
 
-	title := "Create Workflow Rule"
-	if m.editingRule != nil {
-		title = "Edit Workflow Rule"
-	}
+	return lipgloss.NewStyle().Width(width).Render(b.String())
+}
 
-	left := HelpStyle.Render("Ctrl+f: fields | Ctrl+t: types | Tab: nav | +/-: add/remove | Ctrl+S: save | Esc: cancel")
+// renderFullscreenPreview renders the preview as a fullscreen view for narrow screens.
+func (m *WorkflowRuleCreatorModel) renderFullscreenPreview() string {
+	title := "Rule Preview"
+
+	preview := m.renderPreviewPane(m.width - 4)
+
+	left := HelpStyle.Render("Ctrl+p: back to editor | Esc: cancel")
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle(title, ""))
 	out.WriteString("\n\n")
-	out.WriteString(b.String())
+	out.WriteString(preview)
 	out.WriteString("\n")
 	out.WriteString(renderStatusBarFooter(left, "", m.width))
 
 	return out.String()
+}
+
+// getOpSymbol returns a symbol for the operation.
+func (m *WorkflowRuleCreatorModel) getOpSymbol(op workflow.TriggerOperation) string {
+	switch op {
+	case workflow.OpEquals:
+		return "="
+	case workflow.OpNotEquals:
+		return "!="
+	case workflow.OpContains:
+		return "has"
+	case workflow.OpGreaterThan:
+		return ">"
+	case workflow.OpLessThan:
+		return "<"
+	default:
+		return string(op)
+	}
 }
 
 // renderSelector renders a scrollable selector with context around the current selection.
