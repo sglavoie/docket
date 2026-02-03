@@ -67,10 +67,6 @@ const (
 	// KanbanMinTitleWidth is the minimum width for task titles in kanban columns.
 	KanbanMinTitleWidth = 5
 
-	// RecentTasksMetadataWidth is the width reserved for task metadata
-	// (ID, badges, time) in the recent tasks list.
-	RecentTasksMetadataWidth = 30
-
 	// AlertsCardHeight is the fixed height for the alerts card in dashboard.
 	AlertsCardHeight = 8
 

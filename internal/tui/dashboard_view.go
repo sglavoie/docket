@@ -46,7 +46,7 @@ func (m *DashboardModel) renderSplitPane(visible []*models.Project, chromeHeight
 		return m.renderSplitPaneStacked(visible, chromeHeight)
 	}
 
-	leftWidth := m.width / 2
+	leftWidth := m.width * 55 / 100
 	rightWidth := m.width - leftWidth - 1 // 1 char divider
 
 	cardWidth := leftWidth - 1
@@ -141,7 +141,7 @@ func (m *DashboardModel) renderFullWidthDashboard(visible []*models.Project, chr
 		if current != nil && len(current.Tasks) > 0 {
 			b.WriteString("\n")
 
-			recentContent := m.renderRecentTasksContentWithWidth(current, 40)
+			recentContent := m.renderRecentTasksContentWithWidth(current, cardWidth-CardBorderOverhead)
 			b.WriteString(renderCard("Recent", recentContent, cardWidth, cfg))
 			b.WriteString("\n")
 
@@ -382,8 +382,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		noteCount := len(projectNotes)
 
 		// Build status indicator
+		completedCount := p.CountCompletedTasks()
 		var statusIndicator string
-		if overdue > 0 || dueSoon > 0 || blocked > 0 || blockerCount > 0 {
+		if overdue > 0 || dueSoon > 0 || blocked > 0 || blockerCount > 0 || completedCount > 0 {
 			var parts []string
 			if overdue > 0 {
 				parts = append(parts, OverdueStyle.Render(fmt.Sprintf("🔥%d", overdue)))
@@ -396,6 +397,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			}
 			if blockerCount > 0 {
 				parts = append(parts, DueSoonStyle.Render(fmt.Sprintf("🚧%d", blockerCount)))
+			}
+			if completedCount > 0 {
+				parts = append(parts, MutedStyle.Render(fmt.Sprintf("✅%d", completedCount)))
 			}
 			statusIndicator = strings.Join(parts, " ")
 		}
@@ -449,8 +453,9 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 	dueSoon := p.CountDueSoonTasks(dueSoonDays)
 	blocked := p.CountBlockedTasks()
 	blockerCount := storage.GetActiveBlockerCount(p)
+	completedCount := p.CountCompletedTasks()
 
-	if overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 {
+	if overdue == 0 && dueSoon == 0 && blocked == 0 && blockerCount == 0 && completedCount == 0 {
 		return 0
 	}
 
@@ -463,10 +468,11 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 			w += emojiWidth + len(fmt.Sprintf("%d", count))
 		}
 	}
-	addPart(2, overdue)      // 🔥
-	addPart(2, dueSoon)      // ⏰
-	addPart(1, blocked)      // ◈ is 1 col wide
-	addPart(2, blockerCount) // 🚧
+	addPart(2, overdue)        // 🔥
+	addPart(2, dueSoon)        // ⏰
+	addPart(1, blocked)        // ◈ is 1 col wide
+	addPart(2, blockerCount)   // 🚧
+	addPart(2, completedCount) // ✅
 	return w
 }
 
@@ -485,11 +491,7 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 	} else if len(selected.Tasks) == 0 {
 		recentContent = MutedStyle.Render("No tasks yet.")
 	} else {
-		truncWidth := cardWidth - RecentTasksMetadataWidth
-		if truncWidth < MinTitleTruncWidth {
-			truncWidth = 15
-		}
-		recentContent = m.renderRecentTasksContentWithWidth(selected, truncWidth)
+		recentContent = m.renderRecentTasksContentWithWidth(selected, cardWidth-CardBorderOverhead)
 	}
 
 	var recentTitle string
@@ -607,22 +609,49 @@ func renderDashboardVerticalDivider(height int) string {
 	return MutedStyle.Render(b.String())
 }
 
-func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, truncWidth int) string {
+func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, contentWidth int) string {
 	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
 	if len(recentTasks) == 0 {
 		return MutedStyle.Render("No tasks yet.")
 	}
 
+	// Type badge + status badge + spaces = ~5 visible columns
+	titleWidth := contentWidth - 5
+	if titleWidth < MinTitleTruncWidth {
+		titleWidth = MinTitleTruncWidth
+	}
+
 	var lines []string
 	for _, task := range recentTasks {
-		line := fmt.Sprintf("%s %s %s %s  %s",
-			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
-			GetTypeBadge(string(task.Type), task.Type.Icon()),
-			GetStatusBadge(string(task.Status), task.Status.Icon()),
-			util.Truncate(task.Title, truncWidth),
-			MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))
+		timeStr := storage.FormatRelativeTime(task.UpdatedAt)
+		// Check if title + 2-space gap + time fits on one line
+		fitsOnOneLine := len(task.Title)+2+len(timeStr) <= titleWidth
 
-		lines = append(lines, line)
+		if fitsOnOneLine {
+			gap := titleWidth - len(task.Title) - len(timeStr)
+			if gap < 2 {
+				gap = 2
+			}
+			line1 := fmt.Sprintf("%s %s %s%s%s",
+				GetTypeBadge(string(task.Type), task.Type.Icon()),
+				GetStatusBadge(string(task.Status), task.Status.Icon()),
+				task.Title,
+				strings.Repeat(" ", gap),
+				MutedStyle.Render(timeStr))
+			lines = append(lines, line1, "")
+		} else {
+			line1 := fmt.Sprintf("%s %s %s",
+				GetTypeBadge(string(task.Type), task.Type.Icon()),
+				GetStatusBadge(string(task.Status), task.Status.Icon()),
+				util.Truncate(task.Title, titleWidth))
+
+			padding := contentWidth - len(timeStr)
+			if padding < 0 {
+				padding = 0
+			}
+			line2 := MutedStyle.Render(strings.Repeat(" ", padding) + timeStr)
+			lines = append(lines, line1, line2)
+		}
 	}
 	return strings.Join(lines, "\n")
 }

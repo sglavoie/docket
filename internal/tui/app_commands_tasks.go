@@ -110,6 +110,15 @@ func (m *AppModel) taskCommands() []Command {
 				return ArchiveCompletedTasksMsg{}
 			},
 		},
+		{
+			Name:        "archive all completed tasks",
+			Description: "Archive completed tasks across all projects",
+			Category:    CategoryActions,
+			Aliases:     []string{"archive all", "archive everything"},
+			Handler: func() tea.Msg {
+				return ArchiveAllCompletedTasksMsg{}
+			},
+		},
 	}
 }
 

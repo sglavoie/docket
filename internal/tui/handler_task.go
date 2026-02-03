@@ -59,8 +59,15 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ArchiveCompletedTasksMsg:
 		return m.handleArchiveCompletedTasks()
 
+	case ArchiveAllCompletedTasksMsg:
+		return m.handleArchiveAllCompletedTasks()
+
 	case TasksArchivedMsg:
-		return true, m.handleWithRefresh(false, false, fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count))
+		statusMsg := fmt.Sprintf("Archived %d task(s) to completed.md", msg.Count)
+		if msg.Projects > 0 {
+			statusMsg = fmt.Sprintf("Archived %d task(s) across %d project(s)", msg.Count, msg.Projects)
+		}
+		return true, m.handleWithRefresh(false, false, statusMsg)
 
 	case TaskStatusChangedMsg:
 		return true, m.handleWithRefresh(false, false, "")
@@ -733,6 +740,47 @@ func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
 		_ = m.persister.Load(project)
 
 		return TasksArchivedMsg{Count: count}
+	}
+
+	return true, cmd
+}
+
+// handleArchiveAllCompletedTasks archives completed tasks across all active projects.
+func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
+	projects := m.config.GetActiveProjects()
+
+	cmd := func() tea.Msg {
+		totalArchived := 0
+		projectsAffected := 0
+
+		for _, project := range projects {
+			if err := m.persister.Load(project); err != nil {
+				continue
+			}
+
+			if project.CountCompletedTasks() == 0 {
+				continue
+			}
+
+			if err := m.persister.Backup(project); err != nil {
+				continue
+			}
+
+			count, err := m.persister.ArchiveTasks(project)
+			if err != nil {
+				continue
+			}
+
+			totalArchived += count
+			projectsAffected++
+		}
+
+		// Reload current project if it was affected
+		if m.currentProject != nil {
+			_ = m.persister.Load(m.currentProject)
+		}
+
+		return TasksArchivedMsg{Count: totalArchived, Projects: projectsAffected}
 	}
 
 	return true, cmd
