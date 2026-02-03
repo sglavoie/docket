@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-8
-	tabFieldStart = []int{0, 3, 7}
+	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-8, tab 3 → fields 9-10
+	tabFieldStart = []int{0, 3, 7, 9}
 )
 
 // tabForField returns which tab a given focusIndex belongs to.
@@ -35,20 +35,22 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput         textinput.Model
-	contextInput        textinput.Model
-	undoDepthInput      textinput.Model
-	dueSoonInput        textinput.Model
-	futureInput         textinput.Model
-	oldDaysInput        textinput.Model
-	completedHoursInput textinput.Model
-	recentActivityInput textinput.Model
-	linkedTaskJump      bool // Whether to jump to new task after linked creation
-	contexts            []string
-	contextCursor       int // -1 for custom mode, 0+ for selecting from list
+	editorInput           textinput.Model
+	contextInput          textinput.Model
+	undoDepthInput        textinput.Model
+	dueSoonInput          textinput.Model
+	futureInput           textinput.Model
+	oldDaysInput          textinput.Model
+	completedHoursInput   textinput.Model
+	recentActivityInput   textinput.Model
+	linkedTaskJump        bool // Whether to jump to new task after linked creation
+	attachmentEditorInput textinput.Model
+	codeEditorInput       textinput.Model
+	contexts              []string
+	contextCursor         int // -1 for custom mode, 0+ for selecting from list
 
 	activeTab     int
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=linkedTaskJump
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=linkedTaskJump, 9=attachmentEditor, 10=codeEditor
 	validationErr string
 
 	width  int
@@ -110,6 +112,18 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	recentActivityInput.Width = 6
 	recentActivityInput.SetValue(strconv.Itoa(cfg.GetRecentActivityLimit()))
 
+	attachmentEditorInput := textinput.New()
+	attachmentEditorInput.Placeholder = "(OS default)"
+	attachmentEditorInput.CharLimit = 256
+	attachmentEditorInput.Width = 40
+	attachmentEditorInput.SetValue(cfg.GetAttachmentEditor())
+
+	codeEditorInput := textinput.New()
+	codeEditorInput.Placeholder = "code"
+	codeEditorInput.CharLimit = 256
+	codeEditorInput.Width = 40
+	codeEditorInput.SetValue(cfg.CodeEditor) // Use raw value, not getter (to distinguish default from explicit)
+
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
 
@@ -123,23 +137,25 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:              cfg,
-		configManager:       manager,
-		editorInput:         editorInput,
-		contextInput:        contextInput,
-		undoDepthInput:      undoDepthInput,
-		dueSoonInput:        dueSoonInput,
-		futureInput:         futureInput,
-		oldDaysInput:        oldDaysInput,
-		completedHoursInput: completedHoursInput,
-		recentActivityInput: recentActivityInput,
-		linkedTaskJump:      cfg.GetLinkedTaskJumpToNew(),
-		contexts:            contexts,
-		contextCursor:       contextCursor,
-		focusIndex:          0,
-		activeTab:           0,
-		width:               80,
-		height:              24,
+		config:                cfg,
+		configManager:         manager,
+		editorInput:           editorInput,
+		contextInput:          contextInput,
+		undoDepthInput:        undoDepthInput,
+		dueSoonInput:          dueSoonInput,
+		futureInput:           futureInput,
+		oldDaysInput:          oldDaysInput,
+		completedHoursInput:   completedHoursInput,
+		recentActivityInput:   recentActivityInput,
+		linkedTaskJump:        cfg.GetLinkedTaskJumpToNew(),
+		attachmentEditorInput: attachmentEditorInput,
+		codeEditorInput:       codeEditorInput,
+		contexts:              contexts,
+		contextCursor:         contextCursor,
+		focusIndex:            0,
+		activeTab:             0,
+		width:                 80,
+		height:                24,
 	}
 }
 
@@ -168,11 +184,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (10 fields total)
+			// Move focus (11 fields total: 0-10)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 9
+				m.focusIndex = (m.focusIndex + 1) % 11
 			} else {
-				m.focusIndex = (m.focusIndex + 8) % 9 // +8 is -1 mod 9
+				m.focusIndex = (m.focusIndex + 10) % 11 // +10 is -1 mod 11
 			}
 
 			// Auto-switch tab to follow focus
@@ -232,6 +248,14 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.validationErr = err.Error()
 				return m, nil
 			}
+			if err := m.validateAttachmentEditor(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+			if err := m.validateCodeEditor(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
 			return m, m.saveSettings()
 
 		case "left", "h":
@@ -288,6 +312,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.completedHoursInput, cmd = m.completedHoursInput.Update(msg)
 	case 7:
 		m.recentActivityInput, cmd = m.recentActivityInput.Update(msg)
+	case 9:
+		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
+	case 10:
+		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
 	}
 
 	// Validate on each keystroke
@@ -311,6 +339,14 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case 7:
 		if err := m.validateRecentActivityLimit(); err != nil {
+			m.validationErr = err.Error()
+		}
+	case 9:
+		if err := m.validateAttachmentEditor(); err != nil {
+			m.validationErr = err.Error()
+		}
+	case 10:
+		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
 	}
@@ -337,8 +373,12 @@ func (m *SettingsModel) blurCurrentField() {
 		m.completedHoursInput.Blur()
 	case 7:
 		m.recentActivityInput.Blur()
-	case 8, 9:
-		// Toggle fields - no blur needed
+	case 8:
+		// Toggle field - no blur needed
+	case 9:
+		m.attachmentEditorInput.Blur()
+	case 10:
+		m.codeEditorInput.Blur()
 	}
 }
 
@@ -361,8 +401,12 @@ func (m *SettingsModel) focusCurrentField() {
 		m.completedHoursInput.Focus()
 	case 7:
 		m.recentActivityInput.Focus()
-	case 8, 9:
-		// Toggle fields - no focus needed
+	case 8:
+		// Toggle field - no focus needed
+	case 9:
+		m.attachmentEditorInput.Focus()
+	case 10:
+		m.codeEditorInput.Focus()
 	}
 }
 
@@ -507,6 +551,49 @@ func (m *SettingsModel) validateRecentActivityLimit() error {
 	return nil
 }
 
+func (m *SettingsModel) validateAttachmentEditor() error {
+	editor := strings.TrimSpace(m.attachmentEditorInput.Value())
+	if editor == "" {
+		return nil // Empty is valid (uses OS default)
+	}
+	return m.validateEditorCommand(editor)
+}
+
+func (m *SettingsModel) validateCodeEditor() error {
+	editor := strings.TrimSpace(m.codeEditorInput.Value())
+	if editor == "" {
+		return nil // Empty is valid (defaults to "code")
+	}
+	return m.validateEditorCommand(editor)
+}
+
+func (m *SettingsModel) validateEditorCommand(editor string) error {
+	// Check if it's an absolute path
+	if strings.HasPrefix(editor, "/") {
+		info, err := os.Stat(editor)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("file does not exist: %s", editor)
+		}
+		if err != nil {
+			return fmt.Errorf("cannot access file: %s", editor)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("path is a directory: %s", editor)
+		}
+		if info.Mode()&0111 == 0 {
+			return fmt.Errorf("file is not executable: %s", editor)
+		}
+		return nil
+	}
+
+	// Otherwise, check if command exists in PATH
+	_, err := exec.LookPath(editor)
+	if err != nil {
+		return fmt.Errorf("command not found: %s", editor)
+	}
+	return nil
+}
+
 func (m *SettingsModel) saveSettings() tea.Cmd {
 	return func() tea.Msg {
 		editor := strings.TrimSpace(m.editorInput.Value())
@@ -527,6 +614,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
 		m.config.RecentActivityLimit = &recentActivityLimit
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
+		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
+		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
@@ -698,6 +787,52 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	return b.String()
 }
 
+func (m *SettingsModel) renderAttachmentsTab() string {
+	var b strings.Builder
+	const labelWidth = 20 // "Attachment Editor: " padded
+	const indent = 22     // 2 + labelWidth
+
+	b.WriteString(SubtitleStyle.Render("Editor Configuration"))
+	b.WriteString("\n\n")
+
+	// Attachment Editor
+	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 9))
+	b.WriteString(m.attachmentEditorInput.View())
+	b.WriteString("\n")
+	if m.focusIndex == 9 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 9))
+
+	b.WriteString("\n")
+
+	// Code Editor
+	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 10))
+	b.WriteString(m.codeEditorInput.View())
+	b.WriteString("\n")
+	if m.focusIndex == 10 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 10))
+
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
+	b.WriteString("\n\n")
+
+	b.WriteString(SubtitleStyle.Render("Code References"))
+	b.WriteString("\n\n")
+	b.WriteString(MutedStyle.Render("  Code references use the file:line format (e.g., src/main.go:42)."))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("  They open in your code editor at the specified line."))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 func (m *SettingsModel) View() string {
 	var b strings.Builder
 
@@ -713,6 +848,8 @@ func (m *SettingsModel) View() string {
 		b.WriteString(m.renderReviewTab())
 	case 2:
 		b.WriteString(m.renderBehaviorTab())
+	case 3:
+		b.WriteString(m.renderAttachmentsTab())
 	}
 
 	// Footer

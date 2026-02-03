@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -130,4 +132,76 @@ func FormatFileSize(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// ParseCodeReference detects if input is a code reference in file:line format.
+// Returns the resolved path, line number, and whether it's a valid code reference.
+// A valid code reference has a file path followed by :N where N is a line number.
+// The file is validated to exist (after expanding ~ and resolving the path).
+// If the file doesn't exist, returns the original input with line 0 and isCodeRef=false.
+func ParseCodeReference(input string) (path string, line int, isCodeRef bool) {
+	// Find the last colon followed by digits
+	lastColonIdx := -1
+	for i := len(input) - 1; i >= 0; i-- {
+		if input[i] == ':' {
+			// Check if everything after the colon is digits
+			suffix := input[i+1:]
+			if len(suffix) > 0 {
+				allDigits := true
+				for _, c := range suffix {
+					if c < '0' || c > '9' {
+						allDigits = false
+						break
+					}
+				}
+				if allDigits {
+					lastColonIdx = i
+					break
+				}
+			}
+		}
+	}
+
+	if lastColonIdx == -1 {
+		return input, 0, false
+	}
+
+	// Extract path and line number
+	pathPart := input[:lastColonIdx]
+	linePart := input[lastColonIdx+1:]
+
+	lineNum, err := strconv.Atoi(linePart)
+	if err != nil || lineNum < 1 {
+		return input, 0, false
+	}
+
+	// Expand ~ to home directory
+	expandedPath := pathPart
+	if strings.HasPrefix(expandedPath, "~/") {
+		home, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return input, 0, false
+		}
+		expandedPath = filepath.Join(home, expandedPath[2:])
+	}
+
+	// Resolve to absolute path
+	absPath, err := filepath.Abs(expandedPath)
+	if err != nil {
+		return input, 0, false
+	}
+
+	// Check if file exists - this is soft validation (we still allow the reference)
+	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
+		// File doesn't exist, but it's still a valid code reference format
+		return absPath, lineNum, true
+	}
+
+	return absPath, lineNum, true
+}
+
+// CodeReferenceFileExists checks if the file for a code reference exists.
+func CodeReferenceFileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

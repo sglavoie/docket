@@ -8,6 +8,8 @@ import (
 type Attachment struct {
 	Filename     string    `json:"filename"`      // filename (local) or full URL
 	IsURL        bool      `json:"is_url"`        // true for URLs (not stored locally)
+	IsCodeRef    bool      `json:"is_code_ref"`   // true for code references (file:line format)
+	LineNumber   int       `json:"line_number"`   // line number for code references (0 if none)
 	OriginalPath string    `json:"original_path"` // original filesystem path for files, URL for URLs
 	AddedAt      time.Time `json:"added_at"`
 }

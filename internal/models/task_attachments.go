@@ -14,6 +14,21 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) {
 	t.UpdatedAt = time.Now()
 }
 
+// AddCodeReference adds a code reference attachment to the task.
+// Code references are stored without copying the file.
+func (t *Task) AddCodeReference(path string, lineNumber int) {
+	attachment := Attachment{
+		Filename:     path,
+		IsURL:        false,
+		IsCodeRef:    true,
+		LineNumber:   lineNumber,
+		OriginalPath: path,
+		AddedAt:      time.Now(),
+	}
+	t.Attachments = append(t.Attachments, attachment)
+	t.UpdatedAt = time.Now()
+}
+
 // RemoveAttachment removes the attachment at the given index.
 // Returns the removed attachment and true if successful.
 func (t *Task) RemoveAttachment(index int) (Attachment, bool) {

@@ -12,6 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -20,6 +22,7 @@ import (
 type TaskAttachmentsModel struct {
 	task    *models.Task
 	project *models.Project
+	config  *config.Config
 
 	// Navigation state
 	cursor int // Selected attachment index
@@ -41,15 +44,16 @@ type TaskAttachmentsModel struct {
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.
-func NewTaskAttachmentsModel(task *models.Task, project *models.Project) *TaskAttachmentsModel {
+func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *config.Config) *TaskAttachmentsModel {
 	ti := textinput.New()
-	ti.Placeholder = "Enter file path or URL..."
+	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
 	ti.Width = 60
 
 	return &TaskAttachmentsModel{
 		task:      task,
 		project:   project,
+		config:    cfg,
 		cursor:    0,
 		addMode:   false,
 		textInput: ti,
@@ -169,6 +173,12 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.copyPath()
 			}
 
+		case "Y":
+			// Copy path with line number to clipboard
+			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+				return m, m.copyPathWithLine()
+			}
+
 		case "ctrl+o":
 			// Open original path reference
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
@@ -208,40 +218,52 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 			// Add URL attachment
 			m.task.AddAttachment(input, true, input)
 		} else {
-			// Handle file path
-			path := input
+			// Check if it's a code reference (file:line format)
+			codePath, lineNum, isCodeRef := storage.ParseCodeReference(input)
+			if isCodeRef {
+				// Store code reference without copying
+				m.task.AddCodeReference(codePath, lineNum)
 
-			// Expand ~ to home directory
-			if strings.HasPrefix(path, "~/") {
-				home, err := os.UserHomeDir()
+				// Check if file exists and show info message if not
+				if !storage.CodeReferenceFileExists(codePath) {
+					m.statusMessage = "Code reference added (file may not exist)"
+				}
+			} else {
+				// Handle regular file path
+				path := input
+
+				// Expand ~ to home directory
+				if strings.HasPrefix(path, "~/") {
+					home, err := os.UserHomeDir()
+					if err != nil {
+						m.err = fmt.Errorf("failed to expand home directory: %w", err)
+						return nil
+					}
+					path = filepath.Join(home, path[2:])
+				}
+
+				// Convert to absolute path
+				absPath, err := filepath.Abs(path)
 				if err != nil {
-					m.err = fmt.Errorf("failed to expand home directory: %w", err)
+					m.err = fmt.Errorf("failed to resolve path: %w", err)
 					return nil
 				}
-				path = filepath.Join(home, path[2:])
-			}
 
-			// Convert to absolute path
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				m.err = fmt.Errorf("failed to resolve path: %w", err)
-				return nil
-			}
+				// Check if file exists
+				if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
+					m.err = fmt.Errorf("file not found: %s", absPath)
+					return nil
+				}
 
-			// Check if file exists
-			if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
-				m.err = fmt.Errorf("file not found: %s", absPath)
-				return nil
-			}
+				// Copy file to attachments directory
+				filename, err := storage.CopyAttachment(m.project, m.task, absPath)
+				if err != nil {
+					m.err = fmt.Errorf("failed to copy: %w", err)
+					return nil
+				}
 
-			// Copy file to attachments directory
-			filename, err := storage.CopyAttachment(m.project, m.task, absPath)
-			if err != nil {
-				m.err = fmt.Errorf("failed to copy: %w", err)
-				return nil
+				m.task.AddAttachment(filename, false, absPath)
 			}
-
-			m.task.AddAttachment(filename, false, absPath)
 		}
 
 		// Create backup before saving
@@ -330,6 +352,21 @@ func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
 	att := m.task.Attachments[m.cursor]
 
+	// Handle code references
+	if att.IsCodeRef {
+		if !storage.CodeReferenceFileExists(att.OriginalPath) {
+			m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
+			return nil
+		}
+		codeEditor := m.config.GetCodeEditor()
+		if err := external.OpenCodeReference(codeEditor, att.OriginalPath, att.LineNumber); err != nil {
+			m.err = fmt.Errorf("failed to open code reference: %w", err)
+			return nil
+		}
+		m.statusMessage = fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber)
+		return nil
+	}
+
 	var target string
 	if att.IsURL {
 		target = att.Filename
@@ -339,6 +376,17 @@ func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
 			m.err = fmt.Errorf("file not found: %s", att.Filename)
 			return nil
 		}
+	}
+
+	// Check if we should use a configured attachment editor (for non-URL files)
+	if !att.IsURL && m.config.GetAttachmentEditor() != "" {
+		openCmd := exec.Command(m.config.GetAttachmentEditor(), target)
+		return tea.ExecProcess(openCmd, func(err error) tea.Msg {
+			if err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			}
+			return nil
+		})
 	}
 
 	// Build the open command
@@ -364,12 +412,28 @@ func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) openAttachmentsDir() tea.Cmd {
-	dir := storage.GetTaskAttachmentsDir(m.project, m.task)
+	var dir string
 
-	// Create directory if it doesn't exist
-	if err := storage.EnsureTaskAttachmentsDir(m.project, m.task); err != nil {
-		m.err = fmt.Errorf("failed to create directory: %w", err)
-		return nil
+	// For code references, open the directory containing the referenced file
+	if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+		att := m.task.Attachments[m.cursor]
+		if att.IsCodeRef {
+			dir = filepath.Dir(att.OriginalPath)
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				m.err = fmt.Errorf("directory not found: %s", dir)
+				return nil
+			}
+		}
+	}
+
+	// For regular attachments, open the internal .attachments directory
+	if dir == "" {
+		dir = storage.GetTaskAttachmentsDir(m.project, m.task)
+		// Create directory if it doesn't exist
+		if err := storage.EnsureTaskAttachmentsDir(m.project, m.task); err != nil {
+			m.err = fmt.Errorf("failed to create directory: %w", err)
+			return nil
+		}
 	}
 
 	var openCmd *exec.Cmd
@@ -399,6 +463,8 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 	var path string
 	if att.IsURL {
 		path = att.Filename
+	} else if att.IsCodeRef {
+		path = att.OriginalPath
 	} else {
 		path = storage.GetAttachmentPath(m.project, m.task, att.Filename)
 	}
@@ -424,6 +490,48 @@ func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
 	}
 
 	m.statusMessage = "Path copied to clipboard"
+	return nil
+}
+
+func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
+	att := m.task.Attachments[m.cursor]
+
+	var path string
+	if att.IsCodeRef && att.LineNumber > 0 {
+		path = fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
+	} else if att.IsURL {
+		path = att.Filename
+	} else if att.IsCodeRef {
+		path = att.OriginalPath
+	} else {
+		path = storage.GetAttachmentPath(m.project, m.task, att.Filename)
+	}
+
+	// Build clipboard command based on OS
+	var clipCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		clipCmd = exec.Command("pbcopy")
+	case "linux":
+		clipCmd = exec.Command("xclip", "-selection", "clipboard")
+	case "windows":
+		clipCmd = exec.Command("clip")
+	default:
+		m.statusMessage = "Clipboard not supported on this OS"
+		return nil
+	}
+
+	clipCmd.Stdin = strings.NewReader(path)
+	if err := clipCmd.Run(); err != nil {
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	if att.IsCodeRef && att.LineNumber > 0 {
+		m.statusMessage = "Path:line copied to clipboard"
+	} else {
+		m.statusMessage = "Path copied to clipboard"
+	}
 	return nil
 }
 
@@ -595,6 +703,8 @@ func (m *TaskAttachmentsModel) View() string {
 			typeStr := "FILE"
 			if att.IsURL {
 				typeStr = "URL "
+			} else if att.IsCodeRef {
+				typeStr = "CODE"
 			}
 
 			// Style based on selection
@@ -605,10 +715,21 @@ func (m *TaskAttachmentsModel) View() string {
 				entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", i)))
 				entry.WriteString(MutedStyle.Render(typeStr))
 			}
+
+			// Show warning icon for missing code reference files
+			if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
+				entry.WriteString(" ")
+				entry.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render("!"))
+			}
 			entry.WriteString("\n")
 
-			// Filename/URL (indented)
-			name := att.Filename
+			// Filename/URL (indented) - for code refs, show path:line format
+			var name string
+			if att.IsCodeRef {
+				name = fmt.Sprintf("%s:%d", att.OriginalPath, att.LineNumber)
+			} else {
+				name = att.Filename
+			}
 			maxLen := m.width - 8
 			if maxLen < 40 {
 				maxLen = 40
@@ -620,8 +741,8 @@ func (m *TaskAttachmentsModel) View() string {
 			entry.WriteString(name)
 			entry.WriteString("\n")
 
-			// Original path (only for files, not URLs)
-			if !att.IsURL {
+			// Original path (only for regular files, not URLs or code refs)
+			if !att.IsURL && !att.IsCodeRef {
 				origPath := att.OriginalPath
 				if len(origPath) > maxLen {
 					origPath = origPath[:maxLen-3] + "..."
@@ -631,8 +752,15 @@ func (m *TaskAttachmentsModel) View() string {
 				entry.WriteString("\n")
 			}
 
-			// Size and date (for files)
-			if !att.IsURL {
+			// For code refs, show warning if file doesn't exist
+			if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
+				entry.WriteString("      ")
+				entry.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render("file may not exist"))
+				entry.WriteString("\n")
+			}
+
+			// Size and date (for regular files only, not URLs or code refs)
+			if !att.IsURL && !att.IsCodeRef {
 				size := storage.GetAttachmentSize(m.project, m.task, &att)
 				sizeStr := "(missing)"
 				if size > 0 {
@@ -641,7 +769,7 @@ func (m *TaskAttachmentsModel) View() string {
 				entry.WriteString("      ")
 				entry.WriteString(MutedStyle.Render(fmt.Sprintf("%s | %s", sizeStr, storage.FormatRelativeTime(att.AddedAt))))
 				entry.WriteString("\n")
-			} else {
+			} else if att.IsURL || att.IsCodeRef {
 				entry.WriteString("      ")
 				entry.WriteString(MutedStyle.Render(storage.FormatRelativeTime(att.AddedAt)))
 				entry.WriteString("\n")
@@ -660,7 +788,34 @@ func (m *TaskAttachmentsModel) View() string {
 		}
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add | o: open | O: open dir | Ctrl+O: original | d: del | u: unlink | y: copy | ?: help | Esc: close"), "", m.width))
+	// Build help text dynamically based on selected attachment type
+	isCodeRef := len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) && m.task.Attachments[m.cursor].IsCodeRef
+
+	// Build help segments
+	var helpParts []string
+	helpParts = append(helpParts, "a: add", "o: open", "O: open dir")
+	if !isCodeRef {
+		helpParts = append(helpParts, "Ctrl+O: original")
+	}
+	helpParts = append(helpParts, "d: del", "u: unlink", "y: copy")
+	if isCodeRef {
+		helpParts = append(helpParts, "Y: copy w/line")
+	}
+	helpParts = append(helpParts, "?: help", "Esc: close")
+
+	// Join with separators and check if wrapping is needed
+	helpText := strings.Join(helpParts, " | ")
+	if lipgloss.Width(helpText) > m.width-2 {
+		// Split into two lines at a reasonable point
+		mid := len(helpParts) / 2
+		line1 := strings.Join(helpParts[:mid], " | ")
+		line2 := strings.Join(helpParts[mid:], " | ")
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.width))
+		b.WriteString("\n")
+		b.WriteString(HelpStyle.Render(line2))
+	} else {
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+	}
 
 	return b.String()
 }

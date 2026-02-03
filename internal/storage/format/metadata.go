@@ -160,6 +160,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				// Parse timestamp from @epoch suffix if present
 				var addedAt time.Time
 				var originalPath string
+				var lineNumber int
 
 				// First, extract timestamp
 				if idx := strings.LastIndex(att, "@"); idx > 0 {
@@ -173,6 +174,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				}
 
 				// Then, extract original path from the timestamp-stripped string
+				// For code refs, format is: code:filename||originalPath:lineNumber
 				if origIdx := strings.Index(att, "||"); origIdx > 0 {
 					originalPath = att[origIdx+2:]
 					att = att[:origIdx]
@@ -186,6 +188,23 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					task.Attachments = append(task.Attachments, models.Attachment{
 						Filename:     filename,
 						IsURL:        true,
+						OriginalPath: originalPath,
+						AddedAt:      addedAt,
+					})
+				} else if strings.HasPrefix(att, "code:") {
+					filename := strings.TrimPrefix(att, "code:")
+					// Extract line number from originalPath (format: path:line)
+					if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
+						if ln, err := strconv.Atoi(originalPath[colonIdx+1:]); err == nil && ln > 0 {
+							lineNumber = ln
+							originalPath = originalPath[:colonIdx]
+						}
+					}
+					task.Attachments = append(task.Attachments, models.Attachment{
+						Filename:     filename,
+						IsURL:        false,
+						IsCodeRef:    true,
+						LineNumber:   lineNumber,
 						OriginalPath: originalPath,
 						AddedAt:      addedAt,
 					})
@@ -323,12 +342,18 @@ func WriteMetadata(task *models.Task) string {
 			var attStr string
 			if att.IsURL {
 				attStr = "url:" + att.Filename
+			} else if att.IsCodeRef {
+				attStr = "code:" + att.Filename
 			} else {
 				attStr = att.Filename
 			}
-			// Append original path if different from filename (for files) or always for URLs
+			// Append original path (for code refs, include line number)
 			if att.OriginalPath != "" {
-				attStr += "||" + att.OriginalPath
+				if att.IsCodeRef && att.LineNumber > 0 {
+					attStr += fmt.Sprintf("||%s:%d", att.OriginalPath, att.LineNumber)
+				} else {
+					attStr += "||" + att.OriginalPath
+				}
 			}
 			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
 			attStrings = append(attStrings, attStr+timestamp)

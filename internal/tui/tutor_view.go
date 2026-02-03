@@ -935,6 +935,30 @@ creates a bidirectional reference visible in both the
 note and task views.`,
 		},
 		{
+			Title:    "Attachments",
+			Category: "Concepts",
+			Content: `# What Are Attachments
+
+Attach files, URLs, or code references to tasks. Files are
+copied into the project's .attachments directory. URLs are
+stored as links without downloading.
+
+# Code References
+
+Code references use the file:line format (e.g., src/main.go:42).
+These are stored as references without copying and open in your
+configured code editor at the specified line.
+
+  tt attach 5 ./report.pdf        # Attach file (copied)
+  tt attach 5 --url https://...   # Attach URL (reference)
+  tt attach 5 src/main.go:42      # Code reference (opens in IDE)
+
+# Managing Attachments
+
+In the TUI, press a in the attachments view to add. Configure
+the code editor and attachment editor in Settings > Attachments.`,
+		},
+		{
 			Title:    "Workflow Rules",
 			Category: "Concepts",
 			Content: `# What Are Workflow Rules

@@ -83,6 +83,8 @@ type Config struct {
 	WeeklyBlockedThreshold    *int                         `json:"weekly_blocked_threshold,omitempty"`     // nil=3, blocked count threshold
 	WeeklyInProgressThreshold *int                         `json:"weekly_in_progress_threshold,omitempty"` // nil=5, in-progress count threshold
 	TutorDismissed            *bool                        `json:"tutor_dismissed,omitempty"`              // nil=false, tutor prompt dismissed on dashboard
+	AttachmentEditor          string                       `json:"attachment_editor,omitempty"`            // Editor for general attachments (empty = OS default)
+	CodeEditor                string                       `json:"code_editor,omitempty"`                  // Editor for code references (default: code)
 }
 
 // NewConfig creates a new configuration with default values.
@@ -211,4 +213,19 @@ func (c *Config) ApplyGlobalColorsToProject(project *models.Project) {
 			project.SectionColors[section] = globalColor
 		}
 	}
+}
+
+// GetAttachmentEditor returns the configured editor for general attachments.
+// Returns empty string if not set (use OS default).
+func (c *Config) GetAttachmentEditor() string {
+	return c.AttachmentEditor
+}
+
+// GetCodeEditor returns the configured editor for code references.
+// Defaults to "code" (VS Code) if not set.
+func (c *Config) GetCodeEditor() string {
+	if c.CodeEditor == "" {
+		return "code"
+	}
+	return c.CodeEditor
 }

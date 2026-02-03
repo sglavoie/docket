@@ -16,16 +16,18 @@ var attachURL string
 
 var attachCmd = &cobra.Command{
 	Use:   "attach <task-id> <file-path>",
-	Short: "Attach a file or URL to a task",
-	Long: `Attach a file or URL reference to a task.
+	Short: "Attach a file, URL, or code reference to a task",
+	Long: `Attach a file, URL reference, or code reference to a task.
 
 Files are copied to .attachments/<short-id>/ alongside tasks.md.
 URLs are stored as references only (not downloaded).
+Code references use the file:line format and open in your code editor.
 
 Examples:
-  tt attach 5 screenshot.png           # Attach a file
+  tt attach 5 screenshot.png               # Attach a file (copied)
   tt attach 5 --url https://figma.com/xyz  # Attach a URL reference
-  tt attach abc123 ~/docs/spec.pdf`,
+  tt attach abc123 ~/docs/spec.pdf         # Attach a file (copied)
+  tt attach 5 src/main.go:42               # Code reference (opens in IDE)`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if attachURL != "" {
 			// URL mode: only need task-id
@@ -80,9 +82,34 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Handle file attachment
+	// Handle file or code reference attachment
 	filePath := args[1]
 
+	// Check if it's a code reference (file:line format)
+	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)
+	if isCodeRef {
+		// Store code reference without copying
+		task.AddCodeReference(codePath, lineNum)
+
+		if err := storage.BackupProject(project); err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+
+		if err := storage.SaveProject(project); err != nil {
+			return fmt.Errorf("failed to save project: %w", err)
+		}
+
+		// Check if file exists and show info message if not
+		if !storage.CodeReferenceFileExists(codePath) {
+			fmt.Printf("Attached code reference to #%d: %s:%d\n", task.ShortID, codePath, lineNum)
+			fmt.Println("Note: referenced file does not currently exist")
+		} else {
+			fmt.Printf("Attached code reference to #%d: %s:%d\n", task.ShortID, codePath, lineNum)
+		}
+		return nil
+	}
+
+	// Handle regular file attachment
 	// Expand ~ to home directory
 	if strings.HasPrefix(filePath, "~/") {
 		home, homeErr := os.UserHomeDir()
