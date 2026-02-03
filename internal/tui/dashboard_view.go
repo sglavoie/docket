@@ -377,6 +377,10 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			}
 		}
 
+		// Per-project notes count
+		projectNotes, _ := storage.ListNotes(p)
+		noteCount := len(projectNotes)
+
 		// Build status indicator
 		var statusIndicator string
 		if overdue > 0 || dueSoon > 0 || blocked > 0 || blockerCount > 0 {
@@ -403,6 +407,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			cardContent.WriteString("\n")
 
 			statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
+			if noteCount > 0 {
+				statsLine += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+			}
 			if statusIndicator != "" {
 				statsLine += "  " + statusIndicator
 			}
@@ -412,6 +419,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
 
 			content := fmt.Sprintf("%s%s %s %s %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr)
+			if noteCount > 0 {
+				content += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+			}
 			if statusIndicator != "" {
 				content += "  " + statusIndicator
 			}
@@ -502,11 +512,12 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 
 // renderGlobalAlerts aggregates alert counts across all active projects.
 func (m *DashboardModel) renderGlobalAlerts(width int) string {
-	var totalOverdue, totalDueToday, totalBlocked int
+	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek int
 	var inboxProjects []string
 
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	sevenDaysAgo := now.AddDate(0, 0, -7)
 
 	var activeProjects []*models.Project
 	if !m.showArchived {
@@ -524,12 +535,17 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 		blocked := p.CountBlockedTasks()
 		totalBlocked += blocked
 
+		totalBlockers += storage.GetActiveBlockerCount(p)
+
 		for _, task := range p.Tasks {
 			if task.DueDate != nil && !task.Status.IsComplete() {
 				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 				if dueDay.Equal(today) {
 					totalDueToday++
 				}
+			}
+			if task.CompletedAt != nil && task.CompletedAt.After(sevenDaysAgo) {
+				totalCompletedThisWeek++
 			}
 		}
 
@@ -554,8 +570,20 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 	if totalBlocked > 0 {
 		lines = append(lines, MutedStyle.Render(fmt.Sprintf("◈ %d blocked", totalBlocked)))
 	}
+	if totalBlockers > 0 {
+		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("🚧 %d active blockers", totalBlockers)))
+	}
 	if len(inboxProjects) > 0 {
 		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("📥 Inbox backlog: %s", strings.Join(inboxProjects, ", "))))
+	}
+	if totalCompletedThisWeek > 0 {
+		lines = append(lines, lipgloss.NewStyle().Foreground(ColorSuccess).Render(fmt.Sprintf("✅ %d completed this week", totalCompletedThisWeek)))
+	}
+
+	// Global notes count
+	globalNotes, _ := storage.ListNotesFrom(storage.GlobalNotesDir(m.config.DataDir))
+	if len(globalNotes) > 0 {
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("📝 %d global notes", len(globalNotes))))
 	}
 
 	if len(lines) == 0 {
