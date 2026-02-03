@@ -157,6 +157,131 @@ func (c *Config) AddDefaultRules(enableRules, useOriginalEnabled bool) int {
 	return added
 }
 
+// ResetChangedDefaultRules resets any default rules (Source == "default")
+// that have been edited or deleted to their shipped values from GetDefaultRules().
+// Returns counts: (updated, re-added, unchanged) and a slice of affected rule IDs.
+func (c *Config) ResetChangedDefaultRules(enableRules bool) (updated, readded, unchanged int, affectedIDs []string) {
+	defaults := workflow.GetDefaultRules()
+	defaultMap := make(map[string]workflow.WorkflowRule)
+
+	// Build map of shipped defaults by ID
+	for _, rule := range defaults {
+		defaultMap[rule.ID] = rule
+	}
+
+	// Phase 1: Update existing default rules that have changed
+	for i := range c.WorkflowRules {
+		existingRule := &c.WorkflowRules[i]
+		if existingRule.Source != "default" {
+			continue // Skip custom rules
+		}
+
+		shippedRule, exists := defaultMap[existingRule.ID]
+		if !exists {
+			// This default rule no longer exists in shipped set (shouldn't happen)
+			continue
+		}
+
+		// Compare rule content (semantic only, ignore metadata)
+		if rulesAreDifferent(existingRule, &shippedRule) {
+			// Reset to shipped values, preserve Enabled state unless enableRules is true
+			preservedEnabled := existingRule.Enabled
+			*existingRule = shippedRule
+			if !enableRules {
+				existingRule.Enabled = preservedEnabled
+			}
+			existingRule.TriggerCount = 0 // Reset trigger count
+			updated++
+			affectedIDs = append(affectedIDs, existingRule.ID)
+		} else {
+			unchanged++
+		}
+
+		// Mark as processed
+		delete(defaultMap, existingRule.ID)
+	}
+
+	// Phase 2: Re-add deleted default rules
+	for _, rule := range defaultMap {
+		// These are default rules that were deleted by the user
+		if !enableRules {
+			rule.Enabled = false // Respect original disabled state
+		}
+		c.WorkflowRules = append(c.WorkflowRules, rule)
+		readded++
+		affectedIDs = append(affectedIDs, rule.ID)
+	}
+
+	return updated, readded, unchanged, affectedIDs
+}
+
+// rulesAreDifferent compares rule content semantically (ignoring metadata).
+// Returns true if the rules differ in name, triggers, trigger logic, or actions.
+// Compares triggers and actions by content, not by order.
+func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
+	// Compare name
+	if a.Name != b.Name {
+		return true
+	}
+
+	// Compare trigger logic
+	if a.GetTriggerLogic() != b.GetTriggerLogic() {
+		return true
+	}
+
+	// Compare triggers (order-insensitive)
+	aTriggers := a.GetTriggers()
+	bTriggers := b.GetTriggers()
+	if len(aTriggers) != len(bTriggers) {
+		return true
+	}
+
+	// Create trigger signature maps for order-insensitive comparison
+	aTriggerSigs := make(map[string]int)
+	for _, t := range aTriggers {
+		sig := string(t.Field) + "|" + string(t.Operation) + "|" + t.Value
+		aTriggerSigs[sig]++
+	}
+	bTriggerSigs := make(map[string]int)
+	for _, t := range bTriggers {
+		sig := string(t.Field) + "|" + string(t.Operation) + "|" + t.Value
+		bTriggerSigs[sig]++
+	}
+	if len(aTriggerSigs) != len(bTriggerSigs) {
+		return true
+	}
+	for sig, count := range aTriggerSigs {
+		if bTriggerSigs[sig] != count {
+			return true
+		}
+	}
+
+	// Compare actions (order-insensitive)
+	if len(a.Actions) != len(b.Actions) {
+		return true
+	}
+	aActionSigs := make(map[string]int)
+	for _, act := range a.Actions {
+		sig := string(act.ActionType) + "|" + act.Value
+		aActionSigs[sig]++
+	}
+	bActionSigs := make(map[string]int)
+	for _, act := range b.Actions {
+		sig := string(act.ActionType) + "|" + act.Value
+		bActionSigs[sig]++
+	}
+	if len(aActionSigs) != len(bActionSigs) {
+		return true
+	}
+	for sig, count := range aActionSigs {
+		if bActionSigs[sig] != count {
+			return true
+		}
+	}
+
+	return false
+}
+
 // GetWorkflowEvalState returns the evaluation state for a project.
 func (c *Config) GetWorkflowEvalState(projectID string) WorkflowEvalState {
 	if c.WorkflowEvalStates == nil {

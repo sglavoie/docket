@@ -34,9 +34,10 @@ DEFAULT RULES
 
 FLAGS
 
-  --list     Preview default rules without adding them
-  --force    Add defaults even if rules already exist
-  --enable   Create default rules in enabled state (default: disabled)
+  --list              Preview default rules without adding them
+  --force             Add defaults even if rules already exist
+  --enable            Create default rules in enabled state (default: disabled)
+  --changed-defaults  Reset edited/deleted default rules to shipped values (requires --force)
 
 EXAMPLES
 
@@ -50,14 +51,21 @@ EXAMPLES
     tt workflow init --enable
 
   Re-add deleted defaults:
-    tt workflow init --force`,
+    tt workflow init --force
+  
+  Reset broken default rules:
+    tt workflow init --force --changed-defaults
+  
+  Reset and enable defaults:
+    tt workflow init --force --changed-defaults --enable`,
 	RunE: runWorkflowInit,
 }
 
 var (
-	initList   bool
-	initForce  bool
-	initEnable bool
+	initList            bool
+	initForce           bool
+	initEnable          bool
+	initChangedDefaults bool
 )
 
 func init() {
@@ -66,6 +74,7 @@ func init() {
 	workflowInitCmd.Flags().BoolVar(&initList, "list", false, "preview default rules without adding them")
 	workflowInitCmd.Flags().BoolVar(&initForce, "force", false, "add defaults even if rules already exist")
 	workflowInitCmd.Flags().BoolVar(&initEnable, "enable", false, "create default rules in enabled state")
+	workflowInitCmd.Flags().BoolVar(&initChangedDefaults, "changed-defaults", false, "reset edited/deleted default rules to shipped values (requires --force)")
 }
 
 func runWorkflowInit(cmd *cobra.Command, args []string) error {
@@ -87,6 +96,39 @@ func runWorkflowInit(cmd *cobra.Command, args []string) error {
 	cfg, err := configManager.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Handle --changed-defaults flag (requires --force for safety)
+	if initChangedDefaults {
+		if !initForce {
+			return fmt.Errorf("--changed-defaults requires --force for safety")
+		}
+
+		updated, readded, unchanged, affectedIDs := cfg.ResetChangedDefaultRules(initEnable)
+
+		if err := configManager.Save(cfg); err != nil {
+			return tterrors.NewSaveConfigError(err)
+		}
+
+		fmt.Println("Reset changed default rules:")
+		fmt.Printf("  Updated: %d\n", updated)
+		fmt.Printf("  Re-added (deleted): %d\n", readded)
+		fmt.Printf("  Unchanged: %d\n", unchanged)
+
+		if len(affectedIDs) > 0 {
+			fmt.Println()
+			fmt.Println("Affected rules:")
+			for _, id := range affectedIDs {
+				rule := cfg.GetWorkflowRule(id)
+				if rule != nil {
+					fmt.Printf("  [%s] %s\n", rule.ID, rule.Name)
+				}
+			}
+		}
+
+		fmt.Println()
+		fmt.Println("Use 'tt workflow list' to review.")
+		return nil
 	}
 
 	if len(cfg.WorkflowRules) > 0 && !initForce && !cfg.DefaultRulesInitialized {

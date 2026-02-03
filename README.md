@@ -293,13 +293,42 @@ tt blocker delete <id>               # Delete blocker
 Workflow rules automatically modify tasks when conditions are met:
 
 ```bash
-tt workflow add                      # Create new workflow rule (interactive)
+tt workflow add                      # Create new workflow rule
 tt workflow list                     # List all rules
+tt workflow show <id>                # Show detailed rule configuration
+tt workflow edit <id> [flags]        # Edit rule (--name, --enabled, triggers, actions)
 tt workflow toggle <id>              # Enable/disable rule
 tt workflow delete <id>              # Delete rule
 tt workflow init                     # Initialize default rules
-tt workflow reset                    # Reset to default rules
-tt workflow eval                     # Test which rules would fire (dry-run)
+tt workflow init --force --changed-defaults  # Reset broken default rules
+tt workflow reset <id>               # Reset trigger counts for rule
+tt workflow eval                     # Evaluate rules for current project
+tt workflow test                     # Test which rules would fire (dry-run)
+```
+
+Example workflow edit operations:
+
+```bash
+# Preview changes (shows git-style diff)
+tt workflow edit abc123 --name "New Name"
+
+# Apply changes with --yes flag
+tt workflow edit abc123 --name "New Name" --yes
+
+# Add multiple triggers in one command
+tt workflow edit abc123 \
+  -f status -o equals -V blocked \
+  -f priority -o greater_than -V 3 \
+  --yes
+
+# Remove triggers by index (use 'tt workflow show' to see indices)
+tt workflow edit abc123 --remove-trigger 0,2 --yes
+
+# Change trigger logic
+tt workflow edit abc123 --set-logic or --yes
+
+# Add action
+tt workflow edit abc123 --add-action add_tag --add-action-value urgent --yes
 ```
 
 Example rules:
