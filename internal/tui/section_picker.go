@@ -366,11 +366,14 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 		}
 
 		// Display text (without @ prefix, that's in the gutter)
-		displayText := item.DisplayText()
-		if item.Name == newSectionSentinel {
+		var displayText string
+		switch item.Name {
+		case newSectionSentinel:
 			displayText = "New Section"
-		} else if item.Name == removeCustomSectionSentinel {
+		case removeCustomSectionSentinel:
 			displayText = "Remove Custom Section"
+		default:
+			displayText = item.DisplayText()
 		}
 		countStr := TagManagerCountStyle.Render(fmt.Sprintf(" (%d)", item.CountValue()))
 

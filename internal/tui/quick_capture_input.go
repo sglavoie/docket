@@ -299,12 +299,12 @@ func (q *quickCaptureInput) renderPreview() string {
 	}
 
 	previewText := strings.Join(parts, " · ")
-	
+
 	// Wrap text if width is set and preview exceeds it
 	if q.width > 0 {
 		previewText = wrapPreviewText(previewText, q.width)
 	}
-	
+
 	return previewText
 }
 
@@ -320,7 +320,7 @@ func wrapPreviewText(text string, width int) string {
 	for len(remaining) > width {
 		// Find a good break point (prefer breaking at " · " separator, then space)
 		breakPoint := width
-		
+
 		// First try to break at a " · " within the width
 		if sepIdx := strings.LastIndex(remaining[:width], " · "); sepIdx > 0 {
 			breakPoint = sepIdx + 3 // Include the " · " separator
@@ -333,15 +333,15 @@ func wrapPreviewText(text string, width int) string {
 				}
 			}
 		}
-		
+
 		lines = append(lines, remaining[:breakPoint])
 		remaining = strings.TrimLeft(remaining[breakPoint:], " ")
 	}
-	
+
 	if remaining != "" {
 		lines = append(lines, remaining)
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 

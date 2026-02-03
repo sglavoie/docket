@@ -139,11 +139,14 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkSectionProject = nil
 
-			successMsg := fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
-			if msg.Section == "" {
+			var successMsg string
+			switch msg.Section {
+			case "":
 				successMsg = fmt.Sprintf("Removed %d tasks from GTD section", count)
-			} else if msg.Section == removeCustomSectionSentinel {
+			case removeCustomSectionSentinel:
 				successMsg = fmt.Sprintf("Removed custom section from %d tasks", count)
+			default:
+				successMsg = fmt.Sprintf("Moved %d tasks to %s", count, msg.Section)
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),
@@ -173,11 +176,14 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.kanban.loadTasks()
 			}
 
-			successMsg := fmt.Sprintf("Moved to %s", msg.Section)
-			if msg.Section == "" {
+			var successMsg string
+			switch msg.Section {
+			case "":
 				successMsg = "Removed from GTD section"
-			} else if msg.Section == removeCustomSectionSentinel {
+			case removeCustomSectionSentinel:
 				successMsg = "Removed custom section"
+			default:
+				successMsg = fmt.Sprintf("Moved to %s", msg.Section)
 			}
 			return true, tea.Batch(
 				startLoading("Saving..."),

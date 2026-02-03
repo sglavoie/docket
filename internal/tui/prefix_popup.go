@@ -473,7 +473,7 @@ var (
 		{Key: "s", Description: "in-progress"},
 		{Key: "b", Description: "blocked"},
 		{Key: "d", Description: "done"},
-		{Key: "x", Description: "cancelled"},
+		{Key: "x", Description: "canceled"},
 		{Key: "0", Description: "clear"},
 	}
 

@@ -436,6 +436,7 @@ func (m *BulkEditModel) View() string {
 	if m.Width() > 0 && m.Width() < boxWidth+10 {
 		boxWidth = m.Width() - 10
 	}
+	_ = boxWidth
 
 	var content strings.Builder
 

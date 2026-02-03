@@ -443,13 +443,13 @@ func (m *KanbanViewModel) renderQuickAddPreview() string {
 	}
 
 	previewText := strings.Join(parts, " · ")
-	
+
 	// Wrap text if it exceeds available width
 	width := m.Width()
 	if width > 0 {
 		previewText = wrapPreviewText(previewText, width)
 	}
-	
+
 	return previewText
 }
 

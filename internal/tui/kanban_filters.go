@@ -308,18 +308,6 @@ func (m *KanbanViewModel) renderKanbanFilterBar() string {
 	return FilterBadgeStyle.Render("Filters: "+strings.Join(parts, " ")) + "\n"
 }
 
-// renderKanbanColumnCounts renders the column task counts summary.
-func (m *KanbanViewModel) renderKanbanColumnCounts() string {
-	var parts []string
-	for _, section := range KanbanColumnOrder {
-		count := len(m.Tasks[section])
-		name := sectionDisplayName(section)
-		style := GetViewModeStyleForSection(section)
-		parts = append(parts, style.Render(fmt.Sprintf("%s[%d]", name, count)))
-	}
-	return strings.Join(parts, " ")
-}
-
 // HasActiveFilters returns true if any filter is currently active.
 func (m *KanbanViewModel) HasActiveFilters() bool {
 	return m.filter.Type != "" ||
@@ -338,47 +326,6 @@ func (m *KanbanViewModel) ClearAllFilters() {
 	m.filter.Tags = make(map[string]bool)
 	m.filter.DueDate = DueDateAll
 	m.filter.Search = ""
-}
-
-// cycleKanbanTypeFilter cycles through task types for filtering.
-func (m *KanbanViewModel) cycleKanbanTypeFilter() {
-	// Cycle order: "" -> epic -> story -> task -> bug -> idea -> ""
-	types := []models.TaskType{
-		models.TaskTypeEpic,
-		models.TaskTypeStory,
-		models.TaskTypeTask,
-		models.TaskTypeBug,
-		models.TaskTypeIdea,
-	}
-	m.filter.Type = cycleFilter(m.filter.Type, types)
-}
-
-// cycleKanbanStatusFilter cycles through task statuses for filtering.
-func (m *KanbanViewModel) cycleKanbanStatusFilter() {
-	// Cycle order: "" -> todo -> in_progress -> blocked -> ""
-	statuses := []models.TaskStatus{
-		models.StatusTodo,
-		models.StatusInProgress,
-		models.StatusBlocked,
-	}
-	m.filter.Status = cycleFilter(m.filter.Status, statuses)
-}
-
-// cycleKanbanDueDateFilter cycles through due date filter options.
-func (m *KanbanViewModel) cycleKanbanDueDateFilter() {
-	// Cycle order: all -> overdue -> today -> week -> none -> all
-	switch m.filter.DueDate {
-	case DueDateAll:
-		m.filter.DueDate = DueDateOverdue
-	case DueDateOverdue:
-		m.filter.DueDate = DueDateToday
-	case DueDateToday:
-		m.filter.DueDate = DueDateThisWeek
-	case DueDateThisWeek:
-		m.filter.DueDate = DueDateNone
-	case DueDateNone:
-		m.filter.DueDate = DueDateAll
-	}
 }
 
 // toggleKanbanPriorityFilter toggles the high priority filter.

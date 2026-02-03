@@ -224,7 +224,7 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	if !hasChanges {
-		return fmt.Errorf("no changes specified; use --name, --enabled, --add-trigger-*, --remove-trigger, --add-action, etc.")
+		return fmt.Errorf("no changes specified; use --name, --enabled, --add-trigger-*, --remove-trigger, --add-action, etc")
 	}
 
 	// Atomic validation: collect all errors before failing

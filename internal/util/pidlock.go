@@ -27,7 +27,7 @@ func AcquirePIDLock(path string) error {
 
 // ReleasePIDLock removes the lock file.
 func ReleasePIDLock(path string) {
-	os.Remove(path)
+	_ = os.Remove(path)
 }
 
 func isProcessAlive(pid int) bool {
