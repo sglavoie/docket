@@ -16,12 +16,14 @@ type NoteTagSelectorModel struct {
 	TagAdder
 	note         *models.Note
 	project      *models.Project
+	notesDir     string
+	isGlobal     bool
 	originalTags []string
 }
 
 // NewNoteTagSelectorModel creates a new tag selector for a note.
-func NewNoteTagSelectorModel(note *models.Note, project *models.Project, currentTags []string) *NoteTagSelectorModel {
-	tags := buildNoteTagList(project)
+func NewNoteTagSelectorModel(note *models.Note, project *models.Project, notesDir string, isGlobal bool, currentTags []string) *NoteTagSelectorModel {
+	tags := buildNoteTagList(project, notesDir)
 
 	titleStr := note.Title
 	if len(titleStr) > 30 {
@@ -48,24 +50,33 @@ func NewNoteTagSelectorModel(note *models.Note, project *models.Project, current
 		TagAdder:     NewTagAdder(),
 		note:         note,
 		project:      project,
+		notesDir:     notesDir,
+		isGlobal:     isGlobal,
 		originalTags: append([]string{}, currentTags...),
 	}
 }
 
-// buildNoteTagList scans all notes in the project and builds a sorted tag list.
-func buildNoteTagList(project *models.Project) []TagInfo {
+// buildNoteTagList scans all notes and builds a sorted tag list.
+func buildNoteTagList(project *models.Project, notesDir string) []TagInfo {
 	tagCounts := make(map[string]int)
-	notes, _ := storage.ListNotes(project)
+	var notes []*models.Note
+	if project != nil {
+		notes, _ = storage.ListNotes(project)
+	} else if notesDir != "" {
+		notes, _ = storage.ListNotesFrom(notesDir)
+	}
 	for _, n := range notes {
 		for _, tag := range n.Tags {
 			tagCounts[tag]++
 		}
 	}
 	// Also include task tags for cross-pollination
-	for _, task := range project.Tasks {
-		for _, tag := range task.Tags {
-			if _, exists := tagCounts[tag]; !exists {
-				tagCounts[tag] = 0
+	if project != nil {
+		for _, task := range project.Tasks {
+			for _, tag := range task.Tags {
+				if _, exists := tagCounts[tag]; !exists {
+					tagCounts[tag] = 0
+				}
 			}
 		}
 	}
@@ -111,6 +122,8 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return NoteTagSelectorDoneMsg{
 					Note:     m.note,
 					Project:  m.project,
+					NotesDir: m.notesDir,
+					IsGlobal: m.isGlobal,
 					Canceled: true,
 				}
 			}
@@ -122,6 +135,8 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return NoteTagSelectorDoneMsg{
 					Note:         m.note,
 					Project:      m.project,
+					NotesDir:     m.notesDir,
+					IsGlobal:     m.isGlobal,
 					SelectedTags: selectedTags,
 					Canceled:     false,
 				}

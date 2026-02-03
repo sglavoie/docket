@@ -143,7 +143,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case BulkNoteTagMsg:
 		if msg.Project != nil && len(msg.Notes) > 0 {
 			// Use first note's tags as current; open the standard note tag selector
-			selector := NewNoteTagSelectorModel(msg.Notes[0], msg.Project, msg.Notes[0].Tags)
+			selector := NewNoteTagSelectorModel(msg.Notes[0], msg.Project, msg.NotesDir, msg.IsGlobal, msg.Notes[0].Tags)
 			m.pendingBulkNotes = msg.Notes
 			m.showView(ViewNoteTagSelector, selector)
 		}
@@ -187,7 +187,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, func() tea.Msg { return NotesRefreshMsg{} }
 
 	case ShowNoteTagSelectorMsg:
-		selector := NewNoteTagSelectorModel(msg.Note, msg.Project, msg.CurrentTags)
+		selector := NewNoteTagSelectorModel(msg.Note, msg.Project, msg.NotesDir, msg.IsGlobal, msg.CurrentTags)
 		m.showView(ViewNoteTagSelector, selector)
 		return true, nil
 
