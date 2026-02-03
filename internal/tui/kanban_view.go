@@ -19,6 +19,11 @@ func (m *KanbanViewModel) View() string {
 		return m.renderCompletedView()
 	}
 
+	// Render all view if in all view mode
+	if m.allViewMode {
+		return m.renderAllView()
+	}
+
 	var viewParts []string
 
 	// Render custom section tab bar above preset tabs (when custom sections exist)
@@ -48,12 +53,6 @@ func (m *KanbanViewModel) View() string {
 		}
 	}
 	viewParts = append(viewParts, presetBar)
-
-	// Render active filter indicator (only shown when filters are active)
-	filterBar := m.renderKanbanFilterBar()
-	if filterBar != "" {
-		viewParts = append(viewParts, strings.TrimSuffix(filterBar, "\n"))
-	}
 
 	// Render search input if in search mode
 	if m.searchMode {
@@ -106,12 +105,9 @@ func (m *KanbanViewModel) View() string {
 	if m.customSectionTabs() != nil {
 		tabBarHeight += TabBarHeight
 	}
-	filterBarHeight := 0
-	if m.HasActiveFilters() || m.actionableFilter {
-		filterBarHeight = 1
-	}
+	searchBarHeight := 0
 	if m.searchMode {
-		filterBarHeight++
+		searchBarHeight = 1
 	}
 	quickAddHeight := 0
 	if m.quickAddMode {
@@ -122,7 +118,7 @@ func (m *KanbanViewModel) View() string {
 	if m.statusMessage != "" {
 		statusBarHeight = 1
 	}
-	detailsHeight := m.Height() - m.kanbanHeight - DividerHeight - tabBarHeight - filterBarHeight - quickAddHeight - quickEditHeight - statusBarHeight
+	detailsHeight := m.Height() - m.kanbanHeight - DividerHeight - tabBarHeight - searchBarHeight - quickAddHeight - quickEditHeight - statusBarHeight
 	if detailsHeight < KanbanMinDetailsHeight {
 		detailsHeight = KanbanMinDetailsHeight
 	}
@@ -639,9 +635,9 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // internal mode that should capture Esc instead of allowing app-level
 // navigation. Currently tracks pending status prefix mode, details pane focus,
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
-// archive confirmation, focus mode, multi-select mode, quick edit mode, and completed view mode.
+// archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

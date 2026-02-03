@@ -89,6 +89,15 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		}
 	}
 
+	// All view indicator
+	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount
+	allLabel := fmt.Sprintf("All[%d]", allCount)
+	if m.viewMode == ViewModeAll {
+		parts = append(parts, ViewModeAllStyle.Render(allLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(allLabel))
+	}
+
 	// Blockers indicator (only show if there are active blockers)
 	blockerCount := storage.GetActiveBlockerCount(m.project)
 	if blockerCount > 0 {
@@ -311,6 +320,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 		base = "Completed"
 	case ViewModeSnoozed:
 		base = "Snoozed"
+	case ViewModeAll:
+		base = "All"
 	default:
 		base = "Tasks"
 	}

@@ -1,3 +1,4 @@
+.github/skills/
+cmd/cli-reference.md
 coverage.out
 tt
-cmd/cli-reference.md

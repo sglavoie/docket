@@ -298,6 +298,7 @@ var (
 	ViewModeSomedayStyle   = makeViewModeStyle("135")
 	ViewModeCompletedStyle = makeViewModeStyle("28")
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
+	ViewModeAllStyle       = makeViewModeStyle("60")
 
 	// Filter view styles
 	FilterBadgeStyle = lipgloss.NewStyle().

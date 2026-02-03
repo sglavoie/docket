@@ -319,6 +319,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
+		case "*":
+			// Go to All view
+			m.viewMode = ViewModeAll
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
 		case "c":
 			// Go to Completed view
 			m.viewMode = ViewModeCompleted
@@ -384,8 +391,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.clampCursor()
 			return m, nil
 		case "v":
-			// Cycle view modes (including Completed and Snoozed)
-			m.viewMode = (m.viewMode + 1) % 7
+			// Cycle view modes (including Completed, Snoozed, and All)
+			m.viewMode = (m.viewMode + 1) % 8
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()

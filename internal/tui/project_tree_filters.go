@@ -184,6 +184,8 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 			if node.Task.Section != models.SectionSomeday {
 				return false
 			}
+		case ViewModeAll:
+			// Show all non-completed, non-snoozed tasks (no section filtering)
 		}
 	}
 
@@ -589,6 +591,8 @@ func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, "Active"}
 	case ViewModeSomeday:
 		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, "Active"}
+	case ViewModeAll:
+		return nil // All sections visible
 	}
 	return nil
 }

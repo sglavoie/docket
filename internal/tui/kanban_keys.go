@@ -55,6 +55,17 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle all view mode input
+	if m.allViewMode {
+		if handled, _ := m.handleAllViewKey(key); handled {
+			// Check for pending prefix from all view
+			if m.pendingPrefix != "" {
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	// Handle search mode input first
 	if m.searchMode {
 		return m.handleSearchInput(msg)
@@ -101,6 +112,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Exit completed view mode
 		if m.completedViewMode {
 			m.completedViewMode = false
+			m.statusMessage = ""
+			return m, nil
+		}
+		// Exit all view mode
+		if m.allViewMode {
+			m.allViewMode = false
 			m.statusMessage = ""
 			return m, nil
 		}

@@ -135,12 +135,20 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				m.completedCursor = 0
 				return m, nil
 			}
+			if m.allViewMode {
+				m.allCursor = 0
+				return m, nil
+			}
 			cs := m.CurrentColumnState()
 			cs.Cursor = 0
 			return m, nil
 		case "c":
 			// Toggle completed view
 			m.toggleCompletedView()
+			return m, nil
+		case "*":
+			// Toggle all view
+			m.toggleAllView()
 			return m, nil
 		case "a":
 			// Go to Active column

@@ -110,12 +110,19 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Section badge for context nodes (show which section the parent is actually in)
 	// Also show section badge in Completed view to indicate where the task was originally
-	if node.IsContextNode || m.viewMode == ViewModeCompleted {
+	// Also show section badge in All view since tasks from all sections are shown together
+	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
 		sectionName := task.Section
 		if sectionName == "" {
 			sectionName = "Active"
 		}
-		indicators += SectionBadgeStyle.Render("@ "+sectionName) + " "
+		// Use colored style in All view to match the GTD section colors
+		if m.viewMode == ViewModeAll {
+			sectionStyle := GetViewModeStyleForSection(task.Section)
+			indicators += sectionStyle.Render("@ "+sectionName) + " "
+		} else {
+			indicators += SectionBadgeStyle.Render("@ "+sectionName) + " "
+		}
 	}
 
 	// Children in other sections badge (only for non-context nodes with children)

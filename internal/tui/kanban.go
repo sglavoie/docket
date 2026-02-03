@@ -157,6 +157,12 @@ type KanbanViewModel struct {
 	completedCursor   int
 	completedScroll   int
 
+	// All view state (shows all tasks from all sections in one list)
+	allViewMode bool
+	allNodes    []*KanbanNode
+	allCursor   int
+	allScroll   int
+
 	// Tab filtering
 	activeTab int // Index into kanbanTabNames
 
@@ -524,13 +530,9 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	if m.customSectionTabs() != nil {
 		tabBarHeight += TabBarHeight
 	}
-	filterBarHeight := 0
-	if m.HasActiveFilters() || m.actionableFilter {
-		filterBarHeight = 1
-	}
 
 	// Compute split view heights: 50/50 split minus divider
-	availableHeight := height - DividerHeight - tabBarHeight - filterBarHeight
+	availableHeight := height - DividerHeight - tabBarHeight
 	m.kanbanHeight = availableHeight / 2
 	if m.kanbanHeight < 3 {
 		m.kanbanHeight = 3 // Minimum height for header + 1 task

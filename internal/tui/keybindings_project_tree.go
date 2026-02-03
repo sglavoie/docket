@@ -77,13 +77,14 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
 
 		// Views (g prefix)
-		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed/Snoozed)", Category: "Views", Views: views},
+		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed/Snoozed/All)", Category: "Views", Views: views},
 		Keybinding{Key: "ga", Description: "Go to Active view", Category: "Views", Views: views},
 		Keybinding{Key: "gn", Description: "Go to Next view", Category: "Views", Views: views},
 		Keybinding{Key: "gi", Description: "Go to Inbox view", Category: "Views", Views: views},
 		Keybinding{Key: "gw", Description: "Go to Waiting view", Category: "Views", Views: views},
 		Keybinding{Key: "gs", Description: "Go to Someday view", Category: "Views", Views: views},
 		Keybinding{Key: "gc", Description: "Go to Completed view", Category: "Views", Views: views},
+		Keybinding{Key: "g*", Description: "Go to All view", Category: "Views", Views: views},
 		Keybinding{Key: "go", Description: "Jump to context node's home section", Category: "Views", Views: views},
 		Keybinding{Key: "gA", Description: "Send task(s) to Active", Category: "Views", Views: views},
 		Keybinding{Key: "gN", Description: "Send task(s) to Next", Category: "Views", Views: views},
