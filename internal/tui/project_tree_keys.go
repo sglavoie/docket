@@ -82,6 +82,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		}
+		m.ClearSearch()
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()

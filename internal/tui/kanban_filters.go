@@ -516,6 +516,7 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		// Clear all filters
 		m.ClearAllFilters()
 		m.actionableFilter = false
+		m.searchInput.SetValue("")
 		m.loadTasks()
 		return m, nil
 	}
