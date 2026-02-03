@@ -782,158 +782,8 @@ func (m *TutorModel) View() string {
 // tutorTopics returns all tutor topics organized by category.
 func tutorTopics() []TutorTopic {
 	return []TutorTopic{
-		// ── Concepts ──────────────────────────────────────────
+		// ── Concepts (alphabetical) ──────────────────────────
 
-		{
-			Title:    "Task Types",
-			Category: "Concepts",
-			Content: `# Type Hierarchy
-
-tt supports five task types organized in a hierarchy. Epics are
-the largest unit, containing stories, tasks, bugs, and ideas.
-Stories can contain tasks and bugs. Tasks, bugs, and ideas are
-leaf nodes that cannot contain children.
-
-# When to Use Each
-
-Epics represent large features or initiatives spanning weeks.
-Stories are user-facing deliverables within an epic. Tasks are
-concrete work items. Bugs track defects. Ideas capture future
-possibilities without commitment.`,
-		},
-		{
-			Title:    "Statuses",
-			Category: "Concepts",
-			Content: `# Available Statuses
-
-Tasks move through five statuses: todo, in_progress, done,
-blocked, and canceled.
-
-# Transitions
-
-todo is the default status for new tasks. Moving to in_progress
-means work has started. done marks a task as finished. blocked
-indicates the task cannot proceed until an external dependency
-is resolved. canceled removes the task from active work without
-completing it.
-
-# Status Flow
-
-A typical task flows from todo to in_progress to done. Tasks
-can be blocked at any point and reopened back to todo. Canceled
-tasks are terminal and do not appear in active views.`,
-		},
-		{
-			Title:    "Priority",
-			Category: "Concepts",
-			Content: `# Priority Scale
-
-tt uses a 1-5 priority scale where 1 is the highest (critical)
-and 5 is the lowest (someday). Priority affects sort order in
-all views, with higher-priority tasks appearing first.
-
-# What Each Level Means
-
-Priority 1 (critical) is for urgent, drop-everything items.
-Priority 2 (high) is important work that should be done soon.
-Priority 3 (normal) is regular work with no special urgency.
-Priority 4 (low) is less important work. Priority 5 (someday)
-is for things you might do eventually.`,
-		},
-		{
-			Title:    "Dependencies",
-			Category: "Concepts",
-			Content: `# Blocking Model
-
-Tasks can depend on other tasks. When a task is blocked by
-another, it cannot progress until the blocker is resolved.
-
-# How Blocking Works
-
-When all blockers of a task are completed or canceled, the
-task automatically becomes unblocked. Blocked tasks are shown
-with a distinct indicator in all views.
-
-# Dependency Chains
-
-Dependencies can form chains where task A blocks B which
-blocks C. Completing A unblocks B, and completing B then
-unblocks C.`,
-		},
-		{
-			Title:    "Sections (GTD)",
-			Category: "Concepts",
-			Content: `# Section Overview
-
-Sections follow the Getting Things Done methodology to organize
-your workflow. Each task belongs to one section that indicates
-its current stage.
-
-# Available Sections
-
-Active contains tasks you are working on right now. Next holds
-tasks queued up to start soon. Inbox is for unsorted incoming
-tasks. Waiting is for tasks blocked on external input. Someday
-captures tasks you might do eventually.
-
-# Custom Sections
-
-Beyond the built-in sections, you can create your own to match
-your workflow. Custom sections behave like built-in ones and
-can receive tasks, be renamed, or be removed. Assigning a task
-to a section that does not exist yet creates it automatically.`,
-		},
-		{
-			Title:    "Tags",
-			Category: "Concepts",
-			Content: `# What Are Tags
-
-Tags are lightweight labels for cross-cutting categorization.
-A task can have multiple tags, and tags work across projects.
-
-# Use Cases
-
-Use tags for themes that cut across your project hierarchy:
-#backend, #frontend, #urgent, #tech-debt, #design. Tags complement
-sections and priority by adding a free-form dimension to task
-organization.`,
-		},
-		{
-			Title:    "Contexts",
-			Category: "Concepts",
-			Content: `# What Are Contexts
-
-Contexts group related projects together. You might have a
-"work" context, a "personal" context, and a "side-projects"
-context. Switching contexts changes which projects appear
-in your dashboard and when cycling through projects.
-
-# How Contexts Work
-
-When a context is active, only projects in that context
-appear in the dashboard and project list. This keeps your
-view focused on the relevant area of your life.`,
-		},
-		{
-			Title:    "Notes",
-			Category: "Concepts",
-			Content: `# What Are Notes
-
-Each project can have associated notes for documentation,
-meeting minutes, or reference material. Notes are stored
-as markdown files alongside your tasks.
-
-# Global Notes
-
-Global notes are not tied to any project. Use them for
-cross-project references or general documentation.
-
-# Linking Notes to Tasks
-
-Notes can be linked to specific tasks for context. This
-creates a bidirectional reference visible in both the
-note and task views.`,
-		},
 		{
 			Title:    "Attachments",
 			Category: "Concepts",
@@ -959,66 +809,40 @@ In the TUI, press a in the attachments view to add. Configure
 the code editor and attachment editor in Settings > Attachments.`,
 		},
 		{
-			Title:    "Workflow Rules",
+			Title:    "Contexts",
 			Category: "Concepts",
-			Content: `# What Are Workflow Rules
+			Content: `# What Are Contexts
 
-Workflow rules automate repetitive actions. When a trigger
-condition is met, the associated action executes automatically.
-Triggers can be state changes or events.
+Contexts group related projects together. You might have a
+"work" context, a "personal" context, and a "side-projects"
+context. Switching contexts changes which projects appear
+in your dashboard and when cycling through projects.
 
-# Practical Examples
+# How Contexts Work
 
-Auto-move tasks to Active section when started:
-
-  Trigger: status changes to in_progress
-  Action: set section to active
-
-Auto-tag completed tasks:
-
-  Trigger: status changes to done
-  Action: add tag "completed"`,
+When a context is active, only projects in that context
+appear in the dashboard and project list. This keeps your
+view focused on the relevant area of your life.`,
 		},
 		{
-			Title:    "Recurrence",
+			Title:    "Dependencies",
 			Category: "Concepts",
-			Content: `# Recurring Tasks
+			Content: `# Blocking Model
 
-Recurring tasks automatically repeat on a schedule. When a
-recurring task is completed, a new instance is created with
-the next due date.
+Tasks can depend on other tasks. When a task is blocked by
+another, it cannot progress until the blocker is resolved.
 
-# Recurrence Patterns
+# How Blocking Works
 
-Supported patterns include daily, weekly, monthly, and custom
-intervals using number + unit: d for days, w for weeks.
+When all blockers of a task are completed or canceled, the
+task automatically becomes unblocked. Blocked tasks are shown
+with a distinct indicator in all views.
 
-# How It Works
+# Dependency Chains
 
-When you complete a recurring task, tt creates a new copy with
-the status reset to todo and the due date advanced by the
-recurrence interval. The completed instance remains in your
-history.`,
-		},
-		{
-			Title:    "Snooze",
-			Category: "Concepts",
-			Content: `# Snoozing Tasks
-
-Snooze temporarily hides a task from active views. The task
-reappears automatically when the snooze period expires.
-
-# How Snoozed Tasks Reappear
-
-Snoozed tasks are excluded from normal list views and the
-dashboard. When the snooze time passes, the task returns to
-its previous section and appears in your task list again.
-
-# Use Cases
-
-Snooze is useful for tasks you cannot act on right now but
-do not want to forget. Instead of leaving them in your active
-list as noise, snooze them until the right time.`,
+Dependencies can form chains where task A blocks B which
+blocks C. Completing A unblocks B, and completing B then
+unblocks C.`,
 		},
 		{
 			Title:    "Markdown Format",
@@ -1049,9 +873,217 @@ Task metadata like ID, status, priority, tags, and dates is
 stored in HTML comments immediately after the heading. This
 keeps the markdown readable while preserving all task data.`,
 		},
+		{
+			Title:    "Notes",
+			Category: "Concepts",
+			Content: `# What Are Notes
 
-		// ── CLI ───────────────────────────────────────────────
+Each project can have associated notes for documentation,
+meeting minutes, or reference material. Notes are stored
+as markdown files alongside your tasks.
 
+# Global Notes
+
+Global notes are not tied to any project. Use them for
+cross-project references or general documentation.
+
+# Linking Notes to Tasks
+
+Notes can be linked to specific tasks for context. This
+creates a bidirectional reference visible in both the
+note and task views.`,
+		},
+		{
+			Title:    "Priority",
+			Category: "Concepts",
+			Content: `# Priority Scale
+
+tt uses a 1-5 priority scale where 1 is the highest (critical)
+and 5 is the lowest (someday). Priority affects sort order in
+all views, with higher-priority tasks appearing first.
+
+# What Each Level Means
+
+Priority 1 (critical) is for urgent, drop-everything items.
+Priority 2 (high) is important work that should be done soon.
+Priority 3 (normal) is regular work with no special urgency.
+Priority 4 (low) is less important work. Priority 5 (someday)
+is for things you might do eventually.`,
+		},
+		{
+			Title:    "Recurrence",
+			Category: "Concepts",
+			Content: `# Recurring Tasks
+
+Recurring tasks automatically repeat on a schedule. When a
+recurring task is completed, a new instance is created with
+the next due date.
+
+# Recurrence Patterns
+
+Supported patterns include daily, weekly, monthly, and custom
+intervals using number + unit: d for days, w for weeks.
+
+# How It Works
+
+When you complete a recurring task, tt creates a new copy with
+the status reset to todo and the due date advanced by the
+recurrence interval. The completed instance remains in your
+history.`,
+		},
+		{
+			Title:    "Sections (GTD)",
+			Category: "Concepts",
+			Content: `# Section Overview
+
+Sections follow the Getting Things Done methodology to organize
+your workflow. Each task belongs to one section that indicates
+its current stage.
+
+# Available Sections
+
+Active contains tasks you are working on right now. Next holds
+tasks queued up to start soon. Inbox is for unsorted incoming
+tasks. Waiting is for tasks blocked on external input. Someday
+captures tasks you might do eventually.
+
+# Custom Sections
+
+Beyond the built-in sections, you can create your own to match
+your workflow. Custom sections behave like built-in ones and
+can receive tasks, be renamed, or be removed. Assigning a task
+to a section that does not exist yet creates it automatically.`,
+		},
+		{
+			Title:    "Snooze",
+			Category: "Concepts",
+			Content: `# Snoozing Tasks
+
+Snooze temporarily hides a task from active views. The task
+reappears automatically when the snooze period expires.
+
+# How Snoozed Tasks Reappear
+
+Snoozed tasks are excluded from normal list views and the
+dashboard. When the snooze time passes, the task returns to
+its previous section and appears in your task list again.
+
+# Use Cases
+
+Snooze is useful for tasks you cannot act on right now but
+do not want to forget. Instead of leaving them in your active
+list as noise, snooze them until the right time.`,
+		},
+		{
+			Title:    "Statuses",
+			Category: "Concepts",
+			Content: `# Available Statuses
+
+Tasks move through five statuses: todo, in_progress, done,
+blocked, and canceled.
+
+# Transitions
+
+todo is the default status for new tasks. Moving to in_progress
+means work has started. done marks a task as finished. blocked
+indicates the task cannot proceed until an external dependency
+is resolved. canceled removes the task from active work without
+completing it.
+
+# Status Flow
+
+A typical task flows from todo to in_progress to done. Tasks
+can be blocked at any point and reopened back to todo. Canceled
+tasks are terminal and do not appear in active views.`,
+		},
+		{
+			Title:    "Tags",
+			Category: "Concepts",
+			Content: `# What Are Tags
+
+Tags are lightweight labels for cross-cutting categorization.
+A task can have multiple tags, and tags work across projects.
+
+# Use Cases
+
+Use tags for themes that cut across your project hierarchy:
+#backend, #frontend, #urgent, #tech-debt, #design. Tags complement
+sections and priority by adding a free-form dimension to task
+organization.`,
+		},
+		{
+			Title:    "Task Types",
+			Category: "Concepts",
+			Content: `# Type Hierarchy
+
+tt supports five task types organized in a hierarchy. Epics are
+the largest unit, containing stories, tasks, bugs, and ideas.
+Stories can contain tasks and bugs. Tasks, bugs, and ideas are
+leaf nodes that cannot contain children.
+
+# When to Use Each
+
+Epics represent large features or initiatives spanning weeks.
+Stories are user-facing deliverables within an epic. Tasks are
+concrete work items. Bugs track defects. Ideas capture future
+possibilities without commitment.`,
+		},
+		{
+			Title:    "Workflow Rules",
+			Category: "Concepts",
+			Content: `# What Are Workflow Rules
+
+Workflow rules automate repetitive actions. When a trigger
+condition is met, the associated action executes automatically.
+Triggers can be state changes or events.
+
+# Practical Examples
+
+Auto-move tasks to Active section when started:
+
+  Trigger: status changes to in_progress
+  Action: set section to active
+
+Auto-tag completed tasks:
+
+  Trigger: status changes to done
+  Action: add tag "completed"`,
+		},
+
+		// ── CLI (alphabetical) ────────────────────────────────
+
+		{
+			Title:    "Contexts",
+			Category: "CLI",
+			Content: `# Creating Contexts
+
+  tt context new work
+  tt context new personal
+
+# Managing Projects in Contexts
+
+  tt context add work "Project Alpha"
+  tt context add work "Project Beta"
+
+# Switching Contexts
+
+Use tt select to switch between projects and contexts.
+
+  tt select`,
+		},
+		{
+			Title:    "Notes",
+			Category: "CLI",
+			Content: `# Managing Notes
+
+  tt note add "Sprint Planning Notes"
+  tt note list
+  tt note view <id>
+
+# Global Notes
+
+  tt note add --global "Architecture Decisions"`,
+		},
 		{
 			Title:    "Projects",
 			Category: "CLI",
@@ -1107,6 +1139,25 @@ GTD methodology for workflow organization.
   tt add "Deploy service #ops #urgent @active"`,
 		},
 		{
+			Title:    "Search",
+			Category: "CLI",
+			Content: `# Searching Tasks
+
+Search across all tasks in the current project or globally
+across all projects.
+
+  tt search "login bug"
+  tt search --all "authentication"
+
+# Filtering Options
+
+Combine search with filters to narrow results by status,
+priority, tag, or section.
+
+  tt task list --status todo --tag backend
+  tt task list --priority 1`,
+		},
+		{
 			Title:    "Task Management",
 			Category: "CLI",
 			Content: `# Creating Tasks
@@ -1140,25 +1191,6 @@ Add tasks with type and parent options for hierarchy.
   tt task snooze <id> 1w`,
 		},
 		{
-			Title:    "Search",
-			Category: "CLI",
-			Content: `# Searching Tasks
-
-Search across all tasks in the current project or globally
-across all projects.
-
-  tt search "login bug"
-  tt search --all "authentication"
-
-# Filtering Options
-
-Combine search with filters to narrow results by status,
-priority, tag, or section.
-
-  tt task list --status todo --tag backend
-  tt task list --priority 1`,
-		},
-		{
 			Title:    "Workflow Rules",
 			Category: "CLI",
 			Content: `# Managing Workflow Rules
@@ -1169,41 +1201,48 @@ Create, list, and delete workflow rules from the command line.
   tt workflow list
   tt workflow delete <id>`,
 		},
+
+		// ── TUI (alphabetical) ────────────────────────────────
+
 		{
-			Title:    "Notes",
-			Category: "CLI",
-			Content: `# Managing Notes
+			Title:    "Command Palette",
+			Category: "TUI",
+			Content: `# Opening the Palette
 
-  tt note add "Sprint Planning Notes"
-  tt note list
-  tt note view <id>
+Press : (colon) from any view to open the command palette.
+Type to filter commands and press Enter to execute.
 
-# Global Notes
+# What It Contains
 
-  tt note add --global "Architecture Decisions"`,
+The command palette lists all available actions for the current
+view. It is the fastest way to discover and access features
+without memorizing keybindings.`,
 		},
 		{
-			Title:    "Contexts",
-			Category: "CLI",
-			Content: `# Creating Contexts
+			Title:    "Help",
+			Category: "TUI",
+			Content: `# Context-Sensitive Help
 
-  tt context new work
-  tt context new personal
+Press ? in any view to see all keybindings available in that
+screen. The help overlay shows only the actions relevant to
+your current view.
 
-# Managing Projects in Contexts
+# AI Assistant
 
-  tt context add work "Project Alpha"
-  tt context add work "Project Beta"
-
-# Switching Contexts
-
-Use tt select to switch between projects and contexts.
-
-  tt select`,
+Press : to open the command palette, then type ask ai to launch
+the AI assistant. It can answer questions about your tasks,
+suggest next steps, and generate tt commands. Requires the
+claude CLI to be installed.`,
 		},
+		{
+			Title:    "Kanban",
+			Category: "TUI",
+			Content: `# Kanban Board
 
-		// ── TUI ───────────────────────────────────────────────
-
+Press Ctrl+K in the project tree view to open the kanban board.
+Tasks are displayed in columns by status, giving a visual
+overview of work in progress.`,
+		},
 		{
 			Title:    "Navigation",
 			Category: "TUI",
@@ -1222,45 +1261,6 @@ selects items. Tab switches between panes in split views.
 
 Press ? in any view to see all available keybindings for that
 screen. Help is context-sensitive and shows only relevant actions.`,
-		},
-		{
-			Title:    "Command Palette",
-			Category: "TUI",
-			Content: `# Opening the Palette
-
-Press : (colon) from any view to open the command palette.
-Type to filter commands and press Enter to execute.
-
-# What It Contains
-
-The command palette lists all available actions for the current
-view. It is the fastest way to discover and access features
-without memorizing keybindings.`,
-		},
-		{
-			Title:    "Status Changes",
-			Category: "TUI",
-			Content: `# Comma-Prefix Bindings
-
-Change task status using , followed by a letter:
-
-  ,s  Start (set to in_progress)
-  ,d  Mark done
-  ,b  Block task
-  ,o  Reopen (set to todo)
-  ,x  Cancel task
-
-Each binding sets the status directly. Select a task first,
-then press the key combination.`,
-		},
-		{
-			Title:    "Snooze",
-			Category: "TUI",
-			Content: `# Snooze Bindings
-
-Snooze a selected task using the s prefix followed by a
-duration key. The task will be hidden until the snooze
-period expires.`,
 		},
 		{
 			Title:    "Priority",
@@ -1285,37 +1285,37 @@ from Active, Next, Inbox, Waiting, or Someday to reassign
 the task quickly.`,
 		},
 		{
+			Title:    "Snooze",
+			Category: "TUI",
+			Content: `# Snooze Bindings
+
+Snooze a selected task using the s prefix followed by a
+duration key. The task will be hidden until the snooze
+period expires.`,
+		},
+		{
+			Title:    "Status Changes",
+			Category: "TUI",
+			Content: `# Comma-Prefix Bindings
+
+Change task status using , followed by a letter:
+
+  ,s  Start (set to in_progress)
+  ,d  Mark done
+  ,b  Block task
+  ,o  Reopen (set to todo)
+  ,x  Cancel task
+
+Each binding sets the status directly. Select a task first,
+then press the key combination.`,
+		},
+		{
 			Title:    "Tags",
 			Category: "TUI",
 			Content: `# Filtering by Tag
 
 Press f to open the filter view. From there you can filter
 tasks by tag across all tasks in the current project.`,
-		},
-		{
-			Title:    "Kanban",
-			Category: "TUI",
-			Content: `# Kanban Board
-
-Press Ctrl+K in the project tree view to open the kanban board.
-Tasks are displayed in columns by status, giving a visual
-overview of work in progress.`,
-		},
-		{
-			Title:    "Help",
-			Category: "TUI",
-			Content: `# Context-Sensitive Help
-
-Press ? in any view to see all keybindings available in that
-screen. The help overlay shows only the actions relevant to
-your current view.
-
-# AI Assistant
-
-Press : to open the command palette, then type ask ai to launch
-the AI assistant. It can answer questions about your tasks,
-suggest next steps, and generate tt commands. Requires the
-claude CLI to be installed.`,
 		},
 	}
 }
