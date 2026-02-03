@@ -192,11 +192,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.showTagSelector()
 		case "T":
-			if m.isGlobal {
-				return m, nil // tag filter not available for global notes (no project)
-			}
 			return m, func() tea.Msg {
-				return ShowNoteTagFilterSelectorMsg{Project: m.project}
+				return ShowNoteTagFilterSelectorMsg{Project: m.project, NotesDir: m.notesDir}
 			}
 		case "C":
 			if len(m.filterTags) > 0 {

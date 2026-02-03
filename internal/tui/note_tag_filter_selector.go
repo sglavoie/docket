@@ -11,7 +11,8 @@ import (
 
 // ShowNoteTagFilterSelectorMsg opens the tag filter selector for notes.
 type ShowNoteTagFilterSelectorMsg struct {
-	Project *models.Project
+	Project  *models.Project
+	NotesDir string
 }
 
 // NoteTagFilterSelectorDoneMsg returns the result from the note tag filter selector.
@@ -27,8 +28,8 @@ type NoteTagFilterSelectorModel struct {
 }
 
 // NewNoteTagFilterSelectorModel creates a new tag filter selector for notes.
-func NewNoteTagFilterSelectorModel(project *models.Project, currentFilterTags map[string]bool) *NoteTagFilterSelectorModel {
-	tags := buildNoteFilterTagList(project)
+func NewNoteTagFilterSelectorModel(project *models.Project, notesDir string, currentFilterTags map[string]bool) *NoteTagFilterSelectorModel {
+	tags := buildNoteFilterTagList(project, notesDir)
 
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          "Filter Notes by Tags",
@@ -49,9 +50,14 @@ func NewNoteTagFilterSelectorModel(project *models.Project, currentFilterTags ma
 }
 
 // buildNoteFilterTagList scans all notes and builds a sorted list of tags with counts.
-func buildNoteFilterTagList(project *models.Project) []TagInfo {
+func buildNoteFilterTagList(project *models.Project, notesDir string) []TagInfo {
 	tagCounts := make(map[string]int)
-	notes, _ := storage.ListNotes(project)
+	var notes []*models.Note
+	if project != nil {
+		notes, _ = storage.ListNotes(project)
+	} else if notesDir != "" {
+		notes, _ = storage.ListNotesFrom(notesDir)
+	}
 	for _, n := range notes {
 		for _, tag := range n.Tags {
 			tagCounts[tag]++

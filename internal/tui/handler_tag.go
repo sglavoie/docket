@@ -111,7 +111,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowNoteTagFilterSelectorMsg:
-		if msg.Project != nil {
+		if msg.Project != nil || msg.NotesDir != "" {
 			var currentFilterTags map[string]bool
 			if v := m.views.Get(ViewNotes); v != nil {
 				if notesView, ok := v.(*NotesViewModel); ok {
@@ -121,7 +121,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if currentFilterTags == nil {
 				currentFilterTags = make(map[string]bool)
 			}
-			m.showView(ViewNoteTagFilterSelector, NewNoteTagFilterSelectorModel(msg.Project, currentFilterTags))
+			m.showView(ViewNoteTagFilterSelector, NewNoteTagFilterSelectorModel(msg.Project, msg.NotesDir, currentFilterTags))
 		}
 		return true, nil
 
