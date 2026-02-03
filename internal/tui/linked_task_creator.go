@@ -40,6 +40,7 @@ func NewLinkedTaskCreatorModel(sourceTask *models.Task, project *models.Project,
 func (m *LinkedTaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.quickCaptureInput.width = width
 	m.resizeTextarea(width)
 }
 

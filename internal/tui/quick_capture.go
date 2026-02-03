@@ -36,6 +36,7 @@ func NewQuickCaptureModel(project *models.Project, allProjects []*models.Project
 func (m *QuickCaptureModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+	m.quickCaptureInput.width = width
 	m.resizeTextarea(width)
 }
 

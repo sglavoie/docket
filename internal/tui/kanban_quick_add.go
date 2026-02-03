@@ -442,7 +442,15 @@ func (m *KanbanViewModel) renderQuickAddPreview() string {
 		parts = append(parts, p.status.Icon()+" $"+string(p.status))
 	}
 
-	return MutedStyle.Render(strings.Join(parts, " · "))
+	previewText := strings.Join(parts, " · ")
+	
+	// Wrap text if it exceeds available width
+	width := m.Width()
+	if width > 0 {
+		previewText = wrapPreviewText(previewText, width)
+	}
+	
+	return previewText
 }
 
 // getQuickAddHeight returns the height needed for the quick add bar.
