@@ -582,17 +582,17 @@ func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]
 func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 	switch m.viewMode {
 	case ViewModeActive:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionCompleted}
 	case ViewModeNext:
-		return []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, "Active"}
+		return []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, models.SectionCompleted, "Active"}
 	case ViewModeInbox:
-		return []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, "Active"}
+		return []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionCompleted, "Active"}
 	case ViewModeWaiting:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, "Active"}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, models.SectionCompleted, "Active"}
 	case ViewModeSomeday:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, "Active"}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionCompleted, "Active"}
 	case ViewModeAll:
-		return nil // All sections visible
+		return []string{models.SectionCompleted} // Hide Completed from All view (use Completed view instead)
 	}
 	return nil
 }

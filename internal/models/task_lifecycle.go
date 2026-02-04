@@ -3,17 +3,14 @@ package models
 import "time"
 
 // Complete marks the task as done and sets the completion time.
-// If the task is in a non-Active section, it is automatically moved out (auto-triage).
+// The task is moved to the Completed section.
 func (t *Task) Complete() {
 	now := time.Now()
 	t.Status = StatusDone
 	t.CompletedAt = &now
 	t.UpdatedAt = now
 	t.Active = false
-	// Auto-triage: move out of Next/Waiting/Someday when completing
-	if t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
-		t.Section = ""
-	}
+	t.Section = SectionCompleted
 }
 
 // Start marks the task as in progress.
@@ -34,16 +31,13 @@ func (t *Task) Block() {
 }
 
 // Cancel marks the task as canceled.
-// If the task is in a non-Active section, it is automatically moved out (auto-triage).
+// The task is moved to the Completed section.
 func (t *Task) Cancel() {
 	now := time.Now()
 	t.Status = StatusCanceled
 	t.CompletedAt = &now
 	t.UpdatedAt = now
-	// Auto-triage: move out of Next/Waiting/Someday when canceling
-	if t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
-		t.Section = ""
-	}
+	t.Section = SectionCompleted
 }
 
 // Reopen sets the task back to todo status and moves it to the Inbox for re-processing.

@@ -142,13 +142,14 @@ func (p *Project) CountTasksBySection() map[string]int {
 	return counts
 }
 
-// GetCustomSections returns sections that are not built-in (Inbox, Next, Waiting, Someday), sorted alphabetically.
+// GetCustomSections returns sections that are not built-in (Inbox, Next, Waiting, Someday, Completed), sorted alphabetically.
 func (p *Project) GetCustomSections() []string {
 	builtIn := map[string]bool{
-		SectionInbox:   true,
-		SectionNext:    true,
-		SectionWaiting: true,
-		SectionSomeday: true,
+		SectionInbox:     true,
+		SectionNext:      true,
+		SectionWaiting:   true,
+		SectionSomeday:   true,
+		SectionCompleted: true,
 	}
 	var custom []string
 	for _, s := range p.Sections {

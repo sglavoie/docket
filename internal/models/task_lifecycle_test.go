@@ -20,33 +20,33 @@ func TestComplete(t *testing.T) {
 	}
 }
 
-func TestCompleteAutoTriagesFromNext(t *testing.T) {
+func TestCompleteMovesToCompletedSection(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Section = SectionNext
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Next, got %q", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %q", task.Section)
 	}
 }
 
-func TestCompleteAutoTriagesFromWaiting(t *testing.T) {
+func TestCompleteMovesToCompletedFromWaiting(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Section = SectionWaiting
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Waiting, got %q", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %q", task.Section)
 	}
 }
 
-func TestCompleteAutoTriagesFromSomeday(t *testing.T) {
+func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Section = SectionSomeday
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Someday, got %q", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %q", task.Section)
 	}
 }
 
@@ -110,13 +110,13 @@ func TestCancel(t *testing.T) {
 	}
 }
 
-func TestCancelAutoTriagesFromNext(t *testing.T) {
+func TestCancelMovesToCompletedSection(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Section = SectionNext
 	task.Cancel()
 
-	if task.Section != "" {
-		t.Errorf("expected section cleared from Next, got %q", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %q", task.Section)
 	}
 }
 

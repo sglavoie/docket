@@ -11,7 +11,7 @@ func TestNewTaskHasEmptySection(t *testing.T) {
 	}
 }
 
-func TestTaskCompleteAutoTriageFromNext(t *testing.T) {
+func TestTaskCompleteMovesToCompletedFromNext(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = SectionNext // Explicitly place in Next
 
@@ -21,22 +21,22 @@ func TestTaskCompleteAutoTriageFromNext(t *testing.T) {
 
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section to be cleared after Complete(), got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed after Complete(), got %s", task.Section)
 	}
 	if task.Status != StatusDone {
 		t.Errorf("expected status to be done, got %s", task.Status)
 	}
 }
 
-func TestTaskCompletePreservesNonNextSection(t *testing.T) {
+func TestTaskCompleteMovesToCompletedFromActive(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = "Active"
+	task.Section = "" // Active section
 
 	task.Complete()
 
-	if task.Section != "Active" {
-		t.Errorf("expected section to remain Active, got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %s", task.Section)
 	}
 }
 
@@ -69,7 +69,7 @@ func TestTaskStartPreservesNonNextSection(t *testing.T) {
 	}
 }
 
-func TestTaskCancelAutoTriageFromNext(t *testing.T) {
+func TestTaskCancelMovesToCompletedFromNext(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = SectionNext // Explicitly place in Next
 
@@ -79,22 +79,22 @@ func TestTaskCancelAutoTriageFromNext(t *testing.T) {
 
 	task.Cancel()
 
-	if task.Section != "" {
-		t.Errorf("expected section to be cleared after Cancel(), got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed after Cancel(), got %s", task.Section)
 	}
 	if task.Status != StatusCanceled {
 		t.Errorf("expected status to be canceled, got %s", task.Status)
 	}
 }
 
-func TestTaskCancelPreservesNonNextSection(t *testing.T) {
+func TestTaskCancelMovesToCompletedFromCustomSection(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = "Done"
+	task.Section = "CustomSection"
 
 	task.Cancel()
 
-	if task.Section != "Done" {
-		t.Errorf("expected section to remain Done, got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %s", task.Section)
 	}
 }
 
@@ -133,37 +133,36 @@ func TestTaskReopenMovesToInbox(t *testing.T) {
 	}
 }
 
-func TestTaskWithEmptySectionNoAutoTriage(t *testing.T) {
+func TestTaskWithEmptySectionMovesToCompleted(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
-	task.Section = "" // Already has empty section
+	task.Section = "" // Active section
 
 	task.Complete()
 
-	// Should stay empty
-	if task.Section != "" {
-		t.Errorf("expected section to remain empty, got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed, got %s", task.Section)
 	}
 }
 
-func TestTaskAutoTriageFromWaiting(t *testing.T) {
+func TestTaskCompleteFromWaitingMovesToCompleted(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = SectionWaiting
 
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section to be cleared after Complete() from Waiting, got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed after Complete() from Waiting, got %s", task.Section)
 	}
 }
 
-func TestTaskAutoTriageFromSomeday(t *testing.T) {
+func TestTaskCompleteFromSomedayMovesToCompleted(t *testing.T) {
 	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	task.Section = SectionSomeday
 
 	task.Complete()
 
-	if task.Section != "" {
-		t.Errorf("expected section to be cleared after Complete() from Someday, got %s", task.Section)
+	if task.Section != SectionCompleted {
+		t.Errorf("expected section to be Completed after Complete() from Someday, got %s", task.Section)
 	}
 }
 
