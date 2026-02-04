@@ -228,6 +228,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = "z"
 		return m, nil
 
+	case "t":
+		// Task action prefix
+		m.pendingPrefix = "t"
+		return m, nil
+
+	case "b":
+		// Blocker/dependency prefix
+		m.pendingPrefix = "b"
+		return m, nil
+
 	// Sorting keys (1-4 for sort field, 0 to reset)
 	case "1":
 		m.cycleSortField(SortByPriority)
@@ -296,10 +306,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "E":
 		return m, m.handleQuickEditKey()
 
-	// Rename (inline title only)
-	case "r":
-		return m, m.handleRenameKey()
-
 	// Filter keybindings
 	case "F":
 		// Open filter prefix popup
@@ -325,29 +331,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowKanbanTagFilterSelectorMsg{}
 		}
 
-	// Quick tag assignment
-	case "ctrl+g":
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			project := m.Project
-			return m, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
-			}
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			project := m.Project
-			tags := append([]string{}, task.Tags...)
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{
-					Task:        task,
-					Project:     project,
-					CurrentTags: tags,
-				}
-			}
-		}
-		return m, nil
-
 	case "/":
 		// Activate search mode
 		m.searchMode = true
@@ -372,21 +355,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowQuickCaptureMsg{Project: m.Project, AllProjects: m.config.Projects}
 		}
-
-	case "D":
-		// Initiate delete confirmation
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
-			m.confirm.Show("delete", m.statusMessage)
-			return m, nil
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			m.deleteTarget = task
-			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
-			m.confirm.Show("delete", m.statusMessage)
-		}
-		return m, nil
 
 	case "y":
 		// Copy task title to clipboard
@@ -442,47 +410,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Comments view
-	case "C":
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowTaskCommentsMsg{Task: task, Project: m.Project}
-			}
-		}
-		return m, nil
-
-	// Attachments view (or select all in multi-select mode)
+	// Select all in multi-select mode
 	case "A":
 		if m.multiSelectMode {
 			m.selectAllAcrossColumns()
-			return m, nil
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowTaskAttachmentsMsg{Task: task, Project: m.Project}
-			}
-		}
-		return m, nil
-
-	// Dependency viewer (read-only)
-	case "R":
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowDependencyViewerMsg{Task: task, Project: m.Project}
-			}
-		}
-		return m, nil
-
-	// Dependency manager
-	case "ctrl+b":
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ManageDependenciesMsg{Task: task, Project: m.Project}
-			}
 		}
 		return m, nil
 
@@ -551,50 +482,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusMessage = "Archive project? Press 'y' to confirm, 'n' to cancel"
 		}
 		m.confirm.Show("archive", m.statusMessage)
-		return m, nil
-
-	// External editor for task content
-	case "ctrl+o":
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: m.Project}
-			}
-		}
-		return m, nil
-
-	// Move task to another project
-	case "M":
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: m.Project}
-			}
-		}
-		return m, nil
-
-	// Toggle pinned
-	case "ctrl+p":
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			count := m.selectedCount()
-			for _, task := range m.getSelectedTasksList() {
-				task.TogglePinned()
-			}
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
-			m.statusMessage = fmt.Sprintf("Toggled pin on %d tasks", count)
-			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
-				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
-			})
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			task.TogglePinned()
-			m.statusMessage = fmt.Sprintf("Pinned: %v", task.Pinned)
-			return m, m.saveWithStatusChange(prevStates, task)
-		}
 		return m, nil
 
 	// Toggle active flag
@@ -674,8 +561,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Blockers view
-	case "b":
+	// Blockers view (capital B since lowercase b is now prefix)
+	case "B":
 		return m, func() tea.Msg {
 			return ShowBlockersMsg{Project: m.Project}
 		}

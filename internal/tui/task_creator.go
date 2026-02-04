@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -53,6 +54,12 @@ type TaskCreatorModel struct {
 	width      int
 	height     int
 	err        error
+
+	// Discard confirmation state
+	confirmDiscard bool
+
+	// Template support
+	fromTemplate *template.TaskTemplate // Template used to create this task (for children creation)
 }
 
 // NewTaskCreatorModel creates a new task creator.
@@ -120,6 +127,57 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 	}
 
 	m.updateValidParents()
+
+	return m
+}
+
+// NewTaskCreatorModelWithTemplate creates a new task creator pre-filled from a template.
+func NewTaskCreatorModelWithTemplate(project *models.Project, cfg *config.Config, manager *config.Manager, suggestedParent *models.Task, tmpl *template.TaskTemplate) *TaskCreatorModel {
+	m := NewTaskCreatorModel(project, cfg, manager, suggestedParent)
+
+	if tmpl != nil {
+		m.fromTemplate = tmpl
+
+		// Pre-fill type
+		m.taskType = tmpl.Type
+		for i, t := range m.types {
+			if t == tmpl.Type {
+				m.typeCursor = i
+				break
+			}
+		}
+
+		// Pre-fill priority
+		if tmpl.Priority > 0 {
+			m.priority = tmpl.Priority
+		}
+
+		// Pre-fill tags
+		if len(tmpl.Tags) > 0 {
+			m.tags = append([]string{}, tmpl.Tags...)
+		}
+
+		// Pre-fill section
+		if tmpl.Section != "" {
+			project.EnsureSection(tmpl.Section)
+			m.section = tmpl.Section
+			// Update cursor
+			for i, s := range m.sections {
+				if s == tmpl.Section {
+					m.sectionCursor = i
+					break
+				}
+			}
+		}
+
+		// Pre-fill description
+		if tmpl.Description != "" {
+			m.descValue = tmpl.Description
+		}
+
+		// Update valid parents for the new type
+		m.updateValidParents()
+	}
 
 	return m
 }
@@ -209,8 +267,29 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle discard confirmation
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg {
+					return BackMsg{}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "esc":
+			// Show confirmation if title has content
+			title := strings.TrimSpace(m.titleInput.Value())
+			if title != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
@@ -511,6 +590,8 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			Pinned:      m.pinned,
 			Active:      m.active,
 			Recurrence:  m.recurrence,
+			CreatedAt:   now,
+			UpdatedAt:   now,
 		}
 
 		// Set PinnedAt if pinned
@@ -523,6 +604,36 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 
 		// Add task to project
 		m.project.Tasks = append(m.project.Tasks, task)
+
+		// Create checklist from template (prefer Checklist over legacy Children)
+		if m.fromTemplate != nil {
+			checklistCreated := false
+			if len(m.fromTemplate.Checklist) > 0 {
+				for _, item := range m.fromTemplate.Checklist {
+					task.Checklist = append(task.Checklist, models.ChecklistItem{
+						Text: item,
+						Done: false,
+					})
+				}
+				checklistCreated = true
+			} else if len(m.fromTemplate.Children) > 0 {
+				// Legacy support: convert Children to checklist items
+				for _, childTmpl := range m.fromTemplate.Children {
+					task.Checklist = append(task.Checklist, models.ChecklistItem{
+						Text: childTmpl.Title,
+						Done: false,
+					})
+				}
+				checklistCreated = true
+			}
+
+			// Increment template use count
+			if checklistCreated && m.config != nil && m.configManager != nil {
+				m.config.IncrementTemplateUseCount(m.fromTemplate.ID)
+				_ = m.configManager.Save(m.config)
+			}
+		}
+
 		m.project.BuildTaskTree()
 		m.project.ReorderRootTasksByCompletion()
 
@@ -605,6 +716,12 @@ func (m *TaskCreatorModel) View() string {
 		b.WriteString(descDisplay)
 	}
 
+	// Discard confirmation
+	if m.confirmDiscard {
+		b.WriteString("\n\n")
+		b.WriteString(PreviewWarningStyle.Render("Discard unsaved changes? (y/n)"))
+	}
+
 	// Error display
 	if m.err != nil {
 		b.WriteString("\n\n")
@@ -631,7 +748,7 @@ func (m *TaskCreatorModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the app can close the view on esc.
+// ShouldCaptureEsc returns true when confirmation is active.
 func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
-	return false
+	return m.confirmDiscard
 }

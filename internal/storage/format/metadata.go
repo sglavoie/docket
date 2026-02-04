@@ -48,7 +48,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
-	"attachments", "snoozed",
+	"attachments", "snoozed", "checklist",
 }
 
 // ParseMetadata parses the metadata string and sets task fields.
@@ -217,6 +217,32 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					})
 				}
 			}
+		case "checklist":
+			// Format: "text1[x];text2[ ];text3[x]" where [x] = done, [ ] = not done
+			items := strings.Split(value, ";")
+			for _, item := range items {
+				item = strings.TrimSpace(item)
+				if item == "" {
+					continue
+				}
+				done := false
+				text := item
+				// Check for [x] or [ ] suffix
+				if strings.HasSuffix(item, "[x]") {
+					done = true
+					text = strings.TrimSuffix(item, "[x]")
+				} else if strings.HasSuffix(item, "[ ]") {
+					done = false
+					text = strings.TrimSuffix(item, "[ ]")
+				}
+				text = strings.TrimSpace(text)
+				if text != "" {
+					task.Checklist = append(task.Checklist, models.ChecklistItem{
+						Text: text,
+						Done: done,
+					})
+				}
+			}
 		}
 	}
 	// Migration: move non-GTD section values to CustomSection
@@ -359,6 +385,18 @@ func WriteMetadata(task *models.Task) string {
 			attStrings = append(attStrings, attStr+timestamp)
 		}
 		parts = append(parts, fmt.Sprintf("attachments: %s", strings.Join(attStrings, ";")))
+	}
+
+	if len(task.Checklist) > 0 {
+		var checklistStrings []string
+		for _, item := range task.Checklist {
+			marker := "[ ]"
+			if item.Done {
+				marker = "[x]"
+			}
+			checklistStrings = append(checklistStrings, item.Text+marker)
+		}
+		parts = append(parts, fmt.Sprintf("checklist: %s", strings.Join(checklistStrings, ";")))
 	}
 
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))

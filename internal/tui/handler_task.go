@@ -23,6 +23,18 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case CreateTaskMsg:
 		if m.currentProject != nil {
+			// Check if there are enabled templates (unless explicitly skipped)
+			if !msg.SkipTemplatePicker {
+				enabledTemplates := m.config.GetEnabledTaskTemplates()
+				if len(enabledTemplates) > 0 {
+					// Store the parent task and show template picker
+					m.pendingCreateTaskParent = msg.ParentTask
+					picker := NewTemplatePickerModel(m.config, m.currentProject)
+					m.showView(ViewTaskTemplatePicker, picker)
+					return true, picker.Init()
+				}
+			}
+			// No templates or skipped, go directly to task creator
 			m.showView(ViewTaskCreator, NewTaskCreatorModel(m.currentProject, m.config, m.configManager, msg.ParentTask))
 		}
 		return true, nil
@@ -205,6 +217,31 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseTaskCommentsMsg:
 		m.popView()
+		return true, nil
+
+	case ShowTaskChecklistMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor))
+		}
+		return true, nil
+
+	case CloseTaskChecklistMsg:
+		m.popView()
+		return true, nil
+
+	case ChecklistItemAddedMsg:
+		m.statusMessage = "Checklist item added"
+		return true, defaultStatusTimeout()
+
+	case ChecklistItemDeletedMsg:
+		m.statusMessage = "Checklist item deleted"
+		return true, defaultStatusTimeout()
+
+	case ChecklistItemEditedMsg:
+		m.statusMessage = "Checklist item updated"
+		return true, defaultStatusTimeout()
+
+	case ChecklistItemToggledMsg:
 		return true, nil
 
 	case OpenTaskActivityMsg:

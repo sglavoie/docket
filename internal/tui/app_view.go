@@ -194,7 +194,9 @@ func (m *AppModel) renderStatusBar() string {
 		currentView != ViewGlobalSearch &&
 		currentView != ViewDependencyViewer &&
 		currentView != ViewCustomContextEditor &&
-		currentView != ViewTaskActivity
+		currentView != ViewTaskActivity &&
+		currentView != ViewTaskTemplateCreator &&
+		currentView != ViewTaskTemplateEditor
 
 	help := ""
 	if showHelp && m.isNotesFullscreen() {

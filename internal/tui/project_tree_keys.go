@@ -161,7 +161,8 @@ func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-// handleFilterKeys handles P, t, S, T, N, u - filter operations.
+// handleFilterKeys handles P, S, T, N - filter operations.
+// Note: 't' for type filter cycling removed - use Ft instead (t is now task prefix).
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	switch key {
@@ -171,13 +172,6 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 		} else {
 			m.filter.Priority = 0
 		}
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-
-	case "t":
-		m.filter.Type = cycleFilter(m.filter.Type, models.AllTaskTypes())
 		m.updateVisibility()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -206,7 +200,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 			return ShowSectionFilterSelectorMsg{ProjectTree: m}
 		}
 
-		// Note: Due date filter cycling removed from 'u' - use F7 instead.
+		// Note: Due date filter cycling removed from 'u' - use Fd instead.
 		// 'u' is now Vim-style undo (handled in handleMiscActionKeys).
 	}
 	return false, nil
@@ -385,29 +379,6 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 
-	case "r":
-		// Rename mode: inline title editing only (no modifier parsing)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			m.enterQuickEditMode(task, true)
-		}
-		return true, nil
-
-	case "D":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.confirmAction = ConfirmBulkDelete
-			return true, nil
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if task.IsRecurring() {
-				m.confirmAction = ConfirmDeleteRecurring
-			} else {
-				m.confirmAction = ConfirmDelete
-			}
-			m.deleteTarget = task
-		}
-		return true, nil
 	}
 	return false, nil
 }
@@ -489,19 +460,10 @@ func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// handleTaskAttributeKeys handles ctrl+d, ctrl+n, B, ctrl+p, ctrl+o - task attribute modification.
+// handleTaskAttributeKeys handles ctrl+n, *, ctrl+l - task attribute modification.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "ctrl+d":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return SetDueDateMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
 	case "ctrl+n":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			tasks := m.getSelectedTasks()
@@ -515,42 +477,6 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 			return true, func() tea.Msg {
 				return ShowSectionPickerMsg{Task: task, Project: m.project}
 			}
-		}
-		return true, nil
-
-	case "R":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowDependencyViewerMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "ctrl+b":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ManageDependenciesMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "ctrl+p":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := len(m.selectedTasks)
-			for _, task := range m.getSelectedTasks() {
-				task.TogglePinned()
-			}
-			m.clearSelection()
-			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
-			return true, m.saveAndRefresh()
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			task.TogglePinned()
-			m.setUndoContext("Toggle Pin", task.Title)
-			return true, m.saveAndRefresh()
 		}
 		return true, nil
 
@@ -572,81 +498,12 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
-	case "ctrl+o":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "C":
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowTaskCommentsMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
-	case "A":
-		// In Completed view, 'A' is handled by handleMiscActionKeys for archiving
-		// In other views, 'A' opens attachments
-		if m.viewMode != ViewModeCompleted && CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowTaskAttachmentsMsg{Task: task, Project: m.project}
-			}
-		}
-		// Fall through to let handleMiscActionKeys handle archive in Completed view
-		return false, nil
-
-	// Note: "C" (completed view) is now handled via "g" prefix (gc)
-
-	case "ctrl+g":
-		// Quick tag assignment
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			return true, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
-			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowTagSelectorMsg{
-					Task:        task,
-					Project:     m.project,
-					CurrentTags: append([]string{}, task.Tags...),
-				}
-			}
-		}
-		return true, nil
-
 	case "ctrl+l":
 		// Edit last modified task
 		recentTasks := storage.GetRecentTasks(m.project.Tasks, 1)
 		if len(recentTasks) > 0 {
 			return true, func() tea.Msg {
 				return EditTaskMsg{Task: recentTasks[0]}
-			}
-		}
-		return true, nil
-
-	case "M":
-		// Move task to another project
-		// Not available in multi-select mode (too complex with subtrees)
-		if m.multiSelectMode && len(m.selectedTasks) > 1 {
-			return true, nil
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{
-					Task:          task,
-					SourceProject: m.project,
-				}
 			}
 		}
 		return true, nil
@@ -734,7 +591,8 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return ShowProjectFocusViewMsg{Project: m.project}
 		}
 
-	case "b":
+	case "B":
+		// Project blockers (capital B since lowercase b is now prefix)
 		return true, func() tea.Msg {
 			return ShowBlockersMsg{Project: m.project}
 		}

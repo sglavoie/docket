@@ -106,6 +106,24 @@ func (m *AppModel) globalCommands() []Command {
 				return ShowWorkflowRuleCreatorMsg{}
 			},
 		},
+		{
+			Name:        "task templates",
+			Description: "Manage task templates",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"templates", "template list"},
+			Handler: func() tea.Msg {
+				return ShowTaskTemplatesMsg{}
+			},
+		},
+		{
+			Name:        "create task template",
+			Description: "Create a new task template",
+			Category:    CategoryActions,
+			Aliases:     []string{"new template", "add template"},
+			Handler: func() tea.Msg {
+				return ShowTaskTemplateCreatorMsg{}
+			},
+		},
 	}
 }
 

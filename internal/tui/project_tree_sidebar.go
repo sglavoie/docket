@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -57,6 +59,11 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 
 	// Metadata card: tags + section (uses section color)
 	cards = append(cards, m.renderMetadataCard(task, width, sectionColor))
+
+	// Checklist card (only if has checklist items)
+	if len(task.Checklist) > 0 {
+		cards = append(cards, m.renderChecklistCard(task, width))
+	}
 
 	// Dependencies card (only if has dependencies)
 	hasDeps := len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0
@@ -180,6 +187,41 @@ func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sect
 	}
 
 	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
+}
+
+// renderChecklistCard renders the checklist items card.
+func (m *ProjectTreeModel) renderChecklistCard(task *models.Task, width int) string {
+	var lines []string
+
+	completed := 0
+	for _, item := range task.Checklist {
+		if item.Done {
+			completed++
+		}
+	}
+
+	// Progress header
+	header := fmt.Sprintf("%d/%d completed", completed, len(task.Checklist))
+	lines = append(lines, MutedStyle.Render(header))
+
+	// Show checklist items (limit to 6 visible)
+	maxVisible := 6
+	for i, item := range task.Checklist {
+		if i >= maxVisible {
+			remaining := len(task.Checklist) - maxVisible
+			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ... +%d more", remaining)))
+			break
+		}
+		marker := "☐"
+		style := lipgloss.NewStyle()
+		if item.Done {
+			marker = "☑"
+			style = MutedStyle
+		}
+		lines = append(lines, fmt.Sprintf("  %s %s", marker, style.Render(item.Text)))
+	}
+
+	return renderSidebarCard("Checklist", strings.Join(lines, "\n"), width, false, "")
 }
 
 // renderDependenciesCard renders the dependencies card with navigation support.

@@ -85,6 +85,11 @@ const (
 	ViewTutor
 	ViewAsk
 	ViewProjectPicker
+	ViewTaskTemplates
+	ViewTaskTemplateCreator
+	ViewTaskTemplateEditor
+	ViewTaskTemplatePicker
+	ViewTaskChecklist
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -146,6 +151,9 @@ type AppModel struct {
 
 	// Pending global note move operation
 	pendingGlobalNoteMove *pendingNoteMove
+
+	// Pending task creation parent (for template picker flow)
+	pendingCreateTaskParent *models.Task
 
 	// CLI reference for AI assistant context
 	cliReference string

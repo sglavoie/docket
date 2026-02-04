@@ -665,9 +665,207 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, m.saveAndRefreshWithPrevStates(prevStates)
 		}
 		return m, nil
+
+	case "t":
+		// Task action prefix
+		return m.handleTaskPrefix(key, visible)
+
+	case "b":
+		// Blocker/dependency prefix
+		return m.handleBlockerPrefix(key, visible)
 	}
 
 	// Invalid prefix sequence - silently ignore
+	return m, nil
+}
+
+// handleTaskPrefix handles the second key after pressing t (task action prefix).
+func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
+	switch key {
+	case "n":
+		// Task new (create) - skip template picker
+		var parentTask *models.Task
+		if m.focusedTask != nil {
+			parentTask = m.focusedTask
+		} else if CursorInBounds(m.cursor, len(visible)) {
+			parentTask = visible[m.cursor].Task
+		}
+		return m, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: true}
+		}
+	case "N":
+		// Task new (create) - show template picker if templates exist
+		var parentTask *models.Task
+		if m.focusedTask != nil {
+			parentTask = m.focusedTask
+		} else if CursorInBounds(m.cursor, len(visible)) {
+			parentTask = visible[m.cursor].Task
+		}
+		return m, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: false}
+		}
+	case "r":
+		// Task rename (inline)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			m.enterQuickEditMode(task, true)
+		}
+		return m, nil
+	case "s":
+		// Task section change
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			project := m.project
+			return m, func() tea.Msg {
+				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowSectionPickerMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "o":
+		// Task open in external editor
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return EditTaskContentMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "p":
+		// Task pin/unpin
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			count := len(m.selectedTasks)
+			for _, task := range m.getSelectedTasks() {
+				task.TogglePinned()
+			}
+			m.clearSelection()
+			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
+			return m, m.saveAndRefresh()
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			task.TogglePinned()
+			m.setUndoContext("Toggle Pin", task.Title)
+			return m, m.saveAndRefresh()
+		}
+		return m, nil
+	case "t":
+		// Task tags
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			tasks := m.getSelectedTasks()
+			return m, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
+			}
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        task,
+					Project:     m.project,
+					CurrentTags: append([]string{}, task.Tags...),
+				}
+			}
+		}
+		return m, nil
+	case "c":
+		// Task comments
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowTaskCommentsMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "a":
+		// Task attachments
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowTaskAttachmentsMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "D":
+		// Task delete
+		if m.multiSelectMode && len(m.selectedTasks) > 0 {
+			m.confirmAction = ConfirmBulkDelete
+			return m, nil
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			if task.IsRecurring() {
+				m.confirmAction = ConfirmDeleteRecurring
+			} else {
+				m.confirmAction = ConfirmDelete
+			}
+			m.deleteTarget = task
+		}
+		return m, nil
+	case "m":
+		// Task move (reparent)
+		if m.multiSelectMode && len(m.selectedTasks) > 1 {
+			return m, nil
+		}
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowProjectSelectorForMoveMsg{
+					Task:          task,
+					SourceProject: m.project,
+				}
+			}
+		}
+		return m, nil
+	case "l":
+		// Task checklist
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowTaskChecklistMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "d":
+		// Task description editor (same as to - external editor)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return EditTaskContentMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	}
+	return m, nil
+}
+
+// handleBlockerPrefix handles the second key after pressing b (blocker/dependency prefix).
+func (m *ProjectTreeModel) handleBlockerPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
+	switch key {
+	case "b":
+		// Blocks/blockers (view dependencies)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ShowDependencyViewerMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	case "m":
+		// Blocks managed (dependency management)
+		if CursorInBounds(m.cursor, len(visible)) {
+			task := visible[m.cursor].Task
+			return m, func() tea.Msg {
+				return ManageDependenciesMsg{Task: task, Project: m.project}
+			}
+		}
+		return m, nil
+	}
 	return m, nil
 }
 
@@ -693,7 +891,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		}
 	}
 
-	// Prefix key activation (status, fold, go/section, priority, due date, create linked)
+	// Prefix key activation (status, fold, go/section, priority, due date, create linked, task, blocker)
 	switch key {
 	case ",":
 		m.pendingPrefix = ","
@@ -721,6 +919,14 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	case "F":
 		m.pendingPrefix = "F"
+		return m, nil
+	case "t":
+		// Task action prefix
+		m.pendingPrefix = "t"
+		return m, nil
+	case "b":
+		// Blocker/dependency prefix
+		m.pendingPrefix = "b"
 		return m, nil
 	}
 

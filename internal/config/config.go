@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -85,6 +86,8 @@ type Config struct {
 	TutorDismissed            *bool                        `json:"tutor_dismissed,omitempty"`              // nil=false, tutor prompt dismissed on dashboard
 	AttachmentEditor          string                       `json:"attachment_editor,omitempty"`            // Editor for general attachments (empty = OS default)
 	CodeEditor                string                       `json:"code_editor,omitempty"`                  // Editor for code references (default: code)
+	TaskTemplates             []template.TaskTemplate      `json:"task_templates,omitempty"`               // Task templates for quick task creation
+	DefaultTemplatesInit      bool                         `json:"default_templates_init,omitempty"`       // True after tt template init has run
 }
 
 // NewConfig creates a new configuration with default values.

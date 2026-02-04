@@ -69,7 +69,10 @@ type SetCurrentProjectMsg struct{ Project *models.Project }
 // =============================================================================
 
 // CreateTaskMsg opens the task creator, optionally with a parent task.
-type CreateTaskMsg struct{ ParentTask *models.Task }
+type CreateTaskMsg struct {
+	ParentTask         *models.Task
+	SkipTemplatePicker bool // If true, skip template picker even if templates exist
+}
 
 // EditTaskMsg opens the task editor for the given task.
 type EditTaskMsg struct{ Task *models.Task }
@@ -383,6 +386,31 @@ type CommentDeletedMsg struct{ Task *models.Task }
 
 // CommentEditedMsg signals a comment was edited.
 type CommentEditedMsg struct{ Task *models.Task }
+
+// =============================================================================
+// Task Checklist Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTaskChecklistMsg opens the checklist view for a task.
+type ShowTaskChecklistMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskChecklistMsg closes the checklist view.
+type CloseTaskChecklistMsg struct{}
+
+// ChecklistItemAddedMsg signals a checklist item was added.
+type ChecklistItemAddedMsg struct{ Task *models.Task }
+
+// ChecklistItemEditedMsg signals a checklist item was edited.
+type ChecklistItemEditedMsg struct{ Task *models.Task }
+
+// ChecklistItemDeletedMsg signals a checklist item was deleted.
+type ChecklistItemDeletedMsg struct{ Task *models.Task }
+
+// ChecklistItemToggledMsg signals a checklist item was toggled.
+type ChecklistItemToggledMsg struct{ Task *models.Task }
 
 // =============================================================================
 // Task Activity Messages (Show/Close Pattern)

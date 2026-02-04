@@ -39,6 +39,8 @@ var prefixCategoryNames = map[string]string{
 	"d":  "due-date",
 	"s":  "snooze",
 	"c":  "create",
+	"t":  "task",
+	"b":  "blockers",
 	"F":  "filter",
 	"Ft": "filter-type",
 	"Fs": "filter-status",
@@ -487,5 +489,28 @@ var (
 		{Key: "w", Description: "this-week"},
 		{Key: "n", Description: "no-due-date"},
 		{Key: "0", Description: "clear"},
+	}
+
+	// TaskPrefixHints contains hints for the "t" (task action) prefix.
+	TaskPrefixHints = []PrefixHint{
+		{Key: "n", Description: "new", Detail: "Create new task"},
+		{Key: "N", Description: "new-template", Detail: "Create task with template picker"},
+		{Key: "r", Description: "rename", Detail: "Rename task (inline)"},
+		{Key: "s", Description: "section", Detail: "Change section"},
+		{Key: "o", Description: "open", Detail: "Open in external editor"},
+		{Key: "p", Description: "pin", Detail: "Toggle pin/unpin"},
+		{Key: "t", Description: "tags", Detail: "Manage task tags"},
+		{Key: "c", Description: "comments", Detail: "View/add comments"},
+		{Key: "a", Description: "attachments", Detail: "View/add attachments"},
+		{Key: "l", Description: "checklist", Detail: "Edit checklist items"},
+		{Key: "d", Description: "description", Detail: "Edit description"},
+		{Key: "m", Description: "move", Detail: "Move to another project"},
+		{Key: "D", Description: "delete", Detail: "Delete task"},
+	}
+
+	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.
+	BlockerPrefixHints = []PrefixHint{
+		{Key: "b", Description: "view", Detail: "View blockers/dependencies"},
+		{Key: "m", Description: "manage", Detail: "Manage dependencies"},
 	}
 )

@@ -230,6 +230,8 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"d":  DueDatePrefixHints,
 			"s":  SnoozePrefixHints,
 			"c":  CreateLinkedPrefixHints,
+			"t":  TaskPrefixHints,
+			"b":  BlockerPrefixHints,
 			"F":  m.buildFilterPrefixHints(),
 			"Ft": FilterTypePrefixHints,
 			"Fs": FilterStatusPrefixHints,

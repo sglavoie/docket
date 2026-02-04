@@ -57,6 +57,69 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))
 		return true, nil
 
+	case ShowTaskTemplatesMsg:
+		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.config, m.configManager))
+		return true, nil
+
+	case TaskTemplatesUpdatedMsg:
+		// Templates updated, just refresh the view (it's already updated internally)
+		return true, nil
+
+	case ShowTaskTemplateCreatorMsg:
+		creator := NewTaskTemplateCreatorModel(m.config, m.configManager)
+		m.showView(ViewTaskTemplateCreator, creator)
+		return true, creator.Init()
+
+	case ShowTaskTemplateEditorMsg:
+		editor := NewTaskTemplateEditorModel(m.config, m.configManager, msg.Template)
+		m.showView(ViewTaskTemplateEditor, editor)
+		return true, editor.Init()
+
+	case TaskTemplateCreatedMsg:
+		m.popView()
+		// Refresh the templates list if it's visible by replacing it in the registry
+		if m.currentView() == ViewTaskTemplates {
+			templatesView := NewTaskTemplatesModel(m.config, m.configManager)
+			templatesView.SetSize(m.width, m.height-2)
+			m.views.Register(ViewTaskTemplates, templatesView)
+		}
+		return true, nil
+
+	case TaskTemplateEditedMsg:
+		m.popView()
+		// Refresh the templates list if it's visible by replacing it in the registry
+		if m.currentView() == ViewTaskTemplates {
+			templatesView := NewTaskTemplatesModel(m.config, m.configManager)
+			templatesView.SetSize(m.width, m.height-2)
+			m.views.Register(ViewTaskTemplates, templatesView)
+		}
+		return true, nil
+
+	case ShowTemplatePickerMsg:
+		if msg.Project != nil {
+			picker := NewTemplatePickerModel(m.config, msg.Project)
+			m.showView(ViewTaskTemplatePicker, picker)
+			return true, picker.Init()
+		}
+		return true, nil
+
+	case TemplatePickerDoneMsg:
+		m.popView()
+		parentTask := m.pendingCreateTaskParent
+		m.pendingCreateTaskParent = nil
+
+		if msg.Canceled {
+			// User pressed Esc - don't create a task
+			return true, nil
+		}
+		// Forward to task creation with template
+		if m.currentProject != nil {
+			creator := NewTaskCreatorModelWithTemplate(m.currentProject, m.config, m.configManager, parentTask, msg.Template)
+			m.showView(ViewTaskCreator, creator)
+			return true, creator.Init()
+		}
+		return true, nil
+
 	case WorkflowRulesUpdatedMsg:
 		// Rules updated, just refresh the view (it's already updated internally)
 		return true, nil

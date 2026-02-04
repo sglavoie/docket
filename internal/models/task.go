@@ -14,6 +14,12 @@ type Attachment struct {
 	AddedAt      time.Time `json:"added_at"`
 }
 
+// ChecklistItem represents a single item in a task's checklist.
+type ChecklistItem struct {
+	Text string `json:"text"`
+	Done bool   `json:"done"`
+}
+
 // Task represents a single task, story, epic, bug, or idea.
 type Task struct {
 	ID            string             `json:"id"`
@@ -41,6 +47,7 @@ type Task struct {
 	Attachments   []Attachment       `json:"attachments,omitempty"`
 	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
+	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

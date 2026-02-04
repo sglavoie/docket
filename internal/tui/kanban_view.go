@@ -653,6 +653,8 @@ func (m *KanbanViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"d":  DueDatePrefixHints,
 			"g":  KanbanNavigationPrefixHints,
 			"c":  CreateLinkedPrefixHints,
+			"t":  TaskPrefixHints,
+			"b":  BlockerPrefixHints,
 			"z":  KanbanFoldPrefixHints,
 			"F":  m.buildKanbanFilterPrefixHints(),
 			"Ft": FilterTypePrefixHints,

@@ -12,7 +12,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gg/G", Description: "Go to first/last", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Navigation", Views: views},
-		Keybinding{Key: "f", Description: "🎯 Focus view (project)", Category: "Navigation", Views: views},
+		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Navigation", Views: views},
 
 		// Folds (z prefix)
 		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
@@ -27,12 +27,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "Esc (sidebar)", Description: "Return focus to tree", Category: "Sidebar", Views: views},
 
 		// Snooze Quick Actions (s prefix)
-		Keybinding{Key: "st", Description: "Snooze until tomorrow", Category: "💤 Snooze", Views: views},
-		Keybinding{Key: "sw", Description: "Snooze 1 week", Category: "💤 Snooze", Views: views},
-		Keybinding{Key: "sm", Description: "Snooze 1 month", Category: "💤 Snooze", Views: views},
-		Keybinding{Key: "sn", Description: "Snooze until next Monday", Category: "💤 Snooze", Views: views},
-		Keybinding{Key: "s0", Description: "Clear snooze", Category: "💤 Snooze", Views: views},
-		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "💤 Snooze", Views: views},
+		Keybinding{Key: "st", Description: "Snooze until tomorrow", Category: "Snooze", Views: views},
+		Keybinding{Key: "sw", Description: "Snooze 1 week", Category: "Snooze", Views: views},
+		Keybinding{Key: "sm", Description: "Snooze 1 month", Category: "Snooze", Views: views},
+		Keybinding{Key: "sn", Description: "Snooze until next Monday", Category: "Snooze", Views: views},
+		Keybinding{Key: "s0", Description: "Clear snooze", Category: "Snooze", Views: views},
+		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
 
@@ -48,33 +48,42 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
 		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
 
-		// Task Operations
+		// Task Operations (t prefix)
+		Keybinding{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "ts", Description: "Change section", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "td", Description: "Edit description", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tD", Description: "Delete task", Category: "Task (t prefix)", Views: views},
+
+		// Blocker/Dependency Operations (b prefix)
+		Keybinding{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)", Views: views},
+		Keybinding{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)", Views: views},
+
+		// Legacy Task Operations (still available for compatibility)
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "o", Description: "Reopen task / expand node", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
-		Keybinding{Key: "r", Description: "Rename task (inline)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+D", Description: "Set due date", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
-		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+G", Description: "Assign tags", Category: "Task Operations", Views: views},
-		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
-		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
 
-		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "x (sidebar)", Description: "Remove link", Category: "🔗 Linked Tasks", Views: views},
-		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
+		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "Linked Tasks", Views: views},
+		Keybinding{Key: "x (sidebar)", Description: "Remove link", Category: "Linked Tasks", Views: views},
 
 		// Project Views
-		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
+		Keybinding{Key: "B", Description: "Project blockers", Category: "Project Views", Views: views},
 
 		// Views (g prefix)
 		Keybinding{Key: "gv", Description: "Cycle view (Active/Next/Inbox/Waiting/Someday/Completed/Snoozed/All)", Category: "Views", Views: views},
@@ -96,7 +105,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Filters
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "P", Description: "Filter by priority", Category: "Filters", Views: views},
-		Keybinding{Key: "t", Description: "Filter by type", Category: "Filters", Views: views},
+		Keybinding{Key: "Ft", Description: "Filter by type (use Ft since t is task prefix)", Category: "Filters", Views: views},
 		Keybinding{Key: "S", Description: "Filter by status", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "N", Description: "Filter by section", Category: "Filters", Views: views},
@@ -119,9 +128,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 
 		// Project
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
-
-		// Cross-Project
-		Keybinding{Key: "M", Description: "Move to another project", Category: "Cross-Project", Views: views},
 
 		// Filter Popup (F prefix)
 		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},

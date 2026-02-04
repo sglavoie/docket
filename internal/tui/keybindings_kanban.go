@@ -89,33 +89,42 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
-		// Task Operations
+		// Task Operations (t prefix)
+		Keybinding{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "ts", Description: "Change section", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "td", Description: "Edit description", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)", Views: views},
+		Keybinding{Key: "tD", Description: "Delete task", Category: "Task (t prefix)", Views: views},
+
+		// Blocker/Dependency Operations (b prefix)
+		Keybinding{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)", Views: views},
+		Keybinding{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)", Views: views},
+
+		// Task Operations (legacy, still available)
 		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "o", Description: "Reopen task / expand node", Category: "Task Operations", Views: views},
-		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
-		Keybinding{Key: "r", Description: "Rename task (inline)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+O", Description: "Edit in external editor", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+P", Description: "Pin/unpin task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+G", Description: "Assign tags (multi-select)", Category: "Task Operations", Views: views},
-		Keybinding{Key: "R", Description: "View dependencies", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+B", Description: "Manage dependencies", Category: "Task Operations", Views: views},
-		Keybinding{Key: "C", Description: "View/add comments", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
-		Keybinding{Key: "A", Description: "View/add attachments", Category: "Task Operations", Views: views},
-		Keybinding{Key: "M", Description: "Move to another project", Category: "Task Operations", Views: views},
 		Keybinding{Key: "cp", Description: "Cross-project linking", Category: "Task Operations", Views: views},
 
 		// Project Views
-		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Project Views", Views: views},
+		Keybinding{Key: "B", Description: "Project blockers", Category: "Project Views", Views: views},
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
 
 		// Tab Switching
