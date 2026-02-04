@@ -21,7 +21,7 @@ type TaskTemplate struct {
 	Tags        []string        `json:"tags,omitempty"`
 	Section     string          `json:"section,omitempty"`
 	Description string          `json:"description,omitempty"`
-	Children    []TemplateChild `json:"children,omitempty"`  // Deprecated: subtasks, use Checklist instead
+	Children    []TemplateChild `json:"children,omitempty"`  // Subtasks for Epic/Story templates
 	Checklist   []string        `json:"checklist,omitempty"` // Checklist items to create
 	UseCount    int64           `json:"use_count,omitempty"`
 }

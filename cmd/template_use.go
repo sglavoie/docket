@@ -121,27 +121,35 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	// Add task to project
 	project.Tasks = append(project.Tasks, task)
 
-	// Create checklist from template (prefer Checklist over legacy Children)
+	// Create checklist from template
 	checklistCreated := 0
-	if len(t.Checklist) > 0 {
-		for _, item := range t.Checklist {
-			task.Checklist = append(task.Checklist, models.ChecklistItem{
-				Text: item,
-				Done: false,
-			})
-			checklistCreated++
-		}
-	} else if len(t.Children) > 0 {
-		// Legacy support: convert Children to checklist items
+	for _, item := range t.Checklist {
+		task.Checklist = append(task.Checklist, models.ChecklistItem{
+			Text: item,
+			Done: false,
+		})
+		checklistCreated++
+	}
+
+	// Create subtasks from Children (for Epic/Story templates)
+	subtasksCreated := 0
+	if t.Type.CanHaveChildren() && len(t.Children) > 0 {
 		for _, child := range t.Children {
 			if child.Optional && templateUseSkipOptional {
 				continue
 			}
-			task.Checklist = append(task.Checklist, models.ChecklistItem{
-				Text: child.Title,
-				Done: false,
-			})
-			checklistCreated++
+			childID := uuid.New().String()
+			childShortID := project.GetNextShortID()
+			childType := child.GetChildType()
+			childTask := models.NewTask(childID, childShortID, childType, child.Title)
+			childTask.ParentID = &task.ID
+			childTask.Priority = task.Priority
+			childTask.Section = task.Section
+			for _, tag := range task.Tags {
+				childTask.AddTag(tag)
+			}
+			project.Tasks = append(project.Tasks, childTask)
+			subtasksCreated++
 		}
 	}
 
@@ -166,6 +174,9 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Created %s #%d: %s (from template %q)\n", task.Type.HeadingPrefix(), shortID, title, t.Name)
 	if checklistCreated > 0 {
 		fmt.Printf("  Added %d checklist item(s)\n", checklistCreated)
+	}
+	if subtasksCreated > 0 {
+		fmt.Printf("  Created %d subtask(s)\n", subtasksCreated)
 	}
 
 	return nil

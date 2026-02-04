@@ -406,16 +406,13 @@ func (m *TaskTemplatesModel) View() string {
 		b.WriteString(listContent)
 	}
 
-	// Confirmation dialog
-	if m.confirm.IsActive() {
-		b.WriteString("\n\n")
-		b.WriteString(m.confirm.Render())
-	}
-
-	// Help footer
-	helpText := m.renderHelpText()
+	// Footer area - confirmation dialog replaces help when active
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
+	if m.confirm.IsActive() {
+		b.WriteString(m.confirm.Render())
+	} else {
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width()))
+	}
 
 	return b.String()
 }
