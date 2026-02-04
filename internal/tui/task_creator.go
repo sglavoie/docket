@@ -53,7 +53,7 @@ type TaskCreatorModel struct {
 	dueDateInput     string
 	pinned           bool
 	active           bool
-	flagFocus        int // 0=pinned, 1=active (within the flags field)
+	flagCursor       int // 0=None, 1=Pin, 2=Active (mutually exclusive)
 	recurrence       *models.RecurrencePattern
 	recurrenceCursor int
 	recurrenceOpts   []string
@@ -123,7 +123,7 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		dueDateInput:     "",
 		pinned:           false,
 		active:           false,
-		flagFocus:        0,
+		flagCursor:       0, // Default to None
 		recurrence:       nil,
 		recurrenceCursor: 0,
 		recurrenceOpts:   recurrenceOpts,

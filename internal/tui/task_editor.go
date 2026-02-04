@@ -50,7 +50,7 @@ type TaskEditorModel struct {
 	dueDateInput     string
 	pinned           bool
 	active           bool
-	flagFocus        int // 0=pinned, 1=active (within the flags field)
+	flagCursor       int // 0=None, 1=Pin, 2=Active (mutually exclusive)
 	recurrence       *models.RecurrencePattern
 	recurrenceCursor int
 	recurrenceOpts   []string // Display labels for recurrence options
@@ -177,7 +177,7 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		dueDateInput:       dueDateInput,
 		pinned:             task.Pinned,
 		active:             task.Active,
-		flagFocus:          0,
+		flagCursor:         flagCursorFromFlags(task.Pinned, task.Active),
 		recurrence:         recurrence,
 		recurrenceCursor:   recurrenceCursor,
 		recurrenceOpts:     recurrenceOpts,
@@ -350,9 +350,10 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor--
 					m.section = m.sections[m.sectionCursor]
 				}
-			case 6: // Flags - switch between pinned and active
-				if m.flagFocus > 0 {
-					m.flagFocus--
+			case 6: // Flags - switch between None, Pin, Active
+				if m.flagCursor > 0 {
+					m.flagCursor--
+					m.updateFlagsFromCursor()
 				}
 			case 7: // Recurrence selector
 				if m.recurrenceCursor > 0 {
@@ -396,9 +397,10 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.sectionCursor++
 					m.section = m.sections[m.sectionCursor]
 				}
-			case 6: // Flags - switch between pinned and active
-				if m.flagFocus < 1 {
-					m.flagFocus++
+			case 6: // Flags - switch between None, Pin, Active
+				if m.flagCursor < 2 {
+					m.flagCursor++
+					m.updateFlagsFromCursor()
 				}
 			case 7: // Recurrence selector
 				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
@@ -417,13 +419,9 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case " ":
-			// Toggle flags with space
+			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
-				if m.flagFocus == 0 {
-					m.pinned = !m.pinned
-				} else {
-					m.active = !m.active
-				}
+				return m, nil
 			}
 
 		case "r":

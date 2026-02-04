@@ -182,36 +182,21 @@ func renderRecurrenceSelectorShared(recurrenceOpts []string, recurrenceCursor in
 	return b.String()
 }
 
-// renderFlagsSelectorShared renders the pinned and active flag toggles.
-func renderFlagsSelectorShared(pinned, active bool, flagFocus int, focused bool) string {
+// renderFlagsSelectorShared renders the mutually exclusive flag options: None, Pin, Active.
+func renderFlagsSelectorShared(flagCursor int, focused bool) string {
 	var b strings.Builder
+	options := []string{"None", "Pin", "Active"}
 
-	// Pinned toggle
-	pinnedText := "Pin"
-	if pinned {
-		pinnedText = "Pin ✓"
-	}
-	if focused && flagFocus == 0 {
-		b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", pinnedText)))
-	} else if pinned {
-		b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", pinnedText)))
-	} else {
-		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", pinnedText)))
-	}
-
-	b.WriteString(" ")
-
-	// Active toggle
-	activeText := "Active"
-	if active {
-		activeText = "Active ✓"
-	}
-	if focused && flagFocus == 1 {
-		b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", activeText)))
-	} else if active {
-		b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", activeText)))
-	} else {
-		b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", activeText)))
+	for i, opt := range options {
+		if i == flagCursor {
+			if focused {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
+		}
 	}
 	return b.String()
 }

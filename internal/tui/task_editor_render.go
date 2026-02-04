@@ -30,9 +30,9 @@ func (m *TaskEditorModel) renderDueDateField() string {
 	return renderDueDateFieldShared(m.dueDateInput, m.focusIndex == 5)
 }
 
-// renderFlagsField renders the pinned and active flag toggles.
+// renderFlagsField renders the mutually exclusive flag options.
 func (m *TaskEditorModel) renderFlagsField() string {
-	return renderFlagsSelectorShared(m.pinned, m.active, m.flagFocus, m.focusIndex == 6)
+	return renderFlagsSelectorShared(m.flagCursor, m.focusIndex == 6)
 }
 
 // renderRecurrenceSelector renders the recurrence pattern selector options.

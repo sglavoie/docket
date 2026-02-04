@@ -149,6 +149,32 @@ func (m *TaskEditorModel) updateRecurrenceFromCursor() {
 	}
 }
 
+// updateFlagsFromCursor updates pinned/active based on cursor position.
+func (m *TaskEditorModel) updateFlagsFromCursor() {
+	switch m.flagCursor {
+	case 0: // None
+		m.pinned = false
+		m.active = false
+	case 1: // Pin
+		m.pinned = true
+		m.active = false
+	case 2: // Active
+		m.pinned = false
+		m.active = true
+	}
+}
+
+// flagCursorFromFlags returns the cursor position based on pinned/active flags.
+func flagCursorFromFlags(pinned, active bool) int {
+	if pinned {
+		return 1 // Pin
+	}
+	if active {
+		return 2 // Active
+	}
+	return 0 // None
+}
+
 // parseDueDate parses the due date input string and updates m.dueDate.
 func (m *TaskEditorModel) parseDueDate() error {
 	value := strings.TrimSpace(m.dueDateInput)

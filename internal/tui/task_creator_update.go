@@ -346,8 +346,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "flags":
-				if m.flagFocus > 0 {
-					m.flagFocus--
+				if m.flagCursor > 0 {
+					m.flagCursor--
+					m.updateFlagsFromCursor()
 				}
 				return m, nil
 			case "recurrence":
@@ -407,8 +408,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "flags":
-				if m.flagFocus < 1 {
-					m.flagFocus++
+				if m.flagCursor < 2 {
+					m.flagCursor++
+					m.updateFlagsFromCursor()
 				}
 				return m, nil
 			case "recurrence":
@@ -438,13 +440,9 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case " ":
-			// Toggle flags with space
+			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
-				if m.flagFocus == 0 {
-					m.pinned = !m.pinned
-				} else {
-					m.active = !m.active
-				}
+				return m, nil
 			}
 
 		case "r":
@@ -557,6 +555,21 @@ func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
 		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly}
 	case 5: // Yearly
 		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceYearly}
+	}
+}
+
+// updateFlagsFromCursor updates pinned/active based on cursor position.
+func (m *TaskCreatorModel) updateFlagsFromCursor() {
+	switch m.flagCursor {
+	case 0: // None
+		m.pinned = false
+		m.active = false
+	case 1: // Pin
+		m.pinned = true
+		m.active = false
+	case 2: // Active
+		m.pinned = false
+		m.active = true
 	}
 }
 

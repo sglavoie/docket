@@ -107,7 +107,7 @@ func (m *TaskCreatorModel) renderFieldsTab() string {
 
 	// Flags row
 	b.WriteString(renderFormLabelShared("Flags", 6, m.focusIndex))
-	b.WriteString(renderFlagsSelectorShared(m.pinned, m.active, m.flagFocus, m.focusIndex == 6))
+	b.WriteString(renderFlagsSelectorShared(m.flagCursor, m.focusIndex == 6))
 	b.WriteString("\n")
 
 	// Recurrence selector
