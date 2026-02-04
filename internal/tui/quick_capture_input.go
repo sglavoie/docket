@@ -161,7 +161,7 @@ func (q *quickCaptureInput) handleAutocompleteKey(key string) bool {
 		q.acCursor = 0
 		q.acViewportTop = 0
 		return true
-	case "up", "ctrl+p":
+	case "up", "ctrl+p", "ctrl+k":
 		if q.acCursor > 0 {
 			q.acCursor--
 			if q.acCursor < q.acViewportTop {
@@ -169,7 +169,7 @@ func (q *quickCaptureInput) handleAutocompleteKey(key string) bool {
 			}
 		}
 		return true
-	case "down", "ctrl+n":
+	case "down", "ctrl+n", "ctrl+j":
 		if q.acCursor < len(q.suggestions)-1 {
 			q.acCursor++
 			if q.acCursor >= q.acViewportTop+acVisibleCount {

@@ -235,12 +235,12 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.suggestions = nil
 				m.acCursor = 0
 				return m, nil
-			case "up", "ctrl+p":
+			case "up", "ctrl+p", "ctrl+k":
 				if m.acCursor > 0 {
 					m.acCursor--
 				}
 				return m, nil
-			case "down", "ctrl+n":
+			case "down", "ctrl+n", "ctrl+j":
 				if m.acCursor < len(m.suggestions)-1 {
 					m.acCursor++
 				}

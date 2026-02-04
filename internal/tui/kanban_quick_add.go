@@ -37,7 +37,7 @@ func (m *KanbanViewModel) handleQuickAddInput(msg tea.KeyMsg) (tea.Model, tea.Cm
 			m.quickAddAcCursor = 0
 			m.quickAddAcViewportTop = 0
 			return m, nil
-		case "up", "ctrl+p":
+		case "up", "ctrl+p", "ctrl+k":
 			if m.quickAddAcCursor > 0 {
 				m.quickAddAcCursor--
 				// Scroll viewport up if cursor moves above visible area
@@ -46,7 +46,7 @@ func (m *KanbanViewModel) handleQuickAddInput(msg tea.KeyMsg) (tea.Model, tea.Cm
 				}
 			}
 			return m, nil
-		case "down", "ctrl+n":
+		case "down", "ctrl+n", "ctrl+j":
 			if m.quickAddAcCursor < len(m.quickAddSuggestions)-1 {
 				m.quickAddAcCursor++
 				// Scroll viewport down if cursor moves below visible area

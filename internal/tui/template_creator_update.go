@@ -24,12 +24,12 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.hideSuggestions()
 				return m, nil
-			case "up":
+			case "up", "ctrl+k", "ctrl+p":
 				if m.suggestionCursor > 0 {
 					m.suggestionCursor--
 				}
 				return m, nil
-			case "down":
+			case "down", "ctrl+j", "ctrl+n":
 				if m.suggestionCursor < len(suggestions)-1 {
 					m.suggestionCursor++
 				}
