@@ -35,9 +35,10 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "tab", "enter":
-				if section == "section" {
+				switch section {
+				case "section":
 					m.acceptSectionSuggestion()
-				} else if section == "tags" {
+				case "tags":
 					m.acceptTagSuggestion()
 				}
 				return m, nil
@@ -66,8 +67,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "]":
 			// Switch to next tab
@@ -83,8 +84,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "tab", "shift+tab":
 			// Blur current text input
@@ -97,8 +98,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if tabCount == 0 {
 				// Empty tab, stay at current position
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 
 			// Calculate relative position within tab
@@ -119,8 +120,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.activeTab = m.getTabForFocusIndex(m.focusIndex)
 
 			// Focus new text input
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "ctrl+s":
 			// Save template
@@ -137,8 +138,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Move focus to the new checklist item
 			m.focusIndex = m.checklistStartIndex() + len(m.checklist) - 1
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "ctrl+t":
 			// Switch to subtasks tab and add new item (only for Epic/Story)
@@ -155,8 +156,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Move focus to the new subtask
 			m.focusIndex = m.subtaskStartIndex() + len(m.subtasks) - 1
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "ctrl+d":
 			// Delete current item (checklist or subtask)
@@ -168,8 +169,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusIndex < 0 {
 					m.focusIndex = 0
 				}
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 			if section == "subtask" && len(m.subtasks) > 0 {
 				m.subtasks = append(m.subtasks[:idx], m.subtasks[idx+1:]...)
@@ -179,8 +180,8 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusIndex < 0 {
 					m.focusIndex = 0
 				}
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 
 		case "left", "h":
@@ -281,10 +282,11 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "down":
 			// Show all suggestions when dropdown not visible
-			if section == "section" {
+			switch section {
+			case "section":
 				m.showAllSectionSuggestions()
 				return m, nil
-			} else if section == "tags" {
+			case "tags":
 				m.showAllTagSuggestions()
 				return m, nil
 			}

@@ -100,8 +100,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "]":
 			// Switch to next tab
@@ -117,8 +117,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "tab", "shift+tab":
 			// Blur current field
@@ -130,8 +130,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if tabCount == 0 {
 				// Empty tab, stay at current position
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 
 			// Calculate relative position within tab
@@ -152,8 +152,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.activeTab = m.getTabForFocusIndex(m.focusIndex)
 
 			// Focus new field
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "enter":
 			// For due date field, parse and validate on enter
@@ -206,8 +206,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Move focus to the new checklist item
 			m.focusIndex = m.checklistStartIndex() + len(m.checklist) - 1
 			m.scrollOffset = 0
-			cmd := m.focusCurrentField()
-			return m, cmd
+			cmdFocus := m.focusCurrentField()
+			return m, cmdFocus
 
 		case "ctrl+t":
 			// Context-dependent behavior:
@@ -224,8 +224,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Move focus to the new subtask
 				m.focusIndex = m.subtaskStartIndex() + len(m.subtasks) - 1
 				m.scrollOffset = 0
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 			// Open tag selector from any field (Fields or Checklist tab)
 			return m, func() tea.Msg {
@@ -246,8 +246,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusIndex < 0 {
 					m.focusIndex = 0
 				}
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 			if section == "subtask" && len(m.subtasks) > 0 {
 				m.subtasks = append(m.subtasks[:idx], m.subtasks[idx+1:]...)
@@ -257,8 +257,8 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.focusIndex < 0 {
 					m.focusIndex = 0
 				}
-				cmd := m.focusCurrentField()
-				return m, cmd
+				cmdFocus := m.focusCurrentField()
+				return m, cmdFocus
 			}
 
 		case "ctrl+k":

@@ -50,7 +50,6 @@ var (
 	templateEditName        string
 	templateEditType        string
 	templateEditPriority    int
-	templateEditPrioritySet bool
 	templateEditTags        string
 	templateEditSection     string
 	templateEditDescription string
@@ -60,7 +59,6 @@ var (
 	templateEditRemoveChild []int
 	templateEditClearChild  bool
 	templateEditEnabled     bool
-	templateEditEnabledSet  bool
 )
 
 func init() {
@@ -173,9 +171,8 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 
 	// Handle children modifications
 	if templateEditClearChild {
-		if len(templateEditAddChildren) == 0 && len(templateEditAddOptChild) == 0 {
-			// Allow clearing without adding new ones
-		}
+		// Allow clearing without adding new ones:
+		// if len(templateEditAddChildren) == 0 && len(templateEditAddOptChild) == 0 {}
 		t.Children = []template.TemplateChild{}
 		hasChanges = true
 	}
@@ -223,7 +220,7 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	if !hasChanges {
-		return fmt.Errorf("no changes specified; use --name, --type, --priority, --tags, etc.")
+		return fmt.Errorf("no changes specified; use --name, --type, --priority, --tags, etc")
 	}
 
 	// Validate

@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var contextRemoveCmd = &cobra.Command{

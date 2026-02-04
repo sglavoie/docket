@@ -126,19 +126,3 @@ func (c *TemplateChild) GetChildType() models.TaskType {
 	}
 	return c.Type
 }
-
-// ValidCategories returns the list of valid template categories.
-func ValidCategories() []string {
-	return []string{"bug", "feature", "process"}
-}
-
-// ValidTaskTypes returns all valid task types for templates.
-func ValidTaskTypes() []models.TaskType {
-	return []models.TaskType{
-		models.TaskTypeEpic,
-		models.TaskTypeStory,
-		models.TaskTypeTask,
-		models.TaskTypeBug,
-		models.TaskTypeIdea,
-	}
-}

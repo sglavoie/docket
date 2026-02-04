@@ -14,16 +14,6 @@ type BlockersModel struct {
 	state    blockerViewState
 }
 
-// NewBlockersModel creates a new blockers viewer.
-func NewBlockersModel(project *models.Project) *BlockersModel {
-	blockers, _ := storage.LoadBlockers(project)
-	return &BlockersModel{
-		project:  project,
-		blockers: blockers,
-		state:    newBlockerViewState(""),
-	}
-}
-
 // NewBlockersModelWithEditor creates a blockers viewer with editor config.
 func NewBlockersModelWithEditor(project *models.Project, editor string) *BlockersModel {
 	blockers, _ := storage.LoadBlockers(project)

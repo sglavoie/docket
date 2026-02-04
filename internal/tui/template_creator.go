@@ -348,28 +348,6 @@ func (m *TaskTemplateCreatorModel) getFocusCountForTab(tab int) int {
 	return 0
 }
 
-// countNonEmptyChecklist returns the number of checklist items with non-empty text.
-func (m *TaskTemplateCreatorModel) countNonEmptyChecklist() int {
-	count := 0
-	for _, item := range m.checklist {
-		if strings.TrimSpace(item.Value()) != "" {
-			count++
-		}
-	}
-	return count
-}
-
-// countNonEmptySubtasks returns the number of subtasks with non-empty titles.
-func (m *TaskTemplateCreatorModel) countNonEmptySubtasks() int {
-	count := 0
-	for _, st := range m.subtasks {
-		if strings.TrimSpace(st.titleInput.Value()) != "" {
-			count++
-		}
-	}
-	return count
-}
-
 // getFocusSection returns which section the current focus is in.
 // Returns section name and index within that section (-1 if not applicable).
 func (m *TaskTemplateCreatorModel) getFocusSection() (section string, idx int) {

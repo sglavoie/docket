@@ -260,54 +260,6 @@ func (m *KanbanViewModel) calculateFilterCounts() {
 	m.filterBar.SetCounts(counts)
 }
 
-// renderKanbanFilterBar renders a compact active filter indicator for the kanban view.
-func (m *KanbanViewModel) renderKanbanFilterBar() string {
-	var parts []string
-
-	if m.filter.Priority == 1 {
-		parts = append(parts, "!Hi")
-	}
-	if m.filter.Type != "" {
-		parts = append(parts, "type:"+string(m.filter.Type))
-	}
-	if m.filter.Status != "" {
-		parts = append(parts, "status:"+string(m.filter.Status))
-	}
-	if len(m.filter.Tags) > 0 {
-		var tagNames []string
-		for tag := range m.filter.Tags {
-			tagNames = append(tagNames, "#"+tag)
-		}
-		parts = append(parts, strings.Join(tagNames, " "))
-	}
-	switch m.filter.DueDate {
-	case DueDateOverdue:
-		parts = append(parts, "due:overdue")
-	case DueDateToday:
-		parts = append(parts, "due:today")
-	case DueDateThisWeek:
-		parts = append(parts, "due:week")
-	case DueDateNone:
-		parts = append(parts, "due:none")
-	}
-	if m.actionableFilter {
-		parts = append(parts, "ready")
-	}
-	if m.filter.Search != "" {
-		searchStr := "/" + m.filter.Search
-		if len(searchStr) > 15 {
-			searchStr = searchStr[:12] + "..."
-		}
-		parts = append(parts, searchStr)
-	}
-
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return FilterBadgeStyle.Render("Filters: "+strings.Join(parts, " ")) + "\n"
-}
-
 // HasActiveFilters returns true if any filter is currently active.
 func (m *KanbanViewModel) HasActiveFilters() bool {
 	return m.filter.Type != "" ||

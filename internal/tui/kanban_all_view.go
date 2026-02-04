@@ -400,14 +400,3 @@ func (m *KanbanViewModel) renderAllTaskRow(node *KanbanNode, isSelected bool) st
 	}
 	return "   " + content
 }
-
-// getSelectedTaskInAllView returns the currently selected task in all view mode.
-func (m *KanbanViewModel) getSelectedTaskInAllView() *KanbanNode {
-	if !m.allViewMode || len(m.allNodes) == 0 {
-		return nil
-	}
-	if m.allCursor >= 0 && m.allCursor < len(m.allNodes) {
-		return m.allNodes[m.allCursor]
-	}
-	return nil
-}

@@ -51,9 +51,9 @@ func init() {
 }
 
 func runAttach(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	project, _, _, errLoad := LoadCurrentProject()
+	if errLoad != nil {
+		return errLoad
 	}
 
 	task := FindTaskByIdentifier(project, args[0])
@@ -91,12 +91,12 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		// Store code reference without copying
 		task.AddCodeReference(codePath, lineNum)
 
-		if err := storage.BackupProject(project); err != nil {
-			return fmt.Errorf("failed to create backup: %w", err)
+		if errBackup := storage.BackupProject(project); errBackup != nil {
+			return fmt.Errorf("failed to create backup: %w", errBackup)
 		}
 
-		if err := storage.SaveProject(project); err != nil {
-			return fmt.Errorf("failed to save project: %w", err)
+		if errSave := storage.SaveProject(project); errSave != nil {
+			return fmt.Errorf("failed to save project: %w", errSave)
 		}
 
 		// Check if file exists and show info message if not
@@ -139,7 +139,7 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Add attachment to task metadata
 	task.AddAttachment(filename, false, absPath)
 
-	if err := storage.BackupProject(project); err != nil {
+	if errBackup := storage.BackupProject(project); errBackup != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
