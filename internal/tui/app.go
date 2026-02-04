@@ -155,6 +155,12 @@ type AppModel struct {
 	// Pending task creation parent (for template picker flow)
 	pendingCreateTaskParent *models.Task
 
+	// Pending description edit context (for text editor popup flow)
+	pendingDescEdit *struct {
+		Task    *models.Task
+		Project *models.Project
+	}
+
 	// CLI reference for AI assistant context
 	cliReference string
 }

@@ -832,11 +832,11 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		}
 		return m, nil
 	case "d":
-		// Task description editor (same as to - external editor)
+		// Task description editor (text popup)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			return m, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: m.project}
+				return ShowDescriptionEditorMsg{Task: task, Project: m.project}
 			}
 		}
 		return m, nil

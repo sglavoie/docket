@@ -467,10 +467,10 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		}
 		return m, nil
 	case "d":
-		// Task description editor
+		// Task description editor (text popup)
 		if task != nil {
 			return m, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: project}
+				return ShowDescriptionEditorMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

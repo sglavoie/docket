@@ -5,6 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TextEditorModel handles editing a single text field in a popup overlay.
@@ -155,4 +157,18 @@ type TextEditorExternalDoneMsg struct {
 	FieldName string
 	Value     string
 	Canceled  bool
+}
+
+// ShowDescriptionEditorMsg triggers showing the text editor popup for task description.
+type ShowDescriptionEditorMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// DescriptionEditorDoneMsg signals the description editor has finished.
+type DescriptionEditorDoneMsg struct {
+	Task           *models.Task
+	Project        *models.Project
+	NewDescription string
+	Canceled       bool
 }

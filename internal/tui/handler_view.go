@@ -701,8 +701,34 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewTextEditor, editor)
 		return true, editor.Init()
 
+	case ShowDescriptionEditorMsg:
+		// Store context for when editing completes
+		m.pendingDescEdit = &struct {
+			Task    *models.Task
+			Project *models.Project
+		}{
+			Task:    msg.Task,
+			Project: msg.Project,
+		}
+		editor := NewTextEditorModel("description", msg.Task.Description)
+		m.showView(ViewTextEditor, editor)
+		return true, editor.Init()
+
 	case TextEditorDoneMsg:
 		m.popView()
+		// Check if this is a description edit from td keybinding
+		if m.pendingDescEdit != nil {
+			pending := m.pendingDescEdit
+			m.pendingDescEdit = nil
+			return true, func() tea.Msg {
+				return DescriptionEditorDoneMsg{
+					Task:           pending.Task,
+					Project:        pending.Project,
+					NewDescription: msg.Value,
+					Canceled:       msg.Canceled,
+				}
+			}
+		}
 		// Forward the message to the parent view (task creator or task editor)
 		// so it can update the title/description
 		cmd := m.views.Update(m.currentView(), msg)

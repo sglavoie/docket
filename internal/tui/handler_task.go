@@ -99,6 +99,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskContentEditedMsg:
 		return m.handleTaskContentEdited(msg)
 
+	case DescriptionEditorDoneMsg:
+		return m.handleDescriptionEditorDone(msg)
+
 	case SetDueDateMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.showView(ViewDateInput, NewDateInputModel(msg.Task, msg.Project))
@@ -663,6 +666,36 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		}
 	}
 	return true, nil
+}
+
+// handleDescriptionEditorDone handles result from the description text editor popup.
+func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bool, tea.Cmd) {
+	if msg.Canceled {
+		return true, nil
+	}
+
+	if msg.Task == nil || msg.Project == nil {
+		return true, nil
+	}
+
+	// Check if description actually changed
+	if msg.NewDescription == msg.Task.Description {
+		return true, nil
+	}
+
+	// Update the task description
+	if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
+		t.Description = msg.NewDescription
+	}) {
+		return true, errorCmd("task no longer exists in project")
+	}
+
+	// Refresh project tree and save
+	m.refreshProjectTree()
+	return true, tea.Batch(
+		startLoading("Saving..."),
+		SaveProjectAsync(msg.Project, "Description updated"),
+	)
 }
 
 // handleMoveTaskToProject handles moving a task to another project.
