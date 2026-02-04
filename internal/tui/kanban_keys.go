@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -338,18 +337,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 		return m, textinput.Blink
 
-	case "n":
-		// Add new task with selected task as parent
-		var parentTask *models.Task
-		if m.FocusedTask != nil {
-			parentTask = m.FocusedTask
-		} else {
-			parentTask = m.getSelectedTask()
-		}
-		return m, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask}
-		}
-
 	case "i":
 		// Open modal quick capture view
 		return m, func() tea.Msg {
@@ -414,23 +401,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "A":
 		if m.multiSelectMode {
 			m.selectAllAcrossColumns()
-		}
-		return m, nil
-
-	// Section picker
-	case "ctrl+n":
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			project := m.Project
-			return m, func() tea.Msg {
-				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
-			}
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowSectionPickerMsg{Task: task, Project: m.Project}
-			}
 		}
 		return m, nil
 

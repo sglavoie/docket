@@ -45,7 +45,7 @@ func (m *TaskTemplateCreatorModel) View() string {
 	var helpText string
 	switch m.activeTab {
 	case templateTabFields:
-		helpText = "[]: tabs · Tab: next · ←/→: select · Ctrl+S: save · Esc: cancel"
+		helpText = "[]: tabs · Tab: next · ←/→: select · ↓: show all · Ctrl+S: save · Esc: cancel"
 	case templateTabChecklist:
 		helpText = "[]: tabs · Tab: next · Ctrl+A: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
 	case templateTabSubtasks:

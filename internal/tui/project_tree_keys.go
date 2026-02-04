@@ -333,18 +333,6 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 
-	case "n":
-		var parentTask *models.Task
-		if m.focusedTask != nil {
-			// In focus mode, default to focused task as parent
-			parentTask = m.focusedTask
-		} else if CursorInBounds(m.cursor, len(visible)) {
-			parentTask = visible[m.cursor].Task
-		}
-		return true, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask}
-		}
-
 	case "i":
 		return true, func() tea.Msg {
 			return ShowQuickCaptureMsg{Project: m.project, AllProjects: m.config.Projects}
@@ -460,26 +448,10 @@ func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
 	return false, nil
 }
 
-// handleTaskAttributeKeys handles ctrl+n, *, ctrl+l - task attribute modification.
+// handleTaskAttributeKeys handles *, ctrl+l - task attribute modification.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "ctrl+n":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			project := m.project
-			return true, func() tea.Msg {
-				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
-			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowSectionPickerMsg{Task: task, Project: m.project}
-			}
-		}
-		return true, nil
-
 	case "*":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			count := len(m.selectedTasks)

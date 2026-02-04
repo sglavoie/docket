@@ -168,15 +168,14 @@ func TestTaskCanDemote(t *testing.T) {
 			reason:  "task cannot have children",
 		},
 		{
-			name: "epic with idea children cannot demote",
+			name: "epic with idea children can demote",
 			setup: func() *Task {
 				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
 				idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
 				epic.AddChild(idea)
 				return epic
 			},
-			allowed: false,
-			reason:  "idea cannot be child of story",
+			allowed: true,
 		},
 	}
 
@@ -230,7 +229,7 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 			allowed: true,
 		},
 		{
-			name: "task under story cannot cycle to idea",
+			name: "task under story can cycle to idea",
 			setup: func() *Task {
 				story := NewTask("story", 1, TaskTypeStory, "Story")
 				task := NewTask("task", 2, TaskTypeTask, "Task")
@@ -238,8 +237,7 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 				return task
 			},
 			left:    true,
-			allowed: false,
-			reason:  "idea cannot be child of story",
+			allowed: true,
 		},
 		{
 			name: "bug under story can cycle to task",
@@ -253,7 +251,7 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 			allowed: true,
 		},
 		{
-			name: "bug under story cannot cycle right to idea",
+			name: "bug under story can cycle right to idea",
 			setup: func() *Task {
 				story := NewTask("story", 1, TaskTypeStory, "Story")
 				bug := NewTask("bug", 2, TaskTypeBug, "Bug")
@@ -261,8 +259,7 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 				return bug
 			},
 			left:    false,
-			allowed: false,
-			reason:  "idea cannot be child of story",
+			allowed: true,
 		},
 		{
 			name: "idea under epic can cycle to any leaf type",

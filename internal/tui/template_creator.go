@@ -518,3 +518,43 @@ func (m *TaskTemplateCreatorModel) getCurrentSuggestions() []string {
 	}
 	return nil
 }
+
+// showAllSectionSuggestions populates sectionSuggestions with all cached sections.
+func (m *TaskTemplateCreatorModel) showAllSectionSuggestions() {
+	currentValue := strings.ToLower(strings.TrimSpace(m.sectionInput.Value()))
+	m.sectionSuggestions = nil
+	for _, section := range m.sectionCache {
+		if strings.ToLower(section) != currentValue {
+			m.sectionSuggestions = append(m.sectionSuggestions, section)
+		}
+	}
+	if len(m.sectionSuggestions) > 0 {
+		m.showSuggestions = true
+		m.suggestionCursor = 0
+	}
+}
+
+// showAllTagSuggestions populates tagSuggestions with all cached tags (excluding already entered).
+func (m *TaskTemplateCreatorModel) showAllTagSuggestions() {
+	// Get already-entered tags to exclude them
+	value := m.tagsInput.Value()
+	parts := strings.Split(value, ",")
+	existingTags := make(map[string]struct{})
+	for _, part := range parts {
+		tag := strings.ToLower(strings.TrimSpace(part))
+		if tag != "" {
+			existingTags[tag] = struct{}{}
+		}
+	}
+
+	m.tagSuggestions = nil
+	for _, tag := range m.tagCache {
+		if _, exists := existingTags[strings.ToLower(tag)]; !exists {
+			m.tagSuggestions = append(m.tagSuggestions, tag)
+		}
+	}
+	if len(m.tagSuggestions) > 0 {
+		m.showSuggestions = true
+		m.suggestionCursor = 0
+	}
+}

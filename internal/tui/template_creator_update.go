@@ -278,6 +278,16 @@ func (m *TaskTemplateCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.priorityCursor = int(msg.String()[0] - '0')
 				return m, nil
 			}
+
+		case "down":
+			// Show all suggestions when dropdown not visible
+			if section == "section" {
+				m.showAllSectionSuggestions()
+				return m, nil
+			} else if section == "tags" {
+				m.showAllTagSuggestions()
+				return m, nil
+			}
 		}
 
 		// Update focused text input

@@ -31,7 +31,7 @@ func TestTaskTypeAllowedChildren(t *testing.T) {
 		expected []TaskType
 	}{
 		{TaskTypeEpic, []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}},
-		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug}},
+		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea}},
 		{TaskTypeTask, []TaskType{}},
 		{TaskTypeBug, []TaskType{}},
 		{TaskTypeIdea, []TaskType{}},
@@ -101,9 +101,9 @@ func TestTaskTypeCanBeChildOf(t *testing.T) {
 		{TaskTypeBug, TaskTypeStory, true},
 		{TaskTypeBug, TaskTypeTask, false},
 
-		// Idea can only be child of Epic
+		// Idea can be child of Epic or Story
 		{TaskTypeIdea, TaskTypeEpic, true},
-		{TaskTypeIdea, TaskTypeStory, false},
+		{TaskTypeIdea, TaskTypeStory, true},
 		{TaskTypeIdea, TaskTypeTask, false},
 	}
 

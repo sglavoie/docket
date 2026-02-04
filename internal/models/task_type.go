@@ -29,14 +29,14 @@ func (t TaskType) IsValid() bool {
 
 // AllowedChildren returns the task types that can be children of this type.
 // Epic can contain stories, tasks, bugs, and ideas.
-// Story can contain tasks and bugs.
+// Story can contain tasks, bugs, and ideas.
 // Task, Bug, and Idea are leaf nodes with no children.
 func (t TaskType) AllowedChildren() []TaskType {
 	switch t {
 	case TaskTypeEpic:
 		return []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}
 	case TaskTypeStory:
-		return []TaskType{TaskTypeTask, TaskTypeBug}
+		return []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea}
 	case TaskTypeTask, TaskTypeBug, TaskTypeIdea:
 		return []TaskType{}
 	default:

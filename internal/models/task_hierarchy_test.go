@@ -102,12 +102,15 @@ func TestTaskCanAddChild(t *testing.T) {
 		t.Error("epic should not accept epic child")
 	}
 
-	// Story can have task, bug
+	// Story can have task, bug, idea
 	if !story.CanAddChild(TaskTypeTask) {
 		t.Error("story should accept task child")
 	}
 	if !story.CanAddChild(TaskTypeBug) {
 		t.Error("story should accept bug child")
+	}
+	if !story.CanAddChild(TaskTypeIdea) {
+		t.Error("story should accept idea child")
 	}
 	if story.CanAddChild(TaskTypeStory) {
 		t.Error("story should not accept story child")
@@ -325,18 +328,18 @@ func TestDemoteWithNestedChildren(t *testing.T) {
 	}
 }
 
-func TestDemoteEpicWithIncompatibleChildren(t *testing.T) {
-	// Epic with idea children cannot demote (idea cannot be child of story)
+func TestDemoteEpicWithIdeaChildren(t *testing.T) {
+	// Epic with idea children can demote (idea can be child of story)
 	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
 	idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
 	epic.AddChild(idea)
 
 	err := epic.Demote()
-	if err == nil {
-		t.Error("Demote() epic with idea child should fail")
+	if err != nil {
+		t.Errorf("Demote() epic with idea child should succeed, got: %v", err)
 	}
-	// Type should remain epic
-	if epic.Type != TaskTypeEpic {
-		t.Errorf("Type should remain epic after failed demote, got %s", epic.Type)
+	// Type should become story
+	if epic.Type != TaskTypeStory {
+		t.Errorf("Type should become story after demote, got %s", epic.Type)
 	}
 }

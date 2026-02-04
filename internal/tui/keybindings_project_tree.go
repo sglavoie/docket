@@ -68,14 +68,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)", Views: views},
 
 		// Legacy Task Operations (still available for compatibility)
-		Keybinding{Key: "n", Description: "Add new task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
-		Keybinding{Key: "o", Description: "Reopen task / expand node", Category: "Task Operations", Views: views},
+		Keybinding{Key: "o", Description: "Expand node", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
-		Keybinding{Key: "ctrl+N", Description: "Assign to section", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},
 

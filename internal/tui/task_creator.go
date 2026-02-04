@@ -1,22 +1,31 @@
 package tui
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // formFactory is a shared factory instance for resizing form fields.
 var formFactory = DefaultFormFieldFactory()
+
+// Task creator tab constants
+const (
+	creatorTabFields    = 0
+	creatorTabChecklist = 1
+	creatorTabSubtasks  = 2
+)
+
+var creatorTabNames = []string{"Fields", "Checklist", "Subtasks"}
+
+// creatorFieldCount is the number of fields in the Fields tab.
+const creatorFieldCount = 10 // title, type, parent, priority, section, due date, flags, recurrence, tags, description
 
 // TaskCreatorModel handles creating a new task via TUI.
 type TaskCreatorModel struct {
@@ -49,8 +58,18 @@ type TaskCreatorModel struct {
 	recurrenceCursor int
 	recurrenceOpts   []string
 
+	// Tab navigation
+	activeTab    int // 0=Fields, 1=Checklist, 2=Subtasks
+	scrollOffset int // Scroll offset for view content
+
+	// Checklist items (editable before save)
+	checklist []textinput.Model
+
+	// Subtasks (Epic/Story only)
+	subtasks []SubtaskFormState // reuse SubtaskFormState from template_creator.go
+
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence, 8=tags, 9=description
+	focusIndex int // Tracks focus across all tabs
 	width      int
 	height     int
 	err        error
@@ -108,6 +127,9 @@ func NewTaskCreatorModel(project *models.Project, cfg *config.Config, manager *c
 		recurrence:       nil,
 		recurrenceCursor: 0,
 		recurrenceOpts:   recurrenceOpts,
+		activeTab:        creatorTabFields,
+		checklist:        nil,
+		subtasks:         nil,
 		focusIndex:       0,
 		width:            80,
 		height:           24,
@@ -175,6 +197,42 @@ func NewTaskCreatorModelWithTemplate(project *models.Project, cfg *config.Config
 			m.descValue = tmpl.Description
 		}
 
+		// Populate checklist items from template
+		if len(tmpl.Checklist) > 0 {
+			factory := DefaultFormFieldFactory()
+			m.checklist = make([]textinput.Model, len(tmpl.Checklist))
+			for i, item := range tmpl.Checklist {
+				input := factory.NewTextInput("Checklist item")
+				input.SetValue(item)
+				m.checklist[i] = input
+			}
+		}
+
+		// Populate subtasks from template (Epic/Story only)
+		if len(tmpl.Children) > 0 && tmpl.Type.CanHaveChildren() {
+			factory := DefaultFormFieldFactory()
+			m.subtasks = make([]SubtaskFormState, len(tmpl.Children))
+			for i, child := range tmpl.Children {
+				input := factory.NewTextInput("Subtask title")
+				input.SetValue(child.Title)
+
+				// Find type cursor
+				typeCursor := 0
+				for j, st := range subtaskTypes {
+					if st == child.Type || (child.Type == "" && st == models.TaskTypeTask) {
+						typeCursor = j
+						break
+					}
+				}
+
+				m.subtasks[i] = SubtaskFormState{
+					titleInput: input,
+					typeCursor: typeCursor,
+					optional:   child.Optional,
+				}
+			}
+		}
+
 		// Update valid parents for the new type
 		m.updateValidParents()
 	}
@@ -214,533 +272,16 @@ func (m *TaskCreatorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	formFactory.ResizeTextarea(&m.titleInput, width)
+	for i := range m.checklist {
+		formFactory.ResizeTextInput(&m.checklist[i], width)
+	}
+	for i := range m.subtasks {
+		formFactory.ResizeTextInput(&m.subtasks[i].titleInput, width)
+	}
 }
-
-const creatorFieldCount = 10 // title, type, parent, priority, section, due date, flags, recurrence, tags, description
 
 func (m *TaskCreatorModel) Init() tea.Cmd {
 	return textarea.Blink
-}
-
-func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case ParentSelectedMsg:
-		// Handle parent selection from modal
-		if msg.Source == ViewTaskCreator {
-			m.parentID = msg.ParentID
-			// Update cursor position to match
-			if msg.ParentID == nil {
-				m.parentCursor = 0
-			} else {
-				for i, p := range m.validParents {
-					if p.ID == *msg.ParentID {
-						m.parentCursor = i + 1
-						break
-					}
-				}
-			}
-		}
-		return m, nil
-
-	case RecurrenceEditorDoneMsg:
-		if !msg.Canceled && msg.Pattern != nil {
-			m.recurrence = msg.Pattern
-			// Update cursor to "Custom..." since we have a custom pattern
-			m.recurrenceCursor = 6
-		}
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.tags = msg.SelectedTags
-		}
-		return m, nil
-
-	case TextEditorDoneMsg:
-		if !msg.Canceled {
-			if msg.FieldName == "description" {
-				m.descValue = msg.Value
-			}
-		}
-		return m, nil
-
-	case tea.KeyMsg:
-		// Handle discard confirmation
-		if m.confirmDiscard {
-			switch msg.String() {
-			case "y", "Y":
-				m.confirmDiscard = false
-				return m, func() tea.Msg {
-					return BackMsg{}
-				}
-			case "n", "N", "esc":
-				m.confirmDiscard = false
-				return m, nil
-			}
-			return m, nil
-		}
-
-		switch msg.String() {
-		case "esc":
-			// Show confirmation if title has content
-			title := strings.TrimSpace(m.titleInput.Value())
-			if title != "" {
-				m.confirmDiscard = true
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return BackMsg{}
-			}
-
-		case "tab", "shift+tab":
-			// Blur current field
-			m.blurCurrentField()
-
-			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % creatorFieldCount
-			} else {
-				m.focusIndex = (m.focusIndex + creatorFieldCount - 1) % creatorFieldCount
-			}
-
-			// Focus new field
-			m.focusCurrentField()
-			return m, nil
-
-		case "enter":
-			// For due date field, parse and validate on enter
-			if m.focusIndex == 5 {
-				if err := m.parseDueDate(); err != nil {
-					m.err = err
-					return m, nil
-				}
-				m.err = nil
-			}
-			if m.focusIndex == 8 {
-				// Open tag selector modal
-				return m, func() tea.Msg {
-					return ShowTagSelectorMsg{
-						Task:        nil,
-						Project:     m.project,
-						CurrentTags: m.tags,
-					}
-				}
-			}
-			if m.focusIndex == 9 {
-				// Open description editor popup
-				return m, func() tea.Msg {
-					return ShowTextEditorMsg{
-						FieldName:    "description",
-						CurrentValue: m.descValue,
-					}
-				}
-			}
-			// Move to next field for other fields
-			if m.focusIndex < creatorFieldCount-1 {
-				m.blurCurrentField()
-				m.focusIndex++
-				m.focusCurrentField()
-				return m, nil
-			}
-
-		case "ctrl+s":
-			// Submit form
-			return m, m.createTask()
-
-		case "ctrl+t":
-			// Open tag selector from any field
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{
-					Task:        nil,
-					Project:     m.project,
-					CurrentTags: m.tags,
-				}
-			}
-
-		case "/":
-			// Open parent selector modal when on parent field
-			if m.focusIndex == 2 {
-				return m, func() tea.Msg {
-					return OpenParentSelectorMsg{
-						ValidParents: m.validParents,
-						CurrentID:    m.parentID,
-						AllowNone:    true,
-						Source:       ViewTaskCreator,
-					}
-				}
-			}
-
-		case "1", "2", "3", "4", "5":
-			// Direct priority selection when priority field is focused
-			if m.focusIndex == 3 {
-				m.priority = int(msg.String()[0] - '0')
-			}
-			return m, nil
-
-		case "left", "h":
-			switch m.focusIndex {
-			case 1: // Type selector
-				if m.typeCursor > 0 {
-					m.typeCursor--
-					m.taskType = m.types[m.typeCursor]
-					m.updateValidParents()
-				}
-			case 2: // Parent selector
-				if m.parentCursor > 0 {
-					m.parentCursor--
-					if m.parentCursor == 0 {
-						m.parentID = nil
-					} else {
-						m.parentID = &m.validParents[m.parentCursor-1].ID
-					}
-				}
-			case 3: // Priority
-				if m.priority > 1 {
-					m.priority--
-				}
-			case 4: // Section selector
-				if m.sectionCursor > 0 {
-					m.sectionCursor--
-					m.section = m.sections[m.sectionCursor]
-				}
-			case 6: // Flags - switch between pinned and active
-				if m.flagFocus > 0 {
-					m.flagFocus--
-				}
-			case 7: // Recurrence selector
-				if m.recurrenceCursor > 0 {
-					m.recurrenceCursor--
-					if m.recurrenceCursor == 6 {
-						// "Custom..." selected - open the editor
-						return m, func() tea.Msg {
-							return ShowRecurrenceEditorMsg{
-								CurrentPattern: m.recurrence,
-								DueDate:        m.dueDate,
-							}
-						}
-					}
-					m.updateRecurrenceFromCursor()
-				}
-			}
-
-		case "right", "l":
-			switch m.focusIndex {
-			case 1: // Type selector
-				if m.typeCursor < len(m.types)-1 {
-					m.typeCursor++
-					m.taskType = m.types[m.typeCursor]
-					m.updateValidParents()
-				}
-			case 2: // Parent selector
-				if m.parentCursor < len(m.validParents) {
-					m.parentCursor++
-					m.parentID = &m.validParents[m.parentCursor-1].ID
-				}
-			case 3: // Priority
-				if m.priority < 5 {
-					m.priority++
-				}
-			case 4: // Section selector
-				if m.sectionCursor < len(m.sections)-1 {
-					m.sectionCursor++
-					m.section = m.sections[m.sectionCursor]
-				}
-			case 6: // Flags - switch between pinned and active
-				if m.flagFocus < 1 {
-					m.flagFocus++
-				}
-			case 7: // Recurrence selector
-				if m.recurrenceCursor < len(m.recurrenceOpts)-1 {
-					m.recurrenceCursor++
-					if m.recurrenceCursor == 6 {
-						// "Custom..." selected - open the editor
-						return m, func() tea.Msg {
-							return ShowRecurrenceEditorMsg{
-								CurrentPattern: m.recurrence,
-								DueDate:        m.dueDate,
-							}
-						}
-					}
-					m.updateRecurrenceFromCursor()
-				}
-			}
-
-		case " ":
-			// Toggle flags with space
-			if m.focusIndex == 6 {
-				if m.flagFocus == 0 {
-					m.pinned = !m.pinned
-				} else {
-					m.active = !m.active
-				}
-			}
-
-		case "r":
-			// Open recurrence editor when on recurrence field
-			if m.focusIndex == 7 {
-				return m, func() tea.Msg {
-					return ShowRecurrenceEditorMsg{
-						CurrentPattern: m.recurrence,
-						DueDate:        m.dueDate,
-					}
-				}
-			}
-		}
-	}
-
-	// Update the focused input
-	switch m.focusIndex {
-	case 0:
-		m.titleInput, cmd = m.titleInput.Update(msg)
-	case 5: // Due date text input
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			key := keyMsg.String()
-			// Handle backspace
-			if key == "backspace" && len(m.dueDateInput) > 0 {
-				m.dueDateInput = m.dueDateInput[:len(m.dueDateInput)-1]
-			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
-				// Printable ASCII characters
-				m.dueDateInput += key
-			}
-		}
-	}
-
-	return m, cmd
-}
-
-func (m *TaskCreatorModel) blurCurrentField() {
-	if m.focusIndex == 0 {
-		m.titleInput.Blur()
-	}
-}
-
-func (m *TaskCreatorModel) focusCurrentField() {
-	if m.focusIndex == 0 {
-		m.titleInput.Focus()
-	}
-}
-
-// parseDueDate parses the due date input string and updates m.dueDate.
-func (m *TaskCreatorModel) parseDueDate() error {
-	value := strings.TrimSpace(m.dueDateInput)
-
-	// Handle empty or "none" to clear due date
-	if value == "" || strings.ToLower(value) == "none" || strings.ToLower(value) == "clear" {
-		m.dueDate = nil
-		return nil
-	}
-
-	// Parse the date using the existing ParseDate function
-	date, err := ParseDate(value)
-	if err != nil {
-		return err
-	}
-
-	m.dueDate = &date
-	return nil
-}
-
-// updateRecurrenceFromCursor updates the recurrence pattern based on cursor position.
-func (m *TaskCreatorModel) updateRecurrenceFromCursor() {
-	switch m.recurrenceCursor {
-	case 0: // None
-		m.recurrence = nil
-	case 1: // Daily
-		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
-	case 2: // Weekly
-		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly}
-	case 3: // Biweekly
-		m.recurrence = &models.RecurrencePattern{Interval: 2, Unit: models.RecurrenceWeekly}
-	case 4: // Monthly
-		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceMonthly}
-	case 5: // Yearly
-		m.recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceYearly}
-	}
-}
-
-func (m *TaskCreatorModel) createTask() tea.Cmd {
-	return func() tea.Msg {
-		// Replace newlines with spaces since titles should be single logical lines
-		title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
-		title = strings.TrimSpace(title)
-		if title == "" {
-			return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")}
-		}
-
-		// Parse due date before saving
-		if err := m.parseDueDate(); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		now := time.Now()
-
-		// Create task
-		task := &models.Task{
-			ID:          uuid.New().String(),
-			ShortID:     m.project.GetNextShortID(),
-			Type:        m.taskType,
-			Title:       title,
-			Description: strings.TrimSpace(m.descValue),
-			Status:      models.StatusTodo,
-			Priority:    m.priority,
-			ParentID:    m.parentID,
-			Section:     m.section,
-			DueDate:     m.dueDate,
-			Pinned:      m.pinned,
-			Active:      m.active,
-			Recurrence:  m.recurrence,
-			CreatedAt:   now,
-			UpdatedAt:   now,
-		}
-
-		// Set PinnedAt if pinned
-		if m.pinned {
-			task.PinnedAt = &now
-		}
-
-		// Set tags from the selector
-		task.Tags = append([]string{}, m.tags...)
-
-		// Add task to project
-		m.project.Tasks = append(m.project.Tasks, task)
-
-		// Create checklist from template (prefer Checklist over legacy Children)
-		if m.fromTemplate != nil {
-			checklistCreated := false
-			if len(m.fromTemplate.Checklist) > 0 {
-				for _, item := range m.fromTemplate.Checklist {
-					task.Checklist = append(task.Checklist, models.ChecklistItem{
-						Text: item,
-						Done: false,
-					})
-				}
-				checklistCreated = true
-			} else if len(m.fromTemplate.Children) > 0 {
-				// Legacy support: convert Children to checklist items
-				for _, childTmpl := range m.fromTemplate.Children {
-					task.Checklist = append(task.Checklist, models.ChecklistItem{
-						Text: childTmpl.Title,
-						Done: false,
-					})
-				}
-				checklistCreated = true
-			}
-
-			// Increment template use count
-			if checklistCreated && m.config != nil && m.configManager != nil {
-				m.config.IncrementTemplateUseCount(m.fromTemplate.ID)
-				_ = m.configManager.Save(m.config)
-			}
-		}
-
-		m.project.BuildTaskTree()
-		m.project.ReorderRootTasksByCompletion()
-
-		// Save project with backup for undo support
-		if err := saveProjectSync(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		return TaskCreatedMsg{Task: task}
-	}
-}
-
-func (m *TaskCreatorModel) View() string {
-	var b strings.Builder
-
-	// Title field (inline textarea)
-	b.WriteString(renderFormLabelShared("Title", 0, m.focusIndex))
-	b.WriteString("\n")
-	b.WriteString(m.titleInput.View())
-	b.WriteString("\n")
-
-	// Type selector
-	b.WriteString(renderFormLabelShared("Type", 1, m.focusIndex))
-	b.WriteString(renderTypeSelectorShared(m.types, m.typeCursor, m.focusIndex == 1))
-	b.WriteString("\n")
-
-	// Parent selector
-	b.WriteString(renderFormLabelShared("Parent", 2, m.focusIndex))
-	b.WriteString(renderParentSelectorShared(m.validParents, m.parentCursor, m.focusIndex == 2))
-	b.WriteString("\n")
-
-	// Priority selector
-	b.WriteString(renderFormLabelShared("Priority", 3, m.focusIndex))
-	b.WriteString(renderPrioritySelectorShared(m.priority, m.focusIndex == 3))
-	b.WriteString("\n")
-
-	// Section selector
-	b.WriteString(renderFormLabelShared("Section", 4, m.focusIndex))
-	b.WriteString(renderSectionSelectorShared(m.sections, m.sectionCursor, m.focusIndex == 4))
-	b.WriteString("\n")
-
-	// Due date row
-	b.WriteString(renderFormLabelShared("Due", 5, m.focusIndex))
-	b.WriteString(renderDueDateFieldShared(m.dueDateInput, m.focusIndex == 5))
-	b.WriteString("\n")
-
-	// Flags row
-	b.WriteString(renderFormLabelShared("Flags", 6, m.focusIndex))
-	b.WriteString(renderFlagsSelectorShared(m.pinned, m.active, m.flagFocus, m.focusIndex == 6))
-	b.WriteString("\n")
-
-	// Recurrence selector
-	b.WriteString(renderFormLabelShared("Recur", 7, m.focusIndex))
-	b.WriteString(renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 7, m.recurrence))
-	b.WriteString("\n")
-
-	// Tags row (read-only, modal)
-	b.WriteString(renderFormLabelShared("Tags", 8, m.focusIndex))
-	if len(m.tags) == 0 {
-		b.WriteString(MutedStyle.Render("(none)"))
-	} else {
-		b.WriteString(strings.Join(m.tags, ", "))
-	}
-	b.WriteString("  ")
-	b.WriteString(HelpStyle.Render("Ctrl+T"))
-	b.WriteString("\n")
-
-	// Description field (single line, truncated, Enter to edit)
-	b.WriteString(renderFormLabelShared("Desc", 9, m.focusIndex))
-	descDisplay := m.descValue
-	if descDisplay == "" {
-		descDisplay = MutedStyle.Render("(press Enter to edit)")
-	} else {
-		descDisplay = strings.ReplaceAll(descDisplay, "\n", " ")
-		descDisplay = util.Truncate(descDisplay, 50)
-	}
-	if m.focusIndex == 9 {
-		b.WriteString(SelectorOptionSelectedStyle.Render(descDisplay))
-	} else {
-		b.WriteString(descDisplay)
-	}
-
-	// Discard confirmation
-	if m.confirmDiscard {
-		b.WriteString("\n\n")
-		b.WriteString(PreviewWarningStyle.Render("Discard unsaved changes? (y/n)"))
-	}
-
-	// Error display
-	if m.err != nil {
-		b.WriteString("\n\n")
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-	}
-
-	// Footer
-	left := HelpStyle.Render("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+T tags · /: search parents · Esc cancel")
-	right := MutedStyle.Render("Create Task")
-	content := b.String()
-
-	var out strings.Builder
-	out.WriteString(renderFullscreenTitle("Create Task", ""))
-	out.WriteString("\n\n")
-	out.WriteString(content)
-	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(left, right, m.width))
-
-	return out.String()
 }
 
 // HasTextInput returns true because the task creator always has inputs.
@@ -751,4 +292,123 @@ func (m *TaskCreatorModel) HasTextInput() bool {
 // ShouldCaptureEsc returns true when confirmation is active.
 func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
 	return m.confirmDiscard
+}
+
+// currentTypeCanHaveChildren returns true if the currently selected type can have children.
+func (m *TaskCreatorModel) currentTypeCanHaveChildren() bool {
+	return m.types[m.typeCursor].CanHaveChildren()
+}
+
+// checklistStartIndex returns the focus index where checklist items begin.
+func (m *TaskCreatorModel) checklistStartIndex() int {
+	return creatorFieldCount
+}
+
+// subtaskStartIndex returns the focus index where subtask items begin.
+func (m *TaskCreatorModel) subtaskStartIndex() int {
+	return creatorFieldCount + len(m.checklist)
+}
+
+// getFirstFocusIndexForTab returns the starting focus index for a given tab.
+func (m *TaskCreatorModel) getFirstFocusIndexForTab(tab int) int {
+	switch tab {
+	case creatorTabFields:
+		return 0
+	case creatorTabChecklist:
+		return m.checklistStartIndex()
+	case creatorTabSubtasks:
+		return m.subtaskStartIndex()
+	}
+	return 0
+}
+
+// getTabForFocusIndex returns which tab the given focus index belongs to.
+func (m *TaskCreatorModel) getTabForFocusIndex(idx int) int {
+	if idx < m.checklistStartIndex() {
+		return creatorTabFields
+	}
+	if idx < m.subtaskStartIndex() {
+		return creatorTabChecklist
+	}
+	return creatorTabSubtasks
+}
+
+// getFocusCountForTab returns the number of focusable fields in a tab.
+func (m *TaskCreatorModel) getFocusCountForTab(tab int) int {
+	switch tab {
+	case creatorTabFields:
+		return creatorFieldCount
+	case creatorTabChecklist:
+		return len(m.checklist)
+	case creatorTabSubtasks:
+		if m.currentTypeCanHaveChildren() {
+			return len(m.subtasks)
+		}
+		return 0
+	}
+	return 0
+}
+
+// focusFieldCount returns total number of focusable fields.
+func (m *TaskCreatorModel) focusFieldCount() int {
+	count := creatorFieldCount + len(m.checklist)
+	if m.currentTypeCanHaveChildren() {
+		count += len(m.subtasks)
+	}
+	return count
+}
+
+// getAllowedSubtaskTypes returns the subtask types allowed for the current task type.
+// Epic allows Task, Bug, Idea. Story allows only Task, Bug.
+func (m *TaskCreatorModel) getAllowedSubtaskTypes() []models.TaskType {
+	allowedChildren := m.taskType.AllowedChildren()
+	var result []models.TaskType
+	for _, childType := range allowedChildren {
+		// Only include leaf types (Task, Bug, Idea) - not Epic or Story
+		if !childType.CanHaveChildren() {
+			result = append(result, childType)
+		}
+	}
+	return result
+}
+
+// getFocusSection returns which section the current focus is in.
+// Returns section name and index within that section (-1 if not applicable).
+func (m *TaskCreatorModel) getFocusSection() (section string, idx int) {
+	switch m.focusIndex {
+	case 0:
+		return "title", -1
+	case 1:
+		return "type", -1
+	case 2:
+		return "parent", -1
+	case 3:
+		return "priority", -1
+	case 4:
+		return "section", -1
+	case 5:
+		return "dueDate", -1
+	case 6:
+		return "flags", -1
+	case 7:
+		return "recurrence", -1
+	case 8:
+		return "tags", -1
+	case 9:
+		return "description", -1
+	default:
+		checklistStart := m.checklistStartIndex()
+		subtaskStart := m.subtaskStartIndex()
+
+		if m.focusIndex >= checklistStart && m.focusIndex < subtaskStart {
+			return "checklist", m.focusIndex - checklistStart
+		}
+		if m.currentTypeCanHaveChildren() && m.focusIndex >= subtaskStart {
+			subtaskIdx := m.focusIndex - subtaskStart
+			if subtaskIdx < len(m.subtasks) {
+				return "subtask", subtaskIdx
+			}
+		}
+		return "title", -1
+	}
 }
