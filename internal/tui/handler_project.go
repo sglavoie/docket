@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -202,6 +203,47 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.pushView(ViewProjectTree)
 		}
 		return true, nil
+
+	case SandboxResetRequestMsg:
+		sandbox := m.config.GetSandboxProject()
+		if sandbox == nil {
+			m.statusMessage = "Sandbox project not found"
+			return true, defaultStatusTimeout()
+		}
+		if err := storage.LoadProject(sandbox); err != nil {
+			m.err = fmt.Errorf("failed to load sandbox: %w", err)
+			return true, nil
+		}
+		taskCount := len(sandbox.Tasks)
+		notes, _ := storage.ListNotes(sandbox)
+		noteCount := len(notes)
+		customSections := sandbox.GetCustomSections()
+		sectionCount := len(customSections)
+
+		if taskCount == 0 && noteCount == 0 && sectionCount == 0 {
+			m.statusMessage = "Sandbox is already empty"
+			return true, defaultStatusTimeout()
+		}
+
+		// Build item count for confirmation
+		totalItems := taskCount + noteCount + sectionCount
+		m.pendingSandboxReset = true
+		m.pendingSandboxTaskCount = totalItems
+		m.statusMessage = fmt.Sprintf("Reset sandbox? Delete %d item(s)? (y/n)", totalItems)
+		return true, nil
+
+	case SandboxResetDoneMsg:
+		m.pendingSandboxReset = false
+		m.pendingSandboxTaskCount = 0
+		m.statusMessage = fmt.Sprintf("Cleared %d item(s) from sandbox", msg.TaskCount)
+		// Refresh views if sandbox is currently displayed
+		if m.currentProject != nil && m.currentProject.Sandbox {
+			m.refreshProjectTree()
+		}
+		if m.dashboard != nil {
+			m.dashboard.Refresh(m.config)
+		}
+		return true, defaultStatusTimeout()
 	}
 	return false, nil
 }
@@ -269,6 +311,67 @@ func (m *AppModel) purgeProjectFromTrash(slug string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to delete project: %w", err)}
 		}
 		return projectPurgedFromTrashMsg{Slug: slug}
+	}
+}
+
+// executeSandboxReset performs the actual sandbox reset operation.
+func (m *AppModel) executeSandboxReset() tea.Cmd {
+	return func() tea.Msg {
+		sandbox := m.config.GetSandboxProject()
+		if sandbox == nil {
+			return ErrorMsg{Err: fmt.Errorf("sandbox project not found")}
+		}
+
+		if err := storage.LoadProject(sandbox); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to load sandbox: %w", err)}
+		}
+
+		taskCount := len(sandbox.Tasks)
+		notes, _ := storage.ListNotes(sandbox)
+		noteCount := len(notes)
+		customSections := sandbox.GetCustomSections()
+		sectionCount := len(customSections)
+		totalItems := taskCount + noteCount + sectionCount
+
+		if totalItems == 0 {
+			return SandboxResetDoneMsg{TaskCount: 0}
+		}
+
+		// Record undo snapshot before clearing (only captures tasks, not notes)
+		undoDepth := 0
+		if m.config.UndoHistoryDepth != nil {
+			undoDepth = *m.config.UndoHistoryDepth
+		}
+		if err := storage.RecordUndoSnapshot(sandbox, "reset sandbox", "", undoDepth); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to record undo snapshot: %w", err)}
+		}
+
+		// Clear tasks and reset NextShortID
+		sandbox.Tasks = nil
+		sandbox.NextShortID = 1
+
+		// Reset sections to default
+		sandbox.Sections = []string{models.SectionNext}
+		sandbox.SectionColors = make(map[string]string)
+
+		if err := storage.SaveProject(sandbox); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save sandbox: %w", err)}
+		}
+
+		// Clear notes directory
+		if noteCount > 0 {
+			notesDir := storage.NotesDir(sandbox)
+			if err := os.RemoveAll(notesDir); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to clear notes: %w", err)}
+			}
+		}
+
+		// Save config for NextShortID persistence
+		if err := m.configManager.Save(m.config); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+		}
+
+		return SandboxResetDoneMsg{TaskCount: totalItems}
 	}
 }
 

@@ -13,6 +13,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle global key messages first
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle pending sandbox reset confirmation before clearing status
+		if m.pendingSandboxReset {
+			switch msg.String() {
+			case "y", "Y":
+				return m, m.executeSandboxReset()
+			case "n", "N", "esc":
+				m.pendingSandboxReset = false
+				m.pendingSandboxTaskCount = 0
+				m.statusMessage = "Canceled"
+				return m, defaultStatusTimeout()
+			default:
+				// Keep showing the confirmation prompt
+				return m, nil
+			}
+		}
+
 		// Clear temporary status/error messages on any keypress
 		m.statusMessage = ""
 		m.err = nil

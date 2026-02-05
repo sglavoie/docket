@@ -185,6 +185,16 @@ func (m *AppModel) projectCommands() []Command {
 				return ShowTrashedProjectsMsg{}
 			},
 		},
+		{
+			Name:        "reset sandbox",
+			Description: "Clear tasks, notes, and sections from sandbox",
+			Category:    CategoryProjects,
+			Views:       []ViewType{},
+			Aliases:     []string{"clear sandbox"},
+			Handler: func() tea.Msg {
+				return SandboxResetRequestMsg{}
+			},
+		},
 	}
 }
 

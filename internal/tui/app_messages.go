@@ -743,3 +743,15 @@ type LinkRemovedMsg struct {
 	SourceTask *models.Task
 	Section    int // 0=blocked by, 1=blocking, 2=related
 }
+
+// =============================================================================
+// Sandbox Messages
+// =============================================================================
+
+// SandboxResetRequestMsg requests to reset/clear the sandbox project.
+type SandboxResetRequestMsg struct{}
+
+// SandboxResetDoneMsg signals the sandbox was reset.
+type SandboxResetDoneMsg struct {
+	TaskCount int // Number of tasks that were cleared
+}

@@ -161,6 +161,10 @@ type AppModel struct {
 		Project *models.Project
 	}
 
+	// Pending sandbox reset confirmation
+	pendingSandboxReset     bool
+	pendingSandboxTaskCount int
+
 	// CLI reference for AI assistant context
 	cliReference string
 }
