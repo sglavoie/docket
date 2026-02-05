@@ -136,6 +136,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "F@", Description: "Filter by section", Category: "Filters", Views: views},
 		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Fa", Description: "Filter by attribute (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 

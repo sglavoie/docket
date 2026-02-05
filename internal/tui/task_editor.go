@@ -55,8 +55,45 @@ type TaskEditorModel struct {
 	recurrenceCursor int
 	recurrenceOpts   []string // Display labels for recurrence options
 
+	// Type-specific attributes
+	// Bug attributes
+	bugReproducibleCursor int
+	bugSeverityCursor     int
+	bugWorkaround         string
+
+	// Idea attributes
+	ideaCategoryCursor int
+	ideaEffortCursor   int
+	ideaValueCursor    int
+	ideaValidated      bool
+
+	// Task attributes
+	taskEffortCursor   int
+	taskWorkTypeCursor int
+
+	// Story attributes
+	storyPointsCursor int
+	storyPersona      string
+
+	// Epic attributes
+	epicScopeCursor    int
+	epicMilestone      string
+	epicSuccessMetrics string
+
+	// Original attribute values for change detection
+	originalBugAttrs   *models.BugAttrs
+	originalIdeaAttrs  *models.IdeaAttrs
+	originalTaskAttrs  *models.TaskAttrs
+	originalStoryAttrs *models.StoryAttrs
+	originalEpicAttrs  *models.EpicAttrs
+
+	// Type change confirmation
+	confirmTypeChange bool
+	pendingTypeCursor int
+	pendingTaskType   models.TaskType
+
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence, 8+=attrs
 	width      int
 	height     int
 	err        error
@@ -187,6 +224,9 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		height:             24,
 	}
 
+	// Load existing type-specific attributes
+	m.loadExistingAttrs(task)
+
 	m.updateValidParents()
 
 	return m
@@ -240,7 +280,40 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case TextEditorDoneMsg:
+		if !msg.Canceled {
+			switch msg.FieldName {
+			case "bugWorkaround":
+				m.bugWorkaround = msg.Value
+			case "storyPersona":
+				m.storyPersona = msg.Value
+			case "epicMilestone":
+				m.epicMilestone = msg.Value
+			case "epicSuccessMetrics":
+				m.epicSuccessMetrics = msg.Value
+			}
+			m.hasChanges = m.checkChanges()
+		}
+		return m, nil
+
 	case tea.KeyMsg:
+		// Handle type change confirmation
+		if m.confirmTypeChange {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmTypeChange = false
+				m.clearCurrentAttrs()
+				m.typeCursor = m.pendingTypeCursor
+				m.taskType = m.pendingTaskType
+				m.updateValidParents()
+				m.hasChanges = m.checkChanges()
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmTypeChange = false
+				return m, nil
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "esc":
 			return m, func() tea.Msg {
@@ -251,11 +324,12 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (8 fields: title, type, parent, priority, section, due date, flags, recurrence)
+			// Move focus (8 base fields + attribute fields)
+			totalFields := m.totalFieldCount()
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 8
+				m.focusIndex = (m.focusIndex + 1) % totalFields
 			} else {
-				m.focusIndex = (m.focusIndex + 7) % 8
+				m.focusIndex = (m.focusIndex + totalFields - 1) % totalFields
 			}
 
 			// Focus new field
@@ -263,16 +337,27 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			// Move to next field (8 focusable fields: 0-7)
-			if m.focusIndex < 7 {
-				// For due date field, parse and validate on enter
-				if m.focusIndex == 5 {
-					if err := m.parseDueDate(); err != nil {
-						m.err = err
-						return m, nil
-					}
-					m.err = nil
+			// For due date field, parse and validate on enter
+			if m.focusIndex == 5 {
+				if err := m.parseDueDate(); err != nil {
+					m.err = err
+					return m, nil
 				}
+				m.err = nil
+			}
+			// Handle text attribute fields on enter
+			attrsStart := m.attrsStartIndex()
+			if m.focusIndex >= attrsStart {
+				fieldIdx := m.focusIndex - attrsStart
+				if msgFn := m.handleAttrEnter(fieldIdx); msgFn != nil {
+					return m, func() tea.Msg {
+						return msgFn().(tea.Msg)
+					}
+				}
+			}
+			// Move to next field
+			totalFields := m.totalFieldCount()
+			if m.focusIndex < totalFields-1 {
 				m.blurCurrentField()
 				m.focusIndex++
 				m.focusCurrentField()
@@ -325,11 +410,28 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "left", "h":
+			// Check if in attribute fields
+			attrsStart := m.attrsStartIndex()
+			if m.focusIndex >= attrsStart {
+				fieldIdx := m.focusIndex - attrsStart
+				m.handleAttrLeft(fieldIdx)
+				m.hasChanges = m.checkChanges()
+				return m, nil
+			}
 			switch m.focusIndex {
 			case 1: // Type selector
 				if m.typeCursor > 0 {
-					m.typeCursor--
-					m.taskType = m.types[m.typeCursor]
+					newCursor := m.typeCursor - 1
+					newType := m.types[newCursor]
+					// Check if changing type would lose attrs
+					if m.hasNonEmptyAttrs() && newType != m.taskType {
+						m.confirmTypeChange = true
+						m.pendingTypeCursor = newCursor
+						m.pendingTaskType = newType
+						return m, nil
+					}
+					m.typeCursor = newCursor
+					m.taskType = newType
 					m.updateValidParents()
 				}
 			case 2: // Parent selector
@@ -372,11 +474,28 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "right", "l":
+			// Check if in attribute fields
+			attrsStart := m.attrsStartIndex()
+			if m.focusIndex >= attrsStart {
+				fieldIdx := m.focusIndex - attrsStart
+				m.handleAttrRight(fieldIdx)
+				m.hasChanges = m.checkChanges()
+				return m, nil
+			}
 			switch m.focusIndex {
 			case 1: // Type selector
 				if m.typeCursor < len(m.types)-1 {
-					m.typeCursor++
-					m.taskType = m.types[m.typeCursor]
+					newCursor := m.typeCursor + 1
+					newType := m.types[newCursor]
+					// Check if changing type would lose attrs
+					if m.hasNonEmptyAttrs() && newType != m.taskType {
+						m.confirmTypeChange = true
+						m.pendingTypeCursor = newCursor
+						m.pendingTaskType = newType
+						return m, nil
+					}
+					m.typeCursor = newCursor
+					m.taskType = newType
 					m.updateValidParents()
 				}
 			case 2: // Parent selector
@@ -422,6 +541,16 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
 				return m, nil
+			}
+			// Space toggles validated for idea attrs
+			attrsStart := m.attrsStartIndex()
+			if m.focusIndex >= attrsStart && m.taskType == models.TaskTypeIdea {
+				fieldIdx := m.focusIndex - attrsStart
+				if fieldIdx == 3 { // Validated field
+					m.ideaValidated = !m.ideaValidated
+					m.hasChanges = m.checkChanges()
+					return m, nil
+				}
 			}
 
 		case "r":
@@ -508,6 +637,9 @@ func (m *TaskEditorModel) View() string {
 	content.WriteString(m.renderRecurrenceSelector())
 	content.WriteString("\n")
 
+	// Type-specific attributes section
+	content.WriteString(m.renderAttributesSection())
+
 	// Tags row (read-only)
 	content.WriteString(m.renderFormLabel("Tags", -1))
 	if len(m.tags) == 0 {
@@ -530,6 +662,12 @@ func (m *TaskEditorModel) View() string {
 	}
 	content.WriteString("  ")
 	content.WriteString(HelpStyle.Render("Ctrl+O"))
+
+	// Type change confirmation
+	if m.confirmTypeChange {
+		content.WriteString("\n")
+		content.WriteString(PreviewWarningStyle.Render(fmt.Sprintf("Changing type will clear %s attributes. Continue? (y/n)", m.taskType.HeadingPrefix())))
+	}
 
 	// Error display inside card
 	if m.err != nil {
@@ -562,7 +700,7 @@ func (m *TaskEditorModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the app can close the view on esc.
+// ShouldCaptureEsc returns true when confirmation is active.
 func (m *TaskEditorModel) ShouldCaptureEsc() bool {
-	return false
+	return m.confirmTypeChange
 }

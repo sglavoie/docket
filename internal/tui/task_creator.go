@@ -19,10 +19,11 @@ var formFactory = DefaultFormFieldFactory()
 const (
 	creatorTabFields    = 0
 	creatorTabChecklist = 1
-	creatorTabSubtasks  = 2
+	creatorTabAttrs     = 2
+	creatorTabSubtasks  = 3
 )
 
-var creatorTabNames = []string{"Fields", "Checklist", "Subtasks"}
+var creatorTabNames = []string{"Fields", "Checklist", "Attributes", "Subtasks"}
 
 // creatorFieldCount is the number of fields in the Fields tab.
 const creatorFieldCount = 10 // title, type, parent, priority, section, due date, flags, recurrence, tags, description
@@ -67,6 +68,36 @@ type TaskCreatorModel struct {
 
 	// Subtasks (Epic/Story only)
 	subtasks []SubtaskFormState // reuse SubtaskFormState from template_creator.go
+
+	// Type-specific attributes
+	// Bug attributes
+	bugReproducibleCursor int
+	bugSeverityCursor     int
+	bugWorkaround         string
+
+	// Idea attributes
+	ideaCategoryCursor int
+	ideaEffortCursor   int
+	ideaValueCursor    int
+	ideaValidated      bool
+
+	// Task attributes
+	taskEffortCursor   int
+	taskWorkTypeCursor int
+
+	// Story attributes
+	storyPointsCursor int
+	storyPersona      string
+
+	// Epic attributes
+	epicScopeCursor    int
+	epicMilestone      string
+	epicSuccessMetrics string
+
+	// Type change confirmation
+	confirmTypeChange bool
+	pendingTypeCursor int
+	pendingTaskType   models.TaskType
 
 	// Form state
 	focusIndex int // Tracks focus across all tabs
@@ -291,7 +322,7 @@ func (m *TaskCreatorModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when confirmation is active.
 func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
-	return m.confirmDiscard
+	return m.confirmDiscard || m.confirmTypeChange
 }
 
 // currentTypeCanHaveChildren returns true if the currently selected type can have children.
@@ -304,9 +335,31 @@ func (m *TaskCreatorModel) checklistStartIndex() int {
 	return creatorFieldCount
 }
 
+// attrsStartIndex returns the focus index where attribute fields begin.
+func (m *TaskCreatorModel) attrsStartIndex() int {
+	return creatorFieldCount + len(m.checklist)
+}
+
+// getAttrFieldCount returns the number of focusable attribute fields for the current task type.
+func (m *TaskCreatorModel) getAttrFieldCount() int {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		return 3 // reproducible, severity, workaround
+	case models.TaskTypeIdea:
+		return 4 // category, effort, value, validated
+	case models.TaskTypeTask:
+		return 2 // effort, workType
+	case models.TaskTypeStory:
+		return 2 // storyPoints, persona
+	case models.TaskTypeEpic:
+		return 3 // scope, milestone, successMetrics
+	}
+	return 0
+}
+
 // subtaskStartIndex returns the focus index where subtask items begin.
 func (m *TaskCreatorModel) subtaskStartIndex() int {
-	return creatorFieldCount + len(m.checklist)
+	return m.attrsStartIndex() + m.getAttrFieldCount()
 }
 
 // getFirstFocusIndexForTab returns the starting focus index for a given tab.
@@ -316,6 +369,8 @@ func (m *TaskCreatorModel) getFirstFocusIndexForTab(tab int) int {
 		return 0
 	case creatorTabChecklist:
 		return m.checklistStartIndex()
+	case creatorTabAttrs:
+		return m.attrsStartIndex()
 	case creatorTabSubtasks:
 		return m.subtaskStartIndex()
 	}
@@ -327,8 +382,11 @@ func (m *TaskCreatorModel) getTabForFocusIndex(idx int) int {
 	if idx < m.checklistStartIndex() {
 		return creatorTabFields
 	}
-	if idx < m.subtaskStartIndex() {
+	if idx < m.attrsStartIndex() {
 		return creatorTabChecklist
+	}
+	if idx < m.subtaskStartIndex() {
+		return creatorTabAttrs
 	}
 	return creatorTabSubtasks
 }
@@ -340,6 +398,8 @@ func (m *TaskCreatorModel) getFocusCountForTab(tab int) int {
 		return creatorFieldCount
 	case creatorTabChecklist:
 		return len(m.checklist)
+	case creatorTabAttrs:
+		return m.getAttrFieldCount()
 	case creatorTabSubtasks:
 		if m.currentTypeCanHaveChildren() {
 			return len(m.subtasks)
@@ -351,11 +411,53 @@ func (m *TaskCreatorModel) getFocusCountForTab(tab int) int {
 
 // focusFieldCount returns total number of focusable fields.
 func (m *TaskCreatorModel) focusFieldCount() int {
-	count := creatorFieldCount + len(m.checklist)
+	count := creatorFieldCount + len(m.checklist) + m.getAttrFieldCount()
 	if m.currentTypeCanHaveChildren() {
 		count += len(m.subtasks)
 	}
 	return count
+}
+
+// hasNonEmptyAttrs returns true if the current task type has any non-empty attribute values.
+func (m *TaskCreatorModel) hasNonEmptyAttrs() bool {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		return m.bugReproducibleCursor > 0 || m.bugSeverityCursor > 0 || m.bugWorkaround != ""
+	case models.TaskTypeIdea:
+		return m.ideaCategoryCursor > 0 || m.ideaEffortCursor > 0 || m.ideaValueCursor > 0 || m.ideaValidated
+	case models.TaskTypeTask:
+		return m.taskEffortCursor > 0 || m.taskWorkTypeCursor > 0
+	case models.TaskTypeStory:
+		return m.storyPointsCursor > 0 || m.storyPersona != ""
+	case models.TaskTypeEpic:
+		return m.epicScopeCursor > 0 || m.epicMilestone != "" || m.epicSuccessMetrics != ""
+	}
+	return false
+}
+
+// clearCurrentAttrs resets all attribute values for the current task type.
+func (m *TaskCreatorModel) clearCurrentAttrs() {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		m.bugReproducibleCursor = 0
+		m.bugSeverityCursor = 0
+		m.bugWorkaround = ""
+	case models.TaskTypeIdea:
+		m.ideaCategoryCursor = 0
+		m.ideaEffortCursor = 0
+		m.ideaValueCursor = 0
+		m.ideaValidated = false
+	case models.TaskTypeTask:
+		m.taskEffortCursor = 0
+		m.taskWorkTypeCursor = 0
+	case models.TaskTypeStory:
+		m.storyPointsCursor = 0
+		m.storyPersona = ""
+	case models.TaskTypeEpic:
+		m.epicScopeCursor = 0
+		m.epicMilestone = ""
+		m.epicSuccessMetrics = ""
+	}
 }
 
 // getAllowedSubtaskTypes returns the subtask types allowed for the current task type.
@@ -398,10 +500,14 @@ func (m *TaskCreatorModel) getFocusSection() (section string, idx int) {
 		return "description", -1
 	default:
 		checklistStart := m.checklistStartIndex()
+		attrsStart := m.attrsStartIndex()
 		subtaskStart := m.subtaskStartIndex()
 
-		if m.focusIndex >= checklistStart && m.focusIndex < subtaskStart {
+		if m.focusIndex >= checklistStart && m.focusIndex < attrsStart {
 			return "checklist", m.focusIndex - checklistStart
+		}
+		if m.focusIndex >= attrsStart && m.focusIndex < subtaskStart {
+			return "attrs", m.focusIndex - attrsStart
 		}
 		if m.currentTypeCanHaveChildren() && m.focusIndex >= subtaskStart {
 			subtaskIdx := m.focusIndex - subtaskStart

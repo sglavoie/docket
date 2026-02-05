@@ -1,8 +1,100 @@
 package tui
 
+import (
+	"strings"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
 // renderFormLabel renders a form field label with fixed width alignment.
 func (m *TaskEditorModel) renderFormLabel(label string, focusIdx int) string {
 	return renderFormLabelShared(label, focusIdx, m.focusIndex)
+}
+
+// renderAttributesSection renders the type-specific attributes section.
+func (m *TaskEditorModel) renderAttributesSection() string {
+	var b strings.Builder
+
+	attrsStart := m.attrsStartIndex()
+
+	switch m.taskType {
+	case models.TaskTypeBug:
+		// Reproducible
+		b.WriteString(renderFormLabelShared("Repro", attrsStart, m.focusIndex))
+		b.WriteString(renderBugReproducibleSelector(m.bugReproducibleCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Severity
+		b.WriteString(renderFormLabelShared("Severity", attrsStart+1, m.focusIndex))
+		b.WriteString(renderBugSeveritySelector(m.bugSeverityCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Workaround
+		b.WriteString(renderFormLabelShared("Workaround", attrsStart+2, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.bugWorkaround, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
+
+	case models.TaskTypeIdea:
+		// Category
+		b.WriteString(renderFormLabelShared("Category", attrsStart, m.focusIndex))
+		b.WriteString(renderIdeaCategorySelector(m.ideaCategoryCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Effort
+		b.WriteString(renderFormLabelShared("Effort", attrsStart+1, m.focusIndex))
+		b.WriteString(renderEffortSelector(m.ideaEffortCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Value
+		b.WriteString(renderFormLabelShared("Value", attrsStart+2, m.focusIndex))
+		b.WriteString(renderIdeaValueSelector(m.ideaValueCursor, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
+
+		// Validated
+		b.WriteString(renderFormLabelShared("Validated", attrsStart+3, m.focusIndex))
+		b.WriteString(renderValidatedToggle(m.ideaValidated, m.focusIndex == attrsStart+3))
+		b.WriteString("\n")
+
+	case models.TaskTypeTask:
+		// Effort
+		b.WriteString(renderFormLabelShared("Effort", attrsStart, m.focusIndex))
+		b.WriteString(renderEffortSelector(m.taskEffortCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// WorkType
+		b.WriteString(renderFormLabelShared("Work Type", attrsStart+1, m.focusIndex))
+		b.WriteString(renderWorkTypeSelector(m.taskWorkTypeCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+	case models.TaskTypeStory:
+		// Story Points
+		b.WriteString(renderFormLabelShared("Points", attrsStart, m.focusIndex))
+		b.WriteString(renderStoryPointsSelector(m.storyPointsCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Persona
+		b.WriteString(renderFormLabelShared("Persona", attrsStart+1, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.storyPersona, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+	case models.TaskTypeEpic:
+		// Scope
+		b.WriteString(renderFormLabelShared("Scope", attrsStart, m.focusIndex))
+		b.WriteString(renderEpicScopeSelector(m.epicScopeCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Milestone
+		b.WriteString(renderFormLabelShared("Milestone", attrsStart+1, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.epicMilestone, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Success Metrics
+		b.WriteString(renderFormLabelShared("Metrics", attrsStart+2, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.epicSuccessMetrics, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
+	}
+
+	return b.String()
 }
 
 // renderTypeSelector renders the task type selector options.

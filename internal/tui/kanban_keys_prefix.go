@@ -280,6 +280,42 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		// Filter due-date sub-prefix
 		return m.handleKanbanFilterDuePrefix(key)
 
+	case "Fa":
+		// Filter attribute sub-prefix
+		return m.handleKanbanFilterAttrPrefix(key)
+
+	case "Fas":
+		// Filter attribute severity value
+		return m.handleKanbanFilterAttrSeverityPrefix(key)
+
+	case "Far":
+		// Filter attribute reproducible value
+		return m.handleKanbanFilterAttrReproduciblePrefix(key)
+
+	case "Fae":
+		// Filter attribute effort value
+		return m.handleKanbanFilterAttrEffortPrefix(key)
+
+	case "Fac":
+		// Filter attribute category value
+		return m.handleKanbanFilterAttrCategoryPrefix(key)
+
+	case "Fav":
+		// Filter attribute value value
+		return m.handleKanbanFilterAttrValuePrefix(key)
+
+	case "Faw":
+		// Filter attribute worktype value
+		return m.handleKanbanFilterAttrWorktypePrefix(key)
+
+	case "Fao":
+		// Filter attribute scope value
+		return m.handleKanbanFilterAttrScopePrefix(key)
+
+	case "Fap":
+		// Filter attribute points value
+		return m.handleKanbanFilterAttrPointsPrefix(key)
+
 	case "z":
 		// Fold/expand operations
 		switch key {

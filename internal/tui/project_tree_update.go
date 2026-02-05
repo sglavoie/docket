@@ -587,6 +587,42 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		// Filter due-date sub-prefix
 		return m.handleFilterDuePrefix(key)
 
+	case "Fa":
+		// Filter attribute sub-prefix
+		return m.handleFilterAttrPrefix(key)
+
+	case "Fas":
+		// Filter attribute severity value
+		return m.handleFilterAttrSeverityPrefix(key)
+
+	case "Far":
+		// Filter attribute reproducible value
+		return m.handleFilterAttrReproduciblePrefix(key)
+
+	case "Fae":
+		// Filter attribute effort value
+		return m.handleFilterAttrEffortPrefix(key)
+
+	case "Fac":
+		// Filter attribute category value
+		return m.handleFilterAttrCategoryPrefix(key)
+
+	case "Fav":
+		// Filter attribute value value
+		return m.handleFilterAttrValuePrefix(key)
+
+	case "Faw":
+		// Filter attribute worktype value
+		return m.handleFilterAttrWorktypePrefix(key)
+
+	case "Fao":
+		// Filter attribute scope value
+		return m.handleFilterAttrScopePrefix(key)
+
+	case "Fap":
+		// Filter attribute points value
+		return m.handleFilterAttrPointsPrefix(key)
+
 	case "s":
 		// Snooze quick actions
 		now := time.Now()

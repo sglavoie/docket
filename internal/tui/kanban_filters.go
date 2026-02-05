@@ -43,6 +43,7 @@ type KanbanFilterState struct {
 	Tags     map[string]bool   // filter by tag names (AND logic)
 	DueDate  DueDateFilter     // filter by due date
 	Search   string            // text search query
+	Attrs    map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
 }
 
 // KanbanFilterBarComponent encapsulates filter bar state for the kanban view.
@@ -145,6 +146,11 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 		if !m.matchesSearch(task) {
 			return false
 		}
+	}
+
+	// Apply attribute filters
+	if !passesAttrFilters(task, m.filter.Attrs) {
+		return false
 	}
 
 	// Apply actionable filter (hide blocked tasks and tasks with incomplete dependencies)
@@ -267,7 +273,8 @@ func (m *KanbanViewModel) HasActiveFilters() bool {
 		m.filter.Priority != 0 ||
 		len(m.filter.Tags) > 0 ||
 		m.filter.DueDate != DueDateAll ||
-		m.filter.Search != ""
+		m.filter.Search != "" ||
+		len(m.filter.Attrs) > 0
 }
 
 // ClearAllFilters resets all filters to their default state.
@@ -278,6 +285,7 @@ func (m *KanbanViewModel) ClearAllFilters() {
 	m.filter.Tags = make(map[string]bool)
 	m.filter.DueDate = DueDateAll
 	m.filter.Search = ""
+	m.filter.Attrs = make(map[string]string)
 }
 
 // toggleKanbanPriorityFilter toggles the high priority filter.
@@ -366,6 +374,11 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		readyDetail = "on"
 	}
 
+	attrDetail := "(none)"
+	if len(m.filter.Attrs) > 0 {
+		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
+	}
+
 	return []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.completedViewMode},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
@@ -373,6 +386,7 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		{Key: "s", Description: "status", Detail: statusDetail, Active: m.filter.Status != ""},
 		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
+		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter},
 		{Key: "x", Description: "clear-all"},
 	}
@@ -406,6 +420,10 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 	case "d":
 		// Open due-date sub-popup
 		m.pendingPrefix = "Fd"
+		return m, nil
+	case "a":
+		// Open attribute sub-popup
+		m.pendingPrefix = "Fa"
 		return m, nil
 	case "r":
 		// Toggle actionable filter
@@ -479,6 +497,235 @@ func (m *KanbanViewModel) handleKanbanFilterDuePrefix(key string) (tea.Model, te
 		m.filter.DueDate = DueDateNone
 	case "0":
 		m.filter.DueDate = DueDateAll
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrPrefix handles the attribute filter sub-prefix in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "s":
+		m.pendingPrefix = "Fas"
+		return m, nil
+	case "r":
+		m.pendingPrefix = "Far"
+		return m, nil
+	case "e":
+		m.pendingPrefix = "Fae"
+		return m, nil
+	case "c":
+		m.pendingPrefix = "Fac"
+		return m, nil
+	case "v":
+		m.pendingPrefix = "Fav"
+		return m, nil
+	case "w":
+		m.pendingPrefix = "Faw"
+		return m, nil
+	case "o":
+		m.pendingPrefix = "Fao"
+		return m, nil
+	case "p":
+		m.pendingPrefix = "Fap"
+		return m, nil
+	case "V":
+		if m.filter.Attrs["idea.validated"] == "true" {
+			delete(m.filter.Attrs, "idea.validated")
+		} else {
+			m.filter.Attrs["idea.validated"] = "true"
+			m.filter.Type = models.TaskTypeIdea
+		}
+		m.loadTasks()
+		return m, nil
+	case "0":
+		m.filter.Attrs = make(map[string]string)
+		m.loadTasks()
+		return m, nil
+	}
+	return m, nil
+}
+
+// handleKanbanFilterAttrSeverityPrefix handles bug severity value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrSeverityPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "c":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCritical)
+		m.filter.Type = models.TaskTypeBug
+	case "j":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMajor)
+		m.filter.Type = models.TaskTypeBug
+	case "m":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMinor)
+		m.filter.Type = models.TaskTypeBug
+	case "o":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCosmetic)
+		m.filter.Type = models.TaskTypeBug
+	case "0":
+		delete(m.filter.Attrs, "bug.severity")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrReproduciblePrefix handles bug reproducible value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrReproduciblePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleYes)
+		m.filter.Type = models.TaskTypeBug
+	case "n":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleNo)
+		m.filter.Type = models.TaskTypeBug
+	case "s":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleSometimes)
+		m.filter.Type = models.TaskTypeBug
+	case "0":
+		delete(m.filter.Attrs, "bug.reproducible")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrEffortPrefix handles effort value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrEffortPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "s":
+		m.filter.Attrs["effort"] = string(models.EffortSmall)
+	case "m":
+		m.filter.Attrs["effort"] = string(models.EffortMedium)
+	case "l":
+		m.filter.Attrs["effort"] = string(models.EffortLarge)
+	case "u":
+		m.filter.Attrs["effort"] = string(models.EffortUnknown)
+	case "0":
+		delete(m.filter.Attrs, "effort")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrCategoryPrefix handles idea category value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrCategoryPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "f":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryFeature)
+		m.filter.Type = models.TaskTypeIdea
+	case "i":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryImprovement)
+		m.filter.Type = models.TaskTypeIdea
+	case "r":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryRefactor)
+		m.filter.Type = models.TaskTypeIdea
+	case "s":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryResearch)
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		delete(m.filter.Attrs, "idea.category")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrValuePrefix handles idea value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrValuePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "l":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueLow)
+		m.filter.Type = models.TaskTypeIdea
+	case "m":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueMedium)
+		m.filter.Type = models.TaskTypeIdea
+	case "h":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueHigh)
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		delete(m.filter.Attrs, "idea.value")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrWorktypePrefix handles task worktype value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrWorktypePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "d":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevelopment)
+		m.filter.Type = models.TaskTypeTask
+	case "o":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDocumentation)
+		m.filter.Type = models.TaskTypeTask
+	case "t":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeTesting)
+		m.filter.Type = models.TaskTypeTask
+	case "v":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevOps)
+		m.filter.Type = models.TaskTypeTask
+	case "e":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDesign)
+		m.filter.Type = models.TaskTypeTask
+	case "0":
+		delete(m.filter.Attrs, "task.worktype")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrScopePrefix handles epic scope value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrScopePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "d":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeDefined)
+		m.filter.Type = models.TaskTypeEpic
+	case "e":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeEvolving)
+		m.filter.Type = models.TaskTypeEpic
+	case "u":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeUndefined)
+		m.filter.Type = models.TaskTypeEpic
+	case "0":
+		delete(m.filter.Attrs, "epic.scope")
+	default:
+		return m, nil
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrPointsPrefix handles story points value selection in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrPointsPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "1":
+		m.filter.Attrs["story.points"] = "1"
+		m.filter.Type = models.TaskTypeStory
+	case "2":
+		m.filter.Attrs["story.points"] = "2"
+		m.filter.Type = models.TaskTypeStory
+	case "3":
+		m.filter.Attrs["story.points"] = "3"
+		m.filter.Type = models.TaskTypeStory
+	case "5":
+		m.filter.Attrs["story.points"] = "5"
+		m.filter.Type = models.TaskTypeStory
+	case "8":
+		m.filter.Attrs["story.points"] = "8"
+		m.filter.Type = models.TaskTypeStory
+	case "0":
+		delete(m.filter.Attrs, "story.points")
 	default:
 		return m, nil
 	}

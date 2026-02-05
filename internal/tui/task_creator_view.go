@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -17,8 +18,8 @@ func (m *TaskCreatorModel) View() string {
 	// Tab bar
 	tabNames := creatorTabNames
 	if !m.currentTypeCanHaveChildren() {
-		// Hide subtasks tab for types that can't have children
-		tabNames = creatorTabNames[:2]
+		// Hide subtasks tab for types that can't have children (show Fields, Checklist, Attrs)
+		tabNames = creatorTabNames[:3]
 	}
 	b.WriteString(RenderTabBar(tabNames, m.activeTab, m.width-4, 1))
 	b.WriteString("\n\n")
@@ -29,8 +30,16 @@ func (m *TaskCreatorModel) View() string {
 		b.WriteString(m.renderFieldsTab())
 	case creatorTabChecklist:
 		b.WriteString(m.renderChecklistTab())
+	case creatorTabAttrs:
+		b.WriteString(m.renderAttributesTab())
 	case creatorTabSubtasks:
 		b.WriteString(m.renderSubtasksTab())
+	}
+
+	// Type change confirmation
+	if m.confirmTypeChange {
+		b.WriteString("\n")
+		b.WriteString(PreviewWarningStyle.Render(fmt.Sprintf("Changing type will clear %s attributes. Continue? (y/n)", m.taskType.HeadingPrefix())))
 	}
 
 	// Discard confirmation
@@ -52,6 +61,8 @@ func (m *TaskCreatorModel) View() string {
 		helpText = "[]: tabs · Tab: next · ←/→: select · Ctrl+S: save · Ctrl+T: tags · Ctrl+A: add checklist · /: search parents · Esc: cancel"
 	case creatorTabChecklist:
 		helpText = "[]: tabs · Tab: next · Ctrl+A: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Ctrl+T: tags · Esc: cancel"
+	case creatorTabAttrs:
+		helpText = "[]: tabs · Tab: next · ←/→: select · Space: toggle · Enter: edit text · Ctrl+S: save · Esc: cancel"
 	case creatorTabSubtasks:
 		helpText = "[]: tabs · Tab: next · ←/→: type · Ctrl+O: optional · Ctrl+T: add · Ctrl+K/J: reorder · Ctrl+D: delete · Ctrl+S: save · Esc: cancel"
 	}
@@ -228,6 +239,96 @@ func (m *TaskCreatorModel) renderSubtasksTab() string {
 			}
 			b.WriteString("\n")
 		}
+	}
+
+	return b.String()
+}
+
+// renderAttributesTab renders the Attributes tab content based on task type.
+func (m *TaskCreatorModel) renderAttributesTab() string {
+	var b strings.Builder
+
+	typeName := m.types[m.typeCursor].HeadingPrefix()
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%s Attributes", typeName)))
+	b.WriteString("\n\n")
+
+	attrsStart := m.attrsStartIndex()
+
+	switch m.taskType {
+	case models.TaskTypeBug:
+		// Reproducible (field 0)
+		b.WriteString(renderFormLabelShared("Repro", attrsStart, m.focusIndex))
+		b.WriteString(renderBugReproducibleSelector(m.bugReproducibleCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Severity (field 1)
+		b.WriteString(renderFormLabelShared("Severity", attrsStart+1, m.focusIndex))
+		b.WriteString(renderBugSeveritySelector(m.bugSeverityCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Workaround (field 2)
+		b.WriteString(renderFormLabelShared("Workaround", attrsStart+2, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.bugWorkaround, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
+
+	case models.TaskTypeIdea:
+		// Category (field 0)
+		b.WriteString(renderFormLabelShared("Category", attrsStart, m.focusIndex))
+		b.WriteString(renderIdeaCategorySelector(m.ideaCategoryCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Effort (field 1)
+		b.WriteString(renderFormLabelShared("Effort", attrsStart+1, m.focusIndex))
+		b.WriteString(renderEffortSelector(m.ideaEffortCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Value (field 2)
+		b.WriteString(renderFormLabelShared("Value", attrsStart+2, m.focusIndex))
+		b.WriteString(renderIdeaValueSelector(m.ideaValueCursor, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
+
+		// Validated (field 3)
+		b.WriteString(renderFormLabelShared("Validated", attrsStart+3, m.focusIndex))
+		b.WriteString(renderValidatedToggle(m.ideaValidated, m.focusIndex == attrsStart+3))
+		b.WriteString("\n")
+
+	case models.TaskTypeTask:
+		// Effort (field 0)
+		b.WriteString(renderFormLabelShared("Effort", attrsStart, m.focusIndex))
+		b.WriteString(renderEffortSelector(m.taskEffortCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// WorkType (field 1)
+		b.WriteString(renderFormLabelShared("Work Type", attrsStart+1, m.focusIndex))
+		b.WriteString(renderWorkTypeSelector(m.taskWorkTypeCursor, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+	case models.TaskTypeStory:
+		// Story Points (field 0)
+		b.WriteString(renderFormLabelShared("Points", attrsStart, m.focusIndex))
+		b.WriteString(renderStoryPointsSelector(m.storyPointsCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Persona (field 1)
+		b.WriteString(renderFormLabelShared("Persona", attrsStart+1, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.storyPersona, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+	case models.TaskTypeEpic:
+		// Scope (field 0)
+		b.WriteString(renderFormLabelShared("Scope", attrsStart, m.focusIndex))
+		b.WriteString(renderEpicScopeSelector(m.epicScopeCursor, m.focusIndex == attrsStart))
+		b.WriteString("\n")
+
+		// Milestone (field 1)
+		b.WriteString(renderFormLabelShared("Milestone", attrsStart+1, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.epicMilestone, m.focusIndex == attrsStart+1))
+		b.WriteString("\n")
+
+		// Success Metrics (field 2)
+		b.WriteString(renderFormLabelShared("Metrics", attrsStart+2, m.focusIndex))
+		b.WriteString(renderTextAttrPreview(m.epicSuccessMetrics, m.focusIndex == attrsStart+2))
+		b.WriteString("\n")
 	}
 
 	return b.String()

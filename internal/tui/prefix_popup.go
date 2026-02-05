@@ -32,19 +32,28 @@ type PrefixPopupProvider interface {
 
 // prefixCategoryNames maps prefix characters to human-readable category names.
 var prefixCategoryNames = map[string]string{
-	",":  "status",
-	"z":  "fold",
-	"g":  "go-to",
-	"!":  "priority",
-	"d":  "due-date",
-	"s":  "snooze",
-	"c":  "create",
-	"t":  "task",
-	"b":  "blockers",
-	"F":  "filter",
-	"Ft": "filter-type",
-	"Fs": "filter-status",
-	"Fd": "filter-due",
+	",":   "status",
+	"z":   "fold",
+	"g":   "go-to",
+	"!":   "priority",
+	"d":   "due-date",
+	"s":   "snooze",
+	"c":   "create",
+	"t":   "task",
+	"b":   "blockers",
+	"F":   "filter",
+	"Ft":  "filter-type",
+	"Fs":  "filter-status",
+	"Fd":  "filter-due",
+	"Fa":  "filter-attr",
+	"Fas": "severity",
+	"Far": "reproducible",
+	"Fae": "effort",
+	"Fac": "category",
+	"Fav": "value",
+	"Faw": "worktype",
+	"Fao": "scope",
+	"Fap": "points",
 }
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
@@ -488,6 +497,91 @@ var (
 		{Key: "t", Description: "today"},
 		{Key: "w", Description: "this-week"},
 		{Key: "n", Description: "no-due-date"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrPrefixHints contains hints for the "Fa" (filter attribute) sub-prefix.
+	FilterAttrPrefixHints = []PrefixHint{
+		{Key: "s", Description: "severity", Detail: "Bug severity (critical/major/minor/cosmetic)"},
+		{Key: "r", Description: "reproducible", Detail: "Bug reproducibility (yes/no/sometimes)"},
+		{Key: "e", Description: "effort", Detail: "Effort estimate (small/medium/large/unknown)"},
+		{Key: "c", Description: "category", Detail: "Idea category (feature/improvement/refactor/research)"},
+		{Key: "v", Description: "value", Detail: "Idea value (low/medium/high)"},
+		{Key: "V", Description: "validated", Detail: "Idea validated flag"},
+		{Key: "w", Description: "worktype", Detail: "Task work type (development/documentation/testing/devops/design)"},
+		{Key: "o", Description: "scope", Detail: "Epic scope (defined/evolving/undefined)"},
+		{Key: "p", Description: "points", Detail: "Story points (1/2/3/5/8)"},
+		{Key: "0", Description: "clear", Detail: "Clear all attribute filters"},
+	}
+
+	// FilterAttrSeverityPrefixHints contains hints for bug severity values.
+	FilterAttrSeverityPrefixHints = []PrefixHint{
+		{Key: "c", Description: "critical"},
+		{Key: "j", Description: "major"},
+		{Key: "m", Description: "minor"},
+		{Key: "o", Description: "cosmetic"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrReproduciblePrefixHints contains hints for bug reproducible values.
+	FilterAttrReproduciblePrefixHints = []PrefixHint{
+		{Key: "y", Description: "yes"},
+		{Key: "n", Description: "no"},
+		{Key: "s", Description: "sometimes"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrEffortPrefixHints contains hints for effort estimate values.
+	FilterAttrEffortPrefixHints = []PrefixHint{
+		{Key: "s", Description: "small"},
+		{Key: "m", Description: "medium"},
+		{Key: "l", Description: "large"},
+		{Key: "u", Description: "unknown"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrCategoryPrefixHints contains hints for idea category values.
+	FilterAttrCategoryPrefixHints = []PrefixHint{
+		{Key: "f", Description: "feature"},
+		{Key: "i", Description: "improvement"},
+		{Key: "r", Description: "refactor"},
+		{Key: "s", Description: "research"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrValuePrefixHints contains hints for idea value values.
+	FilterAttrValuePrefixHints = []PrefixHint{
+		{Key: "l", Description: "low"},
+		{Key: "m", Description: "medium"},
+		{Key: "h", Description: "high"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrWorktypePrefixHints contains hints for task worktype values.
+	FilterAttrWorktypePrefixHints = []PrefixHint{
+		{Key: "d", Description: "development"},
+		{Key: "o", Description: "documentation"},
+		{Key: "t", Description: "testing"},
+		{Key: "v", Description: "devops"},
+		{Key: "e", Description: "design"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrScopePrefixHints contains hints for epic scope values.
+	FilterAttrScopePrefixHints = []PrefixHint{
+		{Key: "d", Description: "defined"},
+		{Key: "e", Description: "evolving"},
+		{Key: "u", Description: "undefined"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterAttrPointsPrefixHints contains hints for story points values.
+	FilterAttrPointsPrefixHints = []PrefixHint{
+		{Key: "1", Description: "1 point"},
+		{Key: "2", Description: "2 points"},
+		{Key: "3", Description: "3 points"},
+		{Key: "5", Description: "5 points"},
+		{Key: "8", Description: "8 points"},
 		{Key: "0", Description: "clear"},
 	}
 

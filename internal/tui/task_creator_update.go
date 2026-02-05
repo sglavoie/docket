@@ -49,13 +49,39 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TextEditorDoneMsg:
 		if !msg.Canceled {
-			if msg.FieldName == "description" {
+			switch msg.FieldName {
+			case "description":
 				m.descValue = msg.Value
+			case "bugWorkaround":
+				m.bugWorkaround = msg.Value
+			case "storyPersona":
+				m.storyPersona = msg.Value
+			case "epicMilestone":
+				m.epicMilestone = msg.Value
+			case "epicSuccessMetrics":
+				m.epicSuccessMetrics = msg.Value
 			}
 		}
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle type change confirmation
+		if m.confirmTypeChange {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmTypeChange = false
+				m.clearCurrentAttrs()
+				m.typeCursor = m.pendingTypeCursor
+				m.taskType = m.pendingTaskType
+				m.updateValidParents()
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmTypeChange = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle discard confirmation
 		if m.confirmDiscard {
 			switch msg.String() {
@@ -95,7 +121,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.currentTypeCanHaveChildren() {
 					m.activeTab = creatorTabSubtasks
 				} else {
-					m.activeTab = creatorTabChecklist
+					m.activeTab = creatorTabAttrs
 				}
 			}
 			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
@@ -106,7 +132,7 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "]":
 			// Switch to next tab
 			m.blurCurrentField()
-			maxTab := creatorTabChecklist
+			maxTab := creatorTabAttrs
 			if m.currentTypeCanHaveChildren() {
 				maxTab = creatorTabSubtasks
 			}
@@ -181,6 +207,12 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						FieldName:    "description",
 						CurrentValue: m.descValue,
 					}
+				}
+			}
+			// Handle text attribute fields on enter
+			if section == "attrs" {
+				if cmdEnter := m.handleAttrEnter(idx); cmdEnter != nil {
+					return m, cmdEnter
 				}
 			}
 			// Move to next field for other fields in Fields tab
@@ -319,8 +351,17 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch section {
 			case "type":
 				if m.typeCursor > 0 {
-					m.typeCursor--
-					m.taskType = m.types[m.typeCursor]
+					newCursor := m.typeCursor - 1
+					newType := m.types[newCursor]
+					// Check if changing type would lose attrs
+					if m.hasNonEmptyAttrs() && newType != m.taskType {
+						m.confirmTypeChange = true
+						m.pendingTypeCursor = newCursor
+						m.pendingTaskType = newType
+						return m, nil
+					}
+					m.typeCursor = newCursor
+					m.taskType = newType
 					m.updateValidParents()
 				}
 				return m, nil
@@ -379,14 +420,26 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				return m, nil
+			case "attrs":
+				m.handleAttrLeft(idx)
+				return m, nil
 			}
 
 		case "right", "l":
 			switch section {
 			case "type":
 				if m.typeCursor < len(m.types)-1 {
-					m.typeCursor++
-					m.taskType = m.types[m.typeCursor]
+					newCursor := m.typeCursor + 1
+					newType := m.types[newCursor]
+					// Check if changing type would lose attrs
+					if m.hasNonEmptyAttrs() && newType != m.taskType {
+						m.confirmTypeChange = true
+						m.pendingTypeCursor = newCursor
+						m.pendingTaskType = newType
+						return m, nil
+					}
+					m.typeCursor = newCursor
+					m.taskType = newType
 					m.updateValidParents()
 				}
 				return m, nil
@@ -437,11 +490,19 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				return m, nil
+			case "attrs":
+				m.handleAttrRight(idx)
+				return m, nil
 			}
 
 		case " ":
 			// Space is a no-op for flags (selection happens via left/right)
 			if m.focusIndex == 6 {
+				return m, nil
+			}
+			// Space toggles validated for idea attrs
+			if section == "attrs" && m.taskType == models.TaskTypeIdea && idx == 3 {
+				m.ideaValidated = !m.ideaValidated
 				return m, nil
 			}
 
@@ -573,6 +634,226 @@ func (m *TaskCreatorModel) updateFlagsFromCursor() {
 	}
 }
 
+// handleAttrLeft handles left arrow key for attribute fields.
+func (m *TaskCreatorModel) handleAttrLeft(fieldIdx int) {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		switch fieldIdx {
+		case 0: // Reproducible
+			if m.bugReproducibleCursor > 0 {
+				m.bugReproducibleCursor--
+			}
+		case 1: // Severity
+			if m.bugSeverityCursor > 0 {
+				m.bugSeverityCursor--
+			}
+		}
+	case models.TaskTypeIdea:
+		switch fieldIdx {
+		case 0: // Category
+			if m.ideaCategoryCursor > 0 {
+				m.ideaCategoryCursor--
+			}
+		case 1: // Effort
+			if m.ideaEffortCursor > 0 {
+				m.ideaEffortCursor--
+			}
+		case 2: // Value
+			if m.ideaValueCursor > 0 {
+				m.ideaValueCursor--
+			}
+		}
+	case models.TaskTypeTask:
+		switch fieldIdx {
+		case 0: // Effort
+			if m.taskEffortCursor > 0 {
+				m.taskEffortCursor--
+			}
+		case 1: // WorkType
+			if m.taskWorkTypeCursor > 0 {
+				m.taskWorkTypeCursor--
+			}
+		}
+	case models.TaskTypeStory:
+		switch fieldIdx {
+		case 0: // Story Points
+			if m.storyPointsCursor > 0 {
+				m.storyPointsCursor--
+			}
+		}
+	case models.TaskTypeEpic:
+		switch fieldIdx {
+		case 0: // Scope
+			if m.epicScopeCursor > 0 {
+				m.epicScopeCursor--
+			}
+		}
+	}
+}
+
+// handleAttrRight handles right arrow key for attribute fields.
+func (m *TaskCreatorModel) handleAttrRight(fieldIdx int) {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		switch fieldIdx {
+		case 0: // Reproducible
+			if m.bugReproducibleCursor < len(bugReproducibleOptions)-1 {
+				m.bugReproducibleCursor++
+			}
+		case 1: // Severity
+			if m.bugSeverityCursor < len(bugSeverityOptions)-1 {
+				m.bugSeverityCursor++
+			}
+		}
+	case models.TaskTypeIdea:
+		switch fieldIdx {
+		case 0: // Category
+			if m.ideaCategoryCursor < len(ideaCategoryOptions)-1 {
+				m.ideaCategoryCursor++
+			}
+		case 1: // Effort
+			if m.ideaEffortCursor < len(effortOptions)-1 {
+				m.ideaEffortCursor++
+			}
+		case 2: // Value
+			if m.ideaValueCursor < len(ideaValueOptions)-1 {
+				m.ideaValueCursor++
+			}
+		}
+	case models.TaskTypeTask:
+		switch fieldIdx {
+		case 0: // Effort
+			if m.taskEffortCursor < len(effortOptions)-1 {
+				m.taskEffortCursor++
+			}
+		case 1: // WorkType
+			if m.taskWorkTypeCursor < len(workTypeOptions)-1 {
+				m.taskWorkTypeCursor++
+			}
+		}
+	case models.TaskTypeStory:
+		switch fieldIdx {
+		case 0: // Story Points
+			if m.storyPointsCursor < len(storyPointsOptions)-1 {
+				m.storyPointsCursor++
+			}
+		}
+	case models.TaskTypeEpic:
+		switch fieldIdx {
+		case 0: // Scope
+			if m.epicScopeCursor < len(epicScopeOptions)-1 {
+				m.epicScopeCursor++
+			}
+		}
+	}
+}
+
+// handleAttrEnter handles enter key for text attribute fields.
+func (m *TaskCreatorModel) handleAttrEnter(fieldIdx int) tea.Cmd {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		if fieldIdx == 2 { // Workaround
+			return func() tea.Msg {
+				return ShowTextEditorMsg{
+					FieldName:    "bugWorkaround",
+					CurrentValue: m.bugWorkaround,
+				}
+			}
+		}
+	case models.TaskTypeStory:
+		if fieldIdx == 1 { // Persona
+			return func() tea.Msg {
+				return ShowTextEditorMsg{
+					FieldName:    "storyPersona",
+					CurrentValue: m.storyPersona,
+				}
+			}
+		}
+	case models.TaskTypeEpic:
+		if fieldIdx == 1 { // Milestone
+			return func() tea.Msg {
+				return ShowTextEditorMsg{
+					FieldName:    "epicMilestone",
+					CurrentValue: m.epicMilestone,
+				}
+			}
+		}
+		if fieldIdx == 2 { // Success Metrics
+			return func() tea.Msg {
+				return ShowTextEditorMsg{
+					FieldName:    "epicSuccessMetrics",
+					CurrentValue: m.epicSuccessMetrics,
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// buildTaskAttrs creates the appropriate attrs struct from form state.
+func (m *TaskCreatorModel) buildTaskAttrs() (bugAttrs *models.BugAttrs, ideaAttrs *models.IdeaAttrs, taskAttrs *models.TaskAttrs, storyAttrs *models.StoryAttrs, epicAttrs *models.EpicAttrs) {
+	switch m.taskType {
+	case models.TaskTypeBug:
+		attrs := &models.BugAttrs{}
+		if m.bugReproducibleCursor > 0 {
+			attrs.Reproducible = models.ValidBugReproducible[m.bugReproducibleCursor-1]
+		}
+		if m.bugSeverityCursor > 0 {
+			attrs.Severity = models.ValidBugSeverity[m.bugSeverityCursor-1]
+		}
+		attrs.Workaround = m.bugWorkaround
+		if !attrs.IsEmpty() {
+			bugAttrs = attrs
+		}
+	case models.TaskTypeIdea:
+		attrs := &models.IdeaAttrs{}
+		if m.ideaCategoryCursor > 0 {
+			attrs.Category = models.ValidIdeaCategory[m.ideaCategoryCursor-1]
+		}
+		if m.ideaEffortCursor > 0 {
+			attrs.Effort = models.ValidEffortEstimate[m.ideaEffortCursor-1]
+		}
+		if m.ideaValueCursor > 0 {
+			attrs.Value = models.ValidIdeaValue[m.ideaValueCursor-1]
+		}
+		attrs.Validated = m.ideaValidated
+		if !attrs.IsEmpty() {
+			ideaAttrs = attrs
+		}
+	case models.TaskTypeTask:
+		attrs := &models.TaskAttrs{}
+		if m.taskEffortCursor > 0 {
+			attrs.Effort = models.ValidEffortEstimate[m.taskEffortCursor-1]
+		}
+		if m.taskWorkTypeCursor > 0 {
+			attrs.WorkType = models.ValidWorkType[m.taskWorkTypeCursor-1]
+		}
+		if !attrs.IsEmpty() {
+			taskAttrs = attrs
+		}
+	case models.TaskTypeStory:
+		attrs := &models.StoryAttrs{}
+		if m.storyPointsCursor > 0 {
+			attrs.StoryPoints = storyPointsValues[m.storyPointsCursor]
+		}
+		attrs.Persona = m.storyPersona
+		if !attrs.IsEmpty() {
+			storyAttrs = attrs
+		}
+	case models.TaskTypeEpic:
+		attrs := &models.EpicAttrs{}
+		if m.epicScopeCursor > 0 {
+			attrs.Scope = models.ValidEpicScope[m.epicScopeCursor-1]
+		}
+		attrs.Milestone = m.epicMilestone
+		attrs.SuccessMetrics = m.epicSuccessMetrics
+		if !attrs.IsEmpty() {
+			epicAttrs = attrs
+		}
+	}
+	return
+}
+
 func (m *TaskCreatorModel) createTask() tea.Cmd {
 	return func() tea.Msg {
 		// Replace newlines with spaces since titles should be single logical lines
@@ -589,6 +870,9 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 
 		now := time.Now()
 
+		// Build type-specific attributes
+		bugAttrs, ideaAttrs, taskAttrs, storyAttrs, epicAttrs := m.buildTaskAttrs()
+
 		// Create task
 		task := &models.Task{
 			ID:          uuid.New().String(),
@@ -604,6 +888,11 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 			Pinned:      m.pinned,
 			Active:      m.active,
 			Recurrence:  m.recurrence,
+			BugAttrs:    bugAttrs,
+			IdeaAttrs:   ideaAttrs,
+			TaskAttrs:   taskAttrs,
+			StoryAttrs:  storyAttrs,
+			EpicAttrs:   epicAttrs,
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		}

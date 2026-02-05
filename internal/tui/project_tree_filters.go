@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -265,6 +266,11 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday {
 			return false
 		}
+	}
+
+	// Apply attribute filters
+	if !passesAttrFilters(node.Task, m.filter.Attrs) {
+		return false
 	}
 
 	// Apply search filter
@@ -605,4 +611,95 @@ func (m *ProjectTreeModel) findNodeByTaskID(id string) *TreeNode {
 		}
 	}
 	return nil
+}
+
+// passesAttrFilters checks if a task passes all attribute filters.
+// Attribute filter keys: "bug.severity", "bug.reproducible", "idea.category", "idea.value",
+// "idea.validated", "effort" (task/idea), "task.worktype", "epic.scope", "story.points"
+func passesAttrFilters(task *models.Task, attrs map[string]string) bool {
+	if len(attrs) == 0 {
+		return true
+	}
+
+	for key, value := range attrs {
+		switch key {
+		case "bug.severity":
+			if task.Type != models.TaskTypeBug || task.BugAttrs == nil {
+				return false
+			}
+			if string(task.BugAttrs.Severity) != value {
+				return false
+			}
+		case "bug.reproducible":
+			if task.Type != models.TaskTypeBug || task.BugAttrs == nil {
+				return false
+			}
+			if string(task.BugAttrs.Reproducible) != value {
+				return false
+			}
+		case "idea.category":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if string(task.IdeaAttrs.Category) != value {
+				return false
+			}
+		case "idea.value":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if string(task.IdeaAttrs.Value) != value {
+				return false
+			}
+		case "idea.validated":
+			if task.Type != models.TaskTypeIdea || task.IdeaAttrs == nil {
+				return false
+			}
+			if !task.IdeaAttrs.Validated {
+				return false
+			}
+		case "effort":
+			// Effort can apply to Task or Idea types
+			switch task.Type {
+			case models.TaskTypeTask:
+				if task.TaskAttrs == nil || string(task.TaskAttrs.Effort) != value {
+					return false
+				}
+			case models.TaskTypeIdea:
+				if task.IdeaAttrs == nil || string(task.IdeaAttrs.Effort) != value {
+					return false
+				}
+			default:
+				return false
+			}
+		case "task.worktype":
+			if task.Type != models.TaskTypeTask || task.TaskAttrs == nil {
+				return false
+			}
+			if string(task.TaskAttrs.WorkType) != value {
+				return false
+			}
+		case "epic.scope":
+			if task.Type != models.TaskTypeEpic || task.EpicAttrs == nil {
+				return false
+			}
+			if string(task.EpicAttrs.Scope) != value {
+				return false
+			}
+		case "story.points":
+			if task.Type != models.TaskTypeStory || task.StoryAttrs == nil {
+				return false
+			}
+			// Parse expected points value
+			var expectedPoints int
+			var _, errScan = fmt.Sscanf(value, "%d", &expectedPoints)
+			if errScan != nil {
+				return false
+			}
+			if task.StoryAttrs.StoryPoints != expectedPoints {
+				return false
+			}
+		}
+	}
+	return true
 }

@@ -133,7 +133,8 @@ func (m *ProjectTreeModel) hasActiveFilters() bool {
 		len(m.filter.Tags) > 0 ||
 		len(m.filter.Sections) > 0 ||
 		m.filter.DueDate != DueDateAll ||
-		m.filter.Actionable
+		m.filter.Actionable ||
+		len(m.filter.Attrs) > 0
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
@@ -180,6 +181,13 @@ func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 	if m.filter.Actionable {
 		parts = append(parts, "ready")
 	}
+	if len(m.filter.Attrs) > 0 {
+		var attrParts []string
+		for k, v := range m.filter.Attrs {
+			attrParts = append(attrParts, k+"="+v)
+		}
+		parts = append(parts, "attr:"+strings.Join(attrParts, ","))
+	}
 
 	if len(parts) == 0 {
 		return ""
@@ -223,19 +231,28 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
-			",":  StatusPrefixHints,
-			"z":  FoldPrefixHints,
-			"g":  ProjectTreeNavigationPrefixHints,
-			"!":  PriorityPrefixHints,
-			"d":  DueDatePrefixHints,
-			"s":  SnoozePrefixHints,
-			"c":  CreateLinkedPrefixHints,
-			"t":  TaskPrefixHints,
-			"b":  BlockerPrefixHints,
-			"F":  m.buildFilterPrefixHints(),
-			"Ft": FilterTypePrefixHints,
-			"Fs": FilterStatusPrefixHints,
-			"Fd": FilterDuePrefixHints,
+			",":   StatusPrefixHints,
+			"z":   FoldPrefixHints,
+			"g":   ProjectTreeNavigationPrefixHints,
+			"!":   PriorityPrefixHints,
+			"d":   DueDatePrefixHints,
+			"s":   SnoozePrefixHints,
+			"c":   CreateLinkedPrefixHints,
+			"t":   TaskPrefixHints,
+			"b":   BlockerPrefixHints,
+			"F":   m.buildFilterPrefixHints(),
+			"Ft":  FilterTypePrefixHints,
+			"Fs":  FilterStatusPrefixHints,
+			"Fd":  FilterDuePrefixHints,
+			"Fa":  FilterAttrPrefixHints,
+			"Fas": FilterAttrSeverityPrefixHints,
+			"Far": FilterAttrReproduciblePrefixHints,
+			"Fae": FilterAttrEffortPrefixHints,
+			"Fac": FilterAttrCategoryPrefixHints,
+			"Fav": FilterAttrValuePrefixHints,
+			"Faw": FilterAttrWorktypePrefixHints,
+			"Fao": FilterAttrScopePrefixHints,
+			"Fap": FilterAttrPointsPrefixHints,
 		},
 	}
 }
@@ -290,6 +307,11 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		readyDetail = "on"
 	}
 
+	attrDetail := "(none)"
+	if len(m.filter.Attrs) > 0 {
+		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
+	}
+
 	return []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.viewMode == ViewModeCompleted},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
@@ -298,6 +320,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
 		{Key: "@", Description: "section", Detail: sectionDetail, Active: len(m.filter.Sections) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
+		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "x", Description: "clear-all"},
 	}

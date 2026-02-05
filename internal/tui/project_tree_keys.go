@@ -63,6 +63,10 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		// Open due-date sub-popup
 		m.pendingPrefix = "Fd"
 		return m, nil
+	case "a":
+		// Open attribute sub-popup
+		m.pendingPrefix = "Fa"
+		return m, nil
 	case "r":
 		// Toggle actionable/ready filter
 		m.filter.Actionable = !m.filter.Actionable
@@ -79,6 +83,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.filter.Sections = make(map[string]bool)
 		m.filter.DueDate = DueDateAll
 		m.filter.Actionable = false
+		m.filter.Attrs = make(map[string]string)
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		}
@@ -152,6 +157,266 @@ func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd
 		m.filter.DueDate = DueDateNone
 	case "0":
 		m.filter.DueDate = DueDateAll
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrPrefix handles the second key after pressing Fa (filter attribute).
+// Shows attribute categories: s=severity, r=reproducible, e=effort, c=category, v=value, w=worktype, o=scope, p=points, V=validated
+func (m *ProjectTreeModel) handleFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "s":
+		// Bug severity - open sub-popup
+		m.pendingPrefix = "Fas"
+		return m, nil
+	case "r":
+		// Bug reproducible - open sub-popup
+		m.pendingPrefix = "Far"
+		return m, nil
+	case "e":
+		// Effort (idea, task) - open sub-popup
+		m.pendingPrefix = "Fae"
+		return m, nil
+	case "c":
+		// Idea category - open sub-popup
+		m.pendingPrefix = "Fac"
+		return m, nil
+	case "v":
+		// Idea value - open sub-popup
+		m.pendingPrefix = "Fav"
+		return m, nil
+	case "w":
+		// Task worktype - open sub-popup
+		m.pendingPrefix = "Faw"
+		return m, nil
+	case "o":
+		// Epic scope - open sub-popup
+		m.pendingPrefix = "Fao"
+		return m, nil
+	case "p":
+		// Story points - open sub-popup
+		m.pendingPrefix = "Fap"
+		return m, nil
+	case "V":
+		// Idea validated - toggle
+		if m.filter.Attrs["idea.validated"] == "true" {
+			delete(m.filter.Attrs, "idea.validated")
+		} else {
+			m.filter.Attrs["idea.validated"] = "true"
+			m.filter.Type = models.TaskTypeIdea // auto-set type filter
+		}
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return m, nil
+	case "0":
+		// Clear attribute filters
+		m.filter.Attrs = make(map[string]string)
+		m.updateVisibility()
+		m.pruneInvisibleSelections()
+		m.clampCursor()
+		return m, nil
+	}
+	return m, nil
+}
+
+// handleFilterAttrSeverityPrefix handles bug severity value selection (Fas prefix).
+func (m *ProjectTreeModel) handleFilterAttrSeverityPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "c":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCritical)
+		m.filter.Type = models.TaskTypeBug
+	case "j":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMajor)
+		m.filter.Type = models.TaskTypeBug
+	case "m":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMinor)
+		m.filter.Type = models.TaskTypeBug
+	case "o":
+		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCosmetic)
+		m.filter.Type = models.TaskTypeBug
+	case "0":
+		delete(m.filter.Attrs, "bug.severity")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrReproduciblePrefix handles bug reproducible value selection (Far prefix).
+func (m *ProjectTreeModel) handleFilterAttrReproduciblePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleYes)
+		m.filter.Type = models.TaskTypeBug
+	case "n":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleNo)
+		m.filter.Type = models.TaskTypeBug
+	case "s":
+		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleSometimes)
+		m.filter.Type = models.TaskTypeBug
+	case "0":
+		delete(m.filter.Attrs, "bug.reproducible")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrEffortPrefix handles effort value selection (Fae prefix).
+func (m *ProjectTreeModel) handleFilterAttrEffortPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "s":
+		m.filter.Attrs["effort"] = string(models.EffortSmall)
+	case "m":
+		m.filter.Attrs["effort"] = string(models.EffortMedium)
+	case "l":
+		m.filter.Attrs["effort"] = string(models.EffortLarge)
+	case "u":
+		m.filter.Attrs["effort"] = string(models.EffortUnknown)
+	case "0":
+		delete(m.filter.Attrs, "effort")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrCategoryPrefix handles idea category value selection (Fac prefix).
+func (m *ProjectTreeModel) handleFilterAttrCategoryPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "f":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryFeature)
+		m.filter.Type = models.TaskTypeIdea
+	case "i":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryImprovement)
+		m.filter.Type = models.TaskTypeIdea
+	case "r":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryRefactor)
+		m.filter.Type = models.TaskTypeIdea
+	case "s":
+		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryResearch)
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		delete(m.filter.Attrs, "idea.category")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrValuePrefix handles idea value selection (Fav prefix).
+func (m *ProjectTreeModel) handleFilterAttrValuePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "l":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueLow)
+		m.filter.Type = models.TaskTypeIdea
+	case "m":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueMedium)
+		m.filter.Type = models.TaskTypeIdea
+	case "h":
+		m.filter.Attrs["idea.value"] = string(models.IdeaValueHigh)
+		m.filter.Type = models.TaskTypeIdea
+	case "0":
+		delete(m.filter.Attrs, "idea.value")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrWorktypePrefix handles task worktype value selection (Faw prefix).
+func (m *ProjectTreeModel) handleFilterAttrWorktypePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "d":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevelopment)
+		m.filter.Type = models.TaskTypeTask
+	case "o":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDocumentation)
+		m.filter.Type = models.TaskTypeTask
+	case "t":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeTesting)
+		m.filter.Type = models.TaskTypeTask
+	case "v":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevOps)
+		m.filter.Type = models.TaskTypeTask
+	case "e":
+		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDesign)
+		m.filter.Type = models.TaskTypeTask
+	case "0":
+		delete(m.filter.Attrs, "task.worktype")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrScopePrefix handles epic scope value selection (Fao prefix).
+func (m *ProjectTreeModel) handleFilterAttrScopePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "d":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeDefined)
+		m.filter.Type = models.TaskTypeEpic
+	case "e":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeEvolving)
+		m.filter.Type = models.TaskTypeEpic
+	case "u":
+		m.filter.Attrs["epic.scope"] = string(models.EpicScopeUndefined)
+		m.filter.Type = models.TaskTypeEpic
+	case "0":
+		delete(m.filter.Attrs, "epic.scope")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterAttrPointsPrefix handles story points value selection (Fap prefix).
+func (m *ProjectTreeModel) handleFilterAttrPointsPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "1":
+		m.filter.Attrs["story.points"] = "1"
+		m.filter.Type = models.TaskTypeStory
+	case "2":
+		m.filter.Attrs["story.points"] = "2"
+		m.filter.Type = models.TaskTypeStory
+	case "3":
+		m.filter.Attrs["story.points"] = "3"
+		m.filter.Type = models.TaskTypeStory
+	case "5":
+		m.filter.Attrs["story.points"] = "5"
+		m.filter.Type = models.TaskTypeStory
+	case "8":
+		m.filter.Attrs["story.points"] = "8"
+		m.filter.Type = models.TaskTypeStory
+	case "0":
+		delete(m.filter.Attrs, "story.points")
 	default:
 		return m, nil
 	}

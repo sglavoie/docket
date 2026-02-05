@@ -237,3 +237,123 @@ func renderContextSelectorShared(contexts []string, contextCursor int, focused b
 	}
 	return b.String()
 }
+
+// Type-specific attribute selectors
+
+// bugReproducibleOptions are the display labels for bug reproducibility.
+var bugReproducibleOptions = []string{"(none)", "yes", "no", "sometimes"}
+
+// renderBugReproducibleSelector renders the bug reproducibility selector.
+func renderBugReproducibleSelector(cursor int, focused bool) string {
+	return renderEnumSelector(bugReproducibleOptions, cursor, focused)
+}
+
+// bugSeverityOptions are the display labels for bug severity.
+var bugSeverityOptions = []string{"(none)", "critical", "major", "minor", "cosmetic"}
+
+// renderBugSeveritySelector renders the bug severity selector.
+func renderBugSeveritySelector(cursor int, focused bool) string {
+	return renderEnumSelector(bugSeverityOptions, cursor, focused)
+}
+
+// effortOptions are the display labels for effort estimates.
+var effortOptions = []string{"(none)", "small", "medium", "large", "unknown"}
+
+// renderEffortSelector renders the effort estimate selector (shared by Idea and Task).
+func renderEffortSelector(cursor int, focused bool) string {
+	return renderEnumSelector(effortOptions, cursor, focused)
+}
+
+// ideaCategoryOptions are the display labels for idea categories.
+var ideaCategoryOptions = []string{"(none)", "feature", "improvement", "refactor", "research"}
+
+// renderIdeaCategorySelector renders the idea category selector.
+func renderIdeaCategorySelector(cursor int, focused bool) string {
+	return renderEnumSelector(ideaCategoryOptions, cursor, focused)
+}
+
+// ideaValueOptions are the display labels for idea value.
+var ideaValueOptions = []string{"(none)", "low", "medium", "high"}
+
+// renderIdeaValueSelector renders the idea value selector.
+func renderIdeaValueSelector(cursor int, focused bool) string {
+	return renderEnumSelector(ideaValueOptions, cursor, focused)
+}
+
+// workTypeOptions are the display labels for work type.
+var workTypeOptions = []string{"(none)", "dev", "docs", "testing", "devops", "design"}
+
+// renderWorkTypeSelector renders the work type selector.
+func renderWorkTypeSelector(cursor int, focused bool) string {
+	return renderEnumSelector(workTypeOptions, cursor, focused)
+}
+
+// epicScopeOptions are the display labels for epic scope.
+var epicScopeOptions = []string{"(none)", "defined", "evolving", "undefined"}
+
+// renderEpicScopeSelector renders the epic scope selector.
+func renderEpicScopeSelector(cursor int, focused bool) string {
+	return renderEnumSelector(epicScopeOptions, cursor, focused)
+}
+
+// storyPointsOptions are the Fibonacci values for story points.
+var storyPointsOptions = []string{"(none)", "1", "2", "3", "5", "8", "13", "21"}
+
+// storyPointsValues maps cursor index to actual story point value.
+var storyPointsValues = []int{0, 1, 2, 3, 5, 8, 13, 21}
+
+// renderStoryPointsSelector renders the story points selector using Fibonacci values.
+func renderStoryPointsSelector(cursor int, focused bool) string {
+	return renderEnumSelector(storyPointsOptions, cursor, focused)
+}
+
+// renderValidatedToggle renders the validated toggle for ideas.
+func renderValidatedToggle(validated bool, focused bool) string {
+	var b strings.Builder
+	if validated {
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[yes]"))
+		b.WriteString(SelectorOptionStyle.Render(" no "))
+	} else {
+		b.WriteString(SelectorOptionStyle.Render(" yes "))
+		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[no]"))
+	}
+	if focused {
+		b.WriteString(HelpStyle.Render("  (Space to toggle)"))
+	}
+	return b.String()
+}
+
+// renderEnumSelector renders a generic enum selector with (none) as first option.
+func renderEnumSelector(options []string, cursor int, focused bool) string {
+	var b strings.Builder
+	for i, opt := range options {
+		if i == cursor {
+			if focused {
+				b.WriteString(SelectorOptionSelectedStyle.Render(fmt.Sprintf("[%s]", opt)))
+			} else {
+				b.WriteString(BoldStyle.Render(fmt.Sprintf("[%s]", opt)))
+			}
+		} else {
+			b.WriteString(SelectorOptionStyle.Render(fmt.Sprintf(" %s ", opt)))
+		}
+	}
+	return b.String()
+}
+
+// renderTextAttrPreview renders a text attribute field as a truncated preview.
+func renderTextAttrPreview(value string, focused bool) string {
+	if value == "" {
+		display := MutedStyle.Render("(Enter to edit)")
+		if focused {
+			return SelectorOptionSelectedStyle.Render(display)
+		}
+		return display
+	}
+	// Show truncated preview
+	display := strings.ReplaceAll(value, "\n", " ")
+	display = util.Truncate(display, 40)
+	if focused {
+		return SelectorOptionSelectedStyle.Render(display)
+	}
+	return display
+}

@@ -125,6 +125,7 @@ type FilterState struct {
 	Sections   map[string]bool   // filter by section names (OR logic)
 	DueDate    DueDateFilter     // filter by due date
 	Actionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
+	Attrs      map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
 }
 
 // QuickEditState contains state for inline task editing.
@@ -220,6 +221,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 			Sections:   make(map[string]bool),
 			DueDate:    DueDateAll,
 			Actionable: false,
+			Attrs:      make(map[string]string),
 		},
 		sortField:     SortByDefault,
 		sortAscending: true,

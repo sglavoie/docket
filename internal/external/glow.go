@@ -106,6 +106,13 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 
 	b.WriteString("\n")
 
+	// Type-specific attributes
+	if attrTable := formatTaskAttributesMarkdown(task); attrTable != "" {
+		b.WriteString("## Attributes\n\n")
+		b.WriteString(attrTable)
+		b.WriteString("\n")
+	}
+
 	// Description
 	if task.Description != "" {
 		b.WriteString("## Description\n\n")
@@ -176,4 +183,86 @@ func PageMarkdown(content string) error {
 		fmt.Println(content)
 	}
 	return nil
+}
+
+// formatTaskAttributesMarkdown formats type-specific attributes as a markdown table.
+// Returns empty string if no attributes are set.
+func formatTaskAttributesMarkdown(task *models.Task) string {
+	var rows []string
+
+	switch task.Type {
+	case models.TaskTypeBug:
+		if task.BugAttrs != nil {
+			if task.BugAttrs.Severity != "" {
+				rows = append(rows, fmt.Sprintf("| Severity | %s |", task.BugAttrs.Severity))
+			}
+			if task.BugAttrs.Reproducible != "" {
+				rows = append(rows, fmt.Sprintf("| Reproducible | %s |", task.BugAttrs.Reproducible))
+			}
+			if task.BugAttrs.Workaround != "" {
+				workaround := strings.ReplaceAll(task.BugAttrs.Workaround, "\n", " ")
+				rows = append(rows, fmt.Sprintf("| Workaround | %s |", workaround))
+			}
+		}
+	case models.TaskTypeIdea:
+		if task.IdeaAttrs != nil {
+			if task.IdeaAttrs.Category != "" {
+				rows = append(rows, fmt.Sprintf("| Category | %s |", task.IdeaAttrs.Category))
+			}
+			if task.IdeaAttrs.Effort != "" {
+				rows = append(rows, fmt.Sprintf("| Effort | %s |", task.IdeaAttrs.Effort))
+			}
+			if task.IdeaAttrs.Value != "" {
+				rows = append(rows, fmt.Sprintf("| Value | %s |", task.IdeaAttrs.Value))
+			}
+			if task.IdeaAttrs.Validated {
+				rows = append(rows, "| Validated | Yes |")
+			}
+		}
+	case models.TaskTypeTask:
+		if task.TaskAttrs != nil {
+			if task.TaskAttrs.Effort != "" {
+				rows = append(rows, fmt.Sprintf("| Effort | %s |", task.TaskAttrs.Effort))
+			}
+			if task.TaskAttrs.WorkType != "" {
+				rows = append(rows, fmt.Sprintf("| Work Type | %s |", task.TaskAttrs.WorkType))
+			}
+		}
+	case models.TaskTypeStory:
+		if task.StoryAttrs != nil {
+			if task.StoryAttrs.StoryPoints > 0 {
+				rows = append(rows, fmt.Sprintf("| Story Points | %d |", task.StoryAttrs.StoryPoints))
+			}
+			if task.StoryAttrs.Persona != "" {
+				persona := strings.ReplaceAll(task.StoryAttrs.Persona, "\n", " ")
+				rows = append(rows, fmt.Sprintf("| Persona | %s |", persona))
+			}
+		}
+	case models.TaskTypeEpic:
+		if task.EpicAttrs != nil {
+			if task.EpicAttrs.Scope != "" {
+				rows = append(rows, fmt.Sprintf("| Scope | %s |", task.EpicAttrs.Scope))
+			}
+			if task.EpicAttrs.Milestone != "" {
+				rows = append(rows, fmt.Sprintf("| Milestone | %s |", task.EpicAttrs.Milestone))
+			}
+			if task.EpicAttrs.SuccessMetrics != "" {
+				metrics := strings.ReplaceAll(task.EpicAttrs.SuccessMetrics, "\n", " ")
+				rows = append(rows, fmt.Sprintf("| Success Metrics | %s |", metrics))
+			}
+		}
+	}
+
+	if len(rows) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("| Attribute | Value |\n")
+	b.WriteString("|-----------|-------|\n")
+	for _, row := range rows {
+		b.WriteString(row)
+		b.WriteString("\n")
+	}
+	return b.String()
 }

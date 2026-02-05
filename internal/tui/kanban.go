@@ -200,7 +200,8 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		Nodes:         make(map[string][]*KanbanNode),
 		ExpandState:   make(map[string]bool),
 		filter: KanbanFilterState{
-			Tags: make(map[string]bool),
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
 		},
 		filterBar:     NewKanbanFilterBarComponent(),
 		searchInput:   searchInput,
