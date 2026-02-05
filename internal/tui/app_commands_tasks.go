@@ -138,9 +138,9 @@ func (m *AppModel) projectCommands() []Command {
 		{
 			Name:        "filter by context",
 			Description: "Filter projects by context",
-			Shortcut:    "c",
+			Shortcut:    "C",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewDashboard},
+			Views:       []ViewType{},
 			Aliases:     []string{"context filter", "workspace"},
 			Handler: func() tea.Msg {
 				if m.dashboard != nil {

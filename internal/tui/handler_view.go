@@ -493,6 +493,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowContextPickerMsg:
 		if msg.Dashboard != nil {
 			m.showView(ViewContextPicker, NewContextPickerModel(msg.Dashboard, m.config))
+		} else {
+			m.showView(ViewContextPicker, NewContextPickerModelFromConfig(m.config))
 		}
 		return true, nil
 

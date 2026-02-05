@@ -22,7 +22,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
 
 		// Filters
-		Keybinding{Key: "c", Description: "Filter by context", Category: "Filters", Views: views},
+		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 
 		// Views
 		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},

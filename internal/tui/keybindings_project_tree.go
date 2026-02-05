@@ -101,6 +101,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
 
 		// Filters
+		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "P", Description: "Filter by priority", Category: "Filters", Views: views},
 		Keybinding{Key: "Ft", Description: "Filter by type (use Ft since t is task prefix)", Category: "Filters", Views: views},

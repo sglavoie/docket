@@ -129,7 +129,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ShowProjectPreviewMsg{Project: visible[m.cursor]}
 				}
 			}
-		case "c":
+		case "C":
 			// Open context picker popup
 			return m, func() tea.Msg {
 				return ShowContextPickerMsg{Dashboard: m}

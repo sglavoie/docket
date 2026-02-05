@@ -222,6 +222,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case "C":
+		// Context filter (capital C, doesn't conflict with lowercase c prefix)
+		return m, func() tea.Msg {
+			return ShowContextPickerMsg{}
+		}
+
 	case "z":
 		// Fold prefix for expand/collapse operations
 		m.pendingPrefix = "z"

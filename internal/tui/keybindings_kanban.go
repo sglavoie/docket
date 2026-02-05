@@ -76,6 +76,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "gX", Description: "Deselect all (in multi-select)", Category: "Multi-select", Views: views},
 
 		// Filter Popup (F prefix)
+		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},
 		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fp", Description: "Toggle high priority filter", Category: "Filters", Views: views},

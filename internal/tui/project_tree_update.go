@@ -1015,6 +1015,13 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
 	}
 
+	// Context filter (capital C, doesn't conflict with lowercase c prefix)
+	if key == "C" {
+		return m, func() tea.Msg {
+			return ShowContextPickerMsg{}
+		}
+	}
+
 	// Try each handler group
 	if handled, cmd := m.handleNavigationKeys(key, visible); handled {
 		return m, cmd
