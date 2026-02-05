@@ -199,14 +199,10 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "pgup", "ctrl+u":
-			if m.activePane == 1 {
-				m.viewport.HalfPageUp()
-			}
+			m.viewport.HalfPageUp()
 			return m, nil
 		case "pgdown", "ctrl+d":
-			if m.activePane == 1 {
-				m.viewport.HalfPageDown()
-			}
+			m.viewport.HalfPageDown()
 			return m, nil
 		case "enter":
 			if m.activePane == 0 {
