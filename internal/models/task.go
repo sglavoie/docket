@@ -49,6 +49,13 @@ type Task struct {
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
 
+	// Type-specific attributes (only one should be set based on task Type)
+	BugAttrs   *BugAttrs   `json:"bug_attrs,omitempty"`
+	IdeaAttrs  *IdeaAttrs  `json:"idea_attrs,omitempty"`
+	TaskAttrs  *TaskAttrs  `json:"task_attrs,omitempty"`
+	StoryAttrs *StoryAttrs `json:"story_attrs,omitempty"`
+	EpicAttrs  *EpicAttrs  `json:"epic_attrs,omitempty"`
+
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`
 	Parent   *Task    `json:"-"`
@@ -74,4 +81,14 @@ func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
 		UpdatedAt: now,
 		Children:  []*Task{},
 	}
+}
+
+// ClearTypeAttrs clears all type-specific attribute pointers.
+// Called when task type changes to prevent stale attributes from persisting.
+func (t *Task) ClearTypeAttrs() {
+	t.BugAttrs = nil
+	t.IdeaAttrs = nil
+	t.TaskAttrs = nil
+	t.StoryAttrs = nil
+	t.EpicAttrs = nil
 }

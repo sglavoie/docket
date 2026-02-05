@@ -24,6 +24,22 @@ var (
 	isStory          bool
 	isBug            bool
 	isIdea           bool
+
+	// Type-specific attribute flags
+	bugReproducible string
+	bugSeverity     string
+	bugWorkaround   string
+	ideaCategory    string
+	ideaEffort      string
+	ideaValue       string
+	ideaValidated   bool
+	taskEffort      string
+	taskWorkType    string
+	storyPoints     int
+	storyPersona    string
+	epicScope       string
+	epicMilestone   string
+	epicMetrics     string
 )
 
 var taskAddCmd = &cobra.Command{
@@ -66,6 +82,22 @@ func init() {
 	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: project's first section)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
+
+	// Type-specific attribute flags
+	taskAddCmd.Flags().StringVar(&bugReproducible, "bug.reproducible", "", "bug reproducibility (yes/no/sometimes)")
+	taskAddCmd.Flags().StringVar(&bugSeverity, "bug.severity", "", "bug severity (critical/major/minor/cosmetic)")
+	taskAddCmd.Flags().StringVar(&bugWorkaround, "bug.workaround", "", "bug workaround text")
+	taskAddCmd.Flags().StringVar(&ideaCategory, "idea.category", "", "idea category (feature/improvement/refactor/research)")
+	taskAddCmd.Flags().StringVar(&ideaEffort, "idea.effort", "", "idea effort estimate (small/medium/large/unknown)")
+	taskAddCmd.Flags().StringVar(&ideaValue, "idea.value", "", "idea value (low/medium/high)")
+	taskAddCmd.Flags().BoolVar(&ideaValidated, "idea.validated", false, "idea is validated")
+	taskAddCmd.Flags().StringVar(&taskEffort, "task.effort", "", "task effort (small/medium/large)")
+	taskAddCmd.Flags().StringVar(&taskWorkType, "task.worktype", "", "task work type (development/documentation/testing/devops/design)")
+	taskAddCmd.Flags().IntVar(&storyPoints, "story.points", 0, "story points")
+	taskAddCmd.Flags().StringVar(&storyPersona, "story.persona", "", "story persona")
+	taskAddCmd.Flags().StringVar(&epicScope, "epic.scope", "", "epic scope (defined/evolving/undefined)")
+	taskAddCmd.Flags().StringVar(&epicMilestone, "epic.milestone", "", "epic milestone")
+	taskAddCmd.Flags().StringVar(&epicMetrics, "epic.metrics", "", "epic success metrics")
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
@@ -165,6 +197,11 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		task.ParentID = &parent.ID
 	}
 
+	// Apply type-specific attributes
+	if err := applyTypeAttrs(task, cmd); err != nil {
+		return err
+	}
+
 	// Add to project
 	project.Tasks = append(project.Tasks, task)
 
@@ -206,5 +243,113 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if checklistCreated > 0 {
 		fmt.Printf("  Added %d checklist item(s) from template\n", checklistCreated)
 	}
+	return nil
+}
+
+// applyTypeAttrs applies type-specific attributes from CLI flags to the task.
+// Returns an error if attributes don't match the task type or have invalid values.
+func applyTypeAttrs(task *models.Task, cmd *cobra.Command) error {
+	// Bug attributes
+	hasBugAttrs := bugReproducible != "" || bugSeverity != "" || bugWorkaround != ""
+	if hasBugAttrs {
+		if task.Type != models.TaskTypeBug {
+			return fmt.Errorf("bug.* flags can only be used with bug type tasks")
+		}
+		task.BugAttrs = &models.BugAttrs{}
+		if bugReproducible != "" {
+			task.BugAttrs.Reproducible = models.BugReproducible(bugReproducible)
+		}
+		if bugSeverity != "" {
+			task.BugAttrs.Severity = models.BugSeverity(bugSeverity)
+		}
+		if bugWorkaround != "" {
+			task.BugAttrs.Workaround = bugWorkaround
+		}
+		if err := task.BugAttrs.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Idea attributes
+	hasIdeaAttrs := ideaCategory != "" || ideaEffort != "" || ideaValue != "" || cmd.Flags().Changed("idea.validated")
+	if hasIdeaAttrs {
+		if task.Type != models.TaskTypeIdea {
+			return fmt.Errorf("idea.* flags can only be used with idea type tasks")
+		}
+		task.IdeaAttrs = &models.IdeaAttrs{}
+		if ideaCategory != "" {
+			task.IdeaAttrs.Category = models.IdeaCategory(ideaCategory)
+		}
+		if ideaEffort != "" {
+			task.IdeaAttrs.Effort = models.EffortEstimate(ideaEffort)
+		}
+		if ideaValue != "" {
+			task.IdeaAttrs.Value = models.IdeaValue(ideaValue)
+		}
+		if cmd.Flags().Changed("idea.validated") {
+			task.IdeaAttrs.Validated = ideaValidated
+		}
+		if err := task.IdeaAttrs.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Task attributes
+	hasTaskAttrs := taskEffort != "" || taskWorkType != ""
+	if hasTaskAttrs {
+		if task.Type != models.TaskTypeTask {
+			return fmt.Errorf("task.* flags can only be used with task type tasks")
+		}
+		task.TaskAttrs = &models.TaskAttrs{}
+		if taskEffort != "" {
+			task.TaskAttrs.Effort = models.EffortEstimate(taskEffort)
+		}
+		if taskWorkType != "" {
+			task.TaskAttrs.WorkType = models.WorkType(taskWorkType)
+		}
+		if err := task.TaskAttrs.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Story attributes
+	hasStoryAttrs := cmd.Flags().Changed("story.points") || storyPersona != ""
+	if hasStoryAttrs {
+		if task.Type != models.TaskTypeStory {
+			return fmt.Errorf("story.* flags can only be used with story type tasks")
+		}
+		task.StoryAttrs = &models.StoryAttrs{}
+		if cmd.Flags().Changed("story.points") {
+			task.StoryAttrs.StoryPoints = storyPoints
+		}
+		if storyPersona != "" {
+			task.StoryAttrs.Persona = storyPersona
+		}
+		if err := task.StoryAttrs.Validate(); err != nil {
+			return err
+		}
+	}
+
+	// Epic attributes
+	hasEpicAttrs := epicScope != "" || epicMilestone != "" || epicMetrics != ""
+	if hasEpicAttrs {
+		if task.Type != models.TaskTypeEpic {
+			return fmt.Errorf("epic.* flags can only be used with epic type tasks")
+		}
+		task.EpicAttrs = &models.EpicAttrs{}
+		if epicScope != "" {
+			task.EpicAttrs.Scope = models.EpicScope(epicScope)
+		}
+		if epicMilestone != "" {
+			task.EpicAttrs.Milestone = epicMilestone
+		}
+		if epicMetrics != "" {
+			task.EpicAttrs.SuccessMetrics = epicMetrics
+		}
+		if err := task.EpicAttrs.Validate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

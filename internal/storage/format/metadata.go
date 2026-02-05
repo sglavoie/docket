@@ -49,6 +49,12 @@ var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
 	"attachments", "snoozed", "checklist",
+	// Type-specific attribute keys
+	"bug.reproducible", "bug.severity", "bug.workaround",
+	"idea.category", "idea.effort", "idea.value", "idea.validated",
+	"task.effort", "task.worktype",
+	"story.points", "story.persona",
+	"epic.scope", "epic.milestone", "epic.metrics",
 }
 
 // ParseMetadata parses the metadata string and sets task fields.
@@ -243,6 +249,88 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					})
 				}
 			}
+
+		// Bug attributes
+		case "bug.reproducible":
+			if task.BugAttrs == nil {
+				task.BugAttrs = &models.BugAttrs{}
+			}
+			task.BugAttrs.Reproducible = models.BugReproducible(value)
+		case "bug.severity":
+			if task.BugAttrs == nil {
+				task.BugAttrs = &models.BugAttrs{}
+			}
+			task.BugAttrs.Severity = models.BugSeverity(value)
+		case "bug.workaround":
+			if task.BugAttrs == nil {
+				task.BugAttrs = &models.BugAttrs{}
+			}
+			task.BugAttrs.Workaround = unescapeNewlines(value)
+
+		// Idea attributes
+		case "idea.category":
+			if task.IdeaAttrs == nil {
+				task.IdeaAttrs = &models.IdeaAttrs{}
+			}
+			task.IdeaAttrs.Category = models.IdeaCategory(value)
+		case "idea.effort":
+			if task.IdeaAttrs == nil {
+				task.IdeaAttrs = &models.IdeaAttrs{}
+			}
+			task.IdeaAttrs.Effort = models.EffortEstimate(value)
+		case "idea.value":
+			if task.IdeaAttrs == nil {
+				task.IdeaAttrs = &models.IdeaAttrs{}
+			}
+			task.IdeaAttrs.Value = models.IdeaValue(value)
+		case "idea.validated":
+			if task.IdeaAttrs == nil {
+				task.IdeaAttrs = &models.IdeaAttrs{}
+			}
+			task.IdeaAttrs.Validated = value == "true"
+
+		// Task attributes
+		case "task.effort":
+			if task.TaskAttrs == nil {
+				task.TaskAttrs = &models.TaskAttrs{}
+			}
+			task.TaskAttrs.Effort = models.EffortEstimate(value)
+		case "task.worktype":
+			if task.TaskAttrs == nil {
+				task.TaskAttrs = &models.TaskAttrs{}
+			}
+			task.TaskAttrs.WorkType = models.WorkType(value)
+
+		// Story attributes
+		case "story.points":
+			if task.StoryAttrs == nil {
+				task.StoryAttrs = &models.StoryAttrs{}
+			}
+			if points, err := strconv.Atoi(value); err == nil {
+				task.StoryAttrs.StoryPoints = points
+			}
+		case "story.persona":
+			if task.StoryAttrs == nil {
+				task.StoryAttrs = &models.StoryAttrs{}
+			}
+			task.StoryAttrs.Persona = unescapeNewlines(value)
+
+		// Epic attributes
+		case "epic.scope":
+			if task.EpicAttrs == nil {
+				task.EpicAttrs = &models.EpicAttrs{}
+			}
+			task.EpicAttrs.Scope = models.EpicScope(value)
+		case "epic.milestone":
+			if task.EpicAttrs == nil {
+				task.EpicAttrs = &models.EpicAttrs{}
+			}
+			task.EpicAttrs.Milestone = value
+		case "epic.metrics":
+			if task.EpicAttrs == nil {
+				task.EpicAttrs = &models.EpicAttrs{}
+			}
+			task.EpicAttrs.SuccessMetrics = unescapeNewlines(value)
 		}
 	}
 	// Migration: move non-GTD section values to CustomSection
@@ -297,6 +385,16 @@ func ParseTimeField(value string) (time.Time, bool) {
 		return t, true
 	}
 	return time.Time{}, false
+}
+
+// escapeNewlines replaces actual newlines with literal \n for storage in metadata.
+func escapeNewlines(s string) string {
+	return strings.ReplaceAll(s, "\n", `\n`)
+}
+
+// unescapeNewlines replaces literal \n with actual newlines when reading from metadata.
+func unescapeNewlines(s string) string {
+	return strings.ReplaceAll(s, `\n`, "\n")
 }
 
 // WriteMetadata generates the metadata comment for a task.
@@ -397,6 +495,64 @@ func WriteMetadata(task *models.Task) string {
 			checklistStrings = append(checklistStrings, item.Text+marker)
 		}
 		parts = append(parts, fmt.Sprintf("checklist: %s", strings.Join(checklistStrings, ";")))
+	}
+
+	// Type-specific attributes
+	if task.BugAttrs != nil && !task.BugAttrs.IsEmpty() {
+		if task.BugAttrs.Reproducible != "" {
+			parts = append(parts, fmt.Sprintf("bug.reproducible: %s", task.BugAttrs.Reproducible))
+		}
+		if task.BugAttrs.Severity != "" {
+			parts = append(parts, fmt.Sprintf("bug.severity: %s", task.BugAttrs.Severity))
+		}
+		if task.BugAttrs.Workaround != "" {
+			parts = append(parts, fmt.Sprintf("bug.workaround: %s", escapeNewlines(task.BugAttrs.Workaround)))
+		}
+	}
+
+	if task.IdeaAttrs != nil && !task.IdeaAttrs.IsEmpty() {
+		if task.IdeaAttrs.Category != "" {
+			parts = append(parts, fmt.Sprintf("idea.category: %s", task.IdeaAttrs.Category))
+		}
+		if task.IdeaAttrs.Effort != "" {
+			parts = append(parts, fmt.Sprintf("idea.effort: %s", task.IdeaAttrs.Effort))
+		}
+		if task.IdeaAttrs.Value != "" {
+			parts = append(parts, fmt.Sprintf("idea.value: %s", task.IdeaAttrs.Value))
+		}
+		if task.IdeaAttrs.Validated {
+			parts = append(parts, "idea.validated: true")
+		}
+	}
+
+	if task.TaskAttrs != nil && !task.TaskAttrs.IsEmpty() {
+		if task.TaskAttrs.Effort != "" {
+			parts = append(parts, fmt.Sprintf("task.effort: %s", task.TaskAttrs.Effort))
+		}
+		if task.TaskAttrs.WorkType != "" {
+			parts = append(parts, fmt.Sprintf("task.worktype: %s", task.TaskAttrs.WorkType))
+		}
+	}
+
+	if task.StoryAttrs != nil && !task.StoryAttrs.IsEmpty() {
+		if task.StoryAttrs.StoryPoints > 0 {
+			parts = append(parts, fmt.Sprintf("story.points: %d", task.StoryAttrs.StoryPoints))
+		}
+		if task.StoryAttrs.Persona != "" {
+			parts = append(parts, fmt.Sprintf("story.persona: %s", escapeNewlines(task.StoryAttrs.Persona)))
+		}
+	}
+
+	if task.EpicAttrs != nil && !task.EpicAttrs.IsEmpty() {
+		if task.EpicAttrs.Scope != "" {
+			parts = append(parts, fmt.Sprintf("epic.scope: %s", task.EpicAttrs.Scope))
+		}
+		if task.EpicAttrs.Milestone != "" {
+			parts = append(parts, fmt.Sprintf("epic.milestone: %s", task.EpicAttrs.Milestone))
+		}
+		if task.EpicAttrs.SuccessMetrics != "" {
+			parts = append(parts, fmt.Sprintf("epic.metrics: %s", escapeNewlines(task.EpicAttrs.SuccessMetrics)))
+		}
 	}
 
 	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))

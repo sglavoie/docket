@@ -215,6 +215,7 @@ func (t *Task) Promote() error {
 	}
 
 	t.Type = t.Type.Promote()
+	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
 	t.UpdatedAt = time.Now()
 	return nil
 }
@@ -227,6 +228,7 @@ func (t *Task) Demote() error {
 	}
 
 	t.Type = t.Type.Demote()
+	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
 	t.UpdatedAt = time.Now()
 	return nil
 }
@@ -245,6 +247,7 @@ func (t *Task) CycleLeafType(left bool) error {
 	} else {
 		t.Type = t.Type.CycleLeafRight()
 	}
+	t.ClearTypeAttrs() // Clear type-specific attributes when type changes
 	t.UpdatedAt = time.Now()
 	return nil
 }
