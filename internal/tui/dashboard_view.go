@@ -102,25 +102,42 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		numCards++
 	}
 
-	// Determine per-card width so content renders at the correct width.
+	// Determine per-card widths so content renders at the correct width.
 	// JoinHorizontal adds no gaps, so total card widths must equal width exactly.
+	// Alerts card is 10% narrower; other cards split the extra space.
 	wide := m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
-	cardW := width
+	otherCardW := width
+	alertsCardW := width
 	if wide {
-		cardW = width / numCards
-		if cardW < MinCardWidth {
-			cardW = MinCardWidth
+		alertsReduction := width / 10
+		otherCount := numCards - 1
+		if otherCount > 0 {
+			alertsCardW = width/numCards - alertsReduction
+			otherCardW = (width - alertsCardW) / otherCount
+		} else {
+			alertsCardW = width
+		}
+		if alertsCardW < MinCardWidth {
+			alertsCardW = MinCardWidth
+		}
+		if otherCardW < MinCardWidth {
+			otherCardW = MinCardWidth
 		}
 	}
-	contentW := cardW - CardBorderOverhead
-	if contentW < 1 {
-		contentW = 1
+	otherContentW := otherCardW - CardBorderOverhead
+	if otherContentW < 1 {
+		otherContentW = 1
+	}
+	alertsContentW := alertsCardW - CardBorderOverhead
+	if alertsContentW < 1 {
+		alertsContentW = 1
 	}
 
 	// Render card contents at the correct width
 	type card struct {
 		title   string
 		content string
+		width   int
 	}
 	var cards []card
 
@@ -129,21 +146,21 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		if len(selected.Tasks) == 0 {
 			recentContent = MutedStyle.Render("No tasks yet.")
 		} else {
-			recentContent = m.renderRecentTasksContentWithWidth(selected, contentW)
+			recentContent = m.renderRecentTasksContentWithWidth(selected, otherContentW)
 		}
-		recentTitle := fmt.Sprintf("Recent — %s", util.Truncate(selected.Name, cardW-16))
-		cards = append(cards, card{title: recentTitle, content: recentContent})
+		recentTitle := fmt.Sprintf("Recent — %s", util.Truncate(selected.Name, otherCardW-16))
+		cards = append(cards, card{title: recentTitle, content: recentContent, width: otherCardW})
 	}
 
 	if hasTopScored {
-		topContent := m.renderTopScoredContent(selected, scoringProfile, contentW)
+		topContent := m.renderTopScoredContent(selected, scoringProfile, otherContentW)
 		if topContent != "" {
-			cards = append(cards, card{title: "Top Scored", content: topContent})
+			cards = append(cards, card{title: "Top Scored", content: topContent, width: otherCardW})
 		}
 	}
 
-	alertsContent := m.renderGlobalAlerts(contentW)
-	cards = append(cards, card{title: "Alerts", content: alertsContent})
+	alertsContent := m.renderGlobalAlerts(alertsContentW)
+	cards = append(cards, card{title: "Alerts", content: alertsContent, width: alertsCardW})
 
 	if len(cards) == 0 {
 		return ""
@@ -151,13 +168,14 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 
 	if wide && len(cards) > 1 {
 		// Last card absorbs integer division remainder so cards fill full width
-		lastCardW := width - cardW*(len(cards)-1)
 		var rendered []string
+		usedWidth := 0
 		for i, c := range cards {
-			w := cardW
+			w := c.width
 			if i == len(cards)-1 {
-				w = lastCardW
+				w = width - usedWidth
 			}
+			usedWidth += w
 			rendered = append(rendered, renderCard(c.title, c.content, w, cfg))
 		}
 		return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
