@@ -391,7 +391,14 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	if badge != "" {
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
 	}
-	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen
+	scoreBadgeLen := 0
+	if m.ColumnWidth >= 25 && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
+			_ = profile // score badge takes ~7-8 chars: [S:NN] or [S:~NN]
+			scoreBadgeLen = 8
+		}
+	}
+	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen - scoreBadgeLen
 	if maxTitleLen < KanbanMinTitleWidth {
 		maxTitleLen = KanbanMinTitleWidth
 	}
@@ -410,8 +417,19 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		title = lipgloss.NewStyle().Foreground(ColorSuccess).Render(title)
 	}
 
+	// Score badge (only if column wide enough and profile assigned)
+	scoreBadgeStr := ""
+	if m.ColumnWidth >= 25 && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
+			scoreBadgeStr = RenderScoreBadge(task, profile)
+		}
+	}
+
 	statusStyle := GetStatusStyle(string(task.Status))
 	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
+	if scoreBadgeStr != "" {
+		content += " " + scoreBadgeStr
+	}
 	if badge != "" {
 		content += " " + badge
 	}
@@ -669,6 +687,7 @@ func (m *KanbanViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Faw": FilterAttrWorktypePrefixHints,
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
+			"FS":  FilterScorePrefixHints,
 		},
 	}
 }

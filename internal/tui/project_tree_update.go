@@ -623,6 +623,10 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		// Filter attribute points value
 		return m.handleFilterAttrPointsPrefix(key)
 
+	case "FS":
+		// Filter score threshold
+		return m.handleFilterScorePrefix(key)
+
 	case "s":
 		// Snooze quick actions
 		now := time.Now()

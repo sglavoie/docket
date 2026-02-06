@@ -54,6 +54,7 @@ var prefixCategoryNames = map[string]string{
 	"Faw": "worktype",
 	"Fao": "scope",
 	"Fap": "points",
+	"FS":  "filter-score",
 }
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
@@ -582,6 +583,16 @@ var (
 		{Key: "3", Description: "3 points"},
 		{Key: "5", Description: "5 points"},
 		{Key: "8", Description: "8 points"},
+		{Key: "0", Description: "clear"},
+	}
+
+	// FilterScorePrefixHints contains hints for the "FS" (filter score) sub-prefix.
+	FilterScorePrefixHints = []PrefixHint{
+		{Key: "1", Description: ">=10"},
+		{Key: "2", Description: ">=25"},
+		{Key: "3", Description: ">=50"},
+		{Key: "4", Description: ">=75"},
+		{Key: "5", Description: ">=100"},
 		{Key: "0", Description: "clear"},
 	}
 

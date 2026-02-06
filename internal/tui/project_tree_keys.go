@@ -74,6 +74,10 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return m, nil
+	case "S":
+		// Open score threshold sub-popup
+		m.pendingPrefix = "FS"
+		return m, nil
 	case "x":
 		// Clear all filters
 		m.filter.Type = ""
@@ -84,6 +88,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.filter.DueDate = DueDateAll
 		m.filter.Actionable = false
 		m.filter.Attrs = make(map[string]string)
+		m.filter.ScoreMin = 0
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		}
@@ -417,6 +422,30 @@ func (m *ProjectTreeModel) handleFilterAttrPointsPrefix(key string) (tea.Model, 
 		m.filter.Type = models.TaskTypeStory
 	case "0":
 		delete(m.filter.Attrs, "story.points")
+	default:
+		return m, nil
+	}
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+	return m, nil
+}
+
+// handleFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix).
+func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "1":
+		m.filter.ScoreMin = 10
+	case "2":
+		m.filter.ScoreMin = 25
+	case "3":
+		m.filter.ScoreMin = 50
+	case "4":
+		m.filter.ScoreMin = 75
+	case "5":
+		m.filter.ScoreMin = 100
+	case "0":
+		m.filter.ScoreMin = 0
 	default:
 		return m, nil
 	}

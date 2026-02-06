@@ -239,6 +239,71 @@ func clamp(v, min, max int) int {
 	return v
 }
 
+// MaxScore returns the theoretical maximum score for a profile.
+// For each dimension, it uses Max for numerators and Min for denominators.
+func MaxScore(profile *ScoringProfile) float64 {
+	results := make([]DimensionResult, len(profile.Dimensions))
+	for i, dim := range profile.Dimensions {
+		val := dim.Max
+		if dim.Role == RoleDenominator {
+			val = dim.Min
+			if val == 0 {
+				val = 1
+			}
+		}
+		results[i] = DimensionResult{
+			DimensionID:   dim.ID,
+			DimensionName: dim.Name,
+			Value:         val,
+			Weight:        dim.Weight,
+			Role:          dim.Role,
+		}
+	}
+	return applyFormula(results, profile.Formula)
+}
+
+// MinScore returns the theoretical minimum score for a profile.
+// For each dimension, it uses Min for numerators and Max for denominators.
+func MinScore(profile *ScoringProfile) float64 {
+	results := make([]DimensionResult, len(profile.Dimensions))
+	for i, dim := range profile.Dimensions {
+		val := dim.Min
+		if val == 0 && (profile.Formula == FormulaMultiply || profile.Formula == FormulaICE || profile.Formula == FormulaRICE) {
+			// Avoid zero in product formulas since it collapses everything
+			val = 1
+		}
+		if dim.Role == RoleDenominator {
+			val = dim.Max
+		}
+		results[i] = DimensionResult{
+			DimensionID:   dim.ID,
+			DimensionName: dim.Name,
+			Value:         val,
+			Weight:        dim.Weight,
+			Role:          dim.Role,
+		}
+	}
+	return applyFormula(results, profile.Formula)
+}
+
+// ScorePercent normalizes a score to the 0-100 range using the profile's min/max.
+// Returns 0 if max == min (degenerate profile).
+func ScorePercent(score float64, profile *ScoringProfile) float64 {
+	minS := MinScore(profile)
+	maxS := MaxScore(profile)
+	if maxS <= minS {
+		return 0
+	}
+	pct := (score - minS) / (maxS - minS) * 100
+	if pct < 0 {
+		return 0
+	}
+	if pct > 100 {
+		return 100
+	}
+	return pct
+}
+
 // FormatScore formats a float score as a display string (truncated to integer).
 func FormatScore(score float64) string {
 	return fmt.Sprintf("%d", int(score))

@@ -541,6 +541,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Score editor (Shift+S)
+	case "S":
+		task := m.getSelectedTask()
+		if task != nil {
+			return m, func() tea.Msg {
+				return ShowScoreEditorMsg{Task: task, Project: m.Project}
+			}
+		}
+		return m, nil
+
 	// Blockers view (capital B since lowercase b is now prefix)
 	case "B":
 		return m, func() tea.Msg {

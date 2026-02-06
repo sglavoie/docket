@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -404,6 +405,25 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			statusIndicator = strings.Join(parts, " ")
 		}
 
+		// Score coverage badge (% of non-completed tasks with manual scores)
+		scoreCoverageBadge := ""
+		if profile := m.config.GetProjectScoringProfile(p.ID); profile != nil {
+			scoredCount := 0
+			totalScorable := 0
+			for _, task := range p.Tasks {
+				if !task.Status.IsComplete() {
+					totalScorable++
+					if HasManualScores(task, profile) {
+						scoredCount++
+					}
+				}
+			}
+			if totalScorable > 0 {
+				pct := scoredCount * 100 / totalScorable
+				scoreCoverageBadge = MutedStyle.Render(fmt.Sprintf("S:%d%%", pct))
+			}
+		}
+
 		if narrowMode {
 			line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
 			line1 := RenderSelectableRow(selected, false, line1Content, cardWidth-4)
@@ -413,6 +433,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
 			if noteCount > 0 {
 				statsLine += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+			}
+			if scoreCoverageBadge != "" {
+				statsLine += "  " + scoreCoverageBadge
 			}
 			if statusIndicator != "" {
 				statsLine += "  " + statusIndicator
@@ -425,6 +448,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			content := fmt.Sprintf("%s%s %s %s %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr)
 			if noteCount > 0 {
 				content += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+			}
+			if scoreCoverageBadge != "" {
+				content += "  " + scoreCoverageBadge
 			}
 			if statusIndicator != "" {
 				content += "  " + statusIndicator
@@ -504,6 +530,17 @@ func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Pr
 	var b strings.Builder
 	b.WriteString(renderCard(recentTitle, recentContent, cardWidth, cfg))
 	b.WriteString("\n\n")
+
+	// Top scored card (only if selected project has a scoring profile)
+	if selected != nil {
+		if profile := m.config.GetProjectScoringProfile(selected.ID); profile != nil {
+			topContent := m.renderTopScoredContent(selected, profile, cardWidth-CardBorderOverhead)
+			if topContent != "" {
+				b.WriteString(renderCard("Top Scored", topContent, cardWidth, cfg))
+				b.WriteString("\n\n")
+			}
+		}
+	}
 
 	// Alerts card
 	alertsContent := m.renderGlobalAlerts(cardWidth)
@@ -607,6 +644,37 @@ func renderDashboardVerticalDivider(height int) string {
 		}
 	}
 	return MutedStyle.Render(b.String())
+}
+
+// renderTopScoredContent returns the highest-scored incomplete task with a score bar.
+func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile *scoring.ScoringProfile, contentWidth int) string {
+	var bestTask *models.Task
+	var bestScore float64
+	for _, task := range project.Tasks {
+		if task.Status.IsComplete() {
+			continue
+		}
+		score := scoring.ComputeScore(task, profile)
+		if bestTask == nil || score > bestScore {
+			bestTask = task
+			bestScore = score
+		}
+	}
+	if bestTask == nil {
+		return ""
+	}
+
+	bar := RenderScoreBar(bestTask, profile)
+	badge := RenderScoreBadge(bestTask, profile)
+	titleWidth := contentWidth - 15
+	if titleWidth < 10 {
+		titleWidth = 10
+	}
+	title := util.Truncate(bestTask.Title, titleWidth)
+	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
+	statusIcon := GetStatusBadge(string(bestTask.Status), bestTask.Status.Icon())
+
+	return fmt.Sprintf("%s %s %s %s %s", bar, badge, typeIcon, statusIcon, title)
 }
 
 func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, contentWidth int) string {

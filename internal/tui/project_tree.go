@@ -131,6 +131,7 @@ type FilterState struct {
 	DueDate    DueDateFilter     // filter by due date
 	Actionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
 	Attrs      map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
+	ScoreMin   float64           // minimum score threshold (0 = no filter)
 }
 
 // QuickEditState contains state for inline task editing.

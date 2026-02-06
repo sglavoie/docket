@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -211,8 +210,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		priorityBadge := renderPriorityBadge(task.Priority)
 		title := util.Truncate(task.Title, maxTitleLen)
-		score := scoring.ComputeScore(task, profile)
-		scoreBadge := MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+		scoreBadge := RenderScoreBadge(task, profile)
 
 		line := fmt.Sprintf("%s%d. %s %s %s %s %s", cursor, rank+1, scoreBadge, statusIcon, typeIcon, priorityBadge, title)
 		if isSelected {
@@ -329,8 +327,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	scoreBadge := ""
 	if m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			score := scoring.ComputeScore(task, profile)
-			scoreBadge = " " + MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+			scoreBadge = " " + RenderScoreBadge(task, profile)
 		}
 	}
 

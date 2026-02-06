@@ -61,6 +61,13 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	// Metadata card: tags + section (uses section color)
 	cards = append(cards, m.renderMetadataCard(task, width, sectionColor))
 
+	// Score card (only if scoring profile assigned)
+	if m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			cards = append(cards, m.renderScoreCard(task, width, profile))
+		}
+	}
+
 	// Checklist card (only if has checklist items)
 	if len(task.Checklist) > 0 {
 		cards = append(cards, m.renderChecklistCard(task, width))
@@ -128,8 +135,7 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionC
 	scoreBadge := ""
 	if m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			score := scoring.ComputeScore(task, profile)
-			scoreBadge = " " + MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+			scoreBadge = " " + RenderScoreBadge(task, profile)
 		}
 	}
 	idLine := fmt.Sprintf("#%d %s%s", task.ShortID, priorityBadge, scoreBadge)
@@ -626,6 +632,81 @@ func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, inn
 		line = BoldStyle.Render(line)
 	}
 	return line
+}
+
+// renderScoreCard renders the score breakdown card for the sidebar.
+func (m *ProjectTreeModel) renderScoreCard(task *models.Task, width int, profile *scoring.ScoringProfile) string {
+	results := scoring.ScoreBreakdown(task, profile)
+	totalScore := scoring.ComputeScore(task, profile)
+	pct := scoring.ScorePercent(totalScore, profile)
+
+	var lines []string
+
+	// Header: bar + score + formula
+	bar := RenderScoreBar(task, profile)
+	badge := RenderScoreBadge(task, profile)
+	formulaStr := MutedStyle.Render(fmt.Sprintf("(%s)", profile.Formula))
+	lines = append(lines, fmt.Sprintf("%s %s  %s", bar, badge, formulaStr))
+	lines = append(lines, "")
+
+	// Per-dimension breakdown
+	manualStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
+
+	// Find max name width for alignment
+	maxNameWidth := 0
+	for _, r := range results {
+		if len(r.DimensionName) > maxNameWidth {
+			maxNameWidth = len(r.DimensionName)
+		}
+	}
+	cardInner := width - 6
+	if maxNameWidth > cardInner-16 {
+		maxNameWidth = cardInner - 16
+	}
+
+	for _, r := range results {
+		name := r.DimensionName
+		if len(name) > maxNameWidth {
+			name = name[:maxNameWidth]
+		}
+
+		// Value display
+		valStr := fmt.Sprintf("%d", r.Value)
+
+		// Source label
+		var sourceLabel string
+		switch r.Source {
+		case "manual":
+			sourceLabel = manualStyle.Render("manual")
+		case "derived":
+			sourceLabel = derivedStyle.Render("derived")
+		default:
+			sourceLabel = MutedStyle.Render("default")
+		}
+
+		// Role indicator for RICE/WSJF
+		roleStr := ""
+		if r.Role == scoring.RoleNumerator {
+			roleStr = MutedStyle.Render(" [n]")
+		} else if r.Role == scoring.RoleDenominator {
+			roleStr = MutedStyle.Render(" [d]")
+		}
+
+		padding := maxNameWidth - len(name)
+		if padding < 0 {
+			padding = 0
+		}
+		line := fmt.Sprintf("%s%s %s %s%s",
+			MutedStyle.Render(name), strings.Repeat(" ", padding),
+			valStr, sourceLabel, roleStr)
+		lines = append(lines, line)
+	}
+
+	// Percentage bar at bottom
+	_ = pct // included in badge already
+
+	return renderSidebarCard("Score", strings.Join(lines, "\n"), width, false, "")
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.

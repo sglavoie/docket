@@ -316,6 +316,10 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		// Filter attribute points value
 		return m.handleKanbanFilterAttrPointsPrefix(key)
 
+	case "FS":
+		// Filter score threshold
+		return m.handleKanbanFilterScorePrefix(key)
+
 	case "z":
 		// Fold/expand operations
 		switch key {

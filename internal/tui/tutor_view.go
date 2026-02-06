@@ -532,6 +532,13 @@ func init() {
 		{`assignment with (@)`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 		// Command palette commands
 		{`type (ask ai) to`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		// Score badge patterns
+		{`\[S:\d+\]`, lipgloss.NewStyle().Foreground(lipgloss.Color("42")), 0},
+		{`\[S:~\d+\]`, lipgloss.NewStyle().Foreground(lipgloss.Color("208")), 0},
+		// Shift+S keybinding
+		{`Shift\+S`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// FS prefix
+		{`\bFS\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
 	}
 
 	for _, r := range rules {
@@ -951,6 +958,41 @@ can receive tasks, be renamed, or be removed. Assigning a task
 to a section that does not exist yet creates it automatically.`,
 		},
 		{
+			Title:    "Scoring",
+			Category: "Concepts",
+			Content: `# What Is Scoring
+
+Scoring assigns a numeric value to each task based on configurable
+dimensions. This helps you prioritize objectively by comparing tasks
+on consistent criteria rather than gut feeling alone.
+
+# Profiles
+
+A scoring profile defines dimensions and a formula. Each project
+can have one profile assigned. Profiles are reusable across projects.
+
+# Formulas
+
+Five formulas are available. weighted_sum multiplies each dimension
+by its weight and sums the results. RICE multiplies Reach, Impact,
+and Confidence then divides by Effort. WSJF sums numerator dimensions
+and divides by the sum of denominator dimensions. ICE multiplies
+Impact, Confidence, and Ease. multiply takes the product of all
+dimensions.
+
+# Dimensions
+
+Dimensions can be manual (user-set per task), derived (computed from
+task fields like priority or due date), or have a default value when
+unset. Each dimension has a min and max range.
+
+# Storage
+
+Dimension values are persisted in task metadata as score.<key>: <value>
+entries. The ~ indicator appears when a score uses default values
+rather than explicitly set dimensions.`,
+		},
+		{
 			Title:    "Snooze",
 			Category: "Concepts",
 			Content: `# Snoozing Tasks
@@ -1135,6 +1177,31 @@ GTD methodology for workflow organization.
   tt add "Deploy service #ops #urgent @active"`,
 		},
 		{
+			Title:    "Scoring",
+			Category: "CLI",
+			Content: `# Managing Scoring Profiles
+
+  tt score profile list
+  tt score profile add
+  tt score profile show <name>
+  tt score profile edit <name>
+  tt score profile delete <name>
+
+# Assigning Profiles to Projects
+
+  tt score assign <profile-name>
+  tt score unassign
+
+# Setting Dimension Values
+
+  tt score set <task-id> <dimension> <value>
+  tt score show <task-id>
+
+# Ranking Tasks
+
+  tt score rank`,
+		},
+		{
 			Title:    "Search",
 			Category: "CLI",
 			Content: `# Searching Tasks
@@ -1279,6 +1346,38 @@ Use ! followed by a number to set priority on the selected task:
 Press @ on a selected task to open the section picker. Choose
 from Active, Next, Inbox, Waiting, or Someday to reassign
 the task quickly.`,
+		},
+		{
+			Title:    "Scoring",
+			Category: "TUI",
+			Content: `# Score Editor
+
+Press Shift+S on a selected task to open the score editor overlay.
+This lets you set dimension values for the task interactively.
+
+# Sort by Score
+
+Press 5 in the project tree to sort tasks by their computed score.
+Higher scores appear first. Tasks without scores appear at the end.
+
+# Score Badge
+
+Tasks with a scoring profile show a badge like [S:42] in green when
+all dimensions are explicitly set, or [S:~42] in orange when some
+dimensions use default values. The badge appears in the priority view
+and kanban task rows.
+
+# Score in Sidebar
+
+The sidebar shows a score breakdown with each dimension value and
+the computed total when a scored task is selected.
+
+# Score Threshold Filter
+
+Use the FS prefix to filter tasks by minimum score. Press F then S
+to open the score filter popup. Keys 1 through 5 set thresholds
+at 10, 25, 50, 75, and 100 respectively. Press 0 to clear the
+filter. Works in both project tree and kanban views.`,
 		},
 		{
 			Title:    "Snooze",

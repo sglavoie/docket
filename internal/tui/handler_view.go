@@ -662,6 +662,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				_ = storage.LoadProject(m.projectTree.project)
 				m.projectTree.buildTree()
 			}
+			// Refresh kanban if active
+			if m.kanban != nil {
+				_ = storage.LoadProject(m.kanban.Project)
+				m.kanban.loadTasks()
+			}
 			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)
 		}
 		return true, nil

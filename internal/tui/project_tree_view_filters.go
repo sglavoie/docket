@@ -134,7 +134,8 @@ func (m *ProjectTreeModel) hasActiveFilters() bool {
 		len(m.filter.Sections) > 0 ||
 		m.filter.DueDate != DueDateAll ||
 		m.filter.Actionable ||
-		len(m.filter.Attrs) > 0
+		len(m.filter.Attrs) > 0 ||
+		m.filter.ScoreMin > 0
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
@@ -187,6 +188,9 @@ func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 			attrParts = append(attrParts, k+"="+v)
 		}
 		parts = append(parts, "attr:"+strings.Join(attrParts, ","))
+	}
+	if m.filter.ScoreMin > 0 {
+		parts = append(parts, fmt.Sprintf("score>=%.0f", m.filter.ScoreMin))
 	}
 
 	if len(parts) == 0 {
@@ -253,6 +257,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Faw": FilterAttrWorktypePrefixHints,
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
+			"FS":  FilterScorePrefixHints,
 		},
 	}
 }
@@ -312,6 +317,11 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
 	}
 
+	scoreDetail := "(off)"
+	if m.filter.ScoreMin > 0 {
+		scoreDetail = fmt.Sprintf(">=%.0f", m.filter.ScoreMin)
+	}
+
 	return []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.viewMode == ViewModeCompleted},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
@@ -321,6 +331,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "@", Description: "section", Detail: sectionDetail, Active: len(m.filter.Sections) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
+		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "x", Description: "clear-all"},
 	}

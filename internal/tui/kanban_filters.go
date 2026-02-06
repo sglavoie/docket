@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // Kanban tab names and indices.
@@ -44,6 +45,7 @@ type KanbanFilterState struct {
 	DueDate  DueDateFilter     // filter by due date
 	Search   string            // text search query
 	Attrs    map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
+	ScoreMin float64           // minimum score threshold (0 = no filter)
 }
 
 // KanbanFilterBarComponent encapsulates filter bar state for the kanban view.
@@ -151,6 +153,15 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 	// Apply attribute filters
 	if !passesAttrFilters(task, m.filter.Attrs) {
 		return false
+	}
+
+	// Apply score threshold filter
+	if m.filter.ScoreMin > 0 && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
+			if scoring.ComputeScore(task, profile) < m.filter.ScoreMin {
+				return false
+			}
+		}
 	}
 
 	// Apply actionable filter (hide blocked tasks and tasks with incomplete dependencies)
@@ -274,7 +285,8 @@ func (m *KanbanViewModel) HasActiveFilters() bool {
 		len(m.filter.Tags) > 0 ||
 		m.filter.DueDate != DueDateAll ||
 		m.filter.Search != "" ||
-		len(m.filter.Attrs) > 0
+		len(m.filter.Attrs) > 0 ||
+		m.filter.ScoreMin > 0
 }
 
 // ClearAllFilters resets all filters to their default state.
@@ -286,6 +298,7 @@ func (m *KanbanViewModel) ClearAllFilters() {
 	m.filter.DueDate = DueDateAll
 	m.filter.Search = ""
 	m.filter.Attrs = make(map[string]string)
+	m.filter.ScoreMin = 0
 }
 
 // toggleKanbanPriorityFilter toggles the high priority filter.
@@ -379,6 +392,11 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		attrDetail = fmt.Sprintf("%d attrs", len(m.filter.Attrs))
 	}
 
+	scoreDetail := "(off)"
+	if m.filter.ScoreMin > 0 {
+		scoreDetail = fmt.Sprintf(">=%.0f", m.filter.ScoreMin)
+	}
+
 	return []PrefixHint{
 		{Key: "c", Description: "completed", Detail: completedDetail, Active: m.completedViewMode},
 		{Key: "p", Description: "priority", Detail: priorityDetail, Active: m.filter.Priority != 0},
@@ -387,6 +405,7 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		{Key: "#", Description: "tags", Detail: tagDetail, Active: len(m.filter.Tags) > 0},
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
+		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter},
 		{Key: "x", Description: "clear-all"},
 	}
@@ -429,6 +448,10 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		// Toggle actionable filter
 		m.toggleActionableFilter()
 		return m, nil
+	case "S":
+		// Open score threshold sub-popup
+		m.pendingPrefix = "FS"
+		return m, nil
 	case "x":
 		// Clear all filters
 		m.ClearAllFilters()
@@ -437,6 +460,28 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		m.loadTasks()
 		return m, nil
 	}
+	return m, nil
+}
+
+// handleKanbanFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix) in kanban.
+func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "1":
+		m.filter.ScoreMin = 10
+	case "2":
+		m.filter.ScoreMin = 25
+	case "3":
+		m.filter.ScoreMin = 50
+	case "4":
+		m.filter.ScoreMin = 75
+	case "5":
+		m.filter.ScoreMin = 100
+	case "0":
+		m.filter.ScoreMin = 0
+	default:
+		return m, nil
+	}
+	m.loadTasks()
 	return m, nil
 }
 
