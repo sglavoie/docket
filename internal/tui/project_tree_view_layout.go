@@ -602,7 +602,11 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		b.WriteString(" ")
 	}
 	if m.sortField != SortByDefault {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("sort:%s", m.sortField)))
+		direction := "↑"
+		if !m.sortAscending {
+			direction = "↓"
+		}
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sortField, direction)))
 	}
 
 	return b.String()
