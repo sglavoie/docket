@@ -48,6 +48,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerKanbanBindings()
 	r.registerNotesBindings()
 	r.registerRecentActivityBindings()
+	r.registerScoreProfileManagerBindings()
 	return r
 }
 

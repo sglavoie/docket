@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -205,6 +206,16 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	daysSinceUpdated := int(time.Since(task.UpdatedAt).Hours() / 24)
 	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
 		reasons = append(reasons, "recent activity")
+	}
+
+	// Composite score from scoring profile
+	if m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			score := scoring.ComputeScore(task, profile)
+			if int(score) > 0 {
+				reasons = append(reasons, fmt.Sprintf("composite score %d", int(score)))
+			}
+		}
 	}
 
 	// If no specific reasons, provide a generic one

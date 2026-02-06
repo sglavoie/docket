@@ -9,7 +9,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // PriorityGroup represents a category of tasks by urgency.
@@ -40,7 +42,7 @@ type SuggestedTask struct {
 }
 
 // Priority view tab names and indices.
-var priorityTabNames = []string{"All", "Urgent", "Upcoming", "Backlog", "Blocked"}
+var priorityTabNames = []string{"All", "Urgent", "Upcoming", "Backlog", "Blocked", "By Score"}
 
 const (
 	priorityTabAll      = 0
@@ -48,11 +50,13 @@ const (
 	priorityTabUpcoming = 2
 	priorityTabBacklog  = 3
 	priorityTabBlocked  = 4
+	priorityTabByScore  = 5
 )
 
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
 	project        *models.Project
+	config         *config.Config
 	projectService *ProjectService
 
 	// Grouped tasks by urgency
@@ -62,6 +66,9 @@ type PriorityViewModel struct {
 	later     []*PriorityTask
 	backlog   []*PriorityTask // Tasks without due dates
 	waitingOn []*PriorityTask // Blocked tasks
+
+	// Score-ranked tasks (populated when scoring profile assigned)
+	scoredTasks []*PriorityTask
 
 	// Smart suggestion
 	suggestion   *SuggestedTask  // The single most actionable task
@@ -92,12 +99,15 @@ type PriorityViewModel struct {
 }
 
 // NewPriorityViewModel creates a new priority view for the given project.
-func NewPriorityViewModel(project *models.Project) *PriorityViewModel {
+func NewPriorityViewModel(project *models.Project, cfg ...*config.Config) *PriorityViewModel {
 	m := &PriorityViewModel{
 		project:            project,
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
+	}
+	if len(cfg) > 0 {
+		m.config = cfg[0]
 	}
 	m.loadActionableTasks()
 	return m
@@ -167,6 +177,23 @@ func (m *PriorityViewModel) loadActionableTasks() {
 	sortByUrgency(m.backlog)
 	sortByUrgency(m.waitingOn)
 
+	// Compute score-ranked list if a scoring profile is assigned
+	m.scoredTasks = nil
+	if m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			var all []*PriorityTask
+			all = append(all, m.overdue...)
+			all = append(all, m.today...)
+			all = append(all, m.thisWeek...)
+			all = append(all, m.later...)
+			all = append(all, m.backlog...)
+			sort.SliceStable(all, func(i, j int) bool {
+				return scoring.ComputeScore(all[i].Task, profile) > scoring.ComputeScore(all[j].Task, profile)
+			})
+			m.scoredTasks = all
+		}
+	}
+
 	// Recalculate navigation for the active tab
 	m.recalculateNavigation()
 
@@ -185,6 +212,8 @@ func (m *PriorityViewModel) activeTabHint() string {
 		return " • Showing tasks with no due date"
 	case priorityTabBlocked:
 		return " • Showing blocked and waiting tasks"
+	case priorityTabByScore:
+		return " • Ranked by composite score"
 	default:
 		return ""
 	}
@@ -202,6 +231,8 @@ func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, b
 		return nil, nil, nil, nil, m.backlog, nil
 	case priorityTabBlocked:
 		return nil, nil, nil, nil, nil, m.waitingOn
+	case priorityTabByScore:
+		return nil, nil, nil, nil, nil, nil
 	default: // priorityTabAll
 		return m.overdue, m.today, m.thisWeek, m.later, m.backlog, m.waitingOn
 	}
@@ -209,7 +240,7 @@ func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, b
 
 // computeSubTabs builds dynamic sub-tab names based on active tab and current groups.
 func (m *PriorityViewModel) computeSubTabs() {
-	if m.project == nil || m.activeTab == priorityTabAll {
+	if m.project == nil || m.activeTab == priorityTabAll || m.activeTab == priorityTabByScore {
 		m.subTabNames = nil
 		if m.subTab > len(m.subTabNames) {
 			m.subTab = 0
@@ -284,6 +315,15 @@ func (m *PriorityViewModel) filteredGroupsWithSubTab() (overdue, today, thisWeek
 // recalculateNavigation updates totalTasks and groupStarts based on the active tab.
 func (m *PriorityViewModel) recalculateNavigation() {
 	m.computeSubTabs()
+
+	// By Score tab uses scoredTasks directly
+	if m.activeTab == priorityTabByScore {
+		m.subTabNames = nil
+		m.totalTasks = len(m.scoredTasks)
+		m.groupStarts = []int{0}
+		return
+	}
+
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	// For the Blocked tab, waiting tasks are navigable (not collapsible)
@@ -304,6 +344,15 @@ func (m *PriorityViewModel) recalculateNavigation() {
 
 // jumpToTask moves the cursor to the position of the given task in the list.
 func (m *PriorityViewModel) jumpToTask(task *models.Task) {
+	if m.activeTab == priorityTabByScore {
+		for i, pt := range m.scoredTasks {
+			if pt.Task.ID == task.ID {
+				m.cursor = i
+				return
+			}
+		}
+		return
+	}
 	index := 0
 	for _, pt := range m.overdue {
 		if pt.Task.ID == task.ID {
@@ -387,6 +436,13 @@ func (m *PriorityViewModel) formatRelativeDue(task *models.Task) string {
 // getTaskAtCursor returns the task at the current cursor position.
 func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 	if m.totalTasks == 0 {
+		return nil
+	}
+
+	if m.activeTab == priorityTabByScore {
+		if m.cursor < len(m.scoredTasks) {
+			return m.scoredTasks[m.cursor]
+		}
 		return nil
 	}
 
@@ -655,6 +711,15 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		// Start suggested task (or jump to it if already in progress)
 		return m.startSuggestedTask()
 
+	case "S":
+		// Open score editor for task under cursor
+		if pt := m.getTaskAtCursor(); pt != nil {
+			return m, func() tea.Msg {
+				return ShowScoreEditorMsg{Task: pt.Task, Project: m.project}
+			}
+		}
+		return m, nil
+
 	case "x":
 		// Dismiss current suggestion
 		m.dismissSuggestion()
@@ -892,7 +957,10 @@ func (m *PriorityViewModel) View() string {
 	}
 
 	// Pre-render conditional sections to calculate their actual height
-	suggestionSection := m.renderSuggestionSection()
+	suggestionSection := ""
+	if m.activeTab != priorityTabByScore {
+		suggestionSection = m.renderSuggestionSection()
+	}
 	tabHint := m.activeTabHint()
 
 	// Calculate available height for task list

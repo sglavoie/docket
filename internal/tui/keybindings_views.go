@@ -333,3 +333,15 @@ func (r *KeybindingRegistry) registerRecentActivityBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }
+
+func (r *KeybindingRegistry) registerScoreProfileManagerBindings() {
+	views := []ViewType{ViewScoreProfileManager}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "a", Description: "Add preset profile", Category: "Actions", Views: views},
+		Keybinding{Key: "d", Description: "Delete profile", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Assign to project", Category: "Actions", Views: views},
+		Keybinding{Key: "u", Description: "Unassign from project", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}

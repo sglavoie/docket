@@ -17,6 +17,7 @@ const (
 	SortByDueDate                    // earliest due date first
 	SortByCreatedAt                  // by creation date
 	SortByStatus                     // by workflow status order
+	SortByScore                      // by composite scoring profile score (highest first)
 )
 
 // DueDateFilter represents the due date filter options.
@@ -92,6 +93,8 @@ func (s SortField) ShortString() string {
 		return "new"
 	case SortByStatus:
 		return "sts"
+	case SortByScore:
+		return "scr"
 	default:
 		return ""
 	}
@@ -107,6 +110,8 @@ func (s SortField) String() string {
 		return "created"
 	case SortByStatus:
 		return "status"
+	case SortByScore:
+		return "score"
 	default:
 		return "default"
 	}

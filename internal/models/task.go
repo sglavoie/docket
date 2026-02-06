@@ -49,6 +49,9 @@ type Task struct {
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
 
+	// Scoring dimensions: manual overrides for scoring profile dimensions (e.g., "impact": 4)
+	ScoreDimensions map[string]int `json:"score_dimensions,omitempty"`
+
 	// Type-specific attributes (only one should be set based on task Type)
 	BugAttrs   *BugAttrs   `json:"bug_attrs,omitempty"`
 	IdeaAttrs  *IdeaAttrs  `json:"idea_attrs,omitempty"`

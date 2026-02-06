@@ -90,6 +90,8 @@ const (
 	ViewTaskTemplateEditor
 	ViewTaskTemplatePicker
 	ViewTaskChecklist
+	ViewScoreEditor
+	ViewScoreProfileManager
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -298,6 +300,7 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.dueDateOverviewCommands())
 	_ = m.commandRegistry.RegisterBatch(m.workflowRulesCommands())
 	_ = m.commandRegistry.RegisterBatch(m.sidebarCommands())
+	_ = m.commandRegistry.RegisterBatch(m.scoringCommands())
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

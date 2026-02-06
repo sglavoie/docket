@@ -442,13 +442,6 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 		m.clampCursor()
 		return true, nil
 
-	case "S":
-		m.filter.Status = cycleFilter(m.filter.Status, models.AllTaskStatuses())
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
-		return true, nil
-
 	case "T":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			tasks := m.getSelectedTasks()
@@ -574,6 +567,9 @@ func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 		return true, nil
 	case "4":
 		m.toggleSort(SortByStatus)
+		return true, nil
+	case "5":
+		m.toggleSort(SortByScore)
 		return true, nil
 	case "0":
 		m.sortField = SortByDefault
@@ -822,6 +818,16 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		return true, func() tea.Msg {
 			return ShowPriorityViewMsg{Project: m.project}
 		}
+
+	case "S":
+		// Open score editor for selected task
+		if len(visible) > 0 && m.cursor < len(visible) {
+			task := visible[m.cursor].Task
+			return true, func() tea.Msg {
+				return ShowScoreEditorMsg{Task: task, Project: m.project}
+			}
+		}
+		return true, nil
 
 	case "f":
 		return true, func() tea.Msg {

@@ -260,6 +260,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cycleSortField(SortByStatus)
 		return m, nil
 
+	case "5":
+		m.cycleSortField(SortByScore)
+		return m, nil
+
 	case "0":
 		m.resetSort()
 		return m, nil

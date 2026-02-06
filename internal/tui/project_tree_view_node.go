@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -179,6 +180,14 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		csColor := m.project.GetSectionColor(task.CustomSection)
 		csStyle := GetSectionColorStyle(csColor)
 		indicators += csStyle.Render("@ "+task.CustomSection) + " "
+	}
+
+	// Score badge (when sidebar is hidden and scoring profile assigned)
+	if !m.sidebar.IsEnabled() && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			score := scoring.ComputeScore(task, profile)
+			indicators += MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score))) + " "
+		}
 	}
 
 	// Tag badges (compact, show first 2 tags + count if more)

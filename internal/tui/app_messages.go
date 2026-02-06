@@ -335,6 +335,12 @@ type ShowPriorityViewMsg struct {
 // ClosePriorityViewMsg closes the priority overview.
 type ClosePriorityViewMsg struct{}
 
+// ShowScoreEditorMsg opens the score dimension editor for a task.
+type ShowScoreEditorMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
 // PriorityViewSelectMsg navigates to a task from priority view in the project tree.
 type PriorityViewSelectMsg struct {
 	Task *models.Task
@@ -743,6 +749,19 @@ type LinkRemovedMsg struct {
 	SourceTask *models.Task
 	Section    int // 0=blocked by, 1=blocking, 2=related
 }
+
+// =============================================================================
+// Score Profile Manager Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowScoreProfileManagerMsg opens the scoring profile manager view.
+type ShowScoreProfileManagerMsg struct{}
+
+// CloseScoreProfileManagerMsg closes the scoring profile manager view.
+type CloseScoreProfileManagerMsg struct{}
+
+// ScoreProfileChangedMsg signals a scoring profile was added, deleted, assigned, or unassigned.
+type ScoreProfileChangedMsg struct{}
 
 // =============================================================================
 // Sandbox Messages

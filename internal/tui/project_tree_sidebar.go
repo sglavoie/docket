@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -124,7 +125,14 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionC
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
 	priorityBadge := renderPriorityBadge(task.Priority)
-	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
+	scoreBadge := ""
+	if m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			score := scoring.ComputeScore(task, profile)
+			scoreBadge = " " + MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+		}
+	}
+	idLine := fmt.Sprintf("#%d %s%s", task.ShortID, priorityBadge, scoreBadge)
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
 

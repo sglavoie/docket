@@ -600,7 +600,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
-			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project))
+			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project, m.config))
 		}
 		return true, nil
 
@@ -613,6 +613,56 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Task != nil {
 			m.projectTree.NavigateToTask(msg.Task)
 			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
+	case ShowScoreEditorMsg:
+		if msg.Task != nil && msg.Project != nil {
+			editor := NewScoreEditorModel(msg.Task, msg.Project, m.config)
+			if editor != nil {
+				m.showView(ViewScoreEditor, editor)
+			} else {
+				m.statusMessage = "No scoring profile assigned — opening profile manager"
+				return true, func() tea.Msg {
+					return ShowScoreProfileManagerMsg{}
+				}
+			}
+		}
+		return true, nil
+
+	case ShowScoreProfileManagerMsg:
+		projectID := ""
+		if m.currentProject != nil {
+			projectID = m.currentProject.ID
+		}
+		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
+		return true, nil
+
+	case CloseScoreProfileManagerMsg:
+		m.popView()
+		return true, nil
+
+	case ScoreProfileChangedMsg:
+		if m.currentView() == ViewScoreProfileManager {
+			projectID := ""
+			if m.currentProject != nil {
+				projectID = m.currentProject.ID
+			}
+			mgr := NewScoreProfileManagerModel(m.config, m.configManager, projectID)
+			mgr.SetSize(m.width, m.height-2)
+			m.views.Register(ViewScoreProfileManager, mgr)
+		}
+		return true, nil
+
+	case ScoreEditorDoneMsg:
+		m.popView()
+		if msg.Saved {
+			// Refresh the project tree and data after score changes
+			if m.projectTree != nil {
+				_ = storage.LoadProject(m.projectTree.project)
+				m.projectTree.buildTree()
+			}
+			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)
 		}
 		return true, nil
 

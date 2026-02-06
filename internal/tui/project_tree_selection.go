@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // toggleSelection toggles the selection state of a single task.
@@ -157,6 +158,14 @@ func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 
 	case SortByStatus:
 		less = m.statusOrder(a.Task.Status) < m.statusOrder(b.Task.Status)
+
+	case SortByScore:
+		profile := m.config.GetProjectScoringProfile(m.project.ID)
+		if profile != nil {
+			scoreA := scoring.ComputeScore(a.Task, profile)
+			scoreB := scoring.ComputeScore(b.Task, profile)
+			less = scoreA > scoreB // higher score first (descending by default)
+		}
 
 	default:
 		// In snoozed view with default sort, sort by SnoozedUntil ascending

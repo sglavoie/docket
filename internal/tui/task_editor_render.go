@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // renderFormLabel renders a form field label with fixed width alignment.
@@ -130,4 +132,36 @@ func (m *TaskEditorModel) renderFlagsField() string {
 // renderRecurrenceSelector renders the recurrence pattern selector options.
 func (m *TaskEditorModel) renderRecurrenceSelector() string {
 	return renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 7, m.recurrence)
+}
+
+// renderScoreSummary renders the composite score and per-dimension breakdown
+// when a scoring profile is active for the project. Returns empty string if no profile.
+func (m *TaskEditorModel) renderScoreSummary() string {
+	if m.config == nil {
+		return ""
+	}
+	profile := m.config.GetProjectScoringProfile(m.project.ID)
+	if profile == nil {
+		return ""
+	}
+
+	var b strings.Builder
+	totalScore := scoring.ComputeScore(m.task, profile)
+	results := scoring.ScoreBreakdown(m.task, profile)
+
+	b.WriteString(renderFormLabelShared("Score", -1, m.focusIndex))
+	b.WriteString(fmt.Sprintf("%d", int(totalScore)))
+	b.WriteString("  ")
+
+	// Compact dimension summary
+	var dimParts []string
+	for _, r := range results {
+		dimParts = append(dimParts, fmt.Sprintf("%s=%d", r.DimensionName, r.Value))
+	}
+	b.WriteString(MutedStyle.Render("(" + strings.Join(dimParts, ", ") + ")"))
+	b.WriteString("  ")
+	b.WriteString(HelpStyle.Render("S to edit"))
+	b.WriteString("\n")
+
+	return b.String()
 }

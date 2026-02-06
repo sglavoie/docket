@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -102,6 +103,10 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 
 // renderAllGroups renders all task groups and returns the lines.
 func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
+	if m.activeTab == priorityTabByScore {
+		return m.renderScoreRanking(currentIndex)
+	}
+
 	var lines []string
 	hasContent := false
 	separator := renderHorizontalDivider(m.width)
@@ -167,6 +172,54 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 				}
 			}
 		}
+	}
+
+	return lines
+}
+
+// renderScoreRanking renders a flat ranked list of tasks by composite score.
+func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
+	if m.config == nil {
+		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
+	}
+
+	profile := m.config.GetProjectScoringProfile(m.project.ID)
+	if profile == nil {
+		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
+	}
+
+	if len(m.scoredTasks) == 0 {
+		return []string{MutedStyle.Render("No tasks to rank.")}
+	}
+
+	var lines []string
+	maxTitleLen := m.width - 50
+	if maxTitleLen < 10 {
+		maxTitleLen = 10
+	}
+
+	for rank, pt := range m.scoredTasks {
+		isSelected := *currentIndex == m.cursor
+		task := pt.Task
+
+		cursor := "  "
+		if isSelected {
+			cursor = "> "
+		}
+
+		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+		priorityBadge := renderPriorityBadge(task.Priority)
+		title := util.Truncate(task.Title, maxTitleLen)
+		score := scoring.ComputeScore(task, profile)
+		scoreBadge := MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+
+		line := fmt.Sprintf("%s%d. %s %s %s %s %s", cursor, rank+1, scoreBadge, statusIcon, typeIcon, priorityBadge, title)
+		if isSelected {
+			line = SelectedStyle.Render(line)
+		}
+		lines = append(lines, line)
+		*currentIndex++
 	}
 
 	return lines
@@ -272,8 +325,17 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		}
 	}
 
+	// Composite score badge
+	scoreBadge := ""
+	if m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+			score := scoring.ComputeScore(task, profile)
+			scoreBadge = " " + MutedStyle.Render(fmt.Sprintf("[S:%d]", int(score)))
+		}
+	}
+
 	// Build line with star indicator before cursor
-	line := fmt.Sprintf("%s%s%s %s %s %s%s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, csStr, tagsStr)
+	line := fmt.Sprintf("%s%s%s %s %s %s%s%s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, scoreBadge, csStr, tagsStr)
 	if dueStr != "" {
 		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
 	}

@@ -3,6 +3,7 @@ package format
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -331,6 +332,20 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				task.EpicAttrs = &models.EpicAttrs{}
 			}
 			task.EpicAttrs.SuccessMetrics = unescapeNewlines(value)
+
+		default:
+			// Handle score.* dimension keys
+			if strings.HasPrefix(key, "score.") {
+				dimID := key[6:] // strip "score." prefix
+				if dimID != "" {
+					if v, err := strconv.Atoi(value); err == nil {
+						if task.ScoreDimensions == nil {
+							task.ScoreDimensions = make(map[string]int)
+						}
+						task.ScoreDimensions[dimID] = v
+					}
+				}
+			}
 		}
 	}
 	// Migration: move non-GTD section values to CustomSection
@@ -344,7 +359,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 
 // splitMetadataPairs splits metadata string into key-value pairs, handling values
 // that may contain commas (e.g., "recur: 1w:mon,wed,fri").
-// It looks for ", key:" patterns where key is a known metadata key.
+// It looks for ", key:" patterns where key is a known metadata key or a "score.*" prefix.
 func splitMetadataPairs(metaStr string) []string {
 	var pairs []string
 	remaining := metaStr
@@ -360,6 +375,11 @@ func splitMetadataPairs(metaStr string) []string {
 			}
 		}
 
+		// Also check for ", score.<id>:" wildcard prefix pattern
+		if idx := findScoreKeyIndex(remaining); idx != -1 && (splitIdx == -1 || idx < splitIdx) {
+			splitIdx = idx
+		}
+
 		if splitIdx == -1 {
 			// No more splits found, the rest is one pair
 			pairs = append(pairs, strings.TrimSpace(remaining))
@@ -373,6 +393,46 @@ func splitMetadataPairs(metaStr string) []string {
 	}
 
 	return pairs
+}
+
+// findScoreKeyIndex finds the index of the first ", score.<id>:" pattern in s.
+// Returns -1 if not found. The score dimension ID must be non-empty and contain
+// only alphanumeric characters and underscores.
+func findScoreKeyIndex(s string) int {
+	searchFrom := 0
+	for {
+		idx := strings.Index(s[searchFrom:], ", score.")
+		if idx == -1 {
+			return -1
+		}
+		idx += searchFrom
+		// Verify this is a valid score key: ", score.<id>:" where id is non-empty
+		rest := s[idx+8:] // skip ", score."
+		colonIdx := strings.Index(rest, ":")
+		if colonIdx > 0 {
+			dimID := rest[:colonIdx]
+			if isValidDimensionID(dimID) {
+				return idx
+			}
+		}
+		searchFrom = idx + 2
+		if searchFrom >= len(s) {
+			return -1
+		}
+	}
+}
+
+// isValidDimensionID checks that a dimension ID contains only [a-zA-Z0-9_].
+func isValidDimensionID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, c := range id {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 // ParseTimeField attempts to parse a time value in datetime or date-only format.
@@ -395,6 +455,16 @@ func escapeNewlines(s string) string {
 // unescapeNewlines replaces literal \n with actual newlines when reading from metadata.
 func unescapeNewlines(s string) string {
 	return strings.ReplaceAll(s, `\n`, "\n")
+}
+
+// sortedKeys returns the keys of an int map in sorted order.
+func sortedKeys(m map[string]int) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // WriteMetadata generates the metadata comment for a task.
@@ -552,6 +622,15 @@ func WriteMetadata(task *models.Task) string {
 		}
 		if task.EpicAttrs.SuccessMetrics != "" {
 			parts = append(parts, fmt.Sprintf("epic.metrics: %s", escapeNewlines(task.EpicAttrs.SuccessMetrics)))
+		}
+	}
+
+	// Score dimensions
+	if len(task.ScoreDimensions) > 0 {
+		// Sort keys for deterministic output
+		keys := sortedKeys(task.ScoreDimensions)
+		for _, k := range keys {
+			parts = append(parts, fmt.Sprintf("score.%s: %d", k, task.ScoreDimensions[k]))
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // sortColumnNodes sorts the nodes in a column based on the current sort settings.
@@ -114,6 +115,14 @@ func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortFie
 
 	case SortByStatus:
 		less = m.statusOrder(a.Task.Status) < m.statusOrder(b.Task.Status)
+
+	case SortByScore:
+		profile := m.config.GetProjectScoringProfile(m.Project.ID)
+		if profile != nil {
+			scoreA := scoring.ComputeScore(a.Task, profile)
+			scoreB := scoring.ComputeScore(b.Task, profile)
+			less = scoreA > scoreB // higher score first
+		}
 
 	default:
 		less = false

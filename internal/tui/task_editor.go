@@ -640,6 +640,9 @@ func (m *TaskEditorModel) View() string {
 	// Type-specific attributes section
 	content.WriteString(m.renderAttributesSection())
 
+	// Score summary (read-only, when scoring profile is active)
+	content.WriteString(m.renderScoreSummary())
+
 	// Tags row (read-only)
 	content.WriteString(m.renderFormLabel("Tags", -1))
 	if len(m.tags) == 0 {

@@ -28,7 +28,7 @@ func (m *AppModel) filterBarCommands() []Command {
 		{
 			Name:        "filter by status",
 			Description: "Cycle through status filter options",
-			Shortcut:    "S",
+			Shortcut:    "Fs",
 			Category:    CategoryFilters,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"status filter", "cycle status"},

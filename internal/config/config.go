@@ -1,11 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -88,6 +90,8 @@ type Config struct {
 	CodeEditor                string                       `json:"code_editor,omitempty"`                  // Editor for code references (default: code)
 	TaskTemplates             []template.TaskTemplate      `json:"task_templates,omitempty"`               // Task templates for quick task creation
 	DefaultTemplatesInit      bool                         `json:"default_templates_init,omitempty"`       // True after tt template init has run
+	ScoringProfiles           []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`             // Available scoring profiles
+	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
 }
 
 // NewConfig creates a new configuration with default values.
@@ -231,4 +235,63 @@ func (c *Config) GetCodeEditor() string {
 		return "code"
 	}
 	return c.CodeEditor
+}
+
+// GetScoringProfile returns a scoring profile by ID, or nil if not found.
+func (c *Config) GetScoringProfile(id string) *scoring.ScoringProfile {
+	for i := range c.ScoringProfiles {
+		if c.ScoringProfiles[i].ID == id {
+			return &c.ScoringProfiles[i]
+		}
+	}
+	return nil
+}
+
+// GetProjectScoringProfile returns the active scoring profile for a project, or nil.
+func (c *Config) GetProjectScoringProfile(projectID string) *scoring.ScoringProfile {
+	if c.ProjectScoringProfile == nil {
+		return nil
+	}
+	profileID, ok := c.ProjectScoringProfile[projectID]
+	if !ok {
+		return nil
+	}
+	return c.GetScoringProfile(profileID)
+}
+
+// SetProjectScoringProfile assigns a scoring profile to a project.
+func (c *Config) SetProjectScoringProfile(projectID, profileID string) {
+	if c.ProjectScoringProfile == nil {
+		c.ProjectScoringProfile = make(map[string]string)
+	}
+	c.ProjectScoringProfile[projectID] = profileID
+}
+
+// UnsetProjectScoringProfile removes the scoring profile assignment for a project.
+func (c *Config) UnsetProjectScoringProfile(projectID string) {
+	if c.ProjectScoringProfile != nil {
+		delete(c.ProjectScoringProfile, projectID)
+	}
+}
+
+// AddScoringProfile adds a scoring profile to the config.
+// Returns an error if a profile with the same ID already exists.
+func (c *Config) AddScoringProfile(p scoring.ScoringProfile) error {
+	if c.GetScoringProfile(p.ID) != nil {
+		return fmt.Errorf("scoring profile %q already exists", p.ID)
+	}
+	c.ScoringProfiles = append(c.ScoringProfiles, p)
+	return nil
+}
+
+// RemoveScoringProfile removes a scoring profile by ID.
+// Returns false if the profile was not found.
+func (c *Config) RemoveScoringProfile(id string) bool {
+	for i := range c.ScoringProfiles {
+		if c.ScoringProfiles[i].ID == id {
+			c.ScoringProfiles = append(c.ScoringProfiles[:i], c.ScoringProfiles[i+1:]...)
+			return true
+		}
+	}
+	return false
 }

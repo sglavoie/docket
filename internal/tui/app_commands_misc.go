@@ -235,6 +235,20 @@ func (m *AppModel) sortCommands() []Command {
 			},
 		},
 		{
+			Name:        "sort by score",
+			Description: "Sort tasks by composite score",
+			Shortcut:    "5",
+			Category:    CategorySort,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"score sort", "scoring sort"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.toggleSort(SortByScore)
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "reset sort",
 			Description: "Reset sort to default order",
 			Shortcut:    "0",
