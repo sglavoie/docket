@@ -94,6 +94,7 @@ type ScoringProfile struct {
 	ID          string             `json:"id"`
 	Name        string             `json:"name"`
 	Description string             `json:"description,omitempty"`
+	UsageHint   string             `json:"usage_hint,omitempty"`
 	Formula     Formula            `json:"formula"`
 	Dimensions  []ScoringDimension `json:"dimensions"`
 	Builtin     bool               `json:"builtin,omitempty"`
@@ -164,6 +165,7 @@ func NewRICEProfile() ScoringProfile {
 		ID:          "rice",
 		Name:        "RICE",
 		Description: "Reach * Impact * Confidence / Effort",
+		UsageHint:   "Best for product teams evaluating feature impact against implementation effort.",
 		Formula:     FormulaRICE,
 		Builtin:     true,
 		Dimensions: []ScoringDimension{
@@ -198,6 +200,7 @@ func NewWSJFProfile() ScoringProfile {
 		ID:          "wsjf",
 		Name:        "WSJF",
 		Description: "(Business Value + Time Criticality + Risk Reduction) / Job Size",
+		UsageHint:   "Best for SAFe/agile environments prioritizing by cost of delay relative to job size.",
 		Formula:     FormulaWSJF,
 		Builtin:     true,
 		Dimensions: []ScoringDimension{
@@ -232,6 +235,7 @@ func NewICEProfile() ScoringProfile {
 		ID:          "ice",
 		Name:        "ICE",
 		Description: "Impact * Confidence * Ease",
+		UsageHint:   "Best for quick, lightweight prioritization with simple subjective dimensions.",
 		Formula:     FormulaMultiply,
 		Builtin:     true,
 		Dimensions: []ScoringDimension{

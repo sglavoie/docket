@@ -219,6 +219,15 @@ func TestGetDimension(t *testing.T) {
 	}
 }
 
+func TestPresetProfilesHaveUsageHint(t *testing.T) {
+	for name, factory := range PresetProfiles() {
+		p := factory()
+		if p.UsageHint == "" {
+			t.Errorf("preset %q has empty UsageHint", name)
+		}
+	}
+}
+
 func TestFormatProfileSummary(t *testing.T) {
 	p := NewICEProfile()
 	s := FormatProfileSummary(&p)

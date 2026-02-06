@@ -352,7 +352,7 @@ func (m *ScoreProfileManagerModel) View() string {
 
 				// Build detail pane content for wide screens
 				if wideScreen {
-					detailLines = m.buildDetailPane(&p)
+					detailLines = m.buildDetailPane(&p, m.detailPaneWidth())
 				}
 			}
 
@@ -395,6 +395,9 @@ func (m *ScoreProfileManagerModel) View() string {
 			if factory, ok := presets[name]; ok {
 				p := factory()
 				desc = " - " + p.Description
+				if p.UsageHint != "" {
+					desc += "\n    " + p.UsageHint
+				}
 			}
 			lines = append(lines, fmt.Sprintf("%s%s%s", cursor, name, MutedStyle.Render(desc)))
 		}
@@ -428,8 +431,26 @@ func (m *ScoreProfileManagerModel) View() string {
 		box)
 }
 
+// detailPaneWidth computes the fixed width for the right detail pane.
+func (m *ScoreProfileManagerModel) detailPaneWidth() int {
+	leftWidth := 40
+	if leftWidth > m.width/2 {
+		leftWidth = m.width / 2
+	}
+	separatorWidth := 3
+	totalContentWidth := m.width * 70 / 100
+	if totalContentWidth < leftWidth+separatorWidth+10 {
+		totalContentWidth = leftWidth + separatorWidth + 10
+	}
+	rightWidth := totalContentWidth - leftWidth - separatorWidth
+	if rightWidth < 10 {
+		rightWidth = 10
+	}
+	return rightWidth
+}
+
 // buildDetailPane returns lines describing the selected profile's dimensions.
-func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile) []string {
+func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile, maxWidth int) []string {
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
 	mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
@@ -437,7 +458,14 @@ func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile) []
 	var lines []string
 	lines = append(lines, headerStyle.Render(p.Name))
 	if p.Description != "" {
-		lines = append(lines, mutedStyle.Render(p.Description))
+		for _, wl := range wrapLine(p.Description, maxWidth) {
+			lines = append(lines, mutedStyle.Render(wl))
+		}
+	}
+	if p.UsageHint != "" {
+		for _, wl := range wrapLine(p.UsageHint, maxWidth) {
+			lines = append(lines, mutedStyle.Render(wl))
+		}
 	}
 	lines = append(lines, mutedStyle.Render(fmt.Sprintf("Formula: %s", p.Formula)))
 	lines = append(lines, "")
@@ -460,6 +488,30 @@ func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile) []
 	return lines
 }
 
+// wrapLine splits text into lines that fit within maxWidth using word boundaries.
+func wrapLine(text string, maxWidth int) []string {
+	if maxWidth <= 0 || len(text) <= maxWidth {
+		return []string{text}
+	}
+	var lines []string
+	remaining := text
+	for len(remaining) > maxWidth {
+		bp := maxWidth
+		for i := maxWidth; i > 0; i-- {
+			if remaining[i-1] == ' ' {
+				bp = i - 1
+				break
+			}
+		}
+		lines = append(lines, remaining[:bp])
+		remaining = strings.TrimLeft(remaining[bp:], " ")
+	}
+	if remaining != "" {
+		lines = append(lines, remaining)
+	}
+	return lines
+}
+
 // renderWithDetailPane merges the profile list (left) with detail pane (right).
 func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines []string) []string {
 	// Find the separator point: after the blank line following subtitle
@@ -478,6 +530,8 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 		leftWidth = m.width / 2
 	}
 
+	rightWidth := m.detailPaneWidth()
+
 	// Build merged lines
 	maxLines := len(listLines)
 	if len(detailLines) > maxLines {
@@ -488,6 +542,7 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 	merged = append(merged, header...)
 
 	separator := MutedStyle.Render(" │ ")
+	truncStyle := lipgloss.NewStyle().MaxWidth(rightWidth)
 
 	for i := 0; i < maxLines; i++ {
 		left := ""
@@ -496,7 +551,7 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 		}
 		right := ""
 		if i < len(detailLines) {
-			right = detailLines[i]
+			right = truncStyle.Render(detailLines[i])
 		}
 
 		// Pad left side (use visual width)
@@ -506,7 +561,14 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 			padding = 0
 		}
 
-		merged = append(merged, left+strings.Repeat(" ", padding)+separator+right)
+		// Pad right side to fixed width
+		rightVis := lipgloss.Width(right)
+		rightPad := rightWidth - rightVis
+		if rightPad < 0 {
+			rightPad = 0
+		}
+
+		merged = append(merged, left+strings.Repeat(" ", padding)+separator+right+strings.Repeat(" ", rightPad))
 	}
 
 	return merged

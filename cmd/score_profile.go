@@ -176,6 +176,9 @@ func runScoreProfileShow(cmd *cobra.Command, args []string) error {
 	if profile.Description != "" {
 		fmt.Printf("Description: %s\n", profile.Description)
 	}
+	if profile.UsageHint != "" {
+		fmt.Printf("Best for: %s\n", profile.UsageHint)
+	}
 	fmt.Printf("Formula: %s - %s\n", profile.Formula, scoring.FormulaDescription(profile.Formula))
 	if profile.Builtin {
 		fmt.Println("Type: built-in preset")

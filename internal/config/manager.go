@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -75,6 +76,20 @@ func (m *Manager) Load() (*Config, error) {
 		// Default for existing configs that don't have this field
 		defaultUndoDepth := DefaultUndoHistoryDepth
 		config.UndoHistoryDepth = &defaultUndoDepth
+	}
+
+	// Backfill new fields on builtin scoring profiles from presets
+	presets := scoring.PresetProfiles()
+	for i := range config.ScoringProfiles {
+		p := &config.ScoringProfiles[i]
+		if p.Builtin {
+			if factory, ok := presets[p.ID]; ok {
+				preset := factory()
+				if p.UsageHint == "" {
+					p.UsageHint = preset.UsageHint
+				}
+			}
+		}
 	}
 
 	return &config, nil

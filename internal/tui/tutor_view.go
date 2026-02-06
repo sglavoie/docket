@@ -990,7 +990,21 @@ unset. Each dimension has a min and max range.
 
 Dimension values are persisted in task metadata as score.<key>: <value>
 entries. The ~ indicator appears when a score uses default values
-rather than explicitly set dimensions.`,
+rather than explicitly set dimensions.
+
+# When to Use Each
+
+WSJF works well in SAFe or agile environments where you need to
+prioritize a backlog by cost of delay relative to job size. It
+surfaces time-sensitive, high-value work that is cheap to deliver.
+
+ICE is best for quick, lightweight prioritization when you want a
+simple subjective score. Each dimension is rated on the same scale,
+making it fast to apply without much ceremony.
+
+RICE suits product teams evaluating feature ideas against the effort
+to build them. By separating reach from impact and factoring in
+confidence, it reduces bias toward flashy but uncertain bets.`,
 		},
 		{
 			Title:    "Snooze",
