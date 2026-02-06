@@ -66,6 +66,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "2", Description: "Sort by due date", Category: "Sort", Views: views},
 		Keybinding{Key: "3", Description: "Sort by created", Category: "Sort", Views: views},
 		Keybinding{Key: "4", Description: "Sort by status", Category: "Sort", Views: views},
+		Keybinding{Key: "5", Description: "Sort by score", Category: "Sort", Views: views},
 		Keybinding{Key: "0", Description: "Reset sort", Category: "Sort", Views: views},
 
 		// Multi-select
@@ -85,8 +86,10 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Fa", Description: "Filter by attribute (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Tag filter selector", Category: "Filters", Views: views},
+		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 
@@ -136,7 +139,12 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
 
+		// Scoring
+		Keybinding{Key: "S", Description: "Score editor", Category: "Scoring", Views: views},
+		Keybinding{Key: "FS", Description: "Score threshold filter", Category: "Scoring", Views: views},
+
 		// Actions
+		Keybinding{Key: "ctrl+K", Description: "Return to project tree", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
 	)

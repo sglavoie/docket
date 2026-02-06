@@ -104,7 +104,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "P", Description: "Filter by priority", Category: "Filters", Views: views},
-		Keybinding{Key: "Ft", Description: "Filter by type (use Ft since t is task prefix)", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "N", Description: "Filter by section", Category: "Filters", Views: views},
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
@@ -120,12 +119,18 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "2", Description: "Sort by due date", Category: "Sort", Views: views},
 		Keybinding{Key: "3", Description: "Sort by created", Category: "Sort", Views: views},
 		Keybinding{Key: "4", Description: "Sort by status", Category: "Sort", Views: views},
+		Keybinding{Key: "5", Description: "Sort by score", Category: "Sort", Views: views},
 		Keybinding{Key: "0", Description: "Reset sort", Category: "Sort", Views: views},
+
+		// Scoring
+		Keybinding{Key: "S", Description: "Score editor", Category: "Scoring", Views: views},
+		Keybinding{Key: "FS", Description: "Score threshold filter", Category: "Scoring", Views: views},
 
 		// Multi-select
 		Keybinding{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select", Views: views},
 		Keybinding{Key: "a", Description: "Select all visible (in multi-select)", Category: "Multi-select", Views: views},
 		Keybinding{Key: "A", Description: "Deselect all visible (in multi-select)", Category: "Multi-select", Views: views},
+		Keybinding{Key: "gX", Description: "Deselect all (in multi-select)", Category: "Multi-select", Views: views},
 
 		// Project
 		Keybinding{Key: "ctrl+A", Description: "Archive/unarchive project", Category: "Project", Views: views},
@@ -134,7 +139,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "F", Description: "Open filter popup", Category: "Filters", Views: views},
 		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fp", Description: "Toggle high priority filter", Category: "Filters", Views: views},
-		Keybinding{Key: "Ft", Description: "Filter by type (sub-popup)", Category: "Filters", Views: views},
+		Keybinding{Key: "Ft", Description: "Filter by type (sub-popup, use Ft since t is task prefix)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fs", Description: "Filter by status (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "F@", Description: "Filter by section", Category: "Filters", Views: views},
