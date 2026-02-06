@@ -70,6 +70,15 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString("\n")
 	}
 
+	// Score filter custom value input
+	if m.scoreFilterInputMode {
+		b.WriteString(SubtitleStyle.Render("Score threshold: "))
+		b.WriteString(m.scoreFilterInput.View())
+		b.WriteString(" ")
+		b.WriteString(HelpStyle.Render("(Enter: apply, Esc: cancel)"))
+		b.WriteString("\n")
+	}
+
 	// Focus mode indicator
 	if m.focusedTask != nil {
 		focusIndicator := fmt.Sprintf("[Focus: #%d %s]", m.focusedTask.ShortID, util.Truncate(m.focusedTask.Title, FocusTitleMaxWidth))
@@ -410,6 +419,15 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	} else if m.SearchQuery() != "" {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("Search: \"%s\" ", m.SearchQuery())))
 		b.WriteString(HelpStyle.Render("(/ to edit, Esc to clear)"))
+		b.WriteString("\n")
+	}
+
+	// Score filter custom value input
+	if m.scoreFilterInputMode {
+		b.WriteString(SubtitleStyle.Render("Score threshold: "))
+		b.WriteString(m.scoreFilterInput.View())
+		b.WriteString(" ")
+		b.WriteString(HelpStyle.Render("(Enter: apply, Esc: cancel)"))
 		b.WriteString("\n")
 	}
 

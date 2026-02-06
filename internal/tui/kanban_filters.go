@@ -2,8 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -476,6 +478,24 @@ func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, 
 		m.filter.ScoreMin = 75
 	case "5":
 		m.filter.ScoreMin = 100
+	case "6":
+		m.filter.ScoreMin = 150
+	case "7":
+		m.filter.ScoreMin = 200
+	case "8":
+		m.filter.ScoreMin = 250
+	case "9":
+		m.filter.ScoreMin = 300
+	case "c":
+		// Apply persisted custom value
+		if m.config != nil && m.config.ScoreFilterCustom != nil {
+			m.filter.ScoreMin = *m.config.ScoreFilterCustom
+		}
+		// No-op if not set
+	case "C":
+		// Enter inline text input to set custom value
+		m.enterScoreFilterInputMode()
+		return m, nil
 	case "0":
 		m.filter.ScoreMin = 0
 	default:
@@ -483,6 +503,47 @@ func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, 
 	}
 	m.loadTasks()
 	return m, nil
+}
+
+// enterScoreFilterInputMode initializes the score filter text input for kanban.
+func (m *KanbanViewModel) enterScoreFilterInputMode() {
+	ti := textinput.New()
+	ti.Prompt = ""
+	ti.Placeholder = "enter value"
+	ti.CharLimit = 10
+	ti.Width = 12
+	if m.config != nil && m.config.ScoreFilterCustom != nil {
+		ti.SetValue(fmt.Sprintf("%.0f", *m.config.ScoreFilterCustom))
+	}
+	ti.Focus()
+	m.scoreFilterInput = ti
+	m.scoreFilterInputMode = true
+}
+
+// handleKanbanScoreFilterInput handles key events while the score filter text input is active in kanban.
+func (m *KanbanViewModel) handleKanbanScoreFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		val, err := strconv.ParseFloat(m.scoreFilterInput.Value(), 64)
+		if err == nil && val > 0 {
+			// Persist to config
+			m.config.ScoreFilterCustom = &val
+			if m.configManager != nil {
+				_ = m.configManager.Save(m.config)
+			}
+			// Apply as active filter
+			m.filter.ScoreMin = val
+			m.loadTasks()
+		}
+		m.scoreFilterInputMode = false
+		return m, nil
+	case "esc":
+		m.scoreFilterInputMode = false
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.scoreFilterInput, cmd = m.scoreFilterInput.Update(msg)
+	return m, cmd
 }
 
 // handleKanbanFilterTypePrefix handles filter type sub-prefix in kanban.

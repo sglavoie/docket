@@ -173,6 +173,10 @@ type KanbanViewModel struct {
 	// Additional filter state
 	actionableFilter bool
 
+	// Score filter custom value input
+	scoreFilterInputMode bool            // True when entering custom score threshold
+	scoreFilterInput     textinput.Model // Text input for custom score value
+
 	// Last modified task tracking
 	lastModifiedTaskID string
 }

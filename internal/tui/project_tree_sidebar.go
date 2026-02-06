@@ -132,13 +132,7 @@ func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionC
 	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
 	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
 	priorityBadge := renderPriorityBadge(task.Priority)
-	scoreBadge := ""
-	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			scoreBadge = " " + RenderScoreBadge(task, profile)
-		}
-	}
-	idLine := fmt.Sprintf("#%d %s%s", task.ShortID, priorityBadge, scoreBadge)
+	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
 
 	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
 

@@ -257,7 +257,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Faw": FilterAttrWorktypePrefixHints,
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
-			"FS":  FilterScorePrefixHints,
+			"FS":  BuildFilterScorePrefixHints(m.config),
 		},
 	}
 }

@@ -92,6 +92,7 @@ type Config struct {
 	DefaultTemplatesInit      bool                         `json:"default_templates_init,omitempty"`       // True after tt template init has run
 	ScoringProfiles           []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`             // Available scoring profiles
 	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
+	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
 }
 
 // NewConfig creates a new configuration with default values.

@@ -60,6 +60,12 @@ func (m *KanbanViewModel) View() string {
 		viewParts = append(viewParts, searchLine)
 	}
 
+	// Render score filter custom value input
+	if m.scoreFilterInputMode {
+		scoreLine := SubtitleStyle.Render("Score threshold: ") + m.scoreFilterInput.View() + " " + HelpStyle.Render("(Enter: apply, Esc: cancel)")
+		viewParts = append(viewParts, scoreLine)
+	}
+
 	var columns []string
 	gap := " " // Single space gap between columns
 
@@ -655,7 +661,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInputMode
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -687,7 +693,7 @@ func (m *KanbanViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Faw": FilterAttrWorktypePrefixHints,
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
-			"FS":  FilterScorePrefixHints,
+			"FS":  BuildFilterScorePrefixHints(m.config),
 		},
 	}
 }

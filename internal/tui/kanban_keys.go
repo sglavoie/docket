@@ -17,6 +17,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleQuickEditInput(msg)
 	}
 
+	// Handle score filter custom value input
+	if m.scoreFilterInputMode {
+		return m.handleKanbanScoreFilterInput(msg)
+	}
+
 	// Handle quick add mode input first
 	if m.quickAddMode {
 		return m.handleQuickAddInput(msg)

@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -444,6 +446,24 @@ func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.C
 		m.filter.ScoreMin = 75
 	case "5":
 		m.filter.ScoreMin = 100
+	case "6":
+		m.filter.ScoreMin = 150
+	case "7":
+		m.filter.ScoreMin = 200
+	case "8":
+		m.filter.ScoreMin = 250
+	case "9":
+		m.filter.ScoreMin = 300
+	case "c":
+		// Apply persisted custom value
+		if m.config != nil && m.config.ScoreFilterCustom != nil {
+			m.filter.ScoreMin = *m.config.ScoreFilterCustom
+		}
+		// No-op if not set
+	case "C":
+		// Enter inline text input to set custom value
+		m.enterScoreFilterInputMode()
+		return m, nil
 	case "0":
 		m.filter.ScoreMin = 0
 	default:
@@ -453,6 +473,49 @@ func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.C
 	m.pruneInvisibleSelections()
 	m.clampCursor()
 	return m, nil
+}
+
+// enterScoreFilterInputMode initializes the score filter text input.
+func (m *ProjectTreeModel) enterScoreFilterInputMode() {
+	ti := textinput.New()
+	ti.Prompt = ""
+	ti.Placeholder = "enter value"
+	ti.CharLimit = 10
+	ti.Width = 12
+	if m.config != nil && m.config.ScoreFilterCustom != nil {
+		ti.SetValue(fmt.Sprintf("%.0f", *m.config.ScoreFilterCustom))
+	}
+	ti.Focus()
+	m.scoreFilterInput = ti
+	m.scoreFilterInputMode = true
+}
+
+// handleScoreFilterInput handles key events while the score filter text input is active.
+func (m *ProjectTreeModel) handleScoreFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		val, err := strconv.ParseFloat(m.scoreFilterInput.Value(), 64)
+		if err == nil && val > 0 {
+			// Persist to config
+			m.config.ScoreFilterCustom = &val
+			if m.configManager != nil {
+				_ = m.configManager.Save(m.config)
+			}
+			// Apply as active filter
+			m.filter.ScoreMin = val
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+		}
+		m.scoreFilterInputMode = false
+		return m, nil
+	case "esc":
+		m.scoreFilterInputMode = false
+		return m, nil
+	}
+	var cmd tea.Cmd
+	m.scoreFilterInput, cmd = m.scoreFilterInput.Update(msg)
+	return m, cmd
 }
 
 // handleFilterKeys handles P, S, T, N - filter operations.

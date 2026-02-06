@@ -35,6 +35,11 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleQuickEditMode(msg)
 		}
 
+		// Handle score filter custom value input
+		if m.scoreFilterInputMode {
+			return m.handleScoreFilterInput(msg)
+		}
+
 		// Handle normal key input
 		return m.handleKeyMsg(msg, visible)
 	}
