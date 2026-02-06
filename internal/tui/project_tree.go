@@ -213,6 +213,15 @@ type ProjectTreeModel struct {
 	// Undo context for the next save operation
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
 	pendingUndoContext string // Additional context (e.g., task title)
+
+	// Active saved view name (set when a saved view is loaded, cleared on manual filter/sort changes)
+	activeSavedView string
+}
+
+// clearActiveSavedView clears the active saved view indicator.
+// Called when the user manually changes filter, sort, or view mode.
+func (m *ProjectTreeModel) clearActiveSavedView() {
+	m.activeSavedView = ""
 }
 
 // NewProjectTreeModel creates a new project tree model.

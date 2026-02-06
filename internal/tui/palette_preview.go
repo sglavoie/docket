@@ -50,6 +50,8 @@ func (m *CommandPaletteModel) renderPreview() string {
 		preview = m.renderSectionPreview(item)
 	case ItemCategorySavedSearch:
 		preview = m.renderSavedSearchPreview(item)
+	case ItemCategorySavedView:
+		preview = m.renderSavedViewPreview(item)
 	case ItemCategoryNotes:
 		preview = m.renderNotePreview(item)
 	case ItemCategoryViews:
@@ -111,6 +113,7 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("  :tag    Tags only\n")
 	b.WriteString("  :sec    Sections only\n")
 	b.WriteString("  :saved  Saved searches\n")
+	b.WriteString("  :sv     Saved views\n")
 	b.WriteString("  :note   Notes only\n")
 	b.WriteString("  :view   Views only\n")
 	b.WriteString("  :recent Recent commands\n")
@@ -765,6 +768,43 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 
 	b.WriteString("\n")
 	b.WriteString(HelpStyle.Render("Press Enter to run • Tab for actions • d to delete"))
+
+	return b.String()
+}
+
+// renderSavedViewPreview shows details for a saved view.
+func (m *CommandPaletteModel) renderSavedViewPreview(item PaletteItem) string {
+	if item.SavedView == nil {
+		return MutedStyle.Render("No saved view details.")
+	}
+	sv := item.SavedView
+	var b strings.Builder
+
+	// Header
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(sv.Name))
+	b.WriteString("\n\n")
+
+	// Filter description
+	desc := describeSavedViewFilters(
+		sv.FilterType,
+		sv.FilterStatus,
+		sv.FilterPriority,
+		sv.FilterTags,
+		sv.FilterSections,
+		sv.FilterDueDate,
+		sv.FilterActionable,
+		sv.FilterAttrs,
+		sv.FilterScoreMin,
+		sv.SortField,
+		sv.ViewMode,
+	)
+
+	b.WriteString(SubtitleStyle.Render("Filters"))
+	b.WriteString("\n")
+	b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(desc))
+	b.WriteString("\n\n")
+
+	b.WriteString(HelpStyle.Render("Press Enter to apply • Tab for actions"))
 
 	return b.String()
 }

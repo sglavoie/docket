@@ -44,6 +44,25 @@ type ProjectViewState struct {
 	CustomSectionTab string   `json:"custom_section_tab,omitempty"` // Selected custom section tab name (empty = "All")
 }
 
+// SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.
+// It captures everything defining "what tasks are visible and how they're ordered".
+type SavedView struct {
+	Name             string            `json:"name"`
+	ViewMode         int               `json:"view_mode,omitempty"`
+	FilterType       string            `json:"filter_type,omitempty"`
+	FilterStatus     string            `json:"filter_status,omitempty"`
+	FilterPriority   int               `json:"filter_priority,omitempty"`
+	FilterTags       []string          `json:"filter_tags,omitempty"`
+	FilterSections   []string          `json:"filter_sections,omitempty"`
+	FilterDueDate    int               `json:"filter_due_date,omitempty"`
+	FilterActionable bool              `json:"filter_actionable,omitempty"`
+	FilterAttrs      map[string]string `json:"filter_attrs,omitempty"`
+	FilterScoreMin   float64           `json:"filter_score_min,omitempty"`
+	SortField        int               `json:"sort_field,omitempty"`
+	SortAscending    bool              `json:"sort_ascending"`
+	CustomSectionTab string            `json:"custom_section_tab,omitempty"`
+}
+
 // Config holds the application configuration.
 type Config struct {
 	DataDir                   string                       `json:"data_dir"`
@@ -93,6 +112,7 @@ type Config struct {
 	ScoringProfiles           []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`             // Available scoring profiles
 	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
 	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
+	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
 }
 
 // NewConfig creates a new configuration with default values.

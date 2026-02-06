@@ -21,7 +21,7 @@ import (
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved :note :view • Alt+↑↓ history"
+	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved :sv :note :view • Alt+↑↓ history"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()
@@ -267,6 +267,23 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		}
 	}
 
+	// Add saved views from config
+	for i := range m.config.GetSavedViews() {
+		sv := m.config.GetSavedViews()[i]
+		desc := describeSavedViewFilters(
+			sv.FilterType, sv.FilterStatus, sv.FilterPriority,
+			sv.FilterTags, sv.FilterSections, sv.FilterDueDate,
+			sv.FilterActionable, sv.FilterAttrs, sv.FilterScoreMin,
+			sv.SortField, sv.ViewMode,
+		)
+		items = append(items, PaletteItem{
+			Name:        sv.Name,
+			Description: desc,
+			Category:    ItemCategorySavedView,
+			SavedView:   &sv,
+		})
+	}
+
 	// Add navigable views as static items
 	viewItems := []struct {
 		name        string
@@ -389,6 +406,8 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 		return item.Section
 	case ItemCategorySavedSearch:
 		return item.Name // Use the saved search name as ID
+	case ItemCategorySavedView:
+		return item.Name // Use the saved view name as ID
 	case ItemCategoryNotes:
 		if item.Note != nil {
 			return item.Note.Filename
@@ -681,6 +700,13 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			m.filterItems()
 			// Don't close the palette - let user see the results
 			return m, nil
+		}
+	case ItemCategorySavedView:
+		if item.SavedView != nil {
+			sv := *item.SavedView
+			return m, func() tea.Msg {
+				return CommandPaletteExecuteMsg{ResultMsg: LoadSavedViewMsg{View: sv}}
+			}
 		}
 	case ItemCategoryNotes:
 		if item.Project != nil {

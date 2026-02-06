@@ -22,6 +22,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
+	// Delegate saved view messages to dedicated handler
+	if handled, cmd := m.handleSavedViewMessages(msg); handled {
+		return handled, cmd
+	}
+
 	switch msg := msg.(type) {
 	case BackMsg:
 		m.popView()

@@ -57,6 +57,7 @@ var prefixCategoryNames = map[string]string{
 	"Fao": "scope",
 	"Fap": "points",
 	"FS":  "filter-score",
+	"Fv":  "saved-views",
 }
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
@@ -586,6 +587,13 @@ var (
 		{Key: "5", Description: "5 points"},
 		{Key: "8", Description: "8 points"},
 		{Key: "0", Description: "clear"},
+	}
+
+	// SavedViewPrefixHints contains hints for the "Fv" (saved views) sub-prefix.
+	SavedViewPrefixHints = []PrefixHint{
+		{Key: "s", Description: "save", Detail: "Save current view"},
+		{Key: "l", Description: "load", Detail: "Browse/apply saved views"},
+		{Key: "d", Description: "delete", Detail: "Delete a saved view"},
 	}
 
 	// FilterScorePrefixHints contains hints for the "FS" (filter score) sub-prefix.

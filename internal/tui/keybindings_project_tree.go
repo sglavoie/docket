@@ -111,6 +111,9 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
+		Keybinding{Key: "Fvs", Description: "Save current view", Category: "Filters", Views: views},
+		Keybinding{Key: "Fvl", Description: "Load saved view", Category: "Filters", Views: views},
+		Keybinding{Key: "Fvd", Description: "Delete saved view", Category: "Filters", Views: views},
 
 		// Sort
 		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},

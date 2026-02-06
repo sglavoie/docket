@@ -9,6 +9,17 @@ import (
 func (m *AppModel) filterBarCommands() []Command {
 	return []Command{
 		{
+			Name:        "save current view",
+			Description: "Save filters/sort/view-mode as a named view preset",
+			Shortcut:    "Fvs",
+			Category:    CategoryFilters,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"save view", "saved view", "view preset"},
+			Handler: func() tea.Msg {
+				return ShowSaveViewDialogMsg{}
+			},
+		},
+		{
 			Name:        "filter by type",
 			Description: "Cycle through type filter options",
 			Shortcut:    "t",

@@ -711,6 +711,9 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	case ItemCategorySavedSearch:
 		badge = "★ SAV"
 		style = CategorySavedSearchStyle
+	case ItemCategorySavedView:
+		badge = "⊡ SVW"
+		style = CategorySavedViewStyle
 	case ItemCategoryNotes:
 		badge = "✎ NTE"
 		style = CategoryNoteStyle

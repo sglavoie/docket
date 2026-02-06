@@ -632,6 +632,10 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		// Filter score threshold
 		return m.handleFilterScorePrefix(key)
 
+	case "Fv":
+		// Saved views sub-prefix
+		return m.handleSavedViewPrefix(key)
+
 	case "s":
 		// Snooze quick actions
 		now := time.Now()

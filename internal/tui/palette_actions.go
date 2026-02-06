@@ -22,6 +22,8 @@ func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteActio
 		return m.getSectionActions(item)
 	case ItemCategorySavedSearch:
 		return m.getSavedSearchActions(item)
+	case ItemCategorySavedView:
+		return m.getSavedViewActions(item)
 	case ItemCategoryNotes:
 		return m.getNoteActions(item)
 	case ItemCategoryViews:
@@ -486,6 +488,44 @@ func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteA
 			KeyHint: "d",
 			Handler: func() tea.Msg {
 				return DeleteSavedSearchMsg{Name: name}
+			},
+		},
+	}
+
+	return actions
+}
+
+// getSavedViewActions returns inline actions for a saved view item.
+func (m *CommandPaletteModel) getSavedViewActions(item PaletteItem) []PaletteAction {
+	if item.SavedView == nil {
+		return nil
+	}
+	sv := *item.SavedView
+	name := sv.Name
+
+	actions := []PaletteAction{
+		{
+			Name:    "Apply",
+			Icon:    "→",
+			KeyHint: "enter",
+			Handler: func() tea.Msg {
+				return LoadSavedViewMsg{View: sv}
+			},
+		},
+		{
+			Name:    "Overwrite with current",
+			Icon:    "✏",
+			KeyHint: "o",
+			Handler: func() tea.Msg {
+				return SaveViewMsg{Name: name}
+			},
+		},
+		{
+			Name:    "Delete",
+			Icon:    "✕",
+			KeyHint: "d",
+			Handler: func() tea.Msg {
+				return DeleteSavedViewMsg{Name: name}
 			},
 		},
 	}

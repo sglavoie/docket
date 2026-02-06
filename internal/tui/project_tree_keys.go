@@ -20,6 +20,10 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	// Clear active saved view for filter changes (but not for Fv which opens saved views)
+	if key != "v" {
+		m.clearActiveSavedView()
+	}
 	switch key {
 	case "c":
 		// Toggle completed view
@@ -79,6 +83,10 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	case "S":
 		// Open score threshold sub-popup
 		m.pendingPrefix = "FS"
+		return m, nil
+	case "v":
+		// Open saved views sub-prefix popup (s=save, l=load, d=delete)
+		m.pendingPrefix = "Fv"
 		return m, nil
 	case "x":
 		// Clear all filters
@@ -518,12 +526,35 @@ func (m *ProjectTreeModel) handleScoreFilterInput(msg tea.KeyMsg) (tea.Model, te
 	return m, cmd
 }
 
+// handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
+func (m *ProjectTreeModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "s":
+		// Save current view
+		return m, func() tea.Msg {
+			return ShowSaveViewDialogMsg{}
+		}
+	case "l":
+		// Load/browse saved views
+		return m, func() tea.Msg {
+			return ShowCommandPaletteMsg{PreFilter: ":sv "}
+		}
+	case "d":
+		// Delete a saved view (browse, then Tab → Delete)
+		return m, func() tea.Msg {
+			return ShowCommandPaletteMsg{PreFilter: ":sv "}
+		}
+	}
+	return m, nil
+}
+
 // handleFilterKeys handles P, S, T, N - filter operations.
 // Note: 't' for type filter cycling removed - use Ft instead (t is now task prefix).
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	switch key {
 	case "P":
+		m.clearActiveSavedView()
 		if m.filter.Priority == 0 {
 			m.filter.Priority = 1
 		} else {
@@ -558,6 +589,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 
 // toggleSort sets the sort field, toggling ascending/descending if already set.
 func (m *ProjectTreeModel) toggleSort(field SortField) {
+	m.clearActiveSavedView()
 	if m.sortField == field {
 		m.sortAscending = !m.sortAscending
 	} else {
@@ -664,6 +696,7 @@ func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 		m.toggleSort(SortByScore)
 		return true, nil
 	case "0":
+		m.clearActiveSavedView()
 		m.sortField = SortByDefault
 		m.sortAscending = true
 		m.buildTree()

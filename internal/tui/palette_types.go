@@ -10,6 +10,24 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// ShowSaveViewDialogMsg triggers the save view name input dialog.
+type ShowSaveViewDialogMsg struct{}
+
+// SaveViewMsg saves the current filter state with the given name.
+type SaveViewMsg struct {
+	Name string
+}
+
+// LoadSavedViewMsg applies a saved view's filter/sort/viewMode state.
+type LoadSavedViewMsg struct {
+	View config.SavedView
+}
+
+// DeleteSavedViewMsg removes a saved view by name.
+type DeleteSavedViewMsg struct {
+	Name string
+}
+
 // ItemCategory represents the type of searchable entity in the command palette.
 // This is distinct from CommandCategory, which organizes commands by their function.
 // ItemCategory identifies what kind of item is being searched (command vs task vs project, etc).
@@ -23,6 +41,7 @@ const (
 	ItemCategorySections    ItemCategory = "Sections"
 	ItemCategorySavedSearch ItemCategory = "Saved"
 	ItemCategoryNotes       ItemCategory = "Notes"
+	ItemCategorySavedView   ItemCategory = "Saved Views"
 	ItemCategoryViews       ItemCategory = "Views"
 )
 
@@ -37,6 +56,7 @@ var categoryPrefixes = map[string]ItemCategory{
 	"saved":  ItemCategorySavedSearch,
 	"recent": ItemCategoryCommands, // Special: filters to recently executed commands
 	"note":   ItemCategoryNotes,
+	"sv":     ItemCategorySavedView,
 	"view":   ItemCategoryViews,
 }
 
@@ -59,6 +79,7 @@ var commandCategoryPrefixes = map[string]CommandCategory{
 
 // categoryOrder defines the display order for categories when showing headers.
 var categoryOrder = []ItemCategory{
+	ItemCategorySavedView,
 	ItemCategorySavedSearch,
 	ItemCategoryCommands,
 	ItemCategoryProjects,
@@ -94,14 +115,15 @@ type PaletteItem struct {
 	Category    ItemCategory // The type of item (Commands, Tasks, Projects, Tags, Sections)
 
 	// Underlying data - only one of these will be set based on Category
-	Command     *Command        // Set when Category is CategoryCommands
-	Task        *models.Task    // Set when Category is CategoryTasks
-	Project     *models.Project // Set when Category is CategoryProjects
-	Tag         string          // Set when Category is CategoryTags
-	Section     string          // Set when Category is CategorySections
-	SavedSearch string          // Set when Category is CategorySavedSearch (the query)
-	Note        *models.Note    // Set when Category is CategoryNotes
-	ViewTarget  ViewType        // Set when Category is CategoryViews
+	Command     *Command          // Set when Category is CategoryCommands
+	Task        *models.Task      // Set when Category is CategoryTasks
+	Project     *models.Project   // Set when Category is CategoryProjects
+	Tag         string            // Set when Category is CategoryTags
+	Section     string            // Set when Category is CategorySections
+	SavedSearch string            // Set when Category is CategorySavedSearch (the query)
+	Note        *models.Note      // Set when Category is CategoryNotes
+	SavedView   *config.SavedView // Set when Category is CategorySavedView
+	ViewTarget  ViewType          // Set when Category is CategoryViews
 }
 
 // PaletteAction represents an inline action that can be performed on a palette item.
@@ -277,7 +299,10 @@ type CommandPaletteSectionSelectMsg struct {
 }
 
 // ShowCommandPaletteMsg is sent to open the command palette.
-type ShowCommandPaletteMsg struct{}
+// PreFilter can be set to pre-fill the search input (e.g., ":sv " for saved views).
+type ShowCommandPaletteMsg struct {
+	PreFilter string
+}
 
 // CommandPaletteTaskActionMsg is sent when an inline action is performed on a task.
 // This message triggers status changes (complete, start, block, cancel, reopen) that need to be
@@ -364,6 +389,8 @@ func categoryWeight(cat ItemCategory) int {
 		return weightProjects
 	case ItemCategorySavedSearch:
 		return weightCommands // Saved searches rank high like commands
+	case ItemCategorySavedView:
+		return weightCommands // Saved views rank high like commands
 	case ItemCategoryViews:
 		return weightProjects // Views are navigational like projects
 	default:
@@ -388,6 +415,8 @@ func getCategoryDisplayName(cat ItemCategory) string {
 		return "Saved Searches"
 	case ItemCategoryNotes:
 		return "Notes"
+	case ItemCategorySavedView:
+		return "Saved Views"
 	case ItemCategoryViews:
 		return "Views"
 	default:

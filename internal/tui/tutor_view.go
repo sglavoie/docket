@@ -539,6 +539,12 @@ func init() {
 		{`Shift\+S`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
 		// FS prefix
 		{`\bFS\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// Fv prefix and sub-keys (Fv, Fvs, Fvl, Fvd)
+		{`\bFv[sld]?\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// :sv palette prefix
+		{`:sv\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// "by s", "then l", "then d" — color the single key after by/then
+		{`(?:by|then) ([sld]) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 	}
 
 	for _, r := range rules {
@@ -933,6 +939,43 @@ When you complete a recurring task, tt creates a new copy with
 the status reset to todo and the due date advanced by the
 recurrence interval. The completed instance remains in your
 history.`,
+		},
+		{
+			Title:    "Saved Views",
+			Category: "Concepts",
+			Content: `# What Are Saved Views
+
+A saved view is a named preset that captures your current filter,
+sort, and view-mode settings. Instead of manually re-applying
+filters every time you want to see the same slice of tasks, you
+save the combination once and load it with a couple of keystrokes.
+
+# Creating a Saved View
+
+Set up the filters and sort order you want, then press Fv followed
+by s (or use the command palette). A dialog asks for a name. Once
+saved, the view name appears as a badge in the filter bar whenever
+it is active.
+
+# Loading a Saved View
+
+Press Fv then l to open the command palette pre-filtered to saved
+views. Select a view and press Enter to apply it. The project tree
+immediately updates to match the saved filter/sort/view-mode state.
+You can also type :sv in the command palette to browse saved views.
+
+# Deleting a Saved View
+
+Press Fv then d to open the saved views palette. Select the view
+you want to remove, press Tab to open the action menu, then choose
+Delete. The view is removed from the config file.
+
+# Storage
+
+Saved views are stored in the JSON config file (~/.tt.json) and
+are available across all projects. They capture view mode, type/
+status/priority/tag/section/due-date/attribute/score filters,
+sort field and direction, and the active custom section tab.`,
 		},
 		{
 			Title:    "Sections (GTD)",

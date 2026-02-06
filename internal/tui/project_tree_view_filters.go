@@ -126,7 +126,8 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 
 // hasActiveFilters returns true if any filter is currently active.
 func (m *ProjectTreeModel) hasActiveFilters() bool {
-	return m.viewMode == ViewModeCompleted ||
+	return m.activeSavedView != "" ||
+		m.viewMode == ViewModeCompleted ||
 		m.filter.Priority != 0 ||
 		m.filter.Type != "" ||
 		m.filter.Status != "" ||
@@ -142,6 +143,11 @@ func (m *ProjectTreeModel) hasActiveFilters() bool {
 // Returns empty string when no filters are active.
 func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 	var parts []string
+
+	// Show saved view badge if active
+	if m.activeSavedView != "" {
+		parts = append(parts, SavedViewBadgeStyle.Render("View: "+m.activeSavedView))
+	}
 
 	if m.viewMode == ViewModeCompleted {
 		parts = append(parts, "completed")
@@ -258,6 +264,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
 			"FS":  BuildFilterScorePrefixHints(m.config),
+			"Fv":  SavedViewPrefixHints,
 		},
 	}
 }
@@ -333,6 +340,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
+		{Key: "v", Description: "saved views"},
 		{Key: "x", Description: "clear-all"},
 	}
 }

@@ -61,6 +61,7 @@ func TestCategoryPrefixes(t *testing.T) {
 		"saved":  ItemCategorySavedSearch,
 		"recent": ItemCategoryCommands,
 		"note":   ItemCategoryNotes,
+		"sv":     ItemCategorySavedView,
 		"view":   ItemCategoryViews,
 	}
 
@@ -86,6 +87,7 @@ func TestCategoryPrefixes(t *testing.T) {
 func TestCategoryOrder(t *testing.T) {
 	// Verify all categories are in the order slice
 	expectedCategories := []ItemCategory{
+		ItemCategorySavedView,
 		ItemCategorySavedSearch,
 		ItemCategoryCommands,
 		ItemCategoryProjects,

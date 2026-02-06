@@ -29,6 +29,12 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Pass the current project to filter tasks (nil = show all projects' tasks)
 		currentView := m.currentView()
 		palette := NewCommandPaletteModel(m.config, m.configManager, m.commandRegistry, currentView, m.currentProject)
+		// Apply pre-filter if specified (overrides last category)
+		if msg.PreFilter != "" {
+			palette.searchInput.SetValue(msg.PreFilter)
+			palette.showTips = false
+			palette.filterItems()
+		}
 		m.showView(ViewCommandPalette, palette)
 		// Give palette full height since it renders without an external status bar
 		palette.SetSize(m.width, m.height)

@@ -92,6 +92,7 @@ const (
 	ViewTaskChecklist
 	ViewScoreEditor
 	ViewScoreProfileManager
+	ViewSaveViewInput
 )
 
 // AppModel is the main TUI model with a view stack.
