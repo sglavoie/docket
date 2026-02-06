@@ -27,9 +27,9 @@ const (
 	// MinTitleTruncWidth is the minimum width for truncated task titles.
 	MinTitleTruncWidth = 15
 
-	// DashboardSplitPaneMinWidth is the minimum terminal width to enable
-	// split-pane layout in the dashboard view.
-	DashboardSplitPaneMinWidth = 81
+	// DashboardInfoSectionWideMinWidth is the minimum terminal width to
+	// render info section cards side-by-side instead of stacked.
+	DashboardInfoSectionWideMinWidth = 100
 
 	// DashboardNarrowModeWidth is the threshold below which the dashboard
 	// switches to narrow mode rendering.
@@ -69,10 +69,6 @@ const (
 
 	// AlertsCardHeight is the fixed height for the alerts card in dashboard.
 	AlertsCardHeight = 8
-
-	// DashboardBottomSectionHeight is the reserved height for the bottom
-	// section (Recent Tasks + Stats cards) in dashboard view.
-	DashboardBottomSectionHeight = 14
 
 	// FocusTitleMaxWidth is the maximum width for truncated titles in focus mode indicators.
 	FocusTitleMaxWidth = 40

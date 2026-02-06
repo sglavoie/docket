@@ -109,46 +109,46 @@ func TestGetCycleProjectIndex_Empty(t *testing.T) {
 	}
 }
 
-func TestGetShowRecentTasks_DefaultTrue(t *testing.T) {
+func TestGetShowInfoPanel_DefaultTrue(t *testing.T) {
 	cfg := NewConfig()
 
-	if !cfg.GetShowRecentTasks() {
-		t.Error("GetShowRecentTasks should default to true")
+	if !cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should default to true")
 	}
 }
 
-func TestGetShowRecentTasks_ExplicitFalse(t *testing.T) {
+func TestGetShowInfoPanel_ExplicitFalse(t *testing.T) {
 	cfg := NewConfig()
-	cfg.SetShowRecentTasks(false)
+	cfg.SetShowInfoPanel(false)
 
-	if cfg.GetShowRecentTasks() {
-		t.Error("GetShowRecentTasks should return false when set to false")
+	if cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should return false when set to false")
 	}
 }
 
-func TestGetShowRecentTasks_ExplicitTrue(t *testing.T) {
+func TestGetShowInfoPanel_ExplicitTrue(t *testing.T) {
 	cfg := NewConfig()
-	cfg.SetShowRecentTasks(true)
+	cfg.SetShowInfoPanel(true)
 
-	if !cfg.GetShowRecentTasks() {
-		t.Error("GetShowRecentTasks should return true when set to true")
+	if !cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should return true when set to true")
 	}
 }
 
-func TestSetShowRecentTasks(t *testing.T) {
+func TestSetShowInfoPanel(t *testing.T) {
 	cfg := NewConfig()
 
-	cfg.SetShowRecentTasks(false)
-	if cfg.ShowRecentTasks == nil {
-		t.Error("ShowRecentTasks should not be nil after SetShowRecentTasks")
+	cfg.SetShowInfoPanel(false)
+	if cfg.ShowInfoPanel == nil {
+		t.Error("ShowInfoPanel should not be nil after SetShowInfoPanel")
 	}
-	if *cfg.ShowRecentTasks {
-		t.Error("ShowRecentTasks should be false")
+	if *cfg.ShowInfoPanel {
+		t.Error("ShowInfoPanel should be false")
 	}
 
-	cfg.SetShowRecentTasks(true)
-	if !*cfg.ShowRecentTasks {
-		t.Error("ShowRecentTasks should be true")
+	cfg.SetShowInfoPanel(true)
+	if !*cfg.ShowInfoPanel {
+		t.Error("ShowInfoPanel should be true")
 	}
 }
 

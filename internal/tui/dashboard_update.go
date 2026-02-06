@@ -81,7 +81,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loadProjects()
 		case "R":
 			return m, func() tea.Msg {
-				return ToggleRecentTasksMsg{}
+				return ToggleInfoPanelMsg{}
 			}
 		case "n":
 			return m, func() tea.Msg {

@@ -463,8 +463,8 @@ type CycleProjectMsg struct {
 // Dashboard Messages
 // =============================================================================
 
-// ToggleRecentTasksMsg toggles recent tasks visibility in dashboard.
-type ToggleRecentTasksMsg struct{}
+// ToggleInfoPanelMsg toggles the info panel visibility in dashboard.
+type ToggleInfoPanelMsg struct{}
 
 // =============================================================================
 // Trash Messages (Show/Close Pattern)

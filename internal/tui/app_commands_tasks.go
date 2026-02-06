@@ -150,14 +150,14 @@ func (m *AppModel) projectCommands() []Command {
 			},
 		},
 		{
-			Name:        "toggle recent tasks",
-			Description: "Show/hide recent tasks section",
+			Name:        "toggle info panel",
+			Description: "Show/hide info panel",
 			Shortcut:    "R",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewDashboard},
-			Aliases:     []string{"recent", "show recent"},
+			Aliases:     []string{"recent", "show recent", "info"},
 			Handler: func() tea.Msg {
-				return ToggleRecentTasksMsg{}
+				return ToggleInfoPanelMsg{}
 			},
 		},
 		{

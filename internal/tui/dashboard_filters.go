@@ -126,13 +126,13 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 	if m.showArchived {
 		toggleArchiveDesc = "Show active"
 	}
-	toggleRecentDesc := "Hide Recent Tasks"
-	if !m.config.GetShowRecentTasks() {
-		toggleRecentDesc = "Show Recent Tasks"
+	toggleInfoDesc := "Hide info panel"
+	if !m.config.GetShowInfoPanel() {
+		toggleInfoDesc = "Show info panel"
 	}
 	overrides := map[string]string{
 		"a": toggleArchiveDesc,
-		"R": toggleRecentDesc,
+		"R": toggleInfoDesc,
 	}
 	return GetKeybindingRegistry().GetForViewWithOverrides(ViewDashboard, overrides)
 }

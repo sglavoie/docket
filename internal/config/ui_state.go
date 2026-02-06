@@ -78,18 +78,18 @@ func (c *Config) SetCycleProjectsForContext(context string, ids []string) {
 	c.ContextCycleProjects[context] = ids
 }
 
-// GetShowRecentTasks returns whether to show the Recent Tasks section on dashboard.
+// GetShowInfoPanel returns whether to show the info panel section on dashboard.
 // Defaults to true if not set.
-func (c *Config) GetShowRecentTasks() bool {
-	if c.ShowRecentTasks == nil {
+func (c *Config) GetShowInfoPanel() bool {
+	if c.ShowInfoPanel == nil {
 		return true
 	}
-	return *c.ShowRecentTasks
+	return *c.ShowInfoPanel
 }
 
-// SetShowRecentTasks sets whether to show the Recent Tasks section on dashboard.
-func (c *Config) SetShowRecentTasks(show bool) {
-	c.ShowRecentTasks = &show
+// SetShowInfoPanel sets whether to show the info panel section on dashboard.
+func (c *Config) SetShowInfoPanel(show bool) {
+	c.ShowInfoPanel = &show
 }
 
 // GetTutorDismissed returns whether the tutor prompt has been dismissed.

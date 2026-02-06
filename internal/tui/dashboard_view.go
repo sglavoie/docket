@@ -27,64 +27,14 @@ func (m *DashboardModel) View() string {
 	b.WriteString(filterBar)
 
 	visible := m.visibleProjects()
-
-	// Determine if we use split-pane layout
-	useSplitPane := m.width >= DashboardSplitPaneMinWidth
-
-	if useSplitPane {
-		b.WriteString(m.renderSplitPane(visible, chromeHeight))
-	} else {
-		b.WriteString(m.renderFullWidthDashboard(visible, chromeHeight))
-	}
+	b.WriteString(m.renderDashboard(visible, chromeHeight))
 
 	return b.String()
 }
 
-// renderSplitPane renders the dashboard as a left (project list) + right (info panel) layout.
-// When recent tasks are hidden, it switches to a stacked layout (projects on top, alerts below).
-func (m *DashboardModel) renderSplitPane(visible []*models.Project, chromeHeight int) string {
-	if !m.config.GetShowRecentTasks() {
-		return m.renderSplitPaneStacked(visible, chromeHeight)
-	}
-
-	leftWidth := m.width * 55 / 100
-	rightWidth := m.width - leftWidth - 1 // 1 char divider
-
-	cardWidth := leftWidth - 1
-	if cardWidth < MinCardWidth {
-		cardWidth = MinCardWidth
-	}
-
-	// Build project card
-	cardTitle := m.projectCardTitle(visible)
-	cardContent := m.renderProjectList(visible, chromeHeight, cardWidth, 0)
-
-	cfg := DashboardCardConfig()
-	leftContent := renderCard(cardTitle, cardContent, cardWidth, cfg)
-
-	// Get selected project for right panel
-	var selected *models.Project
-	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
-		selected = visible[m.cursor]
-	}
-
-	rightContent := m.renderRightPanel(rightWidth, m.height-chromeHeight, selected)
-
-	// Render vertical divider
-	dividerHeight := m.height - chromeHeight
-	if dividerHeight < 1 {
-		dividerHeight = 1
-	}
-	divider := renderDashboardVerticalDivider(dividerHeight)
-
-	// Join horizontally
-	leftStyled := lipgloss.NewStyle().Width(leftWidth).Render(leftContent)
-	return lipgloss.JoinHorizontal(lipgloss.Top, leftStyled, divider, rightContent)
-}
-
-// renderSplitPaneStacked renders projects on top and alerts below, using full width.
-// Used in split-pane mode when recent tasks are hidden.
-func (m *DashboardModel) renderSplitPaneStacked(visible []*models.Project, chromeHeight int) string {
+// renderDashboard renders the always-stacked dashboard: full-width projects on top,
+// optional info section below.
+func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight int) string {
 	var b strings.Builder
 
 	cardWidth := m.width - 2
@@ -92,40 +42,19 @@ func (m *DashboardModel) renderSplitPaneStacked(visible []*models.Project, chrom
 		cardWidth = MinCardWidth
 	}
 
-	// Reserve space for the alerts card below
-	alertsHeight := AlertsCardHeight
-	cfg := DashboardCardConfig()
-
-	cardTitle := m.projectCardTitle(visible)
-	cardContent := m.renderProjectList(visible, chromeHeight, cardWidth, alertsHeight)
-	b.WriteString(renderCard(cardTitle, cardContent, cardWidth, cfg))
-	b.WriteString("\n")
-
-	// Alerts card
-	alertsContent := m.renderGlobalAlerts(cardWidth - CardBorderOverhead)
-	if alertsContent != "" {
-		b.WriteString(renderCard("Alerts", alertsContent, cardWidth, cfg))
-	}
-
-	return b.String()
-}
-
-// renderFullWidthDashboard renders the original full-width dashboard layout.
-func (m *DashboardModel) renderFullWidthDashboard(visible []*models.Project, chromeHeight int) string {
-	var b strings.Builder
-
-	cardWidth := m.width - 2
-	if cardWidth < MinCardWidth {
-		cardWidth = MinCardWidth
-	}
-
-	// Calculate space for bottom section (Recent Tasks + Stats cards)
+	// Pre-render info section to measure its actual height
+	var infoContent string
 	bottomHeight := 0
-	showRecentTasks := m.config.GetShowRecentTasks()
-	if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
-		current := m.config.GetCurrentProject()
-		if current != nil && len(current.Tasks) > 0 {
-			bottomHeight = DashboardBottomSectionHeight
+	showInfoPanel := m.config.GetShowInfoPanel()
+	if showInfoPanel && m.SearchQuery() == "" {
+		var selected *models.Project
+		if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
+			selected = visible[m.cursor]
+		}
+		infoContent = m.renderInfoSection(cardWidth, selected)
+		if infoContent != "" {
+			// +1 for the final line (Count gives separators), +1 for the gap newline
+			bottomHeight = strings.Count(infoContent, "\n") + 2
 		}
 	}
 
@@ -134,26 +63,112 @@ func (m *DashboardModel) renderFullWidthDashboard(visible []*models.Project, chr
 
 	cfg := DashboardCardConfig()
 	b.WriteString(renderCard(cardTitle, cardContent, cardWidth, cfg))
-	b.WriteString("\n")
 
-	// Current project details (only show when not searching and toggle is on)
-	if showRecentTasks && m.SearchQuery() == "" && m.config.CurrentProject != "" {
-		current := m.config.GetCurrentProject()
-		if current != nil && len(current.Tasks) > 0 {
-			b.WriteString("\n")
+	if infoContent != "" {
+		b.WriteString("\n")
+		b.WriteString(infoContent)
+	}
 
-			recentContent := m.renderRecentTasksContentWithWidth(current, cardWidth-CardBorderOverhead)
-			b.WriteString(renderCard("Recent", recentContent, cardWidth, cfg))
-			b.WriteString("\n")
+	return b.String()
+}
 
-			statsContent := m.renderStatsContent(current)
-			if statsContent != "" {
-				b.WriteString(renderCard("Stats", statsContent, cardWidth, cfg))
+// renderInfoSection renders the info cards below the project list.
+// Wide (>= DashboardInfoSectionWideMinWidth): cards side-by-side.
+// Narrow: cards stacked vertically.
+func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) string {
+	cfg := DashboardCardConfig()
+
+	// Determine which cards will be shown (before rendering content)
+	hasRecent := selected != nil
+	var scoringProfile *scoring.ScoringProfile
+	hasTopScored := false
+	if selected != nil {
+		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
+		if scoringProfile != nil {
+			for _, task := range selected.Tasks {
+				if !task.Status.IsComplete() {
+					hasTopScored = true
+					break
+				}
 			}
 		}
 	}
 
-	return b.String()
+	numCards := 1 // Alerts is always present
+	if hasRecent {
+		numCards++
+	}
+	if hasTopScored {
+		numCards++
+	}
+
+	// Determine per-card width so content renders at the correct width.
+	// JoinHorizontal adds no gaps, so total card widths must equal width exactly.
+	wide := m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
+	cardW := width
+	if wide {
+		cardW = width / numCards
+		if cardW < MinCardWidth {
+			cardW = MinCardWidth
+		}
+	}
+	contentW := cardW - CardBorderOverhead
+	if contentW < 1 {
+		contentW = 1
+	}
+
+	// Render card contents at the correct width
+	type card struct {
+		title   string
+		content string
+	}
+	var cards []card
+
+	if hasRecent {
+		var recentContent string
+		if len(selected.Tasks) == 0 {
+			recentContent = MutedStyle.Render("No tasks yet.")
+		} else {
+			recentContent = m.renderRecentTasksContentWithWidth(selected, contentW)
+		}
+		recentTitle := fmt.Sprintf("Recent — %s", util.Truncate(selected.Name, cardW-16))
+		cards = append(cards, card{title: recentTitle, content: recentContent})
+	}
+
+	if hasTopScored {
+		topContent := m.renderTopScoredContent(selected, scoringProfile, contentW)
+		if topContent != "" {
+			cards = append(cards, card{title: "Top Scored", content: topContent})
+		}
+	}
+
+	alertsContent := m.renderGlobalAlerts(contentW)
+	cards = append(cards, card{title: "Alerts", content: alertsContent})
+
+	if len(cards) == 0 {
+		return ""
+	}
+
+	if wide && len(cards) > 1 {
+		// Last card absorbs integer division remainder so cards fill full width
+		lastCardW := width - cardW*(len(cards)-1)
+		var rendered []string
+		for i, c := range cards {
+			w := cardW
+			if i == len(cards)-1 {
+				w = lastCardW
+			}
+			rendered = append(rendered, renderCard(c.title, c.content, w, cfg))
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	}
+
+	// Narrow layout: stacked vertically
+	var parts []string
+	for _, c := range cards {
+		parts = append(parts, renderCard(c.title, c.content, width, cfg))
+	}
+	return strings.Join(parts, "\n")
 }
 
 // projectCardTitle returns the title for the project list card.
@@ -502,53 +517,6 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 	return w
 }
 
-// renderRightPanel renders the right-side info panel with recent activity and global alerts.
-func (m *DashboardModel) renderRightPanel(width, height int, selected *models.Project) string {
-	cfg := DashboardCardConfig()
-	cardWidth := width
-	if cardWidth < MinCardWidth {
-		cardWidth = MinCardWidth
-	}
-
-	// Recent Activity card
-	var recentContent string
-	if selected == nil {
-		recentContent = MutedStyle.Render("No project selected.")
-	} else if len(selected.Tasks) == 0 {
-		recentContent = MutedStyle.Render("No tasks yet.")
-	} else {
-		recentContent = m.renderRecentTasksContentWithWidth(selected, cardWidth-CardBorderOverhead)
-	}
-
-	var recentTitle string
-	if selected != nil {
-		recentTitle = fmt.Sprintf("Recent — %s", util.Truncate(selected.Name, cardWidth-16))
-	} else {
-		recentTitle = "Recent Activity"
-	}
-
-	var b strings.Builder
-	b.WriteString(renderCard(recentTitle, recentContent, cardWidth, cfg))
-	b.WriteString("\n\n")
-
-	// Top scored card (only if selected project has a scoring profile)
-	if selected != nil {
-		if profile := m.config.GetProjectScoringProfile(selected.ID); profile != nil {
-			topContent := m.renderTopScoredContent(selected, profile, cardWidth-CardBorderOverhead)
-			if topContent != "" {
-				b.WriteString(renderCard("Top Scored", topContent, cardWidth, cfg))
-				b.WriteString("\n\n")
-			}
-		}
-	}
-
-	// Alerts card
-	alertsContent := m.renderGlobalAlerts(cardWidth)
-	b.WriteString(renderCard("Alerts", alertsContent, cardWidth, cfg))
-
-	return b.String()
-}
-
 // renderGlobalAlerts aggregates alert counts across all active projects.
 func (m *DashboardModel) renderGlobalAlerts(width int) string {
 	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek int
@@ -631,21 +599,6 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 	return strings.Join(lines, "\n")
 }
 
-// renderDashboardVerticalDivider renders a vertical divider for the dashboard split pane.
-func renderDashboardVerticalDivider(height int) string {
-	if height <= 0 {
-		return ""
-	}
-	var b strings.Builder
-	for i := 0; i < height; i++ {
-		b.WriteString("│")
-		if i < height-1 {
-			b.WriteString("\n")
-		}
-	}
-	return MutedStyle.Render(b.String())
-}
-
 // renderTopScoredContent returns the highest-scored incomplete task with a score bar.
 func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile *scoring.ScoringProfile, contentWidth int) string {
 	var bestTask *models.Task
@@ -721,56 +674,5 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 			lines = append(lines, line1, line2)
 		}
 	}
-	return strings.Join(lines, "\n")
-}
-
-func (m *DashboardModel) renderStatsContent(project *models.Project) string {
-	if len(project.Tasks) == 0 {
-		return ""
-	}
-
-	typeCounts := make(map[models.TaskType]int)
-	statusCounts := make(map[models.TaskStatus]int)
-
-	for _, task := range project.Tasks {
-		typeCounts[task.Type]++
-		statusCounts[task.Status]++
-	}
-
-	var typeStats []string
-	for _, tt := range models.AllTaskTypes() {
-		if count := typeCounts[tt]; count > 0 {
-			style := GetTypeStyle(string(tt))
-			typeStats = append(typeStats, style.Render(fmt.Sprintf("%s:%d", tt.Icon(), count)))
-		}
-	}
-
-	var statusStats []string
-	for _, s := range models.AllTaskStatuses() {
-		if count := statusCounts[s]; count > 0 {
-			style := GetStatusStyle(string(s))
-			statusStats = append(statusStats, style.Render(fmt.Sprintf("%s:%d", s.Icon(), count)))
-		}
-	}
-
-	var lines []string
-	lines = append(lines, MutedStyle.Render("Types: ")+strings.Join(typeStats, " "))
-	lines = append(lines, MutedStyle.Render("Status: ")+strings.Join(statusStats, " "))
-
-	overdueCount := 0
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	for _, task := range project.Tasks {
-		if task.DueDate != nil && !task.Status.IsComplete() {
-			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-			if dueDay.Before(today) {
-				overdueCount++
-			}
-		}
-	}
-	if overdueCount > 0 {
-		lines = append(lines, OverdueStyle.Render(fmt.Sprintf("Overdue: %d", overdueCount)))
-	}
-
 	return strings.Join(lines, "\n")
 }

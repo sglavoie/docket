@@ -125,17 +125,17 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.statusMessage = fmt.Sprintf("Set current: %s", msg.Project.Name)
 		return true, defaultStatusTimeout()
 
-	case ToggleRecentTasksMsg:
-		newValue := !m.config.GetShowRecentTasks()
-		m.config.SetShowRecentTasks(newValue)
+	case ToggleInfoPanelMsg:
+		newValue := !m.config.GetShowInfoPanel()
+		m.config.SetShowInfoPanel(newValue)
 		if err := m.configManager.Save(m.config); err != nil {
 			m.err = err
 			return true, nil
 		}
 		if newValue {
-			m.statusMessage = "Recent Tasks shown"
+			m.statusMessage = "Info panel shown"
 		} else {
-			m.statusMessage = "Recent Tasks hidden"
+			m.statusMessage = "Info panel hidden"
 		}
 		return true, defaultStatusTimeout()
 
