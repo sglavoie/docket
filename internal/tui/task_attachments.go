@@ -148,9 +148,15 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, textinput.Blink
 
 		case "o", "enter":
-			// Open selected attachment
+			// Open selected attachment with system default
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				return m, m.openAttachment()
+				return m, m.openAttachmentDefault()
+			}
+
+		case "e":
+			// Open selected attachment in editor
+			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+				return m, m.openAttachmentInEditor()
 			}
 
 		case "d", "x":
@@ -349,10 +355,10 @@ func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	}
 }
 
-func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
+func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 	att := m.task.Attachments[m.cursor]
 
-	// Handle code references
+	// Handle code references — open in code editor since that's the sensible default
 	if att.IsCodeRef {
 		if !storage.CodeReferenceFileExists(att.OriginalPath) {
 			m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
@@ -378,18 +384,7 @@ func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
 		}
 	}
 
-	// Check if we should use a configured attachment editor (for non-URL files)
-	if !att.IsURL && m.config.GetAttachmentEditor() != "" {
-		openCmd := exec.Command(m.config.GetAttachmentEditor(), target)
-		return tea.ExecProcess(openCmd, func(err error) tea.Msg {
-			if err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
-			}
-			return nil
-		})
-	}
-
-	// Build the open command
+	// Open with OS default
 	var openCmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -406,6 +401,54 @@ func (m *TaskAttachmentsModel) openAttachment() tea.Cmd {
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+		}
+		return nil
+	})
+}
+
+func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
+	att := m.task.Attachments[m.cursor]
+
+	// Handle code references — open in code editor (same as default for code refs)
+	if att.IsCodeRef {
+		if !storage.CodeReferenceFileExists(att.OriginalPath) {
+			m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
+			return nil
+		}
+		codeEditor := m.config.GetCodeEditor()
+		if err := external.OpenCodeReference(codeEditor, att.OriginalPath, att.LineNumber); err != nil {
+			m.err = fmt.Errorf("failed to open code reference: %w", err)
+			return nil
+		}
+		m.statusMessage = fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber)
+		return nil
+	}
+
+	// URLs can't be edited
+	if att.IsURL {
+		m.err = fmt.Errorf("cannot edit a URL in an editor")
+		return nil
+	}
+
+	target := storage.GetAttachmentPath(m.project, m.task, att.Filename)
+	if !storage.AttachmentExists(m.project, m.task, att.Filename) {
+		m.err = fmt.Errorf("file not found: %s", att.Filename)
+		return nil
+	}
+
+	// Use configured attachment editor, fall back to $EDITOR, then vi
+	editor := m.config.GetAttachmentEditor()
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
+	if editor == "" {
+		editor = "vi"
+	}
+
+	openCmd := exec.Command(editor, target)
+	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to open in editor: %w", err)}
 		}
 		return nil
 	})
@@ -793,7 +836,7 @@ func (m *TaskAttachmentsModel) View() string {
 
 	// Build help segments
 	var helpParts []string
-	helpParts = append(helpParts, "a: add", "o: open", "O: open dir")
+	helpParts = append(helpParts, "a: add", "o: open", "e: edit", "O: open dir")
 	if !isCodeRef {
 		helpParts = append(helpParts, "Ctrl+O: original")
 	}

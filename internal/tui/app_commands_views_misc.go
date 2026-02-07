@@ -35,13 +35,24 @@ func (m *AppModel) attachmentCommands() []Command {
 		},
 		{
 			Name:        "open attachment",
-			Description: "Open selected attachment",
+			Description: "Open selected attachment (system default)",
 			Shortcut:    "o",
 			Category:    CategoryAttachments,
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"view attachment", "launch attachment"},
 			Handler: func() tea.Msg {
 				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}}
+			},
+		},
+		{
+			Name:        "edit attachment",
+			Description: "Open selected attachment in editor",
+			Shortcut:    "e",
+			Category:    CategoryAttachments,
+			Views:       []ViewType{ViewTaskAttachments},
+			Aliases:     []string{"edit in editor", "open in editor"},
+			Handler: func() tea.Msg {
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
 			},
 		},
 		{
