@@ -11,7 +11,7 @@ import (
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Count by section: active, next, inbox, waiting, someday, completed
-	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, completedCount, snoozedCount int
+	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, reviewCount, completedCount, snoozedCount int
 	for _, task := range m.project.Tasks {
 		if task.IsSnoozed() {
 			snoozedCount++
@@ -30,6 +30,8 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 			waitingCount++
 		case models.SectionSomeday:
 			somedayCount++
+		case models.SectionReview:
+			reviewCount++
 		default:
 			// Empty section = Active
 			activeCount++
@@ -79,6 +81,14 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(somedayLabel))
 	}
 
+	// Review view
+	reviewLabel := fmt.Sprintf("Review[%d]", reviewCount)
+	if m.viewMode == ViewModeReview {
+		parts = append(parts, ViewModeReviewStyle.Render(reviewLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(reviewLabel))
+	}
+
 	// Snoozed indicator (only show if there are snoozed tasks)
 	if snoozedCount > 0 {
 		snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
@@ -90,7 +100,7 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	}
 
 	// All view indicator
-	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount
+	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount + reviewCount
 	allLabel := fmt.Sprintf("All[%d]", allCount)
 	if m.viewMode == ViewModeAll {
 		parts = append(parts, ViewModeAllStyle.Render(allLabel))
@@ -362,6 +372,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 		base = "Someday"
 	case ViewModeCompleted:
 		base = "Completed"
+	case ViewModeReview:
+		base = "Review"
 	case ViewModeSnoozed:
 		base = "Snoozed"
 	case ViewModeAll:

@@ -190,6 +190,17 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 	)
 }
 
+// handleReviewTask sends a task to review.
+func (m *ProjectTreeModel) handleReviewTask(visible []*TreeNode) (bool, tea.Cmd) {
+	return m.handleStatusChange(visible,
+		func(t *models.Task) bool {
+			return t.Status.IsActive() && t.Status != models.StatusReview
+		},
+		func(t *models.Task) { t.Review() },
+		"Review Task",
+	)
+}
+
 // executePendingBulkStatus applies the pending bulk status change after confirmation.
 func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 	if len(m.bulkOp.GetTasks()) == 0 {
@@ -209,6 +220,8 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 			task.Start()
 		case models.StatusBlocked:
 			task.Block()
+		case models.StatusReview:
+			task.Review()
 		case models.StatusCanceled:
 			task.Cancel()
 		case models.StatusTodo:

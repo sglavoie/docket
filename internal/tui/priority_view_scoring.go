@@ -40,6 +40,11 @@ func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
 		score += 500
 	}
 
+	// Review bonus (less than in-progress)
+	if task.Status == models.StatusReview {
+		score += 250
+	}
+
 	// Active flag bonus
 	if task.Active {
 		score += 200

@@ -145,6 +145,32 @@ func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
 	return m.saveWithStatusChange(prevStates, task)
 }
 
+// handleStatusReview sets the selected task status to review.
+func (m *KanbanViewModel) handleStatusReview() tea.Cmd {
+	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
+	if task == nil {
+		return nil
+	}
+
+	// Only review active tasks that aren't already in review
+	if !task.Status.IsActive() || task.Status == models.StatusReview {
+		m.statusMessage = "Cannot review: task is not active or already in review"
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	task.Review()
+	m.statusMessage = fmt.Sprintf("Review: %s", task.Title)
+
+	return m.saveWithStatusChange(prevStates, task)
+}
+
 // saveWithStatusChange saves the project after a status change with workflow
 // rule evaluation. Returns a command that persists changes and refreshes the view.
 func (m *KanbanViewModel) saveWithStatusChange(prevStates map[string]*models.Task, task *models.Task) tea.Cmd {

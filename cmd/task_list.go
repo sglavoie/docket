@@ -192,6 +192,8 @@ func printTaskNode(task *models.Task, depth int) {
 		style = style.Foreground(lipgloss.Color("242")).Strikethrough(true)
 	case models.StatusInProgress:
 		style = style.Foreground(lipgloss.Color("82"))
+	case models.StatusReview:
+		style = style.Foreground(lipgloss.Color("214"))
 	case models.StatusBlocked:
 		style = style.Foreground(lipgloss.Color("196"))
 	}

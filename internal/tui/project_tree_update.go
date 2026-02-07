@@ -215,6 +215,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		case "o":
 			_, cmd := m.handleReopenTask(visible)
 			return m, cmd
+		case "r":
+			_, cmd := m.handleReviewTask(visible)
+			return m, cmd
 		}
 
 	case "z":
@@ -331,6 +334,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			m.pruneInvisibleSelections()
 			m.clampCursor()
 			return m, nil
+		case "r":
+			// Go to Review view
+			m.viewMode = ViewModeReview
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
 		case "c":
 			// Go to Completed view
 			m.viewMode = ViewModeCompleted
@@ -358,6 +368,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 							m.viewMode = ViewModeWaiting
 						case models.SectionSomeday:
 							m.viewMode = ViewModeSomeday
+						case models.SectionReview:
+							m.viewMode = ViewModeReview
 						default:
 							m.viewMode = ViewModeActive
 						}
@@ -384,6 +396,10 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			// Send to Waiting section
 			_, cmd := m.sendTasksToSection(models.SectionWaiting, visible)
 			return m, cmd
+		case "R":
+			// Send to Review section
+			_, cmd := m.sendTasksToSection(models.SectionReview, visible)
+			return m, cmd
 		case "S":
 			// Send to Someday section
 			_, cmd := m.sendTasksToSection(models.SectionSomeday, visible)
@@ -397,7 +413,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			return m, nil
 		case "v":
 			// Cycle view modes (including Completed, Snoozed, and All)
-			m.viewMode = (m.viewMode + 1) % 8
+			m.viewMode = (m.viewMode + 1) % 9
 			m.updateVisibility()
 			m.pruneInvisibleSelections()
 			m.clampCursor()

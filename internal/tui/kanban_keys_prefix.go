@@ -48,6 +48,11 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				return m, m.handleBulkStatusChange(models.StatusCanceled)
 			}
 			return m, m.handleStatusCancelled()
+		case "r":
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkStatusChange(models.StatusReview)
+			}
+			return m, m.handleStatusReview()
 		}
 
 	case "!":
@@ -156,19 +161,22 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "n":
 			// Go to Next column
-			m.ActiveColumn = 1
+			m.ActiveColumn = 2
 			return m, nil
 		case "i":
 			// Go to Inbox column
-			m.ActiveColumn = 2
+			m.ActiveColumn = 3
 			return m, nil
 		case "w":
 			// Go to Waiting column
-			m.ActiveColumn = 3
+			m.ActiveColumn = 4
 			return m, nil
+		case "r":
+			// Go to Review column
+			m.ActiveColumn = 1
 		case "s":
 			// Go to Someday column
-			m.ActiveColumn = 4
+			m.ActiveColumn = 5
 			return m, nil
 		case "A":
 			// Send task(s) to Active section
@@ -194,6 +202,12 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				return m, m.handleBulkSectionMove(KanbanSectionWaiting)
 			}
 			return m, m.sendTaskToSection(KanbanSectionWaiting)
+		case "R":
+			// Send task(s) to Review section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionReview)
+			}
+			return m, m.sendTaskToSection(KanbanSectionReview)
 		case "S":
 			// Send task(s) to Someday section
 			if m.multiSelectMode && m.selectedCount() > 0 {

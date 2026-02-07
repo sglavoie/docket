@@ -36,6 +36,8 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 					t.Complete()
 				case "start":
 					t.Start()
+				case "review":
+					t.Review()
 				}
 			})
 			if mutated {
@@ -54,6 +56,8 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		actionPast = "completed"
 	case "start":
 		actionPast = "started"
+	case "review":
+		actionPast = "sent to review"
 	}
 	successMsg := fmt.Sprintf("%d tasks %s", count, actionPast)
 

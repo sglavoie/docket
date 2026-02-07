@@ -18,11 +18,13 @@ const (
 	KanbanSectionInbox   = "Inbox"
 	KanbanSectionWaiting = "Waiting"
 	KanbanSectionSomeday = "Someday"
+	KanbanSectionReview  = "Review"
 )
 
 // KanbanColumnOrder defines the left-to-right display order of columns.
 var KanbanColumnOrder = []string{
 	KanbanSectionActive,
+	KanbanSectionReview,
 	KanbanSectionNext,
 	KanbanSectionInbox,
 	KanbanSectionWaiting,

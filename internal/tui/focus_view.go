@@ -515,6 +515,8 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m.changeTaskStatus(models.StatusCanceled)
 		case "o":
 			return m.changeTaskStatus(models.StatusTodo)
+		case "r":
+			return m.changeTaskStatus(models.StatusReview)
 		}
 
 	case "d":
@@ -678,6 +680,11 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 	case models.StatusTodo:
 		if task.Status == models.StatusTodo {
 			m.statusMessage = "Task is already todo"
+			return m, nil
+		}
+	case models.StatusReview:
+		if !task.Status.IsActive() || task.Status == models.StatusReview {
+			m.statusMessage = "Task must be active and not already in review"
 			return m, nil
 		}
 	}

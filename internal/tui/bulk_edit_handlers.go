@@ -95,6 +95,7 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 			statuses := []models.TaskStatus{
 				models.StatusTodo,
 				models.StatusInProgress,
+				models.StatusReview,
 				models.StatusDone,
 				models.StatusBlocked,
 				models.StatusCanceled,

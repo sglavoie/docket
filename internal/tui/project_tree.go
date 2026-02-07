@@ -55,6 +55,7 @@ const (
 	ViewModeWaiting                   // Only Waiting section tasks (GTD "Waiting For")
 	ViewModeSomeday                   // Only Someday section tasks (GTD "Someday/Maybe")
 	ViewModeCompleted                 // Only completed tasks (done or canceled)
+	ViewModeReview                    // Only Review section tasks
 	ViewModeSnoozed                   // Only snoozed tasks
 	ViewModeAll                       // All non-completed, non-snoozed tasks from all sections
 )
@@ -70,6 +71,8 @@ func (v ViewMode) String() string {
 		return "Waiting"
 	case ViewModeSomeday:
 		return "Someday"
+	case ViewModeReview:
+		return "Review"
 	case ViewModeCompleted:
 		return "Completed"
 	case ViewModeSnoozed:

@@ -575,6 +575,8 @@ func (m *KanbanViewModel) handleKanbanFilterStatusPrefix(key string) (tea.Model,
 		m.filter.Status = models.StatusTodo
 	case "s":
 		m.filter.Status = models.StatusInProgress
+	case "r":
+		m.filter.Status = models.StatusReview
 	case "b":
 		m.filter.Status = models.StatusBlocked
 	case "d":

@@ -472,6 +472,7 @@ func init() {
 		{`\bin_progress\b`, InProgressStyle, 0},
 		{`\bcanceled\b`, GetStatusStyle("canceled"), 0},
 		{`\bblocked\b`, BlockedStyle, 0},
+		{`\breview\b`, ReviewStyle, 0},
 		{`\btodo\b`, TodoStyle, 0},
 		{`\bdone\b`, DoneStyle, 0},
 
@@ -499,6 +500,7 @@ func init() {
 		{`\bInbox\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("33")), 0},
 		{`\bWaiting\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("214")), 0},
 		{`\bSomeday\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("135")), 0},
+		{`\bReview\b`, ReviewStyle, 0},
 
 		// Tags: #word
 		{`#[a-zA-Z][a-zA-Z0-9_-]*`, lipgloss.NewStyle().Foreground(ColorPrimary), 0},
@@ -515,7 +517,7 @@ func init() {
 		{`\bTab\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
 		{`\bj/k\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
 		// Comma-prefix bindings at start of line: ,s ,d ,b ,o ,x
-		{`^(,[sdbox])\s`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`^(,[sdboxr])\s`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 		// "using , followed" — color the comma
 		{`using (,) followed`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
 		// "Press X" patterns for single-char keys
@@ -991,7 +993,8 @@ its current stage.
 Active contains tasks you are working on right now. Next holds
 tasks queued up to start soon. Inbox is for unsorted incoming
 tasks. Waiting is for tasks blocked on external input. Someday
-captures tasks you might do eventually.
+captures tasks you might do eventually. Review holds tasks
+awaiting code review, QA, or approval.
 
 # Custom Sections
 
@@ -1074,22 +1077,24 @@ list as noise, snooze them until the right time.`,
 			Category: "Concepts",
 			Content: `# Available Statuses
 
-Tasks move through five statuses: todo, in_progress, done,
-blocked, and canceled.
+Tasks move through six statuses: todo, in_progress, review,
+done, blocked, and canceled.
 
 # Transitions
 
 todo is the default status for new tasks. Moving to in_progress
-means work has started. done marks a task as finished. blocked
-indicates the task cannot proceed until an external dependency
-is resolved. canceled removes the task from active work without
-completing it.
+means work has started. review indicates the task is awaiting
+code review, QA, or approval. done marks a task as finished.
+blocked indicates the task cannot proceed until an external
+dependency is resolved. canceled removes the task from active
+work without completing it.
 
 # Status Flow
 
-A typical task flows from todo to in_progress to done. Tasks
-can be blocked at any point and reopened back to todo. Canceled
-tasks are terminal and do not appear in active views.`,
+A typical task flows from todo to in_progress to review to
+done. Tasks can be blocked at any point and reopened back to
+todo. Canceled tasks are terminal and do not appear in active
+views.`,
 		},
 		{
 			Title:    "Tags",
@@ -1457,6 +1462,7 @@ Change task status using , followed by a letter:
   ,b  Block task
   ,o  Reopen (set to todo)
   ,x  Cancel task
+  ,r  Review (send to review)
 
 Each binding sets the status directly. Select a task first,
 then press the key combination.`,

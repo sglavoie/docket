@@ -526,6 +526,8 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 		current.Cancel()
 	case "reopen":
 		current.Reopen()
+	case "review":
+		current.Review()
 	default:
 		return true, nil
 	}

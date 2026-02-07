@@ -208,6 +208,18 @@ func TestStatusTransitions(t *testing.T) {
 			action:       (*models.Task).Reopen,
 			wantStatus:   models.StatusTodo,
 		},
+		{
+			name:         "in_progress to review",
+			initialState: models.StatusInProgress,
+			action:       (*models.Task).Review,
+			wantStatus:   models.StatusReview,
+		},
+		{
+			name:         "todo to review",
+			initialState: models.StatusTodo,
+			action:       (*models.Task).Review,
+			wantStatus:   models.StatusReview,
+		},
 	}
 
 	for _, tt := range tests {
@@ -226,6 +238,7 @@ func TestStatusIsComplete(t *testing.T) {
 	}{
 		{models.StatusTodo, false},
 		{models.StatusInProgress, false},
+		{models.StatusReview, false},
 		{models.StatusBlocked, false},
 		{models.StatusDone, true},
 		{models.StatusCanceled, true},
@@ -247,6 +260,7 @@ func TestStatusIsActive(t *testing.T) {
 	}{
 		{models.StatusTodo, true},
 		{models.StatusInProgress, true},
+		{models.StatusReview, true},
 		{models.StatusBlocked, true},
 		{models.StatusDone, false},
 		{models.StatusCanceled, false},

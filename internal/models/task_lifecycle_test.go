@@ -120,6 +120,32 @@ func TestCancelMovesToCompletedSection(t *testing.T) {
 	}
 }
 
+func TestReview(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Start()
+	task.Review()
+
+	if task.Status != StatusReview {
+		t.Errorf("expected StatusReview, got %s", task.Status)
+	}
+	if task.Section != SectionReview {
+		t.Errorf("expected Section Review, got %q", task.Section)
+	}
+}
+
+func TestReviewFromTodo(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Section = SectionInbox
+	task.Review()
+
+	if task.Status != StatusReview {
+		t.Errorf("expected StatusReview, got %s", task.Status)
+	}
+	if task.Section != SectionReview {
+		t.Errorf("expected Section Review, got %q", task.Section)
+	}
+}
+
 func TestReopen(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Complete()

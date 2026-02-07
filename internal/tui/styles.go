@@ -65,6 +65,9 @@ var (
 	InProgressStyle = lipgloss.NewStyle().
 			Foreground(ColorWarning)
 
+	ReviewStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("33"))
+
 	DoneStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
 
@@ -137,6 +140,7 @@ var (
 	// Task status badge styles (icon with background for visual distinction)
 	TodoBadgeStyle       = makeBadgeStyle("241", "236") // Gray
 	InProgressBadgeStyle = makeBadgeStyle("214", "94")  // Orange
+	ReviewBadgeStyle     = makeBadgeStyle("33", "17")   // Blue
 	DoneBadgeStyle       = makeBadgeStyle("42", "22")   // Green
 	BlockedBadgeStyle    = makeBadgeStyle("196", "52")  // Red
 	CanceledBadgeStyle   = makeBadgeStyle("241", "236") // Gray
@@ -297,6 +301,7 @@ var (
 	ViewModeWaitingStyle   = makeViewModeStyle("214")
 	ViewModeSomedayStyle   = makeViewModeStyle("135")
 	ViewModeCompletedStyle = makeViewModeStyle("28")
+	ViewModeReviewStyle    = makeViewModeStyle("33")
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 	ViewModeAllStyle       = makeViewModeStyle("60")
 
@@ -502,6 +507,8 @@ func GetStatusStyle(status string) lipgloss.Style {
 		return TodoStyle
 	case "in_progress":
 		return InProgressStyle
+	case "review":
+		return ReviewStyle
 	case "done":
 		return DoneStyle
 	case "blocked":
@@ -578,6 +585,8 @@ func GetStatusBadge(status string, icon string) string {
 		return TodoBadgeStyle.Render(icon)
 	case "in_progress":
 		return InProgressBadgeStyle.Render(icon)
+	case "review":
+		return ReviewBadgeStyle.Render(icon)
 	case "done":
 		return DoneBadgeStyle.Render(icon)
 	case "blocked":
@@ -640,6 +649,8 @@ func GetViewModeStyleForSection(section string) lipgloss.Style {
 		return ViewModeWaitingStyle
 	case "Someday":
 		return ViewModeSomedayStyle
+	case "Review":
+		return ViewModeReviewStyle
 	default:
 		return ViewModeActiveStyle
 	}

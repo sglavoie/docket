@@ -142,6 +142,8 @@ func (m *ProjectTreeModel) handleFilterStatusPrefix(key string) (tea.Model, tea.
 		m.filter.Status = models.StatusTodo
 	case "s":
 		m.filter.Status = models.StatusInProgress
+	case "r":
+		m.filter.Status = models.StatusReview
 	case "b":
 		m.filter.Status = models.StatusBlocked
 	case "d":

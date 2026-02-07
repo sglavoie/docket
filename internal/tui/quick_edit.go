@@ -131,6 +131,9 @@ func parseQuickEdit(input string, task *models.Task, project *models.Project) (*
 		case "todo", "open", "reopen":
 			result.status = models.StatusTodo
 			result.statusSet = true
+		case "review":
+			result.status = models.StatusReview
+			result.statusSet = true
 		default:
 			return nil, fmt.Errorf("invalid status: $%s", match[1])
 		}
@@ -243,6 +246,9 @@ func parseQuickEditForPreview(input string, task *models.Task, project *models.P
 			result.statusSet = true
 		case "todo", "open", "reopen":
 			result.status = models.StatusTodo
+			result.statusSet = true
+		case "review":
+			result.status = models.StatusReview
 			result.statusSet = true
 		default:
 			if errMsg == "" {

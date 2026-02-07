@@ -71,12 +71,24 @@ Examples:
 	RunE: runTaskReopen,
 }
 
+var taskReviewCmd = &cobra.Command{
+	Use:   "review [id]",
+	Short: "Send a task to review",
+	Long: `Mark a task as in review (code review, QA, approval).
+
+Examples:
+  tt task review 5`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runTaskReview,
+}
+
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
 	taskCmd.AddCommand(taskBlockCmd)
 	taskCmd.AddCommand(taskCancelCmd)
 	taskCmd.AddCommand(taskReopenCmd)
+	taskCmd.AddCommand(taskReviewCmd)
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {
@@ -109,6 +121,12 @@ func runTaskReopen(cmd *cobra.Command, args []string) error {
 	})
 }
 
+func runTaskReview(cmd *cobra.Command, args []string) error {
+	return updateTaskStatus(args, "review", func(t *models.Task) {
+		t.Review()
+	})
+}
+
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskID string
@@ -125,7 +143,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		var candidates []*models.Task
 		for _, t := range project.Tasks {
 			switch action {
-			case "complete", "start", "block", "cancel":
+			case "complete", "start", "block", "cancel", "review":
 				if t.Status.IsActive() {
 					candidates = append(candidates, t)
 				}

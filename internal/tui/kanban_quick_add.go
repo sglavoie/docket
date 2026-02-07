@@ -310,6 +310,8 @@ func (m *KanbanViewModel) createQuickAddTask() tea.Cmd {
 			task.Complete()
 		case models.StatusCanceled:
 			task.Cancel()
+		case models.StatusReview:
+			task.Review()
 		}
 
 		// Capture previous task states for workflow rule evaluation

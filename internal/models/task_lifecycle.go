@@ -24,6 +24,14 @@ func (t *Task) Start() {
 	}
 }
 
+// Review marks the task as in review.
+// If the task is in any non-Active section, it is automatically moved to Review section.
+func (t *Task) Review() {
+	t.Status = StatusReview
+	t.UpdatedAt = time.Now()
+	t.Section = SectionReview
+}
+
 // Block marks the task as blocked.
 func (t *Task) Block() {
 	t.Status = StatusBlocked

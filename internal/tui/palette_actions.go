@@ -103,6 +103,18 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 		})
 	}
 
+	// Review action for active in-progress tasks
+	if task.Status == models.StatusInProgress {
+		actions = append(actions, PaletteAction{
+			Name:    "Review",
+			Icon:    "◑",
+			KeyHint: "R",
+			Handler: func() tea.Msg {
+				return CommandPaletteTaskActionMsg{Task: task, Project: project, Action: "review"}
+			},
+		})
+	}
+
 	// Cancel action for active tasks
 	if task.Status.IsActive() {
 		actions = append(actions, PaletteAction{

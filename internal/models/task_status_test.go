@@ -3,7 +3,7 @@ package models
 import "testing"
 
 func TestTaskStatusIsValid(t *testing.T) {
-	valid := []TaskStatus{StatusTodo, StatusInProgress, StatusDone, StatusBlocked, StatusCanceled}
+	valid := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusDone, StatusBlocked, StatusCanceled}
 	for _, s := range valid {
 		if !s.IsValid() {
 			t.Errorf("expected %q to be valid", s)
@@ -26,7 +26,7 @@ func TestTaskStatusIsComplete(t *testing.T) {
 		}
 	}
 
-	notComplete := []TaskStatus{StatusTodo, StatusInProgress, StatusBlocked}
+	notComplete := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusBlocked}
 	for _, s := range notComplete {
 		if s.IsComplete() {
 			t.Errorf("expected %q to not be complete", s)
@@ -35,7 +35,7 @@ func TestTaskStatusIsComplete(t *testing.T) {
 }
 
 func TestTaskStatusIsActive(t *testing.T) {
-	active := []TaskStatus{StatusTodo, StatusInProgress, StatusBlocked}
+	active := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusBlocked}
 	for _, s := range active {
 		if !s.IsActive() {
 			t.Errorf("expected %q to be active", s)
@@ -57,6 +57,7 @@ func TestTaskStatusIcon(t *testing.T) {
 	}{
 		{StatusTodo, "○"},
 		{StatusInProgress, "◐"},
+		{StatusReview, "◑"},
 		{StatusDone, "●"},
 		{StatusBlocked, "◈"},
 		{StatusCanceled, "✕"},
@@ -78,6 +79,7 @@ func TestParseTaskStatusExtended(t *testing.T) {
 	}{
 		{"todo", StatusTodo, true},
 		{"in_progress", StatusInProgress, true},
+		{"review", StatusReview, true},
 		{"done", StatusDone, true},
 		{"blocked", StatusBlocked, true},
 		{"canceled", StatusCanceled, true},
@@ -100,8 +102,8 @@ func TestParseTaskStatusExtended(t *testing.T) {
 
 func TestAllTaskStatuses(t *testing.T) {
 	statuses := AllTaskStatuses()
-	if len(statuses) != 5 {
-		t.Errorf("expected 5 statuses, got %d", len(statuses))
+	if len(statuses) != 6 {
+		t.Errorf("expected 6 statuses, got %d", len(statuses))
 	}
 	for _, s := range statuses {
 		if !s.IsValid() {
@@ -111,7 +113,7 @@ func TestAllTaskStatuses(t *testing.T) {
 }
 
 func TestIsGTDSection(t *testing.T) {
-	gtdSections := []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday}
+	gtdSections := []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview}
 	for _, s := range gtdSections {
 		if !IsGTDSection(s) {
 			t.Errorf("expected %q to be a GTD section", s)
