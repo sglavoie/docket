@@ -112,10 +112,10 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown preset %q (available: %s)", preset, strings.Join(scoring.PresetNames(), ", "))
 		}
 		profile := factory()
-		if err := cfg.AddScoringProfile(profile); err != nil {
-			return err
+		if addErr := cfg.AddScoringProfile(profile); addErr != nil {
+			return addErr
 		}
-		if err := configManager.Save(cfg); err != nil {
+		if saveErr := configManager.Save(cfg); saveErr != nil {
 			return fmt.Errorf("failed to save config: %w", err)
 		}
 		fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))

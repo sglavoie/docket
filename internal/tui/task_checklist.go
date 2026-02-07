@@ -122,7 +122,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveEditedItem()
-			case "ctrl+o":
+			case "ctrl+e":
 				return m, m.editItemInExternalEditorFromEditMode()
 			}
 		}
@@ -141,7 +141,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveItem()
-			case "ctrl+o":
+			case "ctrl+e":
 				return m, m.addItemInExternalEditor()
 			}
 		}

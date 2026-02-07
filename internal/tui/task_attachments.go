@@ -179,7 +179,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.copyPathWithLine()
 			}
 
-		case "ctrl+o":
+		case "ctrl+e":
 			// Open original path reference
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
 				return m, m.openOriginalPath()

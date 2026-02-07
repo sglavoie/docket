@@ -681,9 +681,10 @@ func (m *ProjectTreeModel) renderScoreCard(task *models.Task, width int, profile
 
 		// Role indicator for RICE/WSJF
 		roleStr := ""
-		if r.Role == scoring.RoleNumerator {
+		switch r.Role {
+		case scoring.RoleNumerator:
 			roleStr = MutedStyle.Render(" [n]")
-		} else if r.Role == scoring.RoleDenominator {
+		case scoring.RoleDenominator:
 			roleStr = MutedStyle.Render(" [d]")
 		}
 

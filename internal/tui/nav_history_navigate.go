@@ -1,0 +1,213 @@
+package tui
+
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/storage"
+)
+
+// navigateHistoryBack moves backward through navigation history, skipping stale entries.
+// When the current view is untracked (editors, pickers, modals), the history cursor
+// already points at the parent tracked view. In that case we navigate directly to the
+// cursor entry instead of decrementing past it.
+func (m *AppModel) navigateHistoryBack() tea.Cmd {
+	// If we're on an untracked view, the cursor still points at the last tracked
+	// view (our parent). Navigate there without decrementing.
+	if cursorEntry, ok := m.navHistory.Current(); ok {
+		if m.currentView() != cursorEntry.ViewType && m.isNavEntryValid(cursorEntry) {
+			return m.navigateToEntry(cursorEntry)
+		}
+	}
+
+	for m.navHistory.CanGoBack() {
+		entry, ok := m.navHistory.GoBack()
+		if !ok {
+			break
+		}
+		if m.isNavEntryValid(entry) {
+			return m.navigateToEntry(entry)
+		}
+	}
+	return nil
+}
+
+// navigateHistoryForward moves forward through navigation history, skipping stale entries.
+func (m *AppModel) navigateHistoryForward() tea.Cmd {
+	for m.navHistory.CanGoForward() {
+		entry, ok := m.navHistory.GoForward()
+		if !ok {
+			break
+		}
+		if m.isNavEntryValid(entry) {
+			return m.navigateToEntry(entry)
+		}
+	}
+	return nil
+}
+
+// isNavEntryValid checks whether a history entry still refers to existing entities.
+func (m *AppModel) isNavEntryValid(entry NavEntry) bool {
+	if entry.ProjectID != "" {
+		if m.config.GetProject(entry.ProjectID) == nil {
+			return false
+		}
+	}
+	if entry.TaskID != "" && entry.ProjectID != "" {
+		project := m.config.GetProject(entry.ProjectID)
+		if project == nil {
+			return false
+		}
+		_ = m.persister.Load(project)
+		if project.GetTaskByID(entry.TaskID) == nil {
+			return false
+		}
+	}
+	return true
+}
+
+// navigateToEntry reconstructs the view described by entry and navigates to it.
+func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
+	m.navHistory.Lock()
+	defer m.navHistory.Unlock()
+
+	m.saveProjectTreeState()
+
+	// Reset view stack and project stack
+	m.projectStack = nil
+	m.viewStack = []ViewType{ViewDashboard}
+
+	switch {
+	case entry.ViewType == ViewDashboard:
+		return m.reconstructDashboard()
+	case entry.TaskID != "" && entry.ProjectID != "":
+		return m.reconstructTaskView(entry)
+	case entry.ProjectID != "":
+		return m.reconstructProjectView(entry)
+	default:
+		return m.reconstructGlobalView(entry)
+	}
+}
+
+func (m *AppModel) reconstructDashboard() tea.Cmd {
+	if m.dashboard != nil {
+		m.dashboard.Refresh(m.config)
+	}
+	return nil
+}
+
+func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
+	switch entry.ViewType {
+	case ViewDailyReview:
+		m.showView(ViewDailyReview, NewDailyReviewModel(m.config))
+	case ViewWeeklyReview:
+		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
+	case ViewFocusView:
+		m.showView(ViewFocusView, NewFocusViewModel(m.config))
+	case ViewDueDateOverview:
+		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config))
+	case ViewRecentActivity:
+		m.showView(ViewRecentActivity, NewRecentActivityModel(m.config))
+	case ViewGlobalSearch:
+		m.globalSearch = NewGlobalSearchModel(m.config)
+		m.showView(ViewGlobalSearch, m.globalSearch)
+		return m.globalSearch.Init()
+	case ViewGlobalBlockers:
+		m.showView(ViewGlobalBlockers, NewGlobalBlockersModel(m.config))
+	case ViewGlobalNotes:
+		dir := storage.GlobalNotesDir(m.config.DataDir)
+		m.showView(ViewGlobalNotes, NewGlobalNotesViewModel(dir, m.config))
+	case ViewGlobalInboxProcessor:
+		processor := NewGlobalInboxProcessorModel(m.config, m.configManager)
+		m.globalInboxProcessor = processor
+		m.showView(ViewGlobalInboxProcessor, processor)
+	case ViewGlobalTagManager:
+		m.showView(ViewGlobalTagManager, NewGlobalTagManagerModel(m.config))
+	case ViewSettings:
+		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
+	case ViewWorkflowRules:
+		m.showView(ViewWorkflowRules, NewWorkflowRulesModel(m.config, m.configManager))
+	case ViewTaskTemplates:
+		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.config, m.configManager))
+	case ViewTutor:
+		tutor := NewTutorModel()
+		m.showView(ViewTutor, tutor)
+		tutor.SetSize(m.width, m.height)
+	case ViewScoreProfileManager:
+		projectID := ""
+		if m.currentProject != nil {
+			projectID = m.currentProject.ID
+		}
+		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
+	case ViewProjectCycleManager:
+		m.showView(ViewProjectCycleManager, NewProjectCycleManagerModel(m.config, m.configManager))
+	}
+	return nil
+}
+
+func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
+	project := m.config.GetProject(entry.ProjectID)
+	if project == nil {
+		return nil
+	}
+
+	m.switchToProject(project, true)
+	m.pushView(ViewProjectTree)
+
+	if entry.ViewType == ViewProjectTree {
+		return nil
+	}
+
+	// Push the target view on top of the project tree
+	switch entry.ViewType {
+	case ViewKanban:
+		m.kanban = NewKanbanViewModel(project, m.config, m.configManager)
+		m.kanban.projectTree = m.projectTree
+		m.showView(ViewKanban, m.kanban)
+	case ViewPriorityView:
+		m.showView(ViewPriorityView, NewPriorityViewModel(project, m.config))
+	case ViewNotes:
+		m.showView(ViewNotes, NewNotesViewModel(project, m.config))
+	case ViewBlockers:
+		m.showView(ViewBlockers, NewBlockersModelWithEditor(project, m.config.Editor))
+	case ViewInboxProcessor:
+		processor := NewInboxProcessorModel(project, m.config, m.configManager)
+		m.inboxProcessor = processor
+		m.showView(ViewInboxProcessor, processor)
+	case ViewUndoHistory:
+		m.showView(ViewUndoHistory, NewUndoHistoryModel(project))
+	case ViewProjectFocusView:
+		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project))
+	}
+	return nil
+}
+
+func (m *AppModel) reconstructTaskView(entry NavEntry) tea.Cmd {
+	project := m.config.GetProject(entry.ProjectID)
+	if project == nil {
+		return nil
+	}
+
+	m.switchToProject(project, true)
+	m.pushView(ViewProjectTree)
+
+	task := project.GetTaskByID(entry.TaskID)
+	if task == nil {
+		return nil
+	}
+
+	switch entry.ViewType {
+	case ViewTaskComments:
+		m.lastNavigatedTaskID = task.ID
+		m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(task, project, m.config.Editor))
+	case ViewTaskChecklist:
+		m.lastNavigatedTaskID = task.ID
+		m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(task, project, m.config.Editor))
+	case ViewTaskAttachments:
+		m.lastNavigatedTaskID = task.ID
+		m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(task, project, m.config))
+	case ViewTaskActivity:
+		m.lastNavigatedTaskID = task.ID
+		m.showView(ViewTaskActivity, NewTaskActivityModel(task, project))
+	}
+	return nil
+}

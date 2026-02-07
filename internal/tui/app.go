@@ -170,6 +170,10 @@ type AppModel struct {
 
 	// CLI reference for AI assistant context
 	cliReference string
+
+	// Navigation history for back/forward (Alt+O / Alt+I)
+	navHistory          *NavHistory
+	lastNavigatedTaskID string
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -208,6 +212,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		views:           NewViewRegistry(),
 		commandRegistry: NewCommandRegistry(),
 		spinner:         NewSpinner(),
+		navHistory:      NewNavHistory(),
 	}
 
 	// Apply functional options
@@ -223,6 +228,9 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	// Initialize dashboard and register it
 	app.dashboard = NewDashboardModel(cfg)
 	app.views.Register(ViewDashboard, app.dashboard)
+
+	// Record initial dashboard view in navigation history
+	app.navHistory.Record(NavEntry{ViewType: ViewDashboard})
 
 	// Register global commands
 	app.registerGlobalCommands()
@@ -318,6 +326,8 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: "g/G", Description: "Go to first/last item", Category: "Navigation"},
 		{Key: "Enter", Description: "Select / confirm", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},
+		{Key: "alt+o", Description: "History back", Category: "Navigation"},
+		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 	}
 }
 
@@ -380,9 +390,20 @@ func (m *AppModel) currentView() ViewType {
 	return m.viewStack[len(m.viewStack)-1]
 }
 
-// pushView pushes a new view onto the stack.
+// pushView pushes a new view onto the stack and records it in navigation history
+// if it is a tracked view and history is not locked.
 func (m *AppModel) pushView(view ViewType) {
 	m.viewStack = append(m.viewStack, view)
+	if !m.navHistory.IsLocked() && isTrackedView(view) {
+		entry := NavEntry{ViewType: view}
+		if m.currentProject != nil {
+			entry.ProjectID = m.currentProject.ID
+		}
+		if isTaskScopedView(view) {
+			entry.TaskID = m.lastNavigatedTaskID
+		}
+		m.navHistory.Record(entry)
+	}
 }
 
 // popView removes the top view from the stack.

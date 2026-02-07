@@ -12,7 +12,7 @@ import (
 // HasManualScores returns true if the task has any manually-set score dimension
 // that matches a dimension in the given profile.
 func HasManualScores(task *models.Task, profile *scoring.ScoringProfile) bool {
-	if task.ScoreDimensions == nil || len(task.ScoreDimensions) == 0 {
+	if len(task.ScoreDimensions) == 0 {
 		return false
 	}
 	for _, dim := range profile.Dimensions {

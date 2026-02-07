@@ -516,7 +516,7 @@ func (m *AppModel) taskActionCommands() []Command {
 		{
 			Name:        "edit content",
 			Description: "Edit task description in external editor",
-			Shortcut:    "ctrl+o",
+			Shortcut:    "ctrl+e",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"edit description", "open editor"},

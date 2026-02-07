@@ -143,7 +143,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveEditedComment()
-			case "ctrl+o":
+			case "ctrl+e":
 				return m, m.editCommentInExternalEditorFromEditMode()
 			}
 		}
@@ -162,7 +162,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "ctrl+s":
 				return m, m.saveComment()
-			case "ctrl+o":
+			case "ctrl+e":
 				return m, m.addCommentInExternalEditor()
 			}
 		}

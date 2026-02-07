@@ -364,7 +364,7 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case "ctrl+o":
+		case "ctrl+e":
 			// Edit title and description in external editor (works from any field)
 			return m, func() tea.Msg {
 				return EditTaskContentMsg{Task: m.task, Project: m.project}

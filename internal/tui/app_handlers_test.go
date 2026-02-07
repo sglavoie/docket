@@ -27,6 +27,7 @@ func newTestAppModel() *AppModel {
 		width:         80,
 		height:        24,
 		views:         NewViewRegistry(),
+		navHistory:    NewNavHistory(),
 	}
 }
 
@@ -50,6 +51,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		height:         24,
 		views:          NewViewRegistry(),
 		currentProject: project,
+		navHistory:     NewNavHistory(),
 	}
 
 	return app, project

@@ -58,12 +58,12 @@ func (m *AppModel) attachmentCommands() []Command {
 		{
 			Name:        "open original path",
 			Description: "Open attachment at its original path",
-			Shortcut:    "ctrl+o",
+			Shortcut:    "ctrl+e",
 			Category:    CategoryAttachments,
 			Views:       []ViewType{ViewTaskAttachments},
 			Aliases:     []string{"original location", "source path"},
 			Handler: func() tea.Msg {
-				return tea.KeyMsg{Type: tea.KeyCtrlO}
+				return tea.KeyMsg{Type: tea.KeyCtrlE}
 			},
 		},
 		{

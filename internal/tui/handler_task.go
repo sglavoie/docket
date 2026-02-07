@@ -214,6 +214,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTaskCommentsMsg:
 		if msg.Task != nil && msg.Project != nil {
+			m.lastNavigatedTaskID = msg.Task.ID
 			m.showView(ViewTaskComments, NewTaskCommentsModelWithEditor(msg.Task, msg.Project, m.config.Editor))
 		}
 		return true, nil
@@ -224,6 +225,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTaskChecklistMsg:
 		if msg.Task != nil && msg.Project != nil {
+			m.lastNavigatedTaskID = msg.Task.ID
 			m.showView(ViewTaskChecklist, NewTaskChecklistModelWithEditor(msg.Task, msg.Project, m.config.Editor))
 		}
 		return true, nil
@@ -249,6 +251,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case OpenTaskActivityMsg:
 		if msg.Task != nil && msg.Project != nil {
+			m.lastNavigatedTaskID = msg.Task.ID
 			m.showView(ViewTaskActivity, NewTaskActivityModel(msg.Task, msg.Project))
 		}
 		return true, nil

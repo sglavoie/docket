@@ -865,6 +865,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowTaskAttachmentsMsg:
 		if msg.Task != nil && msg.Project != nil {
+			m.lastNavigatedTaskID = msg.Task.ID
 			m.showView(ViewTaskAttachments, NewTaskAttachmentsModel(msg.Task, msg.Project, m.config))
 		}
 		return true, nil

@@ -233,9 +233,10 @@ func (m *ScoreEditorModel) View() string {
 		_ = barLen
 
 		roleStr := ""
-		if dim.Role == scoring.RoleNumerator {
+		switch dim.Role {
+		case scoring.RoleNumerator:
 			roleStr = " [num]"
-		} else if dim.Role == scoring.RoleDenominator {
+		case scoring.RoleDenominator:
 			roleStr = " [den]"
 		}
 

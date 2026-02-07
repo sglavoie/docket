@@ -314,9 +314,10 @@ func FormatBreakdown(results []DimensionResult, formula Formula, totalScore floa
 	var lines []string
 	for _, r := range results {
 		roleStr := ""
-		if r.Role == RoleNumerator {
+		switch r.Role {
+		case RoleNumerator:
 			roleStr = " [num]"
-		} else if r.Role == RoleDenominator {
+		case RoleDenominator:
 			roleStr = " [den]"
 		}
 		weightStr := ""

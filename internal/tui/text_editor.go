@@ -86,7 +86,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case "ctrl+o":
+		case "ctrl+e":
 			// Open external editor
 			return m, func() tea.Msg {
 				return TextEditorExternalMsg{

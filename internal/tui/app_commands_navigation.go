@@ -476,5 +476,27 @@ func (m *AppModel) navCommands() []Command {
 				return CycleProjectMsg{Forward: false}
 			},
 		},
+		{
+			Name:        "history back",
+			Description: "Navigate back through view history",
+			Shortcut:    "alt+O",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"go back history", "previous view", "back history"},
+			Handler: func() tea.Msg {
+				m.navigateHistoryBack()
+				return nil
+			},
+		},
+		{
+			Name:        "history forward",
+			Description: "Navigate forward through view history",
+			Shortcut:    "alt+I",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"go forward history", "next view", "forward history"},
+			Handler: func() tea.Msg {
+				m.navigateHistoryForward()
+				return nil
+			},
+		},
 	}
 }

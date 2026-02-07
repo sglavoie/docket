@@ -472,9 +472,10 @@ func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile, ma
 
 	for _, d := range p.Dimensions {
 		roleStr := ""
-		if d.Role == scoring.RoleNumerator {
+		switch d.Role {
+		case scoring.RoleNumerator:
 			roleStr = " [num]"
-		} else if d.Role == scoring.RoleDenominator {
+		case scoring.RoleDenominator:
 			roleStr = " [den]"
 		}
 

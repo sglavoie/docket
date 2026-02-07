@@ -38,6 +38,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.saveProjectTreeState()
 			m.quitting = true
 			return m, tea.Quit
+		case "alt+o":
+			return m, m.navigateHistoryBack()
+		case "alt+i":
+			return m, m.navigateHistoryForward()
 		case "esc":
 			if handled := m.handleEscKey(); handled {
 				return m, nil

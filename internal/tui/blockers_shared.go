@@ -165,7 +165,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 				return nil, nil, true
 			case "ctrl+s":
 				return nil, blockerSaveEdited(s, ds), true
-			case "ctrl+o":
+			case "ctrl+e":
 				return nil, blockerEditInExternalEditor(s, ds, true), true
 			}
 		}
@@ -183,7 +183,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 				return nil, nil, true
 			case "ctrl+s":
 				return nil, blockerSaveNew(s, ds), true
-			case "ctrl+o":
+			case "ctrl+e":
 				return nil, blockerAddInExternalEditor(s, ds), true
 			}
 		}
