@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -84,6 +85,7 @@ func (m *HelpViewModel) buildCategories() []string {
 			cats = append(cats, item.Category)
 		}
 	}
+	sort.Strings(cats)
 	return cats
 }
 

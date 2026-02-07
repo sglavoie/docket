@@ -133,41 +133,41 @@ func statusBindings() []Keybinding {
 
 func priorityBindings() []Keybinding {
 	return []Keybinding{
-		{Key: "!1", Description: "Set priority: Critical", Category: "⭐ Priority"},
-		{Key: "!2", Description: "Set priority: High", Category: "⭐ Priority"},
-		{Key: "!3", Description: "Set priority: Normal", Category: "⭐ Priority"},
-		{Key: "!4", Description: "Set priority: Low", Category: "⭐ Priority"},
-		{Key: "!5", Description: "Set priority: Someday", Category: "⭐ Priority"},
+		{Key: "!1", Description: "Set priority: Critical", Category: "Priority"},
+		{Key: "!2", Description: "Set priority: High", Category: "Priority"},
+		{Key: "!3", Description: "Set priority: Normal", Category: "Priority"},
+		{Key: "!4", Description: "Set priority: Low", Category: "Priority"},
+		{Key: "!5", Description: "Set priority: Someday", Category: "Priority"},
 	}
 }
 
 func dueDateBindings() []Keybinding {
 	return []Keybinding{
-		{Key: "dt", Description: "Due today", Category: "⏰ Due Date"},
-		{Key: "dm", Description: "Due tomorrow", Category: "⏰ Due Date"},
-		{Key: "dw", Description: "Due in a week", Category: "⏰ Due Date"},
-		{Key: "dn", Description: "Due in a month", Category: "⏰ Due Date"},
-		{Key: "d0", Description: "Clear due date", Category: "⏰ Due Date"},
-		{Key: "dd", Description: "Open date picker", Category: "⏰ Due Date"},
+		{Key: "dt", Description: "Due today", Category: "Due Date"},
+		{Key: "dm", Description: "Due tomorrow", Category: "Due Date"},
+		{Key: "dw", Description: "Due in a week", Category: "Due Date"},
+		{Key: "dn", Description: "Due in a month", Category: "Due Date"},
+		{Key: "d0", Description: "Clear due date", Category: "Due Date"},
+		{Key: "dd", Description: "Open date picker", Category: "Due Date"},
 	}
 }
 
 func clipboardBindings() []Keybinding {
 	return []Keybinding{
-		{Key: "y", Description: "Copy title", Category: "📋 Clipboard"},
-		{Key: "Y", Description: "Copy description", Category: "📋 Clipboard"},
-		{Key: "ctrl+Y", Description: "Copy title and description", Category: "📋 Clipboard"},
+		{Key: "y", Description: "Copy title", Category: "Clipboard"},
+		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
+		{Key: "ctrl+Y", Description: "Copy title and description", Category: "Clipboard"},
 	}
 }
 
 func linkedTaskBindings() []Keybinding {
 	return []Keybinding{
-		{Key: "cb", Description: "Create blocker", Category: "🔗 Linked Tasks"},
-		{Key: "cd", Description: "Create dependent", Category: "🔗 Linked Tasks"},
-		{Key: "cs", Description: "Create subtask", Category: "🔗 Linked Tasks"},
-		{Key: "cf", Description: "Create follow-up", Category: "🔗 Linked Tasks"},
-		{Key: "cn", Description: "Navigate linked tasks", Category: "🔗 Linked Tasks"},
-		{Key: "cp", Description: "Cross-project link", Category: "🔗 Linked Tasks"},
+		{Key: "cb", Description: "Create blocker", Category: "Linked Tasks"},
+		{Key: "cd", Description: "Create dependent", Category: "Linked Tasks"},
+		{Key: "cs", Description: "Create subtask", Category: "Linked Tasks"},
+		{Key: "cf", Description: "Create follow-up", Category: "Linked Tasks"},
+		{Key: "cn", Description: "Navigate linked tasks", Category: "Linked Tasks"},
+		{Key: "cp", Description: "Cross-project link", Category: "Linked Tasks"},
 	}
 }
 

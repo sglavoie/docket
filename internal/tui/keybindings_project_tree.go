@@ -161,12 +161,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "}", Description: "Create new note", Category: "Notes", Views: views},
 
 		// Recurring Tasks
-		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "🔁 Recurring Tasks", Views: views},
-		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "🔁 Recurring Tasks", Views: views},
-		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "🔁 Recurring Tasks", Views: views},
+		Keybinding{Key: "n / e", Description: "Set recurrence in task creator/editor", Category: "Recurring Tasks", Views: views},
+		Keybinding{Key: "i + ~", Description: "Quick capture: ~daily, ~weekly, ~2w, etc.", Category: "Recurring Tasks", Views: views},
+		Keybinding{Key: ",d", Description: "Complete recurring task (creates next instance)", Category: "Recurring Tasks", Views: views},
 
 		// Archive
-		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "📦 Archive", Views: views},
+		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "Archive", Views: views},
 
 		// Other
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},

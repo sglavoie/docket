@@ -64,7 +64,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "H", Description: "Cycle leaf left", Category: "Type Changes", Views: views},
 		Keybinding{Key: "L", Description: "Cycle leaf right", Category: "Type Changes", Views: views},
 
-		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "🔗 Linked Tasks", Views: views},
+		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "Linked Tasks", Views: views},
 
 		// Sort
 		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},
