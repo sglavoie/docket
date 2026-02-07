@@ -70,6 +70,7 @@ const (
 	ViewLinkedTaskSelector
 	ViewCrossProjectLinker
 	ViewKanbanTagFilterSelector
+	ViewPriorityTagFilterSelector
 	ViewNotes
 	ViewNoteTaskLinker
 	ViewNoteTagSelector

@@ -38,10 +38,24 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"g": PriorityViewNavigationPrefixHints,
-			"d": DueDatePrefixHints,
-			"c": CreateLinkedPrefixHints,
+			",":   StatusPrefixHints,
+			"g":   PriorityViewNavigationPrefixHints,
+			"d":   DueDatePrefixHints,
+			"c":   CreateLinkedPrefixHints,
+			"F":   m.buildPriorityFilterPrefixHints(),
+			"Ft":  FilterTypePrefixHints,
+			"Fs":  FilterStatusPrefixHints,
+			"Fd":  FilterDuePrefixHints,
+			"Fa":  FilterAttrPrefixHints,
+			"Fas": FilterAttrSeverityPrefixHints,
+			"Far": FilterAttrReproduciblePrefixHints,
+			"Fae": FilterAttrEffortPrefixHints,
+			"Fac": FilterAttrCategoryPrefixHints,
+			"Fav": FilterAttrValuePrefixHints,
+			"Faw": FilterAttrWorktypePrefixHints,
+			"Fao": FilterAttrScopePrefixHints,
+			"Fap": FilterAttrPointsPrefixHints,
+			"FS":  BuildFilterScorePrefixHints(m.config),
 		},
 	}
 }

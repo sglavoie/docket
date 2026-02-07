@@ -87,6 +87,11 @@ type PriorityViewModel struct {
 	totalTasks  int   // Total count of visible actionable tasks
 	groupStarts []int // Starting index of each group in flattened view
 
+	// Filter state
+	filter           PriorityFilterState
+	filterBar        *PriorityFilterBarComponent
+	actionableFilter bool // hide blocked tasks even in All tab
+
 	// Waiting On section state
 	waitingOnCollapsed bool
 
@@ -105,6 +110,11 @@ func NewPriorityViewModel(project *models.Project, cfg ...*config.Config) *Prior
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
+		filter: PriorityFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
+		filterBar: NewPriorityFilterBarComponent(),
 	}
 	if len(cfg) > 0 {
 		m.config = cfg[0]
@@ -176,6 +186,14 @@ func (m *PriorityViewModel) loadActionableTasks() {
 	sortByUrgency(m.later)
 	sortByUrgency(m.backlog)
 	sortByUrgency(m.waitingOn)
+
+	// Apply sub-filters to each group
+	m.overdue = m.applyFiltersToGroup(m.overdue)
+	m.today = m.applyFiltersToGroup(m.today)
+	m.thisWeek = m.applyFiltersToGroup(m.thisWeek)
+	m.later = m.applyFiltersToGroup(m.later)
+	m.backlog = m.applyFiltersToGroup(m.backlog)
+	m.waitingOn = m.applyFiltersToGroup(m.waitingOn)
 
 	// Compute score-ranked list if a scoring profile is assigned
 	m.scoredTasks = nil
@@ -724,6 +742,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		// Dismiss current suggestion
 		m.dismissSuggestion()
 		return m, nil
+
+	case "F":
+		// Open filter prefix popup
+		m.pendingPrefix = "F"
+		return m, nil
 	}
 
 	return m, nil
@@ -790,6 +813,35 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+	case "F":
+		// Filter prefix - first level
+		return m.handlePriorityFilterPrefix(key)
+	case "Ft":
+		return m.handlePriorityFilterTypePrefix(key)
+	case "Fs":
+		return m.handlePriorityFilterStatusPrefix(key)
+	case "Fd":
+		return m.handlePriorityFilterDuePrefix(key)
+	case "Fa":
+		return m.handlePriorityFilterAttrPrefix(key)
+	case "Fas":
+		return m.handlePriorityFilterAttrSeverityPrefix(key)
+	case "Far":
+		return m.handlePriorityFilterAttrReproduciblePrefix(key)
+	case "Fae":
+		return m.handlePriorityFilterAttrEffortPrefix(key)
+	case "Fac":
+		return m.handlePriorityFilterAttrCategoryPrefix(key)
+	case "Fav":
+		return m.handlePriorityFilterAttrValuePrefix(key)
+	case "Faw":
+		return m.handlePriorityFilterAttrWorktypePrefix(key)
+	case "Fao":
+		return m.handlePriorityFilterAttrScopePrefix(key)
+	case "Fap":
+		return m.handlePriorityFilterAttrPointsPrefix(key)
+	case "FS":
+		return m.handlePriorityFilterScorePrefix(key)
 	case "c":
 		// Create linked task or navigate
 		pt := m.getTaskAtCursor()
@@ -964,6 +1016,7 @@ func (m *PriorityViewModel) View() string {
 		suggestionSection = m.renderSuggestionSection()
 	}
 	tabHint := m.activeTabHint()
+	filterIndicator := m.renderActiveFilterIndicator()
 
 	// Calculate available height for task list
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
@@ -973,6 +1026,11 @@ func (m *PriorityViewModel) View() string {
 	hasSubTabs := len(m.subTabNames) > 1
 	if hasSubTabs {
 		contentHeight -= 2 // sub-tab row + newline
+	}
+
+	// Account for filter indicator if present
+	if filterIndicator != "" {
+		contentHeight-- // filter badge + newline
 	}
 
 	// Account for suggestion section if present
@@ -1026,6 +1084,12 @@ func (m *PriorityViewModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Filter indicator
+	if filterIndicator != "" {
+		b.WriteString(filterIndicator)
+		b.WriteString("\n")
+	}
+
 	// Suggestion section
 	if suggestionSection != "" {
 		b.WriteString(suggestionSection)
@@ -1045,7 +1109,7 @@ func (m *PriorityViewModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • s start suggested • ,s/,d status" + tabHint)
+	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • F filter • s start suggested • ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 

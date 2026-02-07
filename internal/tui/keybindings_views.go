@@ -47,6 +47,9 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
 
+		// Filter
+		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score)", Category: "Filter", Views: views},
+
 		// View
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},

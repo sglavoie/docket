@@ -90,6 +90,30 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowPriorityTagFilterSelectorMsg:
+		if v := m.views.Get(ViewPriorityView); v != nil {
+			if pv, ok := v.(*PriorityViewModel); ok {
+				m.showView(ViewPriorityTagFilterSelector, NewPriorityTagFilterSelectorModel(pv))
+			}
+		}
+		return true, nil
+
+	case PriorityTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewPriorityView); v != nil {
+				if pv, ok := v.(*PriorityViewModel); ok {
+					pv.filter.Tags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						pv.filter.Tags[tag] = true
+					}
+					pv.loadActionableTasks()
+					pv.clampCursor()
+				}
+			}
+		}
+		return true, nil
+
 	case TagRenamedMsg:
 		m.popView()
 		m.reloadAndRefreshProjectTree()

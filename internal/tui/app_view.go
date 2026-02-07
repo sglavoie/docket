@@ -149,6 +149,8 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filter by Tags"
 	case ViewKanbanTagFilterSelector:
 		status = "Kanban: Filter by Tags"
+	case ViewPriorityTagFilterSelector:
+		status = "Priority: Filter by Tags"
 	case ViewSectionFilterSelector:
 		status = "Filter by Sections"
 	case ViewSectionPicker:
