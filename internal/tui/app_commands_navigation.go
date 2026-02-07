@@ -407,6 +407,30 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
+			Name:        "metrics dashboard",
+			Description: "View completion rates, cycle time, and throughput",
+			Shortcut:    "m",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
+			Handler: func() tea.Msg {
+				return ShowMetricsDashboardMsg{}
+			},
+		},
+		{
+			Name:        "project metrics",
+			Description: "View metrics for current project",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
+			Handler: func() tea.Msg {
+				if m.currentProject != nil {
+					return ShowMetricsDashboardMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "undo history",
 			Description: "View and restore from undo history",
 			Shortcut:    "ctrl+z",

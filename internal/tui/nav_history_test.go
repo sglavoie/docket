@@ -259,7 +259,7 @@ func TestIsTrackedView(t *testing.T) {
 	tracked := []ViewType{
 		ViewDashboard, ViewProjectTree, ViewKanban, ViewDailyReview,
 		ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments, ViewTaskActivity,
-		ViewGlobalNotes, ViewSettings, ViewScoreProfileManager,
+		ViewGlobalNotes, ViewSettings, ViewScoreProfileManager, ViewMetricsDashboard,
 	}
 	for _, vt := range tracked {
 		if !isTrackedView(vt) {

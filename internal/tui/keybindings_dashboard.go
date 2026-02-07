@@ -32,6 +32,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "W", Description: "Weekly review", Category: "Views", Views: views},
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Views", Views: views},
 		Keybinding{Key: "B", Description: "Global project blockers", Category: "Views", Views: views},
+		Keybinding{Key: "m", Description: "Metrics dashboard", Category: "Views", Views: views},
 
 		// Actions
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},

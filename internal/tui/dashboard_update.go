@@ -203,6 +203,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return TutorDismissedMsg{}
 				}
 			}
+		case "m":
+			return m, func() tea.Msg {
+				return ShowMetricsDashboardMsg{}
+			}
 		case "B":
 			return m, func() tea.Msg {
 				return ShowGlobalBlockersMsg{}

@@ -217,6 +217,28 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowMetricsDashboardMsg:
+		if msg.Project != nil {
+			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, msg.Project)
+		} else {
+			m.metricsDashboard = NewMetricsDashboardModel(m.config)
+		}
+		m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		return true, nil
+
+	case CloseMetricsDashboardMsg:
+		m.popView()
+		return true, nil
+
+	case MetricsDashboardSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case ShowDailyReviewMsg:
 		m.showView(ViewDailyReview, NewDailyReviewModel(m.config))
 		return true, nil
@@ -1012,6 +1034,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowFocusViewMsg{})
 	case ViewDueDateOverview:
 		return m.handleViewMessages(ShowDueDateOverviewMsg{})
+	case ViewMetricsDashboard:
+		return m.handleViewMessages(ShowMetricsDashboardMsg{})
 	case ViewPriorityView:
 		if project != nil {
 			_ = storage.LoadProject(project)

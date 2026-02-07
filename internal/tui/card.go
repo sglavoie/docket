@@ -13,6 +13,7 @@ type CardConfig struct {
 	TitleStyle  lipgloss.Style
 	Focused     bool
 	AccentColor lipgloss.Color // optional section color for border
+	Height      int            // optional fixed height (0 = auto)
 }
 
 // DefaultCardConfig returns the default card configuration for sidebar cards.
@@ -151,6 +152,14 @@ func renderCard(title, content string, width int, config CardConfig) string {
 	lines := strings.Split(rendered, "\n")
 	if len(lines) < 1 {
 		return rendered
+	}
+
+	// Enforce fixed height by truncating lines, preserving the bottom border
+	if config.Height > 0 && len(lines) > config.Height {
+		truncated := make([]string, 0, config.Height)
+		truncated = append(truncated, lines[:config.Height-1]...)
+		truncated = append(truncated, lines[len(lines)-1])
+		lines = truncated
 	}
 
 	// Measure the actual rendered width of the original border line

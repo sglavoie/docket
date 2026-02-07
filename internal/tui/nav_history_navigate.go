@@ -140,6 +140,14 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
 	case ViewProjectCycleManager:
 		m.showView(ViewProjectCycleManager, NewProjectCycleManagerModel(m.config, m.configManager))
+	case ViewMetricsDashboard:
+		if m.metricsDashboard != nil {
+			m.metricsDashboard.computeMetrics()
+			m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		} else {
+			m.metricsDashboard = NewMetricsDashboardModel(m.config)
+			m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		}
 	}
 	return nil
 }
@@ -177,6 +185,14 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.showView(ViewUndoHistory, NewUndoHistoryModel(project))
 	case ViewProjectFocusView:
 		m.showView(ViewProjectFocusView, NewProjectFocusViewModel(project))
+	case ViewMetricsDashboard:
+		if m.metricsDashboard != nil {
+			m.metricsDashboard.computeMetrics()
+			m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		} else {
+			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
+			m.showView(ViewMetricsDashboard, m.metricsDashboard)
+		}
 	}
 	return nil
 }

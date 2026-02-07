@@ -93,6 +93,7 @@ const (
 	ViewScoreEditor
 	ViewScoreProfileManager
 	ViewSaveViewInput
+	ViewMetricsDashboard
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -123,6 +124,7 @@ type AppModel struct {
 	inboxProcessor       *InboxProcessorModel
 	globalInboxProcessor *GlobalInboxProcessorModel
 	kanban               *KanbanViewModel
+	metricsDashboard     *MetricsDashboardModel
 
 	// Current project context
 	currentProject *models.Project
