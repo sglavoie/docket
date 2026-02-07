@@ -441,6 +441,12 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 					t.DueDate = changes.SetDueDate
 				}
 			})
+			if changes.SetSection != nil {
+				section := *changes.SetSection
+				if models.IsGTDSection(section) || section == "" {
+					m.project.RelocateTaskToEndOfSection(task.ID, section)
+				}
+			}
 		}
 
 		// Check for auto-unblocking

@@ -614,6 +614,7 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 			if m.project.MutateTask(id, func(t *models.Task) {
 				t.Section = ""
 			}) {
+				m.project.RelocateTaskToEndOfSection(id, "")
 				count++
 			}
 		}
@@ -635,6 +636,7 @@ func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd
 	m.project.MutateTask(taskID, func(t *models.Task) {
 		t.Section = ""
 	})
+	m.project.RelocateTaskToEndOfSection(taskID, "")
 	m.pendingUndoAction = "Move to Active"
 	m.pendingUndoContext = task.Title
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
@@ -652,6 +654,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 			if m.project.MutateTask(id, func(t *models.Task) {
 				t.Section = section
 			}) {
+				m.project.RelocateTaskToEndOfSection(id, section)
 				count++
 			}
 		}
@@ -673,6 +676,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	m.project.MutateTask(taskID, func(t *models.Task) {
 		t.Section = section
 	})
+	m.project.RelocateTaskToEndOfSection(taskID, section)
 	m.pendingUndoAction = "Move to " + section
 	m.pendingUndoContext = task.Title
 	return true, m.saveAndRefreshWithPrevStates(prevStates)

@@ -168,6 +168,7 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 			m.Project.MutateTask(task.ID, func(t *models.Task) {
 				t.Section = targetSection
 			})
+			m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
 			changedCount++
 		}
 	}

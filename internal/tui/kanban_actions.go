@@ -122,6 +122,7 @@ func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 	}) {
 		return nil
 	}
+	m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
 
 	// Persist with workflow rule evaluation
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
@@ -168,6 +169,7 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 	}) {
 		return nil
 	}
+	m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
 
 	// Persist with workflow rule evaluation
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
@@ -330,6 +332,7 @@ func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
 	}) {
 		return nil
 	}
+	m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
 
 	m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(targetSection))
 	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)

@@ -213,6 +213,105 @@ func TestMoveTaskDownWithinUncompletedGroup(t *testing.T) {
 	}
 }
 
+func TestRelocateTaskToEndOfSection(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	// Task at index 0 (before Next tasks) gets moved to Next section
+	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1.Section = SectionNext // just moved to Next
+	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2.Section = SectionNext
+	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3.Section = SectionInbox
+
+	project.Tasks = []*Task{task1, task2, task3}
+
+	// task1 is before task2 in the slice but both are in Next
+	// Relocate task1 to end of Next section
+	project.RelocateTaskToEndOfSection("1", SectionNext)
+
+	// task1 should now be after task2
+	if project.Tasks[0].ID != "2" {
+		t.Errorf("expected task2 at position 0, got %s", project.Tasks[0].ID)
+	}
+	if project.Tasks[1].ID != "1" {
+		t.Errorf("expected task1 at position 1, got %s", project.Tasks[1].ID)
+	}
+	if project.Tasks[2].ID != "3" {
+		t.Errorf("expected task3 at position 2, got %s", project.Tasks[2].ID)
+	}
+}
+
+func TestRelocateTaskToEndOfSectionAlreadyAtEnd(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1.Section = SectionNext
+	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2.Section = SectionNext
+
+	project.Tasks = []*Task{task1, task2}
+
+	// task2 is already the last Next task — no-op
+	project.RelocateTaskToEndOfSection("2", SectionNext)
+
+	if project.Tasks[0].ID != "1" || project.Tasks[1].ID != "2" {
+		t.Error("order should not change when task is already at end of section")
+	}
+}
+
+func TestRelocateTaskToEndOfSectionNoOtherTasks(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1.Section = SectionNext
+	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2.Section = SectionInbox
+
+	project.Tasks = []*Task{task1, task2}
+
+	// task1 is the only Next task — no-op
+	project.RelocateTaskToEndOfSection("1", SectionNext)
+
+	if project.Tasks[0].ID != "1" || project.Tasks[1].ID != "2" {
+		t.Error("order should not change when task is only one in section")
+	}
+}
+
+func TestRelocateTaskToEndOfSectionInterleaved(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	// Interleaved sections: moved task is before several Next tasks
+	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1.Section = SectionNext // just moved here
+	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2.Section = SectionInbox
+	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3.Section = SectionNext
+	task4 := NewTask("4", 4, TaskTypeTask, "Task 4")
+	task4.Section = SectionInbox
+	task5 := NewTask("5", 5, TaskTypeTask, "Task 5")
+	task5.Section = SectionNext
+
+	project.Tasks = []*Task{task1, task2, task3, task4, task5}
+
+	project.RelocateTaskToEndOfSection("1", SectionNext)
+
+	// task1 should end up after task5 (last Next task at index 4)
+	ids := make([]string, len(project.Tasks))
+	for i, t := range project.Tasks {
+		ids[i] = t.ID
+	}
+	// Expected: [2, 3, 4, 5, 1]
+	expected := []string{"2", "3", "4", "5", "1"}
+	for i, id := range expected {
+		if ids[i] != id {
+			t.Errorf("position %d: expected %s, got %s (full: %v)", i, id, ids[i], ids)
+			break
+		}
+	}
+}
+
 func TestMoveChildTaskIgnoresBoundary(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
