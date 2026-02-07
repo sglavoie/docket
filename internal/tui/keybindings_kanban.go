@@ -47,11 +47,16 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "gi", Description: "Go to Inbox column", Category: "Sections", Views: views},
 		Keybinding{Key: "gw", Description: "Go to Waiting column", Category: "Sections", Views: views},
 		Keybinding{Key: "gs", Description: "Go to Someday column", Category: "Sections", Views: views},
-		Keybinding{Key: "gA", Description: "Send task to Active", Category: "Sections", Views: views},
-		Keybinding{Key: "gN", Description: "Send task to Next", Category: "Sections", Views: views},
-		Keybinding{Key: "gI", Description: "Send task to Inbox", Category: "Sections", Views: views},
-		Keybinding{Key: "gW", Description: "Send task to Waiting", Category: "Sections", Views: views},
-		Keybinding{Key: "gS", Description: "Send task to Someday", Category: "Sections", Views: views},
+
+		// Move (m prefix)
+		Keybinding{Key: "ma", Description: "Send task to Active", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mn", Description: "Send task to Next", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mi", Description: "Send task to Inbox", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mw", Description: "Send task to Waiting", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mr", Description: "Send task to Review", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "ms", Description: "Send task to Someday", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mK", Description: "Move task to top of column", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mJ", Description: "Move task to bottom of column", Category: "Move (m prefix)", Views: views},
 
 		// Type Changes
 		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},

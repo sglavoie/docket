@@ -145,3 +145,73 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 	}
 	return false, nil
 }
+
+// moveTaskToTop moves the current task to the top of its visible siblings
+// by repeatedly swapping up, matching the proven K (swap-up) mechanism.
+func (m *ProjectTreeModel) moveTaskToTop(visible []*TreeNode) (tea.Model, tea.Cmd) {
+	if !CursorInBounds(m.cursor, len(visible)) {
+		return m, nil
+	}
+	task := visible[m.cursor].Task
+	visibleSiblings := m.getVisibleSiblings(task)
+	visibleSiblingIdx := m.findVisibleSiblingIndex(task, visibleSiblings)
+	if visibleSiblingIdx <= 0 {
+		return m, nil // Already at top or not found
+	}
+
+	prevStates := captureTaskStates(m.project.Tasks)
+
+	// Swap up through each visible sibling, same as repeated K presses
+	for i := visibleSiblingIdx - 1; i >= 0; i-- {
+		target := visibleSiblings[i]
+		if task.IsRoot() && task.IsComplete() && !target.IsComplete() {
+			break
+		}
+		m.project.SwapTasks(task, target)
+	}
+
+	// Position cursor at the first sibling's old location
+	for i, node := range visible {
+		if node.Task.ID == visibleSiblings[0].ID {
+			m.cursor = i
+			break
+		}
+	}
+	m.setUndoContext("Move to Top", task.Title)
+	return m, m.saveAndRefreshWithPrevStates(prevStates)
+}
+
+// moveTaskToBottom moves the current task to the bottom of its visible siblings
+// by repeatedly swapping down, matching the proven J (swap-down) mechanism.
+func (m *ProjectTreeModel) moveTaskToBottom(visible []*TreeNode) (tea.Model, tea.Cmd) {
+	if !CursorInBounds(m.cursor, len(visible)) {
+		return m, nil
+	}
+	task := visible[m.cursor].Task
+	visibleSiblings := m.getVisibleSiblings(task)
+	visibleSiblingIdx := m.findVisibleSiblingIndex(task, visibleSiblings)
+	if visibleSiblingIdx == -1 || visibleSiblingIdx >= len(visibleSiblings)-1 {
+		return m, nil // Already at bottom or not found
+	}
+
+	prevStates := captureTaskStates(m.project.Tasks)
+
+	// Swap down through each visible sibling, same as repeated J presses
+	for i := visibleSiblingIdx + 1; i < len(visibleSiblings); i++ {
+		target := visibleSiblings[i]
+		if task.IsRoot() && !task.IsComplete() && target.IsComplete() {
+			break
+		}
+		m.project.SwapTasks(task, target)
+	}
+
+	// Position cursor at the last sibling's old location
+	for i, node := range visible {
+		if node.Task.ID == visibleSiblings[len(visibleSiblings)-1].ID {
+			m.cursor = i
+			break
+		}
+	}
+	m.setUndoContext("Move to Bottom", task.Title)
+	return m, m.saveAndRefreshWithPrevStates(prevStates)
+}

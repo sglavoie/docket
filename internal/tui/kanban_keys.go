@@ -220,6 +220,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = "g"
 		return m, nil
 
+	case "m":
+		m.pendingPrefix = "m"
+		return m, nil
+
 	case "c":
 		task := m.getSelectedTask()
 		if task != nil {

@@ -254,6 +254,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			",":   StatusPrefixHints,
 			"z":   FoldPrefixHints,
 			"g":   ProjectTreeNavigationPrefixHints,
+			"m":   ProjectTreeMovePrefixHints,
 			"!":   PriorityPrefixHints,
 			"d":   DueDatePrefixHints,
 			"s":   SnoozePrefixHints,

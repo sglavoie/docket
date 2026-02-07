@@ -178,42 +178,6 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			// Go to Someday column
 			m.ActiveColumn = 5
 			return m, nil
-		case "A":
-			// Send task(s) to Active section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionActive)
-			}
-			return m, m.sendTaskToSection(KanbanSectionActive)
-		case "N":
-			// Send task(s) to Next section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionNext)
-			}
-			return m, m.sendTaskToSection(KanbanSectionNext)
-		case "I":
-			// Send task(s) to Inbox section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionInbox)
-			}
-			return m, m.sendTaskToSection(KanbanSectionInbox)
-		case "W":
-			// Send task(s) to Waiting section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionWaiting)
-			}
-			return m, m.sendTaskToSection(KanbanSectionWaiting)
-		case "R":
-			// Send task(s) to Review section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionReview)
-			}
-			return m, m.sendTaskToSection(KanbanSectionReview)
-		case "S":
-			// Send task(s) to Someday section
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkSectionMove(KanbanSectionSomeday)
-			}
-			return m, m.sendTaskToSection(KanbanSectionSomeday)
 		case "X":
 			// Deselect all in multi-select mode
 			if m.multiSelectMode {
@@ -230,6 +194,53 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+		}
+
+	case "m":
+		// Move/send-to-section operations
+		switch key {
+		case "a":
+			// Send task(s) to Active section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionActive)
+			}
+			return m, m.sendTaskToSection(KanbanSectionActive)
+		case "n":
+			// Send task(s) to Next section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionNext)
+			}
+			return m, m.sendTaskToSection(KanbanSectionNext)
+		case "i":
+			// Send task(s) to Inbox section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionInbox)
+			}
+			return m, m.sendTaskToSection(KanbanSectionInbox)
+		case "w":
+			// Send task(s) to Waiting section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionWaiting)
+			}
+			return m, m.sendTaskToSection(KanbanSectionWaiting)
+		case "r":
+			// Send task(s) to Review section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionReview)
+			}
+			return m, m.sendTaskToSection(KanbanSectionReview)
+		case "s":
+			// Send task(s) to Someday section
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkSectionMove(KanbanSectionSomeday)
+			}
+			return m, m.sendTaskToSection(KanbanSectionSomeday)
+		case "K":
+			// Move task to top of column
+			return m, m.moveTaskToTop()
+		case "J":
+			// Move task to bottom of column
+			return m, m.moveTaskToBottom()
 		}
 
 	case "c":

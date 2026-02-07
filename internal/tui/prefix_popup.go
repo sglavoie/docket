@@ -37,6 +37,7 @@ var prefixCategoryNames = map[string]string{
 	",":   "status",
 	"z":   "fold",
 	"g":   "go-to",
+	"m":   "move",
 	"!":   "priority",
 	"d":   "due-date",
 	"s":   "snooze",
@@ -385,17 +386,23 @@ var (
 		{Key: "r", Description: "review", Detail: "Go to Review section"},
 		{Key: "z", Description: "snoozed", Detail: "Go to Snoozed section"},
 		{Key: "*", Description: "all", Detail: "Go to All section"},
-		{Key: "A", Description: "→Active", Detail: "Send task to Active section"},
-		{Key: "N", Description: "→Next", Detail: "Send task to Next section"},
-		{Key: "I", Description: "→Inbox", Detail: "Send task to Inbox section"},
-		{Key: "W", Description: "→Waiting", Detail: "Send task to Waiting section"},
-		{Key: "R", Description: "→Review", Detail: "Send task to Review section"},
-		{Key: "S", Description: "→Someday", Detail: "Send task to Someday section"},
 		{Key: "o", Description: "origin", Detail: "Jump to task origin"},
 		{Key: "d", Description: "due-filter", Detail: "Toggle due date filter"},
 		{Key: "v", Description: "view-cycle", Detail: "Cycle through view modes"},
 		{Key: "h", Description: "history", Detail: "Show task history"},
 		{Key: "X", Description: "deselect", Detail: "Clear selection"},
+	}
+
+	// ProjectTreeMovePrefixHints contains "m" prefix hints for project tree move operations.
+	ProjectTreeMovePrefixHints = []PrefixHint{
+		{Key: "a", Description: "→Active", Detail: "Send task to Active section"},
+		{Key: "n", Description: "→Next", Detail: "Send task to Next section"},
+		{Key: "i", Description: "→Inbox", Detail: "Send task to Inbox section"},
+		{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting section"},
+		{Key: "r", Description: "→Review", Detail: "Send task to Review section"},
+		{Key: "s", Description: "→Someday", Detail: "Send task to Someday section"},
+		{Key: "K", Description: "to-top", Detail: "Move task to top of section"},
+		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of section"},
 	}
 
 	// PriorityPrefixHints contains hints for the "!" (priority) prefix.
@@ -449,7 +456,7 @@ var (
 	}
 
 	// KanbanNavigationPrefixHints contains "g" prefix hints for kanban view.
-	// Supports column navigation and send-to-section operations.
+	// Supports column navigation operations.
 	KanbanNavigationPrefixHints = []PrefixHint{
 		{Key: "g", Description: "first", Detail: "Jump to first item"},
 		{Key: "a", Description: "active", Detail: "Go to Active column"},
@@ -460,14 +467,20 @@ var (
 		{Key: "r", Description: "review", Detail: "Go to Review column"},
 		{Key: "c", Description: "completed", Detail: "Go to Completed view"},
 		{Key: "*", Description: "all", Detail: "Go to All view"},
-		{Key: "A", Description: "→Active", Detail: "Send task to Active column"},
-		{Key: "N", Description: "→Next", Detail: "Send task to Next column"},
-		{Key: "I", Description: "→Inbox", Detail: "Send task to Inbox column"},
-		{Key: "W", Description: "→Waiting", Detail: "Send task to Waiting column"},
-		{Key: "R", Description: "→Review", Detail: "Send task to Review column"},
-		{Key: "S", Description: "→Someday", Detail: "Send task to Someday column"},
 		{Key: "h", Description: "history", Detail: "Show task history"},
 		{Key: "X", Description: "deselect", Detail: "Clear selection"},
+	}
+
+	// KanbanMovePrefixHints contains "m" prefix hints for kanban move operations.
+	KanbanMovePrefixHints = []PrefixHint{
+		{Key: "a", Description: "→Active", Detail: "Send task to Active column"},
+		{Key: "n", Description: "→Next", Detail: "Send task to Next column"},
+		{Key: "i", Description: "→Inbox", Detail: "Send task to Inbox column"},
+		{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting column"},
+		{Key: "r", Description: "→Review", Detail: "Send task to Review column"},
+		{Key: "s", Description: "→Someday", Detail: "Send task to Someday column"},
+		{Key: "K", Description: "to-top", Detail: "Move task to top of column"},
+		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of column"},
 	}
 
 	// KanbanFoldPrefixHints contains "z" prefix hints for kanban fold operations.

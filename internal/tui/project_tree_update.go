@@ -380,30 +380,6 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
-		case "A":
-			// Send to Active section
-			_, cmd := m.sendTasksToActive(visible)
-			return m, cmd
-		case "N":
-			// Send to Next section
-			_, cmd := m.sendTasksToSection(models.SectionNext, visible)
-			return m, cmd
-		case "I":
-			// Send to Inbox section
-			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
-			return m, cmd
-		case "W":
-			// Send to Waiting section
-			_, cmd := m.sendTasksToSection(models.SectionWaiting, visible)
-			return m, cmd
-		case "R":
-			// Send to Review section
-			_, cmd := m.sendTasksToSection(models.SectionReview, visible)
-			return m, cmd
-		case "S":
-			// Send to Someday section
-			_, cmd := m.sendTasksToSection(models.SectionSomeday, visible)
-			return m, cmd
 		case "d":
 			// Cycle due date filter
 			m.filter.DueDate = (m.filter.DueDate + 1) % 5
@@ -436,6 +412,41 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
+		}
+
+	case "m":
+		// Move/send-to-section operations
+		switch key {
+		case "a":
+			// Send to Active section
+			_, cmd := m.sendTasksToActive(visible)
+			return m, cmd
+		case "n":
+			// Send to Next section
+			_, cmd := m.sendTasksToSection(models.SectionNext, visible)
+			return m, cmd
+		case "i":
+			// Send to Inbox section
+			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
+			return m, cmd
+		case "w":
+			// Send to Waiting section
+			_, cmd := m.sendTasksToSection(models.SectionWaiting, visible)
+			return m, cmd
+		case "r":
+			// Send to Review section
+			_, cmd := m.sendTasksToSection(models.SectionReview, visible)
+			return m, cmd
+		case "s":
+			// Send to Someday section
+			_, cmd := m.sendTasksToSection(models.SectionSomeday, visible)
+			return m, cmd
+		case "K":
+			// Move task to top of section
+			return m.moveTaskToTop(visible)
+		case "J":
+			// Move task to bottom of section
+			return m.moveTaskToBottom(visible)
 		}
 
 	case "!":
@@ -966,6 +977,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	case "g":
 		m.pendingPrefix = "g"
+		return m, nil
+	case "m":
+		m.pendingPrefix = "m"
 		return m, nil
 	case "!":
 		m.pendingPrefix = "!"

@@ -133,6 +133,11 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 		m.pendingPrefix = "g"
 		return true, nil
 
+	case "m":
+		// Move prefix (send-to-section, move to top/bottom)
+		m.pendingPrefix = "m"
+		return true, nil
+
 	case "G":
 		// Go to last
 		if len(m.allNodes) > 0 {

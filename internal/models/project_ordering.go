@@ -107,6 +107,106 @@ func (p *Project) RelocateTaskToEndOfSection(taskID string, section string) {
 	p.Tasks = append(p.Tasks[:insertAt], append([]*Task{task}, p.Tasks[insertAt:]...)...)
 }
 
+// MoveTaskToTop moves the task before the first sibling in the Tasks slice.
+// For root tasks, completed tasks cannot move above uncompleted tasks.
+func (p *Project) MoveTaskToTop(task *Task) {
+	siblings := p.GetSiblings(task)
+	if len(siblings) < 2 {
+		return
+	}
+
+	siblingIdx := p.FindSiblingIndex(task)
+	if siblingIdx <= 0 {
+		return // Already at top or not found
+	}
+
+	// For root tasks, find the boundary: completed tasks stay below uncompleted
+	targetIdx := 0
+	if task.IsRoot() && task.IsComplete() {
+		// Find first completed sibling
+		for i, s := range siblings {
+			if s.IsComplete() {
+				targetIdx = i
+				break
+			}
+		}
+		if targetIdx >= siblingIdx {
+			return // Already at top of completed region
+		}
+	}
+
+	target := siblings[targetIdx]
+
+	// Find positions in the main Tasks slice
+	taskSliceIdx := p.findTaskIndex(task)
+	targetSliceIdx := p.findTaskIndex(target)
+	if taskSliceIdx == -1 || targetSliceIdx == -1 {
+		return
+	}
+
+	// Remove task from current position and insert before target
+	removed := p.Tasks[taskSliceIdx]
+	p.Tasks = append(p.Tasks[:taskSliceIdx], p.Tasks[taskSliceIdx+1:]...)
+
+	// Recalculate target index after removal
+	if taskSliceIdx < targetSliceIdx {
+		targetSliceIdx--
+	}
+	p.Tasks = append(p.Tasks[:targetSliceIdx], append([]*Task{removed}, p.Tasks[targetSliceIdx:]...)...)
+	task.UpdatedAt = time.Now()
+}
+
+// MoveTaskToBottom moves the task after the last sibling in the Tasks slice.
+// For root tasks, uncompleted tasks cannot move below completed tasks.
+func (p *Project) MoveTaskToBottom(task *Task) {
+	siblings := p.GetSiblings(task)
+	if len(siblings) < 2 {
+		return
+	}
+
+	siblingIdx := p.FindSiblingIndex(task)
+	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
+		return // Already at bottom or not found
+	}
+
+	// For root tasks, find the boundary: uncompleted tasks stay above completed
+	targetIdx := len(siblings) - 1
+	if task.IsRoot() && !task.IsComplete() {
+		// Find last uncompleted sibling
+		for i := len(siblings) - 1; i >= 0; i-- {
+			if !siblings[i].IsComplete() {
+				targetIdx = i
+				break
+			}
+		}
+		if targetIdx <= siblingIdx {
+			return // Already at bottom of uncompleted region
+		}
+	}
+
+	target := siblings[targetIdx]
+
+	// Find positions in the main Tasks slice
+	taskSliceIdx := p.findTaskIndex(task)
+	targetSliceIdx := p.findTaskIndex(target)
+	if taskSliceIdx == -1 || targetSliceIdx == -1 {
+		return
+	}
+
+	// Remove task from current position and insert after target
+	removed := p.Tasks[taskSliceIdx]
+	p.Tasks = append(p.Tasks[:taskSliceIdx], p.Tasks[taskSliceIdx+1:]...)
+
+	// Recalculate target index after removal
+	if taskSliceIdx < targetSliceIdx {
+		targetSliceIdx--
+	}
+	// Insert after target
+	insertAt := targetSliceIdx + 1
+	p.Tasks = append(p.Tasks[:insertAt], append([]*Task{removed}, p.Tasks[insertAt:]...)...)
+	task.UpdatedAt = time.Now()
+}
+
 // SwapTasks swaps the positions of two tasks in the Tasks slice.
 // This is used when moving tasks within a filtered view where the target
 // task is known explicitly rather than being the immediate sibling.

@@ -239,6 +239,69 @@ func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
 	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
 }
 
+// moveTaskToTop moves the selected task to the top of the current column
+// by repeatedly swapping up, matching the proven K (swap-up) mechanism.
+func (m *KanbanViewModel) moveTaskToTop() tea.Cmd {
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	visibleNodes := m.visibleNodesForSection(currentSection)
+	cs := m.Columns[currentSection]
+
+	if len(visibleNodes) < 2 || cs.Cursor <= 0 {
+		return nil
+	}
+
+	task := visibleNodes[cs.Cursor].Task
+	if task == nil {
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Swap up through each visible node, same as repeated K presses
+	for i := cs.Cursor - 1; i >= 0; i-- {
+		target := visibleNodes[i].Task
+		if target == nil {
+			break
+		}
+		m.Project.SwapTasks(task, target)
+	}
+
+	cs.Cursor = 0
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, 0)
+}
+
+// moveTaskToBottom moves the selected task to the bottom of the current column
+// by repeatedly swapping down, matching the proven J (swap-down) mechanism.
+func (m *KanbanViewModel) moveTaskToBottom() tea.Cmd {
+	currentSection := KanbanColumnOrder[m.ActiveColumn]
+	visibleNodes := m.visibleNodesForSection(currentSection)
+	cs := m.Columns[currentSection]
+
+	lastIdx := len(visibleNodes) - 1
+	if len(visibleNodes) < 2 || cs.Cursor >= lastIdx {
+		return nil
+	}
+
+	task := visibleNodes[cs.Cursor].Task
+	if task == nil {
+		return nil
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// Swap down through each visible node, same as repeated J presses
+	for i := cs.Cursor + 1; i <= lastIdx; i++ {
+		target := visibleNodes[i].Task
+		if target == nil {
+			break
+		}
+		m.Project.SwapTasks(task, target)
+	}
+
+	cs.Cursor = lastIdx
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, lastIdx)
+}
+
 // saveWithWorkflowRulesForReorder saves the project with workflow rule evaluation
 // for within-column reordering operations.
 func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]*models.Task, task *models.Task, section string, newPosition int) tea.Cmd {

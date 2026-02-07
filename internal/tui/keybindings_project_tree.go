@@ -93,12 +93,17 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "gc", Description: "Go to Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "g*", Description: "Go to All view", Category: "Views", Views: views},
 		Keybinding{Key: "go", Description: "Jump to context node's home section", Category: "Views", Views: views},
-		Keybinding{Key: "gA", Description: "Send task(s) to Active", Category: "Views", Views: views},
-		Keybinding{Key: "gN", Description: "Send task(s) to Next", Category: "Views", Views: views},
-		Keybinding{Key: "gI", Description: "Send task(s) to Inbox", Category: "Views", Views: views},
-		Keybinding{Key: "gW", Description: "Send task(s) to Waiting", Category: "Views", Views: views},
-		Keybinding{Key: "gS", Description: "Send task(s) to Someday", Category: "Views", Views: views},
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
+
+		// Move (m prefix)
+		Keybinding{Key: "ma", Description: "Send task(s) to Active", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mn", Description: "Send task(s) to Next", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mi", Description: "Send task(s) to Inbox", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mw", Description: "Send task(s) to Waiting", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mr", Description: "Send task(s) to Review", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "ms", Description: "Send task(s) to Someday", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mK", Description: "Move task to top of section", Category: "Move (m prefix)", Views: views},
+		Keybinding{Key: "mJ", Description: "Move task to bottom of section", Category: "Move (m prefix)", Views: views},
 
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
