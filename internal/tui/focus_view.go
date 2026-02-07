@@ -44,6 +44,9 @@ type FocusViewModel struct {
 	subTabRowFocused bool
 	subTabNames      []string
 
+	// Filter
+	filter CommonFilterState
+
 	// Navigation
 	cursor int
 
@@ -64,6 +67,10 @@ func NewFocusViewModel(cfg *config.Config) *FocusViewModel {
 	m := &FocusViewModel{
 		config:         cfg,
 		projectService: NewProjectService(),
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
 	m.loadTasks()
 	return m
@@ -111,23 +118,35 @@ func (m *FocusViewModel) applyFilter() {
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
+	// Apply common filters first (type, status, priority, tags, attrs, score)
+	baseTasks := m.tasks
+	if hasActiveCommonFilters(&m.filter) {
+		baseTasks = nil
+		for _, ft := range m.tasks {
+			// Use empty projectID since focus view aggregates across projects
+			if passesCommonFilters(ft.Task, &m.filter, ft.Project.ID, m.config) {
+				baseTasks = append(baseTasks, ft)
+			}
+		}
+	}
+
 	switch m.activeTab {
 	case focusTabByProject:
-		m.filtered = make([]FocusTask, len(m.tasks))
-		copy(m.filtered, m.tasks)
+		m.filtered = make([]FocusTask, len(baseTasks))
+		copy(m.filtered, baseTasks)
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Project.Name < m.filtered[j].Project.Name
 		})
 	case focusTabByPriority:
-		m.filtered = make([]FocusTask, len(m.tasks))
-		copy(m.filtered, m.tasks)
+		m.filtered = make([]FocusTask, len(baseTasks))
+		copy(m.filtered, baseTasks)
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Task.Priority < m.filtered[j].Task.Priority
 		})
 	case focusTabDueSoon:
 		m.filtered = nil
 		sevenDaysLater := today.AddDate(0, 0, 7)
-		for _, ft := range m.tasks {
+		for _, ft := range baseTasks {
 			if ft.Task.DueDate == nil {
 				continue
 			}
@@ -137,8 +156,8 @@ func (m *FocusViewModel) applyFilter() {
 			}
 		}
 	default:
-		m.filtered = make([]FocusTask, len(m.tasks))
-		copy(m.filtered, m.tasks)
+		m.filtered = make([]FocusTask, len(baseTasks))
+		copy(m.filtered, baseTasks)
 	}
 
 	// Compute sub-tabs based on the filtered list
@@ -317,6 +336,9 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ",", "d", "g":
 		m.pendingPrefix = key
 		return m, nil
+	case "F":
+		m.pendingPrefix = "F"
+		return m, nil
 	case "c":
 		if m.getTaskAtCursor() != nil {
 			m.pendingPrefix = "c"
@@ -326,6 +348,13 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "esc", "q":
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseFocusViewMsg{}
 		}
@@ -502,6 +531,19 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	}
 
 	switch prefix {
+	case "F":
+		return m.handleFocusFilterPrefix(key)
+	case "Ft":
+		return m.handleFocusFilterTypePrefix(key)
+	case "Fs":
+		return m.handleFocusFilterStatusPrefix(key)
+	case "Fa":
+		return m.handleFocusFilterAttrPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return m.handleFocusFilterAttrSubPrefix(prefix, key)
+	case "FS":
+		return m.handleFocusFilterScorePrefix(key)
+
 	case ",":
 		// Status operations
 		switch key {
@@ -884,9 +926,9 @@ func (m *FocusViewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when prefix mode is active.
+// ShouldCaptureEsc returns true when prefix mode or filters are active.
 func (m *FocusViewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix()
+	return m.HasPendingPrefix() || m.HasActiveFilters()
 }
 
 // GetHelpItems returns help items for this view.

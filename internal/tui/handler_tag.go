@@ -90,6 +90,102 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowFocusTagFilterSelectorMsg:
+		if v := m.views.Get(ViewFocusView); v != nil {
+			if fv, ok := v.(*FocusViewModel); ok {
+				m.showView(ViewFocusTagFilterSelector, NewFocusTagFilterSelectorModel(fv))
+			}
+		}
+		return true, nil
+
+	case FocusTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewFocusView); v != nil {
+				if fv, ok := v.(*FocusViewModel); ok {
+					fv.filter.Tags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						fv.filter.Tags[tag] = true
+					}
+					fv.applyFilter()
+					fv.clampCursor()
+				}
+			}
+		}
+		return true, nil
+
+	case ShowDueDateTagFilterSelectorMsg:
+		if v := m.views.Get(ViewDueDateOverview); v != nil {
+			if ddo, ok := v.(*DueDateOverviewModel); ok {
+				m.showView(ViewDueDateTagFilterSelector, NewDueDateTagFilterSelectorModel(ddo))
+			}
+		}
+		return true, nil
+
+	case DueDateTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewDueDateOverview); v != nil {
+				if ddo, ok := v.(*DueDateOverviewModel); ok {
+					ddo.filter.Tags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						ddo.filter.Tags[tag] = true
+					}
+					ddo.loadTasksWithDueDates()
+					ddo.clampCursor()
+				}
+			}
+		}
+		return true, nil
+
+	case ShowDailyReviewTagFilterSelectorMsg:
+		if v := m.views.Get(ViewDailyReview); v != nil {
+			if dr, ok := v.(*DailyReviewModel); ok {
+				m.showView(ViewDailyReviewTagFilterSelector, NewDailyReviewTagFilterSelectorModel(dr))
+			}
+		}
+		return true, nil
+
+	case DailyReviewTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewDailyReview); v != nil {
+				if dr, ok := v.(*DailyReviewModel); ok {
+					dr.filter.Tags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						dr.filter.Tags[tag] = true
+					}
+					dr.loadTasks()
+					dr.clampCursor()
+				}
+			}
+		}
+		return true, nil
+
+	case ShowRecentActivityTagFilterSelectorMsg:
+		if v := m.views.Get(ViewRecentActivity); v != nil {
+			if ra, ok := v.(*RecentActivityModel); ok {
+				m.showView(ViewRecentActivityTagFilterSelector, NewRecentActivityTagFilterSelectorModel(ra))
+			}
+		}
+		return true, nil
+
+	case RecentActivityTagFilterSelectorDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if v := m.views.Get(ViewRecentActivity); v != nil {
+				if ra, ok := v.(*RecentActivityModel); ok {
+					ra.filter.Tags = make(map[string]bool)
+					for _, tag := range msg.SelectedTags {
+						ra.filter.Tags[tag] = true
+					}
+					ra.applyFilter()
+					ra.clampCursor()
+				}
+			}
+		}
+		return true, nil
+
 	case ShowPriorityTagFilterSelectorMsg:
 		if v := m.views.Get(ViewPriorityView); v != nil {
 			if pv, ok := v.(*PriorityViewModel); ok {

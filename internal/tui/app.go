@@ -95,6 +95,10 @@ const (
 	ViewScoreProfileManager
 	ViewSaveViewInput
 	ViewMetricsDashboard
+	ViewFocusTagFilterSelector
+	ViewDueDateTagFilterSelector
+	ViewDailyReviewTagFilterSelector
+	ViewRecentActivityTagFilterSelector
 )
 
 // AppModel is the main TUI model with a view stack.

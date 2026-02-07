@@ -33,6 +33,13 @@ func (m *FocusViewModel) View() string {
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n")
 
+	// Filter badge
+	filterBadge := m.renderActiveFilterIndicator()
+	if filterBadge != "" {
+		b.WriteString(filterBadge)
+		b.WriteString("\n")
+	}
+
 	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()
 	if subTabBar != "" {
@@ -43,6 +50,9 @@ func (m *FocusViewModel) View() string {
 	// Calculate available height for task list
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
 	contentHeight := m.height - 6
+	if filterBadge != "" {
+		contentHeight--
+	}
 	if subTabBar != "" {
 		contentHeight -= 2
 	}
@@ -58,7 +68,11 @@ func (m *FocusViewModel) View() string {
 	}
 
 	if len(m.filtered) == 0 {
-		lines = append(lines, MutedStyle.Render("No matching tasks."))
+		if m.HasActiveFilters() {
+			lines = append(lines, MutedStyle.Render("No tasks match current filters. Press q or Esc to clear."))
+		} else {
+			lines = append(lines, MutedStyle.Render("No matching tasks."))
+		}
 	}
 
 	// Apply scrolling if needed
@@ -125,14 +139,19 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	hints := PrefixHints{
+		",": StatusPrefixHints,
+		"d": DueDatePrefixHints,
+		"g": FocusViewNavigationPrefixHints,
+		"c": CreateLinkedPrefixHints,
+	}
+	// Merge filter prefix hints (no DueDate category — view has "Due Soon" tab)
+	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
+		hints[k] = v
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"d": DueDatePrefixHints,
-			"g": FocusViewNavigationPrefixHints,
-			"c": CreateLinkedPrefixHints,
-		},
+		Hints:  hints,
 	}
 }
 

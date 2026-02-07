@@ -47,6 +47,11 @@ func (m *DailyReviewModel) loadTasks() {
 		}
 
 		for _, task := range project.Tasks {
+			// Apply common filters (no DueDate or Status — sections group by these)
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project.ID, m.config) {
+				continue
+			}
+
 			dt := DailyReviewTask{Task: task, Project: project}
 
 			// 1. Completed: CompletedAt within completedHours

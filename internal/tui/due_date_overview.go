@@ -52,6 +52,9 @@ type DueDateOverviewModel struct {
 	// Tabs
 	activeTab int
 
+	// Filter
+	filter CommonFilterState
+
 	// Navigation
 	cursor      int // Absolute position across all groups
 	totalTasks  int
@@ -74,6 +77,10 @@ func NewDueDateOverviewModel(cfg *config.Config) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
 		config:         cfg,
 		projectService: NewProjectService(),
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
 	m.loadTasksWithDueDates()
 	return m
@@ -94,6 +101,11 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 
 		for _, task := range project.Tasks {
 			if task.DueDate == nil || task.Status.IsComplete() {
+				continue
+			}
+
+			// Apply common filters (no DueDate filter — the view IS organized by due date)
+			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project.ID, m.config) {
 				continue
 			}
 
@@ -274,6 +286,9 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	case ",", "d", "g":
 		m.pendingPrefix = key
 		return m, nil
+	case "F":
+		m.pendingPrefix = "F"
+		return m, nil
 	}
 
 	// Tab navigation
@@ -298,6 +313,13 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 
 	switch key {
 	case "esc", "q":
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.loadTasksWithDueDates()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseDueDateOverviewMsg{}
 		}
@@ -415,6 +437,19 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 	}
 
 	switch prefix {
+	case "F":
+		return m.handleDueDateFilterPrefix(key)
+	case "Ft":
+		return m.handleDueDateFilterTypePrefix(key)
+	case "Fs":
+		return m.handleDueDateFilterStatusPrefix(key)
+	case "Fa":
+		return m.handleDueDateFilterAttrPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return m.handleDueDateFilterAttrSubPrefix(prefix, key)
+	case "FS":
+		return m.handleDueDateFilterScorePrefix(key)
+
 	case ",":
 		// Status operations
 		switch key {
@@ -708,6 +743,16 @@ func (m *DueDateOverviewModel) clampCursor() {
 // HasPendingPrefix returns true if waiting for second key in prefix sequence.
 func (m *DueDateOverviewModel) HasPendingPrefix() bool {
 	return m.pendingPrefix != ""
+}
+
+// HasTextInput returns false for the due date overview.
+func (m *DueDateOverviewModel) HasTextInput() bool {
+	return false
+}
+
+// ShouldCaptureEsc returns true when prefix mode or filters are active.
+func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
+	return m.HasPendingPrefix() || m.HasActiveFilters()
 }
 
 // GetHelpItems returns help items for this view.

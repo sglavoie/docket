@@ -43,6 +43,9 @@ type DailyReviewModel struct {
 	old        []DailyReviewTask
 	completed  []DailyReviewTask
 
+	// Filter
+	filter CommonFilterState
+
 	// Navigation
 	cursor            int
 	totalTasks        int
@@ -69,6 +72,10 @@ func NewDailyReviewModel(cfg *config.Config) *DailyReviewModel {
 	m := &DailyReviewModel{
 		config:            cfg,
 		collapsedSections: make(map[int]bool),
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
 	m.loadTasks()
 	return m
@@ -150,6 +157,9 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pendingPrefix = key
 		}
 		return m, nil
+	case "F":
+		m.pendingPrefix = "F"
+		return m, nil
 	case "c":
 		if m.getTaskAtCursor() != nil {
 			m.pendingPrefix = "c"
@@ -166,11 +176,27 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.clampCursor()
 			return m, nil
 		}
+		// If filters are active, clear them before closing
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.loadTasks()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseDailyReviewMsg{}
 		}
 
 	case "q":
+		// If filters are active, clear them before closing
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.loadTasks()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseDailyReviewMsg{}
 		}
@@ -306,6 +332,17 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	}
 
 	switch prefix {
+	case "F":
+		return m.handleDailyReviewFilterPrefix(key)
+	case "Ft":
+		return m.handleDailyReviewFilterTypePrefix(key)
+	case "Fa":
+		return m.handleDailyReviewFilterAttrPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return m.handleDailyReviewFilterAttrSubPrefix(prefix, key)
+	case "FS":
+		return m.handleDailyReviewFilterScorePrefix(key)
+
 	case ",":
 		// Status operations
 		switch key {
@@ -439,9 +476,9 @@ func (m *DailyReviewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when prefix mode or section focus is active.
+// ShouldCaptureEsc returns true when prefix mode, section focus, or filters are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasFocusedSection()
+	return m.HasPendingPrefix() || m.HasFocusedSection() || m.HasActiveFilters()
 }
 
 // GetHelpItems returns help items for this view.

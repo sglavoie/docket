@@ -25,26 +25,50 @@ func (m *DailyReviewModel) View() string {
 
 	if totalCount == 0 {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("No tasks to review."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Your inbox is clear. Press q or Esc to close."))
+		if m.HasActiveFilters() {
+			b.WriteString(m.renderActiveFilterIndicator())
+			b.WriteString("\n\n")
+			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks to review."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Your inbox is clear. Press q or Esc to close."))
+		}
 		return b.String()
 	}
 
 	// Tab bar
 	b.WriteString(m.renderReviewTabBar())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+
+	// Filter badge
+	filterBadge := m.renderActiveFilterIndicator()
+	if filterBadge != "" {
+		b.WriteString(filterBadge)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 
 	// Calculate available height for content
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
 	contentHeight := m.height - 7
+	if filterBadge != "" {
+		contentHeight--
+	}
 
 	// Render all sections
 	if m.totalTasks == 0 {
-		b.WriteString(MutedStyle.Render("No tasks in this tab."))
-		b.WriteString("\n\n")
-		footer := HelpStyle.Render("[/]: tabs | ? help")
-		b.WriteString(footer)
+		if m.HasActiveFilters() {
+			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("[/]: tabs | Fx clear filters | q/Esc clear filters | ? help"))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks in this tab."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("[/]: tabs | ? help"))
+		}
 		return b.String()
 	}
 
@@ -109,15 +133,20 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	hints := PrefixHints{
+		",": StatusPrefixHints,
+		"d": DueDatePrefixHints,
+		"g": DailyReviewNavigationPrefixHints,
+		"s": SectionPrefixHints,
+		"c": CreateLinkedPrefixHints,
+	}
+	// Merge filter prefix hints (no DueDate or Status — sections group by these)
+	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false) {
+		hints[k] = v
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"d": DueDatePrefixHints,
-			"g": DailyReviewNavigationPrefixHints,
-			"s": SectionPrefixHints,
-			"c": CreateLinkedPrefixHints,
-		},
+		Hints:  hints,
 	}
 }
 

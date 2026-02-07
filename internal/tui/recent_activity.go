@@ -30,12 +30,20 @@ type RecentActivityModel struct {
 	cursor   int
 
 	activeTab int
+
+	// Filter
+	filter        CommonFilterState
+	pendingPrefix string
 }
 
 // NewRecentActivityModel creates a new recent activity model.
 func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 	m := &RecentActivityModel{
 		config: cfg,
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
@@ -71,8 +79,9 @@ func (m *RecentActivityModel) loadTasks() {
 }
 
 func (m *RecentActivityModel) applyFilter() {
-	// First filter by tab
+	// First filter by tab and common filters
 	var tabFiltered []DailyReviewTask
+	hasFilters := hasActiveCommonFilters(&m.filter)
 	for _, dt := range m.tasks {
 		switch m.activeTab {
 		case recentActivityTabActive:
@@ -83,6 +92,9 @@ func (m *RecentActivityModel) applyFilter() {
 			if !dt.Task.Status.IsComplete() {
 				continue
 			}
+		}
+		if hasFilters && !passesCommonFilters(dt.Task, &m.filter, dt.Project.ID, m.config) {
+			continue
 		}
 		tabFiltered = append(tabFiltered, dt)
 	}
@@ -116,9 +128,9 @@ func (m *RecentActivityModel) HasTextInput() bool {
 	return m.IsSearchMode()
 }
 
-// ShouldCaptureEsc returns true when search is active or a query is set.
+// ShouldCaptureEsc returns true when search is active, a query is set, prefix is pending, or filters are active.
 func (m *RecentActivityModel) ShouldCaptureEsc() bool {
-	return m.IsSearchMode() || m.SearchQuery() != ""
+	return m.IsSearchMode() || m.SearchQuery() != "" || m.HasPendingPrefix() || m.HasActiveFilters()
 }
 
 // SetSize sets the view dimensions.
@@ -156,10 +168,21 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, cmd
 	}
 
+	// Handle pending filter prefix keys
+	if m.pendingPrefix != "" {
+		return m.handleRecentActivityPrefixKey(msg.String())
+	}
+
 	switch msg.String() {
 	case "esc":
 		if m.SearchQuery() != "" {
 			m.ClearSearch()
+			m.applyFilter()
+			m.clampCursor()
+			return m, nil
+		}
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
 			return m, nil
@@ -169,6 +192,12 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 
 	case "q":
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			return m, nil
+		}
 		return m, func() tea.Msg {
 			return CloseRecentActivityMsg{}
 		}
@@ -246,6 +275,10 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		m.loadTasks()
 		m.clampCursor()
 
+	case "F":
+		m.pendingPrefix = "F"
+		return m, nil
+
 	case "/":
 		return m, m.ActivateSearch()
 
@@ -260,6 +293,53 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	return m, nil
+}
+
+// handleRecentActivityPrefixKey handles prefix key sequences for recent activity.
+func (m *RecentActivityModel) handleRecentActivityPrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = ""
+
+	if key == "esc" {
+		return m, nil
+	}
+
+	switch prefix {
+	case "F":
+		return m.handleRecentActivityFilterPrefix(key)
+	case "Ft":
+		return m.handleRecentActivityFilterTypePrefix(key)
+	case "Fs":
+		return m.handleRecentActivityFilterStatusPrefix(key)
+	case "Fd":
+		return m.handleRecentActivityFilterDuePrefix(key)
+	case "Fa":
+		return m.handleRecentActivityFilterAttrPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return m.handleRecentActivityFilterAttrSubPrefix(prefix, key)
+	case "FS":
+		return m.handleRecentActivityFilterScorePrefix(key)
+	}
+
+	return m, nil
+}
+
+// HasPendingPrefix returns true if waiting for second key in prefix sequence.
+func (m *RecentActivityModel) HasPendingPrefix() bool {
+	return m.pendingPrefix != ""
+}
+
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *RecentActivityModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	// All filter categories enabled for recent activity
+	hints := buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true)
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints:  hints,
+	}
 }
 
 func (m *RecentActivityModel) clampCursor() {
@@ -288,15 +368,30 @@ func (m *RecentActivityModel) View() string {
 
 	if len(m.filtered) == 0 && !m.IsSearchMode() && m.SearchQuery() == "" {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("No recent activity found."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press q or Esc to close."))
+		if m.HasActiveFilters() {
+			b.WriteString(m.renderActiveFilterIndicator())
+			b.WriteString("\n\n")
+			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+		} else {
+			b.WriteString(MutedStyle.Render("No recent activity found."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Press q or Esc to close."))
+		}
 		return b.String()
 	}
 
 	// Tab bar
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n")
+
+	// Filter badge
+	filterBadge := m.renderActiveFilterIndicator()
+	if filterBadge != "" {
+		b.WriteString(filterBadge)
+		b.WriteString("\n")
+	}
 
 	// Search input
 	if m.IsSearchMode() {
@@ -309,6 +404,9 @@ func (m *RecentActivityModel) View() string {
 
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
 	contentHeight := m.Height() - 6
+	if filterBadge != "" {
+		contentHeight--
+	}
 	if m.IsSearchMode() || m.SearchQuery() != "" {
 		contentHeight--
 	}
@@ -322,7 +420,11 @@ func (m *RecentActivityModel) View() string {
 	}
 
 	if len(m.filtered) == 0 {
-		lines = append(lines, MutedStyle.Render("No matching tasks."))
+		if m.HasActiveFilters() {
+			lines = append(lines, MutedStyle.Render("No tasks match current filters. Press q or Esc to clear."))
+		} else {
+			lines = append(lines, MutedStyle.Render("No matching tasks."))
+		}
 	}
 
 	// Scrolling

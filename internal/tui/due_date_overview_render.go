@@ -23,27 +23,51 @@ func (m *DueDateOverviewModel) View() string {
 
 	if allTotal == 0 {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("No tasks with due dates found."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press q or Esc to close"))
+		if m.HasActiveFilters() {
+			b.WriteString(m.renderActiveFilterIndicator())
+			b.WriteString("\n\n")
+			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks with due dates found."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("Press q or Esc to close"))
+		}
 		return b.String()
 	}
 
 	// Tab bar
 	b.WriteString(m.renderTabBar())
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+
+	// Filter badge
+	filterBadge := m.renderActiveFilterIndicator()
+	if filterBadge != "" {
+		b.WriteString(filterBadge)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 
 	if m.totalTasks == 0 {
-		b.WriteString(MutedStyle.Render("No tasks in this category."))
-		b.WriteString("\n\n")
-		footer := HelpStyle.Render("[/] h/l tabs • q/Esc close")
-		b.WriteString(footer)
+		if m.HasActiveFilters() {
+			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("[/] h/l tabs | Fx clear filters | q/Esc clear filters"))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks in this category."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("[/] h/l tabs • q/Esc close"))
+		}
 		return b.String()
 	}
 
 	// Calculate available height for task list
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
 	contentHeight := m.height - 7
+	if filterBadge != "" {
+		contentHeight--
+	}
 
 	// Render groups with scroll awareness
 	currentIndex := 0
@@ -91,13 +115,18 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	hints := PrefixHints{
+		",": StatusPrefixHints,
+		"d": DueDatePrefixHints,
+		"g": DueDateOverviewNavigationPrefixHints,
+	}
+	// Merge filter prefix hints (no DueDate category — the view IS organized by due date)
+	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
+		hints[k] = v
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"d": DueDatePrefixHints,
-			"g": DueDateOverviewNavigationPrefixHints,
-		},
+		Hints:  hints,
 	}
 }
 
