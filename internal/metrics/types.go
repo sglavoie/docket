@@ -146,11 +146,6 @@ type AggregateMetrics struct {
 	IsGlobal   bool // true if aggregated across all projects
 }
 
-// ComputeAll computes all metrics for the given projects within the specified time range.
-func ComputeAll(projects []*models.Project, tr TimeRange) *AggregateMetrics {
-	return ComputeAllAt(projects, tr, time.Now())
-}
-
 // ComputeAllAt computes all metrics using the given reference time (for testing).
 func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time) *AggregateMetrics {
 	var allTasks []*models.Task

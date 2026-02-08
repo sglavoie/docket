@@ -62,25 +62,3 @@ func computeCompletion(tasks []*models.Task, cutoff, now time.Time, buckets []bu
 
 	return result
 }
-
-// computeCompletionForRange is a convenience for computing completion with auto-bucketing.
-func computeCompletionForRange(tasks []*models.Task, tr TimeRange, now time.Time) CompletionResult {
-	cutoff := tr.Cutoff(now)
-	buckets := timeBuckets(cutoff, now, bucketGranularity(tr))
-	return computeCompletion(tasks, cutoff, now, buckets)
-}
-
-// completedInRange returns tasks that were completed within the given time range.
-func completedInRange(tasks []*models.Task, cutoff, _ time.Time) []*models.Task {
-	var result []*models.Task
-	for _, t := range tasks {
-		if t.CompletedAt == nil || !t.Status.IsComplete() {
-			continue
-		}
-		if !cutoff.IsZero() && t.CompletedAt.Before(cutoff) {
-			continue
-		}
-		result = append(result, t)
-	}
-	return result
-}
