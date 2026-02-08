@@ -358,8 +358,12 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
+	tabSwitchKey := "h/[/]"
+	if m.isGlobal {
+		tabSwitchKey = "h/l/[/]"
+	}
 	items := []HelpItem{
-		{Key: "[/]", Description: "Switch tab"},
+		{Key: tabSwitchKey, Description: "Switch tab"},
 		{Key: "j/k", Description: "Navigate up/down"},
 		{Key: "Tab", Description: "Switch pane (list/details)"},
 		{Key: "Enter", Description: "View note (glow)"},
