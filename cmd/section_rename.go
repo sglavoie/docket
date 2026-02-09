@@ -13,10 +13,10 @@ var sectionRenameCmd = &cobra.Command{
 	Short: "Rename a section in the current project",
 	Long: `Rename a section and update all tasks with that section.
 
-The Next section cannot be renamed.
+The Next section cannot be renamed. New names must not contain spaces.
 
 Examples:
-  tt section rename "In Progress" "Working"
+  tt section rename InProgress Working
   tt section rename Review Done`,
 	Args: cobra.ExactArgs(2),
 	RunE: runSectionRename,
@@ -36,6 +36,10 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 
 	if newName == "" {
 		return fmt.Errorf("new section name cannot be empty")
+	}
+
+	if err := models.ValidateSectionName(newName); err != nil {
+		return err
 	}
 
 	project, _, _, err := LoadCurrentProject()

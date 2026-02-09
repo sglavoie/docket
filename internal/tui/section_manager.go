@@ -150,6 +150,11 @@ func (m *SectionManagerModel) addSection(name string) tea.Cmd {
 			return nil
 		}
 
+		// Block section names with spaces
+		if err := models.ValidateSectionName(name); err != nil {
+			return ErrorMsg{Err: err}
+		}
+
 		// Block GTD section names
 		if models.IsGTDSection(name) {
 			return ErrorMsg{Err: fmt.Errorf("'%s' is a built-in GTD section", name)}
@@ -182,6 +187,11 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 		newName = strings.TrimSpace(newName)
 		if newName == "" || newName == oldName {
 			return nil
+		}
+
+		// Block section names with spaces
+		if err := models.ValidateSectionName(newName); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
 		// Block renaming GTD sections (defensive check)

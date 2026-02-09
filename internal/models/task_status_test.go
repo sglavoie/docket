@@ -112,6 +112,22 @@ func TestAllTaskStatuses(t *testing.T) {
 	}
 }
 
+func TestValidateSectionName(t *testing.T) {
+	valid := []string{"InProgress", "In-Progress", "review", "MySection", "done_items"}
+	for _, name := range valid {
+		if err := ValidateSectionName(name); err != nil {
+			t.Errorf("ValidateSectionName(%q) returned error: %v", name, err)
+		}
+	}
+
+	invalid := []string{"In Progress", "My Section", "has\ttab", "has\nnewline"}
+	for _, name := range invalid {
+		if err := ValidateSectionName(name); err == nil {
+			t.Errorf("ValidateSectionName(%q) should have returned error", name)
+		}
+	}
+}
+
 func TestIsGTDSection(t *testing.T) {
 	gtdSections := []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview}
 	for _, s := range gtdSections {

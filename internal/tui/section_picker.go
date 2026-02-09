@@ -170,6 +170,10 @@ func (m *SectionPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if name == "" {
 					return m, nil
 				}
+				// Block section names with spaces
+				if err := models.ValidateSectionName(name); err != nil {
+					return m, nil
+				}
 				// Check for duplicates against existing sections
 				for _, item := range m.Items {
 					if item.Name == name {

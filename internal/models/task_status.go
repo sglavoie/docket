@@ -1,5 +1,10 @@
 package models
 
+import (
+	"fmt"
+	"strings"
+)
+
 // TaskStatus represents the current state of a task.
 type TaskStatus string
 
@@ -77,6 +82,16 @@ func (s TaskStatus) Icon() string {
 // String returns the string representation of the status.
 func (s TaskStatus) String() string {
 	return string(s)
+}
+
+// ValidateSectionName returns an error if the section name contains whitespace.
+// Section names must not contain spaces because the /SectionName quick-capture
+// syntax uses whitespace as a delimiter.
+func ValidateSectionName(name string) error {
+	if strings.ContainsAny(name, " \t\n\r") {
+		return fmt.Errorf("section name %q must not contain spaces (use hyphens or camelCase instead)", name)
+	}
+	return nil
 }
 
 // ParseTaskStatus converts a string to a TaskStatus.

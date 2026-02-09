@@ -31,7 +31,7 @@ func TestSectionAdd(t *testing.T) {
 
 		initialSections := len(project.Sections)
 
-		err = runSectionAdd(nil, []string{"In Progress"})
+		err = runSectionAdd(nil, []string{"InProgress"})
 		testutil.AssertNoError(t, err)
 
 		// Verify section was added
@@ -40,8 +40,8 @@ func TestSectionAdd(t *testing.T) {
 			t.Errorf("expected %d sections, got %d", initialSections+1, len(savedProject.Sections))
 		}
 
-		if !savedProject.HasSection("In Progress") {
-			t.Error("section 'In Progress' was not added")
+		if !savedProject.HasSection("InProgress") {
+			t.Error("section 'InProgress' was not added")
 		}
 	})
 
@@ -82,12 +82,32 @@ func TestSectionAdd(t *testing.T) {
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
 		// Add a section first
-		project.EnsureSection("Existing Section")
+		project.EnsureSection("ExistingSection")
 		deps.Repository.Projects[project.ID] = project
 
-		err = runSectionAdd(nil, []string{"Existing Section"})
+		err = runSectionAdd(nil, []string{"ExistingSection"})
 		if err == nil {
 			t.Error("runSectionAdd() should error for duplicate section")
+		}
+	})
+	t.Run("rejects section name with spaces", func(t *testing.T) {
+		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err = runSectionAdd(nil, []string{"Has Space"})
+		if err == nil {
+			t.Error("runSectionAdd() should error for section name with spaces")
 		}
 	})
 }
@@ -109,15 +129,15 @@ func TestSectionRemove(t *testing.T) {
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
 		// Add a section and save
-		project.EnsureSection("To Remove")
+		project.EnsureSection("ToRemove")
 		deps.Repository.Projects[project.ID] = project
 
-		err = runSectionRemove(nil, []string{"To Remove"})
+		err = runSectionRemove(nil, []string{"ToRemove"})
 		testutil.AssertNoError(t, err)
 
 		// Verify section was removed
 		savedProject := deps.Repository.Projects[project.ID]
-		if savedProject.HasSection("To Remove") {
+		if savedProject.HasSection("ToRemove") {
 			t.Error("section 'To Remove' was not removed")
 		}
 	})
@@ -158,7 +178,7 @@ func TestSectionRemove(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		err = runSectionRename(nil, []string{"Nonexistent", "New Name"})
+		err = runSectionRename(nil, []string{"Nonexistent", "NewName"})
 		if err == nil {
 			t.Error("runSectionRemove() should error for nonexistent section")
 		}
@@ -218,18 +238,18 @@ func TestSectionRename(t *testing.T) {
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
 		// Add a section
-		project.EnsureSection("Old Name")
+		project.EnsureSection("OldName")
 		deps.Repository.Projects[project.ID] = project
 
-		err = runSectionRename(nil, []string{"Old Name", "New Name"})
+		err = runSectionRename(nil, []string{"OldName", "NewName"})
 		testutil.AssertNoError(t, err)
 
 		// Verify section was renamed
 		savedProject := deps.Repository.Projects[project.ID]
-		if savedProject.HasSection("Old Name") {
+		if savedProject.HasSection("OldName") {
 			t.Error("old section name still exists")
 		}
-		if !savedProject.HasSection("New Name") {
+		if !savedProject.HasSection("NewName") {
 			t.Error("new section name was not created")
 		}
 	})
@@ -294,7 +314,7 @@ func TestSectionRename(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		err = runSectionRename(nil, []string{"Nonexistent", "New Name"})
+		err = runSectionRename(nil, []string{"Nonexistent", "NewName"})
 		if err == nil {
 			t.Error("runSectionRename() should error for nonexistent section")
 		}
@@ -315,13 +335,37 @@ func TestSectionRename(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		project.EnsureSection("Section A")
-		project.EnsureSection("Section B")
+		project.EnsureSection("SectionA")
+		project.EnsureSection("SectionB")
 		deps.Repository.Projects[project.ID] = project
 
-		err = runSectionRename(nil, []string{"Section A", "Section B"})
+		err = runSectionRename(nil, []string{"SectionA", "SectionB"})
 		if err == nil {
 			t.Error("runSectionRename() should error when new name already exists")
+		}
+	})
+
+	t.Run("rejects new name with spaces", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		project.EnsureSection("MySection")
+		deps.Repository.Projects[project.ID] = project
+
+		err = runSectionRename(nil, []string{"MySection", "Has Space"})
+		if err == nil {
+			t.Error("runSectionRename() should error for new name with spaces")
 		}
 	})
 
@@ -341,23 +385,23 @@ func TestSectionRename(t *testing.T) {
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
 		// Add section and assign tasks to it
-		project.EnsureSection("Old Section")
+		project.EnsureSection("OldSection")
 		task1 := testutil.NewTestTask("Task 1", models.TaskTypeTask)
-		task1.Section = "Old Section"
+		task1.Section = "OldSection"
 		task2 := testutil.NewTestTask("Task 2", models.TaskTypeTask)
-		task2.Section = "Old Section"
+		task2.Section = "OldSection"
 		project.Tasks = append(project.Tasks, task1, task2)
 		deps.Repository.Projects[project.ID] = project
 
-		err = runSectionRename(nil, []string{"Old Section", "New Section"})
+		err = runSectionRename(nil, []string{"OldSection", "NewSection"})
 		testutil.AssertNoError(t, err)
 
 		// Verify all tasks were updated
 		savedProject := deps.Repository.Projects[project.ID]
 		for _, task := range savedProject.Tasks {
 			if task.ID == task1.ID || task.ID == task2.ID {
-				if task.Section != "New Section" {
-					t.Errorf("task %s section = %s, want 'New Section'", task.Title, task.Section)
+				if task.Section != "NewSection" {
+					t.Errorf("task %s section = %s, want 'NewSection'", task.Title, task.Section)
 				}
 			}
 		}
@@ -384,13 +428,13 @@ func TestSectionList(t *testing.T) {
 
 		// Add some sections
 		project.EnsureSection("Backlog")
-		project.EnsureSection("In Progress")
+		project.EnsureSection("InProgress")
 
 		// Add tasks to sections
 		task1 := testutil.NewTestTask("Task 1", models.TaskTypeTask)
 		task1.Section = "Backlog"
 		task2 := testutil.NewTestTask("Task 2", models.TaskTypeTask)
-		task2.Section = "In Progress"
+		task2.Section = "InProgress"
 		project.Tasks = append(project.Tasks, task1, task2)
 
 		deps.Repository.Projects[project.ID] = project
