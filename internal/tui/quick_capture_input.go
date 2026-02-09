@@ -287,7 +287,11 @@ func (q *quickCaptureInput) renderPreview() string {
 	}
 
 	if q.preview.section != "" {
-		parts = append(parts, "/"+q.preview.section)
+		if !models.IsGTDSection(q.preview.section) {
+			parts = append(parts, "/"+q.preview.section+" → Inbox")
+		} else {
+			parts = append(parts, "/"+q.preview.section)
+		}
 	}
 
 	if q.preview.status != "" && q.preview.status != models.StatusTodo {

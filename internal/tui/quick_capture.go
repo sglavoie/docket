@@ -153,34 +153,46 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 			}
 		}
 
-		// Determine target section
+		// Determine target section and custom section
 		targetSection := result.section
+		var customSection string
 		if targetSection == "" {
+			targetSection = models.SectionInbox
+		} else if !models.IsGTDSection(targetSection) {
+			// Custom section: route to Inbox, store as CustomSection
+			customSection = targetSection
 			targetSection = models.SectionInbox
 		}
 
-		// Ensure target section exists (Inbox gets red color)
-		if !targetProject.HasSection(targetSection) {
+		// Ensure Inbox exists (gets red color)
+		if !targetProject.HasSection(models.SectionInbox) {
+			targetProject.EnsureSection(models.SectionInbox)
+			targetProject.SetSectionColor(models.SectionInbox, "red")
+		}
+		// Ensure target section exists (for GTD sections other than Inbox)
+		if targetSection != models.SectionInbox && !targetProject.HasSection(targetSection) {
 			targetProject.EnsureSection(targetSection)
-			if targetSection == models.SectionInbox {
-				targetProject.SetSectionColor(models.SectionInbox, "red")
-			}
+		}
+		// Ensure custom section exists
+		if customSection != "" && !targetProject.HasSection(customSection) {
+			targetProject.EnsureSection(customSection)
 		}
 
 		// Create task
 		task := &models.Task{
-			ID:         uuid.New().String(),
-			ShortID:    targetProject.GetNextShortID(),
-			Type:       result.taskType,
-			Title:      result.title,
-			Status:     models.StatusTodo,
-			Priority:   result.priority,
-			Section:    targetSection,
-			ParentID:   result.parentID,
-			DueDate:    result.dueDate,
-			Recurrence: result.recurrence,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			ID:            uuid.New().String(),
+			ShortID:       targetProject.GetNextShortID(),
+			Type:          result.taskType,
+			Title:         result.title,
+			Status:        models.StatusTodo,
+			Priority:      result.priority,
+			Section:       targetSection,
+			CustomSection: customSection,
+			ParentID:      result.parentID,
+			DueDate:       result.dueDate,
+			Recurrence:    result.recurrence,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
 		}
 
 		for _, tag := range result.tags {

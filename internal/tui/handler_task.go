@@ -50,7 +50,11 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.handleWithRefresh(true, true, "")
 		// Set status message showing section
 		if msg.Task != nil && msg.Task.Section != "" {
-			m.statusMessage = fmt.Sprintf("Created in %s", msg.Task.Section)
+			if msg.Task.CustomSection != "" {
+				m.statusMessage = fmt.Sprintf("Created in %s (%s)", msg.Task.Section, msg.Task.CustomSection)
+			} else {
+				m.statusMessage = fmt.Sprintf("Created in %s", msg.Task.Section)
+			}
 		}
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
 		cmd := m.views.Update(m.currentView(), msg)

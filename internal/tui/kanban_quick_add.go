@@ -265,32 +265,47 @@ func (m *KanbanViewModel) createQuickAddTask() tea.Cmd {
 			return nil
 		}
 
-		// Determine target section
+		// Determine target section and custom section
 		targetSection := result.section
+		var customSection string
 		if targetSection == "" {
 			// Default to current column's section
 			targetSection = m.CurrentSection()
+		} else if !models.IsGTDSection(targetSection) {
+			// Custom section: route to Inbox, store as CustomSection
+			customSection = targetSection
+			targetSection = models.SectionInbox
 		}
 
+		// Ensure Inbox exists (gets red color)
+		if !m.Project.HasSection(models.SectionInbox) {
+			m.Project.EnsureSection(models.SectionInbox)
+			m.Project.SetSectionColor(models.SectionInbox, "red")
+		}
 		// Ensure target section exists
-		if targetSection != "" && !m.Project.HasSection(targetSection) {
+		if targetSection != "" && targetSection != models.SectionInbox && !m.Project.HasSection(targetSection) {
 			m.Project.EnsureSection(targetSection)
+		}
+		// Ensure custom section exists
+		if customSection != "" && !m.Project.HasSection(customSection) {
+			m.Project.EnsureSection(customSection)
 		}
 
 		// Create task
 		task := &models.Task{
-			ID:         uuid.New().String(),
-			ShortID:    m.Project.GetNextShortID(),
-			Type:       result.taskType,
-			Title:      result.title,
-			Status:     models.StatusTodo,
-			Priority:   result.priority,
-			Section:    targetSection,
-			ParentID:   result.parentID,
-			DueDate:    result.dueDate,
-			Recurrence: result.recurrence,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			ID:            uuid.New().String(),
+			ShortID:       m.Project.GetNextShortID(),
+			Type:          result.taskType,
+			Title:         result.title,
+			Status:        models.StatusTodo,
+			Priority:      result.priority,
+			Section:       targetSection,
+			CustomSection: customSection,
+			ParentID:      result.parentID,
+			DueDate:       result.dueDate,
+			Recurrence:    result.recurrence,
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
 		}
 
 		for _, tag := range result.tags {
@@ -436,7 +451,11 @@ func (m *KanbanViewModel) renderQuickAddPreview() string {
 
 	// Section (only show if explicitly set)
 	if p.section != "" {
-		parts = append(parts, "/"+p.section)
+		if !models.IsGTDSection(p.section) {
+			parts = append(parts, "/"+p.section+" → Inbox")
+		} else {
+			parts = append(parts, "/"+p.section)
+		}
 	}
 
 	// Status (only show if not default todo)
