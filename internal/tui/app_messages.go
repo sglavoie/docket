@@ -393,6 +393,9 @@ type CommentDeletedMsg struct{ Task *models.Task }
 // CommentEditedMsg signals a comment was edited.
 type CommentEditedMsg struct{ Task *models.Task }
 
+// CommentResolvedMsg signals a comment's resolved state was toggled.
+type CommentResolvedMsg struct{ Task *models.Task }
+
 // =============================================================================
 // Task Checklist Messages (Show/Close Pattern)
 // =============================================================================

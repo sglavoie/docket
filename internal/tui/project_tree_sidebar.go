@@ -452,8 +452,16 @@ func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) stri
 			lines = append(lines, "") // spacer between comments
 		}
 		relative := formatRelativeTime(comment.CreatedAt)
-		lines = append(lines, MutedStyle.Render(relative+":"))
-		lines = append(lines, comment.Text)
+		timestampLine := relative + ":"
+		if comment.Resolved {
+			timestampLine += " [resolved]"
+		}
+		lines = append(lines, MutedStyle.Render(timestampLine))
+		if comment.Resolved {
+			lines = append(lines, MutedStyle.Render(comment.Text))
+		} else {
+			lines = append(lines, comment.Text)
+		}
 	}
 
 	return renderSidebarCard("Comments", strings.Join(lines, "\n"), width, false, "")

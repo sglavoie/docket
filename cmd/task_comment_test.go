@@ -268,6 +268,131 @@ func TestTaskCommentEdit(t *testing.T) {
 	})
 }
 
+func TestTaskCommentResolve(t *testing.T) {
+	t.Run("toggles resolved state", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		// Use existing task from test project and add comments
+		task := project.Tasks[0]
+		task.AddComment("First comment")
+		task.AddComment("Second comment")
+		err = deps.Repository.Save(project)
+		testutil.AssertNoError(t, err)
+
+		// Resolve first comment
+		err = runTaskCommentResolve(nil, []string{"1", "0"})
+		testutil.AssertNoError(t, err)
+
+		savedProject := deps.Repository.Projects[project.ID]
+		savedTask := savedProject.GetTaskByShortID(task.ShortID)
+		if !savedTask.Comments[0].Resolved {
+			t.Error("comment 0 should be resolved")
+		}
+		if savedTask.Comments[1].Resolved {
+			t.Error("comment 1 should not be resolved")
+		}
+
+		// Toggle back to unresolved
+		err = runTaskCommentResolve(nil, []string{"1", "0"})
+		testutil.AssertNoError(t, err)
+
+		savedProject = deps.Repository.Projects[project.ID]
+		savedTask = savedProject.GetTaskByShortID(task.ShortID)
+		if savedTask.Comments[0].Resolved {
+			t.Error("comment 0 should be unresolved after second toggle")
+		}
+	})
+
+	t.Run("rejects invalid index", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		task := project.Tasks[0]
+		task.AddComment("Comment")
+		err = deps.Repository.Save(project)
+		testutil.AssertNoError(t, err)
+
+		err = runTaskCommentResolve(nil, []string{"1", "999"})
+		if err == nil {
+			t.Error("runTaskCommentResolve() should error for invalid index")
+		}
+	})
+
+	t.Run("rejects nonexistent task", func(t *testing.T) {
+		deps, _ := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		err := runTaskCommentResolve(nil, []string{"999", "0"})
+		if err == nil {
+			t.Error("runTaskCommentResolve() should error for nonexistent task")
+		}
+	})
+}
+
+func TestTaskCommentList_Filtering(t *testing.T) {
+	t.Run("list uses real indices for resolved comments", func(t *testing.T) {
+		deps, project := testutil.SetupTestDepsWithProject(t, "Test Project")
+		defer deps.Cleanup()
+
+		viper.Set("config", deps.ConfigPath)
+		defer viper.Set("config", "")
+
+		manager := config.NewManager(deps.ConfigPath)
+		err := manager.Save(deps.Config)
+		testutil.AssertNoError(t, err)
+
+		oldStorageRepo := storage.DefaultRepository
+		storage.DefaultRepository = deps.Repository
+		defer func() { storage.DefaultRepository = oldStorageRepo }()
+
+		task := project.Tasks[0]
+		task.AddComment("Unresolved comment")
+		task.AddComment("Resolved comment")
+		task.Comments[1].Resolved = true
+		task.AddComment("Another unresolved")
+		err = deps.Repository.Save(project)
+		testutil.AssertNoError(t, err)
+
+		// Without --all flag, resolved comments should be filtered
+		commentListAllFlag = false
+		err = runTaskCommentList(nil, []string{"1"})
+		testutil.AssertNoError(t, err)
+
+		// With --all flag, all comments should be shown
+		commentListAllFlag = true
+		err = runTaskCommentList(nil, []string{"1"})
+		testutil.AssertNoError(t, err)
+		commentListAllFlag = false // Reset
+	})
+}
+
 // Note: Full integration testing of comment commands that require editor interaction
 // is not included as it would require mocking external.Editor.EditContent which
 // involves temporary file creation and user interaction simulation.

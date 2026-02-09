@@ -32,6 +32,7 @@ func ExtractCommentsFromDescription(task *models.Task) {
 	// Parse block lines into comments (header + accumulated text lines)
 	var currentCommentText strings.Builder
 	var currentCommentTime time.Time
+	var currentCommentResolved bool
 	var hasCurrentComment bool
 
 	flushComment := func() {
@@ -43,6 +44,7 @@ func ExtractCommentsFromDescription(task *models.Task) {
 			task.Comments = append(task.Comments, &models.Comment{
 				Text:      unescapeCommentText(text),
 				CreatedAt: currentCommentTime,
+				Resolved:  currentCommentResolved,
 			})
 		}
 	}
@@ -50,7 +52,15 @@ func ExtractCommentsFromDescription(task *models.Task) {
 	for _, bl := range blockLines {
 		if matches := commentHeaderRegex.FindStringSubmatch(bl.Trimmed); matches != nil {
 			flushComment()
-			if t, ok := ParseTimeField(matches[1]); ok {
+			// Parse header value: "2025-01-15 10:30" or "2025-01-15 10:30, resolved"
+			headerValue := matches[1]
+			currentCommentResolved = false
+			parts := strings.SplitN(headerValue, ",", 2)
+			timeStr := strings.TrimSpace(parts[0])
+			if len(parts) > 1 && strings.TrimSpace(parts[1]) == "resolved" {
+				currentCommentResolved = true
+			}
+			if t, ok := ParseTimeField(timeStr); ok {
 				currentCommentTime = t
 			} else {
 				currentCommentTime = time.Time{}
@@ -81,7 +91,11 @@ func WriteComments(task *models.Task) string {
 	b.WriteString("<!-- COMMENTS -->\n")
 
 	for _, comment := range task.Comments {
-		b.WriteString(fmt.Sprintf("<!-- comment: %s -->\n", comment.CreatedAt.Format(util.DateTimeFormat)))
+		resolvedSuffix := ""
+		if comment.Resolved {
+			resolvedSuffix = ", resolved"
+		}
+		b.WriteString(fmt.Sprintf("<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix))
 		// Escape HTML comment markers to prevent parser corruption
 		escapedText := escapeCommentText(comment.Text)
 		b.WriteString(escapedText)

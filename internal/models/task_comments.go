@@ -35,3 +35,25 @@ func (t *Task) ClearComments() {
 func (t *Task) CommentCount() int {
 	return len(t.Comments)
 }
+
+// ToggleCommentResolved flips the Resolved state of the comment at the given index.
+// Returns false if the index is out of range.
+func (t *Task) ToggleCommentResolved(index int) bool {
+	if index < 0 || index >= len(t.Comments) {
+		return false
+	}
+	t.Comments[index].Resolved = !t.Comments[index].Resolved
+	t.UpdatedAt = time.Now()
+	return true
+}
+
+// UnresolvedCommentCount returns the number of comments where Resolved is false.
+func (t *Task) UnresolvedCommentCount() int {
+	count := 0
+	for _, c := range t.Comments {
+		if !c.Resolved {
+			count++
+		}
+	}
+	return count
+}

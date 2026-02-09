@@ -272,6 +272,26 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.statusMessage = "Comment updated"
 		return true, defaultStatusTimeout()
 
+	case CommentResolvedMsg:
+		if msg.Task != nil && len(msg.Task.Comments) > 0 {
+			// Find the toggled comment from the comments view cursor
+			if view := m.views.Get(ViewTaskComments); view != nil {
+				if commentsView, ok := view.(*TaskCommentsModel); ok {
+					idx := commentsView.cursor
+					if idx >= 0 && idx < len(msg.Task.Comments) {
+						if msg.Task.Comments[idx].Resolved {
+							m.statusMessage = "Comment resolved"
+						} else {
+							m.statusMessage = "Comment unresolved"
+						}
+						return true, defaultStatusTimeout()
+					}
+				}
+			}
+		}
+		m.statusMessage = "Comment resolved"
+		return true, defaultStatusTimeout()
+
 	case ShowProjectSelectorForMoveMsg:
 		if msg.Task != nil && msg.SourceProject != nil {
 			projects := m.config.GetActiveProjects()

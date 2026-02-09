@@ -164,9 +164,14 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
 	}
 
-	// Comment indicator (compact)
+	// Comment indicator (compact, show unresolved/total when some are resolved)
 	if len(task.Comments) > 0 {
-		indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
+		unresolved := task.UnresolvedCommentCount()
+		if unresolved < len(task.Comments) {
+			indicators += MutedStyle.Render(fmt.Sprintf("💬%d/%d", unresolved, len(task.Comments))) + " "
+		} else {
+			indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
+		}
 	}
 
 	// Attachment indicator (compact)

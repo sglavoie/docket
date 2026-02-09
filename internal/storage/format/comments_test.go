@@ -279,6 +279,166 @@ func TestWriteComments_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestExtractCommentsFromDescription_Resolved(t *testing.T) {
+	t.Run("parses resolved comment header", func(t *testing.T) {
+		description := `Task description
+
+<!-- COMMENTS -->
+<!-- comment: 2025-01-15 10:30, resolved -->
+This is a resolved comment
+<!-- /COMMENTS -->`
+
+		task := &models.Task{Description: description}
+		ExtractCommentsFromDescription(task)
+
+		if len(task.Comments) != 1 {
+			t.Fatalf("got %d comments, want 1", len(task.Comments))
+		}
+		if !task.Comments[0].Resolved {
+			t.Error("expected comment to be resolved")
+		}
+		if task.Comments[0].Text != "This is a resolved comment" {
+			t.Errorf("Comment text = %q, want %q", task.Comments[0].Text, "This is a resolved comment")
+		}
+	})
+
+	t.Run("old format parses as unresolved", func(t *testing.T) {
+		description := `Task description
+
+<!-- COMMENTS -->
+<!-- comment: 2025-01-15 10:30 -->
+Old format comment
+<!-- /COMMENTS -->`
+
+		task := &models.Task{Description: description}
+		ExtractCommentsFromDescription(task)
+
+		if len(task.Comments) != 1 {
+			t.Fatalf("got %d comments, want 1", len(task.Comments))
+		}
+		if task.Comments[0].Resolved {
+			t.Error("expected old-format comment to be unresolved")
+		}
+	})
+
+	t.Run("mixed resolved and unresolved", func(t *testing.T) {
+		description := `Task description
+
+<!-- COMMENTS -->
+<!-- comment: 2025-01-15 10:30 -->
+Unresolved comment
+<!-- comment: 2025-01-16 14:20, resolved -->
+Resolved comment
+<!-- comment: 2025-01-17 09:00 -->
+Another unresolved
+<!-- /COMMENTS -->`
+
+		task := &models.Task{Description: description}
+		ExtractCommentsFromDescription(task)
+
+		if len(task.Comments) != 3 {
+			t.Fatalf("got %d comments, want 3", len(task.Comments))
+		}
+		if task.Comments[0].Resolved {
+			t.Error("comment 0 should be unresolved")
+		}
+		if !task.Comments[1].Resolved {
+			t.Error("comment 1 should be resolved")
+		}
+		if task.Comments[2].Resolved {
+			t.Error("comment 2 should be unresolved")
+		}
+	})
+}
+
+func TestWriteComments_Resolved(t *testing.T) {
+	t.Run("writes resolved suffix", func(t *testing.T) {
+		task := &models.Task{
+			Comments: []*models.Comment{
+				{
+					Text:      "Resolved comment",
+					CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
+					Resolved:  true,
+				},
+			},
+		}
+
+		got := WriteComments(task)
+		if !strings.Contains(got, "<!-- comment: 2025-01-15 10:30, resolved -->") {
+			t.Errorf("WriteComments() missing resolved suffix\ngot:\n%s", got)
+		}
+	})
+
+	t.Run("does not write resolved suffix for unresolved", func(t *testing.T) {
+		task := &models.Task{
+			Comments: []*models.Comment{
+				{
+					Text:      "A regular comment",
+					CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
+					Resolved:  false,
+				},
+			},
+		}
+
+		got := WriteComments(task)
+		if strings.Contains(got, ", resolved") {
+			t.Errorf("WriteComments() should not contain ', resolved' suffix\ngot:\n%s", got)
+		}
+	})
+}
+
+func TestWriteComments_ResolvedRoundTrip(t *testing.T) {
+	comments := []*models.Comment{
+		{
+			Text:      "Unresolved comment",
+			CreatedAt: time.Date(2025, 1, 15, 10, 30, 0, 0, time.Local),
+			Resolved:  false,
+		},
+		{
+			Text:      "Resolved comment",
+			CreatedAt: time.Date(2025, 1, 16, 14, 20, 0, 0, time.Local),
+			Resolved:  true,
+		},
+		{
+			Text:      "Another unresolved",
+			CreatedAt: time.Date(2025, 1, 17, 9, 15, 0, 0, time.Local),
+			Resolved:  false,
+		},
+	}
+
+	task := &models.Task{
+		Description: "Task description",
+		Comments:    comments,
+	}
+
+	commentBlock := WriteComments(task)
+
+	task2 := &models.Task{
+		Description: "Task description\n\n" + commentBlock,
+	}
+
+	ExtractCommentsFromDescription(task2)
+
+	if len(task2.Comments) != len(comments) {
+		t.Fatalf("got %d comments, want %d", len(task2.Comments), len(comments))
+	}
+
+	for i, got := range task2.Comments {
+		want := comments[i]
+		if got.Text != want.Text {
+			t.Errorf("Comment[%d].Text = %q, want %q", i, got.Text, want.Text)
+		}
+		if got.Resolved != want.Resolved {
+			t.Errorf("Comment[%d].Resolved = %v, want %v", i, got.Resolved, want.Resolved)
+		}
+		gotTime := got.CreatedAt.Format(util.DateTimeFormat)
+		wantTime := want.CreatedAt.Format(util.DateTimeFormat)
+		if gotTime != wantTime {
+			t.Errorf("Comment[%d].CreatedAt = %s, want %s", i, gotTime, wantTime)
+		}
+	}
+}
+
 func TestEscapeUnescapeCommentText(t *testing.T) {
 	tests := []struct {
 		name      string

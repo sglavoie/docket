@@ -224,6 +224,12 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+		case "r":
+			// Toggle resolved state
+			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+				return m, m.toggleResolved()
+			}
+
 		case "enter":
 			// Expand selected comment to view full text
 			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
@@ -486,6 +492,25 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 	})
 }
 
+func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
+	return func() tea.Msg {
+		if !m.task.ToggleCommentResolved(m.cursor) {
+			return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")}
+		}
+
+		// Create backup before saving
+		if err := storage.BackupProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
+		}
+
+		if err := storage.SaveProject(m.project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		}
+
+		return CommentResolvedMsg{Task: m.task}
+	}
+}
+
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	comment := m.task.Comments[m.editIndex]
 	editIndex := m.editIndex
@@ -588,7 +613,11 @@ func (m *TaskCommentsModel) View() string {
 		relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
 		timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
 
-		b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Comment [%d]", m.cursor)))
+		headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
+		if comment.Resolved {
+			headerLabel += " [resolved]"
+		}
+		b.WriteString(FieldLabelFocusedStyle.Render(headerLabel))
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render(timestamp))
 		b.WriteString("\n\n")
@@ -655,7 +684,12 @@ func (m *TaskCommentsModel) View() string {
 	}
 
 	// Comment count
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
+	resolvedCount := len(m.task.Comments) - m.task.UnresolvedCommentCount()
+	countStr := fmt.Sprintf("%d comment(s)", len(m.task.Comments))
+	if resolvedCount > 0 {
+		countStr += fmt.Sprintf(" (%d resolved)", resolvedCount)
+	}
+	b.WriteString(MutedStyle.Render(countStr))
 	b.WriteString("\n\n")
 
 	// Error display
@@ -696,6 +730,9 @@ func (m *TaskCommentsModel) View() string {
 
 			relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
 			timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
+			if comment.Resolved {
+				timestamp += " [resolved]"
+			}
 
 			var entry strings.Builder
 			entry.WriteString(cursor)
@@ -703,16 +740,19 @@ func (m *TaskCommentsModel) View() string {
 			if i == m.cursor {
 				entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", i)))
 				entry.WriteString(FieldLabelFocusedStyle.Render(timestamp))
+			} else if comment.Resolved {
+				entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", i)))
+				entry.WriteString(MutedStyle.Render(timestamp))
 			} else {
 				entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", i)))
 				entry.WriteString(MutedStyle.Render(timestamp))
 			}
 			entry.WriteString("\n")
 
-			lines := strings.Split(comment.Text, "\n")
-			for j, line := range lines {
+			commentLines := strings.Split(comment.Text, "\n")
+			for j, line := range commentLines {
 				if j > 1 {
-					remaining := len(lines) - 2
+					remaining := len(commentLines) - 2
 					entry.WriteString(fmt.Sprintf("      ... (%d more lines, press Enter to expand)\n", remaining))
 					break
 				}
@@ -720,7 +760,11 @@ func (m *TaskCommentsModel) View() string {
 					line = line[:maxLen-3] + "..."
 				}
 				entry.WriteString("      ")
-				entry.WriteString(line)
+				if comment.Resolved {
+					entry.WriteString(MutedStyle.Render(line))
+				} else {
+					entry.WriteString(line)
+				}
 				entry.WriteString("\n")
 			}
 
@@ -737,7 +781,7 @@ func (m *TaskCommentsModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a/n: add · e: edit · E: external editor · d/x: delete · Enter: expand · Esc: close"), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · Enter: expand · Esc: close"), "", m.width))
 
 	return b.String()
 }
