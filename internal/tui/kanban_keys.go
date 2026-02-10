@@ -80,8 +80,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePrefixKey(key)
 	}
 
-	// TAB toggles focus between kanban and details panes
-	if key == "tab" {
+	// TAB toggles focus between kanban and details panes (disabled in swimlane mode)
+	if key == "tab" && !m.swimlaneEnabled() {
 		m.detailsPaneFocused = !m.detailsPaneFocused
 		if m.detailsPaneFocused {
 			m.detailsScroll = 0 // Reset scroll when focusing details
@@ -105,40 +105,28 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "esc", "ctrl+k":
-		// Exit multi-select mode first
-		if m.multiSelectMode {
-			m.multiSelectMode = false
-			m.selectedTasks = make(map[string]bool)
-			m.statusMessage = ""
+	case "esc":
+		return m.handleEscapeSequence()
+
+	case "ctrl+k":
+		// In swimlane mode, ctrl+k navigates to previous swimlane row
+		if m.swimlaneEnabled() {
+			m.moveSwimlanePrev()
 			return m, nil
 		}
-		// Exit completed view mode
-		if m.completedViewMode {
-			m.completedViewMode = false
-			m.statusMessage = ""
+		return m.handleEscapeSequence()
+
+	case "ctrl+j":
+		// In swimlane mode, ctrl+j navigates to next swimlane row
+		if m.swimlaneEnabled() {
+			m.moveSwimlaneNext()
 			return m, nil
 		}
-		// Exit all view mode
-		if m.allViewMode {
-			m.allViewMode = false
-			m.statusMessage = ""
-			return m, nil
-		}
-		// Exit quick edit mode
-		if m.quickEdit != nil && m.quickEdit.IsActive() {
-			m.quickEdit.Exit()
-			m.statusMessage = ""
-			return m, nil
-		}
-		// Exit focus mode if active
-		if m.FocusedTask != nil {
-			m.exitFocusMode()
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseKanbanMsg{}
-		}
+		return m, nil
+
+	case "ctrl+h":
+		m.cycleSwimlaneBy()
+		return m, nil
 
 	case "q":
 		// Exit focus mode first if active
@@ -673,4 +661,41 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleEscapeSequence handles the shared escape/exit logic for esc and ctrl+k keys.
+func (m *KanbanViewModel) handleEscapeSequence() (tea.Model, tea.Cmd) {
+	// Exit multi-select mode first
+	if m.multiSelectMode {
+		m.multiSelectMode = false
+		m.selectedTasks = make(map[string]bool)
+		m.statusMessage = ""
+		return m, nil
+	}
+	// Exit completed view mode
+	if m.completedViewMode {
+		m.completedViewMode = false
+		m.statusMessage = ""
+		return m, nil
+	}
+	// Exit all view mode
+	if m.allViewMode {
+		m.allViewMode = false
+		m.statusMessage = ""
+		return m, nil
+	}
+	// Exit quick edit mode
+	if m.quickEdit != nil && m.quickEdit.IsActive() {
+		m.quickEdit.Exit()
+		m.statusMessage = ""
+		return m, nil
+	}
+	// Exit focus mode if active
+	if m.FocusedTask != nil {
+		m.exitFocusMode()
+		return m, nil
+	}
+	return m, func() tea.Msg {
+		return CloseKanbanMsg{}
+	}
 }

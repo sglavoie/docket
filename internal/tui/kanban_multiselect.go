@@ -36,8 +36,12 @@ func (m *KanbanViewModel) toggleTaskSelection() {
 	m.updateSelectionStatus()
 }
 
-// selectAllInColumn selects all visible tasks in the current column.
+// selectAllInColumn selects all visible tasks in the current column (or current cell in swimlane mode).
 func (m *KanbanViewModel) selectAllInColumn() {
+	if m.swimlaneEnabled() {
+		m.selectAllInSwimlaneCell()
+		return
+	}
 	section := m.CurrentSection()
 	visibleNodes := m.visibleNodesForSection(section)
 	for _, node := range visibleNodes {
@@ -46,8 +50,12 @@ func (m *KanbanViewModel) selectAllInColumn() {
 	m.updateSelectionStatus()
 }
 
-// selectAllAcrossColumns selects all visible tasks across all columns.
+// selectAllAcrossColumns selects all visible tasks across all columns (or all cells in swimlane mode).
 func (m *KanbanViewModel) selectAllAcrossColumns() {
+	if m.swimlaneEnabled() {
+		m.selectAllAcrossSwimlaneCells()
+		return
+	}
 	for _, def := range m.columnDefs {
 		visibleNodes := m.visibleNodesForSection(def.Key)
 		for _, node := range visibleNodes {

@@ -16,12 +16,26 @@ func (m *KanbanViewModel) findNextNonEmptyColumn(direction int) int {
 	return m.ActiveColumn
 }
 
-// currentVisibleNodes returns visible nodes for the active column.
+// currentVisibleNodes returns visible nodes for the active column (or active cell in swimlane mode).
 func (m *KanbanViewModel) currentVisibleNodes() []*KanbanNode {
+	if m.swimlaneEnabled() {
+		return m.swimlaneCurrentVisibleNodes()
+	}
 	return m.visibleNodesForSection(m.activeColumnKey())
 }
 
-// currentVisibleNodeCount returns the count of visible nodes in the active column.
+// currentVisibleNodeCount returns the count of visible nodes in the active column (or active cell in swimlane mode).
 func (m *KanbanViewModel) currentVisibleNodeCount() int {
+	if m.swimlaneEnabled() {
+		return len(m.swimlaneCurrentVisibleNodes())
+	}
 	return m.visibleNodeCount(m.activeColumnKey())
+}
+
+// CurrentColumnState returns the ColumnState for the currently active column (or active cell in swimlane mode).
+func (m *KanbanViewModel) CurrentColumnState() *ColumnState {
+	if m.swimlaneEnabled() {
+		return m.swimlaneCurrentColumnState()
+	}
+	return m.Columns[m.activeColumnKey()]
 }

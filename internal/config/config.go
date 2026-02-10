@@ -43,6 +43,7 @@ type ProjectViewState struct {
 	ViewMode         int      `json:"view_mode,omitempty"`          // View mode: 0=Active, 1=Inbox, 2=Backlog, 3=Completed
 	CustomSectionTab string   `json:"custom_section_tab,omitempty"` // Selected custom section tab name (empty = "All")
 	KanbanGroupBy    int      `json:"kanban_group_by,omitempty"`    // 0=Section, 1=Status, 2=Priority, 3=Type
+	KanbanSwimlaneBy *int     `json:"kanban_swimlane_by,omitempty"` // nil=off, 0-4=GroupBy modes
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.

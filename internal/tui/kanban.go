@@ -101,6 +101,15 @@ type KanbanViewModel struct {
 	groupBy    KanbanGroupBy
 	columnDefs []KanbanColumnDef
 
+	// Swimlane mode: second grouping dimension for 2D grid layout
+	swimlaneBy           KanbanGroupBy                        // -1 = off
+	swimlaneDefs         []KanbanColumnDef                    // row definitions (reuses KanbanColumnDef)
+	activeSwimlane       int                                  // index into swimlaneDefs
+	swimlaneScrollOffset int                                  // first visible row index
+	swimlaneTasks        map[string]map[string][]*models.Task // [laneKey][colKey]
+	swimlaneNodes        map[string]map[string][]*KanbanNode  // [laneKey][colKey]
+	swimlaneCells        map[string]map[string]*ColumnState   // [laneKey][colKey] cursor+scroll
+
 	// ActiveColumn tracks which column is currently focused (index into columnDefs)
 	ActiveColumn int
 
@@ -219,11 +228,23 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		}
 	}
 
+	// Load swimlane-by mode from config
+	swimlaneBy := KanbanSwimlanesOff
+	if cfg != nil && project != nil {
+		if vs, ok := cfg.ProjectViewStates[project.ID]; ok && vs.KanbanSwimlaneBy != nil {
+			sb := KanbanGroupBy(*vs.KanbanSwimlaneBy)
+			if sb >= 0 && sb < KanbanGroupBy(KanbanGroupByCount) && sb != groupBy {
+				swimlaneBy = sb
+			}
+		}
+	}
+
 	m := &KanbanViewModel{
 		Project:       project,
 		config:        cfg,
 		configManager: cfgManager,
 		groupBy:       groupBy,
+		swimlaneBy:    swimlaneBy,
 		Columns:       make(map[string]*ColumnState),
 		Tasks:         make(map[string][]*models.Task),
 		Nodes:         make(map[string][]*KanbanNode),
@@ -253,6 +274,12 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		m.Columns[def.Key] = &ColumnState{}
 		m.Tasks[def.Key] = []*models.Task{}
 		m.Nodes[def.Key] = []*KanbanNode{}
+	}
+
+	// Initialize swimlane if enabled
+	if m.swimlaneBy != KanbanSwimlanesOff {
+		m.swimlaneDefs = ColumnsForGroupBy(m.swimlaneBy, project)
+		m.initSwimlane2DMaps()
 	}
 
 	// Load tasks into columns by section, excluding completed tasks
@@ -296,6 +323,18 @@ func (m *KanbanViewModel) setGroupBy(gb KanbanGroupBy) {
 
 	m.ActiveColumn = 0
 	m.columnScrollOffset = 0
+
+	// If swimlane matches the new groupBy, disable it to avoid same-axis duplication
+	if m.swimlaneEnabled() && m.swimlaneBy == gb {
+		m.disableSwimlane()
+		return // disableSwimlane calls loadTasks
+	}
+
+	// Reinitialize swimlane 2D maps for new column defs
+	if m.swimlaneEnabled() {
+		m.initSwimlane2DMaps()
+	}
+
 	m.loadTasks()
 }
 
@@ -396,6 +435,12 @@ func (m *KanbanViewModel) ensureActiveColumnVisible() {
 // Filters are applied to determine which tasks are visible.
 // After filtering, hierarchical nodes are built for each column.
 func (m *KanbanViewModel) loadTasks() {
+	// Delegate to swimlane loader when swimlanes are active
+	if m.swimlaneEnabled() {
+		m.loadTasksWithSwimlanes()
+		return
+	}
+
 	// Reset custom section row focus if no custom sections exist
 	if m.customSectionTabs() == nil {
 		m.customSectionRowFocused = false
@@ -652,11 +697,6 @@ func (m *KanbanViewModel) visibleNodesForSection(section string) []*KanbanNode {
 		}
 	}
 	return visible
-}
-
-// CurrentColumnState returns the ColumnState for the currently active column.
-func (m *KanbanViewModel) CurrentColumnState() *ColumnState {
-	return m.Columns[m.activeColumnKey()]
 }
 
 // CurrentSection returns the key of the currently active column.
@@ -1038,10 +1078,10 @@ func (m *KanbanViewModel) positionCursorOnTask(task *models.Task, section string
 }
 
 // moveColumnLeft moves focus to the previous column on the left.
-// When all columns fit on screen, empty columns are skipped.
+// When all columns fit on screen, empty columns are skipped (except in swimlane mode).
 // When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnLeft() {
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > KanbanMaxVisibleColumns || m.swimlaneEnabled() {
 		if m.ActiveColumn > 0 {
 			m.ActiveColumn--
 		}
@@ -1052,10 +1092,10 @@ func (m *KanbanViewModel) moveColumnLeft() {
 }
 
 // moveColumnRight moves focus to the next column on the right.
-// When all columns fit on screen, empty columns are skipped.
+// When all columns fit on screen, empty columns are skipped (except in swimlane mode).
 // When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnRight() {
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > KanbanMaxVisibleColumns || m.swimlaneEnabled() {
 		if m.ActiveColumn < len(m.columnDefs)-1 {
 			m.ActiveColumn++
 		}

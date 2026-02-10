@@ -24,6 +24,11 @@ func (m *KanbanViewModel) View() string {
 		return m.renderAllView()
 	}
 
+	// Render swimlane board when swimlanes are active
+	if m.swimlaneEnabled() {
+		return m.renderSwimlaneBoardView()
+	}
+
 	var viewParts []string
 
 	// Render custom section tab bar above preset tabs (when custom sections exist and in section mode)

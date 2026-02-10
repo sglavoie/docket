@@ -34,8 +34,11 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all in column", Category: "Folds", Views: views},
 		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
 
-		// Group-By
+		// Group-By / Swimlanes
 		Keybinding{Key: "Ctrl+G", Description: "Cycle group-by (Section/Status/Priority/Type)", Category: "Views", Views: views},
+		Keybinding{Key: "Ctrl+H", Description: "Cycle swimlane mode", Category: "Views", Views: views},
+		Keybinding{Key: "Ctrl+J", Description: "Next swimlane row (when active)", Category: "Navigation", Views: views},
+		Keybinding{Key: "Ctrl+K", Description: "Previous swimlane row / close kanban", Category: "Navigation", Views: views},
 
 		// Views
 		Keybinding{Key: "gc", Description: "Completed view", Category: "Views", Views: views},
