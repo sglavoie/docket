@@ -99,6 +99,7 @@ const (
 	ViewDueDateTagFilterSelector
 	ViewDailyReviewTagFilterSelector
 	ViewRecentActivityTagFilterSelector
+	ViewKanbanDisplaySettings
 )
 
 // AppModel is the main TUI model with a view stack.

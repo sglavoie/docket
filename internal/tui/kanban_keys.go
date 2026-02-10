@@ -548,6 +548,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Display settings (Shift+O for Options)
+	case "O":
+		return m, func() tea.Msg {
+			return ShowKanbanDisplaySettingsMsg{}
+		}
+
 	// Blockers view (capital B since lowercase b is now prefix)
 	case "B":
 		return m, func() tea.Msg {

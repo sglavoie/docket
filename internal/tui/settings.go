@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-8, tab 3 → fields 9-10
-	tabFieldStart = []int{0, 3, 7, 9}
+	// Focus index ranges per tab: tab 0 → fields 0-2, tab 1 → fields 3-6, tab 2 → fields 7-8, tab 3 → fields 9-10, tab 4 → fields 11-12
+	tabFieldStart = []int{0, 3, 7, 9, 11}
 )
 
 // tabForField returns which tab a given focusIndex belongs to.
@@ -35,22 +35,24 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput           textinput.Model
-	contextInput          textinput.Model
-	undoDepthInput        textinput.Model
-	dueSoonInput          textinput.Model
-	futureInput           textinput.Model
-	oldDaysInput          textinput.Model
-	completedHoursInput   textinput.Model
-	recentActivityInput   textinput.Model
-	linkedTaskJump        bool // Whether to jump to new task after linked creation
-	attachmentEditorInput textinput.Model
-	codeEditorInput       textinput.Model
-	contexts              []string
-	contextCursor         int // -1 for custom mode, 0+ for selecting from list
+	editorInput            textinput.Model
+	contextInput           textinput.Model
+	undoDepthInput         textinput.Model
+	dueSoonInput           textinput.Model
+	futureInput            textinput.Model
+	oldDaysInput           textinput.Model
+	completedHoursInput    textinput.Model
+	recentActivityInput    textinput.Model
+	linkedTaskJump         bool // Whether to jump to new task after linked creation
+	attachmentEditorInput  textinput.Model
+	codeEditorInput        textinput.Model
+	kanbanMaxColumnsInput  textinput.Model
+	kanbanMaxSwimlaneInput textinput.Model
+	contexts               []string
+	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
 	activeTab     int
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=linkedTaskJump, 9=attachmentEditor, 10=codeEditor
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=dueSoon, 4=future, 5=oldDays, 6=completedHours, 7=recentActivityLimit, 8=linkedTaskJump, 9=attachmentEditor, 10=codeEditor, 11=kanbanMaxColumns, 12=kanbanMaxSwimlaneRows
 	validationErr string
 
 	width  int
@@ -124,6 +126,18 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	codeEditorInput.Width = 40
 	codeEditorInput.SetValue(cfg.CodeEditor) // Use raw value, not getter (to distinguish default from explicit)
 
+	kanbanMaxColumnsInput := textinput.New()
+	kanbanMaxColumnsInput.Placeholder = strconv.Itoa(config.DefaultKanbanMaxColumns)
+	kanbanMaxColumnsInput.CharLimit = 2
+	kanbanMaxColumnsInput.Width = 6
+	kanbanMaxColumnsInput.SetValue(strconv.Itoa(cfg.GetKanbanMaxColumns()))
+
+	kanbanMaxSwimlaneInput := textinput.New()
+	kanbanMaxSwimlaneInput.Placeholder = strconv.Itoa(config.DefaultKanbanMaxSwimlaneRows)
+	kanbanMaxSwimlaneInput.CharLimit = 2
+	kanbanMaxSwimlaneInput.Width = 6
+	kanbanMaxSwimlaneInput.SetValue(strconv.Itoa(cfg.GetKanbanMaxSwimlaneRows()))
+
 	// Get all existing contexts
 	contexts := cfg.GetAllContexts()
 
@@ -137,25 +151,27 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	}
 
 	return &SettingsModel{
-		config:                cfg,
-		configManager:         manager,
-		editorInput:           editorInput,
-		contextInput:          contextInput,
-		undoDepthInput:        undoDepthInput,
-		dueSoonInput:          dueSoonInput,
-		futureInput:           futureInput,
-		oldDaysInput:          oldDaysInput,
-		completedHoursInput:   completedHoursInput,
-		recentActivityInput:   recentActivityInput,
-		linkedTaskJump:        cfg.GetLinkedTaskJumpToNew(),
-		attachmentEditorInput: attachmentEditorInput,
-		codeEditorInput:       codeEditorInput,
-		contexts:              contexts,
-		contextCursor:         contextCursor,
-		focusIndex:            0,
-		activeTab:             0,
-		width:                 80,
-		height:                24,
+		config:                 cfg,
+		configManager:          manager,
+		editorInput:            editorInput,
+		contextInput:           contextInput,
+		undoDepthInput:         undoDepthInput,
+		dueSoonInput:           dueSoonInput,
+		futureInput:            futureInput,
+		oldDaysInput:           oldDaysInput,
+		completedHoursInput:    completedHoursInput,
+		recentActivityInput:    recentActivityInput,
+		linkedTaskJump:         cfg.GetLinkedTaskJumpToNew(),
+		attachmentEditorInput:  attachmentEditorInput,
+		codeEditorInput:        codeEditorInput,
+		kanbanMaxColumnsInput:  kanbanMaxColumnsInput,
+		kanbanMaxSwimlaneInput: kanbanMaxSwimlaneInput,
+		contexts:               contexts,
+		contextCursor:          contextCursor,
+		focusIndex:             0,
+		activeTab:              0,
+		width:                  80,
+		height:                 24,
 	}
 }
 
@@ -184,11 +200,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (11 fields total: 0-10)
+			// Move focus (13 fields total: 0-12)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 11
+				m.focusIndex = (m.focusIndex + 1) % 13
 			} else {
-				m.focusIndex = (m.focusIndex + 10) % 11 // +10 is -1 mod 11
+				m.focusIndex = (m.focusIndex + 12) % 13 // +12 is -1 mod 13
 			}
 
 			// Auto-switch tab to follow focus
@@ -256,6 +272,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.validationErr = err.Error()
 				return m, nil
 			}
+			if err := m.validateKanbanSettings(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
 			return m, m.saveSettings()
 
 		case "left", "h":
@@ -316,6 +336,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
 	case 10:
 		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
+	case 11:
+		m.kanbanMaxColumnsInput, cmd = m.kanbanMaxColumnsInput.Update(msg)
+	case 12:
+		m.kanbanMaxSwimlaneInput, cmd = m.kanbanMaxSwimlaneInput.Update(msg)
 	}
 
 	// Validate on each keystroke
@@ -349,6 +373,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
+	case 11, 12:
+		if err := m.validateKanbanSettings(); err != nil {
+			m.validationErr = err.Error()
+		}
 	}
 
 	return m, cmd
@@ -379,6 +407,10 @@ func (m *SettingsModel) blurCurrentField() {
 		m.attachmentEditorInput.Blur()
 	case 10:
 		m.codeEditorInput.Blur()
+	case 11:
+		m.kanbanMaxColumnsInput.Blur()
+	case 12:
+		m.kanbanMaxSwimlaneInput.Blur()
 	}
 }
 
@@ -407,6 +439,10 @@ func (m *SettingsModel) focusCurrentField() {
 		m.attachmentEditorInput.Focus()
 	case 10:
 		m.codeEditorInput.Focus()
+	case 11:
+		m.kanbanMaxColumnsInput.Focus()
+	case 12:
+		m.kanbanMaxSwimlaneInput.Focus()
 	}
 }
 
@@ -567,6 +603,34 @@ func (m *SettingsModel) validateCodeEditor() error {
 	return m.validateEditorCommand(editor)
 }
 
+func (m *SettingsModel) validateKanbanSettings() error {
+	colsStr := strings.TrimSpace(m.kanbanMaxColumnsInput.Value())
+	if colsStr == "" {
+		return fmt.Errorf("max columns is required")
+	}
+	cols, err := strconv.Atoi(colsStr)
+	if err != nil {
+		return fmt.Errorf("max columns must be a number")
+	}
+	if cols < 1 || cols > 20 {
+		return fmt.Errorf("max columns must be 1-20")
+	}
+
+	rowsStr := strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value())
+	if rowsStr == "" {
+		return fmt.Errorf("max swimlane rows is required")
+	}
+	rows, err := strconv.Atoi(rowsStr)
+	if err != nil {
+		return fmt.Errorf("max swimlane rows must be a number")
+	}
+	if rows < 1 || rows > 20 {
+		return fmt.Errorf("max swimlane rows must be 1-20")
+	}
+
+	return nil
+}
+
 func (m *SettingsModel) validateEditorCommand(editor string) error {
 	// Check if it's an absolute path
 	if strings.HasPrefix(editor, "/") {
@@ -616,6 +680,10 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
+		kanbanMaxCols, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxColumnsInput.Value()))
+		m.config.KanbanMaxColumns = &kanbanMaxCols
+		kanbanMaxRows, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value()))
+		m.config.KanbanMaxSwimlaneRows = &kanbanMaxRows
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}
@@ -833,6 +901,45 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 	return b.String()
 }
 
+func (m *SettingsModel) renderKanbanTab() string {
+	var b strings.Builder
+	const labelWidth = 22 // "Max Swimlane Rows: " padded
+	const indent = 24     // 2 + labelWidth
+
+	b.WriteString(SubtitleStyle.Render("Kanban Board Display"))
+	b.WriteString("\n\n")
+
+	// Max Columns
+	b.WriteString(renderFormLabelWithWidth("Max Columns: ", labelWidth, m.focusIndex == 11))
+	b.WriteString(m.kanbanMaxColumnsInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(1-20)"))
+	b.WriteString("\n")
+	if m.focusIndex == 11 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Maximum visible columns (auto-reduces for narrow terminals)", indent, m.focusIndex == 11))
+
+	b.WriteString("\n")
+
+	// Max Swimlane Rows
+	b.WriteString(renderFormLabelWithWidth("Max Swimlane Rows: ", labelWidth, m.focusIndex == 12))
+	b.WriteString(m.kanbanMaxSwimlaneInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(1-20)"))
+	b.WriteString("\n")
+	if m.focusIndex == 12 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Maximum visible swimlane rows when swimlanes are active", indent, m.focusIndex == 12))
+
+	return b.String()
+}
+
 func (m *SettingsModel) View() string {
 	var b strings.Builder
 
@@ -850,6 +957,8 @@ func (m *SettingsModel) View() string {
 		b.WriteString(m.renderBehaviorTab())
 	case 3:
 		b.WriteString(m.renderAttachmentsTab())
+	case 4:
+		b.WriteString(m.renderKanbanTab())
 	}
 
 	// Footer

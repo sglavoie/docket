@@ -115,6 +115,8 @@ type Config struct {
 	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
 	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
 	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
+	KanbanMaxColumns          *int                         `json:"kanban_max_columns,omitempty"`           // nil=6, max visible kanban columns
+	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
 }
 
 // NewConfig creates a new configuration with default values.

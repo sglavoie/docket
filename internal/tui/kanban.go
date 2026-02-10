@@ -56,11 +56,7 @@ const MaxKanbanDisplayLevel = 2
 
 // Minimum width for a Kanban column to remain legible.
 // This ensures column headers and truncated task titles are readable.
-const KanbanMinColumnWidth = 15
-
-// KanbanMaxVisibleColumns is the maximum number of columns visible at once.
-// When there are more columns, horizontal scrolling is used.
-const KanbanMaxVisibleColumns = 6
+const KanbanMinColumnWidth = 22
 
 // KanbanViewModel manages the Kanban board view state.
 // It displays non-completed tasks organized into five columns by section.
@@ -383,11 +379,55 @@ func (m *KanbanViewModel) columnIndexForKey(key string) int {
 	return -1
 }
 
+// maxVisibleColumns returns the effective max visible columns from config,
+// clamped by terminal width (columns never narrower than KanbanMinColumnWidth)
+// and total column count.
+func (m *KanbanViewModel) maxVisibleColumns() int {
+	maxCols := m.config.GetKanbanMaxColumns()
+
+	// Clamp by terminal width so columns never go below KanbanMinColumnWidth
+	if m.Width() > 0 {
+		fitCols := m.Width() / KanbanMinColumnWidth
+		if fitCols < 1 {
+			fitCols = 1
+		}
+		if maxCols > fitCols {
+			maxCols = fitCols
+		}
+	}
+
+	// Cap at total number of column definitions
+	if maxCols > len(m.columnDefs) {
+		maxCols = len(m.columnDefs)
+	}
+
+	if maxCols < 1 {
+		maxCols = 1
+	}
+	return maxCols
+}
+
+// maxVisibleSwimlanes returns the effective max visible swimlane rows from config,
+// capped at total swimlane count.
+func (m *KanbanViewModel) maxVisibleSwimlanes() int {
+	maxRows := m.config.GetKanbanMaxSwimlaneRows()
+
+	// Cap at total number of swimlane definitions
+	if maxRows > len(m.swimlaneDefs) {
+		maxRows = len(m.swimlaneDefs)
+	}
+
+	if maxRows < 1 {
+		maxRows = 1
+	}
+	return maxRows
+}
+
 // visibleColumnRange returns the start (inclusive) and end (exclusive) indices
 // of columns that should be rendered, based on the scroll offset.
 func (m *KanbanViewModel) visibleColumnRange() (int, int) {
 	total := len(m.columnDefs)
-	maxVisible := KanbanMaxVisibleColumns
+	maxVisible := m.maxVisibleColumns()
 	if total <= maxVisible {
 		return 0, total
 	}
@@ -409,7 +449,7 @@ func (m *KanbanViewModel) visibleColumnRange() (int, int) {
 // is within the visible range.
 func (m *KanbanViewModel) ensureActiveColumnVisible() {
 	total := len(m.columnDefs)
-	maxVisible := KanbanMaxVisibleColumns
+	maxVisible := m.maxVisibleColumns()
 	if total <= maxVisible {
 		m.columnScrollOffset = 0
 		return
@@ -724,10 +764,11 @@ func (m *KanbanViewModel) TasksForSection(section string) []*models.Task {
 func (m *KanbanViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 
-	// Use at most KanbanMaxVisibleColumns for width calculation
+	// Use at most maxVisibleColumns for width calculation
 	numColumns := len(m.columnDefs)
-	if numColumns > KanbanMaxVisibleColumns {
-		numColumns = KanbanMaxVisibleColumns
+	maxVisCols := m.maxVisibleColumns()
+	if numColumns > maxVisCols {
+		numColumns = maxVisCols
 	}
 	numGaps := numColumns - 1
 	availableWidth := width - numGaps
@@ -749,7 +790,7 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	if !IsSectionGroupBy(m.groupBy) {
 		tabBarHeight++ // Group-by indicator line
 	}
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > maxVisCols {
 		tabBarHeight++ // Horizontal scroll position line
 	}
 
@@ -1081,7 +1122,7 @@ func (m *KanbanViewModel) positionCursorOnTask(task *models.Task, section string
 // When all columns fit on screen, empty columns are skipped (except in swimlane mode).
 // When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnLeft() {
-	if len(m.columnDefs) > KanbanMaxVisibleColumns || m.swimlaneEnabled() {
+	if len(m.columnDefs) > m.maxVisibleColumns() || m.swimlaneEnabled() {
 		if m.ActiveColumn > 0 {
 			m.ActiveColumn--
 		}
@@ -1095,7 +1136,7 @@ func (m *KanbanViewModel) moveColumnLeft() {
 // When all columns fit on screen, empty columns are skipped (except in swimlane mode).
 // When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnRight() {
-	if len(m.columnDefs) > KanbanMaxVisibleColumns || m.swimlaneEnabled() {
+	if len(m.columnDefs) > m.maxVisibleColumns() || m.swimlaneEnabled() {
 		if m.ActiveColumn < len(m.columnDefs)-1 {
 			m.ActiveColumn++
 		}

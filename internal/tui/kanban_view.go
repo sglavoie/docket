@@ -84,7 +84,7 @@ func (m *KanbanViewModel) View() string {
 	visStart, visEnd := m.visibleColumnRange()
 
 	// Render scroll position line when horizontal scrolling is active
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > m.maxVisibleColumns() {
 		var scrollParts []string
 		if visStart > 0 {
 			scrollParts = append(scrollParts, fmt.Sprintf("◀ %d", visStart))
@@ -143,7 +143,7 @@ func (m *KanbanViewModel) View() string {
 	if !IsSectionGroupBy(m.groupBy) {
 		tabBarHeight++ // Group-by indicator line
 	}
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > m.maxVisibleColumns() {
 		tabBarHeight++ // Horizontal scroll position line
 	}
 	searchBarHeight := 0

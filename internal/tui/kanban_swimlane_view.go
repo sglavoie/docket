@@ -60,7 +60,7 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 
 	// Horizontal scroll indicator
 	visColStart, visColEnd := m.visibleColumnRange()
-	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+	if len(m.columnDefs) > m.maxVisibleColumns() {
 		var scrollParts []string
 		if visColStart > 0 {
 			scrollParts = append(scrollParts, fmt.Sprintf("◀ %d", visColStart))
@@ -100,7 +100,7 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 
 	// Vertical swimlane scroll indicator
 	laneStart, laneEnd := m.visibleSwimlaneRange()
-	if len(m.swimlaneDefs) > KanbanMaxVisibleSwimlanes {
+	if len(m.swimlaneDefs) > m.maxVisibleSwimlanes() {
 		// Reserve 1 line for scroll indicator at the bottom
 		availableHeight--
 	}
@@ -124,7 +124,7 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	}
 
 	// Vertical swimlane scroll indicator
-	if len(m.swimlaneDefs) > KanbanMaxVisibleSwimlanes {
+	if len(m.swimlaneDefs) > m.maxVisibleSwimlanes() {
 		var scrollParts []string
 		if laneStart > 0 {
 			scrollParts = append(scrollParts, fmt.Sprintf("▲ %d", laneStart))

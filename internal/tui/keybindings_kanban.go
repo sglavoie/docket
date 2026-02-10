@@ -154,6 +154,9 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "S", Description: "Score editor", Category: "Scoring", Views: views},
 		Keybinding{Key: "FS", Description: "Score threshold filter", Category: "Scoring", Views: views},
 
+		// Display
+		Keybinding{Key: "O", Description: "Display settings", Category: "Display", Views: views},
+
 		// Actions
 		Keybinding{Key: "ctrl+K", Description: "Return to project tree", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},

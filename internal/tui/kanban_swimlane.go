@@ -7,10 +7,6 @@ import (
 // KanbanSwimlanesOff is the sentinel value for swimlaneBy when swimlanes are disabled.
 const KanbanSwimlanesOff KanbanGroupBy = -1
 
-// KanbanMaxVisibleSwimlanes is the maximum number of swimlane rows visible at once.
-// When there are more rows, vertical scrolling is used.
-const KanbanMaxVisibleSwimlanes = 4
-
 // swimlaneEnabled returns true when swimlanes are active.
 func (m *KanbanViewModel) swimlaneEnabled() bool {
 	return m.swimlaneBy != KanbanSwimlanesOff
@@ -257,7 +253,7 @@ func (m *KanbanViewModel) moveSwimlanePrev() {
 // is within the visible range.
 func (m *KanbanViewModel) ensureActiveSwimlaneVisible() {
 	total := len(m.swimlaneDefs)
-	maxVisible := KanbanMaxVisibleSwimlanes
+	maxVisible := m.maxVisibleSwimlanes()
 	if total <= maxVisible {
 		m.swimlaneScrollOffset = 0
 		return
@@ -281,7 +277,7 @@ func (m *KanbanViewModel) ensureActiveSwimlaneVisible() {
 // of swimlane rows that should be rendered.
 func (m *KanbanViewModel) visibleSwimlaneRange() (int, int) {
 	total := len(m.swimlaneDefs)
-	maxVisible := KanbanMaxVisibleSwimlanes
+	maxVisible := m.maxVisibleSwimlanes()
 	if total <= maxVisible {
 		return 0, total
 	}

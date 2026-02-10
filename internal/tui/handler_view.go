@@ -911,6 +911,19 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowKanbanDisplaySettingsMsg:
+		editor := NewKanbanDisplaySettingsModel(m.config, m.configManager)
+		m.showView(ViewKanbanDisplaySettings, editor)
+		return true, nil
+
+	case KanbanDisplaySettingsDoneMsg:
+		m.popView()
+		// Recalculate column widths with updated config
+		if m.kanban != nil {
+			m.kanban.SetSize(m.width, m.height-2)
+		}
+		return true, nil
+
 	case CloseKanbanMsg:
 		m.popView()
 		m.kanban = nil
