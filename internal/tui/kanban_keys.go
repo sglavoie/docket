@@ -406,12 +406,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Select all in multi-select mode
+	// Select all in multi-select mode, or open all tasks view
 	case "A":
 		if m.multiSelectMode {
 			m.selectAllAcrossColumns()
+			return m, nil
 		}
-		return m, nil
+		return m, func() tea.Msg {
+			return ShowAllTasksMsg{}
+		}
 
 	// Tag manager
 	case "ctrl+t":

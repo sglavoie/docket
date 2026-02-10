@@ -295,6 +295,17 @@ func (m *AppModel) filterCommands() []Command {
 func (m *AppModel) viewCommands() []Command {
 	return []Command{
 		{
+			Name:        "all tasks",
+			Description: "View all tasks across every project",
+			Shortcut:    "A",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Aliases:     []string{"cross-project tasks", "every task"},
+			Handler: func() tea.Msg {
+				return ShowAllTasksMsg{}
+			},
+		},
+		{
 			Name:        "due date overview",
 			Description: "View tasks by due date",
 			Shortcut:    "ctrl+d",

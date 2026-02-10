@@ -294,6 +294,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowAllTasksMsg:
+		m.showView(ViewAllTasks, NewAllTasksViewModel(m.config))
+		return true, nil
+
+	case CloseAllTasksMsg:
+		m.popView()
+		return true, nil
+
+	case AllTasksSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
 	case ShowFocusViewMsg:
 		m.showView(ViewFocusView, NewFocusViewModel(m.config))
 		return true, nil
@@ -694,6 +711,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				_ = storage.LoadProject(m.kanban.Project)
 				m.kanban.loadTasks()
 			}
+			// Refresh all-tasks view if open
+			if m.allTasksView != nil {
+				m.allTasksView.loadAllTasks()
+			}
 			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)
 		}
 		return true, nil
@@ -1046,6 +1067,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowWeeklyReviewMsg{})
 	case ViewFocusView:
 		return m.handleViewMessages(ShowFocusViewMsg{})
+	case ViewAllTasks:
+		return m.handleViewMessages(ShowAllTasksMsg{})
 	case ViewDueDateOverview:
 		return m.handleViewMessages(ShowDueDateOverviewMsg{})
 	case ViewMetricsDashboard:

@@ -993,8 +993,12 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			if completedCount > 0 {
 				m.confirmAction = ConfirmArchiveTasks
 			}
+			return true, nil
 		}
-		return true, nil
+		// Otherwise open all tasks view
+		return true, func() tea.Msg {
+			return ShowAllTasksMsg{}
+		}
 	}
 	return false, nil
 }

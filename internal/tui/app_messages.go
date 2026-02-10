@@ -75,7 +75,10 @@ type CreateTaskMsg struct {
 }
 
 // EditTaskMsg opens the task editor for the given task.
-type EditTaskMsg struct{ Task *models.Task }
+type EditTaskMsg struct {
+	Task    *models.Task
+	Project *models.Project // Optional: when set, uses this project instead of currentProject
+}
 
 // TaskCreatedMsg signals a new task was created.
 type TaskCreatedMsg struct{ Task *models.Task }

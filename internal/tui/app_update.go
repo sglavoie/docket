@@ -107,6 +107,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.kanban != nil {
 			m.kanban.loadTasks()
 		}
+		// Refresh all-tasks if open (cross-project view may show stale data)
+		if m.allTasksView != nil {
+			m.allTasksView.loadAllTasks()
+		}
 		return m, defaultStatusTimeout()
 
 	case SaveErrorMsg:
@@ -266,6 +270,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewGlobalInboxProcessor:
 		if v := m.views.Get(ViewGlobalInboxProcessor); v != nil {
 			m.globalInboxProcessor = v.(*GlobalInboxProcessorModel)
+		}
+	case ViewAllTasks:
+		if v := m.views.Get(ViewAllTasks); v != nil {
+			m.allTasksView = v.(*AllTasksViewModel)
 		}
 	}
 

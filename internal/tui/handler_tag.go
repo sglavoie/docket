@@ -122,6 +122,14 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 					pv.clampCursor()
 				}
 			}
+		case ViewAllTasks:
+			if v := m.views.Get(ViewAllTasks); v != nil {
+				if atv, ok := v.(*AllTasksViewModel); ok {
+					atv.filter.Tags = tags
+					atv.applyFiltersAndGroup()
+					atv.clampCursor()
+				}
+			}
 		case ViewNotes:
 			if v := m.views.Get(ViewNotes); v != nil {
 				if notesView, ok := v.(*NotesViewModel); ok {

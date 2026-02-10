@@ -297,6 +297,8 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		{"Due Date Overview", "Tasks organized by due date", ViewDueDateOverview},
 		{"Priority View", "Tasks sorted by priority level", ViewPriorityView},
 		{"Blockers", "View blocked and blocking tasks", ViewBlockers},
+		{"All Tasks", "View tasks across all projects", ViewAllTasks},
+		{"Global Blockers", "Blockers across all projects", ViewGlobalBlockers},
 		{"Global Inbox", "Process unassigned tasks across projects", ViewGlobalInboxProcessor},
 		{"Global Tag Manager", "Manage tags across all projects", ViewGlobalTagManager},
 		{"Notes", "Project notes and documents", ViewNotes},

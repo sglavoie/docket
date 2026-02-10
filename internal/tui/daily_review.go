@@ -186,8 +186,8 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pendingPrefix = key
 		}
 		return m, nil
-	case "F":
-		m.pendingPrefix = "F"
+	case "F", "z":
+		m.pendingPrefix = key
 		return m, nil
 	case "c":
 		if m.getTaskAtCursor() != nil {
@@ -388,6 +388,25 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	}
 
 	switch prefix {
+	case "z":
+		switch key {
+		case "R":
+			// Expand all sections
+			m.collapsedSections = make(map[int]bool)
+			m.calculateNavigation()
+			m.clampCursor()
+			return m, nil
+		case "M":
+			// Collapse all visible sections
+			for _, section := range m.sectionOrder {
+				m.collapsedSections[int(section)] = true
+			}
+			m.calculateNavigation()
+			m.clampCursor()
+			return m, nil
+		}
+		return m, nil
+
 	case "F":
 		return m.handleDailyReviewFilterPrefix(key)
 	case "Ft":

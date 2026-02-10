@@ -207,6 +207,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowMetricsDashboardMsg{}
 			}
+		case "A":
+			return m, func() tea.Msg {
+				return ShowAllTasksMsg{}
+			}
 		case "B":
 			return m, func() tea.Msg {
 				return ShowGlobalBlockersMsg{}

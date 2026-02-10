@@ -57,6 +57,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab (All/Urgent/Upcoming/Backlog/Blocked)", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "Tab", Description: "Toggle waiting section", Category: "View", Views: views},
+		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 		Keybinding{Key: "r", Description: "Refresh (clears dismissed)", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
@@ -168,6 +169,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
+		Keybinding{Key: "zR/zM", Description: "Expand/collapse all sections", Category: "Navigation", Views: views},
 		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
 		Keybinding{Key: "sd", Description: "Focus Overdue", Category: "Sections", Views: views},
 		Keybinding{Key: "st", Description: "Focus Today", Category: "Sections", Views: views},
@@ -204,6 +206,7 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
+		Keybinding{Key: "zR/zM", Description: "Expand/collapse all sections", Category: "Navigation", Views: views},
 		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
 		Keybinding{Key: "sp", Description: "Focus Stale Projects", Category: "Sections", Views: views},
 		Keybinding{Key: "si", Description: "Focus Inbox Backlog", Category: "Sections", Views: views},
@@ -373,4 +376,41 @@ func (r *KeybindingRegistry) registerScoreProfileManagerBindings() {
 		Keybinding{Key: "u", Description: "Unassign from project", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
+}
+
+func (r *KeybindingRegistry) registerAllTasksBindings() {
+	views := []ViewType{ViewAllTasks}
+	r.add(
+		Keybinding{Key: "↑/k", Description: "Move up", Category: "Navigation", Views: views},
+		Keybinding{Key: "↓/j", Description: "Move down", Category: "Navigation", Views: views},
+		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "gp", Description: "Go to task in project tree", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "View task details", Category: "Actions", Views: views},
+		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
+		Keybinding{Key: "1-5", Description: "Sort (1=pri, 2=due, 3=new, 4=status, 5=score)", Category: "Actions", Views: views},
+		Keybinding{Key: "0", Description: "Reset sort", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
+		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
+		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
+		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
+		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Actions", Views: views},
+		Keybinding{Key: "v", Description: "Toggle multi-select", Category: "Actions", Views: views},
+		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score/project)", Category: "Filter", Views: views},
+		Keybinding{Key: "FP", Description: "Toggle project filter", Category: "Filter", Views: views},
+		Keybinding{Key: "n/N", Description: "Next/prev group header", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+g", Description: "Cycle grouping mode", Category: "View", Views: views},
+		Keybinding{Key: "Tab", Description: "Collapse/expand group", Category: "View", Views: views},
+		Keybinding{Key: "zR/zM", Description: "Expand/collapse all groups", Category: "View", Views: views},
+		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
+		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close all tasks view", Category: "View", Views: views},
+	)
+	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
 }

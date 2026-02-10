@@ -493,6 +493,12 @@ var (
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
 	}
 
+	// SectionFoldPrefixHints contains hints for the "z" (fold) prefix in section-based views.
+	SectionFoldPrefixHints = []PrefixHint{
+		{Key: "R", Description: "expand-all", Detail: "Expand all sections"},
+		{Key: "M", Description: "collapse-all", Detail: "Collapse all sections"},
+	}
+
 	// FilterTypePrefixHints contains hints for the "Ft" (filter type) sub-prefix.
 	FilterTypePrefixHints = []PrefixHint{
 		{Key: "e", Description: "epic"},

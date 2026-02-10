@@ -94,6 +94,7 @@ const (
 	ViewSaveViewInput
 	ViewMetricsDashboard
 	ViewKanbanDisplaySettings
+	ViewAllTasks
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -125,6 +126,7 @@ type AppModel struct {
 	globalInboxProcessor *GlobalInboxProcessorModel
 	kanban               *KanbanViewModel
 	metricsDashboard     *MetricsDashboardModel
+	allTasksView         *AllTasksViewModel
 
 	// Current project context
 	currentProject *models.Project
@@ -312,6 +314,7 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.workflowRulesCommands())
 	_ = m.commandRegistry.RegisterBatch(m.sidebarCommands())
 	_ = m.commandRegistry.RegisterBatch(m.scoringCommands())
+	_ = m.commandRegistry.RegisterBatch(m.allTasksCommands())
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

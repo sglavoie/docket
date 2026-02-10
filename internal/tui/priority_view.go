@@ -819,6 +819,12 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			m.statusMessage = m.confirm.Prompt()
 		}
 		return m, nil
+
+	// Open all tasks view
+	case "A":
+		return m, func() tea.Msg {
+			return ShowAllTasksMsg{}
+		}
 	}
 
 	return m, nil
@@ -1045,24 +1051,6 @@ func (m *PriorityViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 	}
 
 	result := applyClearDueDatePS(m.projectService, m.project, pt.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadActionableTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// toggleActive toggles the Active flag on the task at cursor.
-func (m *PriorityViewModel) toggleActive() (tea.Model, tea.Cmd) {
-	pt := m.getTaskAtCursor()
-	if pt == nil {
-		return m, nil
-	}
-
-	result := applyToggleActivePS(m.projectService, m.project, pt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

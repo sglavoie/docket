@@ -44,6 +44,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "gc", Description: "Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "g*", Description: "All view (all sections in one list)", Category: "Views", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Views", Views: views},
+		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "Focus on subtree (alias for zv)", Category: "Views", Views: views},
 

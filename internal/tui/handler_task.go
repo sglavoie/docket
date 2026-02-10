@@ -40,8 +40,12 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case EditTaskMsg:
-		if m.currentProject != nil && msg.Task != nil {
-			m.showView(ViewTaskEditor, NewTaskEditorModel(m.currentProject, msg.Task, m.config, m.configManager))
+		project := msg.Project
+		if project == nil {
+			project = m.currentProject
+		}
+		if project != nil && msg.Task != nil {
+			m.showView(ViewTaskEditor, NewTaskEditorModel(project, msg.Task, m.config, m.configManager))
 		}
 		return true, nil
 
