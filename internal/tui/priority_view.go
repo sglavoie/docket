@@ -594,8 +594,10 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 	case "enter":
 		if pt := m.getTaskAtCursor(); pt != nil {
+			project := m.project
+			task := pt.Task
 			return m, func() tea.Msg {
-				return GlowViewMsg{Task: pt.Task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

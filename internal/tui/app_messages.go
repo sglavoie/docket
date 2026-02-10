@@ -438,6 +438,19 @@ type CloseTaskActivityMsg struct{}
 // Task Attachments Messages (Show/Close Pattern)
 // =============================================================================
 
+// =============================================================================
+// Task Detail Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowTaskDetailMsg opens the full-screen task detail view.
+type ShowTaskDetailMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// CloseTaskDetailMsg closes the task detail view.
+type CloseTaskDetailMsg struct{}
+
 // ShowTaskAttachmentsMsg opens the attachments view for a task.
 type ShowTaskAttachmentsMsg struct {
 	Task    *models.Task

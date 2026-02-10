@@ -50,11 +50,12 @@ func (m *KanbanViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) 
 		}
 
 	case "enter":
-		// Open task detail view via glow
+		// Open task detail view
 		task := m.getSelectedTask()
 		if task != nil {
+			project := m.Project
 			return m, func() tea.Msg {
-				return GlowViewMsg{Task: task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

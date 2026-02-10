@@ -183,6 +183,12 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Filter Notes by Tags"
 	case ViewAsk:
 		status = "AI Assistant"
+	case ViewTaskDetail:
+		if m.currentProject != nil {
+			status = fmt.Sprintf("Task Detail: %s", m.currentProject.Name)
+		} else {
+			status = "Task Detail"
+		}
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply

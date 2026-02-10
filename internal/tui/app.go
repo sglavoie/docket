@@ -91,6 +91,7 @@ const (
 	ViewTaskTemplateEditor
 	ViewTaskTemplatePicker
 	ViewTaskChecklist
+	ViewTaskDetail
 	ViewScoreEditor
 	ViewScoreProfileManager
 	ViewSaveViewInput

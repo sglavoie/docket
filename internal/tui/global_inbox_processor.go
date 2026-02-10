@@ -261,8 +261,10 @@ func (m *GlobalInboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea
 
 	case "enter":
 		if git := m.getCurrentTask(); git != nil {
+			task := git.Task
+			project := git.Project
 			return m, func() tea.Msg {
-				return GlowViewMsg{Task: git.Task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

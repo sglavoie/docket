@@ -55,7 +55,7 @@ func (m *CommandPaletteModel) getTaskActions(item PaletteItem) []PaletteAction {
 			Icon:    "👁",
 			KeyHint: "v",
 			Handler: func() tea.Msg {
-				return GlowViewMsg{Task: task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			},
 		},
 		{

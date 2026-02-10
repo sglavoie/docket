@@ -137,6 +137,7 @@ func isTrackedView(vt ViewType) bool {
 		ViewProjectCycleManager,
 		ViewTaskComments,
 		ViewTaskChecklist,
+		ViewTaskDetail,
 		ViewTaskAttachments,
 		ViewTaskActivity,
 		ViewMetricsDashboard:
@@ -149,7 +150,7 @@ func isTrackedView(vt ViewType) bool {
 // isTaskScopedView returns true if the view is scoped to a specific task.
 func isTaskScopedView(vt ViewType) bool {
 	switch vt {
-	case ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments, ViewTaskActivity:
+	case ViewTaskComments, ViewTaskChecklist, ViewTaskDetail, ViewTaskAttachments, ViewTaskActivity:
 		return true
 	default:
 		return false

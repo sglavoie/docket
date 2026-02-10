@@ -257,8 +257,9 @@ func (m *InboxProcessorModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 
 	case "enter":
 		if task := m.getCurrentTask(); task != nil {
+			project := m.project
 			return m, func() tea.Msg {
-				return GlowViewMsg{Task: task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

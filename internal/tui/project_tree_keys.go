@@ -718,9 +718,10 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 	case "enter":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
+			project := m.project
 			m.clearSelection()
 			return true, func() tea.Msg {
-				return GlowViewMsg{Task: task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return true, nil

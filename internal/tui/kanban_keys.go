@@ -284,12 +284,13 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Open task detail view via glow
+	// Open task detail view
 	case "enter":
 		task := m.getSelectedTask()
 		if task != nil {
+			project := m.Project
 			return m, func() tea.Msg {
-				return GlowViewMsg{Task: task}
+				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
 		}
 		return m, nil

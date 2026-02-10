@@ -216,6 +216,17 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case UndoCompletedMsg:
 		return true, m.handleWithRefresh(false, false, "")
 
+	case ShowTaskDetailMsg:
+		if msg.Task != nil && msg.Project != nil {
+			m.lastNavigatedTaskID = msg.Task.ID
+			m.showView(ViewTaskDetail, NewTaskDetailModel(msg.Task, msg.Project, m.config, m.configManager))
+		}
+		return true, nil
+
+	case CloseTaskDetailMsg:
+		m.popView()
+		return true, nil
+
 	case ShowTaskCommentsMsg:
 		if msg.Task != nil && msg.Project != nil {
 			m.lastNavigatedTaskID = msg.Task.ID
