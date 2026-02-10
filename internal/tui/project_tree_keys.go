@@ -57,8 +57,9 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "#":
 		// Tag filter selector
+		tags := buildTagList(m)
 		return m, func() tea.Msg {
-			return ShowTagFilterSelectorMsg{ProjectTree: m}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
 	case "@":
 		// Section filter selector
@@ -574,8 +575,9 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
 			}
 		}
+		tags := buildTagList(m)
 		return true, func() tea.Msg {
-			return ShowTagFilterSelectorMsg{ProjectTree: m}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
 
 	case "N":

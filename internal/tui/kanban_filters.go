@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -26,15 +27,6 @@ const (
 	kanbanTabTasks      = 6
 	kanbanTabBugs       = 7
 )
-
-// ShowKanbanTagFilterSelectorMsg requests opening the tag filter selector for kanban.
-type ShowKanbanTagFilterSelectorMsg struct{}
-
-// KanbanTagFilterSelectorDoneMsg is sent when the kanban tag filter selector completes.
-type KanbanTagFilterSelectorDoneMsg struct {
-	SelectedTags []string
-	Canceled     bool
-}
 
 // KanbanFilterState contains filter options for the kanban view.
 // Unlike project tree, kanban doesn't need section filter (columns ARE sections)
@@ -437,8 +429,9 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		return m, nil
 	case "#":
 		// Tag filter selector
+		tags := buildKanbanTagList(m)
 		return m, func() tea.Msg {
-			return ShowKanbanTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
 		}
 	case "d":
 		// Open due-date sub-popup
@@ -841,4 +834,28 @@ func (m *KanbanViewModel) handleKanbanFilterAttrPointsPrefix(key string) (tea.Mo
 	}
 	m.loadTasks()
 	return m, nil
+}
+
+// buildKanbanTagList scans all non-completed tasks and builds a sorted list of tags with counts.
+func buildKanbanTagList(kanban *KanbanViewModel) []TagInfo {
+	tagCounts := make(map[string]int)
+	for _, task := range kanban.Project.Tasks {
+		if task.Status.IsComplete() {
+			continue
+		}
+		for _, tag := range task.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }

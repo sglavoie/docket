@@ -2,11 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -202,8 +204,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, m.showTagSelector()
 		case "T":
+			tags := buildNoteFilterTagList(m.project, m.notesDir)
+			filterTags := m.filterTags
 			return m, func() tea.Msg {
-				return ShowNoteTagFilterSelectorMsg{Project: m.project, NotesDir: m.notesDir}
+				return ShowTagFilterMsg{Tags: tags, Selected: filterTags, Source: ViewNotes, Title: "Filter Notes by Tags"}
 			}
 		case "C":
 			if len(m.filterTags) > 0 {
@@ -334,6 +338,33 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.renameInput, cmd = m.renameInput.Update(msg)
 		return m, cmd
 	}
+}
+
+// buildNoteFilterTagList scans all notes and builds a sorted list of tags with counts.
+func buildNoteFilterTagList(project *models.Project, notesDir string) []TagInfo {
+	tagCounts := make(map[string]int)
+	var notes []*models.Note
+	if project != nil {
+		notes, _ = storage.ListNotes(project)
+	} else if notesDir != "" {
+		notes, _ = storage.ListNotesFrom(notesDir)
+	}
+	for _, n := range notes {
+		for _, tag := range n.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }
 
 // startRename begins inline rename mode for the current note.

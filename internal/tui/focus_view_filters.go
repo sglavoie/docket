@@ -1,17 +1,10 @@
 package tui
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// ShowFocusTagFilterSelectorMsg requests opening the tag filter selector for focus view.
-type ShowFocusTagFilterSelectorMsg struct{}
-
-// FocusTagFilterSelectorDoneMsg is sent when the focus tag filter selector completes.
-type FocusTagFilterSelectorDoneMsg struct {
-	SelectedTags []string
-	Canceled     bool
-}
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.
 func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd) {
@@ -32,8 +25,9 @@ func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd
 		m.pendingPrefix = "Fs"
 		return m, nil
 	case "#":
+		tags := buildFocusTagList(m)
 		return m, func() tea.Msg {
-			return ShowFocusTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
 		}
 	case "a":
 		m.pendingPrefix = "Fa"
@@ -133,4 +127,25 @@ func (m *FocusViewModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *FocusViewModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
+}
+
+// buildFocusTagList scans all focus tasks and builds a sorted list of tags with counts.
+func buildFocusTagList(focus *FocusViewModel) []TagInfo {
+	tagCounts := make(map[string]int)
+	for _, ft := range focus.tasks {
+		for _, tag := range ft.Task.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }

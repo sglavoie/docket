@@ -69,13 +69,10 @@ const (
 	ViewLinkedTaskCreator
 	ViewLinkedTaskSelector
 	ViewCrossProjectLinker
-	ViewKanbanTagFilterSelector
-	ViewPriorityTagFilterSelector
 	ViewNotes
 	ViewNoteTaskLinker
 	ViewNoteTagSelector
 	ViewNotesSearch
-	ViewNoteTagFilterSelector
 	ViewTaskActivity
 	ViewRecentActivity
 	ViewRecentActivityPreview
@@ -96,10 +93,6 @@ const (
 	ViewScoreProfileManager
 	ViewSaveViewInput
 	ViewMetricsDashboard
-	ViewFocusTagFilterSelector
-	ViewDueDateTagFilterSelector
-	ViewDailyReviewTagFilterSelector
-	ViewRecentActivityTagFilterSelector
 	ViewKanbanDisplaySettings
 )
 
@@ -575,6 +568,84 @@ func (m *AppModel) restoreProjectTreeState() {
 
 	m.projectTree.updateVisibility()
 	m.projectTree.clampCursor()
+}
+
+// saveKanbanState persists the current kanban filter/tab state to config.
+func (m *AppModel) saveKanbanState() {
+	if m.kanban == nil || m.currentProject == nil {
+		return
+	}
+
+	var filterTags []string
+	for tag := range m.kanban.filter.Tags {
+		filterTags = append(filterTags, tag)
+	}
+
+	state := m.config.ProjectViewStates[m.currentProject.ID]
+	state.KanbanFilterType = string(m.kanban.filter.Type)
+	state.KanbanFilterStatus = string(m.kanban.filter.Status)
+	state.KanbanFilterPriority = m.kanban.filter.Priority
+	state.KanbanFilterTags = filterTags
+	state.KanbanFilterDueDate = int(m.kanban.filter.DueDate)
+	state.KanbanFilterScoreMin = m.kanban.filter.ScoreMin
+	state.KanbanActiveTab = m.kanban.activeTab
+
+	if len(m.kanban.filter.Attrs) > 0 {
+		state.KanbanFilterAttrs = make(map[string]string)
+		for k, v := range m.kanban.filter.Attrs {
+			state.KanbanFilterAttrs[k] = v
+		}
+	} else {
+		state.KanbanFilterAttrs = nil
+	}
+
+	m.config.ProjectViewStates[m.currentProject.ID] = state
+	_ = m.configManager.Save(m.config)
+}
+
+// restoreKanbanState applies saved kanban filter state from config.
+func (m *AppModel) restoreKanbanState() {
+	if m.kanban == nil || m.currentProject == nil {
+		return
+	}
+	state, exists := m.config.GetProjectViewState(m.currentProject.ID)
+	if !exists {
+		return
+	}
+
+	m.kanban.filter.Type = models.TaskType(state.KanbanFilterType)
+	m.kanban.filter.Status = models.TaskStatus(state.KanbanFilterStatus)
+	m.kanban.filter.Priority = state.KanbanFilterPriority
+	m.kanban.filter.DueDate = DueDateFilter(state.KanbanFilterDueDate)
+	m.kanban.filter.ScoreMin = state.KanbanFilterScoreMin
+	m.kanban.activeTab = state.KanbanActiveTab
+
+	// Restore attribute filters
+	if len(state.KanbanFilterAttrs) > 0 {
+		m.kanban.filter.Attrs = make(map[string]string)
+		for k, v := range state.KanbanFilterAttrs {
+			m.kanban.filter.Attrs[k] = v
+		}
+	}
+
+	// Restore tags - validate they still exist in the project
+	m.kanban.filter.Tags = make(map[string]bool)
+	if len(state.KanbanFilterTags) > 0 {
+		existingTags := make(map[string]bool)
+		for _, task := range m.kanban.Project.Tasks {
+			for _, tag := range task.Tags {
+				existingTags[tag] = true
+			}
+		}
+		for _, tag := range state.KanbanFilterTags {
+			if existingTags[tag] {
+				m.kanban.filter.Tags[tag] = true
+			}
+		}
+	}
+
+	// Reload tasks with restored filters applied
+	m.kanban.loadTasks()
 }
 
 // errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.

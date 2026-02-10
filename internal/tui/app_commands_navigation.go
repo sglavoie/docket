@@ -136,7 +136,11 @@ func (m *AppModel) filterCommands() []Command {
 			Category:    CategoryFilters,
 			Views:       []ViewType{ViewProjectTree},
 			Handler: func() tea.Msg {
-				return ShowTagFilterSelectorMsg{ProjectTree: m.projectTree}
+				if m.projectTree == nil {
+					return nil
+				}
+				tags := buildTagList(m.projectTree)
+				return ShowTagFilterMsg{Tags: tags, Selected: m.projectTree.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 			},
 		},
 		{

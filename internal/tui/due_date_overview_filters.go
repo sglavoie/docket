@@ -1,17 +1,10 @@
 package tui
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// ShowDueDateTagFilterSelectorMsg requests opening the tag filter selector for due date overview.
-type ShowDueDateTagFilterSelectorMsg struct{}
-
-// DueDateTagFilterSelectorDoneMsg is sent when the due date tag filter selector completes.
-type DueDateTagFilterSelectorDoneMsg struct {
-	SelectedTags []string
-	Canceled     bool
-}
 
 // handleDueDateFilterPrefix handles the second key after pressing F (filter prefix) in due date overview.
 func (m *DueDateOverviewModel) handleDueDateFilterPrefix(key string) (tea.Model, tea.Cmd) {
@@ -32,8 +25,9 @@ func (m *DueDateOverviewModel) handleDueDateFilterPrefix(key string) (tea.Model,
 		m.pendingPrefix = "Fs"
 		return m, nil
 	case "#":
+		tags := buildDueDateTagList(m)
 		return m, func() tea.Msg {
-			return ShowDueDateTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDueDateOverview, Title: "Filter by Tags"}
 		}
 	case "a":
 		m.pendingPrefix = "Fa"
@@ -133,4 +127,28 @@ func (m *DueDateOverviewModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *DueDateOverviewModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
+}
+
+// buildDueDateTagList scans all tasks in the due date groups and builds a sorted tag list.
+func buildDueDateTagList(ddo *DueDateOverviewModel) []TagInfo {
+	tagCounts := make(map[string]int)
+	groups := [][]DueDateTask{ddo.overdue, ddo.today, ddo.thisWeek, ddo.later}
+	for _, group := range groups {
+		for _, dt := range group {
+			for _, tag := range dt.Task.Tags {
+				tagCounts[tag]++
+			}
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }

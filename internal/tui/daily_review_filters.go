@@ -1,17 +1,10 @@
 package tui
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// ShowDailyReviewTagFilterSelectorMsg requests opening the tag filter selector for daily review.
-type ShowDailyReviewTagFilterSelectorMsg struct{}
-
-// DailyReviewTagFilterSelectorDoneMsg is sent when the daily review tag filter selector completes.
-type DailyReviewTagFilterSelectorDoneMsg struct {
-	SelectedTags []string
-	Canceled     bool
-}
 
 // handleDailyReviewFilterPrefix handles the second key after pressing F (filter prefix) in daily review.
 // Omits DueDate (sections group by due urgency) and Status (sections group by status).
@@ -30,8 +23,9 @@ func (m *DailyReviewModel) handleDailyReviewFilterPrefix(key string) (tea.Model,
 		m.pendingPrefix = "Ft"
 		return m, nil
 	case "#":
+		tags := buildDailyReviewTagList(m)
 		return m, func() tea.Msg {
-			return ShowDailyReviewTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDailyReview, Title: "Filter by Tags"}
 		}
 	case "a":
 		m.pendingPrefix = "Fa"
@@ -122,4 +116,31 @@ func (m *DailyReviewModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *DailyReviewModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
+}
+
+// buildDailyReviewTagList scans all tasks in all review sections and builds a sorted tag list.
+func buildDailyReviewTagList(dr *DailyReviewModel) []TagInfo {
+	tagCounts := make(map[string]int)
+	sections := [][]DailyReviewTask{
+		dr.overdue, dr.dueToday, dr.dueSoon, dr.dueLater,
+		dr.future, dr.inProgress, dr.blocked, dr.old, dr.completed,
+	}
+	for _, section := range sections {
+		for _, dt := range section {
+			for _, tag := range dt.Task.Tags {
+				tagCounts[tag]++
+			}
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }

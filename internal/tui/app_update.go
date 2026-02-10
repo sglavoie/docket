@@ -202,8 +202,9 @@ func (m *AppModel) handleEscKey() bool {
 				m.dashboard.Refresh(m.config)
 			}
 		}
-		// Refresh project tree when closing Kanban since tasks may have changed
+		// Persist kanban filter state and refresh project tree when closing Kanban
 		if closingView == ViewKanban {
+			m.saveKanbanState()
 			m.reloadAndRefreshProjectTree()
 		}
 		// Restore previous project when popping a stacked project tree

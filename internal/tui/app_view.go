@@ -147,10 +147,6 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Tags"
 	case ViewTagFilterSelector:
 		status = "Filter by Tags"
-	case ViewKanbanTagFilterSelector:
-		status = "Kanban: Filter by Tags"
-	case ViewPriorityTagFilterSelector:
-		status = "Priority: Filter by Tags"
 	case ViewSectionFilterSelector:
 		status = "Filter by Sections"
 	case ViewSectionPicker:
@@ -179,8 +175,6 @@ func (m *AppModel) renderStatusBar() string {
 		status = "Global Notes"
 	case ViewNotesSearch:
 		status = "Notes Search"
-	case ViewNoteTagFilterSelector:
-		status = "Filter Notes by Tags"
 	case ViewAsk:
 		status = "AI Assistant"
 	case ViewTaskDetail:

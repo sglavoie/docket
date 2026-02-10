@@ -6,42 +6,51 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// TagFilterSelectorModel allows selecting multiple tags to filter by.
-type TagFilterSelectorModel struct {
-	*BasePicker[TagInfo]
-	projectTree *ProjectTreeModel
+// ShowTagFilterMsg is the unified message to open the tag filter selector.
+// Callers pre-build the tag list and pass currently selected tags.
+type ShowTagFilterMsg struct {
+	Tags     []TagInfo
+	Selected map[string]bool
+	Source   ViewType
+	Title    string
 }
 
-// ShowTagFilterSelectorMsg is sent to open the tag filter selector.
-type ShowTagFilterSelectorMsg struct {
-	ProjectTree *ProjectTreeModel
-}
-
-// TagFilterSelectorDoneMsg is sent when the tag filter selector is done.
-type TagFilterSelectorDoneMsg struct {
+// TagFilterDoneMsg is the unified response from the tag filter selector.
+// Source identifies which view opened it so the handler can route the result.
+type TagFilterDoneMsg struct {
 	SelectedTags []string
 	Canceled     bool
+	Source       ViewType
 }
 
-// NewTagFilterSelectorModel creates a new tag filter selector.
-func NewTagFilterSelectorModel(pt *ProjectTreeModel) *TagFilterSelectorModel {
-	tags := buildTagList(pt)
+// TagFilterSelectorModel is the unified tag filter selector.
+type TagFilterSelectorModel struct {
+	*BasePicker[TagInfo]
+	source ViewType
+}
 
-	picker := NewBasePicker(tags, PickerConfig{
-		Title:          "Filter by Tags",
-		EmptyMessage:   "No tags in project",
+// NewTagFilterSelectorModel creates a unified tag filter selector from a ShowTagFilterMsg.
+func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
+	title := msg.Title
+	if title == "" {
+		title = "Filter by Tags"
+	}
+
+	picker := NewBasePicker(msg.Tags, PickerConfig{
+		Title:          title,
+		EmptyMessage:   "No tags found",
 		NoMatchMessage: "No matching tags",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})
 
-	for tag := range pt.filter.Tags {
+	for tag := range msg.Selected {
 		picker.PreSelectByID(tag)
 	}
 
 	return &TagFilterSelectorModel{
-		BasePicker:  picker,
-		projectTree: pt,
+		BasePicker: picker,
+		source:     msg.Source,
 	}
 }
 
@@ -78,10 +87,11 @@ func (m *TagFilterSelectorModel) Init() tea.Cmd {
 
 // Update handles messages.
 func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	source := m.source
 	cmd := filterSelectorUpdate(m.BasePicker, msg,
-		func() tea.Msg { return TagFilterSelectorDoneMsg{Canceled: true} },
+		func() tea.Msg { return TagFilterDoneMsg{Canceled: true, Source: source} },
 		func(selected []string) tea.Msg {
-			return TagFilterSelectorDoneMsg{SelectedTags: selected, Canceled: false}
+			return TagFilterDoneMsg{SelectedTags: selected, Canceled: false, Source: source}
 		},
 	)
 	return m, cmd

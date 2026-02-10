@@ -1,17 +1,10 @@
 package tui
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
-
-// ShowRecentActivityTagFilterSelectorMsg requests opening the tag filter selector for recent activity.
-type ShowRecentActivityTagFilterSelectorMsg struct{}
-
-// RecentActivityTagFilterSelectorDoneMsg is sent when the recent activity tag filter selector completes.
-type RecentActivityTagFilterSelectorDoneMsg struct {
-	SelectedTags []string
-	Canceled     bool
-}
 
 // handleRecentActivityFilterPrefix handles the second key after pressing F (filter prefix) in recent activity.
 func (m *RecentActivityModel) handleRecentActivityFilterPrefix(key string) (tea.Model, tea.Cmd) {
@@ -32,8 +25,9 @@ func (m *RecentActivityModel) handleRecentActivityFilterPrefix(key string) (tea.
 		m.pendingPrefix = "Fs"
 		return m, nil
 	case "#":
+		tags := buildRecentActivityTagList(m)
 		return m, func() tea.Msg {
-			return ShowRecentActivityTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewRecentActivity, Title: "Filter by Tags"}
 		}
 	case "d":
 		m.pendingPrefix = "Fd"
@@ -145,4 +139,25 @@ func (m *RecentActivityModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *RecentActivityModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
+}
+
+// buildRecentActivityTagList scans all tasks and builds a sorted tag list.
+func buildRecentActivityTagList(ra *RecentActivityModel) []TagInfo {
+	tagCounts := make(map[string]int)
+	for _, dt := range ra.tasks {
+		for _, tag := range dt.Task.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }

@@ -334,8 +334,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
 			}
 		}
+		tags := buildKanbanTagList(m)
 		return m, func() tea.Msg {
-			return ShowKanbanTagFilterSelectorMsg{}
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
 		}
 
 	case "/":

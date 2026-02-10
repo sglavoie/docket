@@ -907,6 +907,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Project != nil {
 			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
 			m.kanban.projectTree = m.projectTree
+			m.restoreKanbanState()
 			m.showView(ViewKanban, m.kanban)
 		}
 		return true, nil

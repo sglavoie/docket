@@ -55,156 +55,78 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, m.applyTagsToTasks(msg.Tasks, msg.Project, msg.SelectedTags)
 
-	case ShowTagFilterSelectorMsg:
-		if msg.ProjectTree != nil {
-			m.showView(ViewTagFilterSelector, NewTagFilterSelectorModel(msg.ProjectTree))
-		}
+	// Unified tag filter selector: single Show handler for all views
+	case ShowTagFilterMsg:
+		m.showView(ViewTagFilterSelector, NewTagFilterSelectorModel(msg))
 		return true, nil
 
-	case TagFilterSelectorDoneMsg:
+	// Unified tag filter done: dispatch by Source to the originating view
+	case TagFilterDoneMsg:
 		m.popView()
-		if !msg.Canceled && m.projectTree != nil {
-			m.projectTree.filter.Tags = make(map[string]bool)
-			for _, tag := range msg.SelectedTags {
-				m.projectTree.filter.Tags[tag] = true
+		if msg.Canceled {
+			return true, nil
+		}
+		tags := make(map[string]bool)
+		for _, tag := range msg.SelectedTags {
+			tags[tag] = true
+		}
+		switch msg.Source {
+		case ViewProjectTree:
+			if m.projectTree != nil {
+				m.projectTree.filter.Tags = tags
+				m.projectTree.updateVisibility()
+				m.projectTree.clampCursor()
 			}
-			m.projectTree.updateVisibility()
-			m.projectTree.clampCursor()
-		}
-		return true, nil
-
-	case ShowKanbanTagFilterSelectorMsg:
-		if m.kanban != nil {
-			m.showView(ViewKanbanTagFilterSelector, NewKanbanTagFilterSelectorModel(m.kanban))
-		}
-		return true, nil
-
-	case KanbanTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled && m.kanban != nil {
-			m.kanban.filter.Tags = make(map[string]bool)
-			for _, tag := range msg.SelectedTags {
-				m.kanban.filter.Tags[tag] = true
+		case ViewKanban:
+			if m.kanban != nil {
+				m.kanban.filter.Tags = tags
+				m.kanban.loadTasks()
 			}
-			m.kanban.loadTasks()
-		}
-		return true, nil
-
-	case ShowFocusTagFilterSelectorMsg:
-		if v := m.views.Get(ViewFocusView); v != nil {
-			if fv, ok := v.(*FocusViewModel); ok {
-				m.showView(ViewFocusTagFilterSelector, NewFocusTagFilterSelectorModel(fv))
-			}
-		}
-		return true, nil
-
-	case FocusTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
+		case ViewFocusView:
 			if v := m.views.Get(ViewFocusView); v != nil {
 				if fv, ok := v.(*FocusViewModel); ok {
-					fv.filter.Tags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						fv.filter.Tags[tag] = true
-					}
+					fv.filter.Tags = tags
 					fv.applyFilter()
 					fv.clampCursor()
 				}
 			}
-		}
-		return true, nil
-
-	case ShowDueDateTagFilterSelectorMsg:
-		if v := m.views.Get(ViewDueDateOverview); v != nil {
-			if ddo, ok := v.(*DueDateOverviewModel); ok {
-				m.showView(ViewDueDateTagFilterSelector, NewDueDateTagFilterSelectorModel(ddo))
-			}
-		}
-		return true, nil
-
-	case DueDateTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
+		case ViewDueDateOverview:
 			if v := m.views.Get(ViewDueDateOverview); v != nil {
 				if ddo, ok := v.(*DueDateOverviewModel); ok {
-					ddo.filter.Tags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						ddo.filter.Tags[tag] = true
-					}
+					ddo.filter.Tags = tags
 					ddo.loadTasksWithDueDates()
 					ddo.clampCursor()
 				}
 			}
-		}
-		return true, nil
-
-	case ShowDailyReviewTagFilterSelectorMsg:
-		if v := m.views.Get(ViewDailyReview); v != nil {
-			if dr, ok := v.(*DailyReviewModel); ok {
-				m.showView(ViewDailyReviewTagFilterSelector, NewDailyReviewTagFilterSelectorModel(dr))
-			}
-		}
-		return true, nil
-
-	case DailyReviewTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
+		case ViewDailyReview:
 			if v := m.views.Get(ViewDailyReview); v != nil {
 				if dr, ok := v.(*DailyReviewModel); ok {
-					dr.filter.Tags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						dr.filter.Tags[tag] = true
-					}
+					dr.filter.Tags = tags
 					dr.loadTasks()
 					dr.clampCursor()
 				}
 			}
-		}
-		return true, nil
-
-	case ShowRecentActivityTagFilterSelectorMsg:
-		if v := m.views.Get(ViewRecentActivity); v != nil {
-			if ra, ok := v.(*RecentActivityModel); ok {
-				m.showView(ViewRecentActivityTagFilterSelector, NewRecentActivityTagFilterSelectorModel(ra))
-			}
-		}
-		return true, nil
-
-	case RecentActivityTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
+		case ViewRecentActivity:
 			if v := m.views.Get(ViewRecentActivity); v != nil {
 				if ra, ok := v.(*RecentActivityModel); ok {
-					ra.filter.Tags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						ra.filter.Tags[tag] = true
-					}
+					ra.filter.Tags = tags
 					ra.applyFilter()
 					ra.clampCursor()
 				}
 			}
-		}
-		return true, nil
-
-	case ShowPriorityTagFilterSelectorMsg:
-		if v := m.views.Get(ViewPriorityView); v != nil {
-			if pv, ok := v.(*PriorityViewModel); ok {
-				m.showView(ViewPriorityTagFilterSelector, NewPriorityTagFilterSelectorModel(pv))
-			}
-		}
-		return true, nil
-
-	case PriorityTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
+		case ViewPriorityView:
 			if v := m.views.Get(ViewPriorityView); v != nil {
 				if pv, ok := v.(*PriorityViewModel); ok {
-					pv.filter.Tags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						pv.filter.Tags[tag] = true
-					}
+					pv.filter.Tags = tags
 					pv.loadActionableTasks()
 					pv.clampCursor()
+				}
+			}
+		case ViewNotes:
+			if v := m.views.Get(ViewNotes); v != nil {
+				if notesView, ok := v.(*NotesViewModel); ok {
+					notesView.filterTags = tags
+					notesView.loadNotes()
 				}
 			}
 		}
@@ -227,36 +149,6 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
-		}
-		return true, nil
-
-	case ShowNoteTagFilterSelectorMsg:
-		if msg.Project != nil || msg.NotesDir != "" {
-			var currentFilterTags map[string]bool
-			if v := m.views.Get(ViewNotes); v != nil {
-				if notesView, ok := v.(*NotesViewModel); ok {
-					currentFilterTags = notesView.filterTags
-				}
-			}
-			if currentFilterTags == nil {
-				currentFilterTags = make(map[string]bool)
-			}
-			m.showView(ViewNoteTagFilterSelector, NewNoteTagFilterSelectorModel(msg.Project, msg.NotesDir, currentFilterTags))
-		}
-		return true, nil
-
-	case NoteTagFilterSelectorDoneMsg:
-		m.popView()
-		if !msg.Canceled {
-			if v := m.views.Get(ViewNotes); v != nil {
-				if notesView, ok := v.(*NotesViewModel); ok {
-					notesView.filterTags = make(map[string]bool)
-					for _, tag := range msg.SelectedTags {
-						notesView.filterTags[tag] = true
-					}
-					notesView.loadNotes()
-				}
-			}
 		}
 		return true, nil
 

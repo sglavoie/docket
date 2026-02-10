@@ -138,7 +138,8 @@ func (m *AppModel) filterBarCommands() []Command {
 			Aliases:     []string{"f5 filter"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					return ShowTagFilterSelectorMsg{ProjectTree: m.projectTree}
+					tags := buildTagList(m.projectTree)
+					return ShowTagFilterMsg{Tags: tags, Selected: m.projectTree.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 				}
 				return nil
 			},
