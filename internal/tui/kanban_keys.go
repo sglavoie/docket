@@ -435,25 +435,25 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowSectionManagerMsg{Project: m.Project}
 		}
 
+	// Cycle group-by mode
+	case "ctrl+g":
+		m.cycleGroupBy()
+		return m, nil
+
 	// Edit last modified task
 	case "ctrl+l":
 		recentTasks := storage.GetRecentTasks(m.Project.Tasks, 1)
 		if len(recentTasks) > 0 {
 			recentTask := recentTasks[0]
 			// Find the task and navigate to it
-			for _, section := range KanbanColumnOrder {
-				visibleNodes := m.visibleNodesForSection(section)
+			for colIdx, def := range m.columnDefs {
+				visibleNodes := m.visibleNodesForSection(def.Key)
 				for i, node := range visibleNodes {
 					if node.Task.ID == recentTask.ID {
-						// Navigate to column and position
-						for colIdx, sec := range KanbanColumnOrder {
-							if sec == section {
-								m.ActiveColumn = colIdx
-								m.Columns[section].Cursor = i
-								m.statusMessage = "Jumped to last modified"
-								return m, m.handleEditTask()
-							}
-						}
+						m.ActiveColumn = colIdx
+						m.Columns[def.Key].Cursor = i
+						m.statusMessage = "Jumped to last modified"
+						return m, m.handleEditTask()
 					}
 				}
 			}

@@ -48,8 +48,8 @@ func (m *KanbanViewModel) selectAllInColumn() {
 
 // selectAllAcrossColumns selects all visible tasks across all columns.
 func (m *KanbanViewModel) selectAllAcrossColumns() {
-	for _, section := range KanbanColumnOrder {
-		visibleNodes := m.visibleNodesForSection(section)
+	for _, def := range m.columnDefs {
+		visibleNodes := m.visibleNodesForSection(def.Key)
 		for _, node := range visibleNodes {
 			m.selectedTasks[node.Task.ID] = true
 		}
@@ -179,12 +179,9 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 	}
 
 	// Find target column index
-	targetColumnIndex := 0
-	for i, section := range KanbanColumnOrder {
-		if section == targetSection {
-			targetColumnIndex = i
-			break
-		}
+	targetColumnIndex := m.columnIndexForKey(targetSection)
+	if targetColumnIndex < 0 {
+		targetColumnIndex = 0
 	}
 
 	// Clear selection and exit multi-select mode

@@ -34,6 +34,9 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all in column", Category: "Folds", Views: views},
 		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
 
+		// Group-By
+		Keybinding{Key: "Ctrl+G", Description: "Cycle group-by (Section/Status/Priority/Type)", Category: "Views", Views: views},
+
 		// Views
 		Keybinding{Key: "gc", Description: "Completed view", Category: "Views", Views: views},
 		Keybinding{Key: "g*", Description: "All view (all sections in one list)", Category: "Views", Views: views},

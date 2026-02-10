@@ -99,33 +99,29 @@ func (m *KanbanViewModel) saveWithWorkflow(prevStates map[string]*models.Task, m
 func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 	// Get current column and check if we're at leftmost
 	if m.ActiveColumn <= 0 {
-		// Already at leftmost column, ignore
 		return nil
 	}
 
-	// Get the selected task via visible nodes
 	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
 
-	// Determine target column (one to the left)
 	targetColumnIndex := m.ActiveColumn - 1
-	targetSection := KanbanColumnOrder[targetColumnIndex]
+	targetKey := m.columnDefs[targetColumnIndex].Key
 
-	// Capture previous task states for workflow rule evaluation
 	prevStates := captureTaskStates(m.Project.Tasks)
 
-	// Update the task's section
 	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
-		t.Section = targetSection
+		ApplyColumnMove(m.groupBy, t, targetKey)
 	}) {
 		return nil
 	}
-	m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
+	if IsSectionGroupBy(m.groupBy) {
+		m.Project.RelocateTaskToEndOfSection(task.ID, targetKey)
+	}
 
-	// Persist with workflow rule evaluation
-	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
+	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetKey)
 }
 
 // saveWithWorkflowRules saves the project with workflow rule evaluation,
@@ -144,44 +140,39 @@ func (m *KanbanViewModel) saveWithWorkflowRules(prevStates map[string]*models.Ta
 // Returns a command that persists the change with workflow rule evaluation.
 // If the task is already in the rightmost column, the operation is ignored.
 func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
-	// Get current column and check if we're at rightmost
-	if m.ActiveColumn >= len(KanbanColumnOrder)-1 {
-		// Already at rightmost column, ignore
+	if m.ActiveColumn >= len(m.columnDefs)-1 {
 		return nil
 	}
 
-	// Get the selected task via visible nodes
 	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
 
-	// Determine target column (one to the right)
 	targetColumnIndex := m.ActiveColumn + 1
-	targetSection := KanbanColumnOrder[targetColumnIndex]
+	targetKey := m.columnDefs[targetColumnIndex].Key
 
-	// Capture previous task states for workflow rule evaluation
 	prevStates := captureTaskStates(m.Project.Tasks)
 
-	// Update the task's section
 	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
-		t.Section = targetSection
+		ApplyColumnMove(m.groupBy, t, targetKey)
 	}) {
 		return nil
 	}
-	m.Project.RelocateTaskToEndOfSection(task.ID, targetSection)
+	if IsSectionGroupBy(m.groupBy) {
+		m.Project.RelocateTaskToEndOfSection(task.ID, targetKey)
+	}
 
-	// Persist with workflow rule evaluation
-	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetSection)
+	return m.saveWithWorkflowRules(prevStates, task, targetColumnIndex, targetKey)
 }
 
 // swapTaskDown swaps the currently selected task with the task below it.
 // Returns a command that persists the change with workflow rule evaluation.
 // If the task is at the bottom of the column, the operation is ignored.
 func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	visibleNodes := m.visibleNodesForSection(currentSection)
-	cs := m.Columns[currentSection]
+	currentKey := m.activeColumnKey()
+	visibleNodes := m.visibleNodesForSection(currentKey)
+	cs := m.Columns[currentKey]
 
 	// Check bounds: need at least 2 visible nodes and cursor not at bottom
 	if len(visibleNodes) < 2 || cs.Cursor >= len(visibleNodes)-1 {
@@ -204,16 +195,16 @@ func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
 	newPosition := cs.Cursor + 1
 
 	// Persist with workflow rule evaluation
-	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentKey, newPosition)
 }
 
 // swapTaskUp swaps the currently selected task with the task above it.
 // Returns a command that persists the change with workflow rule evaluation.
 // If the task is at the top of the column, the operation is ignored.
 func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	visibleNodes := m.visibleNodesForSection(currentSection)
-	cs := m.Columns[currentSection]
+	currentKey := m.activeColumnKey()
+	visibleNodes := m.visibleNodesForSection(currentKey)
+	cs := m.Columns[currentKey]
 
 	// Check bounds: need at least 2 visible nodes and cursor not at top
 	if len(visibleNodes) < 2 || cs.Cursor <= 0 {
@@ -226,25 +217,19 @@ func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
 		return nil
 	}
 
-	// Capture previous task states for workflow rule evaluation
 	prevStates := captureTaskStates(m.Project.Tasks)
-
-	// Swap the tasks using project's SwapTasks method
 	m.Project.SwapTasks(task, taskAbove)
-
-	// New cursor position follows the task up
 	newPosition := cs.Cursor - 1
 
-	// Persist with workflow rule evaluation
-	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, newPosition)
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentKey, newPosition)
 }
 
 // moveTaskToTop moves the selected task to the top of the current column
 // by repeatedly swapping up, matching the proven K (swap-up) mechanism.
 func (m *KanbanViewModel) moveTaskToTop() tea.Cmd {
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	visibleNodes := m.visibleNodesForSection(currentSection)
-	cs := m.Columns[currentSection]
+	currentKey := m.activeColumnKey()
+	visibleNodes := m.visibleNodesForSection(currentKey)
+	cs := m.Columns[currentKey]
 
 	if len(visibleNodes) < 2 || cs.Cursor <= 0 {
 		return nil
@@ -267,15 +252,15 @@ func (m *KanbanViewModel) moveTaskToTop() tea.Cmd {
 	}
 
 	cs.Cursor = 0
-	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, 0)
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentKey, 0)
 }
 
 // moveTaskToBottom moves the selected task to the bottom of the current column
 // by repeatedly swapping down, matching the proven J (swap-down) mechanism.
 func (m *KanbanViewModel) moveTaskToBottom() tea.Cmd {
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
-	visibleNodes := m.visibleNodesForSection(currentSection)
-	cs := m.Columns[currentSection]
+	currentKey := m.activeColumnKey()
+	visibleNodes := m.visibleNodesForSection(currentKey)
+	cs := m.Columns[currentKey]
 
 	lastIdx := len(visibleNodes) - 1
 	if len(visibleNodes) < 2 || cs.Cursor >= lastIdx {
@@ -299,7 +284,7 @@ func (m *KanbanViewModel) moveTaskToBottom() tea.Cmd {
 	}
 
 	cs.Cursor = lastIdx
-	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, lastIdx)
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentKey, lastIdx)
 }
 
 // saveWithWorkflowRulesForReorder saves the project with workflow rule evaluation
@@ -312,6 +297,13 @@ func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]
 			NewPosition: newPosition,
 		}
 	})
+}
+
+// KanbanUndoPerformedMsg signals that an undo was performed from within the kanban view.
+// Unlike UndoPerformedMsg (which pops the view via the app handler), this message is
+// handled entirely within the kanban model so the user stays in the kanban view.
+type KanbanUndoPerformedMsg struct {
+	Action string
 }
 
 // KanbanTaskDeletedMsg signals that a task was deleted from the Kanban view.
@@ -369,24 +361,25 @@ func (m *KanbanViewModel) performUndo() tea.Cmd {
 		}
 
 		m.loadTasks()
-		return UndoPerformedMsg{Action: "Undo"}
+		return KanbanUndoPerformedMsg{Action: "Undo"}
 	}
 }
 
 // sendTaskToSection moves the selected task to the specified section.
+// Only operates in section group-by mode.
 func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
+	if !IsSectionGroupBy(m.groupBy) {
+		return nil
+	}
+
 	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
 
-	// Find target column index
-	targetColumnIndex := 0
-	for i, section := range KanbanColumnOrder {
-		if section == targetSection {
-			targetColumnIndex = i
-			break
-		}
+	targetColumnIndex := m.columnIndexForKey(targetSection)
+	if targetColumnIndex < 0 {
+		targetColumnIndex = 0
 	}
 
 	prevStates := captureTaskStates(m.Project.Tasks)
@@ -435,8 +428,7 @@ func (m *KanbanViewModel) indentTask() tea.Cmd {
 			})
 			m.Project.BuildTaskTree()
 
-			currentSection := KanbanColumnOrder[m.ActiveColumn]
-			return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, cs.Cursor)
+			return m.saveWithWorkflowRulesForReorder(prevStates, task, m.activeColumnKey(), cs.Cursor)
 		}
 		candidate = candidate.Parent
 	}
@@ -461,9 +453,8 @@ func (m *KanbanViewModel) outdentTask() tea.Cmd {
 	prevStates := captureTaskStates(m.Project.Tasks)
 	_ = m.Project.OutdentTask(task)
 
-	currentSection := KanbanColumnOrder[m.ActiveColumn]
 	cs := m.CurrentColumnState()
-	return m.saveWithWorkflowRulesForReorder(prevStates, task, currentSection, cs.Cursor)
+	return m.saveWithWorkflowRulesForReorder(prevStates, task, m.activeColumnKey(), cs.Cursor)
 }
 
 // executeArchiveToggle archives or unarchives the project.

@@ -26,8 +26,8 @@ func (m *KanbanViewModel) View() string {
 
 	var viewParts []string
 
-	// Render custom section tab bar above preset tabs (when custom sections exist)
-	hasCustomSections := m.customSectionTabs() != nil
+	// Render custom section tab bar above preset tabs (when custom sections exist and in section mode)
+	hasCustomSections := m.customSectionTabs() != nil && IsSectionGroupBy(m.groupBy)
 	if hasCustomSections {
 		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 		unfocusedPad := " "
@@ -54,6 +54,12 @@ func (m *KanbanViewModel) View() string {
 	}
 	viewParts = append(viewParts, presetBar)
 
+	// Render group-by indicator when not in default section mode
+	if !IsSectionGroupBy(m.groupBy) {
+		indicator := MutedStyle.Render("Grouped by: ") + lipgloss.NewStyle().Foreground(ColorPrimary).Render(GroupByLabel(m.groupBy))
+		viewParts = append(viewParts, indicator)
+	}
+
 	// Render search input if in search mode
 	if m.searchMode {
 		searchLine := "Search: " + m.searchInput.View()
@@ -69,8 +75,26 @@ func (m *KanbanViewModel) View() string {
 	var columns []string
 	gap := " " // Single space gap between columns
 
-	for i, section := range KanbanColumnOrder {
-		columnContent := m.renderColumn(section, i == m.ActiveColumn)
+	// Only render the visible column range (horizontal scrolling)
+	visStart, visEnd := m.visibleColumnRange()
+
+	// Render scroll position line when horizontal scrolling is active
+	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+		var scrollParts []string
+		if visStart > 0 {
+			scrollParts = append(scrollParts, fmt.Sprintf("◀ %d", visStart))
+		}
+		scrollParts = append(scrollParts, fmt.Sprintf("Columns %d–%d / %d", visStart+1, visEnd, len(m.columnDefs)))
+		if visEnd < len(m.columnDefs) {
+			scrollParts = append(scrollParts, fmt.Sprintf("%d ▶", len(m.columnDefs)-visEnd))
+		}
+		scrollLine := MutedStyle.Render(strings.Join(scrollParts, "  "))
+		viewParts = append(viewParts, scrollLine)
+	}
+
+	for i := visStart; i < visEnd; i++ {
+		def := m.columnDefs[i]
+		columnContent := m.renderColumn(def.Key, i == m.ActiveColumn)
 		columns = append(columns, columnContent)
 	}
 
@@ -87,8 +111,8 @@ func (m *KanbanViewModel) View() string {
 
 	// Check if all columns are empty (no tasks match filters)
 	totalTasks := 0
-	for _, section := range KanbanColumnOrder {
-		totalTasks += len(m.Tasks[section])
+	for _, def := range m.columnDefs {
+		totalTasks += len(m.Tasks[def.Key])
 	}
 	if totalTasks == 0 && m.HasActiveFilters() {
 		// Show message when filters result in no tasks
@@ -108,8 +132,14 @@ func (m *KanbanViewModel) View() string {
 
 	// Render the details panel for the selected task
 	tabBarHeight := TabBarHeight
-	if m.customSectionTabs() != nil {
+	if m.customSectionTabs() != nil && IsSectionGroupBy(m.groupBy) {
 		tabBarHeight += TabBarHeight
+	}
+	if !IsSectionGroupBy(m.groupBy) {
+		tabBarHeight++ // Group-by indicator line
+	}
+	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+		tabBarHeight++ // Horizontal scroll position line
 	}
 	searchBarHeight := 0
 	if m.searchMode {
@@ -308,10 +338,11 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 	return columnStyle.Render(strings.Join(lines, "\n"))
 }
 
-// renderColumnHeader renders the column header with appropriate section color.
-// Uses the same ViewMode styles as the project tree view mode indicator for consistency.
+// renderColumnHeader renders the column header with appropriate color.
+// Uses group-by-aware styles: section colors for section mode,
+// status/priority/type colors for other modes.
 func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) string {
-	displayName := sectionDisplayName(section)
+	displayName := m.columnLabel(section)
 	visibleCount := m.visibleNodeCount(section)
 	totalCount := len(m.Tasks[section])
 
@@ -321,6 +352,19 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 		headerText = fmt.Sprintf("%s (%d/%d)", displayName, visibleCount, totalCount)
 	} else {
 		headerText = fmt.Sprintf("%s (%d)", displayName, totalCount)
+	}
+
+	// In status mode, show total completed count for Done/Canceled columns
+	if m.groupBy == GroupByStatus && IsCompletedStatusKey(section) && m.Project != nil {
+		allCount := 0
+		for _, task := range m.Project.Tasks {
+			if string(task.Status) == section {
+				allCount++
+			}
+		}
+		if allCount > totalCount {
+			headerText = fmt.Sprintf("%s (%d/%d)", displayName, totalCount, allCount)
+		}
 	}
 
 	// Append sort indicator if this column has a non-default sort
@@ -333,8 +377,8 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 		headerText += " " + direction + sortField.ShortString()
 	}
 
-	// Use the same ViewMode style as the view mode indicator
-	style := GetViewModeStyleForSection(section)
+	// Use group-by-aware style
+	style := GetColumnHeaderStyle(m.groupBy, section)
 
 	// Add indicator if this column is active
 	if isActive {

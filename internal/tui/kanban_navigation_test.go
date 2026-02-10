@@ -180,6 +180,7 @@ func TestFindNextNonEmptyColumn(t *testing.T) {
 			// Create a KanbanViewModel with the specified task configuration
 			m := &KanbanViewModel{
 				Project:      &models.Project{},
+				columnDefs:   ColumnsForGroupBy(GroupBySection, nil),
 				Columns:      make(map[string]*ColumnState),
 				Tasks:        make(map[string][]*models.Task),
 				Nodes:        make(map[string][]*KanbanNode),
@@ -188,7 +189,8 @@ func TestFindNextNonEmptyColumn(t *testing.T) {
 			}
 
 			// Initialize columns and populate tasks/nodes based on taskCounts
-			for _, section := range KanbanColumnOrder {
+			for _, def := range m.columnDefs {
+				section := def.Key
 				m.Columns[section] = &ColumnState{}
 				count := tt.taskCounts[section]
 				tasks := make([]*models.Task, count)

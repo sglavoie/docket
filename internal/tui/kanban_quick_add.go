@@ -269,8 +269,11 @@ func (m *KanbanViewModel) createQuickAddTask() tea.Cmd {
 		targetSection := result.section
 		var customSection string
 		if targetSection == "" {
-			// Default to current column's section
-			targetSection = m.CurrentSection()
+			// Default: in section mode, use current column's section; otherwise use Active
+			if IsSectionGroupBy(m.groupBy) {
+				targetSection = m.CurrentSection()
+			}
+			// In non-section modes, leave empty (Active section)
 		} else if !models.IsGTDSection(targetSection) {
 			// Custom section: route to Inbox, store as CustomSection
 			customSection = targetSection

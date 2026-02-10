@@ -6,9 +6,9 @@ package tui
 // no non-empty columns exist in the specified direction.
 func (m *KanbanViewModel) findNextNonEmptyColumn(direction int) int {
 	// Start searching from the next column in the given direction
-	for i := m.ActiveColumn + direction; i >= 0 && i < len(KanbanColumnOrder); i += direction {
-		section := KanbanColumnOrder[i]
-		if m.visibleNodeCount(section) > 0 {
+	for i := m.ActiveColumn + direction; i >= 0 && i < len(m.columnDefs); i += direction {
+		key := m.columnDefs[i].Key
+		if m.visibleNodeCount(key) > 0 {
 			return i
 		}
 	}
@@ -18,12 +18,10 @@ func (m *KanbanViewModel) findNextNonEmptyColumn(direction int) int {
 
 // currentVisibleNodes returns visible nodes for the active column.
 func (m *KanbanViewModel) currentVisibleNodes() []*KanbanNode {
-	section := KanbanColumnOrder[m.ActiveColumn]
-	return m.visibleNodesForSection(section)
+	return m.visibleNodesForSection(m.activeColumnKey())
 }
 
 // currentVisibleNodeCount returns the count of visible nodes in the active column.
 func (m *KanbanViewModel) currentVisibleNodeCount() int {
-	section := KanbanColumnOrder[m.ActiveColumn]
-	return m.visibleNodeCount(section)
+	return m.visibleNodeCount(m.activeColumnKey())
 }

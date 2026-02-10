@@ -58,6 +58,10 @@ const MaxKanbanDisplayLevel = 2
 // This ensures column headers and truncated task titles are readable.
 const KanbanMinColumnWidth = 15
 
+// KanbanMaxVisibleColumns is the maximum number of columns visible at once.
+// When there are more columns, horizontal scrolling is used.
+const KanbanMaxVisibleColumns = 6
+
 // KanbanViewModel manages the Kanban board view state.
 // It displays non-completed tasks organized into five columns by section.
 type KanbanViewModel struct {
@@ -93,8 +97,15 @@ type KanbanViewModel struct {
 	// When set, only this task and its descendants are shown.
 	FocusedTask *models.Task
 
-	// ActiveColumn tracks which column is currently focused (index into KanbanColumnOrder)
+	// Group-by mode for organizing columns
+	groupBy    KanbanGroupBy
+	columnDefs []KanbanColumnDef
+
+	// ActiveColumn tracks which column is currently focused (index into columnDefs)
 	ActiveColumn int
+
+	// columnScrollOffset is the index of the first visible column when horizontal scrolling.
+	columnScrollOffset int
 
 	// ColumnWidth is the calculated width for each column after SetSize.
 	// All columns share the same width for uniform appearance.
@@ -197,10 +208,22 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 	quickAddInput.CharLimit = 200
 	quickAddInput.Width = 60
 
+	// Load group-by mode from config
+	var groupBy KanbanGroupBy
+	if cfg != nil && project != nil {
+		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
+			groupBy = KanbanGroupBy(vs.KanbanGroupBy)
+			if groupBy < 0 || groupBy >= KanbanGroupByCount {
+				groupBy = GroupBySection
+			}
+		}
+	}
+
 	m := &KanbanViewModel{
 		Project:       project,
 		config:        cfg,
 		configManager: cfgManager,
+		groupBy:       groupBy,
 		Columns:       make(map[string]*ColumnState),
 		Tasks:         make(map[string][]*models.Task),
 		Nodes:         make(map[string][]*KanbanNode),
@@ -222,17 +245,149 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		quickEdit: NewQuickEditComponent(),
 	}
 
-	// Initialize column state for each of the five sections
-	for _, section := range KanbanColumnOrder {
-		m.Columns[section] = &ColumnState{}
-		m.Tasks[section] = []*models.Task{}
-		m.Nodes[section] = []*KanbanNode{}
+	// Compute column definitions from group-by mode
+	m.columnDefs = ColumnsForGroupBy(m.groupBy, project)
+
+	// Initialize column state for each column
+	for _, def := range m.columnDefs {
+		m.Columns[def.Key] = &ColumnState{}
+		m.Tasks[def.Key] = []*models.Task{}
+		m.Nodes[def.Key] = []*KanbanNode{}
 	}
 
 	// Load tasks into columns by section, excluding completed tasks
 	m.loadTasks()
 
 	return m
+}
+
+// columnKeys returns the keys from columnDefs, replacing all KanbanColumnOrder references.
+func (m *KanbanViewModel) columnKeys() []string {
+	keys := make([]string, len(m.columnDefs))
+	for i, def := range m.columnDefs {
+		keys[i] = def.Key
+	}
+	return keys
+}
+
+// activeColumnKey returns the key of the currently active column.
+func (m *KanbanViewModel) activeColumnKey() string {
+	if m.ActiveColumn >= 0 && m.ActiveColumn < len(m.columnDefs) {
+		return m.columnDefs[m.ActiveColumn].Key
+	}
+	return ""
+}
+
+// setGroupBy sets the group-by mode, recomputes column definitions,
+// reinitializes maps, resets cursor, and reloads tasks.
+func (m *KanbanViewModel) setGroupBy(gb KanbanGroupBy) {
+	m.groupBy = gb
+	m.columnDefs = ColumnsForGroupBy(gb, m.Project)
+
+	// Reinitialize maps for new columns
+	m.Columns = make(map[string]*ColumnState)
+	m.Tasks = make(map[string][]*models.Task)
+	m.Nodes = make(map[string][]*KanbanNode)
+	for _, def := range m.columnDefs {
+		m.Columns[def.Key] = &ColumnState{}
+		m.Tasks[def.Key] = []*models.Task{}
+		m.Nodes[def.Key] = []*KanbanNode{}
+	}
+
+	m.ActiveColumn = 0
+	m.columnScrollOffset = 0
+	m.loadTasks()
+}
+
+// cycleGroupBy cycles to the next group-by mode and persists the choice.
+func (m *KanbanViewModel) cycleGroupBy() {
+	next := KanbanGroupBy((int(m.groupBy) + 1) % KanbanGroupByCount)
+	m.setGroupBy(next)
+
+	// Persist to config
+	if m.config != nil && m.Project != nil && m.configManager != nil {
+		vs := m.config.ProjectViewStates[m.Project.ID]
+		vs.KanbanGroupBy = int(next)
+		m.config.ProjectViewStates[m.Project.ID] = vs
+		_ = m.configManager.Save(m.config)
+	}
+
+	if next == GroupBySection {
+		m.statusMessage = ""
+	} else {
+		m.statusMessage = "Grouped by: " + GroupByLabel(next)
+	}
+}
+
+// taskColumnKey returns the column key for a task based on current group-by mode.
+func (m *KanbanViewModel) taskColumnKey(task *models.Task) string {
+	return TaskColumnKey(m.groupBy, task)
+}
+
+// columnLabel returns the display label for a column key.
+func (m *KanbanViewModel) columnLabel(key string) string {
+	for _, def := range m.columnDefs {
+		if def.Key == key {
+			return def.Label
+		}
+	}
+	return sectionDisplayName(key)
+}
+
+// columnIndexForKey returns the index of the column with the given key, or -1 if not found.
+func (m *KanbanViewModel) columnIndexForKey(key string) int {
+	for i, def := range m.columnDefs {
+		if def.Key == key {
+			return i
+		}
+	}
+	return -1
+}
+
+// visibleColumnRange returns the start (inclusive) and end (exclusive) indices
+// of columns that should be rendered, based on the scroll offset.
+func (m *KanbanViewModel) visibleColumnRange() (int, int) {
+	total := len(m.columnDefs)
+	maxVisible := KanbanMaxVisibleColumns
+	if total <= maxVisible {
+		return 0, total
+	}
+	start := m.columnScrollOffset
+	if start < 0 {
+		start = 0
+	}
+	if start > total-maxVisible {
+		start = total - maxVisible
+	}
+	end := start + maxVisible
+	if end > total {
+		end = total
+	}
+	return start, end
+}
+
+// ensureActiveColumnVisible adjusts columnScrollOffset so that ActiveColumn
+// is within the visible range.
+func (m *KanbanViewModel) ensureActiveColumnVisible() {
+	total := len(m.columnDefs)
+	maxVisible := KanbanMaxVisibleColumns
+	if total <= maxVisible {
+		m.columnScrollOffset = 0
+		return
+	}
+	if m.ActiveColumn < m.columnScrollOffset {
+		m.columnScrollOffset = m.ActiveColumn
+	}
+	if m.ActiveColumn >= m.columnScrollOffset+maxVisible {
+		m.columnScrollOffset = m.ActiveColumn - maxVisible + 1
+	}
+	// Clamp
+	if m.columnScrollOffset < 0 {
+		m.columnScrollOffset = 0
+	}
+	if m.columnScrollOffset > total-maxVisible {
+		m.columnScrollOffset = total - maxVisible
+	}
 }
 
 // loadTasks populates the Tasks map by filtering project tasks into columns.
@@ -248,20 +403,25 @@ func (m *KanbanViewModel) loadTasks() {
 	}
 
 	// Clear existing tasks and nodes
-	for _, section := range KanbanColumnOrder {
-		m.Tasks[section] = []*models.Task{}
-		m.Nodes[section] = []*KanbanNode{}
+	for _, def := range m.columnDefs {
+		m.Tasks[def.Key] = []*models.Task{}
+		m.Nodes[def.Key] = []*KanbanNode{}
 	}
 
 	if m.Project == nil {
 		return
 	}
 
-	// Pass 1: Filter and categorize tasks by section
+	// Pass 1: Filter and categorize tasks by column
 	for _, task := range m.Project.Tasks {
-		// Skip completed tasks (done or canceled)
+		// Handle completed tasks based on group-by mode
 		if task.Status.IsComplete() {
-			continue
+			// In status mode, allow recently completed tasks through
+			if m.groupBy == GroupByStatus && IsRecentlyCompleted(task, CompletedInStatusModeDays) {
+				// Allow — will be placed in Done/Canceled column below
+			} else {
+				continue
+			}
 		}
 
 		// Skip snoozed tasks
@@ -280,21 +440,26 @@ func (m *KanbanViewModel) loadTasks() {
 		}
 
 		// Determine which column this task belongs to
-		section := task.Section
-		// Validate the section is one of our known columns
-		if _, exists := m.Columns[section]; !exists {
-			// Unknown section defaults to Active (empty string)
-			section = KanbanSectionActive
+		colKey := m.taskColumnKey(task)
+		// Validate the column key is one of our known columns
+		if _, exists := m.Columns[colKey]; !exists {
+			if IsSectionGroupBy(m.groupBy) {
+				// Unknown section defaults to Active (empty string)
+				colKey = KanbanSectionActive
+			} else {
+				// For other modes, skip tasks with unknown column keys
+				continue
+			}
 		}
 
-		m.Tasks[section] = append(m.Tasks[section], task)
+		m.Tasks[colKey] = append(m.Tasks[colKey], task)
 	}
 
-	// Pass 2: Build hierarchical nodes for each section
-	for _, section := range KanbanColumnOrder {
-		m.buildColumnNodes(section)
+	// Pass 2: Build hierarchical nodes for each column
+	for _, def := range m.columnDefs {
+		m.buildColumnNodes(def.Key)
 		// Apply sorting after building nodes
-		m.sortColumnNodes(section)
+		m.sortColumnNodes(def.Key)
 	}
 
 	// Pass 3: Compute ChildrenElsewhere counts
@@ -304,9 +469,9 @@ func (m *KanbanViewModel) loadTasks() {
 	m.updateNodeVisibility()
 
 	// Validate cursor positions for each column after loading
-	for _, section := range KanbanColumnOrder {
-		visibleCount := m.visibleNodeCount(section)
-		m.Columns[section].Validate(visibleCount)
+	for _, def := range m.columnDefs {
+		visibleCount := m.visibleNodeCount(def.Key)
+		m.Columns[def.Key].Validate(visibleCount)
 	}
 
 	// Calculate filter counts for the filter bar
@@ -418,8 +583,9 @@ func (m *KanbanViewModel) computeChildrenElsewhere() {
 		}
 	}
 
-	// For each node, count children in other sections
-	for _, section := range KanbanColumnOrder {
+	// For each node, count children in other columns
+	for _, def := range m.columnDefs {
+		section := def.Key
 		for _, node := range m.Nodes[section] {
 			count := 0
 			for _, child := range node.Task.Children {
@@ -439,7 +605,8 @@ func (m *KanbanViewModel) computeChildrenElsewhere() {
 
 // updateNodeVisibility sets Visible based on parent expand state.
 func (m *KanbanViewModel) updateNodeVisibility() {
-	for _, section := range KanbanColumnOrder {
+	for _, def := range m.columnDefs {
+		section := def.Key
 		nodes := m.Nodes[section]
 		for i, node := range nodes {
 			// Root nodes (level 0) are always visible
@@ -489,19 +656,18 @@ func (m *KanbanViewModel) visibleNodesForSection(section string) []*KanbanNode {
 
 // CurrentColumnState returns the ColumnState for the currently active column.
 func (m *KanbanViewModel) CurrentColumnState() *ColumnState {
-	section := KanbanColumnOrder[m.ActiveColumn]
-	return m.Columns[section]
+	return m.Columns[m.activeColumnKey()]
 }
 
-// CurrentSection returns the section name of the currently active column.
+// CurrentSection returns the key of the currently active column.
+// In section mode this is the section name; in other modes it's the column key.
 func (m *KanbanViewModel) CurrentSection() string {
-	return KanbanColumnOrder[m.ActiveColumn]
+	return m.activeColumnKey()
 }
 
 // CurrentColumnTasks returns the tasks in the currently active column.
 func (m *KanbanViewModel) CurrentColumnTasks() []*models.Task {
-	section := KanbanColumnOrder[m.ActiveColumn]
-	return m.Tasks[section]
+	return m.Tasks[m.activeColumnKey()]
 }
 
 // TasksForSection returns the tasks in the specified section.
@@ -518,12 +684,15 @@ func (m *KanbanViewModel) TasksForSection(section string) []*models.Task {
 func (m *KanbanViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 
-	// Account for gaps between columns (1 char gap between each pair)
-	numColumns := len(KanbanColumnOrder)
+	// Use at most KanbanMaxVisibleColumns for width calculation
+	numColumns := len(m.columnDefs)
+	if numColumns > KanbanMaxVisibleColumns {
+		numColumns = KanbanMaxVisibleColumns
+	}
 	numGaps := numColumns - 1
 	availableWidth := width - numGaps
 
-	// Distribute width evenly across columns
+	// Distribute width evenly across visible columns
 	columnWidth := availableWidth / numColumns
 
 	// Enforce minimum width to keep columns legible
@@ -534,8 +703,14 @@ func (m *KanbanViewModel) SetSize(width, height int) {
 	m.ColumnWidth = columnWidth
 
 	tabBarHeight := TabBarHeight
-	if m.customSectionTabs() != nil {
+	if m.customSectionTabs() != nil && IsSectionGroupBy(m.groupBy) {
 		tabBarHeight += TabBarHeight
+	}
+	if !IsSectionGroupBy(m.groupBy) {
+		tabBarHeight++ // Group-by indicator line
+	}
+	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+		tabBarHeight++ // Horizontal scroll position line
 	}
 
 	// Compute split view heights: 50/50 split minus divider
@@ -648,9 +823,10 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		// Move active column to where the task landed
 		m.ActiveColumn = msg.TargetColumnIndex
+		m.ensureActiveColumnVisible()
 		// Position cursor on the moved task in the new column
 		m.positionCursorOnTask(msg.Task, msg.TargetSection)
-		m.statusMessage = fmt.Sprintf("Moved to %s", sectionDisplayName(msg.TargetSection))
+		m.statusMessage = fmt.Sprintf("Moved to %s", m.columnLabel(msg.TargetSection))
 		return m, nil
 
 	case KanbanTaskReorderedMsg:
@@ -664,21 +840,16 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case KanbanStatusChangedMsg:
 		// Task status changed - reload tasks since task may have moved columns
-		// (completed/canceled tasks are filtered out of Kanban view)
 		m.loadTasks()
 		// Try to position cursor on the task if it's still visible
-		for _, section := range KanbanColumnOrder {
-			visibleNodes := m.visibleNodesForSection(section)
+		for colIdx, def := range m.columnDefs {
+			visibleNodes := m.visibleNodesForSection(def.Key)
 			for i, node := range visibleNodes {
 				if node.Task.ID == msg.TaskID {
-					// Found the task - position cursor on it
-					for colIdx, sec := range KanbanColumnOrder {
-						if sec == section {
-							m.ActiveColumn = colIdx
-							m.Columns[section].Cursor = i
-							return m, nil
-						}
-					}
+					m.ActiveColumn = colIdx
+					m.ensureActiveColumnVisible()
+					m.Columns[def.Key].Cursor = i
+					return m, nil
 				}
 			}
 		}
@@ -697,15 +868,15 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		// Position cursor on the newly created task
 		if msg.Task != nil {
-			section := msg.Task.Section
-			// Find the column for this section
-			for colIdx, sec := range KanbanColumnOrder {
-				if sec == section {
+			colKey := m.taskColumnKey(msg.Task)
+			for colIdx, def := range m.columnDefs {
+				if def.Key == colKey {
 					m.ActiveColumn = colIdx
 					break
 				}
 			}
-			m.positionCursorOnTask(msg.Task, section)
+			m.ensureActiveColumnVisible()
+			m.positionCursorOnTask(msg.Task, colKey)
 		}
 		m.statusMessage = fmt.Sprintf("Created: %s", msg.Task.Title)
 		return m, nil
@@ -719,20 +890,31 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = "Task deleted"
 		return m, nil
 
+	case KanbanUndoPerformedMsg:
+		// Undo performed from within kanban — reload tasks and stay in kanban view
+		m.loadTasks()
+		// Validate all column cursors after undo
+		for _, def := range m.columnDefs {
+			cs := m.Columns[def.Key]
+			cs.Validate(m.visibleNodeCount(def.Key))
+		}
+		m.statusMessage = fmt.Sprintf("Undid: %s", msg.Action)
+		return m, nil
+
 	case TaskCreatedMsg:
 		// Task was created via modal quick capture - reload and position cursor
 		m.loadTasks()
 		// Position cursor on the newly created task
 		if msg.Task != nil {
-			section := msg.Task.Section
-			// Find the column for this section
-			for colIdx, sec := range KanbanColumnOrder {
-				if sec == section {
+			colKey := m.taskColumnKey(msg.Task)
+			for colIdx, def := range m.columnDefs {
+				if def.Key == colKey {
 					m.ActiveColumn = colIdx
 					break
 				}
 			}
-			m.positionCursorOnTask(msg.Task, section)
+			m.ensureActiveColumnVisible()
+			m.positionCursorOnTask(msg.Task, colKey)
 		}
 		return m, nil
 	}
@@ -855,18 +1037,32 @@ func (m *KanbanViewModel) positionCursorOnTask(task *models.Task, section string
 	cs.Validate(len(visibleNodes))
 }
 
-// moveColumnLeft moves focus to the previous non-empty column on the left.
-// Empty columns are skipped. If no non-empty column exists to the left,
-// focus remains on the current column.
+// moveColumnLeft moves focus to the previous column on the left.
+// When all columns fit on screen, empty columns are skipped.
+// When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnLeft() {
-	m.ActiveColumn = m.findNextNonEmptyColumn(-1)
+	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+		if m.ActiveColumn > 0 {
+			m.ActiveColumn--
+		}
+	} else {
+		m.ActiveColumn = m.findNextNonEmptyColumn(-1)
+	}
+	m.ensureActiveColumnVisible()
 }
 
-// moveColumnRight moves focus to the next non-empty column on the right.
-// Empty columns are skipped. If no non-empty column exists to the right,
-// focus remains on the current column.
+// moveColumnRight moves focus to the next column on the right.
+// When all columns fit on screen, empty columns are skipped.
+// When horizontal scrolling is active, moves one column at a time.
 func (m *KanbanViewModel) moveColumnRight() {
-	m.ActiveColumn = m.findNextNonEmptyColumn(+1)
+	if len(m.columnDefs) > KanbanMaxVisibleColumns {
+		if m.ActiveColumn < len(m.columnDefs)-1 {
+			m.ActiveColumn++
+		}
+	} else {
+		m.ActiveColumn = m.findNextNonEmptyColumn(+1)
+	}
+	m.ensureActiveColumnVisible()
 }
 
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
