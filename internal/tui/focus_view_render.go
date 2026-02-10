@@ -143,6 +143,7 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		",": StatusPrefixHints,
 		"d": DueDatePrefixHints,
 		"g": FocusViewNavigationPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
 		"c": CreateLinkedPrefixHints,
 	}
 	// Merge filter prefix hints (no DueDate category — view has "Due Soon" tab)

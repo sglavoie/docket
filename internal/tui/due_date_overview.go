@@ -66,6 +66,7 @@ type DueDateOverviewModel struct {
 	// UI feedback
 	statusMessage string
 	err           error
+	confirm       ConfirmDialog
 
 	// Dimensions
 	width  int
@@ -264,6 +265,20 @@ func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasksWithDueDates()
 		m.clampCursor()
 		return m, nil
+
+	case TagSelectorDoneMsg:
+		if !msg.Canceled {
+			m.loadTasksWithDueDates()
+			m.clampCursor()
+			m.statusMessage = "Tags updated"
+		}
+		return m, nil
+
+	case SnoozeDateChangedMsg:
+		m.loadTasksWithDueDates()
+		m.clampCursor()
+		m.statusMessage = "Snooze date updated"
+		return m, nil
 	}
 
 	return m, nil
@@ -281,6 +296,18 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	// Clear previous error on any key
 	m.err = nil
 
+	// Handle confirm dialog
+	if m.confirm.IsActive() {
+		confirmed, handled := m.confirm.HandleKey(key)
+		if handled {
+			if confirmed {
+				return m.deleteTask()
+			}
+			m.statusMessage = ""
+			return m, nil
+		}
+	}
+
 	// Activate prefix mode
 	switch key {
 	case ",", "d", "g":
@@ -288,6 +315,11 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return m, nil
 	case "F":
 		m.pendingPrefix = "F"
+		return m, nil
+	case "m":
+		if m.getTaskAtCursor() != nil {
+			m.pendingPrefix = "m"
+		}
 		return m, nil
 	}
 
@@ -368,6 +400,10 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		}
 		return m, nil
 
+	// Toggle active flag
+	case "*":
+		return m.toggleActive()
+
 	// Priority changes
 	case "1", "2", "3", "4", "5":
 		return m.changeTaskPriority(key)
@@ -410,6 +446,32 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 			return m, func() tea.Msg {
 				return CopyTaskTitleAndDescMsg{Task: dt.Task}
 			}
+		}
+		return m, nil
+
+	// Tags
+	case "t":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: dt.Task, Project: dt.Project, CurrentTags: append([]string{}, dt.Task.Tags...)}
+			}
+		}
+		return m, nil
+
+	// Snooze
+	case "Z":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return SetSnoozeDateMsg{Task: dt.Task, Project: dt.Project}
+			}
+		}
+		return m, nil
+
+	// Delete with confirmation
+	case "D":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", dt.Task.ShortID))
+			m.statusMessage = m.confirm.Prompt()
 		}
 		return m, nil
 
@@ -504,6 +566,13 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 			}
 			return m, nil
 		}
+
+	case "m":
+		section, ok := sectionForMoveKey(key)
+		if !ok {
+			return m, nil
+		}
+		return m.sectionMove(section)
 	}
 
 	// Invalid prefix sequence - ignore
@@ -517,81 +586,15 @@ func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (te
 		return m, nil
 	}
 
-	task := dt.Task
-	project := dt.Project
-
-	// Validate status transition
-	switch newStatus {
-	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
-			m.statusMessage = "Task must be todo or blocked to start"
-			return m, nil
-		}
-	case models.StatusDone:
-		if !task.Status.IsActive() {
-			m.statusMessage = "Task is not active"
-			return m, nil
-		}
-		// Check for incomplete dependencies
-		if project.HasIncompleteDependencies(task) {
-			m.err = fmt.Errorf("cannot complete: has incomplete dependencies")
-			return m, nil
-		}
-	case models.StatusBlocked:
-		if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-			m.statusMessage = "Task must be active and not already blocked"
-			return m, nil
-		}
-	case models.StatusCanceled:
-		if !task.Status.IsActive() {
-			m.statusMessage = "Task is not active"
-			return m, nil
-		}
-	case models.StatusTodo:
-		if task.Status == models.StatusTodo {
-			m.statusMessage = "Task is already todo"
-			return m, nil
-		}
-	case models.StatusReview:
-		if !task.Status.IsActive() || task.Status == models.StatusReview {
-			m.statusMessage = "Task must be active and not already in review"
-			return m, nil
-		}
+	result := applyStatusChangePS(m.projectService, dt.Project, dt.Task.ID, newStatus)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Backup before change
-	if err := m.projectService.Backup(project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Update task status
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.Status = newStatus
-		if newStatus.IsComplete() {
-			now := time.Now()
-			t.CompletedAt = &now
-		} else {
-			t.CompletedAt = nil
-		}
-	})
-
-	// Save project
-	if err := m.projectService.Save(project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
-
-	m.statusMessage = fmt.Sprintf("Task #%d → %s", task.ShortID, newStatus)
-
-	return m, func() tea.Msg {
-		return TaskStatusChangedMsg{Task: task}
-	}
+	return m, result.Cmd
 }
 
 // changeTaskPriority changes the priority of the task at cursor.
@@ -602,38 +605,15 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 	}
 
 	priority, _ := strconv.Atoi(key)
-	task := dt.Task
-	project := dt.Project
-
-	if task.Priority == priority {
-		return m, nil
+	result := applyPriorityChangePS(m.projectService, dt.Project, dt.Task.ID, priority)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Backup before change
-	if err := m.projectService.Backup(project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Update task priority
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.Priority = priority
-	})
-
-	// Save project
-	if err := m.projectService.Save(project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
-
-	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
-
-	return m, nil
+	return m, result.Cmd
 }
 
 // setQuickDueDate sets the due date to a relative number of days from today.
@@ -643,47 +623,15 @@ func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.
 		return m, nil
 	}
 
-	task := dt.Task
-	project := dt.Project
-
-	// Backup before change
-	if err := m.projectService.Backup(project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
+	result := applyQuickDueDatePS(m.projectService, dt.Project, dt.Task.ID, daysFromNow)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Set due date
-	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.DueDate = &newDate
-	})
-
-	// Save project
-	if err := m.projectService.Save(project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
-
-	label := "today"
-	switch daysFromNow {
-	case 1:
-		label = "tomorrow"
-	case 7:
-		label = "next week"
-	case 30:
-		label = "next month"
-	}
-	m.statusMessage = fmt.Sprintf("Due date set to %s", label)
-
-	return m, func() tea.Msg {
-		return DueDateChangedMsg{Task: task}
-	}
+	return m, result.Cmd
 }
 
 // clearDueDate clears the due date from the task at cursor.
@@ -693,41 +641,69 @@ func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := dt.Task
-	project := dt.Project
-
-	if task.DueDate == nil {
-		m.statusMessage = "Task has no due date"
-		return m, nil
+	result := applyClearDueDatePS(m.projectService, dt.Project, dt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Backup before change
-	if err := m.projectService.Backup(project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Clear due date
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.DueDate = nil
-	})
-
-	// Save project
-	if err := m.projectService.Save(project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = m.projectService.Load(project)
 	m.loadTasksWithDueDates()
 	m.clampCursor()
+	return m, result.Cmd
+}
 
-	m.statusMessage = "Due date cleared"
-
-	return m, func() tea.Msg {
-		return DueDateChangedMsg{Task: task}
+// toggleActive toggles the Active flag on the task at cursor.
+func (m *DueDateOverviewModel) toggleActive() (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
 	}
+
+	result := applyToggleActivePS(m.projectService, dt.Project, dt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// sectionMove moves the task at cursor to the specified GTD section.
+func (m *DueDateOverviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	result := applySectionChangePS(m.projectService, dt.Project, dt.Task.ID, section)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// deleteTask deletes the task at cursor.
+func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return m, nil
+	}
+
+	result := applyDeleteTaskPS(m.projectService, dt.Project, dt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadTasksWithDueDates()
+	m.clampCursor()
+	return m, result.Cmd
 }
 
 // clampCursor ensures cursor is within valid range.
@@ -750,9 +726,9 @@ func (m *DueDateOverviewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when prefix mode or filters are active.
+// ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasActiveFilters()
+	return m.HasPendingPrefix() || m.HasActiveFilters() || m.confirm.IsActive()
 }
 
 // GetHelpItems returns help items for this view.

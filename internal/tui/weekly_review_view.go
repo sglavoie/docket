@@ -117,6 +117,7 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"g": WeeklyReviewNavigationPrefixHints,
 			"s": WeeklyReviewSectionPrefixHints,
 			"c": CreateLinkedPrefixHints,
+			"m": SecondaryViewMovePrefixHints,
 		},
 	}
 }

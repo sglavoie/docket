@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -87,6 +89,7 @@ type WeeklyReviewModel struct {
 	// UI feedback
 	statusMessage string
 	err           error
+	confirm       ConfirmDialog
 
 	// Dimensions
 	width  int
@@ -131,6 +134,20 @@ func (m *WeeklyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadData()
 		m.clampCursor()
 		return m, nil
+
+	case TagSelectorDoneMsg:
+		if !msg.Canceled {
+			m.loadData()
+			m.clampCursor()
+			m.statusMessage = "Tags updated"
+		}
+		return m, nil
+
+	case SnoozeDateChangedMsg:
+		m.loadData()
+		m.clampCursor()
+		m.statusMessage = "Snooze date updated"
+		return m, nil
 	}
 
 	return m, nil
@@ -139,6 +156,18 @@ func (m *WeeklyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKeyMsg handles keyboard input.
 func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Handle confirmation dialog
+	if m.confirm.IsActive() {
+		confirmed, handled := m.confirm.HandleKey(key)
+		if handled {
+			if confirmed {
+				return m.deleteTask()
+			}
+			m.statusMessage = ""
+			return m, nil
+		}
+	}
 
 	// Handle pending prefix keys
 	if m.pendingPrefix != "" {
@@ -179,9 +208,9 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pendingPrefix = key
 		}
 		return m, nil
-	case "c":
+	case "c", "m":
 		if m.getTaskAtCursor() != nil {
-			m.pendingPrefix = "c"
+			m.pendingPrefix = key
 		}
 		return m, nil
 	}
@@ -302,6 +331,32 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return CopyTaskTitleAndDescMsg{Task: dt.Task}
 			}
+		}
+		return m, nil
+
+	// Tag selector
+	case "t":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: dt.Task, Project: dt.Project, CurrentTags: append([]string{}, dt.Task.Tags...)}
+			}
+		}
+		return m, nil
+
+	// Snooze
+	case "Z":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return SetSnoozeDateMsg{Task: dt.Task, Project: dt.Project}
+			}
+		}
+		return m, nil
+
+	// Delete task
+	case "D":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", dt.Task.ShortID))
+			m.statusMessage = m.confirm.Prompt()
 		}
 		return m, nil
 
@@ -456,6 +511,13 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
 		}
+
+	case "m":
+		section, ok := sectionForMoveKey(key)
+		if !ok {
+			return m, nil
+		}
+		return m.sectionMove(section)
 	}
 
 	return m, nil
@@ -476,9 +538,9 @@ func (m *WeeklyReviewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when prefix mode or section focus is active.
+// ShouldCaptureEsc returns true when prefix mode, section focus, or confirm dialog is active.
 func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasFocusedSection()
+	return m.HasPendingPrefix() || m.HasFocusedSection() || m.confirm.IsActive()
 }
 
 // GetHelpItems returns help items for this view.

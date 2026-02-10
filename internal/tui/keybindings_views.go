@@ -42,7 +42,10 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "Enter", Description: "View task details", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
-		Keybinding{Key: "dd", Description: "Set due date", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+Y", Description: "Copy title and description", Category: "Actions", Views: views},
@@ -58,6 +61,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 
@@ -138,6 +142,10 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "Enter", Description: "View task details", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
@@ -149,6 +157,7 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerDailyReviewBindings() {
@@ -169,6 +178,10 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
@@ -203,6 +216,10 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "*", Description: "Toggle active flag (tasks)", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (tasks)", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
@@ -226,6 +243,10 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "*", Description: "Remove from focus", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
+		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/attr/score)", Category: "Filter", Views: views},

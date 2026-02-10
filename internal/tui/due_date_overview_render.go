@@ -119,6 +119,7 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		",": StatusPrefixHints,
 		"d": DueDatePrefixHints,
 		"g": DueDateOverviewNavigationPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
 	}
 	// Merge filter prefix hints (no DueDate category — the view IS organized by due date)
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {

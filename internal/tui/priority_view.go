@@ -95,8 +95,15 @@ type PriorityViewModel struct {
 	// Waiting On section state
 	waitingOnCollapsed bool
 
+	// Status and error messages
+	statusMessage string
+	err           error
+
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string // "g" when waiting for second key
+
+	// Confirm dialog for destructive actions
+	confirm ConfirmDialog
 
 	// Dimensions
 	width  int
@@ -518,6 +525,20 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 		return m, nil
 
+	case TagSelectorDoneMsg:
+		if !msg.Canceled {
+			m.loadActionableTasks()
+			m.clampCursor()
+			m.statusMessage = "Tags updated"
+		}
+		return m, nil
+
+	case SnoozeDateChangedMsg:
+		m.loadActionableTasks()
+		m.clampCursor()
+		m.statusMessage = "Snooze date updated"
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKeypress(msg)
 	}
@@ -531,6 +552,18 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	// Handle pending prefix keys (Vim-style gg)
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
+	}
+
+	// Handle confirm dialog
+	if m.confirm.IsActive() {
+		confirmed, handled := m.confirm.HandleKey(key)
+		if handled {
+			if confirmed {
+				return m.deleteTask()
+			}
+			m.statusMessage = ""
+			return m, nil
+		}
 	}
 
 	// Tab row focus switching
@@ -628,6 +661,13 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "d":
 		// Start prefix sequence for dd (due date)
 		m.pendingPrefix = "d"
+		return m, nil
+
+	case "m":
+		// Start prefix sequence for section move
+		if m.getTaskAtCursor() != nil {
+			m.pendingPrefix = "m"
+		}
 		return m, nil
 
 	case "c":
@@ -749,6 +789,36 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		// Open filter prefix popup
 		m.pendingPrefix = "F"
 		return m, nil
+
+	// Tags
+	case "t":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			project := m.project
+			task := pt.Task
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: append([]string{}, task.Tags...)}
+			}
+		}
+		return m, nil
+
+	// Snooze
+	case "Z":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			project := m.project
+			task := pt.Task
+			return m, func() tea.Msg {
+				return SetSnoozeDateMsg{Task: task, Project: project}
+			}
+		}
+		return m, nil
+
+	// Delete with confirmation
+	case "D":
+		if pt := m.getTaskAtCursor(); pt != nil {
+			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", pt.Task.ShortID))
+			m.statusMessage = m.confirm.Prompt()
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -806,6 +876,16 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 	case "d":
 		switch key {
+		case "t":
+			return m.setQuickDueDate(0) // Today
+		case "m":
+			return m.setQuickDueDate(1) // Tomorrow
+		case "w":
+			return m.setQuickDueDate(7) // +1 week
+		case "n":
+			return m.setQuickDueDate(30) // +1 month
+		case "0":
+			return m.clearDueDate()
 		case "d":
 			// dd: Open date picker for task at cursor
 			if pt := m.getTaskAtCursor(); pt != nil {
@@ -815,6 +895,12 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+	case "m":
+		section, ok := sectionForMoveKey(key)
+		if !ok {
+			return m, nil
+		}
+		return m.sectionMove(section)
 	case "F":
 		// Filter prefix - first level
 		return m.handlePriorityFilterPrefix(key)
@@ -892,9 +978,9 @@ func (m *PriorityViewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when the priority view is in prefix mode.
+// ShouldCaptureEsc returns true when the priority view is in prefix mode or confirm dialog is active.
 func (m *PriorityViewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix()
+	return m.HasPendingPrefix() || m.confirm.IsActive()
 }
 
 // changeTaskStatus changes the status of the task at cursor and refreshes.
@@ -904,44 +990,15 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 		return m, nil
 	}
 
-	task := pt.Task
-	if task.Status == newStatus {
-		return m, nil
+	result := applyStatusChangePS(m.projectService, m.project, pt.Task.ID, newStatus)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Backup before change
-	if err := m.projectService.Backup(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-	}
-
-	// Update task status
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Status = newStatus
-		if newStatus.IsComplete() {
-			now := time.Now()
-			t.CompletedAt = &now
-		} else {
-			t.CompletedAt = nil
-		}
-	})
-
-	// Save project
-	if err := m.projectService.Save(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-	}
-
-	// Reload and refresh
-	_ = m.projectService.Load(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
-
-	return m, func() tea.Msg {
-		return TaskStatusChangedMsg{Task: task}
-	}
+	return m, result.Cmd
 }
 
 // changeTaskPriority changes the priority of the task at cursor and refreshes.
@@ -951,36 +1008,105 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 		return m, nil
 	}
 
-	task := pt.Task
-	if task.Priority == newPriority {
+	result := applyPriorityChangePS(m.projectService, m.project, pt.Task.ID, newPriority)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadActionableTasks()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// setQuickDueDate sets the due date to a relative number of days from today.
+func (m *PriorityViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
 		return m, nil
 	}
 
-	// Backup before change
-	if err := m.projectService.Backup(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
+	result := applyQuickDueDatePS(m.projectService, m.project, pt.Task.ID, daysFromNow)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Update task priority
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Priority = newPriority
-	})
-
-	// Save project
-	if err := m.projectService.Save(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-	}
-
-	// Reload and refresh
-	_ = m.projectService.Load(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
+	return m, result.Cmd
+}
 
-	return m, nil
+// clearDueDate clears the due date from the task at cursor.
+func (m *PriorityViewModel) clearDueDate() (tea.Model, tea.Cmd) {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
+		return m, nil
+	}
+
+	result := applyClearDueDatePS(m.projectService, m.project, pt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadActionableTasks()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// toggleActive toggles the Active flag on the task at cursor.
+func (m *PriorityViewModel) toggleActive() (tea.Model, tea.Cmd) {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
+		return m, nil
+	}
+
+	result := applyToggleActivePS(m.projectService, m.project, pt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadActionableTasks()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// sectionMove moves the task at cursor to the specified GTD section.
+func (m *PriorityViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
+		return m, nil
+	}
+
+	result := applySectionChangePS(m.projectService, m.project, pt.Task.ID, section)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadActionableTasks()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// deleteTask deletes the task at cursor.
+func (m *PriorityViewModel) deleteTask() (tea.Model, tea.Cmd) {
+	pt := m.getTaskAtCursor()
+	if pt == nil {
+		return m, nil
+	}
+
+	result := applyDeleteTaskPS(m.projectService, m.project, pt.Task.ID)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadActionableTasks()
+	m.clampCursor()
+	return m, result.Cmd
 }
 
 // clampCursor ensures cursor is within valid range.

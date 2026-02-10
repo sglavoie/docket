@@ -41,6 +41,7 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			",":   StatusPrefixHints,
 			"g":   PriorityViewNavigationPrefixHints,
 			"d":   DueDatePrefixHints,
+			"m":   SecondaryViewMovePrefixHints,
 			"c":   CreateLinkedPrefixHints,
 			"F":   m.buildPriorityFilterPrefixHints(),
 			"Ft":  FilterTypePrefixHints,

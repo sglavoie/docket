@@ -139,6 +139,7 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"g": DailyReviewNavigationPrefixHints,
 		"s": SectionPrefixHints,
 		"c": CreateLinkedPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
 	}
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false) {

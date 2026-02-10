@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -61,6 +63,7 @@ type DailyReviewModel struct {
 	// UI feedback
 	statusMessage string
 	err           error
+	confirm       ConfirmDialog
 
 	// Dimensions
 	width  int
@@ -109,6 +112,20 @@ func (m *DailyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		m.clampCursor()
 		return m, nil
+
+	case TagSelectorDoneMsg:
+		if !msg.Canceled {
+			m.loadTasks()
+			m.clampCursor()
+			m.statusMessage = "Tags updated"
+		}
+		return m, nil
+
+	case SnoozeDateChangedMsg:
+		m.loadTasks()
+		m.clampCursor()
+		m.statusMessage = "Snooze date updated"
+		return m, nil
 	}
 
 	return m, nil
@@ -117,6 +134,18 @@ func (m *DailyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKeyMsg handles keyboard input.
 func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Handle confirm dialog first
+	if m.confirm.IsActive() {
+		confirmed, handled := m.confirm.HandleKey(key)
+		if handled {
+			if confirmed {
+				return m.deleteTask()
+			}
+			m.statusMessage = ""
+			return m, nil
+		}
+	}
 
 	// Handle pending prefix keys (which-key style)
 	if m.pendingPrefix != "" {
@@ -152,7 +181,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Activate prefix mode
 	switch key {
-	case ",", "d", "g", "s":
+	case ",", "d", "g", "s", "m":
 		if m.getTaskAtCursor() != nil {
 			m.pendingPrefix = key
 		}
@@ -258,6 +287,33 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Toggle active flag
 	case "*":
 		return m.toggleActive()
+
+	// Tag selector
+	case "t":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return ShowTagSelectorMsg{Task: dt.Task, Project: dt.Project, CurrentTags: append([]string{}, dt.Task.Tags...)}
+			}
+		}
+		return m, nil
+
+	// Snooze picker
+	case "Z":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			return m, func() tea.Msg {
+				return SetSnoozeDateMsg{Task: dt.Task, Project: dt.Project}
+			}
+		}
+		return m, nil
+
+	// Delete task (with confirmation)
+	case "D":
+		if dt := m.getTaskAtCursor(); dt != nil {
+			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", dt.Task.ShortID))
+			m.statusMessage = m.confirm.Prompt()
+			return m, nil
+		}
+		return m, nil
 
 	// Toggle section collapse
 	case "tab":
@@ -423,6 +479,14 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m.toggleSectionFocus(*targetSection)
 		}
 
+	case "m":
+		// Move to section
+		section, ok := sectionForMoveKey(key)
+		if !ok {
+			return m, nil
+		}
+		return m.sectionMove(section)
+
 	case "c":
 		// Create linked task or navigate
 		dt := m.getTaskAtCursor()
@@ -476,9 +540,9 @@ func (m *DailyReviewModel) HasTextInput() bool {
 	return false
 }
 
-// ShouldCaptureEsc returns true when prefix mode, section focus, or filters are active.
+// ShouldCaptureEsc returns true when prefix mode, section focus, filters, or confirm dialog are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasFocusedSection() || m.HasActiveFilters()
+	return m.HasPendingPrefix() || m.HasFocusedSection() || m.HasActiveFilters() || m.confirm.IsActive()
 }
 
 // GetHelpItems returns help items for this view.
