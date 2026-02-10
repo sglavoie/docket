@@ -652,7 +652,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.width))
 		return b.String()
 	}
 
@@ -662,7 +662,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel"), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.width))
 		return b.String()
 	}
 

@@ -664,7 +664,7 @@ func (m *TaskEditorModel) View() string {
 		content.WriteString(MutedStyle.Render(fmt.Sprintf("(%d lines, %d chars)", lines, chars)))
 	}
 	content.WriteString("  ")
-	content.WriteString(HelpStyle.Render("Ctrl+O"))
+	content.WriteString(HelpStyle.Render("Ctrl+E"))
 
 	// Type change confirmation
 	if m.confirmTypeChange {
@@ -685,7 +685,7 @@ func (m *TaskEditorModel) View() string {
 	}
 
 	// Footer
-	left := HelpStyle.Render("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+O editor · Esc cancel")
+	left := HelpStyle.Render("Tab/↔ navigate · Space toggle · Ctrl+S save · Ctrl+E editor · Esc cancel")
 	right := MutedStyle.Render(cardTitle)
 
 	var out strings.Builder

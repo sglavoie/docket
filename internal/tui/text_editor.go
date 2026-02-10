@@ -117,7 +117,7 @@ func (m *TextEditorModel) View() string {
 	b.WriteString(m.textarea.View())
 	b.WriteString("\n")
 
-	left := HelpStyle.Render("Ctrl+S: save · Ctrl+O: external editor · Esc: cancel")
+	left := HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel")
 	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
 	return b.String()

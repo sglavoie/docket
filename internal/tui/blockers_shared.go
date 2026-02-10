@@ -671,7 +671,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		b.WriteString("\n\n")
 		b.WriteString(s.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+O: external editor | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+E: external editor | Esc: cancel"))
 		return b.String()
 	}
 
@@ -688,7 +688,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 		b.WriteString(s.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+O: external editor | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+E: external editor | Esc: cancel"))
 		return b.String()
 	}
 
