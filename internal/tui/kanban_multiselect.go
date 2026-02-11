@@ -102,6 +102,13 @@ func (m *KanbanViewModel) selectedCount() int {
 	return len(m.selectedTasks)
 }
 
+// finishBulk clears multiselect state and sets the status message.
+func (m *KanbanViewModel) finishBulk(statusMsg string) {
+	m.selectedTasks = make(map[string]bool)
+	m.multiSelectMode = false
+	m.statusMessage = statusMsg
+}
+
 // handleBulkStatusChange applies a status change to all selected tasks.
 func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) tea.Cmd {
 	tasks := m.getSelectedTasksList()
@@ -130,10 +137,7 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 		return nil
 	}
 
-	// Clear selection and exit multi-select mode
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", changedCount, newStatus)
+	m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", changedCount, newStatus))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
@@ -165,16 +169,12 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 		return nil
 	}
 
-	// Find target column index
 	targetColumnIndex := m.columnIndexForKey(targetSection)
 	if targetColumnIndex < 0 {
 		targetColumnIndex = 0
 	}
 
-	// Clear selection and exit multi-select mode
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Moved %d tasks to %s", changedCount, sectionDisplayName(targetSection))
+	m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", changedCount, sectionDisplayName(targetSection)))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanTaskMovedMsg{
@@ -194,13 +194,11 @@ func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 
 	prevStates := captureTaskStates(m.Project.Tasks)
 
-	// Build a set of task IDs to delete
 	deleteIDs := make(map[string]bool)
 	for _, task := range tasks {
 		deleteIDs[task.ID] = true
 	}
 
-	// Remove tasks from project
 	var remaining []*models.Task
 	for _, t := range m.Project.Tasks {
 		if !deleteIDs[t.ID] {
@@ -210,11 +208,7 @@ func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 	m.Project.Tasks = remaining
 	m.Project.BuildTaskTree()
 
-	// Clear selection and exit multi-select mode
-	count := len(tasks)
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Deleted %d tasks", count)
+	m.finishBulk(fmt.Sprintf("Deleted %d tasks", len(tasks)))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanTaskDeletedMsg{TaskID: "", Section: m.CurrentSection()}
@@ -235,10 +229,7 @@ func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
 		})
 	}
 
-	count := len(tasks)
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+	m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, len(tasks)))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
@@ -259,10 +250,7 @@ func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc strin
 		})
 	}
 
-	count := len(tasks)
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Due date %s on %d tasks", desc, count)
+	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", desc, len(tasks)))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}

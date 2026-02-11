@@ -253,15 +253,7 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 	}
 	title := util.Truncate(task.Title, maxTitleLen)
 
-	// Tags
-	tagsStr := ""
-	if len(task.Tags) > 0 {
-		tags := task.Tags
-		if len(tags) > 2 {
-			tags = tags[:2]
-		}
-		tagsStr = MutedStyle.Render(" #" + strings.Join(tags, " #"))
-	}
+	tagsStr := renderInlineTags(task.Tags)
 
 	// Due date
 	dueStr := ""

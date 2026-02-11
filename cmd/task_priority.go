@@ -40,8 +40,8 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid priority: %s (must be %d-%d)", args[1], models.PriorityMin, models.PriorityMax)
 	}
 
-	if priority < models.PriorityMin || priority > models.PriorityMax {
-		return fmt.Errorf("priority must be between %d and %d, got %d", models.PriorityMin, models.PriorityMax, priority)
+	if err := ValidatePriority(priority, false); err != nil {
+		return err
 	}
 
 	var oldPriority int

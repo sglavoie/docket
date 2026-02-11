@@ -316,15 +316,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		csStr = " " + csStyle.Render("@ "+task.CustomSection)
 	}
 
-	// Tags
-	tagsStr := ""
-	if len(task.Tags) > 0 {
-		tags := task.Tags
-		if len(tags) > 2 {
-			tags = tags[:2]
-		}
-		tagsStr = MutedStyle.Render(" #" + strings.Join(tags, " #"))
-	}
+	tagsStr := renderInlineTags(task.Tags)
 
 	// Due date
 	dueStr := ""

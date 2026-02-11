@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -218,8 +219,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	}
 	if action == workflow.ActionSetPriority {
 		p, err := strconv.Atoi(actionValue)
-		if err != nil || p < 1 || p > 5 {
-			return fmt.Errorf("priority must be 1-5, got: %s", actionValue)
+		if err != nil || ValidatePriority(p, false) != nil {
+			return fmt.Errorf("priority must be %d-%d, got: %s", models.PriorityMin, models.PriorityMax, actionValue)
 		}
 	}
 	if action == workflow.ActionSetActive || action == workflow.ActionSetPinned {

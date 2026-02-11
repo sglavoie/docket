@@ -109,8 +109,8 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate priority
-	if templateAddPriority < 0 || templateAddPriority > models.PriorityMax {
-		return fmt.Errorf("priority must be 0-%d (0 for default)", models.PriorityMax)
+	if err := ValidatePriority(templateAddPriority, true); err != nil {
+		return err
 	}
 
 	// Validate category

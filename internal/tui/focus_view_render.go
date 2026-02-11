@@ -183,14 +183,7 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 	}
 	title := util.Truncate(task.Title, maxTitleLen)
 
-	tagsStr := ""
-	if len(task.Tags) > 0 {
-		tags := task.Tags
-		if len(tags) > 2 {
-			tags = tags[:2]
-		}
-		tagsStr = MutedStyle.Render(" #" + strings.Join(tags, " #"))
-	}
+	tagsStr := renderInlineTags(task.Tags)
 
 	dueStr := ""
 	if task.DueDate != nil {

@@ -117,8 +117,8 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate priority
-	if priority < models.PriorityMin || priority > models.PriorityMax {
-		return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
+	if err := ValidatePriority(priority, false); err != nil {
+		return err
 	}
 
 	// Create task

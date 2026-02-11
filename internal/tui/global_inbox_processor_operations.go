@@ -9,244 +9,80 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// openSectionPicker opens the section picker for assignment.
-func (m *GlobalInboxProcessorModel) openSectionPicker() tea.Cmd {
+// inboxOpsView implementation for GlobalInboxProcessorModel.
+
+func (m *GlobalInboxProcessorModel) getInboxTaskRef() (*models.Task, *models.Project) {
 	git := m.getCurrentTask()
 	if git == nil {
-		return nil
+		return nil, nil
 	}
-
-	return func() tea.Msg {
-		return ShowSectionPickerMsg{
-			Task:    git.Task,
-			Project: git.Project,
-		}
-	}
+	return git.Task, git.Project
 }
 
-// handleSectionPickerDone handles section picker completion.
-func (m *GlobalInboxProcessorModel) handleSectionPickerDone(msg SectionPickerDoneMsg) (tea.Model, tea.Cmd) {
-	if msg.Canceled {
-		return m, nil
-	}
-
-	git := m.getCurrentTask()
-	if git == nil || git.Task.ID != msg.Task.ID {
-		return m, nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	current := git.Project.GetTaskByID(git.Task.ID)
-	if current == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return m, nil
-	}
-
-	snapshot := m.captureSnapshot(current)
-	if !git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
-		t.Section = msg.Section
-	}) {
-		m.statusMessage = "Error: task no longer exists in project"
-		return m, nil
-	}
-
-	sectionName := msg.Section
-	if sectionName == "" {
-		sectionName = "(no section)"
-	}
-
-	m.recordAction(fmt.Sprintf("section set to %s", sectionName), snapshot)
-	m.statusMessage = fmt.Sprintf("Section set to '%s'", sectionName)
-
-	// If task is leaving inbox, mark as processed
-	if m.willLeaveInbox(current) {
-		m.processedIDs[git.Task.ID] = true
-		return m, tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
-	}
-
-	return m, m.saveCurrentProject()
+func (m *GlobalInboxProcessorModel) inboxSave() tea.Cmd   { return m.saveCurrentProject() }
+func (m *GlobalInboxProcessorModel) inboxReload() tea.Cmd { return m.reloadCurrentProject() }
+func (m *GlobalInboxProcessorModel) inboxCaptureSnapshot(task *models.Task) *inboxSnapshot {
+	return m.captureSnapshot(task)
 }
-
-// openTaskEditor opens the task editor.
-func (m *GlobalInboxProcessorModel) openTaskEditor() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	return func() tea.Msg {
-		return EditTaskMsg{
-			Task: git.Task,
-		}
-	}
+func (m *GlobalInboxProcessorModel) inboxRecordAction(desc string, snapshot *inboxSnapshot) {
+	m.recordAction(desc, snapshot)
 }
+func (m *GlobalInboxProcessorModel) setInboxStatus(msg string) { m.statusMessage = msg }
+func (m *GlobalInboxProcessorModel) setInboxErr(err error)     { m.err = err }
 
-// handleTaskUpdated handles task editor completion.
-func (m *GlobalInboxProcessorModel) handleTaskUpdated(msg TaskUpdatedMsg) (tea.Model, tea.Cmd) {
-	m.statusMessage = "Task updated"
-	return m, m.reloadCurrentProject()
-}
+// Delegate shared operations.
 
-// openDueDateInput opens the due date input.
-func (m *GlobalInboxProcessorModel) openDueDateInput() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	return func() tea.Msg {
-		return SetDueDateMsg{
-			Task:    git.Task,
-			Project: git.Project,
-		}
-	}
-}
-
-// handleDueDateChanged handles due date input completion.
-func (m *GlobalInboxProcessorModel) handleDueDateChanged(msg DueDateChangedMsg) (tea.Model, tea.Cmd) {
-	m.statusMessage = "Due date updated"
-	return m, m.reloadCurrentProject()
-}
-
-// openDependencySelector opens the dependency selector.
+func (m *GlobalInboxProcessorModel) openSectionPicker() tea.Cmd { return inboxOpenSectionPicker(m) }
+func (m *GlobalInboxProcessorModel) openTaskEditor() tea.Cmd    { return inboxOpenTaskEditor(m) }
+func (m *GlobalInboxProcessorModel) openDueDateInput() tea.Cmd  { return inboxOpenDueDateInput(m) }
 func (m *GlobalInboxProcessorModel) openDependencySelector() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	return func() tea.Msg {
-		return ManageDependenciesMsg{
-			Task:    git.Task,
-			Project: git.Project,
-		}
-	}
+	return inboxOpenDependencySelector(m)
 }
+func (m *GlobalInboxProcessorModel) openSubtaskCreator() tea.Cmd { return inboxOpenSubtaskCreator(m) }
+func (m *GlobalInboxProcessorModel) openTagSelector() tea.Cmd    { return inboxOpenTagSelector(m) }
 
-// handleDependencySelectorDone handles dependency selector completion.
-func (m *GlobalInboxProcessorModel) handleDependencySelectorDone(msg DependencySelectorDoneMsg) (tea.Model, tea.Cmd) {
-	m.statusMessage = "Dependencies updated"
-	return m, m.reloadCurrentProject()
-}
-
-// openSubtaskCreator opens the task creator for subtasks.
-func (m *GlobalInboxProcessorModel) openSubtaskCreator() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	return func() tea.Msg {
-		return CreateTaskMsg{
-			ParentTask: git.Task,
-		}
-	}
-}
-
-// deleteCurrentTask prompts for deletion confirmation.
 func (m *GlobalInboxProcessorModel) deleteCurrentTask() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", git.Task.ShortID)
-	m.confirm.Show("delete", m.statusMessage)
-
+	inboxDeletePrompt(m, &m.confirm)
 	return nil
 }
 
-// executeDelete deletes the current task.
-func (m *GlobalInboxProcessorModel) executeDelete() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	// Remove from project
-	for i, t := range git.Project.Tasks {
-		if t.ID == git.Task.ID {
-			git.Project.Tasks = append(git.Project.Tasks[:i], git.Project.Tasks[i+1:]...)
-			break
-		}
-	}
-
-	// Mark as processed (removed)
-	m.processedIDs[git.Task.ID] = true
-
-	// Rebuild inbox tasks list
-	m.loadAllInboxTasks()
-
-	// Adjust index if needed
-	if m.currentIndex >= len(m.inboxTasks) {
-		m.currentIndex = len(m.inboxTasks) - 1
-	}
-	if m.currentIndex < 0 {
-		m.currentIndex = 0
-	}
-
-	m.statusMessage = "Task deleted"
-
-	return m.saveCurrentProject()
+func (m *GlobalInboxProcessorModel) handleTaskUpdated(msg TaskUpdatedMsg) (tea.Model, tea.Cmd) {
+	return m, inboxHandleTaskUpdated(m)
 }
 
-// openTagSelector opens the tag selector modal.
-func (m *GlobalInboxProcessorModel) openTagSelector() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	return func() tea.Msg {
-		return ShowTagSelectorMsg{
-			Task:        git.Task,
-			Project:     git.Project,
-			CurrentTags: append([]string{}, git.Task.Tags...), // Copy
-		}
-	}
+func (m *GlobalInboxProcessorModel) handleDueDateChanged(msg DueDateChangedMsg) (tea.Model, tea.Cmd) {
+	return m, inboxHandleDueDateChanged(m)
 }
 
-// handleTagSelectorDone handles tag selector completion.
-func (m *GlobalInboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg) (*GlobalInboxProcessorModel, tea.Cmd) {
-	if msg.Canceled {
-		m.statusMessage = "Tag editing canceled"
+func (m *GlobalInboxProcessorModel) handleDependencySelectorDone(msg DependencySelectorDoneMsg) (tea.Model, tea.Cmd) {
+	return m, inboxHandleDependencySelectorDone(m)
+}
+
+// handleSectionPickerDone has global-specific logic: if the task leaves inbox,
+// mark it as processed and advance to the next task.
+func (m *GlobalInboxProcessorModel) handleSectionPickerDone(msg SectionPickerDoneMsg) (tea.Model, tea.Cmd) {
+	if !inboxHandleSectionPickerCore(m, msg) {
 		return m, nil
 	}
 
 	git := m.getCurrentTask()
-	if git == nil {
-		m.statusMessage = "Error: no current task"
-		return m, nil
-	}
-	if git.Task.ID != msg.Task.ID {
-		m.statusMessage = fmt.Sprintf("Error: task ID mismatch (current: %s, msg: %s)", git.Task.ID, msg.Task.ID)
-		return m, nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	current := git.Project.GetTaskByID(git.Task.ID)
-	if current == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return m, nil
-	}
-
-	snapshot := m.captureSnapshot(current)
-	if !git.Project.MutateTask(git.Task.ID, func(t *models.Task) {
-		t.Tags = msg.SelectedTags
-	}) {
-		m.statusMessage = "Error: task no longer exists in project"
-		return m, nil
-	}
-
-	m.recordAction("tags updated", snapshot)
-	if len(msg.SelectedTags) == 0 {
-		m.statusMessage = "Tags cleared"
-	} else {
-		m.statusMessage = fmt.Sprintf("Tags set: %s", strings.Join(msg.SelectedTags, ", "))
+	if git != nil {
+		current := git.Project.GetTaskByID(git.Task.ID)
+		if current != nil && m.willLeaveInbox(current) {
+			m.processedIDs[git.Task.ID] = true
+			return m, tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
+		}
 	}
 
 	return m, m.saveCurrentProject()
 }
+
+func (m *GlobalInboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg) (*GlobalInboxProcessorModel, tea.Cmd) {
+	_, cmd := inboxHandleTagSelectorDone(m, msg)
+	return m, cmd
+}
+
+// --- Global-specific operations (no local equivalent) ---
 
 // changeTaskStatus validates and applies a status transition for the current
 // global inbox task. Complete and cancel mark the task as processed and advance.
@@ -258,7 +94,6 @@ func (m *GlobalInboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus
 
 	project := git.Project
 
-	// Re-lookup task to avoid stale pointer after concurrent reload
 	task := project.GetTaskByID(git.Task.ID)
 	if task == nil {
 		m.statusMessage = "Error: task no longer exists in project"
@@ -270,7 +105,6 @@ func (m *GlobalInboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus
 		return nil
 	}
 
-	// Project-level check: incomplete dependencies block completion
 	if newStatus == models.StatusDone {
 		incompleteDeps := project.GetIncompleteDependencies(task)
 		if len(incompleteDeps) > 0 {
@@ -290,7 +124,6 @@ func (m *GlobalInboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus
 	m.recordAction(verb+" task", snapshot)
 	m.statusMessage = fmt.Sprintf("Task #%d %s", task.ShortID, verb)
 
-	// Terminal statuses leave the inbox
 	if newStatus.IsComplete() {
 		m.processedIDs[task.ID] = true
 		return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
@@ -322,7 +155,6 @@ func (m *GlobalInboxProcessorModel) sendToWaiting() tea.Cmd {
 		return nil
 	}
 
-	// Re-lookup task to avoid stale pointer after concurrent reload
 	task := git.Project.GetTaskByID(git.Task.ID)
 	if task == nil {
 		m.statusMessage = "Error: task no longer exists in project"
@@ -340,8 +172,36 @@ func (m *GlobalInboxProcessorModel) sendToWaiting() tea.Cmd {
 	m.recordAction("sent to Waiting", snapshot)
 	m.statusMessage = fmt.Sprintf("Task #%d sent to Waiting", task.ShortID)
 
-	// Mark as processed (it's leaving inbox)
 	m.processedIDs[task.ID] = true
 
 	return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
+}
+
+// executeDelete deletes the current task.
+func (m *GlobalInboxProcessorModel) executeDelete() tea.Cmd {
+	git := m.getCurrentTask()
+	if git == nil {
+		return nil
+	}
+
+	for i, t := range git.Project.Tasks {
+		if t.ID == git.Task.ID {
+			git.Project.Tasks = append(git.Project.Tasks[:i], git.Project.Tasks[i+1:]...)
+			break
+		}
+	}
+
+	m.processedIDs[git.Task.ID] = true
+	m.loadAllInboxTasks()
+
+	if m.currentIndex >= len(m.inboxTasks) {
+		m.currentIndex = len(m.inboxTasks) - 1
+	}
+	if m.currentIndex < 0 {
+		m.currentIndex = 0
+	}
+
+	m.statusMessage = "Task deleted"
+
+	return m.saveCurrentProject()
 }

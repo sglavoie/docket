@@ -82,203 +82,138 @@ func (m *AllTasksViewModel) getSelectedItemsByProject() map[string][]AllTasksIte
 	return byProject
 }
 
-// handleBulkStatusChange applies a status change to all selected tasks across projects.
-func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+// bulkApply iterates selected tasks grouped by project, backs up each project,
+// calls mutate for each item, and saves. Returns the count from mutate calls,
+// or -1 if a backup failed (with statusMessage already set).
+func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item AllTasksItem) bool) int {
 	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
-		return m, nil
-	}
-
-	changedCount := 0
+	count := 0
 	for projectID, items := range byProject {
 		project := m.projectCache[projectID]
 		if project == nil {
 			continue
 		}
-
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
-			return m, nil
+		if err := m.projectService.Backup(project); err != nil {
+			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, err)
+			return -1
 		}
 		for _, item := range items {
-			project.MutateTask(item.Task.ID, func(t *models.Task) {
-				if t.CanTransitionTo(newStatus) != "" {
-					return
-				}
-				t.ApplyTransition(newStatus)
-				changedCount++
-			})
+			if mutate(project, item) {
+				count++
+			}
 		}
 		_ = m.projectService.Save(project)
 	}
+	return count
+}
 
+// finishBulk clears multiselect state, sets the status message, and refreshes.
+func (m *AllTasksViewModel) finishBulk(statusMsg string) {
 	m.selectedTasks = make(map[string]bool)
 	m.multiSelectMode = false
-
-	if changedCount == 0 {
-		m.statusMessage = "No tasks were changed"
-	} else {
-		m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", changedCount, newStatus)
-	}
+	m.statusMessage = statusMsg
 	m.loadAllTasks()
 	m.clampCursor()
+}
+
+// handleBulkStatusChange applies a status change to all selected tasks across projects.
+func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
+		var changed bool
+		project.MutateTask(item.Task.ID, func(t *models.Task) {
+			if t.CanTransitionTo(newStatus) != "" {
+				return
+			}
+			t.ApplyTransition(newStatus)
+			changed = true
+		})
+		return changed
+	})
+	if count < 0 {
+		return m, nil
+	}
+	if count == 0 {
+		m.finishBulk("No tasks were changed")
+	} else {
+		m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", count, newStatus))
+	}
 	return m, nil
 }
 
 // handleBulkPriorityChange sets the priority on all selected tasks across projects.
 func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, tea.Cmd) {
-	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
+	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
+		if item.Task.Priority == priority {
+			return false
+		}
+		project.MutateTask(item.Task.ID, func(t *models.Task) {
+			t.Priority = priority
+		})
+		return true
+	})
+	if count < 0 {
 		return m, nil
 	}
-
-	count := 0
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
-		if project == nil {
-			continue
-		}
-
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
-			return m, nil
-		}
-		for _, item := range items {
-			if item.Task.Priority != priority {
-				project.MutateTask(item.Task.ID, func(t *models.Task) {
-					t.Priority = priority
-				})
-				count++
-			}
-		}
-		_ = m.projectService.Save(project)
-	}
-
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-
 	if count == 0 {
-		m.statusMessage = "No tasks were changed"
+		m.finishBulk("No tasks were changed")
 	} else {
-		m.statusMessage = fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+		m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, count))
 	}
-	m.loadAllTasks()
-	m.clampCursor()
 	return m, nil
 }
 
 // handleBulkDueDateChange sets a due date on all selected tasks.
 func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model, tea.Cmd) {
-	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
-		return m, nil
-	}
-
 	dueDate := time.Now().AddDate(0, 0, daysFromNow)
 	dueDate = time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, dueDate.Location())
-	count := 0
 
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
-		if project == nil {
-			continue
-		}
-
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
-			return m, nil
-		}
-		for _, item := range items {
-			project.MutateTask(item.Task.ID, func(t *models.Task) {
-				t.DueDate = &dueDate
-				count++
-			})
-		}
-		_ = m.projectService.Save(project)
+	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
+		project.MutateTask(item.Task.ID, func(t *models.Task) {
+			t.DueDate = &dueDate
+		})
+		return true
+	})
+	if count < 0 {
+		return m, nil
 	}
-
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Due date %s on %d tasks", dueDateLabel(daysFromNow), count)
-	m.loadAllTasks()
-	m.clampCursor()
+	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", dueDateLabel(daysFromNow), count))
 	return m, nil
 }
 
 // handleBulkClearDueDate clears due dates on all selected tasks.
 func (m *AllTasksViewModel) handleBulkClearDueDate() (tea.Model, tea.Cmd) {
-	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
+	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
+		project.MutateTask(item.Task.ID, func(t *models.Task) {
+			t.DueDate = nil
+		})
+		return true
+	})
+	if count < 0 {
 		return m, nil
 	}
-
-	count := 0
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
-		if project == nil {
-			continue
-		}
-
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
-			return m, nil
-		}
-		for _, item := range items {
-			project.MutateTask(item.Task.ID, func(t *models.Task) {
-				t.DueDate = nil
-				count++
-			})
-		}
-		_ = m.projectService.Save(project)
-	}
-
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Cleared due date on %d tasks", count)
-	m.loadAllTasks()
-	m.clampCursor()
+	m.finishBulk(fmt.Sprintf("Cleared due date on %d tasks", count))
 	return m, nil
 }
 
 // handleBulkSectionMove moves all selected tasks to a target section.
 func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Model, tea.Cmd) {
-	byProject := m.getSelectedItemsByProject()
-	if len(byProject) == 0 {
+	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
+		if item.Task.Section == targetSection {
+			return false
+		}
+		project.MutateTask(item.Task.ID, func(t *models.Task) {
+			t.Section = targetSection
+		})
+		return true
+	})
+	if count < 0 {
 		return m, nil
 	}
-
-	count := 0
-	for projectID, items := range byProject {
-		project := m.projectCache[projectID]
-		if project == nil {
-			continue
-		}
-
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
-			return m, nil
-		}
-		for _, item := range items {
-			if item.Task.Section != targetSection {
-				project.MutateTask(item.Task.ID, func(t *models.Task) {
-					t.Section = targetSection
-				})
-				count++
-			}
-		}
-		_ = m.projectService.Save(project)
+	if count == 0 {
+		m.finishBulk("No tasks were moved")
+	} else {
+		m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", count, sectionDisplayName(targetSection)))
 	}
-
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Moved %d tasks to %s", count, sectionDisplayName(targetSection))
-	m.loadAllTasks()
-	m.clampCursor()
 	return m, nil
 }
 
@@ -296,9 +231,8 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			continue
 		}
 
-		errBackup := m.projectService.Backup(project)
-		if errBackup != nil {
-			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
+		if err := m.projectService.Backup(project); err != nil {
+			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, err)
 			return m, nil
 		}
 		deleteIDs := make(map[string]bool)
@@ -318,10 +252,6 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 		_ = m.projectService.Save(project)
 	}
 
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
-	m.statusMessage = fmt.Sprintf("Deleted %d tasks", totalDeleted)
-	m.loadAllTasks()
-	m.clampCursor()
+	m.finishBulk(fmt.Sprintf("Deleted %d tasks", totalDeleted))
 	return m, nil
 }

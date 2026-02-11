@@ -126,6 +126,19 @@ func renderFullscreenTitle(title, subtitle string) string {
 	return t
 }
 
+// renderInlineTags renders a compact inline tag string showing at most 2 tags.
+// Returns an empty string if there are no tags.
+func renderInlineTags(tags []string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	display := tags
+	if len(display) > 2 {
+		display = display[:2]
+	}
+	return MutedStyle.Render(" #" + strings.Join(display, " #"))
+}
+
 // renderPriorityBadge renders a priority indicator with color styling.
 func renderPriorityBadge(priority int) string {
 	badge := fmt.Sprintf("!%d", priority)

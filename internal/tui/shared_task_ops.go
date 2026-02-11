@@ -16,6 +16,24 @@ type TaskOpResult struct {
 	Cmd           tea.Cmd
 }
 
+// withPersist handles the common task operation pattern: look up task by ID,
+// nil check, backup, apply mutation via MutateTask, save, and reload.
+// On success it returns a zero TaskOpResult; callers set StatusMessage/Cmd.
+func withPersist(p Persister, project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+	if project.GetTaskByID(taskID) == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+	if err := p.Backup(project); err != nil {
+		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
+	}
+	project.MutateTask(taskID, mutate)
+	if err := p.Save(project); err != nil {
+		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	}
+	_ = p.Load(project)
+	return TaskOpResult{}
+}
+
 // applyStatusChange validates and applies a status transition on the given task.
 // It handles backup, mutation, save, and reload. The caller is responsible for
 // refreshing its view-specific data (loadTasks, clampCursor, etc.).
@@ -29,32 +47,20 @@ func applyStatusChange(p Persister, project *models.Project, taskID string, newS
 		return TaskOpResult{StatusMessage: msg}
 	}
 
-	if newStatus == models.StatusDone {
-		if project.HasIncompleteDependencies(task) {
-			return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
-		}
+	if newStatus == models.StatusDone && project.HasIncompleteDependencies(task) {
+		return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.ApplyTransition(newStatus)
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
 
-	_ = p.Load(project)
-
-	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Task #%d -> %s", task.ShortID, newStatus),
-		Cmd: func() tea.Msg {
-			return TaskStatusChangedMsg{Task: task}
-		},
-	}
+	result.StatusMessage = fmt.Sprintf("Task #%d -> %s", task.ShortID, newStatus)
+	result.Cmd = func() tea.Msg { return TaskStatusChangedMsg{Task: task} }
+	return result
 }
 
 // applyPriorityChange sets the priority on a task.
@@ -63,52 +69,35 @@ func applyPriorityChange(p Persister, project *models.Project, taskID string, pr
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
-
 	if task.Priority == priority {
 		return TaskOpResult{}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.Priority = priority
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
 
-	_ = p.Load(project)
-
-	return TaskOpResult{StatusMessage: fmt.Sprintf("Priority set to %d", priority)}
+	result.StatusMessage = fmt.Sprintf("Priority set to %d", priority)
+	return result
 }
 
 // applyQuickDueDate sets the due date relative to today.
 func applyQuickDueDate(p Persister, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
-	task := project.GetTaskByID(taskID)
-	if task == nil {
-		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
-	}
-
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
 	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
-	project.MutateTask(taskID, func(t *models.Task) {
+
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.DueDate = &newDate
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
 
-	_ = p.Load(project)
-
-	return TaskOpResult{StatusMessage: fmt.Sprintf("Due date set to %s", dueDateLabel(daysFromNow))}
+	result.StatusMessage = fmt.Sprintf("Due date set to %s", dueDateLabel(daysFromNow))
+	return result
 }
 
 // applyClearDueDate removes the due date from a task.
@@ -117,26 +106,19 @@ func applyClearDueDate(p Persister, project *models.Project, taskID string) Task
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
-
 	if task.DueDate == nil {
 		return TaskOpResult{StatusMessage: "Task has no due date"}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.DueDate = nil
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
 
-	_ = p.Load(project)
-
-	return TaskOpResult{StatusMessage: "Due date cleared"}
+	result.StatusMessage = "Due date cleared"
+	return result
 }
 
 // applyToggleActive toggles the Active flag on a task.
@@ -146,32 +128,21 @@ func applyToggleActive(p Persister, project *models.Project, taskID string) Task
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
 	wasActive := task.Active
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.Active = !t.Active
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
-
-	_ = p.Load(project)
 
 	msg := fmt.Sprintf("Task #%d marked active", task.ShortID)
 	if wasActive {
 		msg = fmt.Sprintf("Task #%d unmarked active", task.ShortID)
 	}
-
-	return TaskOpResult{
-		StatusMessage: msg,
-		Cmd: func() tea.Msg {
-			return TaskUpdatedMsg{Task: task}
-		},
-	}
+	result.StatusMessage = msg
+	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	return result
 }
 
 // applyRemoveFromFocus always sets Active = false (used by FocusView specifically).
@@ -181,26 +152,16 @@ func applyRemoveFromFocus(p Persister, project *models.Project, taskID string, s
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.Active = false
 	})
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
 
-	_ = p.Load(project)
-
-	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Removed #%d from focus", shortID),
-		Cmd: func() tea.Msg {
-			return TaskUpdatedMsg{Task: task}
-		},
-	}
+	result.StatusMessage = fmt.Sprintf("Removed #%d from focus", shortID)
+	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	return result
 }
 
 // applySectionChange sets the GTD section on a task.
@@ -210,35 +171,23 @@ func applySectionChange(p Persister, project *models.Project, taskID string, sec
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
-	project.MutateTask(taskID, func(t *models.Task) {
+	result := withPersist(p, project, taskID, func(t *models.Task) {
 		assignSection(t, section)
+		if section != "" && section != removeCustomSectionSentinel {
+			project.EnsureSection(section)
+		}
 	})
-
-	if section != "" && section != removeCustomSectionSentinel {
-		project.EnsureSection(section)
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
 	}
-
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
-	}
-
-	_ = p.Load(project)
 
 	sectionName := section
 	if sectionName == "" {
 		sectionName = "Active"
 	}
-
-	return TaskOpResult{
-		StatusMessage: fmt.Sprintf("Moved to %s", sectionName),
-		Cmd: func() tea.Msg {
-			return TaskUpdatedMsg{Task: task}
-		},
-	}
+	result.StatusMessage = fmt.Sprintf("Moved to %s", sectionName)
+	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	return result
 }
 
 // applyDeleteTask removes a task from a project.
