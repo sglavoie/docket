@@ -343,8 +343,8 @@ func (m *DailyReviewModel) formatDueDateContext(dueDate *time.Time, section Dail
 	}
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*dueDate)
 
 	var dateStr string
 

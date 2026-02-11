@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 var focusTabNames = []string{"All", "By Project", "By Priority", "Due Soon"}
@@ -117,7 +118,7 @@ func (m *FocusViewModel) loadTasks() {
 // applyFilter filters and sorts tasks based on the active tab, then applies sub-tab narrowing.
 func (m *FocusViewModel) applyFilter() {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	// Apply common filters first (type, status, priority, tags, attrs, score)
 	baseTasks := m.tasks
@@ -151,7 +152,7 @@ func (m *FocusViewModel) applyFilter() {
 			if ft.Task.DueDate == nil {
 				continue
 			}
-			dueDay := time.Date(ft.Task.DueDate.Year(), ft.Task.DueDate.Month(), ft.Task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+			dueDay := util.StartOfDay(*ft.Task.DueDate)
 			if dueDay.Before(sevenDaysLater) {
 				m.filtered = append(m.filtered, ft)
 			}
@@ -191,7 +192,7 @@ func (m *FocusViewModel) applyFilter() {
 // computeSubTabs builds the dynamic sub-tab names based on active tab and filtered tasks.
 func (m *FocusViewModel) computeSubTabs() {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	switch m.activeTab {
 	case focusTabByProject:
@@ -258,7 +259,7 @@ func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) stri
 	if task.DueDate == nil {
 		return "Later"
 	}
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := util.StartOfDay(*task.DueDate)
 	daysUntil := int(dueDay.Sub(today).Hours() / 24)
 	switch {
 	case daysUntil <= 0:

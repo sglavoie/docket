@@ -3,6 +3,8 @@ package models
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestIsSnoozed_Nil(t *testing.T) {
@@ -22,7 +24,7 @@ func TestIsSnoozed_Future(t *testing.T) {
 
 func TestIsSnoozed_Today(t *testing.T) {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 	task := &Task{SnoozedUntil: &today}
 	if task.IsSnoozed() {
 		t.Error("Task snoozed until today should NOT be snoozed (it should reappear today)")

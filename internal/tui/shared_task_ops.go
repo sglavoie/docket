@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // TaskOpResult holds the outcome of a shared task operation.
@@ -87,7 +88,7 @@ func applyPriorityChange(p Persister, project *models.Project, taskID string, pr
 // applyQuickDueDate sets the due date relative to today.
 func applyQuickDueDate(p Persister, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
+	newDate = util.StartOfDay(newDate)
 
 	result := withPersist(p, project, taskID, func(t *models.Task) {
 		t.DueDate = &newDate

@@ -354,8 +354,8 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 	if task.DueDate != nil {
 		dueStyle := DueDateStyle
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
+		dueDay := util.StartOfDay(*task.DueDate)
 		if dueDay.Before(today) {
 			dueStyle = OverdueStyle
 		} else if dueDay.Equal(today) {
@@ -503,7 +503,7 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 	// Task counts and health (if loaded)
 	if len(project.Tasks) > 0 {
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
 		weekFromNow := today.AddDate(0, 0, 7)
 
 		active, completed := 0, 0
@@ -529,7 +529,7 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 
 			// Count by due date
 			if task.DueDate != nil {
-				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				dueDay := util.StartOfDay(*task.DueDate)
 				if dueDay.Before(today) {
 					overdue++
 				} else if dueDay.Equal(today) {

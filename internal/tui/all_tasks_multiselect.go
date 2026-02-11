@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // toggleMultiSelectMode enters or exits multi-select mode.
@@ -165,7 +166,7 @@ func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, t
 // handleBulkDueDateChange sets a due date on all selected tasks.
 func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model, tea.Cmd) {
 	dueDate := time.Now().AddDate(0, 0, daysFromNow)
-	dueDate = time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, dueDate.Location())
+	dueDate = util.StartOfDay(dueDate)
 
 	count := m.bulkApply(func(project *models.Project, item AllTasksItem) bool {
 		project.MutateTask(item.Task.ID, func(t *models.Task) {

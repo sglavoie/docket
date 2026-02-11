@@ -22,14 +22,7 @@ var ValidBugReproducible = []BugReproducible{
 }
 
 // IsValid returns true if the value is a valid BugReproducible.
-func (r BugReproducible) IsValid() bool {
-	for _, v := range ValidBugReproducible {
-		if r == v {
-			return true
-		}
-	}
-	return false
-}
+func (r BugReproducible) IsValid() bool { return isValidEnum(r, ValidBugReproducible) }
 
 // BugSeverity represents the severity level of a bug.
 type BugSeverity string
@@ -50,14 +43,7 @@ var ValidBugSeverity = []BugSeverity{
 }
 
 // IsValid returns true if the value is a valid BugSeverity.
-func (s BugSeverity) IsValid() bool {
-	for _, v := range ValidBugSeverity {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}
+func (s BugSeverity) IsValid() bool { return isValidEnum(s, ValidBugSeverity) }
 
 // BugAttrs contains bug-specific attributes.
 type BugAttrs struct {
@@ -72,10 +58,10 @@ func (a *BugAttrs) Validate() error {
 		return nil
 	}
 	if a.Reproducible != "" && !a.Reproducible.IsValid() {
-		return fmt.Errorf("invalid bug.reproducible: %q (valid: %s)", a.Reproducible, joinBugReproducible())
+		return fmt.Errorf("invalid bug.reproducible: %q (valid: %s)", a.Reproducible, joinEnum(ValidBugReproducible))
 	}
 	if a.Severity != "" && !a.Severity.IsValid() {
-		return fmt.Errorf("invalid bug.severity: %q (valid: %s)", a.Severity, joinBugSeverity())
+		return fmt.Errorf("invalid bug.severity: %q (valid: %s)", a.Severity, joinEnum(ValidBugSeverity))
 	}
 	return nil
 }
@@ -104,14 +90,7 @@ var ValidIdeaCategory = []IdeaCategory{
 }
 
 // IsValid returns true if the value is a valid IdeaCategory.
-func (c IdeaCategory) IsValid() bool {
-	for _, v := range ValidIdeaCategory {
-		if c == v {
-			return true
-		}
-	}
-	return false
-}
+func (c IdeaCategory) IsValid() bool { return isValidEnum(c, ValidIdeaCategory) }
 
 // EffortEstimate represents the effort level for an idea or task.
 type EffortEstimate string
@@ -132,14 +111,7 @@ var ValidEffortEstimate = []EffortEstimate{
 }
 
 // IsValid returns true if the value is a valid EffortEstimate.
-func (e EffortEstimate) IsValid() bool {
-	for _, v := range ValidEffortEstimate {
-		if e == v {
-			return true
-		}
-	}
-	return false
-}
+func (e EffortEstimate) IsValid() bool { return isValidEnum(e, ValidEffortEstimate) }
 
 // IdeaValue represents the value assessment of an idea.
 type IdeaValue string
@@ -158,14 +130,7 @@ var ValidIdeaValue = []IdeaValue{
 }
 
 // IsValid returns true if the value is a valid IdeaValue.
-func (v IdeaValue) IsValid() bool {
-	for _, val := range ValidIdeaValue {
-		if v == val {
-			return true
-		}
-	}
-	return false
-}
+func (v IdeaValue) IsValid() bool { return isValidEnum(v, ValidIdeaValue) }
 
 // IdeaAttrs contains idea-specific attributes.
 type IdeaAttrs struct {
@@ -181,13 +146,13 @@ func (a *IdeaAttrs) Validate() error {
 		return nil
 	}
 	if a.Category != "" && !a.Category.IsValid() {
-		return fmt.Errorf("invalid idea.category: %q (valid: %s)", a.Category, joinIdeaCategory())
+		return fmt.Errorf("invalid idea.category: %q (valid: %s)", a.Category, joinEnum(ValidIdeaCategory))
 	}
 	if a.Effort != "" && !a.Effort.IsValid() {
-		return fmt.Errorf("invalid idea.effort: %q (valid: %s)", a.Effort, joinEffortEstimate())
+		return fmt.Errorf("invalid idea.effort: %q (valid: %s)", a.Effort, joinEnum(ValidEffortEstimate))
 	}
 	if a.Value != "" && !a.Value.IsValid() {
-		return fmt.Errorf("invalid idea.value: %q (valid: %s)", a.Value, joinIdeaValue())
+		return fmt.Errorf("invalid idea.value: %q (valid: %s)", a.Value, joinEnum(ValidIdeaValue))
 	}
 	return nil
 }
@@ -218,14 +183,7 @@ var ValidWorkType = []WorkType{
 }
 
 // IsValid returns true if the value is a valid WorkType.
-func (w WorkType) IsValid() bool {
-	for _, v := range ValidWorkType {
-		if w == v {
-			return true
-		}
-	}
-	return false
-}
+func (w WorkType) IsValid() bool { return isValidEnum(w, ValidWorkType) }
 
 // TaskAttrs contains task-specific attributes (for TaskTypeTask).
 type TaskAttrs struct {
@@ -239,10 +197,10 @@ func (a *TaskAttrs) Validate() error {
 		return nil
 	}
 	if a.Effort != "" && !a.Effort.IsValid() {
-		return fmt.Errorf("invalid task.effort: %q (valid: %s)", a.Effort, joinEffortEstimate())
+		return fmt.Errorf("invalid task.effort: %q (valid: %s)", a.Effort, joinEnum(ValidEffortEstimate))
 	}
 	if a.WorkType != "" && !a.WorkType.IsValid() {
-		return fmt.Errorf("invalid task.worktype: %q (valid: %s)", a.WorkType, joinWorkType())
+		return fmt.Errorf("invalid task.worktype: %q (valid: %s)", a.WorkType, joinEnum(ValidWorkType))
 	}
 	return nil
 }
@@ -291,14 +249,7 @@ var ValidEpicScope = []EpicScope{
 }
 
 // IsValid returns true if the value is a valid EpicScope.
-func (s EpicScope) IsValid() bool {
-	for _, v := range ValidEpicScope {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}
+func (s EpicScope) IsValid() bool { return isValidEnum(s, ValidEpicScope) }
 
 // EpicAttrs contains epic-specific attributes.
 type EpicAttrs struct {
@@ -313,7 +264,7 @@ func (a *EpicAttrs) Validate() error {
 		return nil
 	}
 	if a.Scope != "" && !a.Scope.IsValid() {
-		return fmt.Errorf("invalid epic.scope: %q (valid: %s)", a.Scope, joinEpicScope())
+		return fmt.Errorf("invalid epic.scope: %q (valid: %s)", a.Scope, joinEnum(ValidEpicScope))
 	}
 	return nil
 }
@@ -323,60 +274,21 @@ func (a *EpicAttrs) IsEmpty() bool {
 	return a == nil || (a.Scope == "" && a.Milestone == "" && a.SuccessMetrics == "")
 }
 
-// Helper functions to join valid values for error messages.
+// Generic enum helpers.
 
-func joinBugReproducible() string {
-	var s []string
-	for _, v := range ValidBugReproducible {
-		s = append(s, string(v))
+func isValidEnum[T comparable](val T, valid []T) bool {
+	for _, v := range valid {
+		if val == v {
+			return true
+		}
 	}
-	return strings.Join(s, ", ")
+	return false
 }
 
-func joinBugSeverity() string {
-	var s []string
-	for _, v := range ValidBugSeverity {
-		s = append(s, string(v))
-	}
-	return strings.Join(s, ", ")
-}
-
-func joinIdeaCategory() string {
-	var s []string
-	for _, v := range ValidIdeaCategory {
-		s = append(s, string(v))
-	}
-	return strings.Join(s, ", ")
-}
-
-func joinEffortEstimate() string {
-	var s []string
-	for _, v := range ValidEffortEstimate {
-		s = append(s, string(v))
-	}
-	return strings.Join(s, ", ")
-}
-
-func joinIdeaValue() string {
-	var s []string
-	for _, v := range ValidIdeaValue {
-		s = append(s, string(v))
-	}
-	return strings.Join(s, ", ")
-}
-
-func joinWorkType() string {
-	var s []string
-	for _, v := range ValidWorkType {
-		s = append(s, string(v))
-	}
-	return strings.Join(s, ", ")
-}
-
-func joinEpicScope() string {
-	var s []string
-	for _, v := range ValidEpicScope {
-		s = append(s, string(v))
+func joinEnum[T ~string](valid []T) string {
+	s := make([]string, len(valid))
+	for i, v := range valid {
+		s[i] = string(v)
 	}
 	return strings.Join(s, ", ")
 }

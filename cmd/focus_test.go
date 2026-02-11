@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestFormatRelativeDueCLI_NilDate(t *testing.T) {
@@ -111,8 +112,8 @@ func TestFormatRelativeDueCLI_PastDifferentYear(t *testing.T) {
 	result := formatRelativeDueCLI(&pastDate)
 	// Past dates more than 1 day ago show "X days ago"
 	// Calculate days since that past date
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	pastDay := time.Date(pastDate.Year(), pastDate.Month(), pastDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	pastDay := util.StartOfDay(pastDate)
 	daysAgo := int(today.Sub(pastDay).Hours() / 24)
 
 	expectedPrefix := " days ago"

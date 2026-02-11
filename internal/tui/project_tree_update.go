@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -647,7 +648,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 	case "s":
 		// Snooze quick actions
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
 		var snoozeDate *time.Time
 		var desc string
 

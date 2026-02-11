@@ -324,7 +324,7 @@ func (m *CustomContextEditorModel) View() string {
 
 		// Scroll up indicator
 		if m.scrollOffset > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↑ %d more above\n", m.scrollOffset)))
+			b.WriteString("  " + ScrollUpIndicator(m.scrollOffset) + "\n")
 		}
 
 		for i := m.scrollOffset; i < end; i++ {
@@ -358,7 +358,7 @@ func (m *CustomContextEditorModel) View() string {
 
 		// Scroll down indicator
 		if remaining := len(m.projects) - end; remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↓ %d more below\n", remaining)))
+			b.WriteString("  " + ScrollDownIndicator(remaining) + "\n")
 		}
 	}
 	b.WriteString("\n")

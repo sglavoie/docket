@@ -121,87 +121,19 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 
 // renderTaskCard renders the main task info card.
 func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionColor string) string {
-	typeStyle := GetTypeStyle(string(task.Type))
-	statusStyle := GetStatusStyle(string(task.Status))
-
-	if m.project.HasIncompleteDependencies(task) {
-		statusStyle = BlockedByDepsStyle
-	}
-
-	title := SidebarHeaderStyle.Render(task.Title)
-	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
-	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
-	priorityBadge := renderPriorityBadge(task.Priority)
-	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
-
-	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
-
-	if task.IsSnoozed() {
-		snoozeStr := task.SnoozedUntil.Format("Jan 2")
-		if task.SnoozedUntil.Year() != time.Now().Year() {
-			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
-		}
-		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
-	}
-
+	content := renderTaskHeaderContent(task, m.project.HasIncompleteDependencies(task), true)
 	return renderSidebarCard("Task", content, width, false, sectionColor)
 }
 
 // renderDueCard renders the due date card.
 func (m *ProjectTreeModel) renderDueCard(task *models.Task, width int) string {
-	dueAbsolute := task.DueDate.Format(util.DateFormat)
-	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
-	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
-
-	if task.IsOverdue() {
-		dueLine = OverdueStyle.Render(dueLine)
-	} else if task.IsDueToday() {
-		dueLine = DueTodayStyle.Render(dueLine)
-	} else {
-		dueLine = DueDateStyle.Render(dueLine)
-	}
-
-	return renderSidebarCard("Due", dueLine, width, false, "")
+	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
 }
 
 // renderMetadataCard renders tags and section in a combined card.
 func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sectionColor string) string {
-	var lines []string
-
-	// Tags line - use simple inline style without background/padding for alignment
-	if len(task.Tags) > 0 {
-		var tagParts []string
-		for _, tag := range task.Tags {
-			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
-		}
-		lines = append(lines, strings.Join(tagParts, " "))
-	}
-
-	// Section line (GTD section)
-	sectionName := task.Section
-	if sectionName == "" {
-		sectionName = "None"
-	}
-	sectionStyle := GetSectionColorStyle(sectionColor)
-	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
-	lines = append(lines, sectionLine)
-
-	// Custom section line
-	if task.CustomSection != "" {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
-		lines = append(lines, csLine)
-	}
-
-	// Type-specific attributes
-	attrLines := formatTaskAttributes(task, width-6)
-	if len(attrLines) > 0 {
-		lines = append(lines, "") // spacer
-		lines = append(lines, attrLines...)
-	}
-
-	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
+	content := renderMetadataContent(task, m.project, width-6)
+	return renderSidebarCard("Info", content, width, false, sectionColor)
 }
 
 // renderChecklistCard renders the checklist items card.
@@ -239,153 +171,14 @@ func (m *ProjectTreeModel) renderChecklistCard(task *models.Task, width int) str
 	return renderSidebarCard("Checklist", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderDependenciesCard renders the dependencies card with navigation support.
-// Supports cross-project task references.
-func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
-	var lines []string
-	const maxVisiblePerSection = 5
-
-	// Blocked by (tasks this depends on) - may include cross-project refs
-	if len(task.DependsOn) > 0 {
-		header := "Blocked by:"
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
-			header = BoldStyle.Underline(true).Render(header)
-		} else {
-			header = MutedStyle.Render(header)
-		}
-		lines = append(lines, header)
-
-		// Resolve all blocking task references (including cross-project)
-		var blockingTasks []sidebarLinkedTask
-		for _, depRef := range task.DependsOn {
-			blockingTasks = append(blockingTasks, m.resolveSidebarTaskRef(depRef))
-		}
-
-		// Calculate scroll offset for this section when it's active
-		sectionScroll := 0
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 {
-			cursor := m.sidebar.GetDependencyCursor()
-			sectionScroll = m.sidebar.GetDepsScrollOffset()
-			if cursor >= sectionScroll+maxVisiblePerSection {
-				sectionScroll = cursor - maxVisiblePerSection + 1
-			}
-			if cursor < sectionScroll {
-				sectionScroll = cursor
-			}
-			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
-				m.sidebar.SetDepsScrollOffset(sectionScroll)
-			}
-		}
-
-		// Show indicator if items hidden above
-		if sectionScroll > 0 {
-			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
-		}
-
-		// Render visible items
-		visibleEnd := sectionScroll + maxVisiblePerSection
-		if visibleEnd > len(blockingTasks) {
-			visibleEnd = len(blockingTasks)
-		}
-
-		for i := sectionScroll; i < visibleEnd; i++ {
-			isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 0 && i == m.sidebar.GetDependencyCursor()
-			lines = append(lines, m.formatSidebarLinkedTask(blockingTasks[i], innerWidth, isCursor, m.sidebar.IsFocused()))
-		}
-
-		// Show indicator if items hidden below
-		if visibleEnd < len(blockingTasks) {
-			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(blockingTasks)-visibleEnd)))
-		}
-	}
-
-	// Blocking (tasks that depend on this) - same-project only
-	blockedBy := m.project.GetBlockedByTasks(task)
-	if len(blockedBy) > 0 {
-		if len(task.DependsOn) > 0 {
-			lines = append(lines, "") // spacer
-		}
-
-		header := "Blocking:"
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 {
-			header = BoldStyle.Underline(true).Render(header)
-		} else {
-			header = MutedStyle.Render(header)
-		}
-		lines = append(lines, header)
-
-		// Calculate scroll offset for this section when it's active
-		sectionScroll := 0
-		if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 {
-			cursor := m.sidebar.GetDependencyCursor()
-			sectionScroll = m.sidebar.GetDepsScrollOffset()
-			if cursor >= sectionScroll+maxVisiblePerSection {
-				sectionScroll = cursor - maxVisiblePerSection + 1
-			}
-			if cursor < sectionScroll {
-				sectionScroll = cursor
-			}
-			if sectionScroll != m.sidebar.GetDepsScrollOffset() {
-				m.sidebar.SetDepsScrollOffset(sectionScroll)
-			}
-		}
-
-		// Show indicator if items hidden above
-		if sectionScroll > 0 {
-			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
-		}
-
-		// Render visible items
-		visibleEnd := sectionScroll + maxVisiblePerSection
-		if visibleEnd > len(blockedBy) {
-			visibleEnd = len(blockedBy)
-		}
-
-		for i := sectionScroll; i < visibleEnd; i++ {
-			blocked := blockedBy[i]
-			// Wrap as sidebarLinkedTask for consistent formatting
-			linked := sidebarLinkedTask{Task: blocked, Project: nil, Ref: blocked.ID, IsMissing: false}
-			isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 1 && i == m.sidebar.GetDependencyCursor()
-			lines = append(lines, m.formatSidebarLinkedTask(linked, innerWidth, isCursor, m.sidebar.IsFocused()))
-		}
-
-		// Show indicator if items hidden below
-		if visibleEnd < len(blockedBy) {
-			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(blockedBy)-visibleEnd)))
-		}
-	}
-
-	focused := m.sidebar.IsFocused() && m.hasDependencies(task)
-	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
-}
-
-// renderRelatedCard renders the related tasks card with navigation support.
-// Supports cross-project task references.
-func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidth int) string {
+// renderDepSectionItems renders the scrolled list portion of a dependency section:
+// scroll offset calculation, ↑/↓ indicators, and visible items.
+func (m *ProjectTreeModel) renderDepSectionItems(items []sidebarLinkedTask, sectionIndex, innerWidth int) []string {
 	const maxVisiblePerSection = 5
 	var lines []string
 
-	// Header with focus indicator
-	header := "Related:"
-	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 {
-		header = BoldStyle.Underline(true).Render(header)
-	} else {
-		header = MutedStyle.Render(header)
-	}
-	lines = append(lines, header)
-
-	// Resolve all related task references (including cross-project)
-	var relatedTasks []sidebarLinkedTask
-	for _, relRef := range task.RelatedTo {
-		relatedTasks = append(relatedTasks, m.resolveSidebarTaskRef(relRef))
-	}
-	if len(relatedTasks) == 0 {
-		return ""
-	}
-
-	// Calculate scroll offset for this section when it's active
 	sectionScroll := 0
-	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 {
+	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex {
 		cursor := m.sidebar.GetDependencyCursor()
 		sectionScroll = m.sidebar.GetDepsScrollOffset()
 		if cursor >= sectionScroll+maxVisiblePerSection {
@@ -399,26 +192,84 @@ func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidt
 		}
 	}
 
-	// Show indicator if items hidden above
 	if sectionScroll > 0 {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more", sectionScroll)))
+		lines = append(lines, "  "+ScrollUpIndicator(sectionScroll))
 	}
 
-	// Render visible items
 	visibleEnd := sectionScroll + maxVisiblePerSection
-	if visibleEnd > len(relatedTasks) {
-		visibleEnd = len(relatedTasks)
+	if visibleEnd > len(items) {
+		visibleEnd = len(items)
 	}
 
 	for i := sectionScroll; i < visibleEnd; i++ {
-		isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2 && i == m.sidebar.GetDependencyCursor()
-		lines = append(lines, m.formatSidebarLinkedTask(relatedTasks[i], innerWidth, isCursor, m.sidebar.IsFocused()))
+		isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex && i == m.sidebar.GetDependencyCursor()
+		lines = append(lines, m.formatSidebarLinkedTask(items[i], innerWidth, isCursor, m.sidebar.IsFocused()))
 	}
 
-	// Show indicator if items hidden below
-	if visibleEnd < len(relatedTasks) {
-		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more", len(relatedTasks)-visibleEnd)))
+	if visibleEnd < len(items) {
+		lines = append(lines, "  "+ScrollDownIndicator(len(items)-visibleEnd))
 	}
+
+	return lines
+}
+
+// depSectionHeader returns a styled section header, bold+underline when focused.
+func (m *ProjectTreeModel) depSectionHeader(label string, sectionIndex int) string {
+	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex {
+		return BoldStyle.Underline(true).Render(label)
+	}
+	return MutedStyle.Render(label)
+}
+
+// renderDependenciesCard renders the dependencies card with navigation support.
+// Supports cross-project task references.
+func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
+	var lines []string
+
+	// Blocked by (tasks this depends on) - may include cross-project refs
+	if len(task.DependsOn) > 0 {
+		lines = append(lines, m.depSectionHeader("Blocked by:", 0))
+
+		var blockingTasks []sidebarLinkedTask
+		for _, depRef := range task.DependsOn {
+			blockingTasks = append(blockingTasks, m.resolveSidebarTaskRef(depRef))
+		}
+		lines = append(lines, m.renderDepSectionItems(blockingTasks, 0, innerWidth)...)
+	}
+
+	// Blocking (tasks that depend on this) - same-project only
+	blockedBy := m.project.GetBlockedByTasks(task)
+	if len(blockedBy) > 0 {
+		if len(task.DependsOn) > 0 {
+			lines = append(lines, "") // spacer
+		}
+		lines = append(lines, m.depSectionHeader("Blocking:", 1))
+
+		var blockingItems []sidebarLinkedTask
+		for _, blocked := range blockedBy {
+			blockingItems = append(blockingItems, sidebarLinkedTask{Task: blocked, Project: nil, Ref: blocked.ID, IsMissing: false})
+		}
+		lines = append(lines, m.renderDepSectionItems(blockingItems, 1, innerWidth)...)
+	}
+
+	focused := m.sidebar.IsFocused() && m.hasDependencies(task)
+	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
+}
+
+// renderRelatedCard renders the related tasks card with navigation support.
+// Supports cross-project task references.
+func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidth int) string {
+	var relatedTasks []sidebarLinkedTask
+	for _, relRef := range task.RelatedTo {
+		relatedTasks = append(relatedTasks, m.resolveSidebarTaskRef(relRef))
+	}
+	if len(relatedTasks) == 0 {
+		return ""
+	}
+
+	var lines []string
+	lines = append(lines, m.depSectionHeader("Related:", 2))
+	lines = append(lines, m.renderDepSectionItems(relatedTasks, 2, innerWidth)...)
 
 	focused := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2
 	return renderSidebarCard("Related", strings.Join(lines, "\n"), width, focused, "")
@@ -638,78 +489,8 @@ func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, inn
 
 // renderScoreCard renders the score breakdown card for the sidebar.
 func (m *ProjectTreeModel) renderScoreCard(task *models.Task, width int, profile *scoring.ScoringProfile) string {
-	results := scoring.ScoreBreakdown(task, profile)
-	totalScore := scoring.ComputeScore(task, profile)
-	pct := scoring.ScorePercent(totalScore, profile)
-
-	var lines []string
-
-	// Header: bar + score + formula
-	bar := RenderScoreBar(task, profile)
-	badge := RenderScoreBadge(task, profile)
-	formulaStr := MutedStyle.Render(fmt.Sprintf("(%s)", profile.Formula))
-	lines = append(lines, fmt.Sprintf("%s %s  %s", bar, badge, formulaStr))
-	lines = append(lines, "")
-
-	// Per-dimension breakdown
-	manualStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
-
-	// Find max name width for alignment
-	maxNameWidth := 0
-	for _, r := range results {
-		if len(r.DimensionName) > maxNameWidth {
-			maxNameWidth = len(r.DimensionName)
-		}
-	}
-	cardInner := width - 6
-	if maxNameWidth > cardInner-16 {
-		maxNameWidth = cardInner - 16
-	}
-
-	for _, r := range results {
-		name := r.DimensionName
-		if len(name) > maxNameWidth {
-			name = name[:maxNameWidth]
-		}
-
-		// Value display
-		valStr := fmt.Sprintf("%d", r.Value)
-
-		// Source label
-		var sourceLabel string
-		switch r.Source {
-		case "manual":
-			sourceLabel = manualStyle.Render("manual")
-		case "derived":
-			sourceLabel = derivedStyle.Render("derived")
-		default:
-			sourceLabel = MutedStyle.Render("default")
-		}
-
-		// Role indicator for RICE/WSJF
-		roleStr := ""
-		switch r.Role {
-		case scoring.RoleNumerator:
-			roleStr = MutedStyle.Render(" [n]")
-		case scoring.RoleDenominator:
-			roleStr = MutedStyle.Render(" [d]")
-		}
-
-		padding := maxNameWidth - len(name)
-		if padding < 0 {
-			padding = 0
-		}
-		line := fmt.Sprintf("%s%s %s %s%s",
-			MutedStyle.Render(name), strings.Repeat(" ", padding),
-			valStr, sourceLabel, roleStr)
-		lines = append(lines, line)
-	}
-
-	// Percentage bar at bottom
-	_ = pct // included in badge already
-
-	return renderSidebarCard("Score", strings.Join(lines, "\n"), width, false, "")
+	content := renderScoreCardContent(task, profile, width-6)
+	return renderSidebarCard("Score", content, width, false, "")
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.
@@ -727,39 +508,6 @@ func (m *ProjectTreeModel) padSidebarToHeight(content string, width, height int)
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// formatRelativeDueDateVerbose returns a verbose relative due date string.
-func formatRelativeDueDateVerbose(dueDate *time.Time) string {
-	if dueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
-
-	switch {
-	case daysUntil < -1:
-		return fmt.Sprintf("%d days ago", -daysUntil)
-	case daysUntil == -1:
-		return "yesterday"
-	case daysUntil == 0:
-		return "today"
-	case daysUntil == 1:
-		return "tomorrow"
-	case daysUntil < 7:
-		return fmt.Sprintf("in %d days", daysUntil)
-	case daysUntil < 14:
-		return "next week"
-	case daysUntil < 30:
-		weeks := daysUntil / 7
-		return fmt.Sprintf("in %d weeks", weeks)
-	default:
-		months := daysUntil / 30
-		return fmt.Sprintf("in %d months", months)
-	}
 }
 
 // formatActivityEntry formats a timestamp as an activity entry.

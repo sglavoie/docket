@@ -446,7 +446,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 	// Show scroll indicator at top if items are hidden above
 	if visibleStart > 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  ↑ %d more above", visibleStart)))
+		b.WriteString("  " + ScrollUpIndicator(visibleStart))
 		b.WriteString("\n\n")
 	}
 
@@ -535,7 +535,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 	// Show scroll indicator at bottom if items are hidden below
 	if visibleEnd < len(m.filtered) {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("\n  ↓ %d more below", len(m.filtered)-visibleEnd)))
+		b.WriteString("\n  " + ScrollDownIndicator(len(m.filtered)-visibleEnd))
 		b.WriteString("\n")
 	}
 

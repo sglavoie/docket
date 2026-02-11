@@ -450,7 +450,7 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 
 	// Show scroll indicator for templates above
 	if startIdx > 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", startIdx)))
+		b.WriteString(ScrollUpIndicator(startIdx))
 		b.WriteString("\n")
 	}
 

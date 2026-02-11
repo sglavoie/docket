@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // loadData aggregates projects and tasks into weekly review sections.
@@ -21,7 +22,7 @@ func (m *WeeklyReviewModel) loadData() {
 	m.upcomingWeek = nil
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	staleProjectDays := m.config.GetWeeklyStaleProjectDays()
 	staleTaskDays := m.config.GetWeeklyStaleTaskDays()
@@ -102,7 +103,7 @@ func (m *WeeklyReviewModel) loadData() {
 
 			// Upcoming week
 			if task.DueDate != nil && !task.Status.IsComplete() {
-				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				dueDay := util.StartOfDay(*task.DueDate)
 				if !dueDay.Before(today) && dueDay.Before(weekFromNow) {
 					m.upcomingWeek = append(m.upcomingWeek, WeeklyReviewTask{Task: task, Project: project})
 				}

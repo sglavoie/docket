@@ -312,7 +312,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 
 	// Scroll-up indicator inside card
 	if scrollOffset > 0 {
-		cardContent.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", scrollOffset)))
+		cardContent.WriteString(ScrollUpIndicator(scrollOffset))
 		cardContent.WriteString("\n")
 	}
 
@@ -499,7 +499,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 
 	// Scroll-down indicator inside card
 	if remaining := len(visible) - end; remaining > 0 {
-		cardContent.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more below", remaining)))
+		cardContent.WriteString(ScrollDownIndicator(remaining))
 	}
 
 	return cardContent.String()
@@ -541,7 +541,7 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 	var inboxProjects []string
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 	sevenDaysAgo := now.AddDate(0, 0, -7)
 
 	var activeProjects []*models.Project
@@ -564,7 +564,7 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 
 		for _, task := range p.Tasks {
 			if task.DueDate != nil && !task.Status.IsComplete() {
-				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				dueDay := util.StartOfDay(*task.DueDate)
 				if dueDay.Equal(today) {
 					totalDueToday++
 				}

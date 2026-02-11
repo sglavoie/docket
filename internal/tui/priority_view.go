@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -159,7 +158,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 			Task:         task,
 			UrgencyScore: m.computeUrgencyScore(task),
 			ParentTitle:  m.getParentTitle(task),
-			RelativeDue:  m.formatRelativeDue(task),
+			RelativeDue:  formatRelativeDue(task.DueDate, false),
 		}
 
 		if isBlocked {
@@ -427,37 +426,6 @@ func (m *PriorityViewModel) getParentTitle(task *models.Task) string {
 		return parent.Title
 	}
 	return ""
-}
-
-// formatRelativeDue formats the due date for display.
-func (m *PriorityViewModel) formatRelativeDue(task *models.Task) string {
-	if task.DueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
-
-	switch {
-	case daysUntil < -1:
-		return fmt.Sprintf("%d days ago", -daysUntil)
-	case daysUntil == -1:
-		return "yesterday"
-	case daysUntil == 0:
-		return "today"
-	case daysUntil == 1:
-		return "tomorrow"
-	case daysUntil < 7:
-		return task.DueDate.Format("Mon")
-	default:
-		if task.DueDate.Year() != now.Year() {
-			return task.DueDate.Format("Jan 2 '06")
-		}
-		return task.DueDate.Format("Jan 2")
-	}
 }
 
 // getTaskAtCursor returns the task at the current cursor position.

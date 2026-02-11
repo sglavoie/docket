@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // computeUrgencyScore calculates the urgency score for a task.
@@ -29,8 +30,8 @@ func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
 	// Due date proximity: overdue adds points, future subtracts
 	if task.DueDate != nil {
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
+		dueDay := util.StartOfDay(*task.DueDate)
 		daysUntil := int(dueDay.Sub(today).Hours() / 24)
 		score += (-daysUntil) * 50
 	}
@@ -175,8 +176,8 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	// Due date status
 	if task.DueDate != nil {
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
+		dueDay := util.StartOfDay(*task.DueDate)
 
 		if dueDay.Before(today) {
 			reasons = append(reasons, "overdue")
@@ -305,8 +306,8 @@ func (m *PriorityViewModel) categorizeByDueDate(task *models.Task) PriorityGroup
 	}
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*task.DueDate)
 
 	if dueDay.Before(today) {
 		return PriorityGroupOverdue

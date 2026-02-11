@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const maxRuleDepth = 10
@@ -575,8 +576,8 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 func daysUntil(t time.Time) int {
 	now := time.Now()
 	// Normalize to start of day for consistent comparison
-	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	targetDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	nowDate := util.StartOfDay(now)
+	targetDate := util.StartOfDay(t)
 	diff := targetDate.Sub(nowDate)
 	return int(diff.Hours() / 24)
 }
@@ -586,8 +587,8 @@ func daysUntil(t time.Time) int {
 func daysSince(t time.Time) int {
 	now := time.Now()
 	// Normalize to start of day for consistent comparison
-	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	targetDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	nowDate := util.StartOfDay(now)
+	targetDate := util.StartOfDay(t)
 	diff := nowDate.Sub(targetDate)
 	days := int(diff.Hours() / 24)
 	if days < 0 {

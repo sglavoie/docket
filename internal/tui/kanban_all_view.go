@@ -312,7 +312,7 @@ func (m *KanbanViewModel) renderAllView() string {
 
 	// Show "↑ N more" indicator if tasks are hidden above
 	if startIdx > 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more", startIdx)))
+		b.WriteString(ScrollUpIndicator(startIdx))
 		b.WriteString("\n")
 		endIdx = startIdx + viewportHeight - 1 // Account for indicator
 		if endIdx > len(m.allNodes) {
@@ -334,7 +334,7 @@ func (m *KanbanViewModel) renderAllView() string {
 	// Show "↓ N more" indicator if tasks are hidden below
 	if endIdx < len(m.allNodes) {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(m.allNodes)-endIdx)))
+		b.WriteString(ScrollDownIndicator(len(m.allNodes) - endIdx))
 	}
 
 	// Footer

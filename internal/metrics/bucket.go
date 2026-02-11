@@ -3,6 +3,8 @@ package metrics
 import (
 	"fmt"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // granularity represents the size of time buckets.
@@ -100,7 +102,7 @@ func assignToBucket(t time.Time, buckets []bucket) int {
 func startOfPeriod(t time.Time, g granularity) time.Time {
 	switch g {
 	case granularityDay:
-		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+		return util.StartOfDay(t)
 	case granularityWeek:
 		// Truncate to Monday
 		weekday := int(t.Weekday())
@@ -108,7 +110,7 @@ func startOfPeriod(t time.Time, g granularity) time.Time {
 			weekday = 7
 		}
 		d := t.AddDate(0, 0, -(weekday - 1))
-		return time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, t.Location())
+		return util.StartOfDay(d)
 	case granularityMonth:
 		return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 	default:

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestParseFieldFilters_Priority(t *testing.T) {
@@ -583,7 +584,7 @@ func TestTaskMatchesFieldFilters_Section(t *testing.T) {
 func TestTaskMatchesFieldFilters_Date(t *testing.T) {
 	m := &CommandPaletteModel{}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	tests := []struct {
 		name    string

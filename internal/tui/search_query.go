@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // ParsedSearchQuery holds structured filters extracted from a search query.
@@ -210,7 +211,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 // matchesDueDateFilter checks if a task matches the due date filter.
 func matchesDueDateFilter(task *models.Task, filter string) bool {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	switch filter {
 	case "none":
@@ -219,21 +220,21 @@ func matchesDueDateFilter(task *models.Task, filter string) bool {
 		if task.DueDate == nil {
 			return false
 		}
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+		dueDay := util.StartOfDay(*task.DueDate)
 		return dueDay.Equal(today)
 	case "tomorrow":
 		if task.DueDate == nil {
 			return false
 		}
 		tomorrow := today.AddDate(0, 0, 1)
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+		dueDay := util.StartOfDay(*task.DueDate)
 		return dueDay.Equal(tomorrow)
 	case "week":
 		if task.DueDate == nil {
 			return false
 		}
 		endOfWeek := today.AddDate(0, 0, 7)
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+		dueDay := util.StartOfDay(*task.DueDate)
 		return !dueDay.Before(today) && dueDay.Before(endOfWeek)
 	case "overdue":
 		if task.DueDate == nil {
@@ -243,7 +244,7 @@ func matchesDueDateFilter(task *models.Task, filter string) bool {
 		if task.Status.IsComplete() {
 			return false
 		}
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, task.DueDate.Location())
+		dueDay := util.StartOfDay(*task.DueDate)
 		return dueDay.Before(today)
 	}
 	return true

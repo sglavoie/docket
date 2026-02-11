@@ -301,7 +301,7 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 
 		// Show "↑ N more" indicator if tasks are hidden above
 		if hasUpIndicator {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more", startIdx)))
+			b.WriteString(ScrollUpIndicator(startIdx))
 			b.WriteString("\n")
 			// Adjust visible range since we used a line for the indicator
 			endIdx = startIdx + effectiveHeight
@@ -324,7 +324,7 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		// Show "↓ N more" indicator if tasks are hidden below
 		if endIdx < len(visibleNodes) {
 			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(visibleNodes)-endIdx)))
+			b.WriteString(ScrollDownIndicator(len(visibleNodes) - endIdx))
 		}
 	}
 
@@ -591,71 +591,19 @@ func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height in
 
 // renderDetailsTaskCard renders the main task info card for the details panel.
 func (m *KanbanViewModel) renderDetailsTaskCard(task *models.Task, width int, sectionColor string) string {
-	typeStyle := GetTypeStyle(string(task.Type))
-	statusStyle := GetStatusStyle(string(task.Status))
-
-	if m.Project.HasIncompleteDependencies(task) {
-		statusStyle = BlockedByDepsStyle
-	}
-
-	title := SidebarHeaderStyle.Render(task.Title)
-	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
-	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
-	priorityBadge := renderPriorityBadge(task.Priority)
-	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
-
-	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+	content := renderTaskHeaderContent(task, m.Project.HasIncompleteDependencies(task), false)
 	return renderSidebarCard("Task", content, width, m.detailsPaneFocused, sectionColor)
 }
 
 // renderDetailsInfoCard renders tags and section info for the details panel.
 func (m *KanbanViewModel) renderDetailsInfoCard(task *models.Task, width int, sectionColor string) string {
-	var lines []string
-
-	// Tags line
-	if len(task.Tags) > 0 {
-		var tagParts []string
-		for _, tag := range task.Tags {
-			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
-		}
-		lines = append(lines, strings.Join(tagParts, " "))
-	}
-
-	// Section line (GTD section)
-	sectionName := task.Section
-	if sectionName == "" {
-		sectionName = "Active"
-	}
-	sectionStyle := GetSectionColorStyle(sectionColor)
-	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
-	lines = append(lines, sectionLine)
-
-	// Custom section line
-	if task.CustomSection != "" {
-		csColor := m.Project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
-		lines = append(lines, csLine)
-	}
-
-	return renderSidebarCard("Info", strings.Join(lines, "\n"), width, false, sectionColor)
+	content := renderMetadataContent(task, m.Project, width-6)
+	return renderSidebarCard("Info", content, width, false, sectionColor)
 }
 
 // renderDetailsDueCard renders the due date card for the details panel.
 func (m *KanbanViewModel) renderDetailsDueCard(task *models.Task, width int) string {
-	dueAbsolute := task.DueDate.Format("2006-01-02")
-	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
-	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
-
-	if task.IsOverdue() {
-		dueLine = OverdueStyle.Render(dueLine)
-	} else if task.IsDueToday() {
-		dueLine = DueTodayStyle.Render(dueLine)
-	} else {
-		dueLine = DueDateStyle.Render(dueLine)
-	}
-
-	return renderSidebarCard("Due", dueLine, width, false, "")
+	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
 }
 
 // renderDetailsDescriptionCard renders the scrollable description card.

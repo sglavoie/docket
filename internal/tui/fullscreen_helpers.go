@@ -6,7 +6,20 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
+
+// ScrollUpIndicator returns a muted "↑ N more" string for scroll overflow above.
+func ScrollUpIndicator(n int) string {
+	return MutedStyle.Render(fmt.Sprintf("↑ %d more", n))
+}
+
+// ScrollDownIndicator returns a muted "↓ N more" string for scroll overflow below.
+func ScrollDownIndicator(n int) string {
+	return MutedStyle.Render(fmt.Sprintf("↓ %d more", n))
+}
 
 // renderStatusBarFooter renders a horizontal divider followed by a left/right aligned
 // status line. This is the standard footer pattern for fullscreen views: a separator
@@ -152,34 +165,173 @@ func renderPriorityBadge(priority int) string {
 	}
 }
 
-// formatRelativeDue formats a due date relative to today with appropriate styling.
-func formatRelativeDue(dueDate *time.Time) string {
+// renderTaskHeaderContent builds the common task header content:
+// title, type badge + status line, priority badge + ID, and optional snooze line.
+func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnooze bool) string {
+	typeStyle := GetTypeStyle(string(task.Type))
+	statusStyle := GetStatusStyle(string(task.Status))
+
+	if hasIncompleteDeps {
+		statusStyle = BlockedByDepsStyle
+	}
+
+	title := SidebarHeaderStyle.Render(task.Title)
+	typeLine := GetTypeBadge(string(task.Type), task.Type.Icon()) + " " + typeStyle.Render(task.Type.HeadingPrefix())
+	statusLine := statusStyle.Render(task.Status.Icon() + " " + string(task.Status))
+	priorityBadge := renderPriorityBadge(task.Priority)
+	idLine := fmt.Sprintf("#%d %s", task.ShortID, priorityBadge)
+
+	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
+
+	if showSnooze && task.IsSnoozed() {
+		snoozeStr := task.SnoozedUntil.Format("Jan 2")
+		if task.SnoozedUntil.Year() != time.Now().Year() {
+			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+		}
+		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
+	}
+
+	return content
+}
+
+// renderDueDateContent builds the styled due date string with overdue/today/normal
+// coloring, and appends a recurrence line when the task has one.
+func renderDueDateContent(task *models.Task) string {
+	dueAbsolute := task.DueDate.Format(util.DateFormat)
+	dueRelative := formatRelativeDueVerbose(task.DueDate)
+	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
+
+	if task.IsOverdue() {
+		dueLine = OverdueStyle.Render(dueLine)
+	} else if task.IsDueToday() {
+		dueLine = DueTodayStyle.Render(dueLine)
+	} else {
+		dueLine = DueDateStyle.Render(dueLine)
+	}
+
+	if task.Recurrence != nil {
+		dueLine += "\n" + MutedStyle.Render("Recurs: "+task.Recurrence.String())
+	}
+
+	return dueLine
+}
+
+// renderMetadataContent builds the tags, section, custom section, and type-specific
+// attributes content shared by sidebar, task detail, and kanban info cards.
+func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int) string {
+	var lines []string
+
+	if len(task.Tags) > 0 {
+		var tagParts []string
+		for _, tag := range task.Tags {
+			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
+		}
+		lines = append(lines, strings.Join(tagParts, " "))
+	}
+
+	sectionName := task.Section
+	if sectionName == "" {
+		sectionName = "None"
+	}
+	sectionColor := project.GetSectionColor(task.Section)
+	sectionStyle := GetSectionColorStyle(sectionColor)
+	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
+	lines = append(lines, sectionLine)
+
+	if task.CustomSection != "" {
+		csColor := project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(task.CustomSection)
+		lines = append(lines, csLine)
+	}
+
+	attrLines := formatTaskAttributes(task, innerWidth)
+	if len(attrLines) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, attrLines...)
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// formatRelativeDue formats a due date relative to today.
+// When styled is true, overdue/today/normal ranges are wrapped in color styles.
+func formatRelativeDue(dueDate *time.Time, styled bool) string {
 	if dueDate == nil {
 		return ""
 	}
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*dueDate)
 
+	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+
+	var text string
+	var style lipgloss.Style
+
+	switch {
+	case daysUntil < -1:
+		text = fmt.Sprintf("%d days ago", -daysUntil)
+		style = OverdueStyle
+	case daysUntil == -1:
+		text = "yesterday"
+		style = OverdueStyle
+	case daysUntil == 0:
+		text = "today"
+		style = DueTodayStyle
+	case daysUntil == 1:
+		text = "tomorrow"
+		style = DueDateStyle
+	case daysUntil < 7:
+		text = dueDate.Format("Mon")
+		style = DueDateStyle
+	default:
+		if dueDate.Year() != now.Year() {
+			text = dueDate.Format("Jan 2 '06")
+		} else {
+			text = dueDate.Format("Jan 2")
+		}
+		style = DueDateStyle
+	}
+
+	if styled {
+		return style.Render(text)
+	}
+	return text
+}
+
+// formatRelativeDueVerbose returns a verbose relative due date string
+// (e.g. "in 3 weeks", "in 2 months") for use in detail/sidebar panels.
+func formatRelativeDueVerbose(dueDate *time.Time) string {
+	if dueDate == nil {
+		return ""
+	}
+
+	now := time.Now()
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*dueDate)
 	daysUntil := int(dueDay.Sub(today).Hours() / 24)
 
 	switch {
 	case daysUntil < -1:
-		return OverdueStyle.Render(fmt.Sprintf("%d days ago", -daysUntil))
+		return fmt.Sprintf("%d days ago", -daysUntil)
 	case daysUntil == -1:
-		return OverdueStyle.Render("yesterday")
+		return "yesterday"
 	case daysUntil == 0:
-		return DueTodayStyle.Render("today")
+		return "today"
 	case daysUntil == 1:
-		return DueDateStyle.Render("tomorrow")
+		return "tomorrow"
 	case daysUntil < 7:
-		return DueDateStyle.Render(dueDate.Format("Mon"))
+		return fmt.Sprintf("in %d days", daysUntil)
+	case daysUntil < 14:
+		return "next week"
+	case daysUntil < 30:
+		weeks := daysUntil / 7
+		return fmt.Sprintf("in %d weeks", weeks)
 	default:
-		if dueDate.Year() != now.Year() {
-			return DueDateStyle.Render(dueDate.Format("Jan 2 '06"))
-		}
-		return DueDateStyle.Render(dueDate.Format("Jan 2"))
+		months := daysUntil / 30
+		return fmt.Sprintf("in %d months", months)
 	}
 }
 

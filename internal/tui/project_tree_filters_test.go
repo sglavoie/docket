@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestIsOverdue(t *testing.T) {
@@ -482,7 +483,7 @@ func TestCollapseWithViewModeActive(t *testing.T) {
 
 func TestFormatDueDate(t *testing.T) {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 	yesterday := today.AddDate(0, 0, -1)
 	tomorrow := today.AddDate(0, 0, 1)
 	nextWeek := today.AddDate(0, 0, 7)

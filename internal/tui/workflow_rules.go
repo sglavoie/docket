@@ -412,7 +412,7 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 
 	// Show scroll indicator for rules above
 	if startIdx > 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more above", startIdx)))
+		b.WriteString(ScrollUpIndicator(startIdx))
 		b.WriteString("\n")
 	}
 

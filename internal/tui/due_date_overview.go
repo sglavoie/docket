@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DueDateTask wraps a task with its parent project for cross-project display.
@@ -194,8 +195,8 @@ func (m *DueDateOverviewModel) categorizeTask(task *models.Task) DueDateGroup {
 	}
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*task.DueDate)
 
 	if dueDay.Before(today) {
 		return GroupOverdue

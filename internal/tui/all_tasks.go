@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // AllTasksItem wraps a task with its parent project for cross-project display.
@@ -200,7 +201,7 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 // applyTabFilter filters tasks based on the active tab.
 func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	switch m.activeTab {
 	case allTasksTabActive:
@@ -219,7 +220,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem 
 			if item.Task.DueDate == nil {
 				continue
 			}
-			dueDay := time.Date(item.Task.DueDate.Year(), item.Task.DueDate.Month(), item.Task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+			dueDay := util.StartOfDay(*item.Task.DueDate)
 			if dueDay.Before(sevenDaysLater) {
 				result = append(result, item)
 			}

@@ -147,8 +147,8 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 	if task.DueDate != nil {
 		dueStyle := DueDateStyle
 		now := time.Now()
-		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-		dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		today := util.StartOfDay(now)
+		dueDay := util.StartOfDay(*task.DueDate)
 		if dueDay.Before(today) {
 			dueStyle = OverdueStyle
 		} else if dueDay.Equal(today) {

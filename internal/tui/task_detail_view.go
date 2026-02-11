@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -137,28 +136,7 @@ func (m *TaskDetailModel) renderFooter() string {
 
 // renderHeaderSection renders the task header card.
 func (m *TaskDetailModel) renderHeaderSection(width int) string {
-	typeStyle := GetTypeStyle(string(m.task.Type))
-	statusStyle := GetStatusStyle(string(m.task.Status))
-
-	if m.project.HasIncompleteDependencies(m.task) {
-		statusStyle = BlockedByDepsStyle
-	}
-
-	title := SidebarHeaderStyle.Render(m.task.Title)
-	typeLine := GetTypeBadge(string(m.task.Type), m.task.Type.Icon()) + " " + typeStyle.Render(m.task.Type.HeadingPrefix())
-	statusLine := statusStyle.Render(m.task.Status.Icon() + " " + string(m.task.Status))
-	priorityBadge := renderPriorityBadge(m.task.Priority)
-	idLine := fmt.Sprintf("#%d %s", m.task.ShortID, priorityBadge)
-
-	content := title + "\n" + typeLine + " " + statusLine + " " + idLine
-
-	if m.task.IsSnoozed() {
-		snoozeStr := m.task.SnoozedUntil.Format("Jan 2")
-		if m.task.SnoozedUntil.Year() != currentYear() {
-			snoozeStr = m.task.SnoozedUntil.Format("Jan 2 '06")
-		}
-		content += "\n" + MutedStyle.Render("zzz "+snoozeStr)
-	}
+	content := renderTaskHeaderContent(m.task, m.project.HasIncompleteDependencies(m.task), true)
 
 	cfg := DefaultCardConfig()
 	sectionColor := m.project.GetSectionColor(m.task.Section)
@@ -171,130 +149,22 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 
 // renderDueSection renders the due date card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	dueAbsolute := m.task.DueDate.Format(util.DateFormat)
-	dueRelative := formatRelativeDueDateVerbose(m.task.DueDate)
-	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
-
-	if m.task.IsOverdue() {
-		dueLine = OverdueStyle.Render(dueLine)
-	} else if m.task.IsDueToday() {
-		dueLine = DueTodayStyle.Render(dueLine)
-	} else {
-		dueLine = DueDateStyle.Render(dueLine)
-	}
-
-	if m.task.Recurrence != nil {
-		dueLine += "\n" + MutedStyle.Render("Recurs: "+m.task.Recurrence.String())
-	}
-
-	return renderCard("Due", dueLine, width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContent(m.task), width, DefaultCardConfig())
 }
 
 // renderMetadataSection renders tags, section, and type-specific attributes.
 func (m *TaskDetailModel) renderMetadataSection(width int) string {
-	var lines []string
-
-	if len(m.task.Tags) > 0 {
-		var tagParts []string
-		for _, tag := range m.task.Tags {
-			tagParts = append(tagParts, TagInlineStyle.Render("#"+tag))
-		}
-		lines = append(lines, strings.Join(tagParts, " "))
-	}
-
-	sectionName := m.task.Section
-	if sectionName == "" {
-		sectionName = "None"
-	}
+	content := renderMetadataContent(m.task, m.project, width-6)
 	sectionColor := m.project.GetSectionColor(m.task.Section)
-	sectionStyle := GetSectionColorStyle(sectionColor)
-	sectionLine := MutedStyle.Render("Section: ") + sectionStyle.Render(sectionName)
-	lines = append(lines, sectionLine)
-
-	if m.task.CustomSection != "" {
-		csColor := m.project.GetSectionColor(m.task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		csLine := MutedStyle.Render("Custom:  ") + csStyle.Render(m.task.CustomSection)
-		lines = append(lines, csLine)
-	}
-
-	// Type-specific attributes
-	attrLines := formatTaskAttributes(m.task, width-6)
-	if len(attrLines) > 0 {
-		lines = append(lines, "")
-		lines = append(lines, attrLines...)
-	}
-
 	cfg := DefaultCardConfig()
 	cfg.AccentColor = GetSectionColorValue(sectionColor)
-	return renderCard("Info", strings.Join(lines, "\n"), width, cfg)
+	return renderCard("Info", content, width, cfg)
 }
 
 // renderScoreSection renders the score breakdown card.
 func (m *TaskDetailModel) renderScoreSection(width int, profile *scoring.ScoringProfile) string {
-	results := scoring.ScoreBreakdown(m.task, profile)
-	totalScore := scoring.ComputeScore(m.task, profile)
-	_ = scoring.ScorePercent(totalScore, profile)
-
-	var lines []string
-
-	bar := RenderScoreBar(m.task, profile)
-	badge := RenderScoreBadge(m.task, profile)
-	formulaStr := MutedStyle.Render(fmt.Sprintf("(%s)", profile.Formula))
-	lines = append(lines, fmt.Sprintf("%s %s  %s", bar, badge, formulaStr))
-	lines = append(lines, "")
-
-	manualStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
-
-	maxNameWidth := 0
-	for _, r := range results {
-		if len(r.DimensionName) > maxNameWidth {
-			maxNameWidth = len(r.DimensionName)
-		}
-	}
-	cardInner := width - 6
-	if maxNameWidth > cardInner-16 {
-		maxNameWidth = cardInner - 16
-	}
-
-	for _, r := range results {
-		name := r.DimensionName
-		if len(name) > maxNameWidth {
-			name = name[:maxNameWidth]
-		}
-
-		valStr := fmt.Sprintf("%d", r.Value)
-
-		var sourceLabel string
-		switch r.Source {
-		case "manual":
-			sourceLabel = manualStyle.Render("manual")
-		case "derived":
-			sourceLabel = derivedStyle.Render("derived")
-		default:
-			sourceLabel = MutedStyle.Render("default")
-		}
-
-		roleStr := ""
-		switch r.Role {
-		case scoring.RoleNumerator:
-			roleStr = MutedStyle.Render(" [n]")
-		case scoring.RoleDenominator:
-			roleStr = MutedStyle.Render(" [d]")
-		}
-
-		padding := maxNameWidth - len(name)
-		if padding < 0 {
-			padding = 0
-		}
-		line := fmt.Sprintf("%s%s %s %s%s",
-			MutedStyle.Render(name), strings.Repeat(" ", padding),
-			valStr, sourceLabel, roleStr)
-		lines = append(lines, line)
-	}
-
-	return renderCard("Score", strings.Join(lines, "\n"), width, DefaultCardConfig())
+	content := renderScoreCardContent(m.task, profile, width-6)
+	return renderCard("Score", content, width, DefaultCardConfig())
 }
 
 // renderChecklistSection renders all checklist items.
@@ -463,9 +333,4 @@ func (m *TaskDetailModel) renderActivitySection(width int) string {
 	}
 
 	return renderCard("Activity", strings.Join(lines, "\n"), width, DefaultCardConfig())
-}
-
-// currentYear returns the current year for date formatting.
-func currentYear() int {
-	return time.Now().Year()
 }

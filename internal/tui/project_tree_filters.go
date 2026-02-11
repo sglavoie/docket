@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectTreeModel) buildTree() {
@@ -328,8 +329,8 @@ func formatDueDate(task *models.Task) string {
 	}
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*task.DueDate)
 
 	var dateStr string
 	var style lipgloss.Style

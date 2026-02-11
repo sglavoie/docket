@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // NewCommandPaletteModel creates a new command palette model.
@@ -538,9 +539,9 @@ func (m *CommandPaletteModel) parseInlineTask(input string) *inlineTaskPreview {
 
 		switch strings.ToLower(dateStr) {
 		case "today":
-			dueDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+			dueDate = util.StartOfDay(now)
 		case "tomorrow":
-			dueDate = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+			dueDate = util.StartOfDay(now).AddDate(0, 0, 1)
 		default:
 			// Try parsing as date
 			if parsed, err := time.Parse("2006-01-02", dateStr); err == nil {

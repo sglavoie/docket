@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // taskMatchesFieldFilters checks if a task matches all field filters.
@@ -18,7 +19,7 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 
 	task := item.Task
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	for _, f := range filters {
 		switch f.field {
@@ -67,7 +68,7 @@ func (m *CommandPaletteModel) taskMatchesFieldFilters(item PaletteItem, filters 
 			if task.DueDate == nil {
 				return false // No due date means can't match date filters
 			}
-			dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+			dueDay := util.StartOfDay(*task.DueDate)
 
 			switch f.value {
 			case "overdue":

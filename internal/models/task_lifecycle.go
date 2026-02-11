@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/sglavoie/tt/internal/util"
+)
 
 // Complete marks the task as done and sets the completion time.
 // The task is moved to the Completed section.
@@ -171,8 +175,8 @@ func (t *Task) IsSnoozed() bool {
 		return false
 	}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	snoozeDay := time.Date(t.SnoozedUntil.Year(), t.SnoozedUntil.Month(), t.SnoozedUntil.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	snoozeDay := util.StartOfDay(*t.SnoozedUntil)
 	return snoozeDay.After(today)
 }
 
@@ -194,8 +198,8 @@ func (t *Task) IsOverdue() bool {
 		return false
 	}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Before(today)
 }
 
@@ -207,8 +211,8 @@ func (t *Task) IsDueSoon(days int) bool {
 		return false
 	}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*t.DueDate)
 	// Not overdue
 	if dueDay.Before(today) {
 		return false
@@ -226,8 +230,8 @@ func (t *Task) IsDueToday() bool {
 		return false
 	}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Equal(today)
 }
 
@@ -240,9 +244,9 @@ func (t *Task) IsDueThisWeek() bool {
 		return false
 	}
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 	weekEnd := today.AddDate(0, 0, 7)
-	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := util.StartOfDay(*t.DueDate)
 	return !dueDay.Before(today) && dueDay.Before(weekEnd)
 }
 

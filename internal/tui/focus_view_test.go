@@ -316,9 +316,6 @@ func TestFocusViewSetSize(t *testing.T) {
 }
 
 func TestFocusViewFormatRelativeDue(t *testing.T) {
-	cfg := newTestFocusConfig(nil)
-	m := &FocusViewModel{config: cfg}
-
 	tests := []struct {
 		name       string
 		daysOffset *int
@@ -339,7 +336,7 @@ func TestFocusViewFormatRelativeDue(t *testing.T) {
 				dueDate = &due
 			}
 
-			got := m.formatRelativeDue(dueDate)
+			got := formatRelativeDue(dueDate, true)
 			if tt.wantMatch == "" {
 				if got != "" {
 					t.Errorf("formatRelativeDue() = %q, want empty", got)

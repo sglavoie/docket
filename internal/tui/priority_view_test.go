@@ -463,9 +463,6 @@ func TestPriorityViewClampCursor(t *testing.T) {
 }
 
 func TestFormatRelativeDue(t *testing.T) {
-	project := newTestPriorityProject()
-	m := NewPriorityViewModel(project)
-
 	tests := []struct {
 		name       string
 		daysOffset *int
@@ -487,7 +484,7 @@ func TestFormatRelativeDue(t *testing.T) {
 				task.DueDate = &due
 			}
 
-			got := m.formatRelativeDue(task)
+			got := formatRelativeDue(task.DueDate, false)
 			if tt.wantMatch == "" {
 				if got != "" {
 					t.Errorf("formatRelativeDue() = %q, want empty", got)

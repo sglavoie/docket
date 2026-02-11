@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -187,7 +186,7 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = m.formatRelativeDue(task.DueDate)
+		dueStr = formatRelativeDue(task.DueDate, true)
 	}
 
 	line := fmt.Sprintf("%s%s %s %s %s %s%s", cursor, projectStr, statusIcon, typeIcon, priorityBadge, title, tagsStr)
@@ -205,9 +204,4 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 // renderPriorityBadge delegates to the shared renderPriorityBadge helper.
 func (m *FocusViewModel) renderPriorityBadge(priority int) string {
 	return renderPriorityBadge(priority)
-}
-
-// formatRelativeDue delegates to the shared formatRelativeDue helper.
-func (m *FocusViewModel) formatRelativeDue(dueDate *time.Time) string {
-	return formatRelativeDue(dueDate)
 }

@@ -541,7 +541,7 @@ func (m *ProjectFocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea
 
 	// Set due date
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = time.Date(newDate.Year(), newDate.Month(), newDate.Day(), 0, 0, 0, 0, newDate.Location())
+	newDate = util.StartOfDay(newDate)
 	m.project.MutateTask(task.ID, func(t *models.Task) {
 		t.DueDate = &newDate
 	})
@@ -803,7 +803,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	// Due date
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = m.formatRelativeDue(task.DueDate)
+		dueStr = formatRelativeDue(task.DueDate, true)
 	}
 
 	// Build line (no project name needed)
@@ -822,9 +822,4 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 // renderPriorityBadge renders a priority indicator.
 func (m *ProjectFocusViewModel) renderPriorityBadge(priority int) string {
 	return renderPriorityBadge(priority)
-}
-
-// formatRelativeDue delegates to the shared formatRelativeDue helper.
-func (m *ProjectFocusViewModel) formatRelativeDue(dueDate *time.Time) string {
-	return formatRelativeDue(dueDate)
 }

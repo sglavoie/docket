@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // groupTasks groups tasks based on the current groupBy setting.
@@ -134,7 +135,7 @@ func (m *AllTasksViewModel) groupBySection(tasks []AllTasksItem) []AllTasksGroup
 // groupByDueDate groups tasks into due date buckets.
 func (m *AllTasksViewModel) groupByDueDate(tasks []AllTasksItem) []AllTasksGroup {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 	weekEnd := today.AddDate(0, 0, 7)
 
 	var overdue, todayTasks, thisWeek, later, noDate []AllTasksItem
@@ -144,7 +145,7 @@ func (m *AllTasksViewModel) groupByDueDate(tasks []AllTasksItem) []AllTasksGroup
 			noDate = append(noDate, item)
 			continue
 		}
-		dueDay := time.Date(item.Task.DueDate.Year(), item.Task.DueDate.Month(), item.Task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+		dueDay := util.StartOfDay(*item.Task.DueDate)
 		switch {
 		case dueDay.Before(today):
 			overdue = append(overdue, item)

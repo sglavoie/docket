@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -78,4 +79,70 @@ func RenderScoreBar(task *models.Task, profile *scoring.ScoringProfile) string {
 		idx = 0
 	}
 	return style.Render(string(bars[idx]))
+}
+
+// renderScoreCardContent renders the score breakdown body (header + per-dimension lines)
+// shared by the sidebar and task detail score cards. The innerWidth should be
+// the card's content width (total width minus card chrome, typically width-6).
+func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, innerWidth int) string {
+	results := scoring.ScoreBreakdown(task, profile)
+
+	var lines []string
+
+	bar := RenderScoreBar(task, profile)
+	badge := RenderScoreBadge(task, profile)
+	formulaStr := MutedStyle.Render(fmt.Sprintf("(%s)", profile.Formula))
+	lines = append(lines, fmt.Sprintf("%s %s  %s", bar, badge, formulaStr))
+	lines = append(lines, "")
+
+	manualStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	derivedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("44"))
+
+	maxNameWidth := 0
+	for _, r := range results {
+		if len(r.DimensionName) > maxNameWidth {
+			maxNameWidth = len(r.DimensionName)
+		}
+	}
+	if maxNameWidth > innerWidth-16 {
+		maxNameWidth = innerWidth - 16
+	}
+
+	for _, r := range results {
+		name := r.DimensionName
+		if len(name) > maxNameWidth {
+			name = name[:maxNameWidth]
+		}
+
+		valStr := fmt.Sprintf("%d", r.Value)
+
+		var sourceLabel string
+		switch r.Source {
+		case "manual":
+			sourceLabel = manualStyle.Render("manual")
+		case "derived":
+			sourceLabel = derivedStyle.Render("derived")
+		default:
+			sourceLabel = MutedStyle.Render("default")
+		}
+
+		roleStr := ""
+		switch r.Role {
+		case scoring.RoleNumerator:
+			roleStr = MutedStyle.Render(" [n]")
+		case scoring.RoleDenominator:
+			roleStr = MutedStyle.Render(" [d]")
+		}
+
+		padding := maxNameWidth - len(name)
+		if padding < 0 {
+			padding = 0
+		}
+		line := fmt.Sprintf("%s%s %s %s%s",
+			MutedStyle.Render(name), strings.Repeat(" ", padding),
+			valStr, sourceLabel, roleStr)
+		lines = append(lines, line)
+	}
+
+	return strings.Join(lines, "\n")
 }

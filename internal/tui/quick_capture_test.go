@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestParseQuickCapture(t *testing.T) {
@@ -692,7 +693,7 @@ func TestParseDateTomorrow(t *testing.T) {
 	}
 
 	now := time.Now()
-	expected := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+	expected := util.StartOfDay(now).AddDate(0, 0, 1)
 
 	if !result.Equal(expected) {
 		t.Errorf("ParseDate(tomorrow) = %v, want %v", result, expected)

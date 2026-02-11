@@ -284,7 +284,7 @@ func (m *KanbanViewModel) renderSwimlaneCell(laneKey, colKey string, isActive bo
 		}
 
 		if hasUpIndicator {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↑ %d more", cs.ScrollOffset)))
+			b.WriteString(ScrollUpIndicator(cs.ScrollOffset))
 			b.WriteString("\n")
 		}
 
@@ -301,7 +301,7 @@ func (m *KanbanViewModel) renderSwimlaneCell(laneKey, colKey string, isActive bo
 		// "↓ N more" indicator
 		if endIdx < len(nodes) {
 			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("↓ %d more", len(nodes)-endIdx)))
+			b.WriteString(ScrollDownIndicator(len(nodes) - endIdx))
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *AppModel) dueDateCommands() []Command {
@@ -24,7 +25,7 @@ func (m *AppModel) dueDateCommands() []Command {
 				task := m.projectTree.getSelectedTask()
 				if task != nil {
 					now := time.Now()
-					today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+					today := util.StartOfDay(now)
 					m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 						t.DueDate = &today
 					})

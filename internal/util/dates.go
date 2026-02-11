@@ -22,6 +22,11 @@ const (
 	Year  = 365 * Day
 )
 
+// StartOfDay returns t truncated to midnight (00:00:00) in t's location.
+func StartOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
 // FormatDate formats a time as date only (YYYY-MM-DD).
 func FormatDate(t time.Time) string {
 	return t.Format(DateFormat)
@@ -70,7 +75,7 @@ var weekdays = map[string]time.Weekday{
 func ParseRelativeDate(input string) (time.Time, error) {
 	input = strings.ToLower(strings.TrimSpace(input))
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := StartOfDay(now)
 
 	// Exact date: YYYY-MM-DD
 	if date, err := time.ParseInLocation(DateFormat, input, time.Local); err == nil {

@@ -3,11 +3,13 @@ package tui
 import (
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestParseDate(t *testing.T) {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	tests := []struct {
 		name    string
@@ -158,7 +160,7 @@ func TestParseDate(t *testing.T) {
 
 func TestParseDateWeekdays(t *testing.T) {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	weekdayTests := []struct {
 		input   string
@@ -209,7 +211,7 @@ func TestParseDateWeekdays(t *testing.T) {
 
 func TestParseDateNextWeekday(t *testing.T) {
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	nextWeekdayTests := []struct {
 		input   string

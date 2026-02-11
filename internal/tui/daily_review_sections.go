@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // loadTasks aggregates tasks from all active projects into sections.
@@ -24,7 +25,7 @@ func (m *DailyReviewModel) loadTasks() {
 	m.completed = nil
 
 	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	today := util.StartOfDay(now)
 
 	// Get configurable thresholds
 	dueSoonDays := m.config.GetReviewDueSoonDays()
@@ -81,7 +82,7 @@ func (m *DailyReviewModel) loadTasks() {
 
 			// 4. Overdue: DueDate < today
 			if task.DueDate != nil {
-				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
+				dueDay := util.StartOfDay(*task.DueDate)
 
 				if dueDay.Before(today) {
 					m.overdue = append(m.overdue, dt)
