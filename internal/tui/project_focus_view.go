@@ -451,8 +451,8 @@ func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (t
 	// Validate status transition
 	switch newStatus {
 	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
-			m.statusMessage = "Task must be todo or blocked to start"
+		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
+			m.statusMessage = "Task must be todo, blocked, or in review to start"
 			return m, nil
 		}
 	case models.StatusDone:

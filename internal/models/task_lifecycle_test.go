@@ -89,6 +89,16 @@ func TestStartAutoTriagesFromNext(t *testing.T) {
 	}
 }
 
+func TestStartAutoTriagesFromReview(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Section = SectionReview
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected section cleared from Review, got %q", task.Section)
+	}
+}
+
 func TestBlock(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Block()

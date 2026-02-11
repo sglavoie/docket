@@ -105,7 +105,7 @@ func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) 
 			project.MutateTask(item.Task.ID, func(t *models.Task) {
 				switch newStatus {
 				case models.StatusInProgress:
-					if t.Status == models.StatusTodo || t.Status == models.StatusBlocked {
+					if t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview {
 						t.Start()
 						changedCount++
 					}

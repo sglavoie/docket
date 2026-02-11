@@ -116,7 +116,7 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 		m.Project.MutateTask(task.ID, func(t *models.Task) {
 			switch newStatus {
 			case models.StatusInProgress:
-				if t.Status == models.StatusTodo || t.Status == models.StatusBlocked {
+				if t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview {
 					t.Start()
 					changedCount++
 				}

@@ -131,7 +131,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
 		func(t *models.Task) bool {
-			return t.Status == models.StatusTodo || t.Status == models.StatusBlocked
+			return t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview
 		},
 		func(t *models.Task) { t.Start() },
 		"Start Task",

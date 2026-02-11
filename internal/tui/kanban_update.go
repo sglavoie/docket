@@ -21,9 +21,9 @@ func (m *KanbanViewModel) handleStatusStart() tea.Cmd {
 		return nil
 	}
 
-	// Only start tasks that are todo or blocked
-	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
-		m.statusMessage = "Cannot start: task is not todo or blocked"
+	// Only start tasks that are todo, blocked, or in review
+	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
+		m.statusMessage = "Cannot start: task is not todo, blocked, or in review"
 		return nil
 	}
 

@@ -34,8 +34,8 @@ func applyStatusChange(project *models.Project, taskID string, newStatus models.
 	// Validate status transition
 	switch newStatus {
 	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
-			return TaskOpResult{StatusMessage: "Task must be todo or blocked to start"}
+		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
+			return TaskOpResult{StatusMessage: "Task must be todo, blocked, or in review to start"}
 		}
 	case models.StatusDone:
 		if !task.Status.IsActive() {
@@ -62,6 +62,8 @@ func applyStatusChange(project *models.Project, taskID string, newStatus models.
 		}
 	}
 
+	wasReview := task.Status == models.StatusReview
+
 	if err := storage.BackupProject(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 	}
@@ -74,6 +76,9 @@ func applyStatusChange(project *models.Project, taskID string, newStatus models.
 			t.Active = false
 		} else {
 			t.CompletedAt = nil
+		}
+		if wasReview && newStatus == models.StatusInProgress {
+			t.Section = ""
 		}
 	})
 
@@ -104,8 +109,8 @@ func applyStatusChangePS(ps *ProjectService, project *models.Project, taskID str
 
 	switch newStatus {
 	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked {
-			return TaskOpResult{StatusMessage: "Task must be todo or blocked to start"}
+		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
+			return TaskOpResult{StatusMessage: "Task must be todo, blocked, or in review to start"}
 		}
 	case models.StatusDone:
 		if !task.Status.IsActive() {
@@ -132,6 +137,8 @@ func applyStatusChangePS(ps *ProjectService, project *models.Project, taskID str
 		}
 	}
 
+	wasReview := task.Status == models.StatusReview
+
 	if err := ps.Backup(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 	}
@@ -144,6 +151,9 @@ func applyStatusChangePS(ps *ProjectService, project *models.Project, taskID str
 			t.Active = false
 		} else {
 			t.CompletedAt = nil
+		}
+		if wasReview && newStatus == models.StatusInProgress {
+			t.Section = ""
 		}
 	})
 

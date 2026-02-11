@@ -18,8 +18,8 @@ func (t *Task) Complete() {
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
-	// Auto-triage: move out of Inbox/Next/Waiting/Someday when starting
-	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday {
+	// Auto-triage: move out of Inbox/Next/Waiting/Someday/Review when starting
+	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview {
 		t.Section = ""
 	}
 }
