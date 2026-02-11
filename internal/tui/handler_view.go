@@ -201,12 +201,35 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowProjectPreviewMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project))
+			m.showView(ViewProjectPreview, NewProjectPreviewModel(msg.Project, m.config, m.configManager))
 		}
 		return true, nil
 
 	case CloseProjectPreviewMsg:
 		m.popView()
+		return true, nil
+
+	case ShowScoringProfilePickerMsg:
+		picker := NewScoringProfilePickerModel(m.config, m.configManager, msg.ProjectID)
+		m.showView(ViewScoringProfilePicker, picker)
+		return true, nil
+
+	case ScoringProfilePickerDoneMsg:
+		m.popView()
+		if !msg.Canceled {
+			if msg.ProfileID == "" {
+				m.config.UnsetProjectScoringProfile(msg.ProjectID)
+			} else {
+				m.config.SetProjectScoringProfile(msg.ProjectID, msg.ProfileID)
+			}
+			_ = m.configManager.Save(m.config)
+			// Refresh the preview viewport content if it's visible
+			if v := m.views.Get(ViewProjectPreview); v != nil {
+				if preview, ok := v.(*ProjectPreviewModel); ok {
+					preview.refreshContent()
+				}
+			}
+		}
 		return true, nil
 
 	case ShowDueDateOverviewMsg:

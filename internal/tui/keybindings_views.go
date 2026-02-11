@@ -366,6 +366,16 @@ func (r *KeybindingRegistry) registerRecentActivityBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerProjectPreviewBindings() {
+	views := []ViewType{ViewProjectPreview}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Scroll", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "s", Description: "Switch scoring profile", Category: "Actions", Views: views},
+		Keybinding{Key: "p/q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerScoreProfileManagerBindings() {
 	views := []ViewType{ViewScoreProfileManager}
 	r.add(

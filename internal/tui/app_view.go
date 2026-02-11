@@ -183,6 +183,8 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			status = "Task Detail"
 		}
+	case ViewScoringProfilePicker:
+		status = "Scoring Profile"
 	}
 
 	// Hide help text in editor/creator/settings/search views where ? doesn't apply

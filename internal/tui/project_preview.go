@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -23,18 +24,22 @@ type CloseProjectPreviewMsg struct{}
 
 // ProjectPreviewModel is the model for the project preview view.
 type ProjectPreviewModel struct {
-	project  *models.Project
-	viewport viewport.Model
-	width    int
-	height   int
-	ready    bool
+	project       *models.Project
+	config        *config.Config
+	configManager *config.Manager
+	viewport      viewport.Model
+	width         int
+	height        int
+	ready         bool
 }
 
 // NewProjectPreviewModel creates a new project preview model.
-func NewProjectPreviewModel(project *models.Project) *ProjectPreviewModel {
+func NewProjectPreviewModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *ProjectPreviewModel {
 	return &ProjectPreviewModel{
-		project: project,
-		ready:   false,
+		project:       project,
+		config:        cfg,
+		configManager: mgr,
+		ready:         false,
 	}
 }
 
@@ -73,6 +78,13 @@ func (m *ProjectPreviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "p", "q", "esc":
 			return m, func() tea.Msg {
 				return CloseProjectPreviewMsg{}
+			}
+		case "s":
+			if m.project != nil {
+				projectID := m.project.ID
+				return m, func() tea.Msg {
+					return ShowScoringProfilePickerMsg{ProjectID: projectID}
+				}
 			}
 		case "up", "k":
 			m.viewport.ScrollUp(1)
@@ -127,6 +139,20 @@ func (m *ProjectPreviewModel) renderContent() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
+
+	// Scoring Profile
+	if m.config != nil {
+		b.WriteString(BoldStyle.Render("Scoring Profile"))
+		b.WriteString("\n")
+		profile := m.config.GetProjectScoringProfile(p.ID)
+		if profile != nil {
+			b.WriteString(fmt.Sprintf("  %s (%s)\n", profile.Name, profile.Formula))
+		} else {
+			b.WriteString(MutedStyle.Render("  None"))
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
 
 	// Task summary
 	total := p.CountTasks()
@@ -237,8 +263,15 @@ func (m *ProjectPreviewModel) View() string {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	footer := HelpStyle.Render(fmt.Sprintf("p/q/esc close | j/k scroll | g/G top/bottom%s", scrollPercent))
+	footer := HelpStyle.Render(fmt.Sprintf("p/q/esc close | j/k scroll | g/G top/bottom | s scoring%s", scrollPercent))
 	b.WriteString(footer)
 
 	return b.String()
+}
+
+// refreshContent updates the viewport content (e.g., after scoring profile change).
+func (m *ProjectPreviewModel) refreshContent() {
+	if m.ready {
+		m.viewport.SetContent(m.renderContent())
+	}
 }
