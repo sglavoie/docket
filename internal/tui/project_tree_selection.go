@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // toggleSelection toggles the selection state of a single task.
@@ -134,79 +133,24 @@ func (m *ProjectTreeModel) sortNodeSlice(nodes []*TreeNode) {
 
 // compareNodes compares two nodes based on the current sort field and direction.
 func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
-	var less bool
-
-	switch m.sortField {
-	case SortByPriority:
-		// Lower priority number = higher priority (1 is highest)
-		less = a.Task.Priority < b.Task.Priority
-
-	case SortByDueDate:
-		// nil due dates go to the end
-		if a.Task.DueDate == nil && b.Task.DueDate == nil {
+	// Handle snoozed view default sort specially
+	if m.sortField == SortByDefault && m.viewMode == ViewModeSnoozed {
+		var less bool
+		if a.Task.SnoozedUntil == nil && b.Task.SnoozedUntil == nil {
 			less = false
-		} else if a.Task.DueDate == nil {
-			less = false // a goes after b
-		} else if b.Task.DueDate == nil {
-			less = true // a goes before b
-		} else {
-			less = a.Task.DueDate.Before(*b.Task.DueDate)
-		}
-
-	case SortByCreatedAt:
-		less = a.Task.CreatedAt.Before(b.Task.CreatedAt)
-
-	case SortByStatus:
-		less = m.statusOrder(a.Task.Status) < m.statusOrder(b.Task.Status)
-
-	case SortByScore:
-		profile := m.config.GetProjectScoringProfile(m.project.ID)
-		if profile != nil {
-			scoreA := scoring.ComputeScore(a.Task, profile)
-			scoreB := scoring.ComputeScore(b.Task, profile)
-			less = scoreA > scoreB // higher score first (descending by default)
-		}
-
-	default:
-		// In snoozed view with default sort, sort by SnoozedUntil ascending
-		if m.viewMode == ViewModeSnoozed {
-			if a.Task.SnoozedUntil == nil && b.Task.SnoozedUntil == nil {
-				less = false
-			} else if a.Task.SnoozedUntil == nil {
-				less = false
-			} else if b.Task.SnoozedUntil == nil {
-				less = true
-			} else {
-				less = a.Task.SnoozedUntil.Before(*b.Task.SnoozedUntil)
-			}
-		} else {
+		} else if a.Task.SnoozedUntil == nil {
 			less = false
+		} else if b.Task.SnoozedUntil == nil {
+			less = true
+		} else {
+			less = a.Task.SnoozedUntil.Before(*b.Task.SnoozedUntil)
 		}
+		if !m.sortAscending {
+			less = !less
+		}
+		return less
 	}
 
-	if !m.sortAscending {
-		less = !less
-	}
-
-	return less
-}
-
-// statusOrder returns the sort order for a status (workflow order).
-func (m *ProjectTreeModel) statusOrder(status models.TaskStatus) int {
-	switch status {
-	case models.StatusTodo:
-		return 0
-	case models.StatusInProgress:
-		return 1
-	case models.StatusReview:
-		return 2
-	case models.StatusBlocked:
-		return 3
-	case models.StatusDone:
-		return 4
-	case models.StatusCanceled:
-		return 5
-	default:
-		return 6
-	}
+	cmp := CompareTasks(a.Task, b.Task, m.sortField, m.project.ID, m.config)
+	return ApplySortDirection(cmp, m.sortAscending)
 }

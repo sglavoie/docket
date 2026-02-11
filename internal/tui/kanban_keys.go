@@ -18,8 +18,17 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle score filter custom value input
-	if m.scoreFilterInputMode {
-		return m.handleKanbanScoreFilterInput(msg)
+	if m.scoreFilterInput.IsActive() {
+		val, done, cmd := m.scoreFilterInput.HandleKey(msg)
+		if done && val != nil {
+			m.config.ScoreFilterCustom = val
+			if m.configManager != nil {
+				_ = m.configManager.Save(m.config)
+			}
+			m.filter.ScoreMin = *val
+			m.loadTasks()
+		}
+		return m, cmd
 	}
 
 	// Handle quick add mode input first
@@ -334,7 +343,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
 			}
 		}
-		tags := buildKanbanTagList(m)
+		tags := BuildTagList(m.Project.Tasks, true)
 		return m, func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
 		}

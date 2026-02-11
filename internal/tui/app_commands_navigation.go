@@ -139,7 +139,7 @@ func (m *AppModel) filterCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				tags := buildTagList(m.projectTree)
+				tags := BuildTagList(m.projectTree.project.Tasks, false)
 				return ShowTagFilterMsg{Tags: tags, Selected: m.projectTree.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 			},
 		},

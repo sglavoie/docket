@@ -2,9 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"strconv"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -53,7 +51,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "#":
 		// Tag filter selector
-		tags := buildTagList(m)
+		tags := BuildTagList(m.project.Tasks, false)
 		return m, func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
@@ -147,55 +145,17 @@ func (m *ProjectTreeModel) handleFilterAttrSubPrefix(prefix, key string) (tea.Mo
 // handleFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix).
 func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
 	if key == "C" {
-		// Enter inline text input to set custom value
-		m.enterScoreFilterInputMode()
+		var custom *float64
+		if m.config != nil {
+			custom = m.config.ScoreFilterCustom
+		}
+		m.scoreFilterInput.Enter(custom)
 		return m, nil
 	}
 	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
 		m.applyFilterChange()
 	}
 	return m, nil
-}
-
-// enterScoreFilterInputMode initializes the score filter text input.
-func (m *ProjectTreeModel) enterScoreFilterInputMode() {
-	ti := textinput.New()
-	ti.Prompt = ""
-	ti.Placeholder = "enter value"
-	ti.CharLimit = 10
-	ti.Width = 12
-	if m.config != nil && m.config.ScoreFilterCustom != nil {
-		ti.SetValue(fmt.Sprintf("%.0f", *m.config.ScoreFilterCustom))
-	}
-	ti.Focus()
-	m.scoreFilterInput = ti
-	m.scoreFilterInputMode = true
-}
-
-// handleScoreFilterInput handles key events while the score filter text input is active.
-func (m *ProjectTreeModel) handleScoreFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
-		val, err := strconv.ParseFloat(m.scoreFilterInput.Value(), 64)
-		if err == nil && val > 0 {
-			// Persist to config
-			m.config.ScoreFilterCustom = &val
-			if m.configManager != nil {
-				_ = m.configManager.Save(m.config)
-			}
-			// Apply as active filter
-			m.filter.ScoreMin = val
-			m.applyFilterChange()
-		}
-		m.scoreFilterInputMode = false
-		return m, nil
-	case "esc":
-		m.scoreFilterInputMode = false
-		return m, nil
-	}
-	var cmd tea.Cmd
-	m.scoreFilterInput, cmd = m.scoreFilterInput.Update(msg)
-	return m, cmd
 }
 
 // handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
@@ -242,7 +202,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
 			}
 		}
-		tags := buildTagList(m)
+		tags := BuildTagList(m.project.Tasks, false)
 		return true, func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
@@ -271,51 +231,17 @@ func (m *ProjectTreeModel) toggleSort(field SortField) {
 	m.updateVisibility()
 }
 
-// sendTasksToActive moves selected tasks or cursor task to the Active view (clears section).
-// Captures task states before changes to enable event-based workflow triggers.
-func (m *ProjectTreeModel) sendTasksToActive(visible []*TreeNode) (bool, tea.Cmd) {
-	// Capture task states before changes for event-based workflow triggers
-	prevStates := captureTaskStates(m.project.Tasks)
-
-	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		count := 0
-		for id := range m.selectedTasks {
-			if m.project.MutateTask(id, func(t *models.Task) {
-				t.Section = ""
-			}) {
-				m.project.RelocateTaskToEndOfSection(id, "")
-				count++
-			}
-		}
-		m.clearSelection()
-		m.pendingUndoAction = "Move to Active"
-		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
-		return true, m.saveAndRefreshWithPrevStates(prevStates)
-	}
-
-	// Single task mode
-	if !CursorInBounds(m.cursor, len(visible)) {
-		return false, nil
-	}
-	taskID := visible[m.cursor].Task.ID
-	task := m.project.GetTaskByID(taskID)
-	if task == nil {
-		return false, nil
-	}
-	m.project.MutateTask(taskID, func(t *models.Task) {
-		t.Section = ""
-	})
-	m.project.RelocateTaskToEndOfSection(taskID, "")
-	m.pendingUndoAction = "Move to Active"
-	m.pendingUndoContext = task.Title
-	return true, m.saveAndRefreshWithPrevStates(prevStates)
-}
-
 // sendTasksToSection moves selected tasks or cursor task to the specified section.
-// Captures task states before changes to enable event-based workflow triggers.
+// Use section="" for Active. Captures task states before changes to enable
+// event-based workflow triggers.
 func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNode) (bool, tea.Cmd) {
 	// Capture task states before changes for event-based workflow triggers
 	prevStates := captureTaskStates(m.project.Tasks)
+
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Active"
+	}
 
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		count := 0
@@ -328,7 +254,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 			}
 		}
 		m.clearSelection()
-		m.pendingUndoAction = "Move to " + section
+		m.pendingUndoAction = label
 		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
 		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
@@ -346,7 +272,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		t.Section = section
 	})
 	m.project.RelocateTaskToEndOfSection(taskID, section)
-	m.pendingUndoAction = "Move to " + section
+	m.pendingUndoAction = label
 	m.pendingUndoContext = task.Title
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }

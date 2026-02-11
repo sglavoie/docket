@@ -153,9 +153,9 @@ func (m *ProjectTreeModel) renderDueCard(task *models.Task, width int) string {
 	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 
-	if isOverdue(task) && !task.Status.IsComplete() {
+	if task.IsOverdue() {
 		dueLine = OverdueStyle.Render(dueLine)
-	} else if isDueToday(task) {
+	} else if task.IsDueToday() {
 		dueLine = DueTodayStyle.Render(dueLine)
 	} else {
 		dueLine = DueDateStyle.Render(dueLine)

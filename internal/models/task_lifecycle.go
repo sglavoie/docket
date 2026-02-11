@@ -218,6 +218,34 @@ func (t *Task) IsDueSoon(days int) bool {
 	return !dueDay.After(threshold)
 }
 
+// IsDueToday returns true if the task has a due date that falls on today.
+// Does not check completion status — callers can combine with IsComplete() if needed.
+// Uses day-level comparison (normalizes to midnight local time).
+func (t *Task) IsDueToday() bool {
+	if t.DueDate == nil {
+		return false
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	return dueDay.Equal(today)
+}
+
+// IsDueThisWeek returns true if the task has a due date within the next 7 days
+// (including today, excluding exactly 7 days from now).
+// Does not check completion status — callers can combine with IsComplete() if needed.
+// Uses day-level comparison (normalizes to midnight local time).
+func (t *Task) IsDueThisWeek() bool {
+	if t.DueDate == nil {
+		return false
+	}
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	weekEnd := today.AddDate(0, 0, 7)
+	dueDay := time.Date(t.DueDate.Year(), t.DueDate.Month(), t.DueDate.Day(), 0, 0, 0, 0, now.Location())
+	return !dueDay.Before(today) && dueDay.Before(weekEnd)
+}
+
 // SetRecurrence sets the recurrence pattern for the task.
 func (t *Task) SetRecurrence(pattern *RecurrencePattern) {
 	t.Recurrence = pattern

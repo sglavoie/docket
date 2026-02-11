@@ -192,8 +192,7 @@ type KanbanViewModel struct {
 	actionableFilter bool
 
 	// Score filter custom value input
-	scoreFilterInputMode bool            // True when entering custom score threshold
-	scoreFilterInput     textinput.Model // Text input for custom score value
+	scoreFilterInput ScoreFilterInput
 
 	// Last modified task tracking
 	lastModifiedTaskID string

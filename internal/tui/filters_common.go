@@ -44,15 +44,15 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 	if f.DueDate != DueDateAll {
 		switch f.DueDate {
 		case DueDateOverdue:
-			if !isOverdue(task) {
+			if !task.IsOverdue() {
 				return false
 			}
 		case DueDateToday:
-			if !isDueToday(task) {
+			if !task.IsDueToday() {
 				return false
 			}
 		case DueDateThisWeek:
-			if !isDueThisWeek(task) {
+			if !task.IsDueThisWeek() {
 				return false
 			}
 		case DueDateNone:

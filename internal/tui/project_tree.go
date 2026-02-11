@@ -204,8 +204,7 @@ type ProjectTreeModel struct {
 	focusedTask *models.Task // When non-nil, only show this task and descendants
 
 	// Score filter custom value input
-	scoreFilterInputMode bool            // True when entering custom score threshold
-	scoreFilterInput     textinput.Model // Text input for custom score value
+	scoreFilterInput ScoreFilterInput
 
 	// Undo context for the next save operation
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
@@ -278,12 +277,12 @@ func (m *ProjectTreeModel) HasActiveSearch() bool {
 
 // HasTextInput returns true when the project tree has an active text input.
 func (m *ProjectTreeModel) HasTextInput() bool {
-	return m.HasActiveSearch() || m.quickEdit.IsActive() || m.scoreFilterInputMode
+	return m.HasActiveSearch() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }
 
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != "" || m.quickEdit.IsActive() || m.scoreFilterInputMode
+	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != "" || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.

@@ -71,7 +71,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 
 	// Score filter custom value input
-	if m.scoreFilterInputMode {
+	if m.scoreFilterInput.IsActive() {
 		b.WriteString(SubtitleStyle.Render("Score threshold: "))
 		b.WriteString(m.scoreFilterInput.View())
 		b.WriteString(" ")
@@ -423,7 +423,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 
 	// Score filter custom value input
-	if m.scoreFilterInputMode {
+	if m.scoreFilterInput.IsActive() {
 		b.WriteString(SubtitleStyle.Render("Score threshold: "))
 		b.WriteString(m.scoreFilterInput.View())
 		b.WriteString(" ")

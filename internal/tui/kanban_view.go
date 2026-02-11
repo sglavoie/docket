@@ -72,7 +72,7 @@ func (m *KanbanViewModel) View() string {
 	}
 
 	// Render score filter custom value input
-	if m.scoreFilterInputMode {
+	if m.scoreFilterInput.IsActive() {
 		scoreLine := SubtitleStyle.Render("Score threshold: ") + m.scoreFilterInput.View() + " " + HelpStyle.Render("(Enter: apply, Esc: cancel)")
 		viewParts = append(viewParts, scoreLine)
 	}
@@ -647,9 +647,9 @@ func (m *KanbanViewModel) renderDetailsDueCard(task *models.Task, width int) str
 	dueRelative := formatRelativeDueDateVerbose(task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 
-	if isOverdue(task) && !task.Status.IsComplete() {
+	if task.IsOverdue() {
 		dueLine = OverdueStyle.Render(dueLine)
-	} else if isDueToday(task) {
+	} else if task.IsDueToday() {
 		dueLine = DueTodayStyle.Render(dueLine)
 	} else {
 		dueLine = DueDateStyle.Render(dueLine)
@@ -710,7 +710,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInputMode
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInput.IsActive()
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

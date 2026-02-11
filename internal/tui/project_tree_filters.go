@@ -321,40 +321,6 @@ func (m *ProjectTreeModel) hasMatchingDescendant(task *models.Task) bool {
 	return false
 }
 
-// isOverdue returns true if the task is past its due date and not completed.
-func isOverdue(task *models.Task) bool {
-	if task.DueDate == nil || task.Status.IsComplete() {
-		return false
-	}
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-	return dueDay.Before(today)
-}
-
-// isDueToday returns true if the task is due today.
-func isDueToday(task *models.Task) bool {
-	if task.DueDate == nil {
-		return false
-	}
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-	return dueDay.Equal(today)
-}
-
-// isDueThisWeek returns true if the task is due within the next 7 days.
-func isDueThisWeek(task *models.Task) bool {
-	if task.DueDate == nil {
-		return false
-	}
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	weekEnd := today.AddDate(0, 0, 7)
-	dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
-	return !dueDay.Before(today) && dueDay.Before(weekEnd)
-}
-
 // formatDueDate returns a styled due date string for inline display.
 func formatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.Status.IsComplete() {
@@ -488,13 +454,13 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 		// Count by status
 		counts["status:"+string(task.Status)]++
 		// Count by due date category
-		if isOverdue(task) {
+		if task.IsOverdue() {
 			counts["overdue"]++
 		}
-		if isDueToday(task) {
+		if task.IsDueToday() {
 			counts["today"]++
 		}
-		if isDueThisWeek(task) {
+		if task.IsDueThisWeek() {
 			counts["thisWeek"]++
 		}
 		// Count by section

@@ -192,5 +192,5 @@ func (m *KanbanViewModel) getQuickEditHeight() int {
 
 // HasTextInput implements ViewCapabilities. Returns true when in search, quick add, or quick edit mode.
 func (m *KanbanViewModel) HasTextInput() bool {
-	return m.searchMode || m.quickAddMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.scoreFilterInputMode
+	return m.searchMode || m.quickAddMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.scoreFilterInput.IsActive()
 }

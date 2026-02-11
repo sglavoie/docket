@@ -2,9 +2,6 @@ package tui
 
 import (
 	"sort"
-
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // sortColumnNodes sorts the nodes in a column based on the current sort settings.
@@ -91,68 +88,8 @@ func (m *KanbanViewModel) sortKanbanNodeSlice(nodes []*KanbanNode, sortField Sor
 
 // compareKanbanNodes compares two kanban nodes based on the sort field and direction.
 func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortField) bool {
-	var less bool
-
-	switch sortField {
-	case SortByPriority:
-		// Lower priority number = higher priority (1 is highest)
-		less = a.Task.Priority < b.Task.Priority
-
-	case SortByDueDate:
-		// nil due dates go to the end
-		if a.Task.DueDate == nil && b.Task.DueDate == nil {
-			less = false
-		} else if a.Task.DueDate == nil {
-			less = false // a goes after b
-		} else if b.Task.DueDate == nil {
-			less = true // a goes before b
-		} else {
-			less = a.Task.DueDate.Before(*b.Task.DueDate)
-		}
-
-	case SortByCreatedAt:
-		less = a.Task.CreatedAt.Before(b.Task.CreatedAt)
-
-	case SortByStatus:
-		less = m.statusOrder(a.Task.Status) < m.statusOrder(b.Task.Status)
-
-	case SortByScore:
-		profile := m.config.GetProjectScoringProfile(m.Project.ID)
-		if profile != nil {
-			scoreA := scoring.ComputeScore(a.Task, profile)
-			scoreB := scoring.ComputeScore(b.Task, profile)
-			less = scoreA > scoreB // higher score first
-		}
-
-	default:
-		less = false
-	}
-
-	if !m.sortAscending {
-		less = !less
-	}
-
-	return less
-}
-
-// statusOrder returns the sort order for a status (workflow order).
-func (m *KanbanViewModel) statusOrder(status models.TaskStatus) int {
-	switch status {
-	case models.StatusTodo:
-		return 0
-	case models.StatusInProgress:
-		return 1
-	case models.StatusReview:
-		return 2
-	case models.StatusBlocked:
-		return 3
-	case models.StatusDone:
-		return 4
-	case models.StatusCanceled:
-		return 5
-	default:
-		return 6
-	}
+	cmp := CompareTasks(a.Task, b.Task, sortField, m.Project.ID, m.config)
+	return ApplySortDirection(cmp, m.sortAscending)
 }
 
 // cycleSortField cycles the sort field for the current column.

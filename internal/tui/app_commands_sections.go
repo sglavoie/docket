@@ -20,7 +20,7 @@ func (m *AppModel) sectionSendCommands() []Command {
 					return nil
 				}
 				visible := m.projectTree.visibleNodes()
-				m.projectTree.sendTasksToActive(visible)
+				m.projectTree.sendTasksToSection("", visible)
 				return nil
 			},
 		},

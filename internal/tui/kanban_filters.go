@@ -2,11 +2,8 @@ package tui
 
 import (
 	"fmt"
-	"sort"
-	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -107,7 +104,7 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 
 	// Apply "Due Soon" tab filter (overdue + today + this week)
 	if m.activeTab == kanbanTabDueSoon {
-		if !isDueSoon(task) {
+		if !task.IsOverdue() && !task.IsDueThisWeek() {
 			return false
 		}
 	}
@@ -190,13 +187,13 @@ func (m *KanbanViewModel) calculateFilterCounts() {
 		// Count by status
 		counts["status:"+string(task.Status)]++
 		// Count by due date category
-		if isOverdue(task) {
+		if task.IsOverdue() {
 			counts["overdue"]++
 		}
-		if isDueToday(task) {
+		if task.IsDueToday() {
 			counts["today"]++
 		}
-		if isDueThisWeek(task) {
+		if task.IsDueThisWeek() {
 			counts["thisWeek"]++
 		}
 		if task.DueDate == nil {
@@ -257,11 +254,6 @@ func (m *KanbanViewModel) applyTabPreset(tab int) {
 	}
 
 	m.loadTasks()
-}
-
-// isDueSoon returns true if a task is overdue, due today, or due this week.
-func isDueSoon(task *models.Task) bool {
-	return isOverdue(task) || isDueToday(task) || isDueThisWeek(task)
 }
 
 // buildKanbanFilterPrefixHints builds dynamic filter hints for kanban view.
@@ -354,7 +346,7 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		return m, nil
 	case "#":
 		// Tag filter selector
-		tags := buildKanbanTagList(m)
+		tags := BuildTagList(m.Project.Tasks, true)
 		return m, func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
 		}
@@ -388,52 +380,17 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 // handleKanbanFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix) in kanban.
 func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
 	if key == "C" {
-		m.enterScoreFilterInputMode()
+		var custom *float64
+		if m.config != nil {
+			custom = m.config.ScoreFilterCustom
+		}
+		m.scoreFilterInput.Enter(custom)
 		return m, nil
 	}
 	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
 		m.loadTasks()
 	}
 	return m, nil
-}
-
-// enterScoreFilterInputMode initializes the score filter text input for kanban.
-func (m *KanbanViewModel) enterScoreFilterInputMode() {
-	ti := textinput.New()
-	ti.Prompt = ""
-	ti.Placeholder = "enter value"
-	ti.CharLimit = 10
-	ti.Width = 12
-	if m.config != nil && m.config.ScoreFilterCustom != nil {
-		ti.SetValue(fmt.Sprintf("%.0f", *m.config.ScoreFilterCustom))
-	}
-	ti.Focus()
-	m.scoreFilterInput = ti
-	m.scoreFilterInputMode = true
-}
-
-// handleKanbanScoreFilterInput handles key events while the score filter text input is active in kanban.
-func (m *KanbanViewModel) handleKanbanScoreFilterInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "enter":
-		val, err := strconv.ParseFloat(m.scoreFilterInput.Value(), 64)
-		if err == nil && val > 0 {
-			m.config.ScoreFilterCustom = &val
-			if m.configManager != nil {
-				_ = m.configManager.Save(m.config)
-			}
-			m.filter.ScoreMin = val
-			m.loadTasks()
-		}
-		m.scoreFilterInputMode = false
-		return m, nil
-	case "esc":
-		m.scoreFilterInputMode = false
-		return m, nil
-	}
-	var cmd tea.Cmd
-	m.scoreFilterInput, cmd = m.scoreFilterInput.Update(msg)
-	return m, cmd
 }
 
 // handleKanbanFilterTypePrefix handles filter type sub-prefix in kanban.
@@ -480,28 +437,4 @@ func (m *KanbanViewModel) handleKanbanFilterAttrSubPrefix(prefix, key string) (t
 		m.loadTasks()
 	}
 	return m, nil
-}
-
-// buildKanbanTagList scans all non-completed tasks and builds a sorted list of tags with counts.
-func buildKanbanTagList(kanban *KanbanViewModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, task := range kanban.Project.Tasks {
-		if task.Status.IsComplete() {
-			continue
-		}
-		for _, tag := range task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

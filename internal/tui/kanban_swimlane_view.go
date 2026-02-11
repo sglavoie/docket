@@ -53,7 +53,7 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	}
 
 	// Score filter input
-	if m.scoreFilterInputMode {
+	if m.scoreFilterInput.IsActive() {
 		scoreLine := SubtitleStyle.Render("Score threshold: ") + m.scoreFilterInput.View() + " " + HelpStyle.Render("(Enter: apply, Esc: cancel)")
 		viewParts = append(viewParts, scoreLine)
 	}

@@ -36,8 +36,17 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle score filter custom value input
-		if m.scoreFilterInputMode {
-			return m.handleScoreFilterInput(msg)
+		if m.scoreFilterInput.IsActive() {
+			val, done, cmd := m.scoreFilterInput.HandleKey(msg)
+			if done && val != nil {
+				m.config.ScoreFilterCustom = val
+				if m.configManager != nil {
+					_ = m.configManager.Save(m.config)
+				}
+				m.filter.ScoreMin = *val
+				m.applyFilterChange()
+			}
+			return m, cmd
 		}
 
 		// Handle normal key input
@@ -419,7 +428,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		switch key {
 		case "a":
 			// Send to Active section
-			_, cmd := m.sendTasksToActive(visible)
+			_, cmd := m.sendTasksToSection("", visible)
 			return m, cmd
 		case "n":
 			// Send to Next section

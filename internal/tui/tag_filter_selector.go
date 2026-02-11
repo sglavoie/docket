@@ -4,6 +4,8 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // ShowTagFilterMsg is the unified message to open the tag filter selector.
@@ -54,10 +56,14 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 	}
 }
 
-// buildTagList scans all tasks and builds a sorted list of tags with counts.
-func buildTagList(pt *ProjectTreeModel) []TagInfo {
+// BuildTagList scans tasks and builds a sorted list of tags with counts.
+// If excludeCompleted is true, completed tasks are skipped.
+func BuildTagList(tasks []*models.Task, excludeCompleted bool) []TagInfo {
 	tagCounts := make(map[string]int)
-	for _, task := range pt.project.Tasks {
+	for _, task := range tasks {
+		if excludeCompleted && task.Status.IsComplete() {
+			continue
+		}
 		for _, tag := range task.Tags {
 			tagCounts[tag]++
 		}

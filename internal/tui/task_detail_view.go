@@ -175,9 +175,9 @@ func (m *TaskDetailModel) renderDueSection(width int) string {
 	dueRelative := formatRelativeDueDateVerbose(m.task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
 
-	if isOverdue(m.task) && !m.task.Status.IsComplete() {
+	if m.task.IsOverdue() {
 		dueLine = OverdueStyle.Render(dueLine)
-	} else if isDueToday(m.task) {
+	} else if m.task.IsDueToday() {
 		dueLine = DueTodayStyle.Render(dueLine)
 	} else {
 		dueLine = DueDateStyle.Render(dueLine)

@@ -69,9 +69,9 @@ func TestIsOverdue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isOverdue(tt.task)
+			got := tt.task.IsOverdue()
 			if got != tt.want {
-				t.Errorf("isOverdue() = %v, want %v", got, tt.want)
+				t.Errorf("IsOverdue() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -119,9 +119,9 @@ func TestIsDueToday(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isDueToday(tt.task)
+			got := tt.task.IsDueToday()
 			if got != tt.want {
-				t.Errorf("isDueToday() = %v, want %v", got, tt.want)
+				t.Errorf("IsDueToday() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -193,9 +193,9 @@ func TestIsDueThisWeek(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isDueThisWeek(tt.task)
+			got := tt.task.IsDueThisWeek()
 			if got != tt.want {
-				t.Errorf("isDueThisWeek() = %v, want %v", got, tt.want)
+				t.Errorf("IsDueThisWeek() = %v, want %v", got, tt.want)
 			}
 		})
 	}

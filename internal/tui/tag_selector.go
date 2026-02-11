@@ -58,7 +58,7 @@ type BulkTagSelectorModel struct {
 
 // NewBulkTagSelectorModel creates a new bulk tag selector.
 func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *BulkTagSelectorModel {
-	tags := buildTagListForSelector(project)
+	tags := BuildTagList(project.Tasks, false)
 	commonTags := findCommonTags(tasks)
 
 	title := fmt.Sprintf("Tags for %d tasks", len(tasks))
@@ -182,7 +182,7 @@ func (m *BulkTagSelectorModel) View() string {
 
 // NewTagSelectorModel creates a new tag selector.
 func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags []string) *TagSelectorModel {
-	tags := buildTagListForSelector(project)
+	tags := BuildTagList(project.Tasks, false)
 
 	title := "Tags for New Task"
 	if task != nil {
@@ -211,27 +211,6 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		project:      project,
 		originalTags: append([]string{}, currentTags...),
 	}
-}
-
-// buildTagListForSelector scans all tasks and builds a sorted list of tags with counts.
-func buildTagListForSelector(project *models.Project) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, task := range project.Tasks {
-		for _, tag := range task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }
 
 // SetSize sets the view dimensions.
