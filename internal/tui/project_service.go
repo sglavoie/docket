@@ -187,6 +187,10 @@ func (s *ProjectService) Save(project *models.Project) error {
 	return storage.SaveProject(project)
 }
 
+// defaultPersister is a package-level Persister for callers that don't hold
+// their own ProjectService instance (e.g. daily/weekly review views).
+var defaultPersister Persister = &ProjectService{}
+
 // Package-level convenience functions for common use cases
 
 // saveProjectSync saves a project synchronously with backup and reload.

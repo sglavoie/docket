@@ -586,7 +586,7 @@ func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (te
 		return m, nil
 	}
 
-	result := applyStatusChangePS(m.projectService, dt.Project, dt.Task.ID, newStatus)
+	result := applyStatusChange(m.projectService, dt.Project, dt.Task.ID, newStatus)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -605,7 +605,7 @@ func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cm
 	}
 
 	priority, _ := strconv.Atoi(key)
-	result := applyPriorityChangePS(m.projectService, dt.Project, dt.Task.ID, priority)
+	result := applyPriorityChange(m.projectService, dt.Project, dt.Task.ID, priority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -623,7 +623,7 @@ func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.
 		return m, nil
 	}
 
-	result := applyQuickDueDatePS(m.projectService, dt.Project, dt.Task.ID, daysFromNow)
+	result := applyQuickDueDate(m.projectService, dt.Project, dt.Task.ID, daysFromNow)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -641,7 +641,7 @@ func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyClearDueDatePS(m.projectService, dt.Project, dt.Task.ID)
+	result := applyClearDueDate(m.projectService, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -659,7 +659,7 @@ func (m *DueDateOverviewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyToggleActivePS(m.projectService, dt.Project, dt.Task.ID)
+	result := applyToggleActive(m.projectService, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -677,7 +677,7 @@ func (m *DueDateOverviewModel) sectionMove(section string) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
-	result := applySectionChangePS(m.projectService, dt.Project, dt.Task.ID, section)
+	result := applySectionChange(m.projectService, dt.Project, dt.Task.ID, section)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -695,7 +695,7 @@ func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyDeleteTaskPS(m.projectService, dt.Project, dt.Task.ID)
+	result := applyDeleteTask(m.projectService, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

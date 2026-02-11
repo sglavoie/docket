@@ -15,7 +15,7 @@ func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mo
 		return m, nil
 	}
 
-	result := applyStatusChange(dt.Project, dt.Task.ID, newStatus)
+	result := applyStatusChange(defaultPersister, dt.Project, dt.Task.ID, newStatus)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -34,7 +34,7 @@ func (m *DailyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	priority, _ := strconv.Atoi(key)
-	result := applyPriorityChange(dt.Project, dt.Task.ID, priority)
+	result := applyPriorityChange(defaultPersister, dt.Project, dt.Task.ID, priority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -52,7 +52,7 @@ func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 
-	result := applyQuickDueDate(dt.Project, dt.Task.ID, daysFromNow)
+	result := applyQuickDueDate(defaultPersister, dt.Project, dt.Task.ID, daysFromNow)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -70,7 +70,7 @@ func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyClearDueDate(dt.Project, dt.Task.ID)
+	result := applyClearDueDate(defaultPersister, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -88,7 +88,7 @@ func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyToggleActive(dt.Project, dt.Task.ID)
+	result := applyToggleActive(defaultPersister, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -106,7 +106,7 @@ func (m *DailyReviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applySectionChange(dt.Project, dt.Task.ID, section)
+	result := applySectionChange(defaultPersister, dt.Project, dt.Task.ID, section)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -124,7 +124,7 @@ func (m *DailyReviewModel) deleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyDeleteTask(dt.Project, dt.Task.ID)
+	result := applyDeleteTask(defaultPersister, dt.Project, dt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

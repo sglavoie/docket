@@ -126,114 +126,24 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		// Bug attributes
-		if attrBugReproducible != "" || attrBugSeverity != "" || attrBugWorkaround != "" {
-			if task.Type != models.TaskTypeBug {
-				return fmt.Errorf("bug.* flags can only be used with bug type tasks (this is a %s)", task.Type)
-			}
-			if task.BugAttrs == nil {
-				task.BugAttrs = &models.BugAttrs{}
-			}
-			if attrBugReproducible != "" {
-				task.BugAttrs.Reproducible = models.BugReproducible(attrBugReproducible)
-			}
-			if attrBugSeverity != "" {
-				task.BugAttrs.Severity = models.BugSeverity(attrBugSeverity)
-			}
-			if attrBugWorkaround != "" {
-				task.BugAttrs.Workaround = attrBugWorkaround
-			}
-			if err := task.BugAttrs.Validate(); err != nil {
-				return err
-			}
-		}
-
-		// Idea attributes
-		if attrIdeaCategory != "" || attrIdeaEffort != "" || attrIdeaValue != "" || cmd.Flags().Changed("idea.validated") {
-			if task.Type != models.TaskTypeIdea {
-				return fmt.Errorf("idea.* flags can only be used with idea type tasks (this is a %s)", task.Type)
-			}
-			if task.IdeaAttrs == nil {
-				task.IdeaAttrs = &models.IdeaAttrs{}
-			}
-			if attrIdeaCategory != "" {
-				task.IdeaAttrs.Category = models.IdeaCategory(attrIdeaCategory)
-			}
-			if attrIdeaEffort != "" {
-				task.IdeaAttrs.Effort = models.EffortEstimate(attrIdeaEffort)
-			}
-			if attrIdeaValue != "" {
-				task.IdeaAttrs.Value = models.IdeaValue(attrIdeaValue)
-			}
-			if cmd.Flags().Changed("idea.validated") {
-				task.IdeaAttrs.Validated = attrIdeaValidated
-			}
-			if err := task.IdeaAttrs.Validate(); err != nil {
-				return err
-			}
-		}
-
-		// Task attributes
-		if attrTaskEffort != "" || attrTaskWorkType != "" {
-			if task.Type != models.TaskTypeTask {
-				return fmt.Errorf("task.* flags can only be used with task type tasks (this is a %s)", task.Type)
-			}
-			if task.TaskAttrs == nil {
-				task.TaskAttrs = &models.TaskAttrs{}
-			}
-			if attrTaskEffort != "" {
-				task.TaskAttrs.Effort = models.EffortEstimate(attrTaskEffort)
-			}
-			if attrTaskWorkType != "" {
-				task.TaskAttrs.WorkType = models.WorkType(attrTaskWorkType)
-			}
-			if err := task.TaskAttrs.Validate(); err != nil {
-				return err
-			}
-		}
-
-		// Story attributes
-		if cmd.Flags().Changed("story.points") || attrStoryPersona != "" {
-			if task.Type != models.TaskTypeStory {
-				return fmt.Errorf("story.* flags can only be used with story type tasks (this is a %s)", task.Type)
-			}
-			if task.StoryAttrs == nil {
-				task.StoryAttrs = &models.StoryAttrs{}
-			}
-			if cmd.Flags().Changed("story.points") {
-				task.StoryAttrs.StoryPoints = attrStoryPoints
-			}
-			if attrStoryPersona != "" {
-				task.StoryAttrs.Persona = attrStoryPersona
-			}
-			if err := task.StoryAttrs.Validate(); err != nil {
-				return err
-			}
-		}
-
-		// Epic attributes
-		if attrEpicScope != "" || attrEpicMilestone != "" || attrEpicMetrics != "" {
-			if task.Type != models.TaskTypeEpic {
-				return fmt.Errorf("epic.* flags can only be used with epic type tasks (this is a %s)", task.Type)
-			}
-			if task.EpicAttrs == nil {
-				task.EpicAttrs = &models.EpicAttrs{}
-			}
-			if attrEpicScope != "" {
-				task.EpicAttrs.Scope = models.EpicScope(attrEpicScope)
-			}
-			if attrEpicMilestone != "" {
-				task.EpicAttrs.Milestone = attrEpicMilestone
-			}
-			if attrEpicMetrics != "" {
-				task.EpicAttrs.SuccessMetrics = attrEpicMetrics
-			}
-			if err := task.EpicAttrs.Validate(); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return applyTypeAttrValues(task, TypeAttrValues{
+			BugReproducible:  attrBugReproducible,
+			BugSeverity:      attrBugSeverity,
+			BugWorkaround:    attrBugWorkaround,
+			IdeaCategory:     attrIdeaCategory,
+			IdeaEffort:       attrIdeaEffort,
+			IdeaValue:        attrIdeaValue,
+			IdeaValidatedSet: cmd.Flags().Changed("idea.validated"),
+			IdeaValidated:    attrIdeaValidated,
+			TaskEffort:       attrTaskEffort,
+			TaskWorkType:     attrTaskWorkType,
+			StoryPointsSet:   cmd.Flags().Changed("story.points"),
+			StoryPoints:      attrStoryPoints,
+			StoryPersona:     attrStoryPersona,
+			EpicScope:        attrEpicScope,
+			EpicMilestone:    attrEpicMilestone,
+			EpicMetrics:      attrEpicMetrics,
+		})
 	})
 
 	if err != nil {

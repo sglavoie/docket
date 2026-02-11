@@ -704,7 +704,7 @@ func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyRemoveFromFocusPS(m.projectService, ft.Project, ft.Task.ID, ft.Task.ShortID)
+	result := applyRemoveFromFocus(m.projectService, ft.Project, ft.Task.ID, ft.Task.ShortID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -722,7 +722,7 @@ func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Mode
 		return m, nil
 	}
 
-	result := applyStatusChangePS(m.projectService, ft.Project, ft.Task.ID, newStatus)
+	result := applyStatusChange(m.projectService, ft.Project, ft.Task.ID, newStatus)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -741,7 +741,7 @@ func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	}
 
 	priority, _ := strconv.Atoi(key)
-	result := applyPriorityChangePS(m.projectService, ft.Project, ft.Task.ID, priority)
+	result := applyPriorityChange(m.projectService, ft.Project, ft.Task.ID, priority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -759,7 +759,7 @@ func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyQuickDueDatePS(m.projectService, ft.Project, ft.Task.ID, daysFromNow)
+	result := applyQuickDueDate(m.projectService, ft.Project, ft.Task.ID, daysFromNow)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -777,7 +777,7 @@ func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyClearDueDatePS(m.projectService, ft.Project, ft.Task.ID)
+	result := applyClearDueDate(m.projectService, ft.Project, ft.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -795,7 +795,7 @@ func (m *FocusViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applySectionChangePS(m.projectService, ft.Project, ft.Task.ID, section)
+	result := applySectionChange(m.projectService, ft.Project, ft.Task.ID, section)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -813,7 +813,7 @@ func (m *FocusViewModel) deleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyDeleteTaskPS(m.projectService, ft.Project, ft.Task.ID)
+	result := applyDeleteTask(m.projectService, ft.Project, ft.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

@@ -32,9 +32,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		} else {
 			m.viewMode = ViewModeCompleted
 		}
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	case "p":
 		// Toggle high priority filter
@@ -43,9 +41,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		} else {
 			m.filter.Priority = 0
 		}
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	case "t":
 		// Open type sub-popup
@@ -77,9 +73,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		// Toggle actionable/ready filter
 		m.filter.Actionable = !m.filter.Actionable
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	case "S":
 		// Open score threshold sub-popup
@@ -104,9 +98,7 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewModeActive
 		}
 		m.ClearSearch()
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	}
 	return m, nil
@@ -130,9 +122,7 @@ func (m *ProjectTreeModel) handleFilterTypePrefix(key string) (tea.Model, tea.Cm
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -156,9 +146,7 @@ func (m *ProjectTreeModel) handleFilterStatusPrefix(key string) (tea.Model, tea.
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -178,9 +166,7 @@ func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -228,16 +214,12 @@ func (m *ProjectTreeModel) handleFilterAttrPrefix(key string) (tea.Model, tea.Cm
 			m.filter.Attrs["idea.validated"] = "true"
 			m.filter.Type = models.TaskTypeIdea // auto-set type filter
 		}
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	case "0":
 		// Clear attribute filters
 		m.filter.Attrs = make(map[string]string)
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return m, nil
 	}
 	return m, nil
@@ -263,9 +245,7 @@ func (m *ProjectTreeModel) handleFilterAttrSeverityPrefix(key string) (tea.Model
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -286,9 +266,7 @@ func (m *ProjectTreeModel) handleFilterAttrReproduciblePrefix(key string) (tea.M
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -308,9 +286,7 @@ func (m *ProjectTreeModel) handleFilterAttrEffortPrefix(key string) (tea.Model, 
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -334,9 +310,7 @@ func (m *ProjectTreeModel) handleFilterAttrCategoryPrefix(key string) (tea.Model
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -357,9 +331,7 @@ func (m *ProjectTreeModel) handleFilterAttrValuePrefix(key string) (tea.Model, t
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -386,9 +358,7 @@ func (m *ProjectTreeModel) handleFilterAttrWorktypePrefix(key string) (tea.Model
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -409,9 +379,7 @@ func (m *ProjectTreeModel) handleFilterAttrScopePrefix(key string) (tea.Model, t
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -438,9 +406,7 @@ func (m *ProjectTreeModel) handleFilterAttrPointsPrefix(key string) (tea.Model, 
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -480,9 +446,7 @@ func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.C
 	default:
 		return m, nil
 	}
-	m.updateVisibility()
-	m.pruneInvisibleSelections()
-	m.clampCursor()
+	m.applyFilterChange()
 	return m, nil
 }
 
@@ -514,9 +478,7 @@ func (m *ProjectTreeModel) handleScoreFilterInput(msg tea.KeyMsg) (tea.Model, te
 			}
 			// Apply as active filter
 			m.filter.ScoreMin = val
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
+			m.applyFilterChange()
 		}
 		m.scoreFilterInputMode = false
 		return m, nil
@@ -563,9 +525,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 		} else {
 			m.filter.Priority = 0
 		}
-		m.updateVisibility()
-		m.pruneInvisibleSelections()
-		m.clampCursor()
+		m.applyFilterChange()
 		return true, nil
 
 	case "T":

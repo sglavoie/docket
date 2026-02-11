@@ -996,7 +996,7 @@ func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 		return m, nil
 	}
 
-	result := applyStatusChangePS(m.projectService, m.project, pt.Task.ID, newStatus)
+	result := applyStatusChange(m.projectService, m.project, pt.Task.ID, newStatus)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1014,7 +1014,7 @@ func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.
 		return m, nil
 	}
 
-	result := applyPriorityChangePS(m.projectService, m.project, pt.Task.ID, newPriority)
+	result := applyPriorityChange(m.projectService, m.project, pt.Task.ID, newPriority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1032,7 +1032,7 @@ func (m *PriorityViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
-	result := applyQuickDueDatePS(m.projectService, m.project, pt.Task.ID, daysFromNow)
+	result := applyQuickDueDate(m.projectService, m.project, pt.Task.ID, daysFromNow)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1050,7 +1050,7 @@ func (m *PriorityViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyClearDueDatePS(m.projectService, m.project, pt.Task.ID)
+	result := applyClearDueDate(m.projectService, m.project, pt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1068,7 +1068,7 @@ func (m *PriorityViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applySectionChangePS(m.projectService, m.project, pt.Task.ID, section)
+	result := applySectionChange(m.projectService, m.project, pt.Task.ID, section)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1086,7 +1086,7 @@ func (m *PriorityViewModel) deleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyDeleteTaskPS(m.projectService, m.project, pt.Task.ID)
+	result := applyDeleteTask(m.projectService, m.project, pt.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

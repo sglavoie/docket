@@ -63,6 +63,14 @@ func (m *ProjectTreeModel) addTaskNode(task *models.Task, level int, expandedSta
 	}
 }
 
+// applyFilterChange refreshes visibility, prunes stale selections, and clamps the cursor.
+// Call this after any filter/view mutation to keep the UI consistent.
+func (m *ProjectTreeModel) applyFilterChange() {
+	m.updateVisibility()
+	m.pruneInvisibleSelections()
+	m.clampCursor()
+}
+
 func (m *ProjectTreeModel) updateVisibility() {
 	// Reset context node flags
 	for _, node := range m.nodes {

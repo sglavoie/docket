@@ -920,7 +920,7 @@ func (m *AllTasksViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 		return m, nil
 	}
 
-	result := applyStatusChangePS(m.projectService, item.Project, item.Task.ID, newStatus)
+	result := applyStatusChange(m.projectService, item.Project, item.Task.ID, newStatus)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -938,7 +938,7 @@ func (m *AllTasksViewModel) changePriority(priority int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyPriorityChangePS(m.projectService, item.Project, item.Task.ID, priority)
+	result := applyPriorityChange(m.projectService, item.Project, item.Task.ID, priority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -956,7 +956,7 @@ func (m *AllTasksViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
-	result := applyQuickDueDatePS(m.projectService, item.Project, item.Task.ID, daysFromNow)
+	result := applyQuickDueDate(m.projectService, item.Project, item.Task.ID, daysFromNow)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -974,7 +974,7 @@ func (m *AllTasksViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyClearDueDatePS(m.projectService, item.Project, item.Task.ID)
+	result := applyClearDueDate(m.projectService, item.Project, item.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -992,7 +992,7 @@ func (m *AllTasksViewModel) toggleActive() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyToggleActivePS(m.projectService, item.Project, item.Task.ID)
+	result := applyToggleActive(m.projectService, item.Project, item.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1010,7 +1010,7 @@ func (m *AllTasksViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applySectionChangePS(m.projectService, item.Project, item.Task.ID, section)
+	result := applySectionChange(m.projectService, item.Project, item.Task.ID, section)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
@@ -1028,7 +1028,7 @@ func (m *AllTasksViewModel) deleteTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	result := applyDeleteTaskPS(m.projectService, item.Project, item.Task.ID)
+	result := applyDeleteTask(m.projectService, item.Project, item.Task.ID)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {
