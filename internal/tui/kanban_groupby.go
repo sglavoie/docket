@@ -109,35 +109,12 @@ func ApplyColumnMove(gb KanbanGroupBy, task *models.Task, targetKey string) {
 	switch gb {
 	case GroupByStatus:
 		newStatus := models.TaskStatus(targetKey)
-		// Handle completion transitions
-		if newStatus == models.StatusDone {
-			task.Complete()
-		} else if newStatus == models.StatusCanceled {
-			task.Cancel()
-		} else if task.Status.IsComplete() && !newStatus.IsComplete() {
-			// Moving away from Done/Canceled: reopen
+		// Moving from completed to non-completed requires reopen first
+		if task.Status.IsComplete() && !newStatus.IsComplete() {
 			task.Reopen()
-			// Now set the exact target status
-			switch newStatus {
-			case models.StatusInProgress:
-				task.Start()
-			case models.StatusReview:
-				task.Review()
-			case models.StatusBlocked:
-				task.Block()
-			}
-		} else {
-			// Transition between active statuses
-			switch newStatus {
-			case models.StatusTodo:
-				task.Reopen()
-			case models.StatusInProgress:
-				task.Start()
-			case models.StatusReview:
-				task.Review()
-			case models.StatusBlocked:
-				task.Block()
-			}
+		}
+		if task.Status != newStatus {
+			task.ApplyTransition(newStatus)
 		}
 	case GroupByPriority:
 		p, err := strconv.Atoi(targetKey)

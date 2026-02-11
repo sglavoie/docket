@@ -127,12 +127,15 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	return true, nil
 }
 
+// canTransitionPredicate returns a statusPredicate that uses Task.CanTransitionTo.
+func canTransitionPredicate(newStatus models.TaskStatus) statusPredicate {
+	return func(t *models.Task) bool { return t.CanTransitionTo(newStatus) == "" }
+}
+
 // handleStartTask starts a task (in_progress).
 func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
-		func(t *models.Task) bool {
-			return t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview
-		},
+		canTransitionPredicate(models.StatusInProgress),
 		func(t *models.Task) { t.Start() },
 		"Start Task",
 	)
@@ -141,7 +144,7 @@ func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) 
 // handleCompleteTask marks a task as complete (done).
 func (m *ProjectTreeModel) handleCompleteTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChangeWithValidation(visible,
-		func(t *models.Task) bool { return t.Status.IsActive() },
+		canTransitionPredicate(models.StatusDone),
 		func(t *models.Task) string {
 			incompleteDeps := m.project.GetIncompleteDependencies(t)
 			if len(incompleteDeps) == 0 {
@@ -164,9 +167,7 @@ func (m *ProjectTreeModel) handleCompleteTask(visible []*TreeNode) (bool, tea.Cm
 // handleBlockTask blocks a task.
 func (m *ProjectTreeModel) handleBlockTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
-		func(t *models.Task) bool {
-			return t.Status.IsActive() && t.Status != models.StatusBlocked
-		},
+		canTransitionPredicate(models.StatusBlocked),
 		func(t *models.Task) { t.Block() },
 		"Block Task",
 	)
@@ -175,7 +176,7 @@ func (m *ProjectTreeModel) handleBlockTask(visible []*TreeNode) (bool, tea.Cmd) 
 // handleCancelTask cancels a task.
 func (m *ProjectTreeModel) handleCancelTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
-		func(t *models.Task) bool { return t.Status.IsActive() },
+		canTransitionPredicate(models.StatusCanceled),
 		func(t *models.Task) { t.Cancel() },
 		"Cancel Task",
 	)
@@ -184,7 +185,7 @@ func (m *ProjectTreeModel) handleCancelTask(visible []*TreeNode) (bool, tea.Cmd)
 // handleReopenTask reopens a task (back to todo).
 func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
-		func(t *models.Task) bool { return t.Status != models.StatusTodo },
+		canTransitionPredicate(models.StatusTodo),
 		func(t *models.Task) { t.Reopen() },
 		"Reopen Task",
 	)
@@ -193,9 +194,7 @@ func (m *ProjectTreeModel) handleReopenTask(visible []*TreeNode) (bool, tea.Cmd)
 // handleReviewTask sends a task to review.
 func (m *ProjectTreeModel) handleReviewTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,
-		func(t *models.Task) bool {
-			return t.Status.IsActive() && t.Status != models.StatusReview
-		},
+		canTransitionPredicate(models.StatusReview),
 		func(t *models.Task) { t.Review() },
 		"Review Task",
 	)

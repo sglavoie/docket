@@ -26,60 +26,22 @@ func applyStatusChange(project *models.Project, taskID string, newStatus models.
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	// Skip completed tasks for most status changes
-	if task.Status.IsComplete() && newStatus != models.StatusTodo {
-		return TaskOpResult{StatusMessage: "Cannot change status of completed task"}
+	if msg := task.CanTransitionTo(newStatus); msg != "" {
+		return TaskOpResult{StatusMessage: msg}
 	}
 
-	// Validate status transition
-	switch newStatus {
-	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
-			return TaskOpResult{StatusMessage: "Task must be todo, blocked, or in review to start"}
-		}
-	case models.StatusDone:
-		if !task.Status.IsActive() {
-			return TaskOpResult{StatusMessage: "Task is not active"}
-		}
+	if newStatus == models.StatusDone {
 		if project.HasIncompleteDependencies(task) {
 			return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
 		}
-	case models.StatusBlocked:
-		if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-			return TaskOpResult{StatusMessage: "Task must be active and not already blocked"}
-		}
-	case models.StatusCanceled:
-		if !task.Status.IsActive() {
-			return TaskOpResult{StatusMessage: "Task is not active"}
-		}
-	case models.StatusTodo:
-		if task.Status == models.StatusTodo {
-			return TaskOpResult{StatusMessage: "Task is already todo"}
-		}
-	case models.StatusReview:
-		if !task.Status.IsActive() || task.Status == models.StatusReview {
-			return TaskOpResult{StatusMessage: "Task must be active and not already in review"}
-		}
 	}
-
-	wasReview := task.Status == models.StatusReview
 
 	if err := storage.BackupProject(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 	}
 
 	project.MutateTask(taskID, func(t *models.Task) {
-		t.Status = newStatus
-		if newStatus.IsComplete() {
-			now := time.Now()
-			t.CompletedAt = &now
-			t.Active = false
-		} else {
-			t.CompletedAt = nil
-		}
-		if wasReview && newStatus == models.StatusInProgress {
-			t.Section = ""
-		}
+		t.ApplyTransition(newStatus)
 	})
 
 	if err := storage.SaveProject(project); err != nil {
@@ -103,58 +65,22 @@ func applyStatusChangePS(ps *ProjectService, project *models.Project, taskID str
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	if task.Status.IsComplete() && newStatus != models.StatusTodo {
-		return TaskOpResult{StatusMessage: "Cannot change status of completed task"}
+	if msg := task.CanTransitionTo(newStatus); msg != "" {
+		return TaskOpResult{StatusMessage: msg}
 	}
 
-	switch newStatus {
-	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
-			return TaskOpResult{StatusMessage: "Task must be todo, blocked, or in review to start"}
-		}
-	case models.StatusDone:
-		if !task.Status.IsActive() {
-			return TaskOpResult{StatusMessage: "Task is not active"}
-		}
+	if newStatus == models.StatusDone {
 		if project.HasIncompleteDependencies(task) {
 			return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
 		}
-	case models.StatusBlocked:
-		if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-			return TaskOpResult{StatusMessage: "Task must be active and not already blocked"}
-		}
-	case models.StatusCanceled:
-		if !task.Status.IsActive() {
-			return TaskOpResult{StatusMessage: "Task is not active"}
-		}
-	case models.StatusTodo:
-		if task.Status == models.StatusTodo {
-			return TaskOpResult{StatusMessage: "Task is already todo"}
-		}
-	case models.StatusReview:
-		if !task.Status.IsActive() || task.Status == models.StatusReview {
-			return TaskOpResult{StatusMessage: "Task must be active and not already in review"}
-		}
 	}
-
-	wasReview := task.Status == models.StatusReview
 
 	if err := ps.Backup(project); err != nil {
 		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
 	}
 
 	project.MutateTask(taskID, func(t *models.Task) {
-		t.Status = newStatus
-		if newStatus.IsComplete() {
-			now := time.Now()
-			t.CompletedAt = &now
-			t.Active = false
-		} else {
-			t.CompletedAt = nil
-		}
-		if wasReview && newStatus == models.StatusInProgress {
-			t.Section = ""
-		}
+		t.ApplyTransition(newStatus)
 	})
 
 	if err := ps.Save(project); err != nil {

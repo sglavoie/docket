@@ -103,38 +103,11 @@ func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) 
 		}
 		for _, item := range items {
 			project.MutateTask(item.Task.ID, func(t *models.Task) {
-				switch newStatus {
-				case models.StatusInProgress:
-					if t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview {
-						t.Start()
-						changedCount++
-					}
-				case models.StatusDone:
-					if t.Status.IsActive() {
-						t.Complete()
-						changedCount++
-					}
-				case models.StatusBlocked:
-					if t.Status.IsActive() && t.Status != models.StatusBlocked {
-						t.Block()
-						changedCount++
-					}
-				case models.StatusTodo:
-					if t.Status != models.StatusTodo {
-						t.Reopen()
-						changedCount++
-					}
-				case models.StatusCanceled:
-					if t.Status.IsActive() {
-						t.Cancel()
-						changedCount++
-					}
-				case models.StatusReview:
-					if t.Status.IsActive() && t.Status != models.StatusReview {
-						t.Review()
-						changedCount++
-					}
+				if t.CanTransitionTo(newStatus) != "" {
+					return
 				}
+				t.ApplyTransition(newStatus)
+				changedCount++
 			})
 		}
 		_ = m.projectService.Save(project)

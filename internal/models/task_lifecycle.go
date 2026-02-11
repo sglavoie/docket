@@ -56,6 +56,65 @@ func (t *Task) Reopen() {
 	t.UpdatedAt = time.Now()
 }
 
+// CanTransitionTo checks whether the task can move to newStatus based on its
+// current status. Returns an empty string if the transition is allowed, or a
+// human-readable reason if it is not.
+//
+// This method covers status-level rules only. Project-level checks (such as
+// incomplete dependencies blocking completion) must be performed by the caller.
+func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
+	if t.Status.IsComplete() && newStatus != StatusTodo {
+		return "cannot change status of completed task"
+	}
+	switch newStatus {
+	case StatusInProgress:
+		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview {
+			return "task must be todo, blocked, or in review to start"
+		}
+	case StatusDone:
+		if !t.Status.IsActive() {
+			return "task is not active"
+		}
+	case StatusBlocked:
+		if !t.Status.IsActive() || t.Status == StatusBlocked {
+			return "task must be active and not already blocked"
+		}
+	case StatusCanceled:
+		if !t.Status.IsActive() {
+			return "task is not active"
+		}
+	case StatusTodo:
+		if t.Status == StatusTodo {
+			return "task is already todo"
+		}
+	case StatusReview:
+		if !t.Status.IsActive() || t.Status == StatusReview {
+			return "task must be active and not already in review"
+		}
+	}
+	return ""
+}
+
+// ApplyTransition moves the task to newStatus by calling the appropriate
+// lifecycle method (Start, Complete, Block, Cancel, Review, Reopen).
+// The caller should check CanTransitionTo first.
+func (t *Task) ApplyTransition(newStatus TaskStatus) {
+	switch newStatus {
+	case StatusInProgress:
+		t.Start()
+	case StatusDone:
+		t.Complete()
+	case StatusBlocked:
+		t.Block()
+	case StatusCanceled:
+		t.Cancel()
+	case StatusTodo:
+		t.Reopen()
+	case StatusReview:
+		t.Review()
+	}
+}
+
 // IsComplete returns true if the task status is complete.
 func (t *Task) IsComplete() bool {
 	return t.Status.IsComplete()

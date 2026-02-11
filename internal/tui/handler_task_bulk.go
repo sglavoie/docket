@@ -25,20 +25,29 @@ func (m *AppModel) handleCommandPaletteBulkAction(msg CommandPaletteBulkActionMs
 		}
 	}
 
+	// Map action name to target status
+	var targetStatus models.TaskStatus
+	switch msg.Action {
+	case "complete":
+		targetStatus = models.StatusDone
+	case "start":
+		targetStatus = models.StatusInProgress
+	case "review":
+		targetStatus = models.StatusReview
+	default:
+		return true, nil
+	}
+
 	// Apply action to all tasks
 	count := 0
 	var projects []*models.Project
 	for _, items := range projectTasks {
 		for _, item := range items {
 			mutated := item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-				switch msg.Action {
-				case "complete":
-					t.Complete()
-				case "start":
-					t.Start()
-				case "review":
-					t.Review()
+				if t.CanTransitionTo(targetStatus) != "" {
+					return
 				}
+				t.ApplyTransition(targetStatus)
 			})
 			if mutated {
 				count++

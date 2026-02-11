@@ -442,42 +442,15 @@ func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (t
 		return m, nil
 	}
 
-	// Skip completed tasks for most status changes
-	if task.Status.IsComplete() && newStatus != models.StatusTodo {
-		m.statusMessage = "Cannot change status of completed task"
+	if msg := task.CanTransitionTo(newStatus); msg != "" {
+		m.statusMessage = msg
 		return m, nil
 	}
 
-	// Validate status transition
-	switch newStatus {
-	case models.StatusInProgress:
-		if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
-			m.statusMessage = "Task must be todo, blocked, or in review to start"
-			return m, nil
-		}
-	case models.StatusDone:
-		if !task.Status.IsActive() {
-			m.statusMessage = "Task is not active"
-			return m, nil
-		}
-		// Check for incomplete dependencies
+	// Project-level check: incomplete dependencies block completion
+	if newStatus == models.StatusDone {
 		if m.project.HasIncompleteDependencies(task) {
 			m.err = fmt.Errorf("cannot complete: has incomplete dependencies")
-			return m, nil
-		}
-	case models.StatusBlocked:
-		if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-			m.statusMessage = "Task must be active and not already blocked"
-			return m, nil
-		}
-	case models.StatusCanceled:
-		if !task.Status.IsActive() {
-			m.statusMessage = "Task is not active"
-			return m, nil
-		}
-	case models.StatusTodo:
-		if task.Status == models.StatusTodo {
-			m.statusMessage = "Task is already todo"
 			return m, nil
 		}
 	}
@@ -488,17 +461,9 @@ func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (t
 		return m, nil
 	}
 
-	// Update task status
+	// Apply via lifecycle method
 	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Status = newStatus
-		if newStatus.IsComplete() {
-			now := time.Now()
-			t.CompletedAt = &now
-			// Clear active flag when completing
-			t.Active = false
-		} else {
-			t.CompletedAt = nil
-		}
+		t.ApplyTransition(newStatus)
 	})
 
 	// Save project

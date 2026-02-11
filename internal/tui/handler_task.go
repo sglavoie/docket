@@ -553,23 +553,23 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 		return true, errorCmd("task no longer exists in project")
 	}
 
-	// Apply the status change
-	switch msg.Action {
-	case "complete":
-		current.Complete()
-	case "start":
-		current.Start()
-	case "block":
-		current.Block()
-	case "cancel":
-		current.Cancel()
-	case "reopen":
-		current.Reopen()
-	case "review":
-		current.Review()
-	default:
+	// Map action name to target status
+	statusMap := map[string]models.TaskStatus{
+		"complete": models.StatusDone,
+		"start":    models.StatusInProgress,
+		"block":    models.StatusBlocked,
+		"cancel":   models.StatusCanceled,
+		"reopen":   models.StatusTodo,
+		"review":   models.StatusReview,
+	}
+	targetStatus, ok := statusMap[msg.Action]
+	if !ok {
 		return true, nil
 	}
+	if msg := current.CanTransitionTo(targetStatus); msg != "" {
+		return true, errorCmd("%s", msg)
+	}
+	current.ApplyTransition(targetStatus)
 
 	// Async save with loading indicator
 	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, current.Title)

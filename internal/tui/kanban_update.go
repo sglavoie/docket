@@ -8,167 +8,58 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleStatusStart sets the selected task status to in_progress (started).
+// handleKanbanStatusChange validates and applies a status transition for the
+// selected kanban task. For StatusDone it also checks incomplete dependencies.
+func (m *KanbanViewModel) handleKanbanStatusChange(newStatus models.TaskStatus) tea.Cmd {
+	task := m.getSelectedTask()
+	if task == nil {
+		return nil
+	}
+
+	// Re-lookup task to avoid stale pointer after concurrent reload
+	task = m.Project.GetTaskByID(task.ID)
+	if task == nil {
+		return nil
+	}
+
+	if msg := task.CanTransitionTo(newStatus); msg != "" {
+		m.statusMessage = msg
+		return nil
+	}
+
+	// Project-level check: incomplete dependencies block completion
+	if newStatus == models.StatusDone {
+		if deps := m.Project.GetIncompleteDependencies(task); len(deps) > 0 {
+			m.statusMessage = fmt.Sprintf("Cannot complete: %d incomplete dependencies", len(deps))
+			return nil
+		}
+	}
+
+	prevStates := captureTaskStates(m.Project.Tasks)
+	task.ApplyTransition(newStatus)
+	m.statusMessage = fmt.Sprintf("Task #%d → %s", task.ShortID, newStatus)
+
+	return m.saveWithStatusChange(prevStates, task)
+}
+
+// Convenience wrappers called from keybindings and prefix handlers.
 func (m *KanbanViewModel) handleStatusStart() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Only start tasks that are todo, blocked, or in review
-	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
-		m.statusMessage = "Cannot start: task is not todo, blocked, or in review"
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Start()
-	m.statusMessage = fmt.Sprintf("Started: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusInProgress)
 }
-
-// handleStatusDone sets the selected task status to done (completed).
 func (m *KanbanViewModel) handleStatusDone() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Only complete active tasks
-	if !task.Status.IsActive() {
-		m.statusMessage = "Cannot complete: task is not active"
-		return nil
-	}
-
-	// Check for incomplete dependencies
-	incompleteDeps := m.Project.GetIncompleteDependencies(task)
-	if len(incompleteDeps) > 0 {
-		m.statusMessage = fmt.Sprintf("Cannot complete: %d incomplete dependencies", len(incompleteDeps))
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Complete()
-	m.statusMessage = fmt.Sprintf("Completed: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusDone)
 }
-
-// handleStatusBlocked sets the selected task status to blocked.
 func (m *KanbanViewModel) handleStatusBlocked() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Only block active tasks that aren't already blocked
-	if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-		m.statusMessage = "Cannot block: task is not active or already blocked"
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Block()
-	m.statusMessage = fmt.Sprintf("Blocked: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusBlocked)
 }
-
-// handleStatusOpen sets the selected task status to todo (reopened/open).
 func (m *KanbanViewModel) handleStatusOpen() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Reopen tasks that aren't already todo
-	if task.Status == models.StatusTodo {
-		m.statusMessage = "Task is already open"
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Reopen()
-	m.statusMessage = fmt.Sprintf("Reopened: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusTodo)
 }
-
-// handleStatusCancelled sets the selected task status to canceled.
 func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Only cancel active tasks
-	if !task.Status.IsActive() {
-		m.statusMessage = "Cannot cancel: task is not active"
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Cancel()
-	m.statusMessage = fmt.Sprintf("Canceled: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusCanceled)
 }
-
-// handleStatusReview sets the selected task status to review.
 func (m *KanbanViewModel) handleStatusReview() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
-		return nil
-	}
-
-	// Only review active tasks that aren't already in review
-	if !task.Status.IsActive() || task.Status == models.StatusReview {
-		m.statusMessage = "Cannot review: task is not active or already in review"
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.Review()
-	m.statusMessage = fmt.Sprintf("Review: %s", task.Title)
-
-	return m.saveWithStatusChange(prevStates, task)
+	return m.handleKanbanStatusChange(models.StatusReview)
 }
 
 // saveWithStatusChange saves the project after a status change with workflow

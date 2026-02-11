@@ -151,40 +151,26 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 	task := m.task
 	project := m.project
 
-	var action string
-	switch key {
-	case "s":
-		action = "start"
-	case "d":
-		action = "done"
-	case "b":
-		action = "block"
-	case "x":
-		action = "cancel"
-	case "o":
-		action = "reopen"
-	case "r":
-		action = "review"
-	default:
+	keyToStatus := map[string]models.TaskStatus{
+		"s": models.StatusInProgress,
+		"d": models.StatusDone,
+		"b": models.StatusBlocked,
+		"x": models.StatusCanceled,
+		"o": models.StatusTodo,
+		"r": models.StatusReview,
+	}
+	targetStatus, ok := keyToStatus[key]
+	if !ok {
 		return m, nil
+	}
+
+	if msg := task.CanTransitionTo(targetStatus); msg != "" {
+		return m, func() tea.Msg { return StatusMsg(msg) }
 	}
 
 	// Apply status change via MutateTask for pointer safety
 	project.MutateTask(task.ID, func(t *models.Task) {
-		switch action {
-		case "start":
-			t.Start()
-		case "done":
-			t.Complete()
-		case "block":
-			t.Block()
-		case "cancel":
-			t.Cancel()
-		case "reopen":
-			t.Reopen()
-		case "review":
-			t.Review()
-		}
+		t.ApplyTransition(targetStatus)
 	})
 
 	// Re-fetch task after mutation
@@ -194,7 +180,7 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 
 	return m, tea.Batch(
 		startLoading("Saving..."),
-		SaveProjectAsync(project, fmt.Sprintf("Task %s: %s", action, task.Title)),
+		SaveProjectAsync(project, fmt.Sprintf("Task → %s: %s", targetStatus, task.Title)),
 	)
 }
 

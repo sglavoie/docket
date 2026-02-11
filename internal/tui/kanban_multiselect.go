@@ -114,35 +114,14 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 
 	for _, task := range tasks {
 		m.Project.MutateTask(task.ID, func(t *models.Task) {
-			switch newStatus {
-			case models.StatusInProgress:
-				if t.Status == models.StatusTodo || t.Status == models.StatusBlocked || t.Status == models.StatusReview {
-					t.Start()
-					changedCount++
-				}
-			case models.StatusDone:
-				if t.Status.IsActive() {
-					if len(m.Project.GetIncompleteDependencies(t)) == 0 {
-						t.Complete()
-						changedCount++
-					}
-				}
-			case models.StatusBlocked:
-				if t.Status.IsActive() && t.Status != models.StatusBlocked {
-					t.Block()
-					changedCount++
-				}
-			case models.StatusTodo:
-				if t.Status != models.StatusTodo {
-					t.Reopen()
-					changedCount++
-				}
-			case models.StatusCanceled:
-				if t.Status.IsActive() {
-					t.Cancel()
-					changedCount++
-				}
+			if t.CanTransitionTo(newStatus) != "" {
+				return
 			}
+			if newStatus == models.StatusDone && len(m.Project.GetIncompleteDependencies(t)) > 0 {
+				return
+			}
+			t.ApplyTransition(newStatus)
+			changedCount++
 		})
 	}
 

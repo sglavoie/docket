@@ -248,36 +248,9 @@ func (m *GlobalInboxProcessorModel) handleTagSelectorDone(msg TagSelectorDoneMsg
 	return m, m.saveCurrentProject()
 }
 
-// startTask starts the current task (sets status to in_progress).
-func (m *GlobalInboxProcessorModel) startTask() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task := git.Project.GetTaskByID(git.Task.ID)
-	if task == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return nil
-	}
-
-	if task.Status != models.StatusTodo && task.Status != models.StatusBlocked && task.Status != models.StatusReview {
-		m.statusMessage = "Task must be todo, blocked, or in review to start"
-		return nil
-	}
-
-	snapshot := m.captureSnapshot(task)
-	task.Start()
-
-	m.recordAction("started task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d started", task.ShortID)
-
-	return m.saveCurrentProject()
-}
-
-// completeTask marks the current task as done.
-func (m *GlobalInboxProcessorModel) completeTask() tea.Cmd {
+// changeTaskStatus validates and applies a status transition for the current
+// global inbox task. Complete and cancel mark the task as processed and advance.
+func (m *GlobalInboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus, verb string) tea.Cmd {
 	git := m.getCurrentTask()
 	if git == nil {
 		return nil
@@ -292,120 +265,54 @@ func (m *GlobalInboxProcessorModel) completeTask() tea.Cmd {
 		return nil
 	}
 
-	if !task.Status.IsActive() {
-		m.statusMessage = "Task is not active"
+	if msg := task.CanTransitionTo(newStatus); msg != "" {
+		m.statusMessage = msg
 		return nil
 	}
 
-	// Check for incomplete dependencies
-	incompleteDeps := project.GetIncompleteDependencies(task)
-	if len(incompleteDeps) > 0 {
-		depIDs := make([]string, len(incompleteDeps))
-		for i, dep := range incompleteDeps {
-			depIDs[i] = fmt.Sprintf("#%d", dep.ShortID)
+	// Project-level check: incomplete dependencies block completion
+	if newStatus == models.StatusDone {
+		incompleteDeps := project.GetIncompleteDependencies(task)
+		if len(incompleteDeps) > 0 {
+			depIDs := make([]string, len(incompleteDeps))
+			for i, dep := range incompleteDeps {
+				depIDs[i] = fmt.Sprintf("#%d", dep.ShortID)
+			}
+			m.err = fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
+				len(incompleteDeps), strings.Join(depIDs, ", "))
+			return nil
 		}
-		m.err = fmt.Errorf("cannot complete: %d incomplete dependencies (%s)",
-			len(incompleteDeps), strings.Join(depIDs, ", "))
-		return nil
 	}
 
 	snapshot := m.captureSnapshot(task)
-	task.Complete()
+	task.ApplyTransition(newStatus)
 
-	m.recordAction("completed task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d completed", task.ShortID)
+	m.recordAction(verb+" task", snapshot)
+	m.statusMessage = fmt.Sprintf("Task #%d %s", task.ShortID, verb)
 
-	// Task is leaving inbox (completed)
-	m.processedIDs[task.ID] = true
+	// Terminal statuses leave the inbox
+	if newStatus.IsComplete() {
+		m.processedIDs[task.ID] = true
+		return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
+	}
 
-	return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
+	return m.saveCurrentProject()
 }
 
-// blockTask blocks the current task.
+func (m *GlobalInboxProcessorModel) startTask() tea.Cmd {
+	return m.changeTaskStatus(models.StatusInProgress, "started")
+}
+func (m *GlobalInboxProcessorModel) completeTask() tea.Cmd {
+	return m.changeTaskStatus(models.StatusDone, "completed")
+}
 func (m *GlobalInboxProcessorModel) blockTask() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task := git.Project.GetTaskByID(git.Task.ID)
-	if task == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return nil
-	}
-
-	if !task.Status.IsActive() || task.Status == models.StatusBlocked {
-		m.statusMessage = "Task must be active and not already blocked"
-		return nil
-	}
-
-	snapshot := m.captureSnapshot(task)
-	task.Block()
-
-	m.recordAction("blocked task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d blocked", task.ShortID)
-
-	return m.saveCurrentProject()
+	return m.changeTaskStatus(models.StatusBlocked, "blocked")
 }
-
-// cancelTask cancels the current task.
 func (m *GlobalInboxProcessorModel) cancelTask() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task := git.Project.GetTaskByID(git.Task.ID)
-	if task == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return nil
-	}
-
-	if !task.Status.IsActive() {
-		m.statusMessage = "Task is not active"
-		return nil
-	}
-
-	snapshot := m.captureSnapshot(task)
-	task.Cancel()
-
-	m.recordAction("canceled task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d canceled", task.ShortID)
-
-	// Task is leaving inbox (canceled)
-	m.processedIDs[task.ID] = true
-
-	return tea.Batch(m.saveCurrentProject(), m.advanceToNext(true))
+	return m.changeTaskStatus(models.StatusCanceled, "canceled")
 }
-
-// reopenTask reopens the current task (sets status back to todo).
 func (m *GlobalInboxProcessorModel) reopenTask() tea.Cmd {
-	git := m.getCurrentTask()
-	if git == nil {
-		return nil
-	}
-
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task := git.Project.GetTaskByID(git.Task.ID)
-	if task == nil {
-		m.statusMessage = "Error: task no longer exists in project"
-		return nil
-	}
-
-	if task.Status == models.StatusTodo {
-		m.statusMessage = "Task is already todo"
-		return nil
-	}
-
-	snapshot := m.captureSnapshot(task)
-	task.Reopen()
-
-	m.recordAction("reopened task", snapshot)
-	m.statusMessage = fmt.Sprintf("Task #%d reopened", task.ShortID)
-
-	return m.saveCurrentProject()
+	return m.changeTaskStatus(models.StatusTodo, "reopened")
 }
 
 // sendToWaiting moves the current task to Waiting section and marks it processed.

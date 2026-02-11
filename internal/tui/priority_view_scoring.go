@@ -268,7 +268,12 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Otherwise, start the task
+	// Validate transition
+	if msg := task.CanTransitionTo(models.StatusInProgress); msg != "" {
+		m.statusMessage = msg
+		return m, nil
+	}
+
 	if err := storage.BackupProject(m.project); err != nil {
 		return m, func() tea.Msg {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
