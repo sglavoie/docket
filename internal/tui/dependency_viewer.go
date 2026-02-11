@@ -199,8 +199,8 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 
 	// Calculate scroll offset for this section if it's active
 	scrollOffset := 0
-	if m.section == sectionIdx && m.cursor >= maxVisible {
-		scrollOffset = m.cursor - maxVisible + 1
+	if m.section == sectionIdx {
+		scrollOffset = calcScrollOffset(m.cursor, maxVisible)
 	}
 
 	// Render visible tasks

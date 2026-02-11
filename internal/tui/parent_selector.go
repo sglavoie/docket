@@ -287,11 +287,7 @@ func (m *ParentSelectorModel) renderList() string {
 		return MutedStyle.Render("No matching parents.")
 	}
 
-	// Calculate scroll offset to keep cursor visible
-	scrollOffset := 0
-	if m.Cursor >= maxVisible {
-		scrollOffset = m.Cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
 
 	itemIndex := 0
 

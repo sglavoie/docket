@@ -461,10 +461,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 	}
 
 	maxVisible := 8
-	scrollOffset := 0
-	if m.projectCursor >= maxVisible {
-		scrollOffset = m.projectCursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.projectCursor, maxVisible)
 
 	for i, p := range m.filteredProjects {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
@@ -533,10 +530,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 	}
 
 	maxVisible := 8
-	scrollOffset := 0
-	if m.taskCursor >= maxVisible {
-		scrollOffset = m.taskCursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.taskCursor, maxVisible)
 
 	for i, t := range m.filteredTasks {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {

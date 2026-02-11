@@ -265,11 +265,7 @@ func (m *ProjectSelectorModel) renderList() string {
 		return MutedStyle.Render("No matching projects.")
 	}
 
-	// Calculate scroll offset to keep cursor visible
-	scrollOffset := 0
-	if m.Cursor >= maxVisible {
-		scrollOffset = m.Cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
 
 	// Render projects
 	for i, item := range m.Filtered {

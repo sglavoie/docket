@@ -74,34 +74,10 @@ func (m *FocusViewModel) View() string {
 		}
 	}
 
-	// Apply scrolling if needed
-	scrollOffset := 0
-	if m.cursor >= contentHeight {
-		scrollOffset = m.cursor - contentHeight + 1
-	}
-
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	left := HelpStyle.Render("j/k nav | [/] tabs | (/) row focus | * unfocus | ,s/d/b/x status | 1-5 priority | ? help")
@@ -113,24 +89,12 @@ func (m *FocusViewModel) View() string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *FocusViewModel) renderTabBar() string {
-	hasSubTabs := len(m.subTabNames) > 1
-	if hasSubTabs {
-		return renderSubTabBarWithFocus(focusTabNames, m.activeTab, !m.subTabRowFocused, m.width)
-	}
-	return renderWrappingTabBar(focusTabNames, m.activeTab, m.width)
+	return renderTabBarWithOptionalSubTabs(focusTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.width)
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
 func (m *FocusViewModel) renderSubTabBar() string {
-	if len(m.subTabNames) <= 1 {
-		return ""
-	}
-
-	tabs := make([]string, 0, len(m.subTabNames)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, m.subTabNames...)
-
-	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
+	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.width)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -175,7 +139,7 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	priorityBadge := m.renderPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 
 	if maxTitleLen < 10 {
 		maxTitleLen = 10
@@ -199,9 +163,4 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 	}
 
 	return line
-}
-
-// renderPriorityBadge delegates to the shared renderPriorityBadge helper.
-func (m *FocusViewModel) renderPriorityBadge(priority int) string {
-	return renderPriorityBadge(priority)
 }

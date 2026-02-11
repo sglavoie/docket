@@ -417,21 +417,7 @@ func (m *RecentActivityModel) View() string {
 		}
 	}
 
-	// Scrolling
-	scrollOffset := 0
-	if m.cursor >= contentHeight {
-		scrollOffset = m.cursor - contentHeight + 1
-	}
-
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
 	left := HelpStyle.Render("j/k nav | [/] tabs | Enter open | p preview | / filter | r refresh | ? help")

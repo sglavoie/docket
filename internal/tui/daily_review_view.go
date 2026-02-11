@@ -74,34 +74,10 @@ func (m *DailyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
-	// Apply scrolling based on actual line index of cursor
-	scrollOffset := 0
-	if cursorLineIndex >= contentHeight {
-		scrollOffset = cursorLineIndex - contentHeight + 1
-	}
-
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyScroll(lines, cursorLineIndex, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	left := HelpStyle.Render("h/j/k/l nav | n/N section | * active | ,s/d/b/x status | ? help")
@@ -202,42 +178,24 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 
 // renderSectionHeader renders a section header with collapse indicator.
 func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count int, collapsed bool, isSelected bool) string {
-	indicator := "▼"
-	if collapsed {
-		indicator = "▶"
-	}
-
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	name := getSectionName(section)
-	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
-
-	// Style based on section type
-	var styled string
+	var style lipgloss.Style
 	switch section {
 	case SectionOverdue:
-		styled = OverdueStyle.Bold(true).Render(header)
+		style = OverdueStyle
 	case SectionDueToday:
-		styled = DueTodayStyle.Bold(true).Render(header)
+		style = DueTodayStyle
 	case SectionCompleted:
-		styled = SuccessStyle.Bold(true).Render(header)
+		style = SuccessStyle
 	case SectionBlocked:
-		styled = BlockedStyle.Bold(true).Render(header)
+		style = BlockedStyle
 	case SectionInReview:
-		styled = ReviewStyle.Bold(true).Render(header)
+		style = ReviewStyle
 	case SectionOld:
-		styled = MutedStyle.Bold(true).Render(header)
+		style = MutedStyle
 	default:
-		styled = DailyReviewSectionHeaderStyle.Render(header)
+		style = DailyReviewSectionHeaderStyle
 	}
-
-	if isSelected {
-		return SelectedStyle.Render(styled)
-	}
-	return styled
+	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, style)
 }
 
 // renderTaskLine renders a single task line.

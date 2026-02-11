@@ -417,3 +417,118 @@ func renderWrappingHelpLine(helpText string, width int) string {
 
 	return strings.Join(lines, "\n")
 }
+
+// calcScrollOffset returns the scroll offset needed to keep cursorIdx visible
+// within a window of maxVisible items. Used by views that iterate over items
+// with index-based windowing (for i := offset; i < offset+maxVisible; ...).
+func calcScrollOffset(cursorIdx, maxVisible int) int {
+	if cursorIdx >= maxVisible {
+		return cursorIdx - maxVisible + 1
+	}
+	return 0
+}
+
+// applyScroll returns the visible slice of lines for a non-persistent scroll.
+// cursorIdx is the line index (in the lines slice) where the cursor sits;
+// contentHeight is the number of lines that fit on screen.
+func applyScroll(lines []string, cursorIdx, contentHeight int) []string {
+	scrollOffset := calcScrollOffset(cursorIdx, contentHeight)
+
+	visible := lines
+	if scrollOffset > 0 && scrollOffset < len(lines) {
+		visible = lines[scrollOffset:]
+	}
+	if len(visible) > contentHeight {
+		visible = visible[:contentHeight]
+	}
+	return visible
+}
+
+// applyPersistentScroll adjusts *scrollOffset to keep cursorIdx visible, then
+// returns the visible slice of lines. Unlike applyScroll, the scroll position
+// is remembered across renders so that small cursor movements don't jump to
+// cursor-anchored scrolling.
+func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollOffset *int) []string {
+	if contentHeight > 0 {
+		if cursorIdx < *scrollOffset {
+			*scrollOffset = cursorIdx
+		}
+		if cursorIdx >= *scrollOffset+contentHeight {
+			*scrollOffset = cursorIdx - contentHeight + 1
+		}
+		maxOffset := len(lines) - contentHeight
+		if maxOffset < 0 {
+			maxOffset = 0
+		}
+		if *scrollOffset > maxOffset {
+			*scrollOffset = maxOffset
+		}
+	}
+
+	visible := lines
+	if *scrollOffset > 0 && *scrollOffset < len(lines) {
+		visible = lines[*scrollOffset:]
+	}
+	if len(visible) > contentHeight {
+		visible = visible[:contentHeight]
+	}
+	return visible
+}
+
+// renderStatusMessages renders the standard status/error message block used by
+// fullscreen views. Returns an empty string when neither message is set.
+func renderStatusMessages(statusMessage string, err error) string {
+	var b strings.Builder
+	if statusMessage != "" {
+		b.WriteString(SuccessStyle.Render(statusMessage))
+		b.WriteString("\n")
+	}
+	if err != nil {
+		b.WriteString(ValidationErrorStyle.Render(err.Error()))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// renderCollapsibleHeader renders a collapsible section/group header with cursor
+// indicator, collapse toggle, name, count, and selection highlight.
+func renderCollapsibleHeader(name string, count int, collapsed, isSelected bool, style lipgloss.Style) string {
+	indicator := "▼"
+	if collapsed {
+		indicator = "▶"
+	}
+	cursor := "  "
+	if isSelected {
+		cursor = "> "
+	}
+	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
+	styled := style.Bold(true).Render(header)
+	if isSelected {
+		return SelectedStyle.Render(styled)
+	}
+	return styled
+}
+
+// renderTabBarWithOptionalSubTabs renders a tab bar that switches between a
+// wrapping tab bar and a sub-tab-bar-with-focus layout depending on whether
+// sub-tabs are present.
+func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNames []string, subTabRowFocused bool, width int) string {
+	if len(subTabNames) > 1 {
+		return renderSubTabBarWithFocus(tabNames, activeTab, !subTabRowFocused, width)
+	}
+	return renderWrappingTabBar(tabNames, activeTab, width)
+}
+
+// renderDynamicSubTabBar renders the dynamic sub-tab row when there are
+// multiple sub-tabs (prepends "All"), or returns "" if none.
+func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int) string {
+	if len(subTabNames) <= 1 {
+		return ""
+	}
+
+	tabs := make([]string, 0, len(subTabNames)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, subTabNames...)
+
+	return renderSubTabBarWithFocus(tabs, subTab, subTabRowFocused, width)
+}

@@ -741,10 +741,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 			maxVisible = 3
 		}
 
-		scrollOffset := 0
-		if s.cursor >= maxVisible {
-			scrollOffset = s.cursor - maxVisible + 1
-		}
+		scrollOffset := calcScrollOffset(s.cursor, maxVisible)
 
 		for i := scrollOffset; i < len(visible) && i < scrollOffset+maxVisible; i++ {
 			item := visible[i]

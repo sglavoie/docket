@@ -192,10 +192,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 		return MutedStyle.Render("No matching projects.")
 	}
 
-	scrollOffset := 0
-	if m.Cursor >= maxVisible {
-		scrollOffset = m.Cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
 
 	for i, item := range m.Filtered {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {

@@ -59,10 +59,7 @@ func (m *ProjectPickerModel) renderList() string {
 	// Add minimal padding after the longest name
 	maxNameLen += 2
 
-	scrollOffset := 0
-	if m.Cursor >= maxVisible {
-		scrollOffset = m.Cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.Cursor, maxVisible)
 
 	for i, item := range m.Filtered {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {

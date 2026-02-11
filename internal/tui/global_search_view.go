@@ -183,11 +183,7 @@ func (m *GlobalSearchModel) renderTaskList() string {
 	var b strings.Builder
 	maxVisible := m.height - 7 // Account for chrome
 
-	// Calculate scroll offset to keep cursor visible
-	scrollOffset := 0
-	if m.cursor >= maxVisible {
-		scrollOffset = m.cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
 	for i := scrollOffset; i < len(m.filtered) && i < scrollOffset+maxVisible; i++ {
 		fr := m.filtered[i]

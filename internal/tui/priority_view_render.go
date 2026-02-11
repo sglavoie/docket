@@ -10,24 +10,12 @@ import (
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	hasSubTabs := len(m.subTabNames) > 1
-	if hasSubTabs {
-		return renderSubTabBarWithFocus(priorityTabNames, m.activeTab, !m.subTabRowFocused, m.width)
-	}
-	return renderWrappingTabBar(priorityTabNames, m.activeTab, m.width)
+	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.width)
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
 func (m *PriorityViewModel) renderSubTabBar() string {
-	if len(m.subTabNames) <= 1 {
-		return ""
-	}
-
-	tabs := make([]string, 0, len(m.subTabNames)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, m.subTabNames...)
-
-	return renderSubTabBarWithFocus(tabs, m.subTab, m.subTabRowFocused, m.width)
+	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.width)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -73,7 +61,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	// Build task line
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	priorityBadge := m.renderPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 
 	// Calculate available title width
 	// Star + status + type + priority + spacing takes about 15-20 chars
@@ -296,7 +284,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
 	// Priority badge
-	priorityBadge := m.renderPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 
 	// Title (reduce width if showing star indicator)
 	adjustedMaxTitleLen := maxTitleLen
@@ -390,9 +378,4 @@ func (m *PriorityViewModel) getBlockingReason(task *models.Task) string {
 	}
 
 	return "(blocked)"
-}
-
-// renderPriorityBadge delegates to the shared renderPriorityBadge helper.
-func (m *PriorityViewModel) renderPriorityBadge(priority int) string {
-	return renderPriorityBadge(priority)
 }

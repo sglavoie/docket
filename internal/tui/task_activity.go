@@ -142,10 +142,7 @@ func (m *TaskActivityModel) View() string {
 			maxVisible = 3
 		}
 
-		scrollOffset := 0
-		if m.cursor >= maxVisible {
-			scrollOffset = m.cursor - maxVisible + 1
-		}
+		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
 		for i := scrollOffset; i < len(entries) && i < scrollOffset+maxVisible; i++ {
 			entry := entries[i]

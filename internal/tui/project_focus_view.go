@@ -682,35 +682,11 @@ func (m *ProjectFocusViewModel) View() string {
 		b.WriteString(MutedStyle.Render("No tasks match this filter."))
 		b.WriteString("\n\n")
 	} else {
-		// Apply scrolling if needed
-		scrollOffset := 0
-		if m.cursor >= contentHeight {
-			scrollOffset = m.cursor - contentHeight + 1
-		}
-
-		visibleLines := lines
-		if scrollOffset > 0 && scrollOffset < len(lines) {
-			visibleLines = lines[scrollOffset:]
-		}
-		if len(visibleLines) > contentHeight {
-			visibleLines = visibleLines[:contentHeight]
-		}
-
-		b.WriteString(strings.Join(visibleLines, "\n"))
+		b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 		b.WriteString("\n\n")
 	}
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	footerParts := "j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due"
@@ -782,7 +758,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
 	// Priority badge
-	priorityBadge := m.renderPriorityBadge(task.Priority)
+	priorityBadge := renderPriorityBadge(task.Priority)
 
 	// Title
 	if maxTitleLen < 10 {
@@ -817,9 +793,4 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	}
 
 	return line
-}
-
-// renderPriorityBadge renders a priority indicator.
-func (m *ProjectFocusViewModel) renderPriorityBadge(priority int) string {
-	return renderPriorityBadge(priority)
 }

@@ -658,10 +658,7 @@ func (m *TaskChecklistModel) View() string {
 			maxVisible = 5
 		}
 
-		scrollOffset := 0
-		if m.cursor >= maxVisible {
-			scrollOffset = m.cursor - maxVisible + 1
-		}
+		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
 		maxLen := contentWidth - 8
 		if maxLen < 40 {

@@ -723,11 +723,7 @@ func (m *TaskAttachmentsModel) View() string {
 			maxVisible = 3
 		}
 
-		// Calculate scroll offset
-		scrollOffset := 0
-		if m.cursor >= maxVisible {
-			scrollOffset = m.cursor - maxVisible + 1
-		}
+		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
 		for i := scrollOffset; i < len(m.task.Attachments) && i < scrollOffset+maxVisible; i++ {
 			att := m.task.Attachments[i]

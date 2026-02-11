@@ -101,45 +101,10 @@ func (m *AllTasksViewModel) View() string {
 		}
 	}
 
-	// Adjust persistent scroll offset to keep cursor visible
-	if contentHeight > 0 {
-		if cursorLineIdx < m.scrollOffset {
-			m.scrollOffset = cursorLineIdx
-		}
-		if cursorLineIdx >= m.scrollOffset+contentHeight {
-			m.scrollOffset = cursorLineIdx - contentHeight + 1
-		}
-		maxOffset := len(lines) - contentHeight
-		if maxOffset < 0 {
-			maxOffset = 0
-		}
-		if m.scrollOffset > maxOffset {
-			m.scrollOffset = maxOffset
-		}
-	}
-
-	visibleLines := lines
-	if m.scrollOffset > 0 && m.scrollOffset < len(lines) {
-		visibleLines = lines[m.scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset), "\n"))
 	b.WriteString("\n\n")
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	footerLeft := "j/k nav | [/] tabs | ctrl+g group | ,s/d/b/x status | 1-5 sort | v multi | ? help"
@@ -203,21 +168,7 @@ var AllTasksNavigationPrefixHints = []PrefixHint{
 // Uses inline styling instead of DueDateGroupHeaderStyle to avoid MarginTop(1)
 // which would make each entry multi-line and break contentHeight line counting.
 func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool) string {
-	indicator := "▼"
-	if collapsed {
-		indicator = "▶"
-	}
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary)
-	styled := headerStyle.Render(header)
-	if isSelected {
-		return SelectedStyle.Render(styled)
-	}
-	return styled
+	return renderCollapsibleHeader(name, count, collapsed, isSelected, lipgloss.NewStyle().Foreground(ColorSecondary))
 }
 
 // renderTaskLine renders a single task line.

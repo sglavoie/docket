@@ -73,34 +73,10 @@ func (m *DueDateOverviewModel) View() string {
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex)
 
-	// Apply scrolling if needed
-	scrollOffset := 0
-	if m.cursor >= contentHeight {
-		scrollOffset = m.cursor - contentHeight + 1
-	}
-
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	left := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")

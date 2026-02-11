@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -46,34 +48,10 @@ func (m *WeeklyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
-	// Apply scrolling
-	scrollOffset := 0
-	if cursorLineIndex >= contentHeight {
-		scrollOffset = cursorLineIndex - contentHeight + 1
-	}
-
-	visibleLines := lines
-	if scrollOffset > 0 && scrollOffset < len(lines) {
-		visibleLines = lines[scrollOffset:]
-	}
-	if len(visibleLines) > contentHeight {
-		visibleLines = visibleLines[:contentHeight]
-	}
-
-	b.WriteString(strings.Join(visibleLines, "\n"))
+	b.WriteString(strings.Join(applyScroll(lines, cursorLineIndex, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	// Status message
-	if m.statusMessage != "" {
-		b.WriteString(SuccessStyle.Render(m.statusMessage))
-		b.WriteString("\n")
-	}
-
-	// Error message
-	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
-		b.WriteString("\n")
-	}
+	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	left := HelpStyle.Render("h/j/k/l nav | n/N section | ,s/d/b/x status")
@@ -165,70 +143,13 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 
 		// Section items (if not collapsed)
 		if !collapsed {
-			switch section {
-			case WeeklySectionStaleProjects:
-				for _, wp := range m.staleProjects {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderProjectLine(wp, section, isSelected))
-					currentIndex++
+			for idx := 0; idx < count; idx++ {
+				isSelected := currentIndex == m.cursor
+				if isSelected {
+					cursorLineIndex = len(lines)
 				}
-			case WeeklySectionInboxBacklog:
-				for _, wp := range m.inboxBacklog {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderProjectLine(wp, section, isSelected))
-					currentIndex++
-				}
-			case WeeklySectionBlockedWork:
-				for _, wp := range m.blockedWork {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderProjectLine(wp, section, isSelected))
-					currentIndex++
-				}
-			case WeeklySectionOvercommitted:
-				for _, wp := range m.overcommitted {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderProjectLine(wp, section, isSelected))
-					currentIndex++
-				}
-			case WeeklySectionStaleTasks:
-				for _, dt := range m.staleTasks {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderTaskLine(dt, section, isSelected, m.width-40))
-					currentIndex++
-				}
-			case WeeklySectionPriorityMismatch:
-				for _, dt := range m.priorityMismatch {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderTaskLine(dt, section, isSelected, m.width-40))
-					currentIndex++
-				}
-			case WeeklySectionUpcomingWeek:
-				for _, dt := range m.upcomingWeek {
-					isSelected := currentIndex == m.cursor
-					if isSelected {
-						cursorLineIndex = len(lines)
-					}
-					lines = append(lines, m.renderTaskLine(dt, section, isSelected, m.width-40))
-					currentIndex++
-				}
+				lines = append(lines, m.renderSectionItem(section, idx, isSelected))
+				currentIndex++
 			}
 		}
 	}
@@ -236,41 +157,45 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 	return lines, cursorLineIndex
 }
 
+// renderSectionItem renders a single item at the given index within a section.
+func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index int, isSelected bool) string {
+	switch section {
+	case WeeklySectionStaleProjects:
+		return m.renderProjectLine(m.staleProjects[index], section, isSelected)
+	case WeeklySectionInboxBacklog:
+		return m.renderProjectLine(m.inboxBacklog[index], section, isSelected)
+	case WeeklySectionBlockedWork:
+		return m.renderProjectLine(m.blockedWork[index], section, isSelected)
+	case WeeklySectionOvercommitted:
+		return m.renderProjectLine(m.overcommitted[index], section, isSelected)
+	case WeeklySectionStaleTasks:
+		return m.renderTaskLine(m.staleTasks[index], section, isSelected, m.width-40)
+	case WeeklySectionPriorityMismatch:
+		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, m.width-40)
+	case WeeklySectionUpcomingWeek:
+		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, m.width-40)
+	}
+	return ""
+}
+
 // renderSectionHeader renders a section header.
 func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, count int, collapsed bool, isSelected bool) string {
-	indicator := "▼"
-	if collapsed {
-		indicator = "▶"
-	}
-
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	name := getWeeklySectionName(section)
-	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
-
-	var styled string
+	var style lipgloss.Style
 	switch section {
 	case WeeklySectionStaleProjects, WeeklySectionStaleTasks:
-		styled = MutedStyle.Bold(true).Render(header)
+		style = MutedStyle
 	case WeeklySectionBlockedWork:
-		styled = BlockedStyle.Bold(true).Render(header)
+		style = BlockedStyle
 	case WeeklySectionInboxBacklog:
-		styled = DueTodayStyle.Bold(true).Render(header)
+		style = DueTodayStyle
 	case WeeklySectionOvercommitted:
-		styled = OverdueStyle.Bold(true).Render(header)
+		style = OverdueStyle
 	case WeeklySectionPriorityMismatch:
-		styled = DueSoonStyle.Bold(true).Render(header)
+		style = DueSoonStyle
 	default:
-		styled = DailyReviewSectionHeaderStyle.Render(header)
+		style = DailyReviewSectionHeaderStyle
 	}
-
-	if isSelected {
-		return SelectedStyle.Render(styled)
-	}
-	return styled
+	return renderCollapsibleHeader(getWeeklySectionName(section), count, collapsed, isSelected, style)
 }
 
 // renderProjectLine renders a single project line with metric badges.

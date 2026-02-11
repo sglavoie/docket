@@ -281,11 +281,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		maxVisible = 3
 	}
 
-	// Calculate scroll offset to keep cursor visible
-	scrollOffset := 0
-	if m.cursor >= maxVisible {
-		scrollOffset = m.cursor - maxVisible + 1
-	}
+	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 	if scrollOffset > len(visible)-maxVisible {
 		scrollOffset = len(visible) - maxVisible
 	}

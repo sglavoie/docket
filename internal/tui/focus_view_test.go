@@ -358,9 +358,6 @@ func containsSubstring(s, substr string) bool {
 }
 
 func TestFocusViewRenderPriorityBadge(t *testing.T) {
-	cfg := newTestFocusConfig(nil)
-	m := &FocusViewModel{config: cfg}
-
 	tests := []struct {
 		priority  int
 		wantBadge string
@@ -374,7 +371,7 @@ func TestFocusViewRenderPriorityBadge(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.wantBadge, func(t *testing.T) {
-			got := m.renderPriorityBadge(tt.priority)
+			got := renderPriorityBadge(tt.priority)
 			if !containsSubstring(got, tt.wantBadge) {
 				t.Errorf("renderPriorityBadge(%d) = %q, want to contain %q", tt.priority, got, tt.wantBadge)
 			}
