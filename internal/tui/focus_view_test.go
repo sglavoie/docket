@@ -196,7 +196,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 		project.Tasks = []*models.Task{task1, task2}
 
 		cfg := newTestFocusConfig([]*models.Project{project})
-		m := &FocusViewModel{config: cfg, cursor: 0}
+		m := &FocusViewModel{config: cfg, InteractiveViewState: InteractiveViewState{cursor: 0}}
 		m.tasks = []FocusTask{
 			{Task: task1, Project: project},
 			{Task: task2, Project: project},
@@ -217,7 +217,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 
 	t.Run("returns nil for out of bounds cursor", func(t *testing.T) {
 		cfg := newTestFocusConfig(nil)
-		m := &FocusViewModel{config: cfg, cursor: 10}
+		m := &FocusViewModel{config: cfg, InteractiveViewState: InteractiveViewState{cursor: 10}}
 		m.tasks = []FocusTask{}
 		m.applyFilter()
 
@@ -228,7 +228,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 
 	t.Run("returns nil for negative cursor", func(t *testing.T) {
 		cfg := newTestFocusConfig(nil)
-		m := &FocusViewModel{config: cfg, cursor: -1}
+		m := &FocusViewModel{config: cfg, InteractiveViewState: InteractiveViewState{cursor: -1}}
 		m.tasks = []FocusTask{}
 		m.applyFilter()
 
@@ -256,7 +256,7 @@ func TestFocusViewClampCursor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := newTestFocusConfig(nil)
-			m := &FocusViewModel{config: cfg, cursor: tt.cursor}
+			m := &FocusViewModel{config: cfg, InteractiveViewState: InteractiveViewState{cursor: tt.cursor}}
 
 			// Create dummy tasks
 			for i := 0; i < tt.taskCount; i++ {
@@ -274,8 +274,7 @@ func TestFocusViewClampCursor(t *testing.T) {
 }
 
 func TestFocusViewHasPendingPrefix(t *testing.T) {
-	cfg := newTestFocusConfig(nil)
-	m := &FocusViewModel{config: cfg}
+	m := &FocusViewModel{}
 
 	if m.HasPendingPrefix() {
 		t.Error("HasPendingPrefix() should return false initially")

@@ -261,6 +261,84 @@ func sectionForMoveKey(key string) (string, bool) {
 	return "", false
 }
 
+// StatusForPrefixKey maps a prefix second-key to a TaskStatus.
+// Returns the status and true if the key is valid, or zero value and false otherwise.
+func StatusForPrefixKey(key string) (models.TaskStatus, bool) {
+	switch key {
+	case "s":
+		return models.StatusInProgress, true
+	case "d":
+		return models.StatusDone, true
+	case "b":
+		return models.StatusBlocked, true
+	case "o":
+		return models.StatusTodo, true
+	case "x":
+		return models.StatusCanceled, true
+	case "r":
+		return models.StatusReview, true
+	}
+	return "", false
+}
+
+// StatusVerb returns the past-tense verb for a status transition.
+func StatusVerb(status models.TaskStatus) string {
+	switch status {
+	case models.StatusInProgress:
+		return "started"
+	case models.StatusDone:
+		return "completed"
+	case models.StatusBlocked:
+		return "blocked"
+	case models.StatusTodo:
+		return "reopened"
+	case models.StatusCanceled:
+		return "canceled"
+	case models.StatusReview:
+		return "sent to review"
+	}
+	return string(status)
+}
+
+// DueDateDaysForPrefixKey maps a due-date prefix second-key to a day offset.
+// Returns (days, isClear, matched). When isClear is true the caller should
+// remove the due date instead of setting one.
+func DueDateDaysForPrefixKey(key string) (int, bool, bool) {
+	switch key {
+	case "t":
+		return 0, false, true // today
+	case "m":
+		return 1, false, true // tomorrow
+	case "w":
+		return 7, false, true // next week
+	case "n":
+		return 30, false, true // next month
+	case "0":
+		return 0, true, true // clear
+	}
+	return 0, false, false
+}
+
+// PriorityForPrefixKey maps a priority prefix second-key to a priority value.
+// Returns the priority (1-5) and true if valid.
+func PriorityForPrefixKey(key string) (int, bool) {
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '5' {
+		return int(key[0] - '0'), true
+	}
+	return 0, false
+}
+
+// dueDateFromDays returns a *time.Time pointer and description for a relative
+// day offset. When isClear is true, it returns (nil, "cleared").
+func dueDateFromDays(days int, isClear bool) (*time.Time, string) {
+	if isClear {
+		return nil, "cleared"
+	}
+	now := time.Now()
+	d := time.Date(now.Year(), now.Month(), now.Day()+days, 23, 59, 59, 0, now.Location())
+	return &d, dueDateLabel(days)
+}
+
 // SecondaryViewMovePrefixHints contains "m" prefix hints for secondary views.
 var SecondaryViewMovePrefixHints = []PrefixHint{
 	{Key: "a", Description: "→Active", Detail: "Send task to Active section"},

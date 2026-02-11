@@ -210,10 +210,5 @@ func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *WeeklyReviewModel) clampCursor() {
-	if m.cursor >= m.totalItems {
-		m.cursor = m.totalItems - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, m.totalItems)
 }

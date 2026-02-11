@@ -27,12 +27,7 @@ func (m *AllTasksViewModel) toggleTaskSelection() {
 	if item == nil {
 		return
 	}
-
-	if m.selectedTasks[item.Task.ID] {
-		delete(m.selectedTasks, item.Task.ID)
-	} else {
-		m.selectedTasks[item.Task.ID] = true
-	}
+	m.ToggleSelection(item.Task.ID)
 	m.updateSelectionStatus()
 }
 
@@ -51,7 +46,7 @@ func (m *AllTasksViewModel) selectAllVisible() {
 
 // deselectAll clears all task selections.
 func (m *AllTasksViewModel) deselectAll() {
-	m.selectedTasks = make(map[string]bool)
+	m.ClearSelection()
 	m.updateSelectionStatus()
 }
 
@@ -67,7 +62,7 @@ func (m *AllTasksViewModel) updateSelectionStatus() {
 
 // selectedCount returns the number of selected tasks.
 func (m *AllTasksViewModel) selectedCount() int {
-	return len(m.selectedTasks)
+	return m.SelectedCount()
 }
 
 // getSelectedItemsByProject returns all selected items grouped by project ID.

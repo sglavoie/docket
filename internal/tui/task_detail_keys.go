@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -148,21 +147,13 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := m.task
-	project := m.project
-
-	keyToStatus := map[string]models.TaskStatus{
-		"s": models.StatusInProgress,
-		"d": models.StatusDone,
-		"b": models.StatusBlocked,
-		"x": models.StatusCanceled,
-		"o": models.StatusTodo,
-		"r": models.StatusReview,
-	}
-	targetStatus, ok := keyToStatus[key]
+	targetStatus, ok := StatusForPrefixKey(key)
 	if !ok {
 		return m, nil
 	}
+
+	task := m.task
+	project := m.project
 
 	if msg := task.CanTransitionTo(targetStatus); msg != "" {
 		return m, func() tea.Msg { return StatusMsg(msg) }
@@ -190,8 +181,8 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
-	priority, err := strconv.Atoi(key)
-	if err != nil || priority < 1 || priority > 5 {
+	priority, ok := PriorityForPrefixKey(key)
+	if !ok {
 		return m, nil
 	}
 

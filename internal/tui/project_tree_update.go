@@ -208,25 +208,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	switch prefix {
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			_, cmd := m.handleStartTask(visible)
-			return m, cmd
-		case "d":
-			_, cmd := m.handleCompleteTask(visible)
-			return m, cmd
-		case "b":
-			_, cmd := m.handleBlockTask(visible)
-			return m, cmd
-		case "x":
-			_, cmd := m.handleCancelTask(visible)
-			return m, cmd
-		case "o":
-			_, cmd := m.handleReopenTask(visible)
-			return m, cmd
-		case "r":
-			_, cmd := m.handleReviewTask(visible)
+		if status, ok := StatusForPrefixKey(key); ok {
+			_, cmd := m.handleStatusTransition(status, visible)
 			return m, cmd
 		}
 
@@ -460,11 +443,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "!":
-		// Priority quick actions
-		switch key {
-		case "1", "2", "3", "4", "5":
-			priority := int(key[0] - '0')
-			// Capture task states before changes for event-based workflow triggers
+		if priority, ok := PriorityForPrefixKey(key); ok {
 			prevStates := captureTaskStates(m.project.Tasks)
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				count := 0
@@ -540,38 +519,37 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "d":
-		// Due date quick actions
-		now := time.Now()
-		var dueDate *time.Time
-		var desc string
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			dueDate, desc := dueDateFromDays(days, isClear)
+			prevStates := captureTaskStates(m.project.Tasks)
 
-		switch key {
-		case "t":
-			// Today
-			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
-			dueDate = &today
-			desc = "today"
-		case "m":
-			// Tomorrow
-			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
-			dueDate = &tomorrow
-			desc = "tomorrow"
-		case "w":
-			// Next week (+7 days)
-			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
-			dueDate = &nextWeek
-			desc = "+7 days"
-		case "n":
-			// Next month (+30 days)
-			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
-			dueDate = &nextMonth
-			desc = "+30 days"
-		case "0":
-			// Clear due date
-			dueDate = nil
-			desc = "cleared"
-		case "d":
-			// Open full date picker
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				count := 0
+				for id := range m.selectedTasks {
+					if m.project.MutateTask(id, func(t *models.Task) {
+						t.DueDate = dueDate
+					}) {
+						count++
+					}
+				}
+				m.clearSelection()
+				m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
+				return m, m.saveAndRefreshWithPrevStates(prevStates)
+			}
+			if CursorInBounds(m.cursor, len(visible)) {
+				task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
+				if task == nil {
+					return m, nil
+				}
+				m.project.MutateTask(task.ID, func(t *models.Task) {
+					t.DueDate = dueDate
+				})
+				m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
+				return m, m.saveAndRefreshWithPrevStates(prevStates)
+			}
+			return m, nil
+		}
+		if key == "d" {
 			if CursorInBounds(m.cursor, len(visible)) {
 				task := visible[m.cursor].Task
 				project := m.project
@@ -580,38 +558,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
-		default:
-			return m, nil
 		}
-
-		// Capture task states before changes for event-based workflow triggers
-		prevStates := captureTaskStates(m.project.Tasks)
-
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := 0
-			for id := range m.selectedTasks {
-				if m.project.MutateTask(id, func(t *models.Task) {
-					t.DueDate = dueDate
-				}) {
-					count++
-				}
-			}
-			m.clearSelection()
-			m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
-			return m, m.saveAndRefreshWithPrevStates(prevStates)
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
-			if task == nil {
-				return m, nil
-			}
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				t.DueDate = dueDate
-			})
-			m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
-			return m, m.saveAndRefreshWithPrevStates(prevStates)
-		}
-		return m, nil
 
 	case "F":
 		// Filter prefix - first level

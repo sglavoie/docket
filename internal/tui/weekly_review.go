@@ -61,6 +61,8 @@ type WeeklyReviewSelectTaskMsg struct {
 
 // WeeklyReviewModel displays aggregated project and task information for weekly review.
 type WeeklyReviewModel struct {
+	InteractiveViewState
+
 	config *config.Config
 
 	// Project sections
@@ -75,7 +77,6 @@ type WeeklyReviewModel struct {
 	upcomingWeek     []WeeklyReviewTask
 
 	// Navigation
-	cursor            int
 	totalItems        int
 	sectionStarts     []int
 	collapsedSections map[int]bool
@@ -83,13 +84,8 @@ type WeeklyReviewModel struct {
 	focusedSection    *WeeklyReviewSection
 	activeTab         int // 0=Projects, 1=Tasks, 2=Planning
 
-	// Prefix key state
-	pendingPrefix string
-
 	// UI feedback
-	statusMessage string
-	err           error
-	confirm       ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -422,32 +418,18 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ",":
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0)
-		case "m":
-			return m.setQuickDueDate(1)
-		case "w":
-			return m.setQuickDueDate(7)
-		case "n":
-			return m.setQuickDueDate(30)
-		case "0":
-			return m.clearDueDate()
-		case "d":
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if dt := m.getTaskAtCursor(); dt != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: dt.Task}
@@ -543,11 +525,6 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *WeeklyReviewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
 }
 
 // HasFocusedSection returns true if viewing a single focused section.

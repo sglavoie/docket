@@ -69,6 +69,8 @@ const (
 
 // AllTasksViewModel displays all tasks across all projects.
 type AllTasksViewModel struct {
+	InteractiveViewState
+
 	config         *config.Config
 	projectService *ProjectService
 	projectCache   map[string]*models.Project
@@ -96,21 +98,14 @@ type AllTasksViewModel struct {
 	sortAscending bool
 
 	// Multi-select
-	multiSelectMode bool
-	selectedTasks   map[string]bool
+	MultiSelectState
 
 	// Navigation
-	cursor       int
 	scrollOffset int
 	groupStarts  []int // cursor positions of group headers
 
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string
-
 	// UI feedback
-	statusMessage string
-	err           error
-	confirm       ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -120,14 +115,14 @@ type AllTasksViewModel struct {
 // NewAllTasksViewModel creates a new all tasks view model.
 func NewAllTasksViewModel(cfg *config.Config) *AllTasksViewModel {
 	m := &AllTasksViewModel{
-		config:          cfg,
-		projectService:  NewProjectService(),
-		projectCache:    make(map[string]*models.Project),
-		collapsedGroups: make(map[string]bool),
-		projectFilter:   make(map[string]bool),
-		selectedTasks:   make(map[string]bool),
-		sortField:       SortByDefault,
-		sortAscending:   true,
+		config:           cfg,
+		projectService:   NewProjectService(),
+		projectCache:     make(map[string]*models.Project),
+		collapsedGroups:  make(map[string]bool),
+		projectFilter:    make(map[string]bool),
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		sortField:        SortByDefault,
+		sortAscending:    true,
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),
 			Attrs: make(map[string]string),
@@ -721,38 +716,19 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && m.selectedCount() > 0 {
 		switch prefix {
 		case ",":
-			switch key {
-			case "s":
-				return m.handleBulkStatusChange(models.StatusInProgress)
-			case "d":
-				return m.handleBulkStatusChange(models.StatusDone)
-			case "b":
-				return m.handleBulkStatusChange(models.StatusBlocked)
-			case "x":
-				return m.handleBulkStatusChange(models.StatusCanceled)
-			case "o":
-				return m.handleBulkStatusChange(models.StatusTodo)
-			case "r":
-				return m.handleBulkStatusChange(models.StatusReview)
+			if status, ok := StatusForPrefixKey(key); ok {
+				return m.handleBulkStatusChange(status)
 			}
 		case "!":
-			switch key {
-			case "1", "2", "3", "4", "5":
-				priority := int(key[0] - '0')
+			if priority, ok := PriorityForPrefixKey(key); ok {
 				return m.handleBulkPriorityChange(priority)
 			}
 		case "d":
-			switch key {
-			case "t":
-				return m.handleBulkDueDateChange(0)
-			case "m":
-				return m.handleBulkDueDateChange(1)
-			case "w":
-				return m.handleBulkDueDateChange(7)
-			case "n":
-				return m.handleBulkDueDateChange(30)
-			case "0":
-				return m.handleBulkClearDueDate()
+			if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+				if isClear {
+					return m.handleBulkClearDueDate()
+				}
+				return m.handleBulkDueDateChange(days)
 			}
 		case "m":
 			section, ok := sectionForMoveKey(key)
@@ -794,12 +770,9 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "!":
-		switch key {
-		case "1", "2", "3", "4", "5":
-			priority := int(key[0] - '0')
+		if priority, ok := PriorityForPrefixKey(key); ok {
 			return m.changePriority(priority)
 		}
-		return m, nil
 
 	case "F":
 		return m.handleAllTasksFilterPrefix(key)
@@ -807,37 +780,18 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handleAllTasksFilterSubPrefix(prefix, key)
 
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
-		case "r":
-			return m.changeTaskStatus(models.StatusReview)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		// Due date operations
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// Open date picker
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if item := m.getTaskAtCursor(); item != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: item.Task, Project: item.Project}
@@ -1034,18 +988,7 @@ func (m *AllTasksViewModel) deleteTask() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {
-	total := m.totalNavigableItems()
-	if m.cursor >= total {
-		m.cursor = total - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *AllTasksViewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
+	m.cursor = ClampCursor(m.cursor, m.totalNavigableItems())
 }
 
 // HasTextInput returns false for the all tasks view.

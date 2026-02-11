@@ -350,35 +350,18 @@ func (m *ProjectFocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd)
 
 	switch prefix {
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		// Due date operations
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// Open date picker
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if task := m.getTaskAtCursor(); task != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: task, Project: m.project}
@@ -616,13 +599,7 @@ func (m *ProjectFocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *ProjectFocusViewModel) clampCursor() {
-	tasks := m.filteredTasks()
-	if m.cursor >= len(tasks) {
-		m.cursor = len(tasks) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.filteredTasks()))
 }
 
 // HasPendingPrefix returns true if waiting for second key in prefix sequence.

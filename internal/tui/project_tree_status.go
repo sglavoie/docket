@@ -132,6 +132,25 @@ func canTransitionPredicate(newStatus models.TaskStatus) statusPredicate {
 	return func(t *models.Task) bool { return t.CanTransitionTo(newStatus) == "" }
 }
 
+// handleStatusTransition dispatches a status change to the appropriate handler.
+func (m *ProjectTreeModel) handleStatusTransition(status models.TaskStatus, visible []*TreeNode) (bool, tea.Cmd) {
+	switch status {
+	case models.StatusInProgress:
+		return m.handleStartTask(visible)
+	case models.StatusDone:
+		return m.handleCompleteTask(visible)
+	case models.StatusBlocked:
+		return m.handleBlockTask(visible)
+	case models.StatusCanceled:
+		return m.handleCancelTask(visible)
+	case models.StatusTodo:
+		return m.handleReopenTask(visible)
+	case models.StatusReview:
+		return m.handleReviewTask(visible)
+	}
+	return false, nil
+}
+
 // handleStartTask starts a task (in_progress).
 func (m *ProjectTreeModel) handleStartTask(visible []*TreeNode) (bool, tea.Cmd) {
 	return m.handleStatusChange(visible,

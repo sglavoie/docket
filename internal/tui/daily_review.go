@@ -33,6 +33,8 @@ const (
 
 // DailyReviewModel displays aggregated task information for review.
 type DailyReviewModel struct {
+	InteractiveViewState
+
 	config *config.Config
 
 	// Sections
@@ -51,7 +53,6 @@ type DailyReviewModel struct {
 	filter CommonFilterState
 
 	// Navigation
-	cursor            int
 	totalTasks        int
 	sectionStarts     []int                // Starting index of each section
 	collapsedSections map[int]bool         // Track collapsed sections
@@ -59,13 +60,8 @@ type DailyReviewModel struct {
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
 	activeTab         int                  // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
 
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string
-
 	// UI feedback
-	statusMessage string
-	err           error
-	confirm       ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -415,37 +411,18 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handleDailyReviewFilterSubPrefix(prefix, key)
 
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
-		case "r":
-			return m.changeTaskStatus(models.StatusReview)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		// Due date operations
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// Open date picker
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if dt := m.getTaskAtCursor(); dt != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: dt.Task}
@@ -543,11 +520,6 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	// Invalid prefix sequence - ignore
 	return m, nil
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *DailyReviewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
 }
 
 // HasFocusedSection returns true if viewing a single focused section.

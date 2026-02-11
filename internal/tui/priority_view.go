@@ -54,6 +54,8 @@ const (
 
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
+	InteractiveViewState
+
 	project        *models.Project
 	config         *config.Config
 	projectService *ProjectService
@@ -82,7 +84,6 @@ type PriorityViewModel struct {
 	subTabNames      []string
 
 	// Navigation
-	cursor      int   // Absolute position across all visible groups
 	totalTasks  int   // Total count of visible actionable tasks
 	groupStarts []int // Starting index of each group in flattened view
 
@@ -95,14 +96,7 @@ type PriorityViewModel struct {
 	waitingOnCollapsed bool
 
 	// Status and error messages
-	statusMessage string
-	err           error
-
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string // "g" when waiting for second key
-
-	// Confirm dialog for destructive actions
-	confirm ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -811,20 +805,8 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "r":
-			return m.changeTaskStatus(models.StatusReview)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 	case "g":
 		switch key {
@@ -851,19 +833,13 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case "d":
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// dd: Open date picker for task at cursor
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if pt := m.getTaskAtCursor(); pt != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: pt.Task, Project: m.project}
@@ -928,11 +904,6 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	// Invalid prefix sequence - ignore
 	return m, nil
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *PriorityViewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
 }
 
 // HasTextInput returns false for the priority view.
@@ -1055,12 +1026,7 @@ func (m *PriorityViewModel) deleteTask() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *PriorityViewModel) clampCursor() {
-	if m.cursor >= m.totalTasks {
-		m.cursor = m.totalTasks - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, m.totalTasks)
 }
 
 func (m *PriorityViewModel) View() string {

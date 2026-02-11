@@ -132,22 +132,6 @@ func (m *GlobalInboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus
 	return m.saveCurrentProject()
 }
 
-func (m *GlobalInboxProcessorModel) startTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusInProgress, "started")
-}
-func (m *GlobalInboxProcessorModel) completeTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusDone, "completed")
-}
-func (m *GlobalInboxProcessorModel) blockTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusBlocked, "blocked")
-}
-func (m *GlobalInboxProcessorModel) cancelTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusCanceled, "canceled")
-}
-func (m *GlobalInboxProcessorModel) reopenTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusTodo, "reopened")
-}
-
 // sendToWaiting moves the current task to Waiting section and marks it processed.
 func (m *GlobalInboxProcessorModel) sendToWaiting() tea.Cmd {
 	git := m.getCurrentTask()

@@ -27,12 +27,7 @@ func (m *KanbanViewModel) toggleTaskSelection() {
 	if task == nil {
 		return
 	}
-
-	if m.selectedTasks[task.ID] {
-		delete(m.selectedTasks, task.ID)
-	} else {
-		m.selectedTasks[task.ID] = true
-	}
+	m.ToggleSelection(task.ID)
 	m.updateSelectionStatus()
 }
 
@@ -67,7 +62,7 @@ func (m *KanbanViewModel) selectAllAcrossColumns() {
 
 // deselectAll clears all task selections.
 func (m *KanbanViewModel) deselectAll() {
-	m.selectedTasks = make(map[string]bool)
+	m.ClearSelection()
 	m.updateSelectionStatus()
 }
 
@@ -94,12 +89,12 @@ func (m *KanbanViewModel) getSelectedTasksList() []*models.Task {
 
 // isTaskSelected returns whether a task is currently selected.
 func (m *KanbanViewModel) isTaskSelected(taskID string) bool {
-	return m.selectedTasks[taskID]
+	return m.IsSelected(taskID)
 }
 
 // selectedCount returns the number of selected tasks.
 func (m *KanbanViewModel) selectedCount() int {
-	return len(m.selectedTasks)
+	return m.SelectedCount()
 }
 
 // finishBulk clears multiselect state and sets the status message.

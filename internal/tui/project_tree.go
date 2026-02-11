@@ -188,8 +188,7 @@ type ProjectTreeModel struct {
 	pendingPrefix string // ",", "z", or "g" when waiting for second key
 
 	// Multi-select state
-	multiSelectMode bool
-	selectedTasks   map[string]bool // task IDs currently selected
+	MultiSelectState
 
 	// Components
 	quickEdit *QuickEditComponent
@@ -235,14 +234,14 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 			},
 			Sections: make(map[string]bool),
 		},
-		sortField:     SortByDefault,
-		sortAscending: true,
-		confirmAction: ConfirmNone,
-		selectedTasks: make(map[string]bool),
-		quickEdit:     NewQuickEditComponent(),
-		filterBar:     NewFilterBarComponent(),
-		bulkOp:        NewBulkOperationComponent(),
-		sidebar:       NewSidebarComponent(),
+		sortField:        SortByDefault,
+		sortAscending:    true,
+		confirmAction:    ConfirmNone,
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		quickEdit:        NewQuickEditComponent(),
+		filterBar:        NewFilterBarComponent(),
+		bulkOp:           NewBulkOperationComponent(),
+		sidebar:          NewSidebarComponent(),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()
@@ -292,13 +291,7 @@ func (m *ProjectTreeModel) IsFocusMode() bool {
 
 // clampCursor ensures the cursor is within valid bounds.
 func (m *ProjectTreeModel) clampCursor() {
-	visible := m.visibleNodes()
-	if m.cursor >= len(visible) {
-		m.cursor = len(visible) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.visibleNodes()))
 }
 
 // SetSize sets the view dimensions.

@@ -30,6 +30,8 @@ type FocusTask struct {
 
 // FocusViewModel displays all active-flagged tasks across projects.
 type FocusViewModel struct {
+	InteractiveViewState
+
 	config         *config.Config
 	projectService *ProjectService
 
@@ -48,16 +50,8 @@ type FocusViewModel struct {
 	// Filter
 	filter CommonFilterState
 
-	// Navigation
-	cursor int
-
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string
-
 	// UI feedback
-	statusMessage string
-	err           error
-	confirm       ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -591,37 +585,18 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handleFocusFilterSubPrefix(prefix, key)
 
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
-		case "r":
-			return m.changeTaskStatus(models.StatusReview)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		// Due date operations
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// Open date picker
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if ft := m.getTaskAtCursor(); ft != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: ft.Task, Project: ft.Project}
@@ -819,17 +794,7 @@ func (m *FocusViewModel) deleteTask() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {
-	if m.cursor >= len(m.filtered) {
-		m.cursor = len(m.filtered) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *FocusViewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
+	m.cursor = ClampCursor(m.cursor, len(m.filtered))
 }
 
 // HasTextInput returns false for the focus view.

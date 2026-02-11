@@ -41,6 +41,8 @@ const (
 
 // DueDateOverviewModel displays all tasks with due dates across all projects.
 type DueDateOverviewModel struct {
+	InteractiveViewState
+
 	config         *config.Config
 	projectService *ProjectService
 
@@ -57,17 +59,11 @@ type DueDateOverviewModel struct {
 	filter CommonFilterState
 
 	// Navigation
-	cursor      int // Absolute position across all groups
 	totalTasks  int
 	groupStarts []int // Starting index of each group in flattened view
 
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string // "," or "d" when waiting for second key
-
 	// UI feedback
-	statusMessage string
-	err           error
-	confirm       ConfirmDialog
+	err error
 
 	// Dimensions
 	width  int
@@ -506,37 +502,18 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 		return m.handleDueDateFilterSubPrefix(prefix, key)
 
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m.changeTaskStatus(models.StatusInProgress)
-		case "d":
-			return m.changeTaskStatus(models.StatusDone)
-		case "b":
-			return m.changeTaskStatus(models.StatusBlocked)
-		case "x":
-			return m.changeTaskStatus(models.StatusCanceled)
-		case "o":
-			return m.changeTaskStatus(models.StatusTodo)
-		case "r":
-			return m.changeTaskStatus(models.StatusReview)
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m.changeTaskStatus(status)
 		}
 
 	case "d":
-		// Due date operations
-		switch key {
-		case "t":
-			return m.setQuickDueDate(0) // Today
-		case "m":
-			return m.setQuickDueDate(1) // Tomorrow
-		case "w":
-			return m.setQuickDueDate(7) // +1 week
-		case "n":
-			return m.setQuickDueDate(30) // +1 month
-		case "0":
-			return m.clearDueDate()
-		case "d":
-			// Open date picker
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			if isClear {
+				return m.clearDueDate()
+			}
+			return m.setQuickDueDate(days)
+		}
+		if key == "d" {
 			if dt := m.getTaskAtCursor(); dt != nil {
 				return m, func() tea.Msg {
 					return SetDueDateMsg{Task: dt.Task, Project: dt.Project}
@@ -701,17 +678,7 @@ func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *DueDateOverviewModel) clampCursor() {
-	if m.cursor >= m.totalTasks {
-		m.cursor = m.totalTasks - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *DueDateOverviewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
+	m.cursor = ClampCursor(m.cursor, m.totalTasks)
 }
 
 // HasTextInput returns false for the due date overview.

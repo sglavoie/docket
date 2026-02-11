@@ -491,18 +491,8 @@ func (m *InboxProcessorModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m, m.startTask()
-		case "d":
-			return m, m.completeTask()
-		case "b":
-			return m, m.blockTask()
-		case "x":
-			return m, m.cancelTask()
-		case "o":
-			return m, m.reopenTask()
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m, m.changeTaskStatus(status, StatusVerb(status))
 		}
 	case "g":
 		// Navigation operations
@@ -550,22 +540,6 @@ func (m *InboxProcessorModel) changeTaskStatus(newStatus models.TaskStatus, verb
 	m.statusMessage = fmt.Sprintf("Task #%d %s", task.ShortID, verb)
 
 	return m.saveProject()
-}
-
-func (m *InboxProcessorModel) startTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusInProgress, "started")
-}
-func (m *InboxProcessorModel) completeTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusDone, "completed")
-}
-func (m *InboxProcessorModel) blockTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusBlocked, "blocked")
-}
-func (m *InboxProcessorModel) cancelTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusCanceled, "canceled")
-}
-func (m *InboxProcessorModel) reopenTask() tea.Cmd {
-	return m.changeTaskStatus(models.StatusTodo, "reopened")
 }
 
 // sendToWaiting moves the current task to Waiting section and marks it processed.

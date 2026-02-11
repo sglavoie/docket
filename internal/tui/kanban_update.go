@@ -42,24 +42,9 @@ func (m *KanbanViewModel) handleKanbanStatusChange(newStatus models.TaskStatus) 
 	return m.saveWithStatusChange(prevStates, task)
 }
 
-// Convenience wrappers called from keybindings and prefix handlers.
-func (m *KanbanViewModel) handleStatusStart() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusInProgress)
-}
-func (m *KanbanViewModel) handleStatusDone() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusDone)
-}
-func (m *KanbanViewModel) handleStatusBlocked() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusBlocked)
-}
-func (m *KanbanViewModel) handleStatusOpen() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusTodo)
-}
-func (m *KanbanViewModel) handleStatusCancelled() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusCanceled)
-}
-func (m *KanbanViewModel) handleStatusReview() tea.Cmd {
-	return m.handleKanbanStatusChange(models.StatusReview)
+// handleStatusTransition applies a status change for the given status.
+func (m *KanbanViewModel) handleStatusTransition(status models.TaskStatus) tea.Cmd {
+	return m.handleKanbanStatusChange(status)
 }
 
 // saveWithStatusChange saves the project after a status change with workflow

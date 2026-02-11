@@ -69,6 +69,22 @@ func (v *BaseView) ContentHeight() int {
 	return max(v.height-2, 5)
 }
 
+// InteractiveViewState provides common interactive state for views that
+// support cursor navigation, prefix key sequences, status messages, and
+// confirmation dialogs. Embed this in view models to eliminate duplicate
+// field declarations and HasPendingPrefix() methods.
+type InteractiveViewState struct {
+	cursor        int
+	pendingPrefix string
+	statusMessage string
+	confirm       ConfirmDialog
+}
+
+// HasPendingPrefix returns true if waiting for second key in a prefix sequence.
+func (s *InteractiveViewState) HasPendingPrefix() bool {
+	return s.pendingPrefix != ""
+}
+
 // BaseSearchableView extends BaseView with search functionality.
 type BaseSearchableView struct {
 	BaseView

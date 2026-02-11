@@ -163,8 +163,7 @@ type KanbanViewModel struct {
 	columnSort    map[string]SortField // per-column sort field override
 
 	// Multi-select state
-	multiSelectMode bool
-	selectedTasks   map[string]bool // task IDs currently selected
+	MultiSelectState
 
 	// Quick edit component
 	quickEdit *QuickEditComponent
@@ -258,7 +257,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		sortAscending: true,
 		columnSort:    make(map[string]SortField),
 		// Multi-select state
-		selectedTasks: make(map[string]bool),
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		// Quick edit component
 		quickEdit: NewQuickEditComponent(),
 	}

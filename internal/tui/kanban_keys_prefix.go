@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -21,45 +20,15 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
-		// Status operations (support bulk in multi-select mode)
-		switch key {
-		case "s":
+		if status, ok := StatusForPrefixKey(key); ok {
 			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusInProgress)
+				return m, m.handleBulkStatusChange(status)
 			}
-			return m, m.handleStatusStart()
-		case "d":
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusDone)
-			}
-			return m, m.handleStatusDone()
-		case "b":
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusBlocked)
-			}
-			return m, m.handleStatusBlocked()
-		case "o":
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusTodo)
-			}
-			return m, m.handleStatusOpen()
-		case "x":
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusCanceled)
-			}
-			return m, m.handleStatusCancelled()
-		case "r":
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkStatusChange(models.StatusReview)
-			}
-			return m, m.handleStatusReview()
+			return m, m.handleStatusTransition(status)
 		}
 
 	case "!":
-		// Priority quick actions
-		switch key {
-		case "1", "2", "3", "4", "5":
-			priority := int(key[0] - '0')
+		if priority, ok := PriorityForPrefixKey(key); ok {
 			if m.multiSelectMode && m.selectedCount() > 0 {
 				return m, m.handleBulkPriorityChange(priority)
 			}
@@ -75,33 +44,23 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "d":
-		// Due date quick actions
-		now := time.Now()
-		var dueDate *time.Time
-		var desc string
-
-		switch key {
-		case "t":
-			today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
-			dueDate = &today
-			desc = "today"
-		case "m":
-			tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 23, 59, 59, 0, now.Location())
-			dueDate = &tomorrow
-			desc = "tomorrow"
-		case "w":
-			nextWeek := time.Date(now.Year(), now.Month(), now.Day()+7, 23, 59, 59, 0, now.Location())
-			dueDate = &nextWeek
-			desc = "+7 days"
-		case "n":
-			nextMonth := time.Date(now.Year(), now.Month(), now.Day()+30, 23, 59, 59, 0, now.Location())
-			dueDate = &nextMonth
-			desc = "+30 days"
-		case "0":
-			dueDate = nil
-			desc = "cleared"
-		case "d":
-			// Open full date picker (single task only)
+		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+			dueDate, desc := dueDateFromDays(days, isClear)
+			if m.multiSelectMode && m.selectedCount() > 0 {
+				return m, m.handleBulkDueDateChange(dueDate, desc)
+			}
+			task := m.getSelectedTask()
+			if task == nil {
+				return m, nil
+			}
+			prevStates := captureTaskStates(m.Project.Tasks)
+			m.Project.MutateTask(task.ID, func(t *models.Task) {
+				t.DueDate = dueDate
+			})
+			m.statusMessage = fmt.Sprintf("Due date %s", desc)
+			return m, m.saveWithStatusChange(prevStates, task)
+		}
+		if key == "d" {
 			if m.multiSelectMode && m.selectedCount() > 0 {
 				return m, nil
 			}
@@ -113,23 +72,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return SetDueDateMsg{Task: task, Project: project}
 			}
-		default:
-			return m, nil
 		}
-
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			return m, m.handleBulkDueDateChange(dueDate, desc)
-		}
-		task := m.getSelectedTask()
-		if task == nil {
-			return m, nil
-		}
-		prevStates := captureTaskStates(m.Project.Tasks)
-		m.Project.MutateTask(task.ID, func(t *models.Task) {
-			t.DueDate = dueDate
-		})
-		m.statusMessage = fmt.Sprintf("Due date %s", desc)
-		return m, m.saveWithStatusChange(prevStates, task)
 
 	case "g":
 		// Go/navigation operations

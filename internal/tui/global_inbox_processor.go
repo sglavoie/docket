@@ -293,18 +293,8 @@ func (m *GlobalInboxProcessorModel) handlePrefixKey(key string) (tea.Model, tea.
 
 	switch prefix {
 	case ",":
-		// Status operations
-		switch key {
-		case "s":
-			return m, m.startTask()
-		case "d":
-			return m, m.completeTask()
-		case "b":
-			return m, m.blockTask()
-		case "x":
-			return m, m.cancelTask()
-		case "o":
-			return m, m.reopenTask()
+		if status, ok := StatusForPrefixKey(key); ok {
+			return m, m.changeTaskStatus(status, StatusVerb(status))
 		}
 	case "g":
 		// Navigation operations
