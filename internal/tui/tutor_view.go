@@ -1424,10 +1424,11 @@ Higher scores appear first. Tasks without scores appear at the end.
 
 # Score Badge
 
-Tasks with a scoring profile show a badge like [S:42] in green when
-all dimensions are explicitly set, or [S:~42] in orange when some
-dimensions use default values. The badge appears in the priority view
-and kanban task rows.
+Tasks with a scoring profile show a badge like [S:72] in green when
+all dimensions are explicitly set, or [S:~50] in orange when some
+dimensions use default values. The number is a normalized 0-300 score
+where 150 means all dimensions are at their defaults. The badge appears
+in the priority view and kanban task rows.
 
 # Score in Sidebar
 
@@ -1436,9 +1437,9 @@ the computed total when a scored task is selected.
 
 # Score Threshold Filter
 
-Use the FS prefix to filter tasks by minimum score. Press F then S
-to open the score filter popup. Keys 1 through 5 set thresholds
-at 10, 25, 50, 75, and 100 respectively. Press 0 to clear the
+Use the FS prefix to filter tasks by minimum normalized score (0-300).
+Press F then S to open the score filter popup. Keys 1 through 9 set
+thresholds at 30, 60, 90, ..., 270 respectively. Press 0 to clear the
 filter. Works in both project tree and kanban views.`,
 		},
 		{

@@ -66,7 +66,7 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 	}
 	if f.ScoreMin > 0 && cfg != nil {
 		if profile := cfg.GetProjectScoringProfile(projectID); profile != nil {
-			if scoring.ComputeScore(task, profile) < f.ScoreMin {
+			if scoring.NormalizedScore(task, profile) < f.ScoreMin {
 				return false
 			}
 		}

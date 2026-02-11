@@ -36,10 +36,11 @@ func runScoreShow(cmd *cobra.Command, args []string) error {
 	}
 
 	totalScore := scoring.ComputeScore(task, profile)
+	normalizedScore := scoring.ScorePercent(totalScore, profile)
 	results := scoring.ScoreBreakdown(task, profile)
 
 	fmt.Printf("Task #%d: %s\n", task.ShortID, task.Title)
 	fmt.Printf("Profile: %s (%s)\n\n", profile.Name, profile.Formula)
-	fmt.Println(scoring.FormatBreakdown(results, profile.Formula, totalScore))
+	fmt.Println(scoring.FormatBreakdown(results, profile.Formula, totalScore, normalizedScore))
 	return nil
 }

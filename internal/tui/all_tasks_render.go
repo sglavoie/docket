@@ -273,8 +273,8 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 	scoreBadge := ""
 	if profile := m.config.GetProjectScoringProfile(item.Project.ID); profile != nil {
 		if HasManualScores(task, profile) {
-			score := scoring.ComputeScore(task, profile)
-			scoreBadge = fmt.Sprintf(" [S:%d]", int(score))
+			pct := scoring.NormalizedScore(task, profile)
+			scoreBadge = fmt.Sprintf(" [S:%d]", int(pct))
 		}
 	}
 

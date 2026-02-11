@@ -291,23 +291,23 @@ func handleFilterAttrPointsKey(key string, f *CommonFilterState) bool {
 func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) bool {
 	switch key {
 	case "1":
-		f.ScoreMin = 10
+		f.ScoreMin = 30
 	case "2":
-		f.ScoreMin = 25
+		f.ScoreMin = 60
 	case "3":
-		f.ScoreMin = 50
+		f.ScoreMin = 90
 	case "4":
-		f.ScoreMin = 75
+		f.ScoreMin = 120
 	case "5":
-		f.ScoreMin = 100
-	case "6":
 		f.ScoreMin = 150
+	case "6":
+		f.ScoreMin = 180
 	case "7":
-		f.ScoreMin = 200
+		f.ScoreMin = 210
 	case "8":
-		f.ScoreMin = 250
+		f.ScoreMin = 240
 	case "9":
-		f.ScoreMin = 300
+		f.ScoreMin = 270
 	case "c":
 		if cfg != nil && cfg.ScoreFilterCustom != nil {
 			f.ScoreMin = *cfg.ScoreFilterCustom

@@ -286,22 +286,78 @@ func MinScore(profile *ScoringProfile) float64 {
 	return applyFormula(results, profile.Formula)
 }
 
-// ScorePercent normalizes a score to the 0-100 range using the profile's min/max.
-// Returns 0 if max == min (degenerate profile).
+// DefaultScore returns the score when all dimensions use their default values.
+func DefaultScore(profile *ScoringProfile) float64 {
+	results := make([]DimensionResult, len(profile.Dimensions))
+	for i, dim := range profile.Dimensions {
+		results[i] = DimensionResult{
+			DimensionID:   dim.ID,
+			DimensionName: dim.Name,
+			Value:         dim.Default,
+			Weight:        dim.Weight,
+			Role:          dim.Role,
+		}
+	}
+	return applyFormula(results, profile.Formula)
+}
+
+// isMultiplicativeFormula returns true for formulas whose output grows
+// exponentially with dimension values (product-based).
+func isMultiplicativeFormula(f Formula) bool {
+	return f == FormulaMultiply || f == FormulaICE || f == FormulaRICE
+}
+
+// ScorePercent normalizes a raw score to a 0-300 scale using piecewise mapping
+// centered on the default score (which maps to 150). Below default uses linear
+// interpolation; above default uses logarithmic scaling for multiplicative
+// formulas and linear for additive ones.
 func ScorePercent(score float64, profile *ScoringProfile) float64 {
 	minS := MinScore(profile)
 	maxS := MaxScore(profile)
+	defS := DefaultScore(profile)
+
+	// Degenerate: no range at all
 	if maxS <= minS {
-		return 0
+		return 150
 	}
-	pct := (score - minS) / (maxS - minS) * 100
+
+	var pct float64
+	if score <= defS {
+		// Below or at default: linear [minS, defS] -> [0, 150]
+		if defS <= minS {
+			// No below-default range
+			pct = 0
+		} else {
+			pct = (score - minS) / (defS - minS) * 150
+		}
+	} else {
+		// Above default: [defS, maxS] -> [150, 300]
+		if defS >= maxS {
+			// No above-default range
+			pct = 300
+		} else if isMultiplicativeFormula(profile.Formula) && defS > 0 && score > 0 {
+			// Log scaling for product formulas
+			pct = 150 + math.Log(score/defS)/math.Log(maxS/defS)*150
+		} else {
+			// Linear scaling for additive formulas
+			pct = 150 + (score-defS)/(maxS-defS)*150
+		}
+	}
+
+	// Clamp to [0, 300]
 	if pct < 0 {
 		return 0
 	}
-	if pct > 100 {
-		return 100
+	if pct > 300 {
+		return 300
 	}
 	return pct
+}
+
+// NormalizedScore computes the normalized 0-300 score for a task.
+// Convenience wrapper around ComputeScore + ScorePercent.
+func NormalizedScore(task *models.Task, profile *ScoringProfile) float64 {
+	return ScorePercent(ComputeScore(task, profile), profile)
 }
 
 // FormatScore formats a float score as a display string (truncated to integer).
@@ -310,7 +366,7 @@ func FormatScore(score float64) string {
 }
 
 // FormatBreakdown returns a multi-line string showing each dimension's contribution.
-func FormatBreakdown(results []DimensionResult, formula Formula, totalScore float64) string {
+func FormatBreakdown(results []DimensionResult, formula Formula, totalScore float64, normalizedScore float64) string {
 	var lines []string
 	for _, r := range results {
 		roleStr := ""
@@ -327,7 +383,7 @@ func FormatBreakdown(results []DimensionResult, formula Formula, totalScore floa
 		lines = append(lines, fmt.Sprintf("  %s: %d (%s%s%s)", r.DimensionName, r.Value, r.Source, weightStr, roleStr))
 	}
 	lines = append(lines, fmt.Sprintf("  Formula: %s", formula))
-	lines = append(lines, fmt.Sprintf("  Score: %d", int(totalScore)))
+	lines = append(lines, fmt.Sprintf("  Score: %d/300 (raw: %d)", int(normalizedScore), int(totalScore)))
 	return joinLines(lines)
 }
 

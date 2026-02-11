@@ -27,13 +27,13 @@ func HasManualScores(task *models.Task, profile *scoring.ScoringProfile) bool {
 // red(196) < orange(208) < yellow(226) < light-green(118) < green(42)
 func scoreColor(pct float64) lipgloss.Color {
 	switch {
-	case pct < 20:
-		return lipgloss.Color("196")
-	case pct < 40:
-		return lipgloss.Color("208")
 	case pct < 60:
+		return lipgloss.Color("196")
+	case pct < 120:
+		return lipgloss.Color("208")
+	case pct < 180:
 		return lipgloss.Color("226")
-	case pct < 80:
+	case pct < 240:
 		return lipgloss.Color("118")
 	default:
 		return lipgloss.Color("42")
@@ -53,9 +53,9 @@ func RenderScoreBadge(task *models.Task, profile *scoring.ScoringProfile) string
 	style := lipgloss.NewStyle().Foreground(color)
 
 	if HasManualScores(task, profile) {
-		return style.Render(fmt.Sprintf("[S:%d]", int(score)))
+		return style.Render(fmt.Sprintf("[S:%d]", int(pct)))
 	}
-	return style.Render(fmt.Sprintf("[S:~%d]", int(score)))
+	return style.Render(fmt.Sprintf("[S:~%d]", int(pct)))
 }
 
 // RenderScoreBar returns a block character sized by percentage, colored by gradient.
@@ -70,7 +70,7 @@ func RenderScoreBar(task *models.Task, profile *scoring.ScoringProfile) string {
 	style := lipgloss.NewStyle().Foreground(color)
 
 	bars := []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-	idx := int(pct / 12.5)
+	idx := int(pct / 37.5)
 	if idx >= len(bars) {
 		idx = len(bars) - 1
 	}

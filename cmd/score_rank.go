@@ -68,9 +68,10 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Tasks ranked by %s score (project: %s):\n\n", profile.Name, project.Name)
 	for i, r := range ranked {
-		fmt.Printf("  %2d. [S:%s] #%-4d %-6s %s\n",
+		pct := scoring.ScorePercent(r.score, profile)
+		fmt.Printf("  %2d. [S:%d] #%-4d %-6s %s\n",
 			i+1,
-			scoring.FormatScore(r.score),
+			int(pct),
 			r.task.ShortID,
 			r.task.Type.Icon()+"/"+string(r.task.Status)[:3],
 			r.task.Title,

@@ -149,8 +149,9 @@ func (m *TaskEditorModel) renderScoreSummary() string {
 	totalScore := scoring.ComputeScore(m.task, profile)
 	results := scoring.ScoreBreakdown(m.task, profile)
 
+	pct := scoring.ScorePercent(totalScore, profile)
 	b.WriteString(renderFormLabelShared("Score", -1, m.focusIndex))
-	b.WriteString(fmt.Sprintf("%d", int(totalScore)))
+	b.WriteString(fmt.Sprintf("%d/300", int(pct)))
 	b.WriteString("  ")
 
 	// Compact dimension summary

@@ -282,7 +282,7 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 	// Apply score threshold filter
 	if m.filter.ScoreMin > 0 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			if scoring.ComputeScore(node.Task, profile) < m.filter.ScoreMin {
+			if scoring.NormalizedScore(node.Task, profile) < m.filter.ScoreMin {
 				return false
 			}
 		}

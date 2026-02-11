@@ -448,23 +448,23 @@ func (m *ProjectTreeModel) handleFilterAttrPointsPrefix(key string) (tea.Model, 
 func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "1":
-		m.filter.ScoreMin = 10
+		m.filter.ScoreMin = 30
 	case "2":
-		m.filter.ScoreMin = 25
+		m.filter.ScoreMin = 60
 	case "3":
-		m.filter.ScoreMin = 50
+		m.filter.ScoreMin = 90
 	case "4":
-		m.filter.ScoreMin = 75
+		m.filter.ScoreMin = 120
 	case "5":
-		m.filter.ScoreMin = 100
-	case "6":
 		m.filter.ScoreMin = 150
+	case "6":
+		m.filter.ScoreMin = 180
 	case "7":
-		m.filter.ScoreMin = 200
+		m.filter.ScoreMin = 210
 	case "8":
-		m.filter.ScoreMin = 250
+		m.filter.ScoreMin = 240
 	case "9":
-		m.filter.ScoreMin = 300
+		m.filter.ScoreMin = 270
 	case "c":
 		// Apply persisted custom value
 		if m.config != nil && m.config.ScoreFilterCustom != nil {

@@ -450,9 +450,139 @@ func TestFormatBreakdown(t *testing.T) {
 		{DimensionName: "Impact", Value: 4, Source: "manual", Weight: 2, Role: RoleNumerator},
 		{DimensionName: "Effort", Value: 3, Source: "derived", Weight: 1, Role: RoleDenominator},
 	}
-	out := FormatBreakdown(results, FormulaRICE, 1.33)
+	out := FormatBreakdown(results, FormulaRICE, 1.33, 55.0)
 	if out == "" {
 		t.Error("expected non-empty breakdown")
+	}
+}
+
+func TestDefaultScore(t *testing.T) {
+	iceProfile := NewICEProfile()
+	iceDefault := DefaultScore(&iceProfile)
+	// ICE default: 5 * 5 * 5 = 125
+	if iceDefault != 125 {
+		t.Errorf("ICE default: expected 125, got %f", iceDefault)
+	}
+
+	riceProfile := NewRICEProfile()
+	riceDefault := DefaultScore(&riceProfile)
+	// RICE default: (5 * 3 * 3) / 5 = 9
+	if riceDefault != 9 {
+		t.Errorf("RICE default: expected 9, got %f", riceDefault)
+	}
+
+	wsjfProfile := NewWSJFProfile()
+	wsjfDefault := DefaultScore(&wsjfProfile)
+	// WSJF default: (5 + 5 + 5) / 5 = 3
+	if wsjfDefault != 3 {
+		t.Errorf("WSJF default: expected 3, got %f", wsjfDefault)
+	}
+}
+
+func TestScorePercentDefaultIs150(t *testing.T) {
+	presets := []struct {
+		name    string
+		profile ScoringProfile
+	}{
+		{"ICE", NewICEProfile()},
+		{"RICE", NewRICEProfile()},
+		{"WSJF", NewWSJFProfile()},
+	}
+
+	for _, p := range presets {
+		defScore := DefaultScore(&p.profile)
+		pct := ScorePercent(defScore, &p.profile)
+		if math.Abs(pct-150) > 0.01 {
+			t.Errorf("%s: default score should map to 150, got %f", p.name, pct)
+		}
+	}
+}
+
+func TestScorePercentBounds(t *testing.T) {
+	presets := []struct {
+		name    string
+		profile ScoringProfile
+	}{
+		{"ICE", NewICEProfile()},
+		{"RICE", NewRICEProfile()},
+		{"WSJF", NewWSJFProfile()},
+	}
+
+	for _, p := range presets {
+		minS := MinScore(&p.profile)
+		maxS := MaxScore(&p.profile)
+
+		pctMin := ScorePercent(minS, &p.profile)
+		if math.Abs(pctMin) > 0.01 {
+			t.Errorf("%s: min score should map to 0%%, got %f", p.name, pctMin)
+		}
+
+		pctMax := ScorePercent(maxS, &p.profile)
+		if math.Abs(pctMax-300) > 0.01 {
+			t.Errorf("%s: max score should map to 300, got %f", p.name, pctMax)
+		}
+	}
+}
+
+func TestScorePercentAboveDefault(t *testing.T) {
+	// For ICE (multiplicative), one dimension at 6 instead of 5 should produce
+	// noticeably more than 153 (which linear would give).
+	iceProfile := NewICEProfile()
+	// Score with one dim=6, others=5: 6*5*5 = 150
+	task := &models.Task{
+		ScoreDimensions: map[string]int{"impact": 6},
+	}
+	score := ComputeScore(task, &iceProfile)
+	pct := ScorePercent(score, &iceProfile)
+
+	// With log scaling, expect roughly 162 (not 153 from linear)
+	if pct <= 153 {
+		t.Errorf("ICE log scaling: one dim at 6 should produce pct > 153, got %f", pct)
+	}
+	if pct > 180 {
+		t.Errorf("ICE log scaling: one dim at 6 shouldn't exceed 180, got %f", pct)
+	}
+}
+
+func TestScorePercentBelowDefault(t *testing.T) {
+	iceProfile := NewICEProfile()
+	// Score with one dim=3, others=5: 3*5*5 = 75
+	task := &models.Task{
+		ScoreDimensions: map[string]int{"impact": 3},
+	}
+	score := ComputeScore(task, &iceProfile)
+	pct := ScorePercent(score, &iceProfile)
+
+	// Linear below default: (75 - 1) / (125 - 1) * 150 ≈ 89.5
+	if pct < 75 || pct > 105 {
+		t.Errorf("ICE below default: expected pct around 90, got %f", pct)
+	}
+}
+
+func TestScorePercentDegenerate(t *testing.T) {
+	// All dimensions with same min/max/default
+	profile := ScoringProfile{
+		ID: "degen", Name: "Degen", Formula: FormulaWeightedSum,
+		Dimensions: []ScoringDimension{
+			{ID: "a", Name: "A", Min: 5, Max: 5, Default: 5, Weight: 1, Source: SourceManual},
+		},
+	}
+	pct := ScorePercent(5, &profile)
+	if pct != 150 {
+		t.Errorf("degenerate profile: expected 150, got %f", pct)
+	}
+}
+
+func TestNormalizedScore(t *testing.T) {
+	profile := NewICEProfile()
+	task := &models.Task{
+		ScoreDimensions: map[string]int{"impact": 7, "confidence": 8, "ease": 6},
+	}
+	score := ComputeScore(task, &profile)
+	expected := ScorePercent(score, &profile)
+	actual := NormalizedScore(task, &profile)
+	if actual != expected {
+		t.Errorf("NormalizedScore should equal ScorePercent(ComputeScore(...)): got %f, expected %f", actual, expected)
 	}
 }
 
