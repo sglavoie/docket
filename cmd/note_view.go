@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -35,7 +34,7 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 	var glowEnabled bool
 
 	if noteGlobal {
-		dir, gErr := globalNotesDir()
+		dir, cfg, gErr := globalNotesDir()
 		if gErr != nil {
 			return gErr
 		}
@@ -44,8 +43,6 @@ func runNoteView(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		mgr := config.NewManager(GetConfigPath())
-		cfg, _ := mgr.Load()
 		glowEnabled = cfg.GlowEnabled
 	} else {
 		project, cfg, _, err := LoadCurrentProject()

@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -251,10 +250,9 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid rule: %w", err)
 	}
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	cfg.AddWorkflowRule(*rule)

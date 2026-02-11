@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -109,10 +108,9 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	ruleID := args[0]
 
 	// Load config
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	// Get the rule to edit

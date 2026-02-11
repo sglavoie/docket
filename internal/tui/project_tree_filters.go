@@ -10,7 +10,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 func (m *ProjectTreeModel) buildTree() {
@@ -204,28 +203,9 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		}
 	}
 
-	// Apply type filter
-	if m.filter.Type != "" && node.Task.Type != m.filter.Type {
+	// Apply common filters (type, status, priority, tags, due date, attrs, score)
+	if !passesCommonFilters(node.Task, &m.filter.CommonFilterState, m.project.ID, m.config) {
 		return false
-	}
-
-	// Apply status filter
-	if m.filter.Status != "" && node.Task.Status != m.filter.Status {
-		return false
-	}
-
-	// Apply priority filter (1 = high priority only, showing tasks with priority <= 2)
-	if m.filter.Priority == 1 && node.Task.Priority > 2 {
-		return false
-	}
-
-	// Apply tag filter (AND logic: task must have ALL selected tags)
-	if len(m.filter.Tags) > 0 {
-		for tag := range m.filter.Tags {
-			if !node.Task.HasTag(tag) {
-				return false
-			}
-		}
 	}
 
 	// Apply custom section tab filter (must belong to the selected custom section)
@@ -244,28 +224,6 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		}
 	}
 
-	// Apply due date filter
-	if m.filter.DueDate != DueDateAll {
-		switch m.filter.DueDate {
-		case DueDateOverdue:
-			if !isOverdue(node.Task) {
-				return false
-			}
-		case DueDateToday:
-			if !isDueToday(node.Task) {
-				return false
-			}
-		case DueDateThisWeek:
-			if !isDueThisWeek(node.Task) {
-				return false
-			}
-		case DueDateNone:
-			if node.Task.DueDate != nil {
-				return false
-			}
-		}
-	}
-
 	// Apply actionable filter (hide tasks not ready to work on)
 	if m.filter.Actionable {
 		// Hide tasks with incomplete dependencies
@@ -279,20 +237,6 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		// Hide Inbox/Next/Waiting/Someday/Review tasks (GTD-aligned - not immediately actionable)
 		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview {
 			return false
-		}
-	}
-
-	// Apply attribute filters
-	if !passesAttrFilters(node.Task, m.filter.Attrs) {
-		return false
-	}
-
-	// Apply score threshold filter
-	if m.filter.ScoreMin > 0 && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			if scoring.NormalizedScore(node.Task, profile) < m.filter.ScoreMin {
-				return false
-			}
 		}
 	}
 

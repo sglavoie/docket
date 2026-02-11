@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -111,10 +110,9 @@ func runTemplateInit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	// Handle --changed-defaults flag (requires --force for safety)

@@ -74,12 +74,8 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
-	}
-
-	if err := storage.SaveProject(project); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, nil); err != nil {
+		return err
 	}
 
 	if isURL {

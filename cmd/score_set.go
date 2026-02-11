@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var scoreSetCmd = &cobra.Command{
@@ -75,8 +73,8 @@ func runScoreSet(cmd *cobra.Command, args []string) error {
 	}
 
 	task.UpdatedAt = time.Now()
-	if err := storage.SaveProject(project); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
+	if err := SaveProject(project, nil); err != nil {
+		return err
 	}
 	if err := configManager.Save(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)

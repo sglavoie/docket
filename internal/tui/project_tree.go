@@ -126,15 +126,9 @@ type treeRefreshMsg struct{}
 
 // FilterState contains all task filtering options.
 type FilterState struct {
-	Type       models.TaskType
-	Status     models.TaskStatus // filter by specific status
-	Priority   int               // 0=all, 1=high only (<=2)
-	Tags       map[string]bool   // filter by tag names (AND logic)
-	Sections   map[string]bool   // filter by section names (OR logic)
-	DueDate    DueDateFilter     // filter by due date
-	Actionable bool              // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
-	Attrs      map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
-	ScoreMin   float64           // minimum score threshold (0 = no filter)
+	CommonFilterState                 // embedded common filter fields
+	Sections          map[string]bool // filter by section names (OR logic)
+	Actionable        bool            // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
 }
 
 // QuickEditState contains state for inline task editing.
@@ -236,14 +230,11 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		projectService: NewProjectService(),
 		cursor:         0,
 		filter: FilterState{
-			Type:       "",
-			Status:     "",
-			Priority:   0,
-			Tags:       make(map[string]bool),
-			Sections:   make(map[string]bool),
-			DueDate:    DueDateAll,
-			Actionable: false,
-			Attrs:      make(map[string]string),
+			CommonFilterState: CommonFilterState{
+				Tags:  make(map[string]bool),
+				Attrs: make(map[string]string),
+			},
+			Sections: make(map[string]bool),
 		},
 		sortField:     SortByDefault,
 		sortAscending: true,

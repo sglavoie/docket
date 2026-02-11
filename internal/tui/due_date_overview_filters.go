@@ -44,70 +44,9 @@ func (m *DueDateOverviewModel) handleDueDateFilterPrefix(key string) (tea.Model,
 	return m, nil
 }
 
-// handleDueDateFilterTypePrefix handles filter type sub-prefix.
-func (m *DueDateOverviewModel) handleDueDateFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterTypeKey(key, &m.filter) {
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleDueDateFilterStatusPrefix handles filter status sub-prefix.
-func (m *DueDateOverviewModel) handleDueDateFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterStatusKey(key, &m.filter) {
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleDueDateFilterAttrPrefix handles the attribute filter sub-prefix.
-func (m *DueDateOverviewModel) handleDueDateFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	newPrefix, handled := handleFilterAttrKey(key, &m.filter)
-	if !handled {
-		return m, nil
-	}
-	if newPrefix != "" {
-		m.pendingPrefix = newPrefix
-		return m, nil
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, nil
-}
-
-// handleDueDateFilterAttrSubPrefix handles attribute value sub-prefixes.
-func (m *DueDateOverviewModel) handleDueDateFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	var handled bool
-	switch prefix {
-	case "Fas":
-		handled = handleFilterAttrSeverityKey(key, &m.filter)
-	case "Far":
-		handled = handleFilterAttrReproducibleKey(key, &m.filter)
-	case "Fae":
-		handled = handleFilterAttrEffortKey(key, &m.filter)
-	case "Fac":
-		handled = handleFilterAttrCategoryKey(key, &m.filter)
-	case "Fav":
-		handled = handleFilterAttrValueKey(key, &m.filter)
-	case "Faw":
-		handled = handleFilterAttrWorktypeKey(key, &m.filter)
-	case "Fao":
-		handled = handleFilterAttrScopeKey(key, &m.filter)
-	case "Fap":
-		handled = handleFilterAttrPointsKey(key, &m.filter)
-	}
-	if handled {
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleDueDateFilterScorePrefix handles the score threshold sub-prefix.
-func (m *DueDateOverviewModel) handleDueDateFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterScoreKey(key, &m.filter, m.config) {
+// handleDueDateFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
+func (m *DueDateOverviewModel) handleDueDateFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
 		m.loadTasksWithDueDates()
 		m.clampCursor()
 	}

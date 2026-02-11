@@ -36,7 +36,7 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if noteGlobal {
-		dir, gErr := globalNotesDir()
+		dir, _, gErr := globalNotesDir()
 		if gErr != nil {
 			return gErr
 		}

@@ -286,6 +286,30 @@ func handleFilterAttrPointsKey(key string, f *CommonFilterState) bool {
 	return true
 }
 
+// handleFilterAttrSubKey dispatches attribute sub-prefix keys to the appropriate handler.
+// Returns true if the key was handled.
+func handleFilterAttrSubKey(prefix, key string, f *CommonFilterState) bool {
+	switch prefix {
+	case "Fas":
+		return handleFilterAttrSeverityKey(key, f)
+	case "Far":
+		return handleFilterAttrReproducibleKey(key, f)
+	case "Fae":
+		return handleFilterAttrEffortKey(key, f)
+	case "Fac":
+		return handleFilterAttrCategoryKey(key, f)
+	case "Fav":
+		return handleFilterAttrValueKey(key, f)
+	case "Faw":
+		return handleFilterAttrWorktypeKey(key, f)
+	case "Fao":
+		return handleFilterAttrScopeKey(key, f)
+	case "Fap":
+		return handleFilterAttrPointsKey(key, f)
+	}
+	return false
+}
+
 // handleFilterScoreKey applies a score threshold filter based on the key pressed.
 // Returns true if the key was handled.
 func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) bool {
@@ -318,6 +342,37 @@ func handleFilterScoreKey(key string, f *CommonFilterState, cfg *config.Config) 
 		return false
 	}
 	return true
+}
+
+// dispatchFilterSubPrefix handles a filter sub-prefix key press for views using
+// CommonFilterState. It routes the key to the appropriate handler and returns
+// true if the filter state changed (caller should refresh). When a new
+// sub-prefix popup is needed (e.g., Fa → Fas), setPendingPrefix is called and
+// false is returned (no refresh needed, just show the next popup).
+func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string)) bool {
+	switch prefix {
+	case "Ft":
+		return handleFilterTypeKey(key, f)
+	case "Fs":
+		return handleFilterStatusKey(key, f)
+	case "Fd":
+		return handleFilterDueDateKey(key, f)
+	case "Fa":
+		newPrefix, handled := handleFilterAttrKey(key, f)
+		if !handled {
+			return false
+		}
+		if newPrefix != "" {
+			setPendingPrefix(newPrefix)
+			return false
+		}
+		return true
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return handleFilterAttrSubKey(prefix, key, f)
+	case "FS":
+		return handleFilterScoreKey(key, f, cfg)
+	}
+	return false
 }
 
 // buildCommonFilterPrefixHints builds the dynamic F-prefix hint list for views

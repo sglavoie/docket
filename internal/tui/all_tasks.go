@@ -802,16 +802,8 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "F":
 		return m.handleAllTasksFilterPrefix(key)
-	case "Ft":
-		return m.handleAllTasksFilterTypePrefix(key)
-	case "Fs":
-		return m.handleAllTasksFilterStatusPrefix(key)
-	case "Fa":
-		return m.handleAllTasksFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handleAllTasksFilterAttrSubPrefix(prefix, key)
-	case "FS":
-		return m.handleAllTasksFilterScorePrefix(key)
+	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleAllTasksFilterSubPrefix(prefix, key)
 
 	case ",":
 		// Status operations

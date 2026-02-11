@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -87,10 +86,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.LoadOrCreate()
+	cfg, configManager, err := LoadConfig()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	return tui.RunApp(cfg, configManager, tui.WithCLIReference(CLIReference))

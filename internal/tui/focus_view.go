@@ -586,16 +586,8 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	switch prefix {
 	case "F":
 		return m.handleFocusFilterPrefix(key)
-	case "Ft":
-		return m.handleFocusFilterTypePrefix(key)
-	case "Fs":
-		return m.handleFocusFilterStatusPrefix(key)
-	case "Fa":
-		return m.handleFocusFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handleFocusFilterAttrSubPrefix(prefix, key)
-	case "FS":
-		return m.handleFocusFilterScorePrefix(key)
+	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleFocusFilterSubPrefix(prefix, key)
 
 	case ",":
 		// Status operations

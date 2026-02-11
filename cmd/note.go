@@ -22,12 +22,11 @@ func init() {
 	noteCmd.PersistentFlags().BoolVar(&noteGlobal, "global", false, "operate on global notes")
 }
 
-// globalNotesDir returns the global notes directory path from the config.
-func globalNotesDir() (string, error) {
-	mgr := config.NewManager(GetConfigPath())
-	cfg, err := mgr.Load()
+// globalNotesDir returns the global notes directory path and config.
+func globalNotesDir() (string, *config.Config, error) {
+	cfg, _, err := LoadConfigStrict()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return storage.GlobalNotesDir(cfg.DataDir), nil
+	return storage.GlobalNotesDir(cfg.DataDir), cfg, nil
 }

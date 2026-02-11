@@ -411,14 +411,8 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "F":
 		return m.handleDailyReviewFilterPrefix(key)
-	case "Ft":
-		return m.handleDailyReviewFilterTypePrefix(key)
-	case "Fa":
-		return m.handleDailyReviewFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handleDailyReviewFilterAttrSubPrefix(prefix, key)
-	case "FS":
-		return m.handleDailyReviewFilterScorePrefix(key)
+	case "Ft", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleDailyReviewFilterSubPrefix(prefix, key)
 
 	case ",":
 		// Status operations

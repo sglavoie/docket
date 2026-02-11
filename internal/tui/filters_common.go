@@ -96,9 +96,8 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.ScoreMin = 0
 }
 
-// renderCommonFilterIndicator returns a compact badge of all active common filters.
-// Returns empty string if no filters are active.
-func renderCommonFilterIndicator(f *CommonFilterState) string {
+// commonFilterParts returns the list of active filter description strings.
+func commonFilterParts(f *CommonFilterState) []string {
 	var parts []string
 
 	if f.Priority == 1 {
@@ -138,9 +137,20 @@ func renderCommonFilterIndicator(f *CommonFilterState) string {
 		parts = append(parts, fmt.Sprintf("score>=%.0f", f.ScoreMin))
 	}
 
+	return parts
+}
+
+// renderCommonFilterIndicator returns a compact badge of all active common filters.
+// Returns empty string if no filters are active.
+func renderCommonFilterIndicator(f *CommonFilterState) string {
+	return renderFilterBadge(commonFilterParts(f))
+}
+
+// renderFilterBadge renders a styled filter badge from a parts list.
+// Returns empty string if parts is empty.
+func renderFilterBadge(parts []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-
 	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
 }

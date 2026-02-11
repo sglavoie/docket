@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/sglavoie/tt/internal/config"
 )
 
 var workflowShowCmd = &cobra.Command{
@@ -34,10 +32,9 @@ func init() {
 func runWorkflowShow(cmd *cobra.Command, args []string) error {
 	ruleID := args[0]
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, _, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	rule := cfg.GetWorkflowRule(ruleID)

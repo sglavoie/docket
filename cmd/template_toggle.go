@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -29,10 +28,9 @@ func init() {
 func runTemplateToggle(cmd *cobra.Command, args []string) error {
 	templateID := args[0]
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	t := cfg.GetTaskTemplate(templateID)

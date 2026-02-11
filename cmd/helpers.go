@@ -76,7 +76,7 @@ func ConfirmStrict(prompt string, force bool) bool {
 	return strings.TrimSpace(strings.ToLower(response)) == "yes"
 }
 
-// LoadConfig loads the configuration file.
+// LoadConfig loads the configuration file, creating it if it does not exist.
 // Returns the config, manager, and any error encountered.
 func LoadConfig() (*config.Config, *config.Manager, error) {
 	configManager := config.NewManager(GetConfigPath())
@@ -85,6 +85,21 @@ func LoadConfig() (*config.Config, *config.Manager, error) {
 		return nil, nil, fmt.Errorf("failed to load config: %w", err)
 	}
 	// Apply config-driven storage settings
+	if cfg.MaxActivityEntries != nil {
+		storage.MaxActivityEntries = *cfg.MaxActivityEntries
+	}
+	return cfg, configManager, nil
+}
+
+// LoadConfigStrict loads the configuration file, returning an error if it does
+// not exist. Use this instead of LoadConfig when the config must already exist
+// (e.g., workflow and template commands that operate on existing config data).
+func LoadConfigStrict() (*config.Config, *config.Manager, error) {
+	configManager := config.NewManager(GetConfigPath())
+	cfg, err := configManager.Load()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load config: %w", err)
+	}
 	if cfg.MaxActivityEntries != nil {
 		storage.MaxActivityEntries = *cfg.MaxActivityEntries
 	}

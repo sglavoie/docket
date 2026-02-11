@@ -138,15 +138,9 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 func (m *ProjectTreeModel) hasActiveFilters() bool {
 	return m.activeSavedView != "" ||
 		m.viewMode == ViewModeCompleted ||
-		m.filter.Priority != 0 ||
-		m.filter.Type != "" ||
-		m.filter.Status != "" ||
-		len(m.filter.Tags) > 0 ||
+		hasActiveCommonFilters(&m.filter.CommonFilterState) ||
 		len(m.filter.Sections) > 0 ||
-		m.filter.DueDate != DueDateAll ||
-		m.filter.Actionable ||
-		len(m.filter.Attrs) > 0 ||
-		m.filter.ScoreMin > 0
+		m.filter.Actionable
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
@@ -162,22 +156,11 @@ func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 	if m.viewMode == ViewModeCompleted {
 		parts = append(parts, "completed")
 	}
-	if m.filter.Priority == 1 {
-		parts = append(parts, "!Hi")
-	}
-	if m.filter.Type != "" {
-		parts = append(parts, "type:"+string(m.filter.Type))
-	}
-	if m.filter.Status != "" {
-		parts = append(parts, "status:"+string(m.filter.Status))
-	}
-	if len(m.filter.Tags) > 0 {
-		var tagNames []string
-		for tag := range m.filter.Tags {
-			tagNames = append(tagNames, "#"+tag)
-		}
-		parts = append(parts, strings.Join(tagNames, " "))
-	}
+
+	// Add common filter parts
+	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
+
+	// Add view-specific filter parts
 	if len(m.filter.Sections) > 0 {
 		var secNames []string
 		for sec := range m.filter.Sections {
@@ -185,35 +168,11 @@ func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 		}
 		parts = append(parts, strings.Join(secNames, " "))
 	}
-	switch m.filter.DueDate {
-	case DueDateOverdue:
-		parts = append(parts, "due:overdue")
-	case DueDateToday:
-		parts = append(parts, "due:today")
-	case DueDateThisWeek:
-		parts = append(parts, "due:week")
-	case DueDateNone:
-		parts = append(parts, "due:none")
-	}
 	if m.filter.Actionable {
 		parts = append(parts, "ready")
 	}
-	if len(m.filter.Attrs) > 0 {
-		var attrParts []string
-		for k, v := range m.filter.Attrs {
-			attrParts = append(attrParts, k+"="+v)
-		}
-		parts = append(parts, "attr:"+strings.Join(attrParts, ","))
-	}
-	if m.filter.ScoreMin > 0 {
-		parts = append(parts, fmt.Sprintf("score>=%.0f", m.filter.ScoreMin))
-	}
 
-	if len(parts) == 0 {
-		return ""
-	}
-
-	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
+	return renderFilterBadge(parts)
 }
 
 // renderChildrenInOtherSectionsBadge returns a badge showing how many children

@@ -44,70 +44,9 @@ func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd
 	return m, nil
 }
 
-// handleFocusFilterTypePrefix handles filter type sub-prefix.
-func (m *FocusViewModel) handleFocusFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterTypeKey(key, &m.filter) {
-		m.applyFilter()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleFocusFilterStatusPrefix handles filter status sub-prefix.
-func (m *FocusViewModel) handleFocusFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterStatusKey(key, &m.filter) {
-		m.applyFilter()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleFocusFilterAttrPrefix handles the attribute filter sub-prefix.
-func (m *FocusViewModel) handleFocusFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	newPrefix, handled := handleFilterAttrKey(key, &m.filter)
-	if !handled {
-		return m, nil
-	}
-	if newPrefix != "" {
-		m.pendingPrefix = newPrefix
-		return m, nil
-	}
-	m.applyFilter()
-	m.clampCursor()
-	return m, nil
-}
-
-// handleFocusFilterAttrSubPrefix handles attribute value sub-prefixes.
-func (m *FocusViewModel) handleFocusFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	var handled bool
-	switch prefix {
-	case "Fas":
-		handled = handleFilterAttrSeverityKey(key, &m.filter)
-	case "Far":
-		handled = handleFilterAttrReproducibleKey(key, &m.filter)
-	case "Fae":
-		handled = handleFilterAttrEffortKey(key, &m.filter)
-	case "Fac":
-		handled = handleFilterAttrCategoryKey(key, &m.filter)
-	case "Fav":
-		handled = handleFilterAttrValueKey(key, &m.filter)
-	case "Faw":
-		handled = handleFilterAttrWorktypeKey(key, &m.filter)
-	case "Fao":
-		handled = handleFilterAttrScopeKey(key, &m.filter)
-	case "Fap":
-		handled = handleFilterAttrPointsKey(key, &m.filter)
-	}
-	if handled {
-		m.applyFilter()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
-// handleFocusFilterScorePrefix handles the score threshold sub-prefix.
-func (m *FocusViewModel) handleFocusFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterScoreKey(key, &m.filter, m.config) {
+// handleFocusFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
+func (m *FocusViewModel) handleFocusFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
 		m.applyFilter()
 		m.clampCursor()
 	}

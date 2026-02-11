@@ -118,8 +118,10 @@ func NewPriorityViewModel(project *models.Project, cfg ...*config.Config) *Prior
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
 		filter: PriorityFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
+			CommonFilterState: CommonFilterState{
+				Tags:  make(map[string]bool),
+				Attrs: make(map[string]string),
+			},
 		},
 		filterBar: NewPriorityFilterBarComponent(),
 	}
@@ -918,22 +920,8 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handlePriorityFilterDuePrefix(key)
 	case "Fa":
 		return m.handlePriorityFilterAttrPrefix(key)
-	case "Fas":
-		return m.handlePriorityFilterAttrSeverityPrefix(key)
-	case "Far":
-		return m.handlePriorityFilterAttrReproduciblePrefix(key)
-	case "Fae":
-		return m.handlePriorityFilterAttrEffortPrefix(key)
-	case "Fac":
-		return m.handlePriorityFilterAttrCategoryPrefix(key)
-	case "Fav":
-		return m.handlePriorityFilterAttrValuePrefix(key)
-	case "Faw":
-		return m.handlePriorityFilterAttrWorktypePrefix(key)
-	case "Fao":
-		return m.handlePriorityFilterAttrScopePrefix(key)
-	case "Fap":
-		return m.handlePriorityFilterAttrPointsPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		return m.handlePriorityFilterAttrSubPrefix(m.pendingPrefix, key)
 	case "FS":
 		return m.handlePriorityFilterScorePrefix(key)
 	case "c":

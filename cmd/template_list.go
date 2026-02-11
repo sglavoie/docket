@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/template"
 )
 
@@ -35,10 +34,9 @@ func init() {
 }
 
 func runTemplateList(cmd *cobra.Command, args []string) error {
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, _, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	defaultTemplates, customTemplates := cfg.GetTaskTemplatesSorted()

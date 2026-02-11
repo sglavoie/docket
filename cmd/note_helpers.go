@@ -19,12 +19,10 @@ type NoteContext struct {
 // resolveNoteContext returns the notes directory and optional project based on the --global flag.
 func resolveNoteContext() (*NoteContext, error) {
 	if noteGlobal {
-		dir, err := globalNotesDir()
+		dir, cfg, err := globalNotesDir()
 		if err != nil {
 			return nil, err
 		}
-		mgr := config.NewManager(GetConfigPath())
-		cfg, _ := mgr.Load()
 		return &NoteContext{Dir: dir, Config: cfg}, nil
 	}
 

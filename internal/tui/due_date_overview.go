@@ -501,16 +501,8 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 	switch prefix {
 	case "F":
 		return m.handleDueDateFilterPrefix(key)
-	case "Ft":
-		return m.handleDueDateFilterTypePrefix(key)
-	case "Fs":
-		return m.handleDueDateFilterStatusPrefix(key)
-	case "Fa":
-		return m.handleDueDateFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handleDueDateFilterAttrSubPrefix(prefix, key)
-	case "FS":
-		return m.handleDueDateFilterScorePrefix(key)
+	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleDueDateFilterSubPrefix(prefix, key)
 
 	case ",":
 		// Status operations

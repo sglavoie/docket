@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -35,10 +34,9 @@ func runWorkflowReset(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("provide a rule ID or use --all")
 	}
 
-	configManager := config.NewManager(GetConfigPath())
-	cfg, err := configManager.Load()
+	cfg, configManager, err := LoadConfigStrict()
 	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+		return err
 	}
 
 	if workflowResetAll {

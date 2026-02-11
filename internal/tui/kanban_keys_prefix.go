@@ -352,37 +352,9 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		// Filter attribute sub-prefix
 		return m.handleKanbanFilterAttrPrefix(key)
 
-	case "Fas":
-		// Filter attribute severity value
-		return m.handleKanbanFilterAttrSeverityPrefix(key)
-
-	case "Far":
-		// Filter attribute reproducible value
-		return m.handleKanbanFilterAttrReproduciblePrefix(key)
-
-	case "Fae":
-		// Filter attribute effort value
-		return m.handleKanbanFilterAttrEffortPrefix(key)
-
-	case "Fac":
-		// Filter attribute category value
-		return m.handleKanbanFilterAttrCategoryPrefix(key)
-
-	case "Fav":
-		// Filter attribute value value
-		return m.handleKanbanFilterAttrValuePrefix(key)
-
-	case "Faw":
-		// Filter attribute worktype value
-		return m.handleKanbanFilterAttrWorktypePrefix(key)
-
-	case "Fao":
-		// Filter attribute scope value
-		return m.handleKanbanFilterAttrScopePrefix(key)
-
-	case "Fap":
-		// Filter attribute points value
-		return m.handleKanbanFilterAttrPointsPrefix(key)
+	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
+		// Filter attribute sub-prefix values
+		return m.handleKanbanFilterAttrSubPrefix(m.pendingPrefix, key)
 
 	case "FS":
 		// Filter score threshold

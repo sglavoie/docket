@@ -11,7 +11,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/scoring"
 )
 
 // Kanban tab names and indices.
@@ -32,14 +31,8 @@ const (
 // Unlike project tree, kanban doesn't need section filter (columns ARE sections)
 // or completed filter (kanban only shows active tasks).
 type KanbanFilterState struct {
-	Type     models.TaskType   // filter by type (epic/story/task/bug/idea)
-	Status   models.TaskStatus // filter by status (todo/in_progress/blocked)
-	Priority int               // 0=all, 1=high only (<=2)
-	Tags     map[string]bool   // filter by tag names (AND logic)
-	DueDate  DueDateFilter     // filter by due date
-	Search   string            // text search query
-	Attrs    map[string]string // type.attribute -> value (e.g., "bug.severity" -> "critical")
-	ScoreMin float64           // minimum score threshold (0 = no filter)
+	CommonFilterState        // embedded common filter fields
+	Search            string // text search query
 }
 
 // KanbanFilterBarComponent encapsulates filter bar state for the kanban view.
@@ -93,70 +86,15 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 		}
 	}
 
-	// Apply type filter
-	if m.filter.Type != "" && task.Type != m.filter.Type {
+	// Apply common filters (type, status, priority, tags, due date, attrs, score)
+	if !passesCommonFilters(task, &m.filter.CommonFilterState, m.Project.ID, m.config) {
 		return false
-	}
-
-	// Apply status filter
-	if m.filter.Status != "" && task.Status != m.filter.Status {
-		return false
-	}
-
-	// Apply priority filter (1 = high priority only, showing tasks with priority <= 2)
-	if m.filter.Priority == 1 && task.Priority > 2 {
-		return false
-	}
-
-	// Apply tag filter (AND logic: task must have ALL selected tags)
-	if len(m.filter.Tags) > 0 {
-		for tag := range m.filter.Tags {
-			if !task.HasTag(tag) {
-				return false
-			}
-		}
-	}
-
-	// Apply due date filter
-	if m.filter.DueDate != DueDateAll {
-		switch m.filter.DueDate {
-		case DueDateOverdue:
-			if !isOverdue(task) {
-				return false
-			}
-		case DueDateToday:
-			if !isDueToday(task) {
-				return false
-			}
-		case DueDateThisWeek:
-			if !isDueThisWeek(task) {
-				return false
-			}
-		case DueDateNone:
-			if task.DueDate != nil {
-				return false
-			}
-		}
 	}
 
 	// Apply search filter
 	if m.filter.Search != "" {
 		if !m.matchesSearch(task) {
 			return false
-		}
-	}
-
-	// Apply attribute filters
-	if !passesAttrFilters(task, m.filter.Attrs) {
-		return false
-	}
-
-	// Apply score threshold filter
-	if m.filter.ScoreMin > 0 && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
-			if scoring.NormalizedScore(task, profile) < m.filter.ScoreMin {
-				return false
-			}
 		}
 	}
 
@@ -275,26 +213,13 @@ func (m *KanbanViewModel) calculateFilterCounts() {
 
 // HasActiveFilters returns true if any filter is currently active.
 func (m *KanbanViewModel) HasActiveFilters() bool {
-	return m.filter.Type != "" ||
-		m.filter.Status != "" ||
-		m.filter.Priority != 0 ||
-		len(m.filter.Tags) > 0 ||
-		m.filter.DueDate != DueDateAll ||
-		m.filter.Search != "" ||
-		len(m.filter.Attrs) > 0 ||
-		m.filter.ScoreMin > 0
+	return hasActiveCommonFilters(&m.filter.CommonFilterState) || m.filter.Search != ""
 }
 
 // ClearAllFilters resets all filters to their default state.
 func (m *KanbanViewModel) ClearAllFilters() {
-	m.filter.Type = ""
-	m.filter.Status = ""
-	m.filter.Priority = 0
-	m.filter.Tags = make(map[string]bool)
-	m.filter.DueDate = DueDateAll
+	clearCommonFilters(&m.filter.CommonFilterState)
 	m.filter.Search = ""
-	m.filter.Attrs = make(map[string]string)
-	m.filter.ScoreMin = 0
 }
 
 // toggleKanbanPriorityFilter toggles the high priority filter.
@@ -462,41 +387,13 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 
 // handleKanbanFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix) in kanban.
 func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "1":
-		m.filter.ScoreMin = 30
-	case "2":
-		m.filter.ScoreMin = 60
-	case "3":
-		m.filter.ScoreMin = 90
-	case "4":
-		m.filter.ScoreMin = 120
-	case "5":
-		m.filter.ScoreMin = 150
-	case "6":
-		m.filter.ScoreMin = 180
-	case "7":
-		m.filter.ScoreMin = 210
-	case "8":
-		m.filter.ScoreMin = 240
-	case "9":
-		m.filter.ScoreMin = 270
-	case "c":
-		// Apply persisted custom value
-		if m.config != nil && m.config.ScoreFilterCustom != nil {
-			m.filter.ScoreMin = *m.config.ScoreFilterCustom
-		}
-		// No-op if not set
-	case "C":
-		// Enter inline text input to set custom value
+	if key == "C" {
 		m.enterScoreFilterInputMode()
 		return m, nil
-	case "0":
-		m.filter.ScoreMin = 0
-	default:
-		return m, nil
 	}
-	m.loadTasks()
+	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
+		m.loadTasks()
+	}
 	return m, nil
 }
 
@@ -521,12 +418,10 @@ func (m *KanbanViewModel) handleKanbanScoreFilterInput(msg tea.KeyMsg) (tea.Mode
 	case "enter":
 		val, err := strconv.ParseFloat(m.scoreFilterInput.Value(), 64)
 		if err == nil && val > 0 {
-			// Persist to config
 			m.config.ScoreFilterCustom = &val
 			if m.configManager != nil {
 				_ = m.configManager.Save(m.config)
 			}
-			// Apply as active filter
 			m.filter.ScoreMin = val
 			m.loadTasks()
 		}
@@ -543,296 +438,47 @@ func (m *KanbanViewModel) handleKanbanScoreFilterInput(msg tea.KeyMsg) (tea.Mode
 
 // handleKanbanFilterTypePrefix handles filter type sub-prefix in kanban.
 func (m *KanbanViewModel) handleKanbanFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "e":
-		m.filter.Type = models.TaskTypeEpic
-	case "s":
-		m.filter.Type = models.TaskTypeStory
-	case "t":
-		m.filter.Type = models.TaskTypeTask
-	case "b":
-		m.filter.Type = models.TaskTypeBug
-	case "i":
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		m.filter.Type = ""
-	default:
-		return m, nil
+	if handleFilterTypeKey(key, &m.filter.CommonFilterState) {
+		m.loadTasks()
 	}
-	m.loadTasks()
 	return m, nil
 }
 
 // handleKanbanFilterStatusPrefix handles filter status sub-prefix in kanban.
 func (m *KanbanViewModel) handleKanbanFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "t":
-		m.filter.Status = models.StatusTodo
-	case "s":
-		m.filter.Status = models.StatusInProgress
-	case "r":
-		m.filter.Status = models.StatusReview
-	case "b":
-		m.filter.Status = models.StatusBlocked
-	case "d":
-		m.filter.Status = models.StatusDone
-	case "x":
-		m.filter.Status = models.StatusCanceled
-	case "0":
-		m.filter.Status = ""
-	default:
-		return m, nil
+	if handleFilterStatusKey(key, &m.filter.CommonFilterState) {
+		m.loadTasks()
 	}
-	m.loadTasks()
 	return m, nil
 }
 
 // handleKanbanFilterDuePrefix handles filter due-date sub-prefix in kanban.
 func (m *KanbanViewModel) handleKanbanFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "o":
-		m.filter.DueDate = DueDateOverdue
-	case "t":
-		m.filter.DueDate = DueDateToday
-	case "w":
-		m.filter.DueDate = DueDateThisWeek
-	case "n":
-		m.filter.DueDate = DueDateNone
-	case "0":
-		m.filter.DueDate = DueDateAll
-	default:
-		return m, nil
+	if handleFilterDueDateKey(key, &m.filter.CommonFilterState) {
+		m.loadTasks()
 	}
-	m.loadTasks()
 	return m, nil
 }
 
 // handleKanbanFilterAttrPrefix handles the attribute filter sub-prefix in kanban.
 func (m *KanbanViewModel) handleKanbanFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		m.pendingPrefix = "Fas"
+	newPrefix, handled := handleFilterAttrKey(key, &m.filter.CommonFilterState)
+	if !handled {
 		return m, nil
-	case "r":
-		m.pendingPrefix = "Far"
+	}
+	if newPrefix != "" {
+		m.pendingPrefix = newPrefix
 		return m, nil
-	case "e":
-		m.pendingPrefix = "Fae"
-		return m, nil
-	case "c":
-		m.pendingPrefix = "Fac"
-		return m, nil
-	case "v":
-		m.pendingPrefix = "Fav"
-		return m, nil
-	case "w":
-		m.pendingPrefix = "Faw"
-		return m, nil
-	case "o":
-		m.pendingPrefix = "Fao"
-		return m, nil
-	case "p":
-		m.pendingPrefix = "Fap"
-		return m, nil
-	case "V":
-		if m.filter.Attrs["idea.validated"] == "true" {
-			delete(m.filter.Attrs, "idea.validated")
-		} else {
-			m.filter.Attrs["idea.validated"] = "true"
-			m.filter.Type = models.TaskTypeIdea
-		}
+	}
+	m.loadTasks()
+	return m, nil
+}
+
+// handleKanbanFilterAttrSubPrefix handles attribute value sub-prefixes in kanban.
+func (m *KanbanViewModel) handleKanbanFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	if handleFilterAttrSubKey(prefix, key, &m.filter.CommonFilterState) {
 		m.loadTasks()
-		return m, nil
-	case "0":
-		m.filter.Attrs = make(map[string]string)
-		m.loadTasks()
-		return m, nil
 	}
-	return m, nil
-}
-
-// handleKanbanFilterAttrSeverityPrefix handles bug severity value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrSeverityPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "c":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCritical)
-		m.filter.Type = models.TaskTypeBug
-	case "j":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMajor)
-		m.filter.Type = models.TaskTypeBug
-	case "m":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMinor)
-		m.filter.Type = models.TaskTypeBug
-	case "o":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCosmetic)
-		m.filter.Type = models.TaskTypeBug
-	case "0":
-		delete(m.filter.Attrs, "bug.severity")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrReproduciblePrefix handles bug reproducible value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrReproduciblePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "y":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleYes)
-		m.filter.Type = models.TaskTypeBug
-	case "n":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleNo)
-		m.filter.Type = models.TaskTypeBug
-	case "s":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleSometimes)
-		m.filter.Type = models.TaskTypeBug
-	case "0":
-		delete(m.filter.Attrs, "bug.reproducible")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrEffortPrefix handles effort value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrEffortPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		m.filter.Attrs["effort"] = string(models.EffortSmall)
-	case "m":
-		m.filter.Attrs["effort"] = string(models.EffortMedium)
-	case "l":
-		m.filter.Attrs["effort"] = string(models.EffortLarge)
-	case "u":
-		m.filter.Attrs["effort"] = string(models.EffortUnknown)
-	case "0":
-		delete(m.filter.Attrs, "effort")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrCategoryPrefix handles idea category value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrCategoryPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "f":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryFeature)
-		m.filter.Type = models.TaskTypeIdea
-	case "i":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryImprovement)
-		m.filter.Type = models.TaskTypeIdea
-	case "r":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryRefactor)
-		m.filter.Type = models.TaskTypeIdea
-	case "s":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryResearch)
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		delete(m.filter.Attrs, "idea.category")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrValuePrefix handles idea value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrValuePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "l":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueLow)
-		m.filter.Type = models.TaskTypeIdea
-	case "m":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueMedium)
-		m.filter.Type = models.TaskTypeIdea
-	case "h":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueHigh)
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		delete(m.filter.Attrs, "idea.value")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrWorktypePrefix handles task worktype value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrWorktypePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "d":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevelopment)
-		m.filter.Type = models.TaskTypeTask
-	case "o":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDocumentation)
-		m.filter.Type = models.TaskTypeTask
-	case "t":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeTesting)
-		m.filter.Type = models.TaskTypeTask
-	case "v":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevOps)
-		m.filter.Type = models.TaskTypeTask
-	case "e":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDesign)
-		m.filter.Type = models.TaskTypeTask
-	case "0":
-		delete(m.filter.Attrs, "task.worktype")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrScopePrefix handles epic scope value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrScopePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "d":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeDefined)
-		m.filter.Type = models.TaskTypeEpic
-	case "e":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeEvolving)
-		m.filter.Type = models.TaskTypeEpic
-	case "u":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeUndefined)
-		m.filter.Type = models.TaskTypeEpic
-	case "0":
-		delete(m.filter.Attrs, "epic.scope")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrPointsPrefix handles story points value selection in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrPointsPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "1":
-		m.filter.Attrs["story.points"] = "1"
-		m.filter.Type = models.TaskTypeStory
-	case "2":
-		m.filter.Attrs["story.points"] = "2"
-		m.filter.Type = models.TaskTypeStory
-	case "3":
-		m.filter.Attrs["story.points"] = "3"
-		m.filter.Type = models.TaskTypeStory
-	case "5":
-		m.filter.Attrs["story.points"] = "5"
-		m.filter.Type = models.TaskTypeStory
-	case "8":
-		m.filter.Attrs["story.points"] = "8"
-		m.filter.Type = models.TaskTypeStory
-	case "0":
-		delete(m.filter.Attrs, "story.points")
-	default:
-		return m, nil
-	}
-	m.loadTasks()
 	return m, nil
 }
 

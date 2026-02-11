@@ -307,18 +307,8 @@ func (m *RecentActivityModel) handleRecentActivityPrefixKey(key string) (tea.Mod
 	switch prefix {
 	case "F":
 		return m.handleRecentActivityFilterPrefix(key)
-	case "Ft":
-		return m.handleRecentActivityFilterTypePrefix(key)
-	case "Fs":
-		return m.handleRecentActivityFilterStatusPrefix(key)
-	case "Fd":
-		return m.handleRecentActivityFilterDuePrefix(key)
-	case "Fa":
-		return m.handleRecentActivityFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handleRecentActivityFilterAttrSubPrefix(prefix, key)
-	case "FS":
-		return m.handleRecentActivityFilterScorePrefix(key)
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleRecentActivityFilterSubPrefix(prefix, key)
 	}
 
 	return m, nil

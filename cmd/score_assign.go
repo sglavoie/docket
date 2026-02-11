@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var scoreAssignCmd = &cobra.Command{
@@ -32,7 +34,7 @@ func runScoreAssign(cmd *cobra.Command, args []string) error {
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return fmt.Errorf("no project selected. Select one with: tt select")
+		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
 	}
 
 	profile := cfg.GetScoringProfile(args[0])
@@ -56,7 +58,7 @@ func runScoreUnassign(cmd *cobra.Command, args []string) error {
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return fmt.Errorf("no project selected. Select one with: tt select")
+		return fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
 	}
 
 	cfg.UnsetProjectScoringProfile(project.ID)

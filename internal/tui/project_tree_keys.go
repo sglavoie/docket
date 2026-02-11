@@ -85,15 +85,9 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "x":
 		// Clear all filters
-		m.filter.Type = ""
-		m.filter.Status = ""
-		m.filter.Priority = 0
-		m.filter.Tags = make(map[string]bool)
+		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Sections = make(map[string]bool)
-		m.filter.DueDate = DueDateAll
 		m.filter.Actionable = false
-		m.filter.Attrs = make(map[string]string)
-		m.filter.ScoreMin = 0
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		}
@@ -106,347 +100,60 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 // handleFilterTypePrefix handles the third key after pressing Ft (filter type sub-prefix).
 func (m *ProjectTreeModel) handleFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "e":
-		m.filter.Type = models.TaskTypeEpic
-	case "s":
-		m.filter.Type = models.TaskTypeStory
-	case "t":
-		m.filter.Type = models.TaskTypeTask
-	case "b":
-		m.filter.Type = models.TaskTypeBug
-	case "i":
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		m.filter.Type = ""
-	default:
-		return m, nil
+	if handleFilterTypeKey(key, &m.filter.CommonFilterState) {
+		m.applyFilterChange()
 	}
-	m.applyFilterChange()
 	return m, nil
 }
 
 // handleFilterStatusPrefix handles the third key after pressing Fs (filter status sub-prefix).
 func (m *ProjectTreeModel) handleFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "t":
-		m.filter.Status = models.StatusTodo
-	case "s":
-		m.filter.Status = models.StatusInProgress
-	case "r":
-		m.filter.Status = models.StatusReview
-	case "b":
-		m.filter.Status = models.StatusBlocked
-	case "d":
-		m.filter.Status = models.StatusDone
-	case "x":
-		m.filter.Status = models.StatusCanceled
-	case "0":
-		m.filter.Status = ""
-	default:
-		return m, nil
+	if handleFilterStatusKey(key, &m.filter.CommonFilterState) {
+		m.applyFilterChange()
 	}
-	m.applyFilterChange()
 	return m, nil
 }
 
 // handleFilterDuePrefix handles the third key after pressing Fd (filter due-date sub-prefix).
 func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "o":
-		m.filter.DueDate = DueDateOverdue
-	case "t":
-		m.filter.DueDate = DueDateToday
-	case "w":
-		m.filter.DueDate = DueDateThisWeek
-	case "n":
-		m.filter.DueDate = DueDateNone
-	case "0":
-		m.filter.DueDate = DueDateAll
-	default:
-		return m, nil
+	if handleFilterDueDateKey(key, &m.filter.CommonFilterState) {
+		m.applyFilterChange()
 	}
-	m.applyFilterChange()
 	return m, nil
 }
 
 // handleFilterAttrPrefix handles the second key after pressing Fa (filter attribute).
-// Shows attribute categories: s=severity, r=reproducible, e=effort, c=category, v=value, w=worktype, o=scope, p=points, V=validated
 func (m *ProjectTreeModel) handleFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		// Bug severity - open sub-popup
-		m.pendingPrefix = "Fas"
+	newPrefix, handled := handleFilterAttrKey(key, &m.filter.CommonFilterState)
+	if !handled {
 		return m, nil
-	case "r":
-		// Bug reproducible - open sub-popup
-		m.pendingPrefix = "Far"
+	}
+	if newPrefix != "" {
+		m.pendingPrefix = newPrefix
 		return m, nil
-	case "e":
-		// Effort (idea, task) - open sub-popup
-		m.pendingPrefix = "Fae"
-		return m, nil
-	case "c":
-		// Idea category - open sub-popup
-		m.pendingPrefix = "Fac"
-		return m, nil
-	case "v":
-		// Idea value - open sub-popup
-		m.pendingPrefix = "Fav"
-		return m, nil
-	case "w":
-		// Task worktype - open sub-popup
-		m.pendingPrefix = "Faw"
-		return m, nil
-	case "o":
-		// Epic scope - open sub-popup
-		m.pendingPrefix = "Fao"
-		return m, nil
-	case "p":
-		// Story points - open sub-popup
-		m.pendingPrefix = "Fap"
-		return m, nil
-	case "V":
-		// Idea validated - toggle
-		if m.filter.Attrs["idea.validated"] == "true" {
-			delete(m.filter.Attrs, "idea.validated")
-		} else {
-			m.filter.Attrs["idea.validated"] = "true"
-			m.filter.Type = models.TaskTypeIdea // auto-set type filter
-		}
+	}
+	m.applyFilterChange()
+	return m, nil
+}
+
+// handleFilterAttrSubPrefix handles attribute value sub-prefixes (Fas, Far, Fae, etc.).
+func (m *ProjectTreeModel) handleFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	if handleFilterAttrSubKey(prefix, key, &m.filter.CommonFilterState) {
 		m.applyFilterChange()
-		return m, nil
-	case "0":
-		// Clear attribute filters
-		m.filter.Attrs = make(map[string]string)
-		m.applyFilterChange()
-		return m, nil
 	}
-	return m, nil
-}
-
-// handleFilterAttrSeverityPrefix handles bug severity value selection (Fas prefix).
-func (m *ProjectTreeModel) handleFilterAttrSeverityPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "c":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCritical)
-		m.filter.Type = models.TaskTypeBug
-	case "j":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMajor)
-		m.filter.Type = models.TaskTypeBug
-	case "m":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityMinor)
-		m.filter.Type = models.TaskTypeBug
-	case "o":
-		m.filter.Attrs["bug.severity"] = string(models.BugSeverityCosmetic)
-		m.filter.Type = models.TaskTypeBug
-	case "0":
-		delete(m.filter.Attrs, "bug.severity")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrReproduciblePrefix handles bug reproducible value selection (Far prefix).
-func (m *ProjectTreeModel) handleFilterAttrReproduciblePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "y":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleYes)
-		m.filter.Type = models.TaskTypeBug
-	case "n":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleNo)
-		m.filter.Type = models.TaskTypeBug
-	case "s":
-		m.filter.Attrs["bug.reproducible"] = string(models.BugReproducibleSometimes)
-		m.filter.Type = models.TaskTypeBug
-	case "0":
-		delete(m.filter.Attrs, "bug.reproducible")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrEffortPrefix handles effort value selection (Fae prefix).
-func (m *ProjectTreeModel) handleFilterAttrEffortPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		m.filter.Attrs["effort"] = string(models.EffortSmall)
-	case "m":
-		m.filter.Attrs["effort"] = string(models.EffortMedium)
-	case "l":
-		m.filter.Attrs["effort"] = string(models.EffortLarge)
-	case "u":
-		m.filter.Attrs["effort"] = string(models.EffortUnknown)
-	case "0":
-		delete(m.filter.Attrs, "effort")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrCategoryPrefix handles idea category value selection (Fac prefix).
-func (m *ProjectTreeModel) handleFilterAttrCategoryPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "f":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryFeature)
-		m.filter.Type = models.TaskTypeIdea
-	case "i":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryImprovement)
-		m.filter.Type = models.TaskTypeIdea
-	case "r":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryRefactor)
-		m.filter.Type = models.TaskTypeIdea
-	case "s":
-		m.filter.Attrs["idea.category"] = string(models.IdeaCategoryResearch)
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		delete(m.filter.Attrs, "idea.category")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrValuePrefix handles idea value selection (Fav prefix).
-func (m *ProjectTreeModel) handleFilterAttrValuePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "l":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueLow)
-		m.filter.Type = models.TaskTypeIdea
-	case "m":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueMedium)
-		m.filter.Type = models.TaskTypeIdea
-	case "h":
-		m.filter.Attrs["idea.value"] = string(models.IdeaValueHigh)
-		m.filter.Type = models.TaskTypeIdea
-	case "0":
-		delete(m.filter.Attrs, "idea.value")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrWorktypePrefix handles task worktype value selection (Faw prefix).
-func (m *ProjectTreeModel) handleFilterAttrWorktypePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "d":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevelopment)
-		m.filter.Type = models.TaskTypeTask
-	case "o":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDocumentation)
-		m.filter.Type = models.TaskTypeTask
-	case "t":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeTesting)
-		m.filter.Type = models.TaskTypeTask
-	case "v":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDevOps)
-		m.filter.Type = models.TaskTypeTask
-	case "e":
-		m.filter.Attrs["task.worktype"] = string(models.WorkTypeDesign)
-		m.filter.Type = models.TaskTypeTask
-	case "0":
-		delete(m.filter.Attrs, "task.worktype")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrScopePrefix handles epic scope value selection (Fao prefix).
-func (m *ProjectTreeModel) handleFilterAttrScopePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "d":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeDefined)
-		m.filter.Type = models.TaskTypeEpic
-	case "e":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeEvolving)
-		m.filter.Type = models.TaskTypeEpic
-	case "u":
-		m.filter.Attrs["epic.scope"] = string(models.EpicScopeUndefined)
-		m.filter.Type = models.TaskTypeEpic
-	case "0":
-		delete(m.filter.Attrs, "epic.scope")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrPointsPrefix handles story points value selection (Fap prefix).
-func (m *ProjectTreeModel) handleFilterAttrPointsPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "1":
-		m.filter.Attrs["story.points"] = "1"
-		m.filter.Type = models.TaskTypeStory
-	case "2":
-		m.filter.Attrs["story.points"] = "2"
-		m.filter.Type = models.TaskTypeStory
-	case "3":
-		m.filter.Attrs["story.points"] = "3"
-		m.filter.Type = models.TaskTypeStory
-	case "5":
-		m.filter.Attrs["story.points"] = "5"
-		m.filter.Type = models.TaskTypeStory
-	case "8":
-		m.filter.Attrs["story.points"] = "8"
-		m.filter.Type = models.TaskTypeStory
-	case "0":
-		delete(m.filter.Attrs, "story.points")
-	default:
-		return m, nil
-	}
-	m.applyFilterChange()
 	return m, nil
 }
 
 // handleFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix).
 func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "1":
-		m.filter.ScoreMin = 30
-	case "2":
-		m.filter.ScoreMin = 60
-	case "3":
-		m.filter.ScoreMin = 90
-	case "4":
-		m.filter.ScoreMin = 120
-	case "5":
-		m.filter.ScoreMin = 150
-	case "6":
-		m.filter.ScoreMin = 180
-	case "7":
-		m.filter.ScoreMin = 210
-	case "8":
-		m.filter.ScoreMin = 240
-	case "9":
-		m.filter.ScoreMin = 270
-	case "c":
-		// Apply persisted custom value
-		if m.config != nil && m.config.ScoreFilterCustom != nil {
-			m.filter.ScoreMin = *m.config.ScoreFilterCustom
-		}
-		// No-op if not set
-	case "C":
+	if key == "C" {
 		// Enter inline text input to set custom value
 		m.enterScoreFilterInputMode()
 		return m, nil
-	case "0":
-		m.filter.ScoreMin = 0
-	default:
-		return m, nil
 	}
-	m.applyFilterChange()
+	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
+		m.applyFilterChange()
+	}
 	return m, nil
 }
 

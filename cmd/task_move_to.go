@@ -195,19 +195,12 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("move operation returned no result")
 	}
 
-	// Save both projects with backups
-	if err := storage.BackupProject(sourceProject); err != nil {
-		return fmt.Errorf("failed to backup source project: %w", err)
+	// Save both projects
+	if err := SaveProject(sourceProject, nil); err != nil {
+		return err
 	}
-	if err := storage.SaveProject(sourceProject); err != nil {
-		return fmt.Errorf("failed to save source project: %w", err)
-	}
-
-	if err := storage.BackupProject(destProject); err != nil {
-		return fmt.Errorf("failed to backup destination project: %w", err)
-	}
-	if err := storage.SaveProject(destProject); err != nil {
-		return fmt.Errorf("failed to save destination project: %w", err)
+	if err := SaveProject(destProject, nil); err != nil {
+		return err
 	}
 
 	// Save config if needed (NextShortID is in tasks.md, not config)

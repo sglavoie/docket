@@ -8,7 +8,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -107,15 +106,8 @@ func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, c
 
 	// Only save if there were actual modifications
 	if result.ModifiedTasks > 0 {
-		project.ReorderRootTasksByCompletion()
-
-		if err := storage.BackupProject(project); err != nil {
-			result.Error = fmt.Errorf("failed to create backup: %w", err)
-			return result
-		}
-
-		if err := storage.SaveProject(project); err != nil {
-			result.Error = fmt.Errorf("failed to save project: %w", err)
+		if err := SaveProject(project, nil); err != nil {
+			result.Error = err
 			return result
 		}
 
