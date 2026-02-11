@@ -411,6 +411,7 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close all tasks view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, linkedTaskBindings())
 }

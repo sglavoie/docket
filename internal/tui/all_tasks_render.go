@@ -165,6 +165,7 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
+		"!": PriorityPrefixHints,
 		"d": DueDatePrefixHints,
 		"g": AllTasksNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,

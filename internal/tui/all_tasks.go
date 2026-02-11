@@ -462,7 +462,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Allow prefix keys in multi-select for bulk operations
 		switch key {
-		case ",", "d", "z":
+		case ",", "!", "d", "z":
 			m.pendingPrefix = key
 			return m, nil
 		case "m":
@@ -473,7 +473,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Activate prefix mode
 	switch key {
-	case ",", "d", "g", "z":
+	case ",", "!", "d", "g", "z":
 		m.pendingPrefix = key
 		return m, nil
 	case "F":
@@ -734,6 +734,12 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			case "r":
 				return m.handleBulkStatusChange(models.StatusReview)
 			}
+		case "!":
+			switch key {
+			case "1", "2", "3", "4", "5":
+				priority := int(key[0] - '0')
+				return m.handleBulkPriorityChange(priority)
+			}
 		case "d":
 			switch key {
 			case "t":
@@ -783,6 +789,14 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			m.clampCursor()
 			return m, nil
+		}
+		return m, nil
+
+	case "!":
+		switch key {
+		case "1", "2", "3", "4", "5":
+			priority := int(key[0] - '0')
+			return m.changePriority(priority)
 		}
 		return m, nil
 
@@ -907,6 +921,24 @@ func (m *AllTasksViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.M
 	}
 
 	result := applyStatusChangePS(m.projectService, item.Project, item.Task.ID, newStatus)
+	if result.Err != nil {
+		m.err = result.Err
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.loadAllTasks()
+	m.clampCursor()
+	return m, result.Cmd
+}
+
+// changePriority changes the priority of the task at cursor.
+func (m *AllTasksViewModel) changePriority(priority int) (tea.Model, tea.Cmd) {
+	item := m.getTaskAtCursor()
+	if item == nil {
+		return m, nil
+	}
+
+	result := applyPriorityChangePS(m.projectService, item.Project, item.Task.ID, priority)
 	if result.Err != nil {
 		m.err = result.Err
 	} else if result.StatusMessage != "" {

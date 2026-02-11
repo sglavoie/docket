@@ -153,6 +153,49 @@ func (m *AllTasksViewModel) handleBulkStatusChange(newStatus models.TaskStatus) 
 	return m, nil
 }
 
+// handleBulkPriorityChange sets the priority on all selected tasks across projects.
+func (m *AllTasksViewModel) handleBulkPriorityChange(priority int) (tea.Model, tea.Cmd) {
+	byProject := m.getSelectedItemsByProject()
+	if len(byProject) == 0 {
+		return m, nil
+	}
+
+	count := 0
+	for projectID, items := range byProject {
+		project := m.projectCache[projectID]
+		if project == nil {
+			continue
+		}
+
+		errBackup := m.projectService.Backup(project)
+		if errBackup != nil {
+			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
+			return m, nil
+		}
+		for _, item := range items {
+			if item.Task.Priority != priority {
+				project.MutateTask(item.Task.ID, func(t *models.Task) {
+					t.Priority = priority
+				})
+				count++
+			}
+		}
+		_ = m.projectService.Save(project)
+	}
+
+	m.selectedTasks = make(map[string]bool)
+	m.multiSelectMode = false
+
+	if count == 0 {
+		m.statusMessage = "No tasks were changed"
+	} else {
+		m.statusMessage = fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+	}
+	m.loadAllTasks()
+	m.clampCursor()
+	return m, nil
+}
+
 // handleBulkDueDateChange sets a due date on all selected tasks.
 func (m *AllTasksViewModel) handleBulkDueDateChange(daysFromNow int) (tea.Model, tea.Cmd) {
 	byProject := m.getSelectedItemsByProject()
@@ -242,7 +285,11 @@ func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Mod
 			continue
 		}
 
-		m.projectService.Backup(project)
+		errBackup := m.projectService.Backup(project)
+		if errBackup != nil {
+			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
+			return m, nil
+		}
 		for _, item := range items {
 			if item.Task.Section != targetSection {
 				project.MutateTask(item.Task.ID, func(t *models.Task) {
@@ -276,7 +323,11 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			continue
 		}
 
-		m.projectService.Backup(project)
+		errBackup := m.projectService.Backup(project)
+		if errBackup != nil {
+			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, errBackup)
+			return m, nil
+		}
 		deleteIDs := make(map[string]bool)
 		for _, item := range items {
 			deleteIDs[item.Task.ID] = true
