@@ -3,12 +3,13 @@ package tui
 import tea "github.com/charmbracelet/bubbletea"
 
 // dailyReviewTabNames are the tab labels for the daily review view.
-var dailyReviewTabNames = []string{"Due", "Active", "Stale", "Done"}
+var dailyReviewTabNames = []string{"Due", "Active", "In Review", "Stale", "Done"}
 
 // dailyReviewTabSections maps each tab index to the sections it contains.
 var dailyReviewTabSections = [][]DailyReviewSection{
 	{SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture}, // Due
 	{SectionInProgress, SectionBlocked},                                               // Active
+	{SectionInReview},                                                                 // In Review
 	{SectionOld},                                                                      // Stale
 	{SectionCompleted},                                                                // Done
 }
@@ -44,6 +45,7 @@ func (m *DailyReviewModel) calculateNavigation() {
 		{SectionFuture, m.future},
 		{SectionInProgress, m.inProgress},
 		{SectionBlocked, m.blocked},
+		{SectionInReview, m.inReview},
 		{SectionOld, m.old},
 		{SectionCompleted, m.completed},
 	}
@@ -85,6 +87,8 @@ func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []DailyRe
 		return m.inProgress
 	case SectionBlocked:
 		return m.blocked
+	case SectionInReview:
+		return m.inReview
 	case SectionOld:
 		return m.old
 	case SectionCompleted:

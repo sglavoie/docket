@@ -116,6 +116,7 @@ func (m *DailyReviewModel) renderReviewTabBar() string {
 	tabCounts := []int{
 		len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) + len(m.future),
 		len(m.inProgress) + len(m.blocked),
+		len(m.inReview),
 		len(m.old),
 		len(m.completed),
 	}
@@ -225,6 +226,8 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 		styled = SuccessStyle.Bold(true).Render(header)
 	case SectionBlocked:
 		styled = BlockedStyle.Bold(true).Render(header)
+	case SectionInReview:
+		styled = ReviewStyle.Bold(true).Render(header)
 	case SectionOld:
 		styled = MutedStyle.Bold(true).Render(header)
 	default:
@@ -290,6 +293,10 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 	case SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture:
 		if task.DueDate != nil {
 			contextStr = m.formatDueDateContext(task.DueDate, section)
+		}
+	case SectionInReview:
+		if task.DueDate != nil {
+			contextStr = DueDateStyle.Render(task.DueDate.Format("Jan 2"))
 		}
 	case SectionBlocked:
 		// Show blocking reason

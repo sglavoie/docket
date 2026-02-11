@@ -176,6 +176,7 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "ss", Description: "Focus Due Soon", Category: "Sections", Views: views},
 		Keybinding{Key: "sl", Description: "Focus Due Later", Category: "Sections", Views: views},
 		Keybinding{Key: "sf", Description: "Focus Future", Category: "Sections", Views: views},
+		Keybinding{Key: "sr", Description: "Focus In Review", Category: "Sections", Views: views},
 		Keybinding{Key: "so", Description: "Focus Old", Category: "Sections", Views: views},
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},

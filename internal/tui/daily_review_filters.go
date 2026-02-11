@@ -123,7 +123,7 @@ func buildDailyReviewTagList(dr *DailyReviewModel) []TagInfo {
 	tagCounts := make(map[string]int)
 	sections := [][]DailyReviewTask{
 		dr.overdue, dr.dueToday, dr.dueSoon, dr.dueLater,
-		dr.future, dr.inProgress, dr.blocked, dr.old, dr.completed,
+		dr.future, dr.inProgress, dr.blocked, dr.inReview, dr.old, dr.completed,
 	}
 	for _, section := range sections {
 		for _, dt := range section {

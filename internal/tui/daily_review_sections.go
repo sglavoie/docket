@@ -19,6 +19,7 @@ func (m *DailyReviewModel) loadTasks() {
 	m.future = nil
 	m.inProgress = nil
 	m.blocked = nil
+	m.inReview = nil
 	m.old = nil
 	m.completed = nil
 
@@ -72,7 +73,13 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
-			// 3. Overdue: DueDate < today
+			// 3. In Review: tasks in the Review section or with review status
+			if task.Section == models.SectionReview || task.Status == models.StatusReview {
+				m.inReview = append(m.inReview, dt)
+				continue
+			}
+
+			// 4. Overdue: DueDate < today
 			if task.DueDate != nil {
 				dueDay := time.Date(task.DueDate.Year(), task.DueDate.Month(), task.DueDate.Day(), 0, 0, 0, 0, now.Location())
 
@@ -182,6 +189,14 @@ func (m *DailyReviewModel) sortSections() {
 		return m.blocked[i].Task.Priority < m.blocked[j].Task.Priority
 	})
 
+	// In Review: by priority then by updated date
+	sort.Slice(m.inReview, func(i, j int) bool {
+		if m.inReview[i].Task.Priority != m.inReview[j].Task.Priority {
+			return m.inReview[i].Task.Priority < m.inReview[j].Task.Priority
+		}
+		return m.inReview[i].Task.UpdatedAt.After(m.inReview[j].Task.UpdatedAt)
+	})
+
 	// Old: by UpdatedAt (oldest first), falling back to CreatedAt when zero
 	sort.Slice(m.old, func(i, j int) bool {
 		ti := m.old[i].Task.UpdatedAt
@@ -259,7 +274,7 @@ func (m *DailyReviewModel) toggleSectionFocus(section DailyReviewSection) (tea.M
 // getTotalTaskCount returns count across all sections (ignoring collapse state).
 func (m *DailyReviewModel) getTotalTaskCount() int {
 	return len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) +
-		len(m.future) + len(m.inProgress) + len(m.blocked) + len(m.old) + len(m.completed)
+		len(m.future) + len(m.inProgress) + len(m.blocked) + len(m.inReview) + len(m.old) + len(m.completed)
 }
 
 // getSectionName returns a human-readable name for a section.
@@ -279,6 +294,8 @@ func getSectionName(section DailyReviewSection) string {
 		return "In Progress"
 	case SectionBlocked:
 		return "Blocked"
+	case SectionInReview:
+		return "In Review"
 	case SectionOld:
 		return "Old"
 	case SectionCompleted:

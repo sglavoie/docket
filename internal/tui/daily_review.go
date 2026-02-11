@@ -26,6 +26,7 @@ const (
 	SectionFuture
 	SectionInProgress
 	SectionBlocked
+	SectionInReview
 	SectionOld
 	SectionCompleted
 )
@@ -42,6 +43,7 @@ type DailyReviewModel struct {
 	future     []DailyReviewTask
 	inProgress []DailyReviewTask
 	blocked    []DailyReviewTask
+	inReview   []DailyReviewTask
 	old        []DailyReviewTask
 	completed  []DailyReviewTask
 
@@ -55,7 +57,7 @@ type DailyReviewModel struct {
 	collapsedSections map[int]bool         // Track collapsed sections
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
-	activeTab         int                  // 0=Due, 1=Active, 2=Stale, 3=Done
+	activeTab         int                  // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string
@@ -161,14 +163,14 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.activeTab > 0 {
 			m.activeTab--
 		} else {
-			m.activeTab = 3
+			m.activeTab = len(dailyReviewTabNames) - 1
 		}
 		m.focusedSection = nil
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil
 	case "]", "l":
-		if m.activeTab < 3 {
+		if m.activeTab < len(dailyReviewTabNames)-1 {
 			m.activeTab++
 		} else {
 			m.activeTab = 0
@@ -431,6 +433,8 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m.changeTaskStatus(models.StatusCanceled)
 		case "o":
 			return m.changeTaskStatus(models.StatusTodo)
+		case "r":
+			return m.changeTaskStatus(models.StatusReview)
 		}
 
 	case "d":
@@ -489,6 +493,9 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			targetSection = &s
 		case "f":
 			s := SectionFuture
+			targetSection = &s
+		case "r":
+			s := SectionInReview
 			targetSection = &s
 		case "o":
 			s := SectionOld

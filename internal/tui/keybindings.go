@@ -130,6 +130,7 @@ func statusBindings() []Keybinding {
 		{Key: ",b", Description: "Block task", Category: "Status"},
 		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
 		{Key: ",x", Description: "Cancel task", Category: "Status"},
+		{Key: ",r", Description: "Send to review", Category: "Status"},
 	}
 }
 

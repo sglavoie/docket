@@ -441,6 +441,7 @@ var (
 		{Key: "s", Description: "due-soon", Detail: "Jump to due-soon section"},
 		{Key: "l", Description: "due-later", Detail: "Jump to due-later section"},
 		{Key: "f", Description: "future", Detail: "Jump to future section"},
+		{Key: "r", Description: "in review", Detail: "Focus in-review section"},
 		{Key: "o", Description: "old", Detail: "Jump to old section"},
 	}
 
