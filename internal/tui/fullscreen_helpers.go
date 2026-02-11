@@ -218,7 +218,7 @@ func renderDueDateContent(task *models.Task) string {
 
 // renderMetadataContent builds the tags, section, custom section, and type-specific
 // attributes content shared by sidebar, task detail, and kanban info cards.
-func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int) string {
+func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
 	var lines []string
 
 	if len(task.Tags) > 0 {
@@ -231,7 +231,7 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 
 	sectionName := task.Section
 	if sectionName == "" {
-		sectionName = "None"
+		sectionName = "Active"
 	}
 	sectionColor := project.GetSectionColor(task.Section)
 	sectionStyle := GetSectionColorStyle(sectionColor)
@@ -245,10 +245,12 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 		lines = append(lines, csLine)
 	}
 
-	attrLines := formatTaskAttributes(task, innerWidth)
-	if len(attrLines) > 0 {
-		lines = append(lines, "")
-		lines = append(lines, attrLines...)
+	if len(showAttrs) == 0 || showAttrs[0] {
+		attrLines := formatTaskAttributes(task, innerWidth)
+		if len(attrLines) > 0 {
+			lines = append(lines, "")
+			lines = append(lines, attrLines...)
+		}
 	}
 
 	return strings.Join(lines, "\n")

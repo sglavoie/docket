@@ -450,7 +450,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	if m.ColumnWidth >= 25 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
 			_ = profile // score badge takes ~7-8 chars: [S:NN] or [S:~NN]
-			scoreBadgeLen = 8
+			scoreBadgeLen = 9
 		}
 	}
 	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen - scoreBadgeLen
@@ -597,7 +597,7 @@ func (m *KanbanViewModel) renderDetailsTaskCard(task *models.Task, width int, se
 
 // renderDetailsInfoCard renders tags and section info for the details panel.
 func (m *KanbanViewModel) renderDetailsInfoCard(task *models.Task, width int, sectionColor string) string {
-	content := renderMetadataContent(task, m.Project, width-6)
+	content := renderMetadataContent(task, m.Project, width-6, false)
 	return renderSidebarCard("Info", content, width, false, sectionColor)
 }
 
