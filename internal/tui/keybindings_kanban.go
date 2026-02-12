@@ -15,7 +15,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		// Split View
 		Keybinding{Key: "Tab", Description: "Toggle focus between kanban/details", Category: "Navigation", Views: views},
 		Keybinding{Key: "j/k (details)", Description: "Scroll description", Category: "Details Pane", Views: views},
-		Keybinding{Key: "Enter (details)", Description: "View task details (glow)", Category: "Details Pane", Views: views},
+		Keybinding{Key: "Enter (details)", Description: "View task details", Category: "Details Pane", Views: views},
 		Keybinding{Key: "Esc (details)", Description: "Return to kanban", Category: "Details Pane", Views: views},
 
 		// Task Movement Between Columns
@@ -128,7 +128,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "o", Description: "Expand node", Category: "Task Operations", Views: views},
-		Keybinding{Key: "Enter", Description: "View task details (glow)", Category: "Task Operations", Views: views},
+		Keybinding{Key: "Enter", Description: "View task details", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task in editor", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},

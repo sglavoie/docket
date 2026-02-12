@@ -211,7 +211,7 @@ func (m *AppModel) renderStatusBar() string {
 		// Add Kanban-specific help when in Kanban view
 		if currentView == ViewKanban && m.kanban != nil {
 			if m.kanban.detailsPaneFocused {
-				help = "j/k: scroll | Enter: glow | Esc/q: back | " + help
+				help = "j/k: scroll | Enter: details | Esc/q: back | " + help
 			} else {
 				help = "Tab: details | " + help
 			}

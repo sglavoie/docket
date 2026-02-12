@@ -6,7 +6,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Navigation
 		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
 		Keybinding{Key: "h/l", Description: "Switch section (Active/Next/Inbox/Waiting/Someday)", Category: "Navigation", Views: views},
-		Keybinding{Key: "Enter", Description: "View task (glow)", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "View task details", Category: "Navigation", Views: views},
 		Keybinding{Key: "Space", Description: "Expand/collapse", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Cycle sidebar (hide/view/focus)", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Go to first/last", Category: "Navigation", Views: views},

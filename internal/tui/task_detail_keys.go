@@ -19,7 +19,7 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	// Close view
-	case "q", "esc":
+	case "q", "esc", "enter":
 		return m, func() tea.Msg {
 			return CloseTaskDetailMsg{}
 		}
