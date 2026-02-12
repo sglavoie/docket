@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -373,6 +375,45 @@ func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *conf
 		return handleFilterScoreKey(key, f, cfg)
 	}
 	return false
+}
+
+// FilterPrefixResult holds the result of a shared filter prefix key handler.
+type FilterPrefixResult struct {
+	Handled   bool    // true if the key was recognized
+	NewPrefix string  // set pendingPrefix to this (e.g. "Ft")
+	Changed   bool    // filter state mutated, caller should refresh
+	TagCmd    tea.Cmd // non-nil when "#" opens tag selector
+}
+
+// handleCommonFilterPrefix handles the common first-level F-prefix keys shared
+// across views: p (priority toggle), t/s (sub-prefix), # (tag selector),
+// a (attribute sub-prefix), S (score sub-prefix), x (clear all).
+// buildTagCmd should return the tea.Cmd that opens the tag filter selector.
+// The caller handles view-specific keys before calling this function.
+func handleCommonFilterPrefix(key string, f *CommonFilterState, buildTagCmd func() tea.Cmd) FilterPrefixResult {
+	switch key {
+	case "p":
+		if f.Priority == 1 {
+			f.Priority = 0
+		} else {
+			f.Priority = 1
+		}
+		return FilterPrefixResult{Handled: true, Changed: true}
+	case "t":
+		return FilterPrefixResult{Handled: true, NewPrefix: "Ft"}
+	case "s":
+		return FilterPrefixResult{Handled: true, NewPrefix: "Fs"}
+	case "#":
+		return FilterPrefixResult{Handled: true, TagCmd: buildTagCmd()}
+	case "a":
+		return FilterPrefixResult{Handled: true, NewPrefix: "Fa"}
+	case "S":
+		return FilterPrefixResult{Handled: true, NewPrefix: "FS"}
+	case "x":
+		clearCommonFilters(f)
+		return FilterPrefixResult{Handled: true, Changed: true}
+	}
+	return FilterPrefixResult{}
 }
 
 // buildCommonFilterPrefixHints builds the dynamic F-prefix hint list for views

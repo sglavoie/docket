@@ -22,9 +22,10 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	if key != "v" {
 		m.clearActiveSavedView()
 	}
+
+	// View-specific keys
 	switch key {
 	case "c":
-		// Toggle completed view
 		if m.viewMode == ViewModeCompleted {
 			m.viewMode = ViewModeActive
 		} else {
@@ -32,57 +33,22 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		}
 		m.applyFilterChange()
 		return m, nil
-	case "p":
-		// Toggle high priority filter
-		if m.filter.Priority == 0 {
-			m.filter.Priority = 1
-		} else {
-			m.filter.Priority = 0
-		}
-		m.applyFilterChange()
-		return m, nil
-	case "t":
-		// Open type sub-popup
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		// Open status sub-popup
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
-		// Tag filter selector
-		tags := BuildTagList(m.project.Tasks, false)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
-		}
 	case "@":
-		// Section filter selector
 		return m, func() tea.Msg {
 			return ShowSectionFilterSelectorMsg{ProjectTree: m}
 		}
 	case "d":
-		// Open due-date sub-popup
 		m.pendingPrefix = "Fd"
 		return m, nil
-	case "a":
-		// Open attribute sub-popup
-		m.pendingPrefix = "Fa"
-		return m, nil
 	case "r":
-		// Toggle actionable/ready filter
 		m.filter.Actionable = !m.filter.Actionable
 		m.applyFilterChange()
 		return m, nil
-	case "S":
-		// Open score threshold sub-popup
-		m.pendingPrefix = "FS"
-		return m, nil
 	case "v":
-		// Open saved views sub-prefix popup (s=save, l=load, d=delete)
 		m.pendingPrefix = "Fv"
 		return m, nil
 	case "x":
-		// Clear all filters
+		// Override common x to also clear view-specific filters
 		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Sections = make(map[string]bool)
 		m.filter.Actionable = false
@@ -93,58 +59,30 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.applyFilterChange()
 		return m, nil
 	}
-	return m, nil
-}
 
-// handleFilterTypePrefix handles the third key after pressing Ft (filter type sub-prefix).
-func (m *ProjectTreeModel) handleFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterTypeKey(key, &m.filter.CommonFilterState) {
+	// Common filter prefix keys
+	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
+		tags := BuildTagList(m.project.Tasks, false)
+		return func() tea.Msg {
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
+		}
+	})
+	if result.NewPrefix != "" {
+		m.pendingPrefix = result.NewPrefix
+	}
+	if result.Changed {
 		m.applyFilterChange()
 	}
-	return m, nil
-}
-
-// handleFilterStatusPrefix handles the third key after pressing Fs (filter status sub-prefix).
-func (m *ProjectTreeModel) handleFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterStatusKey(key, &m.filter.CommonFilterState) {
-		m.applyFilterChange()
+	if result.TagCmd != nil {
+		return m, result.TagCmd
 	}
 	return m, nil
 }
 
-// handleFilterDuePrefix handles the third key after pressing Fd (filter due-date sub-prefix).
-func (m *ProjectTreeModel) handleFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterDueDateKey(key, &m.filter.CommonFilterState) {
-		m.applyFilterChange()
-	}
-	return m, nil
-}
-
-// handleFilterAttrPrefix handles the second key after pressing Fa (filter attribute).
-func (m *ProjectTreeModel) handleFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	newPrefix, handled := handleFilterAttrKey(key, &m.filter.CommonFilterState)
-	if !handled {
-		return m, nil
-	}
-	if newPrefix != "" {
-		m.pendingPrefix = newPrefix
-		return m, nil
-	}
-	m.applyFilterChange()
-	return m, nil
-}
-
-// handleFilterAttrSubPrefix handles attribute value sub-prefixes (Fas, Far, Fae, etc.).
-func (m *ProjectTreeModel) handleFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	if handleFilterAttrSubKey(prefix, key, &m.filter.CommonFilterState) {
-		m.applyFilterChange()
-	}
-	return m, nil
-}
-
-// handleFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix).
-func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	if key == "C" {
+// handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
+func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	// Score filter custom-value input (special case)
+	if prefix == "FS" && key == "C" {
 		var custom *float64
 		if m.config != nil {
 			custom = m.config.ScoreFilterCustom
@@ -152,7 +90,7 @@ func (m *ProjectTreeModel) handleFilterScorePrefix(key string) (tea.Model, tea.C
 		m.scoreFilterInput.Enter(custom)
 		return m, nil
 	}
-	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
+	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) { m.pendingPrefix = p }) {
 		m.applyFilterChange()
 	}
 	return m, nil
@@ -277,33 +215,22 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
-// handleSortKeys handles 1, 2, 3, 4, 0 - sort operations.
+// handleSortKeys handles 1-5, 0 - sort operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
-	switch key {
-	case "1":
-		m.toggleSort(SortByPriority)
-		return true, nil
-	case "2":
-		m.toggleSort(SortByDueDate)
-		return true, nil
-	case "3":
-		m.toggleSort(SortByCreatedAt)
-		return true, nil
-	case "4":
-		m.toggleSort(SortByStatus)
-		return true, nil
-	case "5":
-		m.toggleSort(SortByScore)
-		return true, nil
-	case "0":
+	field, isReset, ok := SortFieldForKey(key)
+	if !ok {
+		return false, nil
+	}
+	if isReset {
 		m.clearActiveSavedView()
 		m.sortField = SortByDefault
 		m.sortAscending = true
 		m.buildTree()
-		return true, nil
+	} else {
+		m.toggleSort(field)
 	}
-	return false, nil
+	return true, nil
 }
 
 // handleTaskCRUDKeys handles enter, n, e, D - task create/read/update/delete operations.
@@ -359,59 +286,24 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 	return false, nil
 }
 
-// handleClipboardKeys handles y, Y - clipboard operations.
+// handleClipboardKeys handles y, Y, ctrl+y - clipboard operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleClipboardKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
-	switch key {
-	case "y":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			m.clearSelection()
-			return true, func() tea.Msg {
-				return CopyTasksTitleMsg{Tasks: tasks}
+	return handleClipboardKey(key,
+		func() *models.Task {
+			if CursorInBounds(m.cursor, len(visible)) {
+				return visible[m.cursor].Task
 			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: task}
+			return nil
+		},
+		func() []*models.Task {
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				return m.getSelectedTasks()
 			}
-		}
-		return true, nil
-
-	case "Y":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			m.clearSelection()
-			return true, func() tea.Msg {
-				return CopyTasksDetailsMsg{Tasks: tasks}
-			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: task}
-			}
-		}
-		return true, nil
-
-	case "ctrl+y":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			m.clearSelection()
-			return true, func() tea.Msg {
-				return CopyTasksTitleAndDescMsg{Tasks: tasks}
-			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: task}
-			}
-		}
-		return true, nil
-	}
-	return false, nil
+			return nil
+		},
+		m.clearSelection,
+	)
 }
 
 // handleFilterOverlayKeys handles ctrl+f, ctrl+t, ctrl+s - filter/manager overlay operations.

@@ -427,7 +427,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if m.multiSelectMode && m.selectedCount() > 0 {
 					return m.handleBulkDelete()
 				}
-				return m.deleteTask()
+				return secondaryDeleteTask(m)
 			}
 			m.statusMessage = ""
 			return m, nil
@@ -587,30 +587,21 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
-		return m.toggleActive()
+		return secondaryToggleActive(m)
 
 	// Sort keys (1-5 for sort field, 0 to reset)
-	case "1":
-		m.cycleSortField(SortByPriority)
-		return m, nil
-	case "2":
-		m.cycleSortField(SortByDueDate)
-		return m, nil
-	case "3":
-		m.cycleSortField(SortByCreatedAt)
-		return m, nil
-	case "4":
-		m.cycleSortField(SortByStatus)
-		return m, nil
-	case "5":
-		m.cycleSortField(SortByScore)
-		return m, nil
-	case "0":
-		m.sortField = SortByDefault
-		m.sortAscending = true
-		m.applyFiltersAndGroup()
-		m.clampCursor()
-		m.statusMessage = "Sort reset"
+	case "1", "2", "3", "4", "5", "0":
+		if field, isReset, ok := SortFieldForKey(key); ok {
+			if isReset {
+				m.sortField = SortByDefault
+				m.sortAscending = true
+				m.applyFiltersAndGroup()
+				m.clampCursor()
+				m.statusMessage = "Sort reset"
+			} else {
+				m.cycleSortField(field)
+			}
+		}
 		return m, nil
 
 	// Edit task
@@ -630,27 +621,17 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Copy
-	case "y":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: item.Task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: item.Task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: item.Task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task {
+				if item := m.getTaskAtCursor(); item != nil {
+					return item.Task
+				}
+				return nil
+			},
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 
@@ -770,8 +751,8 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "!":
-		if priority, ok := PriorityForPrefixKey(key); ok {
-			return m.changePriority(priority)
+		if _, ok := PriorityForPrefixKey(key); ok {
+			return secondaryChangePriority(m, key)
 		}
 
 	case "F":
@@ -781,15 +762,15 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case ",":
 		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
+			return secondaryChangeStatus(m, status)
 		}
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
 			if isClear {
-				return m.clearDueDate()
+				return secondaryClearDueDate(m)
 			}
-			return m.setQuickDueDate(days)
+			return secondarySetQuickDueDate(m, days)
 		}
 		if key == "d" {
 			if item := m.getTaskAtCursor(); item != nil {
@@ -820,171 +801,38 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		return m.sectionMove(section)
+		return secondarySectionMove(m, section)
 
 	case "c":
-		// Create linked task or navigate
 		item := m.getTaskAtCursor()
 		if item == nil {
 			return m, nil
 		}
-		task := item.Task
-		project := item.Project
-
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
+		if handled, cmd := handleLinkedTaskPrefixKey(key, item.Task, item.Project, false, false); handled {
+			return m, cmd
 		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
+		return m, nil
 	}
 
 	// Invalid prefix sequence - ignore
 	return m, nil
 }
 
-// changeTaskStatus changes the status of the task at cursor.
-func (m *AllTasksViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
+// secondaryOpsView implementation for AllTasksViewModel.
+
+func (m *AllTasksViewModel) getSecondaryTaskRef() (*models.Task, *models.Project) {
 	item := m.getTaskAtCursor()
 	if item == nil {
-		return m, nil
+		return nil, nil
 	}
-
-	result := applyStatusChange(m.projectService, item.Project, item.Task.ID, newStatus)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
+	return item.Task, item.Project
 }
 
-// changePriority changes the priority of the task at cursor.
-func (m *AllTasksViewModel) changePriority(priority int) (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applyPriorityChange(m.projectService, item.Project, item.Task.ID, priority)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// setQuickDueDate sets the due date to a relative number of days from today.
-func (m *AllTasksViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applyQuickDueDate(m.projectService, item.Project, item.Task.ID, daysFromNow)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// clearDueDate clears the due date from the task at cursor.
-func (m *AllTasksViewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applyClearDueDate(m.projectService, item.Project, item.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// toggleActive toggles the Active flag on the task at cursor.
-func (m *AllTasksViewModel) toggleActive() (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applyToggleActive(m.projectService, item.Project, item.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// sectionMove moves the task at cursor to the specified GTD section.
-func (m *AllTasksViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applySectionChange(m.projectService, item.Project, item.Task.ID, section)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// deleteTask deletes the task at cursor.
-func (m *AllTasksViewModel) deleteTask() (tea.Model, tea.Cmd) {
-	item := m.getTaskAtCursor()
-	if item == nil {
-		return m, nil
-	}
-
-	result := applyDeleteTask(m.projectService, item.Project, item.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadAllTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
+func (m *AllTasksViewModel) getSecondaryPersister() Persister { return m.projectService }
+func (m *AllTasksViewModel) reloadSecondaryData()             { m.loadAllTasks() }
+func (m *AllTasksViewModel) clampSecondaryCursor()            { m.clampCursor() }
+func (m *AllTasksViewModel) setSecondaryErr(err error)        { m.err = err }
+func (m *AllTasksViewModel) setSecondaryStatus(msg string)    { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {

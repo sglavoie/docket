@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -346,7 +345,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		confirmed, handled := m.confirm.HandleKey(key)
 		if handled {
 			if confirmed {
-				return m.deleteTask()
+				return secondaryDeleteTask(m)
 			}
 			m.statusMessage = ""
 			return m, nil
@@ -482,11 +481,14 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag (remove from focus)
 	case "*":
-		return m.toggleActive()
+		if ft := m.getTaskAtCursor(); ft != nil {
+			return secondaryRemoveFromFocus(m, ft.Task.ShortID)
+		}
+		return m, nil
 
 	// Priority changes
 	case "1", "2", "3", "4", "5":
-		return m.changeTaskPriority(key)
+		return secondaryChangePriority(m, key)
 
 	// Edit task
 	case "e":
@@ -505,27 +507,17 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Copy
-	case "y":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: ft.Task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: ft.Task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: ft.Task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task {
+				if ft := m.getTaskAtCursor(); ft != nil {
+					return ft.Task
+				}
+				return nil
+			},
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 
@@ -586,15 +578,15 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case ",":
 		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
+			return secondaryChangeStatus(m, status)
 		}
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
 			if isClear {
-				return m.clearDueDate()
+				return secondaryClearDueDate(m)
 			}
-			return m.setQuickDueDate(days)
+			return secondarySetQuickDueDate(m, days)
 		}
 		if key == "d" {
 			if ft := m.getTaskAtCursor(); ft != nil {
@@ -625,172 +617,38 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		return m.sectionMove(section)
+		return secondarySectionMove(m, section)
 
 	case "c":
-		// Create linked task or navigate
 		ft := m.getTaskAtCursor()
 		if ft == nil {
 			return m, nil
 		}
-		task := ft.Task
-		project := ft.Project
-
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
+		if handled, cmd := handleLinkedTaskPrefixKey(key, ft.Task, ft.Project, false, false); handled {
+			return m, cmd
 		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
+		return m, nil
 	}
 
 	// Invalid prefix sequence - ignore
 	return m, nil
 }
 
-// toggleActive removes the task from focus by clearing its Active flag.
-func (m *FocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
+// secondaryOpsView implementation for FocusViewModel.
+
+func (m *FocusViewModel) getSecondaryTaskRef() (*models.Task, *models.Project) {
 	ft := m.getTaskAtCursor()
 	if ft == nil {
-		return m, nil
+		return nil, nil
 	}
-
-	result := applyRemoveFromFocus(m.projectService, ft.Project, ft.Task.ID, ft.Task.ShortID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
+	return ft.Task, ft.Project
 }
 
-// changeTaskStatus changes the status of the task at cursor.
-func (m *FocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	result := applyStatusChange(m.projectService, ft.Project, ft.Task.ID, newStatus)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// changeTaskPriority changes the priority of the task at cursor.
-func (m *FocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	priority, _ := strconv.Atoi(key)
-	result := applyPriorityChange(m.projectService, ft.Project, ft.Task.ID, priority)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// setQuickDueDate sets the due date to a relative number of days from today.
-func (m *FocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	result := applyQuickDueDate(m.projectService, ft.Project, ft.Task.ID, daysFromNow)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// clearDueDate clears the due date from the task at cursor.
-func (m *FocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	result := applyClearDueDate(m.projectService, ft.Project, ft.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// sectionMove moves the task at cursor to the specified GTD section.
-func (m *FocusViewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	result := applySectionChange(m.projectService, ft.Project, ft.Task.ID, section)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
-
-// deleteTask deletes the task at cursor.
-func (m *FocusViewModel) deleteTask() (tea.Model, tea.Cmd) {
-	ft := m.getTaskAtCursor()
-	if ft == nil {
-		return m, nil
-	}
-
-	result := applyDeleteTask(m.projectService, ft.Project, ft.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasks()
-	m.clampCursor()
-	return m, result.Cmd
-}
+func (m *FocusViewModel) getSecondaryPersister() Persister { return m.projectService }
+func (m *FocusViewModel) reloadSecondaryData()             { m.loadTasks() }
+func (m *FocusViewModel) clampSecondaryCursor()            { m.clampCursor() }
+func (m *FocusViewModel) setSecondaryErr(err error)        { m.err = err }
+func (m *FocusViewModel) setSecondaryStatus(msg string)    { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {

@@ -8,6 +8,26 @@ import (
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
+// SortFieldForKey maps a keyboard key to its corresponding SortField.
+// Returns the field, whether this is a reset (key "0"), and whether the key matched.
+func SortFieldForKey(key string) (SortField, bool, bool) {
+	switch key {
+	case "1":
+		return SortByPriority, false, true
+	case "2":
+		return SortByDueDate, false, true
+	case "3":
+		return SortByCreatedAt, false, true
+	case "4":
+		return SortByStatus, false, true
+	case "5":
+		return SortByScore, false, true
+	case "0":
+		return SortByDefault, true, true
+	}
+	return SortByDefault, false, false
+}
+
 // StatusOrder returns the sort order for a status (workflow order).
 // This is the single source of truth used by all views that sort by status.
 func StatusOrder(status models.TaskStatus) int {

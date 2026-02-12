@@ -8,38 +8,21 @@ import (
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.
 func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "p":
-		if m.filter.Priority == 1 {
-			m.filter.Priority = 0
-		} else {
-			m.filter.Priority = 1
-		}
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-	case "t":
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
+	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
 		tags := buildFocusTagList(m)
-		return m, func() tea.Msg {
+		return func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
 		}
-	case "a":
-		m.pendingPrefix = "Fa"
-		return m, nil
-	case "S":
-		m.pendingPrefix = "FS"
-		return m, nil
-	case "x":
-		clearCommonFilters(&m.filter)
+	})
+	if result.NewPrefix != "" {
+		m.pendingPrefix = result.NewPrefix
+	}
+	if result.Changed {
 		m.applyFilter()
 		m.clampCursor()
-		return m, nil
+	}
+	if result.TagCmd != nil {
+		return m, result.TagCmd
 	}
 	return m, nil
 }

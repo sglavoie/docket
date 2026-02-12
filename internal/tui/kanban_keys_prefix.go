@@ -230,78 +230,21 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "c":
-		// Create linked task operations
 		task := m.getSelectedTask()
 		if task == nil {
 			return m, nil
 		}
-		project := m.Project
-
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
+		if handled, cmd := handleLinkedTaskPrefixKey(key, task, m.Project, true, true); handled {
+			return m, cmd
 		}
-
-		// Unlink linked task
-		if key == "x" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
-			}
-		}
-
-		// Cross-project linking
-		if key == "p" {
-			return m, func() tea.Msg {
-				return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
-			}
-		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
+		return m, nil
 
 	case "F":
 		// Filter prefix - first level
 		return m.handleKanbanFilterPrefix(key)
 
-	case "Ft":
-		// Filter type sub-prefix
-		return m.handleKanbanFilterTypePrefix(key)
-
-	case "Fs":
-		// Filter status sub-prefix
-		return m.handleKanbanFilterStatusPrefix(key)
-
-	case "Fd":
-		// Filter due-date sub-prefix
-		return m.handleKanbanFilterDuePrefix(key)
-
-	case "Fa":
-		// Filter attribute sub-prefix
-		return m.handleKanbanFilterAttrPrefix(key)
-
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		// Filter attribute sub-prefix values
-		return m.handleKanbanFilterAttrSubPrefix(m.pendingPrefix, key)
-
-	case "FS":
-		// Filter score threshold
-		return m.handleKanbanFilterScorePrefix(key)
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleKanbanFilterSubPrefix(prefix, key)
 
 	case "z":
 		// Fold/expand operations
@@ -396,11 +339,8 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		}
 		return m, nil
 	case "o":
-		// Task open in external editor
-		if task != nil {
-			return m, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: project}
-			}
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return m, cmd
 		}
 		return m, nil
 	case "p":
@@ -444,20 +384,9 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			}
 		}
 		return m, nil
-	case "c":
-		// Task comments
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowTaskCommentsMsg{Task: task, Project: project}
-			}
-		}
-		return m, nil
-	case "a":
-		// Task attachments
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowTaskAttachmentsMsg{Task: task, Project: project}
-			}
+	case "c", "a":
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return m, cmd
 		}
 		return m, nil
 	case "D":
@@ -473,28 +402,9 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			m.confirm.Show("delete", m.statusMessage)
 		}
 		return m, nil
-	case "m":
-		// Task move (to another project)
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{Task: task, SourceProject: project}
-			}
-		}
-		return m, nil
-	case "l":
-		// Task checklist
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowTaskChecklistMsg{Task: task, Project: project}
-			}
-		}
-		return m, nil
-	case "d":
-		// Task description editor (text popup)
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowDescriptionEditorMsg{Task: task, Project: project}
-			}
+	case "m", "l", "d":
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return m, cmd
 		}
 		return m, nil
 	}
@@ -507,19 +417,8 @@ func (m *KanbanViewModel) handleKanbanBlockerPrefix(key string) (tea.Model, tea.
 	if task == nil {
 		return m, nil
 	}
-	project := m.Project
-
-	switch key {
-	case "b":
-		// Blocks/blockers (view dependencies)
-		return m, func() tea.Msg {
-			return ShowDependencyViewerMsg{Task: task, Project: project}
-		}
-	case "m":
-		// Blocks managed (dependency management)
-		return m, func() tea.Msg {
-			return ManageDependenciesMsg{Task: task, Project: project}
-		}
+	if handled, cmd := handleBlockerPrefixKey(key, task, m.Project); handled {
+		return m, cmd
 	}
 	return m, nil
 }

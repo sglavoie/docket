@@ -8,35 +8,9 @@ import (
 
 // handleAllTasksFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	// View-specific keys
 	switch key {
-	case "p":
-		if m.filter.Priority == 1 {
-			m.filter.Priority = 0
-		} else {
-			m.filter.Priority = 1
-		}
-		m.applyFiltersAndGroup()
-		m.clampCursor()
-		return m, nil
-	case "t":
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
-		tags := buildAllTasksTagList(m)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
-		}
-	case "a":
-		m.pendingPrefix = "Fa"
-		return m, nil
-	case "S":
-		m.pendingPrefix = "FS"
-		return m, nil
 	case "d":
-		// Cycle due date filter
 		m.filter.DueDate = (m.filter.DueDate + 1) % (DueDateNone + 1)
 		m.applyFiltersAndGroup()
 		m.clampCursor()
@@ -45,11 +19,30 @@ func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, t
 		m.toggleProjectFilter()
 		return m, nil
 	case "x":
+		// Override common x to also clear project filter
 		clearCommonFilters(&m.filter)
 		m.projectFilter = make(map[string]bool)
 		m.applyFiltersAndGroup()
 		m.clampCursor()
 		return m, nil
+	}
+
+	// Common filter prefix keys
+	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
+		tags := buildAllTasksTagList(m)
+		return func() tea.Msg {
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
+		}
+	})
+	if result.NewPrefix != "" {
+		m.pendingPrefix = result.NewPrefix
+	}
+	if result.Changed {
+		m.applyFiltersAndGroup()
+		m.clampCursor()
+	}
+	if result.TagCmd != nil {
+		return m, result.TagCmd
 	}
 	return m, nil
 }

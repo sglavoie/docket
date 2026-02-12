@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -249,29 +250,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = "b"
 		return m, nil
 
-	// Sorting keys (1-4 for sort field, 0 to reset)
-	case "1":
-		m.cycleSortField(SortByPriority)
-		return m, nil
-
-	case "2":
-		m.cycleSortField(SortByDueDate)
-		return m, nil
-
-	case "3":
-		m.cycleSortField(SortByCreatedAt)
-		return m, nil
-
-	case "4":
-		m.cycleSortField(SortByStatus)
-		return m, nil
-
-	case "5":
-		m.cycleSortField(SortByScore)
-		return m, nil
-
-	case "0":
-		m.resetSort()
+	// Sorting keys (1-5 for sort field, 0 to reset)
+	case "1", "2", "3", "4", "5", "0":
+		if field, isReset, ok := SortFieldForKey(key); ok {
+			if isReset {
+				m.resetSort()
+			} else {
+				m.cycleSortField(field)
+			}
+		}
 		return m, nil
 
 	// Multi-select mode
@@ -361,57 +348,21 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowQuickCaptureMsg{Project: m.Project, AllProjects: m.config.Projects}
 		}
 
-	case "y":
-		// Copy task title to clipboard
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
-			return m, func() tea.Msg {
-				return CopyTasksTitleMsg{Tasks: tasks}
-			}
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		// Copy task description to clipboard
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
-			return m, func() tea.Msg {
-				return CopyTasksDetailsMsg{Tasks: tasks}
-			}
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		// Copy task title and description to clipboard
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
-			return m, func() tea.Msg {
-				return CopyTasksTitleAndDescMsg{Tasks: tasks}
-			}
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			m.getSelectedTask,
+			func() []*models.Task {
+				if m.multiSelectMode && m.selectedCount() > 0 {
+					return m.getSelectedTasksList()
+				}
+				return nil
+			},
+			func() {
+				m.selectedTasks = make(map[string]bool)
+				m.multiSelectMode = false
+			},
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 

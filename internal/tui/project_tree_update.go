@@ -473,50 +473,13 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "c":
-		// Create linked task or navigate
 		if !CursorInBounds(m.cursor, len(visible)) {
 			return m, nil
 		}
-		task := visible[m.cursor].Task
-		project := m.project
-
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
+		if handled, cmd := handleLinkedTaskPrefixKey(key, visible[m.cursor].Task, m.project, true, true); handled {
+			return m, cmd
 		}
-
-		// Unlink linked task (opens selector where user can press x to unlink)
-		if key == "x" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project, ForUnlink: true}
-			}
-		}
-
-		// Cross-project linking
-		if key == "p" {
-			return m, func() tea.Msg {
-				return ShowCrossProjectLinkerMsg{SourceTask: task, SourceProject: project}
-			}
-		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
+		return m, nil
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
@@ -564,29 +527,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		// Filter prefix - first level
 		return m.handleFilterPrefix(key)
 
-	case "Ft":
-		// Filter type sub-prefix
-		return m.handleFilterTypePrefix(key)
-
-	case "Fs":
-		// Filter status sub-prefix
-		return m.handleFilterStatusPrefix(key)
-
-	case "Fd":
-		// Filter due-date sub-prefix
-		return m.handleFilterDuePrefix(key)
-
-	case "Fa":
-		// Filter attribute sub-prefix
-		return m.handleFilterAttrPrefix(key)
-
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		// Filter attribute sub-prefix values
-		return m.handleFilterAttrSubPrefix(m.pendingPrefix, key)
-
-	case "FS":
-		// Filter score threshold
-		return m.handleFilterScorePrefix(key)
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handleFilterSubPrefix(prefix, key)
 
 	case "Fv":
 		// Saved views sub-prefix
@@ -733,11 +675,9 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		}
 		return m, nil
 	case "o":
-		// Task open in external editor
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return EditTaskContentMsg{Task: task, Project: m.project}
+			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
+				return m, cmd
 			}
 		}
 		return m, nil
@@ -778,21 +718,10 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 			}
 		}
 		return m, nil
-	case "c":
-		// Task comments
+	case "c", "a":
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowTaskCommentsMsg{Task: task, Project: m.project}
-			}
-		}
-		return m, nil
-	case "a":
-		// Task attachments
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowTaskAttachmentsMsg{Task: task, Project: m.project}
+			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
+				return m, cmd
 			}
 		}
 		return m, nil
@@ -813,35 +742,19 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		}
 		return m, nil
 	case "m":
-		// Task move (reparent)
 		if m.multiSelectMode && len(m.selectedTasks) > 1 {
 			return m, nil
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowProjectSelectorForMoveMsg{
-					Task:          task,
-					SourceProject: m.project,
-				}
+			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
+				return m, cmd
 			}
 		}
 		return m, nil
-	case "l":
-		// Task checklist
+	case "l", "d":
 		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowTaskChecklistMsg{Task: task, Project: m.project}
-			}
-		}
-		return m, nil
-	case "d":
-		// Task description editor (text popup)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowDescriptionEditorMsg{Task: task, Project: m.project}
+			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
+				return m, cmd
 			}
 		}
 		return m, nil
@@ -851,25 +764,11 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 
 // handleBlockerPrefix handles the second key after pressing b (blocker/dependency prefix).
 func (m *ProjectTreeModel) handleBlockerPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
-	switch key {
-	case "b":
-		// Blocks/blockers (view dependencies)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowDependencyViewerMsg{Task: task, Project: m.project}
-			}
-		}
+	if !CursorInBounds(m.cursor, len(visible)) {
 		return m, nil
-	case "m":
-		// Blocks managed (dependency management)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ManageDependenciesMsg{Task: task, Project: m.project}
-			}
-		}
-		return m, nil
+	}
+	if handled, cmd := handleBlockerPrefixKey(key, visible[m.cursor].Task, m.project); handled {
+		return m, cmd
 	}
 	return m, nil
 }

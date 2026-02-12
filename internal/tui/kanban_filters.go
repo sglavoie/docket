@@ -219,15 +219,6 @@ func (m *KanbanViewModel) ClearAllFilters() {
 	m.filter.Search = ""
 }
 
-// toggleKanbanPriorityFilter toggles the high priority filter.
-func (m *KanbanViewModel) toggleKanbanPriorityFilter() {
-	if m.filter.Priority == 1 {
-		m.filter.Priority = 0
-	} else {
-		m.filter.Priority = 1
-	}
-}
-
 // applyTabPreset resets manual filters and applies the preset for the given tab.
 func (m *KanbanViewModel) applyTabPreset(tab int) {
 	m.activeTab = tab
@@ -326,60 +317,49 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 
 // handleKanbanFilterPrefix handles the second key after pressing F (filter prefix) in kanban.
 func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	// View-specific keys
 	switch key {
 	case "c":
-		// Toggle completed view
 		m.toggleCompletedView()
 		return m, nil
-	case "p":
-		// Toggle high priority filter
-		m.toggleKanbanPriorityFilter()
-		m.loadTasks()
-		return m, nil
-	case "t":
-		// Open type sub-popup
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		// Open status sub-popup
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
-		// Tag filter selector
-		tags := BuildTagList(m.Project.Tasks, true)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
-		}
 	case "d":
-		// Open due-date sub-popup
 		m.pendingPrefix = "Fd"
 		return m, nil
-	case "a":
-		// Open attribute sub-popup
-		m.pendingPrefix = "Fa"
-		return m, nil
 	case "r":
-		// Toggle actionable filter
 		m.toggleActionableFilter()
 		return m, nil
-	case "S":
-		// Open score threshold sub-popup
-		m.pendingPrefix = "FS"
-		return m, nil
 	case "x":
-		// Clear all filters
+		// Override common x to also clear view-specific state
 		m.ClearAllFilters()
 		m.actionableFilter = false
 		m.searchInput.SetValue("")
 		m.loadTasks()
 		return m, nil
 	}
+
+	// Common filter prefix keys
+	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
+		tags := BuildTagList(m.Project.Tasks, true)
+		return func() tea.Msg {
+			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
+		}
+	})
+	if result.NewPrefix != "" {
+		m.pendingPrefix = result.NewPrefix
+	}
+	if result.Changed {
+		m.loadTasks()
+	}
+	if result.TagCmd != nil {
+		return m, result.TagCmd
+	}
 	return m, nil
 }
 
-// handleKanbanFilterScorePrefix handles the third key after pressing FS (filter score sub-prefix) in kanban.
-func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, tea.Cmd) {
-	if key == "C" {
+// handleKanbanFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
+func (m *KanbanViewModel) handleKanbanFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	// Score filter custom-value input (special case)
+	if prefix == "FS" && key == "C" {
 		var custom *float64
 		if m.config != nil {
 			custom = m.config.ScoreFilterCustom
@@ -387,53 +367,7 @@ func (m *KanbanViewModel) handleKanbanFilterScorePrefix(key string) (tea.Model, 
 		m.scoreFilterInput.Enter(custom)
 		return m, nil
 	}
-	if handleFilterScoreKey(key, &m.filter.CommonFilterState, m.config) {
-		m.loadTasks()
-	}
-	return m, nil
-}
-
-// handleKanbanFilterTypePrefix handles filter type sub-prefix in kanban.
-func (m *KanbanViewModel) handleKanbanFilterTypePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterTypeKey(key, &m.filter.CommonFilterState) {
-		m.loadTasks()
-	}
-	return m, nil
-}
-
-// handleKanbanFilterStatusPrefix handles filter status sub-prefix in kanban.
-func (m *KanbanViewModel) handleKanbanFilterStatusPrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterStatusKey(key, &m.filter.CommonFilterState) {
-		m.loadTasks()
-	}
-	return m, nil
-}
-
-// handleKanbanFilterDuePrefix handles filter due-date sub-prefix in kanban.
-func (m *KanbanViewModel) handleKanbanFilterDuePrefix(key string) (tea.Model, tea.Cmd) {
-	if handleFilterDueDateKey(key, &m.filter.CommonFilterState) {
-		m.loadTasks()
-	}
-	return m, nil
-}
-
-// handleKanbanFilterAttrPrefix handles the attribute filter sub-prefix in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrPrefix(key string) (tea.Model, tea.Cmd) {
-	newPrefix, handled := handleFilterAttrKey(key, &m.filter.CommonFilterState)
-	if !handled {
-		return m, nil
-	}
-	if newPrefix != "" {
-		m.pendingPrefix = newPrefix
-		return m, nil
-	}
-	m.loadTasks()
-	return m, nil
-}
-
-// handleKanbanFilterAttrSubPrefix handles attribute value sub-prefixes in kanban.
-func (m *KanbanViewModel) handleKanbanFilterAttrSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	if handleFilterAttrSubKey(prefix, key, &m.filter.CommonFilterState) {
+	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) { m.pendingPrefix = p }) {
 		m.loadTasks()
 	}
 	return m, nil
