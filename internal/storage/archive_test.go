@@ -464,6 +464,213 @@ func TestArchiveTasks(t *testing.T) {
 	})
 }
 
+func TestLoadArchivedTasks(t *testing.T) {
+	t.Run("returns empty slice when no archive file exists", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir}
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 0 {
+			t.Errorf("expected 0 tasks, got %d", len(tasks))
+		}
+	})
+
+	t.Run("loads tasks from single archive file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir}
+
+		completedAt := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
+		content := `## Archived: 2025-06-10 15:00
+<!-- project: TestProj, count: 2 -->
+
+### Task: First archived task
+<!-- id: arch-1, status: done, priority: 2, created: 2025-06-01 10:00, completed: 2025-06-10 14:30 -->
+
+Some description.
+
+### Bug: Second archived task
+<!-- id: arch-2, status: canceled, priority: 1, created: 2025-06-02 11:00, completed: 2025-06-10 14:30 -->
+`
+		archivePath := filepath.Join(tmpDir, "completed.md")
+		if err := os.WriteFile(archivePath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write archive: %v", err)
+		}
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 2 {
+			t.Fatalf("expected 2 tasks, got %d", len(tasks))
+		}
+		if tasks[0].ID != "arch-1" {
+			t.Errorf("expected first task ID arch-1, got %s", tasks[0].ID)
+		}
+		if tasks[0].Status != models.StatusDone {
+			t.Errorf("expected status done, got %s", tasks[0].Status)
+		}
+		if tasks[0].CompletedAt == nil || !tasks[0].CompletedAt.Equal(completedAt) {
+			t.Errorf("expected CompletedAt %v, got %v", completedAt, tasks[0].CompletedAt)
+		}
+		if tasks[1].ID != "arch-2" {
+			t.Errorf("expected second task ID arch-2, got %s", tasks[1].ID)
+		}
+		if tasks[1].Status != models.StatusCanceled {
+			t.Errorf("expected status canceled, got %s", tasks[1].Status)
+		}
+	})
+
+	t.Run("loads tasks from multiple rotated archive files", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir}
+
+		mainContent := `### Task: Main task
+<!-- id: main-1, status: done, priority: 3, completed: 2025-06-10 14:30 -->
+`
+		rotated1Content := `### Task: Rotated 1 task
+<!-- id: rot1-1, status: done, priority: 2, completed: 2025-05-15 10:00 -->
+`
+		rotated2Content := `### Bug: Rotated 2 bug
+<!-- id: rot2-1, status: done, priority: 1, completed: 2025-04-20 09:00 -->
+`
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.md"), []byte(mainContent), 0644); err != nil {
+			t.Fatalf("failed to write main archive: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.1.md"), []byte(rotated1Content), 0644); err != nil {
+			t.Fatalf("failed to write rotated 1: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.2.md"), []byte(rotated2Content), 0644); err != nil {
+			t.Fatalf("failed to write rotated 2: %v", err)
+		}
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 3 {
+			t.Fatalf("expected 3 tasks from all archive files, got %d", len(tasks))
+		}
+
+		ids := make(map[string]bool)
+		for _, task := range tasks {
+			ids[task.ID] = true
+		}
+		for _, expected := range []string{"main-1", "rot1-1", "rot2-1"} {
+			if !ids[expected] {
+				t.Errorf("expected task %s to be loaded from archives", expected)
+			}
+		}
+	})
+
+	t.Run("skips malformed archive files without failing", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir}
+
+		goodContent := `### Task: Good task
+<!-- id: good-1, status: done, priority: 3, completed: 2025-06-10 14:30 -->
+`
+		if err := os.WriteFile(filepath.Join(tmpDir, "completed.md"), []byte(goodContent), 0644); err != nil {
+			t.Fatalf("failed to write archive: %v", err)
+		}
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 1 {
+			t.Errorf("expected 1 task from good archive, got %d", len(tasks))
+		}
+	})
+
+	t.Run("activity logs round-trip through archive write and load", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir, Name: "TestProj"}
+
+		now := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
+		startedAt := time.Date(2025, 6, 5, 10, 0, 0, 0, time.Local)
+		blockedAt := time.Date(2025, 6, 7, 9, 0, 0, 0, time.Local)
+		unblockedAt := time.Date(2025, 6, 8, 11, 0, 0, 0, time.Local)
+
+		task := &models.Task{
+			ID:          "act-task-1",
+			Title:       "Task with activity",
+			Type:        models.TaskTypeTask,
+			Status:      models.StatusDone,
+			Priority:    2,
+			CreatedAt:   startedAt,
+			CompletedAt: &now,
+			Activity: []*models.ActivityEntry{
+				{Timestamp: startedAt, Field: "status", OldValue: "todo", NewValue: "in_progress"},
+				{Timestamp: blockedAt, Field: "status", OldValue: "in_progress", NewValue: "blocked"},
+				{Timestamp: unblockedAt, Field: "status", OldValue: "blocked", NewValue: "in_progress"},
+			},
+		}
+
+		// Write archived tasks (this now includes activity)
+		content := WriteArchivedTasks(project.Name, []*models.Task{task})
+		archivePath := filepath.Join(tmpDir, "completed.md")
+		if err := os.WriteFile(archivePath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write archive: %v", err)
+		}
+
+		// Load them back
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 1 {
+			t.Fatalf("expected 1 task, got %d", len(tasks))
+		}
+
+		loaded := tasks[0]
+		if len(loaded.Activity) != 3 {
+			t.Fatalf("expected 3 activity entries, got %d", len(loaded.Activity))
+		}
+
+		// Verify the activity entries round-tripped correctly
+		if loaded.Activity[0].Field != "status" || loaded.Activity[0].NewValue != "in_progress" {
+			t.Errorf("first activity entry mismatch: %+v", loaded.Activity[0])
+		}
+		if loaded.Activity[1].Field != "status" || loaded.Activity[1].NewValue != "blocked" {
+			t.Errorf("second activity entry mismatch: %+v", loaded.Activity[1])
+		}
+		if loaded.Activity[2].Field != "status" || loaded.Activity[2].NewValue != "in_progress" {
+			t.Errorf("third activity entry mismatch: %+v", loaded.Activity[2])
+		}
+	})
+
+	t.Run("comments round-trip through archive write and load", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		project := &models.Project{Path: tmpDir, Name: "TestProj"}
+
+		now := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
+		commentTime := time.Date(2025, 6, 8, 9, 0, 0, 0, time.Local)
+
+		task := &models.Task{
+			ID:          "cmt-task-1",
+			Title:       "Task with comments",
+			Type:        models.TaskTypeTask,
+			Status:      models.StatusDone,
+			Priority:    2,
+			CompletedAt: &now,
+			Comments: []*models.Comment{
+				{Text: "This is a test comment", CreatedAt: commentTime},
+			},
+		}
+
+		content := WriteArchivedTasks(project.Name, []*models.Task{task})
+		archivePath := filepath.Join(tmpDir, "completed.md")
+		if err := os.WriteFile(archivePath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write archive: %v", err)
+		}
+
+		tasks := LoadArchivedTasks(project)
+
+		if len(tasks) != 1 {
+			t.Fatalf("expected 1 task, got %d", len(tasks))
+		}
+		if len(tasks[0].Comments) != 1 {
+			t.Fatalf("expected 1 comment, got %d", len(tasks[0].Comments))
+		}
+		if tasks[0].Comments[0].Text != "This is a test comment" {
+			t.Errorf("comment text mismatch: %q", tasks[0].Comments[0].Text)
+		}
+	})
+}
+
 func TestGetArchiveFilePath(t *testing.T) {
 	project := &models.Project{
 		Path: "/home/user/projects/my-project",

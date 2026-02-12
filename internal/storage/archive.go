@@ -2,12 +2,14 @@ package storage
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -17,6 +19,52 @@ const archiveRotationThreshold int64 = 5 * 1024 * 1024 // 5MB
 // GetArchiveFilePath returns the path to the project's archive file.
 func GetArchiveFilePath(project *models.Project) string {
 	return filepath.Join(project.Path, archiveFileName)
+}
+
+// LoadArchivedTasks reads completed.md (and any rotated files) for a project
+// and returns all parsed tasks. Returns an empty slice if no archive exists.
+func LoadArchivedTasks(project *models.Project) []*models.Task {
+	var allTasks []*models.Task
+
+	// Collect archive file paths: completed.md, completed.1.md, completed.2.md, ...
+	var paths []string
+	mainPath := filepath.Join(project.Path, archiveFileName)
+	if _, err := os.Stat(mainPath); err == nil {
+		paths = append(paths, mainPath)
+	}
+	for i := 1; ; i++ {
+		rotatedPath := filepath.Join(project.Path, fmt.Sprintf("completed.%d.md", i))
+		if _, err := os.Stat(rotatedPath); os.IsNotExist(err) {
+			break
+		}
+		paths = append(paths, rotatedPath)
+	}
+
+	for _, p := range paths {
+		tasks, err := parseArchiveFile(p)
+		if err != nil {
+			log.Printf("warning: failed to parse archive %s: %v", p, err)
+			continue
+		}
+		allTasks = append(allTasks, tasks...)
+	}
+
+	return allTasks
+}
+
+// parseArchiveFile reads a single archive file and returns the tasks found in it.
+func parseArchiveFile(path string) ([]*models.Task, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read archive file: %w", err)
+	}
+
+	result, err := ParseTasksMarkdownWithSections(string(content))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse archive: %w", err)
+	}
+
+	return result.Tasks, nil
 }
 
 // ArchiveTasks moves completed tasks from the project to the archive file.
@@ -141,6 +189,18 @@ func writeArchivedTask(task *models.Task) string {
 	if task.Description != "" {
 		b.WriteString(task.Description)
 		b.WriteString("\n")
+	}
+
+	// Preserve activity logs for future metrics (cycle time, blocked)
+	if len(task.Activity) > 0 {
+		b.WriteString("\n")
+		b.WriteString(format.WriteActivity(task))
+	}
+
+	// Preserve comments to prevent data loss
+	if len(task.Comments) > 0 {
+		b.WriteString("\n")
+		b.WriteString(format.WriteComments(task))
 	}
 
 	return b.String()

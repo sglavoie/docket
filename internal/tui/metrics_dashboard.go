@@ -87,18 +87,21 @@ func NewMetricsDashboardModelForProject(cfg *config.Config, project *models.Proj
 
 func (m *MetricsDashboardModel) computeMetrics() {
 	var projects []*models.Project
+	var allArchived []*models.Task
 
 	if m.isGlobal {
 		for _, p := range m.config.GetActiveProjects() {
 			_ = storage.LoadProject(p)
 			projects = append(projects, p)
+			allArchived = append(allArchived, storage.LoadArchivedTasks(p)...)
 		}
 	} else if m.project != nil {
 		_ = storage.LoadProject(m.project)
 		projects = []*models.Project{m.project}
+		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
 	}
 
-	m.metrics = metrics.ComputeAllAt(projects, m.timeRange, time.Now())
+	m.metrics = metrics.ComputeAllAt(projects, m.timeRange, time.Now(), allArchived)
 }
 
 // Init implements tea.Model.

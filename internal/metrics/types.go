@@ -147,7 +147,10 @@ type AggregateMetrics struct {
 }
 
 // ComputeAllAt computes all metrics using the given reference time (for testing).
-func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time) *AggregateMetrics {
+// Optional extraTasks slices (e.g. archived tasks) are appended to the task pool
+// for completion, cycle time, and throughput metrics. They are excluded from
+// blocked metrics since archived tasks without project association aren't actionable.
+func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extraTasks ...[]*models.Task) *AggregateMetrics {
 	var allTasks []*models.Task
 	taskProject := make(map[*models.Task]*models.Project)
 	for _, p := range projects {
@@ -155,6 +158,10 @@ func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time) *Aggr
 			taskProject[t] = p
 		}
 		allTasks = append(allTasks, p.Tasks...)
+	}
+
+	for _, extra := range extraTasks {
+		allTasks = append(allTasks, extra...)
 	}
 
 	cutoff := tr.Cutoff(now)
