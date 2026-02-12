@@ -214,8 +214,8 @@ func (m *KanbanViewModel) loadTasksWithSwimlanes() {
 			nodes := m.swimlaneNodes[lane.Key][col.Key]
 			if len(nodes) > 1 {
 				sortField := m.getSortFieldForColumn(col.Key)
-				if sortField != SortByDefault {
-					m.sortKanbanNodeSlice(nodes, sortField)
+				if sortField != SortByDefault || col.Key == KanbanSectionActive {
+					m.sortKanbanNodeSlice(nodes, sortField, col.Key)
 				}
 			}
 		}

@@ -79,7 +79,7 @@ func (m *ProjectTreeModel) pruneInvisibleSelections() {
 // sortNodes sorts the nodes based on the current sort field.
 // Sorting is applied within each hierarchy level to preserve parent-child relationships.
 func (m *ProjectTreeModel) sortNodes() {
-	if m.sortField == SortByDefault && m.viewMode != ViewModeSnoozed {
+	if m.sortField == SortByDefault && m.viewMode != ViewModeSnoozed && m.viewMode != ViewModeActive {
 		return
 	}
 
@@ -129,6 +129,14 @@ func (m *ProjectTreeModel) sortNodeSlice(nodes []*TreeNode) {
 
 // compareNodes compares two nodes based on the current sort field and direction.
 func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
+	// In Active view, float active-flagged tasks to the top
+	if m.viewMode == ViewModeActive && a.Task.Active != b.Task.Active {
+		if a.Task.Active {
+			return true
+		}
+		return false
+	}
+
 	// Handle snoozed view default sort specially
 	if m.sortField == SortByDefault && m.viewMode == ViewModeSnoozed {
 		var less bool
@@ -145,6 +153,10 @@ func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 			less = !less
 		}
 		return less
+	}
+
+	if m.sortField == SortByDefault {
+		return false
 	}
 
 	cmp := CompareTasks(a.Task, b.Task, m.sortField, m.project.ID, m.config)

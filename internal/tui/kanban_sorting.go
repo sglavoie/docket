@@ -9,7 +9,7 @@ import (
 func (m *KanbanViewModel) sortColumnNodes(section string) {
 	// Get the sort field for this column (use column-specific or global)
 	sortField := m.getSortFieldForColumn(section)
-	if sortField == SortByDefault {
+	if sortField == SortByDefault && section != KanbanSectionActive {
 		return
 	}
 
@@ -38,7 +38,7 @@ func (m *KanbanViewModel) sortColumnNodes(section string) {
 	}
 
 	// Sort root nodes
-	m.sortKanbanNodeSlice(rootNodes, sortField)
+	m.sortKanbanNodeSlice(rootNodes, sortField, section)
 
 	// Rebuild nodes slice in sorted order
 	m.Nodes[section] = []*KanbanNode{}
@@ -46,7 +46,7 @@ func (m *KanbanViewModel) sortColumnNodes(section string) {
 	addNodeWithChildren = func(node *KanbanNode) {
 		m.Nodes[section] = append(m.Nodes[section], node)
 		children := nodesByParent[node.Task.ID]
-		m.sortKanbanNodeSlice(children, sortField)
+		m.sortKanbanNodeSlice(children, sortField, section)
 		for _, child := range children {
 			addNodeWithChildren(child)
 		}
@@ -76,18 +76,30 @@ func (m *KanbanViewModel) setSortFieldForColumn(section string, field SortField)
 }
 
 // sortKanbanNodeSlice sorts a slice of kanban nodes based on the sort field.
-func (m *KanbanViewModel) sortKanbanNodeSlice(nodes []*KanbanNode, sortField SortField) {
+func (m *KanbanViewModel) sortKanbanNodeSlice(nodes []*KanbanNode, sortField SortField, section string) {
 	if len(nodes) <= 1 {
 		return
 	}
 
 	sort.SliceStable(nodes, func(i, j int) bool {
-		return m.compareKanbanNodes(nodes[i], nodes[j], sortField)
+		return m.compareKanbanNodes(nodes[i], nodes[j], sortField, section)
 	})
 }
 
 // compareKanbanNodes compares two kanban nodes based on the sort field and direction.
-func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortField) bool {
+func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortField, section string) bool {
+	// In the Active section, float active-flagged tasks to the top
+	if section == KanbanSectionActive && a.Task.Active != b.Task.Active {
+		if a.Task.Active {
+			return true
+		}
+		return false
+	}
+
+	if sortField == SortByDefault {
+		return false
+	}
+
 	cmp := CompareTasks(a.Task, b.Task, sortField, m.Project.ID, m.config)
 	return ApplySortDirection(cmp, m.sortAscending)
 }
