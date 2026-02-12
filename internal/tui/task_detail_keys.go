@@ -109,18 +109,14 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	// Clipboard
-	case "y":
-		return m, func() tea.Msg {
-			return CopyTaskTitleMsg{Task: m.task}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task { return m.task },
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
-	case "Y":
-		return m, func() tea.Msg {
-			return CopyTaskDetailsMsg{Task: m.task}
-		}
-	case "ctrl+y":
-		return m, func() tea.Msg {
-			return CopyTaskTitleAndDescMsg{Task: m.task}
-		}
+		return m, nil
 	}
 
 	return m, nil

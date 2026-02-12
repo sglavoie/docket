@@ -25,21 +25,8 @@ var (
 	isBug            bool
 	isIdea           bool
 
-	// Type-specific attribute flags
-	bugReproducible string
-	bugSeverity     string
-	bugWorkaround   string
-	ideaCategory    string
-	ideaEffort      string
-	ideaValue       string
-	ideaValidated   bool
-	taskEffort      string
-	taskWorkType    string
-	storyPoints     int
-	storyPersona    string
-	epicScope       string
-	epicMilestone   string
-	epicMetrics     string
+	// Type-specific attribute flags (shared registration)
+	addTypeAttrs TypeAttrValues
 )
 
 var taskAddCmd = &cobra.Command{
@@ -84,20 +71,7 @@ func init() {
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
 
 	// Type-specific attribute flags
-	taskAddCmd.Flags().StringVar(&bugReproducible, "bug.reproducible", "", "bug reproducibility (yes/no/sometimes)")
-	taskAddCmd.Flags().StringVar(&bugSeverity, "bug.severity", "", "bug severity (critical/major/minor/cosmetic)")
-	taskAddCmd.Flags().StringVar(&bugWorkaround, "bug.workaround", "", "bug workaround text")
-	taskAddCmd.Flags().StringVar(&ideaCategory, "idea.category", "", "idea category (feature/improvement/refactor/research)")
-	taskAddCmd.Flags().StringVar(&ideaEffort, "idea.effort", "", "idea effort estimate (small/medium/large/unknown)")
-	taskAddCmd.Flags().StringVar(&ideaValue, "idea.value", "", "idea value (low/medium/high)")
-	taskAddCmd.Flags().BoolVar(&ideaValidated, "idea.validated", false, "idea is validated")
-	taskAddCmd.Flags().StringVar(&taskEffort, "task.effort", "", "task effort (small/medium/large)")
-	taskAddCmd.Flags().StringVar(&taskWorkType, "task.worktype", "", "task work type (development/documentation/testing/devops/design)")
-	taskAddCmd.Flags().IntVar(&storyPoints, "story.points", 0, "story points")
-	taskAddCmd.Flags().StringVar(&storyPersona, "story.persona", "", "story persona")
-	taskAddCmd.Flags().StringVar(&epicScope, "epic.scope", "", "epic scope (defined/evolving/undefined)")
-	taskAddCmd.Flags().StringVar(&epicMilestone, "epic.milestone", "", "epic milestone")
-	taskAddCmd.Flags().StringVar(&epicMetrics, "epic.metrics", "", "epic success metrics")
+	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
@@ -198,24 +172,9 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Apply type-specific attributes
-	if err := applyTypeAttrValues(task, TypeAttrValues{
-		BugReproducible:  bugReproducible,
-		BugSeverity:      bugSeverity,
-		BugWorkaround:    bugWorkaround,
-		IdeaCategory:     ideaCategory,
-		IdeaEffort:       ideaEffort,
-		IdeaValue:        ideaValue,
-		IdeaValidatedSet: cmd.Flags().Changed("idea.validated"),
-		IdeaValidated:    ideaValidated,
-		TaskEffort:       taskEffort,
-		TaskWorkType:     taskWorkType,
-		StoryPointsSet:   cmd.Flags().Changed("story.points"),
-		StoryPoints:      storyPoints,
-		StoryPersona:     storyPersona,
-		EpicScope:        epicScope,
-		EpicMilestone:    epicMilestone,
-		EpicMetrics:      epicMetrics,
-	}); err != nil {
+	addTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
+	addTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
+	if err := applyTypeAttrValues(task, addTypeAttrs); err != nil {
 		return err
 	}
 

@@ -3,15 +3,12 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -165,7 +162,7 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TaskUpdatedMsg:
 		// Auto-refresh when a task is updated (e.g., after editing)
-		_ = storage.LoadProject(m.project)
+		_ = defaultPersister.Load(m.project)
 		m.loadTasks()
 		m.clampCursor()
 		return m, nil
@@ -294,34 +291,21 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	// Refresh
 	case "r":
-		_ = storage.LoadProject(m.project)
+		_ = defaultPersister.Load(m.project)
 		m.loadTasks()
 		m.clampCursor()
 		m.statusMessage = "Refreshed"
 		return m, nil
 
 	// Copy
-	case "y":
-		if task := m.getTaskAtCursor(); task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		if task := m.getTaskAtCursor(); task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		if task := m.getTaskAtCursor(); task != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task {
+				return m.getTaskAtCursor()
+			},
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 
@@ -382,219 +366,42 @@ func (m *ProjectFocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
-// toggleActive removes the task from focus by clearing its Active flag.
+// taskOpsView implementation for ProjectFocusViewModel.
+
+func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
+	task := m.getTaskAtCursor()
+	if task == nil {
+		return nil, nil
+	}
+	return task, m.project
+}
+
+func (m *ProjectFocusViewModel) getPersister() Persister { return defaultPersister }
+func (m *ProjectFocusViewModel) reloadData()             { m.loadTasks() }
+func (m *ProjectFocusViewModel) setErr(err error)        { m.err = err }
+func (m *ProjectFocusViewModel) setStatus(msg string)    { m.statusMessage = msg }
+
 func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
-	task := m.getTaskAtCursor()
-	if task == nil {
-		return m, nil
+	if task := m.getTaskAtCursor(); task != nil {
+		return taskOpsRemoveFromFocus(m, task.ShortID)
 	}
-
-	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Toggle active flag off
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Active = false
-	})
-
-	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload and refresh view
-	_ = storage.LoadProject(m.project)
-	m.loadTasks()
-	m.clampCursor()
-
-	m.statusMessage = fmt.Sprintf("Removed #%d from focus", task.ShortID)
-
-	return m, func() tea.Msg {
-		return TaskUpdatedMsg{Task: task}
-	}
+	return m, nil
 }
 
-// changeTaskStatus changes the status of the task at cursor.
 func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	task := m.getTaskAtCursor()
-	if task == nil {
-		return m, nil
-	}
-
-	if msg := task.CanTransitionTo(newStatus); msg != "" {
-		m.statusMessage = msg
-		return m, nil
-	}
-
-	// Project-level check: incomplete dependencies block completion
-	if newStatus == models.StatusDone {
-		if m.project.HasIncompleteDependencies(task) {
-			m.err = fmt.Errorf("cannot complete: has incomplete dependencies")
-			return m, nil
-		}
-	}
-
-	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Apply via lifecycle method
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.ApplyTransition(newStatus)
-	})
-
-	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = storage.LoadProject(m.project)
-	m.loadTasks()
-	m.clampCursor()
-
-	m.statusMessage = fmt.Sprintf("Task #%d -> %s", task.ShortID, newStatus)
-
-	return m, func() tea.Msg {
-		return TaskStatusChangedMsg{Task: task}
-	}
+	return taskOpsChangeStatus(m, newStatus)
 }
 
-// changeTaskPriority changes the priority of the task at cursor.
 func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	task := m.getTaskAtCursor()
-	if task == nil {
-		return m, nil
-	}
-
-	priority, _ := strconv.Atoi(key)
-
-	if task.Priority == priority {
-		return m, nil
-	}
-
-	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Update task priority
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.Priority = priority
-	})
-
-	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = storage.LoadProject(m.project)
-	m.loadTasks()
-	m.clampCursor()
-
-	m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
-
-	return m, func() tea.Msg {
-		return TaskUpdatedMsg{Task: task}
-	}
+	return taskOpsChangePriority(m, key)
 }
 
-// setQuickDueDate sets the due date to a relative number of days from today.
 func (m *ProjectFocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	task := m.getTaskAtCursor()
-	if task == nil {
-		return m, nil
-	}
-
-	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Set due date
-	newDate := time.Now().AddDate(0, 0, daysFromNow)
-	newDate = util.StartOfDay(newDate)
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.DueDate = &newDate
-	})
-
-	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = storage.LoadProject(m.project)
-	m.loadTasks()
-	m.clampCursor()
-
-	label := "today"
-	switch daysFromNow {
-	case 1:
-		label = "tomorrow"
-	case 7:
-		label = "next week"
-	case 30:
-		label = "next month"
-	}
-	m.statusMessage = fmt.Sprintf("Due date set to %s", label)
-
-	return m, func() tea.Msg {
-		return TaskUpdatedMsg{Task: task}
-	}
+	return taskOpsSetQuickDueDate(m, daysFromNow)
 }
 
-// clearDueDate clears the due date from the task at cursor.
 func (m *ProjectFocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	task := m.getTaskAtCursor()
-	if task == nil {
-		return m, nil
-	}
-
-	if task.DueDate == nil {
-		m.statusMessage = "Task has no due date"
-		return m, nil
-	}
-
-	// Backup before change
-	if err := storage.BackupProject(m.project); err != nil {
-		m.err = fmt.Errorf("backup failed: %w", err)
-		return m, nil
-	}
-
-	// Clear due date
-	m.project.MutateTask(task.ID, func(t *models.Task) {
-		t.DueDate = nil
-	})
-
-	// Save project
-	if err := storage.SaveProject(m.project); err != nil {
-		m.err = fmt.Errorf("save failed: %w", err)
-		return m, nil
-	}
-
-	// Reload project and refresh view
-	_ = storage.LoadProject(m.project)
-	m.loadTasks()
-	m.clampCursor()
-
-	m.statusMessage = "Due date cleared"
-
-	return m, func() tea.Msg {
-		return TaskUpdatedMsg{Task: task}
-	}
+	return taskOpsClearDueDate(m)
 }
 
 // clampCursor ensures cursor is within valid range.

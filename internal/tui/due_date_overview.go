@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -422,27 +421,17 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return m, nil
 
 	// Copy
-	case "y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: dt.Task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task {
+				if dt := m.getTaskAtCursor(); dt != nil {
+					return dt.Task
+				}
+				return nil
+			},
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 
@@ -549,131 +538,47 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-// changeTaskStatus changes the status of the task at cursor.
+// taskOpsView implementation for DueDateOverviewModel.
+
+func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
+	dt := m.getTaskAtCursor()
+	if dt == nil {
+		return nil, nil
+	}
+	return dt.Task, dt.Project
+}
+
+func (m *DueDateOverviewModel) getPersister() Persister { return m.projectService }
+func (m *DueDateOverviewModel) reloadData()             { m.loadTasksWithDueDates() }
+func (m *DueDateOverviewModel) setErr(err error)        { m.err = err }
+func (m *DueDateOverviewModel) setStatus(msg string)    { m.statusMessage = msg }
+
 func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applyStatusChange(m.projectService, dt.Project, dt.Task.ID, newStatus)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsChangeStatus(m, newStatus)
 }
 
-// changeTaskPriority changes the priority of the task at cursor.
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	priority, _ := strconv.Atoi(key)
-	result := applyPriorityChange(m.projectService, dt.Project, dt.Task.ID, priority)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsChangePriority(m, key)
 }
 
-// setQuickDueDate sets the due date to a relative number of days from today.
 func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applyQuickDueDate(m.projectService, dt.Project, dt.Task.ID, daysFromNow)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsSetQuickDueDate(m, daysFromNow)
 }
 
-// clearDueDate clears the due date from the task at cursor.
 func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applyClearDueDate(m.projectService, dt.Project, dt.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsClearDueDate(m)
 }
 
-// toggleActive toggles the Active flag on the task at cursor.
 func (m *DueDateOverviewModel) toggleActive() (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applyToggleActive(m.projectService, dt.Project, dt.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsToggleActive(m)
 }
 
-// sectionMove moves the task at cursor to the specified GTD section.
 func (m *DueDateOverviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applySectionChange(m.projectService, dt.Project, dt.Task.ID, section)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsSectionMove(m, section)
 }
 
-// deleteTask deletes the task at cursor.
 func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
-	dt := m.getTaskAtCursor()
-	if dt == nil {
-		return m, nil
-	}
-
-	result := applyDeleteTask(m.projectService, dt.Project, dt.Task.ID)
-	if result.Err != nil {
-		m.err = result.Err
-	} else if result.StatusMessage != "" {
-		m.statusMessage = result.StatusMessage
-	}
-	m.loadTasksWithDueDates()
-	m.clampCursor()
-	return m, result.Cmd
+	return taskOpsDeleteTask(m)
 }
 
 // clampCursor ensures cursor is within valid range.

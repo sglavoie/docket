@@ -6,9 +6,9 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// reviewOpsView implementation for WeeklyReviewModel.
+// taskOpsView implementation for WeeklyReviewModel.
 
-func (m *WeeklyReviewModel) getReviewTaskRef() (*models.Task, *models.Project) {
+func (m *WeeklyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 	dt := m.getTaskAtCursor()
 	if dt == nil {
 		return nil, nil
@@ -16,36 +16,37 @@ func (m *WeeklyReviewModel) getReviewTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *WeeklyReviewModel) reloadReviewData()          { m.loadData() }
-func (m *WeeklyReviewModel) setReviewErr(err error)     { m.err = err }
-func (m *WeeklyReviewModel) setReviewStatus(msg string) { m.statusMessage = msg }
+func (m *WeeklyReviewModel) getPersister() Persister { return defaultPersister }
+func (m *WeeklyReviewModel) reloadData()             { m.loadData() }
+func (m *WeeklyReviewModel) setErr(err error)        { m.err = err }
+func (m *WeeklyReviewModel) setStatus(msg string)    { m.statusMessage = msg }
 
-// Delegate all operations to the shared review functions.
+// Delegate all operations to the shared taskOps functions.
 
 func (m *WeeklyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	return reviewChangeStatus(m, newStatus)
+	return taskOpsChangeStatus(m, newStatus)
 }
 
 func (m *WeeklyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	return reviewChangePriority(m, key)
+	return taskOpsChangePriority(m, key)
 }
 
 func (m *WeeklyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	return reviewSetQuickDueDate(m, daysFromNow)
+	return taskOpsSetQuickDueDate(m, daysFromNow)
 }
 
 func (m *WeeklyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	return reviewClearDueDate(m)
+	return taskOpsClearDueDate(m)
 }
 
 func (m *WeeklyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
-	return reviewToggleActive(m)
+	return taskOpsToggleActive(m)
 }
 
 func (m *WeeklyReviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	return reviewSectionMove(m, section)
+	return taskOpsSectionMove(m, section)
 }
 
 func (m *WeeklyReviewModel) deleteTask() (tea.Model, tea.Cmd) {
-	return reviewDeleteTask(m)
+	return taskOpsDeleteTask(m)
 }

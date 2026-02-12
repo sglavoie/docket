@@ -427,7 +427,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if m.multiSelectMode && m.selectedCount() > 0 {
 					return m.handleBulkDelete()
 				}
-				return secondaryDeleteTask(m)
+				return taskOpsDeleteTask(m)
 			}
 			m.statusMessage = ""
 			return m, nil
@@ -587,7 +587,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
-		return secondaryToggleActive(m)
+		return taskOpsToggleActive(m)
 
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
@@ -752,7 +752,7 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "!":
 		if _, ok := PriorityForPrefixKey(key); ok {
-			return secondaryChangePriority(m, key)
+			return taskOpsChangePriority(m, key)
 		}
 
 	case "F":
@@ -762,15 +762,15 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case ",":
 		if status, ok := StatusForPrefixKey(key); ok {
-			return secondaryChangeStatus(m, status)
+			return taskOpsChangeStatus(m, status)
 		}
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
 			if isClear {
-				return secondaryClearDueDate(m)
+				return taskOpsClearDueDate(m)
 			}
-			return secondarySetQuickDueDate(m, days)
+			return taskOpsSetQuickDueDate(m, days)
 		}
 		if key == "d" {
 			if item := m.getTaskAtCursor(); item != nil {
@@ -801,7 +801,7 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		return secondarySectionMove(m, section)
+		return taskOpsSectionMove(m, section)
 
 	case "c":
 		item := m.getTaskAtCursor()
@@ -818,9 +818,9 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// secondaryOpsView implementation for AllTasksViewModel.
+// taskOpsView implementation for AllTasksViewModel.
 
-func (m *AllTasksViewModel) getSecondaryTaskRef() (*models.Task, *models.Project) {
+func (m *AllTasksViewModel) getTaskRef() (*models.Task, *models.Project) {
 	item := m.getTaskAtCursor()
 	if item == nil {
 		return nil, nil
@@ -828,11 +828,10 @@ func (m *AllTasksViewModel) getSecondaryTaskRef() (*models.Task, *models.Project
 	return item.Task, item.Project
 }
 
-func (m *AllTasksViewModel) getSecondaryPersister() Persister { return m.projectService }
-func (m *AllTasksViewModel) reloadSecondaryData()             { m.loadAllTasks() }
-func (m *AllTasksViewModel) clampSecondaryCursor()            { m.clampCursor() }
-func (m *AllTasksViewModel) setSecondaryErr(err error)        { m.err = err }
-func (m *AllTasksViewModel) setSecondaryStatus(msg string)    { m.statusMessage = msg }
+func (m *AllTasksViewModel) getPersister() Persister { return m.projectService }
+func (m *AllTasksViewModel) reloadData()             { m.loadAllTasks() }
+func (m *AllTasksViewModel) setErr(err error)        { m.err = err }
+func (m *AllTasksViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {

@@ -345,7 +345,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		confirmed, handled := m.confirm.HandleKey(key)
 		if handled {
 			if confirmed {
-				return secondaryDeleteTask(m)
+				return taskOpsDeleteTask(m)
 			}
 			m.statusMessage = ""
 			return m, nil
@@ -482,13 +482,13 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Toggle active flag (remove from focus)
 	case "*":
 		if ft := m.getTaskAtCursor(); ft != nil {
-			return secondaryRemoveFromFocus(m, ft.Task.ShortID)
+			return taskOpsRemoveFromFocus(m, ft.Task.ShortID)
 		}
 		return m, nil
 
 	// Priority changes
 	case "1", "2", "3", "4", "5":
-		return secondaryChangePriority(m, key)
+		return taskOpsChangePriority(m, key)
 
 	// Edit task
 	case "e":
@@ -578,15 +578,15 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case ",":
 		if status, ok := StatusForPrefixKey(key); ok {
-			return secondaryChangeStatus(m, status)
+			return taskOpsChangeStatus(m, status)
 		}
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
 			if isClear {
-				return secondaryClearDueDate(m)
+				return taskOpsClearDueDate(m)
 			}
-			return secondarySetQuickDueDate(m, days)
+			return taskOpsSetQuickDueDate(m, days)
 		}
 		if key == "d" {
 			if ft := m.getTaskAtCursor(); ft != nil {
@@ -617,7 +617,7 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		return secondarySectionMove(m, section)
+		return taskOpsSectionMove(m, section)
 
 	case "c":
 		ft := m.getTaskAtCursor()
@@ -634,9 +634,9 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// secondaryOpsView implementation for FocusViewModel.
+// taskOpsView implementation for FocusViewModel.
 
-func (m *FocusViewModel) getSecondaryTaskRef() (*models.Task, *models.Project) {
+func (m *FocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 	ft := m.getTaskAtCursor()
 	if ft == nil {
 		return nil, nil
@@ -644,11 +644,10 @@ func (m *FocusViewModel) getSecondaryTaskRef() (*models.Task, *models.Project) {
 	return ft.Task, ft.Project
 }
 
-func (m *FocusViewModel) getSecondaryPersister() Persister { return m.projectService }
-func (m *FocusViewModel) reloadSecondaryData()             { m.loadTasks() }
-func (m *FocusViewModel) clampSecondaryCursor()            { m.clampCursor() }
-func (m *FocusViewModel) setSecondaryErr(err error)        { m.err = err }
-func (m *FocusViewModel) setSecondaryStatus(msg string)    { m.statusMessage = msg }
+func (m *FocusViewModel) getPersister() Persister { return m.projectService }
+func (m *FocusViewModel) reloadData()             { m.loadTasks() }
+func (m *FocusViewModel) setErr(err error)        { m.err = err }
+func (m *FocusViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {

@@ -309,27 +309,17 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Copy
-	case "y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	case "Y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskDetailsMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	case "ctrl+y":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return CopyTaskTitleAndDescMsg{Task: dt.Task}
-			}
+	case "y", "Y", "ctrl+y":
+		if handled, cmd := handleClipboardKey(key,
+			func() *models.Task {
+				if dt := m.getTaskAtCursor(); dt != nil {
+					return dt.Task
+				}
+				return nil
+			},
+			nil, nil,
+		); handled {
+			return m, cmd
 		}
 		return m, nil
 

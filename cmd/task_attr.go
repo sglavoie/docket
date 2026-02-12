@@ -55,50 +55,14 @@ Examples:
 }
 
 var (
-	// Attribute flags for task attr command
-	attrBugReproducible string
-	attrBugSeverity     string
-	attrBugWorkaround   string
-	attrIdeaCategory    string
-	attrIdeaEffort      string
-	attrIdeaValue       string
-	attrIdeaValidated   bool
-	attrTaskEffort      string
-	attrTaskWorkType    string
-	attrStoryPoints     int
-	attrStoryPersona    string
-	attrEpicScope       string
-	attrEpicMilestone   string
-	attrEpicMetrics     string
-	attrClear           bool
+	attrTypeAttrs TypeAttrValues
+	attrClear     bool
 )
 
 func init() {
 	taskCmd.AddCommand(taskAttrCmd)
 
-	// Bug attributes
-	taskAttrCmd.Flags().StringVar(&attrBugReproducible, "bug.reproducible", "", "bug reproducibility (yes/no/sometimes)")
-	taskAttrCmd.Flags().StringVar(&attrBugSeverity, "bug.severity", "", "bug severity (critical/major/minor/cosmetic)")
-	taskAttrCmd.Flags().StringVar(&attrBugWorkaround, "bug.workaround", "", "bug workaround text")
-
-	// Idea attributes
-	taskAttrCmd.Flags().StringVar(&attrIdeaCategory, "idea.category", "", "idea category (feature/improvement/refactor/research)")
-	taskAttrCmd.Flags().StringVar(&attrIdeaEffort, "idea.effort", "", "idea effort estimate (small/medium/large/unknown)")
-	taskAttrCmd.Flags().StringVar(&attrIdeaValue, "idea.value", "", "idea value (low/medium/high)")
-	taskAttrCmd.Flags().BoolVar(&attrIdeaValidated, "idea.validated", false, "idea is validated")
-
-	// Task attributes
-	taskAttrCmd.Flags().StringVar(&attrTaskEffort, "task.effort", "", "task effort (small/medium/large)")
-	taskAttrCmd.Flags().StringVar(&attrTaskWorkType, "task.worktype", "", "task work type (development/documentation/testing/devops/design)")
-
-	// Story attributes
-	taskAttrCmd.Flags().IntVar(&attrStoryPoints, "story.points", 0, "story points")
-	taskAttrCmd.Flags().StringVar(&attrStoryPersona, "story.persona", "", "story persona")
-
-	// Epic attributes
-	taskAttrCmd.Flags().StringVar(&attrEpicScope, "epic.scope", "", "epic scope (defined/evolving/undefined)")
-	taskAttrCmd.Flags().StringVar(&attrEpicMilestone, "epic.milestone", "", "epic milestone")
-	taskAttrCmd.Flags().StringVar(&attrEpicMetrics, "epic.metrics", "", "epic success metrics")
+	registerTypeAttrFlags(taskAttrCmd, &attrTypeAttrs)
 
 	// Clear flag
 	taskAttrCmd.Flags().BoolVar(&attrClear, "clear", false, "clear all type-specific attributes")
@@ -108,12 +72,13 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 	taskID := args[0]
 
 	// Check if any flags were provided
+	v := attrTypeAttrs
 	anyFlagSet := attrClear ||
-		attrBugReproducible != "" || attrBugSeverity != "" || attrBugWorkaround != "" ||
-		attrIdeaCategory != "" || attrIdeaEffort != "" || attrIdeaValue != "" || cmd.Flags().Changed("idea.validated") ||
-		attrTaskEffort != "" || attrTaskWorkType != "" ||
-		cmd.Flags().Changed("story.points") || attrStoryPersona != "" ||
-		attrEpicScope != "" || attrEpicMilestone != "" || attrEpicMetrics != ""
+		v.BugReproducible != "" || v.BugSeverity != "" || v.BugWorkaround != "" ||
+		v.IdeaCategory != "" || v.IdeaEffort != "" || v.IdeaValue != "" || cmd.Flags().Changed("idea.validated") ||
+		v.TaskEffort != "" || v.TaskWorkType != "" ||
+		cmd.Flags().Changed("story.points") || v.StoryPersona != "" ||
+		v.EpicScope != "" || v.EpicMilestone != "" || v.EpicMetrics != ""
 
 	if !anyFlagSet {
 		return fmt.Errorf("no attribute flags provided; use --help to see available options")
@@ -126,24 +91,9 @@ func runTaskAttr(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		return applyTypeAttrValues(task, TypeAttrValues{
-			BugReproducible:  attrBugReproducible,
-			BugSeverity:      attrBugSeverity,
-			BugWorkaround:    attrBugWorkaround,
-			IdeaCategory:     attrIdeaCategory,
-			IdeaEffort:       attrIdeaEffort,
-			IdeaValue:        attrIdeaValue,
-			IdeaValidatedSet: cmd.Flags().Changed("idea.validated"),
-			IdeaValidated:    attrIdeaValidated,
-			TaskEffort:       attrTaskEffort,
-			TaskWorkType:     attrTaskWorkType,
-			StoryPointsSet:   cmd.Flags().Changed("story.points"),
-			StoryPoints:      attrStoryPoints,
-			StoryPersona:     attrStoryPersona,
-			EpicScope:        attrEpicScope,
-			EpicMilestone:    attrEpicMilestone,
-			EpicMetrics:      attrEpicMetrics,
-		})
+		attrTypeAttrs.IdeaValidatedSet = cmd.Flags().Changed("idea.validated")
+		attrTypeAttrs.StoryPointsSet = cmd.Flags().Changed("story.points")
+		return applyTypeAttrValues(task, attrTypeAttrs)
 	})
 
 	if err != nil {
