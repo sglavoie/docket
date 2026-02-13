@@ -19,5 +19,12 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "p", Description: "Set priority", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit in editor", Category: "Actions", Views: views},
 		Keybinding{Key: "E", Description: "Quick-edit title", Category: "Actions", Views: views},
+
+		// Scoring
+		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},
+
+		// Sorting
+		Keybinding{Key: "1-5", Description: "Sort by field", Category: "Sorting", Views: views},
+		Keybinding{Key: "0", Description: "Reset sort", Category: "Sorting", Views: views},
 	)
 }

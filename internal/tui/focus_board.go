@@ -14,11 +14,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var focusBoardTabNames = []string{"All", "External", "Tasks", "By Source", "By Priority", "Closed"}
+var focusBoardTabNames = []string{"All", "External", "Tasks", "By Source", "By Priority", "By Score", "Closed"}
 
 const (
 	boardTabAll        = 0
@@ -26,7 +27,8 @@ const (
 	boardTabTasks      = 2
 	boardTabBySource   = 3
 	boardTabByPriority = 4
-	boardTabClosed     = 5
+	boardTabByScore    = 5
+	boardTabClosed     = 6
 )
 
 // boardRow is a unified display item: either a BoardItem or an aggregated task.
@@ -67,6 +69,10 @@ type FocusBoardModel struct {
 
 	// Tabs
 	activeTab int
+
+	// Sort
+	sortField     SortField
+	sortAscending bool
 
 	// Quick-add input
 	addMode  bool
@@ -199,6 +205,16 @@ func (m *FocusBoardModel) applyFilter() {
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Priority < m.filtered[j].Priority
 		})
+	case boardTabByScore:
+		m.filtered = nil
+		for _, r := range m.rows {
+			if r.isTask() {
+				profile := m.config.GetProjectScoringProfile(r.Project.ID)
+				if profile != nil {
+					m.filtered = append(m.filtered, r)
+				}
+			}
+		}
 	case boardTabClosed:
 		m.filtered = make([]boardRow, len(m.closedRows))
 		copy(m.filtered, m.closedRows)
@@ -206,6 +222,81 @@ func (m *FocusBoardModel) applyFilter() {
 		m.filtered = make([]boardRow, len(m.rows))
 		copy(m.filtered, m.rows)
 	}
+
+	// Apply sorting: user-selected field, or default score-descending on By Score tab
+	if m.sortField != SortByDefault {
+		m.applySorting()
+	} else if m.activeTab == boardTabByScore {
+		sort.SliceStable(m.filtered, func(i, j int) bool {
+			return m.scorePercent(m.filtered[i]) > m.scorePercent(m.filtered[j])
+		})
+	}
+}
+
+// applySorting sorts the filtered rows based on the current sort field.
+func (m *FocusBoardModel) applySorting() {
+	sort.SliceStable(m.filtered, func(i, j int) bool {
+		ri, rj := m.filtered[i], m.filtered[j]
+		// Both are tasks: compare using sort field
+		if ri.isTask() && rj.isTask() {
+			// Score uses normalized percentage for cross-project comparison
+			if m.sortField == SortByScore {
+				si, sj := m.scorePercent(ri), m.scorePercent(rj)
+				if si != sj {
+					cmp := -1 // higher first by default
+					if si < sj {
+						cmp = 1
+					}
+					return ApplySortDirection(cmp, m.sortAscending)
+				}
+				return false
+			}
+			cmp := CompareTasksCrossProject(
+				ri.Task, rj.Task, m.sortField,
+				ri.Project.ID, rj.Project.ID, m.config,
+			)
+			return ApplySortDirection(cmp, m.sortAscending)
+		}
+		// Push non-task items to the end when sorting
+		if ri.isTask() && !rj.isTask() {
+			return true
+		}
+		if !ri.isTask() && rj.isTask() {
+			return false
+		}
+		return false
+	})
+}
+
+// scorePercent returns the normalized score percentage for a task row.
+// Returns 0 for board items or tasks without a scoring profile.
+func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
+	if !r.isTask() {
+		return 0
+	}
+	profile := m.config.GetProjectScoringProfile(r.Project.ID)
+	if profile == nil {
+		return 0
+	}
+	score := scoring.ComputeScore(r.Task, profile)
+	return scoring.ScorePercent(score, profile)
+}
+
+// cycleSortField toggles sort direction if same field, or switches field if different.
+func (m *FocusBoardModel) cycleSortField(newField SortField) {
+	if m.sortField == newField {
+		m.sortAscending = !m.sortAscending
+	} else {
+		m.sortField = newField
+		m.sortAscending = true
+	}
+	m.applyFilter()
+	m.clampCursor()
+	direction := "↑"
+	if !m.sortAscending {
+		direction = "↓"
+	}
+	m.statusMessage = fmt.Sprintf("Sort: %s %s", newField, direction)
 }
 
 func (m *FocusBoardModel) Init() tea.Cmd {
@@ -365,6 +456,33 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		}
+
+	// Sort keys (1-5 for sort field, 0 to reset)
+	case "1", "2", "3", "4", "5", "0":
+		if field, isReset, ok := SortFieldForKey(key); ok {
+			if isReset {
+				m.sortField = SortByDefault
+				m.sortAscending = true
+				m.applyFilter()
+				m.clampCursor()
+				m.statusMessage = "Sort reset"
+			} else {
+				m.cycleSortField(field)
+			}
+		}
+		return m, nil
+
+	// Score editor
+	case "S":
+		if row := m.getRowAtCursor(); row != nil {
+			if row.isTask() {
+				return m, func() tea.Msg {
+					return ShowScoreEditorMsg{Task: row.Task, Project: row.Project}
+				}
+			}
+			m.statusMessage = "Score editor is only available for tasks"
+		}
+		return m, nil
 
 	// Help
 	case "?":
@@ -678,9 +796,12 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 		{Key: "p", Description: "Set priority"},
 		{Key: "e", Description: "Edit in editor"},
 		{Key: "E", Description: "Quick-edit title"},
+		{Key: "S", Description: "Edit score dimensions"},
 		{Key: "o", Description: "Open URL"},
 		{Key: "enter", Description: "Navigate to task / open URL"},
 		{Key: "tab/[/]", Description: "Switch tabs"},
+		{Key: "1-5", Description: "Sort by field (pri/due/new/sts/scr)"},
+		{Key: "0", Description: "Reset sort"},
 		{Key: "j/k", Description: "Navigate list"},
 		{Key: "q/esc", Description: "Close"},
 	}

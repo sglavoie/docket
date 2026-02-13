@@ -184,12 +184,20 @@ func (m *FocusBoardModel) View() string {
 	} else {
 		left = HelpStyle.Render("a add | x done | X dismiss | p priority | e edit | enter open/go")
 	}
-	var right string
-	if m.activeTab == boardTabClosed {
-		right = MutedStyle.Render(fmt.Sprintf("%d closed", len(m.closedRows)))
-	} else {
-		right = MutedStyle.Render(fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
+	var rightParts []string
+	if m.sortField != SortByDefault {
+		direction := "↑"
+		if !m.sortAscending {
+			direction = "↓"
+		}
+		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sortField.ShortString(), direction))
 	}
+	if m.activeTab == boardTabClosed {
+		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
+	} else {
+		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
+	}
+	right := MutedStyle.Render(strings.Join(rightParts, " | "))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return b.String()
@@ -258,9 +266,14 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			dueStr = "  " + formatRelativeDue(task.DueDate, true)
 		}
 
+		scoreBadge := ""
+		if profile := m.config.GetProjectScoringProfile(row.Project.ID); profile != nil {
+			scoreBadge = " " + RenderScoreBadge(task, profile)
+		}
+
 		title := util.Truncate(task.Title, maxTitleLen)
 		bullet := BoldStyle.Render("●")
-		content := fmt.Sprintf("  %s %s %s%s %s%s", bullet, priorityBadge, projectBadge, typeIcon, title, dueStr)
+		content := fmt.Sprintf("  %s %s %s%s %s%s%s", bullet, priorityBadge, projectBadge, typeIcon, title, scoreBadge, dueStr)
 
 		if len(task.Tags) > 0 {
 			content += " " + renderInlineTags(task.Tags)
