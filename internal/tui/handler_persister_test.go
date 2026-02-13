@@ -97,6 +97,31 @@ func TestHandleTaskUpdatedMsgUsesPersister(t *testing.T) {
 	}
 }
 
+func TestHandleTaskPropertyChangedMsg(t *testing.T) {
+	app, mockPersister, _ := newTestAppModelWithMockPersisterAndProject()
+	// Push project tree so we're not on dashboard (simulates in-place operation)
+	app.pushView(ViewProjectTree)
+	initialStackLen := len(app.viewStack)
+
+	task := &models.Task{ID: "test-task", Title: "Test Task"}
+	msg := TaskPropertyChangedMsg{Task: task}
+	handled, _ := app.handleTaskMessages(msg)
+
+	if !handled {
+		t.Error("TaskPropertyChangedMsg should be handled")
+	}
+
+	// Verify the view was NOT popped (key difference from TaskUpdatedMsg)
+	if len(app.viewStack) != initialStackLen {
+		t.Errorf("View stack should not change: expected %d, got %d", initialStackLen, len(app.viewStack))
+	}
+
+	// Verify persister.Load was NOT called (handleWithRefresh with reload=false)
+	if len(mockPersister.LoadCalls) != 0 {
+		t.Errorf("Expected 0 Load calls (no reload), got %d", len(mockPersister.LoadCalls))
+	}
+}
+
 func TestHandleInlineTaskCreateUsesPersister(t *testing.T) {
 	app, mockPersister, project := newTestAppModelWithMockPersisterAndProject()
 

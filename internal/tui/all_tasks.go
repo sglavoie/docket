@@ -388,6 +388,11 @@ func (m *AllTasksViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clampCursor()
 		return m, nil
 
+	case TaskPropertyChangedMsg:
+		m.loadAllTasks()
+		m.clampCursor()
+		return m, nil
+
 	case TagSelectorDoneMsg:
 		if !msg.Canceled {
 			m.loadAllTasks()

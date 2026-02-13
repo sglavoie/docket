@@ -270,7 +270,7 @@ func (m *AppModel) makePriorityHandler(priority int) func() tea.Msg {
 			m.projectTree.project.MutateTask(task.ID, func(t *models.Task) {
 				t.Priority = priority
 			})
-			return TaskUpdatedMsg{Task: task}
+			return TaskPropertyChangedMsg{Task: task}
 		}
 		return nil
 	}

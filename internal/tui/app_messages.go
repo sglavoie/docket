@@ -92,6 +92,10 @@ type TaskDeletedMsg struct{ Task *models.Task }
 // TaskStatusChangedMsg signals a task's status changed (complete, start, etc).
 type TaskStatusChangedMsg struct{ Task *models.Task }
 
+// TaskPropertyChangedMsg signals an in-place task property change
+// (active, pinned, section, etc.) that should refresh without popping.
+type TaskPropertyChangedMsg struct{ Task *models.Task }
+
 // =============================================================================
 // External Editor Messages
 // =============================================================================

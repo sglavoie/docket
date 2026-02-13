@@ -264,7 +264,7 @@ func applyToggleActive(pf persistFn, project *models.Project, taskID string) Tas
 		msg = fmt.Sprintf("Task #%d unmarked active", task.ShortID)
 	}
 	result.StatusMessage = msg
-	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }
 
@@ -283,7 +283,7 @@ func applyRemoveFromFocus(pf persistFn, project *models.Project, taskID string, 
 	}
 
 	result.StatusMessage = fmt.Sprintf("Removed #%d from focus", shortID)
-	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }
 
@@ -309,7 +309,7 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 		sectionName = "Active"
 	}
 	result.StatusMessage = fmt.Sprintf("Moved to %s", sectionName)
-	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }
 
@@ -426,7 +426,7 @@ func applyTogglePinned(pf persistFn, project *models.Project, taskID string) Tas
 			result.StatusMessage = fmt.Sprintf("Unpinned task #%d", updated.ShortID)
 		}
 	}
-	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
 }
 

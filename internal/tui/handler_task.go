@@ -92,6 +92,12 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case TaskStatusChangedMsg:
 		return true, m.handleWithRefresh(false, false, "")
 
+	case TaskPropertyChangedMsg:
+		m.handleWithRefresh(false, false, "")
+		cmd := m.views.Update(m.currentView(), msg)
+		m.syncInboxProcessor()
+		return true, cmd
+
 	case CommandPaletteTaskActionMsg:
 		return m.handleCommandPaletteTaskAction(msg)
 

@@ -113,6 +113,9 @@ func (m *InboxProcessorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case TaskUpdatedMsg:
 		return m.handleTaskUpdated(msg)
 
+	case TaskPropertyChangedMsg:
+		return m.handleTaskUpdated(TaskUpdatedMsg{Task: msg.Task})
+
 	case DueDateChangedMsg:
 		return m.handleDueDateChanged(msg)
 

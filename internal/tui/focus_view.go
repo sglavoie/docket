@@ -309,6 +309,11 @@ func (m *FocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clampCursor()
 		return m, nil
 
+	case TaskPropertyChangedMsg:
+		m.loadTasks()
+		m.clampCursor()
+		return m, nil
+
 	case TagSelectorDoneMsg:
 		if !msg.Canceled {
 			m.loadTasks()

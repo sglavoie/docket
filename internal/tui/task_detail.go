@@ -49,6 +49,13 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	case TaskPropertyChangedMsg:
+		if msg.Task != nil {
+			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
+				m.task = fresh
+			}
+		}
+		return m, nil
 	}
 	return m, nil
 }

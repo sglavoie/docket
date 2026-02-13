@@ -166,6 +166,12 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadTasks()
 		m.clampCursor()
 		return m, nil
+
+	case TaskPropertyChangedMsg:
+		_ = defaultPersister.Load(m.project)
+		m.loadTasks()
+		m.clampCursor()
+		return m, nil
 	}
 
 	return m, nil
