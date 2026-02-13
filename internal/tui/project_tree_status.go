@@ -77,19 +77,7 @@ func (m *ProjectTreeModel) handleStatusChangeWithValidation(
 	prevStates := captureTaskStates(m.project.Tasks)
 
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
-		// Analyze which tasks can be changed vs blocked
-		var validTasks []*models.Task
-		blockedCount := 0
-		for _, task := range m.getSelectedTasks() {
-			if !predicate(task) {
-				continue
-			}
-			if errMsg := validator(task); errMsg != "" {
-				blockedCount++
-				continue
-			}
-			validTasks = append(validTasks, task)
-		}
+		validTasks, blockedCount := analyzeBulkStatusTransition(m.project, m.getSelectedTasks(), targetStatus)
 
 		// If there are blocked tasks, show confirmation before proceeding
 		if blockedCount > 0 && len(validTasks) > 0 {

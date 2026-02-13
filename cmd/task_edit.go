@@ -65,11 +65,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		taskID = task.ID
 	}
 
-	// Determine editor
-	editor := editEditor
-	if editor == "" {
-		editor = cfg.Editor
-	}
+	editor := resolveEditor(editEditor, cfg.Editor)
 
 	// We need to load the task first to build edit content
 	project, _, _, err := LoadCurrentProject()

@@ -28,12 +28,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
 		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
 
-		// Folds (z prefix)
-		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
-		Keybinding{Key: "zo/zc", Description: "Expand/collapse fold", Category: "Folds", Views: views},
-		Keybinding{Key: "zR/zM", Description: "Expand/collapse all in column", Category: "Folds", Views: views},
-		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
-
 		// Group-By / Swimlanes
 		Keybinding{Key: "Ctrl+G", Description: "Cycle group-by (Section/Status/Priority/Type)", Category: "Views", Views: views},
 		Keybinding{Key: "Ctrl+H", Description: "Cycle swimlane mode", Category: "Views", Views: views},
@@ -55,31 +49,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "gw", Description: "Go to Waiting column", Category: "Sections", Views: views},
 		Keybinding{Key: "gs", Description: "Go to Someday column", Category: "Sections", Views: views},
 
-		// Move (m prefix)
-		Keybinding{Key: "ma", Description: "Send task to Active", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mn", Description: "Send task to Next", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mi", Description: "Send task to Inbox", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mw", Description: "Send task to Waiting", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mr", Description: "Send task to Review", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "ms", Description: "Send task to Someday", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mK", Description: "Move task to top of column", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mJ", Description: "Move task to bottom of column", Category: "Move (m prefix)", Views: views},
-
-		// Type Changes
-		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},
-		Keybinding{Key: ">", Description: "Demote type", Category: "Type Changes", Views: views},
-		Keybinding{Key: "H", Description: "Cycle leaf left", Category: "Type Changes", Views: views},
-		Keybinding{Key: "L", Description: "Cycle leaf right", Category: "Type Changes", Views: views},
-
 		Keybinding{Key: "cx", Description: "Unlink linked task", Category: "Linked Tasks", Views: views},
-
-		// Sort
-		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},
-		Keybinding{Key: "2", Description: "Sort by due date", Category: "Sort", Views: views},
-		Keybinding{Key: "3", Description: "Sort by created", Category: "Sort", Views: views},
-		Keybinding{Key: "4", Description: "Sort by status", Category: "Sort", Views: views},
-		Keybinding{Key: "5", Description: "Sort by score", Category: "Sort", Views: views},
-		Keybinding{Key: "0", Description: "Reset sort", Category: "Sort", Views: views},
 
 		// Multi-select
 		Keybinding{Key: "v", Description: "Toggle multi-select mode", Category: "Multi-select", Views: views},
@@ -104,25 +74,6 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+S", Description: "Custom section manager", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
-
-		// Task Operations (t prefix)
-		Keybinding{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "ts", Description: "Change section", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "td", Description: "Edit description", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tD", Description: "Delete task", Category: "Task (t prefix)", Views: views},
-
-		// Blocker/Dependency Operations (b prefix)
-		Keybinding{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)", Views: views},
-		Keybinding{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)", Views: views},
 
 		// Task Operations (legacy, still available)
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
@@ -163,6 +114,12 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
 	)
+	r.addForViews(views, foldBindings())
+	r.addForViews(views, typeChangeBindings())
+	r.addForViews(views, taskPrefixBindings())
+	r.addForViews(views, blockerPrefixBindings())
+	r.addForViews(views, movePrefixBindings())
+	r.addForViews(views, sortBindings())
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())

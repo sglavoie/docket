@@ -274,6 +274,48 @@ func (a *EpicAttrs) IsEmpty() bool {
 	return a == nil || (a.Scope == "" && a.Milestone == "" && a.SuccessMetrics == "")
 }
 
+// Lazy-init helpers that ensure a type-specific attrs struct exists on a Task.
+
+// EnsureBugAttrs initializes BugAttrs if nil and returns it.
+func (t *Task) EnsureBugAttrs() *BugAttrs {
+	if t.BugAttrs == nil {
+		t.BugAttrs = &BugAttrs{}
+	}
+	return t.BugAttrs
+}
+
+// EnsureIdeaAttrs initializes IdeaAttrs if nil and returns it.
+func (t *Task) EnsureIdeaAttrs() *IdeaAttrs {
+	if t.IdeaAttrs == nil {
+		t.IdeaAttrs = &IdeaAttrs{}
+	}
+	return t.IdeaAttrs
+}
+
+// EnsureTaskAttrs initializes TaskAttrs if nil and returns it.
+func (t *Task) EnsureTaskAttrs() *TaskAttrs {
+	if t.TaskAttrs == nil {
+		t.TaskAttrs = &TaskAttrs{}
+	}
+	return t.TaskAttrs
+}
+
+// EnsureStoryAttrs initializes StoryAttrs if nil and returns it.
+func (t *Task) EnsureStoryAttrs() *StoryAttrs {
+	if t.StoryAttrs == nil {
+		t.StoryAttrs = &StoryAttrs{}
+	}
+	return t.StoryAttrs
+}
+
+// EnsureEpicAttrs initializes EpicAttrs if nil and returns it.
+func (t *Task) EnsureEpicAttrs() *EpicAttrs {
+	if t.EpicAttrs == nil {
+		t.EpicAttrs = &EpicAttrs{}
+	}
+	return t.EpicAttrs
+}
+
 // Generic enum helpers.
 
 func isValidEnum[T comparable](val T, valid []T) bool {

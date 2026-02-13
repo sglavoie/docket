@@ -105,34 +105,66 @@ func (m *KanbanViewModel) finishBulk(statusMsg string) {
 }
 
 // handleBulkStatusChange applies a status change to all selected tasks.
+// If some tasks are blocked (transition invalid or incomplete dependencies),
+// a confirmation prompt is shown before proceeding with the valid ones.
 func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) tea.Cmd {
 	tasks := m.getSelectedTasksList()
 	if len(tasks) == 0 {
 		return nil
 	}
 
-	prevStates := captureTaskStates(m.Project.Tasks)
-	changedCount := 0
+	valid, blockedCount := analyzeBulkStatusTransition(m.Project, tasks, newStatus)
 
-	for _, task := range tasks {
-		m.Project.MutateTask(task.ID, func(t *models.Task) {
-			if t.CanTransitionTo(newStatus) != "" {
-				return
-			}
-			if newStatus == models.StatusDone && len(m.Project.GetIncompleteDependencies(t)) > 0 {
-				return
-			}
-			t.ApplyTransition(newStatus)
-			changedCount++
-		})
-	}
-
-	if changedCount == 0 {
-		m.statusMessage = "No tasks were changed"
+	if len(valid) == 0 {
+		m.statusMessage = "No tasks can be changed"
 		return nil
 	}
 
-	m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", changedCount, newStatus))
+	prevStates := captureTaskStates(m.Project.Tasks)
+
+	// If some tasks are blocked, show confirmation before proceeding
+	if blockedCount > 0 {
+		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
+		m.statusMessage = fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks? (y/n)", blockedCount, len(valid))
+		m.confirm.Show("bulk-status", m.statusMessage)
+		m.selectedTasks = make(map[string]bool)
+		m.multiSelectMode = false
+		return nil
+	}
+
+	// All tasks are valid — apply immediately
+	for _, task := range valid {
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			t.ApplyTransition(newStatus)
+		})
+	}
+
+	m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus))
+
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+	})
+}
+
+// executePendingBulkStatus applies the pending bulk status change after confirmation.
+func (m *KanbanViewModel) executePendingBulkStatus() tea.Cmd {
+	if len(m.bulkOp.GetTasks()) == 0 {
+		m.bulkOp.Clear()
+		return nil
+	}
+
+	prevStates := m.bulkOp.GetPrevStates()
+
+	for _, task := range m.bulkOp.GetTasks() {
+		m.Project.MutateTask(task.ID, func(t *models.Task) {
+			t.ApplyTransition(m.bulkOp.GetStatus())
+		})
+	}
+
+	count := len(m.bulkOp.GetTasks())
+	status := m.bulkOp.GetStatus()
+	m.bulkOp.Clear()
+	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", count, status)
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}

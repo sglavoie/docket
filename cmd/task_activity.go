@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -36,16 +36,12 @@ func init() {
 }
 
 func runTaskActivity(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	return WithTaskRead(args[0], func(project *models.Project, task *models.Task) error {
+		return displayTaskActivity(task)
+	})
+}
 
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
-	}
-
+func displayTaskActivity(task *models.Task) error {
 	fmt.Printf("#%d: %s\n", task.ShortID, task.Title)
 	fmt.Println(strings.Repeat("-", 40))
 

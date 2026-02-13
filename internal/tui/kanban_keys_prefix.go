@@ -34,31 +34,44 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			task := m.getSelectedTask()
 			if task != nil {
-				prevStates := captureTaskStates(m.Project.Tasks)
-				m.Project.MutateTask(task.ID, func(t *models.Task) {
-					t.Priority = priority
-				})
-				m.statusMessage = fmt.Sprintf("Priority set to %d", priority)
-				return m, m.saveWithStatusChange(prevStates, task)
+				result := applyPriorityChange(m.workflowPersistFn(), m.Project, task.ID, priority)
+				if result.Err != nil {
+					m.statusMessage = result.Err.Error()
+					return m, nil
+				}
+				if result.StatusMessage != "" {
+					m.statusMessage = result.StatusMessage
+				}
+				m.loadTasks()
+				return m, result.Cmd
 			}
 		}
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			dueDate, desc := dueDateFromDays(days, isClear)
 			if m.multiSelectMode && m.selectedCount() > 0 {
+				dueDate, desc := dueDateFromDays(days, isClear)
 				return m, m.handleBulkDueDateChange(dueDate, desc)
 			}
 			task := m.getSelectedTask()
 			if task == nil {
 				return m, nil
 			}
-			prevStates := captureTaskStates(m.Project.Tasks)
-			m.Project.MutateTask(task.ID, func(t *models.Task) {
-				t.DueDate = dueDate
-			})
-			m.statusMessage = fmt.Sprintf("Due date %s", desc)
-			return m, m.saveWithStatusChange(prevStates, task)
+			var result TaskOpResult
+			if isClear {
+				result = applyClearDueDate(m.workflowPersistFn(), m.Project, task.ID)
+			} else {
+				result = applyQuickDueDate(m.workflowPersistFn(), m.Project, task.ID, days)
+			}
+			if result.Err != nil {
+				m.statusMessage = result.Err.Error()
+				return m, nil
+			}
+			if result.StatusMessage != "" {
+				m.statusMessage = result.StatusMessage
+			}
+			m.loadTasks()
+			return m, result.Cmd
 		}
 		if key == "d" {
 			if m.multiSelectMode && m.selectedCount() > 0 {
@@ -295,56 +308,33 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 	}
 	project := m.Project
 
+	// Multi-select getter for shared handlers
+	getMultiTasks := func() []*models.Task {
+		if m.multiSelectMode && m.selectedCount() > 0 {
+			return m.getSelectedTasksList()
+		}
+		return nil
+	}
+
+	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
+	if task != nil {
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return m, cmd
+		}
+	}
+
+	// Try shared action handlers (tn, tN, ts, tt)
+	if handled, cmd := handleTaskActionPrefixKey(key, task, project, m.FocusedTask, getMultiTasks); handled {
+		return m, cmd
+	}
+
 	switch key {
-	case "n":
-		// Task new (create) - skip template picker
-		var parentTask *models.Task
-		if m.FocusedTask != nil {
-			parentTask = m.FocusedTask
-		} else {
-			parentTask = m.getSelectedTask()
-		}
-		return m, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: true}
-		}
-	case "N":
-		// Task new (create) - show template picker if templates exist
-		var parentTask *models.Task
-		if m.FocusedTask != nil {
-			parentTask = m.FocusedTask
-		} else {
-			parentTask = m.getSelectedTask()
-		}
-		return m, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: false}
-		}
 	case "r":
-		// Task rename (inline)
 		if task != nil {
 			return m, m.handleRenameKey()
 		}
 		return m, nil
-	case "s":
-		// Task section change
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			return m, func() tea.Msg {
-				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
-			}
-		}
-		if task != nil {
-			return m, func() tea.Msg {
-				return ShowSectionPickerMsg{Task: task, Project: project}
-			}
-		}
-		return m, nil
-	case "o":
-		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
-			return m, cmd
-		}
-		return m, nil
 	case "p":
-		// Task pin/unpin
 		if m.multiSelectMode && m.selectedCount() > 0 {
 			prevStates := captureTaskStates(m.Project.Tasks)
 			count := m.selectedCount()
@@ -365,32 +355,7 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			return m, m.saveWithStatusChange(prevStates, task)
 		}
 		return m, nil
-	case "t":
-		// Task tags
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			return m, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
-			}
-		}
-		if task != nil {
-			tags := append([]string{}, task.Tags...)
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{
-					Task:        task,
-					Project:     project,
-					CurrentTags: tags,
-				}
-			}
-		}
-		return m, nil
-	case "c", "a":
-		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
-			return m, cmd
-		}
-		return m, nil
 	case "D":
-		// Task delete
 		if m.multiSelectMode && m.selectedCount() > 0 {
 			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
 			m.confirm.Show("delete", m.statusMessage)
@@ -400,11 +365,6 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			m.deleteTarget = task
 			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
 			m.confirm.Show("delete", m.statusMessage)
-		}
-		return m, nil
-	case "m", "l", "d":
-		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
-			return m, cmd
 		}
 		return m, nil
 	}

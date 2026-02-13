@@ -239,66 +239,55 @@ func clamp(v, min, max int) int {
 	return v
 }
 
-// MaxScore returns the theoretical maximum score for a profile.
-// For each dimension, it uses Max for numerators and Min for denominators.
-func MaxScore(profile *ScoringProfile) float64 {
+// scoreWithStrategy builds DimensionResults using a per-dimension value selector and applies the formula.
+func scoreWithStrategy(profile *ScoringProfile, selectValue func(dim ScoringDimension) int) float64 {
 	results := make([]DimensionResult, len(profile.Dimensions))
 	for i, dim := range profile.Dimensions {
-		val := dim.Max
-		if dim.Role == RoleDenominator {
-			val = dim.Min
-			if val == 0 {
-				val = 1
-			}
-		}
 		results[i] = DimensionResult{
 			DimensionID:   dim.ID,
 			DimensionName: dim.Name,
-			Value:         val,
+			Value:         selectValue(dim),
 			Weight:        dim.Weight,
 			Role:          dim.Role,
 		}
 	}
 	return applyFormula(results, profile.Formula)
+}
+
+// MaxScore returns the theoretical maximum score for a profile.
+// For each dimension, it uses Max for numerators and Min for denominators.
+func MaxScore(profile *ScoringProfile) float64 {
+	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
+		if dim.Role == RoleDenominator {
+			if dim.Min == 0 {
+				return 1
+			}
+			return dim.Min
+		}
+		return dim.Max
+	})
 }
 
 // MinScore returns the theoretical minimum score for a profile.
 // For each dimension, it uses Min for numerators and Max for denominators.
 func MinScore(profile *ScoringProfile) float64 {
-	results := make([]DimensionResult, len(profile.Dimensions))
-	for i, dim := range profile.Dimensions {
+	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
 		val := dim.Min
-		if val == 0 && (profile.Formula == FormulaMultiply || profile.Formula == FormulaICE || profile.Formula == FormulaRICE) {
-			// Avoid zero in product formulas since it collapses everything
+		if val == 0 && isMultiplicativeFormula(profile.Formula) {
 			val = 1
 		}
 		if dim.Role == RoleDenominator {
-			val = dim.Max
+			return dim.Max
 		}
-		results[i] = DimensionResult{
-			DimensionID:   dim.ID,
-			DimensionName: dim.Name,
-			Value:         val,
-			Weight:        dim.Weight,
-			Role:          dim.Role,
-		}
-	}
-	return applyFormula(results, profile.Formula)
+		return val
+	})
 }
 
 // DefaultScore returns the score when all dimensions use their default values.
 func DefaultScore(profile *ScoringProfile) float64 {
-	results := make([]DimensionResult, len(profile.Dimensions))
-	for i, dim := range profile.Dimensions {
-		results[i] = DimensionResult{
-			DimensionID:   dim.ID,
-			DimensionName: dim.Name,
-			Value:         dim.Default,
-			Weight:        dim.Weight,
-			Role:          dim.Role,
-		}
-	}
-	return applyFormula(results, profile.Formula)
+	return scoreWithStrategy(profile, func(dim ScoringDimension) int {
+		return dim.Default
+	})
 }
 
 // isMultiplicativeFormula returns true for formulas whose output grows

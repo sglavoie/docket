@@ -50,9 +50,12 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return m, m.executeDelete()
 				case "archive":
 					return m, m.executeArchiveToggle()
+				case "bulk-status":
+					return m, m.executePendingBulkStatus()
 				}
 			}
 			m.deleteTarget = nil
+			m.bulkOp.Clear()
 			m.statusMessage = ""
 			return m, nil
 		}
@@ -443,10 +446,16 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		task := m.getSelectedTask()
 		if task != nil {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			task.ToggleActive()
-			m.statusMessage = fmt.Sprintf("Active: %v", task.Active)
-			return m, m.saveWithStatusChange(prevStates, task)
+			result := applyToggleActive(m.workflowPersistFn(), m.Project, task.ID)
+			if result.Err != nil {
+				m.statusMessage = result.Err.Error()
+				return m, nil
+			}
+			if result.StatusMessage != "" {
+				m.statusMessage = result.StatusMessage
+			}
+			m.loadTasks()
+			return m, result.Cmd
 		}
 		return m, nil
 

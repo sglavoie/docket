@@ -14,12 +14,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "p", Description: "Priority view", Category: "Navigation", Views: views},
 		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Navigation", Views: views},
 
-		// Folds (z prefix)
-		Keybinding{Key: "za", Description: "Toggle fold", Category: "Folds", Views: views},
-		Keybinding{Key: "zo/zc", Description: "Open/close fold", Category: "Folds", Views: views},
-		Keybinding{Key: "zR/zM", Description: "Expand/collapse all", Category: "Folds", Views: views},
-		Keybinding{Key: "zv", Description: "Focus on subtree", Category: "Folds", Views: views},
-
 		// Sidebar
 		Keybinding{Key: "j/k (sidebar)", Description: "Scroll/navigate dependencies", Category: "Sidebar", Views: views},
 		Keybinding{Key: "h/l (sidebar)", Description: "Switch dependency section", Category: "Sidebar", Views: views},
@@ -37,36 +31,11 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 
-		// Type Changes
-		Keybinding{Key: "<", Description: "Promote type", Category: "Type Changes", Views: views},
-		Keybinding{Key: ">", Description: "Demote type", Category: "Type Changes", Views: views},
-		Keybinding{Key: "H", Description: "Cycle leaf left", Category: "Type Changes", Views: views},
-		Keybinding{Key: "L", Description: "Cycle leaf right", Category: "Type Changes", Views: views},
-
 		// Task Movement (when sidebar unfocused)
 		Keybinding{Key: "K", Description: "Move task up", Category: "Task Movement", Views: views},
 		Keybinding{Key: "J", Description: "Move task down", Category: "Task Movement", Views: views},
 		Keybinding{Key: "→", Description: "Indent (nest under above)", Category: "Task Movement", Views: views},
 		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
-
-		// Task Operations (t prefix)
-		Keybinding{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "ts", Description: "Change section", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "td", Description: "Edit description", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)", Views: views},
-		Keybinding{Key: "tD", Description: "Delete task", Category: "Task (t prefix)", Views: views},
-
-		// Blocker/Dependency Operations (b prefix)
-		Keybinding{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)", Views: views},
-		Keybinding{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)", Views: views},
 
 		// Legacy Task Operations (still available for compatibility)
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
@@ -96,16 +65,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "go", Description: "Jump to context node's home section", Category: "Views", Views: views},
 		Keybinding{Key: "w", Description: "Inbox processor", Category: "Views", Views: views},
 
-		// Move (m prefix)
-		Keybinding{Key: "ma", Description: "Send task(s) to Active", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mn", Description: "Send task(s) to Next", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mi", Description: "Send task(s) to Inbox", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mw", Description: "Send task(s) to Waiting", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mr", Description: "Send task(s) to Review", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "ms", Description: "Send task(s) to Someday", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mK", Description: "Move task to top of section", Category: "Move (m prefix)", Views: views},
-		Keybinding{Key: "mJ", Description: "Move task to bottom of section", Category: "Move (m prefix)", Views: views},
-
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
@@ -119,14 +78,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "Fvs", Description: "Save current view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fvl", Description: "Load saved view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fvd", Description: "Delete saved view", Category: "Filters", Views: views},
-
-		// Sort
-		Keybinding{Key: "1", Description: "Sort by priority", Category: "Sort", Views: views},
-		Keybinding{Key: "2", Description: "Sort by due date", Category: "Sort", Views: views},
-		Keybinding{Key: "3", Description: "Sort by created", Category: "Sort", Views: views},
-		Keybinding{Key: "4", Description: "Sort by status", Category: "Sort", Views: views},
-		Keybinding{Key: "5", Description: "Sort by score", Category: "Sort", Views: views},
-		Keybinding{Key: "0", Description: "Reset sort", Category: "Sort", Views: views},
 
 		// Scoring
 		Keybinding{Key: "S", Description: "Score editor", Category: "Scoring", Views: views},
@@ -174,6 +125,12 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
 	)
+	r.addForViews(views, foldBindings())
+	r.addForViews(views, typeChangeBindings())
+	r.addForViews(views, taskPrefixBindings())
+	r.addForViews(views, blockerPrefixBindings())
+	r.addForViews(views, movePrefixBindings())
+	r.addForViews(views, sortBindings())
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())

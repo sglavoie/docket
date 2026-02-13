@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var taskCommentResolveCmd = &cobra.Command{
@@ -29,37 +28,22 @@ func init() {
 }
 
 func runTaskCommentResolve(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	_, err := WithTaskUpdate(args[0], func(task *models.Task) error {
+		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
+		if err != nil {
+			return err
+		}
 
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
-	}
+		if !task.ToggleCommentResolved(index) {
+			return fmt.Errorf("failed to toggle comment at index %d", index)
+		}
 
-	index, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid comment index: %s", args[1])
-	}
-
-	if index < 0 || index >= len(task.Comments) {
-		return fmt.Errorf("comment index %d out of range (task has %d comments)", index, len(task.Comments))
-	}
-
-	if !task.ToggleCommentResolved(index) {
-		return fmt.Errorf("failed to toggle comment at index %d", index)
-	}
-
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	state := "resolved"
-	if !task.Comments[index].Resolved {
-		state = "unresolved"
-	}
-	fmt.Printf("Comment %d marked as %s on #%d: %s\n", index, state, task.ShortID, task.Title)
-	return nil
+		state := "resolved"
+		if !task.Comments[index].Resolved {
+			state = "unresolved"
+		}
+		fmt.Printf("Comment %d marked as %s on #%d: %s\n", index, state, task.ShortID, task.Title)
+		return nil
+	})
+	return err
 }

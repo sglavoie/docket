@@ -86,13 +86,21 @@ func init() {
 	taskMoveCmd.AddCommand(taskOutdentCmd)
 }
 
-func runTaskMoveUp(cmd *cobra.Command, args []string) error {
+// runTaskMoveAction is the generic skeleton for all move subcommands:
+// Load → Select → validate → move → Save → print.
+func runTaskMoveAction(
+	args []string,
+	action string,
+	validate func(*models.Project, *models.Task) error,
+	move func(*models.Project, *models.Task) error,
+	describe func(*models.Project, *models.Task) string,
+) error {
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	task, err := selectTaskForMove(project, args, "up")
+	task, err := selectTaskForMove(project, args, action)
 	if err != nil {
 		return err
 	}
@@ -100,156 +108,113 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Check if can move up
-	siblings := project.GetSiblings(task)
-	siblingIdx := project.FindSiblingIndex(task)
-	if siblingIdx <= 0 {
-		fmt.Println("Task is already at the top of its siblings")
+	if err := validate(project, task); err != nil {
+		fmt.Println(err)
 		return nil
 	}
 
-	// Check completion boundary for root tasks
-	siblingAbove := siblings[siblingIdx-1]
-	if task.IsRoot() && task.IsComplete() && !siblingAbove.IsComplete() {
-		fmt.Println("Cannot move completed task above uncompleted task")
-		return nil
-	}
-
-	if err := project.MoveTaskUp(task); err != nil {
-		return fmt.Errorf("failed to move task: %w", err)
+	if err := move(project, task); err != nil {
+		return fmt.Errorf("failed to %s task: %w", action, err)
 	}
 
 	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Moved #%d: %s up\n", task.ShortID, task.Title)
+	fmt.Println(describe(project, task))
 	return nil
+}
+
+func runTaskMoveUp(cmd *cobra.Command, args []string) error {
+	return runTaskMoveAction(args, "up",
+		func(p *models.Project, t *models.Task) error {
+			siblings := p.GetSiblings(t)
+			idx := p.FindSiblingIndex(t)
+			if idx <= 0 {
+				return fmt.Errorf("Task is already at the top of its siblings")
+			}
+			if t.IsRoot() && t.IsComplete() && !siblings[idx-1].IsComplete() {
+				return fmt.Errorf("Cannot move completed task above uncompleted task")
+			}
+			return nil
+		},
+		func(p *models.Project, t *models.Task) error { return p.MoveTaskUp(t) },
+		func(p *models.Project, t *models.Task) string {
+			return fmt.Sprintf("Moved #%d: %s up", t.ShortID, t.Title)
+		},
+	)
 }
 
 func runTaskMoveDown(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	task, err := selectTaskForMove(project, args, "down")
-	if err != nil {
-		return err
-	}
-	if task == nil {
-		return nil
-	}
-
-	// Check if can move down
-	siblings := project.GetSiblings(task)
-	siblingIdx := project.FindSiblingIndex(task)
-	if siblingIdx == -1 || siblingIdx >= len(siblings)-1 {
-		fmt.Println("Task is already at the bottom of its siblings")
-		return nil
-	}
-
-	// Check completion boundary for root tasks
-	siblingBelow := siblings[siblingIdx+1]
-	if task.IsRoot() && !task.IsComplete() && siblingBelow.IsComplete() {
-		fmt.Println("Cannot move uncompleted task below completed task")
-		return nil
-	}
-
-	if err := project.MoveTaskDown(task); err != nil {
-		return fmt.Errorf("failed to move task: %w", err)
-	}
-
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	fmt.Printf("Moved #%d: %s down\n", task.ShortID, task.Title)
-	return nil
+	return runTaskMoveAction(args, "down",
+		func(p *models.Project, t *models.Task) error {
+			siblings := p.GetSiblings(t)
+			idx := p.FindSiblingIndex(t)
+			if idx == -1 || idx >= len(siblings)-1 {
+				return fmt.Errorf("Task is already at the bottom of its siblings")
+			}
+			if t.IsRoot() && !t.IsComplete() && siblings[idx+1].IsComplete() {
+				return fmt.Errorf("Cannot move uncompleted task below completed task")
+			}
+			return nil
+		},
+		func(p *models.Project, t *models.Task) error { return p.MoveTaskDown(t) },
+		func(p *models.Project, t *models.Task) string {
+			return fmt.Sprintf("Moved #%d: %s down", t.ShortID, t.Title)
+		},
+	)
 }
 
 func runTaskIndent(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	task, err := selectTaskForMove(project, args, "indent")
-	if err != nil {
-		return err
-	}
-	if task == nil {
-		return nil
-	}
-
-	// Get target parent
-	targetParent := project.GetTaskAbove(task)
-	if targetParent == nil {
-		fmt.Println("No task above to nest under")
-		return nil
-	}
-
-	// Check if can indent
-	if ok, reason := task.CanIndent(targetParent); !ok {
-		fmt.Printf("Cannot indent: %s\n", reason)
-		return nil
-	}
-
-	if err := project.IndentTask(task); err != nil {
-		return fmt.Errorf("failed to indent task: %w", err)
-	}
-
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	fmt.Printf("Indented #%d: %s (now under #%d: %s)\n",
-		task.ShortID, task.Title,
-		targetParent.ShortID, targetParent.Title)
-	return nil
+	return runTaskMoveAction(args, "indent",
+		func(p *models.Project, t *models.Task) error {
+			targetParent := p.GetTaskAbove(t)
+			if targetParent == nil {
+				return fmt.Errorf("No task above to nest under")
+			}
+			if ok, reason := t.CanIndent(targetParent); !ok {
+				return fmt.Errorf("Cannot indent: %s", reason)
+			}
+			return nil
+		},
+		func(p *models.Project, t *models.Task) error { return p.IndentTask(t) },
+		func(p *models.Project, t *models.Task) string {
+			if t.Parent != nil {
+				return fmt.Sprintf("Indented #%d: %s (now under #%d: %s)",
+					t.ShortID, t.Title, t.Parent.ShortID, t.Parent.Title)
+			}
+			return fmt.Sprintf("Indented #%d: %s", t.ShortID, t.Title)
+		},
+	)
 }
 
 func runTaskOutdent(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
+	// Capture parent before the move since OutdentTask changes it
+	var oldParentShortID int
+	var oldParentTitle string
 
-	task, err := selectTaskForMove(project, args, "outdent")
-	if err != nil {
-		return err
-	}
-	if task == nil {
-		return nil
-	}
-
-	// Check if can outdent
-	if ok, reason := task.CanOutdent(); !ok {
-		fmt.Printf("Cannot outdent: %s\n", reason)
-		return nil
-	}
-
-	oldParent := task.Parent
-
-	if err := project.OutdentTask(task); err != nil {
-		return fmt.Errorf("failed to outdent task: %w", err)
-	}
-
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	if task.ParentID == nil {
-		fmt.Printf("Outdented #%d: %s (now at root level, was under #%d: %s)\n",
-			task.ShortID, task.Title,
-			oldParent.ShortID, oldParent.Title)
-	} else {
-		newParent := project.GetTaskByID(*task.ParentID)
-		fmt.Printf("Outdented #%d: %s (now under #%d: %s)\n",
-			task.ShortID, task.Title,
-			newParent.ShortID, newParent.Title)
-	}
-	return nil
+	return runTaskMoveAction(args, "outdent",
+		func(p *models.Project, t *models.Task) error {
+			if ok, reason := t.CanOutdent(); !ok {
+				return fmt.Errorf("Cannot outdent: %s", reason)
+			}
+			if t.Parent != nil {
+				oldParentShortID = t.Parent.ShortID
+				oldParentTitle = t.Parent.Title
+			}
+			return nil
+		},
+		func(p *models.Project, t *models.Task) error { return p.OutdentTask(t) },
+		func(p *models.Project, t *models.Task) string {
+			if t.ParentID == nil {
+				return fmt.Sprintf("Outdented #%d: %s (now at root level, was under #%d: %s)",
+					t.ShortID, t.Title, oldParentShortID, oldParentTitle)
+			}
+			newParent := p.GetTaskByID(*t.ParentID)
+			return fmt.Sprintf("Outdented #%d: %s (now under #%d: %s)",
+				t.ShortID, t.Title, newParent.ShortID, newParent.Title)
+		},
+	)
 }
 
 // selectTaskForMove finds a task by ID or presents an interactive selector.

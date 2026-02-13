@@ -8,6 +8,30 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// AddFlags holds the common flag values shared by "tt add" and "tt task add".
+type AddFlags struct {
+	TypeFlag   string
+	ParentFlag string
+	Priority   int
+	Tags       []string
+	IsEpic     bool
+	IsStory    bool
+	IsBug      bool
+	IsIdea     bool
+}
+
+// registerAddFlags registers the common add/task-add flags on a command.
+func registerAddFlags(cmd *cobra.Command, f *AddFlags, priorityDefault int) {
+	cmd.Flags().StringVarP(&f.TypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
+	cmd.Flags().StringVarP(&f.ParentFlag, "parent", "p", "", "parent task ID or short ID")
+	cmd.Flags().IntVar(&f.Priority, "priority", priorityDefault, "priority (1=highest, 5=lowest)")
+	cmd.Flags().StringSliceVar(&f.Tags, "tags", nil, "tags for the task")
+	cmd.Flags().BoolVar(&f.IsEpic, "epic", false, "create an epic")
+	cmd.Flags().BoolVar(&f.IsStory, "story", false, "create a story")
+	cmd.Flags().BoolVar(&f.IsBug, "bug", false, "create a bug")
+	cmd.Flags().BoolVar(&f.IsIdea, "idea", false, "create an idea")
+}
+
 // TypeAttrValues holds type-specific attribute values extracted from CLI flags.
 // Boolean/int flags that have zero-value defaults use a *Set field to indicate
 // whether the flag was explicitly provided.
@@ -72,19 +96,17 @@ func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
 		if task.Type != models.TaskTypeBug {
 			return fmt.Errorf("bug.* flags can only be used with bug type tasks")
 		}
-		if task.BugAttrs == nil {
-			task.BugAttrs = &models.BugAttrs{}
-		}
+		a := task.EnsureBugAttrs()
 		if vals.BugReproducible != "" {
-			task.BugAttrs.Reproducible = models.BugReproducible(vals.BugReproducible)
+			a.Reproducible = models.BugReproducible(vals.BugReproducible)
 		}
 		if vals.BugSeverity != "" {
-			task.BugAttrs.Severity = models.BugSeverity(vals.BugSeverity)
+			a.Severity = models.BugSeverity(vals.BugSeverity)
 		}
 		if vals.BugWorkaround != "" {
-			task.BugAttrs.Workaround = vals.BugWorkaround
+			a.Workaround = vals.BugWorkaround
 		}
-		if err := task.BugAttrs.Validate(); err != nil {
+		if err := a.Validate(); err != nil {
 			return err
 		}
 	}
@@ -95,22 +117,20 @@ func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
 		if task.Type != models.TaskTypeIdea {
 			return fmt.Errorf("idea.* flags can only be used with idea type tasks")
 		}
-		if task.IdeaAttrs == nil {
-			task.IdeaAttrs = &models.IdeaAttrs{}
-		}
+		a := task.EnsureIdeaAttrs()
 		if vals.IdeaCategory != "" {
-			task.IdeaAttrs.Category = models.IdeaCategory(vals.IdeaCategory)
+			a.Category = models.IdeaCategory(vals.IdeaCategory)
 		}
 		if vals.IdeaEffort != "" {
-			task.IdeaAttrs.Effort = models.EffortEstimate(vals.IdeaEffort)
+			a.Effort = models.EffortEstimate(vals.IdeaEffort)
 		}
 		if vals.IdeaValue != "" {
-			task.IdeaAttrs.Value = models.IdeaValue(vals.IdeaValue)
+			a.Value = models.IdeaValue(vals.IdeaValue)
 		}
 		if vals.IdeaValidatedSet {
-			task.IdeaAttrs.Validated = vals.IdeaValidated
+			a.Validated = vals.IdeaValidated
 		}
-		if err := task.IdeaAttrs.Validate(); err != nil {
+		if err := a.Validate(); err != nil {
 			return err
 		}
 	}
@@ -121,16 +141,14 @@ func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
 		if task.Type != models.TaskTypeTask {
 			return fmt.Errorf("task.* flags can only be used with task type tasks")
 		}
-		if task.TaskAttrs == nil {
-			task.TaskAttrs = &models.TaskAttrs{}
-		}
+		a := task.EnsureTaskAttrs()
 		if vals.TaskEffort != "" {
-			task.TaskAttrs.Effort = models.EffortEstimate(vals.TaskEffort)
+			a.Effort = models.EffortEstimate(vals.TaskEffort)
 		}
 		if vals.TaskWorkType != "" {
-			task.TaskAttrs.WorkType = models.WorkType(vals.TaskWorkType)
+			a.WorkType = models.WorkType(vals.TaskWorkType)
 		}
-		if err := task.TaskAttrs.Validate(); err != nil {
+		if err := a.Validate(); err != nil {
 			return err
 		}
 	}
@@ -141,16 +159,14 @@ func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
 		if task.Type != models.TaskTypeStory {
 			return fmt.Errorf("story.* flags can only be used with story type tasks")
 		}
-		if task.StoryAttrs == nil {
-			task.StoryAttrs = &models.StoryAttrs{}
-		}
+		a := task.EnsureStoryAttrs()
 		if vals.StoryPointsSet {
-			task.StoryAttrs.StoryPoints = vals.StoryPoints
+			a.StoryPoints = vals.StoryPoints
 		}
 		if vals.StoryPersona != "" {
-			task.StoryAttrs.Persona = vals.StoryPersona
+			a.Persona = vals.StoryPersona
 		}
-		if err := task.StoryAttrs.Validate(); err != nil {
+		if err := a.Validate(); err != nil {
 			return err
 		}
 	}
@@ -161,19 +177,17 @@ func applyTypeAttrValues(task *models.Task, vals TypeAttrValues) error {
 		if task.Type != models.TaskTypeEpic {
 			return fmt.Errorf("epic.* flags can only be used with epic type tasks")
 		}
-		if task.EpicAttrs == nil {
-			task.EpicAttrs = &models.EpicAttrs{}
-		}
+		a := task.EnsureEpicAttrs()
 		if vals.EpicScope != "" {
-			task.EpicAttrs.Scope = models.EpicScope(vals.EpicScope)
+			a.Scope = models.EpicScope(vals.EpicScope)
 		}
 		if vals.EpicMilestone != "" {
-			task.EpicAttrs.Milestone = vals.EpicMilestone
+			a.Milestone = vals.EpicMilestone
 		}
 		if vals.EpicMetrics != "" {
-			task.EpicAttrs.SuccessMetrics = vals.EpicMetrics
+			a.SuccessMetrics = vals.EpicMetrics
 		}
-		if err := task.EpicAttrs.Validate(); err != nil {
+		if err := a.Validate(); err != nil {
 			return err
 		}
 	}

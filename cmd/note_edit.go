@@ -46,10 +46,11 @@ func runNoteEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	editor := noteEditEditor
-	if editor == "" && ctx.Config != nil {
-		editor = ctx.Config.Editor
+	var cfgEditor string
+	if ctx.Config != nil {
+		cfgEditor = ctx.Config.Editor
 	}
+	editor := resolveEditor(noteEditEditor, cfgEditor)
 
 	content, err := storage.RenderNoteContent(note)
 	if err != nil {

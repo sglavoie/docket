@@ -182,6 +182,73 @@ func projectCyclingBindings() []Keybinding {
 	}
 }
 
+func taskPrefixBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "tn", Description: "New task (no template)", Category: "Task (t prefix)"},
+		{Key: "tN", Description: "New task (with template picker)", Category: "Task (t prefix)"},
+		{Key: "tr", Description: "Rename task (inline)", Category: "Task (t prefix)"},
+		{Key: "ts", Description: "Change section", Category: "Task (t prefix)"},
+		{Key: "to", Description: "Open in external editor", Category: "Task (t prefix)"},
+		{Key: "tp", Description: "Pin/unpin task", Category: "Task (t prefix)"},
+		{Key: "tt", Description: "Manage tags", Category: "Task (t prefix)"},
+		{Key: "tc", Description: "View/add comments", Category: "Task (t prefix)"},
+		{Key: "ta", Description: "View/add attachments", Category: "Task (t prefix)"},
+		{Key: "tl", Description: "Edit checklist", Category: "Task (t prefix)"},
+		{Key: "td", Description: "Edit description", Category: "Task (t prefix)"},
+		{Key: "tm", Description: "Move to another project", Category: "Task (t prefix)"},
+		{Key: "tD", Description: "Delete task", Category: "Task (t prefix)"},
+	}
+}
+
+func foldBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "za", Description: "Toggle fold", Category: "Folds"},
+		{Key: "zo/zc", Description: "Expand/collapse fold", Category: "Folds"},
+		{Key: "zR/zM", Description: "Expand/collapse all", Category: "Folds"},
+		{Key: "zv", Description: "Focus on subtree", Category: "Folds"},
+	}
+}
+
+func typeChangeBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "<", Description: "Promote type", Category: "Type Changes"},
+		{Key: ">", Description: "Demote type", Category: "Type Changes"},
+		{Key: "H", Description: "Cycle leaf left", Category: "Type Changes"},
+		{Key: "L", Description: "Cycle leaf right", Category: "Type Changes"},
+	}
+}
+
+func sortBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "1", Description: "Sort by priority", Category: "Sort"},
+		{Key: "2", Description: "Sort by due date", Category: "Sort"},
+		{Key: "3", Description: "Sort by created", Category: "Sort"},
+		{Key: "4", Description: "Sort by status", Category: "Sort"},
+		{Key: "5", Description: "Sort by score", Category: "Sort"},
+		{Key: "0", Description: "Reset sort", Category: "Sort"},
+	}
+}
+
+func movePrefixBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "ma", Description: "Send task(s) to Active", Category: "Move (m prefix)"},
+		{Key: "mn", Description: "Send task(s) to Next", Category: "Move (m prefix)"},
+		{Key: "mi", Description: "Send task(s) to Inbox", Category: "Move (m prefix)"},
+		{Key: "mw", Description: "Send task(s) to Waiting", Category: "Move (m prefix)"},
+		{Key: "mr", Description: "Send task(s) to Review", Category: "Move (m prefix)"},
+		{Key: "ms", Description: "Send task(s) to Someday", Category: "Move (m prefix)"},
+		{Key: "mK", Description: "Move task to top of section", Category: "Move (m prefix)"},
+		{Key: "mJ", Description: "Move task to bottom of section", Category: "Move (m prefix)"},
+	}
+}
+
+func blockerPrefixBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "bb", Description: "View blockers/dependencies", Category: "Blockers (b prefix)"},
+		{Key: "bm", Description: "Manage dependencies", Category: "Blockers (b prefix)"},
+	}
+}
+
 func (r *KeybindingRegistry) registerGlobalBindings() {
 	r.add(
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},

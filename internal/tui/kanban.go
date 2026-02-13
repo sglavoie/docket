@@ -168,6 +168,9 @@ type KanbanViewModel struct {
 	// Quick edit component
 	quickEdit *QuickEditComponent
 
+	// Bulk operation component for status changes with confirmation
+	bulkOp *BulkOperationComponent
+
 	// Completed view state
 	completedViewMode bool
 	completedNodes    []*KanbanNode
@@ -260,6 +263,8 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		// Quick edit component
 		quickEdit: NewQuickEditComponent(),
+		// Bulk operation component
+		bulkOp: NewBulkOperationComponent(),
 	}
 
 	// Compute column definitions from group-by mode

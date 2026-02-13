@@ -61,11 +61,7 @@ func runTaskCommentEdit(cmd *cobra.Command, args []string) error {
 
 	comment := task.Comments[index]
 
-	// Determine editor
-	editor := commentEditEditor
-	if editor == "" {
-		editor = cfg.Editor
-	}
+	editor := resolveEditor(commentEditEditor, cfg.Editor)
 
 	// Build content for editing
 	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n", index, task.ShortID, task.Title)

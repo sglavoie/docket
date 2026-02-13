@@ -84,6 +84,63 @@ func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Proje
 	return false, nil
 }
 
+// handleTaskActionPrefixKey handles the "t" prefix keys that need task/project
+// and produce identical messages across ProjectTree and Kanban for single-task
+// paths: tn/tN (create), ts (section picker), tt (tag selector), tD (delete).
+// focusedTask is the subtree focus task (may be nil), used as parent for tn/tN.
+// getMultiTasks returns selected tasks when in multi-select mode (nil if not).
+// Returns (handled, cmd).
+func handleTaskActionPrefixKey(key string, task *models.Task, project *models.Project, focusedTask *models.Task, getMultiTasks func() []*models.Task) (bool, tea.Cmd) {
+	switch key {
+	case "n":
+		parentTask := focusedTask
+		if parentTask == nil {
+			parentTask = task
+		}
+		return true, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: true}
+		}
+	case "N":
+		parentTask := focusedTask
+		if parentTask == nil {
+			parentTask = task
+		}
+		return true, func() tea.Msg {
+			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: false}
+		}
+	case "s":
+		if tasks := getMultiTasks(); len(tasks) > 0 {
+			return true, func() tea.Msg {
+				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
+			}
+		}
+		if task != nil {
+			return true, func() tea.Msg {
+				return ShowSectionPickerMsg{Task: task, Project: project}
+			}
+		}
+		return true, nil
+	case "t":
+		if tasks := getMultiTasks(); len(tasks) > 0 {
+			return true, func() tea.Msg {
+				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+			}
+		}
+		if task != nil {
+			tags := append([]string{}, task.Tags...)
+			return true, func() tea.Msg {
+				return ShowTagSelectorMsg{
+					Task:        task,
+					Project:     project,
+					CurrentTags: tags,
+				}
+			}
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 // handleBlockerPrefixKey handles the "b" prefix dispatch for blocker/dependency
 // operations: bb (view dependencies), bm (manage dependencies).
 // Returns (handled, cmd).

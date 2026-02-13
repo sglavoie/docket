@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -256,6 +257,44 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	}
 
 	return task, nil
+}
+
+// WithTaskRead encapsulates the common Load→FindTask→Read pattern for read-only commands.
+// It loads the current project, finds the task, and passes it to the read function.
+// No save is performed.
+func WithTaskRead(taskIdentifier string, readFn func(*models.Project, *models.Task) error) error {
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
+	task := FindTaskByIdentifier(project, taskIdentifier)
+	if task == nil {
+		return tterrors.NewTaskNotFoundError(taskIdentifier)
+	}
+
+	return readFn(project, task)
+}
+
+// parseItemIndex parses and validates an index argument against a collection length.
+// Returns the parsed index or an error with a descriptive message using itemName.
+func parseItemIndex(arg string, count int, itemName string) (int, error) {
+	index, err := strconv.Atoi(arg)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s index: %s", itemName, arg)
+	}
+	if index < 0 || index >= count {
+		return 0, fmt.Errorf("%s index %d out of range (0-%d)", itemName, index, count-1)
+	}
+	return index, nil
+}
+
+// resolveEditor returns the flag value if set, otherwise falls back to the config editor.
+func resolveEditor(flag, cfgEditor string) string {
+	if flag != "" {
+		return flag
+	}
+	return cfgEditor
 }
 
 // WithBlockerUpdate encapsulates the common Load→Find→Update→Save pattern for blocker commands.

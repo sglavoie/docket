@@ -444,8 +444,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	case "!":
 		if priority, ok := PriorityForPrefixKey(key); ok {
-			prevStates := captureTaskStates(m.project.Tasks)
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				prevStates := captureTaskStates(m.project.Tasks)
 				count := 0
 				for id := range m.selectedTasks {
 					if m.project.MutateTask(id, func(t *models.Task) {
@@ -459,15 +459,14 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 			if CursorInBounds(m.cursor, len(visible)) {
-				task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
-				if task == nil {
-					return m, nil
-				}
-				m.project.MutateTask(task.ID, func(t *models.Task) {
-					t.Priority = priority
-				})
+				task := visible[m.cursor].Task
 				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
-				return m, m.saveAndRefreshWithPrevStates(prevStates)
+				result := applyPriorityChange(m.workflowPersistFn(), m.project, task.ID, priority)
+				if result.Err != nil {
+					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+				}
+				m.buildTree()
+				return m, result.Cmd
 			}
 			return m, nil
 		}
@@ -483,10 +482,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			dueDate, desc := dueDateFromDays(days, isClear)
-			prevStates := captureTaskStates(m.project.Tasks)
-
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				dueDate, desc := dueDateFromDays(days, isClear)
+				prevStates := captureTaskStates(m.project.Tasks)
 				count := 0
 				for id := range m.selectedTasks {
 					if m.project.MutateTask(id, func(t *models.Task) {
@@ -500,15 +498,20 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 			if CursorInBounds(m.cursor, len(visible)) {
-				task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
-				if task == nil {
-					return m, nil
+				task := visible[m.cursor].Task
+				var result TaskOpResult
+				if isClear {
+					m.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", task.Title))
+					result = applyClearDueDate(m.workflowPersistFn(), m.project, task.ID)
+				} else {
+					m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), task.Title))
+					result = applyQuickDueDate(m.workflowPersistFn(), m.project, task.ID, days)
 				}
-				m.project.MutateTask(task.ID, func(t *models.Task) {
-					t.DueDate = dueDate
-				})
-				m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", desc, task.Title))
-				return m, m.saveAndRefreshWithPrevStates(prevStates)
+				if result.Err != nil {
+					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+				}
+				m.buildTree()
+				return m, result.Cmd
 			}
 			return m, nil
 		}
@@ -628,61 +631,43 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 // handleTaskPrefix handles the second key after pressing t (task action prefix).
 func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
-	switch key {
-	case "n":
-		// Task new (create) - skip template picker
-		var parentTask *models.Task
-		if m.focusedTask != nil {
-			parentTask = m.focusedTask
-		} else if CursorInBounds(m.cursor, len(visible)) {
-			parentTask = visible[m.cursor].Task
-		}
-		return m, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: true}
-		}
-	case "N":
-		// Task new (create) - show template picker if templates exist
-		var parentTask *models.Task
-		if m.focusedTask != nil {
-			parentTask = m.focusedTask
-		} else if CursorInBounds(m.cursor, len(visible)) {
-			parentTask = visible[m.cursor].Task
-		}
-		return m, func() tea.Msg {
-			return CreateTaskMsg{ParentTask: parentTask, SkipTemplatePicker: false}
-		}
-	case "r":
-		// Task rename (inline)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			m.enterQuickEditMode(task, true)
-		}
-		return m, nil
-	case "s":
-		// Task section change
+	// Get cursor task (may be nil if cursor is out of bounds)
+	var cursorTask *models.Task
+	if CursorInBounds(m.cursor, len(visible)) {
+		cursorTask = visible[m.cursor].Task
+	}
+
+	// Multi-select getter for shared handlers
+	getMultiTasks := func() []*models.Task {
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			project := m.project
-			return m, func() tea.Msg {
-				return ShowBulkSectionPickerMsg{Tasks: tasks, Project: project}
-			}
+			return m.getSelectedTasks()
 		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowSectionPickerMsg{Task: task, Project: m.project}
-			}
+		return nil
+	}
+
+	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
+	if cursorTask != nil {
+		// tm is blocked for multi-select
+		if key == "m" && m.multiSelectMode && len(m.selectedTasks) > 1 {
+			return m, nil
 		}
-		return m, nil
-	case "o":
-		if CursorInBounds(m.cursor, len(visible)) {
-			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
-				return m, cmd
-			}
+		if handled, cmd := handleTaskPrefixMsgKey(key, cursorTask, m.project); handled {
+			return m, cmd
+		}
+	}
+
+	// Try shared action handlers (tn, tN, ts, tt)
+	if handled, cmd := handleTaskActionPrefixKey(key, cursorTask, m.project, m.focusedTask, getMultiTasks); handled {
+		return m, cmd
+	}
+
+	switch key {
+	case "r":
+		if cursorTask != nil {
+			m.enterQuickEditMode(cursorTask, true)
 		}
 		return m, nil
 	case "p":
-		// Task pin/unpin
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			count := len(m.selectedTasks)
 			for _, task := range m.getSelectedTasks() {
@@ -692,70 +677,24 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
 			return m, m.saveAndRefresh()
 		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			task.TogglePinned()
-			m.setUndoContext("Toggle Pin", task.Title)
+		if cursorTask != nil {
+			cursorTask.TogglePinned()
+			m.setUndoContext("Toggle Pin", cursorTask.Title)
 			return m, m.saveAndRefresh()
 		}
 		return m, nil
-	case "t":
-		// Task tags
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			return m, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
-			}
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{
-					Task:        task,
-					Project:     m.project,
-					CurrentTags: append([]string{}, task.Tags...),
-				}
-			}
-		}
-		return m, nil
-	case "c", "a":
-		if CursorInBounds(m.cursor, len(visible)) {
-			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
-				return m, cmd
-			}
-		}
-		return m, nil
 	case "D":
-		// Task delete
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
 			m.confirmAction = ConfirmBulkDelete
 			return m, nil
 		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if task.IsRecurring() {
+		if cursorTask != nil {
+			if cursorTask.IsRecurring() {
 				m.confirmAction = ConfirmDeleteRecurring
 			} else {
 				m.confirmAction = ConfirmDelete
 			}
-			m.deleteTarget = task
-		}
-		return m, nil
-	case "m":
-		if m.multiSelectMode && len(m.selectedTasks) > 1 {
-			return m, nil
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
-				return m, cmd
-			}
-		}
-		return m, nil
-	case "l", "d":
-		if CursorInBounds(m.cursor, len(visible)) {
-			if handled, cmd := handleTaskPrefixMsgKey(key, visible[m.cursor].Task, m.project); handled {
-				return m, cmd
-			}
+			m.deleteTarget = cursorTask
 		}
 		return m, nil
 	}

@@ -6,8 +6,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // TaskOpResult holds the outcome of a shared task operation.
@@ -15,6 +17,56 @@ type TaskOpResult struct {
 	StatusMessage string
 	Err           error
 	Cmd           tea.Cmd
+}
+
+// persistFn is the callback that apply* functions use to look up a task,
+// run the mutation, and persist the result. Different callers supply either
+// a simple (backup→save→load) or a workflow-aware (auto-unblock, recurring,
+// workflow rules, undo snapshots) implementation.
+type persistFn func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult
+
+// simplePersist returns a persistFn that wraps the existing withPersist helper.
+// Used by secondary views that don't need the full workflow pipeline.
+func simplePersist(p Persister) persistFn {
+	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+		return withPersist(p, project, taskID, mutate)
+	}
+}
+
+// workflowPersist returns a persistFn that runs the full workflow pipeline
+// (auto-unblock, recurring generation, workflow rules, root reorder, undo
+// snapshots). The optsProvider is called at persist time so undo context
+// is read fresh rather than captured at closure creation time.
+func workflowPersist(optsProvider func() WorkflowSaveOptions) persistFn {
+	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+		if project.GetTaskByID(taskID) == nil {
+			return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+		}
+		prevStates := captureTaskStates(project.Tasks)
+		project.MutateTask(taskID, mutate)
+		opts := optsProvider()
+		opts.PrevStates = prevStates
+		if err := persistWithWorkflow(opts); err != nil {
+			return TaskOpResult{Err: err}
+		}
+		return TaskOpResult{}
+	}
+}
+
+// analyzeBulkStatusTransition separates tasks that can transition to newStatus
+// from those blocked by transition rules or incomplete dependencies.
+func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, newStatus models.TaskStatus) (valid []*models.Task, blockedCount int) {
+	for _, task := range tasks {
+		if task.CanTransitionTo(newStatus) != "" {
+			continue
+		}
+		if newStatus == models.StatusDone && len(project.GetIncompleteDependencies(task)) > 0 {
+			blockedCount++
+			continue
+		}
+		valid = append(valid, task)
+	}
+	return
 }
 
 // withPersist handles the common task operation pattern: look up task by ID,
@@ -35,10 +87,79 @@ func withPersist(p Persister, project *models.Project, taskID string, mutate fun
 	return TaskOpResult{}
 }
 
+// WorkflowSaveOptions holds configuration for the save-with-workflow pipeline.
+type WorkflowSaveOptions struct {
+	Persister     Persister
+	Project       *models.Project
+	Config        *config.Config
+	ConfigManager *config.Manager
+	PrevStates    map[string]*models.Task
+	UndoAction    string
+	UndoContext   string
+	UndoDepth     int
+}
+
+// persistWithWorkflow runs the full save pipeline used by both ProjectTree and Kanban:
+// auto-unblock, recurring generation, workflow rules, root reorder, undo snapshot, backup, save, load.
+func persistWithWorkflow(opts WorkflowSaveOptions) error {
+	opts.Project.CheckAndAutoUnblock()
+	opts.Project.GenerateRecurringInstances()
+
+	if opts.Config != nil {
+		rules := opts.Config.GetEnabledWorkflowRules()
+		if len(rules) > 0 {
+			var result *workflow.EvaluationResult
+			if opts.PrevStates != nil {
+				evalCtx := buildEvaluationContext(opts.Project.Tasks, opts.PrevStates)
+				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
+			} else {
+				result = workflow.EvaluateRules(opts.Project.Tasks, rules)
+			}
+			if len(result.Conflicts) > 0 {
+				_ = result.Conflicts
+			}
+			if len(result.RuleTriggerCounts) > 0 && opts.ConfigManager != nil {
+				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
+				_ = opts.ConfigManager.Save(opts.Config)
+			}
+		}
+	}
+
+	opts.Project.ReorderRootTasksByCompletion()
+
+	if opts.UndoDepth > 0 && opts.UndoAction != "" {
+		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth)
+	}
+
+	if err := opts.Persister.Backup(opts.Project); err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+	if err := opts.Persister.Save(opts.Project); err != nil {
+		return fmt.Errorf("failed to save project: %w", err)
+	}
+	_ = opts.Persister.Load(opts.Project)
+	return nil
+}
+
+// performUndoFromBackup restores a project from backup using the given Persister.
+// Returns an error message or nil on success.
+func performUndoFromBackup(p Persister, project *models.Project) error {
+	if !p.BackupExists(project) {
+		return fmt.Errorf("no backup available to undo")
+	}
+	if err := p.RestoreFromBackup(project); err != nil {
+		return fmt.Errorf("failed to undo: %w", err)
+	}
+	if err := p.Load(project); err != nil {
+		return fmt.Errorf("failed to reload after undo: %w", err)
+	}
+	return nil
+}
+
 // applyStatusChange validates and applies a status transition on the given task.
 // It handles backup, mutation, save, and reload. The caller is responsible for
 // refreshing its view-specific data (loadTasks, clampCursor, etc.).
-func applyStatusChange(p Persister, project *models.Project, taskID string, newStatus models.TaskStatus) TaskOpResult {
+func applyStatusChange(pf persistFn, project *models.Project, taskID string, newStatus models.TaskStatus) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -52,7 +173,7 @@ func applyStatusChange(p Persister, project *models.Project, taskID string, newS
 		return TaskOpResult{Err: fmt.Errorf("cannot complete: has incomplete dependencies")}
 	}
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.ApplyTransition(newStatus)
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -65,7 +186,7 @@ func applyStatusChange(p Persister, project *models.Project, taskID string, newS
 }
 
 // applyPriorityChange sets the priority on a task.
-func applyPriorityChange(p Persister, project *models.Project, taskID string, priority int) TaskOpResult {
+func applyPriorityChange(pf persistFn, project *models.Project, taskID string, priority int) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -74,7 +195,7 @@ func applyPriorityChange(p Persister, project *models.Project, taskID string, pr
 		return TaskOpResult{}
 	}
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.Priority = priority
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -86,11 +207,11 @@ func applyPriorityChange(p Persister, project *models.Project, taskID string, pr
 }
 
 // applyQuickDueDate sets the due date relative to today.
-func applyQuickDueDate(p Persister, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
+func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
 	newDate := time.Now().AddDate(0, 0, daysFromNow)
 	newDate = util.StartOfDay(newDate)
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.DueDate = &newDate
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -102,7 +223,7 @@ func applyQuickDueDate(p Persister, project *models.Project, taskID string, days
 }
 
 // applyClearDueDate removes the due date from a task.
-func applyClearDueDate(p Persister, project *models.Project, taskID string) TaskOpResult {
+func applyClearDueDate(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -111,7 +232,7 @@ func applyClearDueDate(p Persister, project *models.Project, taskID string) Task
 		return TaskOpResult{StatusMessage: "Task has no due date"}
 	}
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.DueDate = nil
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -123,14 +244,14 @@ func applyClearDueDate(p Persister, project *models.Project, taskID string) Task
 }
 
 // applyToggleActive toggles the Active flag on a task.
-func applyToggleActive(p Persister, project *models.Project, taskID string) TaskOpResult {
+func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
 	wasActive := task.Active
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.Active = !t.Active
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -147,13 +268,13 @@ func applyToggleActive(p Persister, project *models.Project, taskID string) Task
 }
 
 // applyRemoveFromFocus always sets Active = false (used by FocusView specifically).
-func applyRemoveFromFocus(p Persister, project *models.Project, taskID string, shortID int) TaskOpResult {
+func applyRemoveFromFocus(pf persistFn, project *models.Project, taskID string, shortID int) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		t.Active = false
 	})
 	if result.Err != nil || result.StatusMessage != "" {
@@ -166,13 +287,13 @@ func applyRemoveFromFocus(p Persister, project *models.Project, taskID string, s
 }
 
 // applySectionChange sets the GTD section on a task.
-func applySectionChange(p Persister, project *models.Project, taskID string, section string) TaskOpResult {
+func applySectionChange(pf persistFn, project *models.Project, taskID string, section string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
-	result := withPersist(p, project, taskID, func(t *models.Task) {
+	result := pf(project, taskID, func(t *models.Task) {
 		assignSection(t, section)
 		if section != "" && section != removeCustomSectionSentinel {
 			project.EnsureSection(section)
@@ -192,7 +313,7 @@ func applySectionChange(p Persister, project *models.Project, taskID string, sec
 }
 
 // applyDeleteTask removes a task from a project.
-func applyDeleteTask(p Persister, project *models.Project, taskID string) TaskOpResult {
+func applyDeleteTask(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
@@ -200,10 +321,8 @@ func applyDeleteTask(p Persister, project *models.Project, taskID string) TaskOp
 
 	shortID := task.ShortID
 
-	if err := p.Backup(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
-	}
-
+	// Remove the task from the project first, then trigger the persist
+	// pipeline via a no-op mutate on any remaining task.
 	for i, t := range project.Tasks {
 		if t.ID == taskID {
 			project.Tasks = append(project.Tasks[:i], project.Tasks[i+1:]...)
@@ -211,11 +330,12 @@ func applyDeleteTask(p Persister, project *models.Project, taskID string) TaskOp
 		}
 	}
 
-	if err := p.Save(project); err != nil {
-		return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+	if len(project.Tasks) > 0 {
+		result := pf(project, project.Tasks[0].ID, func(t *models.Task) {})
+		if result.Err != nil {
+			return result
+		}
 	}
-
-	_ = p.Load(project)
 
 	return TaskOpResult{
 		StatusMessage: fmt.Sprintf("Deleted task #%d", shortID),

@@ -253,85 +253,43 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 
 		// Bug attributes
 		case "bug.reproducible":
-			if task.BugAttrs == nil {
-				task.BugAttrs = &models.BugAttrs{}
-			}
-			task.BugAttrs.Reproducible = models.BugReproducible(value)
+			task.EnsureBugAttrs().Reproducible = models.BugReproducible(value)
 		case "bug.severity":
-			if task.BugAttrs == nil {
-				task.BugAttrs = &models.BugAttrs{}
-			}
-			task.BugAttrs.Severity = models.BugSeverity(value)
+			task.EnsureBugAttrs().Severity = models.BugSeverity(value)
 		case "bug.workaround":
-			if task.BugAttrs == nil {
-				task.BugAttrs = &models.BugAttrs{}
-			}
-			task.BugAttrs.Workaround = unescapeNewlines(value)
+			task.EnsureBugAttrs().Workaround = unescapeNewlines(value)
 
 		// Idea attributes
 		case "idea.category":
-			if task.IdeaAttrs == nil {
-				task.IdeaAttrs = &models.IdeaAttrs{}
-			}
-			task.IdeaAttrs.Category = models.IdeaCategory(value)
+			task.EnsureIdeaAttrs().Category = models.IdeaCategory(value)
 		case "idea.effort":
-			if task.IdeaAttrs == nil {
-				task.IdeaAttrs = &models.IdeaAttrs{}
-			}
-			task.IdeaAttrs.Effort = models.EffortEstimate(value)
+			task.EnsureIdeaAttrs().Effort = models.EffortEstimate(value)
 		case "idea.value":
-			if task.IdeaAttrs == nil {
-				task.IdeaAttrs = &models.IdeaAttrs{}
-			}
-			task.IdeaAttrs.Value = models.IdeaValue(value)
+			task.EnsureIdeaAttrs().Value = models.IdeaValue(value)
 		case "idea.validated":
-			if task.IdeaAttrs == nil {
-				task.IdeaAttrs = &models.IdeaAttrs{}
-			}
-			task.IdeaAttrs.Validated = value == "true"
+			task.EnsureIdeaAttrs().Validated = value == "true"
 
 		// Task attributes
 		case "task.effort":
-			if task.TaskAttrs == nil {
-				task.TaskAttrs = &models.TaskAttrs{}
-			}
-			task.TaskAttrs.Effort = models.EffortEstimate(value)
+			task.EnsureTaskAttrs().Effort = models.EffortEstimate(value)
 		case "task.worktype":
-			if task.TaskAttrs == nil {
-				task.TaskAttrs = &models.TaskAttrs{}
-			}
-			task.TaskAttrs.WorkType = models.WorkType(value)
+			task.EnsureTaskAttrs().WorkType = models.WorkType(value)
 
 		// Story attributes
 		case "story.points":
-			if task.StoryAttrs == nil {
-				task.StoryAttrs = &models.StoryAttrs{}
-			}
 			if points, err := strconv.Atoi(value); err == nil {
-				task.StoryAttrs.StoryPoints = points
+				task.EnsureStoryAttrs().StoryPoints = points
 			}
 		case "story.persona":
-			if task.StoryAttrs == nil {
-				task.StoryAttrs = &models.StoryAttrs{}
-			}
-			task.StoryAttrs.Persona = unescapeNewlines(value)
+			task.EnsureStoryAttrs().Persona = unescapeNewlines(value)
 
 		// Epic attributes
 		case "epic.scope":
-			if task.EpicAttrs == nil {
-				task.EpicAttrs = &models.EpicAttrs{}
-			}
-			task.EpicAttrs.Scope = models.EpicScope(value)
+			task.EnsureEpicAttrs().Scope = models.EpicScope(value)
 		case "epic.milestone":
-			if task.EpicAttrs == nil {
-				task.EpicAttrs = &models.EpicAttrs{}
-			}
-			task.EpicAttrs.Milestone = value
+			task.EnsureEpicAttrs().Milestone = value
 		case "epic.metrics":
-			if task.EpicAttrs == nil {
-				task.EpicAttrs = &models.EpicAttrs{}
-			}
-			task.EpicAttrs.SuccessMetrics = unescapeNewlines(value)
+			task.EnsureEpicAttrs().SuccessMetrics = unescapeNewlines(value)
 
 		default:
 			// Handle score.* dimension keys

@@ -6,8 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // KanbanTaskMovedMsg signals that a task was moved to a different column.
@@ -29,6 +27,19 @@ type KanbanTaskReorderedMsg struct {
 type KanbanStatusChangedMsg struct {
 	TaskID          string
 	PreviousSection string
+}
+
+// workflowPersistFn returns a persistFn that runs the full save pipeline
+// used by Kanban: auto-unblock, recurring, workflow rules.
+func (m *KanbanViewModel) workflowPersistFn() persistFn {
+	return workflowPersist(func() WorkflowSaveOptions {
+		return WorkflowSaveOptions{
+			Persister:     defaultPersister,
+			Project:       m.Project,
+			Config:        m.config,
+			ConfigManager: m.configManager,
+		}
+	})
 }
 
 // getSelectedTask returns the currently selected task, or nil if none.
@@ -55,40 +66,22 @@ func (m *KanbanViewModel) getSelectedNode() *KanbanNode {
 	return visibleNodes[cs.Cursor]
 }
 
-// saveWithWorkflow saves the project with workflow rule evaluation and returns
+// saveWithWorkflow saves the project with the full workflow pipeline and returns
 // a command that produces the given message on success. This is the shared
 // implementation used by all Kanban save operations.
 func (m *KanbanViewModel) saveWithWorkflow(prevStates map[string]*models.Task, makeMsg func() tea.Msg) tea.Cmd {
-	cfg := m.config
-	configManager := m.configManager
+	opts := WorkflowSaveOptions{
+		Persister:     defaultPersister,
+		Project:       m.Project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+	}
 
 	return func() tea.Msg {
-		// Backup before saving
-		if err := storage.BackupProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
 		}
-
-		// Evaluate workflow rules
-		if cfg != nil {
-			rules := cfg.GetEnabledWorkflowRules()
-			if len(rules) > 0 {
-				evalCtx := buildEvaluationContext(m.Project.Tasks, prevStates)
-				result := workflow.EvaluateRulesWithContext(evalCtx, rules)
-				if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-					cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-					_ = configManager.Save(cfg)
-				}
-			}
-		}
-
-		// Save the project
-		if err := storage.SaveProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
-		}
-
-		// Reload project to ensure consistency
-		_ = storage.LoadProject(m.Project)
-
 		return makeMsg()
 	}
 }
@@ -348,18 +341,9 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 // performUndo restores the project from backup.
 func (m *KanbanViewModel) performUndo() tea.Cmd {
 	return func() tea.Msg {
-		if !storage.BackupExists(m.Project) {
-			return ErrorMsg{Err: fmt.Errorf("no backup available to undo")}
+		if err := performUndoFromBackup(defaultPersister, m.Project); err != nil {
+			return ErrorMsg{Err: err}
 		}
-
-		if err := storage.RestoreFromBackup(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to undo: %w", err)}
-		}
-
-		if err := storage.LoadProject(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
-		}
-
 		m.loadTasks()
 		return KanbanUndoPerformedMsg{Action: "Undo"}
 	}

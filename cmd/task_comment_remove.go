@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
-	"github.com/sglavoie/tt/internal/tterrors"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 var (
@@ -34,54 +33,35 @@ func init() {
 }
 
 func runTaskCommentRemove(cmd *cobra.Command, args []string) error {
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
-	}
-
-	// Handle --clear flag
-	if commentClearFlag {
-		if len(task.Comments) == 0 {
-			fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
+	_, err := WithTaskUpdate(args[0], func(task *models.Task) error {
+		// Handle --clear flag
+		if commentClearFlag {
+			if len(task.Comments) == 0 {
+				fmt.Printf("Task #%d has no comments to clear\n", task.ShortID)
+				return nil
+			}
+			count := len(task.Comments)
+			task.ClearComments()
+			fmt.Printf("Cleared %d comment(s) from #%d: %s\n", count, task.ShortID, task.Title)
 			return nil
 		}
-		count := len(task.Comments)
-		task.ClearComments()
-		if saveErr := SaveProject(project, nil); saveErr != nil {
-			return fmt.Errorf("failed to save: %w", saveErr)
+
+		// Require index argument if not clearing all
+		if len(args) < 2 {
+			return fmt.Errorf("comment index required (use --clear to remove all)")
 		}
-		fmt.Printf("Cleared %d comment(s) from #%d: %s\n", count, task.ShortID, task.Title)
+
+		index, err := parseItemIndex(args[1], len(task.Comments), "comment")
+		if err != nil {
+			return err
+		}
+
+		if !task.RemoveComment(index) {
+			return fmt.Errorf("failed to remove comment at index %d", index)
+		}
+
+		fmt.Printf("Removed comment %d from #%d: %s\n", index, task.ShortID, task.Title)
 		return nil
-	}
-
-	// Require index argument if not clearing all
-	if len(args) < 2 {
-		return fmt.Errorf("comment index required (use --clear to remove all)")
-	}
-
-	index, err := strconv.Atoi(args[1])
-	if err != nil {
-		return fmt.Errorf("invalid comment index: %s", args[1])
-	}
-
-	if index < 0 || index >= len(task.Comments) {
-		return fmt.Errorf("comment index %d out of range (task has %d comments)", index, len(task.Comments))
-	}
-
-	removed := task.RemoveComment(index)
-	if !removed {
-		return fmt.Errorf("failed to remove comment at index %d", index)
-	}
-
-	if err := SaveProject(project, nil); err != nil {
-		return fmt.Errorf("failed to save: %w", err)
-	}
-
-	fmt.Printf("Removed comment %d from #%d: %s\n", index, task.ShortID, task.Title)
-	return nil
+	})
+	return err
 }

@@ -42,26 +42,36 @@ func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
 // performUndo restores the project from backup.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
 	return func() tea.Msg {
-		if !m.projectService.BackupExists(m.project) {
-			return ErrorMsg{Err: fmt.Errorf("no backup available to undo")}
-		}
-
 		tasksBefore := len(m.project.Tasks)
-
-		if err := m.projectService.RestoreFromBackup(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to undo: %w", err)}
+		if err := performUndoFromBackup(m.projectService, m.project); err != nil {
+			return ErrorMsg{Err: err}
 		}
-
-		if err := m.projectService.Load(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reload after undo: %w", err)}
-		}
-
 		m.buildTree()
 		return UndoCompletedMsg{
 			TasksBefore: tasksBefore,
 			TasksAfter:  len(m.project.Tasks),
 		}
 	}
+}
+
+// workflowPersistFn returns a persistFn that runs the full save pipeline
+// used by ProjectTree: auto-unblock, recurring, workflow rules, undo snapshots.
+func (m *ProjectTreeModel) workflowPersistFn() persistFn {
+	return workflowPersist(func() WorkflowSaveOptions {
+		opts := WorkflowSaveOptions{
+			Persister:     m.projectService,
+			Project:       m.project,
+			Config:        m.config,
+			ConfigManager: m.configManager,
+			UndoAction:    m.pendingUndoAction,
+			UndoContext:   m.pendingUndoContext,
+		}
+		if m.config.UndoHistoryDepth != nil {
+			opts.UndoDepth = *m.config.UndoHistoryDepth
+		}
+		m.clearUndoContext()
+		return opts
+	})
 }
 
 // setUndoContext sets the action context for the next save operation.
@@ -84,70 +94,24 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 // saveAndRefreshWithPrevStates saves the project with event trigger support.
 // If prevStates is provided, event-based workflow triggers will be evaluated.
 func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) tea.Cmd {
-	// Capture undo context before returning the command
-	action := m.pendingUndoAction
-	context := m.pendingUndoContext
-	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
+	opts := WorkflowSaveOptions{
+		Persister:     m.projectService,
+		Project:       m.project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+		UndoAction:    m.pendingUndoAction,
+		UndoContext:   m.pendingUndoContext,
 	}
-	// Capture config references for closure
-	cfg := m.config
-	configManager := m.configManager
-
-	// Clear the context for next operation
+	if m.config.UndoHistoryDepth != nil {
+		opts.UndoDepth = *m.config.UndoHistoryDepth
+	}
 	m.clearUndoContext()
 
 	return func() tea.Msg {
-		// Check for auto-unblocking before save
-		m.project.CheckAndAutoUnblock()
-
-		// Generate recurring task instances for completed recurring tasks
-		m.project.GenerateRecurringInstances()
-
-		// Evaluate workflow rules
-		rules := cfg.GetEnabledWorkflowRules()
-		if len(rules) > 0 {
-			var result *workflow.EvaluationResult
-			if prevStates != nil {
-				// Use context-aware evaluation with event triggers
-				evalCtx := buildEvaluationContext(m.project.Tasks, prevStates)
-				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
-			} else {
-				result = workflow.EvaluateRules(m.project.Tasks, rules)
-			}
-			// Log conflicts as warnings (they're also shown in status bar)
-			if len(result.Conflicts) > 0 {
-				// Conflicts are silently ignored in TUI - tasks are skipped
-				// User can use 'tt workflow test' to debug
-				_ = result.Conflicts
-			}
-			// Persist trigger counts if any rules fired
-			if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-				cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-				// Ignore save errors for trigger counts - non-critical
-				_ = configManager.Save(cfg)
-			}
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
 		}
-
-		// Reorder root tasks so uncompleted tasks appear before completed tasks
-		m.project.ReorderRootTasksByCompletion()
-
-		// Record undo snapshot before saving (if undo is enabled and action is set)
-		if undoDepth > 0 && action != "" {
-			// Ignore errors - undo snapshot failures shouldn't block normal operation
-			_ = m.projectService.RecordUndoSnapshot(m.project, action, context, undoDepth)
-		}
-
-		// Create backup before saving for legacy undo support
-		if err := m.projectService.Backup(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := m.projectService.Save(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		return treeRefreshMsg{}
 	}
@@ -399,17 +363,6 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 	configManager := m.configManager
 
 	return func() tea.Msg {
-		// Record undo snapshot before applying changes
-		if undoDepth > 0 {
-			_ = m.projectService.RecordUndoSnapshot(m.project, "Bulk Edit",
-				fmt.Sprintf("%d tasks", taskCount), undoDepth)
-		}
-
-		// Create backup for undo support
-		if err := m.projectService.Backup(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
 		// Capture task states before changes for event-based workflow triggers
 		prevStates := captureTaskStates(m.project.Tasks)
 
@@ -449,34 +402,23 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 			}
 		}
 
-		// Check for auto-unblocking
-		m.project.CheckAndAutoUnblock()
-
-		// Evaluate workflow rules with event triggers
-		rules := cfg.GetEnabledWorkflowRules()
-		if len(rules) > 0 {
-			evalCtx := buildEvaluationContext(m.project.Tasks, prevStates)
-			result := workflow.EvaluateRulesWithContext(evalCtx, rules)
-			if len(result.RuleTriggerCounts) > 0 && configManager != nil {
-				cfg.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-				_ = configManager.Save(cfg)
-			}
+		opts := WorkflowSaveOptions{
+			Persister:     m.projectService,
+			Project:       m.project,
+			Config:        cfg,
+			ConfigManager: configManager,
+			PrevStates:    prevStates,
+			UndoAction:    "Bulk Edit",
+			UndoContext:   fmt.Sprintf("%d tasks", taskCount),
+			UndoDepth:     undoDepth,
+		}
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
-		// Reorder root tasks
-		m.project.ReorderRootTasksByCompletion()
-
-		// Save the project
-		if err := m.projectService.Save(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Clear selection and rebuild tree
 		m.clearSelection()
-		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		m.clampCursor()
-
 		return treeRefreshMsg{}
 	}
 }

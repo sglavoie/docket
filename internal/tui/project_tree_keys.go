@@ -344,9 +344,13 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
-			task.ToggleActive()
 			m.setUndoContext("Toggle Active", task.Title)
-			return true, m.saveAndRefresh()
+			result := applyToggleActive(m.workflowPersistFn(), m.project, task.ID)
+			if result.Err != nil {
+				return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+			}
+			m.buildTree()
+			return true, result.Cmd
 		}
 		return true, nil
 

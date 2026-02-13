@@ -1,50 +1,29 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// handleKanbanStatusChange validates and applies a status transition for the
-// selected kanban task. For StatusDone it also checks incomplete dependencies.
-func (m *KanbanViewModel) handleKanbanStatusChange(newStatus models.TaskStatus) tea.Cmd {
+// handleStatusTransition validates and applies a status transition for the
+// selected kanban task using the shared applyStatusChange function.
+func (m *KanbanViewModel) handleStatusTransition(status models.TaskStatus) tea.Cmd {
 	task := m.getSelectedTask()
 	if task == nil {
 		return nil
 	}
 
-	// Re-lookup task to avoid stale pointer after concurrent reload
-	task = m.Project.GetTaskByID(task.ID)
-	if task == nil {
+	result := applyStatusChange(m.workflowPersistFn(), m.Project, task.ID, status)
+	if result.Err != nil {
+		m.statusMessage = result.Err.Error()
 		return nil
 	}
-
-	if msg := task.CanTransitionTo(newStatus); msg != "" {
-		m.statusMessage = msg
-		return nil
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	// Project-level check: incomplete dependencies block completion
-	if newStatus == models.StatusDone {
-		if deps := m.Project.GetIncompleteDependencies(task); len(deps) > 0 {
-			m.statusMessage = fmt.Sprintf("Cannot complete: %d incomplete dependencies", len(deps))
-			return nil
-		}
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	task.ApplyTransition(newStatus)
-	m.statusMessage = fmt.Sprintf("Task #%d → %s", task.ShortID, newStatus)
-
-	return m.saveWithStatusChange(prevStates, task)
-}
-
-// handleStatusTransition applies a status change for the given status.
-func (m *KanbanViewModel) handleStatusTransition(status models.TaskStatus) tea.Cmd {
-	return m.handleKanbanStatusChange(status)
+	m.loadTasks()
+	return result.Cmd
 }
 
 // saveWithStatusChange saves the project after a status change with workflow
