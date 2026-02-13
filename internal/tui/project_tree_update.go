@@ -38,15 +38,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle score filter custom value input
 		if m.scoreFilterInput.IsActive() {
-			val, done, cmd := m.scoreFilterInput.HandleKey(msg)
-			if done && val != nil {
-				m.config.ScoreFilterCustom = val
-				if m.configManager != nil {
-					_ = m.configManager.Save(m.config)
-				}
-				m.filter.ScoreMin = *val
-				m.applyFilterChange()
-			}
+			cmd := m.scoreFilterInput.ProcessKey(msg, m.config, m.configManager, &m.filter.ScoreMin, m.applyFilterChange)
 			return m, cmd
 		}
 
@@ -272,74 +264,20 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "g":
+		// View mode switching (a, n, i, w, s, z, *, r, c)
+		if vm, ok := viewModeForKey(key); ok {
+			m.viewMode = vm
+			m.updateVisibility()
+			m.pruneInvisibleSelections()
+			m.clampCursor()
+			return m, nil
+		}
+
 		// Go/section operations
 		switch key {
 		case "g":
 			// Go to first task (Vim-style gg)
 			m.cursor = 0
-			return m, nil
-		case "a":
-			// Go to Active view
-			m.viewMode = ViewModeActive
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "n":
-			// Go to Next view
-			m.viewMode = ViewModeNext
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "i":
-			// Go to Inbox view
-			m.viewMode = ViewModeInbox
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "w":
-			// Go to Waiting view
-			m.viewMode = ViewModeWaiting
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "s":
-			// Go to Someday view
-			m.viewMode = ViewModeSomeday
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "z":
-			// Go to Snoozed view
-			m.viewMode = ViewModeSnoozed
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "*":
-			// Go to All view
-			m.viewMode = ViewModeAll
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "r":
-			// Go to Review view
-			m.viewMode = ViewModeReview
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
-			return m, nil
-		case "c":
-			// Go to Completed view
-			m.viewMode = ViewModeCompleted
-			m.updateVisibility()
-			m.pruneInvisibleSelections()
-			m.clampCursor()
 			return m, nil
 		case "o":
 			// Jump to context node's home section
@@ -446,14 +384,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		if priority, ok := PriorityForPrefixKey(key); ok {
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				prevStates := captureTaskStates(m.project.Tasks)
-				count := 0
-				for id := range m.selectedTasks {
-					if m.project.MutateTask(id, func(t *models.Task) {
-						t.Priority = priority
-					}) {
-						count++
-					}
-				}
+				count := applyBulkPriority(m.project, m.getSelectedTasks(), priority)
 				m.clearSelection()
 				m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
@@ -485,14 +416,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				dueDate, desc := dueDateFromDays(days, isClear)
 				prevStates := captureTaskStates(m.project.Tasks)
-				count := 0
-				for id := range m.selectedTasks {
-					if m.project.MutateTask(id, func(t *models.Task) {
-						t.DueDate = dueDate
-					}) {
-						count++
-					}
-				}
+				count := applyBulkDueDate(m.project, m.getSelectedTasks(), dueDate)
 				m.clearSelection()
 				m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
 				return m, m.saveAndRefreshWithPrevStates(prevStates)
@@ -678,9 +602,13 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 			return m, m.saveAndRefresh()
 		}
 		if cursorTask != nil {
-			cursorTask.TogglePinned()
 			m.setUndoContext("Toggle Pin", cursorTask.Title)
-			return m, m.saveAndRefresh()
+			result := applyTogglePinned(m.workflowPersistFn(), m.project, cursorTask.ID)
+			if result.Err != nil {
+				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+			}
+			m.buildTree()
+			return m, result.Cmd
 		}
 		return m, nil
 	case "D":

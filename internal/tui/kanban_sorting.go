@@ -90,10 +90,7 @@ func (m *KanbanViewModel) sortKanbanNodeSlice(nodes []*KanbanNode, sortField Sor
 func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortField, section string) bool {
 	// In the Active section, float active-flagged tasks to the top
 	if section == KanbanSectionActive && a.Task.Active != b.Task.Active {
-		if a.Task.Active {
-			return true
-		}
-		return false
+		return a.Task.Active
 	}
 
 	if sortField == SortByDefault {

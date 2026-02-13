@@ -88,6 +88,17 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "g":
+		// Section column jump (a, n, i, w, s, r)
+		if section, ok := sectionForMoveKey(key); ok {
+			if IsSectionGroupBy(m.groupBy) {
+				if idx := m.columnIndexForKey(section); idx >= 0 {
+					m.ActiveColumn = idx
+					m.ensureActiveColumnVisible()
+				}
+			}
+			return m, nil
+		}
+
 		// Go/navigation operations
 		switch key {
 		case "g":
@@ -111,60 +122,6 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			// Toggle all view
 			m.toggleAllView()
 			return m, nil
-		case "a":
-			// Go to Active column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionActive); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
-		case "n":
-			// Go to Next column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionNext); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
-		case "i":
-			// Go to Inbox column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionInbox); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
-		case "w":
-			// Go to Waiting column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionWaiting); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
-		case "r":
-			// Go to Review column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionReview); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
-		case "s":
-			// Go to Someday column (section mode only)
-			if IsSectionGroupBy(m.groupBy) {
-				if idx := m.columnIndexForKey(KanbanSectionSomeday); idx >= 0 {
-					m.ActiveColumn = idx
-					m.ensureActiveColumnVisible()
-				}
-			}
-			return m, nil
 		case "X":
 			// Deselect all in multi-select mode
 			if m.multiSelectMode {
@@ -184,56 +141,19 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "m":
-		// Move operations — section shortcuts only in section mode, mK/mJ always work
+		// Section move shortcuts (a, n, i, w, s, r) — only in section mode
+		if section, ok := sectionForMoveKey(key); ok {
+			if IsSectionGroupBy(m.groupBy) {
+				if m.multiSelectMode && m.selectedCount() > 0 {
+					return m, m.handleBulkSectionMove(section)
+				}
+				return m, m.sendTaskToSection(section)
+			}
+			return m, nil
+		}
+
+		// Move operations — mK/mJ always work
 		switch key {
-		case "a":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionActive)
-				}
-				return m, m.sendTaskToSection(KanbanSectionActive)
-			}
-			return m, nil
-		case "n":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionNext)
-				}
-				return m, m.sendTaskToSection(KanbanSectionNext)
-			}
-			return m, nil
-		case "i":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionInbox)
-				}
-				return m, m.sendTaskToSection(KanbanSectionInbox)
-			}
-			return m, nil
-		case "w":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionWaiting)
-				}
-				return m, m.sendTaskToSection(KanbanSectionWaiting)
-			}
-			return m, nil
-		case "r":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionReview)
-				}
-				return m, m.sendTaskToSection(KanbanSectionReview)
-			}
-			return m, nil
-		case "s":
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
-					return m, m.handleBulkSectionMove(KanbanSectionSomeday)
-				}
-				return m, m.sendTaskToSection(KanbanSectionSomeday)
-			}
-			return m, nil
 		case "K":
 			// Move task to top of column
 			return m, m.moveTaskToTop()
@@ -349,10 +269,16 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			})
 		}
 		if task != nil {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			task.TogglePinned()
-			m.statusMessage = fmt.Sprintf("Pinned: %v", task.Pinned)
-			return m, m.saveWithStatusChange(prevStates, task)
+			result := applyTogglePinned(m.workflowPersistFn(), m.Project, task.ID)
+			if result.Err != nil {
+				m.statusMessage = result.Err.Error()
+				return m, nil
+			}
+			if result.StatusMessage != "" {
+				m.statusMessage = result.StatusMessage
+			}
+			m.loadTasks()
+			return m, result.Cmd
 		}
 		return m, nil
 	case "D":

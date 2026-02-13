@@ -2,62 +2,42 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
-// handleTypeKeys handles <, >, H, L - type change operations.
-// Note: ←/→ are now used for indent/outdent, h/l for section switching.
-// Captures task states before changes to enable event-based workflow triggers.
-// Returns true if the key was handled.
-func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+// typeChangeOpForKey maps a key to a TypeChangeOp, or returns false if not a type key.
+func typeChangeOpForKey(key string) (TypeChangeOp, string, bool) {
 	switch key {
 	case "<":
-		// Promote type (task → story → epic)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if ok, _ := task.CanPromote(); ok {
-				prevStates := captureTaskStates(m.project.Tasks)
-				_ = task.Promote()
-				m.setUndoContext("Promote Task", task.Title)
-				return true, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-		}
-		return true, nil
+		return TypePromote, "Promote Task", true
 	case ">":
-		// Demote type (epic → story → task)
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if ok, _ := task.CanDemote(); ok {
-				prevStates := captureTaskStates(m.project.Tasks)
-				_ = task.Demote()
-				m.setUndoContext("Demote Task", task.Title)
-				return true, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-		}
-		return true, nil
+		return TypeDemote, "Demote Task", true
 	case "H":
-		// Cycle leaf type left
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if ok, _ := task.CanCycleLeafType(true); ok {
-				prevStates := captureTaskStates(m.project.Tasks)
-				_ = task.CycleLeafType(true)
-				m.setUndoContext("Change Type", task.Title)
-				return true, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-		}
-		return true, nil
+		return TypeCycleLeft, "Change Type", true
 	case "L":
-		// Cycle leaf type right
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			if ok, _ := task.CanCycleLeafType(false); ok {
-				prevStates := captureTaskStates(m.project.Tasks)
-				_ = task.CycleLeafType(false)
-				m.setUndoContext("Change Type", task.Title)
-				return true, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-		}
+		return TypeCycleRight, "Change Type", true
+	}
+	return 0, "", false
+}
+
+// handleTypeKeys handles <, >, H, L - type change operations.
+// Note: ←/→ are now used for indent/outdent, h/l for section switching.
+// Returns true if the key was handled.
+func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+	op, undoAction, ok := typeChangeOpForKey(key)
+	if !ok {
+		return false, nil
+	}
+	if !CursorInBounds(m.cursor, len(visible)) {
 		return true, nil
 	}
-	return false, nil
+	task := visible[m.cursor].Task
+	m.setUndoContext(undoAction, task.Title)
+	result := applyTypeChange(m.workflowPersistFn(), m.project, task.ID, op)
+	if result.Err != nil {
+		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		m.buildTree()
+	}
+	return true, result.Cmd
 }
 
 // handleMovementKeys handles K, J, ←, → - task movement operations.

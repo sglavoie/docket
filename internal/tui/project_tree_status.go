@@ -219,20 +219,7 @@ func (m *ProjectTreeModel) executePendingBulkStatus() tea.Cmd {
 
 	// Apply status to all pending tasks
 	for _, task := range m.bulkOp.GetTasks() {
-		switch m.bulkOp.GetStatus() {
-		case models.StatusDone:
-			task.Complete()
-		case models.StatusInProgress:
-			task.Start()
-		case models.StatusBlocked:
-			task.Block()
-		case models.StatusReview:
-			task.Review()
-		case models.StatusCanceled:
-			task.Cancel()
-		case models.StatusTodo:
-			task.Reopen()
-		}
+		task.ApplyTransition(m.bulkOp.GetStatus())
 	}
 
 	count := len(m.bulkOp.GetTasks())

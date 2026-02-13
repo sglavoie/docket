@@ -345,6 +345,90 @@ func applyDeleteTask(pf persistFn, project *models.Project, taskID string) TaskO
 	}
 }
 
+// TypeChangeOp represents the kind of type change operation.
+type TypeChangeOp int
+
+const (
+	TypePromote    TypeChangeOp = iota // Promote type (task → story → epic)
+	TypeDemote                         // Demote type (epic → story → task)
+	TypeCycleLeft                      // Cycle leaf type left
+	TypeCycleRight                     // Cycle leaf type right
+)
+
+// applyTypeChange validates and applies a type change (promote, demote, cycle)
+// on the given task. It handles the can-do guard, persist, and status message.
+func applyTypeChange(pf persistFn, project *models.Project, taskID string, op TypeChangeOp) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+
+	var canDo bool
+	switch op {
+	case TypePromote:
+		canDo, _ = task.CanPromote()
+	case TypeDemote:
+		canDo, _ = task.CanDemote()
+	case TypeCycleLeft:
+		canDo, _ = task.CanCycleLeafType(true)
+	case TypeCycleRight:
+		canDo, _ = task.CanCycleLeafType(false)
+	}
+	if !canDo {
+		return TaskOpResult{}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		switch op {
+		case TypePromote:
+			_ = t.Promote()
+		case TypeDemote:
+			_ = t.Demote()
+		case TypeCycleLeft:
+			_ = t.CycleLeafType(true)
+		case TypeCycleRight:
+			_ = t.CycleLeafType(false)
+		}
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	// Re-read the task after persist to get the updated type
+	updated := project.GetTaskByID(taskID)
+	if updated != nil {
+		result.StatusMessage = fmt.Sprintf("Changed to %s", updated.Type.HeadingPrefix())
+	}
+	return result
+}
+
+// applyTogglePinned toggles the Pinned flag on a task.
+func applyTogglePinned(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		t.TogglePinned()
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	// Re-read to get updated state
+	updated := project.GetTaskByID(taskID)
+	if updated != nil {
+		if updated.Pinned {
+			result.StatusMessage = fmt.Sprintf("Pinned task #%d", updated.ShortID)
+		} else {
+			result.StatusMessage = fmt.Sprintf("Unpinned task #%d", updated.ShortID)
+		}
+	}
+	result.Cmd = func() tea.Msg { return TaskUpdatedMsg{Task: task} }
+	return result
+}
+
 // dueDateLabel returns a human-friendly label for a relative due date.
 func dueDateLabel(daysFromNow int) string {
 	switch daysFromNow {
@@ -359,6 +443,32 @@ func dueDateLabel(daysFromNow int) string {
 	default:
 		return fmt.Sprintf("+%d days", daysFromNow)
 	}
+}
+
+// viewModeForKey maps a `g` prefix second key to a ProjectTree ViewMode.
+// Returns the view mode and true if valid, or zero value and false if not.
+func viewModeForKey(key string) (ViewMode, bool) {
+	switch key {
+	case "a":
+		return ViewModeActive, true
+	case "n":
+		return ViewModeNext, true
+	case "i":
+		return ViewModeInbox, true
+	case "w":
+		return ViewModeWaiting, true
+	case "s":
+		return ViewModeSomeday, true
+	case "z":
+		return ViewModeSnoozed, true
+	case "*":
+		return ViewModeAll, true
+	case "r":
+		return ViewModeReview, true
+	case "c":
+		return ViewModeCompleted, true
+	}
+	return 0, false
 }
 
 // sectionForMoveKey maps a move prefix second key to a GTD section name.
@@ -457,6 +567,34 @@ func dueDateFromDays(days int, isClear bool) (*time.Time, string) {
 	now := time.Now()
 	d := time.Date(now.Year(), now.Month(), now.Day()+days, 23, 59, 59, 0, now.Location())
 	return &d, dueDateLabel(days)
+}
+
+// applyBulkPriority sets the priority on multiple tasks. Returns the count of
+// tasks actually changed.
+func applyBulkPriority(project *models.Project, tasks []*models.Task, priority int) int {
+	count := 0
+	for _, task := range tasks {
+		if project.MutateTask(task.ID, func(t *models.Task) {
+			t.Priority = priority
+		}) {
+			count++
+		}
+	}
+	return count
+}
+
+// applyBulkDueDate sets (or clears) the due date on multiple tasks.
+// Returns the count of tasks changed.
+func applyBulkDueDate(project *models.Project, tasks []*models.Task, dueDate *time.Time) int {
+	count := 0
+	for _, task := range tasks {
+		if project.MutateTask(task.ID, func(t *models.Task) {
+			t.DueDate = dueDate
+		}) {
+			count++
+		}
+	}
+	return count
 }
 
 // SecondaryViewMovePrefixHints contains "m" prefix hints for secondary views.

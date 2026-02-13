@@ -250,13 +250,9 @@ func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
 	}
 
 	prevStates := captureTaskStates(m.Project.Tasks)
-	for _, task := range tasks {
-		m.Project.MutateTask(task.ID, func(t *models.Task) {
-			t.Priority = priority
-		})
-	}
+	count := applyBulkPriority(m.Project, tasks, priority)
 
-	m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, len(tasks)))
+	m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, count))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
@@ -271,13 +267,9 @@ func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc strin
 	}
 
 	prevStates := captureTaskStates(m.Project.Tasks)
-	for _, task := range tasks {
-		m.Project.MutateTask(task.ID, func(t *models.Task) {
-			t.DueDate = dueDate
-		})
-	}
+	count := applyBulkDueDate(m.Project, tasks, dueDate)
 
-	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", desc, len(tasks)))
+	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", desc, count))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}

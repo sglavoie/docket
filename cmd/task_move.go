@@ -131,10 +131,10 @@ func runTaskMoveUp(cmd *cobra.Command, args []string) error {
 			siblings := p.GetSiblings(t)
 			idx := p.FindSiblingIndex(t)
 			if idx <= 0 {
-				return fmt.Errorf("Task is already at the top of its siblings")
+				return fmt.Errorf("task is already at the top of its siblings")
 			}
 			if t.IsRoot() && t.IsComplete() && !siblings[idx-1].IsComplete() {
-				return fmt.Errorf("Cannot move completed task above uncompleted task")
+				return fmt.Errorf("cannot move completed task above uncompleted task")
 			}
 			return nil
 		},
@@ -151,10 +151,10 @@ func runTaskMoveDown(cmd *cobra.Command, args []string) error {
 			siblings := p.GetSiblings(t)
 			idx := p.FindSiblingIndex(t)
 			if idx == -1 || idx >= len(siblings)-1 {
-				return fmt.Errorf("Task is already at the bottom of its siblings")
+				return fmt.Errorf("task is already at the bottom of its siblings")
 			}
 			if t.IsRoot() && !t.IsComplete() && siblings[idx+1].IsComplete() {
-				return fmt.Errorf("Cannot move uncompleted task below completed task")
+				return fmt.Errorf("cannot move uncompleted task below completed task")
 			}
 			return nil
 		},
@@ -170,10 +170,10 @@ func runTaskIndent(cmd *cobra.Command, args []string) error {
 		func(p *models.Project, t *models.Task) error {
 			targetParent := p.GetTaskAbove(t)
 			if targetParent == nil {
-				return fmt.Errorf("No task above to nest under")
+				return fmt.Errorf("no task above to nest under")
 			}
 			if ok, reason := t.CanIndent(targetParent); !ok {
-				return fmt.Errorf("Cannot indent: %s", reason)
+				return fmt.Errorf("cannot indent: %s", reason)
 			}
 			return nil
 		},
@@ -196,7 +196,7 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 	return runTaskMoveAction(args, "outdent",
 		func(p *models.Project, t *models.Task) error {
 			if ok, reason := t.CanOutdent(); !ok {
-				return fmt.Errorf("Cannot outdent: %s", reason)
+				return fmt.Errorf("cannot outdent: %s", reason)
 			}
 			if t.Parent != nil {
 				oldParentShortID = t.Parent.ShortID

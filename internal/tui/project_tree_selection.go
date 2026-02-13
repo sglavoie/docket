@@ -131,10 +131,7 @@ func (m *ProjectTreeModel) sortNodeSlice(nodes []*TreeNode) {
 func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 	// In Active view, float active-flagged tasks to the top
 	if m.viewMode == ViewModeActive && a.Task.Active != b.Task.Active {
-		if a.Task.Active {
-			return true
-		}
-		return false
+		return a.Task.Active
 	}
 
 	// Handle snoozed view default sort specially

@@ -8,30 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// AddFlags holds the common flag values shared by "tt add" and "tt task add".
-type AddFlags struct {
-	TypeFlag   string
-	ParentFlag string
-	Priority   int
-	Tags       []string
-	IsEpic     bool
-	IsStory    bool
-	IsBug      bool
-	IsIdea     bool
-}
-
-// registerAddFlags registers the common add/task-add flags on a command.
-func registerAddFlags(cmd *cobra.Command, f *AddFlags, priorityDefault int) {
-	cmd.Flags().StringVarP(&f.TypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
-	cmd.Flags().StringVarP(&f.ParentFlag, "parent", "p", "", "parent task ID or short ID")
-	cmd.Flags().IntVar(&f.Priority, "priority", priorityDefault, "priority (1=highest, 5=lowest)")
-	cmd.Flags().StringSliceVar(&f.Tags, "tags", nil, "tags for the task")
-	cmd.Flags().BoolVar(&f.IsEpic, "epic", false, "create an epic")
-	cmd.Flags().BoolVar(&f.IsStory, "story", false, "create a story")
-	cmd.Flags().BoolVar(&f.IsBug, "bug", false, "create a bug")
-	cmd.Flags().BoolVar(&f.IsIdea, "idea", false, "create an idea")
-}
-
 // TypeAttrValues holds type-specific attribute values extracted from CLI flags.
 // Boolean/int flags that have zero-value defaults use a *Set field to indicate
 // whether the flag was explicitly provided.

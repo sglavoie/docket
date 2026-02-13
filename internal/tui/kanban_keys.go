@@ -20,15 +20,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Handle score filter custom value input
 	if m.scoreFilterInput.IsActive() {
-		val, done, cmd := m.scoreFilterInput.HandleKey(msg)
-		if done && val != nil {
-			m.config.ScoreFilterCustom = val
-			if m.configManager != nil {
-				_ = m.configManager.Save(m.config)
-			}
-			m.filter.ScoreMin = *val
-			m.loadTasks()
-		}
+		cmd := m.scoreFilterInput.ProcessKey(msg, m.config, m.configManager, &m.filter.ScoreMin, m.loadTasks)
 		return m, cmd
 	}
 
@@ -579,55 +571,26 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowProjectCycleManagerMsg{}
 		}
 
-	// Type management: promote/demote
-	case "<":
+	// Type management: promote/demote/cycle leaf types
+	case "<", ">", "H", "L":
 		task := m.getSelectedTask()
-		if task != nil {
-			if ok, _ := task.CanPromote(); ok {
-				prevStates := captureTaskStates(m.Project.Tasks)
-				_ = task.Promote()
-				m.statusMessage = fmt.Sprintf("Promoted to %s", task.Type.HeadingPrefix())
-				return m, m.saveWithStatusChange(prevStates, task)
-			}
+		if task == nil {
+			return m, nil
 		}
-		return m, nil
-
-	case ">":
-		task := m.getSelectedTask()
-		if task != nil {
-			if ok, _ := task.CanDemote(); ok {
-				prevStates := captureTaskStates(m.Project.Tasks)
-				_ = task.Demote()
-				m.statusMessage = fmt.Sprintf("Demoted to %s", task.Type.HeadingPrefix())
-				return m, m.saveWithStatusChange(prevStates, task)
-			}
+		op, _, ok := typeChangeOpForKey(key)
+		if !ok {
+			return m, nil
 		}
-		return m, nil
-
-	// Type management: cycle leaf types (Task/Bug/Idea)
-	case "H":
-		task := m.getSelectedTask()
-		if task != nil {
-			if ok, _ := task.CanCycleLeafType(true); ok {
-				prevStates := captureTaskStates(m.Project.Tasks)
-				_ = task.CycleLeafType(true)
-				m.statusMessage = fmt.Sprintf("Changed to %s", task.Type.HeadingPrefix())
-				return m, m.saveWithStatusChange(prevStates, task)
-			}
+		result := applyTypeChange(m.workflowPersistFn(), m.Project, task.ID, op)
+		if result.Err != nil {
+			m.statusMessage = result.Err.Error()
+			return m, nil
 		}
-		return m, nil
-
-	case "L":
-		task := m.getSelectedTask()
-		if task != nil {
-			if ok, _ := task.CanCycleLeafType(false); ok {
-				prevStates := captureTaskStates(m.Project.Tasks)
-				_ = task.CycleLeafType(false)
-				m.statusMessage = fmt.Sprintf("Changed to %s", task.Type.HeadingPrefix())
-				return m, m.saveWithStatusChange(prevStates, task)
-			}
+		if result.StatusMessage != "" {
+			m.statusMessage = result.StatusMessage
 		}
-		return m, nil
+		m.loadTasks()
+		return m, result.Cmd
 
 	// Undo
 	case "u":

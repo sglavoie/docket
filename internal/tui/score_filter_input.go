@@ -6,6 +6,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 // ScoreFilterInput encapsulates the inline text input for entering a custom
@@ -57,6 +59,22 @@ func (s *ScoreFilterInput) HandleKey(msg tea.KeyMsg) (value *float64, done bool,
 	}
 	s.Input, cmd = s.Input.Update(msg)
 	return nil, false, cmd
+}
+
+// ProcessKey handles a key event, persists the result to config, and updates
+// the filter ScoreMin. The onApply callback is called when a valid value is
+// accepted so the caller can refresh its view.
+func (s *ScoreFilterInput) ProcessKey(msg tea.KeyMsg, cfg *config.Config, mgr *config.Manager, scoreMin *float64, onApply func()) tea.Cmd {
+	val, done, cmd := s.HandleKey(msg)
+	if done && val != nil {
+		cfg.ScoreFilterCustom = val
+		if mgr != nil {
+			_ = mgr.Save(cfg)
+		}
+		*scoreMin = *val
+		onApply()
+	}
+	return cmd
 }
 
 // View returns the rendered text input.
