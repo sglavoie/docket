@@ -291,15 +291,6 @@ func TestFocusViewHasPendingPrefix(t *testing.T) {
 	}
 }
 
-func TestFocusViewHasActiveSearch(t *testing.T) {
-	cfg := newTestFocusConfig(nil)
-	m := &FocusViewModel{config: cfg}
-
-	if m.HasActiveSearch() {
-		t.Error("HasActiveSearch() should return false for focus view")
-	}
-}
-
 func TestFocusViewSetSize(t *testing.T) {
 	cfg := newTestFocusConfig(nil)
 	m := &FocusViewModel{config: cfg}

@@ -69,6 +69,7 @@ const (
 
 // AllTasksViewModel displays all tasks across all projects.
 type AllTasksViewModel struct {
+	BaseView
 	InteractiveViewState
 
 	config         *config.Config
@@ -103,13 +104,6 @@ type AllTasksViewModel struct {
 	// Navigation
 	scrollOffset int
 	groupStarts  []int // cursor positions of group headers
-
-	// UI feedback
-	err error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.
@@ -354,57 +348,22 @@ func (m *AllTasksViewModel) projectCount() int {
 	return len(m.projectCache)
 }
 
-// HasActiveSearch returns false (no search in this view).
-func (m *AllTasksViewModel) HasActiveSearch() bool {
-	return false
-}
-
-// SetSize sets the view dimensions.
-func (m *AllTasksViewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *AllTasksViewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *AllTasksViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadAllTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
 	case AllTasksRefreshMsg:
 		m.loadAllTasks()
 		m.clampCursor()
-		return m, nil
-
-	case TaskUpdatedMsg:
-		m.loadAllTasks()
-		m.clampCursor()
-		return m, nil
-
-	case TaskPropertyChangedMsg:
-		m.loadAllTasks()
-		m.clampCursor()
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.loadAllTasks()
-			m.clampCursor()
-			m.statusMessage = "Tags updated"
-		}
-		return m, nil
-
-	case SnoozeDateChangedMsg:
-		m.loadAllTasks()
-		m.clampCursor()
-		m.statusMessage = "Snooze date updated"
 		return m, nil
 	}
 
@@ -487,6 +446,11 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Navigation
+	if handleListNavigation(key, &m.cursor, m.totalNavigableItems()) {
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		if m.multiSelectMode {
@@ -512,42 +476,6 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < m.totalNavigableItems()-1 {
-			m.cursor++
-		}
-		return m, nil
-
-	case "G":
-		if m.totalNavigableItems() > 0 {
-			m.cursor = m.totalNavigableItems() - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
-	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= m.totalNavigableItems() {
-			m.cursor = m.totalNavigableItems() - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
 	// Group header navigation
 	case "n":
 		return m.goToNextGroup()
@@ -556,21 +484,13 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Tab navigation
 	case "[", "h":
-		if m.activeTab > 0 {
-			m.activeTab--
-		} else {
-			m.activeTab = len(allTasksTabNames) - 1
-		}
+		CycleTab(&m.activeTab, len(allTasksTabNames), -1)
 		m.applyFiltersAndGroup()
 		m.clampCursor()
 		return m, nil
 
 	case "]", "l":
-		if m.activeTab < len(allTasksTabNames)-1 {
-			m.activeTab++
-		} else {
-			m.activeTab = 0
-		}
+		CycleTab(&m.activeTab, len(allTasksTabNames), 1)
 		m.applyFiltersAndGroup()
 		m.clampCursor()
 		return m, nil
@@ -609,63 +529,6 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Edit task
-	case "e":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: item.Task, Project: item.Project}
-			}
-		}
-		return m, nil
-
-	// Refresh
-	case "r":
-		m.loadAllTasks()
-		m.clampCursor()
-		m.statusMessage = "Refreshed"
-		return m, nil
-
-	// Copy
-	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if item := m.getTaskAtCursor(); item != nil {
-					return item.Task
-				}
-				return nil
-			},
-			nil, nil,
-		); handled {
-			return m, cmd
-		}
-		return m, nil
-
-	// Tags
-	case "t":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: item.Task, Project: item.Project, CurrentTags: append([]string{}, item.Task.Tags...)}
-			}
-		}
-		return m, nil
-
-	// Snooze
-	case "Z":
-		if item := m.getTaskAtCursor(); item != nil {
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: item.Task, Project: item.Project}
-			}
-		}
-		return m, nil
-
-	// Delete with confirmation
-	case "D":
-		if item := m.getTaskAtCursor(); item != nil {
-			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", item.Task.ShortID))
-			m.statusMessage = m.confirm.Prompt()
-		}
-		return m, nil
-
 	// Score editor
 	case "S":
 		if item := m.getTaskAtCursor(); item != nil {
@@ -674,16 +537,11 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	}
 
-	// Help
-	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewAllTasks,
-				ViewName:   "All Tasks",
-				Items:      m.GetHelpItems(),
-			}
-		}
+	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	return m, nil
@@ -725,101 +583,50 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	switch prefix {
-	case "z":
-		switch key {
-		case "R":
-			// Expand all groups
-			m.collapsedGroups = make(map[string]bool)
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		case "M":
-			// Collapse all groups
-			for _, group := range m.groups {
-				m.collapsedGroups[group.Name] = true
-			}
-			m.calculateNavigation()
-			// Snap cursor to nearest group header
-			if len(m.groupStarts) > 0 {
-				best := m.groupStarts[0]
-				for _, start := range m.groupStarts {
-					if start <= m.cursor {
-						best = start
+	// View-specific prefixes, then common dispatch
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		switch pfx {
+		case "z":
+			switch k {
+			case "R":
+				ExpandAllSections(m.collapsedGroups)
+				m.calculateNavigation()
+				m.clampCursor()
+				return m, nil, true
+			case "M":
+				groupNames := make([]string, len(m.groups))
+				for i, g := range m.groups {
+					groupNames[i] = g.Name
+				}
+				CollapseAllSections(m.collapsedGroups, groupNames)
+				m.calculateNavigation()
+				if len(m.groupStarts) > 0 {
+					best := m.groupStarts[0]
+					for _, start := range m.groupStarts {
+						if start <= m.cursor {
+							best = start
+						}
 					}
+					m.cursor = best
 				}
-				m.cursor = best
+				m.clampCursor()
+				return m, nil, true
 			}
-			m.clampCursor()
-			return m, nil
-		}
-		return m, nil
+			return m, nil, true
 
-	case "!":
-		if _, ok := PriorityForPrefixKey(key); ok {
-			return taskOpsChangePriority(m, key)
-		}
-
-	case "F":
-		return m.handleAllTasksFilterPrefix(key)
-	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handleAllTasksFilterSubPrefix(prefix, key)
-
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return taskOpsChangeStatus(m, status)
-		}
-
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return taskOpsClearDueDate(m)
-			}
-			return taskOpsSetQuickDueDate(m, days)
-		}
-		if key == "d" {
-			if item := m.getTaskAtCursor(); item != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: item.Task, Project: item.Project}
-				}
+		case "!":
+			if _, ok := PriorityForPrefixKey(k); ok {
+				model, cmd := taskOpsChangePriority(m, k)
+				return model, cmd, true
 			}
 		}
-
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		case "p":
-			// gp: Go to project (navigate to task in its project tree)
-			if item := m.getTaskAtCursor(); item != nil {
-				return m, func() tea.Msg {
-					return AllTasksSelectMsg{Task: item.Task, Project: item.Project}
-				}
-			}
-			return m, nil
-		}
-
-	case "m":
-		section, ok := sectionForMoveKey(key)
-		if !ok {
-			return m, nil
-		}
-		return taskOpsSectionMove(m, section)
-
-	case "c":
-		item := m.getTaskAtCursor()
-		if item == nil {
-			return m, nil
-		}
-		if handled, cmd := handleLinkedTaskPrefixKey(key, item.Task, item.Project, false, false); handled {
-			return m, cmd
-		}
-		return m, nil
+		return nil, nil, false
 	}
 
-	// Invalid prefix sequence - ignore
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
+		return model, cmd
+	}
+
 	return m, nil
 }
 
@@ -838,20 +645,36 @@ func (m *AllTasksViewModel) reloadData()             { m.loadAllTasks() }
 func (m *AllTasksViewModel) setErr(err error)        { m.err = err }
 func (m *AllTasksViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
+// prefixDispatchView implementation.
+
+func (m *AllTasksViewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *AllTasksViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return AllTasksSelectMsg{Task: task, Project: project}
+}
+
+func (m *AllTasksViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handleAllTasksFilterPrefix(key)
+}
+
+func (m *AllTasksViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handleAllTasksFilterSubPrefix(prefix, key)
+}
+
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, m.totalNavigableItems())
-}
-
-// HasTextInput returns false for the all tasks view.
-func (m *AllTasksViewModel) HasTextInput() bool {
-	return false
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, multi-select, or confirm dialog are active.
 func (m *AllTasksViewModel) ShouldCaptureEsc() bool {
 	return m.HasPendingPrefix() || m.HasActiveFilters() || m.multiSelectMode || m.confirm.IsActive()
 }
+
+func (m *AllTasksViewModel) viewID() ViewType { return ViewAllTasks }
+func (m *AllTasksViewModel) viewName() string { return "All Tasks" }
 
 // GetHelpItems returns help items for this view.
 func (m *AllTasksViewModel) GetHelpItems() []HelpItem {

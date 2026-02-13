@@ -4,52 +4,34 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// commonFilterView implementation for DueDateOverviewModel.
+
+func (m *DueDateOverviewModel) getFilter() *CommonFilterState   { return &m.filter }
+func (m *DueDateOverviewModel) getConfig() *config.Config       { return m.config }
+func (m *DueDateOverviewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
+func (m *DueDateOverviewModel) refreshAndClamp()                { m.loadTasksWithDueDates(); m.clampCursor() }
+func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
+	tags := buildDueDateTagList(m)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDueDateOverview, Title: "Filter by Tags"}
+	}
+}
 
 // handleDueDateFilterPrefix handles the second key after pressing F (filter prefix) in due date overview.
 func (m *DueDateOverviewModel) handleDueDateFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "p":
-		if m.filter.Priority == 1 {
-			m.filter.Priority = 0
-		} else {
-			m.filter.Priority = 1
-		}
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-		return m, nil
-	case "t":
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
-		tags := buildDueDateTagList(m)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDueDateOverview, Title: "Filter by Tags"}
-		}
-	case "a":
-		m.pendingPrefix = "Fa"
-		return m, nil
-	case "S":
-		m.pendingPrefix = "FS"
-		return m, nil
-	case "x":
-		clearCommonFilters(&m.filter)
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-		return m, nil
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleDueDateFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
 func (m *DueDateOverviewModel) handleDueDateFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-	}
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 

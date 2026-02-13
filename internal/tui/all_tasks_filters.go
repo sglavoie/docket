@@ -4,11 +4,26 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// commonFilterView implementation for AllTasksViewModel.
+
+func (m *AllTasksViewModel) getFilter() *CommonFilterState   { return &m.filter }
+func (m *AllTasksViewModel) getConfig() *config.Config       { return m.config }
+func (m *AllTasksViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
+func (m *AllTasksViewModel) refreshAndClamp()                { m.applyFiltersAndGroup(); m.clampCursor() }
+func (m *AllTasksViewModel) buildTagCmd() tea.Cmd {
+	tags := buildAllTasksTagList(m)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
+	}
+}
 
 // handleAllTasksFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	// View-specific keys
+	// View-specific keys first
 	switch key {
 	case "d":
 		m.filter.DueDate = (m.filter.DueDate + 1) % (DueDateNone + 1)
@@ -28,14 +43,7 @@ func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, t
 	}
 
 	// Common filter prefix keys
-	refresh := func() { m.applyFiltersAndGroup(); m.clampCursor() }
-	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
-		tags := buildAllTasksTagList(m)
-		return func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
-		}
-	})
-	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, refresh); cmd != nil {
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
 		return m, cmd
 	}
 	return m, nil
@@ -43,10 +51,7 @@ func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, t
 
 // handleAllTasksFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
 func (m *AllTasksViewModel) handleAllTasksFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	refresh := func() { m.applyFiltersAndGroup(); m.clampCursor() }
-	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		refresh()
-	}
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 

@@ -21,32 +21,20 @@ func (m *DailyReviewModel) reloadData()             { m.loadTasks() }
 func (m *DailyReviewModel) setErr(err error)        { m.err = err }
 func (m *DailyReviewModel) setStatus(msg string)    { m.statusMessage = msg }
 
-// Delegate all operations to the shared taskOps functions.
+// prefixDispatchView implementation.
 
-func (m *DailyReviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	return taskOpsChangeStatus(m, newStatus)
+func (m *DailyReviewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
 }
 
-func (m *DailyReviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
-	return taskOpsChangePriority(m, key)
+func (m *DailyReviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return DailyReviewSelectMsg{Task: task, Project: project}
 }
 
-func (m *DailyReviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	return taskOpsSetQuickDueDate(m, daysFromNow)
+func (m *DailyReviewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handleDailyReviewFilterPrefix(key)
 }
 
-func (m *DailyReviewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	return taskOpsClearDueDate(m)
-}
-
-func (m *DailyReviewModel) toggleActive() (tea.Model, tea.Cmd) {
-	return taskOpsToggleActive(m)
-}
-
-func (m *DailyReviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	return taskOpsSectionMove(m, section)
-}
-
-func (m *DailyReviewModel) deleteTask() (tea.Model, tea.Cmd) {
-	return taskOpsDeleteTask(m)
+func (m *DailyReviewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handleDailyReviewFilterSubPrefix(prefix, key)
 }

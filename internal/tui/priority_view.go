@@ -845,20 +845,9 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 		return m.sectionMove(section)
 	case "F":
-		// Filter prefix - first level
 		return m.handlePriorityFilterPrefix(key)
-	case "Ft":
-		return m.handlePriorityFilterTypePrefix(key)
-	case "Fs":
-		return m.handlePriorityFilterStatusPrefix(key)
-	case "Fd":
-		return m.handlePriorityFilterDuePrefix(key)
-	case "Fa":
-		return m.handlePriorityFilterAttrPrefix(key)
-	case "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap":
-		return m.handlePriorityFilterAttrSubPrefix(m.pendingPrefix, key)
-	case "FS":
-		return m.handlePriorityFilterScorePrefix(key)
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+		return m.handlePriorityFilterSubPrefix(prefix, key)
 	case "c":
 		// Create linked task or navigate
 		pt := m.getTaskAtCursor()

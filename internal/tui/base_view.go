@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -83,6 +85,17 @@ type InteractiveViewState struct {
 // HasPendingPrefix returns true if waiting for second key in a prefix sequence.
 func (s *InteractiveViewState) HasPendingPrefix() bool {
 	return s.pendingPrefix != ""
+}
+
+// ResetCursor sets the cursor to position 0.
+func (s *InteractiveViewState) ResetCursor() {
+	s.cursor = 0
+}
+
+// showDeleteConfirm activates the delete confirmation dialog for the given task.
+func (s *InteractiveViewState) showDeleteConfirm(shortID int) {
+	s.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", shortID))
+	s.statusMessage = s.confirm.Prompt()
 }
 
 // BaseSearchableView extends BaseView with search functionality.
@@ -210,4 +223,27 @@ func WrapCursor(current, listLen, delta int) int {
 		return 0
 	}
 	return result
+}
+
+// CycleTab advances a tab index by delta with wrapping.
+// delta is typically +1 (right) or -1 (left).
+func CycleTab(current *int, count, delta int) {
+	if count <= 0 {
+		return
+	}
+	*current = ((*current+delta)%count + count) % count
+}
+
+// ExpandAllSections clears the collapsed map so all sections are visible.
+func ExpandAllSections[K comparable](collapsed map[K]bool) {
+	for k := range collapsed {
+		delete(collapsed, k)
+	}
+}
+
+// CollapseAllSections marks all given keys as collapsed.
+func CollapseAllSections[K comparable](collapsed map[K]bool, keys []K) {
+	for _, k := range keys {
+		collapsed[k] = true
+	}
 }

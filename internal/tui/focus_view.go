@@ -29,6 +29,7 @@ type FocusTask struct {
 
 // FocusViewModel displays all active-flagged tasks across projects.
 type FocusViewModel struct {
+	BaseView
 	InteractiveViewState
 
 	config         *config.Config
@@ -48,13 +49,6 @@ type FocusViewModel struct {
 
 	// Filter
 	filter CommonFilterState
-
-	// UI feedback
-	err error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewFocusViewModel creates a new focus view model.
@@ -274,58 +268,22 @@ func (m *FocusViewModel) getTaskAtCursor() *FocusTask {
 	return &m.filtered[m.cursor]
 }
 
-// HasActiveSearch returns false (no search in this view).
-func (m *FocusViewModel) HasActiveSearch() bool {
-	return false
-}
-
-// SetSize sets the view dimensions.
-func (m *FocusViewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *FocusViewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *FocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
 	case FocusViewRefreshMsg:
 		m.loadTasks()
 		m.clampCursor()
-		return m, nil
-
-	case TaskUpdatedMsg:
-		// Auto-refresh when a task is updated (e.g., after editing)
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
-
-	case TaskPropertyChangedMsg:
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.loadTasks()
-			m.clampCursor()
-			m.statusMessage = "Tags updated"
-		}
-		return m, nil
-
-	case SnoozeDateChangedMsg:
-		m.loadTasks()
-		m.clampCursor()
-		m.statusMessage = "Snooze date updated"
 		return m, nil
 	}
 
@@ -372,6 +330,11 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Navigation
+	if handleListNavigation(key, &m.cursor, len(m.filtered)) {
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		if m.HasActiveFilters() {
@@ -393,42 +356,6 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < len(m.filtered)-1 {
-			m.cursor++
-		}
-		return m, nil
-
-	case "G":
-		if len(m.filtered) > 0 {
-			m.cursor = len(m.filtered) - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
-	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= len(m.filtered) {
-			m.cursor = len(m.filtered) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
 	// Tab row focus switching
 	case "(", ")":
 		if len(m.subTabNames) > 1 {
@@ -439,21 +366,11 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Tab navigation within focused row
 	case "[", "h":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
-			// Cycle sub-tabs (0=All, 1..N=specific)
-			total := len(m.subTabNames) + 1 // +1 for "All"
-			if m.subTab > 0 {
-				m.subTab--
-			} else {
-				m.subTab = total - 1
-			}
+			CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
 			m.applyFilter()
 			m.clampCursor()
 		} else {
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(focusTabNames) - 1
-			}
+			CycleTab(&m.activeTab, len(focusTabNames), -1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.applyFilter()
@@ -463,20 +380,11 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "]", "l":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
-			total := len(m.subTabNames) + 1
-			if m.subTab < total-1 {
-				m.subTab++
-			} else {
-				m.subTab = 0
-			}
+			CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
 			m.applyFilter()
 			m.clampCursor()
 		} else {
-			if m.activeTab < len(focusTabNames)-1 {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(focusTabNames), 1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.applyFilter()
@@ -494,73 +402,11 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Priority changes
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
+	}
 
-	// Edit task
-	case "e":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: ft.Task}
-			}
-		}
-		return m, nil
-
-	// Refresh
-	case "r":
-		m.loadTasks()
-		m.clampCursor()
-		m.statusMessage = "Refreshed"
-		return m, nil
-
-	// Copy
-	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if ft := m.getTaskAtCursor(); ft != nil {
-					return ft.Task
-				}
-				return nil
-			},
-			nil, nil,
-		); handled {
-			return m, cmd
-		}
-		return m, nil
-
-	// Tags
-	case "t":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: ft.Task, Project: ft.Project, CurrentTags: append([]string{}, ft.Task.Tags...)}
-			}
-		}
-		return m, nil
-
-	// Snooze
-	case "Z":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: ft.Task, Project: ft.Project}
-			}
-		}
-		return m, nil
-
-	// Delete with confirmation
-	case "D":
-		if ft := m.getTaskAtCursor(); ft != nil {
-			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", ft.Task.ShortID))
-			m.statusMessage = m.confirm.Prompt()
-		}
-		return m, nil
-
-	// Help
-	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewFocusView,
-				ViewName:   "Focus View",
-				Items:      m.GetHelpItems(),
-			}
-		}
+	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	return m, nil
@@ -572,70 +418,13 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	m.pendingPrefix = "" // Always clear prefix
 
 	if key == "esc" {
-		return m, nil // Cancel prefix mode
-	}
-
-	switch prefix {
-	case "F":
-		return m.handleFocusFilterPrefix(key)
-	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handleFocusFilterSubPrefix(prefix, key)
-
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return taskOpsChangeStatus(m, status)
-		}
-
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return taskOpsClearDueDate(m)
-			}
-			return taskOpsSetQuickDueDate(m, days)
-		}
-		if key == "d" {
-			if ft := m.getTaskAtCursor(); ft != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: ft.Task, Project: ft.Project}
-				}
-			}
-		}
-
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		case "p":
-			// gp: Go to project (navigate to task in its project)
-			if ft := m.getTaskAtCursor(); ft != nil {
-				return m, func() tea.Msg {
-					return FocusViewSelectMsg{Task: ft.Task, Project: ft.Project}
-				}
-			}
-			return m, nil
-		}
-
-	case "m":
-		section, ok := sectionForMoveKey(key)
-		if !ok {
-			return m, nil
-		}
-		return taskOpsSectionMove(m, section)
-
-	case "c":
-		ft := m.getTaskAtCursor()
-		if ft == nil {
-			return m, nil
-		}
-		if handled, cmd := handleLinkedTaskPrefixKey(key, ft.Task, ft.Project, false, false); handled {
-			return m, cmd
-		}
 		return m, nil
 	}
 
-	// Invalid prefix sequence - ignore
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+		return model, cmd
+	}
+
 	return m, nil
 }
 
@@ -654,20 +443,36 @@ func (m *FocusViewModel) reloadData()             { m.loadTasks() }
 func (m *FocusViewModel) setErr(err error)        { m.err = err }
 func (m *FocusViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
+// prefixDispatchView implementation.
+
+func (m *FocusViewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *FocusViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return FocusViewSelectMsg{Task: task, Project: project}
+}
+
+func (m *FocusViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handleFocusFilterPrefix(key)
+}
+
+func (m *FocusViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handleFocusFilterSubPrefix(prefix, key)
+}
+
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, len(m.filtered))
-}
-
-// HasTextInput returns false for the focus view.
-func (m *FocusViewModel) HasTextInput() bool {
-	return false
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *FocusViewModel) ShouldCaptureEsc() bool {
 	return m.HasPendingPrefix() || m.HasActiveFilters() || m.confirm.IsActive()
 }
+
+func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }
+func (m *FocusViewModel) viewName() string { return "Focus View" }
 
 // GetHelpItems returns help items for this view.
 func (m *FocusViewModel) GetHelpItems() []HelpItem {

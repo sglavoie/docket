@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -33,6 +31,7 @@ const (
 
 // DailyReviewModel displays aggregated task information for review.
 type DailyReviewModel struct {
+	BaseView
 	InteractiveViewState
 
 	config *config.Config
@@ -59,13 +58,6 @@ type DailyReviewModel struct {
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
 	activeTab         int                  // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
-
-	// UI feedback
-	err error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewDailyReviewModel creates a new daily review model.
@@ -82,47 +74,22 @@ func NewDailyReviewModel(cfg *config.Config) *DailyReviewModel {
 	return m
 }
 
-// HasActiveSearch returns false (no search in this view).
-func (m *DailyReviewModel) HasActiveSearch() bool {
-	return false
-}
-
-// SetSize sets the view dimensions.
-func (m *DailyReviewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *DailyReviewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *DailyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
 	case DailyReviewRefreshMsg:
 		m.loadTasks()
 		m.clampCursor()
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.loadTasks()
-			m.clampCursor()
-			m.statusMessage = "Tags updated"
-		}
-		return m, nil
-
-	case SnoozeDateChangedMsg:
-		m.loadTasks()
-		m.clampCursor()
-		m.statusMessage = "Snooze date updated"
 		return m, nil
 	}
 
@@ -138,7 +105,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		confirmed, handled := m.confirm.HandleKey(key)
 		if handled {
 			if confirmed {
-				return m.deleteTask()
+				return taskOpsDeleteTask(m)
 			}
 			m.statusMessage = ""
 			return m, nil
@@ -156,21 +123,13 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Tab switching
 	switch key {
 	case "[", "h":
-		if m.activeTab > 0 {
-			m.activeTab--
-		} else {
-			m.activeTab = len(dailyReviewTabNames) - 1
-		}
+		CycleTab(&m.activeTab, len(dailyReviewTabNames), -1)
 		m.focusedSection = nil
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil
 	case "]", "l":
-		if m.activeTab < len(dailyReviewTabNames)-1 {
-			m.activeTab++
-		} else {
-			m.activeTab = 0
-		}
+		CycleTab(&m.activeTab, len(dailyReviewTabNames), 1)
 		m.focusedSection = nil
 		m.calculateNavigation()
 		m.clampCursor()
@@ -191,6 +150,11 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.getTaskAtCursor() != nil {
 			m.pendingPrefix = "c"
 		}
+		return m, nil
+	}
+
+	// Navigation
+	if handleListNavigation(key, &m.cursor, m.totalTasks) {
 		return m, nil
 	}
 
@@ -236,42 +200,6 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < m.totalTasks-1 {
-			m.cursor++
-		}
-		return m, nil
-
-	case "G":
-		if m.totalTasks > 0 {
-			m.cursor = m.totalTasks - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
-	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= m.totalTasks {
-			m.cursor = m.totalTasks - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
 	// Section navigation (reset focus to show all sections)
 	case "n":
 		m.focusedSection = nil
@@ -284,34 +212,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
-		return m.toggleActive()
-
-	// Tag selector
-	case "t":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: dt.Task, Project: dt.Project, CurrentTags: append([]string{}, dt.Task.Tags...)}
-			}
-		}
-		return m, nil
-
-	// Snooze picker
-	case "Z":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: dt.Task, Project: dt.Project}
-			}
-		}
-		return m, nil
-
-	// Delete task (with confirmation)
-	case "D":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", dt.Task.ShortID))
-			m.statusMessage = m.confirm.Prompt()
-			return m, nil
-		}
-		return m, nil
+		return taskOpsToggleActive(m)
 
 	// Toggle section collapse
 	case "tab":
@@ -319,48 +220,12 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Priority changes
 	case "1", "2", "3", "4", "5":
-		return m.changeTaskPriority(key)
+		return taskOpsChangePriority(m, key)
+	}
 
-	// Edit task
-	case "e":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	// Refresh
-	case "r":
-		m.loadTasks()
-		m.clampCursor()
-		m.statusMessage = "Refreshed"
-		return m, nil
-
-	// Copy
-	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if dt := m.getTaskAtCursor(); dt != nil {
-					return dt.Task
-				}
-				return nil
-			},
-			nil, nil,
-		); handled {
-			return m, cmd
-		}
-		return m, nil
-
-	// Help
-	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewDailyReview,
-				ViewName:   "Review",
-				Items:      m.GetHelpItems(),
-			}
-		}
+	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	return m, nil
@@ -372,143 +237,68 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	m.pendingPrefix = "" // Always clear prefix
 
 	if key == "esc" {
-		return m, nil // Cancel prefix mode
-	}
-
-	switch prefix {
-	case "z":
-		switch key {
-		case "R":
-			// Expand all sections
-			m.collapsedSections = make(map[int]bool)
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		case "M":
-			// Collapse all visible sections
-			for _, section := range m.sectionOrder {
-				m.collapsedSections[int(section)] = true
-			}
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		}
 		return m, nil
-
-	case "F":
-		return m.handleDailyReviewFilterPrefix(key)
-	case "Ft", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handleDailyReviewFilterSubPrefix(prefix, key)
-
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
-		}
-
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return m.clearDueDate()
-			}
-			return m.setQuickDueDate(days)
-		}
-		if key == "d" {
-			if dt := m.getTaskAtCursor(); dt != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: dt.Task}
-				}
-			}
-		}
-
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		case "p":
-			// gp: Go to project (navigate to task in its project)
-			if dt := m.getTaskAtCursor(); dt != nil {
-				return m, func() tea.Msg {
-					return DailyReviewSelectMsg{Task: dt.Task, Project: dt.Project}
-				}
-			}
-			return m, nil
-		}
-
-	case "s":
-		// Section focus toggles
-		var targetSection *DailyReviewSection
-		switch key {
-		case "d":
-			s := SectionOverdue
-			targetSection = &s
-		case "t":
-			s := SectionDueToday
-			targetSection = &s
-		case "s":
-			s := SectionDueSoon
-			targetSection = &s
-		case "l":
-			s := SectionDueLater
-			targetSection = &s
-		case "f":
-			s := SectionFuture
-			targetSection = &s
-		case "r":
-			s := SectionInReview
-			targetSection = &s
-		case "o":
-			s := SectionOld
-			targetSection = &s
-		}
-		if targetSection != nil {
-			return m.toggleSectionFocus(*targetSection)
-		}
-
-	case "m":
-		// Move to section
-		section, ok := sectionForMoveKey(key)
-		if !ok {
-			return m, nil
-		}
-		return m.sectionMove(section)
-
-	case "c":
-		// Create linked task or navigate
-		dt := m.getTaskAtCursor()
-		if dt == nil {
-			return m, nil
-		}
-		task := dt.Task
-		project := dt.Project
-
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
-		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
 	}
 
-	// Invalid prefix sequence - ignore
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		switch pfx {
+		case "z":
+			switch k {
+			case "R":
+				ExpandAllSections(m.collapsedSections)
+				m.calculateNavigation()
+				m.clampCursor()
+				return m, nil, true
+			case "M":
+				sectionInts := make([]int, len(m.sectionOrder))
+				for i, s := range m.sectionOrder {
+					sectionInts[i] = int(s)
+				}
+				CollapseAllSections(m.collapsedSections, sectionInts)
+				m.calculateNavigation()
+				m.clampCursor()
+				return m, nil, true
+			}
+			return m, nil, true
+
+		case "s":
+			var targetSection *DailyReviewSection
+			switch k {
+			case "d":
+				s := SectionOverdue
+				targetSection = &s
+			case "t":
+				s := SectionDueToday
+				targetSection = &s
+			case "s":
+				s := SectionDueSoon
+				targetSection = &s
+			case "l":
+				s := SectionDueLater
+				targetSection = &s
+			case "f":
+				s := SectionFuture
+				targetSection = &s
+			case "r":
+				s := SectionInReview
+				targetSection = &s
+			case "o":
+				s := SectionOld
+				targetSection = &s
+			}
+			if targetSection != nil {
+				model, cmd := m.toggleSectionFocus(*targetSection)
+				return model, cmd, true
+			}
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
+		return model, cmd
+	}
+
 	return m, nil
 }
 
@@ -517,15 +307,13 @@ func (m *DailyReviewModel) HasFocusedSection() bool {
 	return m.focusedSection != nil
 }
 
-// HasTextInput returns false for the daily review view.
-func (m *DailyReviewModel) HasTextInput() bool {
-	return false
-}
-
 // ShouldCaptureEsc returns true when prefix mode, section focus, filters, or confirm dialog are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
 	return m.HasPendingPrefix() || m.HasFocusedSection() || m.HasActiveFilters() || m.confirm.IsActive()
 }
+
+func (m *DailyReviewModel) viewID() ViewType { return ViewDailyReview }
+func (m *DailyReviewModel) viewName() string { return "Review" }
 
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {

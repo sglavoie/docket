@@ -4,50 +4,35 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// commonFilterView implementation for DailyReviewModel.
+
+func (m *DailyReviewModel) getFilter() *CommonFilterState   { return &m.filter }
+func (m *DailyReviewModel) getConfig() *config.Config       { return m.config }
+func (m *DailyReviewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
+func (m *DailyReviewModel) refreshAndClamp()                { m.loadTasks(); m.clampCursor() }
+func (m *DailyReviewModel) buildTagCmd() tea.Cmd {
+	tags := buildDailyReviewTagList(m)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDailyReview, Title: "Filter by Tags"}
+	}
+}
 
 // handleDailyReviewFilterPrefix handles the second key after pressing F (filter prefix) in daily review.
 // Omits DueDate (sections group by due urgency) and Status (sections group by status).
 func (m *DailyReviewModel) handleDailyReviewFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "p":
-		if m.filter.Priority == 1 {
-			m.filter.Priority = 0
-		} else {
-			m.filter.Priority = 1
-		}
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
-	case "t":
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "#":
-		tags := buildDailyReviewTagList(m)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDailyReview, Title: "Filter by Tags"}
-		}
-	case "a":
-		m.pendingPrefix = "Fa"
-		return m, nil
-	case "S":
-		m.pendingPrefix = "FS"
-		return m, nil
-	case "x":
-		clearCommonFilters(&m.filter)
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleDailyReviewFilterSubPrefix handles all filter sub-prefix keys (Ft, Fa, Fas-Fap, FS).
 func (m *DailyReviewModel) handleDailyReviewFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.loadTasks()
-		m.clampCursor()
-	}
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 

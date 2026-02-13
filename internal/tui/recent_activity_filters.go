@@ -4,55 +4,40 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// commonFilterView implementation for RecentActivityModel.
+
+func (m *RecentActivityModel) getFilter() *CommonFilterState   { return &m.filter }
+func (m *RecentActivityModel) getConfig() *config.Config       { return m.config }
+func (m *RecentActivityModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
+func (m *RecentActivityModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
+func (m *RecentActivityModel) buildTagCmd() tea.Cmd {
+	tags := buildRecentActivityTagList(m)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewRecentActivity, Title: "Filter by Tags"}
+	}
+}
 
 // handleRecentActivityFilterPrefix handles the second key after pressing F (filter prefix) in recent activity.
 func (m *RecentActivityModel) handleRecentActivityFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "p":
-		if m.filter.Priority == 1 {
-			m.filter.Priority = 0
-		} else {
-			m.filter.Priority = 1
-		}
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-	case "t":
-		m.pendingPrefix = "Ft"
-		return m, nil
-	case "s":
-		m.pendingPrefix = "Fs"
-		return m, nil
-	case "#":
-		tags := buildRecentActivityTagList(m)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewRecentActivity, Title: "Filter by Tags"}
-		}
-	case "d":
+	// View-specific: "d" opens the due-date sub-prefix
+	if key == "d" {
 		m.pendingPrefix = "Fd"
 		return m, nil
-	case "a":
-		m.pendingPrefix = "Fa"
-		return m, nil
-	case "S":
-		m.pendingPrefix = "FS"
-		return m, nil
-	case "x":
-		clearCommonFilters(&m.filter)
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
+	}
+
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleRecentActivityFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
 func (m *RecentActivityModel) handleRecentActivityFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.applyFilter()
-		m.clampCursor()
-	}
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 

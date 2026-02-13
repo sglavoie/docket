@@ -4,18 +4,26 @@ import (
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// commonFilterView implementation for FocusViewModel.
+
+func (m *FocusViewModel) getFilter() *CommonFilterState   { return &m.filter }
+func (m *FocusViewModel) getConfig() *config.Config       { return m.config }
+func (m *FocusViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
+func (m *FocusViewModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
+func (m *FocusViewModel) buildTagCmd() tea.Cmd {
+	tags := buildFocusTagList(m)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
+	}
+}
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.
 func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	refresh := func() { m.applyFilter(); m.clampCursor() }
-	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
-		tags := buildFocusTagList(m)
-		return func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
-		}
-	})
-	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, refresh); cmd != nil {
+	if cmd, handled := handleFilterPrefixForView(m, key); handled {
 		return m, cmd
 	}
 	return m, nil
@@ -23,10 +31,7 @@ func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd
 
 // handleFocusFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
 func (m *FocusViewModel) handleFocusFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	refresh := func() { m.applyFilter(); m.clampCursor() }
-	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		refresh()
-	}
+	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
 }
 
