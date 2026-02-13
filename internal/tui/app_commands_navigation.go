@@ -349,6 +349,17 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
+			Name:        "focus board",
+			Description: "Personal command center with external items and tasks",
+			Shortcut:    "F",
+			Category:    CategoryViews,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"board", "command center", "external items"},
+			Handler: func() tea.Msg {
+				return ShowFocusBoardMsg{}
+			},
+		},
+		{
 			Name:        "priority view",
 			Description: "View tasks by priority",
 			Shortcut:    "p",

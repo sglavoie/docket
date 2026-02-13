@@ -96,6 +96,7 @@ const (
 	ViewKanbanDisplaySettings
 	ViewAllTasks
 	ViewScoringProfilePicker
+	ViewFocusBoard
 )
 
 // AppModel is the main TUI model with a view stack.

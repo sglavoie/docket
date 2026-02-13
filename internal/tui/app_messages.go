@@ -774,6 +774,25 @@ type LinkRemovedMsg struct {
 }
 
 // =============================================================================
+// Focus Board Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowFocusBoardMsg opens the focus board view.
+type ShowFocusBoardMsg struct{}
+
+// CloseFocusBoardMsg closes the focus board view.
+type CloseFocusBoardMsg struct{}
+
+// FocusBoardRefreshMsg requests a refresh of the focus board data.
+type FocusBoardRefreshMsg struct{}
+
+// FocusBoardSelectMsg navigates to a task from focus board.
+type FocusBoardSelectMsg struct {
+	Task    *models.Task
+	Project *models.Project
+}
+
+// =============================================================================
 // Score Profile Manager Messages (Show/Close Pattern)
 // =============================================================================
 

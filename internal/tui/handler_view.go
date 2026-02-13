@@ -334,6 +334,29 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowFocusBoardMsg:
+		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config))
+		return true, nil
+
+	case CloseFocusBoardMsg:
+		m.popView()
+		return true, nil
+
+	case FocusBoardSelectMsg:
+		m.popView()
+		if msg.Task != nil && msg.Project != nil {
+			m.switchToProject(msg.Project, true)
+			m.projectTree.NavigateToTask(msg.Task)
+			m.pushView(ViewProjectTree)
+		}
+		return true, nil
+
+	case FocusBoardRefreshMsg:
+		if v := m.views.Get(ViewFocusBoard); v != nil {
+			v.Update(msg)
+		}
+		return true, nil
+
 	case ShowFocusViewMsg:
 		m.showView(ViewFocusView, NewFocusViewModel(m.config))
 		return true, nil
@@ -1088,6 +1111,8 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowDailyReviewMsg{})
 	case ViewWeeklyReview:
 		return m.handleViewMessages(ShowWeeklyReviewMsg{})
+	case ViewFocusBoard:
+		return m.handleViewMessages(ShowFocusBoardMsg{})
 	case ViewFocusView:
 		return m.handleViewMessages(ShowFocusViewMsg{})
 	case ViewAllTasks:

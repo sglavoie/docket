@@ -146,6 +146,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowFocusViewMsg{}
 			}
+		case "F":
+			return m, func() tea.Msg {
+				return ShowFocusBoardMsg{}
+			}
 		case "l":
 			return m, func() tea.Msg {
 				return ShowRecentActivityMsg{}
