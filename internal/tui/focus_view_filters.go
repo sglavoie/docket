@@ -8,30 +8,24 @@ import (
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.
 func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	refresh := func() { m.applyFilter(); m.clampCursor() }
 	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
 		tags := buildFocusTagList(m)
 		return func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
 		}
 	})
-	if result.NewPrefix != "" {
-		m.pendingPrefix = result.NewPrefix
-	}
-	if result.Changed {
-		m.applyFilter()
-		m.clampCursor()
-	}
-	if result.TagCmd != nil {
-		return m, result.TagCmd
+	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, refresh); cmd != nil {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleFocusFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
 func (m *FocusViewModel) handleFocusFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	refresh := func() { m.applyFilter(); m.clampCursor() }
 	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.applyFilter()
-		m.clampCursor()
+		refresh()
 	}
 	return m, nil
 }

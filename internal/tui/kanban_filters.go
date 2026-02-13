@@ -344,31 +344,15 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
 		}
 	})
-	if result.NewPrefix != "" {
-		m.pendingPrefix = result.NewPrefix
-	}
-	if result.Changed {
-		m.loadTasks()
-	}
-	if result.TagCmd != nil {
-		return m, result.TagCmd
+	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, m.loadTasks); cmd != nil {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleKanbanFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
 func (m *KanbanViewModel) handleKanbanFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	// Score filter custom-value input (special case)
-	if prefix == "FS" && key == "C" {
-		var custom *float64
-		if m.config != nil {
-			custom = m.config.ScoreFilterCustom
-		}
-		m.scoreFilterInput.Enter(custom)
-		return m, nil
-	}
-	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.loadTasks()
-	}
+	applyFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config,
+		func(p string) { m.pendingPrefix = p }, m.scoreFilterInput.Enter, m.loadTasks)
 	return m, nil
 }

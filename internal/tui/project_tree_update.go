@@ -347,31 +347,11 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	case "m":
 		// Move/send-to-section operations
+		if section, ok := sectionForMoveKey(key); ok {
+			_, cmd := m.sendTasksToSection(section, visible)
+			return m, cmd
+		}
 		switch key {
-		case "a":
-			// Send to Active section
-			_, cmd := m.sendTasksToSection("", visible)
-			return m, cmd
-		case "n":
-			// Send to Next section
-			_, cmd := m.sendTasksToSection(models.SectionNext, visible)
-			return m, cmd
-		case "i":
-			// Send to Inbox section
-			_, cmd := m.sendTasksToSection(models.SectionInbox, visible)
-			return m, cmd
-		case "w":
-			// Send to Waiting section
-			_, cmd := m.sendTasksToSection(models.SectionWaiting, visible)
-			return m, cmd
-		case "r":
-			// Send to Review section
-			_, cmd := m.sendTasksToSection(models.SectionReview, visible)
-			return m, cmd
-		case "s":
-			// Send to Someday section
-			_, cmd := m.sendTasksToSection(models.SectionSomeday, visible)
-			return m, cmd
 		case "K":
 			// Move task to top of section
 			return m.moveTaskToTop(visible)

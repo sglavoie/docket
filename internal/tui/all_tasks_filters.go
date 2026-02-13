@@ -28,30 +28,24 @@ func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, t
 	}
 
 	// Common filter prefix keys
+	refresh := func() { m.applyFiltersAndGroup(); m.clampCursor() }
 	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
 		tags := buildAllTasksTagList(m)
 		return func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
 		}
 	})
-	if result.NewPrefix != "" {
-		m.pendingPrefix = result.NewPrefix
-	}
-	if result.Changed {
-		m.applyFiltersAndGroup()
-		m.clampCursor()
-	}
-	if result.TagCmd != nil {
-		return m, result.TagCmd
+	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, refresh); cmd != nil {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleAllTasksFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fa, Fas-Fap, FS).
 func (m *AllTasksViewModel) handleAllTasksFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	refresh := func() { m.applyFiltersAndGroup(); m.clampCursor() }
 	if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.applyFiltersAndGroup()
-		m.clampCursor()
+		refresh()
 	}
 	return m, nil
 }

@@ -196,29 +196,17 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 
 	var lines []string
 	maxTitleLen := m.width - 50
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
 
 	for rank, pt := range m.scoredTasks {
 		isSelected := *currentIndex == m.cursor
-		task := pt.Task
+		scoreBadge := RenderScoreBadge(pt.Task, profile)
 
-		cursor := "  "
-		if isSelected {
-			cursor = "> "
-		}
-
-		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-		priorityBadge := renderPriorityBadge(task.Priority)
-		title := util.Truncate(task.Title, maxTitleLen)
-		scoreBadge := RenderScoreBadge(task, profile)
-
-		line := fmt.Sprintf("%s%d. %s %s %s %s %s", cursor, rank+1, scoreBadge, statusIcon, typeIcon, priorityBadge, title)
-		if isSelected {
-			line = SelectedStyle.Render(line)
-		}
+		line := TaskLine{
+			Task:       pt.Task,
+			IsSelected: isSelected,
+			MaxTitle:   maxTitleLen,
+			PreBadges:  fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
+		}.Render()
 		lines = append(lines, line)
 		*currentIndex++
 	}
@@ -266,35 +254,16 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 
 	// Star indicator for suggested task
 	isSuggested := m.suggestion != nil && m.suggestion.Task.Task.ID == task.ID
-	starIndicator := "  "
+	starPrefix := "  "
 	if isSuggested {
-		starIndicator = SuggestionStarStyle.Render("★ ")
+		starPrefix = SuggestionStarStyle.Render("★ ")
 	}
 
-	// Cursor indicator
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	// Status icon with badge style
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-
-	// Type icon with badge style
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-
-	// Priority badge
-	priorityBadge := renderPriorityBadge(task.Priority)
-
-	// Title (reduce width if showing star indicator)
+	// Adjust title width for star indicator
 	adjustedMaxTitleLen := maxTitleLen
 	if isSuggested {
-		adjustedMaxTitleLen -= 2 // Account for star indicator
+		adjustedMaxTitleLen -= 2
 	}
-	if adjustedMaxTitleLen < 10 {
-		adjustedMaxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, adjustedMaxTitleLen)
 
 	// Custom section badge
 	csStr := ""
@@ -303,8 +272,6 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		csStyle := GetSectionColorStyle(csColor)
 		csStr = " " + csStyle.Render("@ "+task.CustomSection)
 	}
-
-	tagsStr := renderInlineTags(task.Tags)
 
 	// Due date
 	dueStr := ""
@@ -326,17 +293,15 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		}
 	}
 
-	// Build line with star indicator before cursor
-	line := fmt.Sprintf("%s%s%s %s %s %s%s%s%s", starIndicator, cursor, statusIcon, typeIcon, priorityBadge, title, scoreBadge, csStr, tagsStr)
-	if dueStr != "" {
-		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:       task,
+		IsSelected: isSelected,
+		MaxTitle:   adjustedMaxTitleLen,
+		Prefix:     starPrefix,
+		PostTitle:  scoreBadge + csStr + renderInlineTags(task.Tags),
+		DueStr:     dueStr,
+		ViewWidth:  m.width,
+	}.Render()
 }
 
 // renderWaitingOnTask renders a blocked task in the waiting on section.

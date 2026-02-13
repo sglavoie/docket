@@ -484,6 +484,37 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 	return hints
 }
 
+// applyCommonFilterResult applies the result of handleCommonFilterPrefix to the
+// view's state: sets pending prefix, refreshes if changed, returns tag command.
+// Returns the tea.Cmd to return from the view's handler (nil if no command).
+func applyCommonFilterResult(result FilterPrefixResult, setPendingPrefix func(string), refreshView func()) tea.Cmd {
+	if result.NewPrefix != "" {
+		setPendingPrefix(result.NewPrefix)
+	}
+	if result.Changed {
+		refreshView()
+	}
+	return result.TagCmd
+}
+
+// applyFilterSubPrefix handles a filter sub-prefix key press, including the
+// score filter custom-value special case. Returns true if the view should
+// keep processing (score input was activated), false otherwise.
+func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.Config, setPendingPrefix func(string), enterScoreInput func(*float64), refreshView func()) bool {
+	if prefix == "FS" && key == "C" {
+		var custom *float64
+		if cfg != nil {
+			custom = cfg.ScoreFilterCustom
+		}
+		enterScoreInput(custom)
+		return true
+	}
+	if dispatchFilterSubPrefix(prefix, key, f, cfg, setPendingPrefix) {
+		refreshView()
+	}
+	return false
+}
+
 // buildCommonFilterPrefixPopupHints returns the full PrefixHints map for the F prefix
 // and its sub-prefixes. Set includeDueDate and includeStatus to control which
 // categories are available.

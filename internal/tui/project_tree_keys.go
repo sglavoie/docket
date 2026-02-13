@@ -67,32 +67,16 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
 	})
-	if result.NewPrefix != "" {
-		m.pendingPrefix = result.NewPrefix
-	}
-	if result.Changed {
-		m.applyFilterChange()
-	}
-	if result.TagCmd != nil {
-		return m, result.TagCmd
+	if cmd := applyCommonFilterResult(result, func(p string) { m.pendingPrefix = p }, m.applyFilterChange); cmd != nil {
+		return m, cmd
 	}
 	return m, nil
 }
 
 // handleFilterSubPrefix handles all filter sub-prefix keys (Ft, Fs, Fd, Fa, Fas-Fap, FS).
 func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
-	// Score filter custom-value input (special case)
-	if prefix == "FS" && key == "C" {
-		var custom *float64
-		if m.config != nil {
-			custom = m.config.ScoreFilterCustom
-		}
-		m.scoreFilterInput.Enter(custom)
-		return m, nil
-	}
-	if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) { m.pendingPrefix = p }) {
-		m.applyFilterChange()
-	}
+	applyFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config,
+		func(p string) { m.pendingPrefix = p }, m.scoreFilterInput.Enter, m.applyFilterChange)
 	return m, nil
 }
 

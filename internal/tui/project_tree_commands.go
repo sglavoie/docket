@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -54,23 +53,31 @@ func (m *ProjectTreeModel) performUndo() tea.Cmd {
 	}
 }
 
+// buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
+// state, draining the pending undo context. Must be called at persist time
+// (inside closures) so the undo context reflects the latest state.
+func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
+	opts := WorkflowSaveOptions{
+		Persister:     m.projectService,
+		Project:       m.project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+		UndoAction:    m.pendingUndoAction,
+		UndoContext:   m.pendingUndoContext,
+	}
+	if m.config.UndoHistoryDepth != nil {
+		opts.UndoDepth = *m.config.UndoHistoryDepth
+	}
+	m.clearUndoContext()
+	return opts
+}
+
 // workflowPersistFn returns a persistFn that runs the full save pipeline
 // used by ProjectTree: auto-unblock, recurring, workflow rules, undo snapshots.
 func (m *ProjectTreeModel) workflowPersistFn() persistFn {
 	return workflowPersist(func() WorkflowSaveOptions {
-		opts := WorkflowSaveOptions{
-			Persister:     m.projectService,
-			Project:       m.project,
-			Config:        m.config,
-			ConfigManager: m.configManager,
-			UndoAction:    m.pendingUndoAction,
-			UndoContext:   m.pendingUndoContext,
-		}
-		if m.config.UndoHistoryDepth != nil {
-			opts.UndoDepth = *m.config.UndoHistoryDepth
-		}
-		m.clearUndoContext()
-		return opts
+		return m.buildWorkflowOpts(nil)
 	})
 }
 
@@ -94,19 +101,7 @@ func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 // saveAndRefreshWithPrevStates saves the project with event trigger support.
 // If prevStates is provided, event-based workflow triggers will be evaluated.
 func (m *ProjectTreeModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) tea.Cmd {
-	opts := WorkflowSaveOptions{
-		Persister:     m.projectService,
-		Project:       m.project,
-		Config:        m.config,
-		ConfigManager: m.configManager,
-		PrevStates:    prevStates,
-		UndoAction:    m.pendingUndoAction,
-		UndoContext:   m.pendingUndoContext,
-	}
-	if m.config.UndoHistoryDepth != nil {
-		opts.UndoDepth = *m.config.UndoHistoryDepth
-	}
-	m.clearUndoContext()
+	opts := m.buildWorkflowOpts(prevStates)
 
 	return func() tea.Msg {
 		if err := persistWithWorkflow(opts); err != nil {
@@ -212,57 +207,18 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 
 		// Record undo snapshot before deleting
 		if undoDepth > 0 {
-			// Ignore errors - undo snapshot failures shouldn't block normal operation
 			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Task",
 				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth)
 		}
 
-		// Create backup before deleting for undo support
 		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		// Collect IDs of task and all descendants to delete
-		idsToDelete := make(map[string]bool)
-		var collectIDs func(t *models.Task)
-		collectIDs = func(t *models.Task) {
-			idsToDelete[t.ID] = true
-			for _, child := range t.Children {
-				collectIDs(child)
-			}
-		}
-		collectIDs(task)
-
-		// Clean up attachments for all tasks being deleted
-		for _, t := range m.project.Tasks {
-			if idsToDelete[t.ID] {
-				_ = storage.CleanupTaskAttachments(m.project, t)
-			}
+		if err := deleteTasksFromProject(m.project, m.projectService, map[string]bool{task.ID: true}, &m.focusedTask); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
-		// Exit focus mode if focused task is being deleted
-		if m.focusedTask != nil && idsToDelete[m.focusedTask.ID] {
-			m.focusedTask = nil
-		}
-
-		// Filter out deleted tasks
-		var remaining []*models.Task
-		for _, t := range m.project.Tasks {
-			if !idsToDelete[t.ID] {
-				// Clear parent reference if parent was deleted
-				if t.ParentID != nil && idsToDelete[*t.ParentID] {
-					t.ParentID = nil
-				}
-				remaining = append(remaining, t)
-			}
-		}
-		m.project.Tasks = remaining
-
-		if err := m.projectService.Save(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		return TaskDeletedMsg{Task: task}
 	}
@@ -276,71 +232,30 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 		undoDepth = *m.config.UndoHistoryDepth
 	}
 	taskCount := len(m.selectedTasks)
+	targetIDs := make(map[string]bool, taskCount)
+	for id := range m.selectedTasks {
+		targetIDs[id] = true
+	}
 
 	return func() tea.Msg {
 		if taskCount == 0 {
 			return nil
 		}
 
-		// Record undo snapshot before deleting
 		if undoDepth > 0 {
-			// Ignore errors - undo snapshot failures shouldn't block normal operation
 			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Tasks",
 				fmt.Sprintf("%d tasks", taskCount), undoDepth)
 		}
 
-		// Create backup before deleting for undo support
 		if err := m.projectService.Backup(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		// Collect all IDs to delete (selected tasks and their descendants)
-		idsToDelete := make(map[string]bool)
-		var collectIDs func(t *models.Task)
-		collectIDs = func(t *models.Task) {
-			idsToDelete[t.ID] = true
-			for _, child := range t.Children {
-				collectIDs(child)
-			}
-		}
-
-		for _, task := range m.project.Tasks {
-			if m.selectedTasks[task.ID] {
-				collectIDs(task)
-			}
-		}
-
-		// Clean up attachments for all tasks being deleted
-		for _, t := range m.project.Tasks {
-			if idsToDelete[t.ID] {
-				_ = storage.CleanupTaskAttachments(m.project, t)
-			}
-		}
-
-		// Exit focus mode if focused task is being deleted
-		if m.focusedTask != nil && idsToDelete[m.focusedTask.ID] {
-			m.focusedTask = nil
-		}
-
-		// Filter out deleted tasks
-		var remaining []*models.Task
-		for _, t := range m.project.Tasks {
-			if !idsToDelete[t.ID] {
-				// Clear parent reference if parent was deleted
-				if t.ParentID != nil && idsToDelete[*t.ParentID] {
-					t.ParentID = nil
-				}
-				remaining = append(remaining, t)
-			}
-		}
-		m.project.Tasks = remaining
-
-		if err := m.projectService.Save(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		if err := deleteTasksFromProject(m.project, m.projectService, targetIDs, &m.focusedTask); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
 		m.clearSelection()
-		_ = m.projectService.Load(m.project)
 		m.buildTree()
 		m.clampCursor()
 		return treeRefreshMsg{}
@@ -353,14 +268,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		return nil
 	}
 
-	// Capture config value before returning command
-	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
-	}
-	taskCount := len(tasks)
-	cfg := m.config
-	configManager := m.configManager
+	m.setUndoContext("Bulk Edit", fmt.Sprintf("%d tasks", len(tasks)))
 
 	return func() tea.Msg {
 		// Capture task states before changes for event-based workflow triggers
@@ -402,16 +310,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 			}
 		}
 
-		opts := WorkflowSaveOptions{
-			Persister:     m.projectService,
-			Project:       m.project,
-			Config:        cfg,
-			ConfigManager: configManager,
-			PrevStates:    prevStates,
-			UndoAction:    "Bulk Edit",
-			UndoContext:   fmt.Sprintf("%d tasks", taskCount),
-			UndoDepth:     undoDepth,
-		}
+		opts := m.buildWorkflowOpts(prevStates)
 		if err := persistWithWorkflow(opts); err != nil {
 			return ErrorMsg{Err: err}
 		}

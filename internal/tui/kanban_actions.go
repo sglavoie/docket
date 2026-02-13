@@ -29,16 +29,23 @@ type KanbanStatusChangedMsg struct {
 	PreviousSection string
 }
 
+// buildWorkflowOpts constructs a WorkflowSaveOptions from the current Kanban
+// model state. Must be called at persist time (inside closures).
+func (m *KanbanViewModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
+	return WorkflowSaveOptions{
+		Persister:     defaultPersister,
+		Project:       m.Project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+	}
+}
+
 // workflowPersistFn returns a persistFn that runs the full save pipeline
 // used by Kanban: auto-unblock, recurring, workflow rules.
 func (m *KanbanViewModel) workflowPersistFn() persistFn {
 	return workflowPersist(func() WorkflowSaveOptions {
-		return WorkflowSaveOptions{
-			Persister:     defaultPersister,
-			Project:       m.Project,
-			Config:        m.config,
-			ConfigManager: m.configManager,
-		}
+		return m.buildWorkflowOpts(nil)
 	})
 }
 
@@ -70,13 +77,7 @@ func (m *KanbanViewModel) getSelectedNode() *KanbanNode {
 // a command that produces the given message on success. This is the shared
 // implementation used by all Kanban save operations.
 func (m *KanbanViewModel) saveWithWorkflow(prevStates map[string]*models.Task, makeMsg func() tea.Msg) tea.Cmd {
-	opts := WorkflowSaveOptions{
-		Persister:     defaultPersister,
-		Project:       m.Project,
-		Config:        m.config,
-		ConfigManager: m.configManager,
-		PrevStates:    prevStates,
-	}
+	opts := m.buildWorkflowOpts(prevStates)
 
 	return func() tea.Msg {
 		if err := persistWithWorkflow(opts); err != nil {
@@ -305,7 +306,7 @@ type KanbanTaskDeletedMsg struct {
 	Section string
 }
 
-// executeDelete deletes the currently targeted task.
+// executeDelete deletes the currently targeted task and its descendants.
 func (m *KanbanViewModel) executeDelete() tea.Cmd {
 	if m.deleteTarget == nil {
 		return nil
@@ -315,27 +316,20 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 	section := task.Section
 	m.deleteTarget = nil
 
-	// Capture previous task states for workflow rule evaluation
-	prevStates := captureTaskStates(m.Project.Tasks)
-
-	// Remove the task from the project
-	for i, t := range m.Project.Tasks {
-		if t.ID == task.ID {
-			m.Project.Tasks = append(m.Project.Tasks[:i], m.Project.Tasks[i+1:]...)
-			break
+	return func() tea.Msg {
+		if err := defaultPersister.Backup(m.Project); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
-	}
 
-	// Rebuild the task tree
-	m.Project.BuildTaskTree()
+		if err := deleteTasksFromProject(m.Project, defaultPersister, map[string]bool{task.ID: true}, nil); err != nil {
+			return ErrorMsg{Err: err}
+		}
 
-	// Save with workflow rules and return message
-	return m.saveWithWorkflow(prevStates, func() tea.Msg {
 		return KanbanTaskDeletedMsg{
 			TaskID:  task.ID,
 			Section: section,
 		}
-	})
+	}
 }
 
 // performUndo restores the project from backup.

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -595,6 +596,62 @@ func applyBulkDueDate(project *models.Project, tasks []*models.Task, dueDate *ti
 		}
 	}
 	return count
+}
+
+// collectDescendantIDs collects all IDs of a task and its descendants recursively.
+func collectDescendantIDs(tasks []*models.Task, rootIDs map[string]bool) map[string]bool {
+	idsToDelete := make(map[string]bool)
+	var collectIDs func(t *models.Task)
+	collectIDs = func(t *models.Task) {
+		idsToDelete[t.ID] = true
+		for _, child := range t.Children {
+			collectIDs(child)
+		}
+	}
+	for _, t := range tasks {
+		if rootIDs[t.ID] {
+			collectIDs(t)
+		}
+	}
+	return idsToDelete
+}
+
+// deleteTasksFromProject removes the given task IDs (and all their descendants)
+// from the project. It handles attachment cleanup, dangling parent references,
+// and returns the filtered task list. If focusedTaskID points to a deleted task,
+// it is set to nil.
+func deleteTasksFromProject(project *models.Project, persister Persister, targetIDs map[string]bool, focusedTaskID **models.Task) error {
+	idsToDelete := collectDescendantIDs(project.Tasks, targetIDs)
+
+	// Clean up attachments for all tasks being deleted
+	for _, t := range project.Tasks {
+		if idsToDelete[t.ID] {
+			_ = storage.CleanupTaskAttachments(project, t)
+		}
+	}
+
+	// Exit focus mode if focused task is being deleted
+	if focusedTaskID != nil && *focusedTaskID != nil && idsToDelete[(*focusedTaskID).ID] {
+		*focusedTaskID = nil
+	}
+
+	// Filter out deleted tasks and clear dangling parent references
+	var remaining []*models.Task
+	for _, t := range project.Tasks {
+		if !idsToDelete[t.ID] {
+			if t.ParentID != nil && idsToDelete[*t.ParentID] {
+				t.ParentID = nil
+			}
+			remaining = append(remaining, t)
+		}
+	}
+	project.Tasks = remaining
+
+	if err := persister.Save(project); err != nil {
+		return fmt.Errorf("failed to save project: %w", err)
+	}
+	_ = persister.Load(project)
+	return nil
 }
 
 // SecondaryViewMovePrefixHints contains "m" prefix hints for secondary views.

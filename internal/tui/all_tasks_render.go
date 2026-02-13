@@ -175,11 +175,6 @@ func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed 
 func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, isChecked bool, maxTitleLen int) string {
 	task := item.Task
 
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
 	// Multi-select checkbox
 	checkbox := ""
 	if m.multiSelectMode {
@@ -190,21 +185,7 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 		}
 	}
 
-	// Project name
 	projectName := util.Truncate(item.Project.Name, 15)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-
-	// Task badges
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	priorityBadge := renderPriorityBadge(task.Priority)
-
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
-
-	tagsStr := renderInlineTags(task.Tags)
 
 	// Due date
 	dueStr := ""
@@ -221,16 +202,15 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 		}
 	}
 
-	line := fmt.Sprintf("%s%s%s %s %s %s %s%s%s", cursor, checkbox, projectStr, statusIcon, typeIcon, priorityBadge, title, tagsStr, scoreBadge)
-	if dueStr != "" {
-		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:       task,
+		IsSelected: isSelected,
+		MaxTitle:   maxTitleLen,
+		PreBadges:  checkbox + MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+		PostTitle:  renderInlineTags(task.Tags) + scoreBadge,
+		DueStr:     dueStr,
+		ViewWidth:  m.width,
+	}.Render()
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.

@@ -128,39 +128,20 @@ var FocusViewNavigationPrefixHints = []PrefixHint{
 // renderTaskLine renders a single task line.
 func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleLen int) string {
 	task := ft.Task
-
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
 	projectName := util.Truncate(ft.Project.Name, 12)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	priorityBadge := renderPriorityBadge(task.Priority)
-
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
-
-	tagsStr := renderInlineTags(task.Tags)
 
 	dueStr := ""
 	if task.DueDate != nil {
 		dueStr = formatRelativeDue(task.DueDate, true)
 	}
 
-	line := fmt.Sprintf("%s%s %s %s %s %s%s", cursor, projectStr, statusIcon, typeIcon, priorityBadge, title, tagsStr)
-	if dueStr != "" {
-		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:       task,
+		IsSelected: isSelected,
+		MaxTitle:   maxTitleLen,
+		PreBadges:  MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+		PostTitle:  renderInlineTags(task.Tags),
+		DueStr:     dueStr,
+		ViewWidth:  m.width,
+	}.Render()
 }
