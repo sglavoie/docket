@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleSectionMessages handles section-related messages.
@@ -45,7 +47,9 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowPriorityPickerMsg:
-		if msg.Task != nil && msg.Project != nil {
+		if msg.BoardItem != nil {
+			m.showView(ViewPriorityPicker, NewBoardItemPriorityPickerModel(msg.BoardItem))
+		} else if msg.Task != nil && msg.Project != nil {
 			m.showView(ViewPriorityPicker, NewPriorityPickerModel(msg.Task, msg.Project))
 		}
 		return true, nil
@@ -55,6 +59,18 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Canceled {
 			m.pendingBulkTasks = nil
 			return true, nil
+		}
+
+		// Board item priority
+		if msg.BoardItem != nil {
+			msg.BoardItem.Priority = msg.Priority
+			msg.BoardItem.UpdatedAt = time.Now()
+			if err := storage.SaveBoardItem(m.config.DataDir, msg.BoardItem); err != nil {
+				return true, errorCmd("Failed to save: " + err.Error())
+			}
+			return true, func() tea.Msg {
+				return FocusBoardRefreshMsg{}
+			}
 		}
 
 		// Check if this is a bulk operation from palette

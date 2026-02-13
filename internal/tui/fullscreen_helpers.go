@@ -149,7 +149,7 @@ func renderInlineTags(tags []string) string {
 	if len(display) > 2 {
 		display = display[:2]
 	}
-	return MutedStyle.Render(" #" + strings.Join(display, " #"))
+	return TagInlineStyle.Render(" #" + strings.Join(display, " #"))
 }
 
 // renderPriorityBadge renders a priority indicator with color styling.

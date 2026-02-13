@@ -16,7 +16,7 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		Keybinding{Key: "X", Description: "Dismiss item", Category: "Actions", Views: views},
 		Keybinding{Key: "d", Description: "Toggle done/open", Category: "Actions", Views: views},
 		Keybinding{Key: "D", Description: "Delete permanently", Category: "Actions", Views: views},
-		Keybinding{Key: "p", Description: "Cycle priority", Category: "Actions", Views: views},
+		Keybinding{Key: "p", Description: "Set priority", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit in editor", Category: "Actions", Views: views},
 		Keybinding{Key: "E", Description: "Quick-edit title", Category: "Actions", Views: views},
 	)

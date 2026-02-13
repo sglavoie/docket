@@ -206,9 +206,9 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 		priorityBadge := boardPriorityBadge(item.Priority)
 		sourceBadge := ""
 		if item.Source != "" {
-			sourceBadge = MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(item.Source, 10)))
+			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", util.Truncate(item.Source, 10)))
 		} else {
-			sourceBadge = MutedStyle.Render("[board]")
+			sourceBadge = DependencyStyle.Render("[board]")
 		}
 		projectBadge := ""
 		if item.ProjectName != "" {

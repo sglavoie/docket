@@ -305,13 +305,17 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.toggleDone()
 
-	// Cycle priority
+	// Set priority
 	case "p":
 		if row := m.getRowAtCursor(); row != nil && row.isTask() {
 			m.statusMessage = "Use project tree to manage tasks"
 			return m, nil
 		}
-		return m.cyclePriority()
+		if row := m.getRowAtCursor(); row != nil && row.isBoardItem() {
+			return m, func() tea.Msg {
+				return ShowPriorityPickerMsg{BoardItem: row.BoardItem}
+			}
+		}
 
 	// Open URL / navigate to task
 	case "enter":
@@ -561,24 +565,6 @@ func (m *FocusBoardModel) toggleDone() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// cyclePriority cycles the priority of the current board item.
-func (m *FocusBoardModel) cyclePriority() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil || !row.isBoardItem() {
-		return m, nil
-	}
-	row.BoardItem.Priority = row.BoardItem.Priority%5 + 1
-	row.BoardItem.UpdatedAt = time.Now()
-	if err := storage.SaveBoardItem(m.config.DataDir, row.BoardItem); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
-	} else {
-		m.statusMessage = fmt.Sprintf("Priority → P%d", row.BoardItem.Priority)
-		m.loadItems()
-		m.clampCursor()
-	}
-	return m, nil
-}
-
 // handleEnter opens URL or navigates to task.
 func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 	row := m.getRowAtCursor()
@@ -689,7 +675,7 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 		{Key: "X", Description: "Dismiss item"},
 		{Key: "d", Description: "Toggle done/open (reopen on Closed tab)"},
 		{Key: "D", Description: "Delete permanently"},
-		{Key: "p", Description: "Cycle priority"},
+		{Key: "p", Description: "Set priority"},
 		{Key: "e", Description: "Edit in editor"},
 		{Key: "E", Description: "Quick-edit title"},
 		{Key: "o", Description: "Open URL"},

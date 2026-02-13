@@ -39,22 +39,25 @@ func (p PriorityInfo) ItemID() string {
 // PriorityPickerModel allows selecting a priority to assign to a task.
 type PriorityPickerModel struct {
 	*BasePicker[PriorityInfo]
-	task    *models.Task
-	project *models.Project
+	task      *models.Task
+	project   *models.Project
+	boardItem *models.BoardItem
 }
 
 // ShowPriorityPickerMsg is sent to open the priority picker for assignment.
 type ShowPriorityPickerMsg struct {
-	Task    *models.Task
-	Project *models.Project
+	Task      *models.Task
+	Project   *models.Project
+	BoardItem *models.BoardItem
 }
 
 // PriorityPickerDoneMsg is sent when the priority picker is done.
 type PriorityPickerDoneMsg struct {
-	Task     *models.Task
-	Project  *models.Project
-	Priority int
-	Canceled bool
+	Task      *models.Task
+	Project   *models.Project
+	BoardItem *models.BoardItem
+	Priority  int
+	Canceled  bool
 }
 
 // NewPriorityPickerModel creates a new priority picker for task assignment.
@@ -85,6 +88,32 @@ func NewPriorityPickerModel(task *models.Task, project *models.Project) *Priorit
 	}
 }
 
+// NewBoardItemPriorityPickerModel creates a priority picker for a board item.
+func NewBoardItemPriorityPickerModel(item *models.BoardItem) *PriorityPickerModel {
+	priorities := []PriorityInfo{
+		{Priority: 1, Description: "Critical"},
+		{Priority: 2, Description: "High"},
+		{Priority: 3, Description: "Normal"},
+		{Priority: 4, Description: "Low"},
+		{Priority: 5, Description: "Someday"},
+	}
+
+	picker := NewBasePicker(priorities, PickerConfig{
+		Title:          "Set Priority",
+		EmptyMessage:   "No priorities available",
+		NoMatchMessage: "No matching priorities",
+		MultiSelect:    false,
+		ShowCounts:     false,
+	})
+
+	picker.SetCursorToID(fmt.Sprintf("%d", item.Priority))
+
+	return &PriorityPickerModel{
+		BasePicker: picker,
+		boardItem:  item,
+	}
+}
+
 // Init initializes the model.
 func (m *PriorityPickerModel) Init() tea.Cmd {
 	return nil
@@ -102,9 +131,10 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:     m.task,
-					Project:  m.project,
-					Canceled: true,
+					Task:      m.task,
+					Project:   m.project,
+					BoardItem: m.boardItem,
+					Canceled:  true,
 				}
 			}
 
@@ -113,18 +143,20 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				priority := m.Filtered[m.Cursor].Priority
 				return m, func() tea.Msg {
 					return PriorityPickerDoneMsg{
-						Task:     m.task,
-						Project:  m.project,
-						Priority: priority,
-						Canceled: false,
+						Task:      m.task,
+						Project:   m.project,
+						BoardItem: m.boardItem,
+						Priority:  priority,
+						Canceled:  false,
 					}
 				}
 			}
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:     m.task,
-					Project:  m.project,
-					Canceled: true,
+					Task:      m.task,
+					Project:   m.project,
+					BoardItem: m.boardItem,
+					Canceled:  true,
 				}
 			}
 
@@ -133,10 +165,11 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			priority := int(msg.String()[0] - '0')
 			return m, func() tea.Msg {
 				return PriorityPickerDoneMsg{
-					Task:     m.task,
-					Project:  m.project,
-					Priority: priority,
-					Canceled: false,
+					Task:      m.task,
+					Project:   m.project,
+					BoardItem: m.boardItem,
+					Priority:  priority,
+					Canceled:  false,
 				}
 			}
 
@@ -155,12 +188,20 @@ func (m *PriorityPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *PriorityPickerModel) View() string {
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
+	var subtitle string
+	var currentPriority int
+	if m.boardItem != nil {
+		subtitle = fmt.Sprintf("Board #%d: %s", m.boardItem.ShortID, util.Truncate(m.boardItem.Title, 25))
+		currentPriority = m.boardItem.Priority
+	} else {
+		subtitle = fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 25))
+		currentPriority = m.task.Priority
+	}
 	b.WriteString(renderFullscreenTitle("Set Priority", subtitle))
 	b.WriteString("\n\n")
 
 	// Current priority
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: Priority %d", m.task.Priority)))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Current: Priority %d", currentPriority)))
 	b.WriteString("\n\n")
 
 	// List with priority colors
