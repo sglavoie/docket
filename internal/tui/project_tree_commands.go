@@ -2,12 +2,45 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
 )
+
+// deleteLinkedBoardItems removes all linked board items from disk and clears
+// the field. Called when user confirms cascade delete (y=both).
+func (m *ProjectTreeModel) deleteLinkedBoardItems() {
+	for _, item := range m.linkedBoardItems {
+		_ = storage.DeleteBoardItem(m.config.DataDir, item)
+	}
+	m.linkedBoardItems = nil
+}
+
+// unlinkLinkedBoardItems clears the link on all linked board items without
+// deleting them. Called when user chooses task-only delete (t=task only).
+func (m *ProjectTreeModel) unlinkLinkedBoardItems() {
+	for _, item := range m.linkedBoardItems {
+		item.ClearLink()
+		_ = storage.SaveBoardItem(m.config.DataDir, item)
+	}
+	m.linkedBoardItems = nil
+}
+
+// linkedBoardItemIDs returns a display string of linked board item short IDs.
+func (m *ProjectTreeModel) linkedBoardItemIDs() string {
+	if len(m.linkedBoardItems) == 1 {
+		return fmt.Sprintf("#%d", m.linkedBoardItems[0].ShortID)
+	}
+	ids := make([]string, len(m.linkedBoardItems))
+	for i, item := range m.linkedBoardItems {
+		ids[i] = fmt.Sprintf("#%d", item.ShortID)
+	}
+	return strings.Join(ids, ", ")
+}
 
 func (m *ProjectTreeModel) archiveProject() tea.Cmd {
 	return func() tea.Msg {
@@ -215,7 +248,7 @@ func (m *ProjectTreeModel) deleteTask() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		if err := deleteTasksFromProject(m.project, m.projectService, map[string]bool{task.ID: true}, &m.focusedTask); err != nil {
+		if err := deleteTasksFromProject(m.project, m.projectService, map[string]bool{task.ID: true}, &m.focusedTask, m.config.DataDir); err != nil {
 			return ErrorMsg{Err: err}
 		}
 
@@ -251,7 +284,7 @@ func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		if err := deleteTasksFromProject(m.project, m.projectService, targetIDs, &m.focusedTask); err != nil {
+		if err := deleteTasksFromProject(m.project, m.projectService, targetIDs, &m.focusedTask, m.config.DataDir); err != nil {
 			return ErrorMsg{Err: err}
 		}
 

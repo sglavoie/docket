@@ -49,8 +49,7 @@ func runBoardLink(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Board item #%d has no linked task.\n", item.ShortID)
 			return nil
 		}
-		item.LinkedTaskID = ""
-		item.UpdatedAt = item.CreatedAt // reset to show it was modified
+		item.ClearLink()
 		fmt.Printf("Unlinked board item #%d\n", item.ShortID)
 	} else {
 		if len(args) < 2 {

@@ -245,6 +245,15 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 		lines = append(lines, csLine)
 	}
 
+	if task.Source != "" {
+		lines = append(lines, MutedStyle.Render("Source:  ")+task.Source)
+	}
+	if task.URL != "" {
+		display := util.Truncate(task.URL, innerWidth-5)
+		link := Hyperlink(task.URL, display)
+		lines = append(lines, MutedStyle.Render("URL:     ")+link)
+	}
+
 	if len(showAttrs) == 0 || showAttrs[0] {
 		attrLines := formatTaskAttributes(task, innerWidth)
 		if len(attrLines) > 0 {

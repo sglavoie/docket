@@ -14,6 +14,7 @@ import (
 type taskOpsView interface {
 	getTaskRef() (task *models.Task, project *models.Project)
 	getPersister() Persister
+	getDataDir() string
 	reloadData()
 	clampCursor()
 	setErr(error)
@@ -99,8 +100,9 @@ func taskOpsSectionMove(v taskOpsView, section string) (tea.Model, tea.Cmd) {
 
 // taskOpsDeleteTask deletes the task at cursor.
 func taskOpsDeleteTask(v taskOpsView) (tea.Model, tea.Cmd) {
+	dataDir := v.getDataDir()
 	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
-		return applyDeleteTask(pf, project, taskID)
+		return applyDeleteTask(pf, project, taskID, dataDir)
 	})
 	return v.(tea.Model), cmd
 }

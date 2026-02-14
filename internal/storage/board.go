@@ -143,6 +143,21 @@ func FindBoardItem(bd *BoardData, query string) *models.BoardItem {
 	return nil
 }
 
+// FindBoardItemsByTaskID returns all board items linked to the given task ID.
+func FindBoardItemsByTaskID(dataDir, taskID string) ([]*models.BoardItem, error) {
+	bd, err := LoadBoard(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	var matched []*models.BoardItem
+	for _, item := range bd.Items {
+		if item.LinkedTaskID == taskID {
+			matched = append(matched, item)
+		}
+	}
+	return matched, nil
+}
+
 // boardFrontmatter holds the YAML frontmatter fields for board items.
 type boardFrontmatter struct {
 	ID           string                 `yaml:"id"`

@@ -82,6 +82,14 @@ func (b *BoardItem) MarkDismissed() {
 	b.UpdatedAt = now
 }
 
+// ClearLink removes the linked task reference and associated project fields.
+func (b *BoardItem) ClearLink() {
+	b.LinkedTaskID = ""
+	b.ProjectID = ""
+	b.ProjectName = ""
+	b.UpdatedAt = time.Now()
+}
+
 // Reopen resets the item to open status.
 func (b *BoardItem) Reopen() {
 	b.Status = BoardItemOpen

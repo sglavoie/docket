@@ -101,7 +101,16 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 				m.deleteTarget.ShortID, m.deleteTarget.Title)
 		} else if m.confirmAction == ConfirmDelete && m.deleteTarget != nil {
 			childCount := m.deleteTarget.CountChildren()
-			if childCount > 0 {
+			if len(m.linkedBoardItems) > 0 {
+				boardIDs := m.linkedBoardItemIDs()
+				if childCount > 0 {
+					prompt = fmt.Sprintf("Delete task #%d and %d children + board item %s? (y=both / t=task only / n=cancel)",
+						m.deleteTarget.ShortID, childCount, boardIDs)
+				} else {
+					prompt = fmt.Sprintf("Delete task #%d and board item %s? (y=both / t=task only / n=cancel)",
+						m.deleteTarget.ShortID, boardIDs)
+				}
+			} else if childCount > 0 {
 				prompt = fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title, childCount)
 			} else {
 				prompt = fmt.Sprintf("Delete task #%d '%s'? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title)
@@ -111,7 +120,16 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			for _, task := range m.getSelectedTasks() {
 				totalChildren += task.CountChildren()
 			}
-			if totalChildren > 0 {
+			if len(m.linkedBoardItems) > 0 {
+				boardIDs := m.linkedBoardItemIDs()
+				if totalChildren > 0 {
+					prompt = fmt.Sprintf("Delete %d tasks + %d children + board item %s? (y=both / t=tasks only / n=cancel)",
+						len(m.selectedTasks), totalChildren, boardIDs)
+				} else {
+					prompt = fmt.Sprintf("Delete %d tasks + board item %s? (y=both / t=tasks only / n=cancel)",
+						len(m.selectedTasks), boardIDs)
+				}
+			} else if totalChildren > 0 {
 				prompt = fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren)
 			} else {
 				prompt = fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks))

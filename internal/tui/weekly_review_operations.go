@@ -17,6 +17,7 @@ func (m *WeeklyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *WeeklyReviewModel) getPersister() Persister { return defaultPersister }
+func (m *WeeklyReviewModel) getDataDir() string      { return m.config.DataDir }
 func (m *WeeklyReviewModel) reloadData()             { m.loadData() }
 func (m *WeeklyReviewModel) setErr(err error)        { m.err = err }
 func (m *WeeklyReviewModel) setStatus(msg string)    { m.statusMessage = msg }

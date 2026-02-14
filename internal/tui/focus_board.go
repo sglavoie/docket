@@ -383,6 +383,11 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePrefixKey(key)
 	}
 
+	// Handle confirmation dialog before other key processing
+	if m.confirm.IsActive() {
+		return m.handleConfirmKey(key)
+	}
+
 	// Navigation
 	if handleListNavigation(key, &m.cursor, len(m.filtered)) {
 		return m, nil
@@ -500,27 +505,12 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if row.isBoardItem() {
-				m.confirm.Show("delete", fmt.Sprintf("Delete board item #%d? (y/n)", row.BoardItem.ShortID))
+				if row.BoardItem.LinkedTaskID != "" {
+					m.confirm.Show("delete-linked", fmt.Sprintf("Delete #%d and linked task? (y=both / b=board only / n=cancel)", row.BoardItem.ShortID))
+				} else {
+					m.confirm.Show("delete", fmt.Sprintf("Delete board item #%d? (y/n)", row.BoardItem.ShortID))
+				}
 				m.statusMessage = m.confirm.Prompt()
-				return m, nil
-			}
-		}
-
-	// Handle confirm dialog
-	case "y":
-		if m.confirm.IsActive() {
-			confirmed, handled := m.confirm.HandleKey(key)
-			if handled && confirmed {
-				return m.deleteItem()
-			}
-			m.statusMessage = ""
-			return m, nil
-		}
-	case "n":
-		if m.confirm.IsActive() {
-			_, handled := m.confirm.HandleKey(key)
-			if handled {
-				m.statusMessage = ""
 				return m, nil
 			}
 		}
@@ -710,6 +700,31 @@ func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleConfirmKey handles key input while the confirmation dialog is active.
+func (m *FocusBoardModel) handleConfirmKey(key string) (tea.Model, tea.Cmd) {
+	action := m.confirm.Action()
+	switch key {
+	case "y", "Y":
+		m.confirm.Cancel()
+		m.statusMessage = ""
+		if action == "delete-linked" {
+			return m.deleteItem(true)
+		}
+		return m.deleteItem(false)
+	case "b", "B":
+		if action == "delete-linked" {
+			m.confirm.Cancel()
+			m.statusMessage = ""
+			return m.deleteItem(false)
+		}
+	case "n", "N", "esc":
+		m.confirm.Cancel()
+		m.statusMessage = ""
+		return m, nil
+	}
+	return m, nil
+}
+
 // createItemFromInput parses the add input and creates a board item.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
@@ -856,20 +871,71 @@ func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// deleteItem deletes the board item at cursor.
-func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
+// deleteItem deletes the board item at cursor. When cascade is true and the
+// item has a linked task, the linked task is also removed from its project.
+func (m *FocusBoardModel) deleteItem(cascade bool) (tea.Model, tea.Cmd) {
 	row := m.getRowAtCursor()
 	if row == nil || !row.isBoardItem() {
 		return m, nil
 	}
-	if err := storage.DeleteBoardItem(m.config.DataDir, row.BoardItem); err != nil {
+
+	item := row.BoardItem
+
+	// Cascade: delete the linked task from its project
+	if cascade && item.LinkedTaskID != "" {
+		m.deleteLinkedTask(item)
+	}
+
+	if err := storage.DeleteBoardItem(m.config.DataDir, item); err != nil {
 		m.statusMessage = "Failed to delete: " + err.Error()
 	} else {
-		m.statusMessage = fmt.Sprintf("Deleted #%d", row.BoardItem.ShortID)
+		m.statusMessage = fmt.Sprintf("Deleted #%d", item.ShortID)
 		m.loadItems()
 		m.clampCursor()
 	}
 	return m, nil
+}
+
+// deleteLinkedTask removes the task linked to a board item from its project.
+// Best-effort: errors are silently ignored since the board item deletion
+// is the primary action.
+func (m *FocusBoardModel) deleteLinkedTask(item *models.BoardItem) {
+	if item.ProjectID == "" {
+		return
+	}
+	// Find the project
+	for _, project := range m.config.GetActiveProjects() {
+		if project.ID != item.ProjectID {
+			continue
+		}
+		if err := m.projectService.Load(project); err != nil {
+			return
+		}
+		task := project.GetTaskByID(item.LinkedTaskID)
+		if task == nil {
+			return
+		}
+		targetIDs := collectDescendantIDs(project.Tasks, map[string]bool{task.ID: true})
+		// Clean up attachments
+		for _, t := range project.Tasks {
+			if targetIDs[t.ID] {
+				_ = storage.CleanupTaskAttachments(project, t)
+			}
+		}
+		// Filter out deleted tasks and clear dangling parents
+		var remaining []*models.Task
+		for _, t := range project.Tasks {
+			if !targetIDs[t.ID] {
+				if t.ParentID != nil && targetIDs[*t.ParentID] {
+					t.ParentID = nil
+				}
+				remaining = append(remaining, t)
+			}
+		}
+		project.Tasks = remaining
+		_ = m.projectService.Save(project)
+		return
+	}
 }
 
 // editInEditor opens the board item in an external editor.

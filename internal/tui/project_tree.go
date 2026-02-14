@@ -205,6 +205,9 @@ type ProjectTreeModel struct {
 	// Score filter custom value input
 	scoreFilterInput ScoreFilterInput
 
+	// Linked board items for the current delete target (used for cascade prompt)
+	linkedBoardItems []*models.BoardItem
+
 	// Undo context for the next save operation
 	pendingUndoAction  string // Action description (e.g., "Complete Task")
 	pendingUndoContext string // Additional context (e.g., task title)

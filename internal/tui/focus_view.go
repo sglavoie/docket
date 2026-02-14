@@ -439,6 +439,7 @@ func (m *FocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *FocusViewModel) getPersister() Persister { return m.projectService }
+func (m *FocusViewModel) getDataDir() string      { return m.config.DataDir }
 func (m *FocusViewModel) reloadData()             { m.loadTasks() }
 func (m *FocusViewModel) setErr(err error)        { m.err = err }
 func (m *FocusViewModel) setStatus(msg string)    { m.statusMessage = msg }

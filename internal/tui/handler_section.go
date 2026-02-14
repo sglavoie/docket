@@ -66,7 +66,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			msg.BoardItem.Priority = msg.Priority
 			msg.BoardItem.UpdatedAt = time.Now()
 			if err := storage.SaveBoardItem(m.config.DataDir, msg.BoardItem); err != nil {
-				return true, errorCmd("Failed to save: " + err.Error())
+				return true, errorCmd("Failed to save: %v", err)
 			}
 			return true, func() tea.Msg {
 				return FocusBoardRefreshMsg{}

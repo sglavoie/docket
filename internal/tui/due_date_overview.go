@@ -549,6 +549,7 @@ func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
 }
 
 func (m *DueDateOverviewModel) getPersister() Persister { return m.projectService }
+func (m *DueDateOverviewModel) getDataDir() string      { return m.config.DataDir }
 func (m *DueDateOverviewModel) reloadData()             { m.loadTasksWithDueDates() }
 func (m *DueDateOverviewModel) setErr(err error)        { m.err = err }
 func (m *DueDateOverviewModel) setStatus(msg string)    { m.statusMessage = msg }

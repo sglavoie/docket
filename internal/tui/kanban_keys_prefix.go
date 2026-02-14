@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handlePrefixKey handles the second key in a prefix key sequence.
@@ -283,14 +284,33 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		return m, nil
 	case "D":
 		if m.multiSelectMode && m.selectedCount() > 0 {
-			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
-			m.confirm.Show("delete", m.statusMessage)
+			// Collect linked board items for all selected tasks
+			m.linkedBoardItems = nil
+			for id := range m.selectedTasks {
+				items, _ := storage.FindBoardItemsByTaskID(m.config.DataDir, id)
+				m.linkedBoardItems = append(m.linkedBoardItems, items...)
+			}
+			if len(m.linkedBoardItems) > 0 {
+				boardIDs := m.linkedBoardItemIDs()
+				m.statusMessage = fmt.Sprintf("Delete %d tasks + board item %s? (y=both / t=tasks only / n=cancel)", m.selectedCount(), boardIDs)
+				m.confirm.Show("delete-linked", m.statusMessage)
+			} else {
+				m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
+				m.confirm.Show("delete", m.statusMessage)
+			}
 			return m, nil
 		}
 		if task != nil {
 			m.deleteTarget = task
-			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
-			m.confirm.Show("delete", m.statusMessage)
+			m.linkedBoardItems, _ = storage.FindBoardItemsByTaskID(m.config.DataDir, task.ID)
+			if len(m.linkedBoardItems) > 0 {
+				boardIDs := m.linkedBoardItemIDs()
+				m.statusMessage = fmt.Sprintf("Delete task #%d and board item %s? (y=both / t=task only / n=cancel)", task.ShortID, boardIDs)
+				m.confirm.Show("delete-linked", m.statusMessage)
+			} else {
+				m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
+				m.confirm.Show("delete", m.statusMessage)
+			}
 		}
 		return m, nil
 	}

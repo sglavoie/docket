@@ -153,9 +153,10 @@ type KanbanViewModel struct {
 	quickAddParentCache  []*models.Task
 	quickAddSectionCache []string
 
-	// Confirmation state (actions: "delete", "archive")
-	confirm      ConfirmDialog
-	deleteTarget *models.Task
+	// Confirmation state (actions: "delete", "delete-linked", "archive")
+	confirm          ConfirmDialog
+	deleteTarget     *models.Task
+	linkedBoardItems []*models.BoardItem
 
 	// Sorting state (per-column)
 	sortField     SortField            // current sort field for active column

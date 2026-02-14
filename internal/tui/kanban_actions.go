@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // KanbanTaskMovedMsg signals that a task was moved to a different column.
@@ -306,8 +308,39 @@ type KanbanTaskDeletedMsg struct {
 	Section string
 }
 
+// linkedBoardItemIDs returns a display string of linked board item short IDs.
+func (m *KanbanViewModel) linkedBoardItemIDs() string {
+	if len(m.linkedBoardItems) == 1 {
+		return fmt.Sprintf("#%d", m.linkedBoardItems[0].ShortID)
+	}
+	ids := make([]string, len(m.linkedBoardItems))
+	for i, item := range m.linkedBoardItems {
+		ids[i] = fmt.Sprintf("#%d", item.ShortID)
+	}
+	return strings.Join(ids, ", ")
+}
+
+// deleteLinkedBoardItems removes all linked board items from disk.
+func (m *KanbanViewModel) deleteLinkedBoardItems() {
+	for _, item := range m.linkedBoardItems {
+		_ = storage.DeleteBoardItem(m.config.DataDir, item)
+	}
+	m.linkedBoardItems = nil
+}
+
+// unlinkLinkedBoardItems clears the link on all linked board items without
+// deleting them.
+func (m *KanbanViewModel) unlinkLinkedBoardItems() {
+	for _, item := range m.linkedBoardItems {
+		item.ClearLink()
+		_ = storage.SaveBoardItem(m.config.DataDir, item)
+	}
+	m.linkedBoardItems = nil
+}
+
 // executeDelete deletes the currently targeted task and its descendants.
-func (m *KanbanViewModel) executeDelete() tea.Cmd {
+// If cascade is true, linked board items are also deleted.
+func (m *KanbanViewModel) executeDelete(cascade bool) tea.Cmd {
 	if m.deleteTarget == nil {
 		return nil
 	}
@@ -316,12 +349,18 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 	section := task.Section
 	m.deleteTarget = nil
 
+	if cascade {
+		m.deleteLinkedBoardItems()
+	} else if len(m.linkedBoardItems) > 0 {
+		m.unlinkLinkedBoardItems()
+	}
+
 	return func() tea.Msg {
 		if err := defaultPersister.Backup(m.Project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
 		}
 
-		if err := deleteTasksFromProject(m.Project, defaultPersister, map[string]bool{task.ID: true}, nil); err != nil {
+		if err := deleteTasksFromProject(m.Project, defaultPersister, map[string]bool{task.ID: true}, nil, m.config.DataDir); err != nil {
 			return ErrorMsg{Err: err}
 		}
 

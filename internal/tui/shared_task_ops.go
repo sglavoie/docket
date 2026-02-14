@@ -313,14 +313,18 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 	return result
 }
 
-// applyDeleteTask removes a task from a project.
-func applyDeleteTask(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+// applyDeleteTask removes a task from a project, unlinking any board items
+// that reference it.
+func applyDeleteTask(pf persistFn, project *models.Project, taskID string, dataDir string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
 	}
 
 	shortID := task.ShortID
+
+	// Unlink board items referencing this task
+	unlinkBoardItemsForTasks(dataDir, map[string]bool{taskID: true})
 
 	// Remove the task from the project first, then trigger the persist
 	// pipeline via a no-op mutate on any remaining task.
@@ -616,11 +620,29 @@ func collectDescendantIDs(tasks []*models.Task, rootIDs map[string]bool) map[str
 	return idsToDelete
 }
 
+// unlinkBoardItemsForTasks clears the link on any board items that reference
+// one of the given task IDs. Best-effort: errors are silently ignored.
+func unlinkBoardItemsForTasks(dataDir string, taskIDs map[string]bool) {
+	if dataDir == "" || len(taskIDs) == 0 {
+		return
+	}
+	bd, err := storage.LoadBoard(dataDir)
+	if err != nil {
+		return
+	}
+	for _, item := range bd.Items {
+		if item.LinkedTaskID != "" && taskIDs[item.LinkedTaskID] {
+			item.ClearLink()
+			_ = storage.SaveBoardItem(dataDir, item)
+		}
+	}
+}
+
 // deleteTasksFromProject removes the given task IDs (and all their descendants)
 // from the project. It handles attachment cleanup, dangling parent references,
-// and returns the filtered task list. If focusedTaskID points to a deleted task,
-// it is set to nil.
-func deleteTasksFromProject(project *models.Project, persister Persister, targetIDs map[string]bool, focusedTaskID **models.Task) error {
+// board item unlinking, and returns the filtered task list. If focusedTaskID
+// points to a deleted task, it is set to nil.
+func deleteTasksFromProject(project *models.Project, persister Persister, targetIDs map[string]bool, focusedTaskID **models.Task, dataDir string) error {
 	idsToDelete := collectDescendantIDs(project.Tasks, targetIDs)
 
 	// Clean up attachments for all tasks being deleted
@@ -629,6 +651,9 @@ func deleteTasksFromProject(project *models.Project, persister Persister, target
 			_ = storage.CleanupTaskAttachments(project, t)
 		}
 	}
+
+	// Unlink any board items referencing deleted tasks
+	unlinkBoardItemsForTasks(dataDir, idsToDelete)
 
 	// Exit focus mode if focused task is being deleted
 	if focusedTaskID != nil && *focusedTaskID != nil && idsToDelete[(*focusedTaskID).ID] {
