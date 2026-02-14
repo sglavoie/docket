@@ -23,6 +23,11 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 		// Scoring
 		Keybinding{Key: "S", Description: "Edit score dimensions", Category: "Scoring", Views: views},
 
+		// Filtering
+		Keybinding{Key: "F", Description: "Filter (F-prefix)", Category: "Filtering", Views: views},
+		Keybinding{Key: "/", Description: "Search", Category: "Filtering", Views: views},
+		Keybinding{Key: "Fx", Description: "Clear filters", Category: "Filtering", Views: views},
+
 		// Sorting
 		Keybinding{Key: "1-5", Description: "Sort by field", Category: "Sorting", Views: views},
 		Keybinding{Key: "0", Description: "Reset sort", Category: "Sorting", Views: views},

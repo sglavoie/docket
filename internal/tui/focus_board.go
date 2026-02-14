@@ -74,6 +74,15 @@ type FocusBoardModel struct {
 	sortField     SortField
 	sortAscending bool
 
+	// Filter
+	filter        CommonFilterState
+	pendingPrefix string
+
+	// Search
+	searchMode  bool
+	searchInput textinput.Model
+	searchQuery string
+
 	// Quick-add input
 	addMode  bool
 	addInput textinput.Model
@@ -105,11 +114,21 @@ func NewFocusBoardModel(cfg *config.Config) *FocusBoardModel {
 	ei.CharLimit = 200
 	ei.Width = 60
 
+	si := textinput.New()
+	si.Placeholder = "Search..."
+	si.CharLimit = 100
+	si.Width = 40
+
 	m := &FocusBoardModel{
 		config:         cfg,
 		projectService: NewProjectService(),
 		addInput:       ti,
 		editInput:      ei,
+		searchInput:    si,
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
 	m.loadItems()
 	return m
@@ -223,6 +242,27 @@ func (m *FocusBoardModel) applyFilter() {
 		copy(m.filtered, m.rows)
 	}
 
+	// Apply common filters and search
+	if hasActiveCommonFilters(&m.filter) || m.searchQuery != "" {
+		var passed []boardRow
+		for _, r := range m.filtered {
+			if r.isTask() {
+				if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(r.Task, &m.filter, r.Project.ID, m.config) {
+					continue
+				}
+			} else if r.isBoardItem() {
+				if hasActiveCommonFilters(&m.filter) && !boardItemPassesFilters(r, &m.filter) {
+					continue
+				}
+			}
+			if m.searchQuery != "" && !m.matchesSearch(r) {
+				continue
+			}
+			passed = append(passed, r)
+		}
+		m.filtered = passed
+	}
+
 	// Apply sorting: user-selected field, or default score-descending on By Score tab
 	if m.sortField != SortByDefault {
 		m.applySorting()
@@ -310,6 +350,7 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		inputWidth := max(msg.Width-8, 30)
 		m.addInput.Width = inputWidth
 		m.editInput.Width = inputWidth
+		m.searchInput.Width = max(msg.Width-20, 30)
 		return m, nil
 
 	case FocusBoardRefreshMsg:
@@ -324,6 +365,9 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.editMode {
 			return m.handleEditInput(msg)
 		}
+		if m.searchMode {
+			return m.handleSearchInput(msg)
+		}
 		return m.handleKeyMsg(msg)
 	}
 
@@ -334,6 +378,11 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle pending prefix keys (which-key style)
+	if m.pendingPrefix != "" {
+		return m.handlePrefixKey(key)
+	}
+
 	// Navigation
 	if handleListNavigation(key, &m.cursor, len(m.filtered)) {
 		return m, nil
@@ -341,7 +390,26 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "esc", "q":
+		if m.HasActiveFilters() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+			return m, nil
+		}
 		return m, func() tea.Msg { return CloseFocusBoardMsg{} }
+
+	// Filter prefix
+	case "F":
+		m.pendingPrefix = "F"
+		return m, nil
+
+	// Search
+	case "/":
+		m.searchMode = true
+		m.searchInput.SetValue(m.searchQuery)
+		m.searchInput.Focus()
+		return m, textinput.Blink
 
 	// Tab navigation
 	case "tab", "]", "l":
@@ -569,6 +637,56 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+// handleSearchInput processes keyboard input while in search mode.
+func (m *FocusBoardModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.searchQuery = ""
+		m.searchInput.SetValue("")
+		m.applyFilter()
+		m.clampCursor()
+		return m, nil
+
+	case "enter":
+		m.searchMode = false
+		m.searchInput.Blur()
+		m.searchQuery = strings.TrimSpace(m.searchInput.Value())
+		m.applyFilter()
+		m.clampCursor()
+		return m, nil
+
+	default:
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		m.searchQuery = strings.TrimSpace(m.searchInput.Value())
+		m.applyFilter()
+		m.clampCursor()
+		return m, cmd
+	}
+}
+
+// handlePrefixKey handles the second key in a prefix key sequence.
+func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
+	prefix := m.pendingPrefix
+	m.pendingPrefix = ""
+
+	if key == "esc" {
+		return m, nil
+	}
+
+	if isFilterSubPrefix(prefix) {
+		return m.handleFocusBoardFilterSubPrefix(prefix, key)
+	}
+
+	if prefix == "F" {
+		return m.handleFocusBoardFilterPrefix(key)
+	}
+
+	return m, nil
+}
+
 // createItemFromInput parses the add input and creates a board item.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
@@ -775,14 +893,14 @@ func (m *FocusBoardModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, len(m.filtered))
 }
 
-// ShouldCaptureEsc returns true when add mode or confirm dialog is active.
+// ShouldCaptureEsc returns true when add mode, search mode, or confirm dialog is active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.addMode || m.editMode || m.confirm.IsActive()
+	return m.addMode || m.editMode || m.searchMode || m.confirm.IsActive() || m.pendingPrefix != "" || m.HasActiveFilters()
 }
 
-// HasTextInput returns true when the add input is focused.
+// HasTextInput returns true when a text input is focused.
 func (m *FocusBoardModel) HasTextInput() bool {
-	return m.addMode || m.editMode
+	return m.addMode || m.editMode || m.searchMode
 }
 
 // GetHelpItems returns help items for this view.
@@ -800,10 +918,13 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 		{Key: "o", Description: "Open URL"},
 		{Key: "enter", Description: "Navigate to task / open URL"},
 		{Key: "tab/[/]", Description: "Switch tabs"},
+		{Key: "F", Description: "Filter (F-prefix)"},
+		{Key: "/", Description: "Search"},
+		{Key: "Fx", Description: "Clear filters"},
 		{Key: "1-5", Description: "Sort by field (pri/due/new/sts/scr)"},
 		{Key: "0", Description: "Reset sort"},
 		{Key: "j/k", Description: "Navigate list"},
-		{Key: "q/esc", Description: "Close"},
+		{Key: "q/esc", Description: "Close (clears filters first)"},
 	}
 }
 

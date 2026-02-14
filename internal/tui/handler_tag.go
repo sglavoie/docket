@@ -90,6 +90,14 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 					fv.clampCursor()
 				}
 			}
+		case ViewFocusBoard:
+			if v := m.views.Get(ViewFocusBoard); v != nil {
+				if fb, ok := v.(*FocusBoardModel); ok {
+					fb.filter.Tags = tags
+					fb.applyFilter()
+					fb.clampCursor()
+				}
+			}
 		case ViewDueDateOverview:
 			if v := m.views.Get(ViewDueDateOverview); v != nil {
 				if ddo, ok := v.(*DueDateOverviewModel); ok {

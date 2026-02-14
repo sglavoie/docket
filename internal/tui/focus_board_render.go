@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -28,6 +31,15 @@ func (m *FocusBoardModel) View() string {
 	// Tab bar
 	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.activeTab, nil, false, m.width))
 	b.WriteString("\n")
+
+	// Search input
+	inputBlockHeight := 0
+	if m.searchMode {
+		b.WriteString("  / ")
+		b.WriteString(m.searchInput.View())
+		b.WriteString("\n")
+		inputBlockHeight++
+	}
 
 	// Quick-add input
 	addBlockHeight := 0
@@ -128,11 +140,16 @@ func (m *FocusBoardModel) View() string {
 	if m.addMode {
 		contentHeight -= addBlockHeight
 	}
+	contentHeight -= inputBlockHeight
 
 	// Empty state
 	if len(m.filtered) == 0 {
 		b.WriteString("\n")
-		if m.activeTab == boardTabClosed {
+		if m.HasActiveFilters() {
+			b.WriteString(MutedStyle.Render("  No items match the active filters."))
+			b.WriteString("\n\n")
+			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
+		} else if m.activeTab == boardTabClosed {
 			b.WriteString(MutedStyle.Render("  No closed items."))
 		} else if len(m.rows) == 0 {
 			b.WriteString(MutedStyle.Render("  No items on the board."))
@@ -185,6 +202,9 @@ func (m *FocusBoardModel) View() string {
 		left = HelpStyle.Render("a add | x done | X dismiss | p priority | e edit | enter open/go")
 	}
 	var rightParts []string
+	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
+		rightParts = append(rightParts, indicator)
+	}
 	if m.sortField != SortByDefault {
 		direction := "↑"
 		if !m.sortAscending {
@@ -240,7 +260,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			}
 		}
 
-		title := util.Truncate(item.Title, maxTitleLen)
+		truncatedTitle := util.Truncate(item.Title, maxTitleLen)
+		title := m.highlightTitle(truncatedTitle, item.Title)
 		content := fmt.Sprintf("  %s %s%s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, linkIndicator, statusMarker, title)
 
 		if len(item.Tags) > 0 {
@@ -271,7 +292,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 			scoreBadge = " " + RenderScoreBadge(task, profile)
 		}
 
-		title := util.Truncate(task.Title, maxTitleLen)
+		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
+		title := m.highlightTitle(truncatedTitle, task.Title)
 		bullet := BoldStyle.Render("●")
 		content := fmt.Sprintf("  %s %s %s%s %s%s%s", bullet, priorityBadge, projectBadge, typeIcon, title, scoreBadge, dueStr)
 
@@ -284,6 +306,27 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	}
 
 	return b.String()
+}
+
+// highlightTitle returns the truncated title with search match positions highlighted.
+// If there's no active search query, returns the plain title.
+func (m *FocusBoardModel) highlightTitle(truncatedTitle, fullTitle string) string {
+	if m.searchQuery == "" {
+		return truncatedTitle
+	}
+	query := strings.TrimSpace(m.searchQuery)
+	_, positions := fuzzy.ScoreTermsWithPositions(fullTitle, query)
+	if len(positions) == 0 {
+		return truncatedTitle
+	}
+	titleRunes := []rune(truncatedTitle)
+	var validPositions []int
+	for _, p := range positions {
+		if p < len(titleRunes) {
+			validPositions = append(validPositions, p)
+		}
+	}
+	return HighlightText(truncatedTitle, validPositions, lipgloss.NewStyle())
 }
 
 // boardPriorityBadge returns a colored priority label for board items (P1, P2, etc.).
