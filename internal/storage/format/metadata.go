@@ -49,7 +49,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
-	"attachments", "snoozed", "checklist",
+	"attachments", "snoozed", "checklist", "source", "url",
 	// Type-specific attribute keys
 	"bug.reproducible", "bug.severity", "bug.workaround",
 	"idea.category", "idea.effort", "idea.value", "idea.validated",
@@ -250,6 +250,11 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					})
 				}
 			}
+
+		case "source":
+			task.Source = value
+		case "url":
+			task.URL = value
 
 		// Bug attributes
 		case "bug.reproducible":
@@ -523,6 +528,14 @@ func WriteMetadata(task *models.Task) string {
 			checklistStrings = append(checklistStrings, item.Text+marker)
 		}
 		parts = append(parts, fmt.Sprintf("checklist: %s", strings.Join(checklistStrings, ";")))
+	}
+
+	if task.Source != "" {
+		parts = append(parts, fmt.Sprintf("source: %s", task.Source))
+	}
+
+	if task.URL != "" {
+		parts = append(parts, fmt.Sprintf("url: %s", task.URL))
 	}
 
 	// Type-specific attributes

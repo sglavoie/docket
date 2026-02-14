@@ -48,6 +48,8 @@ type Task struct {
 	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
+	Source        string             `json:"source,omitempty"`        // Origin of the task (e.g., "github", "jira")
+	URL           string             `json:"url,omitempty"`           // External reference URL
 
 	// Scoring dimensions: manual overrides for scoring profile dimensions (e.g., "impact": 4)
 	ScoreDimensions map[string]int `json:"score_dimensions,omitempty"`

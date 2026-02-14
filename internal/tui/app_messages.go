@@ -792,6 +792,21 @@ type FocusBoardSelectMsg struct {
 	Project *models.Project
 }
 
+// ShowBoardItemConverterMsg opens the board item converter view.
+type ShowBoardItemConverterMsg struct {
+	BoardItem *models.BoardItem
+}
+
+// CloseBoardItemConverterMsg closes the board item converter view.
+type CloseBoardItemConverterMsg struct{}
+
+// BoardItemConvertedMsg signals a board item was converted to a project task.
+type BoardItemConvertedMsg struct {
+	Task      *models.Task
+	Project   *models.Project
+	BoardItem *models.BoardItem
+}
+
 // =============================================================================
 // Score Profile Manager Messages (Show/Close Pattern)
 // =============================================================================

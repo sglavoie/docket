@@ -540,6 +540,29 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Convert board item to project task
+	case "c":
+		if row := m.getRowAtCursor(); row != nil {
+			if row.isTask() {
+				m.statusMessage = "Navigate to project tree to manage tasks"
+				return m, nil
+			}
+			if row.isBoardItem() {
+				if row.BoardItem.LinkedTaskID != "" {
+					m.statusMessage = "Already linked to a task"
+					return m, nil
+				}
+				if !row.BoardItem.IsOpen() {
+					m.statusMessage = "Can only convert open items"
+					return m, nil
+				}
+				return m, func() tea.Msg {
+					return ShowBoardItemConverterMsg{BoardItem: row.BoardItem}
+				}
+			}
+		}
+		return m, nil
+
 	// Score editor
 	case "S":
 		if row := m.getRowAtCursor(); row != nil {
@@ -914,6 +937,7 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 		{Key: "p", Description: "Set priority"},
 		{Key: "e", Description: "Edit in editor"},
 		{Key: "E", Description: "Quick-edit title"},
+		{Key: "c", Description: "Convert to project task"},
 		{Key: "S", Description: "Edit score dimensions"},
 		{Key: "o", Description: "Open URL"},
 		{Key: "enter", Description: "Navigate to task / open URL"},
