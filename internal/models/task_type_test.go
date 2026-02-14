@@ -12,6 +12,7 @@ func TestTaskTypeValid(t *testing.T) {
 		{TaskTypeTask, true},
 		{TaskTypeBug, true},
 		{TaskTypeIdea, true},
+		{TaskTypeAction, true},
 		{TaskType("invalid"), false},
 		{TaskType(""), false},
 	}
@@ -30,11 +31,12 @@ func TestTaskTypeAllowedChildren(t *testing.T) {
 		taskType TaskType
 		expected []TaskType
 	}{
-		{TaskTypeEpic, []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}},
-		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea}},
+		{TaskTypeEpic, []TaskType{TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}},
+		{TaskTypeStory, []TaskType{TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}},
 		{TaskTypeTask, []TaskType{}},
 		{TaskTypeBug, []TaskType{}},
 		{TaskTypeIdea, []TaskType{}},
+		{TaskTypeAction, []TaskType{}},
 	}
 
 	for _, tc := range tests {
@@ -63,6 +65,7 @@ func TestTaskTypeCanHaveChildren(t *testing.T) {
 		{TaskTypeTask, false},
 		{TaskTypeBug, false},
 		{TaskTypeIdea, false},
+		{TaskTypeAction, false},
 	}
 
 	for _, tc := range tests {
@@ -105,6 +108,12 @@ func TestTaskTypeCanBeChildOf(t *testing.T) {
 		{TaskTypeIdea, TaskTypeEpic, true},
 		{TaskTypeIdea, TaskTypeStory, true},
 		{TaskTypeIdea, TaskTypeTask, false},
+
+		// Action can be child of Epic or Story
+		{TaskTypeAction, TaskTypeEpic, true},
+		{TaskTypeAction, TaskTypeStory, true},
+		{TaskTypeAction, TaskTypeTask, false},
+		{TaskTypeAction, TaskTypeAction, false},
 	}
 
 	for _, tc := range tests {
@@ -127,6 +136,7 @@ func TestTaskTypeIcon(t *testing.T) {
 		{TaskTypeTask, "T"},
 		{TaskTypeBug, "B"},
 		{TaskTypeIdea, "I"},
+		{TaskTypeAction, "A"},
 		{TaskType("invalid"), "?"},
 	}
 
@@ -149,6 +159,7 @@ func TestTaskTypeHeadingPrefix(t *testing.T) {
 		{TaskTypeTask, "Task"},
 		{TaskTypeBug, "Bug"},
 		{TaskTypeIdea, "Idea"},
+		{TaskTypeAction, "Action"},
 		{TaskType("invalid"), "Task"},
 	}
 
@@ -172,6 +183,7 @@ func TestParseTaskType(t *testing.T) {
 		{"task", TaskTypeTask, true},
 		{"bug", TaskTypeBug, true},
 		{"idea", TaskTypeIdea, true},
+		{"action", TaskTypeAction, true},
 		{"invalid", TaskType("invalid"), false},
 		{"", TaskType(""), false},
 	}
@@ -191,7 +203,7 @@ func TestParseTaskType(t *testing.T) {
 
 func TestAllTaskTypes(t *testing.T) {
 	types := AllTaskTypes()
-	expected := []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea}
+	expected := []TaskType{TaskTypeEpic, TaskTypeStory, TaskTypeTask, TaskTypeBug, TaskTypeIdea, TaskTypeAction}
 
 	if len(types) != len(expected) {
 		t.Errorf("AllTaskTypes() has %d items, want %d", len(types), len(expected))
@@ -215,6 +227,7 @@ func TestTaskTypeIsLeafType(t *testing.T) {
 		{TaskTypeTask, true},
 		{TaskTypeBug, true},
 		{TaskTypeIdea, true},
+		{TaskTypeAction, true},
 	}
 
 	for _, tc := range tests {
@@ -231,11 +244,12 @@ func TestTaskTypePromote(t *testing.T) {
 		taskType TaskType
 		promoted TaskType
 	}{
-		{TaskTypeEpic, TaskTypeEpic},  // Already at top, stays Epic
-		{TaskTypeStory, TaskTypeEpic}, // Story promotes to Epic
-		{TaskTypeTask, TaskTypeStory}, // Task promotes to Story
-		{TaskTypeBug, TaskTypeStory},  // Bug promotes to Story
-		{TaskTypeIdea, TaskTypeStory}, // Idea promotes to Story
+		{TaskTypeEpic, TaskTypeEpic},    // Already at top, stays Epic
+		{TaskTypeStory, TaskTypeEpic},   // Story promotes to Epic
+		{TaskTypeTask, TaskTypeStory},   // Task promotes to Story
+		{TaskTypeBug, TaskTypeStory},    // Bug promotes to Story
+		{TaskTypeIdea, TaskTypeStory},   // Idea promotes to Story
+		{TaskTypeAction, TaskTypeStory}, // Action promotes to Story
 	}
 
 	for _, tc := range tests {
@@ -252,11 +266,12 @@ func TestTaskTypeDemote(t *testing.T) {
 		taskType TaskType
 		demoted  TaskType
 	}{
-		{TaskTypeEpic, TaskTypeStory}, // Epic demotes to Story
-		{TaskTypeStory, TaskTypeTask}, // Story demotes to Task (default leaf)
-		{TaskTypeTask, TaskTypeTask},  // Already leaf, stays Task
-		{TaskTypeBug, TaskTypeBug},    // Already leaf, stays Bug
-		{TaskTypeIdea, TaskTypeIdea},  // Already leaf, stays Idea
+		{TaskTypeEpic, TaskTypeStory},    // Epic demotes to Story
+		{TaskTypeStory, TaskTypeTask},    // Story demotes to Task (default leaf)
+		{TaskTypeTask, TaskTypeTask},     // Already leaf, stays Task
+		{TaskTypeBug, TaskTypeBug},       // Already leaf, stays Bug
+		{TaskTypeIdea, TaskTypeIdea},     // Already leaf, stays Idea
+		{TaskTypeAction, TaskTypeAction}, // Already leaf, stays Action
 	}
 
 	for _, tc := range tests {
@@ -273,11 +288,12 @@ func TestTaskTypeCycleLeafLeft(t *testing.T) {
 		taskType TaskType
 		cycled   TaskType
 	}{
-		{TaskTypeTask, TaskTypeIdea},   // Task cycles left to Idea
-		{TaskTypeBug, TaskTypeTask},    // Bug cycles left to Task
-		{TaskTypeIdea, TaskTypeBug},    // Idea cycles left to Bug
-		{TaskTypeEpic, TaskTypeEpic},   // Non-leaf stays same
-		{TaskTypeStory, TaskTypeStory}, // Non-leaf stays same
+		{TaskTypeTask, TaskTypeIdea},     // Task cycles left to Idea
+		{TaskTypeBug, TaskTypeTask},      // Bug cycles left to Task
+		{TaskTypeIdea, TaskTypeBug},      // Idea cycles left to Bug
+		{TaskTypeEpic, TaskTypeEpic},     // Non-leaf stays same
+		{TaskTypeStory, TaskTypeStory},   // Non-leaf stays same
+		{TaskTypeAction, TaskTypeAction}, // Action doesn't cycle
 	}
 
 	for _, tc := range tests {
@@ -294,11 +310,12 @@ func TestTaskTypeCycleLeafRight(t *testing.T) {
 		taskType TaskType
 		cycled   TaskType
 	}{
-		{TaskTypeTask, TaskTypeBug},    // Task cycles right to Bug
-		{TaskTypeBug, TaskTypeIdea},    // Bug cycles right to Idea
-		{TaskTypeIdea, TaskTypeTask},   // Idea cycles right to Task
-		{TaskTypeEpic, TaskTypeEpic},   // Non-leaf stays same
-		{TaskTypeStory, TaskTypeStory}, // Non-leaf stays same
+		{TaskTypeTask, TaskTypeBug},      // Task cycles right to Bug
+		{TaskTypeBug, TaskTypeIdea},      // Bug cycles right to Idea
+		{TaskTypeIdea, TaskTypeTask},     // Idea cycles right to Task
+		{TaskTypeEpic, TaskTypeEpic},     // Non-leaf stays same
+		{TaskTypeStory, TaskTypeStory},   // Non-leaf stays same
+		{TaskTypeAction, TaskTypeAction}, // Action doesn't cycle
 	}
 
 	for _, tc := range tests {

@@ -125,6 +125,7 @@ type Config struct {
 	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
 	KanbanMaxColumns          *int                         `json:"kanban_max_columns,omitempty"`           // nil=6, max visible kanban columns
 	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
+	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
 }
 
 // NewConfig creates a new configuration with default values.
@@ -170,6 +171,60 @@ func (c *Config) EnsureSandboxProject() bool {
 	}
 	c.Projects = append(c.Projects, project)
 	return true
+}
+
+// EnsureActionInboxProject checks if the action inbox project exists and creates one if not.
+// Returns the project and true if a new project was created.
+func (c *Config) EnsureActionInboxProject() (*models.Project, bool) {
+	// Check if we already have a reference
+	if c.ActionInboxProjectID != "" {
+		for _, p := range c.Projects {
+			if p.ID == c.ActionInboxProjectID {
+				return p, false
+			}
+		}
+	}
+
+	// Check if an internal action-inbox project already exists
+	for _, p := range c.Projects {
+		if p.Internal && p.Slug == "action-inbox" {
+			c.ActionInboxProjectID = p.ID
+			return p, false
+		}
+	}
+
+	// Create new action inbox project
+	now := time.Now()
+	project := &models.Project{
+		ID:            "action-inbox-" + now.Format("20060102150405"),
+		Slug:          "action-inbox",
+		Name:          "Action Inbox",
+		Context:       "personal",
+		Path:          filepath.Join(c.GetInternalDir(), "action-inbox"),
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Internal:      true,
+		Tasks:         []*models.Task{},
+		NextShortID:   1,
+		Sections:      []string{models.SectionNext},
+		SectionColors: make(map[string]string),
+	}
+	c.Projects = append(c.Projects, project)
+	c.ActionInboxProjectID = project.ID
+	return project, true
+}
+
+// GetActionInboxProject returns the action inbox project, or nil if none exists.
+func (c *Config) GetActionInboxProject() *models.Project {
+	if c.ActionInboxProjectID == "" {
+		return nil
+	}
+	for _, p := range c.Projects {
+		if p.ID == c.ActionInboxProjectID {
+			return p
+		}
+	}
+	return nil
 }
 
 // File permission constants (re-exported from util for backward compatibility).

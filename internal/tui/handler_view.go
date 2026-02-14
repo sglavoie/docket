@@ -335,7 +335,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowFocusBoardMsg:
-		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config))
+		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config, m.configManager))
 		return true, nil
 
 	case CloseFocusBoardMsg:
@@ -356,23 +356,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			v.Update(msg)
 		}
 		return true, nil
-
-	case ShowBoardItemConverterMsg:
-		m.showView(ViewBoardItemConverter, NewBoardItemConverterModel(msg.BoardItem, m.config))
-		return true, nil
-
-	case CloseBoardItemConverterMsg:
-		m.popView()
-		return true, nil
-
-	case BoardItemConvertedMsg:
-		m.popView()
-		m.statusMessage = fmt.Sprintf("Converted to task #%d in %s", msg.Task.ShortID, msg.Project.Name)
-		// Refresh the focus board to show updated link indicator
-		if v := m.views.Get(ViewFocusBoard); v != nil {
-			v.Update(FocusBoardRefreshMsg{})
-		}
-		return true, defaultStatusTimeout()
 
 	case ShowFocusViewMsg:
 		m.showView(ViewFocusView, NewFocusViewModel(m.config))

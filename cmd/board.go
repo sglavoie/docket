@@ -7,11 +7,11 @@ import (
 var boardCmd = &cobra.Command{
 	Use:     "board",
 	Aliases: []string{"bd"},
-	Short:   "Manage focus board items",
-	Long: `Commands for managing focus board items — external tasks, follow-ups,
-and lightweight items that live outside the tt task system.
+	Short:   "Manage focus board actions",
+	Long: `Commands for managing focus board actions — lightweight action items
+that live in the tt task system as Action-type tasks.
 
-Running 'tt board' without a subcommand lists open items.`,
+Running 'tt board' without a subcommand lists open actions.`,
 	RunE: runBoardList,
 }
 

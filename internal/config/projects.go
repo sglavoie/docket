@@ -72,16 +72,28 @@ func (c *Config) GetSandboxProject() *models.Project {
 	return nil
 }
 
-// GetActiveProjects returns non-archived, non-sandbox projects sorted with pinned first, then alphabetically.
+// GetActiveProjects returns non-archived, non-sandbox, non-internal projects sorted with pinned first, then alphabetically.
 func (c *Config) GetActiveProjects() []*models.Project {
 	var active []*models.Project
 	for _, p := range c.Projects {
-		if !p.Archived && !p.Sandbox {
+		if !p.Archived && !p.Sandbox && !p.Internal {
 			active = append(active, p)
 		}
 	}
 	sortProjectsWithPinnedFirst(active)
 	return active
+}
+
+// GetAllLoadableProjects returns all non-archived projects including internal ones (for focus board data loading).
+func (c *Config) GetAllLoadableProjects() []*models.Project {
+	var projects []*models.Project
+	for _, p := range c.Projects {
+		if !p.Archived {
+			projects = append(projects, p)
+		}
+	}
+	sortProjectsWithPinnedFirst(projects)
+	return projects
 }
 
 // GetArchivedProjects returns archived projects sorted alphabetically.

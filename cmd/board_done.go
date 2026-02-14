@@ -5,13 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 var boardDoneCmd = &cobra.Command{
 	Use:   "done <id>",
-	Short: "Mark a board item as done",
-	Long: `Mark a board item as done.
+	Short: "Mark an action as done",
+	Long: `Mark an action item as done.
 
 Examples:
   tt board done 1
@@ -30,22 +31,23 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bd, err := storage.LoadBoard(cfg.DataDir)
-	if err != nil {
-		return fmt.Errorf("failed to load board: %w", err)
+	task, project := FindActionTaskByID(cfg, args[0])
+	if task == nil {
+		return fmt.Errorf("action not found: %s", args[0])
 	}
 
-	item := storage.FindBoardItem(bd, args[0])
-	if item == nil {
-		return fmt.Errorf("board item not found: %s", args[0])
+	if msg := task.CanTransitionTo(models.StatusDone); msg != "" {
+		return fmt.Errorf("cannot mark done: %s", msg)
 	}
 
-	item.MarkDone()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.ApplyTransition(models.StatusDone)
+	})
 
-	if err := storage.SaveBoardItem(cfg.DataDir, item); err != nil {
-		return fmt.Errorf("failed to save board item: %w", err)
+	if err := storage.SaveProject(project); err != nil {
+		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Marked board item #%d as done: %s\n", item.ShortID, item.Title)
+	fmt.Printf("Marked action #%d as done: %s\n", task.ShortID, task.Title)
 	return nil
 }

@@ -5,13 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 var boardReopenCmd = &cobra.Command{
 	Use:   "reopen <id>",
-	Short: "Reopen a done or dismissed board item",
-	Long: `Reopen a board item that was previously marked done or dismissed.
+	Short: "Reopen a done or dismissed action",
+	Long: `Reopen an action that was previously marked done or dismissed.
 
 Examples:
   tt board reopen 1
@@ -30,27 +31,28 @@ func runBoardReopen(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bd, err := storage.LoadBoard(cfg.DataDir)
-	if err != nil {
-		return fmt.Errorf("failed to load board: %w", err)
+	task, project := FindActionTaskByID(cfg, args[0])
+	if task == nil {
+		return fmt.Errorf("action not found: %s", args[0])
 	}
 
-	item := storage.FindBoardItem(bd, args[0])
-	if item == nil {
-		return fmt.Errorf("board item not found: %s", args[0])
-	}
-
-	if item.IsOpen() {
-		fmt.Printf("Board item #%d is already open.\n", item.ShortID)
+	if !task.Status.IsComplete() {
+		fmt.Printf("Action #%d is already open.\n", task.ShortID)
 		return nil
 	}
 
-	item.Reopen()
-
-	if err := storage.SaveBoardItem(cfg.DataDir, item); err != nil {
-		return fmt.Errorf("failed to save board item: %w", err)
+	if msg := task.CanTransitionTo(models.StatusTodo); msg != "" {
+		return fmt.Errorf("cannot reopen: %s", msg)
 	}
 
-	fmt.Printf("Reopened board item #%d: %s\n", item.ShortID, item.Title)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.ApplyTransition(models.StatusTodo)
+	})
+
+	if err := storage.SaveProject(project); err != nil {
+		return fmt.Errorf("failed to save: %w", err)
+	}
+
+	fmt.Printf("Reopened action #%d: %s\n", task.ShortID, task.Title)
 	return nil
 }

@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -74,21 +73,6 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 
-	// Handle "t" key for task-only delete when linked board items exist
-	if (key == "t" || key == "T") && len(m.linkedBoardItems) > 0 {
-		switch m.confirmAction {
-		case ConfirmDelete:
-			// Delete task only, unlink board items
-			m.confirmAction = ConfirmNone
-			m.unlinkLinkedBoardItems()
-			return m, m.deleteTask()
-		case ConfirmBulkDelete:
-			m.confirmAction = ConfirmNone
-			m.unlinkLinkedBoardItems()
-			return m, m.bulkDeleteTasks()
-		}
-	}
-
 	// Handle standard y/n confirmations
 	switch key {
 	case "y", "Y":
@@ -101,11 +85,9 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 			return m, m.unarchiveProject()
 		case ConfirmDelete:
 			m.confirmAction = ConfirmNone
-			m.deleteLinkedBoardItems()
 			return m, m.deleteTask()
 		case ConfirmBulkDelete:
 			m.confirmAction = ConfirmNone
-			m.deleteLinkedBoardItems()
 			return m, m.bulkDeleteTasks()
 		case ConfirmBulkStatus:
 			m.confirmAction = ConfirmNone
@@ -117,7 +99,6 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 	case "n", "N", "esc":
 		m.confirmAction = ConfirmNone
 		m.deleteTarget = nil
-		m.linkedBoardItems = nil
 		m.clearPendingBulkStatus()
 		return m, nil
 	}
@@ -612,18 +593,10 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		return m, nil
 	case "D":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			// Check for linked board items across all selected tasks
-			m.linkedBoardItems = nil
-			for id := range m.selectedTasks {
-				items, _ := storage.FindBoardItemsByTaskID(m.config.DataDir, id)
-				m.linkedBoardItems = append(m.linkedBoardItems, items...)
-			}
 			m.confirmAction = ConfirmBulkDelete
 			return m, nil
 		}
 		if cursorTask != nil {
-			// Check for linked board items
-			m.linkedBoardItems, _ = storage.FindBoardItemsByTaskID(m.config.DataDir, cursorTask.ID)
 			if cursorTask.IsRecurring() {
 				m.confirmAction = ConfirmDeleteRecurring
 			} else {

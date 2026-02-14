@@ -336,6 +336,10 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.loadingMessage = ""
 		m.popView() // Close project selector
 		m.refreshProjectTree()
+		// Also refresh the focus board so the moved task disappears from its old position
+		if v := m.views.Get(ViewFocusBoard); v != nil {
+			v.Update(FocusBoardRefreshMsg{})
+		}
 		var statusMsg string
 		if msg.MovedCount > 1 {
 			statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)

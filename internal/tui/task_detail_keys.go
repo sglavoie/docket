@@ -83,6 +83,11 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return SetDueDateMsg{Task: m.task, Project: m.project}
 		}
+	case "o":
+		if m.task.URL != "" {
+			return m, openBrowserCmd(m.task.URL)
+		}
+		return m, nil
 	case "e":
 		return m, func() tea.Msg {
 			return EditTaskMsg{Task: m.task}
@@ -208,6 +213,7 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "q/Esc", Description: "Close detail view", Category: "Navigation"},
 		{Key: ",s/d/b/x/o/r", Description: "Status: start/done/block/cancel/reopen/review", Category: "Actions"},
 		{Key: "!1-5", Description: "Set priority", Category: "Actions"},
+		{Key: "o", Description: "Open external URL", Category: "Actions"},
 		{Key: "e", Description: "Edit task", Category: "Actions"},
 		{Key: "d", Description: "Set due date", Category: "Actions"},
 		{Key: "c", Description: "Comments", Category: "Sub-views"},

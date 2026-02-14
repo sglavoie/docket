@@ -144,6 +144,34 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	return project, cfg, configManager, nil
 }
 
+// FindActionTaskByID searches all loadable projects for an Action task by short ID or UUID prefix.
+// Returns the task and its project, or nil, nil if not found.
+func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models.Project) {
+	var shortID int
+	isShortID := false
+	if _, err := fmt.Sscanf(query, "%d", &shortID); err == nil {
+		isShortID = true
+	}
+
+	for _, project := range cfg.GetAllLoadableProjects() {
+		if err := storage.LoadProject(project); err != nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task.Type != models.TaskTypeAction {
+				continue
+			}
+			if isShortID && task.ShortID == shortID {
+				return task, project
+			}
+			if !isShortID && strings.HasPrefix(task.ID, query) {
+				return task, project
+			}
+		}
+	}
+	return nil, nil
+}
+
 // LoadConfigAndProject loads the config and looks up a project by slug.
 // Returns an error if the project is not found.
 func LoadConfigAndProject(slug string) (*models.Project, *config.Config, *config.Manager, error) {

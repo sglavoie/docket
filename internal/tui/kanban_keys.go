@@ -32,26 +32,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle confirmation
 	if m.confirm.IsActive() {
 		action := m.confirm.Action()
-		// Handle "t" key for task-only delete when linked board items exist
-		if (key == "t" || key == "T") && action == "delete-linked" {
-			m.confirm.Cancel()
-			m.unlinkLinkedBoardItems()
-			m.statusMessage = ""
-			if m.multiSelectMode && m.selectedCount() > 0 {
-				return m, m.handleBulkDelete()
-			}
-			return m, m.executeDelete(false)
-		}
 		if confirmed, handled := m.confirm.HandleKey(key); handled {
 			if confirmed {
 				switch action {
 				case "delete":
-					if m.multiSelectMode && m.selectedCount() > 0 {
-						return m, m.handleBulkDelete()
-					}
-					return m, m.executeDelete(false)
-				case "delete-linked":
-					m.deleteLinkedBoardItems()
 					if m.multiSelectMode && m.selectedCount() > 0 {
 						return m, m.handleBulkDelete()
 					}
@@ -63,7 +47,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.deleteTarget = nil
-			m.linkedBoardItems = nil
 			m.bulkOp.Clear()
 			m.statusMessage = ""
 			return m, nil

@@ -5,13 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
 var boardDismissCmd = &cobra.Command{
 	Use:   "dismiss <id>",
-	Short: "Dismiss a board item as irrelevant",
-	Long: `Dismiss a board item, marking it as no longer relevant.
+	Short: "Dismiss an action as irrelevant",
+	Long: `Dismiss an action, marking it as canceled.
 
 Examples:
   tt board dismiss 1
@@ -30,22 +31,23 @@ func runBoardDismiss(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bd, err := storage.LoadBoard(cfg.DataDir)
-	if err != nil {
-		return fmt.Errorf("failed to load board: %w", err)
+	task, project := FindActionTaskByID(cfg, args[0])
+	if task == nil {
+		return fmt.Errorf("action not found: %s", args[0])
 	}
 
-	item := storage.FindBoardItem(bd, args[0])
-	if item == nil {
-		return fmt.Errorf("board item not found: %s", args[0])
+	if msg := task.CanTransitionTo(models.StatusCanceled); msg != "" {
+		return fmt.Errorf("cannot dismiss: %s", msg)
 	}
 
-	item.MarkDismissed()
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.ApplyTransition(models.StatusCanceled)
+	})
 
-	if err := storage.SaveBoardItem(cfg.DataDir, item); err != nil {
-		return fmt.Errorf("failed to save board item: %w", err)
+	if err := storage.SaveProject(project); err != nil {
+		return fmt.Errorf("failed to save: %w", err)
 	}
 
-	fmt.Printf("Dismissed board item #%d: %s\n", item.ShortID, item.Title)
+	fmt.Printf("Dismissed action #%d: %s\n", task.ShortID, task.Title)
 	return nil
 }

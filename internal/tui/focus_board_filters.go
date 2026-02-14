@@ -76,87 +76,34 @@ func (m *FocusBoardModel) matchesSearch(row boardRow) bool {
 	}
 	query := strings.TrimSpace(m.searchQuery)
 
-	if row.isBoardItem() {
-		item := row.BoardItem
-		if fuzzy.MatchTerms(item.Title, query) {
-			return true
-		}
-		if fuzzy.MatchTerms(item.Source, query) {
-			return true
-		}
-		for _, tag := range item.Tags {
-			if fuzzy.MatchTerms(tag, query) {
-				return true
-			}
-		}
-		if fuzzy.MatchTerms(item.ProjectName, query) {
+	task := row.Task
+	if fuzzy.MatchTerms(task.Title, query) {
+		return true
+	}
+	if fuzzy.MatchTerms(task.Source, query) {
+		return true
+	}
+	for _, tag := range task.Tags {
+		if fuzzy.MatchTerms(tag, query) {
 			return true
 		}
 	}
-
-	if row.isTask() {
-		task := row.Task
-		if fuzzy.MatchTerms(task.Title, query) {
-			return true
-		}
-		for _, tag := range task.Tags {
-			if fuzzy.MatchTerms(tag, query) {
-				return true
-			}
-		}
-		if fuzzy.MatchTerms(task.Description, query) {
-			return true
-		}
-		if row.Project != nil && fuzzy.MatchTerms(row.Project.Name, query) {
-			return true
-		}
+	if fuzzy.MatchTerms(task.Description, query) {
+		return true
+	}
+	if row.Project != nil && fuzzy.MatchTerms(row.Project.Name, query) {
+		return true
 	}
 
 	return false
 }
 
-// boardItemPassesFilters checks if a board item passes the active common filters.
-// Only priority and tags are relevant for board items; other filters are task-specific.
-func boardItemPassesFilters(row boardRow, f *CommonFilterState) bool {
-	item := row.BoardItem
-	if f.Priority == 1 && item.Priority > 2 {
-		return false
-	}
-	if len(f.Tags) > 0 {
-		for tag := range f.Tags {
-			found := false
-			for _, t := range item.Tags {
-				if t == tag {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return false
-			}
-		}
-	}
-	// Type/status/dueDate/attrs/score filters don't apply to board items.
-	// If any of these are active, exclude board items since they can't match.
-	if f.Type != "" || f.Status != "" || f.DueDate != DueDateAll || len(f.Attrs) > 0 || f.ScoreMin > 0 {
-		return false
-	}
-	return true
-}
-
-// buildBoardTagList scans all board items and aggregated tasks for tags.
+// buildBoardTagList scans all rows for tags.
 func buildBoardTagList(m *FocusBoardModel) []TagInfo {
 	tagCounts := make(map[string]int)
 	for _, r := range m.rows {
-		if r.isBoardItem() {
-			for _, tag := range r.BoardItem.Tags {
-				tagCounts[tag]++
-			}
-		}
-		if r.isTask() {
-			for _, tag := range r.Task.Tags {
-				tagCounts[tag]++
-			}
+		for _, tag := range r.Task.Tags {
+			tagCounts[tag]++
 		}
 	}
 

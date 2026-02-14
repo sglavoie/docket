@@ -105,6 +105,13 @@ func (m *TaskEditorModel) checkChanges() bool {
 	if !recurrenceEqual(m.recurrence, m.originalRecurrence) {
 		return true
 	}
+	// Check URL and Source
+	if m.urlInput != m.originalURL {
+		return true
+	}
+	if m.sourceInput != m.originalSource {
+		return true
+	}
 	// Check type-specific attributes
 	if m.attrsChanged() {
 		return true
@@ -431,7 +438,7 @@ func (m *TaskEditorModel) getAttrFieldCount() int {
 
 // attrsStartIndex returns the focus index where attribute fields begin.
 func (m *TaskEditorModel) attrsStartIndex() int {
-	return 8 // After recurrence (index 7)
+	return 10 // After source (index 9)
 }
 
 // totalFieldCount returns total number of focusable fields.
@@ -721,6 +728,8 @@ func (m *TaskEditorModel) saveTask() error {
 		t.Tags = append([]string{}, m.tags...)
 		t.Active = m.active
 		t.Recurrence = m.recurrence
+		t.URL = strings.TrimSpace(m.urlInput)
+		t.Source = strings.TrimSpace(m.sourceInput)
 
 		// Update type-specific attributes (clear attrs for other types)
 		t.BugAttrs = bugAttrs

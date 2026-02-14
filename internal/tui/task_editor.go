@@ -55,6 +55,14 @@ type TaskEditorModel struct {
 	recurrenceCursor int
 	recurrenceOpts   []string // Display labels for recurrence options
 
+	// URL and Source fields
+	urlInput    string
+	sourceInput string
+
+	// Original URL/Source for change detection
+	originalURL    string
+	originalSource string
+
 	// Type-specific attributes
 	// Bug attributes
 	bugReproducibleCursor int
@@ -93,7 +101,7 @@ type TaskEditorModel struct {
 	pendingTaskType   models.TaskType
 
 	// Form state
-	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence, 8+=attrs
+	focusIndex int // 0=title, 1=type, 2=parent, 3=priority, 4=section, 5=due date, 6=flags, 7=recurrence, 8=url, 9=source, 10+=attrs
 	width      int
 	height     int
 	err        error
@@ -117,6 +125,7 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		models.TaskTypeEpic,
 		models.TaskTypeBug,
 		models.TaskTypeIdea,
+		models.TaskTypeAction,
 	}
 
 	typeCursor := 0
@@ -219,6 +228,10 @@ func NewTaskEditorModel(project *models.Project, task *models.Task, cfg *config.
 		recurrenceCursor:   recurrenceCursor,
 		recurrenceOpts:     recurrenceOpts,
 		originalRecurrence: originalRecurrence,
+		urlInput:           task.URL,
+		sourceInput:        task.Source,
+		originalURL:        task.URL,
+		originalSource:     task.Source,
 		focusIndex:         0,
 		width:              80,
 		height:             24,
@@ -573,12 +586,28 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case 5: // Due date text input
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			key := keyMsg.String()
-			// Handle backspace
 			if key == "backspace" && len(m.dueDateInput) > 0 {
 				m.dueDateInput = m.dueDateInput[:len(m.dueDateInput)-1]
 			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
-				// Printable ASCII characters
 				m.dueDateInput += key
+			}
+		}
+	case 8: // URL text input
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			key := keyMsg.String()
+			if key == "backspace" && len(m.urlInput) > 0 {
+				m.urlInput = m.urlInput[:len(m.urlInput)-1]
+			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
+				m.urlInput += key
+			}
+		}
+	case 9: // Source text input
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			key := keyMsg.String()
+			if key == "backspace" && len(m.sourceInput) > 0 {
+				m.sourceInput = m.sourceInput[:len(m.sourceInput)-1]
+			} else if len(key) == 1 && key[0] >= 32 && key[0] <= 126 {
+				m.sourceInput += key
 			}
 		}
 	}
@@ -635,6 +664,16 @@ func (m *TaskEditorModel) View() string {
 	// Recurrence row
 	content.WriteString(m.renderFormLabel("Recur", 7))
 	content.WriteString(m.renderRecurrenceSelector())
+	content.WriteString("\n")
+
+	// URL row
+	content.WriteString(m.renderFormLabel("URL", 8))
+	content.WriteString(m.renderURLField())
+	content.WriteString("\n")
+
+	// Source row
+	content.WriteString(m.renderFormLabel("Source", 9))
+	content.WriteString(m.renderSourceField())
 	content.WriteString("\n")
 
 	// Type-specific attributes section

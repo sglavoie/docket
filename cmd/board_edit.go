@@ -13,8 +13,8 @@ var boardEditEditor string
 
 var boardEditCmd = &cobra.Command{
 	Use:   "edit <id>",
-	Short: "Edit a board item in an external editor",
-	Long: `Open a board item in an external editor for editing.
+	Short: "Edit an action in an external editor",
+	Long: `Open an action's project tasks file in an external editor.
 
 Examples:
   tt board edit 1
@@ -34,42 +34,19 @@ func runBoardEdit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bd, err := storage.LoadBoard(cfg.DataDir)
-	if err != nil {
-		return fmt.Errorf("failed to load board: %w", err)
-	}
-
-	item := storage.FindBoardItem(bd, args[0])
-	if item == nil {
-		return fmt.Errorf("board item not found: %s", args[0])
+	task, project := FindActionTaskByID(cfg, args[0])
+	if task == nil {
+		return fmt.Errorf("action not found: %s", args[0])
 	}
 
 	editor := resolveEditor(boardEditEditor, cfg.Editor)
+	tasksFile := storage.GetTasksFilePath(project)
 
-	content, err := storage.RenderBoardItemContent(item)
-	if err != nil {
-		return fmt.Errorf("failed to render board item: %w", err)
+	c := external.EditorCommand(external.ResolveEditor(editor), tasksFile)
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("editor failed: %w", err)
 	}
 
-	modified, err := external.EditInExternalEditor(editor, content, ".md")
-	if err != nil {
-		return fmt.Errorf("failed to edit: %w", err)
-	}
-
-	if modified == content {
-		fmt.Println("No changes made.")
-		return nil
-	}
-
-	updatedItem, err := storage.ParseBoardItemContent(item.Filename, modified)
-	if err != nil {
-		return fmt.Errorf("failed to parse edited board item: %w", err)
-	}
-
-	if err := storage.SaveBoardItem(cfg.DataDir, updatedItem); err != nil {
-		return fmt.Errorf("failed to save board item: %w", err)
-	}
-
-	fmt.Println("Board item updated.")
+	fmt.Println("Action updated.")
 	return nil
 }

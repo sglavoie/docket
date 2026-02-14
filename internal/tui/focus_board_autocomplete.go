@@ -245,20 +245,15 @@ func (m *FocusBoardModel) resetBoardAutocomplete() {
 
 // initBoardCaches builds tag and project caches for autocomplete.
 func (m *FocusBoardModel) initBoardCaches() {
-	// Cache tags from all project tasks and board items
+	// Cache tags from all rows
 	tagSet := make(map[string]bool)
-	for _, project := range m.config.GetActiveProjects() {
-		if err := m.projectService.Load(project); err != nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			for _, tag := range task.Tags {
-				tagSet[tag] = true
-			}
+	for _, r := range m.rows {
+		for _, tag := range r.Task.Tags {
+			tagSet[tag] = true
 		}
 	}
-	for _, item := range m.boardItems {
-		for _, tag := range item.Tags {
+	for _, r := range m.closedRows {
+		for _, tag := range r.Task.Tags {
 			tagSet[tag] = true
 		}
 	}
@@ -268,8 +263,8 @@ func (m *FocusBoardModel) initBoardCaches() {
 	}
 	sort.Strings(m.acTagCache)
 
-	// Cache non-archived, non-sandbox projects
-	m.acProjectCache = m.config.GetActiveProjects()
+	// Cache non-archived, non-sandbox projects (including internal for %project targeting)
+	m.acProjectCache = m.config.GetAllLoadableProjects()
 }
 
 // parseBoardAddInput extracts title and optional prefix tokens (%project, !N, #tag)

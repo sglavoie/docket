@@ -134,6 +134,38 @@ func (m *TaskEditorModel) renderRecurrenceSelector() string {
 	return renderRecurrenceSelectorShared(m.recurrenceOpts, m.recurrenceCursor, m.focusIndex == 7, m.recurrence)
 }
 
+// renderURLField renders the URL text input field.
+func (m *TaskEditorModel) renderURLField() string {
+	isFocused := m.focusIndex == 8
+	value := m.urlInput
+	if value == "" {
+		if isFocused {
+			return FieldLabelFocusedStyle.Render("_")
+		}
+		return MutedStyle.Render("(none)")
+	}
+	if isFocused {
+		return FieldLabelFocusedStyle.Render(value + "_")
+	}
+	return value
+}
+
+// renderSourceField renders the Source text input field.
+func (m *TaskEditorModel) renderSourceField() string {
+	isFocused := m.focusIndex == 9
+	value := m.sourceInput
+	if value == "" {
+		if isFocused {
+			return FieldLabelFocusedStyle.Render("_")
+		}
+		return MutedStyle.Render("(none)")
+	}
+	if isFocused {
+		return FieldLabelFocusedStyle.Render(value + "_")
+	}
+	return value
+}
+
 // renderScoreSummary renders the composite score and per-dimension breakdown
 // when a scoring profile is active for the project. Returns empty string if no profile.
 func (m *TaskEditorModel) renderScoreSummary() string {

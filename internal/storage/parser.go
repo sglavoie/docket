@@ -15,7 +15,7 @@ import (
 
 var (
 	// Matches headings like "## Epic: Title" or "### Story: Title"
-	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note):\s*(.+)$`)
+	headingRegex = regexp.MustCompile(`^(#{2,6})\s+(Epic|Story|Task|Bug|Idea|Note|Action):\s*(.+)$`)
 
 	// Matches project title like "# Project: Name"
 	projectRegex = regexp.MustCompile(`^#\s+Project:\s*(.+)$`)

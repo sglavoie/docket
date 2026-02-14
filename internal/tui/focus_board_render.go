@@ -15,16 +15,16 @@ func (m *FocusBoardModel) View() string {
 	var b strings.Builder
 
 	// Title
-	totalBoard := 0
+	totalActions := 0
 	totalTasks := 0
 	for _, r := range m.rows {
-		if r.isBoardItem() {
-			totalBoard++
+		if r.isAction() {
+			totalActions++
 		} else {
 			totalTasks++
 		}
 	}
-	subtitle := fmt.Sprintf("%d items, %d tasks", totalBoard, totalTasks)
+	subtitle := fmt.Sprintf("%d actions, %d tasks", totalActions, totalTasks)
 	b.WriteString(renderFullscreenTitle("Focus Board", subtitle))
 	b.WriteString("\n")
 
@@ -154,7 +154,7 @@ func (m *FocusBoardModel) View() string {
 		} else if len(m.rows) == 0 {
 			b.WriteString(MutedStyle.Render("  No items on the board."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("  Press a to add an item, or mark tasks as active in a project."))
+			b.WriteString(HelpStyle.Render("  Press a to add an action, or mark tasks as active in a project."))
 		} else {
 			b.WriteString(MutedStyle.Render("  No items match this tab."))
 		}
@@ -227,45 +227,44 @@ func (m *FocusBoardModel) View() string {
 func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen int) string {
 	var b strings.Builder
 
-	if row.isBoardItem() {
-		item := row.BoardItem
-		isClosed := item.IsClosed()
+	task := row.Task
+	projectName := util.Truncate(row.Project.Name, 10)
 
-		priorityBadge := boardPriorityBadge(item.Priority)
+	priorityBadge := boardPriorityBadge(task.Priority)
+	isClosed := task.Status.IsComplete()
+
+	if row.isAction() {
+		// Action item rendering
 		sourceBadge := ""
-		if item.Source != "" {
-			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", util.Truncate(item.Source, 10)))
+		if task.Source != "" {
+			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", util.Truncate(task.Source, 10)))
 		} else {
-			sourceBadge = DependencyStyle.Render("[board]")
+			sourceBadge = DependencyStyle.Render("[action]")
 		}
 		projectBadge := ""
-		if item.ProjectName != "" {
-			projectBadge = " " + MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(item.ProjectName, 12)))
+		if !row.Project.Internal {
+			projectBadge = " " + MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(projectName, 12)))
 		}
 		urlIndicator := ""
-		if item.URL != "" {
+		if task.URL != "" {
 			urlIndicator = " ↗"
-		}
-		linkIndicator := ""
-		if item.LinkedTaskID != "" {
-			linkIndicator = " ◆"
 		}
 
 		statusMarker := ""
 		if isClosed {
-			if item.Status == models.BoardItemDone {
+			if task.Status == models.StatusDone {
 				statusMarker = "[x] "
 			} else {
 				statusMarker = "[-] "
 			}
 		}
 
-		truncatedTitle := util.Truncate(item.Title, maxTitleLen)
-		title := m.highlightTitle(truncatedTitle, item.Title)
-		content := fmt.Sprintf("  %s %s%s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, linkIndicator, statusMarker, title)
+		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
+		title := m.highlightTitle(truncatedTitle, task.Title)
+		content := fmt.Sprintf("  %s %s%s%s %s%s", priorityBadge, sourceBadge, projectBadge, urlIndicator, statusMarker, title)
 
-		if len(item.Tags) > 0 {
-			content += " " + renderInlineTags(item.Tags)
+		if len(task.Tags) > 0 {
+			content += " " + renderInlineTags(task.Tags)
 		}
 
 		if isClosed {
@@ -274,11 +273,8 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		line := RenderSelectableRow(isSelected, false, content, m.width-2)
 		b.WriteString(line)
-	} else if row.isTask() {
-		task := row.Task
-		projectName := util.Truncate(row.Project.Name, 10)
-
-		priorityBadge := boardPriorityBadge(task.Priority)
+	} else {
+		// Regular task rendering
 		projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
 		typeIcon := " " + task.Type.Icon()
 
