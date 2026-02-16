@@ -988,7 +988,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowProjectTreeMsg:
-		if msg.Project != nil && m.projectTree != nil {
+		if msg.Project != nil {
+			if m.projectTree == nil {
+				m.switchToProject(msg.Project, true)
+			}
 			m.showView(ViewProjectTree, m.projectTree)
 		}
 		return true, nil

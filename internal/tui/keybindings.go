@@ -53,6 +53,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerMetricsDashboardBindings()
 	r.registerAllTasksBindings()
 	r.registerFocusBoardBindings()
+	r.registerOutlinerBindings()
 	return r
 }
 

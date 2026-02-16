@@ -240,6 +240,16 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Help
+	case "?":
+		return m, func() tea.Msg {
+			return ShowHelpMsg{
+				SourceView: ViewOutliner,
+				ViewName:   "Outliner",
+				Items:      m.GetHelpItems(),
+			}
+		}
+
 	// Perspective switching: keys 1-9
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		perspKey, _ := strconv.Atoi(key)
@@ -583,6 +593,11 @@ var OutlinerSortPrefixHints = []PrefixHint{
 	{Key: "4", Description: "Created"},
 	{Key: "5", Description: "Score"},
 	{Key: "0", Description: "Reset"},
+}
+
+// GetHelpItems returns help items for the outliner view.
+func (m *OutlinerModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewOutliner)
 }
 
 // ShouldCaptureEsc returns true so the outliner handles q/Esc internally
