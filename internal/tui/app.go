@@ -319,6 +319,7 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.sidebarCommands())
 	_ = m.commandRegistry.RegisterBatch(m.scoringCommands())
 	_ = m.commandRegistry.RegisterBatch(m.allTasksCommands())
+	_ = m.commandRegistry.RegisterBatch(m.outlinerCommands())
 }
 
 // getGlobalHelpItems returns help items that apply across all views.

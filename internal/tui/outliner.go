@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"sort"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -20,18 +22,29 @@ type ZoomEntry struct {
 // navigation semantics, sort modes, and zoom-stack behavior.
 type OutlinerModel struct {
 	BaseView
+	MultiSelectState
 
 	project       *models.Project
 	config        *config.Config
 	configManager *config.Manager
 
-	zoomStack   []ZoomEntry
-	multiSelect bool
-	zoomNotice  string // Transient message shown when zoom target is removed
+	zoomStack  []ZoomEntry
+	zoomNotice string // Transient message shown when zoom target is removed
 
 	cursor            int           // Index into rows (flat visible node list)
 	rows              []outlinerRow // Flattened rows, rebuilt on each render
 	activePerspective int           // 1-9 index into PerspectivePresets; 0 means "All" (key 1)
+
+	sortField     SortField // Current sort field (SortByDefault = no sort)
+	sortAscending bool      // Sort direction; true = ascending
+
+	pendingPrefix string              // Prefix key waiting for second key (e.g. "," for status)
+	quickEdit     *QuickEditComponent // Inline quick edit component
+
+	confirm       ConfirmDialog // Confirmation dialog for destructive actions
+	deleteTarget  *models.Task  // Task to delete when confirmation is accepted
+	statusMessage string        // Transient status/confirmation prompt text
+	err           error         // Last error from an operation
 }
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
@@ -40,6 +53,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		project:       project,
 		config:        cfg,
 		configManager: cfgManager,
+		quickEdit:     NewQuickEditComponent(),
 	}
 }
 
@@ -100,12 +114,18 @@ func (m *OutlinerModel) rebuildRows() {
 	}
 
 	p := m.currentPerspective()
+	var tasks []*models.Task
 	if p.Filter == nil {
-		flattenTaskTree(roots, nil, &m.rows)
+		tasks = roots
 	} else {
-		filtered := filterTaskTree(roots, p.Filter)
-		flattenTaskTree(filtered, nil, &m.rows)
+		tasks = filterTaskTree(roots, p.Filter)
 	}
+
+	if m.sortField != SortByDefault {
+		tasks = m.sortTaskTree(tasks)
+	}
+
+	flattenTaskTree(tasks, nil, &m.rows)
 	m.clampCursor()
 }
 
@@ -134,6 +154,37 @@ func filterTaskTree(tasks []*models.Task, predicate func(*models.Task) bool) []*
 		}
 	}
 	return result
+}
+
+// sortTaskTree returns a sorted copy of the task tree. Sorting is applied at
+// each hierarchy level (siblings are reordered but parent-child relationships
+// are preserved). The original slices are not mutated.
+func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
+	sorted := make([]*models.Task, len(tasks))
+	copy(sorted, tasks)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		cmp := CompareTasks(sorted[i], sorted[j], m.sortField, m.project.ID, m.config)
+		return ApplySortDirection(cmp, m.sortAscending)
+	})
+	for idx, task := range sorted {
+		if len(task.Children) > 0 {
+			clone := *task
+			clone.Children = m.sortTaskTree(task.Children)
+			sorted[idx] = &clone
+		}
+	}
+	return sorted
+}
+
+// toggleSort sets the sort field, toggling ascending/descending if already set.
+func (m *OutlinerModel) toggleSort(field SortField) {
+	if m.sortField == field {
+		m.sortAscending = !m.sortAscending
+	} else {
+		m.sortField = field
+		m.sortAscending = true
+	}
+	m.rebuildRows()
 }
 
 // clampCursor ensures the cursor stays within [0, len(rows)-1].
@@ -181,4 +232,65 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // SetSize implements the View interface.
 func (m *OutlinerModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
+}
+
+// taskOpsView implementation for OutlinerModel.
+
+func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
+	if len(m.rows) == 0 || m.cursor >= len(m.rows) {
+		return nil, nil
+	}
+	return m.rows[m.cursor].task, m.project
+}
+
+func (m *OutlinerModel) getPersister() Persister { return NewProjectService() }
+func (m *OutlinerModel) getDataDir() string      { return m.config.DataDir }
+func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
+func (m *OutlinerModel) setErr(err error)        { m.err = err }
+func (m *OutlinerModel) setStatus(msg string)    { m.statusMessage = msg }
+
+// toggleMultiSelectMode enters or exits multi-select mode.
+func (m *OutlinerModel) toggleMultiSelectMode() {
+	m.multiSelectMode = !m.multiSelectMode
+	if !m.multiSelectMode {
+		m.ClearSelection()
+		m.statusMessage = ""
+	} else {
+		m.statusMessage = "Multi-select: Space=toggle, a=all, A=deselect, v/Esc=exit"
+	}
+}
+
+// selectAllVisible adds all currently visible rows to the selection.
+func (m *OutlinerModel) selectAllVisible() {
+	if m.selectedTasks == nil {
+		m.selectedTasks = make(map[string]bool)
+	}
+	for _, row := range m.rows {
+		m.selectedTasks[row.task.ID] = true
+	}
+}
+
+// deselectAllVisible removes all currently visible rows from the selection.
+func (m *OutlinerModel) deselectAllVisible() {
+	for _, row := range m.rows {
+		delete(m.selectedTasks, row.task.ID)
+	}
+}
+
+// getSelectedTasks returns a slice of selected tasks from the project.
+func (m *OutlinerModel) getSelectedTasks() []*models.Task {
+	var tasks []*models.Task
+	for _, task := range m.project.Tasks {
+		if m.selectedTasks[task.ID] {
+			tasks = append(tasks, task)
+		}
+	}
+	return tasks
+}
+
+// clearMultiSelect exits multi-select mode and clears all selections.
+func (m *OutlinerModel) clearMultiSelect() {
+	m.multiSelectMode = false
+	m.ClearSelection()
+	m.statusMessage = ""
 }

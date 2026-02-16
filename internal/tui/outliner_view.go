@@ -156,6 +156,11 @@ func (m *OutlinerModel) View() string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render(m.project.Name))
 	b.WriteString(perspectiveLabel)
+	if m.multiSelectMode {
+		count := m.SelectedCount()
+		b.WriteString("  ")
+		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
+	}
 	b.WriteString("\n")
 	if bc != "" {
 		b.WriteString(bc)
@@ -229,6 +234,16 @@ func (m *OutlinerModel) View() string {
 			}
 		}
 
+		// Score badge (only when scoring profile is active and task has scores)
+		if m.config != nil {
+			if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+				if HasManualScores(task, profile) {
+					indicators.WriteString(" ")
+					indicators.WriteString(RenderScoreBadge(task, profile))
+				}
+			}
+		}
+
 		// Progress for parent tasks
 		if task.HasProgressChildren() {
 			pct := task.GetProgress()
@@ -241,12 +256,23 @@ func (m *OutlinerModel) View() string {
 			cursorPrefix = SelectionCursorStyle.Render(">") + " "
 		}
 
+		// Selection checkbox (only in multi-select mode)
+		checkbox := ""
+		if m.multiSelectMode {
+			if m.IsSelected(task.ID) {
+				checkbox = SelectionCheckStyle.Render("[x]") + " "
+			} else {
+				checkbox = MutedStyle.Render("[ ]") + " "
+			}
+		}
+
 		// Truncate title to fit available width
-		availableWidth := max(m.width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-12-lipgloss.Width(indicators.String()), 10)
+		availableWidth := max(m.width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
 		title := titleStyle.Render(util.Truncate(task.Title, availableWidth))
 
-		line := fmt.Sprintf("%s%s%s %s %s %s%s",
+		line := fmt.Sprintf("%s%s%s%s %s %s %s%s",
 			cursorPrefix,
+			checkbox,
 			MutedStyle.Render(row.prefix),
 			typeIcon, statusIcon, idStr, title, indicators.String())
 
@@ -269,5 +295,61 @@ func (m *OutlinerModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Render quick edit bar if active
+	if m.quickEdit.IsActive() {
+		b.WriteString("\n")
+		b.WriteString(m.renderQuickEditBar())
+		b.WriteString("\n")
+	}
+
+	// Render status message or confirm prompt
+	if m.statusMessage != "" {
+		b.WriteString("\n")
+		if m.confirm.IsActive() {
+			b.WriteString(PreviewWarningStyle.Render(m.statusMessage))
+		} else {
+			b.WriteString(MutedStyle.Render(m.statusMessage))
+		}
+		b.WriteString("\n")
+	}
+
 	return b.String()
+}
+
+// renderQuickEditBar renders the quick edit input bar at the bottom of the view.
+func (m *OutlinerModel) renderQuickEditBar() string {
+	if !m.quickEdit.IsActive() {
+		return ""
+	}
+
+	var lines []string
+
+	mode := "Quick Edit"
+	if m.quickEdit.IsRenameOnly() {
+		mode = "Rename"
+	}
+	modeLabel := lipgloss.NewStyle().Bold(true).Foreground(ColorPrimary).Render(mode + ":")
+
+	inputLine := modeLabel + " " + m.quickEdit.GetInput().View()
+	lines = append(lines, inputLine)
+
+	// Preview line (only for full quick edit mode)
+	if !m.quickEdit.IsRenameOnly() {
+		preview := m.quickEdit.GetPreview()
+		original := m.quickEdit.GetOriginal()
+		if preview != nil && original != nil {
+			previewStr := renderQuickEditPreview(preview, original)
+			if previewStr != "" {
+				lines = append(lines, MutedStyle.Render(previewStr))
+			}
+		}
+	}
+
+	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
+	if !m.quickEdit.IsRenameOnly() {
+		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status | Enter=save Esc=cancel")
+	}
+	lines = append(lines, helpHint)
+
+	return strings.Join(lines, "\n")
 }

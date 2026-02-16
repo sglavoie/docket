@@ -761,6 +761,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if m.allTasksView != nil {
 				m.allTasksView.loadAllTasks()
 			}
+			// Refresh outliner if open
+			if m.outliner != nil {
+				_ = storage.LoadProject(m.outliner.project)
+				m.outliner.rebuildRows()
+			}
 			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)
 		}
 		return true, nil
