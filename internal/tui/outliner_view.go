@@ -64,6 +64,47 @@ func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlin
 	}
 }
 
+// breadcrumb returns the rendered breadcrumb string showing the ancestor chain
+// from the first zoom level to the current zoom target. Returns empty string
+// when not zoomed. If the breadcrumb exceeds maxWidth, leftmost segments are
+// dropped and replaced with "..." until it fits.
+func (m *OutlinerModel) breadcrumb(maxWidth int) string {
+	if len(m.zoomStack) == 0 || m.project == nil {
+		return ""
+	}
+
+	separator := " > "
+	var segments []string
+	for _, entry := range m.zoomStack {
+		if t := m.project.GetTaskByID(entry.TaskID); t != nil {
+			segments = append(segments, t.Title)
+		}
+	}
+	if len(segments) == 0 {
+		return ""
+	}
+
+	full := strings.Join(segments, separator)
+	rendered := MutedStyle.Render(full)
+	if lipgloss.Width(rendered) <= maxWidth {
+		return rendered
+	}
+
+	// Truncate from the left, replacing dropped segments with "...".
+	ellipsis := "..."
+	for len(segments) > 1 {
+		segments = segments[1:]
+		candidate := ellipsis + separator + strings.Join(segments, separator)
+		rendered = MutedStyle.Render(candidate)
+		if lipgloss.Width(rendered) <= maxWidth {
+			return rendered
+		}
+	}
+
+	// Even the last segment alone with ellipsis doesn't fit; render it anyway.
+	return MutedStyle.Render(ellipsis + separator + segments[0])
+}
+
 // View implements tea.Model. It renders the full outliner tree with connector
 // prefixes computed on each render pass from the project's task hierarchy.
 func (m *OutlinerModel) View() string {
@@ -71,17 +112,56 @@ func (m *OutlinerModel) View() string {
 		return "No project loaded"
 	}
 
-	roots := m.project.GetRootTasks()
-	if len(roots) == 0 {
-		return TitleStyle.Render(m.project.Name) + "\n\n" + MutedStyle.Render("No tasks")
+	// Rebuild flat row list with perspective filter and clamp cursor.
+	m.rebuildRows()
+
+	// Capture and clear the transient zoom notice (shown for one render).
+	notice := m.zoomNotice
+	m.zoomNotice = ""
+
+	perspective := m.currentPerspective()
+
+	// Show perspective label only for non-All perspectives.
+	perspectiveLabel := ""
+	if perspective.Filter != nil {
+		perspectiveLabel = "  " + MutedStyle.Render("["+perspective.Name+"]")
 	}
 
-	// Rebuild flat row list and clamp cursor.
-	m.rebuildRows()
+	bc := m.breadcrumb(m.width)
+
+	if len(m.rows) == 0 {
+		header := TitleStyle.Render(m.project.Name) + perspectiveLabel
+		emptyMsg := "No tasks"
+		if perspective.Filter != nil && len(m.zoomStack) > 0 {
+			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
+			if t := m.project.GetTaskByID(topID); t != nil {
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q", perspective.Name, t.Title)
+			} else {
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
+			}
+		} else if perspective.Filter != nil {
+			emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
+		}
+		result := header + "\n"
+		if bc != "" {
+			result += bc + "\n"
+		}
+		result += "\n" + MutedStyle.Render(emptyMsg)
+		if notice != "" {
+			result += "\n\n" + PreviewWarningStyle.Render(notice)
+		}
+		return result
+	}
 
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render(m.project.Name))
-	b.WriteString("\n\n")
+	b.WriteString(perspectiveLabel)
+	b.WriteString("\n")
+	if bc != "" {
+		b.WriteString(bc)
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 
 	// Compute scroll window.
 	visibleRows := m.contentHeight()
@@ -180,6 +260,12 @@ func (m *OutlinerModel) View() string {
 
 	if endIdx < len(m.rows) {
 		b.WriteString(ScrollDownIndicator(len(m.rows) - endIdx))
+		b.WriteString("\n")
+	}
+
+	if notice != "" {
+		b.WriteString("\n")
+		b.WriteString(PreviewWarningStyle.Render(notice))
 		b.WriteString("\n")
 	}
 

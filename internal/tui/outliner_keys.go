@@ -1,17 +1,23 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"strconv"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 // handleKeyMsg processes key events in the outliner view.
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
-		if m.zoomDepth == 0 {
+		if len(m.zoomStack) == 0 {
 			return m, func() tea.Msg {
 				return CloseOutlinerMsg{}
 			}
 		}
-		m.zoomDepth--
+		top := m.zoomStack[len(m.zoomStack)-1]
+		m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
+		m.cursor = top.CursorIndex
 		return m, nil
 
 	case "esc":
@@ -66,6 +72,40 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return ShowFocusBoardMsg{}
 		}
+
+	// Enter: zoom into parent tasks or open detail for leaf tasks
+	case "enter":
+		if len(m.rows) == 0 {
+			return m, nil
+		}
+		task := m.rows[m.cursor].task
+		if len(task.Children) > 0 {
+			m.zoomStack = append(m.zoomStack, ZoomEntry{
+				TaskID:      task.ID,
+				CursorIndex: m.cursor,
+			})
+			m.cursor = 0
+			return m, nil
+		}
+		return m, func() tea.Msg {
+			return ShowTaskDetailMsg{Task: task, Project: m.project}
+		}
+
+	// Backspace: zoom out one level (no-op at root)
+	case "backspace":
+		if len(m.zoomStack) > 0 {
+			top := m.zoomStack[len(m.zoomStack)-1]
+			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
+			m.cursor = top.CursorIndex
+		}
+		return m, nil
+
+	// Perspective switching: keys 1-9
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		key, _ := strconv.Atoi(msg.String())
+		m.activePerspective = key
+		m.rebuildRows()
+		return m, nil
 	}
 
 	return m, nil
