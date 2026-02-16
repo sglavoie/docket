@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -64,6 +65,64 @@ func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlin
 	}
 }
 
+// matchesSearch checks if a task matches the search query by fuzzy-matching
+// the title, tags, description, and comments.
+func matchesSearch(task *models.Task, query string) bool {
+	q := strings.TrimSpace(query)
+	if q == "" {
+		return true
+	}
+	if fuzzy.MatchTerms(task.Title, q) {
+		return true
+	}
+	for _, tag := range task.Tags {
+		if fuzzy.MatchTerms(tag, q) {
+			return true
+		}
+	}
+	if fuzzy.MatchTerms(task.Description, q) {
+		return true
+	}
+	for _, comment := range task.Comments {
+		if fuzzy.MatchTerms(comment.Text, q) {
+			return true
+		}
+	}
+	return false
+}
+
+// flattenTaskTreeWithFolds recursively walks the task tree and produces a flat
+// list of outlinerRows, respecting fold state. Collapsed nodes (not in
+// expandedNodes or explicitly false) stop recursion, showing only the parent.
+// When expandedNodes is empty (default), all nodes are expanded.
+func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlinerRow) {
+	for i, task := range tasks {
+		isLast := i == len(tasks)-1
+		prefix := ""
+		if len(ancestorIsLast) > 0 || len(tasks) > 0 {
+			prefix = buildTreePrefix(ancestorIsLast, isLast)
+		}
+		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
+
+		if len(task.Children) > 0 && m.isExpanded(task.ID) {
+			m.flattenTaskTreeWithFolds(task.Children, append(ancestorIsLast, isLast), rows)
+		}
+	}
+}
+
+// isExpanded returns true if the node should show its children.
+// When the expandedNodes map is empty (default), all nodes are expanded.
+func (m *OutlinerModel) isExpanded(taskID string) bool {
+	if len(m.expandedNodes) == 0 {
+		return true
+	}
+	expanded, exists := m.expandedNodes[taskID]
+	if !exists {
+		return true // Default to expanded
+	}
+	return expanded
+}
+
 // breadcrumb returns the rendered breadcrumb string showing the ancestor chain
 // from the first zoom level to the current zoom target. Returns empty string
 // when not zoomed. If the breadcrumb exceeds maxWidth, leftmost segments are
@@ -115,6 +174,48 @@ func (m *OutlinerModel) View() string {
 	// Rebuild flat row list with perspective filter and clamp cursor.
 	m.rebuildRows()
 
+	if m.sidebar.IsEnabled() {
+		return m.renderWithSidebar()
+	}
+	return m.renderFullWidth()
+}
+
+// renderFullWidth renders the outliner tree using the full terminal width.
+func (m *OutlinerModel) renderFullWidth() string {
+	return m.renderOutlinerTreeContent(m.width)
+}
+
+// renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
+func (m *OutlinerModel) renderWithSidebar() string {
+	treeWidth := (m.width * 55) / 100
+	if treeWidth < TreeMinWidth {
+		treeWidth = TreeMinWidth
+	}
+
+	dividerWidth := 1
+	sidebarWidth := m.width - treeWidth - dividerWidth
+	if sidebarWidth < SidebarMinWidth {
+		sidebarWidth = SidebarMinWidth
+		treeWidth = m.width - sidebarWidth - dividerWidth
+	}
+
+	treeContent := m.renderOutlinerTreeContent(treeWidth)
+
+	var selectedTask *models.Task
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
+		selectedTask = m.rows[m.cursor].task
+	}
+
+	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
+	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
+	divider := renderVerticalDivider(m.height - 2)
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
+}
+
+// renderOutlinerTreeContent renders the tree portion of the outliner, constrained to
+// the given width. Used by both full-width and split-pane layouts.
+func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	// Capture and clear the transient zoom notice (shown for one render).
 	notice := m.zoomNotice
 	m.zoomNotice = ""
@@ -127,10 +228,23 @@ func (m *OutlinerModel) View() string {
 		perspectiveLabel = "  " + MutedStyle.Render("["+perspective.Name+"]")
 	}
 
-	bc := m.breadcrumb(m.width)
+	bc := m.breadcrumb(width)
+
+	// Build search/filter indicators
+	searchIndicator := ""
+	if m.IsSearchMode() {
+		searchIndicator = "  " + MutedStyle.Render("Search: ") + m.SearchInputView()
+	} else if m.SearchQuery() != "" {
+		searchIndicator = "  " + MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
+	}
+
+	filterBadge := ""
+	if hasActiveCommonFilters(&m.filter) || m.actionableFilter {
+		filterBadge = "  " + MutedStyle.Render("[filtered]")
+	}
 
 	if len(m.rows) == 0 {
-		header := TitleStyle.Render(m.project.Name) + perspectiveLabel
+		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + searchIndicator
 		emptyMsg := "No tasks"
 		if perspective.Filter != nil && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
@@ -156,12 +270,21 @@ func (m *OutlinerModel) View() string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render(m.project.Name))
 	b.WriteString(perspectiveLabel)
+	b.WriteString(filterBadge)
+	b.WriteString(searchIndicator)
 	if m.multiSelectMode {
 		count := m.SelectedCount()
 		b.WriteString("  ")
 		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
 	}
 	b.WriteString("\n")
+
+	// Custom section tab bar
+	if tabs := m.customSectionTabs(); tabs != nil {
+		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors))
+		b.WriteString("\n")
+	}
+
 	if bc != "" {
 		b.WriteString(bc)
 		b.WriteString("\n")
@@ -182,6 +305,16 @@ func (m *OutlinerModel) View() string {
 		row := m.rows[i]
 		task := row.task
 		selected := i == m.cursor
+
+		// Fold indicator for parent tasks
+		foldIndicator := ""
+		if len(task.Children) > 0 {
+			if m.isExpanded(task.ID) {
+				foldIndicator = MutedStyle.Render("▾") + " "
+			} else {
+				foldIndicator = MutedStyle.Render("▸") + " "
+			}
+		}
 
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
@@ -267,17 +400,18 @@ func (m *OutlinerModel) View() string {
 		}
 
 		// Truncate title to fit available width
-		availableWidth := max(m.width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
+		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
 		title := titleStyle.Render(util.Truncate(task.Title, availableWidth))
 
-		line := fmt.Sprintf("%s%s%s%s %s %s %s%s",
+		line := fmt.Sprintf("%s%s%s%s%s %s %s %s%s",
 			cursorPrefix,
 			checkbox,
 			MutedStyle.Render(row.prefix),
+			foldIndicator,
 			typeIcon, statusIcon, idStr, title, indicators.String())
 
 		if selected {
-			line = SelectionRowStyle.Width(m.width).Render(line)
+			line = SelectionRowStyle.Width(width).Render(line)
 		}
 
 		b.WriteString(line)

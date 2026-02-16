@@ -110,7 +110,9 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "O", Description: "Display settings", Category: "Display", Views: views},
 
 		// Actions
+		Keybinding{Key: "ctrl+P", Description: "Project tree view", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+K", Description: "Return to project tree", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+O", Description: "Open outliner view", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close Kanban view", Category: "Actions", Views: views},
 		Keybinding{Key: "?", Description: "Show help", Category: "Actions", Views: views},
 	)

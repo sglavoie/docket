@@ -629,15 +629,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m.handlePrefixKey(key, visible)
 	}
 
-	// Get selected task for sidebar navigation
-	var selectedTask *models.Task
-	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
-		selectedTask = visible[m.cursor].Task
-	}
-
 	// Sidebar keys have priority when sidebar is focused
 	if m.sidebar.IsFocused() {
-		if handled, cmd := m.handleSidebarKeys(key, selectedTask); handled {
+		if handled, cmd := m.sidebar.HandleKeys(m, msg); handled {
 			return m, cmd
 		}
 	}

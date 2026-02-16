@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"fmt"
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // ZoomEntry records the state at a single zoom level so cursor position can
@@ -21,7 +23,7 @@ type ZoomEntry struct {
 // (not extending ProjectTreeModel) to allow independent evolution of
 // navigation semantics, sort modes, and zoom-stack behavior.
 type OutlinerModel struct {
-	BaseView
+	BaseSearchableView
 	MultiSelectState
 
 	project       *models.Project
@@ -41,20 +43,46 @@ type OutlinerModel struct {
 	pendingPrefix string              // Prefix key waiting for second key (e.g. "," for status)
 	quickEdit     *QuickEditComponent // Inline quick edit component
 
+	filter           CommonFilterState // Common filter state (F-prefix)
+	actionableFilter bool              // View-local actionable filter (Fr)
+	scoreFilterInput ScoreFilterInput  // Inline score filter threshold input
+
+	customSectionTab int             // Active custom section tab index (0 = All)
+	expandedNodes    map[string]bool // Fold state: true=expanded (default all expanded)
+
+	sidebar *SidebarComponent // Sidebar detail panel
+
 	confirm       ConfirmDialog // Confirmation dialog for destructive actions
 	deleteTarget  *models.Task  // Task to delete when confirmation is accepted
 	statusMessage string        // Transient status/confirmation prompt text
 	err           error         // Last error from an operation
+
+	pendingUndoAction  string // Action label for next undo snapshot
+	pendingUndoContext string // Context description for next undo snapshot
 }
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
-	return &OutlinerModel{
+	m := &OutlinerModel{
 		project:       project,
 		config:        cfg,
 		configManager: cfgManager,
 		quickEdit:     NewQuickEditComponent(),
+		sidebar:       NewSidebarComponent(),
+		expandedNodes: make(map[string]bool),
+		filter: CommonFilterState{
+			Tags:  make(map[string]bool),
+			Attrs: make(map[string]string),
+		},
 	}
+	m.InitSearchInput("Search tasks...", 100, 30)
+	// Restore sidebar state from config
+	if project != nil {
+		if state, exists := cfg.GetProjectViewState(project.ID); exists {
+			m.sidebar.SetEnabled(state.SidebarEnabled)
+		}
+	}
+	return m
 }
 
 // validateZoomStack walks the zoom stack from top to bottom, popping entries
@@ -121,11 +149,50 @@ func (m *OutlinerModel) rebuildRows() {
 		tasks = filterTaskTree(roots, p.Filter)
 	}
 
+	// Apply custom section tab filter
+	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			return t.CustomSection == csFilter
+		})
+	}
+
+	// Apply common filters (F-prefix)
+	if hasActiveCommonFilters(&m.filter) {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			return passesCommonFilters(t, &m.filter, m.project.ID, m.config)
+		})
+	}
+
+	// Apply actionable filter (Fr)
+	if m.actionableFilter {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			if m.project.HasIncompleteDependencies(t) {
+				return false
+			}
+			if t.Status == models.StatusBlocked {
+				return false
+			}
+			if t.Section == models.SectionInbox || t.Section == models.SectionNext ||
+				t.Section == models.SectionWaiting || t.Section == models.SectionSomeday ||
+				t.Section == models.SectionReview {
+				return false
+			}
+			return true
+		})
+	}
+
+	// Apply search filter
+	if q := m.SearchQuery(); q != "" {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			return matchesSearch(t, q)
+		})
+	}
+
 	if m.sortField != SortByDefault {
 		tasks = m.sortTaskTree(tasks)
 	}
 
-	flattenTaskTree(tasks, nil, &m.rows)
+	m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
 	m.clampCursor()
 }
 
@@ -201,12 +268,39 @@ func (m *OutlinerModel) clampCursor() {
 	}
 }
 
+// customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
+func (m *OutlinerModel) customSectionTabs() []string {
+	if m.project == nil {
+		return nil
+	}
+	custom := m.project.GetCustomSections()
+	if len(custom) == 0 {
+		return nil
+	}
+	tabs := make([]string, 0, len(custom)+1)
+	tabs = append(tabs, "All")
+	tabs = append(tabs, custom...)
+	return tabs
+}
+
+// activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
+func (m *OutlinerModel) activeCustomSectionFilter() string {
+	tabs := m.customSectionTabs()
+	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
+		return ""
+	}
+	return tabs[m.customSectionTab]
+}
+
 // contentHeight returns the number of task rows visible on screen,
-// accounting for the title header and optional breadcrumb line.
+// accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
 	headerLines := 2 // title + blank line
+	if m.customSectionTabs() != nil {
+		headerLines++ // custom section tab bar
+	}
 	if len(m.zoomStack) > 0 {
-		headerLines = 3 // title + breadcrumb + blank line
+		headerLines++ // breadcrumb
 	}
 	h := m.height - headerLines
 	if h < 1 {
@@ -225,13 +319,17 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
+	case OutlinerUndoPerformedMsg:
+		m.rebuildRows()
+		m.statusMessage = "Undo completed"
+		return m, nil
 	}
 	return m, nil
 }
 
 // SetSize implements the View interface.
 func (m *OutlinerModel) SetSize(width, height int) {
-	m.BaseView.SetSize(width, height)
+	m.BaseSearchableView.SetSize(width, height)
 }
 
 // taskOpsView implementation for OutlinerModel.
@@ -293,4 +391,228 @@ func (m *OutlinerModel) clearMultiSelect() {
 	m.multiSelectMode = false
 	m.ClearSelection()
 	m.statusMessage = ""
+}
+
+// buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
+// state, draining the pending undo context.
+func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
+	opts := WorkflowSaveOptions{
+		Persister:     NewProjectService(),
+		Project:       m.project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+		UndoAction:    m.pendingUndoAction,
+		UndoContext:   m.pendingUndoContext,
+	}
+	if m.config.UndoHistoryDepth != nil {
+		opts.UndoDepth = *m.config.UndoHistoryDepth
+	}
+	m.clearUndoContext()
+	return opts
+}
+
+// workflowPersistFn returns a persistFn that runs the full save pipeline:
+// auto-unblock, recurring, workflow rules, undo snapshots.
+func (m *OutlinerModel) workflowPersistFn() persistFn {
+	return workflowPersist(func() WorkflowSaveOptions {
+		return m.buildWorkflowOpts(nil)
+	})
+}
+
+// setUndoContext sets the action context for the next save operation.
+func (m *OutlinerModel) setUndoContext(action, context string) {
+	m.pendingUndoAction = action
+	m.pendingUndoContext = context
+}
+
+// clearUndoContext clears the pending undo context.
+func (m *OutlinerModel) clearUndoContext() {
+	m.pendingUndoAction = ""
+	m.pendingUndoContext = ""
+}
+
+// performUndo restores the project from backup.
+func (m *OutlinerModel) performUndo() tea.Cmd {
+	return func() tea.Msg {
+		if err := performUndoFromBackup(NewProjectService(), m.project); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return OutlinerUndoPerformedMsg{}
+	}
+}
+
+// OutlinerUndoPerformedMsg signals that an undo was performed in the outliner.
+type OutlinerUndoPerformedMsg struct{}
+
+// saveWithWorkflow persists the project using the full workflow pipeline
+// and rebuilds rows on success.
+func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
+	opts := m.buildWorkflowOpts(nil)
+	return func() tea.Msg {
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		m.rebuildRows()
+		return nil
+	}
+}
+
+// archiveProject archives or unarchives the project and saves config.
+func (m *OutlinerModel) archiveProject() tea.Cmd {
+	return func() tea.Msg {
+		if m.project.Archived {
+			m.project.Unarchive()
+		} else {
+			m.project.Archive()
+			if m.config.CurrentProject == m.project.ID {
+				m.config.CurrentProject = ""
+			}
+		}
+		if err := m.configManager.Save(m.config); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+		}
+		return ProjectArchivedMsg{Project: m.project}
+	}
+}
+
+// SidebarHost interface implementation for OutlinerModel.
+
+// SidebarProject returns the project for sidebar display.
+func (m *OutlinerModel) SidebarProject() *models.Project {
+	return m.project
+}
+
+// SidebarConfig returns the config for sidebar display.
+func (m *OutlinerModel) SidebarConfig() *config.Config {
+	return m.config
+}
+
+// SidebarGetSidebar returns the sidebar component.
+func (m *OutlinerModel) SidebarGetSidebar() *SidebarComponent {
+	return m.sidebar
+}
+
+// SidebarSelectedTask returns the currently selected task.
+func (m *OutlinerModel) SidebarSelectedTask() *models.Task {
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
+		return m.rows[m.cursor].task
+	}
+	return nil
+}
+
+// NavigateToSidebarTask navigates to a task from the sidebar.
+// If the task is inside a collapsed parent, ancestors are expanded first.
+func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
+	// First try to find the task in the current rows.
+	for i, row := range m.rows {
+		if row.task.ID == task.ID {
+			m.cursor = i
+			return
+		}
+	}
+
+	// Task not found — it may be inside a collapsed parent.
+	// Expand all ancestors and rebuild rows, then search again.
+	m.ensureExpandedNodes()
+	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
+		m.expandedNodes[ancestor.ID] = true
+	}
+	m.rebuildRows()
+
+	for i, row := range m.rows {
+		if row.task.ID == task.ID {
+			m.cursor = i
+			return
+		}
+	}
+}
+
+// UnlinkSelectedSidebarTask removes the currently selected link from the sidebar.
+func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.Cmd {
+	section := m.sidebar.GetDependencySection()
+	cursor := m.sidebar.GetDependencyCursor()
+	ps := NewProjectService()
+
+	return func() tea.Msg {
+		switch section {
+		case 0: // Blocked by
+			if cursor < 0 || cursor >= len(sourceTask.DependsOn) {
+				return nil
+			}
+			ref := sourceTask.DependsOn[cursor]
+			sourceTask.RemoveDependency(ref)
+
+			if err := ps.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := ps.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+
+		case 1: // Blocking
+			blockedTasks := m.project.GetBlockedByTasks(sourceTask)
+			if cursor < 0 || cursor >= len(blockedTasks) {
+				return nil
+			}
+			blockedTask := blockedTasks[cursor]
+			blockedTask.RemoveDependency(sourceTask.ID)
+
+			if err := ps.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := ps.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+
+		case 2: // Related
+			if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
+				return nil
+			}
+			ref := sourceTask.RelatedTo[cursor]
+			taskRef := models.ParseTaskRef(ref)
+
+			sourceTask.RemoveRelatedTo(ref)
+
+			if taskRef.IsCrossProject() {
+				if m.config != nil {
+					targetProject := m.config.GetProject(taskRef.ProjectID)
+					if targetProject != nil {
+						if len(targetProject.Tasks) == 0 {
+							if err := storage.LoadProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
+						}
+						if targetTask := targetProject.GetTaskByID(taskRef.TaskID); targetTask != nil {
+							reverseRef := m.project.ID + ":" + sourceTask.ID
+							targetTask.RemoveRelatedTo(reverseRef)
+
+							if err := storage.BackupProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
+							if err := storage.SaveProject(targetProject); err != nil {
+								return ErrorMsg{Err: err}
+							}
+						}
+					}
+				}
+			} else {
+				if targetTask := m.project.GetTaskByID(taskRef.TaskID); targetTask != nil {
+					targetTask.RemoveRelatedTo(sourceTask.ID)
+				}
+			}
+
+			if err := ps.Backup(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			if err := ps.Save(m.project); err != nil {
+				return ErrorMsg{Err: err}
+			}
+		}
+
+		if err := ps.Load(m.project); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return LinkRemovedMsg{SourceTask: sourceTask, Section: section}
+	}
 }

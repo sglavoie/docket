@@ -44,6 +44,7 @@ var prefixCategoryNames = map[string]string{
 	"c":   "create",
 	"t":   "task",
 	"b":   "blockers",
+	"p":   "perspectives",
 	"F":   "filter",
 	"Ft":  "filter-type",
 	"Fs":  "filter-status",

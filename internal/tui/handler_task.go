@@ -471,7 +471,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 				// Restore main tree cursor to the source task
 				m.projectTree.JumpToTask(task)
 
-				sections := m.projectTree.getAvailableSections(task)
+				sections := sidebarGetAvailableSections(m.currentProject, task)
 				sidebar := m.projectTree.sidebar
 
 				if len(sections) == 0 {
@@ -492,7 +492,39 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 						sidebar.SetDependencySection(sections[0])
 					}
 					// Clamp cursor to valid range
-					count := m.projectTree.getCurrentSidebarLinkedItemCount(task)
+					count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
+					if sidebar.GetDependencyCursor() >= count {
+						if count > 0 {
+							sidebar.SetDependencyCursor(count - 1)
+						} else {
+							sidebar.SetDependencyCursor(0)
+						}
+					}
+				}
+			}
+		}
+		// Adjust outliner sidebar cursor after link removal
+		if m.outliner != nil && m.outliner.sidebar != nil && m.currentProject != nil {
+			task := m.currentProject.GetTaskByID(sourceTaskID)
+			if task != nil {
+				sections := sidebarGetAvailableSections(m.currentProject, task)
+				sidebar := m.outliner.sidebar
+
+				if len(sections) == 0 {
+					sidebar.SetFocused(false)
+				} else {
+					currentSection := sidebar.GetDependencySection()
+					sectionHasItems := false
+					for _, s := range sections {
+						if s == currentSection {
+							sectionHasItems = true
+							break
+						}
+					}
+					if !sectionHasItems {
+						sidebar.SetDependencySection(sections[0])
+					}
+					count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
 					if sidebar.GetDependencyCursor() >= count {
 						if count > 0 {
 							sidebar.SetDependencyCursor(count - 1)

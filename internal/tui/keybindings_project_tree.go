@@ -29,6 +29,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
+		Keybinding{Key: "ctrl+O", Description: "Open outliner view", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 
 		// Task Movement (when sidebar unfocused)
@@ -68,7 +69,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
-		Keybinding{Key: "P", Description: "Filter by priority", Category: "Filters", Views: views},
+		Keybinding{Key: "Fp", Description: "Filter by priority (use Fp)", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "N", Description: "Filter by section", Category: "Filters", Views: views},
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
