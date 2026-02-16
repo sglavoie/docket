@@ -21,6 +21,9 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		_ = m.persister.Load(m.currentProject)
 	}
 	m.refreshProjectTree()
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
+	}
 	if statusMsg != "" {
 		m.statusMessage = statusMsg
 		return defaultStatusTimeout()

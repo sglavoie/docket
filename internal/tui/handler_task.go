@@ -188,11 +188,17 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			m.statusMessage = successMsg
 			m.refreshProjectTree()
+			if m.outliner != nil {
+				m.outliner.rebuildRows()
+			}
 			return true, defaultStatusTimeout()
 		}
 
 		m.pendingBulkTasks = nil
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 		return true, nil
 
 	case ShowUndoHistoryMsg:
@@ -336,6 +342,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.loadingMessage = ""
 		m.popView() // Close project selector
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 		// Also refresh the focus board so the moved task disappears from its old position
 		if v := m.views.Get(ViewFocusBoard); v != nil {
 			v.Update(FocusBoardRefreshMsg{})
@@ -361,6 +370,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case LinkedTaskCreatedMsg:
 		m.popView()
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 
 		// Determine link type name for status message
 		var linkName string
@@ -428,6 +440,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CrossProjectLinkCreatedMsg:
 		m.popView()
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 		// Determine link type name for status message
 		var linkName string
 		switch msg.LinkType {
@@ -445,6 +460,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Save task ID before refresh (project reload creates new task objects)
 		sourceTaskID := msg.SourceTask.ID
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 		// Adjust cursors after link removal
 		if m.projectTree != nil && m.currentProject != nil {
 			// Find the task again after refresh (refresh reloads project)
@@ -746,6 +764,9 @@ func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bo
 
 	// Refresh project tree and save
 	m.refreshProjectTree()
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
+	}
 	return true, tea.Batch(
 		startLoading("Saving..."),
 		SaveProjectAsync(msg.Project, "Description updated"),
