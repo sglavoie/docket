@@ -970,6 +970,24 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowOutlinerMsg:
+		if msg.Project != nil {
+			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+			m.showView(ViewOutliner, m.outliner)
+		}
+		return true, nil
+
+	case CloseOutlinerMsg:
+		m.popView()
+		m.outliner = nil
+		return true, nil
+
+	case ShowProjectTreeMsg:
+		if msg.Project != nil && m.projectTree != nil {
+			m.showView(ViewProjectTree, m.projectTree)
+		}
+		return true, nil
+
 	case ShowKanbanMsg:
 		if msg.Project != nil {
 			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
@@ -1149,6 +1167,11 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		if project != nil {
 			_ = storage.LoadProject(project)
 			return m.handleViewMessages(ShowUndoHistoryMsg{Project: project})
+		}
+	case ViewOutliner:
+		if project != nil {
+			_ = storage.LoadProject(project)
+			return m.handleViewMessages(ShowOutlinerMsg{Project: project})
 		}
 	}
 	return true, nil

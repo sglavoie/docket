@@ -97,6 +97,7 @@ const (
 	ViewAllTasks
 	ViewScoringProfilePicker
 	ViewFocusBoard
+	ViewOutliner
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -129,6 +130,7 @@ type AppModel struct {
 	kanban               *KanbanViewModel
 	metricsDashboard     *MetricsDashboardModel
 	allTasksView         *AllTasksViewModel
+	outliner             *OutlinerModel
 
 	// Current project context
 	currentProject *models.Project

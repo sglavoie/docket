@@ -30,7 +30,8 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 		}
 		m.switchToProject(msg.Project, true)
-		m.showView(ViewProjectTree, m.projectTree)
+		m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+		m.showView(ViewOutliner, m.outliner)
 		return true, nil
 
 	case CreateProjectMsg:

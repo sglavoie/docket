@@ -275,6 +275,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 		if v := m.views.Get(ViewAllTasks); v != nil {
 			m.allTasksView = v.(*AllTasksViewModel)
 		}
+	case ViewOutliner:
+		if v := m.views.Get(ViewOutliner); v != nil {
+			m.outliner = v.(*OutlinerModel)
+		}
 	}
 
 	return cmd

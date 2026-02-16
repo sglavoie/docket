@@ -73,8 +73,8 @@ func TestHandleProjectMessagesSelectProject(t *testing.T) {
 	if len(app.viewStack) != 2 {
 		t.Errorf("viewStack should have 2 views after select, got %d", len(app.viewStack))
 	}
-	if app.currentView() != ViewProjectTree {
-		t.Errorf("currentView should be ProjectTree, got %v", app.currentView())
+	if app.currentView() != ViewOutliner {
+		t.Errorf("currentView should be ViewOutliner, got %v", app.currentView())
 	}
 }
 

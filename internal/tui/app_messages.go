@@ -728,6 +728,15 @@ type LinkedTaskSelectedMsg struct {
 }
 
 // =============================================================================
+// Project Tree Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowProjectTreeMsg opens the project tree view for a project.
+type ShowProjectTreeMsg struct {
+	Project *models.Project
+}
+
+// =============================================================================
 // Kanban View Messages (Show/Close Pattern)
 // =============================================================================
 
@@ -804,6 +813,18 @@ type CloseScoreProfileManagerMsg struct{}
 
 // ScoreProfileChangedMsg signals a scoring profile was added, deleted, assigned, or unassigned.
 type ScoreProfileChangedMsg struct{}
+
+// =============================================================================
+// Outliner Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowOutlinerMsg opens the outliner view for a project.
+type ShowOutlinerMsg struct {
+	Project *models.Project
+}
+
+// CloseOutlinerMsg closes the outliner view.
+type CloseOutlinerMsg struct{}
 
 // =============================================================================
 // Sandbox Messages

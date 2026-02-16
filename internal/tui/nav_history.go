@@ -140,7 +140,8 @@ func isTrackedView(vt ViewType) bool {
 		ViewTaskDetail,
 		ViewTaskAttachments,
 		ViewTaskActivity,
-		ViewMetricsDashboard:
+		ViewMetricsDashboard,
+		ViewOutliner:
 		return true
 	default:
 		return false
