@@ -227,12 +227,6 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 		// Count total tasks in this section (including children)
 		count := m.countTasksRecursive(sectionTasks)
 
-		// Display name for empty section (Active)
-		displayName := sectionName
-		if displayName == "" {
-			displayName = "Active"
-		}
-
 		// Add section header row
 		m.rows = append(m.rows, outlinerRow{
 			IsSectionHeader: true,

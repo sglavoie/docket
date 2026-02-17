@@ -698,17 +698,6 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 }
 
-// saveProject persists the project to storage and rebuilds the row list.
-func (m *OutlinerModel) saveProject() tea.Cmd {
-	return func() tea.Msg {
-		ps := NewProjectService()
-		if err := ps.Save(m.project); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return nil
-	}
-}
-
 // handlePrefixKey handles the second key in a prefix key sequence.
 func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	prefix := m.pendingPrefix

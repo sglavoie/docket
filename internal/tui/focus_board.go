@@ -47,13 +47,6 @@ func (r boardRow) isTask() bool {
 	return r.Task != nil && r.Task.Type != models.TaskTypeAction
 }
 
-func (r boardRow) title() string {
-	if r.Task != nil {
-		return r.Task.Title
-	}
-	return ""
-}
-
 // FocusBoardModel displays Action tasks + aggregated active/due tasks in a unified view.
 type FocusBoardModel struct {
 	BaseView

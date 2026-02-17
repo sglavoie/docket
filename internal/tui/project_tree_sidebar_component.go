@@ -222,7 +222,7 @@ func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyMsg) (bool, t
 		return true, nil
 
 	case "enter":
-		if selectedTask != nil {
+		{
 			result := sidebarGetSelectedLinkedTaskWithProject(project, host.SidebarConfig(), s, selectedTask)
 			if result.Task != nil && !result.IsMissing {
 				s.focused = false
