@@ -46,10 +46,9 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Sidebar-focused key handling (before prefix/action keys)
 	if m.sidebar.IsFocused() {
-		handled, cmd := m.sidebar.HandleKeys(m, msg)
-		if handled {
-			return m, cmd
-		}
+		_, cmd := m.sidebar.HandleKeys(m, msg)
+		// When sidebar is focused, consume all keys to prevent tree navigation
+		return m, cmd
 	}
 
 	// Handle pending prefix keys first (which-key style two-key sequences)
@@ -801,6 +800,27 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			m.rebuildRows()
 			return m, result.Cmd
+		}
+
+		// Delete task (tD)
+		if key == "D" {
+			if m.multiSelectMode && len(m.selectedTasks) > 0 {
+				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+				m.statusMessage = m.confirm.Prompt()
+				return m, nil
+			}
+			if cursorTask != nil {
+				if cursorTask.IsRecurring() {
+					m.confirm.Show("delete-recurring",
+						fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
+							cursorTask.ShortID, cursorTask.Title))
+				} else {
+					m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", cursorTask.ShortID))
+				}
+				m.statusMessage = m.confirm.Prompt()
+				m.deleteTarget = cursorTask
+			}
+			return m, nil
 		}
 
 	case "p":

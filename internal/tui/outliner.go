@@ -614,6 +614,11 @@ func (m *OutlinerModel) SidebarGetSidebar() *SidebarComponent {
 	return m.sidebar
 }
 
+// SidebarHeight returns the visible height available for sidebar content.
+func (m *OutlinerModel) SidebarHeight() int {
+	return m.height - CardVerticalBorderOverhead
+}
+
 // SidebarSelectedTask returns the currently selected task.
 func (m *OutlinerModel) SidebarSelectedTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {

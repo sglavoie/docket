@@ -15,6 +15,7 @@ type SidebarHost interface {
 	SidebarConfig() *config.Config
 	SidebarGetSidebar() *SidebarComponent
 	SidebarSelectedTask() *models.Task
+	SidebarHeight() int
 	NavigateToSidebarTask(task *models.Task)
 	UnlinkSelectedSidebarTask(task *models.Task) tea.Cmd
 }

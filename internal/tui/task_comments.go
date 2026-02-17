@@ -79,6 +79,15 @@ func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, 
 	return m
 }
 
+// resolveTask ensures m.task points to the task currently in m.project.Tasks.
+// An async save from the parent view may call LoadProject which replaces
+// project.Tasks with new objects, leaving m.task as a stale pointer.
+func (m *TaskCommentsModel) resolveTask() {
+	if t := m.project.GetTaskByID(m.task.ID); t != nil {
+		m.task = t
+	}
+}
+
 func (m *TaskCommentsModel) Init() tea.Cmd {
 	return nil
 }
@@ -250,14 +259,10 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 			return nil
 		}
 
+		m.resolveTask()
 		m.task.AddComment(text)
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -275,16 +280,12 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	return func() tea.Msg {
+		m.resolveTask()
 		if !m.task.RemoveComment(m.cursor) {
 			return ErrorMsg{Err: fmt.Errorf("failed to remove comment")}
 		}
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -315,14 +316,10 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		}
 
 		// Update the comment text (preserve timestamp)
+		m.resolveTask()
 		m.task.Comments[m.editIndex].Text = text
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -398,15 +395,15 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 			return nil // No changes
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Update comment (preserve timestamp)
 		task.Comments[editIndex].Text = newText
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -476,15 +473,15 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 			return nil // Empty comment, just return to normal mode
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Add the new comment
 		task.AddComment(newText)
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -494,16 +491,12 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
 	return func() tea.Msg {
+		m.resolveTask()
 		if !m.task.ToggleCommentResolved(m.cursor) {
 			return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")}
 		}
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -582,15 +575,15 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 			return nil // No changes
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Update comment (preserve timestamp)
 		task.Comments[editIndex].Text = newText
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

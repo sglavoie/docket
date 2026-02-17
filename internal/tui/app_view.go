@@ -119,6 +119,24 @@ func (m *AppModel) renderStatusBar() string {
 		} else {
 			status = "Project"
 		}
+	case ViewOutliner:
+		if m.currentProject != nil {
+			status = fmt.Sprintf("Outliner: %s", m.currentProject.Name)
+			cycleProjects := m.config.GetCycleProjects()
+			if len(cycleProjects) > 0 {
+				for i, p := range cycleProjects {
+					if p.ID == m.currentProject.ID {
+						status += fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
+						break
+					}
+				}
+			}
+			if m.outliner != nil && m.outliner.sidebar.IsFocused() {
+				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
+			}
+		} else {
+			status = "Outliner"
+		}
 	case ViewProjectCreator:
 		status = "New Project"
 	case ViewProjectEditor:

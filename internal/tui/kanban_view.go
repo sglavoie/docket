@@ -163,6 +163,7 @@ func (m *KanbanViewModel) View() string {
 	if detailsHeight < KanbanMinDetailsHeight {
 		detailsHeight = KanbanMinDetailsHeight
 	}
+	m.detailsHeight = detailsHeight
 	selectedTask := m.getSelectedTask()
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
 	viewParts = append(viewParts, detailsPane)
@@ -585,6 +586,22 @@ func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height in
 	// Join columns horizontally
 	content := lipgloss.JoinHorizontal(lipgloss.Top, taskCard, col2Content, descCard)
 
+	// Optional second row: checklist, comments, attachments cards
+	var secondRowCards []string
+	if len(task.Checklist) > 0 {
+		secondRowCards = append(secondRowCards, renderSidebarChecklistCard(task, width/3))
+	}
+	if len(task.Comments) > 0 {
+		secondRowCards = append(secondRowCards, renderSidebarCommentsCard(task, width/3))
+	}
+	if task.HasAttachments() {
+		secondRowCards = append(secondRowCards, renderSidebarAttachmentsCard(task, width/3))
+	}
+	if len(secondRowCards) > 0 {
+		secondRow := lipgloss.JoinHorizontal(lipgloss.Top, secondRowCards...)
+		content = lipgloss.JoinVertical(lipgloss.Left, content, secondRow)
+	}
+
 	// Pad to exact height (minus 1 for help hint line which is part of app status bar)
 	return m.padDetailsToHeight(content, width, height)
 }
@@ -606,16 +623,9 @@ func (m *KanbanViewModel) renderDetailsDueCard(task *models.Task, width int) str
 	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
 }
 
-// renderDetailsDescriptionCard renders the scrollable description card.
+// renderDetailsDescriptionCard renders the description card.
 func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width, availableHeight int) string {
 	lines := strings.Split(task.Description, "\n")
-
-	// Apply scroll offset
-	if m.detailsScroll < len(lines) {
-		lines = lines[m.detailsScroll:]
-	} else {
-		lines = []string{}
-	}
 
 	// Render with all visible lines, then iteratively reduce until the card
 	// fits within availableHeight. This accounts for text wrapping by lipgloss.
@@ -636,8 +646,23 @@ func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width,
 }
 
 // padDetailsToHeight ensures the details panel fills the exact height.
+// Applies detailsScroll offset to enable scrolling through the full content.
 func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) string {
 	lines := strings.Split(content, "\n")
+
+	// Clamp scroll to valid range
+	maxScroll := len(lines) - height
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.detailsScroll > maxScroll {
+		m.detailsScroll = maxScroll
+	}
+
+	// Apply scroll offset
+	if m.detailsScroll > 0 {
+		lines = lines[m.detailsScroll:]
+	}
 
 	// Truncate if too tall
 	if len(lines) > height {

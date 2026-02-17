@@ -125,6 +125,7 @@ type KanbanViewModel struct {
 	// Split view state: top half is kanban, bottom half is task details
 	detailsPaneFocused bool // which pane has focus (false=kanban, true=details)
 	detailsScroll      int  // scroll offset for description in details pane
+	detailsHeight      int  // computed height for details pane (for half-page scroll)
 	kanbanHeight       int  // computed height for kanban pane (excludes divider)
 
 	// Filter state for filtering tasks across all columns

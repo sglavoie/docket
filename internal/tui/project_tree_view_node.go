@@ -179,6 +179,17 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())) + " "
 	}
 
+	// Checklist indicator (compact)
+	if len(task.Checklist) > 0 {
+		completed := 0
+		for _, item := range task.Checklist {
+			if item.Done {
+				completed++
+			}
+		}
+		indicators += MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))) + " "
+	}
+
 	// Custom section badge (only when sidebar is hidden)
 	if task.CustomSection != "" && !m.sidebar.IsEnabled() {
 		csColor := m.project.GetSectionColor(task.CustomSection)

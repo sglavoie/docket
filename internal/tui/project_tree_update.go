@@ -631,9 +631,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 
 	// Sidebar keys have priority when sidebar is focused
 	if m.sidebar.IsFocused() {
-		if handled, cmd := m.sidebar.HandleKeys(m, msg); handled {
-			return m, cmd
-		}
+		_, cmd := m.sidebar.HandleKeys(m, msg)
+		// When sidebar is focused, consume all keys to prevent tree navigation
+		return m, cmd
 	}
 
 	// Prefix key activation (status, fold, go/section, priority, due date, create linked, task, blocker)

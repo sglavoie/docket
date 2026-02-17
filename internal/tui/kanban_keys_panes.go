@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -61,24 +59,35 @@ func (m *KanbanViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "j", "down":
-		// Scroll description down
-		task := m.getSelectedTask()
-		if task != nil && task.Description != "" {
-			descLines := strings.Split(task.Description, "\n")
-			maxScroll := len(descLines) - 3 // Keep at least 3 lines visible
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			if m.detailsScroll < maxScroll {
-				m.detailsScroll++
-			}
-		}
+		// Scroll panel content down
+		m.detailsScroll++
 		return m, nil
 
 	case "k", "up":
-		// Scroll description up
+		// Scroll panel content up
 		if m.detailsScroll > 0 {
 			m.detailsScroll--
+		}
+		return m, nil
+
+	case "ctrl+d", "pgdown":
+		// Scroll panel content down by half page
+		halfPage := m.detailsHeight / 2
+		if halfPage < 1 {
+			halfPage = 1
+		}
+		m.detailsScroll += halfPage
+		return m, nil
+
+	case "ctrl+u", "pgup":
+		// Scroll panel content up by half page
+		halfPage := m.detailsHeight / 2
+		if halfPage < 1 {
+			halfPage = 1
+		}
+		m.detailsScroll -= halfPage
+		if m.detailsScroll < 0 {
+			m.detailsScroll = 0
 		}
 		return m, nil
 

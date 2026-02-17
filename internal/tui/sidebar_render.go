@@ -28,7 +28,7 @@ func renderSidebarCard(title, content string, width int, focused bool, accentCol
 func renderSidebarContent(host SidebarHost, task *models.Task, width, height int) string {
 	if task == nil {
 		emptyCard := renderSidebarCard("Task", MutedStyle.Render("No task selected"), width, false, "")
-		return padSidebarToHeight(emptyCard, width, height)
+		return padSidebarToHeight(emptyCard, nil, width, height)
 	}
 
 	project := host.SidebarProject()
@@ -95,7 +95,7 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 
 	// Description card (only if has description)
 	if task.Description != "" {
-		cards = append(cards, renderSidebarDescriptionCard(sidebar, task, width))
+		cards = append(cards, renderSidebarDescriptionCard(task, width))
 	}
 
 	// Help hint at bottom if sidebar focused
@@ -112,7 +112,7 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 		content += "\n" + helpHint
 	}
 
-	return padSidebarToHeight(content, width, height)
+	return padSidebarToHeight(content, sidebar, width, height)
 }
 
 // renderSidebarTaskCard renders the main task info card.
@@ -343,12 +343,9 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 	return renderSidebarCard("Attachments", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderSidebarDescriptionCard renders the description card with scroll support.
-func renderSidebarDescriptionCard(sidebar *SidebarComponent, task *models.Task, width int) string {
+// renderSidebarDescriptionCard renders the description card.
+func renderSidebarDescriptionCard(task *models.Task, width int) string {
 	lines := strings.Split(task.Description, "\n")
-	if sidebar.GetScroll() < len(lines) {
-		lines = lines[sidebar.GetScroll():]
-	}
 	maxLines := 5
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]
@@ -453,8 +450,23 @@ func renderSidebarScoreCard(task *models.Task, width int, profile *scoring.Scori
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.
-func padSidebarToHeight(content string, width, height int) string {
+// When a sidebar component is provided, applies and clamps its scroll offset.
+func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height int) string {
 	lines := strings.Split(content, "\n")
+
+	// Apply and clamp scroll offset from sidebar
+	if sidebar != nil {
+		maxScroll := len(lines) - height
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if sidebar.scroll > maxScroll {
+			sidebar.scroll = maxScroll
+		}
+		if sidebar.scroll > 0 {
+			lines = lines[sidebar.scroll:]
+		}
+	}
 
 	if len(lines) > height {
 		lines = lines[:height]

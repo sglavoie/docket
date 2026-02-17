@@ -433,6 +433,35 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 
+		// Comment indicator
+		if len(task.Comments) > 0 {
+			unresolved := task.UnresolvedCommentCount()
+			indicators.WriteString(" ")
+			if unresolved < len(task.Comments) {
+				indicators.WriteString(MutedStyle.Render(fmt.Sprintf("💬%d/%d", unresolved, len(task.Comments))))
+			} else {
+				indicators.WriteString(MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))))
+			}
+		}
+
+		// Attachment indicator
+		if task.HasAttachments() {
+			indicators.WriteString(" ")
+			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())))
+		}
+
+		// Checklist indicator
+		if len(task.Checklist) > 0 {
+			completed := 0
+			for _, item := range task.Checklist {
+				if item.Done {
+					completed++
+				}
+			}
+			indicators.WriteString(" ")
+			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))))
+		}
+
 		// Progress for parent tasks
 		if task.HasProgressChildren() {
 			pct := task.GetProgress()
