@@ -566,10 +566,18 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
+			replacing := m.isOnProjectView()
+			if replacing {
+				m.saveKanbanState()
+			}
 			m.saveOutlinerToggleState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
 			m.restoreOutlinerToggleState()
-			m.showView(ViewOutliner, m.outliner)
+			if replacing {
+				m.replaceView(ViewOutliner, m.outliner)
+			} else {
+				m.showView(ViewOutliner, m.outliner)
+			}
 		}
 		return true, nil
 
@@ -581,19 +589,36 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowProjectTreeMsg:
 		if msg.Project != nil {
+			replacing := m.isOnProjectView()
+			if replacing {
+				m.saveOutlinerToggleState()
+				m.saveKanbanState()
+			}
 			if m.projectTree == nil {
 				m.switchToProject(msg.Project, true)
 			}
-			m.showView(ViewProjectTree, m.projectTree)
+			if replacing {
+				m.replaceView(ViewProjectTree, m.projectTree)
+			} else {
+				m.showView(ViewProjectTree, m.projectTree)
+			}
 		}
 		return true, nil
 
 	case ShowKanbanMsg:
 		if msg.Project != nil {
+			replacing := m.isOnProjectView()
+			if replacing {
+				m.saveOutlinerToggleState()
+			}
 			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
 			m.kanban.projectTree = m.projectTree
 			m.restoreKanbanState()
-			m.showView(ViewKanban, m.kanban)
+			if replacing {
+				m.replaceView(ViewKanban, m.kanban)
+			} else {
+				m.showView(ViewKanban, m.kanban)
+			}
 		}
 		return true, nil
 

@@ -497,6 +497,38 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 	m.pushView(viewType)
 }
 
+// replaceView replaces the top of the view stack instead of pushing.
+// Used when switching between peer project views (ProjectTree, Kanban, Outliner)
+// so the stack doesn't accumulate entries.
+func (m *AppModel) replaceView(viewType ViewType, view View) {
+	view.SetSize(m.width, m.height-2)
+	m.views.Register(viewType, view)
+	if len(m.viewStack) > 1 {
+		m.viewStack[len(m.viewStack)-1] = viewType
+	} else {
+		m.viewStack = append(m.viewStack, viewType)
+	}
+	if viewType == ViewProjectTree || viewType == ViewKanban || viewType == ViewOutliner {
+		m.lastProjectView = viewType
+	}
+	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
+		entry := NavEntry{ViewType: viewType}
+		if m.currentProject != nil {
+			entry.ProjectID = m.currentProject.ID
+		}
+		if isTaskScopedView(viewType) {
+			entry.TaskID = m.lastNavigatedTaskID
+		}
+		m.navHistory.Record(entry)
+	}
+}
+
+// isOnProjectView returns true if the current view is a peer project view.
+func (m *AppModel) isOnProjectView() bool {
+	cur := m.currentView()
+	return cur == ViewProjectTree || cur == ViewKanban || cur == ViewOutliner
+}
+
 // saveProjectTreeState persists the current project tree filter/sort state to config.
 func (m *AppModel) saveProjectTreeState() {
 	if m.projectTree == nil || m.currentProject == nil {
