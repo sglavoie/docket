@@ -46,8 +46,22 @@ func TestAllPerspective(t *testing.T) {
 	if p.Name != "All" {
 		t.Fatalf("expected 'All', got %q", p.Name)
 	}
-	if p.Filter != nil {
-		t.Fatal("All perspective should have nil filter")
+	if p.Filter == nil {
+		t.Fatal("All perspective should have a filter that excludes completed tasks")
+	}
+	// Should accept non-complete tasks
+	if !p.Filter(&models.Task{Status: models.StatusTodo}) {
+		t.Error("All should accept todo tasks")
+	}
+	if !p.Filter(&models.Task{Status: models.StatusInProgress}) {
+		t.Error("All should accept in_progress tasks")
+	}
+	// Should reject completed tasks
+	if p.Filter(&models.Task{Status: models.StatusDone}) {
+		t.Error("All should reject done tasks")
+	}
+	if p.Filter(&models.Task{Status: models.StatusCanceled}) {
+		t.Error("All should reject canceled tasks")
 	}
 }
 
@@ -382,8 +396,9 @@ func assertRowTitles(t *testing.T, got []outlinerRow, want []string) {
 func TestRebuildRows_AllPerspective(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
+	// Task A2 (done) is excluded by the All perspective filter
 	assertRowTitles(t, m.rows, []string{
-		"[Active]", "Epic", "Story A", "Task A1", "Task A2", "Story B", "Task B1", "Bug Root",
+		"[Active]", "Epic", "Story A", "Task A1", "Story B", "Task B1", "Bug Root",
 	})
 }
 
@@ -530,9 +545,10 @@ func TestRebuildRows_ParentPreservedForMatchingDescendant(t *testing.T) {
 func TestRebuildRows_DefaultPerspectiveIsAll(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 0, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	// activePerspective=0 defaults to "All" (key 1), showing everything with section header.
-	if len(m.rows) != 8 {
-		t.Fatalf("default perspective should show all 8 rows (1 header + 7 tasks), got %d", len(m.rows))
+	// activePerspective=0 defaults to "All" (key 1), showing non-complete tasks with section header.
+	// 1 header + 6 non-done tasks (Task A2 is done and excluded)
+	if len(m.rows) != 7 {
+		t.Fatalf("default perspective should show 7 rows (1 header + 6 tasks), got %d", len(m.rows))
 	}
 	// First row should be the Active section header
 	if !m.rows[0].IsSectionHeader {
@@ -543,7 +559,7 @@ func TestRebuildRows_DefaultPerspectiveIsAll(t *testing.T) {
 func TestRebuildRows_CursorClampedAfterFilter(t *testing.T) {
 	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	m.cursor = 7 // last row in "All" perspective (now includes section header)
+	m.cursor = 6 // last row in "All" perspective (header + 6 non-done tasks)
 
 	// Switch to Someday (no matches) — cursor should clamp to 0.
 	m.activePerspective = 7

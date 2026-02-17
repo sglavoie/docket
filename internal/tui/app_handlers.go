@@ -8,6 +8,24 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// saveOutlinerToggleState captures the current outliner's section/fold state
+// into the per-project cache so it can be restored after recreation.
+func (m *AppModel) saveOutlinerToggleState() {
+	if m.outliner != nil && m.outliner.project != nil {
+		m.outlinerToggleStates[m.outliner.project.ID] = m.outliner.SaveToggleState()
+	}
+}
+
+// restoreOutlinerToggleState applies any cached section/fold state to the
+// current outliner for its project.
+func (m *AppModel) restoreOutlinerToggleState() {
+	if m.outliner != nil && m.outliner.project != nil {
+		if state, ok := m.outlinerToggleStates[m.outliner.project.ID]; ok {
+			m.outliner.RestoreToggleState(state)
+		}
+	}
+}
+
 // reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.
 // Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
@@ -30,10 +48,14 @@ func (m *AppModel) applyTagsToTask(task *models.Task, project *models.Project, s
 		return errorCmd("save failed: %w", err)
 	}
 
-	// Refresh tree and set undo context
+	// Refresh tree/outliner and set undo context
 	if m.projectTree != nil {
 		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 		m.projectTree.buildTree()
+	}
+	if m.outliner != nil {
+		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+		m.outliner.rebuildRows()
 	}
 
 	return nil
@@ -53,11 +75,16 @@ func (m *AppModel) applyTagsToTasks(tasks []*models.Task, project *models.Projec
 		return errorCmd("save failed: %w", err)
 	}
 
-	// Refresh tree, clear selection, and set undo context
+	// Refresh tree/outliner, clear selection, and set undo context
 	if m.projectTree != nil {
 		m.projectTree.clearSelection()
 		m.projectTree.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
 		m.projectTree.buildTree()
+	}
+	if m.outliner != nil {
+		m.outliner.clearMultiSelect()
+		m.outliner.setUndoContext("Set Tags", fmt.Sprintf("%d tasks", len(tasks)))
+		m.outliner.rebuildRows()
 	}
 
 	return nil

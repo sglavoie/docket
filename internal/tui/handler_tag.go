@@ -39,8 +39,8 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Canceled {
 			return true, nil
 		}
-		// Check if we came from project tree - apply tags directly
-		if m.currentView() == ViewProjectTree && msg.Task != nil {
+		// Check if we came from project tree or outliner - apply tags directly
+		if (m.currentView() == ViewProjectTree || m.currentView() == ViewOutliner) && msg.Task != nil {
 			return true, m.applyTagsToTask(msg.Task, msg.Project, msg.SelectedTags)
 		}
 		// Otherwise forward to current view (inbox processor, task editor, etc.)
@@ -139,6 +139,12 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 					atv.applyFiltersAndGroup()
 					atv.clampCursor()
 				}
+			}
+		case ViewOutliner:
+			if m.outliner != nil {
+				m.outliner.filter.Tags = tags
+				m.outliner.rebuildRows()
+				m.outliner.clampCursor()
 			}
 		case ViewNotes:
 			if v := m.views.Get(ViewNotes); v != nil {

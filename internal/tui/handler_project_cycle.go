@@ -119,6 +119,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 // switchToCycleProject switches to a project from the cycle list.
 // cycleTotal is the number of projects in the filtered cycle list.
 func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int) (bool, tea.Cmd) {
+	m.saveCurrentProjectView()
 	m.saveProjectTreeState()
 	m.currentProject = project
 	m.config.CurrentProject = project.ID
@@ -151,7 +152,9 @@ func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int)
 			m.pushView(ViewKanban)
 		}
 	case ViewOutliner:
+		m.saveOutlinerToggleState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.restoreOutlinerToggleState()
 		m.outliner.SetSize(m.width, m.height-2)
 		m.views.Register(ViewOutliner, m.outliner)
 		if m.currentView() != ViewOutliner {

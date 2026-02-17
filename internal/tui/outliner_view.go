@@ -230,7 +230,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	// Show perspective label only for non-All perspectives.
 	perspectiveLabel := ""
-	if perspective.Filter != nil {
+	if perspective.Name != "All" {
 		perspectiveLabel = "  " + MutedStyle.Render("["+perspective.Name+"]")
 	}
 
@@ -249,17 +249,26 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		filterBadge = "  " + MutedStyle.Render("[filtered]")
 	}
 
+	sortBadge := ""
+	if m.sortField != SortByDefault {
+		direction := "↑"
+		if !m.sortAscending {
+			direction = "↓"
+		}
+		sortBadge = "  " + MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sortField, direction))
+	}
+
 	if len(m.rows) == 0 {
-		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + searchIndicator
+		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + sortBadge + searchIndicator
 		emptyMsg := "No tasks"
-		if perspective.Filter != nil && len(m.zoomStack) > 0 {
+		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			if t := m.project.GetTaskByID(topID); t != nil {
 				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q", perspective.Name, t.Title)
 			} else {
 				emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
 			}
-		} else if perspective.Filter != nil {
+		} else if perspective.Name != "All" {
 			emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
 		}
 		result := header + "\n"
@@ -280,6 +289,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	b.WriteString(TitleStyle.Render(m.project.Name))
 	b.WriteString(perspectiveLabel)
 	b.WriteString(filterBadge)
+	b.WriteString(sortBadge)
 	b.WriteString(searchIndicator)
 	if m.multiSelectMode {
 		count := m.SelectedCount()
@@ -431,7 +441,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 		// Section badge (only in non-All perspectives to show which section the task belongs to)
 		p := m.currentPerspective()
-		if p.Filter != nil {
+		if p.Name != "All" {
 			sectionName := task.Section
 			if sectionName == "" {
 				sectionName = "Active"

@@ -182,7 +182,9 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.inboxProcessor = processor
 		m.showView(ViewInboxProcessor, processor)
 	case ViewOutliner:
+		m.saveOutlinerToggleState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.restoreOutlinerToggleState()
 		m.showView(ViewOutliner, m.outliner)
 	case ViewUndoHistory:
 		m.showView(ViewUndoHistory, NewUndoHistoryModel(project))

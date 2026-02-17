@@ -69,7 +69,7 @@ func (m *AppModel) notesCommands() []Command {
 			Description: "Open notes view",
 			Shortcut:    "[",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"notes", "view notes", "open notes"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
@@ -83,7 +83,7 @@ func (m *AppModel) notesCommands() []Command {
 			Description: "Create a new note",
 			Shortcut:    "]",
 			Category:    CategoryNotes,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"new note", "add note"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
@@ -102,7 +102,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Project-scoped focus view",
 			Shortcut:    "f",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"focus mode", "project active tasks"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
@@ -116,7 +116,7 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Show blockers and blocked tasks",
 			Shortcut:    "b",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"blockers", "blocked tasks"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
@@ -141,9 +141,14 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Reload project data from storage",
 			Shortcut:    "ctrl+r",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"refresh", "reload data", "sync"},
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					_ = storage.LoadProject(m.outliner.project)
+					m.outliner.rebuildRows()
+					return nil
+				}
 				if m.projectTree != nil {
 					m.projectTree.clearSelection()
 					_ = storage.LoadProject(m.projectTree.project)
@@ -157,14 +162,20 @@ func (m *AppModel) otherCommands() []Command {
 			Description: "Archive or unarchive the current project",
 			Shortcut:    "ctrl+a",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"unarchive project"},
 			Handler: func() tea.Msg {
-				if m.projectTree == nil || m.currentProject == nil {
+				if m.currentProject == nil {
 					return nil
 				}
 				if m.currentProject.Sandbox {
 					return ErrorMsg{Err: fmt.Errorf("cannot archive the sandbox project")}
+				}
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					return m.outliner.archiveProject()()
+				}
+				if m.projectTree == nil {
+					return nil
 				}
 				if m.currentProject.Archived {
 					m.projectTree.confirmAction = ConfirmUnarchive

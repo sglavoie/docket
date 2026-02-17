@@ -64,7 +64,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.toggleMultiSelectMode()
 			return m, nil
 		case " ":
-			if len(m.rows) > 0 && m.cursor < len(m.rows) {
+			if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 				m.ToggleSelection(m.rows[m.cursor].task.ID)
 			}
 			return m, nil
@@ -92,8 +92,17 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Prefix key activation
+	// Task-specific prefixes are skipped when the cursor is on a section header,
+	// since headers are not tasks. Navigation/filter prefixes (p, g, z, F) are
+	// always allowed because they contain non-task operations (e.g. gg, zR, Fx).
+	onHeader := len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader
 	switch key {
-	case ",", "t", "!", "d", "g", "b", "c", "p", "s", "z", "m", "F":
+	case ",", "t", "!", "d", "b", "c", "s", "m":
+		if !onHeader {
+			m.pendingPrefix = key
+			return m, nil
+		}
+	case "g", "p", "z", "F":
 		m.pendingPrefix = key
 		return m, nil
 	}
@@ -160,7 +169,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Task movement
 	case "J":
 		// Move task down (swap with sibling below)
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			siblings := m.getSiblings(task)
 			idx := -1
@@ -184,7 +193,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "K":
 		// Move task up (swap with sibling above)
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			siblings := m.getSiblings(task)
 			idx := -1
@@ -207,7 +216,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "right":
 		// Indent task (nest under task above in the flat list)
-		if len(m.rows) > 1 && m.cursor > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 1 && m.cursor > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			candidate := m.rows[m.cursor-1].task
 			for candidate != nil {
@@ -225,7 +234,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "left":
 		// Outdent task (to parent level)
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			if ok, _ := task.CanOutdent(); ok {
 				_ = m.project.OutdentTask(task)
@@ -239,7 +248,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Open task detail view
 	case "o":
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			project := m.project
 			return m, func() tea.Msg {
@@ -258,7 +267,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			return m, func() tea.Msg {
 				return EditTaskMsg{Task: task}
@@ -268,7 +277,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "E":
 		// Quick edit with full modifier parsing (same as O)
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			return m, m.quickEdit.Enter(task, false)
 		}
@@ -281,7 +290,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.statusMessage = m.confirm.Prompt()
 			return m, nil
 		}
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			if task.IsRecurring() {
 				m.confirm.Show("delete-recurring",
@@ -357,7 +366,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "y", "Y", "ctrl+y":
 		if handled, cmd := handleClipboardKey(key,
 			func() *models.Task {
-				if len(m.rows) > 0 && m.cursor < len(m.rows) {
+				if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 					return m.rows[m.cursor].task
 				}
 				return nil
@@ -380,7 +389,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Score editor
 	case "S":
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			return m, func() tea.Msg {
 				return ShowScoreEditorMsg{Task: task, Project: m.project}
@@ -453,7 +462,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		if len(m.rows) == 0 || m.cursor >= len(m.rows) {
+		if len(m.rows) == 0 || m.cursor >= len(m.rows) || onHeader {
 			return m, nil
 		}
 		task := m.rows[m.cursor].task
@@ -479,7 +488,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rebuildRows()
 			return m, m.saveWithWorkflow()
 		}
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
 			m.setUndoContext("Toggle Active", task.Title)
 			result := applyToggleActive(m.workflowPersistFn(), m.project, task.ID)
@@ -1410,7 +1419,7 @@ func (m *OutlinerModel) handleCutKey() (tea.Model, tea.Cmd) {
 		m.statusMessage = m.confirm.Prompt()
 		return m, copyCmd
 	}
-	if len(m.rows) > 0 && m.cursor < len(m.rows) {
+	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		task := m.rows[m.cursor].task
 		copyCmd := func() tea.Msg { return CopyTaskTitleMsg{Task: task} }
 		m.confirm.Show("delete", fmt.Sprintf("Cut task #%d? (y/n)", task.ShortID))

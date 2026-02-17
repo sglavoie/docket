@@ -21,7 +21,9 @@ var perspectives = [9]Perspective{
 	{
 		Name: "All",
 		Key:  1,
-		// nil filter — show everything
+		Filter: func(t *models.Task) bool {
+			return !t.Status.IsComplete()
+		},
 	},
 	{
 		Name: "Active",

@@ -614,3 +614,232 @@ func TestGetByNamePreservesOriginalCommandData(t *testing.T) {
 		t.Errorf("expected Category '%s', got '%s'", original.Category, cmd.Category)
 	}
 }
+
+// Tests for multi-view command support
+
+func TestRegisterSameNameDifferentViewsSucceeds(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	cmd1 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewProjectTree},
+		Handler:  func() tea.Msg { return nil },
+	}
+	cmd2 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewKanban},
+		Handler:  func() tea.Msg { return nil },
+	}
+
+	if err := registry.Register(cmd1); err != nil {
+		t.Fatalf("expected first Register to succeed, got: %v", err)
+	}
+	if err := registry.Register(cmd2); err != nil {
+		t.Fatalf("expected second Register with different views to succeed, got: %v", err)
+	}
+}
+
+func TestRegisterSameNameOverlappingViewsFails(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	cmd1 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewProjectTree, ViewKanban},
+		Handler:  func() tea.Msg { return nil },
+	}
+	cmd2 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewKanban, ViewOutliner},
+		Handler:  func() tea.Msg { return nil },
+	}
+
+	if err := registry.Register(cmd1); err != nil {
+		t.Fatalf("expected first Register to succeed, got: %v", err)
+	}
+
+	err := registry.Register(cmd2)
+	if err == nil {
+		t.Error("expected error when registering command with overlapping views")
+	}
+}
+
+func TestRegisterSameNameGlobalConflicts(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	globalCmd := Command{
+		Name:     "Help",
+		Category: CategoryHelp,
+		Handler:  func() tea.Msg { return nil },
+	}
+	viewCmd := Command{
+		Name:     "Help",
+		Category: CategoryHelp,
+		Views:    []ViewType{ViewProjectTree},
+		Handler:  func() tea.Msg { return nil },
+	}
+
+	if err := registry.Register(globalCmd); err != nil {
+		t.Fatalf("expected global Register to succeed, got: %v", err)
+	}
+
+	err := registry.Register(viewCmd)
+	if err == nil {
+		t.Error("expected error when registering view-specific command that conflicts with global")
+	}
+}
+
+func TestGetForViewReturnsCorrectVariant(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	type resultMsg struct{ view string }
+
+	cmd1 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewProjectTree},
+		Handler:  func() tea.Msg { return resultMsg{"tree"} },
+	}
+	cmd2 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewKanban},
+		Handler:  func() tea.Msg { return resultMsg{"kanban"} },
+	}
+
+	_ = registry.Register(cmd1)
+	_ = registry.Register(cmd2)
+
+	treeCommands := registry.GetForView(ViewProjectTree)
+	found := false
+	for _, cmd := range treeCommands {
+		if cmd.Name == "Start Task" {
+			found = true
+			msg := cmd.Handler().(resultMsg)
+			if msg.view != "tree" {
+				t.Errorf("expected tree handler, got %s", msg.view)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected to find 'Start Task' in project tree view commands")
+	}
+
+	kanbanCommands := registry.GetForView(ViewKanban)
+	found = false
+	for _, cmd := range kanbanCommands {
+		if cmd.Name == "Start Task" {
+			found = true
+			msg := cmd.Handler().(resultMsg)
+			if msg.view != "kanban" {
+				t.Errorf("expected kanban handler, got %s", msg.view)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected to find 'Start Task' in kanban view commands")
+	}
+}
+
+func TestGetForViewNoDuplicates(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	cmd1 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewProjectTree},
+		Handler:  func() tea.Msg { return nil },
+	}
+	cmd2 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewKanban},
+		Handler:  func() tea.Msg { return nil },
+	}
+	global := Command{
+		Name:     "Quit",
+		Category: CategoryNavigation,
+		Handler:  func() tea.Msg { return nil },
+	}
+
+	_ = registry.Register(cmd1)
+	_ = registry.Register(cmd2)
+	_ = registry.Register(global)
+
+	treeCommands := registry.GetForView(ViewProjectTree)
+	nameCount := make(map[string]int)
+	for _, cmd := range treeCommands {
+		nameCount[cmd.Name]++
+	}
+	for name, count := range nameCount {
+		if count > 1 {
+			t.Errorf("duplicate command '%s' in GetForView result (count: %d)", name, count)
+		}
+	}
+}
+
+func TestGetAllDeduplicatesSameNameCommands(t *testing.T) {
+	registry := NewCommandRegistry()
+
+	cmd1 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewProjectTree},
+		Handler:  func() tea.Msg { return nil },
+	}
+	cmd2 := Command{
+		Name:     "Start Task",
+		Category: CategoryTasks,
+		Views:    []ViewType{ViewKanban},
+		Handler:  func() tea.Msg { return nil },
+	}
+	other := Command{
+		Name:     "Quit",
+		Category: CategoryNavigation,
+		Handler:  func() tea.Msg { return nil },
+	}
+
+	_ = registry.Register(cmd1)
+	_ = registry.Register(cmd2)
+	_ = registry.Register(other)
+
+	all := registry.GetAll()
+	if len(all) != 2 {
+		t.Errorf("expected GetAll to return 2 deduplicated commands, got %d", len(all))
+	}
+
+	nameCount := make(map[string]int)
+	for _, cmd := range all {
+		nameCount[cmd.Name]++
+	}
+	for name, count := range nameCount {
+		if count > 1 {
+			t.Errorf("duplicate command '%s' in GetAll result (count: %d)", name, count)
+		}
+	}
+}
+
+func TestViewsOverlap(t *testing.T) {
+	// Both empty (global) — overlaps
+	if !viewsOverlap(nil, nil) {
+		t.Error("expected two global (empty) view lists to overlap")
+	}
+
+	// One empty, one specific — overlaps
+	if !viewsOverlap(nil, []ViewType{ViewProjectTree}) {
+		t.Error("expected global to overlap with specific view")
+	}
+
+	// Shared view — overlaps
+	if !viewsOverlap([]ViewType{ViewProjectTree, ViewKanban}, []ViewType{ViewKanban, ViewOutliner}) {
+		t.Error("expected overlapping view lists to overlap")
+	}
+
+	// Disjoint — no overlap
+	if viewsOverlap([]ViewType{ViewProjectTree}, []ViewType{ViewKanban}) {
+		t.Error("expected disjoint view lists to not overlap")
+	}
+}

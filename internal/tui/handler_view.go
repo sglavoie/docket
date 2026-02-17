@@ -988,12 +988,15 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
+			m.saveOutlinerToggleState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+			m.restoreOutlinerToggleState()
 			m.showView(ViewOutliner, m.outliner)
 		}
 		return true, nil
 
 	case CloseOutlinerMsg:
+		m.saveOutlinerToggleState()
 		m.popView()
 		m.outliner = nil
 		return true, nil

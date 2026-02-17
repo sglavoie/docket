@@ -132,6 +132,10 @@ type AppModel struct {
 	allTasksView         *AllTasksViewModel
 	outliner             *OutlinerModel
 
+	// Per-project outliner toggle state (section collapse + node fold),
+	// keyed by project ID. Survives outliner recreation within a session.
+	outlinerToggleStates map[string]*OutlinerToggleState
+
 	// Current project context
 	currentProject *models.Project
 
@@ -185,6 +189,10 @@ type AppModel struct {
 
 	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
 	lastProjectView ViewType
+
+	// Per-project last view memory: remembers which project-level view was active
+	// for each project so switching back restores the same view.
+	projectLastView map[string]ViewType
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -214,17 +222,19 @@ func WithCLIReference(ref string) AppOption {
 // NewAppModel creates a new TUI application model.
 func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
 	app := &AppModel{
-		config:          cfg,
-		configManager:   manager,
-		persister:       NewProjectService(),
-		viewStack:       []ViewType{ViewDashboard},
-		width:           80,
-		height:          24,
-		views:           NewViewRegistry(),
-		commandRegistry: NewCommandRegistry(),
-		spinner:         NewSpinner(),
-		navHistory:      NewNavHistory(),
-		lastProjectView: defaultProjectViewType(cfg),
+		config:               cfg,
+		configManager:        manager,
+		persister:            NewProjectService(),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		commandRegistry:      NewCommandRegistry(),
+		spinner:              NewSpinner(),
+		navHistory:           NewNavHistory(),
+		lastProjectView:      defaultProjectViewType(cfg),
+		projectLastView:      make(map[string]ViewType),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
 
 	// Apply functional options
@@ -402,6 +412,21 @@ func (m *AppModel) currentView() ViewType {
 		return ViewDashboard
 	}
 	return m.viewStack[len(m.viewStack)-1]
+}
+
+// baseProjectView walks the view stack from the top to find the underlying
+// project-level view (ProjectTree, Kanban, or Outliner), skipping overlays
+// like the command palette. This is needed by command handlers that run inside
+// the palette's Cmd — at that point currentView() returns ViewCommandPalette,
+// but the handler needs to know which project view it was invoked from.
+func (m *AppModel) baseProjectView() ViewType {
+	for i := len(m.viewStack) - 1; i >= 0; i-- {
+		switch m.viewStack[i] {
+		case ViewProjectTree, ViewKanban, ViewOutliner:
+			return m.viewStack[i]
+		}
+	}
+	return ViewDashboard
 }
 
 // pushView pushes a new view onto the stack and records it in navigation history
@@ -673,6 +698,26 @@ func defaultProjectViewType(cfg *config.Config) ViewType {
 	default:
 		return ViewOutliner
 	}
+}
+
+// saveCurrentProjectView records the current project-level view for the active project.
+func (m *AppModel) saveCurrentProjectView() {
+	if m.currentProject == nil {
+		return
+	}
+	cv := m.currentView()
+	if cv == ViewProjectTree || cv == ViewKanban || cv == ViewOutliner {
+		m.projectLastView[m.currentProject.ID] = cv
+	}
+}
+
+// getProjectLastView returns the last project-level view for the given project ID,
+// falling back to the configured default project view.
+func (m *AppModel) getProjectLastView(projectID string) ViewType {
+	if v, ok := m.projectLastView[projectID]; ok {
+		return v
+	}
+	return defaultProjectViewType(m.config)
 }
 
 // errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.

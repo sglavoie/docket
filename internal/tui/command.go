@@ -44,3 +44,10 @@ type Command struct {
 	Aliases     []string        // Alternative names for discoverability (e.g., "create task", "add task")
 	Handler     func() tea.Msg  // Execution closure returning a BubbleTea message
 }
+
+// projectTreeAndOutlinerViews returns the Views slice for commands that work
+// in both the project tree and outliner views. Kanban is excluded because it
+// has its own comprehensive command set that would cause name collisions.
+func projectTreeAndOutlinerViews() []ViewType {
+	return []ViewType{ViewProjectTree, ViewOutliner}
+}

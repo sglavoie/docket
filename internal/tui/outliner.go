@@ -146,11 +146,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	p := m.currentPerspective()
 	var tasks []*models.Task
-	if p.Filter == nil {
-		tasks = roots
-	} else {
-		tasks = filterTaskTree(roots, p.Filter)
-	}
+	tasks = filterTaskTree(roots, p.Filter)
 
 	// Apply custom section tab filter
 	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
@@ -204,7 +200,7 @@ func (m *OutlinerModel) rebuildRows() {
 
 	// For the All perspective, group tasks by section with collapsible headers
 	p = m.currentPerspective()
-	if p.Filter == nil { // All perspective has no filter
+	if p.Name == "All" {
 		m.buildRowsWithSectionHeaders(tasks)
 	} else {
 		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
@@ -264,7 +260,7 @@ func (m *OutlinerModel) groupTasksBySection(tasks []*models.Task) map[string][]*
 func (m *OutlinerModel) countTasksRecursive(tasks []*models.Task) int {
 	count := 0
 	for _, task := range tasks {
-		count++ // Count this task
+		count++                                       // Count this task
 		count += m.countTasksRecursive(task.Children) // Count children
 	}
 	return count
@@ -416,7 +412,7 @@ func (m *OutlinerModel) SetSize(width, height int) {
 // taskOpsView implementation for OutlinerModel.
 
 func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
-	if len(m.rows) == 0 || m.cursor >= len(m.rows) {
+	if len(m.rows) == 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].IsSectionHeader {
 		return nil, nil
 	}
 	return m.rows[m.cursor].task, m.project
@@ -445,6 +441,9 @@ func (m *OutlinerModel) selectAllVisible() {
 		m.selectedTasks = make(map[string]bool)
 	}
 	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			continue
+		}
 		m.selectedTasks[row.task.ID] = true
 	}
 }
@@ -452,6 +451,9 @@ func (m *OutlinerModel) selectAllVisible() {
 // deselectAllVisible removes all currently visible rows from the selection.
 func (m *OutlinerModel) deselectAllVisible() {
 	for _, row := range m.rows {
+		if row.IsSectionHeader {
+			continue
+		}
 		delete(m.selectedTasks, row.task.ID)
 	}
 }
@@ -521,6 +523,42 @@ func (m *OutlinerModel) performUndo() tea.Cmd {
 		}
 		return OutlinerUndoPerformedMsg{}
 	}
+}
+
+// OutlinerToggleState captures section/fold state so it can survive outliner
+// recreation within the same TUI session.
+type OutlinerToggleState struct {
+	CollapsedSections map[string]bool // Section collapse state for All perspective
+	ExpandedNodes     map[string]bool // Node fold state (empty = all expanded)
+}
+
+// SaveToggleState snapshots the current section/fold state.
+func (m *OutlinerModel) SaveToggleState() *OutlinerToggleState {
+	return &OutlinerToggleState{
+		CollapsedSections: copyBoolMap(m.collapsedSections),
+		ExpandedNodes:     copyBoolMap(m.expandedNodes),
+	}
+}
+
+// RestoreToggleState applies a previously saved section/fold state.
+func (m *OutlinerModel) RestoreToggleState(state *OutlinerToggleState) {
+	if state == nil {
+		return
+	}
+	m.collapsedSections = copyBoolMap(state.CollapsedSections)
+	m.expandedNodes = copyBoolMap(state.ExpandedNodes)
+}
+
+// copyBoolMap returns a shallow copy of a map[string]bool.
+func copyBoolMap(src map[string]bool) map[string]bool {
+	if src == nil {
+		return nil
+	}
+	dst := make(map[string]bool, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }
 
 // OutlinerUndoPerformedMsg signals that an undo was performed in the outliner.
