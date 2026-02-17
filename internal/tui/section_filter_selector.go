@@ -25,6 +25,7 @@ type SectionFilterSelectorModel struct {
 // ShowSectionFilterSelectorMsg is sent to open the section filter selector.
 type ShowSectionFilterSelectorMsg struct {
 	ProjectTree *ProjectTreeModel
+	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner)
 }
 
 // SectionFilterSelectorDoneMsg is sent when the section filter selector is done.
@@ -52,6 +53,24 @@ func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorM
 	return &SectionFilterSelectorModel{
 		BasePicker:  picker,
 		projectTree: pt,
+	}
+}
+
+// NewSectionFilterSelectorModelForProject creates a section filter selector
+// backed by a standalone project (no pre-selected filters).
+func NewSectionFilterSelectorModelForProject(project *models.Project) *SectionFilterSelectorModel {
+	sections := buildSectionList(project)
+
+	picker := NewBasePicker(sections, PickerConfig{
+		Title:          "Filter by Sections",
+		EmptyMessage:   "No sections in project",
+		NoMatchMessage: "No matching sections",
+		MultiSelect:    true,
+		ShowCounts:     true,
+	})
+
+	return &SectionFilterSelectorModel{
+		BasePicker: picker,
 	}
 }
 

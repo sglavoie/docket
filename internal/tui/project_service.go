@@ -206,3 +206,15 @@ func saveProjectSync(project *models.Project) error {
 		return storage.LoadProject(project)
 	})
 }
+
+// saveProjectNoReload saves a project with backup and file locking but without
+// reloading from disk. Safe to call from tea.Cmd goroutines since it does not
+// replace the in-memory task objects.
+func saveProjectNoReload(project *models.Project) error {
+	return util.WithFileLock(lockPath(project), true, func() error {
+		if err := storage.BackupProject(project); err != nil {
+			return err
+		}
+		return storage.SaveProject(project)
+	})
+}

@@ -180,6 +180,9 @@ func (m *AppModel) sidebarCommands() []Command {
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(true)
 				}
+				if m.outliner != nil {
+					m.outliner.sidebar.SetEnabled(true)
+				}
 				return nil
 			},
 		},
@@ -198,6 +201,11 @@ func (m *AppModel) sidebarCommands() []Command {
 				_ = m.configManager.Save(m.config)
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(false)
+					m.projectTree.sidebar.Blur()
+				}
+				if m.outliner != nil {
+					m.outliner.sidebar.SetEnabled(false)
+					m.outliner.sidebar.Blur()
 				}
 				return nil
 			},

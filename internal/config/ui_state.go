@@ -6,6 +6,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// GetDefaultProjectView returns the configured default project view.
+// Returns "outliner" if not set or if the value is invalid.
+func (c *Config) GetDefaultProjectView() string {
+	switch c.DefaultProjectView {
+	case "outliner", "project_tree", "kanban":
+		return c.DefaultProjectView
+	default:
+		return "outliner"
+	}
+}
+
 // GetCycleProjects returns active projects that are in the cycle list, in order.
 // Filters out archived projects and projects that no longer exist.
 func (c *Config) GetCycleProjects() []*models.Project {

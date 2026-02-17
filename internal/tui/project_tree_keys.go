@@ -107,15 +107,7 @@ func (m *ProjectTreeModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	switch key {
-	case "P":
-		m.clearActiveSavedView()
-		if m.filter.Priority == 0 {
-			m.filter.Priority = 1
-		} else {
-			m.filter.Priority = 0
-		}
-		m.applyFilterChange()
-		return true, nil
+	// Note: P removed as priority filter toggle — use Fp instead.
 
 	case "T":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
@@ -221,7 +213,7 @@ func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "enter":
+	case "enter", "o":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			project := m.project
@@ -453,10 +445,22 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			return ShowInboxProcessorMsg{Project: m.project}
 		}
 
+	case "ctrl+p":
+		// Toggle to outliner view (already on project tree)
+		return true, func() tea.Msg {
+			return ShowOutlinerMsg{Project: m.project}
+		}
+
 	case "ctrl+k":
 		// Open kanban board view
 		return true, func() tea.Msg {
 			return ShowKanbanMsg{Project: m.project}
+		}
+
+	case "ctrl+o":
+		// Open outliner view
+		return true, func() tea.Msg {
+			return ShowOutlinerMsg{Project: m.project}
 		}
 
 	case "A":

@@ -7,6 +7,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TagInfo holds a tag name and its usage count.
@@ -18,6 +20,7 @@ type TagInfo struct {
 // TagManagerModel is the model for the tag management view.
 type TagManagerModel struct {
 	projectTree  *ProjectTreeModel
+	project      *models.Project // Used directly when projectTree is nil
 	tags         []TagInfo
 	cursor       int
 	width        int
@@ -33,6 +36,7 @@ type TagManagerModel struct {
 // ShowTagManagerMsg is sent to open the tag manager view.
 type ShowTagManagerMsg struct {
 	ProjectTree *ProjectTreeModel
+	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner/kanban)
 }
 
 // CloseTagManagerMsg is sent when the tag manager should close.
@@ -46,6 +50,15 @@ type TagRenamedMsg struct {
 
 // NewTagManagerModel creates a new tag manager model.
 func NewTagManagerModel(pt *ProjectTreeModel) *TagManagerModel {
+	return newTagManagerModel(pt, nil)
+}
+
+// NewTagManagerModelForProject creates a tag manager backed by a standalone project.
+func NewTagManagerModelForProject(project *models.Project) *TagManagerModel {
+	return newTagManagerModel(nil, project)
+}
+
+func newTagManagerModel(pt *ProjectTreeModel, project *models.Project) *TagManagerModel {
 	renameInput := textinput.New()
 	renameInput.Placeholder = "new tag name"
 	renameInput.CharLimit = 50
@@ -58,9 +71,13 @@ func NewTagManagerModel(pt *ProjectTreeModel) *TagManagerModel {
 
 	m := &TagManagerModel{
 		projectTree: pt,
+		project:     project,
 		cursor:      0,
 		renameInput: renameInput,
 		addTagInput: addTagInput,
+	}
+	if pt != nil {
+		m.project = pt.project
 	}
 	m.buildTagList()
 	return m
@@ -75,7 +92,7 @@ func (m *TagManagerModel) SetSize(width, height int) {
 // buildTagList scans all tasks and builds a sorted list of tags with counts.
 func (m *TagManagerModel) buildTagList() {
 	tagCounts := make(map[string]int)
-	for _, task := range m.projectTree.project.Tasks {
+	for _, task := range m.project.Tasks {
 		for _, tag := range task.Tags {
 			tagCounts[tag]++
 		}
@@ -107,7 +124,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 			return nil
 		}
 
-		for _, task := range m.projectTree.project.Tasks {
+		for _, task := range m.project.Tasks {
 			for i, tag := range task.Tags {
 				if tag == oldName {
 					task.Tags[i] = newName
@@ -116,7 +133,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 			}
 		}
 
-		if err := saveProjectSync(m.projectTree.project); err != nil {
+		if err := saveProjectSync(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -125,11 +142,14 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 }
 
 // filterByTag sets the project tree filter and closes the tag manager.
+// When projectTree is nil (outliner/kanban), it just closes without applying filters.
 func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
 	return func() tea.Msg {
-		m.projectTree.filter.Tags = map[string]bool{tagName: true}
-		m.projectTree.updateVisibility()
-		m.projectTree.clampCursor()
+		if m.projectTree != nil {
+			m.projectTree.filter.Tags = map[string]bool{tagName: true}
+			m.projectTree.updateVisibility()
+			m.projectTree.clampCursor()
+		}
 		return CloseTagManagerMsg{}
 	}
 }

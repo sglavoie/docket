@@ -60,6 +60,13 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 	}
 }
 
+// resolveTask ensures m.task points to the task currently in m.project.Tasks.
+func (m *TaskAttachmentsModel) resolveTask() {
+	if t := m.project.GetTaskByID(m.task.ID); t != nil {
+		m.task = t
+	}
+}
+
 func (m *TaskAttachmentsModel) Init() tea.Cmd {
 	return nil
 }
@@ -217,6 +224,8 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 			return nil
 		}
 
+		m.resolveTask()
+
 		// Detect if it's a URL
 		isURL := strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://")
 
@@ -272,12 +281,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 			}
 		}
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -295,6 +299,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	return func() tea.Msg {
+		m.resolveTask()
 		att := m.task.Attachments[m.cursor]
 
 		// Remove from task metadata
@@ -311,12 +316,7 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 			}
 		}
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -332,17 +332,13 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	return func() tea.Msg {
 		// Remove from task metadata only (keep file on disk)
+		m.resolveTask()
 		_, ok := m.task.RemoveAttachment(m.cursor)
 		if !ok {
 			return ErrorMsg{Err: fmt.Errorf("failed to unlink attachment")}
 		}
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

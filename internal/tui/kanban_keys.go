@@ -121,6 +121,18 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.handleEscapeSequence()
 
+	case "ctrl+p":
+		// Switch to project tree view
+		return m, func() tea.Msg {
+			return ShowProjectTreeMsg{Project: m.Project}
+		}
+
+	case "ctrl+o":
+		// Open outliner view
+		return m, func() tea.Msg {
+			return ShowOutlinerMsg{Project: m.Project}
+		}
+
 	case "ctrl+j":
 		// In swimlane mode, ctrl+j navigates to next swimlane row
 		if m.swimlaneEnabled() {
@@ -276,7 +288,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Open task detail view
-	case "enter":
+	case "enter", "o":
 		task := m.getSelectedTask()
 		if task != nil {
 			project := m.Project
@@ -374,7 +386,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Tag manager
 	case "ctrl+t":
 		return m, func() tea.Msg {
-			return ShowTagManagerMsg{ProjectTree: nil}
+			return ShowTagManagerMsg{Project: m.Project}
 		}
 
 	// Section manager

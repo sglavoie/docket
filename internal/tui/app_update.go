@@ -5,6 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -110,6 +112,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh all-tasks if open (cross-project view may show stale data)
 		if m.allTasksView != nil {
 			m.allTasksView.loadAllTasks()
+		}
+		// Refresh outliner if open (async save reloads project from disk)
+		if m.outliner != nil {
+			_ = storage.LoadProject(m.outliner.project)
+			m.outliner.rebuildRows()
 		}
 		return m, defaultStatusTimeout()
 
@@ -274,6 +281,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewAllTasks:
 		if v := m.views.Get(ViewAllTasks); v != nil {
 			m.allTasksView = v.(*AllTasksViewModel)
+		}
+	case ViewOutliner:
+		if v := m.views.Get(ViewOutliner); v != nil {
+			m.outliner = v.(*OutlinerModel)
 		}
 	}
 

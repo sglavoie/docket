@@ -29,8 +29,22 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.dashboard.Refresh(m.config)
 			}
 		}
+		m.saveCurrentProjectView()
 		m.switchToProject(msg.Project, true)
-		m.showView(ViewProjectTree, m.projectTree)
+		targetView := m.getProjectLastView(msg.Project.ID)
+		switch targetView {
+		case ViewKanban:
+			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
+			m.showView(ViewKanban, m.kanban)
+			m.restoreKanbanState()
+		case ViewProjectTree:
+			m.showView(ViewProjectTree, m.projectTree)
+		default:
+			m.saveOutlinerToggleState()
+			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+			m.restoreOutlinerToggleState()
+			m.showView(ViewOutliner, m.outliner)
+		}
 		return true, nil
 
 	case CreateProjectMsg:
@@ -195,12 +209,27 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ProjectPickerDoneMsg:
 		m.popView() // Close picker
 		if !msg.Canceled && msg.Project != nil {
+			// Save current project's active view before switching away
+			m.saveCurrentProjectView()
 			// Save current project ID so we can restore it when navigating back
 			if m.currentProject != nil {
 				m.projectStack = append(m.projectStack, m.currentProject.ID)
 			}
 			m.switchToProject(msg.Project, true)
-			m.pushView(ViewProjectTree)
+			targetView := m.getProjectLastView(msg.Project.ID)
+			switch targetView {
+			case ViewKanban:
+				m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
+				m.showView(ViewKanban, m.kanban)
+				m.restoreKanbanState()
+			case ViewOutliner:
+				m.saveOutlinerToggleState()
+				m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
+				m.restoreOutlinerToggleState()
+				m.showView(ViewOutliner, m.outliner)
+			default:
+				m.pushView(ViewProjectTree)
+			}
 		}
 		return true, nil
 

@@ -10,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -74,6 +73,13 @@ func NewTaskChecklistModelWithEditor(task *models.Task, project *models.Project,
 	m := NewTaskChecklistModel(task, project)
 	m.editor = editor
 	return m
+}
+
+// resolveTask ensures m.task points to the task currently in m.project.Tasks.
+func (m *TaskChecklistModel) resolveTask() {
+	if t := m.project.GetTaskByID(m.task.ID); t != nil {
+		m.task = t
+	}
 }
 
 func (m *TaskChecklistModel) Init() tea.Cmd {
@@ -222,17 +228,13 @@ func (m *TaskChecklistModel) saveItem() tea.Cmd {
 			return nil
 		}
 
+		m.resolveTask()
 		m.task.Checklist = append(m.task.Checklist, models.ChecklistItem{
 			Text: text,
 			Done: false,
 		})
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -255,14 +257,10 @@ func (m *TaskChecklistModel) executeDelete() tea.Cmd {
 		}
 
 		// Remove item at cursor
+		m.resolveTask()
 		m.task.Checklist = append(m.task.Checklist[:m.cursor], m.task.Checklist[m.cursor+1:]...)
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -293,14 +291,10 @@ func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
 		}
 
 		// Update the item text (preserve done state)
+		m.resolveTask()
 		m.task.Checklist[m.editIndex].Text = text
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -319,14 +313,10 @@ func (m *TaskChecklistModel) toggleItem() tea.Cmd {
 			return nil
 		}
 
+		m.resolveTask()
 		m.task.Checklist[m.cursor].Done = !m.task.Checklist[m.cursor].Done
 
-		// Create backup before saving
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(m.project); err != nil {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -397,15 +387,15 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 			return nil // No changes
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Update item (preserve done state)
 		task.Checklist[editIndex].Text = newText
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -475,18 +465,18 @@ func (m *TaskChecklistModel) addItemInExternalEditor() tea.Cmd {
 			return nil // Empty item, just return to normal mode
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Add the new item
 		task.Checklist = append(task.Checklist, models.ChecklistItem{
 			Text: newText,
 			Done: false,
 		})
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 
@@ -565,15 +555,15 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 			return nil // No changes
 		}
 
+		// Re-resolve task in case an async save replaced project.Tasks
+		if t := project.GetTaskByID(task.ID); t != nil {
+			task = t
+		}
+
 		// Update item (preserve done state)
 		task.Checklist[editIndex].Text = newText
 
-		// Create backup before saving
-		if err := storage.BackupProject(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := storage.SaveProject(project); err != nil {
+		if err := saveProjectNoReload(project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 		}
 

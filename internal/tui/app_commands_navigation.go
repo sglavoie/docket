@@ -134,8 +134,12 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Open tag filter selector",
 			Shortcut:    "T",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					tags := BuildTagList(m.outliner.project.Tasks, false)
+					return ShowTagFilterMsg{Tags: tags, Selected: m.outliner.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
+				}
 				if m.projectTree == nil {
 					return nil
 				}
@@ -148,18 +152,29 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Open section filter selector",
 			Shortcut:    "N",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					return ShowSectionFilterSelectorMsg{Project: m.outliner.project}
+				}
 				return ShowSectionFilterSelectorMsg{ProjectTree: m.projectTree}
 			},
 		},
 		{
 			Name:        "view completed",
 			Description: "Switch to Completed view",
-			Shortcut:    "C",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					if m.outliner.activePerspective == 8 {
+						m.outliner.activePerspective = 0
+					} else {
+						m.outliner.activePerspective = 8
+					}
+					m.outliner.rebuildRows()
+					return nil
+				}
 				if m.projectTree != nil {
 					m.projectTree.viewMode = ViewModeCompleted
 					m.projectTree.updateVisibility()
@@ -170,10 +185,18 @@ func (m *AppModel) filterCommands() []Command {
 		{
 			Name:        "toggle high priority",
 			Description: "Filter high priority tasks only",
-			Shortcut:    "P",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					if m.outliner.filter.Priority == 0 {
+						m.outliner.filter.Priority = 1
+					} else {
+						m.outliner.filter.Priority = 0
+					}
+					m.outliner.rebuildRows()
+					return nil
+				}
 				if m.projectTree != nil {
 					if m.projectTree.filter.Priority == 0 {
 						m.projectTree.filter.Priority = 1
@@ -188,16 +211,21 @@ func (m *AppModel) filterCommands() []Command {
 		{
 			Name:        "clear filters",
 			Description: "Reset all task filters",
+			Shortcut:    "Fx",
 			Category:    CategoryFilters,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					clearCommonFilters(&m.outliner.filter)
+					m.outliner.actionableFilter = false
+					m.outliner.ClearSearch()
+					m.outliner.rebuildRows()
+					return nil
+				}
 				if m.projectTree != nil {
-					m.projectTree.filter.Type = ""
-					m.projectTree.filter.Status = ""
-					m.projectTree.filter.Priority = 0
-					m.projectTree.filter.Tags = make(map[string]bool)
+					clearCommonFilters(&m.projectTree.filter.CommonFilterState)
 					m.projectTree.filter.Sections = make(map[string]bool)
-					m.projectTree.filter.DueDate = 0
+					m.projectTree.filter.Actionable = false
 					m.projectTree.updateVisibility()
 				}
 				return nil
@@ -208,7 +236,7 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Jump to task by ID or name",
 			Shortcut:    "\\",
 			Category:    CategorySearch,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowTaskJumperMsg{Project: m.currentProject}
@@ -221,8 +249,11 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Manage project tags",
 			Shortcut:    "ctrl+t",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					return ShowTagManagerMsg{Project: m.outliner.project}
+				}
 				return ShowTagManagerMsg{ProjectTree: m.projectTree}
 			},
 		},
@@ -241,8 +272,11 @@ func (m *AppModel) filterCommands() []Command {
 			Description: "Manage custom project sections",
 			Shortcut:    "ctrl+s",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					return ShowSectionManagerMsg{Project: m.outliner.project}
+				}
 				return ShowSectionManagerMsg{ProjectTree: m.projectTree}
 			},
 		},
@@ -250,9 +284,12 @@ func (m *AppModel) filterCommands() []Command {
 			Name:        "add section",
 			Description: "Add a new section to project",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"create section", "new section"},
 			Handler: func() tea.Msg {
+				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
+					return ShowSectionManagerMsg{Project: m.outliner.project, StartAddMode: true}
+				}
 				return ShowSectionManagerMsg{ProjectTree: m.projectTree, StartAddMode: true}
 			},
 		},
@@ -270,7 +307,7 @@ func (m *AppModel) filterCommands() []Command {
 			Name:        "open project folder",
 			Description: "Open project data folder in editor",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"open folder", "reveal data", "data directory", "open data folder"},
 			Handler: func() tea.Msg {
 				return OpenDataFolderMsg{Project: m.currentProject}
@@ -299,7 +336,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View all tasks across every project",
 			Shortcut:    "A",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{}
@@ -310,7 +347,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View tasks by due date",
 			Shortcut:    "ctrl+d",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree, ViewDashboard},
+			Views:       []ViewType{ViewProjectTree, ViewDashboard, ViewOutliner},
 			Handler: func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
 			},
@@ -364,7 +401,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View tasks by priority",
 			Shortcut:    "p",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowPriorityViewMsg{Project: m.currentProject}
@@ -377,7 +414,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "Process inbox items one by one",
 			Shortcut:    "w",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowInboxProcessorMsg{Project: m.currentProject}
@@ -447,7 +484,7 @@ func (m *AppModel) viewCommands() []Command {
 			Name:        "project metrics",
 			Description: "View metrics for current project",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
@@ -461,7 +498,7 @@ func (m *AppModel) viewCommands() []Command {
 			Description: "View and restore from undo history",
 			Shortcut:    "ctrl+z",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
+			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.currentProject != nil {
 					return ShowUndoHistoryMsg{Project: m.currentProject}
@@ -491,7 +528,7 @@ func (m *AppModel) navCommands() []Command {
 			Name:        "dashboard",
 			Description: "Go to dashboard",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewProjectTree, ViewProjectList},
+			Views:       []ViewType{ViewProjectTree, ViewProjectList, ViewOutliner},
 			Handler: func() tea.Msg {
 				return BackMsg{}
 			},
@@ -501,7 +538,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Configure project cycle, jump to project",
 			Shortcut:    "@",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Handler: func() tea.Msg {
 				return ShowProjectCycleManagerMsg{}
 			},
@@ -511,7 +548,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Switch to next project in cycle",
 			Shortcut:    "`",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Handler: func() tea.Msg {
 				return CycleProjectMsg{Forward: true}
 			},
@@ -521,7 +558,7 @@ func (m *AppModel) navCommands() []Command {
 			Description: "Switch to previous project in cycle",
 			Shortcut:    "~",
 			Category:    CategoryNavigation,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree},
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
 			Handler: func() tea.Msg {
 				return CycleProjectMsg{Forward: false}
 			},

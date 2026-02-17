@@ -156,12 +156,14 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += MutedStyle.Render("↻") + " "
 	}
 
-	// Dependency indicators (compact)
-	if len(task.DependsOn) > 0 {
-		indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
-	}
-	if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
-		indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
+	// Dependency indicators (compact, only when sidebar is hidden)
+	if !m.sidebar.IsEnabled() {
+		if len(task.DependsOn) > 0 {
+			indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
+		}
+		if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
+			indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
+		}
 	}
 
 	// Comment indicator (compact, show unresolved/total when some are resolved)
@@ -177,6 +179,17 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	// Attachment indicator (compact)
 	if task.HasAttachments() {
 		indicators += MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())) + " "
+	}
+
+	// Checklist indicator (compact)
+	if len(task.Checklist) > 0 {
+		completed := 0
+		for _, item := range task.Checklist {
+			if item.Done {
+				completed++
+			}
+		}
+		indicators += MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))) + " "
 	}
 
 	// Custom section badge (only when sidebar is hidden)

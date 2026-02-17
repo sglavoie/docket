@@ -163,6 +163,7 @@ func (m *KanbanViewModel) View() string {
 	if detailsHeight < KanbanMinDetailsHeight {
 		detailsHeight = KanbanMinDetailsHeight
 	}
+	m.detailsHeight = detailsHeight
 	selectedTask := m.getSelectedTask()
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
 	viewParts = append(viewParts, detailsPane)
@@ -585,6 +586,45 @@ func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height in
 	// Join columns horizontally
 	content := lipgloss.JoinHorizontal(lipgloss.Top, taskCard, col2Content, descCard)
 
+	// Optional rows: checklist, comments, attachments, deps, activity cards
+	// Rendered in rows of up to 3 cards, with width distributed evenly per row.
+	type cardRenderer func(width int) string
+	var cards []cardRenderer
+	if len(task.Checklist) > 0 {
+		cards = append(cards, func(w int) string { return renderSidebarChecklistCard(task, w) })
+	}
+	if len(task.Comments) > 0 {
+		cards = append(cards, func(w int) string { return renderSidebarCommentsCard(task, w) })
+	}
+	if task.HasAttachments() {
+		cards = append(cards, func(w int) string { return renderSidebarAttachmentsCard(task, w) })
+	}
+	if depsCard := m.renderDetailsDepsCard(task, 0); depsCard != "" {
+		cards = append(cards, func(w int) string { return m.renderDetailsDepsCard(task, w) })
+	}
+	cards = append(cards, func(w int) string { return renderSidebarActivityCard(task, w) })
+
+	const maxCardsPerRow = 3
+	for i := 0; i < len(cards); i += maxCardsPerRow {
+		end := i + maxCardsPerRow
+		if end > len(cards) {
+			end = len(cards)
+		}
+		chunk := cards[i:end]
+		n := len(chunk)
+		cardWidth := width / n
+		var rowCards []string
+		for j, c := range chunk {
+			w := cardWidth
+			if j == n-1 {
+				w = width - cardWidth*(n-1)
+			}
+			rowCards = append(rowCards, c(w))
+		}
+		row := lipgloss.JoinHorizontal(lipgloss.Top, rowCards...)
+		content = lipgloss.JoinVertical(lipgloss.Left, content, row)
+	}
+
 	// Pad to exact height (minus 1 for help hint line which is part of app status bar)
 	return m.padDetailsToHeight(content, width, height)
 }
@@ -606,16 +646,46 @@ func (m *KanbanViewModel) renderDetailsDueCard(task *models.Task, width int) str
 	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
 }
 
-// renderDetailsDescriptionCard renders the scrollable description card.
+// renderDetailsDepsCard renders a simplified (non-interactive) dependencies card
+// for the kanban details panel. Returns empty string if no dependencies exist.
+func (m *KanbanViewModel) renderDetailsDepsCard(task *models.Task, width int) string {
+	blockedByTasks := m.Project.GetBlockedByTasks(task)
+	if len(task.DependsOn) == 0 && len(blockedByTasks) == 0 {
+		return ""
+	}
+
+	var lines []string
+
+	if len(task.DependsOn) > 0 {
+		lines = append(lines, MutedStyle.Render("Blocked by:"))
+		for _, depRef := range task.DependsOn {
+			depTask := m.Project.GetTaskByID(depRef)
+			if depTask != nil {
+				depStatus := GetStatusStyle(string(depTask.Status))
+				lines = append(lines, fmt.Sprintf("  #%-3d %s %s", depTask.ShortID, depStatus.Render(depTask.Status.Icon()), depTask.Title))
+			} else {
+				lines = append(lines, "  "+ValidationErrorStyle.Render("(missing)"))
+			}
+		}
+	}
+
+	if len(blockedByTasks) > 0 {
+		if len(task.DependsOn) > 0 {
+			lines = append(lines, "")
+		}
+		lines = append(lines, MutedStyle.Render("Blocking:"))
+		for _, blocked := range blockedByTasks {
+			depStatus := GetStatusStyle(string(blocked.Status))
+			lines = append(lines, fmt.Sprintf("  #%-3d %s %s", blocked.ShortID, depStatus.Render(blocked.Status.Icon()), blocked.Title))
+		}
+	}
+
+	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, false, "")
+}
+
+// renderDetailsDescriptionCard renders the description card.
 func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width, availableHeight int) string {
 	lines := strings.Split(task.Description, "\n")
-
-	// Apply scroll offset
-	if m.detailsScroll < len(lines) {
-		lines = lines[m.detailsScroll:]
-	} else {
-		lines = []string{}
-	}
 
 	// Render with all visible lines, then iteratively reduce until the card
 	// fits within availableHeight. This accounts for text wrapping by lipgloss.
@@ -636,8 +706,23 @@ func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width,
 }
 
 // padDetailsToHeight ensures the details panel fills the exact height.
+// Applies detailsScroll offset to enable scrolling through the full content.
 func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) string {
 	lines := strings.Split(content, "\n")
+
+	// Clamp scroll to valid range
+	maxScroll := len(lines) - height
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if m.detailsScroll > maxScroll {
+		m.detailsScroll = maxScroll
+	}
+
+	// Apply scroll offset
+	if m.detailsScroll > 0 {
+		lines = lines[m.detailsScroll:]
+	}
 
 	// Truncate if too tall
 	if len(lines) > height {

@@ -97,6 +97,7 @@ const (
 	ViewAllTasks
 	ViewScoringProfilePicker
 	ViewFocusBoard
+	ViewOutliner
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -129,6 +130,11 @@ type AppModel struct {
 	kanban               *KanbanViewModel
 	metricsDashboard     *MetricsDashboardModel
 	allTasksView         *AllTasksViewModel
+	outliner             *OutlinerModel
+
+	// Per-project outliner toggle state (section collapse + node fold),
+	// keyed by project ID. Survives outliner recreation within a session.
+	outlinerToggleStates map[string]*OutlinerToggleState
 
 	// Current project context
 	currentProject *models.Project
@@ -180,6 +186,13 @@ type AppModel struct {
 	// Navigation history for back/forward (Alt+O / Alt+I)
 	navHistory          *NavHistory
 	lastNavigatedTaskID string
+
+	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
+	lastProjectView ViewType
+
+	// Per-project last view memory: remembers which project-level view was active
+	// for each project so switching back restores the same view.
+	projectLastView map[string]ViewType
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -209,16 +222,19 @@ func WithCLIReference(ref string) AppOption {
 // NewAppModel creates a new TUI application model.
 func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
 	app := &AppModel{
-		config:          cfg,
-		configManager:   manager,
-		persister:       NewProjectService(),
-		viewStack:       []ViewType{ViewDashboard},
-		width:           80,
-		height:          24,
-		views:           NewViewRegistry(),
-		commandRegistry: NewCommandRegistry(),
-		spinner:         NewSpinner(),
-		navHistory:      NewNavHistory(),
+		config:               cfg,
+		configManager:        manager,
+		persister:            NewProjectService(),
+		viewStack:            []ViewType{ViewDashboard},
+		width:                80,
+		height:               24,
+		views:                NewViewRegistry(),
+		commandRegistry:      NewCommandRegistry(),
+		spinner:              NewSpinner(),
+		navHistory:           NewNavHistory(),
+		lastProjectView:      defaultProjectViewType(cfg),
+		projectLastView:      make(map[string]ViewType),
+		outlinerToggleStates: make(map[string]*OutlinerToggleState),
 	}
 
 	// Apply functional options
@@ -317,6 +333,7 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.sidebarCommands())
 	_ = m.commandRegistry.RegisterBatch(m.scoringCommands())
 	_ = m.commandRegistry.RegisterBatch(m.allTasksCommands())
+	_ = m.commandRegistry.RegisterBatch(m.outlinerCommands())
 }
 
 // getGlobalHelpItems returns help items that apply across all views.
@@ -397,10 +414,28 @@ func (m *AppModel) currentView() ViewType {
 	return m.viewStack[len(m.viewStack)-1]
 }
 
+// baseProjectView walks the view stack from the top to find the underlying
+// project-level view (ProjectTree, Kanban, or Outliner), skipping overlays
+// like the command palette. This is needed by command handlers that run inside
+// the palette's Cmd — at that point currentView() returns ViewCommandPalette,
+// but the handler needs to know which project view it was invoked from.
+func (m *AppModel) baseProjectView() ViewType {
+	for i := len(m.viewStack) - 1; i >= 0; i-- {
+		switch m.viewStack[i] {
+		case ViewProjectTree, ViewKanban, ViewOutliner:
+			return m.viewStack[i]
+		}
+	}
+	return ViewDashboard
+}
+
 // pushView pushes a new view onto the stack and records it in navigation history
 // if it is a tracked view and history is not locked.
 func (m *AppModel) pushView(view ViewType) {
 	m.viewStack = append(m.viewStack, view)
+	if view == ViewProjectTree || view == ViewKanban || view == ViewOutliner {
+		m.lastProjectView = view
+	}
 	if !m.navHistory.IsLocked() && isTrackedView(view) {
 		entry := NavEntry{ViewType: view}
 		if m.currentProject != nil {
@@ -460,6 +495,38 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 	view.SetSize(m.width, m.height-2)
 	m.views.Register(viewType, view)
 	m.pushView(viewType)
+}
+
+// replaceView replaces the top of the view stack instead of pushing.
+// Used when switching between peer project views (ProjectTree, Kanban, Outliner)
+// so the stack doesn't accumulate entries.
+func (m *AppModel) replaceView(viewType ViewType, view View) {
+	view.SetSize(m.width, m.height-2)
+	m.views.Register(viewType, view)
+	if len(m.viewStack) > 1 {
+		m.viewStack[len(m.viewStack)-1] = viewType
+	} else {
+		m.viewStack = append(m.viewStack, viewType)
+	}
+	if viewType == ViewProjectTree || viewType == ViewKanban || viewType == ViewOutliner {
+		m.lastProjectView = viewType
+	}
+	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
+		entry := NavEntry{ViewType: viewType}
+		if m.currentProject != nil {
+			entry.ProjectID = m.currentProject.ID
+		}
+		if isTaskScopedView(viewType) {
+			entry.TaskID = m.lastNavigatedTaskID
+		}
+		m.navHistory.Record(entry)
+	}
+}
+
+// isOnProjectView returns true if the current view is a peer project view.
+func (m *AppModel) isOnProjectView() bool {
+	cur := m.currentView()
+	return cur == ViewProjectTree || cur == ViewKanban || cur == ViewOutliner
 }
 
 // saveProjectTreeState persists the current project tree filter/sort state to config.
@@ -651,6 +718,38 @@ func (m *AppModel) restoreKanbanState() {
 
 	// Reload tasks with restored filters applied
 	m.kanban.loadTasks()
+}
+
+// defaultProjectViewType maps the config's default_project_view string to a ViewType.
+func defaultProjectViewType(cfg *config.Config) ViewType {
+	switch cfg.GetDefaultProjectView() {
+	case "project_tree":
+		return ViewProjectTree
+	case "kanban":
+		return ViewKanban
+	default:
+		return ViewOutliner
+	}
+}
+
+// saveCurrentProjectView records the current project-level view for the active project.
+func (m *AppModel) saveCurrentProjectView() {
+	if m.currentProject == nil {
+		return
+	}
+	cv := m.currentView()
+	if cv == ViewProjectTree || cv == ViewKanban || cv == ViewOutliner {
+		m.projectLastView[m.currentProject.ID] = cv
+	}
+}
+
+// getProjectLastView returns the last project-level view for the given project ID,
+// falling back to the configured default project view.
+func (m *AppModel) getProjectLastView(projectID string) ViewType {
+	if v, ok := m.projectLastView[projectID]; ok {
+		return v
+	}
+	return defaultProjectViewType(m.config)
 }
 
 // errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.

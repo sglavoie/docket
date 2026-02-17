@@ -292,8 +292,7 @@ func TestFocusViewHasPendingPrefix(t *testing.T) {
 }
 
 func TestFocusViewSetSize(t *testing.T) {
-	cfg := newTestFocusConfig(nil)
-	m := &FocusViewModel{config: cfg}
+	m := &FocusViewModel{}
 
 	m.SetSize(100, 50)
 

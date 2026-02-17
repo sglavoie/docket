@@ -357,41 +357,22 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	treeContent := m.renderTreeContent(treeWidth)
 
 	// Get currently selected task
-	visible := m.visibleNodes()
-	var selectedTask *models.Task
-	if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
-		selectedTask = visible[m.cursor].Task
-	}
+	selectedTask := m.SidebarSelectedTask()
 
 	// Render sidebar
 	// Note: SidebarStyle has border (2 chars) + padding (2 chars) = 4 chars overhead
 	// lipgloss .Width() sets CONTENT width, so subtract overhead to get desired total width
 	// Add 1 to account for rounding to ensure we use full width
-	sidebarContent := m.renderSidebar(selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
+	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
 
 	// Apply width constraint to tree to ensure it fills its allocated space
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
 
 	// Render vertical divider
-	divider := m.renderVerticalDivider(m.height - 2)
+	divider := renderVerticalDivider(m.height - 2)
 
 	// Join horizontally: tree | divider | sidebar
 	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
-}
-
-// renderVerticalDivider renders a vertical line for split-pane separation.
-func (m *ProjectTreeModel) renderVerticalDivider(height int) string {
-	if height <= 0 {
-		return ""
-	}
-	var b strings.Builder
-	for i := 0; i < height; i++ {
-		b.WriteString("│")
-		if i < height-1 {
-			b.WriteString("\n")
-		}
-	}
-	return MutedStyle.Render(b.String())
 }
 
 // renderTreeContent renders just the tree portion (for split-pane layout).

@@ -2,13 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/uuid"
 
-	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -133,67 +130,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case DueDateChangedMsg:
-		m.popView()
-
-		// Check if this is a bulk operation from palette
-		if len(m.pendingBulkTasks) > 1 && msg.Task != nil {
-			// The first task was already saved by DateInputModel
-			// Apply the same date to remaining tasks
-			newDate := msg.Task.DueDate
-			count := 1 // First task already updated
-			projectMap := make(map[string]*models.Project)
-
-			for i, item := range m.pendingBulkTasks {
-				if i == 0 {
-					// Skip the first task (already saved by DateInputModel)
-					projectMap[item.Project.ID] = item.Project
-					continue
-				}
-				if item.Task != nil && item.Project != nil {
-					if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
-						if newDate != nil {
-							dateCopy := *newDate
-							t.DueDate = &dateCopy
-						} else {
-							t.DueDate = nil
-						}
-					}) {
-						projectMap[item.Project.ID] = item.Project
-						count++
-					}
-				}
-			}
-
-			// Build list of projects to save (except first which was already saved)
-			var projectsToSave []*models.Project
-			for _, project := range projectMap {
-				if project.ID != m.pendingBulkTasks[0].Project.ID {
-					projectsToSave = append(projectsToSave, project)
-				}
-			}
-
-			var successMsg string
-			if newDate != nil {
-				successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
-			} else {
-				successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
-			}
-			m.pendingBulkTasks = nil
-
-			if len(projectsToSave) > 0 {
-				return true, tea.Batch(
-					startLoading("Saving..."),
-					SaveMultipleProjectsAsync(projectsToSave, successMsg),
-				)
-			}
-			m.statusMessage = successMsg
-			m.refreshProjectTree()
-			return true, defaultStatusTimeout()
-		}
-
-		m.pendingBulkTasks = nil
-		m.refreshProjectTree()
-		return true, nil
+		return m.handleDueDateChanged(msg)
 
 	case ShowUndoHistoryMsg:
 		if msg.Project != nil {
@@ -332,25 +269,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleMoveTaskToProject(msg)
 
 	case TaskMovedToProjectMsg:
-		m.isLoading = false
-		m.loadingMessage = ""
-		m.popView() // Close project selector
-		m.refreshProjectTree()
-		// Also refresh the focus board so the moved task disappears from its old position
-		if v := m.views.Get(ViewFocusBoard); v != nil {
-			v.Update(FocusBoardRefreshMsg{})
-		}
-		var statusMsg string
-		if msg.MovedCount > 1 {
-			statusMsg = fmt.Sprintf("Moved #%d and %d descendants to %s", msg.OldShortID, msg.MovedCount-1, msg.DestProject.Name)
-		} else {
-			statusMsg = fmt.Sprintf("Moved #%d to %s", msg.OldShortID, msg.DestProject.Name)
-		}
-		if msg.ClearedDeps > 0 {
-			statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
-		}
-		m.statusMessage = statusMsg
-		return true, statusTimeout(3 * time.Second)
+		return m.handleTaskMovedToProject(msg)
 
 	case CreateLinkedTaskMsg:
 		if msg.SourceTask != nil && msg.Project != nil {
@@ -361,6 +280,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case LinkedTaskCreatedMsg:
 		m.popView()
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 
 		// Determine link type name for status message
 		var linkName string
@@ -428,6 +350,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CrossProjectLinkCreatedMsg:
 		m.popView()
 		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
 		// Determine link type name for status message
 		var linkName string
 		switch msg.LinkType {
@@ -442,470 +367,172 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, statusTimeout(3 * time.Second)
 
 	case LinkRemovedMsg:
-		// Save task ID before refresh (project reload creates new task objects)
-		sourceTaskID := msg.SourceTask.ID
-		m.refreshProjectTree()
-		// Adjust cursors after link removal
-		if m.projectTree != nil && m.currentProject != nil {
-			// Find the task again after refresh (refresh reloads project)
-			task := m.currentProject.GetTaskByID(sourceTaskID)
-			if task != nil {
-				// Restore main tree cursor to the source task
-				m.projectTree.JumpToTask(task)
-
-				sections := m.projectTree.getAvailableSections(task)
-				sidebar := m.projectTree.sidebar
-
-				if len(sections) == 0 {
-					// No links remaining, unfocus sidebar
-					sidebar.SetFocused(false)
-				} else {
-					// Check if current section still has items
-					currentSection := sidebar.GetDependencySection()
-					sectionHasItems := false
-					for _, s := range sections {
-						if s == currentSection {
-							sectionHasItems = true
-							break
-						}
-					}
-					if !sectionHasItems {
-						// Switch to first available section
-						sidebar.SetDependencySection(sections[0])
-					}
-					// Clamp cursor to valid range
-					count := m.projectTree.getCurrentSidebarLinkedItemCount(task)
-					if sidebar.GetDependencyCursor() >= count {
-						if count > 0 {
-							sidebar.SetDependencyCursor(count - 1)
-						} else {
-							sidebar.SetDependencyCursor(0)
-						}
-					}
-				}
-			}
-		}
-		// Determine section name for status message
-		var sectionName string
-		switch msg.Section {
-		case 0:
-			sectionName = "blocker"
-		case 1:
-			sectionName = "dependent"
-		case 2:
-			sectionName = "related"
-		}
-		m.statusMessage = fmt.Sprintf("Removed %s link", sectionName)
-		return true, defaultStatusTimeout()
+		return m.handleLinkRemoved(msg)
 	}
 	return false, nil
 }
 
-// handleCrossProjectNavigation navigates to a task in another project using a qualified ref.
-func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) {
-	ref := models.ParseTaskRef(taskRef)
-	if ref.IsEmpty() {
-		return true, errorCmd("invalid task reference")
-	}
+// handleDueDateChanged handles the DueDateChangedMsg, including bulk operations.
+func (m *AppModel) handleDueDateChanged(msg DueDateChangedMsg) (bool, tea.Cmd) {
+	m.popView()
 
-	// Get target project
-	targetProject := m.config.GetProject(ref.ProjectID)
-	if targetProject == nil {
-		m.statusMessage = "Project not found (link may be broken)"
-		return true, defaultStatusTimeout()
-	}
+	// Check if this is a bulk operation from palette
+	if len(m.pendingBulkTasks) > 1 && msg.Task != nil {
+		// The first task was already saved by DateInputModel
+		// Apply the same date to remaining tasks
+		newDate := msg.Task.DueDate
+		count := 1 // First task already updated
+		projectMap := make(map[string]*models.Project)
 
-	// Load the project
-	if err := m.persister.Load(targetProject); err != nil {
-		return true, errorCmd("failed to load project: %w", err)
-	}
-
-	// Find the task
-	task := targetProject.GetTaskByID(ref.TaskID)
-	if task == nil {
-		m.statusMessage = fmt.Sprintf("Task not found in %s (link may be broken)", targetProject.Name)
-		return true, defaultStatusTimeout()
-	}
-
-	return m.handleLinkedTaskNavigation(task, targetProject)
-}
-
-// handleLinkedTaskNavigation navigates to a linked task, switching projects if needed.
-func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models.Project) (bool, tea.Cmd) {
-	// If we're in the project tree for this project, just jump to the task
-	if m.currentView() == ViewProjectTree && m.currentProject != nil && m.currentProject.ID == project.ID {
-		if m.projectTree != nil {
-			m.projectTree.JumpToTask(task)
-			m.statusMessage = fmt.Sprintf("Jumped to #%d", task.ShortID)
-		}
-		return true, defaultStatusTimeout()
-	}
-
-	// Otherwise, switch to the project and jump
-	m.switchToProject(project, true)
-	m.pushView(ViewProjectTree)
-	if m.projectTree != nil {
-		m.projectTree.JumpToTask(task)
-		m.statusMessage = fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name)
-	}
-	return true, defaultStatusTimeout()
-}
-
-// handleCommandPaletteTaskAction handles inline task actions from the command palette.
-// It applies status changes (complete, start, reopen) and saves the project.
-func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMsg) (bool, tea.Cmd) {
-	if msg.Task == nil || msg.Project == nil {
-		return true, nil
-	}
-
-	current := msg.Project.GetTaskByID(msg.Task.ID)
-	if current == nil {
-		return true, errorCmd("task no longer exists in project")
-	}
-
-	// Map action name to target status
-	statusMap := map[string]models.TaskStatus{
-		"complete": models.StatusDone,
-		"start":    models.StatusInProgress,
-		"block":    models.StatusBlocked,
-		"cancel":   models.StatusCanceled,
-		"reopen":   models.StatusTodo,
-		"review":   models.StatusReview,
-	}
-	targetStatus, ok := statusMap[msg.Action]
-	if !ok {
-		return true, nil
-	}
-	if msg := current.CanTransitionTo(targetStatus); msg != "" {
-		return true, errorCmd("%s", msg)
-	}
-	current.ApplyTransition(targetStatus)
-
-	// Async save with loading indicator
-	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, current.Title)
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, successMsg),
-	)
-}
-
-// handleInlineTaskCreate creates a new task from the command palette inline creation.
-func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cmd) {
-	if msg.Project == nil || msg.Title == "" {
-		return true, nil
-	}
-
-	// Ensure project is loaded
-	if err := m.persister.Load(msg.Project); err != nil {
-		return true, errorCmd("failed to load project: %w", err)
-	}
-
-	// Ensure Inbox section exists
-	if !msg.Project.HasSection(models.SectionInbox) {
-		msg.Project.EnsureSection(models.SectionInbox)
-		msg.Project.SetSectionColor(models.SectionInbox, "red")
-	}
-
-	// Create the task
-	task := &models.Task{
-		ID:        uuid.New().String(),
-		ShortID:   msg.Project.GetNextShortID(),
-		Type:      models.TaskTypeTask,
-		Title:     msg.Title,
-		Status:    models.StatusTodo,
-		Priority:  msg.Priority,
-		Section:   models.SectionInbox,
-		DueDate:   msg.DueDate,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	// Add tags
-	for _, tag := range msg.Tags {
-		task.AddTag(tag)
-	}
-
-	// Add to project at the beginning so it's prominently visible
-	msg.Project.Tasks = append([]*models.Task{task}, msg.Project.Tasks...)
-	msg.Project.BuildTaskTree()
-
-	// Async save with loading indicator
-	successMsg := fmt.Sprintf("Created: %s", msg.Title)
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, successMsg),
-	)
-}
-
-// handleEditTaskContent launches external editor for task title and description.
-func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd) {
-	if msg.Task == nil {
-		return true, nil
-	}
-
-	tmpFile, err := os.CreateTemp("", "tt-edit-*.md")
-	if err != nil {
-		return true, errorCmd("failed to create temp file: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	content := fmt.Sprintf("# %s\n\n<!-- Edit the title above and description below. -->\n\n%s", msg.Task.Title, msg.Task.Description)
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
-
-	editor := external.ResolveEditor(m.config.Editor)
-	c := external.EditorCommand(editor, tmpPath)
-
-	task := msg.Task
-	project := msg.Project
-	return true, tea.ExecProcess(c, func(err error) tea.Msg {
-		if err != nil {
-			_ = os.Remove(tmpPath)
-			return TaskContentEditedMsg{Task: task, Project: project, Err: err}
-		}
-		content, readErr := os.ReadFile(tmpPath)
-		_ = os.Remove(tmpPath)
-		if readErr != nil {
-			return TaskContentEditedMsg{Task: task, Project: project, Err: readErr}
-		}
-		newTitle, newDesc := parseTaskContent(string(content), task)
-		return TaskContentEditedMsg{
-			Task:           task,
-			Project:        project,
-			NewTitle:       newTitle,
-			NewDescription: newDesc,
-		}
-	})
-}
-
-// handleTaskContentEdited handles result from external editor.
-func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.Cmd) {
-	if msg.Err != nil {
-		return true, errorCmd("editor failed: %w", msg.Err)
-	}
-
-	if msg.Task != nil {
-		titleChanged := msg.NewTitle != msg.Task.Title
-		descChanged := msg.NewDescription != msg.Task.Description
-		if titleChanged || descChanged {
-			if msg.Project != nil {
-				// Re-lookup task in project to avoid stale pointer after concurrent reload
-				if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-					t.Title = msg.NewTitle
-					t.Description = msg.NewDescription
+		for i, item := range m.pendingBulkTasks {
+			if i == 0 {
+				// Skip the first task (already saved by DateInputModel)
+				projectMap[item.Project.ID] = item.Project
+				continue
+			}
+			if item.Task != nil && item.Project != nil {
+				if item.Project.MutateTask(item.Task.ID, func(t *models.Task) {
+					if newDate != nil {
+						dateCopy := *newDate
+						t.DueDate = &dateCopy
+					} else {
+						t.DueDate = nil
+					}
 				}) {
-					return true, errorCmd("task no longer exists in project")
+					projectMap[item.Project.ID] = item.Project
+					count++
 				}
-
-				// Refresh task editor view first if it's open
-				if m.currentView() == ViewTaskEditor {
-					current := msg.Project.GetTaskByID(msg.Task.ID)
-					taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
-					taskEditor.SetSize(m.width, m.height-2)
-					m.views.Register(ViewTaskEditor, taskEditor)
-				}
-				return true, tea.Batch(
-					startLoading("Saving..."),
-					SaveProjectAsync(msg.Project, "Task updated"),
-				)
 			}
 		}
+
+		// Build list of projects to save (except first which was already saved)
+		var projectsToSave []*models.Project
+		for _, project := range projectMap {
+			if project.ID != m.pendingBulkTasks[0].Project.ID {
+				projectsToSave = append(projectsToSave, project)
+			}
+		}
+
+		var successMsg string
+		if newDate != nil {
+			successMsg = fmt.Sprintf("Set due date to %s for %d tasks", newDate.Format("2006-01-02"), count)
+		} else {
+			successMsg = fmt.Sprintf("Cleared due date for %d tasks", count)
+		}
+		m.pendingBulkTasks = nil
+
+		if len(projectsToSave) > 0 {
+			return true, tea.Batch(
+				startLoading("Saving..."),
+				SaveMultipleProjectsAsync(projectsToSave, successMsg),
+			)
+		}
+		m.statusMessage = successMsg
+		m.refreshProjectTree()
+		if m.outliner != nil {
+			m.outliner.rebuildRows()
+		}
+		return true, defaultStatusTimeout()
 	}
 
-	if m.currentView() == ViewTaskEditor && msg.Task != nil {
-		current := msg.Project.GetTaskByID(msg.Task.ID)
-		if current != nil {
-			taskEditor := NewTaskEditorModel(msg.Project, current, m.config, m.configManager)
-			taskEditor.SetSize(m.width, m.height-2)
-			m.views.Register(ViewTaskEditor, taskEditor)
-		}
+	m.pendingBulkTasks = nil
+	m.refreshProjectTree()
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
 	}
 	return true, nil
 }
 
-// handleDescriptionEditorDone handles result from the description text editor popup.
-func (m *AppModel) handleDescriptionEditorDone(msg DescriptionEditorDoneMsg) (bool, tea.Cmd) {
-	if msg.Canceled {
-		return true, nil
-	}
-
-	if msg.Task == nil || msg.Project == nil {
-		return true, nil
-	}
-
-	// Check if description actually changed
-	if msg.NewDescription == msg.Task.Description {
-		return true, nil
-	}
-
-	// Update the task description
-	if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {
-		t.Description = msg.NewDescription
-	}) {
-		return true, errorCmd("task no longer exists in project")
-	}
-
-	// Refresh project tree and save
+// handleLinkRemoved handles the LinkRemovedMsg and adjusts sidebar cursors.
+func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
+	// Save task ID before refresh (project reload creates new task objects)
+	sourceTaskID := msg.SourceTask.ID
 	m.refreshProjectTree()
-	return true, tea.Batch(
-		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, "Description updated"),
-	)
-}
-
-// handleMoveTaskToProject handles moving a task to another project.
-func (m *AppModel) handleMoveTaskToProject(msg MoveTaskToProjectMsg) (bool, tea.Cmd) {
-	if msg.Task == nil || msg.SourceProject == nil || msg.DestProjectID == "" {
-		return true, nil
+	if m.outliner != nil {
+		m.outliner.rebuildRows()
 	}
+	// Adjust cursors after link removal
+	if m.projectTree != nil && m.currentProject != nil {
+		// Find the task again after refresh (refresh reloads project)
+		task := m.currentProject.GetTaskByID(sourceTaskID)
+		if task != nil {
+			// Restore main tree cursor to the source task
+			m.projectTree.JumpToTask(task)
 
-	// Get destination project
-	destProject := m.config.GetProject(msg.DestProjectID)
-	if destProject == nil {
-		return true, errorCmd("destination project not found")
-	}
+			sections := sidebarGetAvailableSections(m.currentProject, task)
+			sidebar := m.projectTree.sidebar
 
-	// Load destination project
-	if err := m.persister.Load(destProject); err != nil {
-		return true, errorCmd("failed to load destination project: %w", err)
-	}
-
-	// Store old short ID before move
-	oldShortID := msg.Task.ShortID
-
-	// Perform the move
-	result, err := msg.SourceProject.MoveTaskToProject(msg.Task, destProject)
-	if err != nil {
-		return true, errorCmd("failed to move task: %w", err)
-	}
-	if result == nil {
-		return true, nil
-	}
-
-	// Save both projects
-	return true, tea.Batch(
-		startLoading("Moving task..."),
-		m.saveBothProjectsAsync(msg.SourceProject, destProject, result, oldShortID),
-	)
-}
-
-// saveBothProjectsAsync saves both source and destination projects after a cross-project move.
-func (m *AppModel) saveBothProjectsAsync(source, dest *models.Project, result *models.MoveTaskToProjectResult, oldShortID int) tea.Cmd {
-	persister := m.persister
-	return func() tea.Msg {
-		// Backup and save source project
-		if err := persister.Backup(source); err != nil {
-			return SaveErrorMsg{Err: fmt.Errorf("failed to backup source project: %w", err)}
-		}
-		if err := persister.Save(source); err != nil {
-			return SaveErrorMsg{Err: fmt.Errorf("failed to save source project: %w", err)}
-		}
-
-		// Backup and save destination project
-		if err := persister.Backup(dest); err != nil {
-			return SaveErrorMsg{Err: fmt.Errorf("failed to backup destination project: %w", err)}
-		}
-		if err := persister.Save(dest); err != nil {
-			return SaveErrorMsg{Err: fmt.Errorf("failed to save destination project: %w", err)}
-		}
-
-		// Return success message with move details
-		var movedTask *models.Task
-		if len(result.MovedTasks) > 0 {
-			movedTask = result.MovedTasks[0]
-		}
-
-		return TaskMovedToProjectMsg{
-			Task:          movedTask,
-			SourceProject: source,
-			DestProject:   dest,
-			MovedCount:    len(result.MovedTasks),
-			ClearedDeps:   len(result.ClearedDeps),
-			OldShortID:    oldShortID,
-		}
-	}
-}
-
-// handleArchiveCompletedTasks archives completed tasks from the current project.
-func (m *AppModel) handleArchiveCompletedTasks() (bool, tea.Cmd) {
-	if m.currentProject == nil {
-		return true, nil
-	}
-
-	project := m.currentProject
-	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
-	}
-	completedCount := project.CountCompletedTasks()
-
-	cmd := func() tea.Msg {
-		if completedCount == 0 {
-			return TasksArchivedMsg{Count: 0}
-		}
-
-		// Record undo snapshot before archiving
-		if undoDepth > 0 {
-			_ = m.persister.RecordUndoSnapshot(project, "Archive Tasks",
-				fmt.Sprintf("%d tasks", completedCount), undoDepth)
-		}
-
-		// Create backup before archiving
-		if err := m.persister.Backup(project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		// Archive the tasks
-		count, err := m.persister.ArchiveTasks(project)
-		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to archive tasks: %w", err)}
-		}
-
-		// Reload project
-		_ = m.persister.Load(project)
-
-		return TasksArchivedMsg{Count: count}
-	}
-
-	return true, cmd
-}
-
-// handleArchiveAllCompletedTasks archives completed tasks across all active projects.
-func (m *AppModel) handleArchiveAllCompletedTasks() (bool, tea.Cmd) {
-	projects := m.config.GetActiveProjects()
-
-	cmd := func() tea.Msg {
-		totalArchived := 0
-		projectsAffected := 0
-
-		for _, project := range projects {
-			if err := m.persister.Load(project); err != nil {
-				continue
+			if len(sections) == 0 {
+				// No links remaining, unfocus sidebar
+				sidebar.SetFocused(false)
+			} else {
+				// Check if current section still has items
+				currentSection := sidebar.GetDependencySection()
+				sectionHasItems := false
+				for _, s := range sections {
+					if s == currentSection {
+						sectionHasItems = true
+						break
+					}
+				}
+				if !sectionHasItems {
+					// Switch to first available section
+					sidebar.SetDependencySection(sections[0])
+				}
+				// Clamp cursor to valid range
+				count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
+				if sidebar.GetDependencyCursor() >= count {
+					if count > 0 {
+						sidebar.SetDependencyCursor(count - 1)
+					} else {
+						sidebar.SetDependencyCursor(0)
+					}
+				}
 			}
-
-			if project.CountCompletedTasks() == 0 {
-				continue
-			}
-
-			if err := m.persister.Backup(project); err != nil {
-				continue
-			}
-
-			count, err := m.persister.ArchiveTasks(project)
-			if err != nil {
-				continue
-			}
-
-			totalArchived += count
-			projectsAffected++
 		}
-
-		// Reload current project if it was affected
-		if m.currentProject != nil {
-			_ = m.persister.Load(m.currentProject)
-		}
-
-		return TasksArchivedMsg{Count: totalArchived, Projects: projectsAffected}
 	}
+	// Adjust outliner sidebar cursor after link removal
+	if m.outliner != nil && m.outliner.sidebar != nil && m.currentProject != nil {
+		task := m.currentProject.GetTaskByID(sourceTaskID)
+		if task != nil {
+			sections := sidebarGetAvailableSections(m.currentProject, task)
+			sidebar := m.outliner.sidebar
 
-	return true, cmd
+			if len(sections) == 0 {
+				sidebar.SetFocused(false)
+			} else {
+				currentSection := sidebar.GetDependencySection()
+				sectionHasItems := false
+				for _, s := range sections {
+					if s == currentSection {
+						sectionHasItems = true
+						break
+					}
+				}
+				if !sectionHasItems {
+					sidebar.SetDependencySection(sections[0])
+				}
+				count := sidebarGetLinkedItemCount(m.currentProject, sidebar, task)
+				if sidebar.GetDependencyCursor() >= count {
+					if count > 0 {
+						sidebar.SetDependencyCursor(count - 1)
+					} else {
+						sidebar.SetDependencyCursor(0)
+					}
+				}
+			}
+		}
+	}
+	// Determine section name for status message
+	var sectionName string
+	switch msg.Section {
+	case 0:
+		sectionName = "blocker"
+	case 1:
+		sectionName = "dependent"
+	case 2:
+		sectionName = "related"
+	}
+	m.statusMessage = fmt.Sprintf("Removed %s link", sectionName)
+	return true, defaultStatusTimeout()
 }

@@ -7,19 +7,12 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
-
-// sidebarLinkedTask represents a resolved task reference for sidebar display.
-type sidebarLinkedTask struct {
-	Task      *models.Task    // nil if not found (broken link)
-	Project   *models.Project // nil for same-project links
-	Ref       string          // Original reference string
-	IsMissing bool            // True if the task/project couldn't be found
-}
 
 // renderSidebarCard renders a card with a titled border for sidebar sections.
 // Uses the shared renderCard utility with sidebar-specific configuration.
@@ -31,18 +24,21 @@ func renderSidebarCard(title, content string, width int, focused bool, accentCol
 	return renderCard(title, content, width, config)
 }
 
-// renderSidebar renders the detail sidebar for the currently selected task.
-func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) string {
+// renderSidebarContent renders the detail sidebar for the currently selected task.
+func renderSidebarContent(host SidebarHost, task *models.Task, width, height int) string {
 	if task == nil {
 		emptyCard := renderSidebarCard("Task", MutedStyle.Render("No task selected"), width, false, "")
-		return m.padSidebarToHeight(emptyCard, width, height)
+		return padSidebarToHeight(emptyCard, nil, width, height)
 	}
 
+	project := host.SidebarProject()
+	cfg := host.SidebarConfig()
+	sidebar := host.SidebarGetSidebar()
+
 	// Get section color for accent on Task and Info cards
-	// Prefer custom section color when available
-	sectionColor := m.project.GetSectionColor(task.Section)
+	sectionColor := project.GetSectionColor(task.Section)
 	if task.CustomSection != "" {
-		sectionColor = m.project.GetSectionColor(task.CustomSection)
+		sectionColor = project.GetSectionColor(task.CustomSection)
 	}
 
 	// Calculate inner width for card content (width minus card borders and padding)
@@ -51,62 +47,62 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 	var cards []string
 
 	// Task card: title, type/status, ID/priority (uses section color)
-	cards = append(cards, m.renderTaskCard(task, width, sectionColor))
+	cards = append(cards, renderSidebarTaskCard(project, task, width, sectionColor))
 
 	// Due card (only if due date set)
 	if task.DueDate != nil {
-		cards = append(cards, m.renderDueCard(task, width))
+		cards = append(cards, renderSidebarDueCard(task, width))
 	}
 
 	// Metadata card: tags + section (uses section color)
-	cards = append(cards, m.renderMetadataCard(task, width, sectionColor))
+	cards = append(cards, renderSidebarMetadataCard(project, task, width, sectionColor))
 
 	// Score card (only if scoring profile assigned)
-	if m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			cards = append(cards, m.renderScoreCard(task, width, profile))
+	if cfg != nil {
+		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
+			cards = append(cards, renderSidebarScoreCard(task, width, profile))
 		}
 	}
 
 	// Checklist card (only if has checklist items)
 	if len(task.Checklist) > 0 {
-		cards = append(cards, m.renderChecklistCard(task, width))
+		cards = append(cards, renderSidebarChecklistCard(task, width))
 	}
 
 	// Dependencies card (only if has dependencies)
-	hasDeps := len(task.DependsOn) > 0 || len(m.project.GetBlockedByTasks(task)) > 0
+	hasDeps := len(task.DependsOn) > 0 || len(project.GetBlockedByTasks(task)) > 0
 	if hasDeps {
-		cards = append(cards, m.renderDependenciesCard(task, width, cardInnerWidth))
+		cards = append(cards, renderSidebarDependenciesCard(host, task, width, cardInnerWidth))
 	}
 
 	// Related tasks card (only if has related tasks)
 	if len(task.RelatedTo) > 0 {
-		cards = append(cards, m.renderRelatedCard(task, width, cardInnerWidth))
+		cards = append(cards, renderSidebarRelatedCard(host, task, width, cardInnerWidth))
 	}
 
 	// Activity card
-	cards = append(cards, m.renderActivityCard(task, width))
+	cards = append(cards, renderSidebarActivityCard(task, width))
 
 	// Comments card (only if has comments)
 	if len(task.Comments) > 0 {
-		cards = append(cards, m.renderCommentsCard(task, width))
+		cards = append(cards, renderSidebarCommentsCard(task, width))
 	}
 
 	// Attachments card (only if has attachments)
 	if task.HasAttachments() {
-		cards = append(cards, m.renderAttachmentsCard(task, width))
+		cards = append(cards, renderSidebarAttachmentsCard(task, width))
 	}
 
 	// Description card (only if has description)
 	if task.Description != "" {
-		cards = append(cards, m.renderDescriptionCard(task, width))
+		cards = append(cards, renderSidebarDescriptionCard(task, width))
 	}
 
 	// Help hint at bottom if sidebar focused
 	helpHint := ""
-	if m.sidebar.IsFocused() && m.hasLinkedTasks(task) {
+	if sidebar.IsFocused() && sidebarHasLinkedTasks(project, task) {
 		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump | x: unlink")
-	} else if m.sidebar.IsFocused() {
+	} else if sidebar.IsFocused() {
 		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
 	}
 
@@ -116,28 +112,28 @@ func (m *ProjectTreeModel) renderSidebar(task *models.Task, width, height int) s
 		content += "\n" + helpHint
 	}
 
-	return m.padSidebarToHeight(content, width, height)
+	return padSidebarToHeight(content, sidebar, width, height)
 }
 
-// renderTaskCard renders the main task info card.
-func (m *ProjectTreeModel) renderTaskCard(task *models.Task, width int, sectionColor string) string {
-	content := renderTaskHeaderContent(task, m.project.HasIncompleteDependencies(task), true)
+// renderSidebarTaskCard renders the main task info card.
+func renderSidebarTaskCard(project *models.Project, task *models.Task, width int, sectionColor string) string {
+	content := renderTaskHeaderContent(task, project.HasIncompleteDependencies(task), true)
 	return renderSidebarCard("Task", content, width, false, sectionColor)
 }
 
-// renderDueCard renders the due date card.
-func (m *ProjectTreeModel) renderDueCard(task *models.Task, width int) string {
+// renderSidebarDueCard renders the due date card.
+func renderSidebarDueCard(task *models.Task, width int) string {
 	return renderSidebarCard("Due", renderDueDateContent(task), width, false, "")
 }
 
-// renderMetadataCard renders tags and section in a combined card.
-func (m *ProjectTreeModel) renderMetadataCard(task *models.Task, width int, sectionColor string) string {
-	content := renderMetadataContent(task, m.project, width-6)
+// renderSidebarMetadataCard renders tags and section in a combined card.
+func renderSidebarMetadataCard(project *models.Project, task *models.Task, width int, sectionColor string) string {
+	content := renderMetadataContent(task, project, width-6)
 	return renderSidebarCard("Info", content, width, false, sectionColor)
 }
 
-// renderChecklistCard renders the checklist items card.
-func (m *ProjectTreeModel) renderChecklistCard(task *models.Task, width int) string {
+// renderSidebarChecklistCard renders the checklist items card.
+func renderSidebarChecklistCard(task *models.Task, width int) string {
 	var lines []string
 
 	completed := 0
@@ -171,24 +167,23 @@ func (m *ProjectTreeModel) renderChecklistCard(task *models.Task, width int) str
 	return renderSidebarCard("Checklist", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderDepSectionItems renders the scrolled list portion of a dependency section:
-// scroll offset calculation, ↑/↓ indicators, and visible items.
-func (m *ProjectTreeModel) renderDepSectionItems(items []sidebarLinkedTask, sectionIndex, innerWidth int) []string {
+// renderSidebarDepSectionItems renders the scrolled list portion of a dependency section.
+func renderSidebarDepSectionItems(sidebar *SidebarComponent, items []sidebarLinkedTask, sectionIndex, innerWidth int) []string {
 	const maxVisiblePerSection = 5
 	var lines []string
 
 	sectionScroll := 0
-	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex {
-		cursor := m.sidebar.GetDependencyCursor()
-		sectionScroll = m.sidebar.GetDepsScrollOffset()
+	if sidebar.IsFocused() && sidebar.GetDependencySection() == sectionIndex {
+		cursor := sidebar.GetDependencyCursor()
+		sectionScroll = sidebar.GetDepsScrollOffset()
 		if cursor >= sectionScroll+maxVisiblePerSection {
 			sectionScroll = cursor - maxVisiblePerSection + 1
 		}
 		if cursor < sectionScroll {
 			sectionScroll = cursor
 		}
-		if sectionScroll != m.sidebar.GetDepsScrollOffset() {
-			m.sidebar.SetDepsScrollOffset(sectionScroll)
+		if sectionScroll != sidebar.GetDepsScrollOffset() {
+			sidebar.SetDepsScrollOffset(sectionScroll)
 		}
 	}
 
@@ -202,8 +197,8 @@ func (m *ProjectTreeModel) renderDepSectionItems(items []sidebarLinkedTask, sect
 	}
 
 	for i := sectionScroll; i < visibleEnd; i++ {
-		isCursor := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex && i == m.sidebar.GetDependencyCursor()
-		lines = append(lines, m.formatSidebarLinkedTask(items[i], innerWidth, isCursor, m.sidebar.IsFocused()))
+		isCursor := sidebar.IsFocused() && sidebar.GetDependencySection() == sectionIndex && i == sidebar.GetDependencyCursor()
+		lines = append(lines, formatSidebarLinkedTask(items[i], innerWidth, isCursor, sidebar.IsFocused()))
 	}
 
 	if visibleEnd < len(items) {
@@ -213,70 +208,75 @@ func (m *ProjectTreeModel) renderDepSectionItems(items []sidebarLinkedTask, sect
 	return lines
 }
 
-// depSectionHeader returns a styled section header, bold+underline when focused.
-func (m *ProjectTreeModel) depSectionHeader(label string, sectionIndex int) string {
-	if m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == sectionIndex {
+// sidebarDepSectionHeader returns a styled section header, bold+underline when focused.
+func sidebarDepSectionHeader(sidebar *SidebarComponent, label string, sectionIndex int) string {
+	if sidebar.IsFocused() && sidebar.GetDependencySection() == sectionIndex {
 		return BoldStyle.Underline(true).Render(label)
 	}
 	return MutedStyle.Render(label)
 }
 
-// renderDependenciesCard renders the dependencies card with navigation support.
-// Supports cross-project task references.
-func (m *ProjectTreeModel) renderDependenciesCard(task *models.Task, width, innerWidth int) string {
+// renderSidebarDependenciesCard renders the dependencies card with navigation support.
+func renderSidebarDependenciesCard(host SidebarHost, task *models.Task, width, innerWidth int) string {
+	project := host.SidebarProject()
+	cfg := host.SidebarConfig()
+	sidebar := host.SidebarGetSidebar()
 	var lines []string
 
-	// Blocked by (tasks this depends on) - may include cross-project refs
+	// Blocked by (tasks this depends on)
 	if len(task.DependsOn) > 0 {
-		lines = append(lines, m.depSectionHeader("Blocked by:", 0))
+		lines = append(lines, sidebarDepSectionHeader(sidebar, "Blocked by:", 0))
 
 		var blockingTasks []sidebarLinkedTask
 		for _, depRef := range task.DependsOn {
-			blockingTasks = append(blockingTasks, m.resolveSidebarTaskRef(depRef))
+			blockingTasks = append(blockingTasks, sidebarResolveSidebarTaskRef(project, cfg, depRef))
 		}
-		lines = append(lines, m.renderDepSectionItems(blockingTasks, 0, innerWidth)...)
+		lines = append(lines, renderSidebarDepSectionItems(sidebar, blockingTasks, 0, innerWidth)...)
 	}
 
 	// Blocking (tasks that depend on this) - same-project only
-	blockedBy := m.project.GetBlockedByTasks(task)
+	blockedBy := project.GetBlockedByTasks(task)
 	if len(blockedBy) > 0 {
 		if len(task.DependsOn) > 0 {
 			lines = append(lines, "") // spacer
 		}
-		lines = append(lines, m.depSectionHeader("Blocking:", 1))
+		lines = append(lines, sidebarDepSectionHeader(sidebar, "Blocking:", 1))
 
 		var blockingItems []sidebarLinkedTask
 		for _, blocked := range blockedBy {
 			blockingItems = append(blockingItems, sidebarLinkedTask{Task: blocked, Project: nil, Ref: blocked.ID, IsMissing: false})
 		}
-		lines = append(lines, m.renderDepSectionItems(blockingItems, 1, innerWidth)...)
+		lines = append(lines, renderSidebarDepSectionItems(sidebar, blockingItems, 1, innerWidth)...)
 	}
 
-	focused := m.sidebar.IsFocused() && m.hasDependencies(task)
+	focused := sidebar.IsFocused() && sidebarHasDependencies(project, task)
 	return renderSidebarCard("Deps", strings.Join(lines, "\n"), width, focused, "")
 }
 
-// renderRelatedCard renders the related tasks card with navigation support.
-// Supports cross-project task references.
-func (m *ProjectTreeModel) renderRelatedCard(task *models.Task, width, innerWidth int) string {
+// renderSidebarRelatedCard renders the related tasks card with navigation support.
+func renderSidebarRelatedCard(host SidebarHost, task *models.Task, width, innerWidth int) string {
+	project := host.SidebarProject()
+	cfg := host.SidebarConfig()
+	sidebar := host.SidebarGetSidebar()
+
 	var relatedTasks []sidebarLinkedTask
 	for _, relRef := range task.RelatedTo {
-		relatedTasks = append(relatedTasks, m.resolveSidebarTaskRef(relRef))
+		relatedTasks = append(relatedTasks, sidebarResolveSidebarTaskRef(project, cfg, relRef))
 	}
 	if len(relatedTasks) == 0 {
 		return ""
 	}
 
 	var lines []string
-	lines = append(lines, m.depSectionHeader("Related:", 2))
-	lines = append(lines, m.renderDepSectionItems(relatedTasks, 2, innerWidth)...)
+	lines = append(lines, sidebarDepSectionHeader(sidebar, "Related:", 2))
+	lines = append(lines, renderSidebarDepSectionItems(sidebar, relatedTasks, 2, innerWidth)...)
 
-	focused := m.sidebar.IsFocused() && m.sidebar.GetDependencySection() == 2
+	focused := sidebar.IsFocused() && sidebar.GetDependencySection() == 2
 	return renderSidebarCard("Related", strings.Join(lines, "\n"), width, focused, "")
 }
 
-// renderActivityCard renders the activity timestamps card.
-func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) string {
+// renderSidebarActivityCard renders the activity timestamps card.
+func renderSidebarActivityCard(task *models.Task, width int) string {
 	var lines []string
 
 	if !task.CreatedAt.IsZero() {
@@ -294,8 +294,8 @@ func (m *ProjectTreeModel) renderActivityCard(task *models.Task, width int) stri
 	return renderSidebarCard("Activity", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderCommentsCard renders the comments card showing all comments.
-func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) string {
+// renderSidebarCommentsCard renders the comments card showing all comments.
+func renderSidebarCommentsCard(task *models.Task, width int) string {
 	var lines []string
 
 	for i, comment := range task.Comments {
@@ -318,12 +318,10 @@ func (m *ProjectTreeModel) renderCommentsCard(task *models.Task, width int) stri
 	return renderSidebarCard("Comments", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderAttachmentsCard renders the attachments card showing filenames only.
-func (m *ProjectTreeModel) renderAttachmentsCard(task *models.Task, width int) string {
+// renderSidebarAttachmentsCard renders the attachments card showing filenames only.
+func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 	var lines []string
 
-	// Calculate max length for filenames/URLs to fit on one line
-	// width - 6 (borders/padding) - 4 (emoji + space, accounting for wide emoji)
 	maxLen := width - 10
 	if maxLen < 20 {
 		maxLen = 20
@@ -335,7 +333,6 @@ func (m *ProjectTreeModel) renderAttachmentsCard(task *models.Task, width int) s
 		}
 		displayName := util.Truncate(attachment.Filename, maxLen)
 		if attachment.IsURL {
-			// Use OSC 8 hyperlink so truncated URL still links to full URL
 			link := Hyperlink(attachment.Filename, displayName)
 			lines = append(lines, MutedStyle.Render("🔗 ")+link)
 		} else {
@@ -346,13 +343,9 @@ func (m *ProjectTreeModel) renderAttachmentsCard(task *models.Task, width int) s
 	return renderSidebarCard("Attachments", strings.Join(lines, "\n"), width, false, "")
 }
 
-// renderDescriptionCard renders the description card with scroll support.
-func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) string {
+// renderSidebarDescriptionCard renders the description card.
+func renderSidebarDescriptionCard(task *models.Task, width int) string {
 	lines := strings.Split(task.Description, "\n")
-	if m.sidebar.GetScroll() < len(lines) {
-		lines = lines[m.sidebar.GetScroll():]
-	}
-	// Limit visible lines to avoid overflow
 	maxLines := 5
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]
@@ -362,81 +355,48 @@ func (m *ProjectTreeModel) renderDescriptionCard(task *models.Task, width int) s
 	return renderSidebarCard("Description", strings.Join(lines, "\n"), width, false, "")
 }
 
-// resolveSidebarTaskRef resolves a task reference (local or cross-project) for sidebar display.
-func (m *ProjectTreeModel) resolveSidebarTaskRef(ref string) sidebarLinkedTask {
+// sidebarResolveSidebarTaskRef resolves a task reference (local or cross-project) for sidebar display.
+func sidebarResolveSidebarTaskRef(project *models.Project, cfg *config.Config, ref string) sidebarLinkedTask {
 	taskRef := models.ParseTaskRef(ref)
 
 	if !taskRef.IsCrossProject() {
-		// Same-project reference
-		task := m.project.GetTaskByID(taskRef.TaskID)
+		task := project.GetTaskByID(taskRef.TaskID)
 		if task != nil {
-			return sidebarLinkedTask{
-				Task:      task,
-				Project:   nil,
-				Ref:       ref,
-				IsMissing: false,
-			}
+			return sidebarLinkedTask{Task: task, Project: nil, Ref: ref, IsMissing: false}
 		}
-		return sidebarLinkedTask{
-			Task:      nil,
-			Project:   nil,
-			Ref:       ref,
-			IsMissing: true,
-		}
+		return sidebarLinkedTask{Task: nil, Project: nil, Ref: ref, IsMissing: true}
 	}
 
 	// Cross-project reference
-	if m.config == nil {
-		return sidebarLinkedTask{
-			Task:      nil,
-			Project:   nil,
-			Ref:       ref,
-			IsMissing: true,
-		}
+	if cfg == nil {
+		return sidebarLinkedTask{Task: nil, Project: nil, Ref: ref, IsMissing: true}
 	}
 
-	targetProject := m.config.GetProject(taskRef.ProjectID)
+	targetProject := cfg.GetProject(taskRef.ProjectID)
 	if targetProject == nil {
-		return sidebarLinkedTask{
-			Task:      nil,
-			Project:   nil,
-			Ref:       ref,
-			IsMissing: true,
-		}
+		return sidebarLinkedTask{Task: nil, Project: nil, Ref: ref, IsMissing: true}
 	}
 
-	// Load the project if not already loaded
 	if len(targetProject.Tasks) == 0 {
 		_ = storage.LoadProject(targetProject)
 	}
 
 	task := targetProject.GetTaskByID(taskRef.TaskID)
 	if task == nil {
-		return sidebarLinkedTask{
-			Task:      nil,
-			Project:   targetProject,
-			Ref:       ref,
-			IsMissing: true,
-		}
+		return sidebarLinkedTask{Task: nil, Project: targetProject, Ref: ref, IsMissing: true}
 	}
 
-	return sidebarLinkedTask{
-		Task:      task,
-		Project:   targetProject,
-		Ref:       ref,
-		IsMissing: false,
-	}
+	return sidebarLinkedTask{Task: task, Project: targetProject, Ref: ref, IsMissing: false}
 }
 
 // formatSidebarLinkedTask formats a linked task line for sidebar display.
-func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, isFocused bool) string {
+func formatSidebarLinkedTask(linked sidebarLinkedTask, innerWidth int, cursor, isFocused bool) string {
 	cursorStr := "  "
 	if cursor {
 		cursorStr = "> "
 	}
 
 	if linked.IsMissing {
-		// Show broken link indicator
 		ref := models.ParseTaskRef(linked.Ref)
 		var label string
 		if ref.IsCrossProject() {
@@ -455,13 +415,11 @@ func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, inn
 		return line
 	}
 
-	// Format found task
 	depStatus := GetStatusStyle(string(linked.Task.Status))
 
-	// Calculate available width for title
 	titleWidth := innerWidth - 12
 	if linked.Project != nil {
-		titleWidth -= len(linked.Project.Name) + 3 // "[ProjectName] "
+		titleWidth -= len(linked.Project.Name) + 3
 	}
 	if titleWidth < 10 {
 		titleWidth = 10
@@ -469,13 +427,11 @@ func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, inn
 
 	var line string
 	if linked.Project != nil {
-		// Cross-project: show project name
 		projectLabel := MutedStyle.Render(fmt.Sprintf("[%s] ", linked.Project.Name))
 		line = fmt.Sprintf("%s%s#%-3d %s %s",
 			cursorStr, projectLabel, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
 			util.Truncate(linked.Task.Title, titleWidth))
 	} else {
-		// Same-project
 		line = fmt.Sprintf("%s#%-3d %s %s",
 			cursorStr, linked.Task.ShortID, depStatus.Render(linked.Task.Status.Icon()),
 			util.Truncate(linked.Task.Title, titleWidth))
@@ -487,22 +443,35 @@ func (m *ProjectTreeModel) formatSidebarLinkedTask(linked sidebarLinkedTask, inn
 	return line
 }
 
-// renderScoreCard renders the score breakdown card for the sidebar.
-func (m *ProjectTreeModel) renderScoreCard(task *models.Task, width int, profile *scoring.ScoringProfile) string {
+// renderSidebarScoreCard renders the score breakdown card for the sidebar.
+func renderSidebarScoreCard(task *models.Task, width int, profile *scoring.ScoringProfile) string {
 	content := renderScoreCardContent(task, profile, width-6)
 	return renderSidebarCard("Score", content, width, false, "")
 }
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.
-func (m *ProjectTreeModel) padSidebarToHeight(content string, width, height int) string {
+// When a sidebar component is provided, applies and clamps its scroll offset.
+func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height int) string {
 	lines := strings.Split(content, "\n")
 
-	// Truncate if too tall
+	// Apply and clamp scroll offset from sidebar
+	if sidebar != nil {
+		maxScroll := len(lines) - height
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if sidebar.scroll > maxScroll {
+			sidebar.scroll = maxScroll
+		}
+		if sidebar.scroll > 0 {
+			lines = lines[sidebar.scroll:]
+		}
+	}
+
 	if len(lines) > height {
 		lines = lines[:height]
 	}
 
-	// Pad if too short
 	for len(lines) < height {
 		lines = append(lines, "")
 	}
@@ -567,7 +536,6 @@ func formatRelativeTime(t time.Time) string {
 }
 
 // formatTaskAttributes formats type-specific attributes for sidebar display.
-// Only non-empty attributes are included. Returns empty slice if no attributes set.
 func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 	var lines []string
 
@@ -639,4 +607,19 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 	}
 
 	return lines
+}
+
+// renderVerticalDivider renders a vertical line for split-pane separation.
+func renderVerticalDivider(height int) string {
+	if height <= 0 {
+		return ""
+	}
+	var b strings.Builder
+	for i := 0; i < height; i++ {
+		b.WriteString("│")
+		if i < height-1 {
+			b.WriteString("\n")
+		}
+	}
+	return MutedStyle.Render(b.String())
 }
