@@ -375,6 +375,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+		if m.project.HasIncompleteDependencies(task) {
+			statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
+		}
 
 		// Title with priority coloring
 		titleStyle := NormalStyle
@@ -460,6 +463,18 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 			indicators.WriteString(" ")
 			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))))
+		}
+
+		// Dependency indicators (only when sidebar is hidden)
+		if !m.sidebar.IsEnabled() {
+			if len(task.DependsOn) > 0 {
+				indicators.WriteString(" ")
+				indicators.WriteString(DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))))
+			}
+			if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
+				indicators.WriteString(" ")
+				indicators.WriteString(DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))))
+			}
 		}
 
 		// Progress for parent tasks
