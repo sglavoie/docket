@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // FilterType identifies the category of filter.
@@ -32,6 +34,8 @@ type FilterItem struct {
 // FilterViewModel is the model for the filter summary view.
 type FilterViewModel struct {
 	projectTree *ProjectTreeModel
+	filter      *CommonFilterState // Used when projectTree is nil (e.g., from outliner)
+	project     *models.Project    // Used when projectTree is nil
 	items       []FilterItem
 	cursor      int
 	width       int
@@ -40,7 +44,9 @@ type FilterViewModel struct {
 
 // ShowFilterMsg is sent to open the filter summary view.
 type ShowFilterMsg struct {
-	ProjectTree *ProjectTreeModel
+	ProjectTree  *ProjectTreeModel
+	CommonFilter *CommonFilterState // Used when ProjectTree is nil (e.g., from outliner)
+	Project      *models.Project    // Used when ProjectTree is nil
 }
 
 // CloseFilterMsg is sent when the filter view should close.
@@ -50,7 +56,20 @@ type CloseFilterMsg struct{}
 func NewFilterViewModel(pt *ProjectTreeModel) *FilterViewModel {
 	m := &FilterViewModel{
 		projectTree: pt,
+		filter:      &pt.filter.CommonFilterState,
+		project:     pt.project,
 		cursor:      0,
+	}
+	m.buildFilterList()
+	return m
+}
+
+// NewFilterViewModelForOutliner creates a filter view model backed by a standalone CommonFilterState.
+func NewFilterViewModelForOutliner(filter *CommonFilterState, project *models.Project) *FilterViewModel {
+	m := &FilterViewModel{
+		filter:  filter,
+		project: project,
+		cursor:  0,
 	}
 	m.buildFilterList()
 	return m
@@ -62,32 +81,32 @@ func (m *FilterViewModel) SetSize(width, height int) {
 	m.height = height
 }
 
-// buildFilterList scans the ProjectTreeModel and creates FilterItem entries.
+// buildFilterList scans the filter and creates FilterItem entries.
 func (m *FilterViewModel) buildFilterList() {
 	m.items = []FilterItem{}
 	keyNum := 1
 
-	if m.projectTree.filter.Type != "" {
+	if m.filter.Type != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Type",
-			Value:      string(m.projectTree.filter.Type),
+			Value:      string(m.filter.Type),
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterTypeFilter,
 		})
 		keyNum++
 	}
 
-	if m.projectTree.filter.Status != "" {
+	if m.filter.Status != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Status",
-			Value:      string(m.projectTree.filter.Status),
+			Value:      string(m.filter.Status),
 			Key:        fmt.Sprintf("%d", keyNum),
 			FilterType: FilterStatusFilter,
 		})
 		keyNum++
 	}
 
-	if m.projectTree.filter.Priority == 1 {
+	if m.filter.Priority == 1 {
 		m.items = append(m.items, FilterItem{
 			Name:       "Priority",
 			Value:      "high only",
@@ -97,9 +116,9 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if len(m.projectTree.filter.Tags) > 0 {
-		tags := make([]string, 0, len(m.projectTree.filter.Tags))
-		for tag := range m.projectTree.filter.Tags {
+	if len(m.filter.Tags) > 0 {
+		tags := make([]string, 0, len(m.filter.Tags))
+		for tag := range m.filter.Tags {
 			tags = append(tags, tag)
 		}
 		sort.Strings(tags)
@@ -112,9 +131,9 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.projectTree.filter.DueDate != DueDateAll {
+	if m.filter.DueDate != DueDateAll {
 		var dueName string
-		switch m.projectTree.filter.DueDate {
+		switch m.filter.DueDate {
 		case DueDateOverdue:
 			dueName = "overdue"
 		case DueDateToday:
@@ -133,7 +152,7 @@ func (m *FilterViewModel) buildFilterList() {
 		keyNum++
 	}
 
-	if m.projectTree.searchQuery != "" {
+	if m.projectTree != nil && m.projectTree.searchQuery != "" {
 		m.items = append(m.items, FilterItem{
 			Name:       "Search",
 			Value:      fmt.Sprintf("\"%s\"", m.projectTree.searchQuery),
@@ -155,35 +174,47 @@ func (m *FilterViewModel) buildFilterList() {
 func (m *FilterViewModel) clearFilter(filterType FilterType) {
 	switch filterType {
 	case FilterTypeFilter:
-		m.projectTree.filter.Type = ""
+		m.filter.Type = ""
 	case FilterStatusFilter:
-		m.projectTree.filter.Status = ""
+		m.filter.Status = ""
 	case FilterPriorityFilter:
-		m.projectTree.filter.Priority = 0
+		m.filter.Priority = 0
 	case FilterTagFilter:
-		m.projectTree.filter.Tags = make(map[string]bool)
+		m.filter.Tags = make(map[string]bool)
 	case FilterDueDateFilter:
-		m.projectTree.filter.DueDate = DueDateAll
+		m.filter.DueDate = DueDateAll
 	case FilterSearchFilter:
-		m.projectTree.searchQuery = ""
-		m.projectTree.searchInput.SetValue("")
+		// Search query is projectTree-specific
+		if m.projectTree != nil {
+			m.projectTree.searchQuery = ""
+			m.projectTree.searchInput.SetValue("")
+		}
 	}
-	m.projectTree.updateVisibility()
-	m.projectTree.clampCursor()
+	// Update visibility only if projectTree is available
+	if m.projectTree != nil {
+		m.projectTree.updateVisibility()
+		m.projectTree.clampCursor()
+	}
 	m.buildFilterList()
 }
 
 // clearAllFilters clears all active filters.
 func (m *FilterViewModel) clearAllFilters() {
-	m.projectTree.filter.Type = ""
-	m.projectTree.filter.Status = ""
-	m.projectTree.filter.Priority = 0
-	m.projectTree.filter.Tags = make(map[string]bool)
-	m.projectTree.filter.DueDate = DueDateAll
-	m.projectTree.searchQuery = ""
-	m.projectTree.searchInput.SetValue("")
-	m.projectTree.updateVisibility()
-	m.projectTree.clampCursor()
+	m.filter.Type = ""
+	m.filter.Status = ""
+	m.filter.Priority = 0
+	m.filter.Tags = make(map[string]bool)
+	m.filter.DueDate = DueDateAll
+	// Search query is projectTree-specific
+	if m.projectTree != nil {
+		m.projectTree.searchQuery = ""
+		m.projectTree.searchInput.SetValue("")
+	}
+	// Update visibility only if projectTree is available
+	if m.projectTree != nil {
+		m.projectTree.updateVisibility()
+		m.projectTree.clampCursor()
+	}
 	m.buildFilterList()
 }
 

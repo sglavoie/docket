@@ -10,6 +10,7 @@ func (r *KeybindingRegistry) registerKanbanBindings() {
 		Keybinding{Key: "j/k", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
 		Keybinding{Key: "↑/↓", Description: "Navigate tasks within column", Category: "Navigation", Views: views},
 		Keybinding{Key: "gg/G", Description: "Jump to first/last task in column", Category: "Navigation", Views: views},
+		Keybinding{Key: "o", Description: "View task details", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
 
 		// Split View

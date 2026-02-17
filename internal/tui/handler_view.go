@@ -173,6 +173,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowFilterMsg:
 		if msg.ProjectTree != nil {
 			m.showView(ViewFilter, NewFilterViewModel(msg.ProjectTree))
+		} else if msg.CommonFilter != nil {
+			m.showView(ViewFilter, NewFilterViewModelForOutliner(msg.CommonFilter, msg.Project))
 		}
 		return true, nil
 
@@ -190,8 +192,17 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TaskJumperSelectMsg:
 		m.popView()
-		if msg.Task != nil && m.projectTree != nil {
-			m.projectTree.NavigateToTask(msg.Task)
+		if msg.Task != nil {
+			switch m.currentView() {
+			case ViewOutliner:
+				if m.outliner != nil {
+					m.outliner.NavigateToSidebarTask(msg.Task)
+				}
+			default:
+				if m.projectTree != nil {
+					m.projectTree.NavigateToTask(msg.Task)
+				}
+			}
 		}
 		return true, nil
 

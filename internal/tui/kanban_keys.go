@@ -288,7 +288,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Open task detail view
-	case "enter":
+	case "enter", "o":
 		task := m.getSelectedTask()
 		if task != nil {
 			project := m.Project
@@ -386,7 +386,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Tag manager
 	case "ctrl+t":
 		return m, func() tea.Msg {
-			return ShowTagManagerMsg{ProjectTree: nil}
+			return ShowTagManagerMsg{Project: m.Project}
 		}
 
 	// Section manager

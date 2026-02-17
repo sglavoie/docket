@@ -15,18 +15,27 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowSectionFilterSelectorMsg:
 		if msg.ProjectTree != nil {
 			m.showView(ViewSectionFilterSelector, NewSectionFilterSelectorModel(msg.ProjectTree))
+		} else if msg.Project != nil {
+			m.showView(ViewSectionFilterSelector, NewSectionFilterSelectorModelForProject(msg.Project))
 		}
 		return true, nil
 
 	case SectionFilterSelectorDoneMsg:
 		m.popView()
-		if !msg.Canceled && m.projectTree != nil {
-			m.projectTree.filter.Sections = make(map[string]bool)
-			for _, section := range msg.SelectedSections {
-				m.projectTree.filter.Sections[section] = true
-			}
+		if msg.Canceled {
+			return true, nil
+		}
+		sections := make(map[string]bool)
+		for _, section := range msg.SelectedSections {
+			sections[section] = true
+		}
+		if m.projectTree != nil && m.currentView() == ViewProjectTree {
+			m.projectTree.filter.Sections = sections
 			m.projectTree.updateVisibility()
 			m.projectTree.clampCursor()
+		} else if m.outliner != nil && m.currentView() == ViewOutliner {
+			m.outliner.sectionFilter = sections
+			m.outliner.rebuildRows()
 		}
 		return true, nil
 

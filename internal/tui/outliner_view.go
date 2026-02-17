@@ -21,8 +21,11 @@ const (
 
 // outlinerRow represents a single flattened row for rendering.
 type outlinerRow struct {
-	task   *models.Task
-	prefix string
+	task            *models.Task
+	prefix          string
+	IsSectionHeader bool   // True if this row is a section header (not a task)
+	SectionName     string // Section name for header rows
+	SectionCount    int    // Number of tasks in this section
 }
 
 // buildTreePrefix computes the connector prefix string from the ancestor
@@ -203,7 +206,10 @@ func (m *OutlinerModel) renderWithSidebar() string {
 
 	var selectedTask *models.Task
 	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
-		selectedTask = m.rows[m.cursor].task
+		row := m.rows[m.cursor]
+		if !row.IsSectionHeader {
+			selectedTask = row.task
+		}
 	}
 
 	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
@@ -257,10 +263,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
 		}
 		result := header + "\n"
+		if tabs := m.customSectionTabs(); tabs != nil {
+			result += RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors) + "\n"
+		}
 		if bc != "" {
 			result += bc + "\n"
 		}
-		result += "\n" + MutedStyle.Render(emptyMsg)
+		result += MutedStyle.Render(emptyMsg)
 		if notice != "" {
 			result += "\n\n" + PreviewWarningStyle.Render(notice)
 		}
@@ -289,7 +298,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		b.WriteString(bc)
 		b.WriteString("\n")
 	}
-	b.WriteString("\n")
 
 	// Compute scroll window.
 	visibleRows := m.contentHeight()
@@ -303,9 +311,48 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	for i := startIdx; i < endIdx; i++ {
 		row := m.rows[i]
-		task := row.task
 		selected := i == m.cursor
 
+		// Handle section header rows
+		if row.IsSectionHeader {
+			// Display name for empty section (Active)
+			displayName := row.SectionName
+			if displayName == "" {
+				displayName = "Active"
+			}
+
+			// Get colored style for this section
+			sectionStyle := GetViewModeStyleForSection(row.SectionName)
+
+			// Triangle indicator (▾ expanded, ▸ collapsed)
+			indicator := "▾"
+			if m.collapsedSections[row.SectionName] {
+				indicator = "▸"
+			}
+
+			// Cursor prefix
+			cursorPrefix := "  "
+			if selected {
+				cursorPrefix = SelectionCursorStyle.Render(">") + " "
+			}
+
+			// Render colored badge with @ symbol at the very left
+			badge := sectionStyle.Render(fmt.Sprintf("@ %s", displayName))
+			line := fmt.Sprintf("%s%s %s (%d)", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount)
+
+			if selected {
+				line = SelectionRowStyle.Width(width).Render(line)
+			}
+
+			b.WriteString(line)
+			if i < endIdx-1 || endIdx < len(m.rows) {
+				b.WriteString("\n")
+			}
+			continue
+		}
+
+		// Regular task row rendering
+		task := row.task
 		// Fold indicator for parent tasks
 		foldIndicator := ""
 		if len(task.Children) > 0 {
@@ -318,7 +365,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-		idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
 
 		// Title with priority coloring
 		titleStyle := NormalStyle
@@ -383,6 +429,18 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			indicators.WriteString(MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct)))
 		}
 
+		// Section badge (only in non-All perspectives to show which section the task belongs to)
+		p := m.currentPerspective()
+		if p.Filter != nil {
+			sectionName := task.Section
+			if sectionName == "" {
+				sectionName = "Active"
+			}
+			sectionStyle := GetViewModeStyleForSection(task.Section)
+			indicators.WriteString(" ")
+			indicators.WriteString(sectionStyle.Render("@ " + sectionName))
+		}
+
 		// Cursor prefix
 		cursorPrefix := "  "
 		if selected {
@@ -403,24 +461,25 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
 		title := titleStyle.Render(util.Truncate(task.Title, availableWidth))
 
-		line := fmt.Sprintf("%s%s%s%s%s %s %s %s%s",
+		line := fmt.Sprintf("%s%s%s%s%s %s %s%s",
 			cursorPrefix,
 			checkbox,
 			MutedStyle.Render(row.prefix),
 			foldIndicator,
-			typeIcon, statusIcon, idStr, title, indicators.String())
+			typeIcon, statusIcon, title, indicators.String())
 
 		if selected {
 			line = SelectionRowStyle.Width(width).Render(line)
 		}
 
 		b.WriteString(line)
-		b.WriteString("\n")
+		if i < endIdx-1 || endIdx < len(m.rows) {
+			b.WriteString("\n")
+		}
 	}
 
 	if endIdx < len(m.rows) {
 		b.WriteString(ScrollDownIndicator(len(m.rows) - endIdx))
-		b.WriteString("\n")
 	}
 
 	if notice != "" {

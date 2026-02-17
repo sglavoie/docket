@@ -352,7 +352,16 @@ func buildTestProject() *models.Project {
 func rowTitles(rows []outlinerRow) []string {
 	titles := make([]string, len(rows))
 	for i, r := range rows {
-		titles[i] = r.task.Title
+		if r.IsSectionHeader {
+			// Use section name for headers, with "Active" for empty section
+			displayName := r.SectionName
+			if displayName == "" {
+				displayName = "Active"
+			}
+			titles[i] = "[" + displayName + "]"
+		} else {
+			titles[i] = r.task.Title
+		}
 	}
 	return titles
 }
@@ -371,10 +380,10 @@ func assertRowTitles(t *testing.T, got []outlinerRow, want []string) {
 }
 
 func TestRebuildRows_AllPerspective(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1}
+	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
 	assertRowTitles(t, m.rows, []string{
-		"Epic", "Story A", "Task A1", "Task A2", "Story B", "Task B1", "Bug Root",
+		"[Active]", "Epic", "Story A", "Task A1", "Task A2", "Story B", "Task B1", "Bug Root",
 	})
 }
 
@@ -519,18 +528,22 @@ func TestRebuildRows_ParentPreservedForMatchingDescendant(t *testing.T) {
 }
 
 func TestRebuildRows_DefaultPerspectiveIsAll(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 0}
+	m := &OutlinerModel{project: buildTestProject(), activePerspective: 0, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	// activePerspective=0 defaults to "All" (key 1), showing everything.
-	if len(m.rows) != 7 {
-		t.Fatalf("default perspective should show all 7 rows, got %d", len(m.rows))
+	// activePerspective=0 defaults to "All" (key 1), showing everything with section header.
+	if len(m.rows) != 8 {
+		t.Fatalf("default perspective should show all 8 rows (1 header + 7 tasks), got %d", len(m.rows))
+	}
+	// First row should be the Active section header
+	if !m.rows[0].IsSectionHeader {
+		t.Errorf("first row should be section header")
 	}
 }
 
 func TestRebuildRows_CursorClampedAfterFilter(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1}
+	m := &OutlinerModel{project: buildTestProject(), activePerspective: 1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	m.cursor = 6 // last row in "All" perspective
+	m.cursor = 7 // last row in "All" perspective (now includes section header)
 
 	// Switch to Someday (no matches) — cursor should clamp to 0.
 	m.activePerspective = 7

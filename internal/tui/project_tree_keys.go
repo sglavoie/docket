@@ -213,7 +213,7 @@ func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "enter":
+	case "enter", "o":
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
 			project := m.project
@@ -443,6 +443,12 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		// Open inbox processor workflow
 		return true, func() tea.Msg {
 			return ShowInboxProcessorMsg{Project: m.project}
+		}
+
+	case "ctrl+p":
+		// Toggle to outliner view (already on project tree)
+		return true, func() tea.Msg {
+			return ShowOutlinerMsg{Project: m.project}
 		}
 
 	case "ctrl+k":

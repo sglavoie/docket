@@ -44,11 +44,13 @@ type OutlinerModel struct {
 	quickEdit     *QuickEditComponent // Inline quick edit component
 
 	filter           CommonFilterState // Common filter state (F-prefix)
+	sectionFilter    map[string]bool   // Section filter (from section filter selector)
 	actionableFilter bool              // View-local actionable filter (Fr)
 	scoreFilterInput ScoreFilterInput  // Inline score filter threshold input
 
-	customSectionTab int             // Active custom section tab index (0 = All)
-	expandedNodes    map[string]bool // Fold state: true=expanded (default all expanded)
+	customSectionTab  int             // Active custom section tab index (0 = All)
+	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
+	collapsedSections map[string]bool // Section collapse state for All perspective
 
 	sidebar *SidebarComponent // Sidebar detail panel
 
@@ -64,12 +66,13 @@ type OutlinerModel struct {
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
 	m := &OutlinerModel{
-		project:       project,
-		config:        cfg,
-		configManager: cfgManager,
-		quickEdit:     NewQuickEditComponent(),
-		sidebar:       NewSidebarComponent(),
-		expandedNodes: make(map[string]bool),
+		project:           project,
+		config:            cfg,
+		configManager:     cfgManager,
+		quickEdit:         NewQuickEditComponent(),
+		sidebar:           NewSidebarComponent(),
+		expandedNodes:     make(map[string]bool),
+		collapsedSections: make(map[string]bool),
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),
 			Attrs: make(map[string]string),
@@ -163,6 +166,13 @@ func (m *OutlinerModel) rebuildRows() {
 		})
 	}
 
+	// Apply section filter (from section filter selector)
+	if len(m.sectionFilter) > 0 {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			return m.sectionFilter[t.Section] || m.sectionFilter[t.CustomSection]
+		})
+	}
+
 	// Apply actionable filter (Fr)
 	if m.actionableFilter {
 		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
@@ -192,8 +202,72 @@ func (m *OutlinerModel) rebuildRows() {
 		tasks = m.sortTaskTree(tasks)
 	}
 
-	m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
+	// For the All perspective, group tasks by section with collapsible headers
+	p = m.currentPerspective()
+	if p.Filter == nil { // All perspective has no filter
+		m.buildRowsWithSectionHeaders(tasks)
+	} else {
+		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
+	}
 	m.clampCursor()
+}
+
+// buildRowsWithSectionHeaders groups tasks by GTD section and inserts collapsible
+// section headers for the All perspective.
+func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
+	// Group tasks by section
+	tasksBySection := m.groupTasksBySection(tasks)
+
+	// Define section order: Active, Inbox, Next, Waiting, Someday, Review
+	// (excluding Completed as per All view convention)
+	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview}
+
+	for _, sectionName := range sectionOrder {
+		sectionTasks := tasksBySection[sectionName]
+		if len(sectionTasks) == 0 {
+			continue
+		}
+
+		// Count total tasks in this section (including children)
+		count := m.countTasksRecursive(sectionTasks)
+
+		// Display name for empty section (Active)
+		displayName := sectionName
+		if displayName == "" {
+			displayName = "Active"
+		}
+
+		// Add section header row
+		m.rows = append(m.rows, outlinerRow{
+			IsSectionHeader: true,
+			SectionName:     sectionName,
+			SectionCount:    count,
+		})
+
+		// Add tasks if section is not collapsed
+		if !m.collapsedSections[sectionName] {
+			m.flattenTaskTreeWithFolds(sectionTasks, nil, &m.rows)
+		}
+	}
+}
+
+// groupTasksBySection groups tasks by their GTD section, preserving hierarchy.
+func (m *OutlinerModel) groupTasksBySection(tasks []*models.Task) map[string][]*models.Task {
+	groups := make(map[string][]*models.Task)
+	for _, task := range tasks {
+		groups[task.Section] = append(groups[task.Section], task)
+	}
+	return groups
+}
+
+// countTasksRecursive counts all tasks in a tree, including descendants.
+func (m *OutlinerModel) countTasksRecursive(tasks []*models.Task) int {
+	count := 0
+	for _, task := range tasks {
+		count++ // Count this task
+		count += m.countTasksRecursive(task.Children) // Count children
+	}
+	return count
 }
 
 // currentPerspective returns the active perspective preset.
@@ -295,14 +369,18 @@ func (m *OutlinerModel) activeCustomSectionFilter() string {
 // contentHeight returns the number of task rows visible on screen,
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
-	headerLines := 2 // title + blank line
+	headerLines := 1 // title
 	if m.customSectionTabs() != nil {
-		headerLines++ // custom section tab bar
+		headerLines += 2 // custom section tab bar (text + bottom border)
 	}
 	if len(m.zoomStack) > 0 {
 		headerLines++ // breadcrumb
 	}
 	h := m.height - headerLines
+	// Reserve space for scroll indicators when content overflows
+	if len(m.rows) > h {
+		h -= 2
+	}
 	if h < 1 {
 		return 1
 	}
@@ -322,6 +400,9 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case OutlinerUndoPerformedMsg:
 		m.rebuildRows()
 		m.statusMessage = "Undo completed"
+		return m, nil
+	case outlinerRefreshMsg:
+		m.rebuildRows()
 		return m, nil
 	}
 	return m, nil
@@ -445,6 +526,9 @@ func (m *OutlinerModel) performUndo() tea.Cmd {
 // OutlinerUndoPerformedMsg signals that an undo was performed in the outliner.
 type OutlinerUndoPerformedMsg struct{}
 
+// outlinerRefreshMsg signals that the outliner should refresh its rows.
+type outlinerRefreshMsg struct{}
+
 // saveWithWorkflow persists the project using the full workflow pipeline
 // and rebuilds rows on success.
 func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
@@ -453,8 +537,7 @@ func (m *OutlinerModel) saveWithWorkflow() tea.Cmd {
 		if err := persistWithWorkflow(opts); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		m.rebuildRows()
-		return nil
+		return outlinerRefreshMsg{}
 	}
 }
 

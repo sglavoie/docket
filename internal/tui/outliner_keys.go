@@ -237,20 +237,14 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Quick edit keys
+	// Open task detail view
 	case "o":
-		// Rename-only quick edit (no modifier parsing)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) {
 			task := m.rows[m.cursor].task
-			return m, m.quickEdit.Enter(task, true)
-		}
-		return m, nil
-
-	case "O":
-		// Full quick edit with modifier parsing
-		if len(m.rows) > 0 && m.cursor < len(m.rows) {
-			task := m.rows[m.cursor].task
-			return m, m.quickEdit.Enter(task, false)
+			project := m.project
+			return m, func() tea.Msg {
+				return ShowTaskDetailMsg{Task: task, Project: project}
+			}
 		}
 		return m, nil
 
@@ -314,7 +308,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+f":
 		return m, func() tea.Msg {
-			return ShowFilterMsg{ProjectTree: nil}
+			return ShowFilterMsg{CommonFilter: &m.filter, Project: m.project}
 		}
 
 	// Enter: zoom into parent tasks or open detail for leaf tasks
@@ -322,7 +316,17 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.rows) == 0 {
 			return m, nil
 		}
-		task := m.rows[m.cursor].task
+		row := m.rows[m.cursor]
+
+		// Handle section header toggle
+		if row.IsSectionHeader {
+			m.collapsedSections[row.SectionName] = !m.collapsedSections[row.SectionName]
+			m.rebuildRows()
+			return m, nil
+		}
+
+		// Handle regular task rows
+		task := row.task
 		if len(task.Children) > 0 {
 			m.zoomStack = append(m.zoomStack, ZoomEntry{
 				TaskID:      task.ID,
@@ -399,7 +403,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "N":
 		return m, func() tea.Msg {
-			return ShowSectionFilterSelectorMsg{ProjectTree: nil}
+			return ShowSectionFilterSelectorMsg{Project: m.project}
 		}
 
 	case "C":
@@ -597,7 +601,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Tag manager
 	case "ctrl+t":
 		return m, func() tea.Msg {
-			return ShowTagManagerMsg{ProjectTree: nil}
+			return ShowTagManagerMsg{Project: m.project}
 		}
 
 	// Section manager
@@ -772,6 +776,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 		if handled, cmd := handleTaskActionPrefixKey(key, cursorTask, m.project, focusedTask, getMultiTasks); handled {
 			return m, cmd
+		}
+
+		// Rename task (tr)
+		if key == "r" && cursorTask != nil {
+			return m, m.quickEdit.Enter(cursorTask, true)
 		}
 
 		// Toggle pinned (tp)
@@ -1094,7 +1103,7 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "@":
 		return m, func() tea.Msg {
-			return ShowSectionFilterSelectorMsg{ProjectTree: nil}
+			return ShowSectionFilterSelectorMsg{Project: m.project}
 		}
 	case "r":
 		m.actionableFilter = !m.actionableFilter

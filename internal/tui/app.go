@@ -182,6 +182,9 @@ type AppModel struct {
 	// Navigation history for back/forward (Alt+O / Alt+I)
 	navHistory          *NavHistory
 	lastNavigatedTaskID string
+
+	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
+	lastProjectView ViewType
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -221,6 +224,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		commandRegistry: NewCommandRegistry(),
 		spinner:         NewSpinner(),
 		navHistory:      NewNavHistory(),
+		lastProjectView: ViewOutliner,
 	}
 
 	// Apply functional options
@@ -404,6 +408,9 @@ func (m *AppModel) currentView() ViewType {
 // if it is a tracked view and history is not locked.
 func (m *AppModel) pushView(view ViewType) {
 	m.viewStack = append(m.viewStack, view)
+	if view == ViewProjectTree || view == ViewKanban || view == ViewOutliner {
+		m.lastProjectView = view
+	}
 	if !m.navHistory.IsLocked() && isTrackedView(view) {
 		entry := NavEntry{ViewType: view}
 		if m.currentProject != nil {

@@ -33,8 +33,8 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "←", Description: "Outdent (to parent level)", Category: "Task Movement", Views: views},
 
 		// Editing
-		Keybinding{Key: "o", Description: "Rename task (inline)", Category: "Editing", Views: views},
-		Keybinding{Key: "O/E", Description: "Quick edit with modifiers", Category: "Editing", Views: views},
+		Keybinding{Key: "o", Description: "View task details", Category: "Editing", Views: views},
+		Keybinding{Key: "E", Description: "Quick edit with modifiers", Category: "Editing", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Editing", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Editing", Views: views},
 

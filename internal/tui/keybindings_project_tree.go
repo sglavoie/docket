@@ -28,6 +28,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "s0", Description: "Clear snooze", Category: "Snooze", Views: views},
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
+		Keybinding{Key: "ctrl+P", Description: "Open outliner view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+O", Description: "Open outliner view", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
@@ -41,7 +42,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		// Legacy Task Operations (still available for compatibility)
 		Keybinding{Key: "i", Description: "Quick capture", Category: "Task Operations", Views: views},
 		Keybinding{Key: "I", Description: "Bulk capture", Category: "Task Operations", Views: views},
-		Keybinding{Key: "o", Description: "Expand node", Category: "Task Operations", Views: views},
+		Keybinding{Key: "o", Description: "View task details", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},

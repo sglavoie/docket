@@ -15,6 +15,8 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowTagManagerMsg:
 		if msg.ProjectTree != nil {
 			m.showView(ViewTagManager, NewTagManagerModel(msg.ProjectTree))
+		} else if msg.Project != nil {
+			m.showView(ViewTagManager, NewTagManagerModelForProject(msg.Project))
 		}
 		return true, nil
 

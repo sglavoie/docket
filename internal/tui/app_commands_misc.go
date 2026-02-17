@@ -411,6 +411,21 @@ func (m *AppModel) outlinerCommands() []Command {
 
 		// --- Edit operations ---
 		{
+			Name:        "view task details",
+			Description: "Open task detail view",
+			Shortcut:    "o",
+			Category:    CategoryTasks,
+			Views:       []ViewType{ViewOutliner},
+			Aliases:     []string{"open task", "show details"},
+			Handler: func() tea.Msg {
+				task := cursorTask()
+				if task != nil && m.outliner != nil {
+					return ShowTaskDetailMsg{Task: task, Project: m.outliner.project}
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "edit task",
 			Description: "Edit selected task in external editor",
 			Shortcut:    "e",
@@ -426,24 +441,9 @@ func (m *AppModel) outlinerCommands() []Command {
 			},
 		},
 		{
-			Name:        "quick edit",
-			Description: "Inline quick edit with modifier syntax",
-			Shortcut:    "O",
-			Category:    CategoryTasks,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"inline edit", "fast edit"},
-			Handler: func() tea.Msg {
-				task := cursorTask()
-				if task != nil && m.outliner != nil {
-					return m.outliner.quickEdit.Enter(task, false)()
-				}
-				return nil
-			},
-		},
-		{
 			Name:        "rename task",
 			Description: "Inline rename task title",
-			Shortcut:    "o",
+			Shortcut:    "tr",
 			Category:    CategoryTasks,
 			Views:       []ViewType{ViewOutliner},
 			Aliases:     []string{"rename", "change title"},
