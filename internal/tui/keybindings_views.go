@@ -228,10 +228,13 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},
 		Keybinding{Key: "h/l or [/]", Description: "Switch tab", Category: "View", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "R", Description: "Mark section reviewed", Category: "Review", Views: views},
+		Keybinding{Key: "ctrl+n", Description: "Next unreviewed section", Category: "Review", Views: views},
 		Keybinding{Key: "gp", Description: "Go to project/task", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close weekly review", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, linkedTaskBindings())
 }

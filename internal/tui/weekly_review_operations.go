@@ -6,6 +6,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// trackMutation increments the count for a mutation category.
+func (m *WeeklyReviewModel) trackMutation(category string) {
+	m.mutationCounts[category]++
+}
+
 // taskOpsView implementation for WeeklyReviewModel.
 
 func (m *WeeklyReviewModel) getTaskRef() (*models.Task, *models.Project) {

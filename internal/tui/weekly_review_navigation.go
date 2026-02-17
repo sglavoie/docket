@@ -208,6 +208,44 @@ func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// goToNextUnreviewed jumps to the next unreviewed section with items, crossing tabs.
+func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek,
+	}
+	for _, section := range allSections {
+		if m.reviewedSections[section] {
+			continue
+		}
+		if m.getSectionItemCount(section) == 0 {
+			continue
+		}
+		// Find which tab contains this section and switch to it
+		for tabIdx, tabSections := range weeklyReviewTabSections {
+			for _, ts := range tabSections {
+				if ts == section {
+					m.activeTab = tabIdx
+					m.focusedSection = nil
+					m.calculateNavigation()
+					// Find the section's start position in current navigation
+					for i, s := range m.sectionOrder {
+						if s == section {
+							m.cursor = m.sectionStarts[i]
+							return m, nil
+						}
+					}
+					return m, nil
+				}
+			}
+		}
+	}
+	m.statusMessage = "All sections reviewed"
+	return m, nil
+}
+
 // clampCursor ensures cursor is within valid range.
 func (m *WeeklyReviewModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, m.totalItems)

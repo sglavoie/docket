@@ -134,6 +134,19 @@ func (m *WeeklyReviewModel) loadData() {
 
 	m.sortSections()
 	m.calculateNavigation()
+
+	// Auto-review empty sections
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek,
+	}
+	for _, s := range allSections {
+		if m.getSectionItemCount(s) == 0 {
+			m.reviewedSections[s] = true
+		}
+	}
 }
 
 // sortSections sorts each section by appropriate criteria.
@@ -248,6 +261,54 @@ func (m *WeeklyReviewModel) toggleSectionFocus(section WeeklyReviewSection) (tea
 func (m *WeeklyReviewModel) getTotalItemCount() int {
 	return len(m.staleProjects) + len(m.inboxBacklog) + len(m.blockedWork) + len(m.overcommitted) +
 		len(m.staleTasks) + len(m.priorityMismatch) + len(m.upcomingWeek)
+}
+
+// markCurrentSectionReviewed marks the section at the cursor as reviewed.
+func (m *WeeklyReviewModel) markCurrentSectionReviewed() (tea.Model, tea.Cmd) {
+	if len(m.sectionOrder) == 0 {
+		return m, nil
+	}
+	idx := m.getCurrentSectionIndex()
+	section := m.sectionOrder[idx]
+	m.reviewedSections[section] = true
+	m.statusMessage = "Marked \"" + getWeeklySectionName(section) + "\" as reviewed"
+	if m.allSectionsReviewed() {
+		m.showingSummary = true
+	}
+	return m, nil
+}
+
+// allSectionsReviewed returns true if all 7 sections have been reviewed.
+func (m *WeeklyReviewModel) allSectionsReviewed() bool {
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek,
+	}
+	for _, s := range allSections {
+		if !m.reviewedSections[s] {
+			return false
+		}
+	}
+	return true
+}
+
+// reviewedCount returns the number of reviewed sections.
+func (m *WeeklyReviewModel) reviewedCount() int {
+	count := 0
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek,
+	}
+	for _, s := range allSections {
+		if m.reviewedSections[s] {
+			count++
+		}
+	}
+	return count
 }
 
 // getWeeklySectionName returns a human-readable name for a weekly review section.

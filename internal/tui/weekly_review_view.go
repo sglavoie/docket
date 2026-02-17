@@ -18,7 +18,7 @@ func (m *WeeklyReviewModel) View() string {
 	// Title
 	subtitle := "all clear"
 	if totalCount > 0 {
-		subtitle = fmt.Sprintf("%d projects, %d tasks", projectCount, taskCount)
+		subtitle = fmt.Sprintf("%d projects, %d tasks | %d/7 reviewed", projectCount, taskCount, m.reviewedCount())
 	}
 	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle))
 	b.WriteString("\n")
@@ -35,11 +35,20 @@ func (m *WeeklyReviewModel) View() string {
 	b.WriteString(m.renderTabBar())
 	b.WriteString("\n\n")
 
+	if m.showingSummary {
+		b.WriteString(m.renderCompletionSummary())
+		return b.String()
+	}
+
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
 	contentHeight := m.height - 7
 
 	if m.totalItems == 0 {
-		b.WriteString(MutedStyle.Render("No items in this tab."))
+		emptyMsg := "No items in this tab."
+		if m.activeTab == 2 {
+			emptyMsg = "No tasks due in the upcoming week. Use this tab to review and confirm tasks scheduled for the coming week."
+		}
+		b.WriteString(lipgloss.NewStyle().Width(m.width).Render(MutedStyle.Render(emptyMsg)))
 		b.WriteString("\n\n")
 		footer := HelpStyle.Render("[/]: tabs")
 		b.WriteString(footer)
@@ -53,9 +62,23 @@ func (m *WeeklyReviewModel) View() string {
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
-	// Footer
-	left := HelpStyle.Render("h/j/k/l nav | n/N section | ,s/d/b/x status")
-	right := MutedStyle.Render(fmt.Sprintf("%d items", totalCount))
+	// Footer — progressively shorten when terminal is narrow
+	reviewed := m.reviewedCount()
+	fullRight := fmt.Sprintf("%d/7 reviewed | %d items", reviewed, totalCount)
+	shortRight := fmt.Sprintf("%d/7 reviewed", reviewed)
+	fullLeft := "h/j/k/l nav | n/N section | R reviewed | ,s/d/b/x status"
+	shortLeft := "n/N section | R reviewed | ? help"
+
+	rightText := fullRight
+	leftText := fullLeft
+	if lipgloss.Width(HelpStyle.Render(fullLeft))+lipgloss.Width(MutedStyle.Render(fullRight))+2 > m.width {
+		leftText = shortLeft
+	}
+	if lipgloss.Width(HelpStyle.Render(leftText))+lipgloss.Width(MutedStyle.Render(fullRight))+2 > m.width {
+		rightText = shortRight
+	}
+	left := HelpStyle.Render(leftText)
+	right := MutedStyle.Render(rightText)
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return b.String()
@@ -91,6 +114,7 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
 			",": StatusPrefixHints,
+			"!": PriorityPrefixHints,
 			"d": DueDatePrefixHints,
 			"g": WeeklyReviewNavigationPrefixHints,
 			"s": WeeklyReviewSectionPrefixHints,
@@ -143,6 +167,9 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 
 		// Section items (if not collapsed)
 		if !collapsed {
+			if hint := getWeeklySectionHint(section); hint != "" {
+				lines = append(lines, "    "+MutedStyle.Render(hint))
+			}
 			for idx := 0; idx < count; idx++ {
 				isSelected := currentIndex == m.cursor
 				if isSelected {
@@ -195,7 +222,11 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 	default:
 		style = DailyReviewSectionHeaderStyle
 	}
-	return renderCollapsibleHeader(getWeeklySectionName(section), count, collapsed, isSelected, style)
+	checkbox := "[ ] "
+	if m.reviewedSections[section] {
+		checkbox = "[x] "
+	}
+	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, style)
 }
 
 // renderProjectLine renders a single project line with metric badges.
@@ -309,4 +340,92 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 	}
 
 	return line
+}
+
+// getWeeklySectionHint returns a short action hint for a section.
+func getWeeklySectionHint(section WeeklyReviewSection) string {
+	switch section {
+	case WeeklySectionStaleProjects:
+		return "Archive or review tasks in these projects"
+	case WeeklySectionInboxBacklog:
+		return "Process inbox items to keep backlogs manageable"
+	case WeeklySectionBlockedWork:
+		return "Unblock tasks or reassess blocked work"
+	case WeeklySectionOvercommitted:
+		return "Reduce WIP — complete or defer in-progress tasks"
+	case WeeklySectionStaleTasks:
+		return "Update, snooze, or close these stale tasks"
+	case WeeklySectionPriorityMismatch:
+		return "Start high-priority tasks or lower their priority"
+	case WeeklySectionUpcomingWeek:
+		return "Confirm these tasks are ready for the coming week"
+	}
+	return ""
+}
+
+// renderCompletionSummary renders the completion summary overlay.
+func (m *WeeklyReviewModel) renderCompletionSummary() string {
+	var b strings.Builder
+
+	header := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")).Render("Review Complete")
+	b.WriteString(header)
+	b.WriteString("\n\n")
+
+	// Mutation summary
+	totalMutations := 0
+	for _, count := range m.mutationCounts {
+		totalMutations += count
+	}
+	if totalMutations > 0 {
+		b.WriteString(fmt.Sprintf("Changes made during this review: %d\n", totalMutations))
+		categoryLabels := []struct {
+			key   string
+			label string
+		}{
+			{"status", "Status changes"},
+			{"priority", "Priority changes"},
+			{"due_date", "Due date changes"},
+			{"move", "Section moves"},
+			{"delete", "Deletions"},
+			{"active", "Active flag toggles"},
+			{"tag", "Tag changes"},
+			{"snooze", "Snoozes"},
+		}
+		for _, cl := range categoryLabels {
+			if count, ok := m.mutationCounts[cl.key]; ok && count > 0 {
+				b.WriteString(fmt.Sprintf("  %s: %d\n", cl.label, count))
+			}
+		}
+	} else {
+		b.WriteString("No changes made during this review.\n")
+	}
+	b.WriteString("\n")
+
+	// Remaining items
+	hasRemaining := false
+	allSections := []WeeklyReviewSection{
+		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+		WeeklySectionUpcomingWeek,
+	}
+	for _, s := range allSections {
+		count := m.getSectionItemCount(s)
+		if count > 0 {
+			if !hasRemaining {
+				b.WriteString("Remaining items:\n")
+				hasRemaining = true
+			}
+			b.WriteString(fmt.Sprintf("  %s: %d\n", getWeeklySectionName(s), count))
+		}
+	}
+	if !hasRemaining {
+		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("All sections cleared!"))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	b.WriteString(HelpStyle.Render("Press q to close, any other key to return to review"))
+
+	return b.String()
 }
