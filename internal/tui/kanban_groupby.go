@@ -180,3 +180,81 @@ func GetColumnHeaderStyle(gb KanbanGroupBy, key string) lipgloss.Style {
 		return GetViewModeStyleForSection(key)
 	}
 }
+
+// setGroupBy sets the group-by mode, recomputes column definitions,
+// reinitializes maps, resets cursor, and reloads tasks.
+func (m *KanbanViewModel) setGroupBy(gb KanbanGroupBy) {
+	m.groupBy = gb
+	m.columnDefs = ColumnsForGroupBy(gb, m.Project)
+
+	// Reinitialize maps for new columns
+	m.Columns = make(map[string]*ColumnState)
+	m.Tasks = make(map[string][]*models.Task)
+	m.Nodes = make(map[string][]*KanbanNode)
+	for _, def := range m.columnDefs {
+		m.Columns[def.Key] = &ColumnState{}
+		m.Tasks[def.Key] = []*models.Task{}
+		m.Nodes[def.Key] = []*KanbanNode{}
+	}
+
+	m.ActiveColumn = 0
+	m.columnScrollOffset = 0
+
+	// If swimlane matches the new groupBy, disable it to avoid same-axis duplication
+	if m.swimlaneEnabled() && m.swimlaneBy == gb {
+		m.disableSwimlane()
+		return // disableSwimlane calls loadTasks
+	}
+
+	// Reinitialize swimlane 2D maps for new column defs
+	if m.swimlaneEnabled() {
+		m.initSwimlane2DMaps()
+	}
+
+	m.loadTasks()
+}
+
+// cycleGroupBy cycles to the next group-by mode and persists the choice.
+func (m *KanbanViewModel) cycleGroupBy() {
+	next := KanbanGroupBy((int(m.groupBy) + 1) % KanbanGroupByCount)
+	m.setGroupBy(next)
+
+	// Persist to config
+	if m.config != nil && m.Project != nil && m.configManager != nil {
+		vs := m.config.ProjectViewStates[m.Project.ID]
+		vs.KanbanGroupBy = int(next)
+		m.config.ProjectViewStates[m.Project.ID] = vs
+		_ = m.configManager.Save(m.config)
+	}
+
+	if next == GroupBySection {
+		m.statusMessage = ""
+	} else {
+		m.statusMessage = "Grouped by: " + GroupByLabel(next)
+	}
+}
+
+// taskColumnKey returns the column key for a task based on current group-by mode.
+func (m *KanbanViewModel) taskColumnKey(task *models.Task) string {
+	return TaskColumnKey(m.groupBy, task)
+}
+
+// columnLabel returns the display label for a column key.
+func (m *KanbanViewModel) columnLabel(key string) string {
+	for _, def := range m.columnDefs {
+		if def.Key == key {
+			return def.Label
+		}
+	}
+	return sectionDisplayName(key)
+}
+
+// columnIndexForKey returns the index of the column with the given key, or -1 if not found.
+func (m *KanbanViewModel) columnIndexForKey(key string) int {
+	for i, def := range m.columnDefs {
+		if def.Key == key {
+			return i
+		}
+	}
+	return -1
+}
