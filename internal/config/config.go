@@ -126,6 +126,7 @@ type Config struct {
 	KanbanMaxColumns          *int                         `json:"kanban_max_columns,omitempty"`           // nil=6, max visible kanban columns
 	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
+	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
 }
 
 // NewConfig creates a new configuration with default values.

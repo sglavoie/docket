@@ -224,7 +224,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		commandRegistry: NewCommandRegistry(),
 		spinner:         NewSpinner(),
 		navHistory:      NewNavHistory(),
-		lastProjectView: ViewOutliner,
+		lastProjectView: defaultProjectViewType(cfg),
 	}
 
 	// Apply functional options
@@ -661,6 +661,18 @@ func (m *AppModel) restoreKanbanState() {
 
 	// Reload tasks with restored filters applied
 	m.kanban.loadTasks()
+}
+
+// defaultProjectViewType maps the config's default_project_view string to a ViewType.
+func defaultProjectViewType(cfg *config.Config) ViewType {
+	switch cfg.GetDefaultProjectView() {
+	case "project_tree":
+		return ViewProjectTree
+	case "kanban":
+		return ViewKanban
+	default:
+		return ViewOutliner
+	}
 }
 
 // errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.
