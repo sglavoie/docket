@@ -570,7 +570,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	// Due date
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = formatRelativeDue(task.DueDate, true)
+		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
 	// Build line (no project name needed)

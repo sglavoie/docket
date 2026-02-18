@@ -375,12 +375,12 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "focus view",
-			Description: "View all active-flagged tasks across projects",
+			Name:        "what's next",
+			Description: "Cross-project task suggestions and work queue",
 			Shortcut:    "f",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewDashboard},
-			Aliases:     []string{"active tasks", "focus", "today tasks"},
+			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions"},
 			Handler: func() tea.Msg {
 				return ShowFocusViewMsg{}
 			},

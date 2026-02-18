@@ -247,7 +247,11 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "gg/G", Description: "Jump to top/bottom", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
-		Keybinding{Key: "*", Description: "Remove from focus", Category: "Actions", Views: views},
+		Keybinding{Key: "a", Description: "Accept into queue", Category: "Queue", Views: views},
+		Keybinding{Key: "x", Description: "Dismiss / Remove from queue", Category: "Queue", Views: views},
+		Keybinding{Key: "J", Description: "Move down in queue", Category: "Queue", Views: views},
+		Keybinding{Key: "K", Description: "Move up in queue", Category: "Queue", Views: views},
+		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
@@ -261,7 +265,7 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
 		Keybinding{Key: "(/) ", Description: "Toggle sub-tab row focus", Category: "View", Views: views},
 		Keybinding{Key: "gp", Description: "Go to task in project", Category: "View", Views: views},
-		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, dueDateBindings())

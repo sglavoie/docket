@@ -102,7 +102,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	case ViewWeeklyReview:
 		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
 	case ViewFocusView:
-		m.showView(ViewFocusView, NewFocusViewModel(m.config))
+		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.focusDismissedIDs))
 	case ViewDueDateOverview:
 		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config))
 	case ViewRecentActivity:

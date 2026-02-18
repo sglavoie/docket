@@ -343,21 +343,6 @@ func TestHandleViewMessagesShowFocusView(t *testing.T) {
 	}
 }
 
-func TestHandleViewMessagesCloseFocusView(t *testing.T) {
-	app := newTestAppModel()
-	app.pushView(ViewFocusView)
-
-	msg := CloseFocusViewMsg{}
-	handled, _ := app.handleViewMessages(msg)
-
-	if !handled {
-		t.Error("CloseFocusViewMsg should be handled")
-	}
-	if app.currentView() != ViewDashboard {
-		t.Errorf("currentView should be Dashboard after closing focus view, got %v", app.currentView())
-	}
-}
-
 func TestHandleViewMessagesShowProjectFocusView(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 

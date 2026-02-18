@@ -3,11 +3,12 @@ package cmd
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -15,24 +16,56 @@ import (
 
 var focusCmd = &cobra.Command{
 	Use:   "focus",
-	Short: "List all active-flagged tasks across projects",
-	Long: `List all tasks marked as "active" (focused) across all active projects.
+	Short: "Show actionable tasks across projects (What's Next)",
+	Long: `Show all actionable tasks across active projects, sorted by priority.
 
-Tasks are sorted by priority (highest first), then by most recently updated.
+By default, lists all non-completed, non-snoozed, non-blocked tasks.
+Use --active to show only active-flagged tasks (legacy behavior).
 
 Examples:
-  tt focus`,
+  tt focus            # all actionable tasks
+  tt focus --active   # only active-flagged tasks`,
 	RunE: runFocus,
+}
+
+var focusActiveOnly bool
+var focusSuggestLimit int
+
+var focusSuggestCmd = &cobra.Command{
+	Use:   "suggest",
+	Short: "Show ranked task suggestions across projects",
+	Long: `Show tasks ranked by the "What's Next" suggestion engine.
+
+Tasks are scored based on priority, due dates, status, activity recency,
+unblocking potential, and composite scoring profiles.
+
+Examples:
+  tt focus suggest        # top 10 suggestions
+  tt focus suggest -n 5   # top 5 suggestions`,
+	RunE: runFocusSuggest,
+}
+
+var focusQueueCmd = &cobra.Command{
+	Use:   "queue",
+	Short: "Show the persisted focus work queue",
+	Long: `Show tasks that have been accepted into the focus work queue.
+
+The queue is managed through the TUI's focus view (press 'a' to accept
+suggestions, 'x' to remove, J/K to reorder).
+
+Examples:
+  tt focus queue`,
+	RunE: runFocusQueue,
 }
 
 func init() {
 	rootCmd.AddCommand(focusCmd)
-}
+	focusCmd.Flags().BoolVar(&focusActiveOnly, "active", false, "Show only active-flagged tasks")
 
-// focusTask wraps a task with its project for display.
-type focusTask struct {
-	Task    *models.Task
-	Project *models.Project
+	focusCmd.AddCommand(focusSuggestCmd)
+	focusSuggestCmd.Flags().IntVarP(&focusSuggestLimit, "number", "n", 10, "Number of suggestions to show")
+
+	focusCmd.AddCommand(focusQueueCmd)
 }
 
 func runFocus(cmd *cobra.Command, args []string) error {
@@ -41,24 +74,22 @@ func runFocus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Collect active tasks from all projects
-	var tasks []focusTask
-	projects := cfg.GetActiveProjects()
+	// Load and collect tasks from all active projects
+	projects := loadActiveProjects(cfg)
+	var tasks []focus.FocusTask
 
-	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
-			continue
-		}
-
-		for _, task := range project.Tasks {
-			if !task.Active {
-				continue
+	if focusActiveOnly {
+		// Legacy: only active-flagged, non-completed tasks
+		for _, project := range projects {
+			for _, task := range project.Tasks {
+				if task.Status.IsComplete() || !task.Active {
+					continue
+				}
+				tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 			}
-			if task.Status.IsComplete() {
-				continue
-			}
-			tasks = append(tasks, focusTask{Task: task, Project: project})
 		}
+	} else {
+		tasks = focus.CollectActionableTasks(projects)
 	}
 
 	// Sort by priority (ascending, 1=highest), then by UpdatedAt (most recent first)
@@ -70,8 +101,13 @@ func runFocus(cmd *cobra.Command, args []string) error {
 	})
 
 	if len(tasks) == 0 {
-		fmt.Println("No tasks in focus.")
-		fmt.Println("Mark tasks as active with: tt task focus <id>")
+		if focusActiveOnly {
+			fmt.Println("No tasks in focus.")
+			fmt.Println("Mark tasks as active with: tt task focus <id>")
+		} else {
+			fmt.Println("No actionable tasks found.")
+			fmt.Println("Tasks appear here from all active projects (excluding completed, snoozed, and blocked).")
+		}
 		return nil
 	}
 
@@ -79,17 +115,14 @@ func runFocus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func displayFocusTable(tasks []focusTask) {
+func displayFocusTable(tasks []focus.FocusTask) {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
 
 	for _, ft := range tasks {
 		task := ft.Task
-		dueStr := ""
-		if task.DueDate != nil {
-			dueStr = formatRelativeDueCLI(task.DueDate)
-		}
+		dueStr := focus.FormatRelativeDue(task.DueDate)
 
 		t.AppendRow(table.Row{
 			util.Truncate(ft.Project.Name, 15),
@@ -103,35 +136,138 @@ func displayFocusTable(tasks []focusTask) {
 	}
 
 	fmt.Println(t.Render())
-	fmt.Printf("\n%d task(s) in focus\n", len(tasks))
+	if focusActiveOnly {
+		fmt.Printf("\n%d task(s) in focus\n", len(tasks))
+	} else {
+		fmt.Printf("\n%d actionable task(s)\n", len(tasks))
+	}
 }
 
-func formatRelativeDueCLI(dueDate *time.Time) string {
-	if dueDate == nil {
-		return ""
-	}
-
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*dueDate)
-
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
-
-	switch {
-	case daysUntil < -1:
-		return fmt.Sprintf("%d days ago", -daysUntil)
-	case daysUntil == -1:
-		return "yesterday"
-	case daysUntil == 0:
-		return "today"
-	case daysUntil == 1:
-		return "tomorrow"
-	case daysUntil < 7:
-		return dueDate.Format("Mon")
-	default:
-		if dueDate.Year() != now.Year() {
-			return dueDate.Format("Jan 2 '06")
+// loadActiveProjects loads task data for all active projects, returning
+// only those that loaded successfully.
+func loadActiveProjects(cfg *config.Config) []*models.Project {
+	var loaded []*models.Project
+	for _, project := range cfg.GetActiveProjects() {
+		if err := storage.LoadProject(project); err != nil {
+			continue
 		}
-		return dueDate.Format("Jan 2")
+		loaded = append(loaded, project)
 	}
+	return loaded
+}
+
+func runFocusSuggest(cmd *cobra.Command, args []string) error {
+	cfg, _, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	tasks := focus.CollectActionableTasks(loadActiveProjects(cfg))
+	if len(tasks) == 0 {
+		fmt.Println("No actionable tasks found.")
+		return nil
+	}
+
+	ranked := focus.RankCrossProjectTasks(tasks, nil, cfg)
+	if len(ranked) == 0 {
+		fmt.Println("No suggestions available.")
+		return nil
+	}
+
+	limit := focusSuggestLimit
+	if limit > len(ranked) {
+		limit = len(ranked)
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"#", "Project", "ID", "Pri", "Title", "Score", "Reason"})
+
+	for i, sft := range ranked[:limit] {
+		t.AppendRow(table.Row{
+			i + 1,
+			util.Truncate(sft.Project.Name, 15),
+			sft.Task.ShortID,
+			sft.Task.Priority,
+			util.Truncate(sft.Task.Title, 40),
+			sft.Score,
+			util.Truncate(sft.Reason, 40),
+		})
+	}
+
+	fmt.Println(t.Render())
+	fmt.Printf("\nTop %d of %d suggestions\n", limit, len(ranked))
+	return nil
+}
+
+func runFocusQueue(cmd *cobra.Command, args []string) error {
+	cfg, cfgMgr, err := LoadConfigStrict()
+	if err != nil {
+		return err
+	}
+
+	queueItems := cfg.GetFocusQueue()
+	if len(queueItems) == 0 {
+		fmt.Println("Focus queue is empty.")
+		fmt.Println("Accept suggestions in the TUI focus view (press 'a') to build your queue.")
+		return nil
+	}
+
+	// Load projects and build task lookup
+	projectMap := make(map[string]*models.Project)
+	taskMap := make(map[string]*models.Task)
+	for _, p := range cfg.GetActiveProjects() {
+		if err := storage.LoadProject(p); err != nil {
+			continue
+		}
+		projectMap[p.ID] = p
+		for _, task := range p.Tasks {
+			taskMap[task.ID] = task
+		}
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"#", "Project", "ID", "Type", "Status", "Pri", "Title", "Due"})
+
+	var activeItems []config.FocusQueueItem
+	for _, item := range queueItems {
+		project, ok := projectMap[item.ProjectID]
+		if !ok {
+			continue
+		}
+		task, ok := taskMap[item.TaskID]
+		if !ok || task.Status.IsComplete() {
+			continue
+		}
+
+		activeItems = append(activeItems, item)
+		dueStr := focus.FormatRelativeDue(task.DueDate)
+
+		t.AppendRow(table.Row{
+			len(activeItems),
+			util.Truncate(project.Name, 15),
+			task.ShortID,
+			task.Type.Icon(),
+			task.Status.Icon(),
+			task.Priority,
+			util.Truncate(task.Title, 40),
+			dueStr,
+		})
+	}
+
+	// Prune stale entries from config if any were skipped
+	if len(activeItems) < len(queueItems) {
+		cfg.SetFocusQueue(activeItems)
+		_ = cfgMgr.Save(cfg)
+	}
+
+	if len(activeItems) == 0 {
+		fmt.Println("Focus queue is empty (all queued tasks have been completed).")
+		return nil
+	}
+
+	fmt.Println(t.Render())
+	fmt.Printf("\n%d task(s) in queue\n", len(activeItems))
+	return nil
 }

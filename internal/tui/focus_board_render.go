@@ -280,7 +280,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		dueStr := ""
 		if task.DueDate != nil {
-			dueStr = "  " + formatRelativeDue(task.DueDate, true)
+			dueStr = "  " + FormatRelativeDue(task.DueDate, true)
 		}
 
 		scoreBadge := ""

@@ -3,41 +3,52 @@ package tui
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var focusTabNames = []string{"All", "By Project", "By Priority", "Due Soon"}
+var focusTabNames = []string{"Queue", "Suggested", "By Project", "By Due Date"}
 
 const (
-	focusTabAll        = 0
-	focusTabByProject  = 1
-	focusTabByPriority = 2
-	focusTabDueSoon    = 3
+	focusTabQueue     = 0
+	focusTabSuggested = 1
+	focusTabByProject = 2
+	focusTabByDueDate = 3
 )
 
-// FocusTask wraps a task with its parent project for cross-project display.
-type FocusTask struct {
-	Task    *models.Task
-	Project *models.Project
-}
+// FocusTask is an alias for focus.FocusTask.
+type FocusTask = focus.FocusTask
 
-// FocusViewModel displays all active-flagged tasks across projects.
+// ScoredFocusTask is an alias for focus.ScoredFocusTask.
+type ScoredFocusTask = focus.ScoredFocusTask
+
+// FocusViewModel displays the "What's Next" engine for cross-project task suggestions.
 type FocusViewModel struct {
 	BaseView
 	InteractiveViewState
 
 	config         *config.Config
+	configManager  *config.Manager
 	projectService *ProjectService
 
-	// Tasks
+	// Tasks — all actionable tasks from all active projects
 	tasks    []FocusTask
 	filtered []FocusTask
+
+	// Work queue (session-persistent, pointers to AppModel-held state)
+	queue    *[]FocusTask
+	queueIDs map[string]bool
+
+	// Ranked suggestions
+	ranked       []ScoredFocusTask
+	dismissedIDs map[string]bool
 
 	// Tabs
 	activeTab int
@@ -52,10 +63,14 @@ type FocusViewModel struct {
 }
 
 // NewFocusViewModel creates a new focus view model.
-func NewFocusViewModel(cfg *config.Config) *FocusViewModel {
+func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
 	m := &FocusViewModel{
 		config:         cfg,
+		configManager:  mgr,
 		projectService: NewProjectService(),
+		queue:          queue,
+		queueIDs:       queueIDs,
+		dismissedIDs:   dismissedIDs,
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),
 			Attrs: make(map[string]string),
@@ -65,39 +80,73 @@ func NewFocusViewModel(cfg *config.Config) *FocusViewModel {
 	return m
 }
 
-// loadTasks aggregates all active-flagged tasks from all active projects.
+// loadTasks aggregates all actionable tasks from all active projects.
+// Filters out completed, snoozed, and blocked tasks (via HasIncompleteDependencies).
 func (m *FocusViewModel) loadTasks() {
 	m.tasks = nil
 
-	projects := m.config.GetActiveProjects()
-	for _, project := range projects {
+	var failedProjects []string
+	var loadedProjects []*models.Project
+	for _, project := range m.config.GetActiveProjects() {
 		if err := m.projectService.Load(project); err != nil {
+			failedProjects = append(failedProjects, project.Name)
 			continue
 		}
+		loadedProjects = append(loadedProjects, project)
+	}
 
-		for _, task := range project.Tasks {
-			if !task.Active {
-				continue
+	m.tasks = focus.CollectActionableTasks(loadedProjects)
+
+	if len(failedProjects) > 0 {
+		m.statusMessage = fmt.Sprintf("Failed to load: %s", strings.Join(failedProjects, ", "))
+	}
+
+	// Reconcile queue task pointers: replace stale pointers with freshly loaded ones.
+	// When tasks are modified through other views (e.g. completing via project tree),
+	// the queue holds stale *Task pointers from initial hydration.
+	if len(*m.queue) > 0 {
+		// Build lookup from freshly loaded tasks
+		taskByID := make(map[string]FocusTask, len(m.tasks))
+		for _, ft := range m.tasks {
+			taskByID[ft.Task.ID] = ft
+		}
+		q := *m.queue
+		i := 0
+		for i < len(q) {
+			if fresh, ok := taskByID[q[i].Task.ID]; ok {
+				q[i] = fresh
+				i++
+			} else {
+				// Task no longer actionable (completed, snoozed, etc.) — remove from queue
+				delete(m.queueIDs, q[i].Task.ID)
+				q = append(q[:i], q[i+1:]...)
 			}
-			// Skip completed tasks
-			if task.Status.IsComplete() {
-				continue
+		}
+		*m.queue = q
+	}
+
+	m.sortTasks()
+
+	// Prune stale dismissed IDs (tasks that no longer exist or are no longer actionable)
+	if len(m.dismissedIDs) > 0 {
+		actionableIDs := make(map[string]bool, len(m.tasks))
+		for _, ft := range m.tasks {
+			actionableIDs[ft.Task.ID] = true
+		}
+		pruned := false
+		for id := range m.dismissedIDs {
+			if !actionableIDs[id] {
+				delete(m.dismissedIDs, id)
+				pruned = true
 			}
-			// Skip snoozed tasks
-			if task.IsSnoozed() {
-				continue
-			}
-			m.tasks = append(m.tasks, FocusTask{Task: task, Project: project})
+		}
+		if pruned {
+			m.persistDismissed()
 		}
 	}
 
-	// Sort by priority (ascending, 1=highest), then by UpdatedAt (most recent first)
-	sort.Slice(m.tasks, func(i, j int) bool {
-		if m.tasks[i].Task.Priority != m.tasks[j].Task.Priority {
-			return m.tasks[i].Task.Priority < m.tasks[j].Task.Priority
-		}
-		return m.tasks[i].Task.UpdatedAt.After(m.tasks[j].Task.UpdatedAt)
-	})
+	// Compute ranked suggestions
+	m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
 
 	m.applyFilter()
 }
@@ -107,12 +156,52 @@ func (m *FocusViewModel) applyFilter() {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
+	switch m.activeTab {
+	case focusTabQueue:
+		// Prune completed/canceled tasks from the queue
+		pruned := false
+		q := *m.queue
+		i := 0
+		for i < len(q) {
+			if q[i].Task.Status.IsComplete() {
+				delete(m.queueIDs, q[i].Task.ID)
+				q = append(q[:i], q[i+1:]...)
+				pruned = true
+			} else {
+				i++
+			}
+		}
+		if pruned {
+			*m.queue = q
+			m.persistQueue()
+		}
+		// Show the work queue
+		m.filtered = make([]FocusTask, len(*m.queue))
+		copy(m.filtered, *m.queue)
+		return
+
+	case focusTabSuggested:
+		// Show ranked suggestions, applying common filters
+		m.filtered = nil
+		for _, sft := range m.ranked {
+			if hasActiveCommonFilters(&m.filter) {
+				if !passesCommonFilters(sft.Task, &m.filter, sft.Project.ID, m.config) {
+					continue
+				}
+			}
+			m.filtered = append(m.filtered, sft.FocusTask)
+		}
+		return
+
+	default:
+		// By Project and By Due Date tabs work on the full task set
+	}
+
 	// Apply common filters first (type, status, priority, tags, attrs, score)
 	baseTasks := m.tasks
 	if hasActiveCommonFilters(&m.filter) {
 		baseTasks = nil
 		for _, ft := range m.tasks {
-			// Use empty projectID since focus view aggregates across projects
 			if passesCommonFilters(ft.Task, &m.filter, ft.Project.ID, m.config) {
 				baseTasks = append(baseTasks, ft)
 			}
@@ -126,23 +215,13 @@ func (m *FocusViewModel) applyFilter() {
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.filtered[i].Project.Name < m.filtered[j].Project.Name
 		})
-	case focusTabByPriority:
-		m.filtered = make([]FocusTask, len(baseTasks))
-		copy(m.filtered, baseTasks)
-		sort.SliceStable(m.filtered, func(i, j int) bool {
-			return m.filtered[i].Task.Priority < m.filtered[j].Task.Priority
-		})
-	case focusTabDueSoon:
+	case focusTabByDueDate:
 		m.filtered = nil
-		sevenDaysLater := today.AddDate(0, 0, 7)
 		for _, ft := range baseTasks {
 			if ft.Task.DueDate == nil {
 				continue
 			}
-			dueDay := util.StartOfDay(*ft.Task.DueDate)
-			if dueDay.Before(sevenDaysLater) {
-				m.filtered = append(m.filtered, ft)
-			}
+			m.filtered = append(m.filtered, ft)
 		}
 	default:
 		m.filtered = make([]FocusTask, len(baseTasks))
@@ -161,11 +240,7 @@ func (m *FocusViewModel) applyFilter() {
 				if ft.Project.Name == filter {
 					narrowed = append(narrowed, ft)
 				}
-			case focusTabByPriority:
-				if fmt.Sprintf("P%d", ft.Task.Priority) == filter {
-					narrowed = append(narrowed, ft)
-				}
-			case focusTabDueSoon:
+			case focusTabByDueDate:
 				bucket := m.dueBucket(ft.Task, now, today)
 				if bucket == filter {
 					narrowed = append(narrowed, ft)
@@ -194,23 +269,8 @@ func (m *FocusViewModel) computeSubTabs() {
 		sort.Strings(names)
 		m.subTabNames = names
 
-	case focusTabByPriority:
-		seen := map[int]bool{}
-		var priorities []int
-		for _, ft := range m.filtered {
-			if !seen[ft.Task.Priority] {
-				seen[ft.Task.Priority] = true
-				priorities = append(priorities, ft.Task.Priority)
-			}
-		}
-		sort.Ints(priorities)
-		m.subTabNames = nil
-		for _, p := range priorities {
-			m.subTabNames = append(m.subTabNames, fmt.Sprintf("P%d", p))
-		}
-
-	case focusTabDueSoon:
-		bucketOrder := []string{"Today", "Tomorrow", "This Week", "Later"}
+	case focusTabByDueDate:
+		bucketOrder := []string{"Overdue", "Today", "Tomorrow", "This Week", "Later"}
 		seen := map[string]bool{}
 		for _, ft := range m.filtered {
 			bucket := m.dueBucket(ft.Task, now, today)
@@ -249,7 +309,9 @@ func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) stri
 	dueDay := util.StartOfDay(*task.DueDate)
 	daysUntil := int(dueDay.Sub(today).Hours() / 24)
 	switch {
-	case daysUntil <= 0:
+	case daysUntil < 0:
+		return "Overdue"
+	case daysUntil == 0:
 		return "Today"
 	case daysUntil == 1:
 		return "Tomorrow"
@@ -258,6 +320,16 @@ func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) stri
 	default:
 		return "Later"
 	}
+}
+
+// sortTasks sorts tasks by priority (ascending, 1=highest), then by UpdatedAt (most recent first).
+func (m *FocusViewModel) sortTasks() {
+	sort.Slice(m.tasks, func(i, j int) bool {
+		if m.tasks[i].Task.Priority != m.tasks[j].Task.Priority {
+			return m.tasks[i].Task.Priority < m.tasks[j].Task.Priority
+		}
+		return m.tasks[i].Task.UpdatedAt.After(m.tasks[j].Task.UpdatedAt)
+	})
 }
 
 // getTaskAtCursor returns the task at the current cursor position.
@@ -336,22 +408,52 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key {
-	case "esc", "q":
+	// Clear filters on esc (only reached when ShouldCaptureEsc() returned true)
+	case "esc":
 		if m.HasActiveFilters() {
 			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
 			m.statusMessage = "Filters cleared"
-			return m, nil
 		}
-		return m, func() tea.Msg {
-			return CloseFocusViewMsg{}
-		}
+		return m, nil
 
 	case "enter":
 		if ft := m.getTaskAtCursor(); ft != nil {
 			return m, func() tea.Msg {
 				return FocusViewSelectMsg{Task: ft.Task, Project: ft.Project}
+			}
+		}
+		return m, nil
+
+	// Accept into queue (Suggested tab) or accept top suggestion (Queue tab if empty)
+	case "a":
+		return m.handleAccept()
+
+	// Dismiss (Suggested tab) or remove from queue (Queue tab)
+	case "x":
+		return m.handleDismissOrRemove()
+
+	// Reorder queue down
+	case "J":
+		if m.activeTab == focusTabQueue {
+			q := *m.queue
+			if m.cursor >= 0 && m.cursor < len(q)-1 {
+				m.reorderQueue(m.cursor, m.cursor+1)
+				m.cursor++
+				m.applyFilter()
+			}
+		}
+		return m, nil
+
+	// Reorder queue up
+	case "K":
+		if m.activeTab == focusTabQueue {
+			q := *m.queue
+			if m.cursor > 0 && m.cursor < len(q) {
+				m.reorderQueue(m.cursor, m.cursor-1)
+				m.cursor--
+				m.applyFilter()
 			}
 		}
 		return m, nil
@@ -392,6 +494,19 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	// Refresh: on Suggested tab clears dismissed and reloads; on other tabs just reloads
+	case "r":
+		if m.activeTab == focusTabSuggested {
+			for k := range m.dismissedIDs {
+				delete(m.dismissedIDs, k)
+			}
+			m.persistDismissed()
+		}
+		m.loadTasks()
+		m.clampCursor()
+		m.statusMessage = "Refreshed"
+		return m, nil
+
 	// Toggle active flag (remove from focus)
 	case "*":
 		if ft := m.getTaskAtCursor(); ft != nil {
@@ -409,6 +524,53 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	return m, nil
+}
+
+// handleAccept accepts a task into the work queue.
+func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
+	switch m.activeTab {
+	case focusTabSuggested:
+		// On Suggested tab, accept the cursor item
+		if ft := m.getTaskAtCursor(); ft != nil {
+			m.acceptIntoQueue(*ft)
+			m.applyFilter()
+			m.statusMessage = fmt.Sprintf("Added to queue: %s", ft.Task.Title)
+		}
+	default:
+		// On all other tabs, accept the top non-queued suggestion
+		if sft := m.topNonQueuedSuggestion(); sft != nil {
+			m.acceptIntoQueue(sft.FocusTask)
+			m.applyFilter()
+			m.statusMessage = fmt.Sprintf("Added to queue: %s", sft.Task.Title)
+		}
+	}
+	return m, nil
+}
+
+// handleDismissOrRemove dismisses a suggestion or removes from queue.
+func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
+	switch m.activeTab {
+	case focusTabSuggested:
+		if ft := m.getTaskAtCursor(); ft != nil {
+			m.dismissedIDs[ft.Task.ID] = true
+			m.persistDismissed()
+			m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Dismissed suggestion"
+		}
+	case focusTabQueue:
+		if m.cursor >= 0 && m.cursor < len(*m.queue) {
+			title := (*m.queue)[m.cursor].Task.Title
+			m.removeFromQueue(m.cursor)
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = fmt.Sprintf("Removed from queue: %s", title)
+		}
+	default:
+		m.statusMessage = "Use x on Queue to remove or Suggested to dismiss"
+	}
 	return m, nil
 }
 
@@ -473,7 +635,7 @@ func (m *FocusViewModel) ShouldCaptureEsc() bool {
 }
 
 func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }
-func (m *FocusViewModel) viewName() string { return "Focus View" }
+func (m *FocusViewModel) viewName() string { return "What's Next" }
 
 // GetHelpItems returns help items for this view.
 func (m *FocusViewModel) GetHelpItems() []HelpItem {

@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/focus"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestFormatRelativeDueCLI_NilDate(t *testing.T) {
-	result := formatRelativeDueCLI(nil)
+	result := focus.FormatRelativeDue(nil)
 	if result != "" {
 		t.Errorf("expected empty string for nil date, got %q", result)
 	}
@@ -19,7 +20,7 @@ func TestFormatRelativeDueCLI_NilDate(t *testing.T) {
 
 func TestFormatRelativeDueCLI_Yesterday(t *testing.T) {
 	yesterday := time.Now().AddDate(0, 0, -1)
-	result := formatRelativeDueCLI(&yesterday)
+	result := focus.FormatRelativeDue(&yesterday)
 	if result != "yesterday" {
 		t.Errorf("expected 'yesterday', got %q", result)
 	}
@@ -39,7 +40,7 @@ func TestFormatRelativeDueCLI_DaysAgo(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.expected, func(t *testing.T) {
 			date := time.Now().AddDate(0, 0, -tc.daysAgo)
-			result := formatRelativeDueCLI(&date)
+			result := focus.FormatRelativeDue(&date)
 			if result != tc.expected {
 				t.Errorf("expected %q, got %q", tc.expected, result)
 			}
@@ -49,7 +50,7 @@ func TestFormatRelativeDueCLI_DaysAgo(t *testing.T) {
 
 func TestFormatRelativeDueCLI_Today(t *testing.T) {
 	today := time.Now()
-	result := formatRelativeDueCLI(&today)
+	result := focus.FormatRelativeDue(&today)
 	if result != "today" {
 		t.Errorf("expected 'today', got %q", result)
 	}
@@ -57,7 +58,7 @@ func TestFormatRelativeDueCLI_Today(t *testing.T) {
 
 func TestFormatRelativeDueCLI_Tomorrow(t *testing.T) {
 	tomorrow := time.Now().AddDate(0, 0, 1)
-	result := formatRelativeDueCLI(&tomorrow)
+	result := focus.FormatRelativeDue(&tomorrow)
 	if result != "tomorrow" {
 		t.Errorf("expected 'tomorrow', got %q", result)
 	}
@@ -68,7 +69,7 @@ func TestFormatRelativeDueCLI_WeekdayName(t *testing.T) {
 	for daysAhead := 2; daysAhead <= 6; daysAhead++ {
 		t.Run(time.Now().AddDate(0, 0, daysAhead).Weekday().String(), func(t *testing.T) {
 			futureDate := time.Now().AddDate(0, 0, daysAhead)
-			result := formatRelativeDueCLI(&futureDate)
+			result := focus.FormatRelativeDue(&futureDate)
 			expectedWeekday := futureDate.Format("Mon")
 			if result != expectedWeekday {
 				t.Errorf("expected weekday %q, got %q", expectedWeekday, result)
@@ -84,7 +85,7 @@ func TestFormatRelativeDueCLI_SameYear(t *testing.T) {
 
 	// Only test if the future date is in the same year as now
 	if futureDate.Year() == now.Year() {
-		result := formatRelativeDueCLI(&futureDate)
+		result := focus.FormatRelativeDue(&futureDate)
 		expected := futureDate.Format("Jan 2")
 		if result != expected {
 			t.Errorf("expected %q, got %q", expected, result)
@@ -97,7 +98,7 @@ func TestFormatRelativeDueCLI_DifferentYear(t *testing.T) {
 	now := time.Now()
 	futureDate := time.Date(now.Year()+1, time.March, 15, 0, 0, 0, 0, now.Location())
 
-	result := formatRelativeDueCLI(&futureDate)
+	result := focus.FormatRelativeDue(&futureDate)
 	expected := futureDate.Format("Jan 2 '06")
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
@@ -109,7 +110,7 @@ func TestFormatRelativeDueCLI_PastDifferentYear(t *testing.T) {
 	now := time.Now()
 	pastDate := time.Date(now.Year()-1, time.June, 10, 0, 0, 0, 0, now.Location())
 
-	result := formatRelativeDueCLI(&pastDate)
+	result := focus.FormatRelativeDue(&pastDate)
 	// Past dates more than 1 day ago show "X days ago"
 	// Calculate days since that past date
 	today := util.StartOfDay(now)
@@ -122,7 +123,7 @@ func TestFormatRelativeDueCLI_PastDifferentYear(t *testing.T) {
 	}
 }
 
-// focusTask sorting tests
+// FocusTask sorting tests
 
 func TestFocusSorting_ByPriorityAscending(t *testing.T) {
 	project := testutil.NewTestProject("Test")
@@ -139,7 +140,7 @@ func TestFocusSorting_ByPriorityAscending(t *testing.T) {
 	medium.Priority = 3
 	medium.Active = true
 
-	tasks := []focusTask{
+	tasks := []focus.FocusTask{
 		{Task: low, Project: project},
 		{Task: high, Project: project},
 		{Task: medium, Project: project},
@@ -177,7 +178,7 @@ func TestFocusSorting_ByUpdatedAtWithinSamePriority(t *testing.T) {
 	newer.Active = true
 	newer.UpdatedAt = time.Now()
 
-	tasks := []focusTask{
+	tasks := []focus.FocusTask{
 		{Task: older, Project: project},
 		{Task: newer, Project: project},
 	}
@@ -218,7 +219,7 @@ func TestFocusSorting_CombinedPriorityAndUpdatedAt(t *testing.T) {
 	lowRecent.Active = true
 	lowRecent.UpdatedAt = time.Now().Add(1 * time.Minute)
 
-	tasks := []focusTask{
+	tasks := []focus.FocusTask{
 		{Task: lowRecent, Project: project},
 		{Task: highOlder, Project: project},
 		{Task: highNewer, Project: project},
@@ -261,7 +262,7 @@ func TestFocusFiltering_OnlyActiveTasks(t *testing.T) {
 
 	project.Tasks = []*models.Task{active, inactive}
 
-	var tasks []focusTask
+	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
 		if !task.Active {
 			continue
@@ -269,7 +270,7 @@ func TestFocusFiltering_OnlyActiveTasks(t *testing.T) {
 		if task.Status.IsComplete() {
 			continue
 		}
-		tasks = append(tasks, focusTask{Task: task, Project: project})
+		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 	}
 
 	if len(tasks) != 1 {
@@ -297,7 +298,7 @@ func TestFocusFiltering_SkipsCompletedTasks(t *testing.T) {
 
 	project.Tasks = []*models.Task{done, canceled, active}
 
-	var tasks []focusTask
+	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
 		if !task.Active {
 			continue
@@ -305,7 +306,7 @@ func TestFocusFiltering_SkipsCompletedTasks(t *testing.T) {
 		if task.Status.IsComplete() {
 			continue
 		}
-		tasks = append(tasks, focusTask{Task: task, Project: project})
+		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 	}
 
 	if len(tasks) != 1 {
@@ -325,7 +326,7 @@ func TestFocusFiltering_IncludesBlockedTasks(t *testing.T) {
 
 	project.Tasks = []*models.Task{blocked}
 
-	var tasks []focusTask
+	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
 		if !task.Active {
 			continue
@@ -333,7 +334,7 @@ func TestFocusFiltering_IncludesBlockedTasks(t *testing.T) {
 		if task.Status.IsComplete() {
 			continue
 		}
-		tasks = append(tasks, focusTask{Task: task, Project: project})
+		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 	}
 
 	if len(tasks) != 1 {
@@ -354,7 +355,7 @@ func TestFocusFiltering_MultipleProjects(t *testing.T) {
 	task2.Priority = 2
 	project2.Tasks = []*models.Task{task2}
 
-	var tasks []focusTask
+	var tasks []focus.FocusTask
 	for _, project := range []*models.Project{project1, project2} {
 		for _, task := range project.Tasks {
 			if !task.Active {
@@ -363,7 +364,7 @@ func TestFocusFiltering_MultipleProjects(t *testing.T) {
 			if task.Status.IsComplete() {
 				continue
 			}
-			tasks = append(tasks, focusTask{Task: task, Project: project})
+			tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 		}
 	}
 
@@ -395,7 +396,7 @@ func TestFocusFiltering_EmptyResult(t *testing.T) {
 
 	project.Tasks = []*models.Task{inactive}
 
-	var tasks []focusTask
+	var tasks []focus.FocusTask
 	for _, task := range project.Tasks {
 		if !task.Active {
 			continue
@@ -403,7 +404,7 @@ func TestFocusFiltering_EmptyResult(t *testing.T) {
 		if task.Status.IsComplete() {
 			continue
 		}
-		tasks = append(tasks, focusTask{Task: task, Project: project})
+		tasks = append(tasks, focus.FocusTask{Task: task, Project: project})
 	}
 
 	if len(tasks) != 0 {

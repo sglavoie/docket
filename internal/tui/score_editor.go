@@ -255,7 +255,7 @@ func (m *ScoreEditorModel) View() string {
 
 	lines = append(lines, "")
 	pct := scoring.ScorePercent(totalScore, m.profile)
-	lines = append(lines, scoreStyle.Render(fmt.Sprintf("Score: %d/300 (raw: %d)", int(pct), int(totalScore))))
+	lines = append(lines, scoreStyle.Render(fmt.Sprintf("Score: %d/%d (raw: %d)", int(pct), scoring.MaxNormalizedScore(m.profile), int(totalScore))))
 	lines = append(lines, "")
 	helpText := "j/k: navigate · h/l: adjust · 0-9: set · d: reset · Enter: save · Esc: cancel"
 	lines = append(lines, mutedStyle.Render(renderWrappingHelpLine(helpText, contentWidth)))

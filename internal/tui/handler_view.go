@@ -357,11 +357,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowFocusViewMsg:
-		m.showView(ViewFocusView, NewFocusViewModel(m.config))
-		return true, nil
-
-	case CloseFocusViewMsg:
-		m.popView()
+		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.focusDismissedIDs))
 		return true, nil
 
 	case FocusViewSelectMsg:

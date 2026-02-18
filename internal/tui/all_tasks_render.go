@@ -190,7 +190,7 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 	// Due date
 	dueStr := ""
 	if task.DueDate != nil {
-		dueStr = formatRelativeDue(task.DueDate, true)
+		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
 	// Score badge

@@ -34,7 +34,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 			Task:         task,
 			UrgencyScore: m.computeUrgencyScore(task),
 			ParentTitle:  m.getParentTitle(task),
-			RelativeDue:  formatRelativeDue(task.DueDate, false),
+			RelativeDue:  FormatRelativeDue(task.DueDate, false),
 		}
 
 		if isBlocked {

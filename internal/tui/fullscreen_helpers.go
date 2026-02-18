@@ -265,9 +265,9 @@ func renderMetadataContent(task *models.Task, project *models.Project, innerWidt
 	return strings.Join(lines, "\n")
 }
 
-// formatRelativeDue formats a due date relative to today.
+// FormatRelativeDue formats a due date relative to today.
 // When styled is true, overdue/today/normal ranges are wrapped in color styles.
-func formatRelativeDue(dueDate *time.Time, styled bool) string {
+func FormatRelativeDue(dueDate *time.Time, styled bool) string {
 	if dueDate == nil {
 		return ""
 	}

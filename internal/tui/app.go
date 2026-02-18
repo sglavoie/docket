@@ -136,6 +136,11 @@ type AppModel struct {
 	// keyed by project ID. Survives outliner recreation within a session.
 	outlinerToggleStates map[string]*OutlinerToggleState
 
+	// Focus view session state (persists across view navigation within a session)
+	focusQueue        []FocusTask
+	focusQueueIDs     map[string]bool
+	focusDismissedIDs map[string]bool
+
 	// Current project context
 	currentProject *models.Project
 
@@ -235,11 +240,36 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		lastProjectView:      defaultProjectViewType(cfg),
 		projectLastView:      make(map[string]ViewType),
 		outlinerToggleStates: make(map[string]*OutlinerToggleState),
+		focusQueue:           []FocusTask{},
+		focusQueueIDs:        make(map[string]bool),
+		focusDismissedIDs:    make(map[string]bool),
 	}
 
 	// Apply functional options
 	for _, opt := range opts {
 		opt(app)
+	}
+
+	// Hydrate focus queue from persisted config (only from active projects)
+	activeProjects := cfg.GetActiveProjects()
+	for _, item := range cfg.GetFocusQueue() {
+		for _, p := range activeProjects {
+			if p.ID != item.ProjectID {
+				continue
+			}
+			if err := app.persister.Load(p); err != nil {
+				break
+			}
+			if task := p.GetTaskByID(item.TaskID); task != nil && !task.Status.IsComplete() {
+				app.focusQueue = append(app.focusQueue, FocusTask{Task: task, Project: p})
+				app.focusQueueIDs[task.ID] = true
+			}
+			break
+		}
+	}
+	// Hydrate dismissed IDs
+	for _, id := range cfg.GetFocusDismissedIDs() {
+		app.focusDismissedIDs[id] = true
 	}
 
 	// Ensure sandbox project exists

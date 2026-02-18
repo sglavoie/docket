@@ -484,13 +484,13 @@ func TestFormatRelativeDue(t *testing.T) {
 				task.DueDate = &due
 			}
 
-			got := formatRelativeDue(task.DueDate, false)
+			got := FormatRelativeDue(task.DueDate, false)
 			if tt.wantMatch == "" {
 				if got != "" {
-					t.Errorf("formatRelativeDue() = %q, want empty", got)
+					t.Errorf("FormatRelativeDue() = %q, want empty", got)
 				}
 			} else if got != tt.wantMatch && !contains(got, tt.wantMatch) {
-				t.Errorf("formatRelativeDue() = %q, want to contain %q", got, tt.wantMatch)
+				t.Errorf("FormatRelativeDue() = %q, want to contain %q", got, tt.wantMatch)
 			}
 		})
 	}

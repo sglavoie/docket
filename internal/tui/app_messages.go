@@ -612,9 +612,6 @@ type DailyReviewSelectMsg struct {
 // ShowFocusViewMsg opens the focus view.
 type ShowFocusViewMsg struct{}
 
-// CloseFocusViewMsg closes the focus view.
-type CloseFocusViewMsg struct{}
-
 // FocusViewRefreshMsg requests a refresh of the focus view data.
 type FocusViewRefreshMsg struct{}
 

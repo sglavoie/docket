@@ -1,0 +1,236 @@
+package focus
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/scoring"
+	"github.com/sglavoie/tt/internal/util"
+)
+
+// ScoredFocusTask wraps a FocusTask with its computed score and reason.
+type ScoredFocusTask struct {
+	FocusTask
+	Score  int
+	Reason string
+}
+
+// computeCrossProjectScore calculates the suggestion score for a task.
+// Higher scores = more recommended as the next task to work on.
+func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) int {
+	score := 0
+	today := util.StartOfDay(now)
+
+	// Priority weight: priority 1 = 5000, priority 5 = 1000
+	score += (6 - task.Priority) * 1000
+
+	// Bug type bonus
+	if task.Type == models.TaskTypeBug {
+		score += 100
+	}
+
+	// Due date proximity
+	if task.DueDate != nil {
+		dueDay := util.StartOfDay(*task.DueDate)
+		daysUntil := int(dueDay.Sub(today).Hours() / 24)
+		score += (-daysUntil) * 50
+	}
+
+	// In-progress bonus
+	if task.Status == models.StatusInProgress {
+		score += 500
+	}
+
+	// Review bonus
+	if task.Status == models.StatusReview {
+		score += 250
+	}
+
+	// Active flag bonus
+	if task.Active {
+		score += 200
+	}
+
+	// Leaf task bonus: prefer actionable leaf tasks over containers
+	if task.IsLeaf() {
+		score += 800
+	}
+
+	// Container penalty: penalize tasks with incomplete children
+	if len(task.Children) > 0 && !allChildrenComplete(task) {
+		score -= 1000
+	}
+
+	// Task age: older tasks get a small boost to avoid stagnation
+	// 30 points per completed week, capped at 10 weeks (max 300 points)
+	daysSinceCreated := int(now.Sub(task.CreatedAt).Hours() / 24)
+	ageBonus := daysSinceCreated / 7
+	if ageBonus > 10 {
+		ageBonus = 10
+	}
+	score += ageBonus * 30
+
+	// Recent momentum: boost tasks with recent activity
+	daysSinceUpdated := int(now.Sub(task.UpdatedAt).Hours() / 24)
+	if daysSinceUpdated == 0 {
+		score += 400
+	} else if daysSinceUpdated <= 3 {
+		score += 200
+	}
+
+	// Unblocking bonus: prefer tasks that unblock others
+	blockedByThisCount := len(project.GetBlockedByTasks(task))
+	unblockingBonus := blockedByThisCount
+	if unblockingBonus > 3 {
+		unblockingBonus = 3
+	}
+	score += unblockingBonus * 150
+
+	// Section scoring: Next is boosted, Waiting/Someday penalized
+	switch task.Section {
+	case models.SectionNext:
+		score += 100
+	case models.SectionWaiting:
+		score -= 100
+	case models.SectionSomeday:
+		score -= 300
+	}
+
+	// Composite scoring profile integration
+	if cfg != nil {
+		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
+			pct := scoring.NormalizedScore(task, profile)
+			score += int(pct)
+		}
+	}
+
+	return score
+}
+
+// getSuggestionReason generates a human-readable explanation for why a task is suggested.
+func getSuggestionReason(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) string {
+	var reasons []string
+	today := util.StartOfDay(now)
+
+	switch task.Priority {
+	case 1:
+		reasons = append(reasons, "critical priority")
+	case 2:
+		reasons = append(reasons, "high priority")
+	}
+
+	if task.DueDate != nil {
+		dueDay := util.StartOfDay(*task.DueDate)
+
+		if dueDay.Before(today) {
+			reasons = append(reasons, "overdue")
+		} else if dueDay.Equal(today) {
+			reasons = append(reasons, "due today")
+		} else if dueDay.Before(today.AddDate(0, 0, 7)) {
+			reasons = append(reasons, "due this week")
+		}
+	}
+
+	if task.Status == models.StatusInProgress {
+		reasons = append(reasons, "in progress")
+	}
+
+	if task.Active {
+		reasons = append(reasons, "flagged active")
+	}
+
+	blockedByThisCount := len(project.GetBlockedByTasks(task))
+	if blockedByThisCount > 0 {
+		if blockedByThisCount == 1 {
+			reasons = append(reasons, "unblocks 1 task")
+		} else {
+			reasons = append(reasons, fmt.Sprintf("unblocks %d tasks", blockedByThisCount))
+		}
+	}
+
+	daysSinceUpdated := int(now.Sub(task.UpdatedAt).Hours() / 24)
+	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
+		reasons = append(reasons, "recent activity")
+	}
+
+	if cfg != nil {
+		if profile := cfg.GetProjectScoringProfile(project.ID); profile != nil {
+			pct := scoring.NormalizedScore(task, profile)
+			maxScore := scoring.MaxNormalizedScore(profile)
+			if int(pct) > 0 {
+				reasons = append(reasons, fmt.Sprintf("composite score %d/%d", int(pct), maxScore))
+			}
+		}
+	}
+
+	if len(reasons) == 0 {
+		return "Ready to work on"
+	}
+
+	var result strings.Builder
+	for i, r := range reasons {
+		if i > 0 {
+			result.WriteString(" + ")
+		}
+		if i == 0 {
+			result.WriteString(strings.ToUpper(r[:1]) + r[1:])
+		} else {
+			result.WriteString(r)
+		}
+	}
+	return result.String()
+}
+
+// RankCrossProjectTasks scores all tasks, applies cross-project balance penalty,
+// sorts descending, and excludes dismissed tasks.
+func RankCrossProjectTasks(tasks []FocusTask, dismissedIDs map[string]bool, cfg *config.Config) []ScoredFocusTask {
+	now := time.Now()
+	var scored []ScoredFocusTask
+	for _, ft := range tasks {
+		if dismissedIDs[ft.Task.ID] {
+			continue
+		}
+		s := computeCrossProjectScore(ft.Task, ft.Project, cfg, now)
+		r := getSuggestionReason(ft.Task, ft.Project, cfg, now)
+		scored = append(scored, ScoredFocusTask{
+			FocusTask: ft,
+			Score:     s,
+			Reason:    r,
+		})
+	}
+
+	// Sort descending by score
+	sort.SliceStable(scored, func(i, j int) bool {
+		return scored[i].Score > scored[j].Score
+	})
+
+	// Apply cross-project balance penalty: tasks from over-represented projects
+	// get penalized so the top results interleave projects.
+	projectCount := make(map[string]int)
+	for i := range scored {
+		pid := scored[i].Project.ID
+		scored[i].Score -= projectCount[pid] * 300
+		projectCount[pid]++
+	}
+
+	// Re-sort after balance penalty
+	sort.SliceStable(scored, func(i, j int) bool {
+		return scored[i].Score > scored[j].Score
+	})
+
+	return scored
+}
+
+// allChildrenComplete returns true if all children of the task are complete.
+func allChildrenComplete(task *models.Task) bool {
+	for _, child := range task.Children {
+		if !child.Status.IsComplete() {
+			return false
+		}
+	}
+	return true
+}

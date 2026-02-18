@@ -127,6 +127,14 @@ type Config struct {
 	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
+	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
+	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
+}
+
+// FocusQueueItem stores a task reference for the focus queue.
+type FocusQueueItem struct {
+	TaskID    string `json:"task_id"`
+	ProjectID string `json:"project_id"`
 }
 
 // NewConfig creates a new configuration with default values.
