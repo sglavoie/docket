@@ -589,13 +589,12 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if replacing {
 				m.saveOutlinerToggleState()
 				m.saveKanbanState()
-			}
-			if m.projectTree == nil {
-				m.switchToProject(msg.Project, true)
-			}
-			if replacing {
+				m.refreshProjectTree()
 				m.replaceView(ViewProjectTree, m.projectTree)
 			} else {
+				if m.projectTree == nil {
+					m.switchToProject(msg.Project, true)
+				}
 				m.showView(ViewProjectTree, m.projectTree)
 			}
 		}

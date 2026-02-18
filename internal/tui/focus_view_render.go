@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -155,7 +156,7 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 		// Check if task is already in queue
 		prefix := ""
 		if m.isInQueue(ft.Task.ID) {
-			prefix = MutedStyle.Render("[Q] ")
+			prefix = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Render("[Q] ")
 		}
 
 		// Star indicator on the first non-queued item
