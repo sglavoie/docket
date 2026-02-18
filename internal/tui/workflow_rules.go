@@ -459,7 +459,7 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 		}
 
 		if i == m.cursor {
-			line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
+			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
 			b.WriteString(line)
 			b.WriteString("\n")
 			// Show summary for selected rule on narrow screens only

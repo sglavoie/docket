@@ -42,9 +42,9 @@ func renderFormFieldDesc(desc string, indent int, focused bool) string {
 func renderFormToggle(optionA, optionB string, aSelected bool, focused bool) string {
 	var s string
 	if aSelected {
-		s = BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionA) + MutedStyle.Render("  ○ "+optionB)
+		s = SelectedItemTextStyle.Render("◉ "+optionA) + MutedStyle.Render("  ○ "+optionB)
 	} else {
-		s = MutedStyle.Render("○ "+optionA) + "  " + BoldStyle.Foreground(ColorPrimary).Render("◉ "+optionB)
+		s = MutedStyle.Render("○ "+optionA) + "  " + SelectedItemTextStyle.Render("◉ "+optionB)
 	}
 	if focused {
 		s += HelpStyle.Render("  (Space to toggle)")
@@ -311,11 +311,11 @@ func renderStoryPointsSelector(cursor int, focused bool) string {
 func renderValidatedToggle(validated bool, focused bool) string {
 	var b strings.Builder
 	if validated {
-		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[yes]"))
+		b.WriteString(SelectedItemTextStyle.Render("[yes]"))
 		b.WriteString(SelectorOptionStyle.Render(" no "))
 	} else {
 		b.WriteString(SelectorOptionStyle.Render(" yes "))
-		b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("[no]"))
+		b.WriteString(SelectedItemTextStyle.Render("[no]"))
 	}
 	if focused {
 		b.WriteString(HelpStyle.Render("  (Space to toggle)"))

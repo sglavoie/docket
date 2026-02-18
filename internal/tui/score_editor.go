@@ -10,7 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // ScoreEditorDoneMsg is sent when the score editor finishes (save or cancel).
@@ -149,25 +148,30 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// resolveTask re-fetches the task pointer from the project to avoid stale references
+// after an async reload (e.g. saveWithWorkflow in the outliner).
+func (m *ScoreEditorModel) resolveTask() {
+	if t := m.project.GetTaskByID(m.task.ID); t != nil {
+		m.task = t
+	}
+}
+
 // save applies the edited values to the task and saves.
 func (m *ScoreEditorModel) save() tea.Cmd {
-	if m.task.ScoreDimensions == nil {
-		m.task.ScoreDimensions = make(map[string]int)
-	}
+	return func() tea.Msg {
+		m.resolveTask()
 
-	for i, dim := range m.profile.Dimensions {
-		if m.sources[i] == "manual" {
-			m.task.ScoreDimensions[dim.ID] = m.values[i]
+		dims := make(map[string]int)
+		for i, dim := range m.profile.Dimensions {
+			if m.sources[i] == "manual" {
+				dims[dim.ID] = m.values[i]
+			}
 		}
-	}
+		m.task.ScoreDimensions = dims
 
-	if err := storage.SaveProject(m.project); err != nil {
-		return func() tea.Msg {
+		if err := saveProjectNoReload(m.project); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
-	}
-
-	return func() tea.Msg {
 		return ScoreEditorDoneMsg{Task: m.task, Saved: true, Project: m.project}
 	}
 }

@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleScoringMessages handles scoring-related view messages.
@@ -76,23 +74,16 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ScoreEditorDoneMsg:
 		m.popView()
 		if msg.Saved {
-			// Refresh the project tree and data after score changes
 			if m.projectTree != nil {
-				_ = storage.LoadProject(m.projectTree.project)
 				m.projectTree.buildTree()
 			}
-			// Refresh kanban if active
 			if m.kanban != nil {
-				_ = storage.LoadProject(m.kanban.Project)
 				m.kanban.loadTasks()
 			}
-			// Refresh all-tasks view if open
 			if m.allTasksView != nil {
 				m.allTasksView.loadAllTasks()
 			}
-			// Refresh outliner if open
 			if m.outliner != nil {
-				_ = storage.LoadProject(m.outliner.project)
 				m.outliner.rebuildRows()
 			}
 			m.statusMessage = fmt.Sprintf("Score dimensions updated for task #%d", msg.Task.ShortID)

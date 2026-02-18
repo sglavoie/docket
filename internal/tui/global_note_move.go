@@ -213,7 +213,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 		line := fmt.Sprintf("%s%-*s %s", cursor, maxNameLen, name, contextBadge)
 
 		if m.Cursor == i {
-			line = BoldStyle.Foreground(ColorPrimary).Render(line)
+			line = SelectedItemTextStyle.Render(line)
 		}
 
 		b.WriteString(line)

@@ -159,19 +159,28 @@ func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyMsg) (bool, t
 		return false, nil
 	}
 
+	key := msg.String()
+
+	// Tab and Esc work regardless of selected task
+	switch key {
+	case "tab":
+		// Cycle from focused -> hidden (completes the cycle)
+		s.enabled = false
+		s.focused = false
+		return true, nil
+	case "esc":
+		s.focused = false
+		return true, nil
+	}
+
 	selectedTask := host.SidebarSelectedTask()
 	if selectedTask == nil {
 		return false, nil
 	}
 
 	project := host.SidebarProject()
-	key := msg.String()
 
 	switch key {
-	case "esc":
-		s.focused = false
-		return true, nil
-
 	case "j", "down":
 		if sidebarHasLinkedTasks(project, selectedTask) {
 			s.moveCursorDown(project, selectedTask)

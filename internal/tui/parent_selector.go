@@ -340,7 +340,7 @@ func (m *ParentSelectorModel) renderList() string {
 			line := fmt.Sprintf("%s%s %s %s", cursor, typeIcon, shortID, title)
 
 			if m.Cursor == cursorIdx {
-				line = BoldStyle.Foreground(ColorPrimary).Render(line)
+				line = SelectedItemTextStyle.Render(line)
 			}
 
 			b.WriteString(line)

@@ -81,6 +81,11 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	// Handle file or code reference attachment
 	filePath := args[1]
 
+	// Strip surrounding single quotes (e.g. from drag-and-drop paths with spaces)
+	if len(filePath) >= 2 && filePath[0] == '\'' && filePath[len(filePath)-1] == '\'' {
+		filePath = filePath[1 : len(filePath)-1]
+	}
+
 	// Check if it's a code reference (file:line format)
 	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)
 	if isCodeRef {

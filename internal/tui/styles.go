@@ -25,17 +25,19 @@ func makeColorStyle(color lipgloss.Color) lipgloss.Style {
 
 // Color palette
 var (
-	ColorPrimary     = lipgloss.Color("39")  // Blue
-	ColorSecondary   = lipgloss.Color("33")  // Cyan
-	ColorSuccess     = lipgloss.Color("42")  // Green
-	ColorWarning     = lipgloss.Color("214") // Orange
-	ColorError       = lipgloss.Color("196") // Red
-	ColorMuted       = lipgloss.Color("241") // Gray
-	ColorHighlight   = lipgloss.Color("229") // Light yellow
-	ColorBackground  = lipgloss.Color("236") // Dark gray
-	ColorBorder      = lipgloss.Color("240") // Border gray
-	ColorDiffContext = lipgloss.Color("245") // Diff context gray
-	ColorPrefixPopup = lipgloss.Color("226") // Yellow for prefix popup border
+	ColorPrimary     = lipgloss.Color("39")      // Blue
+	ColorSecondary   = lipgloss.Color("33")      // Cyan
+	ColorSuccess     = lipgloss.Color("42")      // Green
+	ColorWarning     = lipgloss.Color("214")     // Orange
+	ColorError       = lipgloss.Color("196")     // Red
+	ColorMuted       = lipgloss.Color("241")     // Gray
+	ColorHighlight   = lipgloss.Color("229")     // Light yellow
+	ColorBackground  = lipgloss.Color("236")     // Dark gray
+	ColorBorder      = lipgloss.Color("240")     // Border gray
+	ColorDiffContext = lipgloss.Color("245")     // Diff context gray
+	ColorPrefixPopup = lipgloss.Color("226")     // Yellow for prefix popup border
+	ColorSelectedBg  = lipgloss.Color("#4c0163") // Light purple background for selections
+	ColorSelectedFg  = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
 )
 
 // Base styles
@@ -254,7 +256,7 @@ var (
 
 	SelectorOptionSelectedStyle = lipgloss.NewStyle().
 					Bold(true).
-					Foreground(ColorPrimary).
+					Foreground(ColorSelectedFg).
 					Padding(0, 1)
 
 	// Success message style
@@ -331,7 +333,7 @@ var (
 			Foreground(ColorMuted)
 
 	FilterItemSelectedStyle = lipgloss.NewStyle().
-				Foreground(ColorPrimary).
+				Foreground(ColorSelectedFg).
 				Bold(true)
 
 	FilterValueStyle = lipgloss.NewStyle().
@@ -354,8 +356,8 @@ var (
 				Padding(0, 1)
 
 	TaskJumperSelectedStyle = lipgloss.NewStyle().
-				Background(ColorBackground).
-				Foreground(ColorPrimary).
+				Background(ColorSelectedBg).
+				Foreground(ColorSelectedFg).
 				Bold(true)
 
 	TaskJumperPreviewHeaderStyle = lipgloss.NewStyle().
@@ -373,17 +375,20 @@ var (
 				MarginTop(1)
 
 	SelectedStyle = lipgloss.NewStyle().
-			Background(ColorBackground).
-			Foreground(ColorPrimary).
+			Background(ColorSelectedBg).
+			Foreground(ColorSelectedFg).
 			Bold(true)
+
+	// Convenience style for selected item text (bold + purple fg, no bg)
+	SelectedItemTextStyle = BoldStyle.Foreground(ColorSelectedFg)
 
 	// Selection row styles (unified across all list views)
 	SelectionCursorStyle = lipgloss.NewStyle().
-				Foreground(ColorPrimary).
+				Foreground(ColorSelectedFg).
 				Bold(true)
 
 	SelectionRowStyle = lipgloss.NewStyle().
-				Background(ColorBackground)
+				Background(ColorSelectedBg)
 
 	// Multi-select styles
 	SelectionStyle = lipgloss.NewStyle().
@@ -407,7 +412,7 @@ var (
 				Foreground(ColorMuted)
 
 	TagManagerItemSelectedStyle = lipgloss.NewStyle().
-					Foreground(ColorPrimary).
+					Foreground(ColorSelectedFg).
 					Bold(true)
 
 	TagManagerCountStyle = lipgloss.NewStyle().

@@ -171,7 +171,7 @@ func (m *TaskCreatorModel) renderChecklistTab() string {
 			isFocused := m.focusIndex == fieldIndex
 
 			if isFocused {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %d. ☐ ", i+1)))
+				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %d. ☐ ", i+1)))
 			} else {
 				b.WriteString(fmt.Sprintf("  %d. ☐ ", i+1))
 			}
@@ -224,7 +224,7 @@ func (m *TaskCreatorModel) renderSubtasksTab() string {
 			typeBadge := GetTypeBadge(string(subtaskType), subtaskType.Icon())
 
 			if isFocused {
-				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %d. %s ", i+1, optMarker)))
+				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %d. %s ", i+1, optMarker)))
 				b.WriteString(typeBadge)
 				b.WriteString(" ")
 			} else {

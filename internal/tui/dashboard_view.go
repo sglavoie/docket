@@ -340,7 +340,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			if p.Pinned {
 				style = BoldStyle.Foreground(ColorSuccess)
 			} else {
-				style = BoldStyle.Foreground(ColorPrimary)
+				style = SelectedItemTextStyle
 			}
 		} else if p.Pinned {
 			style = PinnedProjectStyle

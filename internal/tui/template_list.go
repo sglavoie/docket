@@ -493,7 +493,7 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 		}
 
 		if i == m.cursor {
-			line := BoldStyle.Foreground(ColorPrimary).Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
+			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
 			b.WriteString(line)
 			b.WriteString("\n")
 			// Show summary for selected template on narrow screens only

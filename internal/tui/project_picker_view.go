@@ -80,7 +80,7 @@ func (m *ProjectPickerModel) renderList() string {
 		line := fmt.Sprintf("%s%-*s %s %s", cursor, maxNameLen, name, contextBadge, MutedStyle.Render(taskCount))
 
 		if m.Cursor == i {
-			line = BoldStyle.Foreground(ColorPrimary).Render(line)
+			line = SelectedItemTextStyle.Render(line)
 		}
 
 		b.WriteString(line)

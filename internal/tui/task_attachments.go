@@ -198,6 +198,12 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.openOriginalPath()
 			}
 
+		case "ctrl+o":
+			// Reveal original file in file manager
+			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
+				return m, m.revealOriginalFile()
+			}
+
 		case "O":
 			// Open attachments directory in file manager
 			return m, m.openAttachmentsDir()
@@ -219,6 +225,10 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 	return func() tea.Msg {
 		input := strings.TrimSpace(m.textInput.Value())
+		// Strip surrounding single quotes (e.g. from drag-and-drop paths with spaces)
+		if len(input) >= 2 && input[0] == '\'' && input[len(input)-1] == '\'' {
+			input = input[1 : len(input)-1]
+		}
 		if input == "" {
 			m.err = fmt.Errorf("path/URL cannot be empty")
 			return nil
@@ -627,6 +637,43 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+		}
+		return nil
+	})
+}
+
+func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
+	att := m.task.Attachments[m.cursor]
+
+	if att.IsURL {
+		m.err = fmt.Errorf("cannot reveal URL attachments in file manager")
+		return nil
+	}
+
+	path := att.OriginalPath
+
+	// Check if the original file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		m.err = fmt.Errorf("original file not found: %s", path)
+		return nil
+	}
+
+	var openCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		openCmd = exec.Command("open", "-R", path)
+	case "linux":
+		openCmd = exec.Command("xdg-open", filepath.Dir(path))
+	case "windows":
+		openCmd = exec.Command("explorer", "/select,", path)
+	default:
+		m.err = fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+		return nil
+	}
+
+	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
+		if err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to reveal file: %w", err)}
 		}
 		return nil
 	})
