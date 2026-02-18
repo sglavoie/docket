@@ -28,7 +28,6 @@ func (m *GlobalInboxProcessorModel) inboxRecordAction(desc string, snapshot *inb
 	m.recordAction(desc, snapshot)
 }
 func (m *GlobalInboxProcessorModel) setInboxStatus(msg string) { m.statusMessage = msg }
-func (m *GlobalInboxProcessorModel) setInboxErr(err error)     { m.err = err }
 
 // Delegate shared operations.
 

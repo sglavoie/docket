@@ -18,7 +18,6 @@ type inboxOpsView interface {
 	inboxCaptureSnapshot(task *models.Task) *inboxSnapshot
 	inboxRecordAction(desc string, snapshot *inboxSnapshot)
 	setInboxStatus(string)
-	setInboxErr(error)
 }
 
 // --- "Open" operations: construct and return a message ---
