@@ -821,20 +821,33 @@ var (
 				Foreground(ColorBorder)
 )
 
+// PinnedMarker is a green dot used to indicate pinned tasks in list views.
+var PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")
+
 // RenderSelectableRow applies consistent selection styling to list items.
 // When selected=true, adds cursor prefix and row background that extends to full width.
 // When active=true, adds an asterisk indicator after the cursor position.
+// When pinned=true, adds a green dot indicator.
 // The content should already have its internal styling (badges, etc).
-func RenderSelectableRow(selected bool, active bool, content string, width int) string {
+func RenderSelectableRow(selected bool, active bool, pinned bool, content string, width int) string {
 	activeMarker := ActiveStyle.Bold(true).Render("*")
 	var prefix string
-	if selected && active {
+	switch {
+	case selected && active && pinned:
+		prefix = SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker
+	case selected && active:
 		prefix = SelectionCursorStyle.Render(">") + activeMarker + " "
-	} else if selected {
+	case selected && pinned:
+		prefix = SelectionCursorStyle.Render(">") + " " + PinnedMarker
+	case selected:
 		prefix = SelectionCursorStyle.Render(">") + "  "
-	} else if active {
+	case active && pinned:
+		prefix = " " + activeMarker + PinnedMarker
+	case active:
 		prefix = " " + activeMarker + " "
-	} else {
+	case pinned:
+		prefix = "  " + PinnedMarker
+	default:
 		prefix = "   "
 	}
 

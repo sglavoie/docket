@@ -455,7 +455,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 
 		if narrowMode {
 			line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
-			line1 := RenderSelectableRow(selected, false, line1Content, cardWidth-4)
+			line1 := RenderSelectableRow(selected, false, false, line1Content, cardWidth-4)
 			cardContent.WriteString(line1)
 			cardContent.WriteString("\n")
 
@@ -484,7 +484,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			if statusIndicator != "" {
 				content += "  " + statusIndicator
 			}
-			line := RenderSelectableRow(selected, false, content, cardWidth-4)
+			line := RenderSelectableRow(selected, false, false, content, cardWidth-4)
 			cardContent.WriteString(line)
 		}
 

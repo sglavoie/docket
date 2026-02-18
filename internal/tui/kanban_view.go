@@ -490,16 +490,26 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		content += " " + badge
 	}
 
-	// Build cursor prefix with active marker (matches RenderSelectableRow)
+	// Build cursor prefix with active/pinned markers (matches RenderSelectableRow)
 	activeMarker := ActiveStyle.Bold(true).Render("*")
-	if isSelected && task.Active {
+	switch {
+	case isSelected && task.Active && task.Pinned:
+		return SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker + content
+	case isSelected && task.Active:
 		return SelectionCursorStyle.Render(">") + activeMarker + " " + content
-	} else if isSelected {
+	case isSelected && task.Pinned:
+		return SelectionCursorStyle.Render(">") + " " + PinnedMarker + content
+	case isSelected:
 		return SelectionCursorStyle.Render(">") + "  " + content
-	} else if task.Active {
+	case task.Active && task.Pinned:
+		return " " + activeMarker + PinnedMarker + content
+	case task.Active:
 		return " " + activeMarker + " " + content
+	case task.Pinned:
+		return "  " + PinnedMarker + content
+	default:
+		return "   " + content
 	}
-	return "   " + content
 }
 
 // truncateWithEllipsis truncates a string to maxLen characters, adding "..."

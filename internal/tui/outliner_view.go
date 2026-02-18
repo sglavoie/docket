@@ -495,10 +495,26 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			indicators.WriteString(sectionStyle.Render("@ " + sectionName))
 		}
 
-		// Cursor prefix
-		cursorPrefix := "  "
-		if selected {
-			cursorPrefix = SelectionCursorStyle.Render(">") + " "
+		// Cursor prefix with active/pinned markers (matches RenderSelectableRow)
+		activeMarker := ActiveStyle.Bold(true).Render("*")
+		var cursorPrefix string
+		switch {
+		case selected && task.Active && task.Pinned:
+			cursorPrefix = SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker
+		case selected && task.Active:
+			cursorPrefix = SelectionCursorStyle.Render(">") + activeMarker + " "
+		case selected && task.Pinned:
+			cursorPrefix = SelectionCursorStyle.Render(">") + " " + PinnedMarker
+		case selected:
+			cursorPrefix = SelectionCursorStyle.Render(">") + "  "
+		case task.Active && task.Pinned:
+			cursorPrefix = " " + activeMarker + PinnedMarker
+		case task.Active:
+			cursorPrefix = " " + activeMarker + " "
+		case task.Pinned:
+			cursorPrefix = "  " + PinnedMarker
+		default:
+			cursorPrefix = "   "
 		}
 
 		// Selection checkbox (only in multi-select mode)
