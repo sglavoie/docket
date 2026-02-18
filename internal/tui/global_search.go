@@ -19,6 +19,8 @@ const (
 
 // GlobalSearchModel provides global search across all projects.
 type GlobalSearchModel struct {
+	BaseView
+
 	config   *config.Config
 	projects []*models.Project
 	allTasks []models.SearchResult  // flattened list of all tasks with project refs
@@ -44,9 +46,7 @@ type GlobalSearchModel struct {
 	tagCache     []string // All tags across projects
 	sectionCache []string // All sections across projects
 
-	// Dimensions
-	width        int
-	height       int
+	// Pane dimensions
 	listWidth    int
 	previewWidth int
 }
@@ -185,10 +185,9 @@ func (m *GlobalSearchModel) ShouldCaptureEsc() bool {
 	return false
 }
 
-// SetSize sets the view dimensions.
+// SetSize sets the view dimensions and recalculates pane widths.
 func (m *GlobalSearchModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 
 	// Calculate inner content width for split-pane overlay:
 	// cardWidth = viewWidth - 4 (margin)

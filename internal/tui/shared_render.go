@@ -16,11 +16,13 @@ type TaskLine struct {
 	MaxTitle   int // maximum title width; clamped to minimum 10
 
 	// Optional elements
-	Prefix    string // before cursor (e.g., star indicator "★ ")
-	PreBadges string // after cursor, before status badge (e.g., project name, checkbox, rank)
-	PostTitle string // after title (e.g., tags, score badge, custom section)
-	DueStr    string // right-aligned due date string (pre-styled by caller)
-	ViewWidth int    // total view width for due date right-alignment
+	Prefix          string // before cursor (e.g., star indicator "★ ")
+	PreBadges       string // after cursor, before status badge (e.g., project name, checkbox, rank)
+	PostTitle       string // after title (e.g., tags, score badge, custom section)
+	DueStr          string // right-aligned due date string (pre-styled by caller)
+	ViewWidth       int    // total view width for due date right-alignment
+	StatusBadge     string // override computed status badge (pre-styled by caller)
+	HideLowPriority bool   // only show priority badge for priority ≤ 2
 }
 
 // Render assembles the task line string from the configured fields.
@@ -30,9 +32,15 @@ func (tl TaskLine) Render() string {
 		cursor = "> "
 	}
 
-	statusIcon := GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
+	statusIcon := tl.StatusBadge
+	if statusIcon == "" {
+		statusIcon = GetStatusBadge(string(tl.Task.Status), tl.Task.Status.Icon())
+	}
 	typeIcon := GetTypeBadge(string(tl.Task.Type), tl.Task.Type.Icon())
 	priorityBadge := renderPriorityBadge(tl.Task.Priority)
+	if tl.HideLowPriority && tl.Task.Priority > 2 {
+		priorityBadge = ""
+	}
 
 	maxTitleLen := tl.MaxTitle
 	if maxTitleLen < 10 {
@@ -40,7 +48,13 @@ func (tl TaskLine) Render() string {
 	}
 	title := util.Truncate(tl.Task.Title, maxTitleLen)
 
-	line := fmt.Sprintf("%s%s%s%s %s %s %s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, priorityBadge, title, tl.PostTitle)
+	// Build priority segment: "badge " when present, "" when hidden
+	prioritySegment := ""
+	if priorityBadge != "" {
+		prioritySegment = priorityBadge + " "
+	}
+
+	line := fmt.Sprintf("%s%s%s%s %s %s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
 		line = fmt.Sprintf("%-*s %s", tl.ViewWidth-15, line, tl.DueStr)
 	}

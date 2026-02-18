@@ -59,8 +59,7 @@ func (m *FocusViewModel) View() string {
 	statusBlock := renderStatusMessages(m.statusMessage, m.err)
 
 	// Calculate available height for task list
-	// Fixed overhead: title(1) + blank after tab bar(1) + blank before footer(1) + footer(2) = 5
-	contentHeight := m.height - 5 - lipgloss.Height(tabBar)
+	contentHeight := fullscreenContentHeight(m.height, lipgloss.Height(tabBar)+1) // tab bar + blank
 	if filterBadge != "" {
 		contentHeight--
 	}

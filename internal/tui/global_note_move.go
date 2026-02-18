@@ -55,8 +55,9 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 	return m
 }
 
-func (m *GlobalNoteMoveProjectSelectorModel) HasActiveSearch() bool { return true }
-func (m *GlobalNoteMoveProjectSelectorModel) HasTextInput() bool    { return true }
+func (m *GlobalNoteMoveProjectSelectorModel) HasActiveSearch() bool  { return true }
+func (m *GlobalNoteMoveProjectSelectorModel) HasTextInput() bool     { return true }
+func (m *GlobalNoteMoveProjectSelectorModel) ShouldCaptureEsc() bool { return true }
 
 func (m *GlobalNoteMoveProjectSelectorModel) Init() tea.Cmd {
 	return m.ActivateSearch()

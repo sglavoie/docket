@@ -387,8 +387,7 @@ func (m *RecentActivityModel) View() string {
 		b.WriteString("\n")
 	}
 
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
-	contentHeight := m.Height() - 6
+	contentHeight := fullscreenContentHeight(m.Height(), 2) // tab bar(2)
 	if filterBadge != "" {
 		contentHeight--
 	}

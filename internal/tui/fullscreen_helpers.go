@@ -11,6 +11,20 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// fullscreenContentHeight calculates the available height for content in a
+// fullscreen tabbed view. It subtracts the standard chrome overhead: title line (1),
+// newline after title (1), and status bar footer (2), for a fixed cost of 4 lines.
+// The tabBarOverhead parameter accounts for the tab bar height plus any additional
+// header lines such as blank separators or filter badges.
+func fullscreenContentHeight(totalHeight, tabBarOverhead int) int {
+	const fixedOverhead = 4 // title(1) + newline(1) + footer(2)
+	h := totalHeight - fixedOverhead - tabBarOverhead
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
 // ScrollUpIndicator returns a muted "↑ N more" string for scroll overflow above.
 func ScrollUpIndicator(n int) string {
 	return MutedStyle.Render(fmt.Sprintf("↑ %d more", n))

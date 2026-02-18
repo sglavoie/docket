@@ -13,29 +13,18 @@ import (
 
 // ProjectFocusViewModel displays active-flagged tasks for a single project.
 type ProjectFocusViewModel struct {
+	BaseView
+	InteractiveViewState
+
 	project *models.Project
 
 	// Tasks
 	tasks []*models.Task
 
-	// Navigation
-	cursor int
-
 	// Sub-tabs
 	subTab           int
 	subTabRowFocused bool
 	subTabNames      []string
-
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string
-
-	// UI feedback
-	statusMessage string
-	err           error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewProjectFocusViewModel creates a new project focus view model.
@@ -140,37 +129,24 @@ func (m *ProjectFocusViewModel) HasActiveSearch() bool {
 	return false
 }
 
-// SetSize sets the view dimensions.
-func (m *ProjectFocusViewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *ProjectFocusViewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(
+		msg,
+		m.SetSize,
+		func() { _ = defaultPersister.Load(m.project); m.loadTasks() },
+		m.clampCursor,
+		func(s string) { m.statusMessage = s },
+	); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
-
-	case TaskUpdatedMsg:
-		// Auto-refresh when a task is updated (e.g., after editing)
-		_ = defaultPersister.Load(m.project)
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
-
-	case TaskPropertyChangedMsg:
-		_ = defaultPersister.Load(m.project)
-		m.loadTasks()
-		m.clampCursor()
-		return m, nil
 	}
 
 	return m, nil
@@ -186,7 +162,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 	}
 
 	// Clear previous error on any key
-	m.err = nil
+	m.ClearError()
 	m.statusMessage = ""
 
 	// Activate prefix mode
@@ -337,37 +313,29 @@ func (m *ProjectFocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd)
 		return m, nil // Cancel prefix mode
 	}
 
-	switch prefix {
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
-		}
-
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return m.clearDueDate()
-			}
-			return m.setQuickDueDate(days)
-		}
-		if key == "d" {
-			if task := m.getTaskAtCursor(); task != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: task, Project: m.project}
-				}
-			}
-		}
-
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		}
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+		return model, cmd
 	}
 
 	// Invalid prefix sequence - ignore
+	return m, nil
+}
+
+// prefixDispatchView implementation for ProjectFocusViewModel.
+
+func (m *ProjectFocusViewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *ProjectFocusViewModel) selectMsg(_ *models.Task, _ *models.Project) tea.Msg {
+	return CloseProjectFocusViewMsg{}
+}
+
+func (m *ProjectFocusViewModel) handleFilterPrefix(_ string) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
+func (m *ProjectFocusViewModel) handleFilterSubPrefix(_, _ string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
@@ -384,7 +352,7 @@ func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *ProjectFocusViewModel) getPersister() Persister { return defaultPersister }
 func (m *ProjectFocusViewModel) getDataDir() string      { return "" }
 func (m *ProjectFocusViewModel) reloadData()             { m.loadTasks() }
-func (m *ProjectFocusViewModel) setErr(err error)        { m.err = err }
+func (m *ProjectFocusViewModel) setErr(err error)        { m.SetError(err) }
 func (m *ProjectFocusViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
 func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
@@ -394,30 +362,13 @@ func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *ProjectFocusViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	return taskOpsChangeStatus(m, newStatus)
-}
-
 func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	return taskOpsChangePriority(m, key)
-}
-
-func (m *ProjectFocusViewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	return taskOpsSetQuickDueDate(m, daysFromNow)
-}
-
-func (m *ProjectFocusViewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	return taskOpsClearDueDate(m)
 }
 
 // clampCursor ensures cursor is within valid range.
 func (m *ProjectFocusViewModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, len(m.filteredTasks()))
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *ProjectFocusViewModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
 }
 
 // GetHelpItems returns help items for this view.
@@ -443,12 +394,12 @@ func (m *ProjectFocusViewModel) View() string {
 		b.WriteString(HelpStyle.Render("Mark tasks as active with * in the project tree."))
 		b.WriteString("\n")
 		left := HelpStyle.Render("q return")
-		b.WriteString(renderStatusBarFooter(left, "", m.width))
+		b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 		return b.String()
 	}
 
 	// Calculate available height for task list
-	contentHeight := m.height - 8
+	contentHeight := m.Height() - 8
 
 	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()
@@ -460,7 +411,7 @@ func (m *ProjectFocusViewModel) View() string {
 
 	// Render task lines
 	var lines []string
-	maxTitleLen := m.width - 35
+	maxTitleLen := m.Width() - 35
 
 	for i, task := range tasks {
 		isSelected := i == m.cursor
@@ -476,7 +427,7 @@ func (m *ProjectFocusViewModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
+	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
 	footerParts := "j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due"
@@ -486,7 +437,7 @@ func (m *ProjectFocusViewModel) View() string {
 	footerParts += " | ? help"
 	left := HelpStyle.Render(footerParts)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(tasks)))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
 }
@@ -501,7 +452,7 @@ func (m *ProjectFocusViewModel) renderSubTabBar() string {
 	tabs = append(tabs, "All")
 	tabs = append(tabs, m.subTabNames...)
 
-	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
+	bar := RenderTabBar(tabs, m.subTab, min(m.Width()-6, 54)-2, 1)
 
 	if m.subTabRowFocused {
 		bar = FocusIndicator + bar
@@ -573,7 +524,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	// Build line (no project name needed)
 	line := fmt.Sprintf("%s%s %s %s %s%s%s", cursor, statusIcon, typeIcon, priorityBadge, title, csStr, tagsStr)
 	if dueStr != "" {
-		line = fmt.Sprintf("%-*s %s", m.width-15, line, dueStr)
+		line = fmt.Sprintf("%-*s %s", m.Width()-15, line, dueStr)
 	}
 
 	if isSelected {

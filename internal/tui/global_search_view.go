@@ -74,7 +74,7 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.height - 8 // title + tab bar + input + footer
+	paneHeight := m.Height() - 8 // title + tab bar + input + footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
@@ -103,7 +103,7 @@ func (m *GlobalSearchModel) View() string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *GlobalSearchModel) renderTabBar() string {
-	return renderWrappingTabBar(globalSearchTabNames, m.activeTab, m.width)
+	return renderWrappingTabBar(globalSearchTabNames, m.activeTab, m.Width())
 }
 
 // renderFilterBadges renders active filters as styled badges.
@@ -181,7 +181,7 @@ func (m *GlobalSearchModel) renderTaskList() string {
 	}
 
 	var b strings.Builder
-	maxVisible := m.height - 7 // Account for chrome
+	maxVisible := m.Height() - 7 // Account for chrome
 
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
@@ -420,7 +420,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		b.WriteString("\n")
 
 		// Truncate description to fit preview
-		maxLines := m.height - 20
+		maxLines := m.Height() - 20
 		if maxLines < 3 {
 			maxLines = 3
 		}

@@ -2,12 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // handlePrefixKey handles the second key in a prefix key sequence.
@@ -196,36 +194,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "s":
 		// Snooze quick actions
-		now := time.Now()
-		today := util.StartOfDay(now)
-		var snoozeDate *time.Time
-		var desc string
-
-		switch key {
-		case "t":
-			d := today.AddDate(0, 0, 1)
-			snoozeDate = &d
-			desc = "tomorrow"
-		case "w":
-			d := today.AddDate(0, 0, 7)
-			snoozeDate = &d
-			desc = "+1 week"
-		case "m":
-			d := today.AddDate(0, 1, 0)
-			snoozeDate = &d
-			desc = "+1 month"
-		case "n":
-			daysUntilMon := (8 - int(today.Weekday())) % 7
-			if daysUntilMon == 0 {
-				daysUntilMon = 7
-			}
-			d := today.AddDate(0, 0, daysUntilMon)
-			snoozeDate = &d
-			desc = "next Monday"
-		case "0":
-			snoozeDate = nil
-			desc = "cleared"
-		case "d":
+		if key == "d" {
 			if cursorTask != nil {
 				task := cursorTask
 				project := m.project
@@ -234,7 +203,10 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
-		default:
+		}
+
+		snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+		if !ok {
 			return m, nil
 		}
 

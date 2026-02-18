@@ -136,7 +136,7 @@ func (m *FocusBoardModel) View() string {
 	}
 
 	// Calculate available height
-	contentHeight := m.height - 7 // title(1) + nl(1) + tabs(2) + footer(2) + status(1)
+	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + status(1)
 	if m.addMode {
 		contentHeight -= addBlockHeight
 	}

@@ -3,12 +3,10 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -436,42 +434,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	case "s":
 		// Snooze quick actions
-		now := time.Now()
-		today := util.StartOfDay(now)
-		var snoozeDate *time.Time
-		var desc string
-
-		switch key {
-		case "t":
-			// Tomorrow
-			d := today.AddDate(0, 0, 1)
-			snoozeDate = &d
-			desc = "tomorrow"
-		case "w":
-			// 1 week
-			d := today.AddDate(0, 0, 7)
-			snoozeDate = &d
-			desc = "+1 week"
-		case "m":
-			// 1 month
-			d := today.AddDate(0, 1, 0)
-			snoozeDate = &d
-			desc = "+1 month"
-		case "n":
-			// Next Monday
-			daysUntilMon := (8 - int(today.Weekday())) % 7
-			if daysUntilMon == 0 {
-				daysUntilMon = 7
-			}
-			d := today.AddDate(0, 0, daysUntilMon)
-			snoozeDate = &d
-			desc = "next Monday"
-		case "0":
-			// Clear snooze
-			snoozeDate = nil
-			desc = "cleared"
-		case "d":
-			// Open date picker for snooze
+		if key == "d" {
 			if CursorInBounds(m.cursor, len(visible)) {
 				task := visible[m.cursor].Task
 				project := m.project
@@ -480,7 +443,10 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
-		default:
+		}
+
+		snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+		if !ok {
 			return m, nil
 		}
 

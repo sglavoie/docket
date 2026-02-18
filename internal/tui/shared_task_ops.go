@@ -262,6 +262,36 @@ func applyClearDueDate(pf persistFn, project *models.Project, taskID string) Tas
 	return result
 }
 
+// resolveQuickSnoozeDate maps a snooze sub-key to a snooze date and description.
+// Returns (nil, "", false) for unrecognized keys. The "d" (date picker) case
+// must be handled by the caller.
+func resolveQuickSnoozeDate(key string) (snoozeDate *time.Time, desc string, ok bool) {
+	today := util.StartOfDay(time.Now())
+
+	switch key {
+	case "t":
+		d := today.AddDate(0, 0, 1)
+		return &d, "tomorrow", true
+	case "w":
+		d := today.AddDate(0, 0, 7)
+		return &d, "+1 week", true
+	case "m":
+		d := today.AddDate(0, 1, 0)
+		return &d, "+1 month", true
+	case "n":
+		daysUntilMon := (8 - int(today.Weekday())) % 7
+		if daysUntilMon == 0 {
+			daysUntilMon = 7
+		}
+		d := today.AddDate(0, 0, daysUntilMon)
+		return &d, "next Monday", true
+	case "0":
+		return nil, "cleared", true
+	default:
+		return nil, "", false
+	}
+}
+
 // applyToggleActive toggles the Active flag on a task.
 func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)

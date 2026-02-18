@@ -40,8 +40,7 @@ func (m *WeeklyReviewModel) View() string {
 		return b.String()
 	}
 
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
-	contentHeight := m.height - 7
+	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + blank(1)
 
 	if m.totalItems == 0 {
 		emptyMsg := "No items in this tab."
@@ -278,28 +277,9 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 // renderTaskLine renders a single task line (same style as daily review).
 func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyReviewSection, isSelected bool, maxTitleLen int) string {
 	task := dt.Task
-
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
 	projectName := util.Truncate(dt.Project.Name, 12)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
 
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-
-	priorityStr := ""
-	if task.Priority <= 2 {
-		priorityStr = renderPriorityBadge(task.Priority) + " "
-	}
-
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
-
+	// Context string based on section
 	contextStr := ""
 	switch section {
 	case WeeklySectionStaleTasks:
@@ -324,22 +304,15 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		}
 	}
 
-	line := fmt.Sprintf("%s%s %s %s %s%s", cursor, projectStr, statusIcon, typeIcon, priorityStr, title)
-	if contextStr != "" {
-		lineWidth := len(line)
-		padding := m.width - lineWidth - len(contextStr) - 5
-		if padding > 0 {
-			line = fmt.Sprintf("%-*s %s", m.width-len(contextStr)-5, line, contextStr)
-		} else {
-			line = line + " " + contextStr
-		}
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:            task,
+		IsSelected:      isSelected,
+		MaxTitle:        maxTitleLen,
+		PreBadges:       MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+		HideLowPriority: true,
+		DueStr:          contextStr,
+		ViewWidth:       m.width,
+	}.Render()
 }
 
 // getWeeklySectionHint returns a short action hint for a section.

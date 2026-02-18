@@ -40,6 +40,7 @@ const (
 
 // DueDateOverviewModel displays all tasks with due dates across all projects.
 type DueDateOverviewModel struct {
+	BaseView
 	InteractiveViewState
 
 	config         *config.Config
@@ -60,13 +61,6 @@ type DueDateOverviewModel struct {
 	// Navigation
 	totalTasks  int
 	groupStarts []int // Starting index of each group in flattened view
-
-	// UI feedback
-	err error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewDueDateOverviewModel creates a new due date overview model.
@@ -238,42 +232,28 @@ func (m *DueDateOverviewModel) HasActiveSearch() bool {
 	return false
 }
 
-// SetSize sets the view dimensions.
-func (m *DueDateOverviewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *DueDateOverviewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *DueDateOverviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(
+		msg,
+		m.SetSize,
+		m.loadTasksWithDueDates,
+		m.clampCursor,
+		func(s string) { m.statusMessage = s },
+	); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
 	case DueDateOverviewRefreshMsg:
 		m.loadTasksWithDueDates()
 		m.clampCursor()
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.loadTasksWithDueDates()
-			m.clampCursor()
-			m.statusMessage = "Tags updated"
-		}
-		return m, nil
-
-	case SnoozeDateChangedMsg:
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-		m.statusMessage = "Snooze date updated"
 		return m, nil
 	}
 
@@ -290,7 +270,7 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 
 	// Clear previous error on any key
-	m.err = nil
+	m.ClearError()
 
 	// Handle confirm dialog
 	if m.confirm.IsActive() {
@@ -484,58 +464,30 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 		return m, nil // Cancel prefix mode
 	}
 
-	switch prefix {
-	case "F":
-		return m.handleDueDateFilterPrefix(key)
-	case "Ft", "Fs", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handleDueDateFilterSubPrefix(prefix, key)
-
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
-		}
-
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return m.clearDueDate()
-			}
-			return m.setQuickDueDate(days)
-		}
-		if key == "d" {
-			if dt := m.getTaskAtCursor(); dt != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: dt.Task, Project: dt.Project}
-				}
-			}
-		}
-
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		case "p":
-			// gp: Go to project (navigate to task in its project)
-			if dt := m.getTaskAtCursor(); dt != nil {
-				return m, func() tea.Msg {
-					return GlobalSearchSelectMsg{Task: dt.Task, Project: dt.Project}
-				}
-			}
-			return m, nil
-		}
-
-	case "m":
-		section, ok := sectionForMoveKey(key)
-		if !ok {
-			return m, nil
-		}
-		return m.sectionMove(section)
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+		return model, cmd
 	}
 
 	// Invalid prefix sequence - ignore
 	return m, nil
+}
+
+// prefixDispatchView implementation for DueDateOverviewModel.
+
+func (m *DueDateOverviewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *DueDateOverviewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return GlobalSearchSelectMsg{Task: task, Project: project}
+}
+
+func (m *DueDateOverviewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handleDueDateFilterPrefix(key)
+}
+
+func (m *DueDateOverviewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handleDueDateFilterSubPrefix(prefix, key)
 }
 
 // taskOpsView implementation for DueDateOverviewModel.
@@ -551,31 +503,15 @@ func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *DueDateOverviewModel) getPersister() Persister { return m.projectService }
 func (m *DueDateOverviewModel) getDataDir() string      { return m.config.DataDir }
 func (m *DueDateOverviewModel) reloadData()             { m.loadTasksWithDueDates() }
-func (m *DueDateOverviewModel) setErr(err error)        { m.err = err }
+func (m *DueDateOverviewModel) setErr(err error)        { m.SetError(err) }
 func (m *DueDateOverviewModel) setStatus(msg string)    { m.statusMessage = msg }
-
-func (m *DueDateOverviewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
-	return taskOpsChangeStatus(m, newStatus)
-}
 
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	return taskOpsChangePriority(m, key)
 }
 
-func (m *DueDateOverviewModel) setQuickDueDate(daysFromNow int) (tea.Model, tea.Cmd) {
-	return taskOpsSetQuickDueDate(m, daysFromNow)
-}
-
-func (m *DueDateOverviewModel) clearDueDate() (tea.Model, tea.Cmd) {
-	return taskOpsClearDueDate(m)
-}
-
 func (m *DueDateOverviewModel) toggleActive() (tea.Model, tea.Cmd) {
 	return taskOpsToggleActive(m)
-}
-
-func (m *DueDateOverviewModel) sectionMove(section string) (tea.Model, tea.Cmd) {
-	return taskOpsSectionMove(m, section)
 }
 
 func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {

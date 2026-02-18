@@ -52,7 +52,7 @@ func (m *AllTasksViewModel) View() string {
 	// Count lines already rendered (header area) and reserve space below
 	// for: blank line(1) + status/error(1) + footer separator(1) + footer text(1) = 4
 	headerLines := strings.Count(b.String(), "\n")
-	contentHeight := m.height - headerLines - 4
+	contentHeight := m.Height() - headerLines - 4
 
 	if m.totalNavigableItems() == 0 {
 		if m.HasActiveFilters() {
@@ -69,10 +69,10 @@ func (m *AllTasksViewModel) View() string {
 
 	// Render groups with task lines
 	var lines []string
-	maxTitleLen := m.width - 50
+	maxTitleLen := m.Width() - 50
 	currentIndex := 0
 	cursorLineIdx := 0
-	separator := renderHorizontalDivider(m.width)
+	separator := renderHorizontalDivider(m.Width())
 
 	for i, group := range m.groups {
 		if i > 0 {
@@ -113,14 +113,14 @@ func (m *AllTasksViewModel) View() string {
 	}
 	left := HelpStyle.Render(footerLeft)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
 }
 
 // renderTabBar renders the tab bar for filtering.
 func (m *AllTasksViewModel) renderTabBar() string {
-	return renderWrappingTabBar(allTasksTabNames, m.activeTab, m.width)
+	return renderWrappingTabBar(allTasksTabNames, m.activeTab, m.Width())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -209,7 +209,7 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 		PreBadges:  checkbox + MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
 		PostTitle:  renderInlineTags(task.Tags) + scoreBadge,
 		DueStr:     dueStr,
-		ViewWidth:  m.width,
+		ViewWidth:  m.Width(),
 	}.Render()
 }
 

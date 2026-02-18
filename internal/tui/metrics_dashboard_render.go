@@ -37,8 +37,7 @@ func (m *MetricsDashboardModel) View() string {
 	helpText := HelpStyle.Render(strings.Join(helpParts, " · "))
 	footer := renderStatusBarFooter("", helpText, m.width)
 
-	// Content area height: total - title(1) - tabbar(2) - footer(2) - padding(1)
-	contentHeight := m.height - 6
+	contentHeight := fullscreenContentHeight(m.height, 2) // tab bar(2)
 	if contentHeight < 4 {
 		contentHeight = 4
 	}

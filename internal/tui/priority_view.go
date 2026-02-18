@@ -183,8 +183,7 @@ func (m *PriorityViewModel) View() string {
 	filterIndicator := m.renderActiveFilterIndicator()
 
 	// Calculate available height for task list
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
-	contentHeight := m.Height() - 6
+	contentHeight := fullscreenContentHeight(m.Height(), 2) // tab bar(2)
 
 	// Account for sub-tab bar
 	hasSubTabs := len(m.subTabNames) > 1

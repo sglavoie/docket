@@ -52,8 +52,7 @@ func (m *DailyReviewModel) View() string {
 	b.WriteString("\n")
 
 	// Calculate available height for content
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
-	contentHeight := m.height - 7
+	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + blank(1)
 	if filterBadge != "" {
 		contentHeight--
 	}
@@ -202,96 +201,68 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyReviewSection, isSelected bool, maxTitleLen int) string {
 	task := dt.Task
 
-	// Cursor
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	// Project name
-	projectName := util.Truncate(dt.Project.Name, 12)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-
-	// Type icon
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-
-	// Status icon
-	var statusIcon string
+	// Custom status badge for blocked tasks
+	var statusBadge string
 	if section == SectionBlocked {
 		if dt.Project.HasIncompleteDependencies(task) {
-			statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
+			statusBadge = BlockedByDepsStyle.Render(task.Status.Icon())
 		} else {
-			statusIcon = BlockedStyle.Render(task.Status.Icon())
+			statusBadge = BlockedStyle.Render(task.Status.Icon())
 		}
 	} else if task.Status.IsComplete() {
-		statusIcon = GetStatusStyle(string(task.Status)).Render(task.Status.Icon())
-	} else {
-		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
+		statusBadge = GetStatusStyle(string(task.Status)).Render(task.Status.Icon())
 	}
 
-	// Priority (only show high priority)
-	priorityStr := ""
-	if task.Priority <= 2 {
-		priorityStr = renderPriorityBadge(task.Priority) + " "
-	}
+	// Context string based on section
+	contextStr := m.sectionContextStr(dt, section)
 
-	// Title
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
+	projectName := util.Truncate(dt.Project.Name, 12)
 
-	// Additional context based on section
-	contextStr := ""
+	return TaskLine{
+		Task:            task,
+		IsSelected:      isSelected,
+		MaxTitle:        maxTitleLen,
+		PreBadges:       MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+		StatusBadge:     statusBadge,
+		HideLowPriority: true,
+		DueStr:          contextStr,
+		ViewWidth:       m.width,
+	}.Render()
+}
+
+// sectionContextStr returns the right-aligned context string for a task in a section.
+func (m *DailyReviewModel) sectionContextStr(dt DailyReviewTask, section DailyReviewSection) string {
+	task := dt.Task
 	switch section {
 	case SectionCompleted:
 		if task.CompletedAt != nil {
-			contextStr = MutedStyle.Render(formatRelativeTime(*task.CompletedAt))
+			return MutedStyle.Render(formatRelativeTime(*task.CompletedAt))
 		}
 	case SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture:
 		if task.DueDate != nil {
-			contextStr = m.formatDueDateContext(task.DueDate, section)
+			return m.formatDueDateContext(task.DueDate, section)
 		}
 	case SectionInReview:
 		if task.DueDate != nil {
-			contextStr = DueDateStyle.Render(task.DueDate.Format("Jan 2"))
+			return DueDateStyle.Render(task.DueDate.Format("Jan 2"))
 		}
 	case SectionBlocked:
-		// Show blocking reason
 		if dt.Project.HasIncompleteDependencies(task) {
 			deps := dt.Project.GetIncompleteDependencies(task)
 			if len(deps) > 0 {
-				contextStr = MutedStyle.Render(fmt.Sprintf("waiting on #%d", deps[0].ShortID))
+				return MutedStyle.Render(fmt.Sprintf("waiting on #%d", deps[0].ShortID))
 			}
 		} else {
-			contextStr = MutedStyle.Render("blocked")
+			return MutedStyle.Render("blocked")
 		}
 	case SectionOld:
 		displayTime := task.UpdatedAt
 		if displayTime.IsZero() {
 			displayTime = task.CreatedAt
 		}
-		contextStr = MutedStyle.Render(formatRelativeTime(displayTime))
+		return MutedStyle.Render(formatRelativeTime(displayTime))
 	}
-
-	// Build line
-	line := fmt.Sprintf("%s%s %s %s %s%s", cursor, projectStr, statusIcon, typeIcon, priorityStr, title)
-	if contextStr != "" {
-		// Right-align context info
-		lineWidth := len(line) // Approximate, ignoring ANSI
-		padding := m.width - lineWidth - len(contextStr) - 5
-		if padding > 0 {
-			line = fmt.Sprintf("%-*s %s", m.width-len(contextStr)-5, line, contextStr)
-		} else {
-			line = line + " " + contextStr
-		}
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return ""
 }
 
 // formatDueDateContext formats due date with appropriate styling for context.

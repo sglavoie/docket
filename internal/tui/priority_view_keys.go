@@ -291,94 +291,51 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil // Cancel prefix mode
 	}
 
-	switch prefix {
-	case ",":
-		if status, ok := StatusForPrefixKey(key); ok {
-			return m.changeTaskStatus(status)
-		}
-	case "g":
-		switch key {
-		case "g":
-			// gg: Go to first item
-			m.cursor = 0
-			return m, nil
-		case "t":
-			// gt: Go to task in project tree
-			if pt := m.getTaskAtCursor(); pt != nil {
-				return m, func() tea.Msg {
-					return PriorityViewSelectMsg{Task: pt.Task}
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "g" {
+			switch k {
+			case "t":
+				if pt := m.getTaskAtCursor(); pt != nil {
+					return m, func() tea.Msg {
+						return PriorityViewSelectMsg{Task: pt.Task}
+					}, true
 				}
-			}
-			return m, nil
-		case "h":
-			// gh: Go to task activity history
-			if pt := m.getTaskAtCursor(); pt != nil {
-				project := m.project
-				return m, func() tea.Msg {
-					return OpenTaskActivityMsg{Task: pt.Task, Project: project}
+				return m, nil, true
+			case "h":
+				if pt := m.getTaskAtCursor(); pt != nil {
+					project := m.project
+					return m, func() tea.Msg {
+						return OpenTaskActivityMsg{Task: pt.Task, Project: project}
+					}, true
 				}
+				return m, nil, true
 			}
-			return m, nil
 		}
-	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if isClear {
-				return m.clearDueDate()
-			}
-			return m.setQuickDueDate(days)
-		}
-		if key == "d" {
-			if pt := m.getTaskAtCursor(); pt != nil {
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: pt.Task, Project: m.project}
-				}
-			}
-			return m, nil
-		}
-	case "m":
-		section, ok := sectionForMoveKey(key)
-		if !ok {
-			return m, nil
-		}
-		return m.sectionMove(section)
-	case "F":
-		return m.handlePriorityFilterPrefix(key)
-	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
-		return m.handlePriorityFilterSubPrefix(prefix, key)
-	case "c":
-		// Create linked task or navigate
-		pt := m.getTaskAtCursor()
-		if pt == nil {
-			return m, nil
-		}
-		task := pt.Task
-		project := m.project
+		return nil, nil, false
+	}
 
-		// Navigate to linked tasks
-		if key == "n" {
-			return m, func() tea.Msg {
-				return ShowLinkedTaskSelectorMsg{Task: task, Project: project}
-			}
-		}
-
-		var linkType LinkType
-		switch key {
-		case "b":
-			linkType = LinkTypeBlocker
-		case "d":
-			linkType = LinkTypeDependent
-		case "s":
-			linkType = LinkTypeSubtask
-		case "f":
-			linkType = LinkTypeFollowUp
-		default:
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CreateLinkedTaskMsg{SourceTask: task, Project: project, LinkType: linkType}
-		}
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
+		return model, cmd
 	}
 
 	// Invalid prefix sequence - ignore
 	return m, nil
+}
+
+// prefixDispatchView implementation for PriorityViewModel.
+
+func (m *PriorityViewModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *PriorityViewModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return PriorityViewSelectMsg{Task: task}
+}
+
+func (m *PriorityViewModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handlePriorityFilterPrefix(key)
+}
+
+func (m *PriorityViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handlePriorityFilterSubPrefix(prefix, key)
 }

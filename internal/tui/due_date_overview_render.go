@@ -63,8 +63,7 @@ func (m *DueDateOverviewModel) View() string {
 	}
 
 	// Calculate available height for task list
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + blank(1) + footer(2) = 7
-	contentHeight := m.height - 7
+	contentHeight := fullscreenContentHeight(m.Height(), 3) // tab bar(2) + blank(1)
 	if filterBadge != "" {
 		contentHeight--
 	}
@@ -76,12 +75,12 @@ func (m *DueDateOverviewModel) View() string {
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
+	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
 	left := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
 }
@@ -115,14 +114,14 @@ var DueDateOverviewNavigationPrefixHints = []PrefixHint{
 
 // renderTabBar renders the tab bar for filtering.
 func (m *DueDateOverviewModel) renderTabBar() string {
-	return renderWrappingTabBar(dueDateTabNames, m.activeTab, m.width)
+	return renderWrappingTabBar(dueDateTabNames, m.activeTab, m.Width())
 }
 
 // renderAllGroups renders all task groups and returns the lines.
 func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
 	hasContent := false
-	separator := renderHorizontalDivider(m.width)
+	separator := renderHorizontalDivider(m.Width())
 
 	overdue, today, thisWeek, later := m.visibleGroups()
 
@@ -173,7 +172,7 @@ func (m *DueDateOverviewModel) renderGroupHeader(name string, count int, isOverd
 // renderGroup renders a group of tasks.
 func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *int, isOverdue bool) []string {
 	var lines []string
-	maxTitleLen := m.width - 35 // Account for date, project, icons
+	maxTitleLen := m.Width() - 35 // Account for date, project, icons
 
 	for _, dt := range tasks {
 		isSelected := *currentIndex == m.cursor
