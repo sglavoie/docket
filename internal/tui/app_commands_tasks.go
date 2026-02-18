@@ -274,18 +274,13 @@ func (m *AppModel) taskActionCommands() []Command {
 					return nil
 				}
 				if m.projectTree.multiSelectMode && len(m.projectTree.selectedTasks) > 0 {
-					m.projectTree.confirmAction = ConfirmBulkDelete
+					m.projectTree.showBulkDeleteConfirm()
 					return nil
 				}
 				visible := m.projectTree.visibleNodes()
 				if CursorInBounds(m.projectTree.cursor, len(visible)) {
 					task := visible[m.projectTree.cursor].Task
-					if task.IsRecurring() {
-						m.projectTree.confirmAction = ConfirmDeleteRecurring
-					} else {
-						m.projectTree.confirmAction = ConfirmDelete
-					}
-					m.projectTree.deleteTarget = task
+					m.projectTree.showDeleteConfirm(task)
 					return nil
 				}
 				return StatusMsg("No task selected")

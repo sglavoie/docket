@@ -768,17 +768,12 @@ func (m *TaskTemplatesModel) renderHelpText() string {
 		parts = []string{"/: search", "j/k: nav", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
 	}
 
-	// Try single line first
-	singleLine := strings.Join(parts, " · ")
-	if lipgloss.Width(singleLine) <= m.Width()-2 {
-		return singleLine
-	}
+	return renderWrappingHelpLine(strings.Join(parts, " · "), m.Width()-2)
+}
 
-	// Split into two lines
-	mid := len(parts) / 2
-	line1 := strings.Join(parts[:mid], " · ")
-	line2 := strings.Join(parts[mid:], " · ")
-	return line1 + "\n" + HelpStyle.Render(line2)
+// GetHelpItems returns help items for this view.
+func (m *TaskTemplatesModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewTaskTemplates)
 }
 
 // HasTextInput returns true when search is active.

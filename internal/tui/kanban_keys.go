@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -39,7 +38,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					if m.multiSelectMode && m.selectedCount() > 0 {
 						return m, m.handleBulkDelete()
 					}
-					return m, m.executeDelete(false)
+					return m, m.executeDelete()
 				case "archive":
 					return m, m.executeArchiveToggle()
 				case "bulk-status":
@@ -76,7 +75,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle search mode input first
-	if m.searchMode {
+	if m.IsSearchMode() {
 		return m.handleSearchInput(msg)
 	}
 
@@ -343,11 +342,10 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "/":
-		// Activate search mode
-		m.searchMode = true
+		// Activate search mode (pre-populate with existing filter search)
 		m.searchInput.SetValue(m.filter.Search)
-		m.searchInput.Focus()
-		return m, textinput.Blink
+		cmd := m.ActivateSearch()
+		return m, cmd
 
 	case "i":
 		// Open modal quick capture view

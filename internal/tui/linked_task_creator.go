@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // LinkedTaskCreatorModel handles creation of tasks linked to a source task.
@@ -80,7 +81,7 @@ func (m *LinkedTaskCreatorModel) View() string {
 	linkName := m.linkTypeName()
 	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Create %s for #%d", linkName, m.sourceTask.ShortID)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(truncateTitle(m.sourceTask.Title, 50)))
+	b.WriteString(MutedStyle.Render(util.Truncate(m.sourceTask.Title, 50)))
 	b.WriteString("\n\n")
 
 	// Input field
@@ -265,12 +266,4 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 			LinkType:   m.linkType,
 		}
 	}
-}
-
-// truncateTitle truncates a title to the specified length with ellipsis.
-func truncateTitle(title string, maxLen int) string {
-	if len(title) <= maxLen {
-		return title
-	}
-	return title[:maxLen-3] + "..."
 }

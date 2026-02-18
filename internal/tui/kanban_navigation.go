@@ -109,24 +109,10 @@ func (m *KanbanViewModel) moveColumnRight() {
 
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
 func (m *KanbanViewModel) customSectionTabs() []string {
-	if m.Project == nil {
-		return nil
-	}
-	custom := m.Project.GetCustomSections()
-	if len(custom) == 0 {
-		return nil
-	}
-	tabs := make([]string, 0, len(custom)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, custom...)
-	return tabs
+	return CustomSectionTabs(m.Project)
 }
 
 // activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
 func (m *KanbanViewModel) activeCustomSectionFilter() string {
-	tabs := m.customSectionTabs()
-	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
-		return ""
-	}
-	return tabs[m.customSectionTab]
+	return ActiveCustomSectionFilter(m.Project, m.customSectionTab)
 }

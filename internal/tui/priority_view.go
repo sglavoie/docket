@@ -52,6 +52,7 @@ const (
 
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
+	BaseView
 	InteractiveViewState
 
 	project        *models.Project
@@ -92,13 +93,6 @@ type PriorityViewModel struct {
 
 	// Waiting On section state
 	waitingOnCollapsed bool
-
-	// Status and error messages
-	err error
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewPriorityViewModel creates a new priority view for the given project.
@@ -128,36 +122,22 @@ func (m *PriorityViewModel) HasActiveSearch() bool {
 	return false
 }
 
-// SetSize sets the view dimensions.
-func (m *PriorityViewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 func (m *PriorityViewModel) Init() tea.Cmd {
 	return nil
 }
 
 func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if handled, cmd := handleCommonUpdateMsg(
+		msg,
+		m.SetSize,
+		m.loadActionableTasks,
+		m.clampCursor,
+		func(s string) { m.statusMessage = s },
+	); handled {
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case TagSelectorDoneMsg:
-		if !msg.Canceled {
-			m.loadActionableTasks()
-			m.clampCursor()
-			m.statusMessage = "Tags updated"
-		}
-		return m, nil
-
-	case SnoozeDateChangedMsg:
-		m.loadActionableTasks()
-		m.clampCursor()
-		m.statusMessage = "Snooze date updated"
-		return m, nil
-
 	case tea.KeyMsg:
 		return m.handleKeypress(msg)
 	}
@@ -204,7 +184,7 @@ func (m *PriorityViewModel) View() string {
 
 	// Calculate available height for task list
 	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
-	contentHeight := m.height - 6
+	contentHeight := m.Height() - 6
 
 	// Account for sub-tab bar
 	hasSubTabs := len(m.subTabNames) > 1
@@ -295,7 +275,7 @@ func (m *PriorityViewModel) View() string {
 	// Footer
 	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • F filter • s start suggested • ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
 }

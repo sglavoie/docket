@@ -58,8 +58,7 @@ func (m *DashboardModel) ResetCursor() {
 
 // SetSize sets the dashboard dimensions.
 func (m *DashboardModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseSearchableView.SetSize(width, height)
 }
 
 func (m *DashboardModel) Init() tea.Cmd {

@@ -11,7 +11,8 @@ import (
 )
 
 // handleCommandPaletteTaskAction handles inline task actions from the command palette.
-// It applies status changes (complete, start, reopen) and saves the project.
+// It applies status changes (complete, start, reopen) and saves the project
+// through the full workflow pipeline (auto-unblock, recurring, workflow rules).
 func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMsg) (bool, tea.Cmd) {
 	if msg.Task == nil || msg.Project == nil {
 		return true, nil
@@ -38,17 +39,31 @@ func (m *AppModel) handleCommandPaletteTaskAction(msg CommandPaletteTaskActionMs
 	if msg := current.CanTransitionTo(targetStatus); msg != "" {
 		return true, errorCmd("%s", msg)
 	}
+
+	prevStates := captureTaskStates(msg.Project.Tasks)
 	current.ApplyTransition(targetStatus)
 
-	// Async save with loading indicator
 	successMsg := fmt.Sprintf("Task %s: %s", msg.Action, current.Title)
+	opts := WorkflowSaveOptions{
+		Persister:     m.persister,
+		Project:       msg.Project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+		PrevStates:    prevStates,
+	}
 	return true, tea.Batch(
 		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, successMsg),
+		func() tea.Msg {
+			if err := persistWithWorkflow(opts); err != nil {
+				return SaveErrorMsg{Err: err}
+			}
+			return SaveCompleteMsg{SuccessMessage: successMsg}
+		},
 	)
 }
 
 // handleInlineTaskCreate creates a new task from the command palette inline creation.
+// Saves through the full workflow pipeline (auto-unblock, recurring, workflow rules).
 func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cmd) {
 	if msg.Project == nil || msg.Title == "" {
 		return true, nil
@@ -88,10 +103,20 @@ func (m *AppModel) handleInlineTaskCreate(msg InlineTaskCreateMsg) (bool, tea.Cm
 	msg.Project.Tasks = append([]*models.Task{task}, msg.Project.Tasks...)
 	msg.Project.BuildTaskTree()
 
-	// Async save with loading indicator
 	successMsg := fmt.Sprintf("Created: %s", msg.Title)
+	opts := WorkflowSaveOptions{
+		Persister:     m.persister,
+		Project:       msg.Project,
+		Config:        m.config,
+		ConfigManager: m.configManager,
+	}
 	return true, tea.Batch(
 		startLoading("Saving..."),
-		SaveProjectAsync(msg.Project, successMsg),
+		func() tea.Msg {
+			if err := persistWithWorkflow(opts); err != nil {
+				return SaveErrorMsg{Err: err}
+			}
+			return SaveCompleteMsg{SuccessMessage: successMsg}
+		},
 	)
 }

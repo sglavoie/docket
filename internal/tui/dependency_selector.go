@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // DependencySelectorModel allows toggling dependencies for a task.
@@ -150,7 +151,7 @@ func mapsEqual(a, b map[string]bool) bool {
 func (m *DependencySelectorModel) View() string {
 	var b strings.Builder
 
-	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, truncateTitle(m.task.Title, 40))
+	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 40))
 	b.WriteString(renderFullscreenTitle("Dependencies", subtitle))
 	b.WriteString("\n\n")
 

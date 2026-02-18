@@ -313,13 +313,13 @@ func (m *ScoreProfileManagerModel) assignedProfileID() string {
 }
 
 func (m *ScoreProfileManagerModel) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	subtitleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-	dimStyle := lipgloss.NewStyle()
-	checkStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	formulaStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	headerDimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	titleStyle := OverlayTitleStyle
+	subtitleStyle := MutedStyle
+	selectedStyle := OverlaySelectedStyle
+	dimStyle := NormalStyle
+	checkStyle := CheckmarkStyle
+	formulaStyle := MutedStyle
+	headerDimStyle := MutedStyle
 
 	assignedID := m.assignedProfileID()
 	assignedName := "none"
@@ -418,13 +418,7 @@ func (m *ScoreProfileManagerModel) View() string {
 
 	content := strings.Join(lines, "\n")
 
-	// Render as a centered box
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("99")).
-		Padding(1, 2)
-
-	box := boxStyle.Render(content)
+	box := OverlayBoxStyle.Render(content)
 
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
@@ -451,9 +445,9 @@ func (m *ScoreProfileManagerModel) detailPaneWidth() int {
 
 // buildDetailPane returns lines describing the selected profile's dimensions.
 func (m *ScoreProfileManagerModel) buildDetailPane(p *scoring.ScoringProfile, maxWidth int) []string {
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	headerStyle := OverlayTitleStyle
+	dimStyle := OverlayDetailStyle
+	mutedStyle := MutedStyle
 
 	var lines []string
 	lines = append(lines, headerStyle.Render(p.Name))

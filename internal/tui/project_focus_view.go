@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -504,12 +503,10 @@ func (m *ProjectFocusViewModel) renderSubTabBar() string {
 
 	bar := RenderTabBar(tabs, m.subTab, min(m.width-6, 54)-2, 1)
 
-	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
-	unfocusedPad := " "
 	if m.subTabRowFocused {
-		bar = focusIndicator + bar
+		bar = FocusIndicator + bar
 	} else {
-		bar = unfocusedPad + bar
+		bar = " " + bar
 	}
 	return bar
 }

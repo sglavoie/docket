@@ -221,16 +221,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if task == nil || candidate == nil {
 				return m, nil
 			}
-			for candidate != nil {
-				if ok, _ := task.CanIndent(candidate); ok {
-					task.ParentID = &candidate.ID
-					m.project.BuildTaskTree()
-					m.setUndoContext("Indent", task.Title)
-					m.validateZoomStack()
-					m.rebuildRows()
-					return m, m.saveWithWorkflow()
-				}
-				candidate = candidate.Parent
+			if IndentTask(m.project, task, candidate) {
+				m.setUndoContext("Indent", task.Title)
+				m.validateZoomStack()
+				m.rebuildRows()
+				return m, m.saveWithWorkflow()
 			}
 		}
 		return m, nil
@@ -242,8 +237,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if task == nil {
 				return m, nil
 			}
-			if ok, _ := task.CanOutdent(); ok {
-				_ = m.project.OutdentTask(task)
+			if OutdentTask(m.project, task) {
 				m.setUndoContext("Outdent", task.Title)
 				m.validateZoomStack()
 				m.rebuildRows()

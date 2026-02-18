@@ -353,9 +353,8 @@ func formatRelativeDueVerbose(dueDate *time.Time) string {
 func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width int) string {
 	bar := RenderTabBar(tabs, activeIdx, width-2, 1)
 
-	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 	if focused {
-		bar = focusIndicator + bar
+		bar = FocusIndicator + bar
 	} else {
 		bar = " " + bar
 	}
@@ -544,10 +543,9 @@ func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused b
 	// Use wrapping tab bar with width reduced for focus indicator column
 	bar := renderWrappingTabBar(tabs, subTab, width-2)
 
-	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 	lines := strings.Split(bar, "\n")
 	if subTabRowFocused {
-		lines[0] = focusIndicator + lines[0]
+		lines[0] = FocusIndicator + lines[0]
 	} else {
 		lines[0] = " " + lines[0]
 	}

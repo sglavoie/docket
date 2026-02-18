@@ -31,20 +31,6 @@ const (
 	DueDateNone                          // tasks with no due date
 )
 
-// ConfirmActionType represents the type of action requiring confirmation.
-type ConfirmActionType int
-
-const (
-	ConfirmNone ConfirmActionType = iota
-	ConfirmDelete
-	ConfirmDeleteRecurring
-	ConfirmBulkDelete
-	ConfirmBulkStatus
-	ConfirmArchiveTasks
-	ConfirmArchive
-	ConfirmUnarchive
-)
-
 // ViewMode represents the view mode filter for the project tree.
 type ViewMode int
 
@@ -181,8 +167,8 @@ type ProjectTreeModel struct {
 	sortAscending bool      // sort direction
 
 	// Confirmation state for destructive actions
-	confirmAction ConfirmActionType
-	deleteTarget  *models.Task // Task to delete when confirmAction=ConfirmDelete
+	confirm      ConfirmDialog
+	deleteTarget *models.Task // Task to delete when confirm action is "delete" or "delete-recurring"
 
 	// Prefix key state for Vim-style two-key sequences
 	pendingPrefix string // ",", "z", or "g" when waiting for second key
@@ -236,7 +222,6 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		},
 		sortField:        SortByDefault,
 		sortAscending:    true,
-		confirmAction:    ConfirmNone,
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		quickEdit:        NewQuickEditComponent(),
 		filterBar:        NewFilterBarComponent(),
@@ -250,23 +235,12 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
 func (m *ProjectTreeModel) customSectionTabs() []string {
-	custom := m.project.GetCustomSections()
-	if len(custom) == 0 {
-		return nil
-	}
-	tabs := make([]string, 0, len(custom)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, custom...)
-	return tabs
+	return CustomSectionTabs(m.project)
 }
 
 // activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
 func (m *ProjectTreeModel) activeCustomSectionFilter() string {
-	tabs := m.customSectionTabs()
-	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
-		return ""
-	}
-	return tabs[m.customSectionTab]
+	return ActiveCustomSectionFilter(m.project, m.customSectionTab)
 }
 
 // HasActiveSearch returns true if search mode is active or a search filter is applied.
@@ -281,7 +255,7 @@ func (m *ProjectTreeModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != "" || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
+	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != "" || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive() || m.confirm.IsActive()
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.
@@ -296,8 +270,7 @@ func (m *ProjectTreeModel) clampCursor() {
 
 // SetSize sets the view dimensions.
 func (m *ProjectTreeModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseSearchableView.SetSize(width, height)
 }
 
 func (m *ProjectTreeModel) Init() tea.Cmd {

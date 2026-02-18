@@ -59,6 +59,8 @@ type OutlinerModel struct {
 	statusMessage string        // Transient status/confirmation prompt text
 	err           error         // Last error from an operation
 
+	bulkOp *BulkOperationComponent // Deferred bulk status change after confirmation
+
 	pendingUndoAction  string // Action label for next undo snapshot
 	pendingUndoContext string // Context description for next undo snapshot
 }
@@ -71,6 +73,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		configManager:     cfgManager,
 		quickEdit:         NewQuickEditComponent(),
 		sidebar:           NewSidebarComponent(),
+		bulkOp:            NewBulkOperationComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
 		filter: CommonFilterState{
@@ -320,40 +323,17 @@ func (m *OutlinerModel) toggleSort(field SortField) {
 
 // clampCursor ensures the cursor stays within [0, len(rows)-1].
 func (m *OutlinerModel) clampCursor() {
-	if len(m.rows) == 0 {
-		m.cursor = 0
-		return
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-	if m.cursor >= len(m.rows) {
-		m.cursor = len(m.rows) - 1
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.rows))
 }
 
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.
 func (m *OutlinerModel) customSectionTabs() []string {
-	if m.project == nil {
-		return nil
-	}
-	custom := m.project.GetCustomSections()
-	if len(custom) == 0 {
-		return nil
-	}
-	tabs := make([]string, 0, len(custom)+1)
-	tabs = append(tabs, "All")
-	tabs = append(tabs, custom...)
-	return tabs
+	return CustomSectionTabs(m.project)
 }
 
 // activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
 func (m *OutlinerModel) activeCustomSectionFilter() string {
-	tabs := m.customSectionTabs()
-	if tabs == nil || m.customSectionTab <= 0 || m.customSectionTab >= len(tabs) {
-		return ""
-	}
-	return tabs[m.customSectionTab]
+	return ActiveCustomSectionFilter(m.project, m.customSectionTab)
 }
 
 // contentHeight returns the number of task rows visible on screen,
@@ -387,10 +367,6 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
-	case OutlinerUndoPerformedMsg:
-		m.rebuildRows()
-		m.statusMessage = "Undo completed"
-		return m, nil
 	case outlinerRefreshMsg:
 		m.rebuildRows()
 		return m, nil
@@ -473,18 +449,7 @@ func (m *OutlinerModel) clearMultiSelect() {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context.
 func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := WorkflowSaveOptions{
-		Persister:     NewProjectService(),
-		Project:       m.project,
-		Config:        m.config,
-		ConfigManager: m.configManager,
-		PrevStates:    prevStates,
-		UndoAction:    m.pendingUndoAction,
-		UndoContext:   m.pendingUndoContext,
-	}
-	if m.config.UndoHistoryDepth != nil {
-		opts.UndoDepth = *m.config.UndoHistoryDepth
-	}
+	opts := BuildWorkflowOpts(NewProjectService(), m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
 	m.clearUndoContext()
 	return opts
 }
@@ -515,7 +480,7 @@ func (m *OutlinerModel) performUndo() tea.Cmd {
 		if err := performUndoFromBackup(NewProjectService(), m.project); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		return OutlinerUndoPerformedMsg{}
+		return UndoPerformedMsg{Action: "Undo"}
 	}
 }
 
@@ -554,9 +519,6 @@ func copyBoolMap(src map[string]bool) map[string]bool {
 	}
 	return dst
 }
-
-// OutlinerUndoPerformedMsg signals that an undo was performed in the outliner.
-type OutlinerUndoPerformedMsg struct{}
 
 // outlinerRefreshMsg signals that the outliner should refresh its rows.
 type outlinerRefreshMsg struct{}

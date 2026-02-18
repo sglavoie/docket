@@ -332,7 +332,7 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 		// Override common x to also clear view-specific state
 		m.ClearAllFilters()
 		m.actionableFilter = false
-		m.searchInput.SetValue("")
+		m.ClearSearch()
 		m.loadTasks()
 		return m, nil
 	}

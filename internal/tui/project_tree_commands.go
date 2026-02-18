@@ -41,15 +41,11 @@ func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
 // performUndo restores the project from backup.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
 	return func() tea.Msg {
-		tasksBefore := len(m.project.Tasks)
 		if err := performUndoFromBackup(m.projectService, m.project); err != nil {
 			return ErrorMsg{Err: err}
 		}
 		m.buildTree()
-		return UndoCompletedMsg{
-			TasksBefore: tasksBefore,
-			TasksAfter:  len(m.project.Tasks),
-		}
+		return UndoPerformedMsg{Action: "Undo"}
 	}
 }
 
@@ -57,18 +53,7 @@ func (m *ProjectTreeModel) performUndo() tea.Cmd {
 // state, draining the pending undo context. Must be called at persist time
 // (inside closures) so the undo context reflects the latest state.
 func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := WorkflowSaveOptions{
-		Persister:     m.projectService,
-		Project:       m.project,
-		Config:        m.config,
-		ConfigManager: m.configManager,
-		PrevStates:    prevStates,
-		UndoAction:    m.pendingUndoAction,
-		UndoContext:   m.pendingUndoContext,
-	}
-	if m.config.UndoHistoryDepth != nil {
-		opts.UndoDepth = *m.config.UndoHistoryDepth
-	}
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
 	m.clearUndoContext()
 	return opts
 }
@@ -189,77 +174,92 @@ func taskStateChanged(current, prev *models.Task) bool {
 	return false
 }
 
+// showDeleteConfirm shows the appropriate delete confirmation for a single task.
+func (m *ProjectTreeModel) showDeleteConfirm(task *models.Task) {
+	m.deleteTarget = task
+	if task.IsRecurring() {
+		m.confirm.Show("delete-recurring",
+			fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
+				task.ShortID, task.Title))
+	} else {
+		childCount := task.CountChildren()
+		if childCount > 0 {
+			m.confirm.Show("delete",
+				fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", task.ShortID, task.Title, childCount))
+		} else {
+			m.confirm.Show("delete",
+				fmt.Sprintf("Delete task #%d '%s'? (y/n)", task.ShortID, task.Title))
+		}
+	}
+}
+
+// showBulkDeleteConfirm shows a confirmation for deleting multiple selected tasks.
+func (m *ProjectTreeModel) showBulkDeleteConfirm() {
+	totalChildren := 0
+	for _, task := range m.getSelectedTasks() {
+		totalChildren += task.CountChildren()
+	}
+	if totalChildren > 0 {
+		m.confirm.Show("bulk-delete",
+			fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren))
+	} else {
+		m.confirm.Show("bulk-delete",
+			fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+	}
+}
+
 // deleteTask removes a task and its children from the project.
 func (m *ProjectTreeModel) deleteTask() tea.Cmd {
-	// Capture config value before returning command
-	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
+	if m.deleteTarget == nil {
+		return nil
 	}
 
-	return func() tea.Msg {
-		if m.deleteTarget == nil {
-			return nil
-		}
+	task := m.deleteTarget
+	m.deleteTarget = nil
 
-		task := m.deleteTarget
-		m.deleteTarget = nil
+	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 
-		// Record undo snapshot before deleting
-		if undoDepth > 0 {
-			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Task",
-				fmt.Sprintf("#%d %s", task.ShortID, task.Title), undoDepth)
-		}
-
-		if err := m.projectService.Backup(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := deleteTasksFromProject(m.project, m.projectService, map[string]bool{task.ID: true}, &m.focusedTask, m.config.DataDir); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		m.buildTree()
-		return TaskDeletedMsg{Task: task}
+	// Exit focus mode if focused task is being deleted
+	if m.focusedTask != nil && m.focusedTask.ID == task.ID {
+		m.focusedTask = nil
 	}
+
+	pf := m.workflowPersistFn()
+	result := applyDeleteTask(pf, m.project, task.ID, m.config.DataDir)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+
+	m.buildTree()
+	return result.Cmd
 }
 
 // bulkDeleteTasks removes all selected tasks and their children from the project.
 func (m *ProjectTreeModel) bulkDeleteTasks() tea.Cmd {
-	// Capture config value and count before returning command
-	undoDepth := 0
-	if m.config.UndoHistoryDepth != nil {
-		undoDepth = *m.config.UndoHistoryDepth
-	}
 	taskCount := len(m.selectedTasks)
-	targetIDs := make(map[string]bool, taskCount)
-	for id := range m.selectedTasks {
-		targetIDs[id] = true
+	if taskCount == 0 {
+		return nil
 	}
 
-	return func() tea.Msg {
-		if taskCount == 0 {
-			return nil
-		}
+	m.setUndoContext("Delete Tasks", fmt.Sprintf("%d tasks", taskCount))
 
-		if undoDepth > 0 {
-			_ = m.projectService.RecordUndoSnapshot(m.project, "Delete Tasks",
-				fmt.Sprintf("%d tasks", taskCount), undoDepth)
-		}
-
-		if err := m.projectService.Backup(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := deleteTasksFromProject(m.project, m.projectService, targetIDs, &m.focusedTask, m.config.DataDir); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
-		m.clearSelection()
-		m.buildTree()
-		m.clampCursor()
-		return treeRefreshMsg{}
+	// Exit focus mode if focused task is among those being deleted
+	if m.focusedTask != nil && m.selectedTasks[m.focusedTask.ID] {
+		m.focusedTask = nil
 	}
+
+	pf := m.workflowPersistFn()
+	for taskID := range m.selectedTasks {
+		result := applyDeleteTask(pf, m.project, taskID, m.config.DataDir)
+		if result.Err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+		}
+	}
+
+	m.clearSelection()
+	m.buildTree()
+	m.clampCursor()
+	return func() tea.Msg { return treeRefreshMsg{} }
 }
 
 // applyBulkChanges applies bulk edit changes to the given tasks.

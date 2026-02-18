@@ -10,12 +10,12 @@ import (
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.width)
+	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.Width())
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
 func (m *PriorityViewModel) renderSubTabBar() string {
-	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.width)
+	return renderDynamicSubTabBar(m.subTabNames, m.subTab, m.subTabRowFocused, m.Width())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -56,7 +56,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	}
 
 	task := m.suggestion.Task.Task
-	boxWidth := m.width - 4
+	boxWidth := m.Width() - 4
 
 	// Build task line
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
@@ -111,7 +111,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 
 	var lines []string
 	hasContent := false
-	separator := renderHorizontalDivider(m.width)
+	separator := renderHorizontalDivider(m.Width())
 
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
@@ -195,7 +195,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 	}
 
 	var lines []string
-	maxTitleLen := m.width - 50
+	maxTitleLen := m.Width() - 50
 
 	for rank, pt := range m.scoredTasks {
 		isSelected := *currentIndex == m.cursor
@@ -236,7 +236,7 @@ func (m *PriorityViewModel) renderWaitingOnHeader() string {
 // renderGroup renders a group of tasks.
 func (m *PriorityViewModel) renderGroup(tasks []*PriorityTask, currentIndex *int, isOverdue bool) []string {
 	var lines []string
-	maxTitleLen := m.width - 45 // Account for other elements
+	maxTitleLen := m.Width() - 45 // Account for other elements
 
 	for _, pt := range tasks {
 		isSelected := *currentIndex == m.cursor
@@ -300,14 +300,14 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		Prefix:     starPrefix,
 		PostTitle:  scoreBadge + csStr + renderInlineTags(task.Tags),
 		DueStr:     dueStr,
-		ViewWidth:  m.width,
+		ViewWidth:  m.Width(),
 	}.Render()
 }
 
 // renderWaitingOnTask renders a blocked task in the waiting on section.
 func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 	task := pt.Task
-	maxTitleLen := m.width - 50
+	maxTitleLen := m.Width() - 50
 
 	// Blocked status icon
 	statusIcon := BlockedStyle.Render("◈")

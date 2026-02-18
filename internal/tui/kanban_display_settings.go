@@ -173,10 +173,10 @@ func (m *KanbanDisplaySettingsModel) View() string {
 		contentWidth = 30
 	}
 
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-	dimStyle := lipgloss.NewStyle()
-	mutedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	titleStyle := OverlayTitleStyle
+	selectedStyle := OverlaySelectedStyle
+	dimStyle := NormalStyle
+	mutedStyle := MutedStyle
 
 	var lines []string
 	lines = append(lines, titleStyle.Width(contentWidth).Render("Kanban Display Settings"))
@@ -228,12 +228,7 @@ func (m *KanbanDisplaySettingsModel) View() string {
 		content += l
 	}
 
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("99")).
-		Padding(1, 2)
-
-	box := boxStyle.Render(content)
+	box := OverlayBoxStyle.Render(content)
 
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,

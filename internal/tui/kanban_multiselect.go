@@ -212,34 +212,27 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 	})
 }
 
-// handleBulkDelete deletes all selected tasks.
+// handleBulkDelete deletes all selected tasks using the shared applyDeleteTask.
 func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 	tasks := m.getSelectedTasksList()
 	if len(tasks) == 0 {
 		return nil
 	}
 
-	prevStates := captureTaskStates(m.Project.Tasks)
-
-	deleteIDs := make(map[string]bool)
+	pf := m.workflowPersistFn()
 	for _, task := range tasks {
-		deleteIDs[task.ID] = true
-	}
-
-	var remaining []*models.Task
-	for _, t := range m.Project.Tasks {
-		if !deleteIDs[t.ID] {
-			remaining = append(remaining, t)
+		result := applyDeleteTask(pf, m.Project, task.ID, m.config.DataDir)
+		if result.Err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: result.Err} }
 		}
 	}
-	m.Project.Tasks = remaining
-	m.Project.BuildTaskTree()
 
+	section := m.CurrentSection()
 	m.finishBulk(fmt.Sprintf("Deleted %d tasks", len(tasks)))
 
-	return m.saveWithWorkflow(prevStates, func() tea.Msg {
-		return KanbanTaskDeletedMsg{TaskID: "", Section: m.CurrentSection()}
-	})
+	return func() tea.Msg {
+		return KanbanTaskDeletedMsg{TaskID: "", Section: section}
+	}
 }
 
 // handleBulkPriorityChange applies a priority change to all selected tasks.

@@ -94,46 +94,8 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	}
 
 	// Confirmation prompt
-	if m.confirmAction != ConfirmNone {
-		var prompt string
-		if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
-			prompt = fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
-				m.deleteTarget.ShortID, m.deleteTarget.Title)
-		} else if m.confirmAction == ConfirmDelete && m.deleteTarget != nil {
-			childCount := m.deleteTarget.CountChildren()
-			if childCount > 0 {
-				prompt = fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title, childCount)
-			} else {
-				prompt = fmt.Sprintf("Delete task #%d '%s'? (y/n)", m.deleteTarget.ShortID, m.deleteTarget.Title)
-			}
-		} else if m.confirmAction == ConfirmBulkDelete {
-			totalChildren := 0
-			for _, task := range m.getSelectedTasks() {
-				totalChildren += task.CountChildren()
-			}
-			if totalChildren > 0 {
-				prompt = fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren)
-			} else {
-				prompt = fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks))
-			}
-		} else if m.confirmAction == ConfirmBulkStatus {
-			prompt = fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)",
-				m.bulkOp.GetBlockedCount(), len(m.bulkOp.GetTasks()))
-		} else if m.confirmAction == ConfirmArchiveTasks {
-			count := m.project.CountCompletedTasks()
-			prompt = fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", count)
-		} else {
-			// For ConfirmArchive/ConfirmUnarchive - format as string for display
-			var action string
-			switch m.confirmAction {
-			case ConfirmArchive:
-				action = "archive"
-			case ConfirmUnarchive:
-				action = "unarchive"
-			}
-			prompt = fmt.Sprintf("Are you sure you want to %s this project? (y/n)", action)
-		}
-		b.WriteString(ConfirmStyle.Render(prompt))
+	if m.confirm.IsActive() {
+		b.WriteString(m.confirm.Render())
 		b.WriteString("\n")
 	}
 
@@ -427,45 +389,8 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	}
 
 	// Confirmation prompt
-	if m.confirmAction != ConfirmNone {
-		var prompt string
-		if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
-			prompt = fmt.Sprintf("Delete recurring #%d? (d)elete / (s)top recurrence / (n)o", m.deleteTarget.ShortID)
-		} else if m.confirmAction == ConfirmDelete && m.deleteTarget != nil {
-			childCount := m.deleteTarget.CountChildren()
-			if childCount > 0 {
-				prompt = fmt.Sprintf("Delete #%d and %d children? (y/n)", m.deleteTarget.ShortID, childCount)
-			} else {
-				prompt = fmt.Sprintf("Delete #%d? (y/n)", m.deleteTarget.ShortID)
-			}
-		} else if m.confirmAction == ConfirmBulkDelete {
-			totalChildren := 0
-			for _, task := range m.getSelectedTasks() {
-				totalChildren += task.CountChildren()
-			}
-			if totalChildren > 0 {
-				prompt = fmt.Sprintf("Delete %d tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren)
-			} else {
-				prompt = fmt.Sprintf("Delete %d tasks? (y/n)", len(m.selectedTasks))
-			}
-		} else if m.confirmAction == ConfirmBulkStatus {
-			prompt = fmt.Sprintf("%d have incomplete deps, complete %d? (y/n)",
-				m.bulkOp.GetBlockedCount(), len(m.bulkOp.GetTasks()))
-		} else if m.confirmAction == ConfirmArchiveTasks {
-			count := m.project.CountCompletedTasks()
-			prompt = fmt.Sprintf("Archive %d completed task(s)? (y/n)", count)
-		} else {
-			// For ConfirmArchive/ConfirmUnarchive - format as string for display
-			var action string
-			switch m.confirmAction {
-			case ConfirmArchive:
-				action = "archive"
-			case ConfirmUnarchive:
-				action = "unarchive"
-			}
-			prompt = fmt.Sprintf("%s project? (y/n)", action)
-		}
-		b.WriteString(ConfirmStyle.Render(prompt))
+	if m.confirm.IsActive() {
+		b.WriteString(m.confirm.Render())
 		b.WriteString("\n")
 	}
 

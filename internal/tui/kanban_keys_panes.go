@@ -6,31 +6,13 @@ import (
 
 // handleSearchInput processes keyboard input while in search mode.
 func (m *KanbanViewModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		// Cancel search
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.searchInput.SetValue("")
-		return m, nil
-
-	case "enter":
-		// Confirm search
-		m.searchMode = false
-		m.searchInput.Blur()
-		m.filter.Search = m.searchInput.Value()
+	handled, cmd, valueChanged := m.HandleSearchInput(msg)
+	if handled || valueChanged {
+		// Sync search query to filter and reload tasks
+		m.filter.Search = m.SearchQuery()
 		m.loadTasks()
-		return m, nil
-
-	default:
-		// Update search input
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		// Live filtering as user types
-		m.filter.Search = m.searchInput.Value()
-		m.loadTasks()
-		return m, cmd
 	}
+	return m, cmd
 }
 
 // handleDetailsPaneKey handles keys when the details pane has focus.

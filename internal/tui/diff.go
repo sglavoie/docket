@@ -3,7 +3,6 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -21,13 +20,6 @@ type DiffLine struct {
 	Kind    DiffLineKind
 	Content string
 }
-
-// Diff styles
-var (
-	DiffAddStyle     = lipgloss.NewStyle().Foreground(ColorSuccess)
-	DiffRemoveStyle  = lipgloss.NewStyle().Foreground(ColorError)
-	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
-)
 
 // ComputeContextualDiff computes a diff with surrounding context lines using Myers algorithm.
 // When contextLines > 0, only shows changed lines plus the specified number of surrounding context lines.

@@ -178,9 +178,9 @@ func (m *AppModel) otherCommands() []Command {
 					return nil
 				}
 				if m.currentProject.Archived {
-					m.projectTree.confirmAction = ConfirmUnarchive
+					m.projectTree.confirm.Show("unarchive", "Are you sure you want to unarchive this project? (y/n)")
 				} else {
-					m.projectTree.confirmAction = ConfirmArchive
+					m.projectTree.confirm.Show("archive", "Are you sure you want to archive this project? (y/n)")
 				}
 				return nil
 			},

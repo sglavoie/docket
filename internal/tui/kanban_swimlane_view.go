@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // renderSwimlaneBoardView renders the kanban board in swimlane (2D grid) mode.
@@ -15,11 +17,10 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	// Custom section tab bar
 	hasCustomSections := m.customSectionTabs() != nil && IsSectionGroupBy(m.groupBy)
 	if hasCustomSections {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 		unfocusedPad := " "
 		csBar := RenderColoredTabBar(m.customSectionTabs(), m.customSectionTab, m.Width()-1, 1, m.Project.SectionColors)
 		if m.customSectionRowFocused {
-			csBar = focusIndicator + csBar
+			csBar = FocusIndicator + csBar
 		} else {
 			csBar = unfocusedPad + csBar
 		}
@@ -29,10 +30,9 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	// Preset tab bar
 	presetBar := m.renderKanbanTabBar()
 	if hasCustomSections {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 		unfocusedPad := " "
 		if !m.customSectionRowFocused {
-			presetBar = focusIndicator + presetBar
+			presetBar = FocusIndicator + presetBar
 		} else {
 			presetBar = unfocusedPad + presetBar
 		}
@@ -47,8 +47,8 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	viewParts = append(viewParts, indicator)
 
 	// Search input if in search mode
-	if m.searchMode {
-		searchLine := "Search: " + m.searchInput.View()
+	if m.IsSearchMode() {
+		searchLine := "Search: " + m.SearchInputView()
 		viewParts = append(viewParts, searchLine)
 	}
 
@@ -88,7 +88,7 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	}
 	quickEditHeight := m.getQuickEditHeight()
 	searchBarHeight := 0
-	if m.searchMode {
+	if m.IsSearchMode() {
 		searchBarHeight = 1
 	}
 	_ = searchBarHeight // already counted in viewParts
@@ -359,7 +359,7 @@ func (m *KanbanViewModel) renderSwimlaneCellTask(node *KanbanNode, isSelected, i
 	if maxTitleLen < KanbanMinTitleWidth {
 		maxTitleLen = KanbanMinTitleWidth
 	}
-	title = truncateWithEllipsis(title, maxTitleLen)
+	title = util.Truncate(title, maxTitleLen)
 
 	// Apply styling
 	if isSelected {

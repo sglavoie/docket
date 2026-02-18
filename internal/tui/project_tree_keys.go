@@ -470,7 +470,8 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 		if m.viewMode == ViewModeCompleted {
 			completedCount := m.project.CountCompletedTasks()
 			if completedCount > 0 {
-				m.confirmAction = ConfirmArchiveTasks
+				m.confirm.Show("archive-tasks",
+					fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", completedCount))
 			}
 			return true, nil
 		}

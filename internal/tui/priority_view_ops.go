@@ -21,7 +21,7 @@ func (m *PriorityViewModel) getTaskRef() (*models.Task, *models.Project) {
 func (m *PriorityViewModel) getPersister() Persister { return m.projectService }
 func (m *PriorityViewModel) getDataDir() string      { return m.config.DataDir }
 func (m *PriorityViewModel) reloadData()             { m.loadActionableTasks() }
-func (m *PriorityViewModel) setErr(err error)        { m.err = err }
+func (m *PriorityViewModel) setErr(err error)        { m.SetError(err) }
 func (m *PriorityViewModel) setStatus(msg string)    { m.statusMessage = msg }
 
 func (m *PriorityViewModel) changeTaskStatus(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {

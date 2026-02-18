@@ -106,17 +106,11 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		// Indent task (move right in hierarchy, nest under task above)
 		if CursorInBounds(m.cursor, len(visible)) && m.cursor > 0 {
 			task := visible[m.cursor].Task
-			// Walk up from the visually-above task to find a valid parent
 			candidate := visible[m.cursor-1].Task
-			for candidate != nil {
-				if ok, _ := task.CanIndent(candidate); ok {
-					prevStates := captureTaskStates(m.project.Tasks)
-					task.ParentID = &candidate.ID
-					m.project.BuildTaskTree()
-					m.setUndoContext("Indent", task.Title)
-					return true, m.saveAndRefreshWithPrevStates(prevStates)
-				}
-				candidate = candidate.Parent
+			prevStates := captureTaskStates(m.project.Tasks)
+			if IndentTask(m.project, task, candidate) {
+				m.setUndoContext("Indent", task.Title)
+				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}
 		}
 		return true, nil
@@ -124,9 +118,8 @@ func (m *ProjectTreeModel) handleMovementKeys(key string, visible []*TreeNode) (
 		// Outdent task (move left in hierarchy, to parent's level)
 		if CursorInBounds(m.cursor, len(visible)) {
 			task := visible[m.cursor].Task
-			if ok, _ := task.CanOutdent(); ok {
-				prevStates := captureTaskStates(m.project.Tasks)
-				_ = m.project.OutdentTask(task)
+			prevStates := captureTaskStates(m.project.Tasks)
+			if OutdentTask(m.project, task) {
 				m.setUndoContext("Outdent", task.Title)
 				return true, m.saveAndRefreshWithPrevStates(prevStates)
 			}

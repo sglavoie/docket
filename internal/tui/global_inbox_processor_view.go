@@ -28,20 +28,10 @@ func (m *GlobalInboxProcessorModel) renderHeader() string {
 	return fmt.Sprintf("%s\n%s", title, progressBar)
 }
 
-// innerWidth returns the available content width inside a box (border + padding).
-func (m *GlobalInboxProcessorModel) innerWidth() int {
-	// 2 border chars + 4 padding chars (2 each side)
-	w := m.width - 6
-	if w < 20 {
-		w = 20
-	}
-	return w
-}
-
 // renderTaskDisplay renders the current task details.
 func (m *GlobalInboxProcessorModel) renderTaskDisplay(git *GlobalInboxTask) string {
 	var b strings.Builder
-	inner := m.innerWidth()
+	inner := inboxInnerWidth(m.width)
 
 	task := git.Task
 	project := git.Project
@@ -80,7 +70,7 @@ func (m *GlobalInboxProcessorModel) renderTaskDisplay(git *GlobalInboxTask) stri
 	metadata := fmt.Sprintf("%s %s  Created %s  Priority %s",
 		typeIcon, statusIcon,
 		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
-		GetPriorityStyle(task.Priority).Render(renderPriorityStars(task.Priority)),
+		GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority)),
 	)
 	if task.DueDate != nil {
 		metadata += fmt.Sprintf("  Due %s", DueDateStyle.Render(task.DueDate.Format("Jan 2")))
@@ -125,7 +115,7 @@ func (m *GlobalInboxProcessorModel) renderCurrentSettings(git *GlobalInboxTask) 
 	sectionColorName := m.config.GetGlobalSectionColor(section)
 	sectionStyle := GetSectionColorStyle(sectionColorName)
 	lines = append(lines, renderSettingLine("Section", sectionStyle.Render(section)))
-	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStars(task.Priority))))
+	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority))))
 
 	if len(task.Tags) > 0 {
 		lines = append(lines, renderSettingLine("Tags", strings.Join(task.Tags, ", ")))

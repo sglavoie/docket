@@ -271,12 +271,6 @@ type UndoPerformedMsg struct {
 	Action string
 }
 
-// UndoCompletedMsg signals tasks were restored from undo.
-type UndoCompletedMsg struct {
-	TasksBefore int
-	TasksAfter  int
-}
-
 // =============================================================================
 // Clipboard Messages
 // =============================================================================

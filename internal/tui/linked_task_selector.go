@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // LinkedTaskRelation represents a task and its relationship to the source task.
@@ -374,7 +375,7 @@ func (m *LinkedTaskSelectorModel) unlinkMissingTaskFromFiltered(idx int) tea.Cmd
 }
 
 func (m *LinkedTaskSelectorModel) View() string {
-	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30))
+	taskSubtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
 
 	var b strings.Builder
 
@@ -587,7 +588,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 		}
 	}
 
-	title := truncateTitle(rel.Task.Title, maxTitleLen)
+	title := util.Truncate(rel.Task.Title, maxTitleLen)
 	line := fmt.Sprintf("%s %s %s#%d %s", statusIcon, typeIcon, projectLabel, rel.Task.ShortID, title)
 	if isSelected {
 		line = SelectedStyle.Render(line)

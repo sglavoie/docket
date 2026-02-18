@@ -22,7 +22,7 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		// Handle confirmation prompts first
-		if m.confirmAction != ConfirmNone {
+		if m.confirm.IsActive() {
 			return m.handleConfirmation(msg)
 		}
 
@@ -49,55 +49,48 @@ func (m *ProjectTreeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleConfirmation handles y/n confirmation prompts.
+// handleConfirmation handles confirmation prompts using the shared ConfirmDialog.
 func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+	action := m.confirm.Action()
 
-	// Handle recurring task delete confirmation (d/s/n)
-	if m.confirmAction == ConfirmDeleteRecurring && m.deleteTarget != nil {
+	// Handle recurring task delete confirmation (d/s/n instead of y/n)
+	if action == "delete-recurring" && m.deleteTarget != nil {
 		switch key {
 		case "d", "D":
-			// Delete instance only - keeps recurrence, next instance will still generate
-			m.confirmAction = ConfirmNone
+			m.confirm.Cancel()
 			return m, m.deleteTask()
 		case "s", "S":
-			// Stop recurrence - clear recurrence pattern then delete
 			m.deleteTarget.ClearRecurrence()
-			m.confirmAction = ConfirmNone
+			m.confirm.Cancel()
 			return m, m.deleteTask()
 		case "n", "N", "esc":
-			m.confirmAction = ConfirmNone
+			m.confirm.Cancel()
 			m.deleteTarget = nil
 			return m, nil
 		}
 		return m, nil
 	}
 
-	// Handle standard y/n confirmations
-	switch key {
-	case "y", "Y":
-		switch m.confirmAction {
-		case ConfirmArchive:
-			m.confirmAction = ConfirmNone
-			return m, m.archiveProject()
-		case ConfirmUnarchive:
-			m.confirmAction = ConfirmNone
-			return m, m.unarchiveProject()
-		case ConfirmDelete:
-			m.confirmAction = ConfirmNone
-			return m, m.deleteTask()
-		case ConfirmBulkDelete:
-			m.confirmAction = ConfirmNone
-			return m, m.bulkDeleteTasks()
-		case ConfirmBulkStatus:
-			m.confirmAction = ConfirmNone
-			return m, m.executePendingBulkStatus()
-		case ConfirmArchiveTasks:
-			m.confirmAction = ConfirmNone
-			return m, m.archiveCompletedTasks()
+	// Standard y/n handling via ConfirmDialog
+	confirmed, handled := m.confirm.HandleKey(key)
+	if handled {
+		if confirmed {
+			switch action {
+			case "archive":
+				return m, m.archiveProject()
+			case "unarchive":
+				return m, m.unarchiveProject()
+			case "delete":
+				return m, m.deleteTask()
+			case "bulk-delete":
+				return m, m.bulkDeleteTasks()
+			case "bulk-status":
+				return m, m.executePendingBulkStatus()
+			case "archive-tasks":
+				return m, m.archiveCompletedTasks()
+			}
 		}
-	case "n", "N", "esc":
-		m.confirmAction = ConfirmNone
 		m.deleteTarget = nil
 		m.clearPendingBulkStatus()
 		return m, nil
@@ -593,16 +586,11 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		return m, nil
 	case "D":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.confirmAction = ConfirmBulkDelete
+			m.showBulkDeleteConfirm()
 			return m, nil
 		}
 		if cursorTask != nil {
-			if cursorTask.IsRecurring() {
-				m.confirmAction = ConfirmDeleteRecurring
-			} else {
-				m.confirmAction = ConfirmDelete
-			}
-			m.deleteTarget = cursorTask
+			m.showDeleteConfirm(cursorTask)
 		}
 		return m, nil
 	}
@@ -679,7 +667,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	}
 
 	// Special case for search activation
-	if key == "/" && m.confirmAction == ConfirmNone {
+	if key == "/" && !m.confirm.IsActive() {
 		return m, m.ActivateSearch()
 	}
 
@@ -710,9 +698,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 			}
 		}
 		if m.project.Archived {
-			m.confirmAction = ConfirmUnarchive
+			m.confirm.Show("unarchive", "Are you sure you want to unarchive this project? (y/n)")
 		} else {
-			m.confirmAction = ConfirmArchive
+			m.confirm.Show("archive", "Are you sure you want to archive this project? (y/n)")
 		}
 		return m, nil
 	}

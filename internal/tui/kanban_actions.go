@@ -32,13 +32,7 @@ type KanbanStatusChangedMsg struct {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current Kanban
 // model state. Must be called at persist time (inside closures).
 func (m *KanbanViewModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	return WorkflowSaveOptions{
-		Persister:     defaultPersister,
-		Project:       m.Project,
-		Config:        m.config,
-		ConfigManager: m.configManager,
-		PrevStates:    prevStates,
-	}
+	return BuildWorkflowOpts(defaultPersister, m.Project, m.config, m.configManager, prevStates, "", "")
 }
 
 // workflowPersistFn returns a persistFn that runs the full save pipeline
@@ -305,21 +299,14 @@ func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]
 	})
 }
 
-// KanbanUndoPerformedMsg signals that an undo was performed from within the kanban view.
-// Unlike UndoPerformedMsg (which pops the view via the app handler), this message is
-// handled entirely within the kanban model so the user stays in the kanban view.
-type KanbanUndoPerformedMsg struct {
-	Action string
-}
-
 // KanbanTaskDeletedMsg signals that a task was deleted from the Kanban view.
 type KanbanTaskDeletedMsg struct {
 	TaskID  string
 	Section string
 }
 
-// executeDelete deletes the currently targeted task and its descendants.
-func (m *KanbanViewModel) executeDelete(cascade bool) tea.Cmd {
+// executeDelete deletes the currently targeted task using the shared applyDeleteTask.
+func (m *KanbanViewModel) executeDelete() tea.Cmd {
 	if m.deleteTarget == nil {
 		return nil
 	}
@@ -328,15 +315,13 @@ func (m *KanbanViewModel) executeDelete(cascade bool) tea.Cmd {
 	section := task.Section
 	m.deleteTarget = nil
 
+	pf := m.workflowPersistFn()
+	result := applyDeleteTask(pf, m.Project, task.ID, m.config.DataDir)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+
 	return func() tea.Msg {
-		if err := defaultPersister.Backup(m.Project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-
-		if err := deleteTasksFromProject(m.Project, defaultPersister, map[string]bool{task.ID: true}, nil, m.config.DataDir); err != nil {
-			return ErrorMsg{Err: err}
-		}
-
 		return KanbanTaskDeletedMsg{
 			TaskID:  task.ID,
 			Section: section,
@@ -350,8 +335,7 @@ func (m *KanbanViewModel) performUndo() tea.Cmd {
 		if err := performUndoFromBackup(defaultPersister, m.Project); err != nil {
 			return ErrorMsg{Err: err}
 		}
-		m.loadTasks()
-		return KanbanUndoPerformedMsg{Action: "Undo"}
+		return UndoPerformedMsg{Action: "Undo"}
 	}
 }
 
@@ -407,20 +391,10 @@ func (m *KanbanViewModel) indentTask() tea.Cmd {
 		return nil
 	}
 
-	// Walk up from the node above to find a valid parent
 	candidate := visibleNodes[cs.Cursor-1].Task
-	for candidate != nil {
-		if ok, _ := current.CanIndent(candidate); ok {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			candidateID := candidate.ID
-			m.Project.MutateTask(task.ID, func(t *models.Task) {
-				t.ParentID = &candidateID
-			})
-			m.Project.BuildTaskTree()
-
-			return m.saveWithWorkflowRulesForReorder(prevStates, task, m.activeColumnKey(), cs.Cursor)
-		}
-		candidate = candidate.Parent
+	prevStates := captureTaskStates(m.Project.Tasks)
+	if IndentTask(m.Project, current, candidate) {
+		return m.saveWithWorkflowRulesForReorder(prevStates, task, m.activeColumnKey(), cs.Cursor)
 	}
 
 	return nil
@@ -435,13 +409,10 @@ func (m *KanbanViewModel) outdentTask() tea.Cmd {
 		return nil
 	}
 
-	// Check if outdent is valid
-	if ok, _ := task.CanOutdent(); !ok {
+	prevStates := captureTaskStates(m.Project.Tasks)
+	if !OutdentTask(m.Project, task) {
 		return nil
 	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	_ = m.Project.OutdentTask(task)
 
 	cs := m.CurrentColumnState()
 	return m.saveWithWorkflowRulesForReorder(prevStates, task, m.activeColumnKey(), cs.Cursor)

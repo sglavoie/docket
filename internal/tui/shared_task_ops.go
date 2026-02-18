@@ -100,6 +100,24 @@ type WorkflowSaveOptions struct {
 	UndoDepth     int
 }
 
+// BuildWorkflowOpts constructs a WorkflowSaveOptions from the given parameters.
+// It resolves UndoDepth from the config when undo fields are provided.
+func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config.Config, cfgManager *config.Manager, prevStates map[string]*models.Task, undoAction, undoContext string) WorkflowSaveOptions {
+	opts := WorkflowSaveOptions{
+		Persister:     persister,
+		Project:       project,
+		Config:        cfg,
+		ConfigManager: cfgManager,
+		PrevStates:    prevStates,
+		UndoAction:    undoAction,
+		UndoContext:   undoContext,
+	}
+	if cfg != nil && cfg.UndoHistoryDepth != nil {
+		opts.UndoDepth = *cfg.UndoHistoryDepth
+	}
+	return opts
+}
+
 // persistWithWorkflow runs the full save pipeline used by both ProjectTree and Kanban:
 // auto-unblock, recurring generation, workflow rules, root reorder, undo snapshot, backup, save, load.
 func persistWithWorkflow(opts WorkflowSaveOptions) error {
@@ -313,7 +331,8 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 	return result
 }
 
-// applyDeleteTask removes a task from a project.
+// applyDeleteTask removes a task and its descendants from a project.
+// It handles attachment cleanup, descendant collection, and dangling parent references.
 func applyDeleteTask(pf persistFn, project *models.Project, taskID string, dataDir string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
@@ -322,15 +341,29 @@ func applyDeleteTask(pf persistFn, project *models.Project, taskID string, dataD
 
 	shortID := task.ShortID
 
-	// Remove the task from the project first, then trigger the persist
-	// pipeline via a no-op mutate on any remaining task.
-	for i, t := range project.Tasks {
-		if t.ID == taskID {
-			project.Tasks = append(project.Tasks[:i], project.Tasks[i+1:]...)
-			break
+	// Collect the task and all its descendants
+	idsToDelete := collectDescendantIDs(project.Tasks, map[string]bool{taskID: true})
+
+	// Clean up attachments for all tasks being deleted
+	for _, t := range project.Tasks {
+		if idsToDelete[t.ID] {
+			_ = storage.CleanupTaskAttachments(project, t)
 		}
 	}
 
+	// Filter out deleted tasks and clear dangling parent references
+	var remaining []*models.Task
+	for _, t := range project.Tasks {
+		if !idsToDelete[t.ID] {
+			if t.ParentID != nil && idsToDelete[*t.ParentID] {
+				t.ParentID = nil
+			}
+			remaining = append(remaining, t)
+		}
+	}
+	project.Tasks = remaining
+
+	// Trigger the persist pipeline via a no-op mutate on any remaining task.
 	if len(project.Tasks) > 0 {
 		result := pf(project, project.Tasks[0].ID, func(t *models.Task) {})
 		if result.Err != nil {
@@ -428,6 +461,32 @@ func applyTogglePinned(pf persistFn, project *models.Project, taskID string) Tas
 	}
 	result.Cmd = func() tea.Msg { return TaskPropertyChangedMsg{Task: task} }
 	return result
+}
+
+// IndentTask attempts to indent a task under a valid parent by walking up from
+// the candidate (the task visually above). It sets ParentID and rebuilds the tree.
+// Returns true if the indent was performed.
+func IndentTask(project *models.Project, task *models.Task, candidate *models.Task) bool {
+	for candidate != nil {
+		if ok, _ := task.CanIndent(candidate); ok {
+			candidateID := candidate.ID
+			task.ParentID = &candidateID
+			project.BuildTaskTree()
+			return true
+		}
+		candidate = candidate.Parent
+	}
+	return false
+}
+
+// OutdentTask attempts to outdent a task to its parent's level.
+// Returns true if the outdent was performed.
+func OutdentTask(project *models.Project, task *models.Task) bool {
+	if ok, _ := task.CanOutdent(); !ok {
+		return false
+	}
+	_ = project.OutdentTask(task)
+	return true
 }
 
 // dueDateLabel returns a human-friendly label for a relative due date.
@@ -614,44 +673,6 @@ func collectDescendantIDs(tasks []*models.Task, rootIDs map[string]bool) map[str
 		}
 	}
 	return idsToDelete
-}
-
-// deleteTasksFromProject removes the given task IDs (and all their descendants)
-// from the project. It handles attachment cleanup, dangling parent references,
-// and returns the filtered task list. If focusedTaskID
-// points to a deleted task, it is set to nil.
-func deleteTasksFromProject(project *models.Project, persister Persister, targetIDs map[string]bool, focusedTaskID **models.Task, dataDir string) error {
-	idsToDelete := collectDescendantIDs(project.Tasks, targetIDs)
-
-	// Clean up attachments for all tasks being deleted
-	for _, t := range project.Tasks {
-		if idsToDelete[t.ID] {
-			_ = storage.CleanupTaskAttachments(project, t)
-		}
-	}
-
-	// Exit focus mode if focused task is being deleted
-	if focusedTaskID != nil && *focusedTaskID != nil && idsToDelete[(*focusedTaskID).ID] {
-		*focusedTaskID = nil
-	}
-
-	// Filter out deleted tasks and clear dangling parent references
-	var remaining []*models.Task
-	for _, t := range project.Tasks {
-		if !idsToDelete[t.ID] {
-			if t.ParentID != nil && idsToDelete[*t.ParentID] {
-				t.ParentID = nil
-			}
-			remaining = append(remaining, t)
-		}
-	}
-	project.Tasks = remaining
-
-	if err := persister.Save(project); err != nil {
-		return fmt.Errorf("failed to save project: %w", err)
-	}
-	_ = persister.Load(project)
-	return nil
 }
 
 // SecondaryViewMovePrefixHints contains "m" prefix hints for secondary views.

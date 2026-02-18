@@ -434,3 +434,34 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
+
+func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
+	views := []ViewType{ViewWorkflowRules}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "/", Description: "Search rules", Category: "Navigation", Views: views},
+		Keybinding{Key: "Space", Description: "Toggle enabled/disabled", Category: "Actions", Views: views},
+		Keybinding{Key: "n", Description: "New rule", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit rule", Category: "Actions", Views: views},
+		Keybinding{Key: "d", Description: "Delete rule", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
+	views := []ViewType{ViewTaskTemplates}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "/", Description: "Search templates", Category: "Navigation", Views: views},
+		Keybinding{Key: "Ctrl+D/U", Description: "Scroll preview", Category: "Navigation", Views: views},
+		Keybinding{Key: "Space", Description: "Toggle enabled/disabled", Category: "Actions", Views: views},
+		Keybinding{Key: "n", Description: "New template", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit template", Category: "Actions", Views: views},
+		Keybinding{Key: "d", Description: "Delete template", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}

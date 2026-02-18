@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // toggleCompletedView toggles the completed view mode.
@@ -272,7 +274,7 @@ func (m *KanbanViewModel) renderCompletedTaskRow(node *KanbanNode, isSelected bo
 	if maxTitleLen < 10 {
 		maxTitleLen = 10
 	}
-	title = truncateWithEllipsis(title, maxTitleLen)
+	title = util.Truncate(title, maxTitleLen)
 
 	statusStyle := GetStatusStyle(string(task.Status))
 	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title

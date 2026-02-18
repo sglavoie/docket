@@ -68,7 +68,7 @@ var (
 			Foreground(ColorWarning)
 
 	ReviewStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("33"))
+			Foreground(ColorSecondary)
 
 	DoneStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
@@ -140,12 +140,12 @@ var (
 	NoteBadgeStyle  = makeBadgeStyle("248", "237") // Gray
 
 	// Task status badge styles (icon with background for visual distinction)
-	TodoBadgeStyle       = makeBadgeStyle("241", "236") // Gray
-	InProgressBadgeStyle = makeBadgeStyle("214", "94")  // Orange
-	ReviewBadgeStyle     = makeBadgeStyle("33", "17")   // Blue
-	DoneBadgeStyle       = makeBadgeStyle("42", "22")   // Green
-	BlockedBadgeStyle    = makeBadgeStyle("196", "52")  // Red
-	CanceledBadgeStyle   = makeBadgeStyle("241", "236") // Gray
+	TodoBadgeStyle       = makeBadgeStyle("241", "236")                 // Gray
+	InProgressBadgeStyle = makeBadgeStyle("214", "94")                  // Orange
+	ReviewBadgeStyle     = makeBadgeStyle(string(ColorSecondary), "17") // Blue
+	DoneBadgeStyle       = makeBadgeStyle("42", "22")                   // Green
+	BlockedBadgeStyle    = makeBadgeStyle("196", "52")                  // Red
+	CanceledBadgeStyle   = makeBadgeStyle("241", "236")                 // Gray
 
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
@@ -292,18 +292,18 @@ var (
 
 	// Focus mode style
 	FocusModeStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("33")).
+			Foreground(ColorSecondary).
 			Bold(true).
-			Background(lipgloss.Color("236"))
+			Background(ColorBackground)
 
 	// View mode styles
 	ViewModeActiveStyle    = makeViewModeStyle("34")
 	ViewModeNextStyle      = makeViewModeStyle("61")
-	ViewModeInboxStyle     = makeViewModeStyle("33")
+	ViewModeInboxStyle     = makeViewModeStyle(string(ColorSecondary))
 	ViewModeWaitingStyle   = makeViewModeStyle("214")
 	ViewModeSomedayStyle   = makeViewModeStyle("135")
 	ViewModeCompletedStyle = makeViewModeStyle("28")
-	ViewModeReviewStyle    = makeViewModeStyle("33")
+	ViewModeReviewStyle    = makeViewModeStyle(string(ColorSecondary))
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 	ViewModeAllStyle       = makeViewModeStyle("60")
 
@@ -314,7 +314,7 @@ var (
 				Padding(0, 1)
 
 	SavedViewBadgeStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("33")).
+				Background(ColorSecondary).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
 				Padding(0, 1)
@@ -799,7 +799,7 @@ var (
 	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySectionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
 	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
-	CategorySavedViewStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("33"))  // Blue (matches saved view badge)
+	CategorySavedViewStyle   = lipgloss.NewStyle().Foreground(ColorSecondary)        // Blue (matches saved view badge)
 	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108")) // Sage green
 	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))  // Sky blue
 
@@ -819,7 +819,27 @@ var (
 	// Overlay split-pane separator (vertical line between list and preview)
 	OverlaySplitStyle = lipgloss.NewStyle().
 				Foreground(ColorBorder)
+
+	// Overlay panel styles (used by kanban display settings, score profile manager, etc.)
+	OverlayTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
+	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
+	OverlayDetailStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	OverlayBoxStyle      = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("99")).
+				Padding(1, 2)
+
+	// Diff styles
+	DiffAddStyle     = lipgloss.NewStyle().Foreground(ColorSuccess)
+	DiffRemoveStyle  = lipgloss.NewStyle().Foreground(ColorError)
+	DiffContextStyle = lipgloss.NewStyle().Foreground(ColorDiffContext)
 )
+
+// FocusIndicatorStyle is used for the ▐ bar that shows which tab row has focus.
+var FocusIndicatorStyle = lipgloss.NewStyle().Foreground(ColorPrimary)
+
+// FocusIndicator is the pre-rendered ▐ bar used to indicate focused tab rows.
+var FocusIndicator = FocusIndicatorStyle.Render("▐")
 
 // PinnedMarker is a green dot used to indicate pinned tasks in list views.
 var PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Render("·")
@@ -829,29 +849,35 @@ var PinnedMarker = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true).Rende
 // When active=true, adds an asterisk indicator after the cursor position.
 // When pinned=true, adds a green dot indicator.
 // The content should already have its internal styling (badges, etc).
-func RenderSelectableRow(selected bool, active bool, pinned bool, content string, width int) string {
+// RenderCursorPrefix returns the 3-character cursor prefix string based on
+// selected/active/pinned state. Always exactly 3 display characters wide.
+func RenderCursorPrefix(selected, active, pinned bool) string {
 	activeMarker := ActiveStyle.Bold(true).Render("*")
-	var prefix string
 	switch {
 	case selected && active && pinned:
-		prefix = SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker
+		return SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker
 	case selected && active:
-		prefix = SelectionCursorStyle.Render(">") + activeMarker + " "
+		return SelectionCursorStyle.Render(">") + activeMarker + " "
 	case selected && pinned:
-		prefix = SelectionCursorStyle.Render(">") + " " + PinnedMarker
+		return SelectionCursorStyle.Render(">") + " " + PinnedMarker
 	case selected:
-		prefix = SelectionCursorStyle.Render(">") + "  "
+		return SelectionCursorStyle.Render(">") + "  "
 	case active && pinned:
-		prefix = " " + activeMarker + PinnedMarker
+		return " " + activeMarker + PinnedMarker
 	case active:
-		prefix = " " + activeMarker + " "
+		return " " + activeMarker + " "
 	case pinned:
-		prefix = "  " + PinnedMarker
+		return "  " + PinnedMarker
 	default:
-		prefix = "   "
+		return "   "
 	}
+}
 
-	row := prefix + content
+// RenderSelectableRow renders a row with cursor prefix and optional full-width
+// selection highlight. Uses RenderCursorPrefix for the 3-char prefix, then
+// applies SelectionRowStyle with the given width when selected.
+func RenderSelectableRow(selected bool, active bool, pinned bool, content string, width int) string {
+	row := RenderCursorPrefix(selected, active, pinned) + content
 	if selected {
 		return SelectionRowStyle.Width(width).Render(row)
 	}

@@ -61,7 +61,7 @@ const KanbanMinColumnWidth = 22
 // KanbanViewModel manages the Kanban board view state.
 // It displays non-completed tasks organized into five columns by section.
 type KanbanViewModel struct {
-	BaseView
+	BaseSearchableView
 
 	// Project being displayed
 	Project *models.Project
@@ -132,10 +132,6 @@ type KanbanViewModel struct {
 	filter    KanbanFilterState
 	filterBar *KanbanFilterBarComponent
 
-	// Search mode state
-	searchMode  bool
-	searchInput textinput.Model
-
 	// Quick add mode state
 	quickAddMode    bool
 	quickAddInput   textinput.Model
@@ -205,11 +201,6 @@ type KanbanViewModel struct {
 // It initializes five columns mapped to Active/Next/Inbox/Waiting/Someday
 // and loads non-completed tasks filtered by their Section field.
 func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *KanbanViewModel {
-	searchInput := textinput.New()
-	searchInput.Placeholder = "Search tasks..."
-	searchInput.CharLimit = 100
-	searchInput.Width = 40
-
 	quickAddInput := textinput.New()
 	quickAddInput.Placeholder = "Task title ^type !priority #tag @due /section"
 	quickAddInput.CharLimit = 200
@@ -254,7 +245,6 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 			},
 		},
 		filterBar:     NewKanbanFilterBarComponent(),
-		searchInput:   searchInput,
 		quickAddInput: quickAddInput,
 		// Sorting state
 		sortField:     SortByDefault,
@@ -267,6 +257,8 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		// Bulk operation component
 		bulkOp: NewBulkOperationComponent(),
 	}
+
+	m.InitSearchInput("Search tasks...", 100, 40)
 
 	// Compute column definitions from group-by mode
 	m.columnDefs = ColumnsForGroupBy(m.groupBy, project)
@@ -401,7 +393,7 @@ func (m *KanbanViewModel) ensureActiveColumnVisible() {
 // the split view heights. The view is split 50/50 vertically: top half for
 // the kanban board, bottom half for task details.
 func (m *KanbanViewModel) SetSize(width, height int) {
-	m.BaseView.SetSize(width, height)
+	m.BaseSearchableView.SetSize(width, height)
 
 	// Use at most maxVisibleColumns for width calculation
 	numColumns := len(m.columnDefs)
@@ -528,17 +520,6 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cs := m.Columns[msg.Section]
 		cs.Validate(m.visibleNodeCount(msg.Section))
 		m.statusMessage = "Task deleted"
-		return m, nil
-
-	case KanbanUndoPerformedMsg:
-		// Undo performed from within kanban — reload tasks and stay in kanban view
-		m.loadTasks()
-		// Validate all column cursors after undo
-		for _, def := range m.columnDefs {
-			cs := m.Columns[def.Key]
-			cs.Validate(m.visibleNodeCount(def.Key))
-		}
-		m.statusMessage = fmt.Sprintf("Undid: %s", msg.Action)
 		return m, nil
 
 	case TaskCreatedMsg:

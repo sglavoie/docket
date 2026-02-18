@@ -24,6 +24,9 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 	if m.outliner != nil {
 		m.outliner.rebuildRows()
 	}
+	if m.kanban != nil {
+		m.kanban.loadTasks()
+	}
 	if statusMsg != "" {
 		m.statusMessage = statusMsg
 		return defaultStatusTimeout()

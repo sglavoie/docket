@@ -43,31 +43,49 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 				return m.executeDelete()
 			case "bulk-delete":
 				return m.executeBulkDelete()
+			case "bulk-status":
+				return m.executePendingBulkStatus()
 			case "archive-tasks":
 				return m.archiveCompletedTasks()
 			}
 		}
 		m.statusMessage = ""
 		m.deleteTarget = nil
+		m.bulkOp.Clear()
 		return m, nil
 	}
 	return m, nil
 }
 
 // applyBulkStatusChange applies a status transition to all multi-selected tasks.
+// If some tasks are blocked by transition rules or incomplete dependencies,
+// shows a confirmation prompt before proceeding with the valid ones.
 func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.Model, tea.Cmd) {
 	tasks := m.getSelectedTasks()
 	if len(tasks) == 0 {
 		return m, nil
 	}
 
-	valid, _ := analyzeBulkStatusTransition(m.project, tasks, newStatus)
+	valid, blockedCount := analyzeBulkStatusTransition(m.project, tasks, newStatus)
 	if len(valid) == 0 {
 		m.statusMessage = "No selected tasks can transition to " + string(newStatus)
 		m.clearMultiSelect()
 		return m, nil
 	}
 
+	prevStates := captureTaskStates(m.project.Tasks)
+
+	// If some tasks are blocked, show confirmation before proceeding
+	if blockedCount > 0 {
+		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
+		m.confirm.Show("bulk-status",
+			fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks? (y/n)", blockedCount, len(valid)))
+		m.statusMessage = m.confirm.Prompt()
+		m.clearMultiSelect()
+		return m, nil
+	}
+
+	// No blocked tasks, proceed directly
 	pf := m.workflowPersistFn()
 	for _, task := range valid {
 		pf(m.project, task.ID, func(t *models.Task) {
@@ -77,6 +95,27 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 
 	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus)
 	m.clearMultiSelect()
+	m.rebuildRows()
+	return m, nil
+}
+
+// executePendingBulkStatus applies the pending bulk status change after confirmation.
+func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
+	if len(m.bulkOp.GetTasks()) == 0 {
+		m.bulkOp.Clear()
+		return m, nil
+	}
+
+	pf := m.workflowPersistFn()
+	for _, task := range m.bulkOp.GetTasks() {
+		pf(m.project, task.ID, func(t *models.Task) {
+			t.ApplyTransition(m.bulkOp.GetStatus())
+		})
+	}
+
+	count := len(m.bulkOp.GetTasks())
+	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", count, m.bulkOp.GetStatus())
+	m.bulkOp.Clear()
 	m.rebuildRows()
 	return m, nil
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // toggleAllView toggles the all view mode.
@@ -255,7 +256,7 @@ func (m *KanbanViewModel) renderAllView() string {
 	if hasCustomSections {
 		csBar := RenderColoredTabBar(m.customSectionTabs(), m.customSectionTab, m.Width()-1, 1, m.Project.SectionColors)
 		if m.customSectionRowFocused {
-			focusIndicator := SelectionCursorStyle.Render("▐")
+			focusIndicator := FocusIndicator
 			csBar = focusIndicator + csBar
 		} else {
 			csBar = " " + csBar
@@ -268,7 +269,7 @@ func (m *KanbanViewModel) renderAllView() string {
 	presetBar := m.renderKanbanTabBar()
 	if hasCustomSections {
 		if !m.customSectionRowFocused {
-			focusIndicator := SelectionCursorStyle.Render("▐")
+			focusIndicator := FocusIndicator
 			presetBar = focusIndicator + presetBar
 		} else {
 			presetBar = " " + presetBar
@@ -383,7 +384,7 @@ func (m *KanbanViewModel) renderAllTaskRow(node *KanbanNode, isSelected bool) st
 	if maxTitleLen < 10 {
 		maxTitleLen = 10
 	}
-	title = truncateWithEllipsis(title, maxTitleLen)
+	title = util.Truncate(title, maxTitleLen)
 
 	statusStyle := GetStatusStyle(string(task.Status))
 
@@ -394,24 +395,5 @@ func (m *KanbanViewModel) renderAllTaskRow(node *KanbanNode, isSelected bool) st
 
 	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title + " " + sectionBadge
 
-	// Build cursor prefix with active/pinned markers (matches RenderSelectableRow)
-	activeMarker := ActiveStyle.Bold(true).Render("*")
-	switch {
-	case isSelected && task.Active && task.Pinned:
-		return SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker + content
-	case isSelected && task.Active:
-		return SelectionCursorStyle.Render(">") + activeMarker + " " + content
-	case isSelected && task.Pinned:
-		return SelectionCursorStyle.Render(">") + " " + PinnedMarker + content
-	case isSelected:
-		return SelectionCursorStyle.Render(">") + "  " + content
-	case task.Active && task.Pinned:
-		return " " + activeMarker + PinnedMarker + content
-	case task.Active:
-		return " " + activeMarker + " " + content
-	case task.Pinned:
-		return "  " + PinnedMarker + content
-	default:
-		return "   " + content
-	}
+	return RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
 }

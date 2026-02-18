@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // CrossProjectLinkerStep represents the current step in the linking process.
@@ -403,7 +404,7 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 }
 
 func (m *CrossProjectLinkerModel) View() string {
-	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, truncateTitle(m.sourceTask.Title, 30))
+	subtitle := fmt.Sprintf("#%d %s", m.sourceTask.ShortID, util.Truncate(m.sourceTask.Title, 30))
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle(m.getStepTitle(), subtitle))
@@ -542,7 +543,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
-		title := truncateTitle(t.Title, m.Width()-35)
+		title := util.Truncate(t.Title, m.Width()-35)
 		line := fmt.Sprintf("%s%s %s #%d %s", cursor, statusIcon, typeIcon, t.ShortID, title)
 		if i == m.taskCursor {
 			line = BoldStyle.Render(line)
@@ -575,7 +576,7 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	// Show selected project and task
 	b.WriteString(SubtitleStyle.Render(fmt.Sprintf("Project: %s", m.targetProject.Name)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("Task: #%d %s", m.targetTask.ShortID, truncateTitle(m.targetTask.Title, 40))))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("Task: #%d %s", m.targetTask.ShortID, util.Truncate(m.targetTask.Title, 40))))
 	b.WriteString("\n\n")
 
 	linkTypes := []struct {

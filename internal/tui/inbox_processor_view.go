@@ -10,22 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// inboxBoxStyle returns a compact box style with no vertical padding.
-func inboxBoxStyle() lipgloss.Style {
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorBorder).
-		Padding(0, 2)
-}
-
-// inboxSelectedBoxStyle returns a compact selected box style with no vertical padding.
-func inboxSelectedBoxStyle() lipgloss.Style {
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(ColorPrimary).
-		Padding(0, 2)
-}
-
 // renderHeader renders the header with progress information.
 func (m *InboxProcessorModel) renderHeader() string {
 	processed, skipped, remaining, total := m.getProgressStats()
@@ -45,20 +29,10 @@ func (m *InboxProcessorModel) renderHeader() string {
 	return fmt.Sprintf("%s\n%s", title, progressBar)
 }
 
-// innerWidth returns the available content width inside a box (border + padding).
-func (m *InboxProcessorModel) innerWidth() int {
-	// 2 border chars + 4 padding chars (2 each side)
-	w := m.width - 6
-	if w < 20 {
-		w = 20
-	}
-	return w
-}
-
 // renderTaskDisplay renders the current task details.
 func (m *InboxProcessorModel) renderTaskDisplay(task *models.Task) string {
 	var b strings.Builder
-	inner := m.innerWidth()
+	inner := inboxInnerWidth(m.width)
 
 	// Title: #ID prefix on first line, wraps to 2 lines then truncates
 	prefix := fmt.Sprintf("#%d  ", task.ShortID)
@@ -90,7 +64,7 @@ func (m *InboxProcessorModel) renderTaskDisplay(task *models.Task) string {
 	metadata := fmt.Sprintf("%s %s  Created %s  Priority %s",
 		typeIcon, statusIcon,
 		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
-		GetPriorityStyle(task.Priority).Render(renderPriorityStars(task.Priority)),
+		GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority)),
 	)
 	if task.DueDate != nil {
 		metadata += fmt.Sprintf("  Due %s", DueDateStyle.Render(task.DueDate.Format("Jan 2")))
@@ -134,7 +108,7 @@ func (m *InboxProcessorModel) renderCurrentSettings(task *models.Task) string {
 	sectionColorName := m.config.GetGlobalSectionColor(section)
 	sectionStyle := GetSectionColorStyle(sectionColorName)
 	lines = append(lines, renderSettingLine("Section", sectionStyle.Render(section)))
-	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStars(task.Priority))))
+	lines = append(lines, renderSettingLine("Priority", GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority))))
 
 	if len(task.Tags) > 0 {
 		lines = append(lines, renderSettingLine("Tags", strings.Join(task.Tags, ", ")))
@@ -147,12 +121,6 @@ func (m *InboxProcessorModel) renderCurrentSettings(task *models.Task) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// renderSettingLine renders a single label: value line with right-aligned label.
-func renderSettingLine(label, value string) string {
-	padded := fmt.Sprintf("%*s", FormLabelWidth, label)
-	return MutedStyle.Render(padded+":") + " " + value
 }
 
 // renderOperationsPanel renders the available operations.
@@ -213,14 +181,6 @@ func (m *InboxProcessorModel) renderEmptyInbox() string {
 	b.WriteString("\n\n")
 	b.WriteString(HelpKeyStyle.Render("q") + MutedStyle.Render(": return to project tree"))
 	return b.String()
-}
-
-// renderPriorityStars renders priority as stars.
-func renderPriorityStars(priority int) string {
-	if priority <= 0 {
-		return ""
-	}
-	return strings.Repeat("★", priority)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

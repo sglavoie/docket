@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 func (m *AppModel) statusCommands() []Command {
@@ -16,7 +18,7 @@ func (m *AppModel) statusCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleStartTask(visible)
+					m.projectTree.handleStatusTransition(models.StatusInProgress, visible)
 				}
 				return nil
 			},
@@ -31,7 +33,7 @@ func (m *AppModel) statusCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleCompleteTask(visible)
+					m.projectTree.handleStatusTransition(models.StatusDone, visible)
 				}
 				return nil
 			},
@@ -46,7 +48,7 @@ func (m *AppModel) statusCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleBlockTask(visible)
+					m.projectTree.handleStatusTransition(models.StatusBlocked, visible)
 				}
 				return nil
 			},
@@ -61,7 +63,7 @@ func (m *AppModel) statusCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleCancelTask(visible)
+					m.projectTree.handleStatusTransition(models.StatusCanceled, visible)
 				}
 				return nil
 			},
@@ -76,7 +78,7 @@ func (m *AppModel) statusCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
-					m.projectTree.handleReopenTask(visible)
+					m.projectTree.handleStatusTransition(models.StatusTodo, visible)
 				}
 				return nil
 			},

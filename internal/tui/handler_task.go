@@ -143,7 +143,9 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case UndoPerformedMsg:
-		return true, m.handleWithRefresh(true, false, fmt.Sprintf("Undid: %s", msg.Action))
+		// Pop the undo history view if it's on top; otherwise stay in the current view
+		popView := m.currentView() == ViewUndoHistory
+		return true, m.handleWithRefresh(popView, false, fmt.Sprintf("Undid: %s", msg.Action))
 
 	case OpenParentSelectorMsg:
 		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
@@ -159,9 +161,6 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		// Forward the message directly to the underlying view (note/task creator)
 		return true, m.delegateToCurrentView(msg)
-
-	case UndoCompletedMsg:
-		return true, m.handleWithRefresh(false, false, "")
 
 	case ShowTaskDetailMsg:
 		if msg.Task != nil && msg.Project != nil {

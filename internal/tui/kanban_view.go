@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *KanbanViewModel) View() string {
@@ -34,12 +35,11 @@ func (m *KanbanViewModel) View() string {
 	// Render custom section tab bar above preset tabs (when custom sections exist and in section mode)
 	hasCustomSections := m.customSectionTabs() != nil && IsSectionGroupBy(m.groupBy)
 	if hasCustomSections {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 		unfocusedPad := " "
 
 		csBar := RenderColoredTabBar(m.customSectionTabs(), m.customSectionTab, m.Width()-1, 1, m.Project.SectionColors)
 		if m.customSectionRowFocused {
-			csBar = focusIndicator + csBar
+			csBar = FocusIndicator + csBar
 		} else {
 			csBar = unfocusedPad + csBar
 		}
@@ -49,10 +49,9 @@ func (m *KanbanViewModel) View() string {
 	// Render tab bar at the top
 	presetBar := m.renderKanbanTabBar()
 	if hasCustomSections {
-		focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
 		unfocusedPad := " "
 		if !m.customSectionRowFocused {
-			presetBar = focusIndicator + presetBar
+			presetBar = FocusIndicator + presetBar
 		} else {
 			presetBar = unfocusedPad + presetBar
 		}
@@ -66,8 +65,8 @@ func (m *KanbanViewModel) View() string {
 	}
 
 	// Render search input if in search mode
-	if m.searchMode {
-		searchLine := "Search: " + m.searchInput.View()
+	if m.IsSearchMode() {
+		searchLine := "Search: " + m.SearchInputView()
 		viewParts = append(viewParts, searchLine)
 	}
 
@@ -147,7 +146,7 @@ func (m *KanbanViewModel) View() string {
 		tabBarHeight++ // Horizontal scroll position line
 	}
 	searchBarHeight := 0
-	if m.searchMode {
+	if m.IsSearchMode() {
 		searchBarHeight = 1
 	}
 	quickAddHeight := 0
@@ -458,7 +457,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	if maxTitleLen < KanbanMinTitleWidth {
 		maxTitleLen = KanbanMinTitleWidth
 	}
-	title = truncateWithEllipsis(title, maxTitleLen)
+	title = util.Truncate(title, maxTitleLen)
 
 	// Apply active/pinned title styling
 	if isSelected {
@@ -490,42 +489,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		content += " " + badge
 	}
 
-	// Build cursor prefix with active/pinned markers (matches RenderSelectableRow)
-	activeMarker := ActiveStyle.Bold(true).Render("*")
-	switch {
-	case isSelected && task.Active && task.Pinned:
-		return SelectionCursorStyle.Render(">") + activeMarker + PinnedMarker + content
-	case isSelected && task.Active:
-		return SelectionCursorStyle.Render(">") + activeMarker + " " + content
-	case isSelected && task.Pinned:
-		return SelectionCursorStyle.Render(">") + " " + PinnedMarker + content
-	case isSelected:
-		return SelectionCursorStyle.Render(">") + "  " + content
-	case task.Active && task.Pinned:
-		return " " + activeMarker + PinnedMarker + content
-	case task.Active:
-		return " " + activeMarker + " " + content
-	case task.Pinned:
-		return "  " + PinnedMarker + content
-	default:
-		return "   " + content
-	}
-}
-
-// truncateWithEllipsis truncates a string to maxLen characters, adding "..."
-// suffix if truncation occurs. Returns original string if it fits within maxLen.
-func truncateWithEllipsis(s string, maxLen int) string {
-	if maxLen <= 0 {
-		return ""
-	}
-	if len(s) <= maxLen {
-		return s
-	}
-	// Need at least 4 chars to show something meaningful with ellipsis (1 char + "...")
-	if maxLen < 4 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
+	return RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
 }
 
 // sectionDisplayName returns the display name for a section.
@@ -753,7 +717,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != "" || m.detailsPaneFocused || m.searchMode || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInput.IsActive()
+	return m.pendingPrefix != "" || m.detailsPaneFocused || m.IsSearchMode() || m.quickAddMode || m.confirm.IsActive() || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInput.IsActive()
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
