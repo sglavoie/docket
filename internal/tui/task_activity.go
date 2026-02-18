@@ -183,7 +183,7 @@ func (m *TaskActivityModel) View() string {
 		}
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("[/]: tabs | j/k: navigate | s: sort | y: copy entry | q/Esc: close"), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("[/]: tabs · j/k: navigate · s: sort · y: copy entry · q/Esc: close"), "", m.width))
 
 	return b.String()
 }
@@ -247,19 +247,19 @@ func formatEntryText(entry *models.ActivityEntry) string {
 func fieldColorStyle(field string) lipgloss.Style {
 	switch field {
 	case "status":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green
+		return SuccessStyle
 	case "priority":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("3")) // yellow
+		return makeColorStyle(ColorWarning)
 	case "section":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("6")) // cyan
+		return makeColorStyle(ColorSecondary)
 	case "tags":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("5")) // magenta
+		return PurpleStyle
 	case "due":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("1")) // red
+		return makeColorStyle(ColorError)
 	case "title":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("4")) // blue
+		return makeColorStyle(ColorPrimary)
 	case "created":
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // gray
+		return MutedStyle
 	default:
 		return lipgloss.NewStyle()
 	}

@@ -36,8 +36,8 @@ func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *P
 	picker := NewBasePicker(projects, PickerConfig{
 		Title:          "Project Cycle Manager",
 		Subtitle:       "Select projects for ` / ~ cycling",
-		EmptyMessage:   "No projects available",
-		NoMatchMessage: "No matching projects",
+		EmptyMessage:   "No projects available.",
+		NoMatchMessage: "No matching projects.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 		BoxWidth:       60,
@@ -316,17 +316,17 @@ func (m *ProjectCycleManagerModel) HasTextInput() bool {
 // RenderFooter renders context-appropriate keyboard hints (overrides BasePicker).
 func (m *ProjectCycleManagerModel) RenderFooter() string {
 	if m.IsSearchMode() {
-		return MutedStyle.Render("enter done | esc clear")
+		return MutedStyle.Render("enter done · esc clear")
 	}
 
 	if len(m.Filtered) == 0 {
 		if m.config.FilterContext != "" {
-			return MutedStyle.Render("c/C context set/clear | esc cancel")
+			return MutedStyle.Render("c/C context set/clear · esc cancel")
 		}
-		return MutedStyle.Render("c context | esc cancel")
+		return MutedStyle.Render("c context · esc cancel")
 	}
 
-	return MutedStyle.Render("space toggle | / search | c/C context | u clear\np pin | g go | enter apply | esc cancel")
+	return MutedStyle.Render("space toggle · / search · c/C context · u clear\np pin · g go · enter apply · esc cancel")
 }
 
 // GetHelpItems returns the help items for the project cycle manager.

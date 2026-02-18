@@ -65,8 +65,8 @@ func (m *WeeklyReviewModel) View() string {
 	reviewed := m.reviewedCount()
 	fullRight := fmt.Sprintf("%d/7 reviewed | %d items", reviewed, totalCount)
 	shortRight := fmt.Sprintf("%d/7 reviewed", reviewed)
-	fullLeft := "h/j/k/l nav | n/N section | R reviewed | ,s/d/b/x status"
-	shortLeft := "n/N section | R reviewed | ? help"
+	fullLeft := "h/j/k/l nav · n/N section · R reviewed · ,s/d/b/x status"
+	shortLeft := "n/N section · R reviewed · ? help"
 
 	rightText := fullRight
 	leftText := fullLeft
@@ -340,7 +340,7 @@ func getWeeklySectionHint(section WeeklyReviewSection) string {
 func (m *WeeklyReviewModel) renderCompletionSummary() string {
 	var b strings.Builder
 
-	header := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")).Render("Review Complete")
+	header := SuccessStyle.Bold(true).Render("Review Complete")
 	b.WriteString(header)
 	b.WriteString("\n\n")
 
@@ -393,7 +393,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 		}
 	}
 	if !hasRemaining {
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("All sections cleared!"))
+		b.WriteString(SuccessStyle.Render("All sections cleared!"))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")

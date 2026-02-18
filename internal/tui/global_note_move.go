@@ -40,8 +40,8 @@ func NewGlobalNoteMoveProjectSelectorModel(projects []*models.Project) *GlobalNo
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Move Note to Project",
-		EmptyMessage:   "No projects available",
-		NoMatchMessage: "No matching projects",
+		EmptyMessage:   "No projects available.",
+		NoMatchMessage: "No matching projects.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 	})
@@ -175,7 +175,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) View() string {
 	b.WriteString(m.renderList())
 	b.WriteString("\n")
 
-	b.WriteString(HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel"))
+	b.WriteString(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"))
 
 	return b.String()
 }

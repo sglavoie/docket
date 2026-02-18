@@ -275,7 +275,7 @@ func (m *TaskJumperModel) View() string {
 	out.WriteString("\n")
 
 	// Footer
-	out.WriteString(HelpStyle.Render("↑↓ nav • Enter • Esc"))
+	out.WriteString(HelpStyle.Render("↑↓ nav · Enter · Esc"))
 
 	return out.String()
 }

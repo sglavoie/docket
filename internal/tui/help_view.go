@@ -506,7 +506,7 @@ func (m *HelpViewModel) View() string {
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		scrollPercent = fmt.Sprintf(" %3.0f%%", m.viewport.ScrollPercent()*100)
 	}
-	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs | / filter | j/k scroll | n/N sections | ? close%s", scrollPercent))
+	right := HelpStyle.Render(fmt.Sprintf("[/]: tabs · / filter · j/k scroll · n/N sections · ? close%s", scrollPercent))
 
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 

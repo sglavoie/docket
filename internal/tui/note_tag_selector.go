@@ -32,8 +32,8 @@ func NewNoteTagSelectorModel(note *models.Note, project *models.Project, notesDi
 
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          fmt.Sprintf("Tags for: %s", titleStr),
-		EmptyMessage:   "No tags found (press 'a' to add)",
-		NoMatchMessage: "No matching tags (press 'a' to add)",
+		EmptyMessage:   "No tags found (press 'a' to add).",
+		NoMatchMessage: "No matching tags (press 'a' to add).",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})

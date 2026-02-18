@@ -440,7 +440,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 	if len(m.filtered) == 0 && len(m.relations) > 0 {
 		b.WriteString(MutedStyle.Render("No matching linked tasks."))
 		b.WriteString("\n")
-		left := HelpStyle.Render("Esc clear filter • q close")
+		left := HelpStyle.Render("Esc clear filter · q close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width))
 		return b.String()
 	}
@@ -543,9 +543,9 @@ func (m *LinkedTaskSelectorModel) View() string {
 	// Footer
 	var footerLeft string
 	if m.IsSearchMode() {
-		footerLeft = HelpStyle.Render("Type to filter • Enter confirm • Esc cancel")
+		footerLeft = HelpStyle.Render("Type to filter · Enter confirm · Esc cancel")
 	} else {
-		footerLeft = HelpStyle.Render("/ search • j/k navigate • Enter select • x unlink • Esc cancel")
+		footerLeft = HelpStyle.Render("/ search · j/k navigate · Enter select · x unlink · Esc cancel")
 	}
 	right := MutedStyle.Render(fmt.Sprintf("%d links", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.width))

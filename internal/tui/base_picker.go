@@ -294,7 +294,7 @@ func (p *BasePicker[T]) RenderSearchBar() string {
 // RenderFooter renders context-appropriate keyboard hints.
 func (p *BasePicker[T]) RenderFooter() string {
 	if p.IsSearchMode() {
-		return MutedStyle.Render("enter done | esc clear")
+		return MutedStyle.Render("enter done · esc clear")
 	}
 
 	if len(p.Filtered) == 0 {
@@ -302,10 +302,10 @@ func (p *BasePicker[T]) RenderFooter() string {
 	}
 
 	if p.Config.MultiSelect {
-		return MutedStyle.Render("space toggle | / search | c clear | enter apply | esc cancel")
+		return MutedStyle.Render("space toggle · / search · c clear · enter apply · esc cancel")
 	}
 
-	return MutedStyle.Render("enter select | / search | esc cancel")
+	return MutedStyle.Render("enter select · / search · esc cancel")
 }
 
 // RenderInBox renders the complete picker UI as a fullscreen view with title and footer.

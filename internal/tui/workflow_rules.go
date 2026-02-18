@@ -660,7 +660,7 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close | e: edit | Space: toggle | d: delete"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width()))
 
 	return b.String()
 }

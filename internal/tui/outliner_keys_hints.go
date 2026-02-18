@@ -48,7 +48,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	}
 
 	// Add perspective hints with active annotation
-	if m.pendingPrefix == "p" {
+	if m.pendingPrefix == "P" {
 		annotated := make([]PrefixHint, len(OutlinerPerspectivePrefixHints))
 		copy(annotated, OutlinerPerspectivePrefixHints)
 		idx := m.activePerspective
@@ -60,9 +60,9 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 				annotated[i].Active = true
 			}
 		}
-		hints["p"] = annotated
+		hints["P"] = annotated
 	} else {
-		hints["p"] = OutlinerPerspectivePrefixHints
+		hints["P"] = OutlinerPerspectivePrefixHints
 	}
 
 	// Add filter hints

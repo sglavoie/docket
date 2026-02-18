@@ -15,14 +15,14 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "N", Description: "Jump to previous section", Category: "Navigation", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Navigation", Views: views},
 
-		// Perspectives (p prefix)
-		Keybinding{Key: "p1-p9", Description: "Switch perspective", Category: "Perspectives (p prefix)", Views: views},
+		// Perspectives (P prefix)
+		Keybinding{Key: "P1-P9", Description: "Switch perspective", Category: "Perspectives (P prefix)", Views: views},
 
 		// View switching
 		Keybinding{Key: "ctrl+P", Description: "Project tree view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+K", Description: "Kanban board view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Views", Views: views},
-		Keybinding{Key: "P", Description: "Priority view", Category: "Views", Views: views},
+		Keybinding{Key: "p", Description: "Priority view", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks / archive (Completed)", Category: "Views", Views: views},
 		Keybinding{Key: "B", Description: "Project blockers", Category: "Views", Views: views},

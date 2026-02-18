@@ -519,7 +519,7 @@ func (m *TutorModel) View() string {
 	if m.activePane == 1 {
 		paneHint = "content"
 	}
-	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) | [/]: tabs | /: search | j/k: navigate | q: close", paneHint))
+	leftFooter := HelpStyle.Render(fmt.Sprintf("Tab: switch pane (%s) · [/]: tabs · /: search · j/k: navigate · q: close", paneHint))
 	rightFooter := ""
 	if m.ready && m.viewport.TotalLineCount() > m.viewport.Height {
 		rightFooter = MutedStyle.Render(fmt.Sprintf("%3.0f%%", m.viewport.ScrollPercent()*100))

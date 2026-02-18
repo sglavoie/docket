@@ -122,8 +122,8 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case "p":
-		// Perspective switching (p-prefix: p1-p9)
+	case "P":
+		// Perspective switching (P-prefix: P1-P9)
 		if key >= "1" && key <= "9" {
 			perspKey := int(key[0] - '0')
 			m.activePerspective = perspKey

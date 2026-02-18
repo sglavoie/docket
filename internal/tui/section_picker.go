@@ -50,8 +50,8 @@ func NewSectionPickerModel(task *models.Task, project *models.Project) *SectionP
 
 	picker := NewBasePicker(sections, PickerConfig{
 		Title:          "Assign Section",
-		EmptyMessage:   "No sections in project",
-		NoMatchMessage: "No matching sections",
+		EmptyMessage:   "No sections in project.",
+		NoMatchMessage: "No matching sections.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 		BoxWidth:       50,
@@ -310,7 +310,7 @@ func (m *SectionPickerModel) View() string {
 	// Footer
 	var footerLeft string
 	if m.addMode {
-		footerLeft = HelpStyle.Render("enter save | esc cancel")
+		footerLeft = HelpStyle.Render("enter save · esc cancel")
 	} else {
 		footerLeft = HelpStyle.Render(m.RenderFooter())
 	}

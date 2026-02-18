@@ -239,7 +239,7 @@ func (m *KanbanViewModel) renderCompletedView() string {
 
 	// Footer
 	b.WriteString("\n")
-	leftFooter := HelpStyle.Render("j/k: navigate | Space: expand/collapse | q: close")
+	leftFooter := HelpStyle.Render("j/k: navigate · Space: expand/collapse · q: close")
 	b.WriteString(renderStatusBarFooter(leftFooter, "", m.Width()))
 
 	return b.String()

@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleFilterBarKeys handles F - filter prefix popup activation.
@@ -196,19 +195,18 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 // handleSortKeys handles 1-5, 0 - sort operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
-	field, isReset, ok := SortFieldForKey(key)
-	if !ok {
-		return false, nil
-	}
-	if isReset {
-		m.clearActiveSavedView()
-		m.sortField = SortByDefault
-		m.sortAscending = true
-		m.buildTree()
-	} else {
-		m.toggleSort(field)
-	}
-	return true, nil
+	handled := handleSortKey(key, &m.sortField, &m.sortAscending,
+		func() {
+			m.clearActiveSavedView()
+			m.buildTree()
+		},
+		func(SortField) {
+			m.clearActiveSavedView()
+			m.sortNodes()
+			m.updateVisibility()
+		},
+	)
+	return handled, nil
 }
 
 // handleTaskCRUDKeys handles enter, n, e, D - task create/read/update/delete operations.
@@ -225,16 +223,6 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 			}
 		}
 		return true, nil
-
-	case "i":
-		return true, func() tea.Msg {
-			return ShowQuickCaptureMsg{Project: m.project, AllProjects: m.config.Projects}
-		}
-
-	case "I":
-		return true, func() tea.Msg {
-			return ShowBulkCaptureMsg{Project: m.project}
-		}
 
 	case "e":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
@@ -332,33 +320,16 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 		}
 		return true, nil
 
-	case "ctrl+l":
-		// Edit last modified task
-		recentTasks := storage.GetRecentTasks(m.project.Tasks, 1)
-		if len(recentTasks) > 0 {
-			return true, func() tea.Msg {
-				return EditTaskMsg{Task: recentTasks[0]}
-			}
-		}
-		return true, nil
 	}
 	return false, nil
 }
 
-// handleMiscActionKeys handles z, R, ?, \, r, p - miscellaneous action operations.
+// handleMiscActionKeys handles view-specific miscellaneous action keys.
+// Keys shared across primary views (u, ctrl+z, \, {, }, ctrl+r, p, S, B, w,
+// ctrl+p, ctrl+k, ctrl+o, i, I, `, ~, @) are handled by handleCommonPrimaryViewKey.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
-	case "u":
-		// Undo last change (Vim-style)
-		return true, m.performUndo()
-
-	case "ctrl+z":
-		// Open undo history view
-		return true, func() tea.Msg {
-			return ShowUndoHistoryMsg{Project: m.project}
-		}
-
 	case "?":
 		return true, func() tea.Msg {
 			return ShowHelpMsg{
@@ -368,64 +339,14 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 			}
 		}
 
-	case "\\":
-		return true, func() tea.Msg {
-			return ShowTaskJumperMsg{Project: m.project}
-		}
-
-	case "[":
+	case "[", "]":
 		tabs := m.customSectionTabs()
 		if tabs != nil {
-			if m.customSectionTab > 0 {
-				m.customSectionTab--
-			} else {
-				m.customSectionTab = len(tabs) - 1
-			}
-			m.updateVisibility()
-			m.clampCursor()
-		}
-		return true, nil
-
-	case "]":
-		tabs := m.customSectionTabs()
-		if tabs != nil {
-			if m.customSectionTab < len(tabs)-1 {
-				m.customSectionTab++
-			} else {
-				m.customSectionTab = 0
-			}
-			m.updateVisibility()
-			m.clampCursor()
-		}
-		return true, nil
-
-	case "{":
-		return true, func() tea.Msg {
-			return ShowNotesMsg{Project: m.project}
-		}
-
-	case "}":
-		return true, func() tea.Msg {
-			return ShowNoteCreatorMsg{Project: m.project}
-		}
-
-	case "ctrl+r":
-		m.clearSelection()
-		_ = storage.LoadProject(m.project)
-		m.buildTree()
-		return true, nil
-
-	case "p":
-		return true, func() tea.Msg {
-			return ShowPriorityViewMsg{Project: m.project}
-		}
-
-	case "S":
-		// Open score editor for selected task
-		if len(visible) > 0 && m.cursor < len(visible) {
-			task := visible[m.cursor].Task
-			return true, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: task, Project: m.project}
+			if cycleCustomSectionTab(key, &m.customSectionTab, len(tabs), func() {
+				m.updateVisibility()
+				m.clampCursor()
+			}) {
+				return true, nil
 			}
 		}
 		return true, nil
@@ -433,36 +354,6 @@ func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode)
 	case "f":
 		return true, func() tea.Msg {
 			return ShowProjectFocusViewMsg{Project: m.project}
-		}
-
-	case "B":
-		// Project blockers (capital B since lowercase b is now prefix)
-		return true, func() tea.Msg {
-			return ShowBlockersMsg{Project: m.project}
-		}
-
-	case "w":
-		// Open inbox processor workflow
-		return true, func() tea.Msg {
-			return ShowInboxProcessorMsg{Project: m.project}
-		}
-
-	case "ctrl+p":
-		// Toggle to outliner view (already on project tree)
-		return true, func() tea.Msg {
-			return ShowOutlinerMsg{Project: m.project}
-		}
-
-	case "ctrl+k":
-		// Open kanban board view
-		return true, func() tea.Msg {
-			return ShowKanbanMsg{Project: m.project}
-		}
-
-	case "ctrl+o":
-		// Open outliner view
-		return true, func() tea.Msg {
-			return ShowOutlinerMsg{Project: m.project}
 		}
 
 	case "A":

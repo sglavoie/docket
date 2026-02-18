@@ -375,18 +375,25 @@ func renderSubTabBarWithFocus(tabs []string, activeIdx int, focused bool, width 
 	return bar
 }
 
+// renderTabFiller returns a bottom-border filler element that extends a tab row
+// to the given width. Returns "" if width <= 0.
+func renderTabFiller(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	return lipgloss.NewStyle().
+		BorderBottom(true).
+		BorderStyle(lipgloss.Border{Bottom: "─"}).
+		BorderForeground(ColorBorder).
+		Width(width).
+		Render("")
+}
+
 // finishWrappingTabRow joins a row of rendered tabs and fills remaining width with a border.
 func finishWrappingTabRow(tabs []string, availableWidth int) string {
 	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
-	tabWidth := lipgloss.Width(row)
-	remaining := availableWidth - tabWidth
-	if remaining > 0 {
-		filler := lipgloss.NewStyle().
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder).
-			Width(remaining).
-			Render("")
+	remaining := availableWidth - lipgloss.Width(row)
+	if filler := renderTabFiller(remaining); filler != "" {
 		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
 	}
 	return row
@@ -499,6 +506,19 @@ func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollO
 	return visible
 }
 
+// renderConfirmAwareStatus renders a status message that switches to error
+// styling when a confirm dialog is active. Used by kanban and swimlane views.
+func renderConfirmAwareStatus(statusMessage string, confirmActive bool) string {
+	if statusMessage == "" {
+		return ""
+	}
+	style := lipgloss.NewStyle().Foreground(ColorWarning)
+	if confirmActive {
+		style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+	}
+	return style.Render(statusMessage)
+}
+
 // renderStatusMessages renders the standard status/error message block used by
 // fullscreen views. Returns an empty string when neither message is set.
 func renderStatusMessages(statusMessage string, err error) string {
@@ -512,6 +532,15 @@ func renderStatusMessages(statusMessage string, err error) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// renderGroupHeader renders a group header with count, using overdue styling when appropriate.
+func renderGroupHeader(name string, count int, isOverdue bool) string {
+	header := fmt.Sprintf("%s (%d)", name, count)
+	if isOverdue {
+		return OverdueStyle.Bold(true).Render(header)
+	}
+	return GroupHeaderStyle.Render(header)
 }
 
 // renderCollapsibleHeader renders a collapsible section/group header with cursor

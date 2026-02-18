@@ -454,7 +454,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 		}
 		b.WriteString("\n\n")
 		if m.SearchQuery() != "" {
-			b.WriteString(HelpStyle.Render("Esc clear filter • q close"))
+			b.WriteString(HelpStyle.Render("Esc clear filter · q close"))
 		} else {
 			b.WriteString(HelpStyle.Render("Esc cancel"))
 		}
@@ -491,9 +491,9 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
-		b.WriteString(HelpStyle.Render("Type to filter • Enter confirm • Esc cancel"))
+		b.WriteString(HelpStyle.Render("Type to filter · Enter confirm · Esc cancel"))
 	} else {
-		b.WriteString(HelpStyle.Render("/ search • j/k navigate • Enter select • Esc cancel"))
+		b.WriteString(HelpStyle.Render("/ search · j/k navigate · Enter select · Esc cancel"))
 	}
 
 	return b.String()
@@ -523,7 +523,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		b.WriteString("\n\n")
 		if m.SearchQuery() != "" {
-			b.WriteString(HelpStyle.Render("Esc clear filter • q close"))
+			b.WriteString(HelpStyle.Render("Esc clear filter · q close"))
 		} else {
 			b.WriteString(HelpStyle.Render("Esc go back"))
 		}
@@ -562,9 +562,9 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
-		b.WriteString(HelpStyle.Render("Type to filter • Enter confirm • Esc cancel"))
+		b.WriteString(HelpStyle.Render("Type to filter · Enter confirm · Esc cancel"))
 	} else {
-		b.WriteString(HelpStyle.Render("/ search • j/k navigate • Enter select • Esc back"))
+		b.WriteString(HelpStyle.Render("/ search · j/k navigate · Enter select · Esc back"))
 	}
 
 	return b.String()
@@ -606,7 +606,7 @@ func (m *CrossProjectLinkerModel) viewLinkTypeSelection() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("↑/↓ navigate • Enter create link • Esc back"))
+	b.WriteString(HelpStyle.Render("↑/↓ navigate · Enter create link · Esc back"))
 
 	return b.String()
 }

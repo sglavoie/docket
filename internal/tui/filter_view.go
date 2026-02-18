@@ -320,7 +320,7 @@ func (m *FilterViewModel) View() string {
 	// Footer
 	var helpText string
 	if len(m.items) > 0 {
-		helpText = fmt.Sprintf("q close | 1-%d clear | c clear all", len(m.items))
+		helpText = fmt.Sprintf("q close · 1-%d clear · c clear all", len(m.items))
 	} else {
 		helpText = "q close"
 	}

@@ -35,8 +35,8 @@ func NewTriggerFieldPickerModel(triggerIndex int, currentField workflow.TriggerF
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Select Trigger Field",
-		EmptyMessage:   "No trigger fields available",
-		NoMatchMessage: "No matching fields",
+		EmptyMessage:   "No trigger fields available.",
+		NoMatchMessage: "No matching fields.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 		BoxWidth:       60,

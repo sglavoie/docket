@@ -216,11 +216,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 
 // renderGroupHeader renders a group header with count.
 func (m *PriorityViewModel) renderGroupHeader(name string, count int, isOverdue bool) string {
-	header := fmt.Sprintf("%s (%d)", name, count)
-	if isOverdue {
-		return OverdueStyle.Bold(true).Render(header)
-	}
-	return PriorityGroupHeaderStyle.Render(header)
+	return renderGroupHeader(name, count, isOverdue)
 }
 
 // renderWaitingOnHeader renders the collapsible waiting on section header.

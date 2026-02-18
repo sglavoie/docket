@@ -97,7 +97,7 @@ func (m *SaveSearchInputModel) View() string {
 	}
 
 	// Help footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save • Esc to cancel"), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter to save · Esc to cancel"), "", m.width))
 
 	return b.String()
 }

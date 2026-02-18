@@ -41,8 +41,8 @@ func NewProjectPickerModel(projects []*models.Project) *ProjectPickerModel {
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Switch Project",
-		EmptyMessage:   "No projects available",
-		NoMatchMessage: "No matching projects",
+		EmptyMessage:   "No projects available.",
+		NoMatchMessage: "No matching projects.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 	})

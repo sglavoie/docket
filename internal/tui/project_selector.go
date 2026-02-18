@@ -62,8 +62,8 @@ func NewProjectSelectorModel(projects []*models.Project, task *models.Task, sour
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Move to Project",
-		EmptyMessage:   "No other projects available",
-		NoMatchMessage: "No matching projects",
+		EmptyMessage:   "No other projects available.",
+		NoMatchMessage: "No matching projects.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 	})
@@ -245,7 +245,7 @@ func (m *ProjectSelectorModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"), "", m.Width()))
 
 	return b.String()
 }

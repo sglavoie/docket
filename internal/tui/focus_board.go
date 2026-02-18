@@ -38,7 +38,7 @@ func (r boardRow) isTask() bool {
 
 // FocusBoardModel displays Action tasks + aggregated active/due tasks in a unified view.
 type FocusBoardModel struct {
-	BaseView
+	BaseSearchableView
 	InteractiveViewState
 
 	config         *config.Config
@@ -58,13 +58,7 @@ type FocusBoardModel struct {
 	sortAscending bool
 
 	// Filter
-	filter        CommonFilterState
-	pendingPrefix string
-
-	// Search
-	searchMode  bool
-	searchInput textinput.Model
-	searchQuery string
+	filter CommonFilterState
 
 	// Quick-add input
 	addMode  bool
@@ -97,23 +91,18 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 	ei.CharLimit = 200
 	ei.Width = 60
 
-	si := textinput.New()
-	si.Placeholder = "Search..."
-	si.CharLimit = 100
-	si.Width = 40
-
 	m := &FocusBoardModel{
 		config:         cfg,
 		configManager:  manager,
 		projectService: NewProjectService(),
 		addInput:       ti,
 		editInput:      ei,
-		searchInput:    si,
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),
 			Attrs: make(map[string]string),
 		},
 	}
+	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()
 	return m
 }
@@ -144,7 +133,7 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.editMode {
 			return m.handleEditInput(msg)
 		}
-		if m.searchMode {
+		if m.searchActive {
 			return m.handleSearchInput(msg)
 		}
 		return m.handleKeyMsg(msg)
@@ -168,10 +157,10 @@ func (m *FocusBoardModel) clampCursor() {
 
 // ShouldCaptureEsc returns true when add mode, search mode, or confirm dialog is active.
 func (m *FocusBoardModel) ShouldCaptureEsc() bool {
-	return m.addMode || m.editMode || m.searchMode || m.confirm.IsActive() || m.pendingPrefix != "" || m.HasActiveFilters()
+	return m.addMode || m.editMode || m.searchActive || m.confirm.IsActive() || m.pendingPrefix != "" || m.HasActiveFilters()
 }
 
 // HasTextInput returns true when a text input is focused.
 func (m *FocusBoardModel) HasTextInput() bool {
-	return m.addMode || m.editMode || m.searchMode
+	return m.addMode || m.editMode || m.searchActive
 }

@@ -598,7 +598,7 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 		lines = append(lines, DueSoonStyle.Render(fmt.Sprintf("📥 Inbox backlog: %s", strings.Join(inboxProjects, ", "))))
 	}
 	if totalCompletedThisWeek > 0 {
-		lines = append(lines, lipgloss.NewStyle().Foreground(ColorSuccess).Render(fmt.Sprintf("✅ %d completed this week", totalCompletedThisWeek)))
+		lines = append(lines, SuccessStyle.Render(fmt.Sprintf("✅ %d completed this week", totalCompletedThisWeek)))
 	}
 
 	// Global notes count

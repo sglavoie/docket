@@ -590,45 +590,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, cmd
 	}
 
-	// Prefix key activation (status, fold, go/section, priority, due date, create linked, task, blocker)
-	switch key {
-	case ",":
-		m.pendingPrefix = ","
-		return m, nil
-	case "z":
-		m.pendingPrefix = "z"
-		return m, nil
-	case "g":
-		m.pendingPrefix = "g"
-		return m, nil
-	case "m":
-		m.pendingPrefix = "m"
-		return m, nil
-	case "!":
-		m.pendingPrefix = "!"
-		return m, nil
-	case "d":
-		m.pendingPrefix = "d"
-		return m, nil
-	case "s":
-		m.pendingPrefix = "s"
-		return m, nil
-	case "c":
-		if CursorInBounds(m.cursor, len(visible)) {
-			m.pendingPrefix = "c"
-			return m, nil
-		}
-		return m, nil
-	case "F":
-		m.pendingPrefix = "F"
-		return m, nil
-	case "t":
-		// Task action prefix
-		m.pendingPrefix = "t"
-		return m, nil
-	case "b":
-		// Blocker/dependency prefix
-		m.pendingPrefix = "b"
+	// Prefix key activation (shared across primary views)
+	if prefix, ok := activatePrefixKey(key, CursorInBounds(m.cursor, len(visible))); ok {
+		m.pendingPrefix = prefix
 		return m, nil
 	}
 
@@ -671,14 +635,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, nil
 	}
 
-	// Project cycling keys (emit messages to app level)
-	switch key {
-	case "`":
-		return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
-	case "~":
-		return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }
-	case "@":
-		return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
+	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
+	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
+		return m, cmd
 	}
 
 	// Context filter (capital C, doesn't conflict with lowercase c prefix)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // SortField represents the field to sort tasks by.
@@ -197,6 +198,23 @@ type ProjectTreeModel struct {
 
 	// Active saved view name (set when a saved view is loaded, cleared on manual filter/sort changes)
 	activeSavedView string
+}
+
+// primaryProjectView interface implementation for shared key dispatch.
+func (m *ProjectTreeModel) getProject() *models.Project { return m.project }
+func (m *ProjectTreeModel) getConfig() *config.Config   { return m.config }
+func (m *ProjectTreeModel) getCursorTask() *models.Task {
+	visible := m.visibleNodes()
+	if CursorInBounds(m.cursor, len(visible)) {
+		return visible[m.cursor].Task
+	}
+	return nil
+}
+func (m *ProjectTreeModel) reloadFromDisk() tea.Cmd {
+	m.clearSelection()
+	_ = storage.LoadProject(m.project)
+	m.buildTree()
+	return nil
 }
 
 // clearActiveSavedView clears the active saved view indicator.

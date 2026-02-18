@@ -168,7 +168,7 @@ func (m *DependencyViewerModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch section | j/k: navigate | Enter: go to task | d: view deps | Esc: close"), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch section · j/k: navigate · Enter: go to task · d: view deps · Esc: close"), "", m.width))
 
 	return b.String()
 }
@@ -189,9 +189,9 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 	// Empty section message
 	if len(tasks) == 0 {
 		if sectionIdx == 0 {
-			b.WriteString(MutedStyle.Render("  No dependencies"))
+			b.WriteString(MutedStyle.Render("  No dependencies."))
 		} else {
-			b.WriteString(MutedStyle.Render("  No tasks depend on this task"))
+			b.WriteString(MutedStyle.Render("  No tasks depend on this task."))
 		}
 		b.WriteString("\n")
 		return b.String()

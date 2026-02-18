@@ -455,7 +455,7 @@ func (m *NotesSearchModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	left := HelpStyle.Render(fmt.Sprintf("up/down nav | Enter select | Esc close | %d results", len(m.filtered)))
+	left := HelpStyle.Render(fmt.Sprintf("up/down nav · Enter select · Esc close · %d results", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, "", m.width))
 
 	return b.String()

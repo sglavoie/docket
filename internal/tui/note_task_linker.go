@@ -43,8 +43,8 @@ func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTas
 	picker := NewBasePicker[noteTaskItem](items, PickerConfig{
 		Title:          "Link Note to Task",
 		Subtitle:       note.Title,
-		EmptyMessage:   "No tasks in project",
-		NoMatchMessage: "No matching tasks",
+		EmptyMessage:   "No tasks in project.",
+		NoMatchMessage: "No matching tasks.",
 	})
 
 	return &NoteTaskLinkerModel{
@@ -171,9 +171,9 @@ func (m *NoteTaskLinkerModel) View() string {
 
 	var helpText string
 	if m.picker.IsSearchMode() {
-		helpText = "enter done | esc clear"
+		helpText = "enter done · esc clear"
 	} else {
-		helpText = "space toggle | / search | enter close"
+		helpText = "space toggle · / search · enter close"
 	}
 
 	var out strings.Builder

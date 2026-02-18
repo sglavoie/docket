@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleKeyMsg processes key events in the outliner view.
@@ -88,20 +87,21 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Prefix key activation
-	// Task-specific prefixes are skipped when the cursor is on a section header,
-	// since headers are not tasks. Navigation/filter prefixes (p, g, z, F) are
-	// always allowed because they contain non-task operations (e.g. gg, zR, Fx).
+	// Prefix key activation (shared across primary views)
 	onHeader := len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader
-	switch key {
-	case ",", "t", "!", "d", "b", "c", "s", "m":
-		if !onHeader {
-			m.pendingPrefix = key
-			return m, nil
-		}
-	case "g", "p", "z", "F":
-		m.pendingPrefix = key
+	if prefix, ok := activatePrefixKey(key, !onHeader); ok {
+		m.pendingPrefix = prefix
 		return m, nil
+	}
+	// Outliner-specific: P prefix for perspectives
+	if key == "P" {
+		m.pendingPrefix = "P"
+		return m, nil
+	}
+
+	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
+	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
+		return m, cmd
 	}
 
 	switch key {
@@ -304,17 +304,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// View switching
-	case "ctrl+p":
-		return m, func() tea.Msg {
-			return ShowProjectTreeMsg{Project: m.project}
-		}
-
-	case "ctrl+k":
-		return m, func() tea.Msg {
-			return ShowKanbanMsg{Project: m.project}
-		}
-
 	case "ctrl+f":
 		return m, func() tea.Msg {
 			return ShowFilterMsg{CommonFilter: &m.filter, Project: m.project}
@@ -386,16 +375,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Cut: copy title(s) to clipboard, then initiate delete
 	case "x":
 		return m.handleCutKey()
-
-	// Score editor
-	case "S":
-		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
-			task := m.rows[m.cursor].task
-			return m, func() tea.Msg {
-				return ShowScoreEditorMsg{Task: task, Project: m.project}
-			}
-		}
-		return m, nil
 
 	// Filter keys
 	case "T":
@@ -503,83 +482,14 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Task jumper
-	case "\\":
-		return m, func() tea.Msg {
-			return ShowTaskJumperMsg{Project: m.project}
-		}
-
-	// Quick capture
-	case "i":
-		return m, func() tea.Msg {
-			return ShowQuickCaptureMsg{Project: m.project, AllProjects: m.config.Projects}
-		}
-
-	// Bulk capture
-	case "I":
-		return m, func() tea.Msg {
-			return ShowBulkCaptureMsg{Project: m.project}
-		}
-
-	// Refresh from disk
-	case "ctrl+r":
-		_ = storage.LoadProject(m.project)
-		m.rebuildRows()
-		return m, nil
-
-	// Priority view
-	case "P":
-		return m, func() tea.Msg {
-			return ShowPriorityViewMsg{Project: m.project}
-		}
-
-	// Project blockers
-	case "B":
-		return m, func() tea.Msg {
-			return ShowBlockersMsg{Project: m.project}
-		}
-
-	// Inbox processor
-	case "w":
-		return m, func() tea.Msg {
-			return ShowInboxProcessorMsg{Project: m.project}
-		}
-
 	// Custom section tabs
-	case "[":
-		tabs := m.customSectionTabs()
-		if tabs != nil {
-			if m.customSectionTab > 0 {
-				m.customSectionTab--
-			} else {
-				m.customSectionTab = len(tabs) - 1
-			}
-			m.rebuildRows()
+	case "[", "]":
+		if tabs := m.customSectionTabs(); tabs != nil {
+			cycleCustomSectionTab(key, &m.customSectionTab, len(tabs), func() {
+				m.rebuildRows()
+			})
 		}
 		return m, nil
-	case "]":
-		tabs := m.customSectionTabs()
-		if tabs != nil {
-			if m.customSectionTab < len(tabs)-1 {
-				m.customSectionTab++
-			} else {
-				m.customSectionTab = 0
-			}
-			m.rebuildRows()
-		}
-		return m, nil
-
-	// Notes view
-	case "{":
-		return m, func() tea.Msg {
-			return ShowNotesMsg{Project: m.project}
-		}
-
-	// Create note
-	case "}":
-		return m, func() tea.Msg {
-			return ShowNoteCreatorMsg{Project: m.project}
-		}
 
 	// Archive/unarchive project
 	case "ctrl+a":
@@ -589,26 +499,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, m.archiveProject()
-
-	// Edit last modified task
-	case "ctrl+l":
-		recentTasks := storage.GetRecentTasks(m.project.Tasks, 1)
-		if len(recentTasks) > 0 {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: recentTasks[0]}
-			}
-		}
-		return m, nil
-
-	// Undo last change
-	case "u":
-		return m, m.performUndo()
-
-	// Undo history
-	case "ctrl+z":
-		return m, func() tea.Msg {
-			return ShowUndoHistoryMsg{Project: m.project}
-		}
 
 	// Tag manager
 	case "ctrl+t":
@@ -622,25 +512,12 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowSectionManagerMsg{ProjectTree: nil, Project: m.project}
 		}
 
-	// Project cycling
-	case "`":
-		return m, func() tea.Msg { return CycleProjectMsg{Forward: true} }
-	case "~":
-		return m, func() tea.Msg { return CycleProjectMsg{Forward: false} }
-	case "@":
-		return m, func() tea.Msg { return ShowProjectCycleManagerMsg{} }
-
 	// Sort keys: bare 1-5, 0
 	case "1", "2", "3", "4", "5", "0":
-		if field, isReset, ok := SortFieldForKey(key); ok {
-			if isReset {
-				m.sortField = SortByDefault
-				m.sortAscending = true
-				m.rebuildRows()
-			} else {
-				m.toggleSort(field)
-			}
-		}
+		handleSortKey(key, &m.sortField, &m.sortAscending,
+			func() { m.rebuildRows() },
+			func(SortField) { m.rebuildRows() },
+		)
 		return m, nil
 	}
 

@@ -53,11 +53,11 @@ func (m *DueDateOverviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(MutedStyle.Render("No tasks match current filters."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] h/l tabs | Fx clear filters | q/Esc clear filters"))
+			b.WriteString(HelpStyle.Render("[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
 		} else {
 			b.WriteString(MutedStyle.Render("No tasks in this category."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] h/l tabs • q/Esc close"))
+			b.WriteString(HelpStyle.Render("[/] h/l tabs · q/Esc close"))
 		}
 		return b.String()
 	}
@@ -78,7 +78,7 @@ func (m *DueDateOverviewModel) View() string {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
-	left := HelpStyle.Render("[/] tabs • ↑/↓ navigate • ,s/d/b/x/o status • 1-5 priority • dt/dm/dw due • e edit • ? help")
+	left := HelpStyle.Render("[/] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
@@ -162,11 +162,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 // renderGroupHeader renders a group header with count.
 func (m *DueDateOverviewModel) renderGroupHeader(name string, count int, isOverdue bool) string {
-	header := fmt.Sprintf("%s (%d)", name, count)
-	if isOverdue {
-		return OverdueStyle.Bold(true).Render(header)
-	}
-	return DueDateGroupHeaderStyle.Render(header)
+	return renderGroupHeader(name, count, isOverdue)
 }
 
 // renderGroup renders a group of tasks.

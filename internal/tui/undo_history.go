@@ -327,7 +327,7 @@ func (m *UndoHistoryModel) View() string {
 	}
 	helpParts = append(helpParts, "Tab: switch pane")
 	helpParts = append(helpParts, "Esc: close")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " | ")), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(strings.Join(helpParts, " · ")), "", m.width))
 
 	return b.String()
 }

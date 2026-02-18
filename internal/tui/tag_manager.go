@@ -387,13 +387,13 @@ func (m *TagManagerModel) View() string {
 	// Footer
 	var helpText string
 	if m.addTagMode {
-		helpText = "enter add tag | esc cancel"
+		helpText = "enter add tag · esc cancel"
 	} else if m.renameMode {
-		helpText = "enter confirm | esc cancel"
+		helpText = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		helpText = "j/k nav | enter filter | a add | r rename | d del | q close"
+		helpText = "j/k nav · enter filter · a add · r rename · d del · q close"
 	} else {
-		helpText = "a add tag | q close"
+		helpText = "a add tag · q close"
 	}
 
 	var out strings.Builder

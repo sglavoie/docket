@@ -58,11 +58,11 @@ func (m *AllTasksViewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(MutedStyle.Render("No tasks match current filters."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] tabs | Fx clear filters | q/Esc clear filters"))
+			b.WriteString(HelpStyle.Render("[/] tabs · Fx clear filters · q/Esc clear filters"))
 		} else {
 			b.WriteString(MutedStyle.Render("No matching tasks."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] h/l tabs | q/Esc close"))
+			b.WriteString(HelpStyle.Render("[/] h/l tabs · q/Esc close"))
 		}
 		return b.String()
 	}
@@ -107,9 +107,9 @@ func (m *AllTasksViewModel) View() string {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
-	footerLeft := "j/k nav | [/] tabs | ctrl+g group | ,s/d/b/x status | 1-5 sort | v multi | ? help"
+	footerLeft := "j/k nav · [/] tabs · ctrl+g group · ,s/d/b/x status · 1-5 sort · v multi · ? help"
 	if m.multiSelectMode {
-		footerLeft = "MULTI-SELECT: space toggle | a select all | A deselect | ,s/d/b status | D delete | v exit"
+		footerLeft = "MULTI-SELECT: space toggle · a select all · A deselect · ,s/d/b status · D delete · v exit"
 	}
 	left := HelpStyle.Render(footerLeft)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
@@ -165,7 +165,7 @@ var AllTasksNavigationPrefixHints = []PrefixHint{
 }
 
 // renderGroupHeader renders a group header with task count and collapse indicator.
-// Uses inline styling instead of DueDateGroupHeaderStyle to avoid MarginTop(1)
+// Uses inline styling instead of GroupHeaderStyle to avoid MarginTop(1)
 // which would make each entry multi-line and break contentHeight line counting.
 func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool) string {
 	return renderCollapsibleHeader(name, count, collapsed, isSelected, lipgloss.NewStyle().Foreground(ColorSecondary))

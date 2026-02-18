@@ -107,15 +107,15 @@ func (m *PriorityViewModel) loadActionableTasks() {
 func (m *PriorityViewModel) activeTabHint() string {
 	switch m.activeTab {
 	case priorityTabUrgent:
-		return " • Showing overdue and due today"
+		return " · Showing overdue and due today"
 	case priorityTabUpcoming:
-		return " • Showing this week and later"
+		return " · Showing this week and later"
 	case priorityTabBacklog:
-		return " • Showing tasks with no due date"
+		return " · Showing tasks with no due date"
 	case priorityTabBlocked:
-		return " • Showing blocked and waiting tasks"
+		return " · Showing blocked and waiting tasks"
 	case priorityTabByScore:
-		return " • Ranked by composite score"
+		return " · Ranked by composite score"
 	default:
 		return ""
 	}

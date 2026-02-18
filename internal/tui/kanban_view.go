@@ -120,7 +120,7 @@ func (m *KanbanViewModel) View() string {
 	}
 	if totalTasks == 0 && m.HasActiveFilters() {
 		// Show message when filters result in no tasks
-		emptyMsg := MutedStyle.Render("No tasks match current filters")
+		emptyMsg := MutedStyle.Render("No tasks match current filters.")
 		kanbanPane = lipgloss.Place(m.Width(), m.kanbanHeight, lipgloss.Center, lipgloss.Center, emptyMsg)
 	}
 
@@ -180,12 +180,8 @@ func (m *KanbanViewModel) View() string {
 	}
 
 	// Render status message if set
-	if m.statusMessage != "" {
-		statusStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		if m.confirm.IsActive() {
-			statusStyle = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-		}
-		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
+	if msg := renderConfirmAwareStatus(m.statusMessage, m.confirm.IsActive()); msg != "" {
+		viewParts = append(viewParts, msg)
 	}
 
 	// Join vertically: filterBar + kanban + divider + details + quickAdd + status + popup
@@ -238,15 +234,8 @@ func (m *KanbanViewModel) renderKanbanTabBar() string {
 
 	row := lipgloss.JoinHorizontal(lipgloss.Bottom, tabs...)
 
-	tabWidth := lipgloss.Width(row)
-	remaining := availableWidth - tabWidth
-	if remaining > 0 {
-		filler := lipgloss.NewStyle().
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder).
-			Width(remaining).
-			Render("")
+	remaining := availableWidth - lipgloss.Width(row)
+	if filler := renderTabFiller(remaining); filler != "" {
 		row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
 	}
 
@@ -469,7 +458,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	} else if task.Active {
 		title = ActiveStyle.Render(title)
 	} else if task.Pinned {
-		title = lipgloss.NewStyle().Foreground(ColorSuccess).Render(title)
+		title = SuccessStyle.Render(title)
 	}
 
 	// Score badge (only if column wide enough and profile assigned)

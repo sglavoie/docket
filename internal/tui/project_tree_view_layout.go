@@ -270,7 +270,7 @@ func (m *ProjectTreeModel) renderMultiSelectIndicator(width int) string {
 	badge := SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count))
 	badgeWidth := lipgloss.Width(badge)
 
-	fullHelp := "Space: toggle | a: all | gX: deselect | v/Esc: exit | e: bulk edit | ,s/d/b/x/o: status | D: delete | T: tag"
+	fullHelp := "Space: toggle · a: all · gX: deselect · v/Esc: exit · e: bulk edit · ,s/d/b/x/o: status · D: delete · T: tag"
 	shortHelp := "Spc:sel a:all gX:desel v:exit e:edit ,s/d/b/x/o:status D:del T:tag"
 
 	// Wide terminal: badge and full help on same line
@@ -425,7 +425,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		if len(m.project.Tasks) == 0 {
 			cardContent.WriteString(MutedStyle.Render("No tasks yet."))
 		} else {
-			cardContent.WriteString(MutedStyle.Render("No tasks match filters."))
+			cardContent.WriteString(MutedStyle.Render("No tasks match current filters."))
 		}
 	} else {
 		// Calculate available height for task list

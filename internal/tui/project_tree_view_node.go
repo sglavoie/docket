@@ -89,7 +89,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	} else if task.Active {
 		titleStyle = ActiveStyle
 	} else if task.Pinned {
-		titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+		titleStyle = SuccessStyle
 	}
 	if inSelection && !selected && !node.IsContextNode {
 		titleStyle = SelectionStyle
@@ -314,7 +314,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	if m.quickEdit.IsRenameOnly() {
 		editLine += "\n" + helpIndent + HelpStyle.Render("Enter: save · Esc: cancel")
 	} else {
-		editLine += "\n" + helpIndent + HelpStyle.Render("!N priority · #tag · -#tag · @date · /section · $status | Enter: save · Esc: cancel")
+		editLine += "\n" + helpIndent + HelpStyle.Render("!N priority · #tag · -#tag · @date · /section · $status · Enter: save · Esc: cancel")
 	}
 
 	return editLine

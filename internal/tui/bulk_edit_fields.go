@@ -423,15 +423,15 @@ func (m *BulkEditModel) renderActions() string {
 // renderFooter renders the help footer.
 func (m *BulkEditModel) renderFooter() string {
 	if m.tagMode == 1 {
-		return MutedStyle.Render("  Enter: add tag | Esc: cancel")
+		return MutedStyle.Render("  Enter: add tag · Esc: cancel")
 	}
 	if m.tagMode == 2 {
-		return MutedStyle.Render("  Space: toggle | Tab: next | Esc: done")
+		return MutedStyle.Render("  Space: toggle · Tab: next · Esc: done")
 	}
 	if m.dueDateInputMode {
-		return MutedStyle.Render("  Enter: set date | Esc: cancel | Formats: tomorrow, +3d, fri, 2024-01-15")
+		return MutedStyle.Render("  Enter: set date · Esc: cancel · Formats: tomorrow, +3d, fri, 2024-01-15")
 	}
-	return MutedStyle.Render("  Tab/j/k: navigate | Enter: select | h/l: options | Esc: cancel")
+	return MutedStyle.Render("  Tab/j/k: navigate · Enter: select · h/l: options · Esc: cancel")
 }
 
 // fieldLabel formats a field label.

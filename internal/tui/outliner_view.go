@@ -260,16 +260,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	if len(m.rows) == 0 {
 		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + sortBadge + searchIndicator
-		emptyMsg := "No tasks"
+		emptyMsg := "No tasks."
 		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			if t := m.project.GetTaskByID(topID); t != nil {
-				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q", perspective.Name, t.Title)
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q.", perspective.Name, t.Title)
 			} else {
-				emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective.", perspective.Name)
 			}
 		} else if perspective.Name != "All" {
-			emptyMsg = fmt.Sprintf("No tasks match the %s perspective", perspective.Name)
+			emptyMsg = fmt.Sprintf("No tasks match the %s perspective.", perspective.Name)
 		}
 		result := header + "\n"
 		if tabs := m.customSectionTabs(); tabs != nil {
@@ -386,7 +386,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		} else if task.Active {
 			titleStyle = ActiveStyle
 		} else if task.Pinned {
-			titleStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+			titleStyle = SuccessStyle
 		}
 
 		// Build inline indicators reusing existing helpers
@@ -590,7 +590,7 @@ func (m *OutlinerModel) renderQuickEditBar() string {
 
 	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
 	if !m.quickEdit.IsRenameOnly() {
-		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status | Enter=save Esc=cancel")
+		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status · Enter=save Esc=cancel")
 	}
 	lines = append(lines, helpHint)
 

@@ -65,6 +65,21 @@ type OutlinerModel struct {
 	pendingUndoContext string // Context description for next undo snapshot
 }
 
+// primaryProjectView interface implementation for shared key dispatch.
+func (m *OutlinerModel) getProject() *models.Project { return m.project }
+func (m *OutlinerModel) getConfig() *config.Config   { return m.config }
+func (m *OutlinerModel) getCursorTask() *models.Task {
+	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+		return m.rows[m.cursor].task
+	}
+	return nil
+}
+func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
+	_ = storage.LoadProject(m.project)
+	m.rebuildRows()
+	return nil
+}
+
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
 	m := &OutlinerModel{

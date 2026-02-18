@@ -44,7 +44,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Search
 	case "/":
-		m.searchMode = true
+		m.searchActive = true
 		m.searchInput.SetValue(m.searchQuery)
 		m.searchInput.Focus()
 		return m, textinput.Blink

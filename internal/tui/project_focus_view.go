@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // ProjectFocusViewModel displays active-flagged tasks for a single project.
@@ -430,11 +429,11 @@ func (m *ProjectFocusViewModel) View() string {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
-	footerParts := "j/k nav | * unfocus | ,s/d/b/x status | 1-5 priority | dt/dm due"
+	footerParts := "j/k nav · * unfocus · ,s/d/b/x status · 1-5 priority · dt/dm due"
 	if len(m.subTabNames) > 1 {
-		footerParts += " | [/] sections"
+		footerParts += " · [/] sections"
 	}
-	footerParts += " | ? help"
+	footerParts += " · ? help"
 	left := HelpStyle.Render(footerParts)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(tasks)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
@@ -484,28 +483,6 @@ var ProjectFocusNavigationPrefixHints = []PrefixHint{
 
 // renderTaskLine renders a single task line.
 func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected bool, maxTitleLen int) string {
-	// Cursor
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	// Status icon
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-
-	// Type icon
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-
-	// Priority badge
-	priorityBadge := renderPriorityBadge(task.Priority)
-
-	// Title
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
-
-	// Custom section badge
 	csStr := ""
 	if task.CustomSection != "" {
 		csColor := m.project.GetSectionColor(task.CustomSection)
@@ -513,23 +490,17 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		csStr = " " + csStyle.Render("@ "+task.CustomSection)
 	}
 
-	tagsStr := renderInlineTags(task.Tags)
-
-	// Due date
 	dueStr := ""
 	if task.DueDate != nil {
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	// Build line (no project name needed)
-	line := fmt.Sprintf("%s%s %s %s %s%s%s", cursor, statusIcon, typeIcon, priorityBadge, title, csStr, tagsStr)
-	if dueStr != "" {
-		line = fmt.Sprintf("%-*s %s", m.Width()-15, line, dueStr)
-	}
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:       task,
+		IsSelected: isSelected,
+		MaxTitle:   maxTitleLen,
+		PostTitle:  csStr + renderInlineTags(task.Tags),
+		DueStr:     dueStr,
+		ViewWidth:  m.Width(),
+	}.Render()
 }

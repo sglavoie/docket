@@ -57,9 +57,9 @@ func (m *CommandPaletteModel) View() string {
 		out.WriteString(content.String())
 		out.WriteString(MutedStyle.Render(fmt.Sprintf("No matches for \"%s\"", query)))
 		out.WriteString("\n\n")
-		out.WriteString(HelpStyle.Render("Try: :cmd for commands • :task for tasks • :prj for projects"))
+		out.WriteString(HelpStyle.Render("Try: :cmd for commands · :task for tasks · :prj for projects"))
 		out.WriteString("\n")
-		out.WriteString(HelpStyle.Render("     :tag :sec :note :view • or clear to browse all"))
+		out.WriteString(HelpStyle.Render("     :tag :sec :note :view · or clear to browse all"))
 		return out.String()
 	}
 
@@ -228,7 +228,7 @@ func (m *CommandPaletteModel) buildFooter() string {
 	}
 
 	// Build compact hints
-	hints := "↑↓ • Enter • Tab • ^H • ^O • ^P • Esc"
+	hints := "↑↓ · Enter · Tab · ^H · ^O · ^P · Esc"
 
 	return fmt.Sprintf("%s | %s%s", hints, countSummary, toggleSummary)
 }

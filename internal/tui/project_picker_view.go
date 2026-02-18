@@ -22,7 +22,7 @@ func (m *ProjectPickerModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"), "", m.Width()))
 
 	return b.String()
 }

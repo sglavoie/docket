@@ -694,7 +694,7 @@ func (m *TaskAttachmentsModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Enter: add | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Enter: add · Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
@@ -716,7 +716,7 @@ func (m *TaskAttachmentsModel) View() string {
 			b.WriteString(MutedStyle.Render("  (copy will be deleted from .attachments/)"))
 		}
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("y: confirm delete | n/Esc: cancel"))
+		b.WriteString(HelpStyle.Render("y: confirm delete · n/Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
@@ -738,7 +738,7 @@ func (m *TaskAttachmentsModel) View() string {
 			b.WriteString(MutedStyle.Render("  (copy stays in .attachments/)"))
 		}
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("y: confirm unlink | n/Esc: cancel"))
+		b.WriteString(HelpStyle.Render("y: confirm unlink · n/Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}
@@ -886,12 +886,12 @@ func (m *TaskAttachmentsModel) View() string {
 	helpParts = append(helpParts, "?: help", "Esc: close")
 
 	// Join with separators and check if wrapping is needed
-	helpText := strings.Join(helpParts, " | ")
+	helpText := strings.Join(helpParts, " · ")
 	if lipgloss.Width(helpText) > m.width-2 {
 		// Split into two lines at a reasonable point
 		mid := len(helpParts) / 2
-		line1 := strings.Join(helpParts[:mid], " | ")
-		line2 := strings.Join(helpParts[mid:], " | ")
+		line1 := strings.Join(helpParts[:mid], " · ")
+		line2 := strings.Join(helpParts[mid:], " · ")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.width))
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render(line2))

@@ -172,7 +172,7 @@ func (m *KanbanViewModel) renderQuickEditBar() string {
 	// Help hint
 	helpHint := MutedStyle.Render("Enter=save  Esc=cancel")
 	if !m.quickEdit.IsRenameOnly() {
-		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status | Enter=save Esc=cancel")
+		helpHint = MutedStyle.Render("!1-5=priority #tag @date /section $status · Enter=save Esc=cancel")
 	}
 	lines = append(lines, helpHint)
 

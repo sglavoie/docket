@@ -292,7 +292,7 @@ func (m *KanbanViewModel) renderAllView() string {
 	viewportHeight := m.Height() - tabBarHeight - 3 // header + status + help hint
 
 	if len(m.allNodes) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks"))
+		b.WriteString(MutedStyle.Render("No tasks."))
 		return b.String()
 	}
 
@@ -340,7 +340,7 @@ func (m *KanbanViewModel) renderAllView() string {
 
 	// Footer
 	b.WriteString("\n")
-	leftFooter := HelpStyle.Render("j/k: navigate | Space: expand/collapse | q: close")
+	leftFooter := HelpStyle.Render("j/k: navigate · Space: expand/collapse · q: close")
 	b.WriteString(renderStatusBarFooter(leftFooter, "", m.Width()))
 
 	return b.String()

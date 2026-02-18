@@ -671,7 +671,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		b.WriteString("\n\n")
 		b.WriteString(s.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+E: external editor | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"))
 		return b.String()
 	}
 
@@ -688,7 +688,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 		b.WriteString(s.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Ctrl+S: save | Ctrl+E: external editor | Esc: cancel"))
+		b.WriteString(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"))
 		return b.String()
 	}
 
@@ -706,7 +706,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 			}
 			b.WriteString(MutedStyle.Render(titleText))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("y: confirm delete | n/Esc: cancel"))
+			b.WriteString(HelpStyle.Render("y: confirm delete · n/Esc: cancel"))
 		}
 		return b.String()
 	}
@@ -809,7 +809,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add | e: edit | R: resolve/unresolve | d: delete | g: go to project | Enter: expand | h/l/[/] tabs | Esc: close"), "", s.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add · e: edit · R: resolve/unresolve · d: delete · g: go to project · Enter: expand · h/l/[/] tabs · Esc: close"), "", s.width))
 
 	return b.String()
 }

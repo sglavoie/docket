@@ -64,8 +64,8 @@ func NewBulkTagSelectorModel(tasks []*models.Task, project *models.Project) *Bul
 	title := fmt.Sprintf("Tags for %d tasks", len(tasks))
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags in project (press 'a' to add)",
-		NoMatchMessage: "No matching tags (press 'a' to add)",
+		EmptyMessage:   "No tags in project (press 'a' to add).",
+		NoMatchMessage: "No matching tags (press 'a' to add).",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})
@@ -191,8 +191,8 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 
 	picker := NewBasePicker(tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags in project (press 'a' to add)",
-		NoMatchMessage: "No matching tags (press 'a' to add)",
+		EmptyMessage:   "No tags in project (press 'a' to add).",
+		NoMatchMessage: "No matching tags (press 'a' to add).",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})

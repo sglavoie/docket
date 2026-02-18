@@ -112,15 +112,15 @@ func (m *WorkflowRuleCreatorModel) renderHelpText() string {
 	}
 
 	// Try single line first
-	singleLine := strings.Join(parts, " | ")
+	singleLine := strings.Join(parts, " · ")
 	if lipgloss.Width(singleLine) <= m.width-2 {
 		return HelpStyle.Render(singleLine)
 	}
 
 	// Split into two lines
 	mid := len(parts) / 2
-	line1 := strings.Join(parts[:mid], " | ")
-	line2 := strings.Join(parts[mid:], " | ")
+	line1 := strings.Join(parts[:mid], " · ")
+	line2 := strings.Join(parts[mid:], " · ")
 	return HelpStyle.Render(line1) + "\n" + HelpStyle.Render(line2)
 }
 
@@ -438,7 +438,7 @@ func (m *WorkflowRuleCreatorModel) renderFullscreenPreview() string {
 
 	preview := m.renderPreviewPane(m.width - 4)
 
-	left := HelpStyle.Render("Ctrl+p: back to editor | Esc: cancel")
+	left := HelpStyle.Render("Ctrl+p: back to editor · Esc: cancel")
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle(title, ""))

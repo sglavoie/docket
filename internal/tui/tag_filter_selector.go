@@ -40,8 +40,8 @@ func NewTagFilterSelectorModel(msg ShowTagFilterMsg) *TagFilterSelectorModel {
 
 	picker := NewBasePicker(msg.Tags, PickerConfig{
 		Title:          title,
-		EmptyMessage:   "No tags found",
-		NoMatchMessage: "No matching tags",
+		EmptyMessage:   "No tags found.",
+		NoMatchMessage: "No matching tags.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})

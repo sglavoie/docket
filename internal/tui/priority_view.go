@@ -159,7 +159,7 @@ func (m *PriorityViewModel) View() string {
 	var b strings.Builder
 
 	// Title
-	subtitle := fmt.Sprintf("%d tasks • %s", m.totalTasks, m.project.Name)
+	subtitle := fmt.Sprintf("%d tasks · %s", m.totalTasks, m.project.Name)
 	b.WriteString(renderFullscreenTitle("Priority View", subtitle))
 	b.WriteString("\n")
 
@@ -272,7 +272,7 @@ func (m *PriorityViewModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate • [/] tabs • F filter • s start suggested • ,s/,d status" + tabHint)
+	left := HelpStyle.Render("↑/↓ navigate · [/] tabs · F filter · s start suggested · ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 

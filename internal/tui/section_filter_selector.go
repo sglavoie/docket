@@ -40,8 +40,8 @@ func NewSectionFilterSelectorModel(pt *ProjectTreeModel) *SectionFilterSelectorM
 
 	picker := NewBasePicker(sections, PickerConfig{
 		Title:          "Filter by Sections",
-		EmptyMessage:   "No sections in project",
-		NoMatchMessage: "No matching sections",
+		EmptyMessage:   "No sections in project.",
+		NoMatchMessage: "No matching sections.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})
@@ -63,8 +63,8 @@ func NewSectionFilterSelectorModelForProject(project *models.Project) *SectionFi
 
 	picker := NewBasePicker(sections, PickerConfig{
 		Title:          "Filter by Sections",
-		EmptyMessage:   "No sections in project",
-		NoMatchMessage: "No matching sections",
+		EmptyMessage:   "No sections in project.",
+		NoMatchMessage: "No matching sections.",
 		MultiSelect:    true,
 		ShowCounts:     true,
 	})

@@ -62,11 +62,11 @@ func (m *DailyReviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(MutedStyle.Render("No tasks match current filters."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/]: tabs | Fx clear filters | q/Esc clear filters | ? help"))
+			b.WriteString(HelpStyle.Render("[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
 		} else {
 			b.WriteString(MutedStyle.Render("No tasks in this tab."))
 			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/]: tabs | ? help"))
+			b.WriteString(HelpStyle.Render("[/]: tabs · ? help"))
 		}
 		return b.String()
 	}
@@ -79,7 +79,7 @@ func (m *DailyReviewModel) View() string {
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
-	left := HelpStyle.Render("h/j/k/l nav | n/N section | * active | ,s/d/b/x status | ? help")
+	left := HelpStyle.Render("h/j/k/l nav · n/N section · * active · ,s/d/b/x status · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 

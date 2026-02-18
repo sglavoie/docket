@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // Section name constants for Kanban columns.
@@ -195,6 +196,17 @@ type KanbanViewModel struct {
 
 	// Last modified task tracking
 	lastModifiedTaskID string
+}
+
+// primaryProjectView interface implementation for shared key dispatch.
+func (m *KanbanViewModel) getProject() *models.Project { return m.Project }
+func (m *KanbanViewModel) getConfig() *config.Config   { return m.config }
+func (m *KanbanViewModel) getCursorTask() *models.Task { return m.getSelectedTask() }
+func (m *KanbanViewModel) reloadFromDisk() tea.Cmd {
+	_ = storage.LoadProject(m.Project)
+	m.loadTasks()
+	m.statusMessage = "Refreshed from disk"
+	return nil
 }
 
 // NewKanbanViewModel creates a new Kanban view model for the given project.

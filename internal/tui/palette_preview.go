@@ -767,7 +767,7 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 	}
 
 	b.WriteString("\n")
-	b.WriteString(HelpStyle.Render("Press Enter to run • Tab for actions • d to delete"))
+	b.WriteString(HelpStyle.Render("Press Enter to run · Tab for actions · d to delete"))
 
 	return b.String()
 }
@@ -804,7 +804,7 @@ func (m *CommandPaletteModel) renderSavedViewPreview(item PaletteItem) string {
 	b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(desc))
 	b.WriteString("\n\n")
 
-	b.WriteString(HelpStyle.Render("Press Enter to apply • Tab for actions"))
+	b.WriteString(HelpStyle.Render("Press Enter to apply · Tab for actions"))
 
 	return b.String()
 }

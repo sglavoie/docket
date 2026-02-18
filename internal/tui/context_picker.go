@@ -71,8 +71,8 @@ func NewContextPickerModel(dashboard *DashboardModel, cfg *config.Config) *Conte
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
-		EmptyMessage:   "No contexts available",
-		NoMatchMessage: "No matching contexts",
+		EmptyMessage:   "No contexts available.",
+		NoMatchMessage: "No matching contexts.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 	})
@@ -100,8 +100,8 @@ func NewContextPickerModelFromConfig(cfg *config.Config) *ContextPickerModel {
 
 	picker := NewBasePicker(contexts, PickerConfig{
 		Title:          "Filter by Context",
-		EmptyMessage:   "No contexts available",
-		NoMatchMessage: "No matching contexts",
+		EmptyMessage:   "No contexts available.",
+		NoMatchMessage: "No matching contexts.",
 		MultiSelect:    false,
 		ShowCounts:     true,
 	})
@@ -478,7 +478,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 		b.WriteString("Rename to: ")
 		b.WriteString(m.renameInput.View())
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("enter save | esc cancel"))
+		b.WriteString(MutedStyle.Render("enter save · esc cancel"))
 	} else if m.confirm.IsActive() {
 		b.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(m.confirm.Prompt()))
 	} else if m.statusMessage != "" {
@@ -492,7 +492,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 	} else if m.confirm.IsActive() {
 		footerLeft = ""
 	} else {
-		footerLeft = HelpStyle.Render("n:new | e:edit | d:del | r:rename | enter | esc")
+		footerLeft = HelpStyle.Render("n:new · e:edit · d:del · r:rename · enter · esc")
 	}
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(footerLeft, right, m.Width()))

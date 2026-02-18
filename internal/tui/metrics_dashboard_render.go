@@ -213,7 +213,7 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 			formatDuration(b.AverageBlocked),
 			formatDuration(b.TotalBlocked))
 	} else {
-		header = "No tasks with blocked time recorded"
+		header = "No tasks with blocked time recorded."
 	}
 
 	if len(b.Entries) == 0 {

@@ -437,9 +437,9 @@ func (m *GlobalTagManagerModel) View() string {
 
 	var footerHelp string
 	if m.renameMode {
-		footerHelp = "enter confirm | esc cancel"
+		footerHelp = "enter confirm · esc cancel"
 	} else if len(m.tags) > 0 {
-		footerHelp = "j/k nav | enter filter | r rename | q close"
+		footerHelp = "j/k nav · enter filter · r rename · q close"
 	} else {
 		footerHelp = "q close"
 	}
@@ -478,7 +478,7 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k nav | enter select | esc back"), "", m.width))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k nav · enter select · esc back"), "", m.width))
 
 	return b.String()
 }

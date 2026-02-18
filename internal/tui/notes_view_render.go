@@ -50,7 +50,7 @@ func (m *NotesViewModel) View() string {
 	}
 
 	// Fullscreen mode: show only the focused pane using full usable height
-	usable := m.height - 8
+	usable := m.Height() - 8
 	if usable < 4 {
 		usable = 4
 	}
@@ -60,7 +60,7 @@ func (m *NotesViewModel) View() string {
 		fullHeight := usable
 		var detailsContent string
 		if len(m.notes) > 0 && m.cursor < len(m.notes) {
-			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, fullHeight)
+			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.Width(), fullHeight)
 		}
 		if detailsContent != "" {
 			b.WriteString(detailsContent)
@@ -96,7 +96,7 @@ func (m *NotesViewModel) View() string {
 		}
 		var detailsContent string
 		if len(m.notes) > 0 && m.cursor < len(m.notes) {
-			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.width, detailsHeight)
+			detailsContent = m.renderDetailsPane(m.notes[m.cursor], m.Width(), detailsHeight)
 		}
 
 		b.WriteString(m.renderDivider())
@@ -126,7 +126,7 @@ func (m *NotesViewModel) renderListPane() string {
 	}
 
 	var b strings.Builder
-	pinnedStyle := lipgloss.NewStyle().Foreground(ColorSuccess)
+	pinnedStyle := SuccessStyle
 
 	listHeight := m.listHeight
 	if listHeight < 1 {
@@ -239,7 +239,7 @@ func (m *NotesViewModel) renderFooter() string {
 			}
 		}
 	}
-	return renderStatusBarFooter(HelpStyle.Render(left), "", m.width)
+	return renderStatusBarFooter(HelpStyle.Render(left), "", m.Width())
 }
 
 func (m *NotesViewModel) renderDivider() string {
@@ -256,7 +256,7 @@ func (m *NotesViewModel) renderDivider() string {
 		opts = append(opts, WithRightIndicator(indicator))
 	}
 
-	return renderHorizontalDivider(m.width, opts...)
+	return renderHorizontalDivider(m.Width(), opts...)
 }
 
 func (m *NotesViewModel) renderStatusBar() string {
@@ -265,13 +265,13 @@ func (m *NotesViewModel) renderStatusBar() string {
 	}
 	if m.confirmDelete {
 		if m.pendingDeleteIdx < len(m.notes) {
-			return lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title))
+			return WarningIconStyle.Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title))
 		}
 		return ""
 	}
 	if m.statusMessage != "" {
 		if m.statusIsError {
-			return lipgloss.NewStyle().Foreground(ColorWarning).Render(m.statusMessage)
+			return WarningIconStyle.Render(m.statusMessage)
 		}
 		return SuccessStyle.Render(m.statusMessage)
 	}
@@ -279,7 +279,7 @@ func (m *NotesViewModel) renderStatusBar() string {
 }
 
 func (m *NotesViewModel) renderNotesTabBar() string {
-	return RenderTabBar(noteTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	return RenderTabBar(noteTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
 }
 
 func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int) string {

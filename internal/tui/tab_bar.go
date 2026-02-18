@@ -91,15 +91,8 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 	row := lipgloss.JoinHorizontal(lipgloss.Bottom, rendered...)
 
 	if fitsSingleLine {
-		tabWidth := lipgloss.Width(row)
-		remaining := availableWidth - tabWidth
-		if remaining > 0 {
-			filler := lipgloss.NewStyle().
-				BorderBottom(true).
-				BorderStyle(lipgloss.Border{Bottom: "─"}).
-				BorderForeground(ColorBorder).
-				Width(remaining).
-				Render("")
+		remaining := availableWidth - lipgloss.Width(row)
+		if filler := renderTabFiller(remaining); filler != "" {
 			row = lipgloss.JoinHorizontal(lipgloss.Bottom, row, filler)
 		}
 	}

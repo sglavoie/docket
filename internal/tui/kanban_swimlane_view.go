@@ -147,12 +147,8 @@ func (m *KanbanViewModel) renderSwimlaneBoardView() string {
 	}
 
 	// Status message
-	if m.statusMessage != "" {
-		statusStyle := lipgloss.NewStyle().Foreground(ColorWarning)
-		if m.confirm.IsActive() {
-			statusStyle = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-		}
-		viewParts = append(viewParts, statusStyle.Render(m.statusMessage))
+	if msg := renderConfirmAwareStatus(m.statusMessage, m.confirm.IsActive()); msg != "" {
+		viewParts = append(viewParts, msg)
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, viewParts...)

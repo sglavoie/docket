@@ -101,9 +101,9 @@ func renderSidebarContent(host SidebarHost, task *models.Task, width, height int
 	// Help hint at bottom if sidebar focused
 	helpHint := ""
 	if sidebar.IsFocused() && sidebarHasLinkedTasks(project, task) {
-		helpHint = HelpStyle.Render("j/k: nav | h/l: section | Enter: jump | x: unlink")
+		helpHint = HelpStyle.Render("j/k: nav · h/l: section · Enter: jump · x: unlink")
 	} else if sidebar.IsFocused() {
-		helpHint = HelpStyle.Render("j/k: scroll | Esc: back")
+		helpHint = HelpStyle.Render("j/k: scroll · Esc: back")
 	}
 
 	// Join cards with no spacing (cards have their own borders)

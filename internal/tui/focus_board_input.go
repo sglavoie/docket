@@ -85,7 +85,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *FocusBoardModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.searchMode = false
+		m.searchActive = false
 		m.searchInput.Blur()
 		m.searchQuery = ""
 		m.searchInput.SetValue("")
@@ -94,7 +94,7 @@ func (m *FocusBoardModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return m, nil
 
 	case "enter":
-		m.searchMode = false
+		m.searchActive = false
 		m.searchInput.Blur()
 		m.searchQuery = strings.TrimSpace(m.searchInput.Value())
 		m.applyFilter()

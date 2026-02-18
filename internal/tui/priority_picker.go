@@ -69,8 +69,8 @@ func NewPriorityPickerModel(task *models.Task, project *models.Project) *Priorit
 
 	picker := NewBasePicker(priorities, PickerConfig{
 		Title:          "Set Priority",
-		EmptyMessage:   "No priorities available",
-		NoMatchMessage: "No matching priorities",
+		EmptyMessage:   "No priorities available.",
+		NoMatchMessage: "No matching priorities.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 	})
@@ -183,7 +183,7 @@ func (m *PriorityPickerModel) View() string {
 	}
 
 	// Footer
-	left := HelpStyle.Render("1-5 to select • ↑/↓ navigate • Enter confirm • Esc cancel")
+	left := HelpStyle.Render("1-5 to select · ↑/↓ navigate · Enter confirm · Esc cancel")
 	b.WriteString(renderStatusBarFooter(left, "", m.Width()))
 
 	return b.String()

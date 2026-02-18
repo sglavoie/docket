@@ -622,15 +622,15 @@ func (m *SectionManagerModel) View() string {
 	// Footer
 	var footerHelp string
 	if m.colorPickMode {
-		footerHelp = "h/l nav | c cycle | x clear | enter confirm | esc cancel"
+		footerHelp = "h/l nav · c cycle · x clear · enter confirm · esc cancel"
 	} else if m.renameMode {
-		footerHelp = "enter confirm | esc cancel"
+		footerHelp = "enter confirm · esc cancel"
 	} else if m.addMode {
-		footerHelp = "enter add | esc cancel"
+		footerHelp = "enter add · esc cancel"
 	} else if len(m.sections) > 0 {
-		footerHelp = "j/k nav | enter filter | g go to | a add | r rename | c color | d del | q close"
+		footerHelp = "j/k nav · enter filter · g go to · a add · r rename · c color · d del · q close"
 	} else {
-		footerHelp = "a add | q close"
+		footerHelp = "a add · q close"
 	}
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
 

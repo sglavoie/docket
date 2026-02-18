@@ -22,7 +22,7 @@ import (
 // The currentProject parameter filters tasks to only show those from the specified project (nil = show all).
 func NewCommandPaletteModel(cfg *config.Config, manager *config.Manager, registry *CommandRegistry, currentView ViewType, currentProject *models.Project) *CommandPaletteModel {
 	searchInput := textinput.New()
-	searchInput.Placeholder = "Search • :cmd :task :prj :tag :sec :saved :sv :note :view • Alt+↑↓ history"
+	searchInput.Placeholder = "Search · :cmd :task :prj :tag :sec :saved :sv :note :view · Alt+↑↓ history"
 	searchInput.CharLimit = 100
 	searchInput.Width = 40
 	searchInput.Focus()

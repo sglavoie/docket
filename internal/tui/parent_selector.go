@@ -55,8 +55,8 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Select Parent",
-		EmptyMessage:   "No valid parents available",
-		NoMatchMessage: "No matching parents",
+		EmptyMessage:   "No valid parents available.",
+		NoMatchMessage: "No matching parents.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 	})
@@ -261,7 +261,7 @@ func (m *ParentSelectorModel) View() string {
 	b.WriteString(m.renderList())
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate • Enter select • Esc cancel")
+	left := HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel")
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 

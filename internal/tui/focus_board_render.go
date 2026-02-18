@@ -34,7 +34,7 @@ func (m *FocusBoardModel) View() string {
 
 	// Search input
 	inputBlockHeight := 0
-	if m.searchMode {
+	if m.searchActive {
 		b.WriteString("  / ")
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n")
@@ -160,7 +160,7 @@ func (m *FocusBoardModel) View() string {
 		}
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))
-		left := HelpStyle.Render("a add | tab switch | q close | ? help")
+		left := HelpStyle.Render("a add · tab switch · q close · ? help")
 		right := MutedStyle.Render("0 items")
 		b.WriteString(renderStatusBarFooter(left, right, m.width))
 		return b.String()
@@ -197,9 +197,9 @@ func (m *FocusBoardModel) View() string {
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("Enter: save · Esc: cancel")
 	} else if m.activeTab == boardTabClosed {
-		left = HelpStyle.Render("d reopen | D delete | o open URL | ? help")
+		left = HelpStyle.Render("d reopen · D delete · o open URL · ? help")
 	} else {
-		left = HelpStyle.Render("a add | x done | X dismiss | p priority | e edit | enter open/go")
+		left = HelpStyle.Render("a add · x done · X dismiss · p priority · e edit · enter open/go")
 	}
 	var rightParts []string
 	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
@@ -217,7 +217,7 @@ func (m *FocusBoardModel) View() string {
 	} else {
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))
 	}
-	right := MutedStyle.Render(strings.Join(rightParts, " | "))
+	right := MutedStyle.Render(strings.Join(rightParts, " · "))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return b.String()

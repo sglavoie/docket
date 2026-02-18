@@ -130,7 +130,7 @@ func (m *TaskDetailModel) renderFooter() string {
 	}
 
 	left := StatusBarStyle.Render(fmt.Sprintf("#%d %s", m.task.ShortID, util.Truncate(m.task.Title, 40)))
-	right := HelpStyle.Render("j/k: scroll | ,: status | !: priority | q: close  " + scrollInfo)
+	right := HelpStyle.Render("j/k: scroll · ,: status · !: priority · q: close  " + scrollInfo)
 	return renderStatusBarFooter(left, right, m.width)
 }
 

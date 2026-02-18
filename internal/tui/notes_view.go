@@ -34,8 +34,7 @@ type NoteTagSelectorDoneMsg struct {
 
 // NotesViewModel displays and manages project notes.
 type NotesViewModel struct {
-	width  int
-	height int
+	BaseView
 
 	project  *models.Project
 	notesDir string // when set, use path-based storage (global notes mode)
@@ -271,8 +270,7 @@ func (m *NotesViewModel) Init() tea.Cmd {
 }
 
 func (m *NotesViewModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 	// Split: top half for list, 1 for divider, bottom half for details
 	// Reserve 4 lines for title/count header, 2 for tab bar, and 2 for footer
 	usable := height - 8
@@ -282,12 +280,6 @@ func (m *NotesViewModel) SetSize(width, height int) {
 	m.listHeight = usable / 2
 	m.detailsHeight = usable - m.listHeight - 1 // -1 for divider
 }
-
-// Width returns the view width.
-func (m *NotesViewModel) Width() int { return m.width }
-
-// Height returns the view height.
-func (m *NotesViewModel) Height() int { return m.height }
 
 // ShowGlobalNoteCreatorMsg opens a note creator in global notes mode.
 type ShowGlobalNoteCreatorMsg struct {

@@ -122,7 +122,7 @@ func (m *FocusViewModel) View() string {
 	default:
 		helpParts = []string{"j/k nav", "[/] tabs", "(/) row focus", ",s/d/b/x status", "1-5 priority"}
 	}
-	left := HelpStyle.Render(strings.Join(helpParts, " | "))
+	left := HelpStyle.Render(strings.Join(helpParts, " · "))
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", len(m.filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 

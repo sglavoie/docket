@@ -35,8 +35,8 @@ func NewActionTypePickerModel(actionIndex int, currentType workflow.ActionType) 
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Select Action Type",
-		EmptyMessage:   "No action types available",
-		NoMatchMessage: "No matching actions",
+		EmptyMessage:   "No action types available.",
+		NoMatchMessage: "No matching actions.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 		BoxWidth:       60,

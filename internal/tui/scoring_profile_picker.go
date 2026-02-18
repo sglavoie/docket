@@ -90,8 +90,8 @@ func NewScoringProfilePickerModel(cfg *config.Config, mgr *config.Manager, proje
 
 	picker := NewBasePicker(options, PickerConfig{
 		Title:          "Scoring Profile",
-		EmptyMessage:   "No scoring profiles configured",
-		NoMatchMessage: "No matching profiles",
+		EmptyMessage:   "No scoring profiles configured.",
+		NoMatchMessage: "No matching profiles.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 	})
@@ -234,7 +234,7 @@ func (m *ScoringProfilePickerModel) View() string {
 	}
 
 	// Footer
-	left := HelpStyle.Render("↑/↓ navigate • Enter select • / search • Esc cancel")
+	left := HelpStyle.Render("↑/↓ navigate · Enter select · / search · Esc cancel")
 	right := MutedStyle.Render(fmt.Sprintf("%d profiles", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 

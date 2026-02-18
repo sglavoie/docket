@@ -747,7 +747,7 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 
 	b.WriteString(strings.Join(lines, "\n"))
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k: scroll | Ctrl+D/U: page | Enter/Esc: close | e: edit | Space: toggle | d: delete"), "", m.Width()))
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k: scroll · Ctrl+D/U: page · Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width()))
 
 	return b.String()
 }

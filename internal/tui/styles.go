@@ -369,7 +369,8 @@ var (
 					Bold(true).
 					Foreground(ColorPrimary)
 
-	DueDateGroupHeaderStyle = lipgloss.NewStyle().
+	// GroupHeaderStyle is used for section headers in priority, due date, and similar views.
+	GroupHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(ColorSecondary).
 				MarginTop(1)
@@ -458,11 +459,6 @@ var (
 	PriorityViewTitleStyle = lipgloss.NewStyle().
 				Bold(true).
 				Foreground(ColorPrimary)
-
-	PriorityGroupHeaderStyle = lipgloss.NewStyle().
-					Bold(true).
-					Foreground(ColorSecondary).
-					MarginTop(1)
 
 	PriorityWaitingHeaderStyle = lipgloss.NewStyle().
 					Foreground(ColorMuted).

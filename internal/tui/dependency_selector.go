@@ -32,8 +32,8 @@ func NewDependencySelectorModel(task *models.Task, project *models.Project) *Dep
 
 	picker := NewBasePicker(candidates, PickerConfig{
 		Title:          fmt.Sprintf("Dependencies for #%d: %s", task.ShortID, task.Title),
-		EmptyMessage:   "No tasks available as dependencies",
-		NoMatchMessage: "No matching tasks",
+		EmptyMessage:   "No tasks available as dependencies.",
+		NoMatchMessage: "No matching tasks.",
 		MultiSelect:    true,
 		ShowCounts:     false,
 	})
@@ -171,7 +171,7 @@ func (m *DependencySelectorModel) View() string {
 	b.WriteString(m.renderTaskList())
 
 	// Footer
-	left := HelpStyle.Render("Space: toggle | /: search | Enter: confirm | Esc: cancel")
+	left := HelpStyle.Render("Space: toggle · /: search · Enter: confirm · Esc: cancel")
 	right := MutedStyle.Render(fmt.Sprintf("%d items", len(m.Filtered)))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 

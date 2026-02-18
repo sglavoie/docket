@@ -169,9 +169,9 @@ func (m *GlobalSearchModel) renderFilterBadges() string {
 // renderHelpText renders context-appropriate help text.
 func (m *GlobalSearchModel) renderHelpText() string {
 	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
-		return HelpStyle.Render("Tab: accept • ↑↓: navigate • Esc: dismiss")
+		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("[/] tabs • ↑↓ nav • Enter • Esc • %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Esc · %d results", len(m.filtered)))
 }
 
 // renderTaskList renders the filtered task list.

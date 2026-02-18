@@ -53,8 +53,8 @@ func NewTrashedProjectsModel(dataDir string) *TrashedProjectsModel {
 
 	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Restore from Trash",
-		EmptyMessage:   "No deleted projects in trash",
-		NoMatchMessage: "No matching projects",
+		EmptyMessage:   "No deleted projects in trash.",
+		NoMatchMessage: "No matching projects.",
 		MultiSelect:    false,
 		ShowCounts:     false,
 	})
@@ -142,7 +142,7 @@ func (m *TrashedProjectsModel) View() string {
 	if m.confirm.IsActive() {
 		out.WriteString(m.confirm.Render())
 	} else {
-		out.WriteString(MutedStyle.Render("Enter: restore | d: delete | q: close"))
+		out.WriteString(MutedStyle.Render("Enter: restore · d: delete · q: close"))
 	}
 	out.WriteString("\n\n")
 
