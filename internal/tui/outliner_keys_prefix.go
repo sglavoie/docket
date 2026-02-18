@@ -328,6 +328,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				for id := range m.selectedTasks {
 					if m.project.MutateTask(id, func(t *models.Task) {
 						t.Section = section
+						if section == "" {
+							t.Activate()
+						}
 					}) {
 						m.project.RelocateTaskToEndOfSection(id, section)
 						count++
@@ -347,6 +350,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			m.project.MutateTask(cursorTask.ID, func(t *models.Task) {
 				t.Section = section
+				if section == "" {
+					t.Activate()
+				}
 			})
 			m.project.RelocateTaskToEndOfSection(cursorTask.ID, section)
 			label := "Move to " + section

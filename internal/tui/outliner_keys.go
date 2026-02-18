@@ -177,13 +177,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if idx >= 0 && idx < len(siblings)-1 {
+				taskID := task.ID
 				m.project.SwapTasks(task, siblings[idx+1])
 				m.setUndoContext("Move Down", task.Title)
 				m.rebuildRows()
-				// Advance cursor to follow the task
-				if m.cursor < len(m.rows)-1 {
-					m.cursor++
-				}
+				m.moveCursorToTask(taskID)
 				return m, m.saveWithWorkflow()
 			}
 		}
@@ -201,12 +199,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			if idx > 0 {
+				taskID := task.ID
 				m.project.SwapTasks(task, siblings[idx-1])
 				m.setUndoContext("Move Up", task.Title)
 				m.rebuildRows()
-				if m.cursor > 0 {
-					m.cursor--
-				}
+				m.moveCursorToTask(taskID)
 				return m, m.saveWithWorkflow()
 			}
 		}
@@ -214,8 +211,16 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "right":
 		// Indent task (nest under task above in the flat list)
 		if len(m.rows) > 1 && m.cursor > 0 && m.cursor < len(m.rows) && !onHeader {
-			task := m.rows[m.cursor].task
-			candidate := m.rows[m.cursor-1].task
+			// The row above may be a section header (no task), skip if so
+			if m.rows[m.cursor-1].task == nil {
+				return m, nil
+			}
+			// Resolve cloned row tasks back to originals in project
+			task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
+			candidate := m.project.GetTaskByID(m.rows[m.cursor-1].task.ID)
+			if task == nil || candidate == nil {
+				return m, nil
+			}
 			for candidate != nil {
 				if ok, _ := task.CanIndent(candidate); ok {
 					task.ParentID = &candidate.ID
@@ -232,7 +237,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "left":
 		// Outdent task (to parent level)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
-			task := m.rows[m.cursor].task
+			// Resolve cloned row task back to original in project
+			task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
+			if task == nil {
+				return m, nil
+			}
 			if ok, _ := task.CanOutdent(); ok {
 				_ = m.project.OutdentTask(task)
 				m.setUndoContext("Outdent", task.Title)
@@ -407,10 +416,13 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
 		}
 
+	case "n":
+		m.jumpToNextSection(1)
+		return m, nil
+
 	case "N":
-		return m, func() tea.Msg {
-			return ShowSectionFilterSelectorMsg{Project: m.project}
-		}
+		m.jumpToNextSection(-1)
+		return m, nil
 
 	case "C":
 		return m, func() tea.Msg {

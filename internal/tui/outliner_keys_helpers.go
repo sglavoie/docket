@@ -75,6 +75,47 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 	return m, m.saveWithWorkflow()
 }
 
+// jumpToNextSection moves the cursor to the next (direction=1) or previous
+// (direction=-1) section header, cycling through the list.
+func (m *OutlinerModel) jumpToNextSection(direction int) {
+	if len(m.rows) == 0 {
+		return
+	}
+
+	// Collect section header indices
+	var sectionIndices []int
+	for i, row := range m.rows {
+		if row.IsSectionHeader {
+			sectionIndices = append(sectionIndices, i)
+		}
+	}
+	if len(sectionIndices) == 0 {
+		return
+	}
+
+	if direction > 0 {
+		// Find the next section header after the cursor
+		for _, idx := range sectionIndices {
+			if idx > m.cursor {
+				m.cursor = idx
+				return
+			}
+		}
+		// Wrap to first section
+		m.cursor = sectionIndices[0]
+	} else {
+		// Find the previous section header before the cursor
+		for i := len(sectionIndices) - 1; i >= 0; i-- {
+			if sectionIndices[i] < m.cursor {
+				m.cursor = sectionIndices[i]
+				return
+			}
+		}
+		// Wrap to last section
+		m.cursor = sectionIndices[len(sectionIndices)-1]
+	}
+}
+
 // getSiblings returns the sibling list for a task at the current zoom level.
 func (m *OutlinerModel) getSiblings(task *models.Task) []*models.Task {
 	if task.Parent != nil {
@@ -88,4 +129,16 @@ func (m *OutlinerModel) getSiblings(task *models.Task) []*models.Task {
 		}
 	}
 	return m.project.GetRootTasks()
+}
+
+// moveCursorToTask positions the cursor on the row matching the given task ID.
+// Falls back to clamping if the task is not found in the current rows.
+func (m *OutlinerModel) moveCursorToTask(taskID string) {
+	for i, row := range m.rows {
+		if !row.IsSectionHeader && row.task != nil && row.task.ID == taskID {
+			m.cursor = i
+			return
+		}
+	}
+	m.clampCursor()
 }

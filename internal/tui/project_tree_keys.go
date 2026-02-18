@@ -121,13 +121,9 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
 		}
 
-	case "N":
-		return true, func() tea.Msg {
-			return ShowSectionFilterSelectorMsg{ProjectTree: m}
-		}
-
 		// Note: Due date filter cycling removed from 'u' - use Fd instead.
 		// 'u' is now Vim-style undo (handled in handleMiscActionKeys).
+		// Note: N removed as section filter — use F@ instead.
 	}
 	return false, nil
 }
@@ -162,6 +158,9 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		for id := range m.selectedTasks {
 			if m.project.MutateTask(id, func(t *models.Task) {
 				t.Section = section
+				if section == "" {
+					t.Activate()
+				}
 			}) {
 				m.project.RelocateTaskToEndOfSection(id, section)
 				count++
@@ -184,6 +183,9 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 	}
 	m.project.MutateTask(taskID, func(t *models.Task) {
 		t.Section = section
+		if section == "" {
+			t.Activate()
+		}
 	})
 	m.project.RelocateTaskToEndOfSection(taskID, section)
 	m.pendingUndoAction = label

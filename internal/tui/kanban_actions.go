@@ -179,6 +179,12 @@ func (m *KanbanViewModel) swapTaskDown() tea.Cmd {
 		return nil
 	}
 
+	// Block reorder across active/non-active boundary in Active column
+	if currentKey == KanbanSectionActive && task.Active != taskBelow.Active {
+		m.statusMessage = "Cannot reorder across active/non-active boundary"
+		return nil
+	}
+
 	// Capture previous task states for workflow rule evaluation
 	prevStates := captureTaskStates(m.Project.Tasks)
 
@@ -208,6 +214,12 @@ func (m *KanbanViewModel) swapTaskUp() tea.Cmd {
 	task := visibleNodes[cs.Cursor].Task
 	taskAbove := visibleNodes[cs.Cursor-1].Task
 	if task == nil || taskAbove == nil {
+		return nil
+	}
+
+	// Block reorder across active/non-active boundary in Active column
+	if currentKey == KanbanSectionActive && task.Active != taskAbove.Active {
+		m.statusMessage = "Cannot reorder across active/non-active boundary"
 		return nil
 	}
 

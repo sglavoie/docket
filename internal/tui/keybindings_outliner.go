@@ -11,6 +11,8 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "Backspace", Description: "Zoom out one level", Category: "Navigation", Views: views},
 		Keybinding{Key: "q", Description: "Zoom out / close", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Jump to task", Category: "Navigation", Views: views},
+		Keybinding{Key: "n", Description: "Jump to next section", Category: "Navigation", Views: views},
+		Keybinding{Key: "N", Description: "Jump to previous section", Category: "Navigation", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Navigation", Views: views},
 
 		// Perspectives (p prefix)
@@ -64,7 +66,6 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "Fvl", Description: "Load saved view", Category: "Filters", Views: views},
 		Keybinding{Key: "Fvd", Description: "Delete saved view", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Tag filter selector", Category: "Filters", Views: views},
-		Keybinding{Key: "N", Description: "Section filter selector", Category: "Filters", Views: views},
 		Keybinding{Key: "C", Description: "Context filter", Category: "Filters", Views: views},
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Filters", Views: views},

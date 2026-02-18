@@ -72,7 +72,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "/", Description: "Search tasks", Category: "Filters", Views: views},
 		Keybinding{Key: "Fp", Description: "Filter by priority (use Fp)", Category: "Filters", Views: views},
 		Keybinding{Key: "T", Description: "Filter by tag", Category: "Filters", Views: views},
-		Keybinding{Key: "N", Description: "Filter by section", Category: "Filters", Views: views},
 		Keybinding{Key: "gd", Description: "Cycle due date filter", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Filters", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Tag manager", Category: "Filters", Views: views},
