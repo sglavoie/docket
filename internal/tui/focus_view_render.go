@@ -37,7 +37,8 @@ func (m *FocusViewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
+	tabBar := m.renderTabBar()
+	b.WriteString(tabBar)
 	b.WriteString("\n")
 
 	// Filter badge
@@ -54,14 +55,20 @@ func (m *FocusViewModel) View() string {
 		b.WriteString("\n")
 	}
 
+	// Pre-render status messages so their height is known
+	statusBlock := renderStatusMessages(m.statusMessage, m.err)
+
 	// Calculate available height for task list
-	// Fullscreen overhead: title(1) + newline(1) + tab bar(2) + footer(2) = 6
-	contentHeight := m.height - 6
+	// Fixed overhead: title(1) + blank after tab bar(1) + blank before footer(1) + footer(2) = 5
+	contentHeight := m.height - 5 - lipgloss.Height(tabBar)
 	if filterBadge != "" {
 		contentHeight--
 	}
 	if subTabBar != "" {
-		contentHeight -= 2
+		contentHeight -= lipgloss.Height(subTabBar)
+	}
+	if statusBlock != "" {
+		contentHeight -= strings.Count(statusBlock, "\n")
 	}
 
 	// Render task lines based on active tab
@@ -104,7 +111,7 @@ func (m *FocusViewModel) View() string {
 	b.WriteString(strings.Join(applyScroll(lines, scrollCursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
+	b.WriteString(statusBlock)
 
 	// Footer
 	var helpParts []string

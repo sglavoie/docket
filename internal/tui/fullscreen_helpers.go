@@ -541,5 +541,15 @@ func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused b
 	tabs = append(tabs, "All")
 	tabs = append(tabs, subTabNames...)
 
-	return renderSubTabBarWithFocus(tabs, subTab, subTabRowFocused, width)
+	// Use wrapping tab bar with width reduced for focus indicator column
+	bar := renderWrappingTabBar(tabs, subTab, width-2)
+
+	focusIndicator := lipgloss.NewStyle().Foreground(ColorPrimary).Render("▐")
+	lines := strings.Split(bar, "\n")
+	if subTabRowFocused {
+		lines[0] = focusIndicator + lines[0]
+	} else {
+		lines[0] = " " + lines[0]
+	}
+	return strings.Join(lines, "\n")
 }

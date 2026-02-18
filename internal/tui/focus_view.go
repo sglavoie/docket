@@ -181,16 +181,23 @@ func (m *FocusViewModel) applyFilter() {
 		return
 
 	case focusTabSuggested:
-		// Show ranked suggestions, applying common filters
+		// Show ranked suggestions, applying common filters.
+		// Non-queued items appear first, then queued items at the bottom.
 		m.filtered = nil
+		var queued []FocusTask
 		for _, sft := range m.ranked {
 			if hasActiveCommonFilters(&m.filter) {
 				if !passesCommonFilters(sft.Task, &m.filter, sft.Project.ID, m.config) {
 					continue
 				}
 			}
-			m.filtered = append(m.filtered, sft.FocusTask)
+			if m.isInQueue(sft.Task.ID) {
+				queued = append(queued, sft.FocusTask)
+			} else {
+				m.filtered = append(m.filtered, sft.FocusTask)
+			}
 		}
+		m.filtered = append(m.filtered, queued...)
 		return
 
 	default:
