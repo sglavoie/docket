@@ -255,9 +255,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case MetricsDashboardSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -293,26 +291,21 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case WeeklyReviewSelectProjectMsg:
 		m.popView()
 		if msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(nil, msg.Project)
 		}
 		return true, nil
 
 	case WeeklyReviewSelectTaskMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
 	case DailyReviewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -327,9 +320,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case AllTasksSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -344,9 +335,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case FocusBoardSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -363,9 +352,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case FocusViewSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -389,9 +376,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case RecentActivitySelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 
@@ -439,9 +424,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case PriorityViewSelectMsg:
 		m.popView()
-		if msg.Task != nil {
-			m.projectTree.NavigateToTask(msg.Task)
-			m.pushView(ViewProjectTree)
+		if msg.Task != nil && m.currentProject != nil {
+			m.navigateToTaskInProject(msg.Task, m.currentProject)
 		}
 		return true, nil
 

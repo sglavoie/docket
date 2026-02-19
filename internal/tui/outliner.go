@@ -603,7 +603,7 @@ func (m *OutlinerModel) SidebarSelectedTask() *models.Task {
 func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 	// First try to find the task in the current rows.
 	for i, row := range m.rows {
-		if row.task.ID == task.ID {
+		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i
 			return
 		}
@@ -618,7 +618,7 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 	m.rebuildRows()
 
 	for i, row := range m.rows {
-		if row.task.ID == task.ID {
+		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i
 			return
 		}

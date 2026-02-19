@@ -13,6 +13,7 @@ import (
 // loadItems loads Action tasks and aggregates active/due tasks across all projects.
 func (m *FocusBoardModel) loadItems() {
 	m.rows = nil
+	m.nextRows = nil
 	m.closedRows = nil
 
 	now := time.Now()
@@ -47,15 +48,23 @@ func (m *FocusBoardModel) loadItems() {
 			if task.Status.IsComplete() || task.IsSnoozed() {
 				continue
 			}
+
+			row := boardRow{
+				Task:     task,
+				Project:  project,
+				Priority: task.Priority,
+				Source:   project.Name,
+			}
+
+			// Collect Next-section tasks (empty section defaults to Next)
+			if task.Section == "" || task.Section == models.SectionNext {
+				m.nextRows = append(m.nextRows, row)
+			}
+
 			isActive := task.Active
 			isDueSoon := task.DueDate != nil && util.StartOfDay(*task.DueDate).Before(today.AddDate(0, 0, 1))
 			if isActive || isDueSoon {
-				m.rows = append(m.rows, boardRow{
-					Task:     task,
-					Project:  project,
-					Priority: task.Priority,
-					Source:   project.Name,
-				})
+				m.rows = append(m.rows, row)
 			}
 		}
 	}
@@ -89,6 +98,12 @@ func (m *FocusBoardModel) applyFilter() {
 				m.filtered = append(m.filtered, r)
 			}
 		}
+	case boardTabNext:
+		m.filtered = make([]boardRow, len(m.nextRows))
+		copy(m.filtered, m.nextRows)
+		sort.SliceStable(m.filtered, func(i, j int) bool {
+			return m.filtered[i].Priority < m.filtered[j].Priority
+		})
 	case boardTabBySource:
 		m.filtered = make([]boardRow, len(m.rows))
 		copy(m.filtered, m.rows)

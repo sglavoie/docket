@@ -8,16 +8,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-var focusBoardTabNames = []string{"All", "Actions", "Active/Due", "By Source", "By Priority", "By Score", "Closed"}
+var focusBoardTabNames = []string{"All", "Actions", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
 
 const (
 	boardTabAll        = 0
 	boardTabActions    = 1
 	boardTabActiveDue  = 2
-	boardTabBySource   = 3
-	boardTabByPriority = 4
-	boardTabByScore    = 5
-	boardTabClosed     = 6
+	boardTabNext       = 3
+	boardTabBySource   = 4
+	boardTabByPriority = 5
+	boardTabByScore    = 6
+	boardTabClosed     = 7
 )
 
 // boardRow is a unified display item: an Action task or an aggregated active/due task.
@@ -47,6 +48,7 @@ type FocusBoardModel struct {
 
 	// Data
 	rows       []boardRow
+	nextRows   []boardRow
 	closedRows []boardRow
 	filtered   []boardRow
 

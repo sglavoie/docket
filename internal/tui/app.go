@@ -782,6 +782,42 @@ func (m *AppModel) getProjectLastView(projectID string) ViewType {
 	return defaultProjectViewType(m.config)
 }
 
+// navigateToTaskInProject switches to the given project using the user's
+// configured default view (or last-used view) and positions the cursor on
+// the specified task. When task is nil it just opens the project view.
+func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) {
+	m.saveCurrentProjectView()
+	m.switchToProject(project, true)
+
+	// Re-resolve task in the freshly loaded project so parent pointers are valid.
+	if task != nil {
+		if resolved := project.GetTaskByID(task.ID); resolved != nil {
+			task = resolved
+		}
+	}
+
+	targetView := m.getProjectLastView(project.ID)
+	switch targetView {
+	case ViewKanban:
+		m.kanban = NewKanbanViewModel(project, m.config, m.configManager)
+		m.showView(ViewKanban, m.kanban)
+		m.restoreKanbanState()
+	case ViewProjectTree:
+		if task != nil {
+			m.projectTree.NavigateToTask(task)
+		}
+		m.showView(ViewProjectTree, m.projectTree)
+	default:
+		m.saveOutlinerToggleState()
+		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
+		m.restoreOutlinerToggleState()
+		if task != nil {
+			m.outliner.NavigateToSidebarTask(task)
+		}
+		m.showView(ViewOutliner, m.outliner)
+	}
+}
+
 // errorCmd creates a tea.Cmd that returns an ErrorMsg with a formatted error.
 func errorCmd(format string, args ...any) tea.Cmd {
 	return func() tea.Msg {

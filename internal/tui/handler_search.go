@@ -18,9 +18,7 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case GlobalSearchSelectMsg:
 		m.popView()
 		if msg.Task != nil && msg.Project != nil {
-			m.switchToProject(msg.Project, true)
-			m.projectTree.NavigateToTask(msg.Task)
-			m.showView(ViewProjectTree, m.projectTree)
+			m.navigateToTaskInProject(msg.Task, msg.Project)
 		}
 		return true, nil
 

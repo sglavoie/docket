@@ -276,7 +276,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 	} else {
 		// Regular task rendering
 		projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-		typeIcon := " " + task.Type.Icon()
+		typeIcon := " " + GetTypeStyle(string(task.Type)).Render(task.Type.Icon())
 
 		dueStr := ""
 		if task.DueDate != nil {
