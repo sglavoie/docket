@@ -707,7 +707,8 @@ func (m *TaskChecklistModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("j/k: nav · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"), "", m.width))
+	helpText := "j/k: nav · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
 	return b.String()
 }

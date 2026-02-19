@@ -151,9 +151,11 @@ func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title s
 	}
 	b.WriteString(picker.RenderList(maxVisible))
 
-	left := HelpStyle.Render(renderTagSelectorFooter(picker))
-	right := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.Filtered)))
-	b.WriteString(renderStatusBarFooter(left, right, width))
+	footerText := renderTagSelectorFooter(picker)
+	itemCount := MutedStyle.Render(fmt.Sprintf("%d items", len(picker.Filtered)))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(footerText, width)))
+	b.WriteString("\n")
+	b.WriteString(itemCount)
 
 	return b.String()
 }
@@ -161,10 +163,10 @@ func RenderTagSelectorView(picker *BasePicker[TagInfo], adder *TagAdder, title s
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.
 func renderTagSelectorFooter(picker *BasePicker[TagInfo]) string {
 	if picker.IsSearchMode() {
-		return MutedStyle.Render("enter done · esc clear")
+		return "enter done · esc clear"
 	}
 	if len(picker.Filtered) == 0 {
-		return MutedStyle.Render("a add tag · esc cancel")
+		return "a add tag · esc cancel"
 	}
-	return MutedStyle.Render("space toggle · a add tag · / search · c clear · enter apply · esc cancel")
+	return "space toggle · a add tag · / search · c clear · enter apply · esc cancel"
 }

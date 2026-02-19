@@ -401,7 +401,7 @@ func (m *TagManagerModel) View() string {
 	out.WriteString("\n\n")
 	out.WriteString(content.String())
 	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+	out.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
 	return out.String()
 }

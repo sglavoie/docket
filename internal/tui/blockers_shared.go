@@ -809,7 +809,8 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		}
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a: add · e: edit · R: resolve/unresolve · d: delete · g: go to project · Enter: expand · h/l/[/] tabs · Esc: close"), "", s.width))
+	helpText := "a: add · e: edit · R: resolve/unresolve · d: delete · g: go to project · Enter: expand · h/l/[/] tabs · Esc: close"
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, s.width)))
 
 	return b.String()
 }

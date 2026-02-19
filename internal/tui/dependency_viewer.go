@@ -168,7 +168,8 @@ func (m *DependencyViewerModel) View() string {
 	b.WriteString("\n")
 
 	// Help footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Tab: switch section · j/k: navigate · Enter: go to task · d: view deps · Esc: close"), "", m.width))
+	helpText := "Tab: switch section · j/k: navigate · Enter: go to task · d: view deps · Esc: close"
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
 	return b.String()
 }

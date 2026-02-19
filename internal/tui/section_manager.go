@@ -632,7 +632,7 @@ func (m *SectionManagerModel) View() string {
 	} else {
 		footerHelp = "a add · q close"
 	}
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render(footerHelp), "", m.width))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(footerHelp, m.width)))
 
 	return b.String()
 }

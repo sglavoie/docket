@@ -183,7 +183,8 @@ func (m *TaskActivityModel) View() string {
 		}
 	}
 
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("[/]: tabs · j/k: navigate · s: sort · y: copy entry · q/Esc: close"), "", m.width))
+	helpText := "[/]: tabs · j/k: navigate · s: sort · y: copy entry · q/Esc: close"
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
 	return b.String()
 }

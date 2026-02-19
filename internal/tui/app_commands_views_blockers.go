@@ -23,5 +23,6 @@ func (m *AppModel) taskCommentsCommands() []Command {
 		{Name: "edit in editor", Description: "Edit comment in external editor", Shortcut: "E", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"external editor"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'E'}} }},
 		{Name: "delete comment", Description: "Delete selected comment", Shortcut: "d", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"remove comment", "x"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}} }},
 		{Name: "expand comment", Description: "Expand/view comment details", Shortcut: "enter", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"view comment"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyEnter} }},
+		{Name: "copy comment", Description: "Copy comment text to clipboard", Shortcut: "y", Category: CategoryComments, Views: []ViewType{ViewTaskComments}, Aliases: []string{"yank comment"}, Handler: func() tea.Msg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}} }},
 	}
 }

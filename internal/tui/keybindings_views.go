@@ -435,6 +435,38 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 	r.addForViews(views, linkedTaskBindings())
 }
 
+func (r *KeybindingRegistry) registerTaskChecklistBindings() {
+	views := []ViewType{ViewTaskChecklist}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "Space/Enter", Description: "Toggle done/undone", Category: "Actions", Views: views},
+		Keybinding{Key: "a/n", Description: "Add item", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit item", Category: "Actions", Views: views},
+		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},
+		Keybinding{Key: "d/x", Description: "Delete item", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerTaskCommentsBindings() {
+	views := []ViewType{ViewTaskComments}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Navigate up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "a/n", Description: "Add comment", Category: "Actions", Views: views},
+		Keybinding{Key: "e", Description: "Edit comment", Category: "Actions", Views: views},
+		Keybinding{Key: "E", Description: "Edit in external editor", Category: "Actions", Views: views},
+		Keybinding{Key: "r", Description: "Toggle resolved", Category: "Actions", Views: views},
+		Keybinding{Key: "d/x", Description: "Delete comment", Category: "Actions", Views: views},
+		Keybinding{Key: "y", Description: "Copy comment text", Category: "Actions", Views: views},
+		Keybinding{Key: "Enter", Description: "Expand comment", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
 	views := []ViewType{ViewWorkflowRules}
 	r.add(

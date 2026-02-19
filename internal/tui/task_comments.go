@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -44,8 +45,9 @@ type TaskCommentsModel struct {
 	width  int
 	height int
 
-	// Error display
-	err error
+	// Error/status display
+	err           error
+	statusMessage string
 }
 
 // NewTaskCommentsModel creates a new task comments viewer.
@@ -237,6 +239,12 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle resolved state
 			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
 				return m, m.toggleResolved()
+			}
+
+		case "y":
+			// Copy selected comment text to clipboard
+			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
+				return m, m.copyCommentText()
 			}
 
 		case "enter":
@@ -591,6 +599,32 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	})
 }
 
+func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
+	comment := m.task.Comments[m.cursor]
+
+	var clipCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		clipCmd = exec.Command("pbcopy")
+	case "linux":
+		clipCmd = exec.Command("xclip", "-selection", "clipboard")
+	case "windows":
+		clipCmd = exec.Command("clip")
+	default:
+		m.statusMessage = "Clipboard not supported on this OS"
+		return nil
+	}
+
+	clipCmd.Stdin = strings.NewReader(comment.Text)
+	if err := clipCmd.Run(); err != nil {
+		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		return nil
+	}
+
+	m.statusMessage = "Comment copied to clipboard"
+	return nil
+}
+
 func (m *TaskCommentsModel) View() string {
 	var b strings.Builder
 
@@ -770,8 +804,14 @@ func (m *TaskCommentsModel) View() string {
 		}
 	}
 
+	if m.statusMessage != "" {
+		b.WriteString(MutedStyle.Render(m.statusMessage))
+		b.WriteString("\n")
+	}
+
 	b.WriteString("\n")
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · Enter: expand · Esc: close"), "", m.width))
+	helpText := "a/n: add · e: edit · E: external editor · r: resolve · d/x: delete · y: copy · Enter: expand · Esc: close"
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
 
 	return b.String()
 }

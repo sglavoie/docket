@@ -213,33 +213,33 @@ func (m *NotesViewModel) renderListPane() string {
 }
 
 func (m *NotesViewModel) renderFooter() string {
-	var left string
+	var helpText string
 	if m.renaming {
-		left = "Enter: confirm  Esc: cancel"
+		helpText = "Enter: confirm · Esc: cancel"
 	} else if m.detailsPaneFocused {
 		zHint := "Z:fullscreen"
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
-		left = "j/k: scroll  g/G: top/bottom  Ctrl+d/u: half page  Tab/Esc: list pane  Enter: view  e: edit  " + zHint + "  q: close"
+		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+d/u: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · q: close"
 	} else if m.multiSelectMode {
-		left = "space: toggle  a: all  gX: clear  d: delete  t: tag  l: link  y: copy  V/Esc: exit multi-select"
+		helpText = "space: toggle · a: all · gX: clear · d: delete · t: tag · l: link · y: copy · V/Esc: exit multi-select"
 	} else {
 		zHint := "Z:fullscreen"
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
-		left = "j/k: nav  Tab: pane  e: edit  n: new  d: del  r: rename  s: sort  y: copy  " + zHint
+		helpText = "j/k: nav · Tab: pane · e: edit · n: new · d: del · r: rename · s: sort · y: copy · " + zHint
 		if m.isGlobal {
-			left += "  m: move to project"
+			helpText += " · m: move to project"
 		} else {
-			left += "  /: search"
+			helpText += " · /: search"
 			if len(m.filterTags) > 0 {
-				left += "  C: clear filter"
+				helpText += " · C: clear filter"
 			}
 		}
 	}
-	return renderStatusBarFooter(HelpStyle.Render(left), "", m.Width())
+	return HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width()))
 }
 
 func (m *NotesViewModel) renderDivider() string {
