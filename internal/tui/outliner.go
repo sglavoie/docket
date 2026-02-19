@@ -198,7 +198,7 @@ func (m *OutlinerModel) rebuildRows() {
 			}
 			if t.Section == models.SectionInbox || t.Section == models.SectionNext ||
 				t.Section == models.SectionWaiting || t.Section == models.SectionSomeday ||
-				t.Section == models.SectionReview {
+				t.Section == models.SectionReview || t.Section == models.SectionStandby {
 				return false
 			}
 			return true
@@ -234,7 +234,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 
 	// Define section order: Active, Inbox, Next, Waiting, Someday, Review
 	// (excluding Completed as per All view convention)
-	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview}
+	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby}
 
 	for _, sectionName := range sectionOrder {
 		sectionTasks := tasksBySection[sectionName]

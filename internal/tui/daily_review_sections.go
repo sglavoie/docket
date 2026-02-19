@@ -21,6 +21,7 @@ func (m *DailyReviewModel) loadTasks() {
 	m.inProgress = nil
 	m.blocked = nil
 	m.inReview = nil
+	m.inStandby = nil
 	m.old = nil
 	m.completed = nil
 
@@ -74,7 +75,13 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
-			// 3. In Review: tasks in the Review section or with review status
+			// 3. On Standby: tasks in the Standby section or with standby status
+			if task.Section == models.SectionStandby || task.Status == models.StatusStandby {
+				m.inStandby = append(m.inStandby, dt)
+				continue
+			}
+
+			// 4. In Review: tasks in the Review section or with review status
 			if task.Section == models.SectionReview || task.Status == models.StatusReview {
 				m.inReview = append(m.inReview, dt)
 				continue
@@ -198,6 +205,14 @@ func (m *DailyReviewModel) sortSections() {
 		return m.inReview[i].Task.UpdatedAt.After(m.inReview[j].Task.UpdatedAt)
 	})
 
+	// On Standby: by priority then by updated date
+	sort.Slice(m.inStandby, func(i, j int) bool {
+		if m.inStandby[i].Task.Priority != m.inStandby[j].Task.Priority {
+			return m.inStandby[i].Task.Priority < m.inStandby[j].Task.Priority
+		}
+		return m.inStandby[i].Task.UpdatedAt.After(m.inStandby[j].Task.UpdatedAt)
+	})
+
 	// Old: by UpdatedAt (oldest first), falling back to CreatedAt when zero
 	sort.Slice(m.old, func(i, j int) bool {
 		ti := m.old[i].Task.UpdatedAt
@@ -275,7 +290,7 @@ func (m *DailyReviewModel) toggleSectionFocus(section DailyReviewSection) (tea.M
 // getTotalTaskCount returns count across all sections (ignoring collapse state).
 func (m *DailyReviewModel) getTotalTaskCount() int {
 	return len(m.overdue) + len(m.dueToday) + len(m.dueSoon) + len(m.dueLater) +
-		len(m.future) + len(m.inProgress) + len(m.blocked) + len(m.inReview) + len(m.old) + len(m.completed)
+		len(m.future) + len(m.inProgress) + len(m.blocked) + len(m.inReview) + len(m.inStandby) + len(m.old) + len(m.completed)
 }
 
 // getSectionName returns a human-readable name for a section.
@@ -297,6 +312,8 @@ func getSectionName(section DailyReviewSection) string {
 		return "Blocked"
 	case SectionInReview:
 		return "In Review"
+	case SectionOnStandby:
+		return "On Standby"
 	case SectionOld:
 		return "Old"
 	case SectionCompleted:

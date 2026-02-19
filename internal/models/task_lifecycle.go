@@ -22,8 +22,8 @@ func (t *Task) Complete() {
 func (t *Task) Start() {
 	t.Status = StatusInProgress
 	t.UpdatedAt = time.Now()
-	// Auto-triage: move out of Inbox/Next/Waiting/Someday/Review when starting
-	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview {
+	// Auto-triage: move out of Inbox/Next/Waiting/Someday/Review/Standby when starting
+	if t.Section == SectionInbox || t.Section == SectionNext || t.Section == SectionWaiting || t.Section == SectionSomeday || t.Section == SectionReview || t.Section == SectionStandby {
 		t.Section = ""
 	}
 }
@@ -34,6 +34,14 @@ func (t *Task) Review() {
 	t.Status = StatusReview
 	t.UpdatedAt = time.Now()
 	t.Section = SectionReview
+}
+
+// Standby puts the task on hold.
+// The task is moved to the Standby section.
+func (t *Task) Standby() {
+	t.Status = StatusStandby
+	t.UpdatedAt = time.Now()
+	t.Section = SectionStandby
 }
 
 // Block marks the task as blocked.
@@ -72,8 +80,8 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	}
 	switch newStatus {
 	case StatusInProgress:
-		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview {
-			return "task must be todo, blocked, or in review to start"
+		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview && t.Status != StatusStandby {
+			return "task must be todo, blocked, in review, or on standby to start"
 		}
 	case StatusDone:
 		if !t.Status.IsActive() {
@@ -94,6 +102,10 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	case StatusReview:
 		if !t.Status.IsActive() || t.Status == StatusReview {
 			return "task must be active and not already in review"
+		}
+	case StatusStandby:
+		if !t.Status.IsActive() || t.Status == StatusStandby {
+			return "task must be active and not already on standby"
 		}
 	}
 	return ""
@@ -116,6 +128,8 @@ func (t *Task) ApplyTransition(newStatus TaskStatus) {
 		t.Reopen()
 	case StatusReview:
 		t.Review()
+	case StatusStandby:
+		t.Standby()
 	}
 }
 

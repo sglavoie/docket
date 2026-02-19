@@ -15,32 +15,37 @@ func TestGetHiddenSectionsForViewMode(t *testing.T) {
 		{
 			name:     "active mode hides special sections",
 			viewMode: ViewModeActive,
-			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted},
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted},
 		},
 		{
 			name:     "next mode hides other sections",
 			viewMode: ViewModeNext,
-			expected: []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"},
+			expected: []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"},
 		},
 		{
 			name:     "inbox mode",
 			viewMode: ViewModeInbox,
-			expected: []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"},
+			expected: []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"},
 		},
 		{
 			name:     "waiting mode",
 			viewMode: ViewModeWaiting,
-			expected: []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"},
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"},
 		},
 		{
 			name:     "someday mode",
 			viewMode: ViewModeSomeday,
-			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionCompleted, "Active"},
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"},
 		},
 		{
 			name:     "review mode hides other sections",
 			viewMode: ViewModeReview,
-			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionCompleted, "Active"},
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionStandby, models.SectionCompleted, "Active"},
+		},
+		{
+			name:     "standby mode hides other sections",
+			viewMode: ViewModeStandby,
+			expected: []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"},
 		},
 		{
 			name:     "all mode hides only completed",

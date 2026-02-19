@@ -38,14 +38,16 @@ func StatusOrder(status models.TaskStatus) int {
 		return 1
 	case models.StatusReview:
 		return 2
-	case models.StatusBlocked:
+	case models.StatusStandby:
 		return 3
-	case models.StatusDone:
+	case models.StatusBlocked:
 		return 4
-	case models.StatusCanceled:
+	case models.StatusDone:
 		return 5
-	default:
+	case models.StatusCanceled:
 		return 6
+	default:
+		return 7
 	}
 }
 

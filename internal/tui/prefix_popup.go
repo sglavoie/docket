@@ -352,6 +352,7 @@ var (
 		{Key: "x", Description: "cancel", Detail: "Cancel the task"},
 		{Key: "o", Description: "reopen", Detail: "Reopen a closed task"},
 		{Key: "r", Description: "review", Detail: "Send task to review"},
+		{Key: "S", Description: "standby", Detail: "Put task on standby"},
 	}
 
 	// FoldPrefixHints contains hints for the "z" (fold) prefix.
@@ -385,6 +386,7 @@ var (
 		{Key: "s", Description: "someday", Detail: "Go to Someday section"},
 		{Key: "c", Description: "completed", Detail: "Go to Completed section"},
 		{Key: "r", Description: "review", Detail: "Go to Review section"},
+		{Key: "S", Description: "standby", Detail: "Go to Standby section"},
 		{Key: "z", Description: "snoozed", Detail: "Go to Snoozed section"},
 		{Key: "*", Description: "all", Detail: "Go to All section"},
 		{Key: "o", Description: "origin", Detail: "Jump to task origin"},
@@ -401,6 +403,7 @@ var (
 		{Key: "i", Description: "→Inbox", Detail: "Send task to Inbox section"},
 		{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting section"},
 		{Key: "r", Description: "→Review", Detail: "Send task to Review section"},
+		{Key: "S", Description: "→Standby", Detail: "Send task to Standby section"},
 		{Key: "s", Description: "→Someday", Detail: "Send task to Someday section"},
 		{Key: "K", Description: "to-top", Detail: "Move task to top of section"},
 		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of section"},
@@ -443,6 +446,7 @@ var (
 		{Key: "l", Description: "due-later", Detail: "Jump to due-later section"},
 		{Key: "f", Description: "future", Detail: "Jump to future section"},
 		{Key: "r", Description: "in review", Detail: "Focus in-review section"},
+		{Key: "S", Description: "on standby", Detail: "Focus on-standby section"},
 		{Key: "o", Description: "old", Detail: "Jump to old section"},
 	}
 
@@ -467,6 +471,7 @@ var (
 		{Key: "w", Description: "waiting", Detail: "Go to Waiting column"},
 		{Key: "s", Description: "someday", Detail: "Go to Someday column"},
 		{Key: "r", Description: "review", Detail: "Go to Review column"},
+		{Key: "S", Description: "standby", Detail: "Go to Standby column"},
 		{Key: "c", Description: "completed", Detail: "Go to Completed view"},
 		{Key: "*", Description: "all", Detail: "Go to All view"},
 		{Key: "h", Description: "history", Detail: "Show task history"},
@@ -480,6 +485,7 @@ var (
 		{Key: "i", Description: "→Inbox", Detail: "Send task to Inbox column"},
 		{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting column"},
 		{Key: "r", Description: "→Review", Detail: "Send task to Review column"},
+		{Key: "S", Description: "→Standby", Detail: "Send task to Standby column"},
 		{Key: "s", Description: "→Someday", Detail: "Send task to Someday column"},
 		{Key: "K", Description: "to-top", Detail: "Move task to top of column"},
 		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of column"},
@@ -516,6 +522,7 @@ var (
 		{Key: "t", Description: "todo"},
 		{Key: "s", Description: "in-progress"},
 		{Key: "r", Description: "review"},
+		{Key: "S", Description: "standby"},
 		{Key: "b", Description: "blocked"},
 		{Key: "d", Description: "done"},
 		{Key: "x", Description: "canceled"},

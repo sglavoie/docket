@@ -287,17 +287,18 @@ list as noise, snooze them until the right time.`,
 			Category: "Concepts",
 			Content: `# Available Statuses
 
-Tasks move through six statuses: todo, in_progress, review,
-done, blocked, and canceled.
+Tasks move through seven statuses: todo, in_progress, review,
+standby, done, blocked, and canceled.
 
 # Transitions
 
 todo is the default status for new tasks. Moving to in_progress
 means work has started. review indicates the task is awaiting
-code review, QA, or approval. done marks a task as finished.
-blocked indicates the task cannot proceed until an external
-dependency is resolved. canceled removes the task from active
-work without completing it.
+code review, QA, or approval. standby means the task has ongoing
+work but is paused (e.g., more urgent work arrived). done marks
+a task as finished. blocked indicates the task cannot proceed
+until an external dependency is resolved. canceled removes the
+task from active work without completing it.
 
 # Status Flow
 
@@ -674,6 +675,7 @@ Change task status using , followed by a letter:
   ,o  Reopen (set to todo)
   ,x  Cancel task
   ,r  Review (send to review)
+  ,S  Standby (put on standby)
 
 Each binding sets the status directly. Select a task first,
 then press the key combination.`,

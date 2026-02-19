@@ -76,6 +76,9 @@ var (
 	BlockedStyle = lipgloss.NewStyle().
 			Foreground(ColorError)
 
+	StandbyStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("141"))
+
 	CanceledStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted).
 			Strikethrough(true)
@@ -145,6 +148,7 @@ var (
 	ReviewBadgeStyle     = makeBadgeStyle(string(ColorSecondary), "17") // Blue
 	DoneBadgeStyle       = makeBadgeStyle("42", "22")                   // Green
 	BlockedBadgeStyle    = makeBadgeStyle("196", "52")                  // Red
+	StandbyBadgeStyle    = makeBadgeStyle("141", "53")                  // Violet
 	CanceledBadgeStyle   = makeBadgeStyle("241", "236")                 // Gray
 
 	// Container styles
@@ -304,6 +308,7 @@ var (
 	ViewModeSomedayStyle   = makeViewModeStyle("135")
 	ViewModeCompletedStyle = makeViewModeStyle("28")
 	ViewModeReviewStyle    = makeViewModeStyle(string(ColorSecondary))
+	ViewModeStandbyStyle   = makeViewModeStyle("141")
 	ViewModeSnoozedStyle   = makeViewModeStyle("95")
 	ViewModeAllStyle       = makeViewModeStyle("60")
 
@@ -510,6 +515,8 @@ func GetStatusStyle(status string) lipgloss.Style {
 		return InProgressStyle
 	case "review":
 		return ReviewStyle
+	case "standby":
+		return StandbyStyle
 	case "done":
 		return DoneStyle
 	case "blocked":
@@ -588,6 +595,8 @@ func GetStatusBadge(status string, icon string) string {
 		return InProgressBadgeStyle.Render(icon)
 	case "review":
 		return ReviewBadgeStyle.Render(icon)
+	case "standby":
+		return StandbyBadgeStyle.Render(icon)
 	case "done":
 		return DoneBadgeStyle.Render(icon)
 	case "blocked":
@@ -652,6 +661,8 @@ func GetViewModeStyleForSection(section string) lipgloss.Style {
 		return ViewModeSomedayStyle
 	case "Review":
 		return ViewModeReviewStyle
+	case "Standby":
+		return ViewModeStandbyStyle
 	default:
 		return ViewModeActiveStyle
 	}

@@ -82,6 +82,17 @@ Examples:
 	RunE: runTaskReview,
 }
 
+var taskStandbyCmd = &cobra.Command{
+	Use:   "standby [id]",
+	Short: "Put a task on standby",
+	Long: `Put a task on standby (paused, on hold).
+
+Examples:
+  tt task standby 5`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runTaskStandby,
+}
+
 func init() {
 	taskCmd.AddCommand(taskCompleteCmd)
 	taskCmd.AddCommand(taskStartCmd)
@@ -89,6 +100,7 @@ func init() {
 	taskCmd.AddCommand(taskCancelCmd)
 	taskCmd.AddCommand(taskReopenCmd)
 	taskCmd.AddCommand(taskReviewCmd)
+	taskCmd.AddCommand(taskStandbyCmd)
 }
 
 func runTaskComplete(cmd *cobra.Command, args []string) error {
@@ -127,6 +139,12 @@ func runTaskReview(cmd *cobra.Command, args []string) error {
 	})
 }
 
+func runTaskStandby(cmd *cobra.Command, args []string) error {
+	return updateTaskStatus(args, "standby", func(t *models.Task) {
+		t.Standby()
+	})
+}
+
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskID string
@@ -143,7 +161,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		var candidates []*models.Task
 		for _, t := range project.Tasks {
 			switch action {
-			case "complete", "start", "block", "cancel", "review":
+			case "complete", "start", "block", "cancel", "review", "standby":
 				if t.Status.IsActive() {
 					candidates = append(candidates, t)
 				}

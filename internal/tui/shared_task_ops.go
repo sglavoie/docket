@@ -555,6 +555,8 @@ func viewModeForKey(key string) (ViewMode, bool) {
 		return ViewModeAll, true
 	case "r":
 		return ViewModeReview, true
+	case "S":
+		return ViewModeStandby, true
 	case "c":
 		return ViewModeCompleted, true
 	}
@@ -577,6 +579,8 @@ func sectionForMoveKey(key string) (string, bool) {
 		return models.SectionSomeday, true
 	case "r":
 		return models.SectionReview, true
+	case "S":
+		return models.SectionStandby, true
 	}
 	return "", false
 }
@@ -597,6 +601,8 @@ func StatusForPrefixKey(key string) (models.TaskStatus, bool) {
 		return models.StatusCanceled, true
 	case "r":
 		return models.StatusReview, true
+	case "S":
+		return models.StatusStandby, true
 	}
 	return "", false
 }
@@ -616,6 +622,8 @@ func StatusVerb(status models.TaskStatus) string {
 		return "canceled"
 	case models.StatusReview:
 		return "sent to review"
+	case models.StatusStandby:
+		return "put on standby"
 	}
 	return string(status)
 }
@@ -713,4 +721,5 @@ var SecondaryViewMovePrefixHints = []PrefixHint{
 	{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting section"},
 	{Key: "s", Description: "→Someday", Detail: "Send task to Someday section"},
 	{Key: "r", Description: "→Review", Detail: "Send task to Review section"},
+	{Key: "S", Description: "→Standby", Detail: "Send task to Standby section"},
 }

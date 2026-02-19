@@ -9,11 +9,11 @@ import (
 
 func TestColumnsForGroupBySection(t *testing.T) {
 	defs := ColumnsForGroupBy(GroupBySection, nil)
-	if len(defs) != 6 {
-		t.Fatalf("expected 6 section columns, got %d", len(defs))
+	if len(defs) != 7 {
+		t.Fatalf("expected 7 section columns, got %d", len(defs))
 	}
 
-	expectedKeys := []string{"", "Review", "Next", "Inbox", "Waiting", "Someday"}
+	expectedKeys := []string{"", "Review", "Standby", "Next", "Inbox", "Waiting", "Someday"}
 	for i, key := range expectedKeys {
 		if defs[i].Key != key {
 			t.Errorf("column %d: expected key %q, got %q", i, key, defs[i].Key)
@@ -27,26 +27,26 @@ func TestColumnsForGroupBySectionWithCustomSections(t *testing.T) {
 	}
 	// GroupBySection should NOT include custom sections
 	defs := ColumnsForGroupBy(GroupBySection, project)
-	if len(defs) != 6 {
-		t.Fatalf("GroupBySection: expected 6 columns (no custom), got %d", len(defs))
+	if len(defs) != 7 {
+		t.Fatalf("GroupBySection: expected 7 columns (no custom), got %d", len(defs))
 	}
 
 	// GroupBySectionAll SHOULD include custom sections
 	defs = ColumnsForGroupBy(GroupBySectionAll, project)
-	if len(defs) != 8 {
-		t.Fatalf("GroupBySectionAll: expected 8 columns (6 GTD + 2 custom), got %d", len(defs))
+	if len(defs) != 9 {
+		t.Fatalf("GroupBySectionAll: expected 9 columns (7 GTD + 2 custom), got %d", len(defs))
 	}
-	if defs[6].Key != "CustomA" || defs[7].Key != "CustomB" {
-		t.Errorf("custom sections not appended correctly: got %q and %q", defs[6].Key, defs[7].Key)
+	if defs[7].Key != "CustomA" || defs[8].Key != "CustomB" {
+		t.Errorf("custom sections not appended correctly: got %q and %q", defs[7].Key, defs[8].Key)
 	}
 }
 
 func TestColumnsForGroupByStatus(t *testing.T) {
 	defs := ColumnsForGroupBy(GroupByStatus, nil)
-	if len(defs) != 6 {
-		t.Fatalf("expected 6 status columns, got %d", len(defs))
+	if len(defs) != 7 {
+		t.Fatalf("expected 7 status columns, got %d", len(defs))
 	}
-	expected := []string{"todo", "in_progress", "review", "blocked", "done", "canceled"}
+	expected := []string{"todo", "in_progress", "review", "standby", "blocked", "done", "canceled"}
 	for i, key := range expected {
 		if defs[i].Key != key {
 			t.Errorf("column %d: expected key %q, got %q", i, key, defs[i].Key)
@@ -298,8 +298,8 @@ func TestColumnHelperMethods(t *testing.T) {
 	}
 
 	keys := m.columnKeys()
-	if len(keys) != 6 {
-		t.Fatalf("expected 6 keys, got %d", len(keys))
+	if len(keys) != 7 {
+		t.Fatalf("expected 7 keys, got %d", len(keys))
 	}
 	if keys[0] != "todo" {
 		t.Errorf("expected first key 'todo', got %q", keys[0])
@@ -310,8 +310,8 @@ func TestColumnHelperMethods(t *testing.T) {
 		t.Errorf("expected activeColumnKey 'review', got %q", key)
 	}
 
-	if idx := m.columnIndexForKey("blocked"); idx != 3 {
-		t.Errorf("expected index 3 for 'blocked', got %d", idx)
+	if idx := m.columnIndexForKey("blocked"); idx != 4 {
+		t.Errorf("expected index 4 for 'blocked', got %d", idx)
 	}
 
 	if idx := m.columnIndexForKey("nonexistent"); idx != -1 {

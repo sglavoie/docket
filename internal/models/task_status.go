@@ -12,6 +12,7 @@ const (
 	StatusTodo       TaskStatus = "todo"
 	StatusInProgress TaskStatus = "in_progress"
 	StatusReview     TaskStatus = "review"
+	StatusStandby    TaskStatus = "standby"
 	StatusDone       TaskStatus = "done"
 	StatusBlocked    TaskStatus = "blocked"
 	StatusCanceled   TaskStatus = "canceled"
@@ -26,24 +27,27 @@ const SectionSomeday = "Someday"
 // SectionReview is the section for tasks in review (code review, QA, approval).
 const SectionReview = "Review"
 
+// SectionStandby is the section for tasks put on hold (paused work).
+const SectionStandby = "Standby"
+
 // SectionCompleted is the section for completed/canceled tasks.
 const SectionCompleted = "Completed"
 
 // IsGTDSection returns true if the section name is a built-in GTD section.
 func IsGTDSection(name string) bool {
 	return name == SectionNext || name == SectionInbox ||
-		name == SectionWaiting || name == SectionSomeday || name == SectionReview || name == SectionCompleted
+		name == SectionWaiting || name == SectionSomeday || name == SectionReview || name == SectionStandby || name == SectionCompleted
 }
 
 // AllTaskStatuses returns all valid task statuses.
 func AllTaskStatuses() []TaskStatus {
-	return []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusDone, StatusBlocked, StatusCanceled}
+	return []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusDone, StatusBlocked, StatusCanceled}
 }
 
 // IsValid checks if the status is valid.
 func (s TaskStatus) IsValid() bool {
 	switch s {
-	case StatusTodo, StatusInProgress, StatusReview, StatusDone, StatusBlocked, StatusCanceled:
+	case StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusDone, StatusBlocked, StatusCanceled:
 		return true
 	}
 	return false
@@ -56,7 +60,7 @@ func (s TaskStatus) IsComplete() bool {
 
 // IsActive returns true if this status represents an active/open state.
 func (s TaskStatus) IsActive() bool {
-	return s == StatusTodo || s == StatusInProgress || s == StatusReview || s == StatusBlocked
+	return s == StatusTodo || s == StatusInProgress || s == StatusReview || s == StatusStandby || s == StatusBlocked
 }
 
 // Icon returns a status indicator character.
@@ -68,6 +72,8 @@ func (s TaskStatus) Icon() string {
 		return "◐"
 	case StatusReview:
 		return "◑"
+	case StatusStandby:
+		return "⏸"
 	case StatusDone:
 		return "●"
 	case StatusBlocked:

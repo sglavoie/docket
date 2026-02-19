@@ -25,6 +25,7 @@ const (
 	SectionInProgress
 	SectionBlocked
 	SectionInReview
+	SectionOnStandby
 	SectionOld
 	SectionCompleted
 )
@@ -45,6 +46,7 @@ type DailyReviewModel struct {
 	inProgress []DailyReviewTask
 	blocked    []DailyReviewTask
 	inReview   []DailyReviewTask
+	inStandby  []DailyReviewTask
 	old        []DailyReviewTask
 	completed  []DailyReviewTask
 
@@ -281,6 +283,9 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				targetSection = &s
 			case "r":
 				s := SectionInReview
+				targetSection = &s
+			case "S":
+				s := SectionOnStandby
 				targetSection = &s
 			case "o":
 				s := SectionOld

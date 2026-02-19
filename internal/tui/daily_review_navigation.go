@@ -9,7 +9,7 @@ var dailyReviewTabNames = []string{"Due", "Active", "In Review", "Stale", "Done"
 var dailyReviewTabSections = [][]DailyReviewSection{
 	{SectionOverdue, SectionDueToday, SectionDueSoon, SectionDueLater, SectionFuture}, // Due
 	{SectionInProgress, SectionBlocked},                                               // Active
-	{SectionInReview},                                                                 // In Review
+	{SectionInReview, SectionOnStandby},                                               // In Review
 	{SectionOld},                                                                      // Stale
 	{SectionCompleted},                                                                // Done
 }
@@ -46,6 +46,7 @@ func (m *DailyReviewModel) calculateNavigation() {
 		{SectionInProgress, m.inProgress},
 		{SectionBlocked, m.blocked},
 		{SectionInReview, m.inReview},
+		{SectionOnStandby, m.inStandby},
 		{SectionOld, m.old},
 		{SectionCompleted, m.completed},
 	}
@@ -89,6 +90,8 @@ func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []DailyRe
 		return m.blocked
 	case SectionInReview:
 		return m.inReview
+	case SectionOnStandby:
+		return m.inStandby
 	case SectionOld:
 		return m.old
 	case SectionCompleted:

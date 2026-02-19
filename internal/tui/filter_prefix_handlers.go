@@ -41,6 +41,8 @@ func handleFilterStatusKey(key string, f *CommonFilterState) bool {
 		f.Status = models.StatusInProgress
 	case "r":
 		f.Status = models.StatusReview
+	case "S":
+		f.Status = models.StatusStandby
 	case "b":
 		f.Status = models.StatusBlocked
 	case "d":

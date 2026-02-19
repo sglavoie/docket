@@ -46,6 +46,7 @@ func ColumnsForGroupBy(gb KanbanGroupBy, project *models.Project) []KanbanColumn
 			{Key: string(models.StatusTodo), Label: "Todo"},
 			{Key: string(models.StatusInProgress), Label: "In Progress"},
 			{Key: string(models.StatusReview), Label: "Review"},
+			{Key: string(models.StatusStandby), Label: "Standby"},
 			{Key: string(models.StatusBlocked), Label: "Blocked"},
 			{Key: string(models.StatusDone), Label: "Done"},
 			{Key: string(models.StatusCanceled), Label: "Canceled"},
@@ -70,6 +71,7 @@ func ColumnsForGroupBy(gb KanbanGroupBy, project *models.Project) []KanbanColumn
 		defs := []KanbanColumnDef{
 			{Key: KanbanSectionActive, Label: "Active"},
 			{Key: KanbanSectionReview, Label: "Review"},
+			{Key: KanbanSectionStandby, Label: "Standby"},
 			{Key: KanbanSectionNext, Label: "Next"},
 			{Key: KanbanSectionInbox, Label: "Inbox"},
 			{Key: KanbanSectionWaiting, Label: "Waiting"},

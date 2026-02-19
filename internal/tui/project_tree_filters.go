@@ -170,8 +170,8 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		// Apply view mode section logic
 		switch m.viewMode {
 		case ViewModeActive:
-			// Hide Inbox, Next, Waiting, Someday, and Review tasks
-			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview {
+			// Hide Inbox, Next, Waiting, Someday, Review, and Standby tasks
+			if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview || node.Task.Section == models.SectionStandby {
 				return false
 			}
 		case ViewModeNext:
@@ -197,6 +197,11 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		case ViewModeReview:
 			// Only show Review tasks
 			if node.Task.Section != models.SectionReview {
+				return false
+			}
+		case ViewModeStandby:
+			// Only show Standby tasks
+			if node.Task.Section != models.SectionStandby {
 				return false
 			}
 		case ViewModeAll:
@@ -235,8 +240,8 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		if node.Task.Status == models.StatusBlocked {
 			return false
 		}
-		// Hide Inbox/Next/Waiting/Someday/Review tasks (GTD-aligned - not immediately actionable)
-		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview {
+		// Hide Inbox/Next/Waiting/Someday/Review/Standby tasks (GTD-aligned - not immediately actionable)
+		if node.Task.Section == models.SectionInbox || node.Task.Section == models.SectionNext || node.Task.Section == models.SectionWaiting || node.Task.Section == models.SectionSomeday || node.Task.Section == models.SectionReview || node.Task.Section == models.SectionStandby {
 			return false
 		}
 	}
@@ -480,7 +485,8 @@ func (m *ProjectTreeModel) calculateFilterCounts() {
 			task.Section != models.SectionNext &&
 			task.Section != models.SectionWaiting &&
 			task.Section != models.SectionSomeday &&
-			task.Section != models.SectionReview {
+			task.Section != models.SectionReview &&
+			task.Section != models.SectionStandby {
 			counts["actionable"]++
 		}
 	}
@@ -523,17 +529,19 @@ func (m *ProjectTreeModel) countChildrenBySection(task *models.Task) map[string]
 func (m *ProjectTreeModel) getHiddenSectionsForViewMode() []string {
 	switch m.viewMode {
 	case ViewModeActive:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted}
 	case ViewModeNext:
-		return []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"}
+		return []string{models.SectionInbox, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"}
 	case ViewModeInbox:
-		return []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"}
+		return []string{models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"}
 	case ViewModeWaiting:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionSomeday, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"}
 	case ViewModeSomeday:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionCompleted, "Active"}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionStandby, models.SectionCompleted, "Active"}
 	case ViewModeReview:
-		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionCompleted, "Active"}
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionStandby, models.SectionCompleted, "Active"}
+	case ViewModeStandby:
+		return []string{models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionCompleted, "Active"}
 	case ViewModeAll:
 		return []string{models.SectionCompleted} // Hide Completed from All view (use Completed view instead)
 	}

@@ -11,7 +11,7 @@ import (
 // renderViewModeIndicator returns a styled indicator for the current view mode with counts.
 func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	// Count by section: active, next, inbox, waiting, someday, completed
-	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, reviewCount, completedCount, snoozedCount int
+	var activeCount, nextCount, inboxCount, waitingCount, somedayCount, reviewCount, standbyCount, completedCount, snoozedCount int
 	for _, task := range m.project.Tasks {
 		if task.IsSnoozed() {
 			snoozedCount++
@@ -32,6 +32,8 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 			somedayCount++
 		case models.SectionReview:
 			reviewCount++
+		case models.SectionStandby:
+			standbyCount++
 		default:
 			// Empty section = Active
 			activeCount++
@@ -89,6 +91,14 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 		parts = append(parts, MutedStyle.Render(reviewLabel))
 	}
 
+	// Standby view
+	standbyLabel := fmt.Sprintf("Standby[%d]", standbyCount)
+	if m.viewMode == ViewModeStandby {
+		parts = append(parts, ViewModeStandbyStyle.Render(standbyLabel))
+	} else {
+		parts = append(parts, MutedStyle.Render(standbyLabel))
+	}
+
 	// Snoozed indicator (only show if there are snoozed tasks)
 	if snoozedCount > 0 {
 		snoozedLabel := fmt.Sprintf("Snoozed[%d]", snoozedCount)
@@ -100,7 +110,7 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 	}
 
 	// All view indicator
-	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount + reviewCount
+	allCount := activeCount + nextCount + inboxCount + waitingCount + somedayCount + reviewCount + standbyCount
 	allLabel := fmt.Sprintf("All[%d]", allCount)
 	if m.viewMode == ViewModeAll {
 		parts = append(parts, ViewModeAllStyle.Render(allLabel))
@@ -334,6 +344,8 @@ func (m *ProjectTreeModel) getViewModeTitle() string {
 		base = "Completed"
 	case ViewModeReview:
 		base = "Review"
+	case ViewModeStandby:
+		base = "Standby"
 	case ViewModeSnoozed:
 		base = "Snoozed"
 	case ViewModeAll:

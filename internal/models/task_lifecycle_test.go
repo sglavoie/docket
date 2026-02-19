@@ -156,6 +156,46 @@ func TestReviewFromTodo(t *testing.T) {
 	}
 }
 
+func TestStandby(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Start()
+	before := task.UpdatedAt
+	task.Standby()
+
+	if task.Status != StatusStandby {
+		t.Errorf("expected StatusStandby, got %s", task.Status)
+	}
+	if task.Section != SectionStandby {
+		t.Errorf("expected Section Standby, got %q", task.Section)
+	}
+	if !task.UpdatedAt.After(before) && task.UpdatedAt != before {
+		t.Error("expected UpdatedAt to be updated")
+	}
+}
+
+func TestStandbyFromTodo(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Section = SectionInbox
+	task.Standby()
+
+	if task.Status != StatusStandby {
+		t.Errorf("expected StatusStandby, got %s", task.Status)
+	}
+	if task.Section != SectionStandby {
+		t.Errorf("expected Section Standby, got %q", task.Section)
+	}
+}
+
+func TestStartAutoTriagesFromStandby(t *testing.T) {
+	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task.Section = SectionStandby
+	task.Start()
+
+	if task.Section != "" {
+		t.Errorf("expected section cleared from Standby, got %q", task.Section)
+	}
+}
+
 func TestReopen(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	task.Complete()
@@ -186,6 +226,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"todo→canceled", StatusTodo, StatusCanceled, true},
 		{"todo→todo", StatusTodo, StatusTodo, false},
 		{"todo→review", StatusTodo, StatusReview, true},
+		{"todo→standby", StatusTodo, StatusStandby, true},
 
 		// From in_progress
 		{"in_progress→done", StatusInProgress, StatusDone, true},
@@ -193,6 +234,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"in_progress→canceled", StatusInProgress, StatusCanceled, true},
 		{"in_progress→todo", StatusInProgress, StatusTodo, true},
 		{"in_progress→review", StatusInProgress, StatusReview, true},
+		{"in_progress→standby", StatusInProgress, StatusStandby, true},
 		{"in_progress→in_progress", StatusInProgress, StatusInProgress, false},
 
 		// From review
@@ -201,7 +243,17 @@ func TestCanTransitionTo(t *testing.T) {
 		{"review→blocked", StatusReview, StatusBlocked, true},
 		{"review→canceled", StatusReview, StatusCanceled, true},
 		{"review→todo", StatusReview, StatusTodo, true},
+		{"review→standby", StatusReview, StatusStandby, true},
 		{"review→review", StatusReview, StatusReview, false},
+
+		// From standby
+		{"standby→in_progress", StatusStandby, StatusInProgress, true},
+		{"standby→done", StatusStandby, StatusDone, true},
+		{"standby→blocked", StatusStandby, StatusBlocked, true},
+		{"standby→canceled", StatusStandby, StatusCanceled, true},
+		{"standby→todo", StatusStandby, StatusTodo, true},
+		{"standby→review", StatusStandby, StatusReview, true},
+		{"standby→standby", StatusStandby, StatusStandby, false},
 
 		// From blocked
 		{"blocked→in_progress", StatusBlocked, StatusInProgress, true},
@@ -210,6 +262,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"blocked→canceled", StatusBlocked, StatusCanceled, true},
 		{"blocked→todo", StatusBlocked, StatusTodo, true},
 		{"blocked→review", StatusBlocked, StatusReview, true},
+		{"blocked→standby", StatusBlocked, StatusStandby, true},
 
 		// From done (completed — can only reopen)
 		{"done→todo", StatusDone, StatusTodo, true},
@@ -217,6 +270,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"done→blocked", StatusDone, StatusBlocked, false},
 		{"done→canceled", StatusDone, StatusCanceled, false},
 		{"done→review", StatusDone, StatusReview, false},
+		{"done→standby", StatusDone, StatusStandby, false},
 
 		// From canceled (completed — can only reopen)
 		{"canceled→todo", StatusCanceled, StatusTodo, true},
@@ -224,6 +278,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{"canceled→done", StatusCanceled, StatusDone, false},
 		{"canceled→blocked", StatusCanceled, StatusBlocked, false},
 		{"canceled→review", StatusCanceled, StatusReview, false},
+		{"canceled→standby", StatusCanceled, StatusStandby, false},
 	}
 
 	for _, tt := range tests {
@@ -253,6 +308,7 @@ func TestApplyTransition(t *testing.T) {
 		{"to canceled", StatusCanceled, StatusCanceled},
 		{"to todo (reopen)", StatusTodo, StatusTodo},
 		{"to review", StatusReview, StatusReview},
+		{"to standby", StatusStandby, StatusStandby},
 	}
 
 	for _, tt := range tests {
