@@ -537,19 +537,19 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // handleAccept accepts a task into the work queue.
 func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
 	switch m.activeTab {
-	case focusTabSuggested:
-		// On Suggested tab, accept the cursor item
-		if ft := m.getTaskAtCursor(); ft != nil {
-			m.acceptIntoQueue(*ft)
-			m.applyFilter()
-			m.statusMessage = fmt.Sprintf("Added to queue: %s", ft.Task.Title)
-		}
-	default:
-		// On all other tabs, accept the top non-queued suggestion
+	case focusTabQueue:
+		// On Queue tab, accept the top non-queued suggestion
 		if sft := m.topNonQueuedSuggestion(); sft != nil {
 			m.acceptIntoQueue(sft.FocusTask)
 			m.applyFilter()
 			m.statusMessage = fmt.Sprintf("Added to queue: %s", sft.Task.Title)
+		}
+	default:
+		// On all other tabs, accept the cursor item
+		if ft := m.getTaskAtCursor(); ft != nil {
+			m.acceptIntoQueue(*ft)
+			m.applyFilter()
+			m.statusMessage = fmt.Sprintf("Added to queue: %s", ft.Task.Title)
 		}
 	}
 	return m, nil
