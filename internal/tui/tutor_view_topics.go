@@ -202,9 +202,11 @@ its current stage.
 
 Active contains tasks you are working on right now. Next holds
 tasks queued up to start soon. Inbox is for unsorted incoming
-tasks. Waiting is for tasks blocked on external input. Someday
-captures tasks you might do eventually. Review holds tasks
-awaiting code review, QA, or approval.
+tasks. Waiting is for tasks blocked on external input. Standby
+holds tasks that have ongoing work but are temporarily paused,
+for example when more urgent work arrived. Someday captures
+tasks you might do eventually. Review holds tasks awaiting
+code review, QA, or approval.
 
 # Custom Sections
 
@@ -329,8 +331,8 @@ organization.`,
 
 tt supports five task types organized in a hierarchy. Epics are
 the largest unit, containing stories, tasks, bugs, and ideas.
-Stories can contain tasks and bugs. Tasks, bugs, and ideas are
-leaf nodes that cannot contain children.
+Stories can contain tasks, ideas, and bugs. Tasks, bugs, and
+ideas are leaf nodes that cannot contain children.
 
 # When to Use Each
 

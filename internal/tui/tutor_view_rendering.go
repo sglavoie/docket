@@ -55,6 +55,7 @@ func init() {
 		{`\bNext\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("61")), 0},
 		{`\bInbox\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("33")), 0},
 		{`\bWaiting\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("214")), 0},
+		{`\bStandby\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("141")), 0},
 		{`\bSomeday\b`, lipgloss.NewStyle().Foreground(lipgloss.Color("135")), 0},
 		{`\bReview\b`, ReviewStyle, 0},
 
