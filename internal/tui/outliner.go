@@ -35,7 +35,7 @@ type OutlinerModel struct {
 
 	cursor            int           // Index into rows (flat visible node list)
 	rows              []outlinerRow // Flattened rows, rebuilt on each render
-	activePerspective int           // 1-9 index into PerspectivePresets; 0 means "All" (key 1)
+	activePerspective int           // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
 
 	sortField     SortField // Current sort field (SortByDefault = no sort)
 	sortAscending bool      // Sort direction; true = ascending
@@ -86,6 +86,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		project:           project,
 		config:            cfg,
 		configManager:     cfgManager,
+		activePerspective: 1,
 		quickEdit:         NewQuickEditComponent(),
 		sidebar:           NewSidebarComponent(),
 		bulkOp:            NewBulkOperationComponent(),
@@ -279,10 +280,10 @@ func (m *OutlinerModel) countTasksRecursive(tasks []*models.Task) int {
 }
 
 // currentPerspective returns the active perspective preset.
-// Defaults to the "All" perspective (index 0) when activePerspective is unset.
+// Defaults to the "All" perspective (key 1) when activePerspective is unset or negative.
 func (m *OutlinerModel) currentPerspective() Perspective {
 	idx := m.activePerspective
-	if idx < 1 || idx > 9 {
+	if idx < 0 || idx > 9 {
 		idx = 1
 	}
 	p, _ := PerspectiveByKey(idx)

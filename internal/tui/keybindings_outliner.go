@@ -16,7 +16,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Navigation", Views: views},
 
 		// Perspectives (P prefix)
-		Keybinding{Key: "P1-P9", Description: "Switch perspective", Category: "Perspectives (P prefix)", Views: views},
+		Keybinding{Key: "P0-P9", Description: "Switch perspective", Category: "Perspectives (P prefix)", Views: views},
 
 		// View switching
 		Keybinding{Key: "ctrl+P", Description: "Project tree view", Category: "Views", Views: views},

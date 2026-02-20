@@ -9,12 +9,12 @@ import (
 
 func TestPerspectivePresetCount(t *testing.T) {
 	presets := PerspectivePresets()
-	if len(presets) != 9 {
-		t.Fatalf("expected 9 presets, got %d", len(presets))
+	if len(presets) != 10 {
+		t.Fatalf("expected 10 presets, got %d", len(presets))
 	}
 	for i, p := range presets {
-		if p.Key != i+1 {
-			t.Errorf("preset %d: expected key %d, got %d", i, i+1, p.Key)
+		if p.Key != i {
+			t.Errorf("preset %d: expected key %d, got %d", i, i, p.Key)
 		}
 		if p.Name == "" {
 			t.Errorf("preset %d: empty name", i)
@@ -23,7 +23,7 @@ func TestPerspectivePresetCount(t *testing.T) {
 }
 
 func TestPerspectiveByKey(t *testing.T) {
-	for key := 1; key <= 9; key++ {
+	for key := 0; key <= 9; key++ {
 		p, ok := PerspectiveByKey(key)
 		if !ok {
 			t.Errorf("PerspectiveByKey(%d) returned false", key)
@@ -33,11 +33,31 @@ func TestPerspectiveByKey(t *testing.T) {
 		}
 	}
 
-	for _, bad := range []int{0, -1, 10, 100} {
+	for _, bad := range []int{-1, 10, 100} {
 		_, ok := PerspectiveByKey(bad)
 		if ok {
 			t.Errorf("PerspectiveByKey(%d) should return false", bad)
 		}
+	}
+}
+
+func TestSnoozedPerspective(t *testing.T) {
+	p, _ := PerspectiveByKey(0)
+	if p.Name != "Snoozed" {
+		t.Fatalf("expected 'Snoozed', got %q", p.Name)
+	}
+
+	// Should accept snoozed tasks
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusTodo, SnoozedUntil: &tomorrow}
+	if !p.Filter(snoozed) {
+		t.Error("Snoozed should accept snoozed tasks")
+	}
+
+	// Should reject non-snoozed tasks
+	normal := &models.Task{Status: models.StatusTodo}
+	if p.Filter(normal) {
+		t.Error("Snoozed should reject non-snoozed tasks")
 	}
 }
 
@@ -63,6 +83,12 @@ func TestAllPerspective(t *testing.T) {
 	if p.Filter(&models.Task{Status: models.StatusCanceled}) {
 		t.Error("All should reject canceled tasks")
 	}
+	// Should reject snoozed tasks
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusTodo, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("All should reject snoozed tasks")
+	}
 }
 
 func TestActivePerspective(t *testing.T) {
@@ -83,6 +109,13 @@ func TestActivePerspective(t *testing.T) {
 		if p.Filter(task) {
 			t.Errorf("Active should reject %s tasks", task.Status)
 		}
+	}
+
+	// Should reject snoozed in_progress tasks
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozedActive := &models.Task{Status: models.StatusInProgress, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozedActive) {
+		t.Error("Active should reject snoozed tasks")
 	}
 }
 
@@ -110,6 +143,13 @@ func TestNextPerspective(t *testing.T) {
 	if p.Filter(task) {
 		t.Error("Next should reject non-todo tasks")
 	}
+
+	// Reject: snoozed todo with high priority
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusTodo, Priority: 1, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("Next should reject snoozed tasks")
+	}
 }
 
 func TestInboxPerspective(t *testing.T) {
@@ -134,50 +174,36 @@ func TestInboxPerspective(t *testing.T) {
 	if p.Filter(rejectStatus) {
 		t.Error("Inbox should reject non-todo tasks")
 	}
+
+	// Reject: snoozed todo with no tags
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusTodo, Tags: nil, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("Inbox should reject snoozed tasks")
+	}
 }
 
-func TestUrgentPerspective(t *testing.T) {
+func TestStandbyPerspective(t *testing.T) {
 	p, _ := PerspectiveByKey(5)
+	if p.Name != "Standby" {
+		t.Fatalf("expected 'Standby', got %q", p.Name)
+	}
 
-	// Accept: priority 1 with active status
-	for _, status := range []models.TaskStatus{models.StatusTodo, models.StatusInProgress} {
-		task := &models.Task{Status: status, Priority: 1}
-		if !p.Filter(task) {
-			t.Errorf("Urgent should accept %s priority 1", status)
+	// Accept: standby status
+	accept := &models.Task{Status: models.StatusStandby}
+	if !p.Filter(accept) {
+		t.Error("Standby should accept standby tasks")
+	}
+
+	// Reject: other statuses
+	for _, status := range []models.TaskStatus{
+		models.StatusTodo, models.StatusInProgress, models.StatusDone,
+		models.StatusBlocked, models.StatusReview, models.StatusCanceled,
+	} {
+		task := &models.Task{Status: status}
+		if p.Filter(task) {
+			t.Errorf("Standby should reject %s tasks", status)
 		}
-	}
-
-	// Accept: due within 3 days with active status
-	soon := time.Now().Add(2 * 24 * time.Hour)
-	task := &models.Task{Status: models.StatusTodo, Priority: 3, DueDate: &soon}
-	if !p.Filter(task) {
-		t.Error("Urgent should accept tasks due within 3 days")
-	}
-
-	// Accept: already past due
-	past := time.Now().Add(-1 * time.Hour)
-	taskPast := &models.Task{Status: models.StatusTodo, Priority: 3, DueDate: &past}
-	if !p.Filter(taskPast) {
-		t.Error("Urgent should accept overdue tasks")
-	}
-
-	// Reject: priority 3 with no due date
-	taskLow := &models.Task{Status: models.StatusTodo, Priority: 3}
-	if p.Filter(taskLow) {
-		t.Error("Urgent should reject priority 3 tasks without due date")
-	}
-
-	// Reject: due far in the future, non-urgent priority
-	far := time.Now().Add(30 * 24 * time.Hour)
-	taskFar := &models.Task{Status: models.StatusTodo, Priority: 3, DueDate: &far}
-	if p.Filter(taskFar) {
-		t.Error("Urgent should reject tasks due far in future with low priority")
-	}
-
-	// Reject: wrong status even with priority 1
-	taskDone := &models.Task{Status: models.StatusDone, Priority: 1}
-	if p.Filter(taskDone) {
-		t.Error("Urgent should reject done tasks")
 	}
 }
 
@@ -196,6 +222,13 @@ func TestWaitingPerspective(t *testing.T) {
 		if p.Filter(task) {
 			t.Errorf("Waiting should reject %s tasks", status)
 		}
+	}
+
+	// Reject: snoozed blocked tasks
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusBlocked, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("Waiting should reject snoozed tasks")
 	}
 }
 
@@ -219,6 +252,13 @@ func TestSomedayPerspective(t *testing.T) {
 	task := &models.Task{Status: models.StatusInProgress, Priority: 5}
 	if p.Filter(task) {
 		t.Error("Someday should reject non-todo tasks")
+	}
+
+	// Reject: snoozed todo with low priority
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusTodo, Priority: 5, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("Someday should reject snoozed tasks")
 	}
 }
 
@@ -261,6 +301,13 @@ func TestReviewPerspective(t *testing.T) {
 		if p.Filter(task) {
 			t.Errorf("Review should reject %s tasks", status)
 		}
+	}
+
+	// Reject: snoozed review tasks
+	tomorrow := time.Now().Add(24 * time.Hour)
+	snoozed := &models.Task{Status: models.StatusReview, SnoozedUntil: &tomorrow}
+	if p.Filter(snoozed) {
+		t.Error("Review should reject snoozed tasks")
 	}
 }
 
@@ -425,11 +472,22 @@ func TestRebuildRows_InboxPerspective(t *testing.T) {
 	assertRowTitles(t, m.rows, []string{"Epic", "Story A", "Task A1", "Bug Root"})
 }
 
-func TestRebuildRows_UrgentPerspective(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 5}
+func TestRebuildRows_StandbyPerspective(t *testing.T) {
+	proj := buildTestProject()
+	// Add a standby task to the project
+	standbyTask := &models.Task{
+		ID:       "standby1",
+		ShortID:  8,
+		Type:     models.TaskTypeTask,
+		Title:    "Standby Task",
+		Status:   models.StatusStandby,
+		Children: []*models.Task{},
+	}
+	proj.Tasks = append(proj.Tasks, standbyTask)
+
+	m := &OutlinerModel{project: proj, activePerspective: 5}
 	m.rebuildRows()
-	// Task A1 (todo, pri 1) and Story A (in_progress, pri 1) match.
-	assertRowTitles(t, m.rows, []string{"Epic", "Story A", "Task A1"})
+	assertRowTitles(t, m.rows, []string{"Standby Task"})
 }
 
 func TestRebuildRows_WaitingPerspective(t *testing.T) {
@@ -458,6 +516,39 @@ func TestRebuildRows_ReviewPerspective(t *testing.T) {
 	m.rebuildRows()
 	// Task B1 is in_review. Epic → Story B are kept as ancestors.
 	assertRowTitles(t, m.rows, []string{"Epic", "Story B", "Task B1"})
+}
+
+func TestRebuildRows_SnoozedPerspective(t *testing.T) {
+	proj := buildTestProject()
+	// Snooze one task
+	tomorrow := time.Now().Add(24 * time.Hour)
+	for _, task := range proj.Tasks {
+		if task.ID == "bugRoot" {
+			task.SnoozedUntil = &tomorrow
+		}
+	}
+
+	m := &OutlinerModel{project: proj, activePerspective: 0}
+	m.rebuildRows()
+	assertRowTitles(t, m.rows, []string{"Bug Root"})
+}
+
+func TestRebuildRows_AllPerspectiveExcludesSnoozed(t *testing.T) {
+	proj := buildTestProject()
+	// Snooze bugRoot
+	tomorrow := time.Now().Add(24 * time.Hour)
+	for _, task := range proj.Tasks {
+		if task.ID == "bugRoot" {
+			task.SnoozedUntil = &tomorrow
+		}
+	}
+
+	m := &OutlinerModel{project: proj, activePerspective: 1, collapsedSections: make(map[string]bool)}
+	m.rebuildRows()
+	// Bug Root should be excluded because it's snoozed
+	assertRowTitles(t, m.rows, []string{
+		"[Active]", "Epic", "Story A", "Task A1", "Story B", "Task B1",
+	})
 }
 
 func TestRebuildRows_ParentExcludedWhenNoDescendantsMatch(t *testing.T) {
@@ -543,9 +634,9 @@ func TestRebuildRows_ParentPreservedForMatchingDescendant(t *testing.T) {
 }
 
 func TestRebuildRows_DefaultPerspectiveIsAll(t *testing.T) {
-	m := &OutlinerModel{project: buildTestProject(), activePerspective: 0, collapsedSections: make(map[string]bool)}
+	m := &OutlinerModel{project: buildTestProject(), activePerspective: -1, collapsedSections: make(map[string]bool)}
 	m.rebuildRows()
-	// activePerspective=0 defaults to "All" (key 1), showing non-complete tasks with section header.
+	// activePerspective=-1 defaults to "All" (key 1), showing non-complete tasks with section header.
 	// 1 header + 6 non-done tasks (Task A2 is done and excluded)
 	if len(m.rows) != 7 {
 		t.Fatalf("default perspective should show 7 rows (1 header + 6 tasks), got %d", len(m.rows))

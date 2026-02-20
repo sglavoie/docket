@@ -25,11 +25,12 @@ var OutlinerPerspectivePrefixHints = []PrefixHint{
 	{Key: "2", Description: "Active"},
 	{Key: "3", Description: "Next"},
 	{Key: "4", Description: "Inbox"},
-	{Key: "5", Description: "Urgent"},
+	{Key: "5", Description: "Standby"},
 	{Key: "6", Description: "Waiting"},
 	{Key: "7", Description: "Someday"},
 	{Key: "8", Description: "Completed"},
 	{Key: "9", Description: "Review"},
+	{Key: "0", Description: "Snoozed"},
 }
 
 // buildPrefixHints returns the hints map for all supported prefix keys.
@@ -52,7 +53,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 		annotated := make([]PrefixHint, len(OutlinerPerspectivePrefixHints))
 		copy(annotated, OutlinerPerspectivePrefixHints)
 		idx := m.activePerspective
-		if idx < 1 {
+		if idx < 0 {
 			idx = 1
 		}
 		for i := range annotated {
