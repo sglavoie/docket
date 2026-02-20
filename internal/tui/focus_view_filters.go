@@ -3,16 +3,12 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// commonFilterView implementation for FocusViewModel.
+// refreshAndClamp reloads data and clamps cursor after filter changes.
+func (m *FocusViewModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 
-func (m *FocusViewModel) getFilter() *CommonFilterState   { return &m.filter }
-func (m *FocusViewModel) getConfig() *config.Config       { return m.config }
-func (m *FocusViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *FocusViewModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
 func (m *FocusViewModel) buildTagCmd() tea.Cmd {
 	tasks := make([]*models.Task, len(m.tasks))
 	for i := range m.tasks {
@@ -36,19 +32,4 @@ func (m *FocusViewModel) handleFocusFilterPrefix(key string) (tea.Model, tea.Cmd
 func (m *FocusViewModel) handleFocusFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
-}
-
-// HasActiveFilters returns true if any filter is currently active.
-func (m *FocusViewModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter)
-}
-
-// ClearAllFilters resets all filters to their default state.
-func (m *FocusViewModel) ClearAllFilters() {
-	clearCommonFilters(&m.filter)
-}
-
-// renderActiveFilterIndicator returns a compact indicator of all active filters.
-func (m *FocusViewModel) renderActiveFilterIndicator() string {
-	return renderCommonFilterIndicator(&m.filter)
 }

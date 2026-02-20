@@ -3,16 +3,12 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// commonFilterView implementation for DueDateOverviewModel.
+// refreshAndClamp reloads data and clamps cursor after filter changes.
+func (m *DueDateOverviewModel) refreshAndClamp() { m.loadTasksWithDueDates(); m.clampCursor() }
 
-func (m *DueDateOverviewModel) getFilter() *CommonFilterState   { return &m.filter }
-func (m *DueDateOverviewModel) getConfig() *config.Config       { return m.config }
-func (m *DueDateOverviewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *DueDateOverviewModel) refreshAndClamp()                { m.loadTasksWithDueDates(); m.clampCursor() }
 func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
 	groups := [][]DueDateTask{m.overdue, m.today, m.thisWeek, m.later}
 	var tasks []*models.Task
@@ -39,19 +35,4 @@ func (m *DueDateOverviewModel) handleDueDateFilterPrefix(key string) (tea.Model,
 func (m *DueDateOverviewModel) handleDueDateFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
-}
-
-// HasActiveFilters returns true if any filter is currently active.
-func (m *DueDateOverviewModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter)
-}
-
-// ClearAllFilters resets all filters to their default state.
-func (m *DueDateOverviewModel) ClearAllFilters() {
-	clearCommonFilters(&m.filter)
-}
-
-// renderActiveFilterIndicator returns a compact indicator of all active filters.
-func (m *DueDateOverviewModel) renderActiveFilterIndicator() string {
-	return renderCommonFilterIndicator(&m.filter)
 }

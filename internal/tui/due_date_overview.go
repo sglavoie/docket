@@ -56,7 +56,7 @@ type DueDateOverviewModel struct {
 	activeTab int
 
 	// Filter
-	filter CommonFilterState
+	FilterMixin
 
 	// Navigation
 	totalTasks  int
@@ -69,11 +69,9 @@ func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOv
 		config:         cfg,
 		configManager:  mgr,
 		projectService: NewProjectService(),
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		FilterMixin:    FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasksWithDueDates()
 	return m
 }

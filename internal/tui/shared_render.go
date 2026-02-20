@@ -133,7 +133,11 @@ func (tl TaskLine) Render() string {
 	}
 
 	if tl.IsSelected {
-		line = SelectedStyle.Render(line)
+		if tl.ViewWidth > 0 {
+			line = SelectionRowStyle.Width(tl.ViewWidth).Render(line)
+		} else {
+			line = SelectedStyle.Render(line)
+		}
 	}
 
 	return line

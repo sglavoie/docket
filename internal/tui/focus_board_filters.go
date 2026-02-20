@@ -5,17 +5,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// commonFilterView implementation for FocusBoardModel.
+// refreshAndClamp reloads data and clamps cursor after filter changes.
+func (m *FocusBoardModel) refreshAndClamp() { m.applyFilter(); m.clampCursor() }
 
-func (m *FocusBoardModel) getFilter() *CommonFilterState   { return &m.filter }
-func (m *FocusBoardModel) getConfig() *config.Config       { return m.config }
-func (m *FocusBoardModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *FocusBoardModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
 func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
 	tasks := make([]*models.Task, len(m.rows))
 	for i := range m.rows {

@@ -88,7 +88,7 @@ type PriorityViewModel struct {
 	groupStarts []int // Starting index of each group in flattened view
 
 	// Filter state
-	filter           PriorityFilterState
+	FilterMixin
 	filterBar        *PriorityFilterBarComponent
 	actionableFilter bool // hide blocked tasks even in All tab
 
@@ -105,14 +105,10 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
-		filter: PriorityFilterState{
-			CommonFilterState: CommonFilterState{
-				Tags:  make(map[string]bool),
-				Attrs: make(map[string]string),
-			},
-		},
-		filterBar: NewPriorityFilterBarComponent(),
+		FilterMixin:        FilterMixin{filter: newFilterState()},
+		filterBar:          NewPriorityFilterBarComponent(),
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadActionableTasks()
 	return m
 }

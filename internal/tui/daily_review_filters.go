@@ -3,16 +3,12 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// commonFilterView implementation for DailyReviewModel.
+// refreshAndClamp reloads data and clamps cursor after filter changes.
+func (m *DailyReviewModel) refreshAndClamp() { m.loadTasks(); m.clampCursor() }
 
-func (m *DailyReviewModel) getFilter() *CommonFilterState   { return &m.filter }
-func (m *DailyReviewModel) getConfig() *config.Config       { return m.config }
-func (m *DailyReviewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *DailyReviewModel) refreshAndClamp()                { m.loadTasks(); m.clampCursor() }
 func (m *DailyReviewModel) buildTagCmd() tea.Cmd {
 	sections := [][]DailyReviewTask{
 		m.overdue, m.dueToday, m.dueSoon, m.dueLater,
@@ -43,19 +39,4 @@ func (m *DailyReviewModel) handleDailyReviewFilterPrefix(key string) (tea.Model,
 func (m *DailyReviewModel) handleDailyReviewFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
-}
-
-// HasActiveFilters returns true if any filter is currently active.
-func (m *DailyReviewModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter)
-}
-
-// ClearAllFilters resets all filters to their default state.
-func (m *DailyReviewModel) ClearAllFilters() {
-	clearCommonFilters(&m.filter)
-}
-
-// renderActiveFilterIndicator returns a compact indicator of all active filters.
-func (m *DailyReviewModel) renderActiveFilterIndicator() string {
-	return renderCommonFilterIndicator(&m.filter)
 }

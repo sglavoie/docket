@@ -3,15 +3,8 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
-
-// PriorityFilterState contains filter options for the priority view.
-// All common filter fields are embedded from CommonFilterState.
-type PriorityFilterState struct {
-	CommonFilterState // embedded common filter fields
-}
 
 // PriorityFilterBarComponent encapsulates filter bar state for the priority view.
 type PriorityFilterBarComponent struct {
@@ -29,7 +22,7 @@ func NewPriorityFilterBarComponent() *PriorityFilterBarComponent {
 
 // passesFilters checks if a task passes all current priority view filters.
 func (m *PriorityViewModel) passesFilters(task *models.Task) bool {
-	return passesCommonFilters(task, &m.filter.CommonFilterState, m.project.ID, m.config)
+	return passesCommonFilters(task, &m.filter, m.project.ID, m.config)
 }
 
 // applyFiltersToGroup returns a filtered slice of priority tasks.
@@ -48,18 +41,18 @@ func (m *PriorityViewModel) applyFiltersToGroup(tasks []*PriorityTask) []*Priori
 
 // HasActiveFilters returns true if any filter is currently active.
 func (m *PriorityViewModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter.CommonFilterState) || m.actionableFilter
+	return hasActiveCommonFilters(&m.filter) || m.actionableFilter
 }
 
 // ClearAllFilters resets all filters to their default state.
 func (m *PriorityViewModel) ClearAllFilters() {
-	clearCommonFilters(&m.filter.CommonFilterState)
+	clearCommonFilters(&m.filter)
 	m.actionableFilter = false
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *PriorityViewModel) renderActiveFilterIndicator() string {
-	parts := commonFilterParts(&m.filter.CommonFilterState)
+	parts := commonFilterParts(&m.filter)
 	if m.actionableFilter {
 		parts = append(parts, "ready")
 	}
@@ -68,7 +61,7 @@ func (m *PriorityViewModel) renderActiveFilterIndicator() string {
 
 // buildPriorityFilterPrefixHints builds dynamic filter hints for priority view.
 func (m *PriorityViewModel) buildPriorityFilterPrefixHints() []PrefixHint {
-	hints := buildCommonFilterPrefixHints(&m.filter.CommonFilterState, true, true)
+	hints := buildCommonFilterPrefixHints(&m.filter, true, true)
 
 	readyDetail := "off"
 	if m.actionableFilter {
@@ -86,12 +79,9 @@ func (m *PriorityViewModel) buildPriorityFilterPrefixHints() []PrefixHint {
 	return hints
 }
 
-// commonFilterView implementation for PriorityViewModel.
+// refreshAndClamp reloads data after filter changes.
+func (m *PriorityViewModel) refreshAndClamp() { m.loadActionableTasks() }
 
-func (m *PriorityViewModel) getFilter() *CommonFilterState   { return &m.filter.CommonFilterState }
-func (m *PriorityViewModel) getConfig() *config.Config       { return m.config }
-func (m *PriorityViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *PriorityViewModel) refreshAndClamp()                { m.loadActionableTasks() }
 func (m *PriorityViewModel) buildTagCmd() tea.Cmd {
 	var tasks []*models.Task
 	for _, task := range m.project.Tasks {

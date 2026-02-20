@@ -3,16 +3,12 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// commonFilterView implementation for AllTasksViewModel.
+// refreshAndClamp reloads data and clamps cursor after filter changes.
+func (m *AllTasksViewModel) refreshAndClamp() { m.applyFiltersAndGroup(); m.clampCursor() }
 
-func (m *AllTasksViewModel) getFilter() *CommonFilterState   { return &m.filter }
-func (m *AllTasksViewModel) getConfig() *config.Config       { return m.config }
-func (m *AllTasksViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
-func (m *AllTasksViewModel) refreshAndClamp()                { m.applyFiltersAndGroup(); m.clampCursor() }
 func (m *AllTasksViewModel) buildTagCmd() tea.Cmd {
 	tasks := make([]*models.Task, len(m.allTasks))
 	for i := range m.allTasks {

@@ -59,7 +59,7 @@ type FocusViewModel struct {
 	subTabNames      []string
 
 	// Filter
-	filter CommonFilterState
+	FilterMixin
 }
 
 // NewFocusViewModel creates a new focus view model.
@@ -71,11 +71,9 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 		queue:          queue,
 		queueIDs:       queueIDs,
 		dismissedIDs:   dismissedIDs,
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		FilterMixin:    FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
 	return m
 }

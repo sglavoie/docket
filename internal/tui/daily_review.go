@@ -52,7 +52,7 @@ type DailyReviewModel struct {
 	completed  []DailyReviewTask
 
 	// Filter
-	filter CommonFilterState
+	FilterMixin
 
 	// Navigation
 	totalTasks        int
@@ -69,11 +69,9 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 		config:            cfg,
 		configManager:     mgr,
 		collapsedSections: make(map[int]bool),
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		FilterMixin:       FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
 	return m
 }

@@ -176,3 +176,38 @@ func renderFilterBadge(parts []string) string {
 	}
 	return FilterBadgeStyle.Render("Filters: " + strings.Join(parts, " "))
 }
+
+// FilterMixin provides standard commonFilterView bridge methods. Views that
+// embed this struct get getFilter, getConfig, setFilterPendingPrefix,
+// HasActiveFilters, ClearAllFilters, and renderActiveFilterIndicator for free.
+// Views with custom filter logic (extra filter fields) override the methods
+// they need; the embedded defaults still handle the common cases.
+type FilterMixin struct {
+	filter    CommonFilterState
+	filterCfg *config.Config
+	prefixPtr *string // points to InteractiveViewState.pendingPrefix
+}
+
+// initFilterMixin wires the mixin to the view's pending prefix and config.
+// Call this in the view constructor after the struct is allocated.
+func (fm *FilterMixin) initFilterMixin(pendingPrefix *string, cfg *config.Config) {
+	fm.prefixPtr = pendingPrefix
+	fm.filterCfg = cfg
+}
+
+// newFilterState returns an initialized CommonFilterState with allocated maps.
+func newFilterState() CommonFilterState {
+	return CommonFilterState{
+		Tags:  make(map[string]bool),
+		Attrs: make(map[string]string),
+	}
+}
+
+func (fm *FilterMixin) getFilter() *CommonFilterState   { return &fm.filter }
+func (fm *FilterMixin) getConfig() *config.Config       { return fm.filterCfg }
+func (fm *FilterMixin) setFilterPendingPrefix(p string) { *fm.prefixPtr = p }
+func (fm *FilterMixin) HasActiveFilters() bool          { return hasActiveCommonFilters(&fm.filter) }
+func (fm *FilterMixin) ClearAllFilters()                { clearCommonFilters(&fm.filter) }
+func (fm *FilterMixin) renderActiveFilterIndicator() string {
+	return renderCommonFilterIndicator(&fm.filter)
+}

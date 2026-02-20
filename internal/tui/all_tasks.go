@@ -92,7 +92,7 @@ type AllTasksViewModel struct {
 	activeTab int
 
 	// Filter
-	filter        CommonFilterState
+	FilterMixin
 	projectFilter map[string]bool // included project IDs (empty = all)
 
 	// Sort
@@ -119,11 +119,9 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sortField:        SortByDefault,
 		sortAscending:    true,
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		FilterMixin:      FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadAllTasks()
 	return m
 }

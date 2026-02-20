@@ -32,18 +32,16 @@ type RecentActivityModel struct {
 	activeTab int
 
 	// Filter
-	filter CommonFilterState
+	FilterMixin
 }
 
 // NewRecentActivityModel creates a new recent activity model.
 func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 	m := &RecentActivityModel{
-		config: cfg,
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		config:      cfg,
+		FilterMixin: FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
 	return m
@@ -382,31 +380,18 @@ func (m *RecentActivityModel) renderTabBar() string {
 
 func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {
 	task := dt.Task
-
-	cursor := "  "
-	if selected {
-		cursor = "> "
-	}
-
 	projectName := util.Truncate(dt.Project.Name, 12)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-
-	shortID := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+	preBadges := MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +
+		MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
+	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
 
 	maxTitleLen := m.Width() - 50
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(task.Title, maxTitleLen)
-
-	relTime := MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt))
-
-	line := fmt.Sprintf("%s%s %s %s %s %s  %s", cursor, projectStr, shortID, statusIcon, typeIcon, title, relTime)
-
-	if selected {
-		line = SelectedStyle.Render(line)
-	}
-	return line
+	return TaskLine{
+		Task:       task,
+		IsSelected: selected,
+		MaxTitle:   maxTitleLen,
+		PreBadges:  preBadges,
+		PostTitle:  relTime,
+		ViewWidth:  m.Width(),
+	}.Render()
 }

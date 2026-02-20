@@ -60,7 +60,7 @@ type FocusBoardModel struct {
 	sortAscending bool
 
 	// Filter
-	filter CommonFilterState
+	FilterMixin
 
 	// Quick-add input
 	addMode  bool
@@ -99,11 +99,9 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 		projectService: NewProjectService(),
 		addInput:       ti,
 		editInput:      ei,
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
-		},
+		FilterMixin:    FilterMixin{filter: newFilterState()},
 	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search...", 100, 40)
 	m.loadItems()
 	return m
