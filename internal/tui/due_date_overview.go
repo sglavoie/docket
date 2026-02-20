@@ -402,15 +402,11 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 
 	// Copy
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if dt := m.getTaskAtCursor(); dt != nil {
-					return dt.Task
-				}
-				return nil
-			},
-			nil, nil,
-		); handled {
+		var task *models.Task
+		if dt := m.getTaskAtCursor(); dt != nil {
+			task = dt.Task
+		}
+		if cmd, handled := clipboardCmd(key, task); handled {
 			return m, cmd
 		}
 		return m, nil

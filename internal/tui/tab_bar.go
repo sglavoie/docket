@@ -2,6 +2,35 @@ package tui
 
 import "github.com/charmbracelet/lipgloss"
 
+// activeTabStyle returns the standard active tab style: bold, primary-colored,
+// with optional bottom border. Used by tab bar renderers to avoid style duplication.
+func activeTabStyle(padding int, withBorder bool) lipgloss.Style {
+	s := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(ColorPrimary).
+		Padding(0, padding)
+	if withBorder {
+		s = s.BorderBottom(true).
+			BorderStyle(lipgloss.ThickBorder()).
+			BorderForeground(ColorPrimary)
+	}
+	return s
+}
+
+// inactiveTabStyle returns the standard inactive tab style: muted foreground,
+// with optional bottom border. Used by tab bar renderers to avoid style duplication.
+func inactiveTabStyle(padding int, withBorder bool) lipgloss.Style {
+	s := lipgloss.NewStyle().
+		Foreground(ColorMuted).
+		Padding(0, padding)
+	if withBorder {
+		s = s.BorderBottom(true).
+			BorderStyle(lipgloss.Border{Bottom: "─"}).
+			BorderForeground(ColorBorder)
+	}
+	return s
+}
+
 // RenderTabBar renders a horizontal tab bar with the given tab labels, highlighting
 // the active tab. The availableWidth controls the filler line width. The padding
 // parameter sets the horizontal padding for each tab (typically 1 or 2).
@@ -20,25 +49,8 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 	}
 	fitsSingleLine := totalWidth <= availableWidth
 
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, padding)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, padding)
-
-	if fitsSingleLine {
-		activeStyle = activeStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.ThickBorder()).
-			BorderForeground(ColorPrimary)
-		inactiveStyle = inactiveStyle.
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
-	}
+	active := activeTabStyle(padding, fitsSingleLine)
+	inactive := inactiveTabStyle(padding, fitsSingleLine)
 
 	var rendered []string
 	for i, name := range tabs {
@@ -48,43 +60,29 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
 					colorVal := GetSectionColorValue(colorName)
 					if colorVal != "" {
-						coloredActive := lipgloss.NewStyle().
-							Bold(true).
+						colored := activeTabStyle(padding, fitsSingleLine).
 							Foreground(colorVal).
-							Padding(0, padding)
-						if fitsSingleLine {
-							coloredActive = coloredActive.
-								BorderBottom(true).
-								BorderStyle(lipgloss.ThickBorder()).
-								BorderForeground(colorVal)
-						}
-						rendered = append(rendered, coloredActive.Render(name))
+							BorderForeground(colorVal)
+						rendered = append(rendered, colored.Render(name))
 						continue
 					}
 				}
 			}
-			rendered = append(rendered, activeStyle.Render(name))
+			rendered = append(rendered, active.Render(name))
 		} else {
 			// Check for custom color on inactive tabs
 			if tabColors != nil {
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
 					colorVal := GetSectionColorValue(colorName)
 					if colorVal != "" {
-						coloredStyle := lipgloss.NewStyle().
-							Foreground(colorVal).
-							Padding(0, padding)
-						if fitsSingleLine {
-							coloredStyle = coloredStyle.
-								BorderBottom(true).
-								BorderStyle(lipgloss.Border{Bottom: "─"}).
-								BorderForeground(ColorBorder)
-						}
-						rendered = append(rendered, coloredStyle.Render(name))
+						colored := inactiveTabStyle(padding, fitsSingleLine).
+							Foreground(colorVal)
+						rendered = append(rendered, colored.Render(name))
 						continue
 					}
 				}
 			}
-			rendered = append(rendered, inactiveStyle.Render(name))
+			rendered = append(rendered, inactive.Render(name))
 		}
 	}
 

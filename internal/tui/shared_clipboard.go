@@ -46,3 +46,11 @@ func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks f
 
 	return false, nil
 }
+
+// clipboardCmd is a convenience wrapper for views without multi-select.
+// It dispatches y/Y/ctrl+y clipboard operations for a single task.
+// Returns (cmd, true) when the key was consumed, or (nil, false) otherwise.
+func clipboardCmd(key string, task *models.Task) (tea.Cmd, bool) {
+	handled, cmd := handleClipboardKey(key, func() *models.Task { return task }, nil, nil)
+	return cmd, handled
+}

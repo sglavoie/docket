@@ -102,21 +102,8 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 // This differs from RenderTabBar which renders a single-line tab bar.
 func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int) string {
 	plainStyle := lipgloss.NewStyle().Padding(0, 1)
-
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(ColorPrimary)
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.Border{Bottom: "─"}).
-		BorderForeground(ColorBorder)
+	active := activeTabStyle(1, true)
+	inactive := inactiveTabStyle(1, true)
 
 	// Build rows of tabs that fit within available width
 	var rows []string
@@ -131,9 +118,9 @@ func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int) string {
 			currentWidth = 0
 		}
 		if i == activeIdx {
-			currentRow = append(currentRow, activeStyle.Render(name))
+			currentRow = append(currentRow, active.Render(name))
 		} else {
-			currentRow = append(currentRow, inactiveStyle.Render(name))
+			currentRow = append(currentRow, inactive.Render(name))
 		}
 		currentWidth += tabWidth
 	}

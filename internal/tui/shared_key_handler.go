@@ -2,8 +2,6 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // commonActionView extends taskOpsView with the additional methods needed
@@ -110,10 +108,7 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 
 	case "y", "Y", "ctrl+y":
 		task, _ := v.getTaskRef()
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task { return task },
-			nil, nil,
-		); handled {
+		if cmd, handled := clipboardCmd(key, task); handled {
 			return v.(tea.Model), cmd, true
 		}
 		return v.(tea.Model), nil, true

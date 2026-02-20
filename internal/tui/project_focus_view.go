@@ -279,12 +279,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	// Copy
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				return m.getTaskAtCursor()
-			},
-			nil, nil,
-		); handled {
+		if cmd, handled := clipboardCmd(key, m.getTaskAtCursor()); handled {
 			return m, cmd
 		}
 		return m, nil

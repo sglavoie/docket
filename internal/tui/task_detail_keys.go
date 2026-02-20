@@ -115,10 +115,7 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Clipboard
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task { return m.task },
-			nil, nil,
-		); handled {
+		if cmd, handled := clipboardCmd(key, m.task); handled {
 			return m, cmd
 		}
 		return m, nil

@@ -199,36 +199,18 @@ func (m *KanbanViewModel) renderKanbanTabBar() string {
 	// dim the preset tab bar to indicate it's not the focused row.
 	dimmed := m.customSectionTabs() != nil && m.customSectionRowFocused
 
-	activeStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(ColorPrimary).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.ThickBorder()).
-		BorderForeground(ColorPrimary)
-
+	active := activeTabStyle(1, true)
 	if dimmed {
-		activeStyle = lipgloss.NewStyle().
-			Foreground(ColorMuted).
-			Padding(0, 1).
-			BorderBottom(true).
-			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
+		active = inactiveTabStyle(1, true)
 	}
-
-	inactiveStyle := lipgloss.NewStyle().
-		Foreground(ColorMuted).
-		Padding(0, 1).
-		BorderBottom(true).
-		BorderStyle(lipgloss.Border{Bottom: "─"}).
-		BorderForeground(ColorBorder)
+	inactive := inactiveTabStyle(1, true)
 
 	var tabs []string
 	for i, name := range kanbanTabNames {
 		if i == m.activeTab {
-			tabs = append(tabs, activeStyle.Render(name))
+			tabs = append(tabs, active.Render(name))
 		} else {
-			tabs = append(tabs, inactiveStyle.Render(name))
+			tabs = append(tabs, inactive.Render(name))
 		}
 	}
 

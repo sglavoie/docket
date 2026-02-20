@@ -188,15 +188,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if pt := m.getTaskAtCursor(); pt != nil {
-					return pt.Task
-				}
-				return nil
-			},
-			nil, nil,
-		); handled {
+		var task *models.Task
+		if pt := m.getTaskAtCursor(); pt != nil {
+			task = pt.Task
+		}
+		if cmd, handled := clipboardCmd(key, task); handled {
 			return m, cmd
 		}
 		return m, nil
