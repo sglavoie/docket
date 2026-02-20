@@ -283,13 +283,13 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		return m, nil
 	case "D":
 		if m.multiSelectMode && m.selectedCount() > 0 {
-			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? Press 'y' to confirm, 'n' to cancel", m.selectedCount())
+			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.selectedCount())
 			m.confirm.Show("delete", m.statusMessage)
 			return m, nil
 		}
 		if task != nil {
 			m.deleteTarget = task
-			m.statusMessage = fmt.Sprintf("Delete task #%d? Press 'y' to confirm, 'n' to cancel", task.ShortID)
+			m.statusMessage = fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID)
 			m.confirm.Show("delete", m.statusMessage)
 		}
 		return m, nil

@@ -370,9 +370,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Archive/unarchive project (with confirmation)
 	case "ctrl+a":
 		if m.Project.Archived {
-			m.statusMessage = "Unarchive project? Press 'y' to confirm, 'n' to cancel"
+			m.statusMessage = "Unarchive project? (y/n)"
 		} else {
-			m.statusMessage = "Archive project? Press 'y' to confirm, 'n' to cancel"
+			m.statusMessage = "Archive project? (y/n)"
 		}
 		m.confirm.Show("archive", m.statusMessage)
 		return m, nil

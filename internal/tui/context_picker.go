@@ -311,7 +311,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
 				if selected.IsCustom && m.config != nil {
-					m.confirm.Show("delete", "Delete this custom context? y/n")
+					m.confirm.Show("delete", "Delete this custom context? (y/n)")
 					m.statusMessage = ""
 				} else if selected.Name != "" {
 					// Can't delete regular contexts

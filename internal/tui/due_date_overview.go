@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -339,69 +338,11 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	// Priority changes
 	case "1", "2", "3", "4", "5":
 		return m.changeTaskPriority(key)
+	}
 
-	// Edit task
-	case "e":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: dt.Task}
-			}
-		}
-		return m, nil
-
-	// Refresh
-	case "r":
-		m.loadTasksWithDueDates()
-		m.clampCursor()
-		m.statusMessage = "Refreshed"
-		return m, nil
-
-	// Copy
-	case "y", "Y", "ctrl+y":
-		var task *models.Task
-		if dt := m.getTaskAtCursor(); dt != nil {
-			task = dt.Task
-		}
-		if cmd, handled := clipboardCmd(key, task); handled {
-			return m, cmd
-		}
-		return m, nil
-
-	// Tags
-	case "t":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: dt.Task, Project: dt.Project, CurrentTags: append([]string{}, dt.Task.Tags...)}
-			}
-		}
-		return m, nil
-
-	// Snooze
-	case "Z":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: dt.Task, Project: dt.Project}
-			}
-		}
-		return m, nil
-
-	// Delete with confirmation
-	case "D":
-		if dt := m.getTaskAtCursor(); dt != nil {
-			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", dt.Task.ShortID))
-			m.statusMessage = m.confirm.Prompt()
-		}
-		return m, nil
-
-	// Help
-	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewDueDateOverview,
-				ViewName:   "Due Date Overview",
-				Items:      m.GetHelpItems(),
-			}
-		}
+	// Shared task actions: e, r, y/Y/ctrl+y, t, Z, D, ?
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	if handleListNavigation(key, &m.cursor, m.totalTasks) {
@@ -446,7 +387,10 @@ func (m *DueDateOverviewModel) handleFilterSubPrefix(prefix, key string) (tea.Mo
 	return m.handleDueDateFilterSubPrefix(prefix, key)
 }
 
-// taskOpsView implementation for DueDateOverviewModel.
+// commonActionView implementation for DueDateOverviewModel.
+
+func (m *DueDateOverviewModel) viewID() ViewType { return ViewDueDateOverview }
+func (m *DueDateOverviewModel) viewName() string { return "Due Date Overview" }
 
 func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
 	dt := m.getTaskAtCursor()

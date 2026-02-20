@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var activityTabNames = []string{"All", "Status", "Edits", "Comments"}
@@ -144,8 +143,7 @@ func (m *TaskActivityModel) View() string {
 				cursor = "> "
 			}
 
-			relTime := storage.FormatRelativeTime(entry.Timestamp)
-			ts := fmt.Sprintf("[%s] %s", entry.Timestamp.Format("2006-01-02 15:04"), relTime)
+			ts := FormatTimestampBracket(entry.Timestamp)
 
 			var line strings.Builder
 			line.WriteString(cursor)

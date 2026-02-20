@@ -169,14 +169,14 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.cursor))
+				m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]? (y/n)", m.cursor))
 				return m, nil
 			}
 
 		case "u":
 			// Request unlink (keep file) confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.cursor))
+				m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]? (y/n)", m.cursor))
 				return m, nil
 			}
 

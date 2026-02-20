@@ -251,7 +251,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 
 		case "d", "x":
 			if len(visible) > 0 && s.cursor < len(visible) {
-				s.confirm.Show("delete", "Delete blocker?")
+				s.confirm.Show("delete", "Delete blocker? (y/n)")
 			}
 			return nil, nil, true
 
@@ -611,7 +611,6 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		if len(visible) > 0 && s.cursor < len(visible) {
 			item := visible[s.cursor]
 			blocker := item.Blocker
-			relativeTime := storage.FormatRelativeTime(blocker.CreatedAt)
 
 			b.WriteString(FieldLabelFocusedStyle.Render(blocker.Title))
 			b.WriteString("\n")
@@ -619,11 +618,10 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 				b.WriteString(MutedStyle.Render(fmt.Sprintf("Project: %s", item.Project.Name)))
 				b.WriteString("\n")
 			}
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("Created: %s (%s)", blocker.CreatedAt.Format("2006-01-02 15:04"), relativeTime)))
+			b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", blocker.CreatedAt)))
 			if blocker.IsResolved() {
-				resolvedTime := storage.FormatRelativeTime(*blocker.ResolvedAt)
 				b.WriteString("\n")
-				b.WriteString(DoneStyle.Render(fmt.Sprintf("Resolved: %s (%s)", blocker.ResolvedAt.Format("2006-01-02 15:04"), resolvedTime)))
+				b.WriteString(DoneStyle.Render(FormatTimestampLabeled("Resolved", *blocker.ResolvedAt)))
 			}
 			b.WriteString("\n\n")
 
@@ -658,8 +656,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		blocker := ds.getItemBlocker(s.editIndex)
 		b.WriteString(FieldLabelFocusedStyle.Render("Edit Blocker:"))
 		b.WriteString("\n")
-		createdText := storage.FormatRelativeTime(blocker.CreatedAt)
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Created: %s", createdText)))
+		b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", blocker.CreatedAt)))
 		b.WriteString("\n\n")
 		b.WriteString(s.editTextInput.View())
 		b.WriteString("\n\n")

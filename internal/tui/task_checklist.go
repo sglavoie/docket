@@ -205,7 +205,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Checklist) > 0 && m.cursor < len(m.task.Checklist) {
-				m.confirm.Show("delete", fmt.Sprintf("Delete item [%d]?", m.cursor))
+				m.confirm.Show("delete", fmt.Sprintf("Delete item [%d]? (y/n)", m.cursor))
 				return m, nil
 			}
 

@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -231,7 +230,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
-				m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
+				m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]? (y/n)", m.cursor))
 				return m, nil
 			}
 
@@ -637,8 +636,7 @@ func (m *TaskCommentsModel) View() string {
 	// Expanded view mode - show full comment
 	if m.expandedView && len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments) {
 		comment := m.task.Comments[m.cursor]
-		relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
-		timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
+		timestamp := FormatTimestampBracket(comment.CreatedAt)
 
 		headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
 		if comment.Resolved {
@@ -672,10 +670,9 @@ func (m *TaskCommentsModel) View() string {
 	// Edit mode input
 	if m.editMode {
 		comment := m.task.Comments[m.editIndex]
-		relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
 		b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Created: %s (%s)", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)))
+		b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", comment.CreatedAt)))
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
@@ -752,8 +749,7 @@ func (m *TaskCommentsModel) View() string {
 				cursor = "> "
 			}
 
-			relativeTime := storage.FormatRelativeTime(comment.CreatedAt)
-			timestamp := fmt.Sprintf("[%s] %s", comment.CreatedAt.Format("2006-01-02 15:04"), relativeTime)
+			timestamp := FormatTimestampBracket(comment.CreatedAt)
 			if comment.Resolved {
 				timestamp += " [resolved]"
 			}

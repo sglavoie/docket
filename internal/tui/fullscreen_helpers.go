@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -517,6 +518,16 @@ func renderStatusMessages(statusMessage string, err error) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// FormatTimestampBracket returns "[2006-01-02 15:04] 3 hours ago".
+func FormatTimestampBracket(t time.Time) string {
+	return fmt.Sprintf("[%s] %s", t.Format("2006-01-02 15:04"), storage.FormatRelativeTime(t))
+}
+
+// FormatTimestampLabeled returns "Created: 2006-01-02 15:04 (3 hours ago)".
+func FormatTimestampLabeled(label string, t time.Time) string {
+	return fmt.Sprintf("%s: %s (%s)", label, t.Format("2006-01-02 15:04"), storage.FormatRelativeTime(t))
 }
 
 // renderGroupHeader renders a group header with count, using overdue styling when appropriate.
