@@ -396,11 +396,6 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// SetSize implements the View interface.
-func (m *OutlinerModel) SetSize(width, height int) {
-	m.BaseSearchableView.SetSize(width, height)
-}
-
 // taskOpsView implementation for OutlinerModel.
 
 func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {

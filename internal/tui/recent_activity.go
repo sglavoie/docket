@@ -133,11 +133,6 @@ func (m *RecentActivityModel) ShouldCaptureEsc() bool {
 	return m.IsSearchMode() || m.SearchQuery() != "" || m.HasPendingPrefix() || m.HasActiveFilters()
 }
 
-// SetSize sets the view dimensions.
-func (m *RecentActivityModel) SetSize(width, height int) {
-	m.BaseSearchableView.SetSize(width, height)
-}
-
 func (m *RecentActivityModel) Init() tea.Cmd {
 	return nil
 }

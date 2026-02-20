@@ -289,11 +289,6 @@ func (m *ProjectTreeModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, len(m.visibleNodes()))
 }
 
-// SetSize sets the view dimensions.
-func (m *ProjectTreeModel) SetSize(width, height int) {
-	m.BaseSearchableView.SetSize(width, height)
-}
-
 func (m *ProjectTreeModel) Init() tea.Cmd {
 	return nil
 }
