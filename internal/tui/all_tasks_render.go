@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -196,9 +195,8 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 	// Score badge
 	scoreBadge := ""
 	if profile := m.config.GetProjectScoringProfile(item.Project.ID); profile != nil {
-		if HasManualScores(task, profile) {
-			pct := scoring.NormalizedScore(task, profile)
-			scoreBadge = fmt.Sprintf(" [S:%d]", int(pct))
+		if badge := RenderScoreBadge(task, profile); badge != "" {
+			scoreBadge = " " + badge
 		}
 	}
 
