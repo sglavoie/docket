@@ -83,6 +83,7 @@ type WeeklyReviewModel struct {
 	sectionOrder      []WeeklyReviewSection
 	focusedSection    *WeeklyReviewSection
 	activeTab         int // 0=Projects, 1=Tasks, 2=Planning
+	scrollOffset      int
 
 	// Guided review flow
 	reviewedSections map[WeeklyReviewSection]bool
@@ -169,12 +170,14 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "[", "h":
 		CycleTab(&m.activeTab, 3, -1)
 		m.focusedSection = nil
+		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil
 	case "]", "l":
 		CycleTab(&m.activeTab, 3, 1)
 		m.focusedSection = nil
+		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil

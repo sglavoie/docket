@@ -28,7 +28,7 @@ func (m *DailyReviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
 		} else {
@@ -60,7 +60,7 @@ func (m *DailyReviewModel) View() string {
 	// Render all sections
 	if m.totalTasks == 0 {
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
 		} else {
@@ -73,7 +73,7 @@ func (m *DailyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
-	b.WriteString(strings.Join(applyScroll(lines, cursorLineIndex, contentHeight), "\n"))
+	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
 	b.WriteString("\n\n")
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))

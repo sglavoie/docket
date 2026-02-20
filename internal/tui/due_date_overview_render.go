@@ -23,7 +23,7 @@ func (m *DueDateOverviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
 		} else {
@@ -35,7 +35,7 @@ func (m *DueDateOverviewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
+	b.WriteString(renderWrappingTabBar(dueDateTabNames, m.activeTab, m.Width()))
 	b.WriteString("\n")
 
 	// Filter badge
@@ -48,7 +48,7 @@ func (m *DueDateOverviewModel) View() string {
 
 	if m.totalTasks == 0 {
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
 		} else {
@@ -109,11 +109,6 @@ var DueDateOverviewNavigationPrefixHints = []PrefixHint{
 	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
 }
 
-// renderTabBar renders the tab bar for filtering.
-func (m *DueDateOverviewModel) renderTabBar() string {
-	return renderWrappingTabBar(dueDateTabNames, m.activeTab, m.Width())
-}
-
 // renderAllGroups renders all task groups and returns the lines.
 func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	var lines []string
@@ -123,7 +118,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 	overdue, today, thisWeek, later := m.visibleGroups()
 
 	if len(overdue) > 0 {
-		lines = append(lines, m.renderGroupHeader("Overdue", len(overdue), true))
+		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true))
 		lines = append(lines, m.renderGroup(overdue, currentIndex)...)
 		hasContent = true
 	}
@@ -132,7 +127,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("Today", len(today), false))
+		lines = append(lines, renderGroupHeader("Today", len(today), false))
 		lines = append(lines, m.renderGroup(today, currentIndex)...)
 		hasContent = true
 	}
@@ -141,7 +136,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("This Week", len(thisWeek), false))
+		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex)...)
 		hasContent = true
 	}
@@ -150,16 +145,11 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("Later", len(later), false))
+		lines = append(lines, renderGroupHeader("Later", len(later), false))
 		lines = append(lines, m.renderGroup(later, currentIndex)...)
 	}
 
 	return lines
-}
-
-// renderGroupHeader renders a group header with count.
-func (m *DueDateOverviewModel) renderGroupHeader(name string, count int, isOverdue bool) string {
-	return renderGroupHeader(name, count, isOverdue)
 }
 
 // renderGroup renders a group of tasks.
@@ -179,34 +169,16 @@ func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *in
 
 // renderTaskLine renders a single task line.
 func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isSelected bool, maxTitleLen int) string {
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	// Date indicator and formatted date
 	dateStr := m.formatDueDate(dt.Task)
-
-	// Project name in brackets
 	projectName := util.Truncate(dt.Project.Name, 15)
 	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-
-	// Task type icon with badge style
-	typeIcon := GetTypeBadge(string(dt.Task.Type), dt.Task.Type.Icon())
-
-	// Title
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
-	title := util.Truncate(dt.Task.Title, maxTitleLen)
-
-	line := fmt.Sprintf("%s%s %s %s %s", cursor, dateStr, projectStr, typeIcon, title)
-
-	if isSelected {
-		line = SelectedStyle.Render(line)
-	}
-
-	return line
+	return TaskLine{
+		Task:       dt.Task,
+		IsSelected: isSelected,
+		MaxTitle:   maxTitleLen,
+		PreBadges:  dateStr + " " + projectStr + " ",
+		ViewWidth:  m.Width(),
+	}.Render()
 }
 
 // formatDueDate formats the due date for display.

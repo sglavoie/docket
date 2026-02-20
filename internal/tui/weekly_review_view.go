@@ -56,7 +56,7 @@ func (m *WeeklyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
-	b.WriteString(strings.Join(applyScroll(lines, cursorLineIndex, contentHeight), "\n"))
+	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
 	b.WriteString("\n\n")
 
 	b.WriteString(renderStatusMessages(m.statusMessage, m.err))

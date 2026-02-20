@@ -132,7 +132,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		if len(m.project.Tasks) == 0 {
 			cardContent.WriteString(MutedStyle.Render("No tasks yet. Add one with: tt task add <title>"))
 		} else {
-			cardContent.WriteString(MutedStyle.Render("No tasks match current filters."))
+			cardContent.WriteString(MutedStyle.Render(EmptyStateFiltered))
 		}
 	} else {
 		// Calculate available height for task list
@@ -425,7 +425,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		if len(m.project.Tasks) == 0 {
 			cardContent.WriteString(MutedStyle.Render("No tasks yet."))
 		} else {
-			cardContent.WriteString(MutedStyle.Render("No tasks match current filters."))
+			cardContent.WriteString(MutedStyle.Render(EmptyStateFiltered))
 		}
 	} else {
 		// Calculate available height for task list

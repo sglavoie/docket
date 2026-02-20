@@ -8,6 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// EmptyStateFiltered is the standard message shown when active filters produce no results.
+const EmptyStateFiltered = "No tasks match current filters."
+
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
 // Returns an empty string if there are no tags.

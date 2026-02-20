@@ -89,15 +89,15 @@ func (m *FocusViewModel) View() string {
 			lines = append(lines, MutedStyle.Render("Queue is empty. Switch to Suggested tab and press a to add tasks."))
 		case focusTabSuggested:
 			if m.HasActiveFilters() {
-				lines = append(lines, MutedStyle.Render("No tasks match current filters. Press q or Esc to clear."))
+				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 			} else {
 				lines = append(lines, MutedStyle.Render("All suggestions dismissed. Press r to refresh."))
 			}
 		default:
 			if m.HasActiveFilters() {
-				lines = append(lines, MutedStyle.Render("No tasks match current filters. Press q or Esc to clear."))
+				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 			} else {
-				lines = append(lines, MutedStyle.Render("No matching tasks."))
+				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 			}
 		}
 	}

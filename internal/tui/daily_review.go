@@ -61,6 +61,7 @@ type DailyReviewModel struct {
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
 	activeTab         int                  // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
+	scrollOffset      int
 }
 
 // NewDailyReviewModel creates a new daily review model.
@@ -127,12 +128,14 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "[", "h":
 		CycleTab(&m.activeTab, len(dailyReviewTabNames), -1)
 		m.focusedSection = nil
+		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil
 	case "]", "l":
 		CycleTab(&m.activeTab, len(dailyReviewTabNames), 1)
 		m.focusedSection = nil
+		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
 		return m, nil

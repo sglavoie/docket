@@ -309,7 +309,7 @@ func (m *RecentActivityModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
 		} else {
@@ -321,7 +321,7 @@ func (m *RecentActivityModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
+	b.WriteString(renderWrappingTabBar(recentActivityTabNames, m.activeTab, m.Width()))
 	b.WriteString("\n")
 
 	// Filter badge
@@ -358,9 +358,9 @@ func (m *RecentActivityModel) View() string {
 
 	if len(m.filtered) == 0 {
 		if m.HasActiveFilters() {
-			lines = append(lines, MutedStyle.Render("No tasks match current filters. Press q or Esc to clear."))
+			lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 		} else {
-			lines = append(lines, MutedStyle.Render("No matching tasks."))
+			lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 		}
 	}
 
@@ -372,10 +372,6 @@ func (m *RecentActivityModel) View() string {
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
-}
-
-func (m *RecentActivityModel) renderTabBar() string {
-	return renderWrappingTabBar(recentActivityTabNames, m.activeTab, m.Width())
 }
 
 func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {

@@ -27,7 +27,7 @@ func (m *AllTasksViewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
+	b.WriteString(renderWrappingTabBar(allTasksTabNames, m.activeTab, m.Width()))
 	b.WriteString("\n")
 
 	// Filter badges
@@ -53,11 +53,11 @@ func (m *AllTasksViewModel) View() string {
 
 	if m.totalNavigableItems() == 0 {
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render("No tasks match current filters."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("[/] tabs · Fx clear filters · q/Esc clear filters"))
 		} else {
-			b.WriteString(MutedStyle.Render("No matching tasks."))
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("[/] h/l tabs · q/Esc close"))
 		}
@@ -113,11 +113,6 @@ func (m *AllTasksViewModel) View() string {
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 
 	return b.String()
-}
-
-// renderTabBar renders the tab bar for filtering.
-func (m *AllTasksViewModel) renderTabBar() string {
-	return renderWrappingTabBar(allTasksTabNames, m.activeTab, m.Width())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

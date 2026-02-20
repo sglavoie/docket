@@ -120,7 +120,7 @@ func (m *KanbanViewModel) View() string {
 	}
 	if totalTasks == 0 && m.HasActiveFilters() {
 		// Show message when filters result in no tasks
-		emptyMsg := MutedStyle.Render("No tasks match current filters.")
+		emptyMsg := MutedStyle.Render(EmptyStateFiltered)
 		kanbanPane = lipgloss.Place(m.Width(), m.kanbanHeight, lipgloss.Center, lipgloss.Center, emptyMsg)
 	}
 

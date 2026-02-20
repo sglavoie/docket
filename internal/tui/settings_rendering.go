@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-// renderTabBar renders a tab bar with the active tab highlighted.
-func (m *SettingsModel) renderTabBar() string {
-	return renderWrappingTabBar(settingsTabNames, m.activeTab, m.width)
-}
-
 func (m *SettingsModel) renderGeneralTab() string {
 	var b strings.Builder
 	const labelWidth = 20 // "Undo History Depth: " is the widest
@@ -287,7 +282,7 @@ func (m *SettingsModel) View() string {
 	var b strings.Builder
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
+	b.WriteString(renderWrappingTabBar(settingsTabNames, m.activeTab, m.width))
 	b.WriteString("\n\n")
 
 	// Tab content

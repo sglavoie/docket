@@ -229,6 +229,7 @@ func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
 				if ts == section {
 					m.activeTab = tabIdx
 					m.focusedSection = nil
+					m.scrollOffset = 0
 					m.calculateNavigation()
 					// Find the section's start position in current navigation
 					for i, s := range m.sectionOrder {

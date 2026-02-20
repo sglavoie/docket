@@ -23,29 +23,29 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	hints := PrefixHints{
+		",": StatusPrefixHints,
+		"g": PriorityViewNavigationPrefixHints,
+		"d": DueDatePrefixHints,
+		"m": SecondaryViewMovePrefixHints,
+		"c": CreateLinkedPrefixHints,
+	}
+	// Merge filter prefix hints (due date + status both included)
+	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
+		hints[k] = v
+	}
+	// Insert "r" (ready) hint into F hints before the last entry (clear-all)
+	if fHints, ok := hints["F"]; ok {
+		readyDetail := "off"
+		if m.actionableFilter {
+			readyDetail = "on"
+		}
+		readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter}
+		hints["F"] = append(fHints[:len(fHints)-1], readyHint, fHints[len(fHints)-1])
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",":   StatusPrefixHints,
-			"g":   PriorityViewNavigationPrefixHints,
-			"d":   DueDatePrefixHints,
-			"m":   SecondaryViewMovePrefixHints,
-			"c":   CreateLinkedPrefixHints,
-			"F":   m.buildPriorityFilterPrefixHints(),
-			"Ft":  FilterTypePrefixHints,
-			"Fs":  FilterStatusPrefixHints,
-			"Fd":  FilterDuePrefixHints,
-			"Fa":  FilterAttrPrefixHints,
-			"Fas": FilterAttrSeverityPrefixHints,
-			"Far": FilterAttrReproduciblePrefixHints,
-			"Fae": FilterAttrEffortPrefixHints,
-			"Fac": FilterAttrCategoryPrefixHints,
-			"Fav": FilterAttrValuePrefixHints,
-			"Faw": FilterAttrWorktypePrefixHints,
-			"Fao": FilterAttrScopePrefixHints,
-			"Fap": FilterAttrPointsPrefixHints,
-			"FS":  BuildFilterScorePrefixHints(m.config),
-		},
+		Hints:  hints,
 	}
 }
 
@@ -58,18 +58,9 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	task := m.suggestion.Task.Task
 	boxWidth := m.Width() - 4
 
-	// Build task line
-	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
-	priorityBadge := renderPriorityBadge(task.Priority)
-
 	// Calculate available title width
-	// Star + status + type + priority + spacing takes about 15-20 chars
+	// Star + cursor + status + type + priority + spacing takes about 15-20 chars
 	titleWidth := boxWidth - 22
-	if titleWidth < 10 {
-		titleWidth = 10
-	}
-	title := util.Truncate(task.Title, titleWidth)
 
 	// Due date
 	dueStr := ""
@@ -81,10 +72,13 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 	star := SuggestionStarStyle.Render("★")
 
 	// Build the task line
-	taskLine := fmt.Sprintf("%s %s %s %s %s", star, statusIcon, typeIcon, priorityBadge, title)
-	if dueStr != "" {
-		taskLine = fmt.Sprintf("%-*s %s", boxWidth-12, taskLine, dueStr)
-	}
+	taskLine := TaskLine{
+		Task:      task,
+		MaxTitle:  titleWidth,
+		Prefix:    star,
+		DueStr:    dueStr,
+		ViewWidth: boxWidth,
+	}.Render()
 
 	// Reason line (muted, indented)
 	reasonLine := SuggestionReasonStyle.Render("  " + m.suggestion.Reason)
@@ -116,7 +110,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	if len(overdue) > 0 {
-		lines = append(lines, m.renderGroupHeader("OVERDUE", len(overdue), true))
+		lines = append(lines, renderGroupHeader("OVERDUE", len(overdue), true))
 		lines = append(lines, m.renderGroup(overdue, currentIndex, true)...)
 		hasContent = true
 	}
@@ -125,7 +119,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("DUE TODAY", len(today), false))
+		lines = append(lines, renderGroupHeader("DUE TODAY", len(today), false))
 		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
 		hasContent = true
 	}
@@ -134,7 +128,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("THIS WEEK", len(thisWeek), false))
+		lines = append(lines, renderGroupHeader("THIS WEEK", len(thisWeek), false))
 		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
 		hasContent = true
 	}
@@ -143,7 +137,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 		if hasContent {
 			lines = append(lines, separator)
 		}
-		lines = append(lines, m.renderGroupHeader("LATER", len(later), false))
+		lines = append(lines, renderGroupHeader("LATER", len(later), false))
 		lines = append(lines, m.renderGroup(later, currentIndex, false)...)
 		hasContent = true
 	}
@@ -163,7 +157,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 		}
 		// In Blocked tab, tasks are navigable (rendered as regular tasks)
 		if m.activeTab == priorityTabBlocked {
-			lines = append(lines, m.renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false))
+			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false))
 			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false)...)
 		} else {
 			lines = append(lines, m.renderWaitingOnHeader())
@@ -212,11 +206,6 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 	}
 
 	return lines
-}
-
-// renderGroupHeader renders a group header with count.
-func (m *PriorityViewModel) renderGroupHeader(name string, count int, isOverdue bool) string {
-	return renderGroupHeader(name, count, isOverdue)
 }
 
 // renderWaitingOnHeader renders the collapsible waiting on section header.
