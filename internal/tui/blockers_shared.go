@@ -256,20 +256,12 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 			return nil, nil, true
 
 		case "[", "h":
-			if s.activeTab > 0 {
-				s.activeTab--
-			} else {
-				s.activeTab = len(blockersTabNames) - 1
-			}
+			CycleTab(&s.activeTab, len(blockersTabNames), -1)
 			blockerClampCursor(s, ds)
 			return nil, nil, true
 
 		case "]", "l":
-			if s.activeTab < len(blockersTabNames)-1 {
-				s.activeTab++
-			} else {
-				s.activeTab = 0
-			}
+			CycleTab(&s.activeTab, len(blockersTabNames), 1)
 			blockerClampCursor(s, ds)
 			return nil, nil, true
 

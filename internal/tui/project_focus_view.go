@@ -180,23 +180,13 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, nil
 	case "[", "h":
 		if len(m.subTabNames) > 1 {
-			total := len(m.subTabNames) + 1
-			if m.subTab > 0 {
-				m.subTab--
-			} else {
-				m.subTab = total - 1
-			}
+			CycleTab(&m.subTab, len(m.subTabNames)+1, -1)
 			m.clampCursor()
 			return m, nil
 		}
 	case "]", "l":
 		if len(m.subTabNames) > 1 {
-			total := len(m.subTabNames) + 1
-			if m.subTab < total-1 {
-				m.subTab++
-			} else {
-				m.subTab = 0
-			}
+			CycleTab(&m.subTab, len(m.subTabNames)+1, 1)
 			m.clampCursor()
 			return m, nil
 		}

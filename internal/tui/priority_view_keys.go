@@ -38,19 +38,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "[", "h":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
 			total := len(m.subTabNames) + 1
-			if m.subTab > 0 {
-				m.subTab--
-			} else {
-				m.subTab = total - 1
-			}
+			CycleTab(&m.subTab, total, -1)
 			m.recalculateNavigation()
 			m.clampCursor()
 		} else {
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(priorityTabNames) - 1
-			}
+			CycleTab(&m.activeTab, len(priorityTabNames), -1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.recalculateNavigation()
@@ -60,19 +52,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "]", "l":
 		if m.subTabRowFocused && len(m.subTabNames) > 1 {
 			total := len(m.subTabNames) + 1
-			if m.subTab < total-1 {
-				m.subTab++
-			} else {
-				m.subTab = 0
-			}
+			CycleTab(&m.subTab, total, 1)
 			m.recalculateNavigation()
 			m.clampCursor()
 		} else {
-			if m.activeTab < len(priorityTabNames)-1 {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(priorityTabNames), 1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.recalculateNavigation()

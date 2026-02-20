@@ -91,19 +91,11 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch key {
 		case "[", "h":
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(noteTabNames) - 1
-			}
+			CycleTab(&m.activeTab, len(noteTabNames), -1)
 			m.loadNotes()
 			return m, nil
 		case "]":
-			if m.activeTab < len(noteTabNames)-1 {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(noteTabNames), 1)
 			m.loadNotes()
 			return m, nil
 		case "q", "esc":
@@ -163,11 +155,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "l":
 			if m.isGlobal && !m.multiSelectMode {
 				// In global notes, l cycles tabs forward (no task linking available)
-				if m.activeTab < len(noteTabNames)-1 {
-					m.activeTab++
-				} else {
-					m.activeTab = 0
-				}
+				CycleTab(&m.activeTab, len(noteTabNames), 1)
 				m.loadNotes()
 				return m, nil
 			}

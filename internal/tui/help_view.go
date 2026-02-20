@@ -200,21 +200,13 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "[", "h":
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(m.categories)
-			}
+			CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
 			return m, nil
 		case "]", "l":
-			if m.activeTab < len(m.categories) {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()

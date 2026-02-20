@@ -180,40 +180,26 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 	case "[":
 		if m.customSectionRowFocused {
 			if tabs := m.customSectionTabs(); tabs != nil {
-				if m.customSectionTab > 0 {
-					m.customSectionTab--
-				} else {
-					m.customSectionTab = len(tabs) - 1
-				}
+				CycleTab(&m.customSectionTab, len(tabs), -1)
 				m.buildAllNodes()
 				m.allCursor = 0
 			}
 		} else {
-			if m.activeTab > 0 {
-				m.applyTabPresetForAllView(m.activeTab - 1)
-			} else {
-				m.applyTabPresetForAllView(len(kanbanTabNames) - 1)
-			}
+			CycleTab(&m.activeTab, len(kanbanTabNames), -1)
+			m.applyTabPresetForAllView(m.activeTab)
 		}
 		return true, nil
 
 	case "]":
 		if m.customSectionRowFocused {
 			if tabs := m.customSectionTabs(); tabs != nil {
-				if m.customSectionTab < len(tabs)-1 {
-					m.customSectionTab++
-				} else {
-					m.customSectionTab = 0
-				}
+				CycleTab(&m.customSectionTab, len(tabs), 1)
 				m.buildAllNodes()
 				m.allCursor = 0
 			}
 		} else {
-			if m.activeTab < len(kanbanTabNames)-1 {
-				m.applyTabPresetForAllView(m.activeTab + 1)
-			} else {
-				m.applyTabPresetForAllView(0)
-			}
+			CycleTab(&m.activeTab, len(kanbanTabNames), 1)
+			m.applyTabPresetForAllView(m.activeTab)
 		}
 		return true, nil
 	}

@@ -302,19 +302,11 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	// Tab navigation
 	switch key {
 	case "[", "h":
-		if m.activeTab > 0 {
-			m.activeTab--
-		} else {
-			m.activeTab = len(dueDateTabNames) - 1
-		}
+		CycleTab(&m.activeTab, len(dueDateTabNames), -1)
 		m.applyTabFilter()
 		return m, nil
 	case "]", "l":
-		if m.activeTab < len(dueDateTabNames)-1 {
-			m.activeTab++
-		} else {
-			m.activeTab = 0
-		}
+		CycleTab(&m.activeTab, len(dueDateTabNames), 1)
 		m.applyTabFilter()
 		return m, nil
 	}

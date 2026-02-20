@@ -119,12 +119,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "h":
 			if m.activePane == 0 {
-				// Switch tab left
-				if m.activeTab > 0 {
-					m.activeTab--
-				} else {
-					m.activeTab = len(m.categories)
-				}
+				CycleTab(&m.activeTab, len(m.categories)+1, -1)
 				m.filterTopics()
 				m.selectedIndex = 0
 				m.listOffset = 0
@@ -133,12 +128,7 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "l":
 			if m.activePane == 0 {
-				// Switch tab right
-				if m.activeTab < len(m.categories) {
-					m.activeTab++
-				} else {
-					m.activeTab = 0
-				}
+				CycleTab(&m.activeTab, len(m.categories)+1, 1)
 				m.filterTopics()
 				m.selectedIndex = 0
 				m.listOffset = 0
@@ -146,22 +136,14 @@ func (m *TutorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "[":
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(m.categories)
-			}
+			CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterTopics()
 			m.selectedIndex = 0
 			m.listOffset = 0
 			m.updateViewport()
 			return m, nil
 		case "]":
-			if m.activeTab < len(m.categories) {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterTopics()
 			m.selectedIndex = 0
 			m.listOffset = 0

@@ -35,22 +35,14 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "[":
 			m.blurCurrentField()
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				m.activeTab = len(settingsTabNames) - 1
-			}
+			CycleTab(&m.activeTab, len(settingsTabNames), -1)
 			m.focusIndex = tabFieldStart[m.activeTab]
 			m.focusCurrentField()
 			return m, nil
 
 		case "]":
 			m.blurCurrentField()
-			if m.activeTab < len(settingsTabNames)-1 {
-				m.activeTab++
-			} else {
-				m.activeTab = 0
-			}
+			CycleTab(&m.activeTab, len(settingsTabNames), 1)
 			m.focusIndex = tabFieldStart[m.activeTab]
 			m.focusCurrentField()
 			return m, nil
