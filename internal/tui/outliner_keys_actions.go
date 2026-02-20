@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // handleConfirmDialog processes key input while a confirmation dialog is active.
@@ -85,17 +86,20 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 		return m, nil
 	}
 
-	// No blocked tasks, proceed directly
-	pf := m.workflowPersistFn()
+	// No blocked tasks: mutate all, then save once
 	for _, task := range valid {
-		pf(m.project, task.ID, func(t *models.Task) {
+		m.project.MutateTask(task.ID, func(t *models.Task) {
 			t.ApplyTransition(newStatus)
 		})
+	}
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), newStatus))
+	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
+		m.err = err
+		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
 	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus)
 	m.clearMultiSelect()
-	m.rebuildRows()
 	return m, nil
 }
 
@@ -106,17 +110,24 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	pf := m.workflowPersistFn()
-	for _, task := range m.bulkOp.GetTasks() {
-		pf(m.project, task.ID, func(t *models.Task) {
-			t.ApplyTransition(m.bulkOp.GetStatus())
+	prevStates := m.bulkOp.GetPrevStates()
+	status := m.bulkOp.GetStatus()
+	tasks := m.bulkOp.GetTasks()
+
+	for _, task := range tasks {
+		m.project.MutateTask(task.ID, func(t *models.Task) {
+			t.ApplyTransition(status)
 		})
 	}
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(tasks), status))
+	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
+		m.err = err
+		m.bulkOp.Clear()
+		return m, func() tea.Msg { return ErrorMsg{Err: err} }
+	}
 
-	count := len(m.bulkOp.GetTasks())
-	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", count, m.bulkOp.GetStatus())
+	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", len(tasks), status)
 	m.bulkOp.Clear()
-	m.rebuildRows()
 	return m, nil
 }
 
@@ -140,27 +151,52 @@ func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 }
 
 // executeBulkDelete removes all multi-selected tasks using shared helpers.
+// Collects all tasks and descendants, cleans up attachments, filters in one
+// pass, then persists once instead of per-task.
 func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 	if len(m.selectedTasks) == 0 {
 		return m, nil
 	}
 
 	count := len(m.selectedTasks)
-	pf := m.workflowPersistFn()
-	var lastCmd tea.Cmd
+	prevStates := captureTaskStates(m.project.Tasks)
+
+	// Collect all selected task IDs and their descendants
+	rootIDs := make(map[string]bool, len(m.selectedTasks))
 	for taskID := range m.selectedTasks {
-		result := applyDeleteTask(pf, m.project, taskID, m.config.DataDir)
-		if result.Err != nil {
-			m.err = result.Err
-			return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+		rootIDs[taskID] = true
+	}
+	idsToDelete := collectDescendantIDs(m.project.Tasks, rootIDs)
+
+	// Clean up attachments for all tasks being deleted
+	for _, t := range m.project.Tasks {
+		if idsToDelete[t.ID] {
+			_ = storage.CleanupTaskAttachments(m.project, t)
 		}
-		lastCmd = result.Cmd
+	}
+
+	// Filter out deleted tasks and clear dangling parent references
+	var remaining []*models.Task
+	for _, t := range m.project.Tasks {
+		if !idsToDelete[t.ID] {
+			if t.ParentID != nil && idsToDelete[*t.ParentID] {
+				t.ParentID = nil
+			}
+			remaining = append(remaining, t)
+		}
+	}
+	m.project.Tasks = remaining
+
+	// Persist once
+	m.setUndoContext("Bulk Delete", fmt.Sprintf("%d tasks", count))
+	if err := m.saveAndRefreshWithPrevStates(prevStates); err != nil {
+		m.err = err
+		return m, func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
 	m.clearMultiSelect()
-	m.rebuildRows()
 	m.statusMessage = fmt.Sprintf("Deleted %d tasks", count)
-	return m, lastCmd
+	return m, nil
 }
 
 // archiveCompletedTasks moves all completed tasks to the archive file.
@@ -171,7 +207,7 @@ func (m *OutlinerModel) archiveCompletedTasks() (tea.Model, tea.Cmd) {
 	}
 	completedCount := m.project.CountCompletedTasks()
 
-	svc := NewProjectService()
+	svc := m.projectService
 	cmd := func() tea.Msg {
 		if completedCount == 0 {
 			return nil
