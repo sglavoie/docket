@@ -332,42 +332,6 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		}
 		return m, nil
 
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < m.totalTasks-1 {
-			m.cursor++
-		}
-		return m, nil
-
-	case "G":
-		if m.totalTasks > 0 {
-			m.cursor = m.totalTasks - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
-	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= m.totalTasks {
-			m.cursor = m.totalTasks - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-		return m, nil
-
 	// Toggle active flag
 	case "*":
 		return m.toggleActive()
@@ -438,6 +402,10 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 				Items:      m.GetHelpItems(),
 			}
 		}
+	}
+
+	if handleListNavigation(key, &m.cursor, m.totalTasks) {
+		return m, nil
 	}
 
 	return m, nil

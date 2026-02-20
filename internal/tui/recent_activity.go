@@ -205,38 +205,8 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-
-	case "down", "j":
-		if m.cursor < len(m.filtered)-1 {
-			m.cursor++
-		}
-
 	case "g":
 		m.cursor = 0
-
-	case "G":
-		if len(m.filtered) > 0 {
-			m.cursor = len(m.filtered) - 1
-		}
-
-	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
-
-	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= len(m.filtered) {
-			m.cursor = len(m.filtered) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
 
 	case "p":
 		if m.cursor >= 0 && m.cursor < len(m.filtered) {
@@ -277,6 +247,10 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 				Items:      m.GetHelpItems(),
 			}
 		}
+	}
+
+	if handleListNavigation(msg.String(), &m.cursor, len(m.filtered)) {
+		return m, nil
 	}
 
 	return m, nil
