@@ -1,11 +1,10 @@
 package tui
 
 import (
-	"sort"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // commonFilterView implementation for AllTasksViewModel.
@@ -15,7 +14,11 @@ func (m *AllTasksViewModel) getConfig() *config.Config       { return m.config }
 func (m *AllTasksViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
 func (m *AllTasksViewModel) refreshAndClamp()                { m.applyFiltersAndGroup(); m.clampCursor() }
 func (m *AllTasksViewModel) buildTagCmd() tea.Cmd {
-	tags := buildAllTasksTagList(m)
+	tasks := make([]*models.Task, len(m.allTasks))
+	for i := range m.allTasks {
+		tasks[i] = m.allTasks[i].Task
+	}
+	tags := buildTagListFromTasks(tasks)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
 	}
@@ -53,25 +56,4 @@ func (m *AllTasksViewModel) handleAllTasksFilterPrefix(key string) (tea.Model, t
 func (m *AllTasksViewModel) handleAllTasksFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
-}
-
-// buildAllTasksTagList scans all tasks and builds a sorted list of tags with counts.
-func buildAllTasksTagList(view *AllTasksViewModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, item := range view.allTasks {
-		for _, tag := range item.Task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

@@ -227,20 +227,11 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, nil
 
 	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, len(tasks), -10)
 		return m, nil
 
 	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= len(tasks) {
-			m.cursor = len(tasks) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, len(tasks), 10)
 		return m, nil
 
 	// Toggle active flag (remove from focus)

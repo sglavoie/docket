@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"sort"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -95,7 +93,13 @@ func (m *PriorityViewModel) getConfig() *config.Config       { return m.config }
 func (m *PriorityViewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
 func (m *PriorityViewModel) refreshAndClamp()                { m.loadActionableTasks() }
 func (m *PriorityViewModel) buildTagCmd() tea.Cmd {
-	tags := buildPriorityTagList(m)
+	var tasks []*models.Task
+	for _, task := range m.project.Tasks {
+		if !task.Status.IsComplete() {
+			tasks = append(tasks, task)
+		}
+	}
+	tags := buildTagListFromTasks(tasks)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewPriorityView, Title: "Filter by Tags"}
 	}
@@ -129,28 +133,4 @@ func (m *PriorityViewModel) handlePriorityFilterPrefix(key string) (tea.Model, t
 func (m *PriorityViewModel) handlePriorityFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
 	handleFilterSubPrefixForView(m, prefix, key)
 	return m, nil
-}
-
-// buildPriorityTagList scans all non-completed tasks and builds a sorted list of tags with counts.
-func buildPriorityTagList(priority *PriorityViewModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, task := range priority.project.Tasks {
-		if task.Status.IsComplete() {
-			continue
-		}
-		for _, tag := range task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

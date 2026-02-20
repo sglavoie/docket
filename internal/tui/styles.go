@@ -380,6 +380,12 @@ var (
 				Foreground(ColorSecondary).
 				MarginTop(1)
 
+	// SectionHeaderStyle is like GroupHeaderStyle but without MarginTop,
+	// for views where each entry must be exactly one line (line counting).
+	SectionHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(ColorSecondary)
+
 	SelectedStyle = lipgloss.NewStyle().
 			Background(ColorSelectedBg).
 			Foreground(ColorSelectedFg).

@@ -150,19 +150,10 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		}
 		return m, nil
 	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, len(m.filteredItems), -10)
 		return m, nil
 	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= len(m.filteredItems) {
-			m.cursor = len(m.filteredItems) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, len(m.filteredItems), 10)
 		return m, nil
 	case "home":
 		m.cursor = 0

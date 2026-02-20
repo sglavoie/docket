@@ -194,7 +194,7 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 	case SectionOld:
 		style = MutedStyle
 	default:
-		style = DailyReviewSectionHeaderStyle
+		style = SectionHeaderStyle
 	}
 	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, style)
 }
@@ -277,44 +277,10 @@ func (m *DailyReviewModel) formatDueDateContext(dueDate *time.Time, section Dail
 		return ""
 	}
 
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*dueDate)
-
-	var dateStr string
-
-	switch section {
-	case SectionOverdue:
-		daysAgo := int(today.Sub(dueDay).Hours() / 24)
-		if daysAgo == 1 {
-			dateStr = "yesterday"
-		} else {
-			dateStr = fmt.Sprintf("%d days ago", daysAgo)
-		}
-		return OverdueStyle.Render(dateStr)
-
-	case SectionDueToday:
-		return DueTodayStyle.Render("today")
-
-	case SectionDueSoon:
-		if dueDay.Equal(today.AddDate(0, 0, 1)) {
-			dateStr = "tomorrow"
-		} else {
-			dateStr = dueDate.Format("Mon")
-		}
-		return DueDateStyle.Render(dateStr)
-
-	case SectionDueLater:
-		return DueDateStyle.Render(dueDate.Format("Jan 2"))
-
-	case SectionFuture:
+	// Future section uses MutedStyle with full date (always includes year).
+	if section == SectionFuture {
 		return MutedStyle.Render(dueDate.Format("Jan 2, 2006"))
 	}
 
-	return DueDateStyle.Render(dueDate.Format("Jan 2"))
+	return FormatRelativeDue(dueDate, true)
 }
-
-// DailyReviewSectionHeaderStyle is the style for section headers.
-var DailyReviewSectionHeaderStyle = lipgloss.NewStyle().
-	Foreground(ColorSecondary).
-	Bold(true)

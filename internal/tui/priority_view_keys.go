@@ -130,20 +130,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "ctrl+u":
-		m.cursor -= 10
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, m.totalTasks, -10)
 		return m, nil
 
 	case "ctrl+d":
-		m.cursor += 10
-		if m.cursor >= m.totalTasks {
-			m.cursor = m.totalTasks - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		jumpCursor(&m.cursor, m.totalTasks, 10)
 		return m, nil
 
 	// Toggle waiting on section

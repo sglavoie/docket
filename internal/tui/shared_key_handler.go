@@ -15,6 +15,17 @@ type commonActionView interface {
 	showDeleteConfirm(shortID int)
 }
 
+// jumpCursor moves cursor by delta within [0, total-1].
+func jumpCursor(cursor *int, total, delta int) {
+	*cursor += delta
+	if *cursor >= total {
+		*cursor = total - 1
+	}
+	if *cursor < 0 {
+		*cursor = 0
+	}
+}
+
 // handleListNavigation handles standard list navigation keys (up/k, down/j,
 // G, ctrl+u, ctrl+d). Returns true if the key was handled.
 func handleListNavigation(key string, cursor *int, total int) bool {
@@ -38,20 +49,11 @@ func handleListNavigation(key string, cursor *int, total int) bool {
 		return true
 
 	case "ctrl+u":
-		*cursor -= 10
-		if *cursor < 0 {
-			*cursor = 0
-		}
+		jumpCursor(cursor, total, -10)
 		return true
 
 	case "ctrl+d":
-		*cursor += 10
-		if *cursor >= total {
-			*cursor = total - 1
-		}
-		if *cursor < 0 {
-			*cursor = 0
-		}
+		jumpCursor(cursor, total, 10)
 		return true
 	}
 

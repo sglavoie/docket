@@ -219,7 +219,7 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 	case WeeklySectionPriorityMismatch:
 		style = DueSoonStyle
 	default:
-		style = DailyReviewSectionHeaderStyle
+		style = SectionHeaderStyle
 	}
 	checkbox := "[ ] "
 	if m.reviewedSections[section] {

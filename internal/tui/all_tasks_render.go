@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -164,10 +162,8 @@ var AllTasksNavigationPrefixHints = []PrefixHint{
 }
 
 // renderGroupHeader renders a group header with task count and collapse indicator.
-// Uses inline styling instead of GroupHeaderStyle to avoid MarginTop(1)
-// which would make each entry multi-line and break contentHeight line counting.
 func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool) string {
-	return renderCollapsibleHeader(name, count, collapsed, isSelected, lipgloss.NewStyle().Foreground(ColorSecondary))
+	return renderCollapsibleHeader(name, count, collapsed, isSelected, SectionHeaderStyle)
 }
 
 // renderTaskLine renders a single task line.

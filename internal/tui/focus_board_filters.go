@@ -1,13 +1,13 @@
 package tui
 
 import (
-	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // commonFilterView implementation for FocusBoardModel.
@@ -17,7 +17,11 @@ func (m *FocusBoardModel) getConfig() *config.Config       { return m.config }
 func (m *FocusBoardModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
 func (m *FocusBoardModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
 func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
-	tags := buildBoardTagList(m)
+	tasks := make([]*models.Task, len(m.rows))
+	for i := range m.rows {
+		tasks[i] = m.rows[i].Task
+	}
+	tags := buildTagListFromTasks(tasks)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusBoard, Title: "Filter by Tags"}
 	}
@@ -96,25 +100,4 @@ func (m *FocusBoardModel) matchesSearch(row boardRow) bool {
 	}
 
 	return false
-}
-
-// buildBoardTagList scans all rows for tags.
-func buildBoardTagList(m *FocusBoardModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, r := range m.rows {
-		for _, tag := range r.Task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

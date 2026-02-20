@@ -1,11 +1,10 @@
 package tui
 
 import (
-	"sort"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // commonFilterView implementation for DueDateOverviewModel.
@@ -15,7 +14,14 @@ func (m *DueDateOverviewModel) getConfig() *config.Config       { return m.confi
 func (m *DueDateOverviewModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
 func (m *DueDateOverviewModel) refreshAndClamp()                { m.loadTasksWithDueDates(); m.clampCursor() }
 func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
-	tags := buildDueDateTagList(m)
+	groups := [][]DueDateTask{m.overdue, m.today, m.thisWeek, m.later}
+	var tasks []*models.Task
+	for _, group := range groups {
+		for i := range group {
+			tasks = append(tasks, group[i].Task)
+		}
+	}
+	tags := buildTagListFromTasks(tasks)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDueDateOverview, Title: "Filter by Tags"}
 	}
@@ -48,28 +54,4 @@ func (m *DueDateOverviewModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *DueDateOverviewModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
-}
-
-// buildDueDateTagList scans all tasks in the due date groups and builds a sorted tag list.
-func buildDueDateTagList(ddo *DueDateOverviewModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	groups := [][]DueDateTask{ddo.overdue, ddo.today, ddo.thisWeek, ddo.later}
-	for _, group := range groups {
-		for _, dt := range group {
-			for _, tag := range dt.Task.Tags {
-				tagCounts[tag]++
-			}
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

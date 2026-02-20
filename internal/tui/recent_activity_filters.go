@@ -1,11 +1,10 @@
 package tui
 
 import (
-	"sort"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // commonFilterView implementation for RecentActivityModel.
@@ -15,7 +14,11 @@ func (m *RecentActivityModel) getConfig() *config.Config       { return m.config
 func (m *RecentActivityModel) setFilterPendingPrefix(p string) { m.pendingPrefix = p }
 func (m *RecentActivityModel) refreshAndClamp()                { m.applyFilter(); m.clampCursor() }
 func (m *RecentActivityModel) buildTagCmd() tea.Cmd {
-	tags := buildRecentActivityTagList(m)
+	tasks := make([]*models.Task, len(m.tasks))
+	for i := range m.tasks {
+		tasks[i] = m.tasks[i].Task
+	}
+	tags := buildTagListFromTasks(tasks)
 	return func() tea.Msg {
 		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewRecentActivity, Title: "Filter by Tags"}
 	}
@@ -54,25 +57,4 @@ func (m *RecentActivityModel) ClearAllFilters() {
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *RecentActivityModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
-}
-
-// buildRecentActivityTagList scans all tasks and builds a sorted tag list.
-func buildRecentActivityTagList(ra *RecentActivityModel) []TagInfo {
-	tagCounts := make(map[string]int)
-	for _, dt := range ra.tasks {
-		for _, tag := range dt.Task.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	tags := make([]TagInfo, 0, len(tagCounts))
-	for name, count := range tagCounts {
-		tags = append(tags, TagInfo{Name: name, TaskCount: count})
-	}
-
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Name < tags[j].Name
-	})
-
-	return tags
 }

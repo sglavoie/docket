@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -144,6 +145,27 @@ func commonFilterParts(f *CommonFilterState) []string {
 // Returns empty string if no filters are active.
 func renderCommonFilterIndicator(f *CommonFilterState) string {
 	return renderFilterBadge(commonFilterParts(f))
+}
+
+// buildTagListFromTasks scans tasks and builds a sorted list of tags with counts.
+func buildTagListFromTasks(tasks []*models.Task) []TagInfo {
+	tagCounts := make(map[string]int)
+	for _, task := range tasks {
+		for _, tag := range task.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	tags := make([]TagInfo, 0, len(tagCounts))
+	for name, count := range tagCounts {
+		tags = append(tags, TagInfo{Name: name, TaskCount: count})
+	}
+
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].Name < tags[j].Name
+	})
+
+	return tags
 }
 
 // renderFilterBadge renders a styled filter badge from a parts list.

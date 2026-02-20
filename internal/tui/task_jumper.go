@@ -133,19 +133,10 @@ func (m *TaskJumperModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "ctrl+u":
-			m.cursor -= 10
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
+			jumpCursor(&m.cursor, len(m.filtered), -10)
 			return m, nil
 		case "ctrl+d":
-			m.cursor += 10
-			if m.cursor >= len(m.filtered) {
-				m.cursor = len(m.filtered) - 1
-			}
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
+			jumpCursor(&m.cursor, len(m.filtered), 10)
 			return m, nil
 		default:
 			// Update search input
