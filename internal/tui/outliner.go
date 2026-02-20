@@ -52,7 +52,8 @@ type OutlinerModel struct {
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
-	sidebar *SidebarComponent // Sidebar detail panel
+	sidebar        *SidebarComponent // Sidebar detail panel
+	projectService *ProjectService   // Cached project service for persist operations
 
 	confirm       ConfirmDialog // Confirmation dialog for destructive actions
 	deleteTarget  *models.Task  // Task to delete when confirmation is accepted
@@ -89,6 +90,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		activePerspective: 1,
 		quickEdit:         NewQuickEditComponent(),
 		sidebar:           NewSidebarComponent(),
+		projectService:    NewProjectService(),
 		bulkOp:            NewBulkOperationComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
@@ -408,7 +410,7 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 	return m.rows[m.cursor].task, m.project
 }
 
-func (m *OutlinerModel) getPersister() Persister { return NewProjectService() }
+func (m *OutlinerModel) getPersister() Persister { return m.projectService }
 func (m *OutlinerModel) getDataDir() string      { return m.config.DataDir }
 func (m *OutlinerModel) reloadData()             { m.rebuildRows() }
 func (m *OutlinerModel) setErr(err error)        { m.err = err }
@@ -469,7 +471,7 @@ func (m *OutlinerModel) clearMultiSelect() {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context.
 func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(NewProjectService(), m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
 	m.clearUndoContext()
 	return opts
 }
@@ -480,6 +482,17 @@ func (m *OutlinerModel) workflowPersistFn() persistFn {
 	return workflowPersist(func() WorkflowSaveOptions {
 		return m.buildWorkflowOpts(nil)
 	})
+}
+
+// saveAndRefreshWithPrevStates saves the project with the workflow pipeline
+// and rebuilds rows. This is the outliner's equivalent of ProjectTree's method.
+func (m *OutlinerModel) saveAndRefreshWithPrevStates(prevStates map[string]*models.Task) error {
+	opts := m.buildWorkflowOpts(prevStates)
+	if err := persistWithWorkflow(opts); err != nil {
+		return err
+	}
+	m.rebuildRows()
+	return nil
 }
 
 // setUndoContext sets the action context for the next save operation.
@@ -497,7 +510,7 @@ func (m *OutlinerModel) clearUndoContext() {
 // performUndo restores the project from backup.
 func (m *OutlinerModel) performUndo() tea.Cmd {
 	return func() tea.Msg {
-		if err := performUndoFromBackup(NewProjectService(), m.project); err != nil {
+		if err := performUndoFromBackup(m.projectService, m.project); err != nil {
 			return ErrorMsg{Err: err}
 		}
 		return UndoPerformedMsg{Action: "Undo"}
@@ -634,7 +647,7 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.Cmd {
 	section := m.sidebar.GetDependencySection()
 	cursor := m.sidebar.GetDependencyCursor()
-	ps := NewProjectService()
+	ps := m.projectService
 
 	return func() tea.Msg {
 		switch section {
