@@ -405,25 +405,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Tag badges (first 2 tags, truncated)
-		if len(task.Tags) > 0 {
-			maxTags := 2
-			maxTagLen := 8
-			var tagParts []string
-			for j, tag := range task.Tags {
-				if j >= maxTags {
-					break
-				}
-				displayTag := tag
-				if len(displayTag) > maxTagLen {
-					displayTag = displayTag[:maxTagLen-1] + "…"
-				}
-				tagParts = append(tagParts, "#"+displayTag)
-			}
+		if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
 			indicators.WriteString(" ")
-			indicators.WriteString(TagInlineStyle.Render(strings.Join(tagParts, " ")))
-			if len(task.Tags) > maxTags {
-				indicators.WriteString(MutedStyle.Render(fmt.Sprintf(" +%d", len(task.Tags)-maxTags)))
-			}
+			indicators.WriteString(s)
 		}
 
 		// Score badge (only when scoring profile is active and task has scores)
@@ -437,43 +421,28 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Comment indicator
-		if len(task.Comments) > 0 {
-			unresolved := task.UnresolvedCommentCount()
+		if s := renderCommentIndicator(task); s != "" {
 			indicators.WriteString(" ")
-			if unresolved < len(task.Comments) {
-				indicators.WriteString(MutedStyle.Render(fmt.Sprintf("💬%d/%d", unresolved, len(task.Comments))))
-			} else {
-				indicators.WriteString(MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))))
-			}
+			indicators.WriteString(s)
 		}
 
 		// Attachment indicator
-		if task.HasAttachments() {
+		if s := renderAttachmentIndicator(task); s != "" {
 			indicators.WriteString(" ")
-			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())))
+			indicators.WriteString(s)
 		}
 
 		// Checklist indicator
-		if len(task.Checklist) > 0 {
-			completed := 0
-			for _, item := range task.Checklist {
-				if item.Done {
-					completed++
-				}
-			}
+		if s := renderChecklistIndicator(task); s != "" {
 			indicators.WriteString(" ")
-			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))))
+			indicators.WriteString(s)
 		}
 
 		// Dependency indicators (only when sidebar is hidden)
 		if !m.sidebar.IsEnabled() {
-			if len(task.DependsOn) > 0 {
+			if s := renderDependencyIndicators(task, m.project); s != "" {
 				indicators.WriteString(" ")
-				indicators.WriteString(DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))))
-			}
-			if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
-				indicators.WriteString(" ")
-				indicators.WriteString(DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))))
+				indicators.WriteString(s)
 			}
 		}
 

@@ -153,17 +153,15 @@ func renderFullscreenTitle(title, subtitle string) string {
 	return t
 }
 
-// renderInlineTags renders a compact inline tag string showing at most 2 tags.
-// Returns an empty string if there are no tags.
+// renderInlineTags renders a compact inline tag string showing at most 2 tags,
+// with per-tag truncation at 8 chars and an overflow count.
+// Returns an empty string if there are no tags. Result is prefixed with a space.
 func renderInlineTags(tags []string) string {
-	if len(tags) == 0 {
+	s := renderTruncatedTags(tags, 2, 8)
+	if s == "" {
 		return ""
 	}
-	display := tags
-	if len(display) > 2 {
-		display = display[:2]
-	}
-	return TagInlineStyle.Render(" #" + strings.Join(display, " #"))
+	return " " + s
 }
 
 // renderPriorityBadge renders a priority indicator with color styling.

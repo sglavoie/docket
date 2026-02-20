@@ -158,38 +158,24 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Dependency indicators (compact, only when sidebar is hidden)
 	if !m.sidebar.IsEnabled() {
-		if len(task.DependsOn) > 0 {
-			indicators += DependencyStyle.Render(fmt.Sprintf("→%d", len(task.DependsOn))) + " "
-		}
-		if blockedBy := m.project.GetBlockedByTasks(task); len(blockedBy) > 0 {
-			indicators += DependencyStyle.Render(fmt.Sprintf("←%d", len(blockedBy))) + " "
+		if s := renderDependencyIndicators(task, m.project); s != "" {
+			indicators += s + " "
 		}
 	}
 
-	// Comment indicator (compact, show unresolved/total when some are resolved)
-	if len(task.Comments) > 0 {
-		unresolved := task.UnresolvedCommentCount()
-		if unresolved < len(task.Comments) {
-			indicators += MutedStyle.Render(fmt.Sprintf("💬%d/%d", unresolved, len(task.Comments))) + " "
-		} else {
-			indicators += MutedStyle.Render(fmt.Sprintf("💬%d", len(task.Comments))) + " "
-		}
+	// Comment indicator
+	if s := renderCommentIndicator(task); s != "" {
+		indicators += s + " "
 	}
 
-	// Attachment indicator (compact)
-	if task.HasAttachments() {
-		indicators += MutedStyle.Render(fmt.Sprintf("📎%d", task.AttachmentCount())) + " "
+	// Attachment indicator
+	if s := renderAttachmentIndicator(task); s != "" {
+		indicators += s + " "
 	}
 
-	// Checklist indicator (compact)
-	if len(task.Checklist) > 0 {
-		completed := 0
-		for _, item := range task.Checklist {
-			if item.Done {
-				completed++
-			}
-		}
-		indicators += MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist))) + " "
+	// Checklist indicator
+	if s := renderChecklistIndicator(task); s != "" {
+		indicators += s + " "
 	}
 
 	// Custom section badge (only when sidebar is hidden)
@@ -208,24 +194,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Tag badges (compact, show first 2 tags + count if more)
 	if len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
-		maxTags := 2
-		maxTagLen := 8
-		var tagParts []string
-		for i, tag := range task.Tags {
-			if i >= maxTags {
-				break
-			}
-			displayTag := tag
-			if len(displayTag) > maxTagLen {
-				displayTag = displayTag[:maxTagLen-1] + "…"
-			}
-			tagParts = append(tagParts, "#"+displayTag)
-		}
-		tagStr := TagInlineStyle.Render(strings.Join(tagParts, " "))
-		if len(task.Tags) > maxTags {
-			tagStr += MutedStyle.Render(fmt.Sprintf(" +%d", len(task.Tags)-maxTags))
-		}
-		indicators += tagStr + " "
+		indicators += renderTruncatedTags(task.Tags, 2, 8) + " "
 	}
 
 	// Add leading space to indicators if non-empty (separates from title/progress)

@@ -18,43 +18,24 @@ func (m *KanbanViewModel) sortColumnNodes(section string) {
 		return
 	}
 
-	// Group nodes by their parent within this section
-	nodesByParent := make(map[string][]*KanbanNode)
-	var rootNodes []*KanbanNode
-
-	// Build a set of task IDs in this section
+	// Build a set of task IDs in this section so nodes whose parent is in
+	// another section are treated as roots.
 	taskIDsInSection := make(map[string]bool)
 	for _, node := range nodes {
 		taskIDsInSection[node.Task.ID] = true
 	}
 
-	for _, node := range nodes {
-		if node.Task.ParentID == nil || !taskIDsInSection[*node.Task.ParentID] {
-			rootNodes = append(rootNodes, node)
-		} else {
-			parentID := *node.Task.ParentID
-			nodesByParent[parentID] = append(nodesByParent[parentID], node)
-		}
-	}
-
-	// Sort root nodes
-	m.sortKanbanNodeSlice(rootNodes, sortField, section)
-
-	// Rebuild nodes slice in sorted order
-	m.Nodes[section] = []*KanbanNode{}
-	var addNodeWithChildren func(node *KanbanNode)
-	addNodeWithChildren = func(node *KanbanNode) {
-		m.Nodes[section] = append(m.Nodes[section], node)
-		children := nodesByParent[node.Task.ID]
-		m.sortKanbanNodeSlice(children, sortField, section)
-		for _, child := range children {
-			addNodeWithChildren(child)
-		}
-	}
-
-	for _, root := range rootNodes {
-		addNodeWithChildren(root)
-	}
+	m.Nodes[section] = sortHierarchical(
+		nodes,
+		func(n *KanbanNode) string { return n.Task.ID },
+		func(n *KanbanNode) string {
+			if n.Task.ParentID == nil || !taskIDsInSection[*n.Task.ParentID] {
+				return ""
+			}
+			return *n.Task.ParentID
+		},
+		func(s []*KanbanNode) { m.sortKanbanNodeSlice(s, sortField, section) },
+	)
 }
 
 // getSortFieldForColumn returns the sort field for a specific column.

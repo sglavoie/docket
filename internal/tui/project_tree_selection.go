@@ -83,37 +83,17 @@ func (m *ProjectTreeModel) sortNodes() {
 		return
 	}
 
-	// Group nodes by their parent
-	nodesByParent := make(map[string][]*TreeNode)
-	var rootNodes []*TreeNode
-
-	for _, node := range m.nodes {
-		if node.Task.ParentID == nil {
-			rootNodes = append(rootNodes, node)
-		} else {
-			parentID := *node.Task.ParentID
-			nodesByParent[parentID] = append(nodesByParent[parentID], node)
-		}
-	}
-
-	// Sort root nodes
-	m.sortNodeSlice(rootNodes)
-
-	// Rebuild the nodes slice in sorted order
-	m.nodes = []*TreeNode{}
-	var addNodeWithChildren func(node *TreeNode)
-	addNodeWithChildren = func(node *TreeNode) {
-		m.nodes = append(m.nodes, node)
-		children := nodesByParent[node.Task.ID]
-		m.sortNodeSlice(children)
-		for _, child := range children {
-			addNodeWithChildren(child)
-		}
-	}
-
-	for _, root := range rootNodes {
-		addNodeWithChildren(root)
-	}
+	m.nodes = sortHierarchical(
+		m.nodes,
+		func(n *TreeNode) string { return n.Task.ID },
+		func(n *TreeNode) string {
+			if n.Task.ParentID == nil {
+				return ""
+			}
+			return *n.Task.ParentID
+		},
+		m.sortNodeSlice,
+	)
 }
 
 // sortNodeSlice sorts a slice of nodes based on current sort settings.

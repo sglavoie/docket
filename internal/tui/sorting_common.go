@@ -120,6 +120,45 @@ func CompareTasksCrossProject(a, b *models.Task, field SortField, projectIDA, pr
 	return CompareTasks(a, b, field, "", cfg)
 }
 
+// sortHierarchical sorts a flat slice of nodes while preserving parent-child
+// relationships. Nodes are grouped by parent (using getParentID), each group
+// is sorted with sortSlice, and the result is emitted in depth-first order.
+// getParentID should return "" for root nodes (no parent or parent not in set).
+func sortHierarchical[T any](
+	nodes []T,
+	getID func(T) string,
+	getParentID func(T) string,
+	sortSlice func([]T),
+) []T {
+	nodesByParent := make(map[string][]T)
+	var roots []T
+
+	for _, n := range nodes {
+		if pid := getParentID(n); pid != "" {
+			nodesByParent[pid] = append(nodesByParent[pid], n)
+		} else {
+			roots = append(roots, n)
+		}
+	}
+
+	sortSlice(roots)
+
+	result := make([]T, 0, len(nodes))
+	var walk func(n T)
+	walk = func(n T) {
+		result = append(result, n)
+		children := nodesByParent[getID(n)]
+		sortSlice(children)
+		for _, child := range children {
+			walk(child)
+		}
+	}
+	for _, root := range roots {
+		walk(root)
+	}
+	return result
+}
+
 // ApplySortDirection flips a comparison result if descending.
 func ApplySortDirection(cmp int, ascending bool) bool {
 	less := cmp < 0
