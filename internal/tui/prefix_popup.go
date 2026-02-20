@@ -238,24 +238,11 @@ func renderPrefixBox(title string, contentLines []string, innerWidth int, border
 
 	// Replace top border with titled version
 	actualWidth := lipgloss.Width(lines[0])
-	titleVisualWidth := lipgloss.Width(title)
-	// Format: ╭─ title ─────╮
-	usedByTitle := 5 + titleVisualWidth // "╭─ " + title + " " + "╮"
-	remainingDashes := actualWidth - usedByTitle
-	if remainingDashes < 1 {
-		remainingDashes = 1
-	}
-	lines[0] = borderStyle.Render("╭─ ") + title + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
+	lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
 
 	// Replace bottom border with "Esc to cancel" footer
 	escText := MutedStyle.Render("Esc to cancel")
-	escVisualWidth := lipgloss.Width(escText)
-	usedByEsc := 5 + escVisualWidth
-	remainingDashesBottom := actualWidth - usedByEsc
-	if remainingDashesBottom < 1 {
-		remainingDashesBottom = 1
-	}
-	lines[len(lines)-1] = borderStyle.Render("╰─ ") + escText + borderStyle.Render(" "+strings.Repeat("─", remainingDashesBottom)+"╯")
+	lines[len(lines)-1] = renderTitledBottomBorder(escText, actualWidth, borderStyle)
 
 	return strings.Join(lines, "\n")
 }

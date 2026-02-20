@@ -104,6 +104,30 @@ func truncateAndPad(line string, maxWidth int) string {
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
 }
 
+// renderTitledTopBorder builds "╭─ Title ─────╮" for the given width.
+// titleText should already be styled; borderStyle controls the frame characters.
+func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Style) string {
+	titleVisualWidth := lipgloss.Width(titleText)
+	usedByTitle := 5 + titleVisualWidth // "╭─ " + title + " " + "╮"
+	remainingDashes := width - usedByTitle
+	if remainingDashes < 1 {
+		remainingDashes = 1
+	}
+	return borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
+}
+
+// renderTitledBottomBorder builds "╰─ Footer ─────╯" for the given width.
+// footerText should already be styled; borderStyle controls the frame characters.
+func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss.Style) string {
+	footerVisualWidth := lipgloss.Width(footerText)
+	usedByFooter := 5 + footerVisualWidth // "╰─ " + footer + " " + "╯"
+	remainingDashes := width - usedByFooter
+	if remainingDashes < 1 {
+		remainingDashes = 1
+	}
+	return borderStyle.Render("╰─ ") + footerText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╯")
+}
+
 // renderCard renders a card with a titled border.
 // Uses lipgloss styling for proper ANSI-aware rendering.
 // When AccentColor is set, uses it for borders. When Focused with AccentColor,
@@ -162,28 +186,11 @@ func renderCard(title, content string, width int, config CardConfig) string {
 		lines = truncated
 	}
 
-	// Measure the actual rendered width of the original border line
-	actualWidth := lipgloss.Width(lines[0])
-
 	// Replace the top border line with titled version
-	// The first line is: ╭────────────────╮
-	// We want: ╭─ Title ────────╮
+	actualWidth := lipgloss.Width(lines[0])
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
-
 	titleText := titleStyle.Render(title)
-	titleVisualWidth := lipgloss.Width(titleText)
-
-	// Calculate dashes to fill the remaining width
-	// Format: ╭─ Title ─────╮
-	// usedByTitle: "╭─ " (3) + title + " " (1) + "╮" (1) = 5 + titleVisualWidth
-	usedByTitle := 5 + titleVisualWidth
-	remainingDashes := actualWidth - usedByTitle
-	if remainingDashes < 1 {
-		remainingDashes = 1
-	}
-
-	newTopBorder := borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
-	lines[0] = newTopBorder
+	lines[0] = renderTitledTopBorder(titleText, actualWidth, borderStyle)
 
 	return strings.Join(lines, "\n")
 }
