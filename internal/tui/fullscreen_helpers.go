@@ -568,6 +568,33 @@ func renderTabBarWithOptionalSubTabs(tabNames []string, activeTab int, subTabNam
 	return renderWrappingTabBar(tabNames, activeTab, width)
 }
 
+// ClassifyDueDate returns a display string and style for a due date relative to today.
+// Returns ("", lipgloss.NewStyle()) for nil dates. Used by formatDueDate in
+// project_tree_filters.go and due_date_overview_render.go.
+func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
+	if dueDate == nil {
+		return "", lipgloss.NewStyle()
+	}
+
+	now := time.Now()
+	today := util.StartOfDay(now)
+	dueDay := util.StartOfDay(*dueDate)
+
+	switch {
+	case dueDay.Before(today):
+		return dueDate.Format("Jan 2"), OverdueStyle
+	case dueDay.Equal(today):
+		return "Today", DueTodayStyle
+	case dueDay.Equal(today.AddDate(0, 0, 1)):
+		return "Tomorrow", DueDateStyle
+	default:
+		if dueDate.Year() != now.Year() {
+			return dueDate.Format("Jan 2 '06"), DueDateStyle
+		}
+		return dueDate.Format("Jan 2"), DueDateStyle
+	}
+}
+
 // renderDynamicSubTabBar renders the dynamic sub-tab row when there are
 // multiple sub-tabs (prepends "All"), or returns "" if none.
 func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int) string {

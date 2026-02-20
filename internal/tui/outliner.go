@@ -644,6 +644,9 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 	cursor := m.sidebar.GetDependencyCursor()
 	ps := m.projectService
 
+	m.setUndoContext("Unlink", sourceTask.Title)
+	opts := m.buildWorkflowOpts(nil)
+
 	return func() tea.Msg {
 		switch section {
 		case 0: // Blocked by
@@ -653,13 +656,6 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 			ref := sourceTask.DependsOn[cursor]
 			sourceTask.RemoveDependency(ref)
 
-			if err := ps.Backup(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
-			if err := ps.Save(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
-
 		case 1: // Blocking
 			blockedTasks := m.project.GetBlockedByTasks(sourceTask)
 			if cursor < 0 || cursor >= len(blockedTasks) {
@@ -667,13 +663,6 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 			}
 			blockedTask := blockedTasks[cursor]
 			blockedTask.RemoveDependency(sourceTask.ID)
-
-			if err := ps.Backup(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
-			if err := ps.Save(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
 
 		case 2: // Related
 			if cursor < 0 || cursor >= len(sourceTask.RelatedTo) {
@@ -685,6 +674,7 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 			sourceTask.RemoveRelatedTo(ref)
 
 			if taskRef.IsCrossProject() {
+				// Cross-project: direct save (workflow is scoped to current project)
 				if m.config != nil {
 					targetProject := m.config.GetProject(taskRef.ProjectID)
 					if targetProject != nil {
@@ -711,15 +701,11 @@ func (m *OutlinerModel) UnlinkSelectedSidebarTask(sourceTask *models.Task) tea.C
 					targetTask.RemoveRelatedTo(sourceTask.ID)
 				}
 			}
-
-			if err := ps.Backup(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
-			if err := ps.Save(m.project); err != nil {
-				return ErrorMsg{Err: err}
-			}
 		}
 
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
+		}
 		if err := ps.Load(m.project); err != nil {
 			return ErrorMsg{Err: err}
 		}

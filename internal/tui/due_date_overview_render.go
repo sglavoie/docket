@@ -3,9 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-	"time"
-
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -127,7 +124,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(overdue) > 0 {
 		lines = append(lines, m.renderGroupHeader("Overdue", len(overdue), true))
-		lines = append(lines, m.renderGroup(overdue, currentIndex, true)...)
+		lines = append(lines, m.renderGroup(overdue, currentIndex)...)
 		hasContent = true
 	}
 
@@ -136,7 +133,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("Today", len(today), false))
-		lines = append(lines, m.renderGroup(today, currentIndex, false)...)
+		lines = append(lines, m.renderGroup(today, currentIndex)...)
 		hasContent = true
 	}
 
@@ -145,7 +142,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("This Week", len(thisWeek), false))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex, false)...)
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex)...)
 		hasContent = true
 	}
 
@@ -154,7 +151,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, m.renderGroupHeader("Later", len(later), false))
-		lines = append(lines, m.renderGroup(later, currentIndex, false)...)
+		lines = append(lines, m.renderGroup(later, currentIndex)...)
 	}
 
 	return lines
@@ -166,13 +163,13 @@ func (m *DueDateOverviewModel) renderGroupHeader(name string, count int, isOverd
 }
 
 // renderGroup renders a group of tasks.
-func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *int, isOverdue bool) []string {
+func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *int) []string {
 	var lines []string
 	maxTitleLen := m.Width() - 35 // Account for date, project, icons
 
 	for _, dt := range tasks {
 		isSelected := *currentIndex == m.cursor
-		line := m.renderTaskLine(dt, isOverdue, isSelected, maxTitleLen)
+		line := m.renderTaskLine(dt, isSelected, maxTitleLen)
 		lines = append(lines, line)
 		*currentIndex++
 	}
@@ -181,14 +178,14 @@ func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *in
 }
 
 // renderTaskLine renders a single task line.
-func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isOverdue bool, isSelected bool, maxTitleLen int) string {
+func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isSelected bool, maxTitleLen int) string {
 	cursor := "  "
 	if isSelected {
 		cursor = "> "
 	}
 
 	// Date indicator and formatted date
-	dateStr := m.formatDueDate(dt.Task, isOverdue)
+	dateStr := m.formatDueDate(dt.Task)
 
 	// Project name in brackets
 	projectName := util.Truncate(dt.Project.Name, 15)
@@ -213,35 +210,10 @@ func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isOverdue bool, is
 }
 
 // formatDueDate formats the due date for display.
-func (m *DueDateOverviewModel) formatDueDate(task *models.Task, isOverdue bool) string {
+func (m *DueDateOverviewModel) formatDueDate(task *models.Task) string {
 	if task.DueDate == nil {
 		return "         "
 	}
-
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*task.DueDate)
-
-	var dateStr string
-	var style lipgloss.Style
-
-	if isOverdue {
-		dateStr = task.DueDate.Format("Jan 2")
-		style = OverdueStyle
-	} else if dueDay.Equal(today) {
-		dateStr = "Today"
-		style = DueTodayStyle
-	} else if dueDay.Equal(today.AddDate(0, 0, 1)) {
-		dateStr = "Tomorrow"
-		style = DueDateStyle
-	} else if task.DueDate.Year() != now.Year() {
-		dateStr = task.DueDate.Format("Jan 2 '06")
-		style = DueDateStyle
-	} else {
-		dateStr = task.DueDate.Format("Jan 2")
-		style = DueDateStyle
-	}
-
-	// Pad to consistent width
+	dateStr, style := ClassifyDueDate(task.DueDate)
 	return style.Render(fmt.Sprintf("%-9s", dateStr))
 }

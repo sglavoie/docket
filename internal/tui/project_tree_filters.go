@@ -4,13 +4,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *ProjectTreeModel) buildTree() {
@@ -332,37 +328,7 @@ func formatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.Status.IsComplete() {
 		return ""
 	}
-
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*task.DueDate)
-
-	var dateStr string
-	var style lipgloss.Style
-
-	switch {
-	case dueDay.Before(today):
-		// Overdue
-		dateStr = task.DueDate.Format("Jan 2")
-		style = OverdueStyle
-	case dueDay.Equal(today):
-		// Due today
-		dateStr = "Today"
-		style = DueTodayStyle
-	case dueDay.Equal(today.AddDate(0, 0, 1)):
-		// Due tomorrow
-		dateStr = "Tomorrow"
-		style = DueDateStyle
-	default:
-		// Future date - show as "Jan 2" or "Jan 2 '06" if different year
-		if task.DueDate.Year() != now.Year() {
-			dateStr = task.DueDate.Format("Jan 2 '06")
-		} else {
-			dateStr = task.DueDate.Format("Jan 2")
-		}
-		style = DueDateStyle
-	}
-
+	dateStr, style := ClassifyDueDate(task.DueDate)
 	return style.Render("📅 " + dateStr)
 }
 
