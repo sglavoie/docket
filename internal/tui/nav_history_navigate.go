@@ -98,13 +98,13 @@ func (m *AppModel) reconstructDashboard() tea.Cmd {
 func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	switch entry.ViewType {
 	case ViewDailyReview:
-		m.showView(ViewDailyReview, NewDailyReviewModel(m.config))
+		m.showView(ViewDailyReview, NewDailyReviewModel(m.config, m.configManager))
 	case ViewWeeklyReview:
-		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
+		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
 	case ViewFocusView:
 		m.showView(ViewFocusView, NewFocusViewModel(m.config, m.configManager, &m.focusQueue, m.focusQueueIDs, m.focusDismissedIDs))
 	case ViewDueDateOverview:
-		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config))
+		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config, m.configManager))
 	case ViewRecentActivity:
 		m.showView(ViewRecentActivity, NewRecentActivityModel(m.config))
 	case ViewGlobalSearch:
@@ -172,7 +172,7 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 		m.kanban.projectTree = m.projectTree
 		m.showView(ViewKanban, m.kanban)
 	case ViewPriorityView:
-		m.showView(ViewPriorityView, NewPriorityViewModel(project, m.config))
+		m.showView(ViewPriorityView, NewPriorityViewModel(project, m.config, m.configManager))
 	case ViewNotes:
 		m.showView(ViewNotes, NewNotesViewModel(project, m.config))
 	case ViewBlockers:

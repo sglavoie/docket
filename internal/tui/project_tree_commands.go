@@ -61,9 +61,7 @@ func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task)
 // workflowPersistFn returns a persistFn that runs the full save pipeline
 // used by ProjectTree: auto-unblock, recurring, workflow rules, undo snapshots.
 func (m *ProjectTreeModel) workflowPersistFn() persistFn {
-	return workflowPersist(func() WorkflowSaveOptions {
-		return m.buildWorkflowOpts(nil)
-	})
+	return newWorkflowPersistFn(m)
 }
 
 // setUndoContext sets the action context for the next save operation.

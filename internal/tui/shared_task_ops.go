@@ -54,6 +54,20 @@ func workflowPersist(optsProvider func() WorkflowSaveOptions) persistFn {
 	}
 }
 
+// workflowOptsBuilder is implemented by views that provide workflow save options.
+// ProjectTree, Kanban, and Outliner all satisfy this interface.
+type workflowOptsBuilder interface {
+	buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions
+}
+
+// newWorkflowPersistFn returns a persistFn backed by the full workflow pipeline.
+// It replaces the per-view workflowPersistFn() methods.
+func newWorkflowPersistFn(v workflowOptsBuilder) persistFn {
+	return workflowPersist(func() WorkflowSaveOptions {
+		return v.buildWorkflowOpts(nil)
+	})
+}
+
 // analyzeBulkStatusTransition separates tasks that can transition to newStatus
 // from those blocked by transition rules or incomplete dependencies.
 func analyzeBulkStatusTransition(project *models.Project, tasks []*models.Task, newStatus models.TaskStatus) (valid []*models.Task, blockedCount int) {

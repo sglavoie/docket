@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -16,11 +17,12 @@ func (m *DailyReviewModel) getTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *DailyReviewModel) getPersister() Persister { return defaultPersister }
-func (m *DailyReviewModel) getDataDir() string      { return m.config.DataDir }
-func (m *DailyReviewModel) reloadData()             { m.loadTasks() }
-func (m *DailyReviewModel) setErr(err error)        { m.err = err }
-func (m *DailyReviewModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *DailyReviewModel) getPersister() Persister           { return defaultPersister }
+func (m *DailyReviewModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *DailyReviewModel) getDataDir() string                { return m.config.DataDir }
+func (m *DailyReviewModel) reloadData()                       { m.loadTasks() }
+func (m *DailyReviewModel) setErr(err error)                  { m.err = err }
+func (m *DailyReviewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 // prefixDispatchView implementation.
 

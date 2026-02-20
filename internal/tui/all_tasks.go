@@ -73,6 +73,7 @@ type AllTasksViewModel struct {
 	InteractiveViewState
 
 	config         *config.Config
+	configManager  *config.Manager
 	projectService *ProjectService
 	projectCache   map[string]*models.Project
 
@@ -107,9 +108,10 @@ type AllTasksViewModel struct {
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.
-func NewAllTasksViewModel(cfg *config.Config) *AllTasksViewModel {
+func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksViewModel {
 	m := &AllTasksViewModel{
 		config:           cfg,
+		configManager:    mgr,
 		projectService:   NewProjectService(),
 		projectCache:     make(map[string]*models.Project),
 		collapsedGroups:  make(map[string]bool),
@@ -640,11 +642,12 @@ func (m *AllTasksViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return item.Task, item.Project
 }
 
-func (m *AllTasksViewModel) getPersister() Persister { return m.projectService }
-func (m *AllTasksViewModel) getDataDir() string      { return m.config.DataDir }
-func (m *AllTasksViewModel) reloadData()             { m.loadAllTasks() }
-func (m *AllTasksViewModel) setErr(err error)        { m.err = err }
-func (m *AllTasksViewModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *AllTasksViewModel) getPersister() Persister           { return m.projectService }
+func (m *AllTasksViewModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *AllTasksViewModel) getDataDir() string                { return m.config.DataDir }
+func (m *AllTasksViewModel) reloadData()                       { m.loadAllTasks() }
+func (m *AllTasksViewModel) setErr(err error)                  { m.err = err }
+func (m *AllTasksViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 // prefixDispatchView implementation.
 

@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -18,11 +19,12 @@ func (m *PriorityViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return pt.Task, m.project
 }
 
-func (m *PriorityViewModel) getPersister() Persister { return m.projectService }
-func (m *PriorityViewModel) getDataDir() string      { return m.config.DataDir }
-func (m *PriorityViewModel) reloadData()             { m.loadActionableTasks() }
-func (m *PriorityViewModel) setErr(err error)        { m.SetError(err) }
-func (m *PriorityViewModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *PriorityViewModel) getPersister() Persister           { return m.projectService }
+func (m *PriorityViewModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *PriorityViewModel) getDataDir() string                { return m.config.DataDir }
+func (m *PriorityViewModel) reloadData()                       { m.loadActionableTasks() }
+func (m *PriorityViewModel) setErr(err error)                  { m.SetError(err) }
+func (m *PriorityViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 func (m *PriorityViewModel) changeTaskPriority(newPriority int) (tea.Model, tea.Cmd) {
 	return taskOpsChangePriority(m, strconv.Itoa(newPriority))

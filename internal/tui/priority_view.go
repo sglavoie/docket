@@ -57,6 +57,7 @@ type PriorityViewModel struct {
 
 	project        *models.Project
 	config         *config.Config
+	configManager  *config.Manager
 	projectService *ProjectService
 
 	// Grouped tasks by urgency
@@ -96,9 +97,11 @@ type PriorityViewModel struct {
 }
 
 // NewPriorityViewModel creates a new priority view for the given project.
-func NewPriorityViewModel(project *models.Project, cfg ...*config.Config) *PriorityViewModel {
+func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *PriorityViewModel {
 	m := &PriorityViewModel{
 		project:            project,
+		config:             cfg,
+		configManager:      mgr,
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
@@ -109,9 +112,6 @@ func NewPriorityViewModel(project *models.Project, cfg ...*config.Config) *Prior
 			},
 		},
 		filterBar: NewPriorityFilterBarComponent(),
-	}
-	if len(cfg) > 0 {
-		m.config = cfg[0]
 	}
 	m.loadActionableTasks()
 	return m

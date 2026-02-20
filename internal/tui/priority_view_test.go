@@ -25,7 +25,7 @@ func newTestPriorityProject() *models.Project {
 
 func TestComputeUrgencyScore(t *testing.T) {
 	project := newTestPriorityProject()
-	m := NewPriorityViewModel(project)
+	m := NewPriorityViewModel(project, nil, nil)
 
 	tests := []struct {
 		name    string
@@ -151,7 +151,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 
 func TestCategorizeByDueDate(t *testing.T) {
 	project := newTestPriorityProject()
-	m := NewPriorityViewModel(project)
+	m := NewPriorityViewModel(project, nil, nil)
 
 	tests := []struct {
 		name       string
@@ -204,7 +204,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{done, canceled, active}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 1 {
 			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
@@ -224,7 +224,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocked, active}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 1 {
 			t.Errorf("expected 1 actionable task, got %d", m.totalTasks)
@@ -248,7 +248,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocker, dependent}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		// Blocker should be actionable, dependent should be waiting
 		if m.totalTasks != 1 {
@@ -274,7 +274,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{low, high, medium}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if len(m.backlog) != 3 {
 			t.Fatalf("expected 3 backlog tasks, got %d", len(m.backlog))
@@ -305,7 +305,7 @@ func TestLoadActionableTasks(t *testing.T) {
 		// Add task first to ensure sorting changes the order
 		project.Tasks = []*models.Task{task, bug}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if len(m.backlog) != 2 {
 			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
@@ -332,7 +332,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{bug, task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if len(m.backlog) != 2 {
 			t.Fatalf("expected 2 backlog tasks, got %d", len(m.backlog))
@@ -360,7 +360,7 @@ func TestLoadActionableTasks(t *testing.T) {
 
 		project.Tasks = []*models.Task{active1, active2, blocked}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 2 {
 			t.Errorf("expected totalTasks=2 (excluding waitingOn), got %d", m.totalTasks)
@@ -379,7 +379,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 
 		project.Tasks = []*models.Task{overdue, today, thisWeek}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		// Cursor 0 -> overdue[0]
 		m.cursor = 0
@@ -408,7 +408,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 		task := models.NewTask("1", 1, models.TaskTypeTask, "Only task")
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		m.cursor = 10
 		if got := m.getTaskAtCursor(); got != nil {
@@ -418,7 +418,7 @@ func TestGetTaskAtCursor(t *testing.T) {
 
 	t.Run("returns nil for empty project", func(t *testing.T) {
 		project := newTestPriorityProject()
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if got := m.getTaskAtCursor(); got != nil {
 			t.Errorf("expected nil for empty project, got %v", got)
@@ -451,7 +451,7 @@ func TestPriorityViewClampCursor(t *testing.T) {
 				project.Tasks = append(project.Tasks, task)
 			}
 
-			m := NewPriorityViewModel(project)
+			m := NewPriorityViewModel(project, nil, nil)
 			m.cursor = tt.cursor
 			m.clampCursor()
 
@@ -516,7 +516,7 @@ func TestGetParentTitle(t *testing.T) {
 		task := models.NewTask("1", 1, models.TaskTypeTask, "Orphan task")
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		got := m.getParentTitle(task)
 
 		if got != "" {
@@ -533,7 +533,7 @@ func TestGetParentTitle(t *testing.T) {
 		project.Tasks = []*models.Task{parent, child}
 		project.BuildTaskTree()
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		got := m.getParentTitle(child)
 
 		if got != "Parent Epic" {
@@ -549,7 +549,7 @@ func TestGetParentTitle(t *testing.T) {
 
 		project.Tasks = []*models.Task{child}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		got := m.getParentTitle(child)
 
 		if got != "" {
@@ -566,7 +566,7 @@ func TestGetBlockingReason(t *testing.T) {
 
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		got := m.getBlockingReason(task)
 
 		if got != "(blocked)" {
@@ -584,7 +584,7 @@ func TestGetBlockingReason(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocker, dependent}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		got := m.getBlockingReason(dependent)
 
 		if got != "← Blocker Task" {
@@ -596,7 +596,7 @@ func TestGetBlockingReason(t *testing.T) {
 func TestEdgeCases(t *testing.T) {
 	t.Run("empty project", func(t *testing.T) {
 		project := newTestPriorityProject()
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 total tasks for empty project, got %d", m.totalTasks)
@@ -617,7 +617,7 @@ func TestEdgeCases(t *testing.T) {
 
 		project.Tasks = []*models.Task{done1, done2}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 total tasks when all completed, got %d", m.totalTasks)
@@ -634,7 +634,7 @@ func TestEdgeCases(t *testing.T) {
 
 		project.Tasks = []*models.Task{blocked1, blocked2}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		if m.totalTasks != 0 {
 			t.Errorf("expected 0 actionable tasks when all blocked, got %d", m.totalTasks)
@@ -647,7 +647,7 @@ func TestEdgeCases(t *testing.T) {
 
 func TestHasActiveSearch(t *testing.T) {
 	project := newTestPriorityProject()
-	m := NewPriorityViewModel(project)
+	m := NewPriorityViewModel(project, nil, nil)
 
 	if m.HasActiveSearch() {
 		t.Error("HasActiveSearch() should return false for priority view")
@@ -656,7 +656,7 @@ func TestHasActiveSearch(t *testing.T) {
 
 func TestWaitingOnCollapsed(t *testing.T) {
 	project := newTestPriorityProject()
-	m := NewPriorityViewModel(project)
+	m := NewPriorityViewModel(project, nil, nil)
 
 	// Should start collapsed
 	if !m.waitingOnCollapsed {
@@ -677,7 +677,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		task.Priority = 3 // Default medium priority
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		m.cursor = 0
 
 		// Change priority to 1 (highest)
@@ -695,7 +695,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		m.cursor = 0
 
 		// Try to set same priority
@@ -711,7 +711,7 @@ func TestChangeTaskPriority(t *testing.T) {
 
 	t.Run("does nothing when no task at cursor", func(t *testing.T) {
 		project := newTestPriorityProject()
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 
 		// Should not panic with empty project
 		result, _ := m.changeTaskPriority(1)
@@ -727,7 +727,7 @@ func TestChangeTaskPriority(t *testing.T) {
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}
 
-		m := NewPriorityViewModel(project)
+		m := NewPriorityViewModel(project, nil, nil)
 		m.cursor = 0
 
 		// Small delay to ensure time difference

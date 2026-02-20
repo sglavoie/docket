@@ -67,8 +67,9 @@ type OutlinerModel struct {
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
-func (m *OutlinerModel) getProject() *models.Project { return m.project }
-func (m *OutlinerModel) getConfig() *config.Config   { return m.config }
+func (m *OutlinerModel) getProject() *models.Project       { return m.project }
+func (m *OutlinerModel) getConfig() *config.Config         { return m.config }
+func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *OutlinerModel) getCursorTask() *models.Task {
 	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		return m.rows[m.cursor].task
@@ -474,9 +475,7 @@ func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) Wo
 // workflowPersistFn returns a persistFn that runs the full save pipeline:
 // auto-unblock, recurring, workflow rules, undo snapshots.
 func (m *OutlinerModel) workflowPersistFn() persistFn {
-	return workflowPersist(func() WorkflowSaveOptions {
-		return m.buildWorkflowOpts(nil)
-	})
+	return newWorkflowPersistFn(m)
 }
 
 // saveAndRefreshWithPrevStates saves the project with the workflow pipeline

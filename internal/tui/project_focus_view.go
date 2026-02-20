@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -333,11 +334,13 @@ func (m *ProjectFocusViewModel) getTaskRef() (*models.Task, *models.Project) {
 	return task, m.project
 }
 
-func (m *ProjectFocusViewModel) getPersister() Persister { return defaultPersister }
-func (m *ProjectFocusViewModel) getDataDir() string      { return "" }
-func (m *ProjectFocusViewModel) reloadData()             { m.loadTasks() }
-func (m *ProjectFocusViewModel) setErr(err error)        { m.SetError(err) }
-func (m *ProjectFocusViewModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *ProjectFocusViewModel) getPersister() Persister           { return defaultPersister }
+func (m *ProjectFocusViewModel) getConfig() *config.Config         { return nil }
+func (m *ProjectFocusViewModel) getConfigManager() *config.Manager { return nil }
+func (m *ProjectFocusViewModel) getDataDir() string                { return "" }
+func (m *ProjectFocusViewModel) reloadData()                       { m.loadTasks() }
+func (m *ProjectFocusViewModel) setErr(err error)                  { m.SetError(err) }
+func (m *ProjectFocusViewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 func (m *ProjectFocusViewModel) toggleActive() (tea.Model, tea.Cmd) {
 	if task := m.getTaskAtCursor(); task != nil {

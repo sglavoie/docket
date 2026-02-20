@@ -232,7 +232,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowDueDateOverviewMsg:
-		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config))
+		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config, m.configManager))
 		return true, nil
 
 	case CloseDueDateOverviewMsg:
@@ -260,7 +260,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowDailyReviewMsg:
-		m.showView(ViewDailyReview, NewDailyReviewModel(m.config))
+		m.showView(ViewDailyReview, NewDailyReviewModel(m.config, m.configManager))
 		return true, nil
 
 	case CloseDailyReviewMsg:
@@ -281,7 +281,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, askView.Init()
 
 	case ShowWeeklyReviewMsg:
-		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config))
+		m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
 		return true, nil
 
 	case CloseWeeklyReviewMsg:
@@ -310,7 +310,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowAllTasksMsg:
-		m.showView(ViewAllTasks, NewAllTasksViewModel(m.config))
+		m.showView(ViewAllTasks, NewAllTasksViewModel(m.config, m.configManager))
 		return true, nil
 
 	case CloseAllTasksMsg:
@@ -414,7 +414,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowPriorityViewMsg:
 		if msg.Project != nil {
-			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project, m.config))
+			m.showView(ViewPriorityView, NewPriorityViewModel(msg.Project, m.config, m.configManager))
 		}
 		return true, nil
 

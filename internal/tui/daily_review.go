@@ -35,7 +35,8 @@ type DailyReviewModel struct {
 	BaseView
 	InteractiveViewState
 
-	config *config.Config
+	config        *config.Config
+	configManager *config.Manager
 
 	// Sections
 	overdue    []DailyReviewTask
@@ -63,9 +64,10 @@ type DailyReviewModel struct {
 }
 
 // NewDailyReviewModel creates a new daily review model.
-func NewDailyReviewModel(cfg *config.Config) *DailyReviewModel {
+func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewModel {
 	m := &DailyReviewModel{
 		config:            cfg,
+		configManager:     mgr,
 		collapsedSections: make(map[int]bool),
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),

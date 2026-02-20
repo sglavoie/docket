@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -14,6 +15,8 @@ import (
 type taskOpsView interface {
 	getTaskRef() (task *models.Task, project *models.Project)
 	getPersister() Persister
+	getConfig() *config.Config
+	getConfigManager() *config.Manager
 	getDataDir() string
 	reloadData()
 	clampCursor()
@@ -23,13 +26,17 @@ type taskOpsView interface {
 
 // taskOpsApply runs a shared task operation against the current cursor task,
 // applies the result to the view, reloads, and returns the command.
+// It uses the full workflow pipeline (auto-unblock, recurring generation,
+// workflow rules, root reorder) so secondary views get parity with primary views.
 func taskOpsApply(v taskOpsView, op func(pf persistFn, project *models.Project, taskID string) TaskOpResult) tea.Cmd {
 	task, project := v.getTaskRef()
 	if task == nil {
 		return nil
 	}
 
-	pf := simplePersist(v.getPersister())
+	pf := workflowPersist(func() WorkflowSaveOptions {
+		return BuildWorkflowOpts(v.getPersister(), project, v.getConfig(), v.getConfigManager(), nil, "", "")
+	})
 	result := op(pf, project, task.ID)
 	if result.Err != nil {
 		v.setErr(result.Err)

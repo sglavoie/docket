@@ -43,6 +43,7 @@ type DueDateOverviewModel struct {
 	InteractiveViewState
 
 	config         *config.Config
+	configManager  *config.Manager
 	projectService *ProjectService
 
 	// Grouped tasks
@@ -63,9 +64,10 @@ type DueDateOverviewModel struct {
 }
 
 // NewDueDateOverviewModel creates a new due date overview model.
-func NewDueDateOverviewModel(cfg *config.Config) *DueDateOverviewModel {
+func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
 		config:         cfg,
+		configManager:  mgr,
 		projectService: NewProjectService(),
 		filter: CommonFilterState{
 			Tags:  make(map[string]bool),
@@ -400,11 +402,12 @@ func (m *DueDateOverviewModel) getTaskRef() (*models.Task, *models.Project) {
 	return dt.Task, dt.Project
 }
 
-func (m *DueDateOverviewModel) getPersister() Persister { return m.projectService }
-func (m *DueDateOverviewModel) getDataDir() string      { return m.config.DataDir }
-func (m *DueDateOverviewModel) reloadData()             { m.loadTasksWithDueDates() }
-func (m *DueDateOverviewModel) setErr(err error)        { m.SetError(err) }
-func (m *DueDateOverviewModel) setStatus(msg string)    { m.statusMessage = msg }
+func (m *DueDateOverviewModel) getPersister() Persister           { return m.projectService }
+func (m *DueDateOverviewModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *DueDateOverviewModel) getDataDir() string                { return m.config.DataDir }
+func (m *DueDateOverviewModel) reloadData()                       { m.loadTasksWithDueDates() }
+func (m *DueDateOverviewModel) setErr(err error)                  { m.SetError(err) }
+func (m *DueDateOverviewModel) setStatus(msg string)              { m.statusMessage = msg }
 
 func (m *DueDateOverviewModel) changeTaskPriority(key string) (tea.Model, tea.Cmd) {
 	return taskOpsChangePriority(m, key)

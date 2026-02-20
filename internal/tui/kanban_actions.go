@@ -38,9 +38,7 @@ func (m *KanbanViewModel) buildWorkflowOpts(prevStates map[string]*models.Task) 
 // workflowPersistFn returns a persistFn that runs the full save pipeline
 // used by Kanban: auto-unblock, recurring, workflow rules.
 func (m *KanbanViewModel) workflowPersistFn() persistFn {
-	return workflowPersist(func() WorkflowSaveOptions {
-		return m.buildWorkflowOpts(nil)
-	})
+	return newWorkflowPersistFn(m)
 }
 
 // getSelectedTask returns the currently selected task, or nil if none.

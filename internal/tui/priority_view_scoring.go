@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -264,39 +263,23 @@ func (m *PriorityViewModel) startSuggestedTask() (tea.Model, tea.Cmd) {
 
 	// If already in progress, just jump to it in the list
 	if task.Status == models.StatusInProgress {
-		// Find the task's position in the list and move cursor there
 		m.jumpToTask(task)
 		return m, nil
 	}
 
-	// Validate transition
-	if msg := task.CanTransitionTo(models.StatusInProgress); msg != "" {
-		m.statusMessage = msg
-		return m, nil
+	pf := workflowPersist(func() WorkflowSaveOptions {
+		return BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, nil, "", "")
+	})
+	result := applyStatusChange(pf, m.project, task.ID, models.StatusInProgress)
+	if result.Err != nil {
+		m.SetError(result.Err)
+	} else if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
 	}
-
-	if err := storage.BackupProject(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-	}
-
-	task.Start()
-
-	if err := storage.SaveProject(m.project); err != nil {
-		return m, func() tea.Msg {
-			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-		}
-	}
-
-	// Reload and refresh
-	_ = storage.LoadProject(m.project)
 	m.loadActionableTasks()
 	m.clampCursor()
 
-	return m, func() tea.Msg {
-		return TaskStatusChangedMsg{Task: task}
-	}
+	return m, result.Cmd
 }
 
 // categorizeByDueDate determines which urgency group a task belongs to.
