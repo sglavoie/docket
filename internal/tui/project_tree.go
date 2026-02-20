@@ -153,12 +153,12 @@ type TreeNode struct {
 // ProjectTreeModel represents the project tree view.
 type ProjectTreeModel struct {
 	BaseSearchableView
+	InteractiveViewState
 	project        *models.Project
 	config         *config.Config
 	configManager  *config.Manager
 	projectService *ProjectService
 	nodes          []*TreeNode
-	cursor         int
 
 	// View mode (Active, Inbox, or Backlog)
 	viewMode ViewMode
@@ -170,12 +170,8 @@ type ProjectTreeModel struct {
 	sortField     SortField // current sort field
 	sortAscending bool      // sort direction
 
-	// Confirmation state for destructive actions
-	confirm      ConfirmDialog
-	deleteTarget *models.Task // Task to delete when confirm action is "delete" or "delete-recurring"
-
-	// Prefix key state for Vim-style two-key sequences
-	pendingPrefix string // ",", "z", or "g" when waiting for second key
+	// Task to delete when confirm action is "delete" or "delete-recurring"
+	deleteTarget *models.Task
 
 	// Multi-select state
 	MultiSelectState
@@ -233,7 +229,6 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		config:         cfg,
 		configManager:  manager,
 		projectService: NewProjectService(),
-		cursor:         0,
 		filter: FilterState{
 			CommonFilterState: CommonFilterState{
 				Tags:  make(map[string]bool),

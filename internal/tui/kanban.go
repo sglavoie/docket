@@ -65,6 +65,7 @@ const KanbanMinColumnWidth = 22
 // It displays non-completed tasks organized into five columns by section.
 type KanbanViewModel struct {
 	BaseSearchableView
+	InteractiveViewState
 
 	// Project being displayed
 	Project *models.Project
@@ -119,12 +120,6 @@ type KanbanViewModel struct {
 	// All columns share the same width for uniform appearance.
 	ColumnWidth int
 
-	// statusMessage holds a transient message to display to the user
-	statusMessage string
-
-	// Prefix key state for Vim-style two-key sequences (e.g., ",s" for status)
-	pendingPrefix string
-
 	// Split view state: top half is kanban, bottom half is task details
 	detailsPaneFocused bool // which pane has focus (false=kanban, true=details)
 	detailsScroll      int  // scroll offset for description in details pane
@@ -153,8 +148,6 @@ type KanbanViewModel struct {
 	quickAddParentCache  []*models.Task
 	quickAddSectionCache []string
 
-	// Confirmation state (actions: "delete", "archive")
-	confirm      ConfirmDialog
 	deleteTarget *models.Task
 
 	// Sorting state (per-column)

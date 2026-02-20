@@ -16,6 +16,8 @@ import (
 
 // InboxProcessorModel handles sequential inbox task processing.
 type InboxProcessorModel struct {
+	BaseView
+	InteractiveViewState
 	project       *models.Project
 	config        *config.Config
 	configManager *config.Manager
@@ -28,18 +30,6 @@ type InboxProcessorModel struct {
 
 	// Processing history for undo (session-based, not persisted)
 	processingHistory []processingAction
-
-	// UI state
-	width         int
-	height        int
-	err           error
-	statusMessage string // Temporary feedback message
-
-	// Confirmation state
-	confirm ConfirmDialog
-
-	// Prefix key state (which-key style)
-	pendingPrefix string
 }
 
 // processingAction records an action for undo support.
@@ -82,17 +72,6 @@ func getInboxTasksForModel(project *models.Project) []*models.Task {
 // Init initializes the model.
 func (m *InboxProcessorModel) Init() tea.Cmd {
 	return nil
-}
-
-// SetSize sets the view dimensions.
-func (m *InboxProcessorModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
-// HasTextInput returns false for the inbox processor.
-func (m *InboxProcessorModel) HasTextInput() bool {
-	return false
 }
 
 // ShouldCaptureEsc returns true because the inbox processor handles esc/q itself.

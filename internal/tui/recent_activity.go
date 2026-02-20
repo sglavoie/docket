@@ -23,17 +23,16 @@ const (
 // RecentActivityModel displays recently modified tasks across all projects.
 type RecentActivityModel struct {
 	BaseSearchableView
+	InteractiveViewState
 	config *config.Config
 
 	tasks    []DailyReviewTask
 	filtered []DailyReviewTask
-	cursor   int
 
 	activeTab int
 
 	// Filter
-	filter        CommonFilterState
-	pendingPrefix string
+	filter CommonFilterState
 }
 
 // NewRecentActivityModel creates a new recent activity model.
@@ -273,11 +272,6 @@ func (m *RecentActivityModel) handleRecentActivityPrefixKey(key string) (tea.Mod
 	}
 
 	return m, nil
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *RecentActivityModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

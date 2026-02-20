@@ -40,6 +40,7 @@ type MetricsDashboardSelectMsg struct {
 
 // MetricsDashboardModel is the TUI model for the metrics dashboard.
 type MetricsDashboardModel struct {
+	BaseView
 	config *config.Config
 
 	// Scope
@@ -54,10 +55,6 @@ type MetricsDashboardModel struct {
 	// UI state
 	activeTab     MetricsTab
 	blockedCursor int // cursor for scrollable blocked task list
-
-	// Dimensions
-	width  int
-	height int
 }
 
 // NewMetricsDashboardModel creates a global metrics dashboard.
@@ -112,24 +109,24 @@ func (m *MetricsDashboardModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.SetSize(msg.Width, msg.Height)
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return CloseMetricsDashboardMsg{} }
 
 		case "[", "h":
-			if m.activeTab > MetricsTabSummary {
-				m.activeTab--
-			} else {
-				m.activeTab = MetricsTabBlocked
-			}
+			tab := int(m.activeTab)
+			CycleTab(&tab, len(metricsTabNames), -1)
+			m.activeTab = MetricsTab(tab)
 			m.blockedCursor = 0
 		case "]", "l":
-			if m.activeTab < MetricsTabBlocked {
-				m.activeTab++
-			} else {
-				m.activeTab = MetricsTabSummary
-			}
+			tab := int(m.activeTab)
+			CycleTab(&tab, len(metricsTabNames), 1)
+			m.activeTab = MetricsTab(tab)
 			m.blockedCursor = 0
 
 		case "t":
@@ -185,10 +182,4 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-// SetSize implements View.
-func (m *MetricsDashboardModel) SetSize(w, h int) {
-	m.width = w
-	m.height = h
 }

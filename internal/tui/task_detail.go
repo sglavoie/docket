@@ -9,6 +9,8 @@ import (
 
 // TaskDetailModel is a full-screen read-only view of a single task.
 type TaskDetailModel struct {
+	BaseView
+	InteractiveViewState
 	task          *models.Task
 	project       *models.Project
 	config        *config.Config
@@ -16,11 +18,6 @@ type TaskDetailModel struct {
 
 	scrollOffset int
 	totalLines   int
-	width        int
-	height       int
-
-	// Prefix key state for which-key style popups
-	pendingPrefix string
 }
 
 // NewTaskDetailModel creates a new task detail view.
@@ -60,19 +57,9 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *TaskDetailModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 // ShouldCaptureEsc returns true so the detail view handles esc/q itself.
 func (m *TaskDetailModel) ShouldCaptureEsc() bool {
-	return m.pendingPrefix != ""
-}
-
-// HasTextInput returns false — no text inputs in this view.
-func (m *TaskDetailModel) HasTextInput() bool {
-	return false
+	return m.HasPendingPrefix()
 }
 
 // GetPrefixPopupInfo returns popup info when a prefix key is pending.

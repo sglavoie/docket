@@ -24,6 +24,7 @@ type ZoomEntry struct {
 // navigation semantics, sort modes, and zoom-stack behavior.
 type OutlinerModel struct {
 	BaseSearchableView
+	InteractiveViewState
 	MultiSelectState
 
 	project       *models.Project
@@ -33,15 +34,13 @@ type OutlinerModel struct {
 	zoomStack  []ZoomEntry
 	zoomNotice string // Transient message shown when zoom target is removed
 
-	cursor            int           // Index into rows (flat visible node list)
 	rows              []outlinerRow // Flattened rows, rebuilt on each render
 	activePerspective int           // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
 
 	sortField     SortField // Current sort field (SortByDefault = no sort)
 	sortAscending bool      // Sort direction; true = ascending
 
-	pendingPrefix string              // Prefix key waiting for second key (e.g. "," for status)
-	quickEdit     *QuickEditComponent // Inline quick edit component
+	quickEdit *QuickEditComponent // Inline quick edit component
 
 	filter           CommonFilterState // Common filter state (F-prefix)
 	sectionFilter    map[string]bool   // Section filter (from section filter selector)
@@ -55,10 +54,8 @@ type OutlinerModel struct {
 	sidebar        *SidebarComponent // Sidebar detail panel
 	projectService *ProjectService   // Cached project service for persist operations
 
-	confirm       ConfirmDialog // Confirmation dialog for destructive actions
-	deleteTarget  *models.Task  // Task to delete when confirmation is accepted
-	statusMessage string        // Transient status/confirmation prompt text
-	err           error         // Last error from an operation
+	deleteTarget *models.Task // Task to delete when confirmation is accepted
+	err          error        // Last error from an operation
 
 	bulkOp *BulkOperationComponent // Deferred bulk status change after confirmation
 

@@ -16,6 +16,8 @@ import (
 
 // GlobalInboxProcessorModel handles sequential inbox task processing across all projects.
 type GlobalInboxProcessorModel struct {
+	BaseView
+	InteractiveViewState
 	config        *config.Config
 	configManager *config.Manager
 
@@ -30,18 +32,6 @@ type GlobalInboxProcessorModel struct {
 
 	// Processing history for undo (session-based, not persisted)
 	processingHistory []globalProcessingAction
-
-	// UI state
-	width         int
-	height        int
-	err           error
-	statusMessage string // Temporary feedback message
-
-	// Confirmation state
-	confirm ConfirmDialog
-
-	// Prefix key state (which-key style)
-	pendingPrefix string
 }
 
 // globalProcessingAction records an action for undo support.
@@ -103,11 +93,6 @@ func (m *GlobalInboxProcessorModel) Init() tea.Cmd {
 }
 
 // SetSize sets the view dimensions.
-func (m *GlobalInboxProcessorModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
-}
-
 // Update handles messages.
 func (m *GlobalInboxProcessorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -523,16 +508,6 @@ func (m *GlobalInboxProcessorModel) reloadCurrentProject() tea.Cmd {
 		}
 		return GlobalInboxProjectSavedMsg{Error: nil}
 	}
-}
-
-// HasPendingPrefix returns true if waiting for second key in prefix sequence.
-func (m *GlobalInboxProcessorModel) HasPendingPrefix() bool {
-	return m.pendingPrefix != ""
-}
-
-// HasTextInput returns false for the global inbox processor.
-func (m *GlobalInboxProcessorModel) HasTextInput() bool {
-	return false
 }
 
 // ShouldCaptureEsc returns true when prefix mode is active.
