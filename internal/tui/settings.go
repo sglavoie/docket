@@ -12,10 +12,17 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban", "Outliner"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-9, tab 3 → fields 10-11, tab 4 → fields 12-13
-	tabFieldStart = []int{0, 4, 8, 10, 12}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-9, tab 3 → fields 10-11, tab 4 → fields 12-13, tab 5 → fields 14-20
+	tabFieldStart = []int{0, 4, 8, 10, 12, 14}
+
+	// outlinerSectionNames maps toggle index (0-6) to the section key used in config.
+	// Active uses "" (empty string) since tasks with no explicit section are "Active".
+	outlinerSectionNames = []string{"", "Inbox", "Next", "Waiting", "Review", "Standby", "Someday"}
+
+	// outlinerSectionLabels are the display labels for each toggle.
+	outlinerSectionLabels = []string{"Active", "Inbox", "Next", "Waiting", "Review", "Standby", "Someday"}
 
 	// defaultProjectViewOptions lists the display labels for the default project view selector.
 	defaultProjectViewOptions = []string{"Outliner", "Project Tree", "Kanban"}
@@ -53,11 +60,12 @@ type SettingsModel struct {
 	defaultViewCursor      int // Index into defaultProjectViewOptions
 	kanbanMaxColumnsInput  textinput.Model
 	kanbanMaxSwimlaneInput textinput.Model
+	outlinerCollapsed      [7]bool // Per-section default collapse state (indexed by outlinerSectionNames)
 	contexts               []string
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
 	activeTab     int
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=linkedTaskJump, 10=attachmentEditor, 11=codeEditor, 12=kanbanMaxColumns, 13=kanbanMaxSwimlaneRows
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=linkedTaskJump, 10=attachmentEditor, 11=codeEditor, 12=kanbanMaxColumns, 13=kanbanMaxSwimlaneRows, 14-20=outlinerSectionToggles
 	validationErr string
 
 	width  int
@@ -165,6 +173,13 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		}
 	}
 
+	// Initialize outliner collapsed toggles from config
+	var outlinerCollapsed [7]bool
+	collapsedMap := cfg.GetOutlinerCollapsedSections()
+	for i, sectionName := range outlinerSectionNames {
+		outlinerCollapsed[i] = collapsedMap[sectionName]
+	}
+
 	return &SettingsModel{
 		config:                 cfg,
 		configManager:          manager,
@@ -182,6 +197,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		codeEditorInput:        codeEditorInput,
 		kanbanMaxColumnsInput:  kanbanMaxColumnsInput,
 		kanbanMaxSwimlaneInput: kanbanMaxSwimlaneInput,
+		outlinerCollapsed:      outlinerCollapsed,
 		contexts:               contexts,
 		contextCursor:          contextCursor,
 		focusIndex:             0,
@@ -228,6 +244,19 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.KanbanMaxColumns = &kanbanMaxCols
 		kanbanMaxRows, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value()))
 		m.config.KanbanMaxSwimlaneRows = &kanbanMaxRows
+
+		// Persist outliner collapsed sections
+		collapsed := make(map[string]bool)
+		for i, name := range outlinerSectionNames {
+			if m.outlinerCollapsed[i] {
+				collapsed[name] = true
+			}
+		}
+		if len(collapsed) > 0 {
+			m.config.OutlinerCollapsedSections = collapsed
+		} else {
+			m.config.OutlinerCollapsedSections = nil
+		}
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save settings: %w", err)}

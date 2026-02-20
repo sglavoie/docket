@@ -107,3 +107,12 @@ func (c *Config) GetLinkedTaskJumpToNew() bool {
 	}
 	return *c.LinkedTaskJumpToNew
 }
+
+// GetOutlinerCollapsedSections returns the default collapsed sections for the outliner.
+// Returns an empty map if not set.
+func (c *Config) GetOutlinerCollapsedSections() map[string]bool {
+	if c.OutlinerCollapsedSections == nil {
+		return make(map[string]bool)
+	}
+	return c.OutlinerCollapsedSections
+}

@@ -19,11 +19,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (14 fields total: 0-13)
+			// Move focus (21 fields total: 0-20)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 14
+				m.focusIndex = (m.focusIndex + 1) % 21
 			} else {
-				m.focusIndex = (m.focusIndex + 13) % 14 // +13 is -1 mod 14
+				m.focusIndex = (m.focusIndex + 20) % 21 // +20 is -1 mod 21
 			}
 
 			// Auto-switch tab to follow focus
@@ -59,6 +59,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle fields
 			if m.focusIndex == 9 {
 				m.linkedTaskJump = !m.linkedTaskJump
+			}
+			// Outliner section toggles (indices 14-20)
+			if m.focusIndex >= 14 && m.focusIndex <= 20 {
+				idx := m.focusIndex - 14
+				m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
 			}
 			return m, nil
 
@@ -246,6 +251,8 @@ func (m *SettingsModel) blurCurrentField() {
 		m.kanbanMaxColumnsInput.Blur()
 	case 13:
 		m.kanbanMaxSwimlaneInput.Blur()
+	case 14, 15, 16, 17, 18, 19, 20:
+		// Toggle fields - no blur needed
 	}
 }
 
@@ -280,5 +287,7 @@ func (m *SettingsModel) focusCurrentField() {
 		m.kanbanMaxColumnsInput.Focus()
 	case 13:
 		m.kanbanMaxSwimlaneInput.Focus()
+	case 14, 15, 16, 17, 18, 19, 20:
+		// Toggle fields - no focus needed
 	}
 }

@@ -260,6 +260,29 @@ func (m *SettingsModel) renderKanbanTab() string {
 	return b.String()
 }
 
+func (m *SettingsModel) renderOutlinerTab() string {
+	var b strings.Builder
+	const labelWidth = 12 // "Someday: " padded
+	const indent = 14     // 2 + labelWidth
+
+	b.WriteString(SubtitleStyle.Render("Default Section State"))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(All perspective)"))
+	b.WriteString("\n\n")
+
+	for i, label := range outlinerSectionLabels {
+		focusIdx := 14 + i
+		b.WriteString(renderFormLabelWithWidth(label+": ", labelWidth, m.focusIndex == focusIdx))
+		b.WriteString(renderFormToggle("Collapsed", "Expanded", m.outlinerCollapsed[i], m.focusIndex == focusIdx))
+		b.WriteString("\n")
+		if i == 0 {
+			b.WriteString(renderFormFieldDesc("Tasks with no explicit section (in-progress)", indent, m.focusIndex == focusIdx))
+		}
+	}
+
+	return b.String()
+}
+
 func (m *SettingsModel) View() string {
 	var b strings.Builder
 
@@ -279,6 +302,8 @@ func (m *SettingsModel) View() string {
 		b.WriteString(m.renderAttachmentsTab())
 	case 4:
 		b.WriteString(m.renderKanbanTab())
+	case 5:
+		b.WriteString(m.renderOutlinerTab())
 	}
 
 	// Footer

@@ -97,6 +97,10 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 			Attrs: make(map[string]string),
 		},
 	}
+	// Seed default collapsed sections from config
+	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {
+		m.collapsedSections[section] = collapsed
+	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	// Restore sidebar state from config
 	if project != nil {
@@ -235,7 +239,7 @@ func (m *OutlinerModel) buildRowsWithSectionHeaders(tasks []*models.Task) {
 
 	// Define section order: Active, Inbox, Next, Waiting, Someday, Review
 	// (excluding Completed as per All view convention)
-	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionSomeday, models.SectionReview, models.SectionStandby}
+	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionStandby, models.SectionSomeday}
 
 	for _, sectionName := range sectionOrder {
 		sectionTasks := tasksBySection[sectionName]
