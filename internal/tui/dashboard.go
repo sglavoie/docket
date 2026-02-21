@@ -10,9 +10,9 @@ import (
 // DashboardModel represents the dashboard view.
 type DashboardModel struct {
 	BaseSearchableView
+	InteractiveViewState
 	config       *config.Config
 	projects     []*models.Project
-	cursor       int
 	showArchived bool
 
 	// Context filter state
@@ -20,18 +20,14 @@ type DashboardModel struct {
 	filterCustomContext string   // Custom context filter (mutually exclusive with filterContext)
 	contexts            []string // Dynamically discovered contexts from projects
 
-	// Confirmation state
-	confirm      ConfirmDialog   // confirmation dialog
+	// Delete state
 	deleteTarget *models.Project // project to delete
-
-	pendingGKey bool // waiting for second 'g' in gg sequence
 }
 
 // NewDashboardModel creates a new dashboard model.
 func NewDashboardModel(cfg *config.Config) *DashboardModel {
 	m := &DashboardModel{
 		config:              cfg,
-		cursor:              0,
 		filterContext:       cfg.FilterContext,       // Load persisted context filter
 		filterCustomContext: cfg.FilterCustomContext, // Load persisted custom context filter
 	}
@@ -53,11 +49,6 @@ func (m *DashboardModel) Refresh(cfg *config.Config) {
 	m.loadProjects()
 }
 
-// ResetCursor moves the cursor to the first project.
-func (m *DashboardModel) ResetCursor() {
-	m.cursor = 0
-}
-
 func (m *DashboardModel) Init() tea.Cmd {
 	return nil
 }
@@ -69,5 +60,5 @@ func (m *DashboardModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when dashboard search or prefix mode is active.
 func (m *DashboardModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch()
+	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch()
 }

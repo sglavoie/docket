@@ -71,8 +71,7 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 	}
 
 	// Standard y/n handling via ConfirmDialog
-	confirmed, handled := m.confirm.HandleKey(key)
-	if handled {
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
 			switch action {
 			case "archive":

@@ -27,7 +27,7 @@ func jumpCursor(cursor *int, total, delta int) {
 }
 
 // handleListNavigation handles standard list navigation keys (up/k, down/j,
-// G, ctrl+u, ctrl+d). Returns true if the key was handled.
+// G, ctrl+u/pgup, ctrl+d/pgdown). Returns true if the key was handled.
 func handleListNavigation(key string, cursor *int, total, height int) bool {
 	switch key {
 	case "up", "k":
@@ -48,11 +48,11 @@ func handleListNavigation(key string, cursor *int, total, height int) bool {
 		}
 		return true
 
-	case "ctrl+u":
+	case "ctrl+u", "pgup":
 		jumpCursor(cursor, total, -HalfPage(height))
 		return true
 
-	case "ctrl+d":
+	case "ctrl+d", "pgdown":
 		jumpCursor(cursor, total, HalfPage(height))
 		return true
 	}

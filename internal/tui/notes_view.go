@@ -66,7 +66,7 @@ type NotesViewModel struct {
 	// Multi-select state
 	multiSelectMode bool
 	selectedNotes   map[string]bool // keyed by filename
-	pendingGKey     bool            // waiting for second key after 'g'
+	pendingPrefix   string          // waiting for second key after prefix (e.g. "g")
 
 	// Tab state
 	activeTab int

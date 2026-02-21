@@ -13,9 +13,10 @@ import (
 
 // UndoHistoryModel displays the undo history for a project.
 type UndoHistoryModel struct {
+	BaseView
+	InteractiveViewState
 	project *models.Project
 	entries []storage.UndoEntry
-	cursor  int
 
 	// Diff preview
 	diffLines   []DiffLine
@@ -28,35 +29,26 @@ type UndoHistoryModel struct {
 	detailLine    DiffLine // The line being shown in detail
 
 	// Layout
-	width       int
-	height      int
 	focusedPane int // 0 = entry list, 1 = diff preview
-
-	pendingGKey bool // waiting for second 'g' in gg sequence
-
-	// Error state
-	errorMsg string
 }
 
 // NewUndoHistoryModel creates a new undo history model.
 func NewUndoHistoryModel(project *models.Project) *UndoHistoryModel {
 	entries, err := storage.LoadUndoHistory(project)
 	if err != nil {
-		return &UndoHistoryModel{
-			project:  project,
-			entries:  []storage.UndoEntry{},
-			errorMsg: fmt.Sprintf("Failed to load undo history: %v", err),
+		m := &UndoHistoryModel{
+			project: project,
+			entries: []storage.UndoEntry{},
 		}
+		m.SetError(fmt.Errorf("failed to load undo history: %w", err))
+		return m
 	}
 
 	m := &UndoHistoryModel{
-		project:     project,
-		entries:     entries,
-		cursor:      0,
-		focusedPane: 0,
-		width:       80,
-		height:      24,
+		project: project,
+		entries: entries,
 	}
+	m.BaseView.SetSize(80, 24)
 
 	// Compute initial diff if there are entries
 	if len(entries) > 0 {
@@ -68,8 +60,7 @@ func NewUndoHistoryModel(project *models.Project) *UndoHistoryModel {
 
 // SetSize sets the view dimensions.
 func (m *UndoHistoryModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 }
 
 func (m *UndoHistoryModel) Init() tea.Cmd {
@@ -79,8 +70,7 @@ func (m *UndoHistoryModel) Init() tea.Cmd {
 func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
 		// Handle detail view first
@@ -92,8 +82,9 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				if m.focusedPane == 0 {
 					m.cursor = 0
 					m.computeDiff()
@@ -181,6 +172,10 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.performUndo()
 			}
 
+		case "g":
+			m.pendingPrefix = "g"
+			return m, nil
+
 		case "G":
 			// Go to bottom
 			if m.focusedPane == 0 {
@@ -203,9 +198,14 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ShouldCaptureEsc returns true when detail view is active or a pending prefix is set.
+func (m *UndoHistoryModel) ShouldCaptureEsc() bool {
+	return m.showingDetail || m.DefaultShouldCaptureEsc()
+}
+
 // ensureDiffCursorVisible adjusts diffScroll to keep the cursor visible.
 func (m *UndoHistoryModel) ensureDiffCursorVisible() {
-	availableHeight := m.height - 6
+	availableHeight := m.Height() - 6
 	visibleLines := availableHeight - 5
 	if visibleLines < 1 {
 		visibleLines = 1
@@ -283,8 +283,8 @@ func (m *UndoHistoryModel) View() string {
 	b.WriteString("\n\n")
 
 	// Handle error state
-	if m.errorMsg != "" {
-		b.WriteString(ErrorIconStyle.Render(m.errorMsg))
+	if m.HasError() {
+		b.WriteString(ErrorIconStyle.Render(m.Error().Error()))
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Press Esc to close"))
 		return b.String()
@@ -299,13 +299,13 @@ func (m *UndoHistoryModel) View() string {
 	}
 
 	// Calculate layout
-	listWidth := m.width * 35 / 100
+	listWidth := m.Width() * 35 / 100
 	if listWidth < 30 {
 		listWidth = 30
 	}
-	diffWidth := m.width - listWidth - 3 // 3 for separator
+	diffWidth := m.Width() - listWidth - 3 // 3 for separator
 
-	availableHeight := m.height - 6 // Title, help, padding
+	availableHeight := m.Height() - 6 // Title, help, padding
 
 	// Render entry list
 	listContent := m.renderEntryList(listWidth, availableHeight)
@@ -332,7 +332,7 @@ func (m *UndoHistoryModel) View() string {
 	}
 	helpParts = append(helpParts, "Tab: switch pane")
 	helpParts = append(helpParts, "Esc: close")
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(strings.Join(helpParts, " · "), m.width)))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(strings.Join(helpParts, " · "), m.Width())))
 
 	return b.String()
 }
@@ -342,7 +342,7 @@ func (m *UndoHistoryModel) View() string {
 func (m *UndoHistoryModel) renderDetailView() string {
 	var b strings.Builder
 
-	wrapWidth := m.width - 4
+	wrapWidth := m.Width() - 4
 	if wrapWidth < 20 {
 		wrapWidth = 20
 	}

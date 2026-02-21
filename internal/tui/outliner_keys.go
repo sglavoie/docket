@@ -20,15 +20,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle search mode input first
-	if m.IsSearchMode() {
-		handled, cmd, valueChanged := m.HandleSearchInput(msg)
-		if valueChanged {
-			m.rebuildRows()
-		}
-		if handled {
-			return m, cmd
-		}
-		return m, cmd
+	if model, cmd, handled := m.HandleSearchMode(msg, m, m.rebuildRows); handled {
+		return model, cmd
 	}
 
 	// Handle quick edit mode input first
@@ -104,6 +97,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// Cursor movement
+	if handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight()) {
+		return m, nil
+	}
+
 	switch key {
 	case "q":
 		if len(m.zoomStack) == 0 {
@@ -135,33 +133,6 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return CloseOutlinerMsg{}
 		}
-
-	// Cursor movement
-	case "j", "down":
-		if m.cursor < len(m.rows)-1 {
-			m.cursor++
-		}
-		return m, nil
-	case "k", "up":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-	case "G":
-		if len(m.rows) > 0 {
-			m.cursor = len(m.rows) - 1
-		}
-		return m, nil
-	case "ctrl+d", "pgdown":
-		half := max(m.contentHeight()/2, 1)
-		m.cursor += half
-		m.clampCursor()
-		return m, nil
-	case "ctrl+u", "pgup":
-		half := max(m.contentHeight()/2, 1)
-		m.cursor -= half
-		m.clampCursor()
-		return m, nil
 
 	// Task movement
 	case "J":

@@ -381,15 +381,11 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.statusMessage = ""
 
 	// Handle confirm dialog
-	if m.confirm.IsActive() {
-		confirmed, handled := m.confirm.HandleKey(key)
-		if handled {
-			if confirmed {
-				return taskOpsDeleteTask(m)
-			}
-			m.statusMessage = ""
-			return m, nil
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			return taskOpsDeleteTask(m)
 		}
+		return m, nil
 	}
 
 	// Activate prefix mode

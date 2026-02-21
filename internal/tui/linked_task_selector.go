@@ -203,16 +203,8 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 	}
 
 	// Handle search mode input first
-	if m.IsSearchMode() {
-		handled, cmd, valueChanged := m.HandleSearchInput(msg)
-		if valueChanged {
-			m.filterRelations()
-		}
-		if handled {
-			return m, cmd
-		}
-		// Pass through to cursor navigation while typing
-		return m, cmd
+	if model, cmd, handled := m.HandleSearchMode(msg, m, m.filterRelations); handled {
+		return model, cmd
 	}
 
 	switch key {

@@ -17,7 +17,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle confirmation mode
 		if m.confirm.IsActive() {
 			project := m.deleteTarget
-			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed && project != nil {
 					m.deleteTarget = nil
 					return m, m.deleteProject(project)
@@ -28,20 +28,16 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle search mode
-		if m.IsSearchMode() {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				visible = m.visibleProjects()
-				m.cursor = ClampCursor(m.cursor, len(visible))
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
+		if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
+			visible = m.visibleProjects()
+			m.cursor = ClampCursor(m.cursor, len(visible))
+		}); handled {
+			return model, cmd
 		}
 
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 			}
 			return m, nil
@@ -245,6 +241,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
+		case "g":
+			m.pendingPrefix = "g"
 		case "G":
 			// Go to last item (Vim-style)
 			if len(visible) > 0 {

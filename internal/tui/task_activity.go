@@ -21,15 +21,13 @@ const (
 
 // TaskActivityModel displays the activity log for a task.
 type TaskActivityModel struct {
+	BaseView
+	InteractiveViewState
 	task    *models.Task
 	project *models.Project
 
-	activeTab   int
-	cursor      int
-	sortAsc     bool
-	width       int
-	height      int
-	pendingGKey bool // waiting for second 'g' in gg sequence
+	activeTab int
+	sortAsc   bool
 }
 
 // NewTaskActivityModel creates a new task activity viewer.
@@ -45,19 +43,18 @@ func (m *TaskActivityModel) Init() tea.Cmd {
 }
 
 func (m *TaskActivityModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 }
 
 func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 			}
 			return m, nil
@@ -77,6 +74,10 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+
+		case "g":
+			m.pendingPrefix = "g"
+			return m, nil
 
 		case "G":
 			entries := m.getEntries()
@@ -112,6 +113,11 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ShouldCaptureEsc returns true when a pending prefix is active.
+func (m *TaskActivityModel) ShouldCaptureEsc() bool {
+	return m.DefaultShouldCaptureEsc()
+}
+
 func (m *TaskActivityModel) View() string {
 	var b strings.Builder
 
@@ -132,7 +138,7 @@ func (m *TaskActivityModel) View() string {
 		b.WriteString("\n")
 	} else {
 		headerLines := 5
-		availableHeight := m.height - headerLines
+		availableHeight := m.Height() - headerLines
 		maxVisible := availableHeight / 2
 		if maxVisible < 3 {
 			maxVisible = 3
@@ -179,7 +185,7 @@ func (m *TaskActivityModel) View() string {
 	}
 
 	helpText := "[/]: tabs · j/k: navigate · s: sort · y: copy entry · q/Esc: close"
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
 	return b.String()
 }
@@ -225,7 +231,7 @@ func (m *TaskActivityModel) getEntries() []*models.ActivityEntry {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *TaskActivityModel) renderTabBar() string {
-	return RenderTabBar(activityTabNames, m.activeTab, min(m.width-6, 54)-2, 1)
+	return RenderTabBar(activityTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
 }
 
 // formatEntryText formats an activity entry as a human-readable string.

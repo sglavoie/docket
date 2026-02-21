@@ -110,6 +110,21 @@ func (s *InteractiveViewState) showDeleteConfirm(shortID int) {
 	s.statusMessage = s.confirm.Prompt()
 }
 
+// HandleConfirmKey checks if a confirm dialog is active and processes the key.
+// Returns (confirmed, handled). On cancel, clears the status message.
+// When handled is false, no confirm dialog was active and the caller should
+// continue normal key processing.
+func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled bool) {
+	if !s.confirm.IsActive() {
+		return false, false
+	}
+	c, h := s.confirm.HandleKey(key)
+	if h && !c {
+		s.statusMessage = ""
+	}
+	return c, h
+}
+
 // BaseSearchableView extends BaseView with search functionality.
 type BaseSearchableView struct {
 	BaseView
@@ -206,6 +221,22 @@ func (v *BaseSearchableView) ConfirmSearch() {
 	v.searchActive = false
 	v.searchInput.Blur()
 	v.searchQuery = v.searchInput.Value()
+}
+
+// HandleSearchMode processes a key message when search mode is active.
+// Returns (model, cmd, true) if search is active and the key was consumed.
+// Calls onChanged when the search input value changes.
+func (v *BaseSearchableView) HandleSearchMode(
+	msg tea.KeyMsg, model tea.Model, onChanged func(),
+) (tea.Model, tea.Cmd, bool) {
+	if !v.searchActive {
+		return model, nil, false
+	}
+	_, cmd, valueChanged := v.HandleSearchInput(msg)
+	if valueChanged && onChanged != nil {
+		onChanged()
+	}
+	return model, cmd, true
 }
 
 // HandleSearchInput processes a key message while in search mode.

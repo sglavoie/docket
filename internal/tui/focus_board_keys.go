@@ -197,14 +197,10 @@ func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 // handleConfirmKey handles key input while the confirmation dialog is active.
 func (m *FocusBoardModel) handleConfirmKey(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "y", "Y":
-		m.confirm.Cancel()
-		m.statusMessage = ""
-		return m.deleteItem()
-	case "n", "N", "esc":
-		m.confirm.Cancel()
-		m.statusMessage = ""
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			return m.deleteItem()
+		}
 		return m, nil
 	}
 	return m, nil

@@ -150,13 +150,13 @@ func TestPendingGKeyConsumed(t *testing.T) {
 
 	// Press g then d — should jump to top, NOT trigger delete
 	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
-	if !m.pendingGKey {
-		t.Error("expected pendingGKey after g")
+	if m.pendingPrefix != "g" {
+		t.Error("expected pendingPrefix=\"g\" after g")
 	}
 
 	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
-	if m.pendingGKey {
-		t.Error("expected pendingGKey=false after second key")
+	if m.pendingPrefix != "" {
+		t.Error("expected pendingPrefix=\"\" after second key")
 	}
 	if m.cursor != 0 {
 		t.Errorf("expected cursor=0 after gd (jump to top), got %d", m.cursor)

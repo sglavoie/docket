@@ -148,16 +148,11 @@ func (m *RecentActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle search mode input
-	if m.IsSearchMode() {
-		handled, cmd, valueChanged := m.HandleSearchInput(msg)
-		if valueChanged {
-			m.applyFilter()
-			m.clampCursor()
-		}
-		if handled {
-			return m, cmd
-		}
-		return m, cmd
+	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
+		m.applyFilter()
+		m.clampCursor()
+	}); handled {
+		return model, cmd
 	}
 
 	// Handle pending filter prefix keys

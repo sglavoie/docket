@@ -43,8 +43,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusIsError = false
 
 		// Handle pending 'g' prefix key — always consume the second keystroke
-		if m.pendingGKey {
-			m.pendingGKey = false
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
 			if key == "X" && m.multiSelectMode {
 				m.deselectAllNotes()
 				return m, nil
@@ -114,7 +114,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.detailsScroll = 0
 			}
 		case "g":
-			m.pendingGKey = true
+			m.pendingPrefix = "g"
 			return m, nil
 		case "G":
 			if len(m.notes) > 0 {

@@ -31,7 +31,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle confirmation
 	if m.confirm.IsActive() {
 		action := m.confirm.Action()
-		if confirmed, handled := m.confirm.HandleKey(key); handled {
+		if confirmed, handled := m.HandleConfirmKey(key); handled {
 			if confirmed {
 				switch action {
 				case "delete":
@@ -47,7 +47,6 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.deleteTarget = nil
 			m.bulkOp.Clear()
-			m.statusMessage = ""
 			return m, nil
 		}
 	}

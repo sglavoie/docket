@@ -17,15 +17,13 @@ type TaskTemplatesModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
+	InteractiveViewState
 	allTemplates      []template.TaskTemplate
 	filteredTemplates []template.TaskTemplate
 	defaultCount      int // Number of default templates (at start of allTemplates slice)
-	cursor            int
 
-	confirm       ConfirmDialog
 	expandedView  bool
-	previewScroll int  // Scroll offset for preview pane content
-	pendingGKey   bool // waiting for second 'g' in gg sequence
+	previewScroll int // Scroll offset for preview pane content
 }
 
 // NewTaskTemplatesModel creates a new task templates model.
@@ -38,7 +36,6 @@ func NewTaskTemplatesModel(cfg *config.Config, manager *config.Manager) *TaskTem
 		allTemplates:      allTemplates,
 		filteredTemplates: allTemplates,
 		defaultCount:      len(defaultTemplates),
-		cursor:            0,
 	}
 	m.SetSize(80, 24)
 	m.InitSearchInput("Search templates...", 50, 30)
@@ -121,7 +118,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 			if confirmed {
 				cmd := m.deleteCurrentTemplate()
 				m.expandedView = false // Close preview after delete
@@ -131,15 +128,8 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle search mode
-		if m.searchActive {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.filterTemplates()
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
+		if model, cmd, handled := m.HandleSearchMode(msg, m, m.filterTemplates); handled {
+			return model, cmd
 		}
 
 		// Preview pane scroll (wide screen mode)
@@ -154,8 +144,9 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 				m.previewScroll = 0
 			}
@@ -194,6 +185,10 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 				m.previewScroll = 0 // Reset scroll when changing selection
 			}
+			return m, nil
+
+		case "g":
+			m.pendingPrefix = "g"
 			return m, nil
 
 		case "G":
@@ -787,7 +782,7 @@ func (m *TaskTemplatesModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when expanded view, delete confirmation, or search is active.
 func (m *TaskTemplatesModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirm.IsActive() || m.searchActive || m.searchQuery != ""
+	return m.expandedView || m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.searchQuery != ""
 }
 
 // TaskTemplatesUpdatedMsg is sent when templates are modified.

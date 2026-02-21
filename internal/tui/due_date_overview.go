@@ -272,15 +272,11 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	m.ClearError()
 
 	// Handle confirm dialog
-	if m.confirm.IsActive() {
-		confirmed, handled := m.confirm.HandleKey(key)
-		if handled {
-			if confirmed {
-				return m.deleteTask()
-			}
-			m.statusMessage = ""
-			return m, nil
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			return m.deleteTask()
 		}
+		return m, nil
 	}
 
 	// Activate prefix mode

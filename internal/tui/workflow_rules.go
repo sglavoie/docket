@@ -17,14 +17,12 @@ type WorkflowRulesModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
+	InteractiveViewState
 	allRules      []workflow.WorkflowRule
 	filteredRules []workflow.WorkflowRule
 	defaultCount  int // Number of default rules (at start of allRules slice)
-	cursor        int
 
-	confirm      ConfirmDialog
 	expandedView bool
-	pendingGKey  bool // waiting for second 'g' in gg sequence
 }
 
 // NewWorkflowRulesModel creates a new workflow rules model.
@@ -37,7 +35,6 @@ func NewWorkflowRulesModel(cfg *config.Config, manager *config.Manager) *Workflo
 		allRules:      allRules,
 		filteredRules: allRules,
 		defaultCount:  len(defaultRules),
-		cursor:        0,
 	}
 	m.SetSize(80, 24)
 	m.InitSearchInput("Search rules...", 50, 30)
@@ -88,7 +85,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 			if confirmed {
 				cmd := m.deleteCurrentRule()
 				m.expandedView = false // Close preview after delete
@@ -98,19 +95,13 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle search mode
-		if m.searchActive {
-			handled, cmd, valueChanged := m.HandleSearchInput(msg)
-			if valueChanged {
-				m.filterRules()
-			}
-			if handled {
-				return m, cmd
-			}
-			return m, cmd
+		if model, cmd, handled := m.HandleSearchMode(msg, m, m.filterRules); handled {
+			return model, cmd
 		}
 
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 			}
 			return m, nil
@@ -146,6 +137,10 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			return m, nil
+
+		case "g":
+			m.pendingPrefix = "g"
 			return m, nil
 
 		case "G":
@@ -718,7 +713,7 @@ func (m *WorkflowRulesModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when expanded view, delete confirmation, or search is active.
 func (m *WorkflowRulesModel) ShouldCaptureEsc() bool {
-	return m.expandedView || m.confirm.IsActive() || m.searchActive || m.searchQuery != ""
+	return m.expandedView || m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.searchQuery != ""
 }
 
 // WorkflowRulesUpdatedMsg is sent when rules are modified.

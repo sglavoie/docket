@@ -15,11 +15,10 @@ import (
 
 // TaskChecklistModel displays and manages checklist items for a task.
 type TaskChecklistModel struct {
+	BaseView
+	InteractiveViewState
 	task    *models.Task
 	project *models.Project
-
-	// Navigation state
-	cursor int // Selected checklist item index
 
 	// Add mode
 	addMode   bool
@@ -30,20 +29,8 @@ type TaskChecklistModel struct {
 	editIndex     int
 	editTextInput textarea.Model
 
-	// Confirmation state
-	confirm ConfirmDialog
-
-	pendingGKey bool // waiting for second 'g' in gg sequence
-
 	// Editor config
 	editor string
-
-	// Dimensions
-	width  int
-	height int
-
-	// Error display
-	err error
 }
 
 // NewTaskChecklistModel creates a new task checklist viewer.
@@ -63,8 +50,6 @@ func NewTaskChecklistModel(task *models.Task, project *models.Project) *TaskChec
 	return &TaskChecklistModel{
 		task:          task,
 		project:       project,
-		cursor:        0,
-		addMode:       false,
 		textInput:     ti,
 		editTextInput: editTi,
 	}
@@ -90,8 +75,7 @@ func (m *TaskChecklistModel) Init() tea.Cmd {
 
 // SetSize updates the view dimensions.
 func (m *TaskChecklistModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 	cardWidth := width - 4
 	if cardWidth > 80 {
 		cardWidth = 80
@@ -108,11 +92,11 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
 					return m, m.executeDelete()
 				}
-				m.err = nil
+				m.ClearError()
 				return m, nil
 			}
 		}
@@ -160,12 +144,12 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Normal mode
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 			}
 			return m, nil
@@ -184,6 +168,10 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+
+		case "g":
+			m.pendingPrefix = "g"
+			return m, nil
 
 		case "G":
 			if len(m.task.Checklist) > 0 {
@@ -597,7 +585,7 @@ func (m *TaskChecklistModel) View() string {
 	b.WriteString(renderFullscreenTitle(checklistTitle, progressStr))
 	b.WriteString("\n\n")
 
-	contentWidth := m.width - 4
+	contentWidth := m.Width() - 4
 
 	// Edit mode input
 	if m.editMode {
@@ -605,7 +593,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(m.editTextInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
 		return b.String()
 	}
 
@@ -615,7 +603,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString("\n")
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
 		return b.String()
 	}
 
@@ -632,7 +620,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString("\n\n")
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", preview)))
 		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("y: confirm delete · n/Esc: cancel"), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render("y: confirm delete · n/Esc: cancel"), "", m.Width()))
 		return b.String()
 	}
 
@@ -648,7 +636,7 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString("\n")
 	} else {
 		headerLines := 6
-		availableHeight := m.height - headerLines
+		availableHeight := m.Height() - headerLines
 		maxVisible := availableHeight / 2
 		if maxVisible < 5 {
 			maxVisible = 5
@@ -714,7 +702,7 @@ func (m *TaskChecklistModel) View() string {
 
 	b.WriteString("\n")
 	helpText := "j/k: nav · Space: toggle · a: add · e: edit · E: external editor · d: delete · q: close"
-	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.width)))
+	b.WriteString(HelpStyle.Render(renderWrappingHelpLine(helpText, m.Width())))
 
 	return b.String()
 }
@@ -724,7 +712,7 @@ func (m *TaskChecklistModel) HasTextInput() bool {
 	return m.addMode || m.editMode
 }
 
-// ShouldCaptureEsc returns true when in add/edit or delete confirmation modes.
+// ShouldCaptureEsc returns true when in add/edit, delete confirmation, or pending prefix modes.
 func (m *TaskChecklistModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.addMode || m.editMode
+	return m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
 }

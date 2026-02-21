@@ -104,15 +104,11 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle confirm dialog first
-	if m.confirm.IsActive() {
-		confirmed, handled := m.confirm.HandleKey(key)
-		if handled {
-			if confirmed {
-				return taskOpsDeleteTask(m)
-			}
-			m.statusMessage = ""
-			return m, nil
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			return taskOpsDeleteTask(m)
 		}
+		return m, nil
 	}
 
 	// Handle pending prefix keys (which-key style)

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -27,15 +25,21 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	// Handle confirm dialog
-	if m.confirm.IsActive() {
-		confirmed, handled := m.confirm.HandleKey(key)
-		if handled {
-			if confirmed {
-				return m.deleteTask()
-			}
-			m.statusMessage = ""
-			return m, nil
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			return m.deleteTask()
 		}
+		return m, nil
+	}
+
+	// Navigation
+	if handleListNavigation(key, &m.cursor, m.totalTasks, m.Height()) {
+		return m, nil
+	}
+
+	// Common task actions (t, Z, D, e, r, y/Y/ctrl+y, ?)
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	// Tab row focus switching
@@ -91,19 +95,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 		return m, nil
 
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < m.totalTasks-1 {
-			m.cursor++
-		}
-		return m, nil
-
 	case ",":
 		// Start prefix sequence for status operations
 		m.pendingPrefix = ","
@@ -133,20 +124,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 		return m, nil
 
-	case "G":
-		if m.totalTasks > 0 {
-			m.cursor = m.totalTasks - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		jumpCursor(&m.cursor, m.totalTasks, -HalfPage(m.Height()))
-		return m, nil
-
-	case "ctrl+d":
-		jumpCursor(&m.cursor, m.totalTasks, HalfPage(m.Height()))
-		return m, nil
-
 	// Toggle waiting on section
 	case "tab":
 		m.waitingOnCollapsed = !m.waitingOnCollapsed
@@ -163,41 +140,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m.changeTaskPriority(4)
 	case "5":
 		return m.changeTaskPriority(5)
-
-	case "e":
-		if pt := m.getTaskAtCursor(); pt != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: pt.Task}
-			}
-		}
-		return m, nil
-
-	case "y", "Y", "ctrl+y":
-		var task *models.Task
-		if pt := m.getTaskAtCursor(); pt != nil {
-			task = pt.Task
-		}
-		if cmd, handled := clipboardCmd(key, task); handled {
-			return m, cmd
-		}
-		return m, nil
-
-	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewPriorityView,
-				ViewName:   "Priority View",
-				Items:      m.GetHelpItems(),
-			}
-		}
-
-	case "r":
-		// Refresh: reload project and clear dismissed suggestions
-		_ = m.projectService.Load(m.project)
-		m.dismissedIDs = make(map[string]bool)
-		m.loadActionableTasks()
-		m.clampCursor()
-		return m, nil
 
 	// Suggestion actions
 	case "s":
@@ -225,36 +167,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "F":
 		// Open filter prefix popup
 		m.pendingPrefix = "F"
-		return m, nil
-
-	// Tags
-	case "t":
-		if pt := m.getTaskAtCursor(); pt != nil {
-			project := m.project
-			task := pt.Task
-			return m, func() tea.Msg {
-				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: append([]string{}, task.Tags...)}
-			}
-		}
-		return m, nil
-
-	// Snooze
-	case "Z":
-		if pt := m.getTaskAtCursor(); pt != nil {
-			project := m.project
-			task := pt.Task
-			return m, func() tea.Msg {
-				return SetSnoozeDateMsg{Task: task, Project: project}
-			}
-		}
-		return m, nil
-
-	// Delete with confirmation
-	case "D":
-		if pt := m.getTaskAtCursor(); pt != nil {
-			m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", pt.Task.ShortID))
-			m.statusMessage = m.confirm.Prompt()
-		}
 		return m, nil
 
 	// Open all tasks view

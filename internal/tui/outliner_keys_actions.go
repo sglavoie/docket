@@ -36,8 +36,7 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Standard y/n handling
-	confirmed, handled := m.confirm.HandleKey(key)
-	if handled {
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
 			switch action {
 			case "delete":
@@ -50,7 +49,6 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 				return m.archiveCompletedTasks()
 			}
 		}
-		m.statusMessage = ""
 		m.deleteTarget = nil
 		m.bulkOp.Clear()
 		return m, nil

@@ -20,28 +20,15 @@ import (
 
 // TaskAttachmentsModel displays and manages attachments for a task.
 type TaskAttachmentsModel struct {
+	BaseView
+	InteractiveViewState
 	task    *models.Task
 	project *models.Project
 	config  *config.Config
 
-	// Navigation state
-	cursor int // Selected attachment index
-
 	// Add mode
 	addMode   bool
 	textInput textinput.Model
-
-	// Confirmation state (actions: "delete", "unlink")
-	confirm     ConfirmDialog
-	pendingGKey bool // waiting for second 'g' in gg sequence
-
-	// Dimensions
-	width  int
-	height int
-
-	// Error/status display
-	err           error
-	statusMessage string
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.
@@ -55,8 +42,6 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, cfg *co
 		task:      task,
 		project:   project,
 		config:    cfg,
-		cursor:    0,
-		addMode:   false,
 		textInput: ti,
 	}
 }
@@ -74,8 +59,7 @@ func (m *TaskAttachmentsModel) Init() tea.Cmd {
 
 // SetSize updates the view dimensions.
 func (m *TaskAttachmentsModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseView.SetSize(width, height)
 	m.textInput.Width = width - 4
 }
 
@@ -87,7 +71,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			action := m.confirm.Action()
-			if confirmed, handled := m.confirm.HandleKey(msg.String()); handled {
+			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
 					switch action {
 					case "delete":
@@ -96,7 +80,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, m.executeKeep()
 					}
 				}
-				m.err = nil
+				m.ClearError()
 				return m, nil
 			}
 		}
@@ -123,12 +107,12 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Normal mode
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
-		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-			if goTop {
+		if m.pendingPrefix == "g" {
+			m.pendingPrefix = ""
+			if msg.String() == "g" {
 				m.cursor = 0
 			}
 			return m, nil
@@ -147,6 +131,10 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+
+		case "g":
+			m.pendingPrefix = "g"
+			return m, nil
 
 		case "G":
 			if len(m.task.Attachments) > 0 {
@@ -765,7 +753,7 @@ func (m *TaskAttachmentsModel) View() string {
 	} else {
 		// Calculate visible attachments based on height
 		headerLines := 5 // title+subtitle, spacing, help
-		availableHeight := m.height - headerLines
+		availableHeight := m.Height() - headerLines
 		maxVisible := availableHeight / 3 // ~3 lines per attachment
 		if maxVisible < 3 {
 			maxVisible = 3
@@ -817,7 +805,7 @@ func (m *TaskAttachmentsModel) View() string {
 			} else {
 				name = att.Filename
 			}
-			maxLen := m.width - 8
+			maxLen := m.Width() - 8
 			if maxLen < 40 {
 				maxLen = 40
 			}
@@ -892,16 +880,16 @@ func (m *TaskAttachmentsModel) View() string {
 
 	// Join with separators and check if wrapping is needed
 	helpText := strings.Join(helpParts, " · ")
-	if lipgloss.Width(helpText) > m.width-2 {
+	if lipgloss.Width(helpText) > m.Width()-2 {
 		// Split into two lines at a reasonable point
 		mid := len(helpParts) / 2
 		line1 := strings.Join(helpParts[:mid], " · ")
 		line2 := strings.Join(helpParts[mid:], " · ")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(line1), "", m.Width()))
 		b.WriteString("\n")
 		b.WriteString(HelpStyle.Render(line2))
 	} else {
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+		b.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.Width()))
 	}
 
 	return b.String()
@@ -912,9 +900,9 @@ func (m *TaskAttachmentsModel) HasTextInput() bool {
 	return m.addMode
 }
 
-// ShouldCaptureEsc returns true when in add, delete, or unlink confirmation modes.
+// ShouldCaptureEsc returns true when in add, delete, or unlink confirmation modes, or pending prefix.
 func (m *TaskAttachmentsModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.addMode
+	return m.DefaultShouldCaptureEsc() || m.addMode
 }
 
 // GetHelpItems returns help items for the attachments view.

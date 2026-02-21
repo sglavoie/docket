@@ -17,12 +17,12 @@ const minWidthForSplitView = 100 // Below this, use single-pane + TAB toggle
 // TemplatePickerModel handles template selection during task creation.
 type TemplatePickerModel struct {
 	BaseSearchableView
+	InteractiveViewState
 	config  *config.Config
 	project *models.Project
 
 	templates         []template.TaskTemplate
 	filteredTemplates []template.TaskTemplate
-	cursor            int
 
 	// Group templates by category for display
 	categoryOrder []string // Order of categories to display
@@ -30,7 +30,6 @@ type TemplatePickerModel struct {
 	// Split-view state
 	previewScroll  int  // Scroll offset for preview content
 	showingPreview bool // For narrow mode: true = showing preview, false = showing list
-	pendingGKey    bool // waiting for second 'g' in gg sequence
 }
 
 // NewTemplatePickerModel creates a new template picker model.
@@ -70,10 +69,7 @@ func NewTemplatePickerModel(cfg *config.Config, project *models.Project) *Templa
 		project:           project,
 		templates:         templates,
 		filteredTemplates: templates,
-		cursor:            0,
 		categoryOrder:     sortedOrder,
-		previewScroll:     0,
-		showingPreview:    false,
 	}
 	m.SetSize(60, 20)
 	m.InitSearchInput("Search templates...", 40, 25)
@@ -126,8 +122,9 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// j/k only navigate when NOT in search mode (allow typing j/k in search)
 		if !m.searchActive {
-			if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
-				if goTop {
+			if m.pendingPrefix == "g" {
+				m.pendingPrefix = ""
+				if msg.String() == "g" {
 					m.cursor = 0
 					m.previewScroll = 0
 				}
@@ -146,6 +143,9 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 					m.previewScroll = 0
 				}
+				return m, nil
+			case "g":
+				m.pendingPrefix = "g"
 				return m, nil
 			case "G":
 				m.cursor = len(m.filteredTemplates)

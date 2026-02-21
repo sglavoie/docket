@@ -142,19 +142,15 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle confirmation dialog
-	if m.confirm.IsActive() {
-		confirmed, handled := m.confirm.HandleKey(key)
-		if handled {
-			if confirmed {
-				model, cmd := taskOpsDeleteTask(m)
-				if m.err == nil {
-					m.trackMutation("delete")
-				}
-				return model, cmd
+	if confirmed, handled := m.HandleConfirmKey(key); handled {
+		if confirmed {
+			model, cmd := taskOpsDeleteTask(m)
+			if m.err == nil {
+				m.trackMutation("delete")
 			}
-			m.statusMessage = ""
-			return m, nil
+			return model, cmd
 		}
+		return m, nil
 	}
 
 	// Handle pending prefix keys
