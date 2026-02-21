@@ -131,6 +131,11 @@ func (m *LinkedTaskCreatorModel) HasTextInput() bool {
 	return true
 }
 
+// ShouldCaptureEsc returns false so the global handler closes the view on Esc.
+func (m *LinkedTaskCreatorModel) ShouldCaptureEsc() bool {
+	return false
+}
+
 func (m *LinkedTaskCreatorModel) linkTypeName() string {
 	switch m.linkType {
 	case LinkTypeBlocker:

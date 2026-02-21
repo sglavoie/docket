@@ -118,6 +118,11 @@ func (m *QuickCaptureModel) HasTextInput() bool {
 	return true
 }
 
+// ShouldCaptureEsc returns false so the global handler closes the view on Esc.
+func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
+	return false
+}
+
 func (m *QuickCaptureModel) createTask() tea.Cmd {
 	return func() tea.Msg {
 		input := m.inputValue()
