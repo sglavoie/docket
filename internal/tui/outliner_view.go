@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -71,27 +70,7 @@ func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlin
 // matchesSearch checks if a task matches the search query by fuzzy-matching
 // the title, tags, description, and comments.
 func matchesSearch(task *models.Task, query string) bool {
-	q := strings.TrimSpace(query)
-	if q == "" {
-		return true
-	}
-	if fuzzy.MatchTerms(task.Title, q) {
-		return true
-	}
-	for _, tag := range task.Tags {
-		if fuzzy.MatchTerms(tag, q) {
-			return true
-		}
-	}
-	if fuzzy.MatchTerms(task.Description, q) {
-		return true
-	}
-	for _, comment := range task.Comments {
-		if fuzzy.MatchTerms(comment.Text, q) {
-			return true
-		}
-	}
-	return false
+	return TaskMatchesSearch(task, query)
 }
 
 // flattenTaskTreeWithFolds recursively walks the task tree and produces a flat
@@ -245,7 +224,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	filterBadge := ""
-	if hasActiveCommonFilters(&m.filter) || m.actionableFilter {
+	if hasActiveCommonFilters(&m.filter.CommonFilterState) || m.filter.Actionable || len(m.filter.Sections) > 0 {
 		filterBadge = "  " + MutedStyle.Render("[filtered]")
 	}
 

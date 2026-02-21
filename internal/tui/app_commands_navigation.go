@@ -216,8 +216,9 @@ func (m *AppModel) filterCommands() []Command {
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					clearCommonFilters(&m.outliner.filter)
-					m.outliner.actionableFilter = false
+					clearCommonFilters(&m.outliner.filter.CommonFilterState)
+					m.outliner.filter.Sections = make(map[string]bool)
+					m.outliner.filter.Actionable = false
 					m.outliner.ClearSearch()
 					m.outliner.rebuildRows()
 					return nil

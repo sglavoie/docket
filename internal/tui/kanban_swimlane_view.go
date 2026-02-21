@@ -333,7 +333,7 @@ func (m *KanbanViewModel) renderSwimlaneCellTask(node *KanbanNode, isSelected, i
 	// Multi-select checkbox
 	var checkbox string
 	if m.multiSelectMode {
-		if m.isTaskSelected(task.ID) {
+		if m.IsSelected(task.ID) {
 			checkbox = SelectionStyle.Render("[x]") + " "
 		} else {
 			checkbox = MutedStyle.Render("[ ]") + " "
@@ -396,7 +396,7 @@ func (m *KanbanViewModel) selectAllInSwimlaneCell() {
 			}
 		}
 	}
-	m.updateSelectionStatus()
+	m.UpdateStatus(&m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }
 
 // selectAllAcrossSwimlaneCells selects all visible tasks across all cells.
@@ -412,5 +412,5 @@ func (m *KanbanViewModel) selectAllAcrossSwimlaneCells() {
 			}
 		}
 	}
-	m.updateSelectionStatus()
+	m.UpdateStatus(&m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }

@@ -375,7 +375,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	// Build selection checkbox for multi-select mode
 	var checkbox string
 	if m.multiSelectMode {
-		if m.isTaskSelected(task.ID) {
+		if m.IsSelected(task.ID) {
 			checkbox = SelectionStyle.Render("[x]") + " "
 		} else {
 			checkbox = MutedStyle.Render("[ ]") + " "

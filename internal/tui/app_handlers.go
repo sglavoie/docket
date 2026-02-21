@@ -26,6 +26,78 @@ func (m *AppModel) restoreOutlinerToggleState() {
 	}
 }
 
+// saveOutlinerFilterState persists the current outliner filter state to config.
+func (m *AppModel) saveOutlinerFilterState() {
+	if m.outliner == nil || m.outliner.project == nil {
+		return
+	}
+
+	var filterTags []string
+	for tag := range m.outliner.filter.Tags {
+		filterTags = append(filterTags, tag)
+	}
+	var filterSections []string
+	for section := range m.outliner.filter.Sections {
+		filterSections = append(filterSections, section)
+	}
+
+	state := m.config.ProjectViewStates[m.outliner.project.ID]
+	state.OutlinerFilterType = string(m.outliner.filter.Type)
+	state.OutlinerFilterStatus = string(m.outliner.filter.Status)
+	state.OutlinerFilterPriority = m.outliner.filter.Priority
+	state.OutlinerFilterTags = filterTags
+	state.OutlinerFilterDueDate = int(m.outliner.filter.DueDate)
+	state.OutlinerFilterSections = filterSections
+	state.OutlinerFilterActionable = m.outliner.filter.Actionable
+	state.OutlinerFilterScoreMin = m.outliner.filter.ScoreMin
+
+	if len(m.outliner.filter.Attrs) > 0 {
+		state.OutlinerFilterAttrs = make(map[string]string)
+		for k, v := range m.outliner.filter.Attrs {
+			state.OutlinerFilterAttrs[k] = v
+		}
+	} else {
+		state.OutlinerFilterAttrs = nil
+	}
+
+	m.config.ProjectViewStates[m.outliner.project.ID] = state
+	_ = m.configManager.Save(m.config)
+}
+
+// restoreOutlinerFilterState applies saved outliner filter state from config.
+func (m *AppModel) restoreOutlinerFilterState() {
+	if m.outliner == nil || m.outliner.project == nil {
+		return
+	}
+	state, exists := m.config.GetProjectViewState(m.outliner.project.ID)
+	if !exists {
+		return
+	}
+
+	m.outliner.filter.Type = models.TaskType(state.OutlinerFilterType)
+	m.outliner.filter.Status = models.TaskStatus(state.OutlinerFilterStatus)
+	m.outliner.filter.Priority = state.OutlinerFilterPriority
+	m.outliner.filter.DueDate = DueDateFilter(state.OutlinerFilterDueDate)
+	m.outliner.filter.Actionable = state.OutlinerFilterActionable
+	m.outliner.filter.ScoreMin = state.OutlinerFilterScoreMin
+
+	// Restore attribute filters
+	if len(state.OutlinerFilterAttrs) > 0 {
+		m.outliner.filter.Attrs = make(map[string]string)
+		for k, v := range state.OutlinerFilterAttrs {
+			m.outliner.filter.Attrs[k] = v
+		}
+	}
+
+	// Restore tags - validate they still exist in the project
+	m.outliner.filter.Tags = validateSavedStringSet(state.OutlinerFilterTags, CollectProjectTagNames(m.outliner.project.Tasks))
+
+	// Restore sections - validate they still exist
+	m.outliner.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, m.outliner.project.GetSections())
+
+	m.outliner.rebuildRows()
+}
+
 // reloadAndRefreshProjectTree reloads project from storage and refreshes the tree.
 // Preserves filter/sort state across the reload.
 func (m *AppModel) reloadAndRefreshProjectTree() {
@@ -96,6 +168,8 @@ func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
 	// Handle QuitMsg directly since it's not in the handler chains
 	if _, ok := msg.(QuitMsg); ok {
 		m.saveProjectTreeState()
+		m.saveOutlinerFilterState()
+		m.saveKanbanState()
 		m.quitting = true
 		return true, tea.Quit
 	}

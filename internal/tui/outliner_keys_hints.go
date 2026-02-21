@@ -67,7 +67,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	}
 
 	// Add filter hints
-	filterHints := buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true)
+	filterHints := buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.config, true, true)
 	for k, v := range filterHints {
 		hints[k] = v
 	}
@@ -79,12 +79,12 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 			completedDetail = "on"
 		}
 		actionableDetail := "off"
-		if m.actionableFilter {
+		if m.filter.Actionable {
 			actionableDetail = "on"
 		}
 		fHints = append(fHints,
 			PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == 8},
-			PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.actionableFilter},
+			PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
 			PrefixHint{Key: "@", Description: "section", Detail: "selector"},
 		)
 		hints["F"] = fHints

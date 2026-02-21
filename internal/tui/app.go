@@ -631,30 +631,10 @@ func (m *AppModel) restoreProjectTreeState() {
 	m.projectTree.viewMode = ViewMode(state.ViewMode)
 
 	// Restore tags - validate they still exist
-	m.projectTree.filter.Tags = make(map[string]bool)
-	existingTags := m.projectTree.getAllTags()
-	tagSet := make(map[string]bool)
-	for _, t := range existingTags {
-		tagSet[t] = true
-	}
-	for _, tag := range state.FilterTags {
-		if tagSet[tag] {
-			m.projectTree.filter.Tags[tag] = true
-		}
-	}
+	m.projectTree.filter.Tags = validateSavedStringSet(state.FilterTags, m.projectTree.getAllTags())
 
 	// Restore sections - validate they still exist
-	m.projectTree.filter.Sections = make(map[string]bool)
-	existingSections := m.currentProject.GetSections()
-	sectionSet := make(map[string]bool)
-	for _, s := range existingSections {
-		sectionSet[s] = true
-	}
-	for _, section := range state.FilterSections {
-		if sectionSet[section] {
-			m.projectTree.filter.Sections[section] = true
-		}
-	}
+	m.projectTree.filter.Sections = validateSavedStringSet(state.FilterSections, m.currentProject.GetSections())
 
 	// Restore custom section tab - validate it still exists
 	if state.CustomSectionTab != "" {
@@ -731,20 +711,7 @@ func (m *AppModel) restoreKanbanState() {
 	}
 
 	// Restore tags - validate they still exist in the project
-	m.kanban.filter.Tags = make(map[string]bool)
-	if len(state.KanbanFilterTags) > 0 {
-		existingTags := make(map[string]bool)
-		for _, task := range m.kanban.Project.Tasks {
-			for _, tag := range task.Tags {
-				existingTags[tag] = true
-			}
-		}
-		for _, tag := range state.KanbanFilterTags {
-			if existingTags[tag] {
-				m.kanban.filter.Tags[tag] = true
-			}
-		}
-	}
+	m.kanban.filter.Tags = validateSavedStringSet(state.KanbanFilterTags, CollectProjectTagNames(m.kanban.Project.Tasks))
 
 	// Reload tasks with restored filters applied
 	m.kanban.loadTasks()
@@ -809,8 +776,10 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 		m.showView(ViewProjectTree, m.projectTree)
 	default:
 		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
 		m.restoreOutlinerToggleState()
+		m.restoreOutlinerFilterState()
 		if task != nil {
 			m.outliner.NavigateToSidebarTask(task)
 		}

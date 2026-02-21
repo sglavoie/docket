@@ -9,16 +9,15 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+const (
+	kanbanMultiSelectEnterMsg = "Multi-select: space=toggle, a=all in column, A=all, gX=clear"
+	kanbanMultiSelectNoSel    = "Multi-select: space=toggle, a=all in column, A=all"
+	kanbanMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b/o=status, gX=clear)"
+)
+
 // toggleMultiSelectMode enters or exits multi-select mode.
 func (m *KanbanViewModel) toggleMultiSelectMode() {
-	m.multiSelectMode = !m.multiSelectMode
-	if !m.multiSelectMode {
-		// Clear selections when exiting
-		m.ClearSelection()
-		m.statusMessage = ""
-	} else {
-		m.statusMessage = "Multi-select: space=toggle, a=all in column, A=all, gX=clear"
-	}
+	m.ToggleMode(&m.statusMessage, kanbanMultiSelectEnterMsg)
 }
 
 // toggleTaskSelection toggles selection of the current task.
@@ -27,8 +26,7 @@ func (m *KanbanViewModel) toggleTaskSelection() {
 	if task == nil {
 		return
 	}
-	m.ToggleSelection(task.ID)
-	m.updateSelectionStatus()
+	m.ToggleAndUpdateStatus(task.ID, &m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }
 
 // selectAllInColumn selects all visible tasks in the current column (or current cell in swimlane mode).
@@ -42,7 +40,7 @@ func (m *KanbanViewModel) selectAllInColumn() {
 	for _, node := range visibleNodes {
 		m.selectedTasks[node.Task.ID] = true
 	}
-	m.updateSelectionStatus()
+	m.UpdateStatus(&m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }
 
 // selectAllAcrossColumns selects all visible tasks across all columns (or all cells in swimlane mode).
@@ -57,23 +55,13 @@ func (m *KanbanViewModel) selectAllAcrossColumns() {
 			m.selectedTasks[node.Task.ID] = true
 		}
 	}
-	m.updateSelectionStatus()
+	m.UpdateStatus(&m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }
 
 // deselectAll clears all task selections.
 func (m *KanbanViewModel) deselectAll() {
 	m.ClearSelection()
-	m.updateSelectionStatus()
-}
-
-// updateSelectionStatus updates the status message with selection count.
-func (m *KanbanViewModel) updateSelectionStatus() {
-	count := len(m.selectedTasks)
-	if count == 0 {
-		m.statusMessage = "Multi-select: space=toggle, a=all in column, A=all"
-	} else {
-		m.statusMessage = fmt.Sprintf("%d selected (space=toggle, ,s/d/b/o=status, gX=clear)", count)
-	}
+	m.UpdateStatus(&m.statusMessage, kanbanMultiSelectNoSel, kanbanMultiSelectWithSel)
 }
 
 // getSelectedTasks returns a slice of all selected tasks.
@@ -87,20 +75,9 @@ func (m *KanbanViewModel) getSelectedTasksList() []*models.Task {
 	return tasks
 }
 
-// isTaskSelected returns whether a task is currently selected.
-func (m *KanbanViewModel) isTaskSelected(taskID string) bool {
-	return m.IsSelected(taskID)
-}
-
-// selectedCount returns the number of selected tasks.
-func (m *KanbanViewModel) selectedCount() int {
-	return m.SelectedCount()
-}
-
 // finishBulk clears multiselect state and sets the status message.
 func (m *KanbanViewModel) finishBulk(statusMsg string) {
-	m.ExitMultiSelect()
-	m.statusMessage = statusMsg
+	m.FinishBulk(&m.statusMessage, statusMsg)
 }
 
 // handleBulkStatusChange applies a status change to all selected tasks.

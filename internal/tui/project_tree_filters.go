@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
@@ -275,32 +274,7 @@ func (m *ProjectTreeModel) markAncestorsAsContext(node *TreeNode, intrinsicVisib
 }
 
 func (m *ProjectTreeModel) matchesSearch(task *models.Task) bool {
-	if m.SearchQuery() == "" {
-		return true
-	}
-	query := strings.TrimSpace(m.SearchQuery())
-
-	// Check title
-	if fuzzy.MatchTerms(task.Title, query) {
-		return true
-	}
-	// Check tags
-	for _, tag := range task.Tags {
-		if fuzzy.MatchTerms(tag, query) {
-			return true
-		}
-	}
-	// Check description
-	if fuzzy.MatchTerms(task.Description, query) {
-		return true
-	}
-	// Check comments
-	for _, comment := range task.Comments {
-		if fuzzy.MatchTerms(comment.Text, query) {
-			return true
-		}
-	}
-	return false
+	return TaskMatchesSearch(task, m.SearchQuery())
 }
 
 // getSearchMatchPositions returns match positions for the title if there's a search query.
@@ -371,19 +345,7 @@ func (m *ProjectTreeModel) findVisibleSiblingIndex(task *models.Task, visibleSib
 
 // getAllTags returns all unique tags from the project's tasks.
 func (m *ProjectTreeModel) getAllTags() []string {
-	tagSet := make(map[string]bool)
-	for _, task := range m.project.Tasks {
-		for _, tag := range task.Tags {
-			tagSet[tag] = true
-		}
-	}
-
-	tags := make([]string, 0, len(tagSet))
-	for tag := range tagSet {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-	return tags
+	return CollectProjectTagNames(m.project.Tasks)
 }
 
 // cycleFilter cycles through filter values, returning the next value in the sequence.

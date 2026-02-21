@@ -277,7 +277,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+f":
 		return m, func() tea.Msg {
-			return ShowFilterMsg{CommonFilter: &m.filter, Project: m.project}
+			return ShowFilterMsg{CommonFilter: &m.filter.CommonFilterState, Project: m.project}
 		}
 
 	// Enter: zoom into parent tasks or open detail for leaf tasks

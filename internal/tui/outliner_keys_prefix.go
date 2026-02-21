@@ -28,7 +28,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.scoreFilterInput.Enter(custom)
 			return m, nil
 		}
-		if dispatchFilterSubPrefix(prefix, key, &m.filter, m.config, func(p string) { m.pendingPrefix = p }) {
+		if dispatchFilterSubPrefix(prefix, key, &m.filter.CommonFilterState, m.config, func(p string) { m.pendingPrefix = p }) {
 			m.rebuildRows()
 		}
 		return m, nil
@@ -414,19 +414,20 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 			return ShowSectionFilterSelectorMsg{Project: m.project}
 		}
 	case "r":
-		m.actionableFilter = !m.actionableFilter
+		m.filter.Actionable = !m.filter.Actionable
 		m.rebuildRows()
 		return m, nil
 	case "x":
-		clearCommonFilters(&m.filter)
-		m.actionableFilter = false
+		clearCommonFilters(&m.filter.CommonFilterState)
+		m.filter.Actionable = false
+		m.filter.Sections = make(map[string]bool)
 		m.ClearSearch()
 		m.rebuildRows()
 		return m, nil
 	}
 
 	// Common filter prefix keys
-	result := handleCommonFilterPrefix(key, &m.filter, func() tea.Cmd {
+	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
 		tags := BuildTagList(m.project.Tasks, false)
 		return func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}

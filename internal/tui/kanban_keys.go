@@ -35,7 +35,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if confirmed {
 				switch action {
 				case "delete":
-					if m.multiSelectMode && m.selectedCount() > 0 {
+					if m.multiSelectMode && m.SelectedCount() > 0 {
 						return m, m.handleBulkDelete()
 					}
 					return m, m.executeDelete()
@@ -273,7 +273,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Edit task in configured editor
 	case "e":
-		if m.multiSelectMode && m.selectedCount() > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			tasks := m.getSelectedTasksList()
 			project := m.Project
 			return m, func() tea.Msg {
@@ -297,7 +297,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Tag filter selector (or bulk tag assignment in multi-select)
 	case "T":
-		if m.multiSelectMode && m.selectedCount() > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			tasks := m.getSelectedTasksList()
 			project := m.Project
 			return m, func() tea.Msg {
@@ -319,7 +319,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if handled, cmd := handleClipboardKey(key,
 			m.getSelectedTask,
 			func() []*models.Task {
-				if m.multiSelectMode && m.selectedCount() > 0 {
+				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m.getSelectedTasksList()
 				}
 				return nil
@@ -371,9 +371,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
-		if m.multiSelectMode && m.selectedCount() > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			prevStates := captureTaskStates(m.Project.Tasks)
-			count := m.selectedCount()
+			count := m.SelectedCount()
 			for _, task := range m.getSelectedTasksList() {
 				task.ToggleActive()
 			}

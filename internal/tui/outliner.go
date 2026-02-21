@@ -42,10 +42,8 @@ type OutlinerModel struct {
 
 	quickEdit *QuickEditComponent // Inline quick edit component
 
-	filter           CommonFilterState // Common filter state (F-prefix)
-	sectionFilter    map[string]bool   // Section filter (from section filter selector)
-	actionableFilter bool              // View-local actionable filter (Fr)
-	scoreFilterInput ScoreFilterInput  // Inline score filter threshold input
+	filter           FilterState      // Unified filter state (common + sections + actionable)
+	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
 	customSectionTab  int             // Active custom section tab index (0 = All)
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
@@ -92,9 +90,12 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		bulkOp:            NewBulkOperationComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
-		filter: CommonFilterState{
-			Tags:  make(map[string]bool),
-			Attrs: make(map[string]string),
+		filter: FilterState{
+			CommonFilterState: CommonFilterState{
+				Tags:  make(map[string]bool),
+				Attrs: make(map[string]string),
+			},
+			Sections: make(map[string]bool),
 		},
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 	}
@@ -180,21 +181,21 @@ func (m *OutlinerModel) rebuildRows() {
 	}
 
 	// Apply common filters (F-prefix)
-	if hasActiveCommonFilters(&m.filter) {
+	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-			return passesCommonFilters(t, &m.filter, m.project.ID, m.config)
+			return passesCommonFilters(t, &m.filter.CommonFilterState, m.project.ID, m.config)
 		})
 	}
 
 	// Apply section filter (from section filter selector)
-	if len(m.sectionFilter) > 0 {
+	if len(m.filter.Sections) > 0 {
 		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-			return m.sectionFilter[t.Section] || m.sectionFilter[t.CustomSection]
+			return m.filter.Sections[t.Section] || m.filter.Sections[t.CustomSection]
 		})
 	}
 
 	// Apply actionable filter (Fr)
-	if m.actionableFilter {
+	if m.filter.Actionable {
 		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
 			if m.project.HasIncompleteDependencies(t) {
 				return false

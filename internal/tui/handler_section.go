@@ -34,7 +34,7 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.projectTree.updateVisibility()
 			m.projectTree.clampCursor()
 		} else if m.outliner != nil && m.currentView() == ViewOutliner {
-			m.outliner.sectionFilter = sections
+			m.outliner.filter.Sections = sections
 			m.outliner.rebuildRows()
 		}
 		return true, nil

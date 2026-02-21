@@ -38,6 +38,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			m.saveProjectTreeState()
+			m.saveOutlinerFilterState()
+			m.saveKanbanState()
 			m.quitting = true
 			return m, tea.Quit
 		case "alt+o":
@@ -56,6 +58,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// On dashboard, q quits the app
 			if m.currentView() == ViewDashboard {
 				m.saveProjectTreeState()
+				m.saveOutlinerFilterState()
+				m.saveKanbanState()
 				m.quitting = true
 				return m, tea.Quit
 			}
@@ -83,6 +87,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case QuitMsg:
 		m.saveProjectTreeState()
+		m.saveOutlinerFilterState()
+		m.saveKanbanState()
 		m.quitting = true
 		return m, tea.Quit
 

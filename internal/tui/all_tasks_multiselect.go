@@ -10,15 +10,15 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+const (
+	allTasksMultiSelectEnterMsg = "Multi-select: space=toggle, a=all, A=deselect, ,s/d/b=status"
+	allTasksMultiSelectNoSel    = "Multi-select: space=toggle, a=all, A=deselect"
+	allTasksMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b=status, D=delete)"
+)
+
 // toggleMultiSelectMode enters or exits multi-select mode.
 func (m *AllTasksViewModel) toggleMultiSelectMode() {
-	m.multiSelectMode = !m.multiSelectMode
-	if !m.multiSelectMode {
-		m.ClearSelection()
-		m.statusMessage = ""
-	} else {
-		m.statusMessage = "Multi-select: space=toggle, a=all, A=deselect, ,s/d/b=status"
-	}
+	m.ToggleMode(&m.statusMessage, allTasksMultiSelectEnterMsg)
 }
 
 // toggleTaskSelection toggles selection of the current task.
@@ -27,8 +27,7 @@ func (m *AllTasksViewModel) toggleTaskSelection() {
 	if item == nil {
 		return
 	}
-	m.ToggleSelection(item.Task.ID)
-	m.updateSelectionStatus()
+	m.ToggleAndUpdateStatus(item.Task.ID, &m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
 // selectAllVisible selects all visible tasks (skipping collapsed groups).
@@ -41,28 +40,13 @@ func (m *AllTasksViewModel) selectAllVisible() {
 			m.selectedTasks[item.Task.ID] = true
 		}
 	}
-	m.updateSelectionStatus()
+	m.UpdateStatus(&m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
 // deselectAll clears all task selections.
 func (m *AllTasksViewModel) deselectAll() {
 	m.ClearSelection()
-	m.updateSelectionStatus()
-}
-
-// updateSelectionStatus updates the status message with selection count.
-func (m *AllTasksViewModel) updateSelectionStatus() {
-	count := m.selectedCount()
-	if count == 0 {
-		m.statusMessage = "Multi-select: space=toggle, a=all, A=deselect"
-	} else {
-		m.statusMessage = fmt.Sprintf("%d selected (space=toggle, ,s/d/b=status, D=delete)", count)
-	}
-}
-
-// selectedCount returns the number of selected tasks.
-func (m *AllTasksViewModel) selectedCount() int {
-	return m.SelectedCount()
+	m.UpdateStatus(&m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
 // getSelectedItemsByProject returns all selected items grouped by project ID.
@@ -105,8 +89,7 @@ func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item 
 
 // finishBulk clears multiselect state, sets the status message, and refreshes.
 func (m *AllTasksViewModel) finishBulk(statusMsg string) {
-	m.ExitMultiSelect()
-	m.statusMessage = statusMsg
+	m.FinishBulk(&m.statusMessage, statusMsg)
 	m.loadAllTasks()
 	m.clampCursor()
 }

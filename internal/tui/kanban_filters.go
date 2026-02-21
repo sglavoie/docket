@@ -2,11 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -140,28 +138,8 @@ func (m *KanbanViewModel) toggleActionableFilter() {
 }
 
 // matchesSearch returns true if the task matches the search query.
-// Matches against title, description, and tags using fuzzy matching.
 func (m *KanbanViewModel) matchesSearch(task *models.Task) bool {
-	if m.filter.Search == "" {
-		return true
-	}
-	query := strings.TrimSpace(m.filter.Search)
-
-	// Check title
-	if fuzzy.MatchTerms(task.Title, query) {
-		return true
-	}
-	// Check tags
-	for _, tag := range task.Tags {
-		if fuzzy.MatchTerms(tag, query) {
-			return true
-		}
-	}
-	// Check description
-	if fuzzy.MatchTerms(task.Description, query) {
-		return true
-	}
-	return false
+	return TaskMatchesSearch(task, m.filter.Search)
 }
 
 // calculateFilterCounts calculates task counts for each filter category.

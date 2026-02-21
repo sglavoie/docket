@@ -71,29 +71,18 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 
 // matchesSearch returns true if the board row matches the search query.
 func (m *FocusBoardModel) matchesSearch(row boardRow) bool {
-	if m.searchQuery == "" {
+	if TaskMatchesSearch(row.Task, m.searchQuery) {
 		return true
 	}
 	query := strings.TrimSpace(m.searchQuery)
-
-	task := row.Task
-	if fuzzy.MatchTerms(task.Title, query) {
+	if query == "" {
 		return true
 	}
-	if fuzzy.MatchTerms(task.Source, query) {
-		return true
-	}
-	for _, tag := range task.Tags {
-		if fuzzy.MatchTerms(tag, query) {
-			return true
-		}
-	}
-	if fuzzy.MatchTerms(task.Description, query) {
+	if fuzzy.MatchTerms(row.Task.Source, query) {
 		return true
 	}
 	if row.Project != nil && fuzzy.MatchTerms(row.Project.Name, query) {
 		return true
 	}
-
 	return false
 }

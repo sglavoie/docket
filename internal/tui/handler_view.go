@@ -551,8 +551,10 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.saveKanbanState()
 			}
 			m.saveOutlinerToggleState()
+			m.saveOutlinerFilterState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
 			m.restoreOutlinerToggleState()
+			m.restoreOutlinerFilterState()
 			if replacing {
 				m.replaceView(ViewOutliner, m.outliner)
 			} else {
@@ -563,6 +565,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseOutlinerMsg:
 		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
 		m.popView()
 		m.outliner = nil
 		return true, nil
@@ -572,6 +575,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			replacing := m.isOnProjectView()
 			if replacing {
 				m.saveOutlinerToggleState()
+				m.saveOutlinerFilterState()
 				m.saveKanbanState()
 				m.refreshProjectTree()
 				m.replaceView(ViewProjectTree, m.projectTree)
@@ -589,6 +593,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			replacing := m.isOnProjectView()
 			if replacing {
 				m.saveOutlinerToggleState()
+				m.saveOutlinerFilterState()
 			}
 			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
 			m.kanban.projectTree = m.projectTree

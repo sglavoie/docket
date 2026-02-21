@@ -41,8 +41,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.showView(ViewProjectTree, m.projectTree)
 		default:
 			m.saveOutlinerToggleState()
+			m.saveOutlinerFilterState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
 			m.restoreOutlinerToggleState()
+			m.restoreOutlinerFilterState()
 			m.showView(ViewOutliner, m.outliner)
 		}
 		return true, nil
@@ -224,8 +226,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.restoreKanbanState()
 			case ViewOutliner:
 				m.saveOutlinerToggleState()
+				m.saveOutlinerFilterState()
 				m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
 				m.restoreOutlinerToggleState()
+				m.restoreOutlinerFilterState()
 				m.showView(ViewOutliner, m.outliner)
 			default:
 				m.pushView(ViewProjectTree)

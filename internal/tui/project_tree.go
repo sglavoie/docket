@@ -114,13 +114,6 @@ func (s SortField) String() string {
 // This is an internal message that preserves filter state.
 type treeRefreshMsg struct{}
 
-// FilterState contains all task filtering options.
-type FilterState struct {
-	CommonFilterState                 // embedded common filter fields
-	Sections          map[string]bool // filter by section names (OR logic)
-	Actionable        bool            // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
-}
-
 // QuickEditState contains state for inline task editing.
 type QuickEditState struct {
 	Mode     bool             // True when in quick edit mode

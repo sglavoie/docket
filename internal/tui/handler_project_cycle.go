@@ -153,8 +153,10 @@ func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int)
 		}
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
+		m.saveOutlinerFilterState()
 		m.outliner = NewOutlinerModel(project, m.config, m.configManager)
 		m.restoreOutlinerToggleState()
+		m.restoreOutlinerFilterState()
 		m.outliner.SetSize(m.width, m.height-2)
 		m.views.Register(ViewOutliner, m.outliner)
 		if m.currentView() != ViewOutliner {

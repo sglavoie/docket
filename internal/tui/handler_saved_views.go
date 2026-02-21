@@ -126,17 +126,7 @@ func (m *AppModel) applySavedView(view config.SavedView) {
 	pt.sortAscending = view.SortAscending
 
 	// Restore tags — validate against current project
-	pt.filter.Tags = make(map[string]bool)
-	existingTags := pt.getAllTags()
-	tagSet := make(map[string]bool)
-	for _, t := range existingTags {
-		tagSet[t] = true
-	}
-	for _, tag := range view.FilterTags {
-		if tagSet[tag] {
-			pt.filter.Tags[tag] = true
-		}
-	}
+	pt.filter.Tags = validateSavedStringSet(view.FilterTags, pt.getAllTags())
 
 	// Restore sections — validate against current project
 	pt.filter.Sections = make(map[string]bool)

@@ -386,7 +386,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle confirm dialog
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
-			if m.multiSelectMode && m.selectedCount() > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m.handleBulkDelete()
 			}
 			return taskOpsDeleteTask(m)
@@ -410,8 +410,8 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.deselectAll()
 			return m, nil
 		case "D":
-			if m.selectedCount() > 0 {
-				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", m.selectedCount()))
+			if m.SelectedCount() > 0 {
+				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount()))
 				m.statusMessage = m.confirm.Prompt()
 			}
 			return m, nil
@@ -544,7 +544,7 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle bulk operations in multi-select mode
-	if m.multiSelectMode && m.selectedCount() > 0 {
+	if m.multiSelectMode && m.SelectedCount() > 0 {
 		switch prefix {
 		case ",":
 			if status, ok := StatusForPrefixKey(key); ok {

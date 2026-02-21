@@ -168,6 +168,46 @@ func buildTagListFromTasks(tasks []*models.Task) []TagInfo {
 	return tags
 }
 
+// CollectProjectTagNames returns sorted unique tag names from tasks.
+func CollectProjectTagNames(tasks []*models.Task) []string {
+	tagSet := make(map[string]bool)
+	for _, task := range tasks {
+		for _, tag := range task.Tags {
+			tagSet[tag] = true
+		}
+	}
+
+	tags := make([]string, 0, len(tagSet))
+	for tag := range tagSet {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	return tags
+}
+
+// validateSavedStringSet returns the subset of saved that exist in valid.
+func validateSavedStringSet(saved []string, valid []string) map[string]bool {
+	validSet := make(map[string]bool, len(valid))
+	for _, v := range valid {
+		validSet[v] = true
+	}
+	result := make(map[string]bool)
+	for _, s := range saved {
+		if validSet[s] {
+			result[s] = true
+		}
+	}
+	return result
+}
+
+// FilterState contains all task filtering options including view-specific fields
+// beyond the common set. Used by ProjectTree and Outliner.
+type FilterState struct {
+	CommonFilterState                 // embedded common filter fields
+	Sections          map[string]bool // filter by section names (OR logic)
+	Actionable        bool            // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
+}
+
 // renderFilterBadge renders a styled filter badge from a parts list.
 // Returns empty string if parts is empty.
 func renderFilterBadge(parts []string) string {

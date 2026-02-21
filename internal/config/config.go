@@ -28,30 +28,39 @@ type WorkflowEvalState struct {
 
 // ProjectViewState holds filter/sort state for a project's tree view.
 type ProjectViewState struct {
-	FilterType           string            `json:"filter_type,omitempty"`
-	FilterStatus         string            `json:"filter_status,omitempty"`
-	FilterPriority       int               `json:"filter_priority,omitempty"`
-	FilterTags           []string          `json:"filter_tags,omitempty"`
-	FilterSections       []string          `json:"filter_sections,omitempty"`
-	FilterDueDate        int               `json:"filter_due_date,omitempty"`
-	FilterActionable     bool              `json:"filter_actionable,omitempty"` // Actionable filter (F8)
-	SortField            int               `json:"sort_field,omitempty"`
-	SortAscending        bool              `json:"sort_ascending"`
-	ShowCompleted        bool              `json:"show_completed"`
-	SidebarEnabled       bool              `json:"sidebar_enabled"`                   // Sidebar toggle state per project
-	FilterBarEnabled     bool              `json:"filter_bar_enabled"`                // Filter bar toggle state per project
-	ViewMode             int               `json:"view_mode,omitempty"`               // View mode: 0=Active, 1=Inbox, 2=Backlog, 3=Completed
-	CustomSectionTab     string            `json:"custom_section_tab,omitempty"`      // Selected custom section tab name (empty = "All")
-	KanbanGroupBy        int               `json:"kanban_group_by,omitempty"`         // 0=Section, 1=Status, 2=Priority, 3=Type
-	KanbanSwimlaneBy     *int              `json:"kanban_swimlane_by,omitempty"`      // nil=off, 0-4=GroupBy modes
-	KanbanFilterType     string            `json:"kanban_filter_type,omitempty"`      // Task type filter
-	KanbanFilterStatus   string            `json:"kanban_filter_status,omitempty"`    // Status filter
-	KanbanFilterPriority int               `json:"kanban_filter_priority,omitempty"`  // 0=all, 1=high only
-	KanbanFilterTags     []string          `json:"kanban_filter_tags,omitempty"`      // Tag filter names
-	KanbanFilterDueDate  int               `json:"kanban_filter_due_date,omitempty"`  // Due date filter enum
-	KanbanFilterAttrs    map[string]string `json:"kanban_filter_attrs,omitempty"`     // Attribute filters
-	KanbanFilterScoreMin float64           `json:"kanban_filter_score_min,omitempty"` // Score threshold
-	KanbanActiveTab      int               `json:"kanban_active_tab,omitempty"`       // Active tab index
+	FilterType               string            `json:"filter_type,omitempty"`
+	FilterStatus             string            `json:"filter_status,omitempty"`
+	FilterPriority           int               `json:"filter_priority,omitempty"`
+	FilterTags               []string          `json:"filter_tags,omitempty"`
+	FilterSections           []string          `json:"filter_sections,omitempty"`
+	FilterDueDate            int               `json:"filter_due_date,omitempty"`
+	FilterActionable         bool              `json:"filter_actionable,omitempty"` // Actionable filter (F8)
+	SortField                int               `json:"sort_field,omitempty"`
+	SortAscending            bool              `json:"sort_ascending"`
+	ShowCompleted            bool              `json:"show_completed"`
+	SidebarEnabled           bool              `json:"sidebar_enabled"`                      // Sidebar toggle state per project
+	FilterBarEnabled         bool              `json:"filter_bar_enabled"`                   // Filter bar toggle state per project
+	ViewMode                 int               `json:"view_mode,omitempty"`                  // View mode: 0=Active, 1=Inbox, 2=Backlog, 3=Completed
+	CustomSectionTab         string            `json:"custom_section_tab,omitempty"`         // Selected custom section tab name (empty = "All")
+	KanbanGroupBy            int               `json:"kanban_group_by,omitempty"`            // 0=Section, 1=Status, 2=Priority, 3=Type
+	KanbanSwimlaneBy         *int              `json:"kanban_swimlane_by,omitempty"`         // nil=off, 0-4=GroupBy modes
+	KanbanFilterType         string            `json:"kanban_filter_type,omitempty"`         // Task type filter
+	KanbanFilterStatus       string            `json:"kanban_filter_status,omitempty"`       // Status filter
+	KanbanFilterPriority     int               `json:"kanban_filter_priority,omitempty"`     // 0=all, 1=high only
+	KanbanFilterTags         []string          `json:"kanban_filter_tags,omitempty"`         // Tag filter names
+	KanbanFilterDueDate      int               `json:"kanban_filter_due_date,omitempty"`     // Due date filter enum
+	KanbanFilterAttrs        map[string]string `json:"kanban_filter_attrs,omitempty"`        // Attribute filters
+	KanbanFilterScoreMin     float64           `json:"kanban_filter_score_min,omitempty"`    // Score threshold
+	KanbanActiveTab          int               `json:"kanban_active_tab,omitempty"`          // Active tab index
+	OutlinerFilterType       string            `json:"outliner_filter_type,omitempty"`       // Outliner task type filter
+	OutlinerFilterStatus     string            `json:"outliner_filter_status,omitempty"`     // Outliner status filter
+	OutlinerFilterPriority   int               `json:"outliner_filter_priority,omitempty"`   // Outliner 0=all, 1=high only
+	OutlinerFilterTags       []string          `json:"outliner_filter_tags,omitempty"`       // Outliner tag filter names
+	OutlinerFilterDueDate    int               `json:"outliner_filter_due_date,omitempty"`   // Outliner due date filter enum
+	OutlinerFilterSections   []string          `json:"outliner_filter_sections,omitempty"`   // Outliner section filter names
+	OutlinerFilterActionable bool              `json:"outliner_filter_actionable,omitempty"` // Outliner actionable filter
+	OutlinerFilterAttrs      map[string]string `json:"outliner_filter_attrs,omitempty"`      // Outliner attribute filters
+	OutlinerFilterScoreMin   float64           `json:"outliner_filter_score_min,omitempty"`  // Outliner score threshold
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.

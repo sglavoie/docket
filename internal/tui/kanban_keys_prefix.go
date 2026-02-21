@@ -21,7 +21,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	switch prefix {
 	case ",":
 		if status, ok := StatusForPrefixKey(key); ok {
-			if m.multiSelectMode && m.selectedCount() > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m, m.handleBulkStatusChange(status)
 			}
 			return m, m.handleStatusTransition(status)
@@ -29,7 +29,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "!":
 		if priority, ok := PriorityForPrefixKey(key); ok {
-			if m.multiSelectMode && m.selectedCount() > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m, m.handleBulkPriorityChange(priority)
 			}
 			task := m.getSelectedTask()
@@ -49,7 +49,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	case "d":
 		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if m.multiSelectMode && m.selectedCount() > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				dueDate, desc := dueDateFromDays(days, isClear)
 				return m, m.handleBulkDueDateChange(dueDate, desc)
 			}
@@ -74,7 +74,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, result.Cmd
 		}
 		if key == "d" {
-			if m.multiSelectMode && m.selectedCount() > 0 {
+			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m, nil
 			}
 			task := m.getSelectedTask()
@@ -144,7 +144,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		// Section move shortcuts (a, n, i, w, s, r) — only in section mode
 		if section, ok := sectionForMoveKey(key); ok {
 			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.selectedCount() > 0 {
+				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m, m.handleBulkSectionMove(section)
 				}
 				return m, m.sendTaskToSection(section)
@@ -230,7 +230,7 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 
 	// Multi-select getter for shared handlers
 	getMultiTasks := func() []*models.Task {
-		if m.multiSelectMode && m.selectedCount() > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			return m.getSelectedTasksList()
 		}
 		return nil
@@ -255,9 +255,9 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		}
 		return m, nil
 	case "p":
-		if m.multiSelectMode && m.selectedCount() > 0 {
+		if m.multiSelectMode && m.SelectedCount() > 0 {
 			prevStates := captureTaskStates(m.Project.Tasks)
-			count := m.selectedCount()
+			count := m.SelectedCount()
 			for _, t := range m.getSelectedTasksList() {
 				t.TogglePinned()
 			}
@@ -281,8 +281,8 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		}
 		return m, nil
 	case "D":
-		if m.multiSelectMode && m.selectedCount() > 0 {
-			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.selectedCount())
+		if m.multiSelectMode && m.SelectedCount() > 0 {
+			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
 			m.confirm.Show("delete", m.statusMessage)
 			return m, nil
 		}
