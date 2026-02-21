@@ -94,6 +94,11 @@ func (s *InteractiveViewState) DefaultShouldCaptureEsc() bool {
 	return s.pendingPrefix != "" || s.confirm.IsActive()
 }
 
+// ClampCursorTo ensures cursor is within [0, length-1] range.
+func (s *InteractiveViewState) ClampCursorTo(length int) {
+	s.cursor = ClampCursor(s.cursor, length)
+}
+
 // ResetCursor sets the cursor to position 0.
 func (s *InteractiveViewState) ResetCursor() {
 	s.cursor = 0

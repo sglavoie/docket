@@ -344,7 +344,7 @@ func (m *OutlinerModel) toggleSort(field SortField) {
 
 // clampCursor ensures the cursor stays within [0, len(rows)-1].
 func (m *OutlinerModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.rows))
+	m.ClampCursorTo(len(m.rows))
 }
 
 // customSectionTabs returns ["All"] + sorted custom sections, or nil if no custom sections exist.

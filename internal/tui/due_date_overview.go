@@ -421,7 +421,7 @@ func (m *DueDateOverviewModel) deleteTask() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *DueDateOverviewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, m.totalTasks)
+	m.ClampCursorTo(m.totalTasks)
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.

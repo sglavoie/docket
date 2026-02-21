@@ -667,7 +667,7 @@ func (m *AllTasksViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model
 
 // clampCursor ensures cursor is within valid range.
 func (m *AllTasksViewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, m.totalNavigableItems())
+	m.ClampCursorTo(m.totalNavigableItems())
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, multi-select, or confirm dialog are active.

@@ -281,7 +281,7 @@ func (m *ProjectTreeModel) IsFocusMode() bool {
 
 // clampCursor ensures the cursor is within valid bounds.
 func (m *ProjectTreeModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.visibleNodes()))
+	m.ClampCursorTo(len(m.visibleNodes()))
 }
 
 func (m *ProjectTreeModel) Init() tea.Cmd {

@@ -86,17 +86,15 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 
 		// Operations
 		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
-		Keybinding{Key: "p", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
 		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
 		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
-		Keybinding{Key: "D", Description: "Set due date", Category: "Operations", Views: views},
+		Keybinding{Key: "d", Description: "Set due date", Category: "Operations", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
 		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
-		Keybinding{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations", Views: views},
-		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
-
 		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
+		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
 
 		// Recurring Tasks
 		Keybinding{Key: "e", Description: "Edit task to set/view recurrence pattern", Category: "Recurring", Views: views},
@@ -122,14 +120,14 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 
 		// Operations
 		Keybinding{Key: "s", Description: "Assign section", Category: "Operations", Views: views},
-		Keybinding{Key: "p", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "1-5", Description: "Set priority (quick)", Category: "Operations", Views: views},
 		Keybinding{Key: "t", Description: "Manage tags", Category: "Operations", Views: views},
 		Keybinding{Key: "c", Description: "Create subtask", Category: "Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task (title/description)", Category: "Operations", Views: views},
-		Keybinding{Key: "D", Description: "Set due date", Category: "Operations", Views: views},
+		Keybinding{Key: "d", Description: "Set due date", Category: "Operations", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Operations", Views: views},
 		Keybinding{Key: "b", Description: "Manage dependencies (blockers)", Category: "Operations", Views: views},
-		Keybinding{Key: "x", Description: "Delete task (with confirmation)", Category: "Operations", Views: views},
+		Keybinding{Key: "w", Description: "Send to Waiting section", Category: "Operations", Views: views},
 		Keybinding{Key: "u", Description: "Undo last operation on current task", Category: "Operations", Views: views},
 	)
 }

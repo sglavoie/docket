@@ -346,7 +346,7 @@ func (m *ProjectFocusViewModel) changeTaskPriority(key string) (tea.Model, tea.C
 
 // clampCursor ensures cursor is within valid range.
 func (m *ProjectFocusViewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.filteredTasks()))
+	m.ClampCursorTo(len(m.filteredTasks()))
 }
 
 // GetHelpItems returns help items for this view.

@@ -292,7 +292,7 @@ func (m *RecentActivityModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 }
 
 func (m *RecentActivityModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+	m.ClampCursorTo(len(m.filtered))
 }
 
 // GetHelpItems returns help items for this view.

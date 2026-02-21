@@ -632,7 +632,7 @@ func (m *FocusViewModel) handleFilterSubPrefix(prefix, key string) (tea.Model, t
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusViewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+	m.ClampCursorTo(len(m.filtered))
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.

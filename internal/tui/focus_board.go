@@ -152,7 +152,7 @@ func (m *FocusBoardModel) getRowAtCursor() *boardRow {
 
 // clampCursor ensures cursor is within valid range.
 func (m *FocusBoardModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, len(m.filtered))
+	m.ClampCursorTo(len(m.filtered))
 }
 
 // ShouldCaptureEsc returns true when add mode, search mode, or confirm dialog is active.

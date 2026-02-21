@@ -102,7 +102,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "d", "D":
 				// Delete from preview
 				if len(m.filteredTemplates) > 0 {
-					m.confirm.Show("delete", fmt.Sprintf(" Delete template '%s'? (y/n) ", m.filteredTemplates[m.cursor].Name))
+					m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'? (y/n)", m.filteredTemplates[m.cursor].Name))
 				}
 				return m, nil
 			case "ctrl+d":
@@ -220,7 +220,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			// Delete template (with confirmation)
 			if len(m.filteredTemplates) > 0 {
-				m.confirm.Show("delete", fmt.Sprintf(" Delete template '%s'? (y/n) ", m.filteredTemplates[m.cursor].Name))
+				m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'? (y/n)", m.filteredTemplates[m.cursor].Name))
 			}
 			return m, nil
 

@@ -111,5 +111,5 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 
 // clampCursor ensures cursor is within valid range.
 func (m *PriorityViewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, m.totalTasks)
+	m.ClampCursorTo(m.totalTasks)
 }

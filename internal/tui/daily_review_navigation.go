@@ -182,5 +182,5 @@ func (m *DailyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *DailyReviewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, m.totalTasks)
+	m.ClampCursorTo(m.totalTasks)
 }

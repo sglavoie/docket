@@ -249,5 +249,5 @@ func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
 
 // clampCursor ensures cursor is within valid range.
 func (m *WeeklyReviewModel) clampCursor() {
-	m.cursor = ClampCursor(m.cursor, m.totalItems)
+	m.ClampCursorTo(m.totalItems)
 }

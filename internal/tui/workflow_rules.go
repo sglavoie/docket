@@ -81,7 +81,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "d", "D":
 				// Delete from preview
 				if len(m.filteredRules) > 0 {
-					m.confirm.Show("delete", fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name))
+					m.confirm.Show("delete", fmt.Sprintf("Delete rule '%s'? (y/n)", m.filteredRules[m.cursor].Name))
 				}
 				return m, nil
 			}
@@ -171,7 +171,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			// Delete rule (with confirmation)
 			if len(m.filteredRules) > 0 {
-				m.confirm.Show("delete", fmt.Sprintf(" Delete rule '%s'? (y/n) ", m.filteredRules[m.cursor].Name))
+				m.confirm.Show("delete", fmt.Sprintf("Delete rule '%s'? (y/n)", m.filteredRules[m.cursor].Name))
 			}
 			return m, nil
 
