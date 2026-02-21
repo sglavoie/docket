@@ -153,6 +153,12 @@ func (m *DateInputModel) View() string {
 	return b.String()
 }
 
+// HasTextInput returns true because the date input is always active.
+func (m *DateInputModel) HasTextInput() bool { return true }
+
+// ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
+func (m *DateInputModel) ShouldCaptureEsc() bool { return true }
+
 // DueDateChangedMsg is sent when a due date is changed.
 type DueDateChangedMsg struct {
 	Task *models.Task

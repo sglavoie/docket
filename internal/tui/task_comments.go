@@ -82,15 +82,6 @@ func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, 
 	return m
 }
 
-// resolveTask ensures m.task points to the task currently in m.project.Tasks.
-// An async save from the parent view may call LoadProject which replaces
-// project.Tasks with new objects, leaving m.task as a stale pointer.
-func (m *TaskCommentsModel) resolveTask() {
-	if t := m.project.GetTaskByID(m.task.ID); t != nil {
-		m.task = t
-	}
-}
-
 func (m *TaskCommentsModel) Init() tea.Cmd {
 	return nil
 }
@@ -189,10 +180,8 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		// Handle pending 'g' prefix (gg → go to first)
-		if m.pendingGKey {
-			m.pendingGKey = false
-			if msg.String() == "g" {
+		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+			if goTop {
 				m.cursor = 0
 			}
 			return m, nil
@@ -211,10 +200,6 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
-
-		case "g":
-			m.pendingGKey = true
-			return m, nil
 
 		case "G":
 			if len(m.task.Comments) > 0 {
@@ -278,7 +263,9 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 			return nil
 		}
 
-		m.resolveTask()
+		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+			m.task = t
+		}
 		m.task.AddComment(text)
 
 		if err := saveProjectNoReload(m.project); err != nil {
@@ -299,7 +286,9 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	return func() tea.Msg {
-		m.resolveTask()
+		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+			m.task = t
+		}
 		if !m.task.RemoveComment(m.cursor) {
 			return ErrorMsg{Err: fmt.Errorf("failed to remove comment")}
 		}
@@ -335,7 +324,9 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		}
 
 		// Update the comment text (preserve timestamp)
-		m.resolveTask()
+		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+			m.task = t
+		}
 		m.task.Comments[m.editIndex].Text = text
 
 		if err := saveProjectNoReload(m.project); err != nil {
@@ -510,7 +501,9 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 func (m *TaskCommentsModel) toggleResolved() tea.Cmd {
 	return func() tea.Msg {
-		m.resolveTask()
+		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+			m.task = t
+		}
 		if !m.task.ToggleCommentResolved(m.cursor) {
 			return ErrorMsg{Err: fmt.Errorf("failed to toggle comment resolved state")}
 		}

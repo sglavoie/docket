@@ -103,6 +103,7 @@ func (m *SaveSearchInputModel) View() string {
 }
 
 // HasTextInput returns true because the save search input is active.
-func (m *SaveSearchInputModel) HasTextInput() bool {
-	return true
-}
+func (m *SaveSearchInputModel) HasTextInput() bool { return true }
+
+// ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
+func (m *SaveSearchInputModel) ShouldCaptureEsc() bool { return true }

@@ -148,18 +148,12 @@ func (m *ScoreEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// resolveTask re-fetches the task pointer from the project to avoid stale references
-// after an async reload (e.g. saveWithWorkflow in the outliner).
-func (m *ScoreEditorModel) resolveTask() {
-	if t := m.project.GetTaskByID(m.task.ID); t != nil {
-		m.task = t
-	}
-}
-
 // save applies the edited values to the task and saves.
 func (m *ScoreEditorModel) save() tea.Cmd {
 	return func() tea.Msg {
-		m.resolveTask()
+		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
+			m.task = t
+		}
 
 		dims := make(map[string]int)
 		for i, dim := range m.profile.Dimensions {

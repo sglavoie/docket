@@ -6,6 +6,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// resolveTaskInProject re-fetches a task pointer by ID after a project reload
+// may have replaced project.Tasks with fresh objects. Returns nil if not found.
+func resolveTaskInProject(project *models.Project, taskID string) *models.Task {
+	return project.GetTaskByID(taskID)
+}
+
 // handleLinkedTaskPrefixKey handles the "c" prefix dispatch for linked task
 // operations. supportUnlink enables cx (unlink) and supportCrossProject enables
 // cp (cross-project linking). Returns (handled, cmd).

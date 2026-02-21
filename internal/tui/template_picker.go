@@ -126,10 +126,8 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// j/k only navigate when NOT in search mode (allow typing j/k in search)
 		if !m.searchActive {
-			// Handle pending 'g' prefix (gg → go to first)
-			if m.pendingGKey {
-				m.pendingGKey = false
-				if msg.String() == "g" {
+			if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+				if goTop {
 					m.cursor = 0
 					m.previewScroll = 0
 				}
@@ -148,9 +146,6 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor--
 					m.previewScroll = 0
 				}
-				return m, nil
-			case "g":
-				m.pendingGKey = true
 				return m, nil
 			case "G":
 				m.cursor = len(m.filteredTemplates)

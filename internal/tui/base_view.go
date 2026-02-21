@@ -89,6 +89,7 @@ func (s *InteractiveViewState) HasPendingPrefix() bool {
 
 // DefaultShouldCaptureEsc returns true if a pending prefix or confirm dialog is active.
 // Views should call this in their ShouldCaptureEsc() override and OR in their own conditions.
+// Views that also embed BaseSearchableView should additionally OR in m.SearchShouldCaptureEsc().
 func (s *InteractiveViewState) DefaultShouldCaptureEsc() bool {
 	return s.pendingPrefix != "" || s.confirm.IsActive()
 }
@@ -134,6 +135,14 @@ func (v *BaseSearchableView) IsSearchMode() bool {
 // DefaultHasTextInput returns true if search mode is active.
 // Views should call this in their HasTextInput() override and OR in their own conditions.
 func (v *BaseSearchableView) DefaultHasTextInput() bool {
+	return v.searchActive
+}
+
+// SearchShouldCaptureEsc returns true if search input is active.
+// Include this in ShouldCaptureEsc() overrides of views that embed BaseSearchableView:
+//
+//	return m.InteractiveViewState.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc()
+func (v *BaseSearchableView) SearchShouldCaptureEsc() bool {
 	return v.searchActive
 }
 

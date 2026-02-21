@@ -154,10 +154,8 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Handle pending 'g' prefix (gg → go to first)
-		if m.pendingGKey {
-			m.pendingGKey = false
-			if msg.String() == "g" {
+		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+			if goTop {
 				m.cursor = 0
 				m.previewScroll = 0
 			}
@@ -196,10 +194,6 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 				m.previewScroll = 0 // Reset scroll when changing selection
 			}
-			return m, nil
-
-		case "g":
-			m.pendingGKey = true
 			return m, nil
 
 		case "G":

@@ -40,10 +40,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
-		// Handle pending 'g' prefix (gg → go to first)
-		if m.pendingGKey {
-			m.pendingGKey = false
-			if msg.String() == "g" {
+		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+			if goTop {
 				m.cursor = 0
 			}
 			return m, nil
@@ -247,9 +245,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		case "g":
-			m.pendingGKey = true
-			return m, nil
 		case "G":
 			// Go to last item (Vim-style)
 			if len(visible) > 0 {

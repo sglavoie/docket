@@ -92,10 +92,8 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle pending 'g' prefix (gg → go to first)
-		if m.pendingGKey {
-			m.pendingGKey = false
-			if msg.String() == "g" {
+		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+			if goTop {
 				if m.focusedPane == 0 {
 					m.cursor = 0
 					m.computeDiff()
@@ -182,10 +180,6 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Perform undo of the top entry (multi-step, one at a time)
 				return m, m.performUndo()
 			}
-
-		case "g":
-			m.pendingGKey = true
-			return m, nil
 
 		case "G":
 			// Go to bottom

@@ -28,6 +28,11 @@ type filteredHelpItem struct {
 }
 
 // HelpProvider is an interface for views that can provide help items.
+// Two patterns are acceptable:
+//  1. Registry-backed (most views): return GetKeybindingRegistry().GetForView(ViewXxx)
+//  2. Custom (views with dynamic descriptions): build and return []HelpItem directly.
+//
+// Use custom only when descriptions must change at runtime (e.g., toggling archive state).
 type HelpProvider interface {
 	GetHelpItems() []HelpItem
 }

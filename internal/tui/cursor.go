@@ -11,6 +11,22 @@ func HalfPage(height int) int {
 	return max(height/2, 1)
 }
 
+// HandleGGSequence handles vim-style gg→top navigation.
+// Call this at the TOP of key handling, before any switch statement.
+// Returns (consumed, goTop). If consumed=true caller must return immediately.
+// If goTop=true caller should additionally reset cursor to 0.
+func HandleGGSequence(pending *bool, key string) (consumed, goTop bool) {
+	if *pending {
+		*pending = false
+		return true, key == "g"
+	}
+	if key == "g" {
+		*pending = true
+		return true, false
+	}
+	return false, false
+}
+
 // ClampCursor ensures cursor is within [0, length-1] range.
 // Returns 0 if length is 0.
 func ClampCursor(cursor, length int) int {

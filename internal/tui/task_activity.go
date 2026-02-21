@@ -56,10 +56,8 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		// Handle pending 'g' prefix (gg → go to first)
-		if m.pendingGKey {
-			m.pendingGKey = false
-			if msg.String() == "g" {
+		if consumed, goTop := HandleGGSequence(&m.pendingGKey, msg.String()); consumed {
+			if goTop {
 				m.cursor = 0
 			}
 			return m, nil
@@ -79,10 +77,6 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
-
-		case "g":
-			m.pendingGKey = true
-			return m, nil
 
 		case "G":
 			entries := m.getEntries()

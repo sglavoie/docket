@@ -56,6 +56,9 @@ func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "esc":
+			return m, func() tea.Msg { return BackMsg{} }
+
 		case "enter":
 			value := strings.TrimSpace(m.input.Value())
 
@@ -144,6 +147,12 @@ func (m *SnoozeInputModel) View() string {
 
 	return b.String()
 }
+
+// HasTextInput returns true because the snooze input is always active.
+func (m *SnoozeInputModel) HasTextInput() bool { return true }
+
+// ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
+func (m *SnoozeInputModel) ShouldCaptureEsc() bool { return true }
 
 // SnoozeDateChangedMsg is sent when a snooze date is changed.
 type SnoozeDateChangedMsg struct {
