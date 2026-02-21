@@ -106,8 +106,3 @@ func (m *SaveSearchInputModel) View() string {
 func (m *SaveSearchInputModel) HasTextInput() bool {
 	return true
 }
-
-// ShouldCaptureEsc returns false so the app can close the view on esc.
-func (m *SaveSearchInputModel) ShouldCaptureEsc() bool {
-	return false
-}

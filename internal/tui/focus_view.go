@@ -408,7 +408,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, len(m.filtered)) {
+	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
 		return m, nil
 	}
 
@@ -637,7 +637,7 @@ func (m *FocusViewModel) clampCursor() {
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *FocusViewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasActiveFilters() || m.confirm.IsActive()
+	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters()
 }
 
 func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }

@@ -30,7 +30,8 @@ type CrossProjectLinkerModel struct {
 	sourceProject *models.Project
 	config        *config.Config
 
-	step CrossProjectLinkerStep
+	pendingPrefix string
+	step          CrossProjectLinkerStep
 
 	// Project selection
 	allProjects      []*models.Project
@@ -92,6 +93,16 @@ func (m *CrossProjectLinkerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+
+	// Handle pending prefix keys
+	if m.pendingPrefix != "" {
+		prefix := m.pendingPrefix
+		m.pendingPrefix = ""
+		if key != "esc" && prefix == "g" && key == "g" {
+			m.goToFirst()
+		}
+		return m, nil
+	}
 
 	// Handle search mode input first (only in project/task selection steps)
 	if m.IsSearchMode() && (m.step == StepSelectProject || m.step == StepSelectTask) {
@@ -162,7 +173,7 @@ func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 
 	case "g":
 		if !m.IsSearchMode() {
-			m.goToFirst()
+			m.pendingPrefix = "g"
 		}
 		return m, nil
 

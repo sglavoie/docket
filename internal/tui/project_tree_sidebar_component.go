@@ -148,11 +148,6 @@ func (s *SidebarComponent) ShouldCaptureEsc() bool {
 	return s.focused
 }
 
-// HasTextInput returns false - sidebar doesn't have text input.
-func (s *SidebarComponent) HasTextInput() bool {
-	return false
-}
-
 // HandleKeys handles keyboard input for the sidebar using the SidebarHost interface.
 func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyMsg) (bool, tea.Cmd) {
 	if !s.focused {

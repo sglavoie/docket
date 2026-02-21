@@ -332,8 +332,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return nil
 			},
 			func() {
-				m.selectedTasks = make(map[string]bool)
-				m.multiSelectMode = false
+				m.ExitMultiSelect()
 			},
 		); handled {
 			return m, cmd
@@ -385,8 +384,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			for _, task := range m.getSelectedTasksList() {
 				task.ToggleActive()
 			}
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
+			m.ExitMultiSelect()
 			m.statusMessage = fmt.Sprintf("Toggled active on %d tasks", count)
 			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
 				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
@@ -469,8 +467,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *KanbanViewModel) handleEscapeSequence() (tea.Model, tea.Cmd) {
 	// Exit multi-select mode first
 	if m.multiSelectMode {
-		m.multiSelectMode = false
-		m.selectedTasks = make(map[string]bool)
+		m.ExitMultiSelect()
 		m.statusMessage = ""
 		return m, nil
 	}

@@ -122,12 +122,12 @@ func (m *RecentActivityModel) HasActiveSearch() bool {
 
 // HasTextInput returns true when search input is active.
 func (m *RecentActivityModel) HasTextInput() bool {
-	return m.IsSearchMode()
+	return m.DefaultHasTextInput()
 }
 
 // ShouldCaptureEsc returns true when search is active, a query is set, prefix is pending, or filters are active.
 func (m *RecentActivityModel) ShouldCaptureEsc() bool {
-	return m.IsSearchMode() || m.SearchQuery() != "" || m.HasPendingPrefix() || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || m.IsSearchMode() || m.SearchQuery() != "" || m.HasActiveFilters()
 }
 
 func (m *RecentActivityModel) Init() tea.Cmd {
@@ -203,7 +203,8 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 
 	case "g":
-		m.cursor = 0
+		m.pendingPrefix = "g"
+		return m, nil
 
 	case "p":
 		if m.cursor >= 0 && m.cursor < len(m.filtered) {
@@ -246,7 +247,7 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		}
 	}
 
-	if handleListNavigation(msg.String(), &m.cursor, len(m.filtered)) {
+	if handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height()) {
 		return m, nil
 	}
 
@@ -263,6 +264,11 @@ func (m *RecentActivityModel) handleRecentActivityPrefixKey(key string) (tea.Mod
 	}
 
 	switch prefix {
+	case "g":
+		if key == "g" {
+			m.cursor = 0
+		}
+		return m, nil
 	case "F":
 		return m.handleRecentActivityFilterPrefix(key)
 	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":

@@ -24,11 +24,12 @@ type TaskActivityModel struct {
 	task    *models.Task
 	project *models.Project
 
-	activeTab int
-	cursor    int
-	sortAsc   bool
-	width     int
-	height    int
+	activeTab   int
+	cursor      int
+	sortAsc     bool
+	width       int
+	height      int
+	pendingGKey bool // waiting for second 'g' in gg sequence
 }
 
 // NewTaskActivityModel creates a new task activity viewer.
@@ -55,6 +56,15 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		// Handle pending 'g' prefix (gg → go to first)
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if msg.String() == "g" {
+				m.cursor = 0
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return CloseTaskActivityMsg{} }
@@ -71,7 +81,8 @@ func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "g":
-			m.cursor = 0
+			m.pendingGKey = true
+			return m, nil
 
 		case "G":
 			entries := m.getEntries()
@@ -254,14 +265,4 @@ func fieldColorStyle(field string) lipgloss.Style {
 	default:
 		return lipgloss.NewStyle()
 	}
-}
-
-// HasTextInput returns false - no text input in activity view.
-func (m *TaskActivityModel) HasTextInput() bool {
-	return false
-}
-
-// ShouldCaptureEsc returns false - esc should navigate back.
-func (m *TaskActivityModel) ShouldCaptureEsc() bool {
-	return false
 }

@@ -69,8 +69,9 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 	}
 
 	if m.activeTab == priorityTabByScore {
-		if m.cursor < len(m.scoredTasks) {
-			return m.scoredTasks[m.cursor]
+		scored := m.visibleScoredTasks()
+		if m.cursor < len(scored) {
+			return scored[m.cursor]
 		}
 		return nil
 	}

@@ -24,6 +24,7 @@ type WorkflowRulesModel struct {
 
 	confirm      ConfirmDialog
 	expandedView bool
+	pendingGKey  bool // waiting for second 'g' in gg sequence
 }
 
 // NewWorkflowRulesModel creates a new workflow rules model.
@@ -108,6 +109,15 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// Handle pending 'g' prefix (gg → go to first)
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if msg.String() == "g" {
+				m.cursor = 0
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "esc":
 			// If there's an active search filter, clear it instead of closing
@@ -141,7 +151,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "g":
-			m.cursor = 0
+			m.pendingGKey = true
 			return m, nil
 
 		case "G":

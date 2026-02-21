@@ -159,7 +159,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, m.totalTasks) {
+	if handleListNavigation(key, &m.cursor, m.totalTasks, m.Height()) {
 		return m, nil
 	}
 
@@ -317,7 +317,7 @@ func (m *DailyReviewModel) HasFocusedSection() bool {
 
 // ShouldCaptureEsc returns true when prefix mode, section focus, filters, or confirm dialog are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasFocusedSection() || m.HasActiveFilters() || m.confirm.IsActive()
+	return m.DefaultShouldCaptureEsc() || m.HasFocusedSection() || m.HasActiveFilters()
 }
 
 func (m *DailyReviewModel) viewID() ViewType { return ViewDailyReview }

@@ -240,11 +240,6 @@ func (m *KanbanDisplaySettingsModel) ShouldCaptureEsc() bool {
 	return true
 }
 
-// HasTextInput returns false since there's no free-form text input.
-func (m *KanbanDisplaySettingsModel) HasTextInput() bool {
-	return false
-}
-
 // clampInt clamps v to [min, max].
 func clampInt(v, min, max int) int {
 	if v < min {

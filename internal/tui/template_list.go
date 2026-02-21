@@ -24,7 +24,8 @@ type TaskTemplatesModel struct {
 
 	confirm       ConfirmDialog
 	expandedView  bool
-	previewScroll int // Scroll offset for preview pane content
+	previewScroll int  // Scroll offset for preview pane content
+	pendingGKey   bool // waiting for second 'g' in gg sequence
 }
 
 // NewTaskTemplatesModel creates a new task templates model.
@@ -153,6 +154,16 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Handle pending 'g' prefix (gg → go to first)
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if msg.String() == "g" {
+				m.cursor = 0
+				m.previewScroll = 0
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "esc":
 			// If there's an active search filter, clear it instead of closing
@@ -188,8 +199,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "g":
-			m.cursor = 0
-			m.previewScroll = 0
+			m.pendingGKey = true
 			return m, nil
 
 		case "G":

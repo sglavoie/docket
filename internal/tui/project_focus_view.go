@@ -398,7 +398,7 @@ func (m *ProjectFocusViewModel) View() string {
 	}
 
 	if len(tasks) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks match this filter."))
+		b.WriteString(MutedStyle.Render(EmptyStateFiltered))
 		b.WriteString("\n\n")
 	} else {
 		b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))

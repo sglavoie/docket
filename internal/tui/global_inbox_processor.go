@@ -510,9 +510,9 @@ func (m *GlobalInboxProcessorModel) reloadCurrentProject() tea.Cmd {
 	}
 }
 
-// ShouldCaptureEsc returns true when prefix mode is active.
+// ShouldCaptureEsc returns true when prefix mode or confirm dialog is active.
 func (m *GlobalInboxProcessorModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix()
+	return m.DefaultShouldCaptureEsc()
 }
 
 // HasActiveSearch returns false (no search in this view).

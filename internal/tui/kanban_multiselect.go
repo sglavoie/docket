@@ -14,7 +14,7 @@ func (m *KanbanViewModel) toggleMultiSelectMode() {
 	m.multiSelectMode = !m.multiSelectMode
 	if !m.multiSelectMode {
 		// Clear selections when exiting
-		m.selectedTasks = make(map[string]bool)
+		m.ClearSelection()
 		m.statusMessage = ""
 	} else {
 		m.statusMessage = "Multi-select: space=toggle, a=all in column, A=all, gX=clear"
@@ -99,8 +99,7 @@ func (m *KanbanViewModel) selectedCount() int {
 
 // finishBulk clears multiselect state and sets the status message.
 func (m *KanbanViewModel) finishBulk(statusMsg string) {
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
+	m.ExitMultiSelect()
 	m.statusMessage = statusMsg
 }
 
@@ -127,8 +126,7 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
 		m.statusMessage = fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks? (y/n)", blockedCount, len(valid))
 		m.confirm.Show("bulk-status", m.statusMessage)
-		m.selectedTasks = make(map[string]bool)
-		m.multiSelectMode = false
+		m.ExitMultiSelect()
 		return nil
 	}
 

@@ -34,3 +34,9 @@ func (s *MultiSelectState) IsSelected(id string) bool {
 func (s *MultiSelectState) SelectedCount() int {
 	return len(s.selectedTasks)
 }
+
+// ExitMultiSelect deactivates multi-select mode and clears all selections.
+func (s *MultiSelectState) ExitMultiSelect() {
+	s.multiSelectMode = false
+	s.selectedTasks = make(map[string]bool)
+}

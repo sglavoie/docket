@@ -180,11 +180,6 @@ func (m *GlobalSearchModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the app can close the view on esc.
-func (m *GlobalSearchModel) ShouldCaptureEsc() bool {
-	return false
-}
-
 // SetSize sets the view dimensions and recalculates pane widths.
 func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)

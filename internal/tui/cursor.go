@@ -6,6 +6,11 @@ func CursorInBounds(cursor, length int) bool {
 	return length > 0 && cursor >= 0 && cursor < length
 }
 
+// HalfPage returns a scroll jump size of half the given height, minimum 1.
+func HalfPage(height int) int {
+	return max(height/2, 1)
+}
+
 // ClampCursor ensures cursor is within [0, length-1] range.
 // Returns 0 if length is 0.
 func ClampCursor(cursor, length int) int {

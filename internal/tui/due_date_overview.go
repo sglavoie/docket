@@ -345,7 +345,7 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 		return model, cmd
 	}
 
-	if handleListNavigation(key, &m.cursor, m.totalTasks) {
+	if handleListNavigation(key, &m.cursor, m.totalTasks, m.Height()) {
 		return m, nil
 	}
 
@@ -424,14 +424,9 @@ func (m *DueDateOverviewModel) clampCursor() {
 	m.cursor = ClampCursor(m.cursor, m.totalTasks)
 }
 
-// HasTextInput returns false for the due date overview.
-func (m *DueDateOverviewModel) HasTextInput() bool {
-	return false
-}
-
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasActiveFilters() || m.confirm.IsActive()
+	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters()
 }
 
 // GetHelpItems returns help items for this view.

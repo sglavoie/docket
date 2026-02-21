@@ -2,6 +2,7 @@ package tui
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -208,20 +209,46 @@ func (m *PriorityViewModel) filterBySubTab(tasks []*PriorityTask) []*PriorityTas
 	return result
 }
 
-// filteredGroupsWithSubTab returns filtered groups further narrowed by the active sub-tab.
+// applySearchFilter returns tasks whose title or description contains the search query (case-insensitive).
+func (m *PriorityViewModel) applySearchFilter(tasks []*PriorityTask) []*PriorityTask {
+	if m.searchQuery == "" {
+		return tasks
+	}
+	q := strings.ToLower(m.searchQuery)
+	var result []*PriorityTask
+	for _, pt := range tasks {
+		if strings.Contains(strings.ToLower(pt.Task.Title), q) ||
+			strings.Contains(strings.ToLower(pt.Task.Description), q) {
+			result = append(result, pt)
+		}
+	}
+	return result
+}
+
+// visibleScoredTasks returns m.scoredTasks filtered by the current search query.
+func (m *PriorityViewModel) visibleScoredTasks() []*PriorityTask {
+	return m.applySearchFilter(m.scoredTasks)
+}
+
+// filteredGroupsWithSubTab returns filtered groups further narrowed by the active sub-tab and search query.
 func (m *PriorityViewModel) filteredGroupsWithSubTab() (overdue, today, thisWeek, later, backlog, waitingOn []*PriorityTask) {
 	o, td, tw, l, bl, wo := m.filteredGroups()
-	return m.filterBySubTab(o), m.filterBySubTab(td), m.filterBySubTab(tw), m.filterBySubTab(l), m.filterBySubTab(bl), m.filterBySubTab(wo)
+	return m.applySearchFilter(m.filterBySubTab(o)),
+		m.applySearchFilter(m.filterBySubTab(td)),
+		m.applySearchFilter(m.filterBySubTab(tw)),
+		m.applySearchFilter(m.filterBySubTab(l)),
+		m.applySearchFilter(m.filterBySubTab(bl)),
+		m.applySearchFilter(m.filterBySubTab(wo))
 }
 
 // recalculateNavigation updates totalTasks and groupStarts based on the active tab.
 func (m *PriorityViewModel) recalculateNavigation() {
 	m.computeSubTabs()
 
-	// By Score tab uses scoredTasks directly
+	// By Score tab uses visibleScoredTasks (search-filtered)
 	if m.activeTab == priorityTabByScore {
 		m.subTabNames = nil
-		m.totalTasks = len(m.scoredTasks)
+		m.totalTasks = len(m.visibleScoredTasks())
 		m.groupStarts = []int{0}
 		return
 	}

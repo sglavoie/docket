@@ -32,6 +32,8 @@ type UndoHistoryModel struct {
 	height      int
 	focusedPane int // 0 = entry list, 1 = diff preview
 
+	pendingGKey bool // waiting for second 'g' in gg sequence
+
 	// Error state
 	errorMsg string
 }
@@ -86,6 +88,24 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "esc", "q", "enter":
 				m.showingDetail = false
+			}
+			return m, nil
+		}
+
+		// Handle pending 'g' prefix (gg → go to first)
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if msg.String() == "g" {
+				if m.focusedPane == 0 {
+					m.cursor = 0
+					m.computeDiff()
+					m.diffScroll = 0
+					m.diffCursor = 0
+					m.diffHScroll = 0
+				} else {
+					m.diffScroll = 0
+					m.diffCursor = 0
+				}
 			}
 			return m, nil
 		}
@@ -164,17 +184,8 @@ func (m *UndoHistoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "g":
-			// Go to top
-			if m.focusedPane == 0 {
-				m.cursor = 0
-				m.computeDiff()
-				m.diffScroll = 0
-				m.diffCursor = 0
-				m.diffHScroll = 0
-			} else {
-				m.diffScroll = 0
-				m.diffCursor = 0
-			}
+			m.pendingGKey = true
+			return m, nil
 
 		case "G":
 			// Go to bottom

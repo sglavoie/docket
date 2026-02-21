@@ -288,11 +288,6 @@ type ShowWorkflowRuleEditorMsg struct {
 	Rule workflow.WorkflowRule
 }
 
-// HasTextInput returns false for workflow rule creator.
-func (m *WorkflowRuleCreatorModel) HasTextInput() bool {
-	return false
-}
-
 // ShouldCaptureEsc returns true to let the creator handle esc internally.
 func (m *WorkflowRuleCreatorModel) ShouldCaptureEsc() bool {
 	return true

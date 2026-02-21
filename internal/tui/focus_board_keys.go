@@ -22,7 +22,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, len(m.filtered)) {
+	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
 		return m, nil
 	}
 

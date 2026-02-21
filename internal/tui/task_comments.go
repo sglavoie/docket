@@ -37,6 +37,8 @@ type TaskCommentsModel struct {
 	// Expanded view mode (show full comment)
 	expandedView bool
 
+	pendingGKey bool // waiting for second 'g' in gg sequence
+
 	// Editor config
 	editor string
 
@@ -187,6 +189,15 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		// Handle pending 'g' prefix (gg → go to first)
+		if m.pendingGKey {
+			m.pendingGKey = false
+			if msg.String() == "g" {
+				m.cursor = 0
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "esc":
 			return m, func() tea.Msg { return CloseTaskCommentsMsg{} }
@@ -202,7 +213,8 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "g":
-			m.cursor = 0
+			m.pendingGKey = true
+			return m, nil
 
 		case "G":
 			if len(m.task.Comments) > 0 {

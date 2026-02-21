@@ -96,6 +96,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 			Tags:  make(map[string]bool),
 			Attrs: make(map[string]string),
 		},
+		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 	}
 	// Seed default collapsed sections from config
 	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {
@@ -422,9 +423,6 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 
 // selectAllVisible adds all currently visible rows to the selection.
 func (m *OutlinerModel) selectAllVisible() {
-	if m.selectedTasks == nil {
-		m.selectedTasks = make(map[string]bool)
-	}
 	for _, row := range m.rows {
 		if row.IsSectionHeader {
 			continue
@@ -456,8 +454,7 @@ func (m *OutlinerModel) getSelectedTasks() []*models.Task {
 
 // clearMultiSelect exits multi-select mode and clears all selections.
 func (m *OutlinerModel) clearMultiSelect() {
-	m.multiSelectMode = false
-	m.ClearSelection()
+	m.ExitMultiSelect()
 	m.statusMessage = ""
 }
 

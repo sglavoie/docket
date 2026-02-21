@@ -447,7 +447,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, m.totalNavigableItems()) {
+	if handleListNavigation(key, &m.cursor, m.totalNavigableItems(), m.Height()) {
 		return m, nil
 	}
 
@@ -672,7 +672,7 @@ func (m *AllTasksViewModel) clampCursor() {
 
 // ShouldCaptureEsc returns true when prefix mode, filters, multi-select, or confirm dialog are active.
 func (m *AllTasksViewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasActiveFilters() || m.multiSelectMode || m.confirm.IsActive()
+	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters() || m.multiSelectMode
 }
 
 func (m *AllTasksViewModel) viewID() ViewType { return ViewAllTasks }

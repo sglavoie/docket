@@ -14,7 +14,7 @@ import (
 func (m *AllTasksViewModel) toggleMultiSelectMode() {
 	m.multiSelectMode = !m.multiSelectMode
 	if !m.multiSelectMode {
-		m.selectedTasks = make(map[string]bool)
+		m.ClearSelection()
 		m.statusMessage = ""
 	} else {
 		m.statusMessage = "Multi-select: space=toggle, a=all, A=deselect, ,s/d/b=status"
@@ -105,8 +105,7 @@ func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item 
 
 // finishBulk clears multiselect state, sets the status message, and refreshes.
 func (m *AllTasksViewModel) finishBulk(statusMsg string) {
-	m.selectedTasks = make(map[string]bool)
-	m.multiSelectMode = false
+	m.ExitMultiSelect()
 	m.statusMessage = statusMsg
 	m.loadAllTasks()
 	m.clampCursor()

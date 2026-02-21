@@ -25,13 +25,14 @@ type LinkedTaskRelation struct {
 // LinkedTaskSelectorModel is a picker for navigating to linked tasks.
 type LinkedTaskSelectorModel struct {
 	BaseSearchableView
-	sourceTask   *models.Task
-	project      *models.Project
-	config       *config.Config
-	relations    []LinkedTaskRelation
-	filtered     []LinkedTaskRelation // filtered relations based on search
-	cursor       int
-	scrollOffset int
+	sourceTask    *models.Task
+	project       *models.Project
+	config        *config.Config
+	relations     []LinkedTaskRelation
+	filtered      []LinkedTaskRelation // filtered relations based on search
+	cursor        int
+	scrollOffset  int
+	pendingPrefix string
 }
 
 // NewLinkedTaskSelectorModelWithConfig creates a new linked task selector with config for cross-project support.
@@ -191,6 +192,16 @@ func (m *LinkedTaskSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle pending prefix keys
+	if m.pendingPrefix != "" {
+		prefix := m.pendingPrefix
+		m.pendingPrefix = ""
+		if key != "esc" && prefix == "g" && key == "g" {
+			m.cursor = 0
+		}
+		return m, nil
+	}
+
 	// Handle search mode input first
 	if m.IsSearchMode() {
 		handled, cmd, valueChanged := m.HandleSearchInput(msg)
@@ -264,7 +275,7 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 		return m, nil
 
 	case "g":
-		m.cursor = 0
+		m.pendingPrefix = "g"
 		return m, nil
 
 	case "G":

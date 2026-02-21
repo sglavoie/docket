@@ -117,11 +117,6 @@ func (m *BulkCaptureModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the app can close the view on esc.
-func (m *BulkCaptureModel) ShouldCaptureEsc() bool {
-	return false
-}
-
 func (m *BulkCaptureModel) createTasks() tea.Cmd {
 	return func() tea.Msg {
 		content := strings.TrimSpace(m.input.Value())

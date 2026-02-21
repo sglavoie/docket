@@ -290,8 +290,3 @@ func (m *ScoreEditorModel) View() string {
 func (m *ScoreEditorModel) ShouldCaptureEsc() bool {
 	return true
 }
-
-// HasTextInput returns false since there's no free-form text input.
-func (m *ScoreEditorModel) HasTextInput() bool {
-	return false
-}

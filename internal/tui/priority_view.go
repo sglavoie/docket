@@ -52,7 +52,7 @@ const (
 
 // PriorityViewModel displays actionable tasks sorted by urgency.
 type PriorityViewModel struct {
-	BaseView
+	BaseSearchableView
 	InteractiveViewState
 
 	project        *models.Project
@@ -109,13 +109,9 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		filterBar:          NewPriorityFilterBarComponent(),
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
+	m.InitSearchInput("Search tasks...", 100, 30)
 	m.loadActionableTasks()
 	return m
-}
-
-// HasActiveSearch returns false (no search in this view).
-func (m *PriorityViewModel) HasActiveSearch() bool {
-	return false
 }
 
 func (m *PriorityViewModel) Init() tea.Cmd {
@@ -141,14 +137,14 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// HasTextInput returns false for the priority view.
-func (m *PriorityViewModel) HasTextInput() bool {
-	return false
+// ShouldCaptureEsc returns true when the priority view is in prefix mode, confirm dialog, or search mode.
+func (m *PriorityViewModel) ShouldCaptureEsc() bool {
+	return m.DefaultShouldCaptureEsc() || m.IsSearchMode()
 }
 
-// ShouldCaptureEsc returns true when the priority view is in prefix mode or confirm dialog is active.
-func (m *PriorityViewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.confirm.IsActive()
+// HasTextInput returns true when the search input is active.
+func (m *PriorityViewModel) HasTextInput() bool {
+	return m.DefaultHasTextInput()
 }
 
 func (m *PriorityViewModel) View() string {
@@ -164,8 +160,16 @@ func (m *PriorityViewModel) View() string {
 	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
 		b.WriteString(m.renderPriorityTabBar())
 		b.WriteString("\n\n")
-		b.WriteString(MutedStyle.Render("No tasks in this view."))
+		if m.searchQuery != "" {
+			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
+		} else {
+			b.WriteString(MutedStyle.Render(EmptyStateNoTasks))
+		}
 		b.WriteString("\n\n")
+		if m.IsSearchMode() {
+			b.WriteString(HelpStyle.Render("Search: ") + m.SearchInputView())
+			b.WriteString("\n")
+		}
 		b.WriteString(HelpStyle.Render("[/]: tabs" + m.activeTabHint()))
 		return b.String()
 	}
@@ -190,6 +194,11 @@ func (m *PriorityViewModel) View() string {
 	// Account for filter indicator if present
 	if filterIndicator != "" {
 		contentHeight-- // filter badge + newline
+	}
+
+	// Account for search bar if active
+	if m.IsSearchMode() {
+		contentHeight-- // search input line
 	}
 
 	// Account for suggestion section if present
@@ -267,8 +276,12 @@ func (m *PriorityViewModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Footer
-	left := HelpStyle.Render("↑/↓ navigate · [/] tabs · F filter · s start suggested · ,s/,d status" + tabHint)
+	// Search bar (shown above footer when active)
+	if m.IsSearchMode() {
+		b.WriteString(HelpStyle.Render("Search: ") + m.SearchInputView())
+		b.WriteString("\n")
+	}
+	left := HelpStyle.Render("↑/↓ navigate · / search · [/] tabs · F filter · s start suggested · ,s/,d status" + tabHint)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
 	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
 

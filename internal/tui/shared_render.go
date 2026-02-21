@@ -4,12 +4,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // EmptyStateFiltered is the standard message shown when active filters produce no results.
 const EmptyStateFiltered = "No tasks match current filters."
+
+// EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
+const EmptyStateNoTasks = "No tasks."
 
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
@@ -99,6 +103,67 @@ type TaskLine struct {
 	ViewWidth       int    // total view width for due date right-alignment
 	StatusBadge     string // override computed status badge (pre-styled by caller)
 	HideLowPriority bool   // only show priority badge for priority ≤ 2
+}
+
+// CrossProjectTaskLineOpts configures optional elements for a cross-project task line.
+// Views that aggregate tasks from multiple projects use this to render a standard
+// [project-name] badge plus optional tags/score in a consistent format.
+type CrossProjectTaskLineOpts struct {
+	ShowScore       bool   // show composite score badge (requires cfg != nil)
+	ShowTags        bool   // show inline tag string
+	MaxProjectLen   int    // project name truncation; 0 defaults to 12
+	Prefix          string // prepended before the project badge (e.g. checkbox, date string)
+	StatusBadge     string // pre-styled status badge override
+	DueStr          string // right-aligned context string, already styled by caller
+	HideLowPriority bool   // omit priority badge when priority > 2
+}
+
+// RenderCrossProjectTaskLine renders a standard task line for views that aggregate
+// tasks from multiple projects. It builds the [project] badge, optionally appends
+// tags and a score badge, and delegates to TaskLine.Render().
+//
+// Use opts.Prefix to prepend content before the project badge (e.g. a checkbox or
+// a pre-styled date string). Use opts.DueStr for the right-aligned context column.
+// For non-standard badge arrangements, construct TaskLine directly instead.
+func RenderCrossProjectTaskLine(
+	task *models.Task,
+	proj *models.Project,
+	cfg *config.Config,
+	isCursor bool,
+	width, maxTitleLen int,
+	opts CrossProjectTaskLineOpts,
+) string {
+	maxProjLen := opts.MaxProjectLen
+	if maxProjLen <= 0 {
+		maxProjLen = 12
+	}
+
+	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(proj.Name, maxProjLen)))
+	preBadges := opts.Prefix + projectBadge + " "
+
+	postTitle := ""
+	if opts.ShowTags {
+		postTitle += renderInlineTags(task.Tags)
+	}
+	if opts.ShowScore && cfg != nil {
+		if profile := cfg.GetProjectScoringProfile(proj.ID); profile != nil {
+			if badge := RenderScoreBadge(task, profile); badge != "" {
+				postTitle += " " + badge
+			}
+		}
+	}
+
+	return TaskLine{
+		Task:            task,
+		IsSelected:      isCursor,
+		MaxTitle:        maxTitleLen,
+		PreBadges:       preBadges,
+		PostTitle:       postTitle,
+		StatusBadge:     opts.StatusBadge,
+		DueStr:          opts.DueStr,
+		ViewWidth:       width,
+		HideLowPriority: opts.HideLowPriority,
+	}.Render()
 }
 
 // Render assembles the task line string from the configured fields.

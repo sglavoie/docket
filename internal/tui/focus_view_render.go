@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *FocusViewModel) View() string {
@@ -242,22 +240,15 @@ func (m *FocusViewModel) renderTaskLine(ft FocusTask, isSelected bool, maxTitleL
 // renderTaskLineWithPrefix renders a single task line with an optional prefix.
 func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool, maxTitleLen int, prefix string) string {
 	task := ft.Task
-	projectName := util.Truncate(ft.Project.Name, 12)
 
 	dueStr := ""
 	if task.DueDate != nil {
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	preBadges := prefix + MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " "
-
-	return TaskLine{
-		Task:       task,
-		IsSelected: isSelected,
-		MaxTitle:   maxTitleLen,
-		PreBadges:  preBadges,
-		PostTitle:  renderInlineTags(task.Tags),
-		DueStr:     dueStr,
-		ViewWidth:  m.width,
-	}.Render()
+	return RenderCrossProjectTaskLine(task, ft.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
+		ShowTags: true,
+		Prefix:   prefix,
+		DueStr:   dueStr,
+	})
 }

@@ -201,7 +201,7 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, m.totalItems) {
+	if handleListNavigation(key, &m.cursor, m.totalItems, m.Height()) {
 		return m, nil
 	}
 
@@ -393,7 +393,7 @@ func (m *WeeklyReviewModel) HasFocusedSection() bool {
 
 // ShouldCaptureEsc returns true when prefix mode, section focus, confirm dialog, or summary is active.
 func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix() || m.HasFocusedSection() || m.confirm.IsActive() || m.showingSummary
+	return m.DefaultShouldCaptureEsc() || m.HasFocusedSection() || m.showingSummary
 }
 
 func (m *WeeklyReviewModel) viewID() ViewType { return ViewWeeklyReview }

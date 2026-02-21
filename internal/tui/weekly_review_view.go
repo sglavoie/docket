@@ -277,7 +277,6 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 // renderTaskLine renders a single task line (same style as daily review).
 func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyReviewSection, isSelected bool, maxTitleLen int) string {
 	task := dt.Task
-	projectName := util.Truncate(dt.Project.Name, 12)
 
 	// Context string based on section
 	contextStr := ""
@@ -304,15 +303,10 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		}
 	}
 
-	return TaskLine{
-		Task:            task,
-		IsSelected:      isSelected,
-		MaxTitle:        maxTitleLen,
-		PreBadges:       MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		HideLowPriority: true,
 		DueStr:          contextStr,
-		ViewWidth:       m.width,
-	}.Render()
+	})
 }
 
 // getWeeklySectionHint returns a short action hint for a section.

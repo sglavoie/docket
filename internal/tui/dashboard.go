@@ -23,6 +23,8 @@ type DashboardModel struct {
 	// Confirmation state
 	confirm      ConfirmDialog   // confirmation dialog
 	deleteTarget *models.Project // project to delete
+
+	pendingGKey bool // waiting for second 'g' in gg sequence
 }
 
 // NewDashboardModel creates a new dashboard model.
@@ -62,7 +64,7 @@ func (m *DashboardModel) Init() tea.Cmd {
 
 // HasTextInput returns true when dashboard search is active.
 func (m *DashboardModel) HasTextInput() bool {
-	return m.HasActiveSearch()
+	return m.DefaultHasTextInput()
 }
 
 // ShouldCaptureEsc returns true when dashboard search or prefix mode is active.

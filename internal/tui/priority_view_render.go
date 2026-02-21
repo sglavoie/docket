@@ -184,14 +184,15 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 		return []string{MutedStyle.Render("No scoring profile assigned. Use : scoring profiles to set one up.")}
 	}
 
-	if len(m.scoredTasks) == 0 {
+	scored := m.visibleScoredTasks()
+	if len(scored) == 0 {
 		return []string{MutedStyle.Render("No tasks to rank.")}
 	}
 
 	var lines []string
 	maxTitleLen := m.Width() - 50
 
-	for rank, pt := range m.scoredTasks {
+	for rank, pt := range scored {
 		isSelected := *currentIndex == m.cursor
 		scoreBadge := RenderScoreBadge(pt.Task, profile)
 

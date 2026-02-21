@@ -11,6 +11,16 @@ import (
 func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle search input mode
+	if m.IsSearchMode() {
+		handled, cmd, valueChanged := m.HandleSearchInput(msg)
+		if valueChanged || handled {
+			m.recalculateNavigation()
+			m.clampCursor()
+		}
+		return m, cmd
+	}
+
 	// Handle pending prefix keys (Vim-style gg)
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
@@ -130,11 +140,11 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "ctrl+u":
-		jumpCursor(&m.cursor, m.totalTasks, -10)
+		jumpCursor(&m.cursor, m.totalTasks, -HalfPage(m.Height()))
 		return m, nil
 
 	case "ctrl+d":
-		jumpCursor(&m.cursor, m.totalTasks, 10)
+		jumpCursor(&m.cursor, m.totalTasks, HalfPage(m.Height()))
 		return m, nil
 
 	// Toggle waiting on section
@@ -207,6 +217,10 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		// Dismiss current suggestion
 		m.dismissSuggestion()
 		return m, nil
+
+	case "/":
+		// Activate search mode
+		return m, m.ActivateSearch()
 
 	case "F":
 		// Open filter prefix popup

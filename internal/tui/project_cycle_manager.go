@@ -310,7 +310,7 @@ func (m *ProjectCycleManagerModel) ShouldCaptureEsc() bool {
 
 // HasTextInput returns true when in search mode.
 func (m *ProjectCycleManagerModel) HasTextInput() bool {
-	return m.IsSearchMode()
+	return m.DefaultHasTextInput()
 }
 
 // RenderFooter renders context-appropriate keyboard hints (overrides BasePicker).

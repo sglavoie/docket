@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *DailyReviewModel) View() string {
@@ -215,21 +213,11 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 		statusBadge = GetStatusStyle(string(task.Status)).Render(task.Status.Icon())
 	}
 
-	// Context string based on section
-	contextStr := m.sectionContextStr(dt, section)
-
-	projectName := util.Truncate(dt.Project.Name, 12)
-
-	return TaskLine{
-		Task:            task,
-		IsSelected:      isSelected,
-		MaxTitle:        maxTitleLen,
-		PreBadges:       MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
+	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		StatusBadge:     statusBadge,
 		HideLowPriority: true,
-		DueStr:          contextStr,
-		ViewWidth:       m.width,
-	}.Render()
+		DueStr:          m.sectionContextStr(dt, section),
+	})
 }
 
 // sectionContextStr returns the right-aligned context string for a task in a section.

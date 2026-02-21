@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *DueDateOverviewModel) View() string {
@@ -170,15 +169,10 @@ func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *in
 // renderTaskLine renders a single task line.
 func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isSelected bool, maxTitleLen int) string {
 	dateStr := m.formatDueDate(dt.Task)
-	projectName := util.Truncate(dt.Project.Name, 15)
-	projectStr := MutedStyle.Render(fmt.Sprintf("[%s]", projectName))
-	return TaskLine{
-		Task:       dt.Task,
-		IsSelected: isSelected,
-		MaxTitle:   maxTitleLen,
-		PreBadges:  dateStr + " " + projectStr + " ",
-		ViewWidth:  m.Width(),
-	}.Render()
+	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+		MaxProjectLen: 15,
+		Prefix:        dateStr + " ",
+	})
 }
 
 // formatDueDate formats the due date for display.

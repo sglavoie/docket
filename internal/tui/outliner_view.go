@@ -260,7 +260,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	if len(m.rows) == 0 {
 		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + sortBadge + searchIndicator
-		emptyMsg := "No tasks."
+		emptyMsg := EmptyStateNoTasks
 		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			if t := m.project.GetTaskByID(topID); t != nil {

@@ -99,11 +99,6 @@ func (m *NotesSearchModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so app can close the view on esc.
-func (m *NotesSearchModel) ShouldCaptureEsc() bool {
-	return false
-}
-
 // SetSize sets the view dimensions.
 func (m *NotesSearchModel) SetSize(width, height int) {
 	m.width = width

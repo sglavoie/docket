@@ -261,8 +261,7 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			for _, t := range m.getSelectedTasksList() {
 				t.TogglePinned()
 			}
-			m.selectedTasks = make(map[string]bool)
-			m.multiSelectMode = false
+			m.ExitMultiSelect()
 			m.statusMessage = fmt.Sprintf("Toggled pin on %d tasks", count)
 			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
 				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}

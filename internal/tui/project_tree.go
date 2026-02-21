@@ -271,7 +271,7 @@ func (m *ProjectTreeModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
-	return m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.pendingPrefix != "" || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive() || m.confirm.IsActive()
+	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.

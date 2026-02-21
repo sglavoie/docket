@@ -30,6 +30,7 @@ type TemplatePickerModel struct {
 	// Split-view state
 	previewScroll  int  // Scroll offset for preview content
 	showingPreview bool // For narrow mode: true = showing preview, false = showing list
+	pendingGKey    bool // waiting for second 'g' in gg sequence
 }
 
 // NewTemplatePickerModel creates a new template picker model.
@@ -125,6 +126,16 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// j/k only navigate when NOT in search mode (allow typing j/k in search)
 		if !m.searchActive {
+			// Handle pending 'g' prefix (gg → go to first)
+			if m.pendingGKey {
+				m.pendingGKey = false
+				if msg.String() == "g" {
+					m.cursor = 0
+					m.previewScroll = 0
+				}
+				return m, nil
+			}
+
 			switch msg.String() {
 			case "j":
 				if m.cursor < len(m.filteredTemplates) {
@@ -139,8 +150,7 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case "g":
-				m.cursor = 0
-				m.previewScroll = 0
+				m.pendingGKey = true
 				return m, nil
 			case "G":
 				m.cursor = len(m.filteredTemplates)
@@ -480,7 +490,7 @@ func (m *TemplatePickerModel) View() string {
 
 // HasTextInput returns true when search is active.
 func (m *TemplatePickerModel) HasTextInput() bool {
-	return m.searchActive
+	return m.DefaultHasTextInput()
 }
 
 // ShouldCaptureEsc returns true to handle escape internally.

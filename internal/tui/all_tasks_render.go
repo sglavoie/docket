@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 	"strings"
-
-	"github.com/sglavoie/tt/internal/util"
 )
 
 func (m *AllTasksViewModel) View() string {
@@ -175,31 +173,18 @@ func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, i
 		}
 	}
 
-	projectName := util.Truncate(item.Project.Name, 15)
-
-	// Due date
 	dueStr := ""
 	if task.DueDate != nil {
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	// Score badge
-	scoreBadge := ""
-	if profile := m.config.GetProjectScoringProfile(item.Project.ID); profile != nil {
-		if badge := RenderScoreBadge(task, profile); badge != "" {
-			scoreBadge = " " + badge
-		}
-	}
-
-	return TaskLine{
-		Task:       task,
-		IsSelected: isSelected,
-		MaxTitle:   maxTitleLen,
-		PreBadges:  checkbox + MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " ",
-		PostTitle:  renderInlineTags(task.Tags) + scoreBadge,
-		DueStr:     dueStr,
-		ViewWidth:  m.Width(),
-	}.Render()
+	return RenderCrossProjectTaskLine(task, item.Project, m.config, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
+		ShowTags:      true,
+		ShowScore:     true,
+		MaxProjectLen: 15,
+		Prefix:        checkbox,
+		DueStr:        dueStr,
+	})
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.

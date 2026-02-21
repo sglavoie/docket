@@ -278,7 +278,7 @@ func (m *KanbanViewModel) renderAllView() string {
 	viewportHeight := m.Height() - tabBarHeight - 3 // header + status + help hint
 
 	if len(m.allNodes) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks."))
+		b.WriteString(MutedStyle.Render(EmptyStateNoTasks))
 		return b.String()
 	}
 

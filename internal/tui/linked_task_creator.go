@@ -131,11 +131,6 @@ func (m *LinkedTaskCreatorModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the app can close the view on esc.
-func (m *LinkedTaskCreatorModel) ShouldCaptureEsc() bool {
-	return false
-}
-
 func (m *LinkedTaskCreatorModel) linkTypeName() string {
 	switch m.linkType {
 	case LinkTypeBlocker:

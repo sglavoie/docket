@@ -13,8 +13,7 @@ func (m *ProjectTreeModel) toggleSelection(task *models.Task) {
 
 // clearSelection exits multi-select mode and clears all selections.
 func (m *ProjectTreeModel) clearSelection() {
-	m.multiSelectMode = false
-	m.ClearSelection()
+	m.ExitMultiSelect()
 }
 
 // getSelectedTask returns the task under the cursor, or nil if none.

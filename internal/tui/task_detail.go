@@ -59,7 +59,7 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true so the detail view handles esc/q itself.
 func (m *TaskDetailModel) ShouldCaptureEsc() bool {
-	return m.HasPendingPrefix()
+	return m.DefaultShouldCaptureEsc()
 }
 
 // GetPrefixPopupInfo returns popup info when a prefix key is pending.

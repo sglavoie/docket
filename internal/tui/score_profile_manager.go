@@ -20,6 +20,7 @@ type ScoreProfileManagerModel struct {
 	confirm          ConfirmDialog
 	currentProjectID string
 	statusMessage    string
+	pendingPrefix    string
 
 	// Inline preset picker sub-mode
 	pickingPreset bool
@@ -83,6 +84,16 @@ func (m *ScoreProfileManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// Handle pending prefix keys
+	if m.pendingPrefix != "" {
+		prefix := m.pendingPrefix
+		m.pendingPrefix = ""
+		if key != "esc" && prefix == "g" && key == "g" {
+			m.cursor = 0
+		}
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -102,7 +113,7 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, te
 		return m, nil
 
 	case "g":
-		m.cursor = 0
+		m.pendingPrefix = "g"
 		return m, nil
 
 	case "G":
@@ -572,11 +583,6 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 // ShouldCaptureEsc returns true when confirm or preset picker is active.
 func (m *ScoreProfileManagerModel) ShouldCaptureEsc() bool {
 	return m.confirm.IsActive() || m.pickingPreset
-}
-
-// HasTextInput returns false.
-func (m *ScoreProfileManagerModel) HasTextInput() bool {
-	return false
 }
 
 // HasActiveSearch returns false.
