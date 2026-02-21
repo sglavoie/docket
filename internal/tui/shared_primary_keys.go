@@ -125,28 +125,22 @@ func activatePrefixKey(key string, cursorOnTask bool) (string, bool) {
 }
 
 // handleSortKey handles shared sort key presses (1-5, 0). It calls
-// SortFieldForKey and updates the provided sort state. Returns true if the
+// SortFieldForKey and updates the provided SortState. Returns true if the
 // key was consumed. The caller should call its own rebuild/refresh method
 // after this returns true, using the onReset callback for sort-reset (key 0)
 // and onToggle for field changes.
-func handleSortKey(key string, sortField *SortField, ascending *bool, onReset func(), onToggle func(SortField)) bool {
+func handleSortKey(key string, s *SortState, onReset func(), onToggle func(SortField)) bool {
 	field, isReset, ok := SortFieldForKey(key)
 	if !ok {
 		return false
 	}
 	if isReset {
-		*sortField = SortByDefault
-		*ascending = true
+		s.Reset()
 		if onReset != nil {
 			onReset()
 		}
 	} else {
-		if *sortField == field {
-			*ascending = !*ascending
-		} else {
-			*sortField = field
-			*ascending = true
-		}
+		s.Toggle(field)
 		if onToggle != nil {
 			onToggle(field)
 		}

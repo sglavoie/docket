@@ -125,12 +125,31 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 	return c, h
 }
 
+// SearchInputWidth returns a dynamic search input width based on the view width.
+// The width is capped between 20 and 60 characters.
+func SearchInputWidth(viewWidth int) int {
+	w := viewWidth / 3
+	if w < 20 {
+		w = 20
+	}
+	if w > 60 {
+		w = 60
+	}
+	return w
+}
+
 // BaseSearchableView extends BaseView with search functionality.
 type BaseSearchableView struct {
 	BaseView
 	searchActive bool
 	searchQuery  string
 	searchInput  textinput.Model
+}
+
+// SetSize updates the view dimensions and adjusts the search input width.
+func (v *BaseSearchableView) SetSize(w, h int) {
+	v.BaseView.SetSize(w, h)
+	v.searchInput.Width = SearchInputWidth(w)
 }
 
 // InitSearchInput initializes the search input with the given placeholder.
@@ -289,6 +308,25 @@ func CycleTab(current *int, count, delta int) {
 		return
 	}
 	*current = ((*current+delta)%count + count) % count
+}
+
+// UndoContext tracks the action label and description for the next undo snapshot.
+// Embed this in views that support undo to avoid duplicating fields and methods.
+type UndoContext struct {
+	Action  string // e.g. "Complete Task", "Set Priority"
+	Context string // e.g. task title or "3 tasks"
+}
+
+// Set records the action and context for the next undo snapshot.
+func (u *UndoContext) Set(action, ctx string) {
+	u.Action = action
+	u.Context = ctx
+}
+
+// Clear resets the undo context after it has been consumed.
+func (u *UndoContext) Clear() {
+	u.Action = ""
+	u.Context = ""
 }
 
 // ExpandAllSections clears the collapsed map so all sections are visible.

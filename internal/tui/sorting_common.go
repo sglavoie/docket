@@ -8,6 +8,35 @@ import (
 	"github.com/sglavoie/tt/internal/scoring"
 )
 
+// SortState bundles a sort field and direction. Embedded by views that support
+// the 1-5/0 sort key system.
+type SortState struct {
+	Field     SortField
+	Ascending bool
+}
+
+// NewSortState returns a SortState with default values (no sort, ascending).
+func NewSortState() SortState {
+	return SortState{Field: SortByDefault, Ascending: true}
+}
+
+// Reset restores the sort state to defaults.
+func (s *SortState) Reset() {
+	s.Field = SortByDefault
+	s.Ascending = true
+}
+
+// Toggle switches to the given field. If already on that field, the direction
+// is flipped; otherwise it switches to the field in ascending order.
+func (s *SortState) Toggle(f SortField) {
+	if s.Field == f {
+		s.Ascending = !s.Ascending
+	} else {
+		s.Field = f
+		s.Ascending = true
+	}
+}
+
 // SortFieldForKey maps a keyboard key to its corresponding SortField.
 // Returns the field, whether this is a reset (key "0"), and whether the key matched.
 func SortFieldForKey(key string) (SortField, bool, bool) {

@@ -56,8 +56,7 @@ type FocusBoardModel struct {
 	activeTab int
 
 	// Sort
-	sortField     SortField
-	sortAscending bool
+	sort SortState
 
 	// Filter
 	FilterMixin
@@ -100,6 +99,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 		addInput:       ti,
 		editInput:      ei,
 		FilterMixin:    FilterMixin{filter: newFilterState()},
+		sort:           NewSortState(),
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search...", 100, 40)
@@ -118,7 +118,6 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		inputWidth := max(msg.Width-8, 30)
 		m.addInput.Width = inputWidth
 		m.editInput.Width = inputWidth
-		m.searchInput.Width = max(msg.Width-20, 30)
 		return m, nil
 
 	case FocusBoardRefreshMsg:

@@ -78,7 +78,7 @@ func (m *ProjectTreeModel) pruneInvisibleSelections() {
 // sortNodes sorts the nodes based on the current sort field.
 // Sorting is applied within each hierarchy level to preserve parent-child relationships.
 func (m *ProjectTreeModel) sortNodes() {
-	if m.sortField == SortByDefault && m.viewMode != ViewModeSnoozed && m.viewMode != ViewModeActive {
+	if m.sort.Field == SortByDefault && m.viewMode != ViewModeSnoozed && m.viewMode != ViewModeActive {
 		return
 	}
 
@@ -114,7 +114,7 @@ func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 	}
 
 	// Handle snoozed view default sort specially
-	if m.sortField == SortByDefault && m.viewMode == ViewModeSnoozed {
+	if m.sort.Field == SortByDefault && m.viewMode == ViewModeSnoozed {
 		var less bool
 		if a.Task.SnoozedUntil == nil && b.Task.SnoozedUntil == nil {
 			less = false
@@ -125,16 +125,16 @@ func (m *ProjectTreeModel) compareNodes(a, b *TreeNode) bool {
 		} else {
 			less = a.Task.SnoozedUntil.Before(*b.Task.SnoozedUntil)
 		}
-		if !m.sortAscending {
+		if !m.sort.Ascending {
 			less = !less
 		}
 		return less
 	}
 
-	if m.sortField == SortByDefault {
+	if m.sort.Field == SortByDefault {
 		return false
 	}
 
-	cmp := CompareTasks(a.Task, b.Task, m.sortField, m.project.ID, m.config)
-	return ApplySortDirection(cmp, m.sortAscending)
+	cmp := CompareTasks(a.Task, b.Task, m.sort.Field, m.project.ID, m.config)
+	return ApplySortDirection(cmp, m.sort.Ascending)
 }

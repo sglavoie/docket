@@ -40,21 +40,15 @@ func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
 
 // performUndo restores the project from backup.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
-	return func() tea.Msg {
-		if err := performUndoFromBackup(m.projectService, m.project); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		m.buildTree()
-		return UndoPerformedMsg{Action: "Undo"}
-	}
+	return performUndoCmd(m.projectService, m.project, m.buildTree)
 }
 
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context. Must be called at persist time
 // (inside closures) so the undo context reflects the latest state.
 func (m *ProjectTreeModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
-	m.clearUndoContext()
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context)
+	m.undo.Clear()
 	return opts
 }
 
@@ -66,14 +60,7 @@ func (m *ProjectTreeModel) workflowPersistFn() persistFn {
 
 // setUndoContext sets the action context for the next save operation.
 func (m *ProjectTreeModel) setUndoContext(action, context string) {
-	m.pendingUndoAction = action
-	m.pendingUndoContext = context
-}
-
-// clearUndoContext clears the pending undo context.
-func (m *ProjectTreeModel) clearUndoContext() {
-	m.pendingUndoAction = ""
-	m.pendingUndoContext = ""
+	m.undo.Set(action, context)
 }
 
 // saveAndRefresh saves the project and refreshes the tree view.

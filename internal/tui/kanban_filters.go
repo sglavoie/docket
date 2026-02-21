@@ -30,6 +30,11 @@ type KanbanFilterState struct {
 	Search            string // text search query
 }
 
+// NewKanbanFilterState returns an initialized KanbanFilterState with allocated maps.
+func NewKanbanFilterState() KanbanFilterState {
+	return KanbanFilterState{CommonFilterState: newFilterState()}
+}
+
 // KanbanFilterBarComponent encapsulates filter bar state for the kanban view.
 type KanbanFilterBarComponent struct {
 	enabled bool           // Toggle filter bar visibility

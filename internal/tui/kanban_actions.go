@@ -32,7 +32,14 @@ type KanbanStatusChangedMsg struct {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current Kanban
 // model state. Must be called at persist time (inside closures).
 func (m *KanbanViewModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	return BuildWorkflowOpts(defaultPersister, m.Project, m.config, m.configManager, prevStates, "", "")
+	opts := BuildWorkflowOpts(m.projectService, m.Project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context)
+	m.undo.Clear()
+	return opts
+}
+
+// setUndoContext sets the action context for the next save operation.
+func (m *KanbanViewModel) setUndoContext(action, context string) {
+	m.undo.Set(action, context)
 }
 
 // workflowPersistFn returns a persistFn that runs the full save pipeline
@@ -329,12 +336,7 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 
 // performUndo restores the project from backup.
 func (m *KanbanViewModel) performUndo() tea.Cmd {
-	return func() tea.Msg {
-		if err := performUndoFromBackup(defaultPersister, m.Project); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return UndoPerformedMsg{Action: "Undo"}
-	}
+	return performUndoCmd(m.projectService, m.Project, m.loadTasks)
 }
 
 // sendTaskToSection moves the selected task to the specified section.

@@ -96,8 +96,7 @@ type AllTasksViewModel struct {
 	projectFilter map[string]bool // included project IDs (empty = all)
 
 	// Sort
-	sortField     SortField
-	sortAscending bool
+	sort SortState
 
 	// Multi-select
 	MultiSelectState
@@ -117,8 +116,7 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		collapsedGroups:  make(map[string]bool),
 		projectFilter:    make(map[string]bool),
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		sortField:        SortByDefault,
-		sortAscending:    true,
+		sort:             NewSortState(),
 		FilterMixin:      FilterMixin{filter: newFilterState()},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
@@ -505,8 +503,8 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "1", "2", "3", "4", "5", "0":
 		if field, isReset, ok := SortFieldForKey(key); ok {
 			if isReset {
-				m.sortField = SortByDefault
-				m.sortAscending = true
+				m.sort.Field = SortByDefault
+				m.sort.Ascending = true
 				m.applyFiltersAndGroup()
 				m.clampCursor()
 				m.statusMessage = "Sort reset"

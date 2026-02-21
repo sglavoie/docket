@@ -247,12 +247,12 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		filterText := strings.Join(filters, ", ")
 		statusParts = append(statusParts, filterBadge+" "+filterText)
 	}
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		direction := "↑"
-		if !m.sortAscending {
+		if !m.sort.Ascending {
 			direction = "↓"
 		}
-		statusParts = append(statusParts, fmt.Sprintf("Sort: %s %s", m.sortField, direction))
+		statusParts = append(statusParts, fmt.Sprintf("Sort: %s %s", m.sort.Field, direction))
 	}
 	if len(statusParts) > 0 {
 		b.WriteString(strings.Join(statusParts, " | "))
@@ -507,12 +507,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", strings.Join(filters, ","))))
 		b.WriteString(" ")
 	}
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		direction := "↑"
-		if !m.sortAscending {
+		if !m.sort.Ascending {
 			direction = "↓"
 		}
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sortField, direction)))
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sort.Field, direction)))
 	}
 
 	return b.String()

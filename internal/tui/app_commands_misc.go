@@ -412,8 +412,7 @@ func (m *AppModel) outlinerCommands() []Command {
 			Aliases:     []string{"outliner default sort", "outliner clear sort"},
 			Handler: func() tea.Msg {
 				if m.outliner != nil {
-					m.outliner.sortField = SortByDefault
-					m.outliner.sortAscending = true
+					m.outliner.sort.Reset()
 					m.outliner.rebuildRows()
 				}
 				return nil
@@ -830,8 +829,7 @@ func (m *AppModel) sortCommands() []Command {
 			Aliases:     []string{"default sort", "clear sort"},
 			Handler: func() tea.Msg {
 				if m.projectTree != nil {
-					m.projectTree.sortField = SortByDefault
-					m.projectTree.sortAscending = true
+					m.projectTree.sort.Reset()
 					m.projectTree.buildTree()
 				}
 				return nil

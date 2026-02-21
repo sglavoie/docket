@@ -205,12 +205,12 @@ func (m *FocusBoardModel) View() string {
 	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
 		rightParts = append(rightParts, indicator)
 	}
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		direction := "↑"
-		if !m.sortAscending {
+		if !m.sort.Ascending {
 			direction = "↓"
 		}
-		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sortField.ShortString(), direction))
+		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
 	if m.activeTab == boardTabClosed {
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))

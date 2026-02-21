@@ -66,13 +66,10 @@ const KanbanMinColumnWidth = 22
 type KanbanViewModel struct {
 	BaseSearchableView
 	InteractiveViewState
+	PrimaryViewBundle
 
 	// Project being displayed
 	Project *models.Project
-
-	// Config for workflow rule evaluation
-	config        *config.Config
-	configManager *config.Manager
 
 	// projectTree is a reference to the project tree model for filter overlay support.
 	projectTree *ProjectTreeModel
@@ -151,18 +148,14 @@ type KanbanViewModel struct {
 	deleteTarget *models.Task
 
 	// Sorting state (per-column)
-	sortField     SortField            // current sort field for active column
-	sortAscending bool                 // sort direction
-	columnSort    map[string]SortField // per-column sort field override
+	sort       SortState            // current sort field and direction for active column
+	columnSort map[string]SortField // per-column sort field override
+
+	// Undo context for the next save operation
+	undo UndoContext
 
 	// Multi-select state
 	MultiSelectState
-
-	// Quick edit component
-	quickEdit *QuickEditComponent
-
-	// Bulk operation component for status changes with confirmation
-	bulkOp *BulkOperationComponent
 
 	// Completed view state
 	completedViewMode bool
@@ -236,33 +229,20 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 	}
 
 	m := &KanbanViewModel{
-		Project:       project,
-		config:        cfg,
-		configManager: cfgManager,
-		groupBy:       groupBy,
-		swimlaneBy:    swimlaneBy,
-		Columns:       make(map[string]*ColumnState),
-		Tasks:         make(map[string][]*models.Task),
-		Nodes:         make(map[string][]*KanbanNode),
-		ExpandState:   make(map[string]bool),
-		filter: KanbanFilterState{
-			CommonFilterState: CommonFilterState{
-				Tags:  make(map[string]bool),
-				Attrs: make(map[string]string),
-			},
-		},
-		filterBar:     NewKanbanFilterBarComponent(),
-		quickAddInput: quickAddInput,
-		// Sorting state
-		sortField:     SortByDefault,
-		sortAscending: true,
-		columnSort:    make(map[string]SortField),
-		// Multi-select state
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		// Quick edit component
-		quickEdit: NewQuickEditComponent(),
-		// Bulk operation component
-		bulkOp: NewBulkOperationComponent(),
+		PrimaryViewBundle: NewPrimaryViewBundle(cfg, cfgManager),
+		Project:           project,
+		groupBy:           groupBy,
+		swimlaneBy:        swimlaneBy,
+		Columns:           make(map[string]*ColumnState),
+		Tasks:             make(map[string][]*models.Task),
+		Nodes:             make(map[string][]*KanbanNode),
+		ExpandState:       make(map[string]bool),
+		filter:            NewKanbanFilterState(),
+		filterBar:         NewKanbanFilterBarComponent(),
+		quickAddInput:     quickAddInput,
+		sort:              NewSortState(),
+		columnSort:        make(map[string]SortField),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 	}
 
 	m.InitSearchInput("Search tasks...", 100, 40)

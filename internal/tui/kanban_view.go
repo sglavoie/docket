@@ -347,7 +347,7 @@ func (m *KanbanViewModel) renderColumnHeader(section string, isActive bool) stri
 	sortField := m.getSortFieldForColumn(section)
 	if sortField != SortByDefault {
 		direction := "↑"
-		if isActive && !m.sortAscending {
+		if isActive && !m.sort.Ascending {
 			direction = "↓"
 		}
 		headerText += " " + direction + sortField.ShortString()

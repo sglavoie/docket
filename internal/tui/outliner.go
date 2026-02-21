@@ -25,11 +25,10 @@ type ZoomEntry struct {
 type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState
+	PrimaryViewBundle
 	MultiSelectState
 
-	project       *models.Project
-	config        *config.Config
-	configManager *config.Manager
+	project *models.Project
 
 	zoomStack  []ZoomEntry
 	zoomNotice string // Transient message shown when zoom target is removed
@@ -37,10 +36,7 @@ type OutlinerModel struct {
 	rows              []outlinerRow // Flattened rows, rebuilt on each render
 	activePerspective int           // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
 
-	sortField     SortField // Current sort field (SortByDefault = no sort)
-	sortAscending bool      // Sort direction; true = ascending
-
-	quickEdit *QuickEditComponent // Inline quick edit component
+	sort SortState // Current sort field and direction
 
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
@@ -49,16 +45,12 @@ type OutlinerModel struct {
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
-	sidebar        *SidebarComponent // Sidebar detail panel
-	projectService *ProjectService   // Cached project service for persist operations
+	sidebar *SidebarComponent // Sidebar detail panel
 
 	deleteTarget *models.Task // Task to delete when confirmation is accepted
 	err          error        // Last error from an operation
 
-	bulkOp *BulkOperationComponent // Deferred bulk status change after confirmation
-
-	pendingUndoAction  string // Action label for next undo snapshot
-	pendingUndoContext string // Context description for next undo snapshot
+	undo UndoContext // Action label and context for next undo snapshot
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -80,24 +72,15 @@ func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
 	m := &OutlinerModel{
+		PrimaryViewBundle: NewPrimaryViewBundle(cfg, cfgManager),
 		project:           project,
-		config:            cfg,
-		configManager:     cfgManager,
 		activePerspective: 1,
-		quickEdit:         NewQuickEditComponent(),
 		sidebar:           NewSidebarComponent(),
-		projectService:    NewProjectService(),
-		bulkOp:            NewBulkOperationComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
-		filter: FilterState{
-			CommonFilterState: CommonFilterState{
-				Tags:  make(map[string]bool),
-				Attrs: make(map[string]string),
-			},
-			Sections: make(map[string]bool),
-		},
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
+		filter:            NewFilterState(),
+		sort:              NewSortState(),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 	}
 	// Seed default collapsed sections from config
 	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {
@@ -219,7 +202,7 @@ func (m *OutlinerModel) rebuildRows() {
 		})
 	}
 
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		tasks = m.sortTaskTree(tasks)
 	}
 
@@ -319,8 +302,8 @@ func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
 	sorted := make([]*models.Task, len(tasks))
 	copy(sorted, tasks)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := CompareTasks(sorted[i], sorted[j], m.sortField, m.project.ID, m.config)
-		return ApplySortDirection(cmp, m.sortAscending)
+		cmp := CompareTasks(sorted[i], sorted[j], m.sort.Field, m.project.ID, m.config)
+		return ApplySortDirection(cmp, m.sort.Ascending)
 	})
 	for idx, task := range sorted {
 		if len(task.Children) > 0 {
@@ -334,12 +317,7 @@ func (m *OutlinerModel) sortTaskTree(tasks []*models.Task) []*models.Task {
 
 // toggleSort sets the sort field, toggling ascending/descending if already set.
 func (m *OutlinerModel) toggleSort(field SortField) {
-	if m.sortField == field {
-		m.sortAscending = !m.sortAscending
-	} else {
-		m.sortField = field
-		m.sortAscending = true
-	}
+	m.sort.Toggle(field)
 	m.rebuildRows()
 }
 
@@ -462,8 +440,8 @@ func (m *OutlinerModel) clearMultiSelect() {
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context.
 func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {
-	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.pendingUndoAction, m.pendingUndoContext)
-	m.clearUndoContext()
+	opts := BuildWorkflowOpts(m.projectService, m.project, m.config, m.configManager, prevStates, m.undo.Action, m.undo.Context)
+	m.undo.Clear()
 	return opts
 }
 
@@ -486,24 +464,12 @@ func (m *OutlinerModel) saveAndRefreshWithPrevStates(prevStates map[string]*mode
 
 // setUndoContext sets the action context for the next save operation.
 func (m *OutlinerModel) setUndoContext(action, context string) {
-	m.pendingUndoAction = action
-	m.pendingUndoContext = context
-}
-
-// clearUndoContext clears the pending undo context.
-func (m *OutlinerModel) clearUndoContext() {
-	m.pendingUndoAction = ""
-	m.pendingUndoContext = ""
+	m.undo.Set(action, context)
 }
 
 // performUndo restores the project from backup.
 func (m *OutlinerModel) performUndo() tea.Cmd {
-	return func() tea.Msg {
-		if err := performUndoFromBackup(m.projectService, m.project); err != nil {
-			return ErrorMsg{Err: err}
-		}
-		return UndoPerformedMsg{Action: "Undo"}
-	}
+	return performUndoCmd(m.projectService, m.project, m.rebuildRows)
 }
 
 // OutlinerToggleState captures section/fold state so it can survive outliner

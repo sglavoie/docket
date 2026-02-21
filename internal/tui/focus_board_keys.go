@@ -132,8 +132,8 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "1", "2", "3", "4", "5", "0":
 		if field, isReset, ok := SortFieldForKey(key); ok {
 			if isReset {
-				m.sortField = SortByDefault
-				m.sortAscending = true
+				m.sort.Field = SortByDefault
+				m.sort.Ascending = true
 				m.applyFilter()
 				m.clampCursor()
 				m.statusMessage = "Sort reset"

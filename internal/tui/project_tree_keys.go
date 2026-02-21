@@ -130,12 +130,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 // toggleSort sets the sort field, toggling ascending/descending if already set.
 func (m *ProjectTreeModel) toggleSort(field SortField) {
 	m.clearActiveSavedView()
-	if m.sortField == field {
-		m.sortAscending = !m.sortAscending
-	} else {
-		m.sortField = field
-		m.sortAscending = true
-	}
+	m.sort.Toggle(field)
 	m.sortNodes()
 	m.updateVisibility()
 }
@@ -166,8 +161,7 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 			}
 		}
 		m.clearSelection()
-		m.pendingUndoAction = label
-		m.pendingUndoContext = fmt.Sprintf("%d tasks", count)
+		m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
 		return true, m.saveAndRefreshWithPrevStates(prevStates)
 	}
 
@@ -187,15 +181,14 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 		}
 	})
 	m.project.RelocateTaskToEndOfSection(taskID, section)
-	m.pendingUndoAction = label
-	m.pendingUndoContext = task.Title
+	m.setUndoContext(label, task.Title)
 	return true, m.saveAndRefreshWithPrevStates(prevStates)
 }
 
 // handleSortKeys handles 1-5, 0 - sort operations.
 // Returns true if the key was handled.
 func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
-	handled := handleSortKey(key, &m.sortField, &m.sortAscending,
+	handled := handleSortKey(key, &m.sort,
 		func() {
 			m.clearActiveSavedView()
 			m.buildTree()

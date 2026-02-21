@@ -44,7 +44,7 @@ func (m *KanbanViewModel) getSortFieldForColumn(section string) SortField {
 	if field, ok := m.columnSort[section]; ok {
 		return field
 	}
-	return m.sortField
+	return m.sort.Field
 }
 
 // setSortFieldForColumn sets the sort field for a specific column.
@@ -79,7 +79,7 @@ func (m *KanbanViewModel) compareKanbanNodes(a, b *KanbanNode, sortField SortFie
 	}
 
 	cmp := CompareTasks(a.Task, b.Task, sortField, m.Project.ID, m.config)
-	return ApplySortDirection(cmp, m.sortAscending)
+	return ApplySortDirection(cmp, m.sort.Ascending)
 }
 
 // cycleSortField cycles the sort field for the current column.
@@ -91,11 +91,11 @@ func (m *KanbanViewModel) cycleSortField(newField SortField) {
 
 	if currentField == newField {
 		// Same field - toggle direction
-		m.sortAscending = !m.sortAscending
+		m.sort.Ascending = !m.sort.Ascending
 	} else {
 		// Different field - switch to it (ascending)
 		m.setSortFieldForColumn(section, newField)
-		m.sortAscending = true
+		m.sort.Ascending = true
 	}
 
 	// Re-sort and update
@@ -104,7 +104,7 @@ func (m *KanbanViewModel) cycleSortField(newField SortField) {
 
 	// Update status message
 	direction := "↑"
-	if !m.sortAscending {
+	if !m.sort.Ascending {
 		direction = "↓"
 	}
 	m.statusMessage = "Sort: " + newField.String() + " " + direction
@@ -114,7 +114,7 @@ func (m *KanbanViewModel) cycleSortField(newField SortField) {
 func (m *KanbanViewModel) resetSort() {
 	section := m.CurrentSection()
 	m.setSortFieldForColumn(section, SortByDefault)
-	m.sortAscending = true
+	m.sort.Ascending = true
 	m.loadTasks()
 	m.statusMessage = "Sort reset to default"
 }

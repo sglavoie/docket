@@ -148,7 +148,7 @@ func (m *FocusBoardModel) applyFilter() {
 	}
 
 	// Apply sorting: user-selected field, or default score-descending on By Score tab
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		m.applySorting()
 	} else if m.activeTab == boardTabByScore {
 		sort.SliceStable(m.filtered, func(i, j int) bool {
@@ -161,22 +161,22 @@ func (m *FocusBoardModel) applyFilter() {
 func (m *FocusBoardModel) applySorting() {
 	sort.SliceStable(m.filtered, func(i, j int) bool {
 		ri, rj := m.filtered[i], m.filtered[j]
-		if m.sortField == SortByScore {
+		if m.sort.Field == SortByScore {
 			si, sj := m.scorePercent(ri), m.scorePercent(rj)
 			if si != sj {
 				cmp := -1
 				if si < sj {
 					cmp = 1
 				}
-				return ApplySortDirection(cmp, m.sortAscending)
+				return ApplySortDirection(cmp, m.sort.Ascending)
 			}
 			return false
 		}
 		cmp := CompareTasksCrossProject(
-			ri.Task, rj.Task, m.sortField,
+			ri.Task, rj.Task, m.sort.Field,
 			ri.Project.ID, rj.Project.ID, m.config,
 		)
-		return ApplySortDirection(cmp, m.sortAscending)
+		return ApplySortDirection(cmp, m.sort.Ascending)
 	})
 }
 
@@ -192,16 +192,11 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 
 // cycleSortField toggles sort direction if same field, or switches field if different.
 func (m *FocusBoardModel) cycleSortField(newField SortField) {
-	if m.sortField == newField {
-		m.sortAscending = !m.sortAscending
-	} else {
-		m.sortField = newField
-		m.sortAscending = true
-	}
+	m.sort.Toggle(newField)
 	m.applyFilter()
 	m.clampCursor()
 	direction := "↑"
-	if !m.sortAscending {
+	if !m.sort.Ascending {
 		direction = "↓"
 	}
 	m.statusMessage = fmt.Sprintf("Sort: %s %s", newField, direction)

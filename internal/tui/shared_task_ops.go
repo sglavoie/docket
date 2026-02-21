@@ -189,6 +189,21 @@ func performUndoFromBackup(p Persister, project *models.Project) error {
 	return nil
 }
 
+// performUndoCmd returns a tea.Cmd that restores the project from backup.
+// The optional postUndo callback runs after a successful undo to let each view
+// refresh its own data structures (e.g. rebuildRows, buildTree).
+func performUndoCmd(persister Persister, project *models.Project, postUndo func()) tea.Cmd {
+	return func() tea.Msg {
+		if err := performUndoFromBackup(persister, project); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		if postUndo != nil {
+			postUndo()
+		}
+		return UndoPerformedMsg{Action: "Undo"}
+	}
+}
+
 // applyStatusChange validates and applies a status transition on the given task.
 // It handles backup, mutation, save, and reload. The caller is responsible for
 // refreshing its view-specific data (loadTasks, clampCursor, etc.).

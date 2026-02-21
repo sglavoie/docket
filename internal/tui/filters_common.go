@@ -208,6 +208,14 @@ type FilterState struct {
 	Actionable        bool            // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
 }
 
+// NewFilterState returns an initialized FilterState with allocated maps.
+func NewFilterState() FilterState {
+	return FilterState{
+		CommonFilterState: newFilterState(),
+		Sections:          make(map[string]bool),
+	}
+}
+
 // renderFilterBadge renders a styled filter badge from a parts list.
 // Returns empty string if parts is empty.
 func renderFilterBadge(parts []string) string {

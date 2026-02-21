@@ -229,12 +229,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	sortBadge := ""
-	if m.sortField != SortByDefault {
+	if m.sort.Field != SortByDefault {
 		direction := "↑"
-		if !m.sortAscending {
+		if !m.sort.Ascending {
 			direction = "↓"
 		}
-		sortBadge = "  " + MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sortField, direction))
+		sortBadge = "  " + MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sort.Field, direction))
 	}
 
 	if len(m.rows) == 0 {

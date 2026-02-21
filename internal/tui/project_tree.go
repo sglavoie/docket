@@ -147,11 +147,9 @@ type TreeNode struct {
 type ProjectTreeModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	project        *models.Project
-	config         *config.Config
-	configManager  *config.Manager
-	projectService *ProjectService
-	nodes          []*TreeNode
+	PrimaryViewBundle
+	project *models.Project
+	nodes   []*TreeNode
 
 	// View mode (Active, Inbox, or Backlog)
 	viewMode ViewMode
@@ -160,8 +158,7 @@ type ProjectTreeModel struct {
 	filter FilterState
 
 	// Sort options
-	sortField     SortField // current sort field
-	sortAscending bool      // sort direction
+	sort SortState // current sort field and direction
 
 	// Task to delete when confirm action is "delete" or "delete-recurring"
 	deleteTarget *models.Task
@@ -170,9 +167,7 @@ type ProjectTreeModel struct {
 	MultiSelectState
 
 	// Components
-	quickEdit *QuickEditComponent
 	filterBar *FilterBarComponent
-	bulkOp    *BulkOperationComponent
 	sidebar   *SidebarComponent
 
 	// Custom section tab (0 = "All", 1+ = custom section index)
@@ -185,8 +180,7 @@ type ProjectTreeModel struct {
 	scoreFilterInput ScoreFilterInput
 
 	// Undo context for the next save operation
-	pendingUndoAction  string // Action description (e.g., "Complete Task")
-	pendingUndoContext string // Additional context (e.g., task title)
+	undo UndoContext
 
 	// Active saved view name (set when a saved view is loaded, cleared on manual filter/sort changes)
 	activeSavedView string
@@ -218,24 +212,13 @@ func (m *ProjectTreeModel) clearActiveSavedView() {
 // NewProjectTreeModel creates a new project tree model.
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
 	m := &ProjectTreeModel{
-		project:        project,
-		config:         cfg,
-		configManager:  manager,
-		projectService: NewProjectService(),
-		filter: FilterState{
-			CommonFilterState: CommonFilterState{
-				Tags:  make(map[string]bool),
-				Attrs: make(map[string]string),
-			},
-			Sections: make(map[string]bool),
-		},
-		sortField:        SortByDefault,
-		sortAscending:    true,
-		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
-		quickEdit:        NewQuickEditComponent(),
-		filterBar:        NewFilterBarComponent(),
-		bulkOp:           NewBulkOperationComponent(),
-		sidebar:          NewSidebarComponent(),
+		PrimaryViewBundle: NewPrimaryViewBundle(cfg, manager),
+		project:           project,
+		filter:            NewFilterState(),
+		sort:              NewSortState(),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		filterBar:         NewFilterBarComponent(),
+		sidebar:           NewSidebarComponent(),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

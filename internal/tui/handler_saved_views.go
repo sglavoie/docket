@@ -80,8 +80,8 @@ func (m *AppModel) captureCurrentView(name string) config.SavedView {
 	view.FilterDueDate = int(pt.filter.DueDate)
 	view.FilterActionable = pt.filter.Actionable
 	view.FilterScoreMin = pt.filter.ScoreMin
-	view.SortField = int(pt.sortField)
-	view.SortAscending = pt.sortAscending
+	view.SortField = int(pt.sort.Field)
+	view.SortAscending = pt.sort.Ascending
 
 	if len(pt.filter.Tags) > 0 {
 		for tag := range pt.filter.Tags {
@@ -122,8 +122,8 @@ func (m *AppModel) applySavedView(view config.SavedView) {
 	pt.filter.DueDate = DueDateFilter(view.FilterDueDate)
 	pt.filter.Actionable = view.FilterActionable
 	pt.filter.ScoreMin = view.FilterScoreMin
-	pt.sortField = SortField(view.SortField)
-	pt.sortAscending = view.SortAscending
+	pt.sort.Field = SortField(view.SortField)
+	pt.sort.Ascending = view.SortAscending
 
 	// Restore tags — validate against current project
 	pt.filter.Tags = validateSavedStringSet(view.FilterTags, pt.getAllTags())
@@ -197,7 +197,7 @@ func (m *AppModel) buildCurrentViewSummary() string {
 		pt.filter.Actionable,
 		pt.filter.Attrs,
 		pt.filter.ScoreMin,
-		int(pt.sortField),
+		int(pt.sort.Field),
 		int(pt.viewMode),
 	)
 }
