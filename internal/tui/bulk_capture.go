@@ -66,7 +66,7 @@ func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			return m, func() tea.Msg { return CloseBulkCaptureMsg{} }
 
-		case "ctrl+s", "ctrl+enter":
+		case "ctrl+s":
 			return m, m.createTasks()
 		}
 	}

@@ -62,7 +62,13 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Only create task if not in autocomplete mode
 			if m.acMode == acModeNone {
-				return m, m.createTask()
+				return m, m.createTask(false)
+			}
+
+		case "ctrl+o":
+			// Create task and open description editor
+			if m.acMode == acModeNone {
+				return m, m.createTask(true)
 			}
 		}
 	}
@@ -100,7 +106,7 @@ func (m *QuickCaptureModel) View() string {
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · Esc: cancel"
 	}
 
 	var out strings.Builder
@@ -123,7 +129,7 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 	return false
 }
 
-func (m *QuickCaptureModel) createTask() tea.Cmd {
+func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 	return func() tea.Msg {
 		input := m.inputValue()
 		if input == "" {
@@ -238,6 +244,6 @@ func (m *QuickCaptureModel) createTask() tea.Cmd {
 			_ = storage.LoadProject(m.project)
 		}
 
-		return TaskCreatedMsg{Task: task}
+		return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter}
 	}
 }

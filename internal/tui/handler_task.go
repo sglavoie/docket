@@ -60,6 +60,22 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Delegate to current view (e.g., inbox processor) so it can reload its state
 		cmd := m.views.Update(m.currentView(), msg)
 		m.syncInboxProcessor()
+
+		// If open-after requested, re-lookup the task (stale after reload) and open editor
+		if msg.OpenContent && msg.Task != nil {
+			project := msg.Project
+			if project == nil {
+				project = m.currentProject
+			}
+			if project != nil {
+				if freshTask := project.GetTaskByID(msg.Task.ID); freshTask != nil {
+					return true, tea.Batch(cmd, statusTimeout(2*time.Second), func() tea.Msg {
+						return EditTaskContentMsg{Task: freshTask, Project: project}
+					})
+				}
+			}
+		}
+
 		return true, tea.Batch(cmd, statusTimeout(2*time.Second))
 
 	case TaskUpdatedMsg:

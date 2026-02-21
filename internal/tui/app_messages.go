@@ -81,7 +81,11 @@ type EditTaskMsg struct {
 }
 
 // TaskCreatedMsg signals a new task was created.
-type TaskCreatedMsg struct{ Task *models.Task }
+type TaskCreatedMsg struct {
+	Task        *models.Task
+	Project     *models.Project // target project (for cross-project + open-after)
+	OpenContent bool            // open description editor after creation
+}
 
 // TaskUpdatedMsg signals a task was modified.
 type TaskUpdatedMsg struct{ Task *models.Task }
