@@ -266,12 +266,13 @@ func (m *ProjectTreeModel) HasActiveSearch() bool {
 
 // HasTextInput returns true when the project tree has an active text input.
 func (m *ProjectTreeModel) HasTextInput() bool {
-	return m.HasActiveSearch() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
+	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }
 
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch() || m.IsFocusMode() || m.sidebar.IsFocused() || m.multiSelectMode || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
+	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
+		m.IsFocusMode() || m.sidebar.IsFocused()
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.

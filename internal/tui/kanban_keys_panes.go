@@ -6,11 +6,12 @@ import (
 
 // handleSearchInput processes keyboard input while in search mode.
 func (m *KanbanViewModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	handled, cmd, valueChanged := m.HandleSearchInput(msg)
-	if handled || valueChanged {
-		// Sync search query to filter and reload tasks
+	model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		m.filter.Search = m.SearchQuery()
 		m.loadTasks()
+	})
+	if handled {
+		return model, cmd
 	}
 	return m, cmd
 }

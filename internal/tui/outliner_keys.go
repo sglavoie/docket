@@ -548,7 +548,8 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 // view is zoomed in, so that the global handleEscKey() can pop the view when
 // at the root level with no active mode.
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.multiSelectMode || m.quickEdit.IsActive() || len(m.zoomStack) > 0 || m.IsSearchMode() || m.SearchQuery() != "" || m.scoreFilterInput.IsActive() || m.sidebar.ShouldCaptureEsc()
+	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
+		len(m.zoomStack) > 0 || m.sidebar.ShouldCaptureEsc()
 }
 
 // HasConfirmDialog returns true when a confirmation dialog is active.
@@ -558,5 +559,5 @@ func (m *OutlinerModel) HasConfirmDialog() bool {
 
 // HasTextInput returns true when the outliner has an active text input field.
 func (m *OutlinerModel) HasTextInput() bool {
-	return m.quickEdit.IsActive() || m.IsSearchMode() || m.scoreFilterInput.IsActive()
+	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }

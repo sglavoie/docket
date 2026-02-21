@@ -122,7 +122,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "A", Description: "Archive completed tasks (Completed view)", Category: "Archive", Views: views},
 
 		// Other
-		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Other", Views: views},
+		Keybinding{Key: "ctrl+R", Description: "Refresh from disk", Category: "Other", Views: views},
 		Keybinding{Key: "u", Description: "Undo last change", Category: "Other", Views: views},
 		Keybinding{Key: "ctrl+Z", Description: "Undo history", Category: "Other", Views: views},
 	)

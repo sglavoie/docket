@@ -97,14 +97,13 @@ func (m *ProjectTreeModel) handleConfirmation(msg tea.KeyMsg) (tea.Model, tea.Cm
 
 // handleSearchMode handles input while in search mode.
 func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	handled, cmd, valueChanged := m.HandleSearchInput(msg)
-	if valueChanged {
+	model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		m.updateVisibility()
 		visible := m.visibleNodes()
 		m.cursor = ClampCursor(m.cursor, len(visible))
-	}
+	})
 	if handled {
-		return m, cmd
+		return model, cmd
 	}
 	return m, cmd
 }

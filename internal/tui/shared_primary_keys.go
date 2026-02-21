@@ -186,3 +186,19 @@ func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()
 	}
 	return false
 }
+
+// primaryViewShouldCaptureEsc checks conditions common to all primary views:
+// pending prefix, confirm dialog, search active, multi-select, quick edit, score filter.
+func primaryViewShouldCaptureEsc(
+	ivs *InteractiveViewState,
+	bsv *BaseSearchableView,
+	multiSelect bool,
+	quickEditActive bool,
+	scoreFilterActive bool,
+) bool {
+	return ivs.DefaultShouldCaptureEsc() ||
+		bsv.SearchShouldCaptureEsc() ||
+		multiSelect ||
+		quickEditActive ||
+		scoreFilterActive
+}

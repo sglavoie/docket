@@ -36,7 +36,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 
 		// Editing
 		Keybinding{Key: "o", Description: "View task details", Category: "Editing", Views: views},
-		Keybinding{Key: "E", Description: "Quick edit with modifiers", Category: "Editing", Views: views},
+		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Editing", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Editing", Views: views},
 		Keybinding{Key: "D", Description: "Delete task", Category: "Editing", Views: views},
 
@@ -57,7 +57,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "F#", Description: "Filter by tag", Category: "Filters", Views: views},
 		Keybinding{Key: "Fd", Description: "Filter by due date (sub-popup)", Category: "Filters", Views: views},
 		Keybinding{Key: "Fa", Description: "Filter by attribute (sub-popup)", Category: "Filters", Views: views},
-		Keybinding{Key: "Fr", Description: "Toggle actionable filter", Category: "Filters", Views: views},
+		Keybinding{Key: "Fr", Description: "Toggle actionable/ready filter", Category: "Filters", Views: views},
 		Keybinding{Key: "Fc", Description: "Toggle completed view", Category: "Filters", Views: views},
 		Keybinding{Key: "F@", Description: "Section filter selector", Category: "Filters", Views: views},
 		Keybinding{Key: "Fx", Description: "Clear all filters", Category: "Filters", Views: views},

@@ -688,7 +688,9 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // search mode, quick add mode, delete confirmation, note conversion confirmation,
 // archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.detailsPaneFocused || m.IsSearchMode() || m.quickAddMode || m.FocusedTask != nil || m.multiSelectMode || (m.quickEdit != nil && m.quickEdit.IsActive()) || m.completedViewMode || m.allViewMode || m.scoreFilterInput.IsActive()
+	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit != nil && m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
+		m.detailsPaneFocused || m.quickAddMode || m.FocusedTask != nil ||
+		m.completedViewMode || m.allViewMode
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
