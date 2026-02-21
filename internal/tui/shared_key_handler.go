@@ -116,17 +116,15 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 		return v.(tea.Model), nil, true
 
 	case "?":
-		vid := v.viewID()
-		vname := v.viewName()
-		items := v.GetHelpItems()
-		return v.(tea.Model), func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: vid,
-				ViewName:   vname,
-				Items:      items,
-			}
-		}, true
+		return v.(tea.Model), helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
 	}
 
 	return nil, nil, false
+}
+
+// helpCmd returns a tea.Cmd that emits a ShowHelpMsg.
+func helpCmd(source ViewType, name string, items []HelpItem) tea.Cmd {
+	return func() tea.Msg {
+		return ShowHelpMsg{SourceView: source, ViewName: name, Items: items}
+	}
 }

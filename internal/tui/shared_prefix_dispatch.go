@@ -1,10 +1,30 @@
 package tui
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// activateSecondaryPrefix checks whether key is a valid prefix key for a
+// secondary view. Keys listed in always activate unconditionally; keys listed
+// in gated activate only when hasItem is true. Returns the prefix string and
+// true when the prefix was activated.
+func activateSecondaryPrefix(key string, always, gated string, hasItem bool) (string, bool) {
+	if len(key) != 1 {
+		return "", false
+	}
+	r := rune(key[0])
+	if strings.ContainsRune(always, r) {
+		return key, true
+	}
+	if hasItem && strings.ContainsRune(gated, r) {
+		return key, true
+	}
+	return "", false
+}
 
 // prefixDispatchView provides the methods needed by the shared prefix
 // dispatcher. Views that handle prefix key sequences implement this to

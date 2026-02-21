@@ -73,13 +73,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "?":
-			return m, func() tea.Msg {
-				return ShowHelpMsg{
-					SourceView: ViewDashboard,
-					ViewName:   "Dashboard",
-					Items:      m.GetHelpItems(),
-				}
-			}
+			return m, helpCmd(ViewDashboard, "Dashboard", m.GetHelpItems())
 		case "ctrl+r":
 			m.loadProjects()
 		case "R":

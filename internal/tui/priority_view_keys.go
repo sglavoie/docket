@@ -79,6 +79,12 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
+	// Activate prefix mode
+	if prefix, ok := activateSecondaryPrefix(key, ",gdF", "mc", m.getTaskAtCursor() != nil); ok {
+		m.pendingPrefix = prefix
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -92,35 +98,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			return m, func() tea.Msg {
 				return ShowTaskDetailMsg{Task: task, Project: project}
 			}
-		}
-		return m, nil
-
-	case ",":
-		// Start prefix sequence for status operations
-		m.pendingPrefix = ","
-		return m, nil
-
-	case "g":
-		// Start prefix sequence for gg (Vim-style)
-		m.pendingPrefix = "g"
-		return m, nil
-
-	case "d":
-		// Start prefix sequence for dd (due date)
-		m.pendingPrefix = "d"
-		return m, nil
-
-	case "m":
-		// Start prefix sequence for section move
-		if m.getTaskAtCursor() != nil {
-			m.pendingPrefix = "m"
-		}
-		return m, nil
-
-	case "c":
-		// Start prefix sequence for create linked task
-		if m.getTaskAtCursor() != nil {
-			m.pendingPrefix = "c"
 		}
 		return m, nil
 
@@ -163,11 +140,6 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	case "/":
 		// Activate search mode
 		return m, m.ActivateSearch()
-
-	case "F":
-		// Open filter prefix popup
-		m.pendingPrefix = "F"
-		return m, nil
 
 	// Open all tasks view
 	case "A":

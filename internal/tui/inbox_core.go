@@ -287,13 +287,7 @@ func (c *inboxCore) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return c.model, nil
 
 	case "?":
-		return c.model, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: c.backend.viewType(),
-				ViewName:   c.backend.helpViewName(),
-				Items:      c.GetHelpItems(),
-			}
-		}
+		return c.model, helpCmd(c.backend.viewType(), c.backend.helpViewName(), c.GetHelpItems())
 	}
 
 	return c.model, nil

@@ -92,11 +92,7 @@ func (m *FocusViewModel) View() string {
 				lines = append(lines, MutedStyle.Render("All suggestions dismissed. Press r to refresh."))
 			}
 		default:
-			if m.HasActiveFilters() {
-				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
-			} else {
-				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
-			}
+			lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 		}
 	}
 

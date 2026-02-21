@@ -171,14 +171,7 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "?":
-			return m, func() tea.Msg {
-				registry := GetKeybindingRegistry()
-				return ShowHelpMsg{
-					SourceView: ViewMetricsDashboard,
-					ViewName:   "Metrics Dashboard",
-					Items:      registry.GetForView(ViewMetricsDashboard),
-				}
-			}
+			return m, helpCmd(ViewMetricsDashboard, "Metrics Dashboard", GetKeybindingRegistry().GetForView(ViewMetricsDashboard))
 		}
 	}
 	return m, nil

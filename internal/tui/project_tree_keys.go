@@ -331,13 +331,7 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "?":
-		return true, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewProjectTree,
-				ViewName:   "Project Tree",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return true, helpCmd(ViewProjectTree, "Project Tree", m.GetHelpItems())
 
 	case "[", "]":
 		tabs := m.customSectionTabs()

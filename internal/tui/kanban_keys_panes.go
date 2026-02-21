@@ -74,13 +74,7 @@ func (m *KanbanViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) 
 		return m, nil
 
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewKanban,
-				ViewName:   "Kanban",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewKanban, "Kanban", m.GetHelpItems())
 	}
 
 	// Other keys are no-op when details pane is focused

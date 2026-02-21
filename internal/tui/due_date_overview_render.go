@@ -22,13 +22,9 @@ func (m *DueDateOverviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "Press q or Esc to clear filters."))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks with due dates found."))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Press q or Esc to close"))
+			b.WriteString(renderEmptyState("No tasks with due dates found.", "Press q or Esc to close"))
 		}
 		return b.String()
 	}
@@ -47,13 +43,9 @@ func (m *DueDateOverviewModel) View() string {
 
 	if m.totalTasks == 0 {
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "[/] h/l tabs · Fx clear filters · q/Esc clear filters"))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks in this category."))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/] h/l tabs · q/Esc close"))
+			b.WriteString(renderEmptyState("No tasks in this category.", "[/] h/l tabs · q/Esc close"))
 		}
 		return b.String()
 	}

@@ -163,13 +163,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Help
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewFocusBoard,
-				ViewName:   "Focus Board",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewFocusBoard, "Focus Board", m.GetHelpItems())
 	}
 
 	return m, nil

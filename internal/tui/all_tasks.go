@@ -428,17 +428,8 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix mode
-	switch key {
-	case ",", "!", "d", "g", "z":
-		m.pendingPrefix = key
-		return m, nil
-	case "F":
-		m.pendingPrefix = "F"
-		return m, nil
-	case "m", "c":
-		if m.getTaskAtCursor() != nil {
-			m.pendingPrefix = key
-		}
+	if prefix, ok := activateSecondaryPrefix(key, ",!dgzF", "mc", m.getTaskAtCursor() != nil); ok {
+		m.pendingPrefix = prefix
 		return m, nil
 	}
 

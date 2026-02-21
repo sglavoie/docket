@@ -202,13 +202,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.openAttachmentsDir()
 
 		case "?":
-			return m, func() tea.Msg {
-				return ShowHelpMsg{
-					SourceView: ViewTaskAttachments,
-					ViewName:   "Attachments",
-					Items:      m.GetHelpItems(),
-				}
-			}
+			return m, helpCmd(ViewTaskAttachments, "Attachments", m.GetHelpItems())
 		}
 	}
 

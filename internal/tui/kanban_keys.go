@@ -144,13 +144,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Kanban pane key handling
 	switch key {
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewKanban,
-				ViewName:   "Kanban",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewKanban, "Kanban", m.GetHelpItems())
 
 	case "esc":
 		return m.handleEscapeSequence()

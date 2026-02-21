@@ -280,17 +280,8 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 
 	// Activate prefix mode
-	switch key {
-	case ",", "d", "g":
-		m.pendingPrefix = key
-		return m, nil
-	case "F":
-		m.pendingPrefix = "F"
-		return m, nil
-	case "m":
-		if m.getTaskAtCursor() != nil {
-			m.pendingPrefix = "m"
-		}
+	if prefix, ok := activateSecondaryPrefix(key, ",dgF", "m", m.getTaskAtCursor() != nil); ok {
+		m.pendingPrefix = prefix
 		return m, nil
 	}
 

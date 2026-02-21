@@ -218,13 +218,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				sourceView = ViewGlobalNotes
 				viewName = "Global Notes"
 			}
-			return m, func() tea.Msg {
-				return ShowHelpMsg{
-					Items:      m.GetHelpItems(),
-					SourceView: sourceView,
-					ViewName:   viewName,
-				}
-			}
+			return m, helpCmd(sourceView, viewName, m.GetHelpItems())
 		}
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)

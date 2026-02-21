@@ -595,6 +595,17 @@ func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 	}
 }
 
+// renderEmptyState returns the standard empty-state block used when a view has
+// no visible tasks. msg is rendered in MutedStyle; helpText (if non-empty) is
+// appended below in HelpStyle with a blank-line separator.
+func renderEmptyState(msg string, helpText string) string {
+	s := MutedStyle.Render(msg)
+	if helpText != "" {
+		s += "\n\n" + HelpStyle.Render(helpText)
+	}
+	return s
+}
+
 // renderDynamicSubTabBar renders the dynamic sub-tab row when there are
 // multiple sub-tabs (prepends "All"), or returns "" if none.
 func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int) string {

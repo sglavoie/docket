@@ -105,13 +105,7 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Help
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewTaskDetail,
-				ViewName:   "Task Detail",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewTaskDetail, "Task Detail", m.GetHelpItems())
 
 	// Clipboard
 	case "y", "Y", "ctrl+y":

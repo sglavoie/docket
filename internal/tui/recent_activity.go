@@ -233,13 +233,7 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, m.ActivateSearch()
 
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewRecentActivity,
-				ViewName:   "Recent Activity",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewRecentActivity, "Recent Activity", m.GetHelpItems())
 	}
 
 	if handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height()) {
@@ -310,13 +304,9 @@ func (m *RecentActivityModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "Press q or Esc to clear filters."))
 		} else {
-			b.WriteString(MutedStyle.Render("No recent activity found."))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Press q or Esc to close."))
+			b.WriteString(renderEmptyState("No recent activity found.", "Press q or Esc to close."))
 		}
 		return b.String()
 	}
@@ -358,11 +348,7 @@ func (m *RecentActivityModel) View() string {
 	}
 
 	if len(m.filtered) == 0 {
-		if m.HasActiveFilters() {
-			lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
-		} else {
-			lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
-		}
+		lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
 	}
 
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))

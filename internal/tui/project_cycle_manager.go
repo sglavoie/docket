@@ -222,13 +222,7 @@ func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "?":
-			return m, func() tea.Msg {
-				return ShowHelpMsg{
-					SourceView: ViewProjectCycleManager,
-					ViewName:   "Project Cycle",
-					Items:      m.GetHelpItems(),
-				}
-			}
+			return m, helpCmd(ViewProjectCycleManager, "Project Cycle", m.GetHelpItems())
 
 		default:
 			handled, cmd := m.HandleKeyMsg(msg)

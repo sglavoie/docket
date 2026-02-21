@@ -160,11 +160,11 @@ func (m *PriorityViewModel) View() string {
 	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
 		b.WriteString(m.renderPriorityTabBar())
 		b.WriteString("\n\n")
+		msg := EmptyStateNoTasks
 		if m.searchQuery != "" {
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-		} else {
-			b.WriteString(MutedStyle.Render(EmptyStateNoTasks))
+			msg = EmptyStateFiltered
 		}
+		b.WriteString(MutedStyle.Render(msg))
 		b.WriteString("\n\n")
 		if m.IsSearchMode() {
 			b.WriteString(HelpStyle.Render("Search: ") + m.SearchInputView())

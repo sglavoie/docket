@@ -401,13 +401,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Help
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewOutliner,
-				ViewName:   "Outliner",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewOutliner, "Outliner", m.GetHelpItems())
 
 	// Type change keys
 	case "<", ">", "H", "L":

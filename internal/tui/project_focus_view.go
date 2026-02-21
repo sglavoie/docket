@@ -166,9 +166,8 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 	m.statusMessage = ""
 
 	// Activate prefix mode
-	switch key {
-	case ",", "d", "g":
-		m.pendingPrefix = key
+	if prefix, ok := activateSecondaryPrefix(key, ",dg", "", false); ok {
+		m.pendingPrefix = prefix
 		return m, nil
 	}
 
@@ -268,13 +267,7 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	// Help
 	case "?":
-		return m, func() tea.Msg {
-			return ShowHelpMsg{
-				SourceView: ViewProjectFocusView,
-				ViewName:   "Project Focus View",
-				Items:      m.GetHelpItems(),
-			}
-		}
+		return m, helpCmd(ViewProjectFocusView, "Project Focus View", m.GetHelpItems())
 	}
 
 	return m, nil

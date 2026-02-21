@@ -26,13 +26,9 @@ func (m *DailyReviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Press q or Esc to clear filters."))
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "Press q or Esc to clear filters."))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks to review."))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("Your inbox is clear. Press q or Esc to close."))
+			b.WriteString(renderEmptyState("No tasks to review.", "Your inbox is clear. Press q or Esc to close."))
 		}
 		return b.String()
 	}
@@ -58,13 +54,9 @@ func (m *DailyReviewModel) View() string {
 	// Render all sections
 	if m.totalTasks == 0 {
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render(EmptyStateFiltered))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
+			b.WriteString(renderEmptyState(EmptyStateFiltered, "[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
 		} else {
-			b.WriteString(MutedStyle.Render("No tasks in this tab."))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("[/]: tabs · ? help"))
+			b.WriteString(renderEmptyState("No tasks in this tab.", "[/]: tabs · ? help"))
 		}
 		return b.String()
 	}
