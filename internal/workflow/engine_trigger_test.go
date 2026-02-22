@@ -203,6 +203,12 @@ func TestMatchesTrigger_CreatedDays(t *testing.T) {
 			trigger:   RuleTrigger{Field: FieldCreatedDays, Operation: OpEquals, Value: "0"},
 			expected:  true,
 		},
+		{
+			name:      "zero CreatedAt returns false",
+			createdAt: time.Time{},
+			trigger:   RuleTrigger{Field: FieldCreatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -236,6 +242,12 @@ func TestMatchesTrigger_UpdatedDays(t *testing.T) {
 		{
 			name:      "updated 3 days ago, not greater than 7",
 			updatedAt: now.AddDate(0, 0, -3),
+			trigger:   RuleTrigger{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
+			expected:  false,
+		},
+		{
+			name:      "zero UpdatedAt returns false",
+			updatedAt: time.Time{},
 			trigger:   RuleTrigger{Field: FieldUpdatedDays, Operation: OpGreaterThan, Value: "7"},
 			expected:  false,
 		},

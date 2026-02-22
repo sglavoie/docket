@@ -110,6 +110,32 @@ func TestParseTasksMarkdown_DatesBackwardsCompatibility(t *testing.T) {
 	}
 }
 
+func TestParseTasksMarkdown_MissingUpdatedDefaultsToCreated(t *testing.T) {
+	content := `# Project: Test
+
+## Task: No Updated Field
+<!-- id: t1, status: todo, priority: 3, created: 2024-06-01 10:00 -->
+
+A task whose metadata has created but no updated field.
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+
+	task := tasks[0]
+	if task.UpdatedAt.IsZero() {
+		t.Fatal("expected UpdatedAt to be non-zero when created is set but updated is absent")
+	}
+	if !task.UpdatedAt.Equal(task.CreatedAt) {
+		t.Errorf("expected UpdatedAt (%v) to equal CreatedAt (%v)", task.UpdatedAt, task.CreatedAt)
+	}
+}
+
 func TestParseTasksMarkdown_WithDependencies(t *testing.T) {
 	content := `# Project: Test Project
 

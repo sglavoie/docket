@@ -557,11 +557,15 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 		days := daysUntil(*task.DueDate)
 		fieldValue = strconv.Itoa(days)
 	case FieldCreatedDays:
-		// Days since creation
+		if task.CreatedAt.IsZero() {
+			return false
+		}
 		days := daysSince(task.CreatedAt)
 		fieldValue = strconv.Itoa(days)
 	case FieldUpdatedDays:
-		// Days since last update
+		if task.UpdatedAt.IsZero() {
+			return false
+		}
 		days := daysSince(task.UpdatedAt)
 		fieldValue = strconv.Itoa(days)
 	default:

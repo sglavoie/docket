@@ -168,6 +168,14 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		format.ExtractCommentsFromDescription(t)
 	}
 
+	// Normalize zero UpdatedAt: if metadata omitted updated: (because it equaled
+	// created:), default UpdatedAt to CreatedAt so downstream code never sees year-0001.
+	for _, t := range tasks {
+		if t.UpdatedAt.IsZero() && !t.CreatedAt.IsZero() {
+			t.UpdatedAt = t.CreatedAt
+		}
+	}
+
 	// Validate parent references - clear any that reference non-existent tasks
 	taskByID := make(map[string]bool, len(tasks))
 	for _, t := range tasks {
