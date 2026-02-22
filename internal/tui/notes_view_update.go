@@ -23,20 +23,25 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Handle delete confirmation mode
-		if m.confirmDelete {
-			m.confirmDelete = false
-			if key == "d" {
-				if m.multiSelectMode && m.selectedNoteCount() > 0 {
-					return m, m.performBulkDelete()
+		if m.confirm.IsActive() {
+			action := m.confirm.Action()
+			confirmed, handled := m.confirm.HandleKey(key)
+			if handled {
+				if confirmed {
+					switch action {
+					case "delete":
+						if m.pendingDeleteIdx < len(m.notes) {
+							return m, m.performDelete()
+						}
+						m.statusMessage = "Delete failed: note no longer exists"
+					case "bulk-delete":
+						return m, m.performBulkDelete()
+					}
+				} else {
+					m.statusMessage = ""
 				}
-				if m.pendingDeleteIdx < len(m.notes) {
-					return m, m.performDelete()
-				}
-				m.statusMessage = "Delete failed: note no longer exists"
 				return m, nil
 			}
-			m.statusMessage = "Delete canceled"
-			return m, nil
 		}
 
 		m.statusMessage = ""
@@ -49,9 +54,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.deselectAllNotes()
 				return m, nil
 			}
-			// Any other key after 'g' means jump to top
-			m.cursor = 0
-			m.detailsScroll = 0
+			handleGotoTopPrefix(key, &m.cursor, func() { m.detailsScroll = 0 })
 			return m, nil
 		}
 
@@ -65,7 +68,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Z toggles fullscreen (no-op during rename/delete/multiselect)
-		if key == "Z" && !m.renaming && !m.confirmDelete && !m.multiSelectMode {
+		if key == "Z" && !m.renaming && !m.confirm.IsActive() && !m.multiSelectMode {
 			m.fullscreenPane = !m.fullscreenPane
 			return m, nil
 		}
@@ -94,7 +97,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CycleTab(&m.activeTab, len(noteTabNames), -1)
 			m.loadNotes()
 			return m, nil
-		case "]":
+		case "]", "l":
 			CycleTab(&m.activeTab, len(noteTabNames), 1)
 			m.loadNotes()
 			return m, nil
@@ -147,18 +150,12 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.createNote()
 		case "d":
 			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				m.confirmDelete = true
-				m.statusMessage = fmt.Sprintf("Press d again to delete %d notes", m.selectedNoteCount())
+				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d notes? (y/n)", m.selectedNoteCount()))
+				m.statusMessage = m.confirm.Prompt()
 				return m, nil
 			}
 			return m, m.deleteCurrentNote()
-		case "l":
-			if m.isGlobal && !m.multiSelectMode {
-				// In global notes, l cycles tabs forward (no task linking available)
-				CycleTab(&m.activeTab, len(noteTabNames), 1)
-				m.loadNotes()
-				return m, nil
-			}
+		case "L":
 			if m.isGlobal {
 				return m, nil // no task linking in global notes
 			}
@@ -234,7 +231,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirmDelete || m.detailsPaneFocused || m.multiSelectMode || m.renaming || m.fullscreenPane
+	return m.confirm.IsActive() || m.detailsPaneFocused || m.multiSelectMode || m.renaming || m.fullscreenPane
 }
 
 // HasTextInput returns false since search is now a separate view.

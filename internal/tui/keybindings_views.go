@@ -339,7 +339,7 @@ func (r *KeybindingRegistry) registerNotesBindings() {
 		Keybinding{Key: "n", Description: "Create new note", Category: "Actions", Views: views},
 		Keybinding{Key: "d", Description: "Delete note (confirm)", Category: "Actions", Views: views},
 		Keybinding{Key: "u", Description: "Undo last delete", Category: "Actions", Views: views},
-		Keybinding{Key: "l", Description: "Link note to task", Category: "Actions", Views: projectOnly},
+		Keybinding{Key: "L", Description: "Link note to task", Category: "Actions", Views: projectOnly},
 		Keybinding{Key: "m", Description: "Move note to project", Category: "Actions", Views: globalOnly},
 		Keybinding{Key: "p", Description: "Toggle pin", Category: "Actions", Views: views},
 		Keybinding{Key: "t", Description: "Edit note tags", Category: "Tags", Views: views},

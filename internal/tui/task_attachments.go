@@ -112,9 +112,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			if msg.String() == "g" {
-				m.cursor = 0
-			}
+			handleGotoTopPrefix(msg.String(), &m.cursor)
 			return m, nil
 		}
 

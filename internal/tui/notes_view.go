@@ -48,7 +48,7 @@ type NotesViewModel struct {
 	filterTags map[string]bool
 
 	// Delete confirmation state
-	confirmDelete    bool
+	confirm          ConfirmDialog
 	pendingDeleteIdx int
 
 	// Undo state

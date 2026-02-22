@@ -15,6 +15,21 @@ type commonActionView interface {
 	showDeleteConfirm(shortID int)
 }
 
+// handleGotoTopPrefix handles the common "gg" → jump-to-top key sequence.
+// Call this when pendingPrefix == "g". It resets the cursor to 0 and invokes
+// any extra callbacks (e.g. resetting a scroll offset). Returns true so
+// callers can short-circuit. For views with custom g-prefix keys (e.g. gX),
+// check those first and fall through to this for the default "gg" behavior.
+func handleGotoTopPrefix(key string, cursor *int, extras ...func()) bool {
+	if key == "g" {
+		*cursor = 0
+		for _, fn := range extras {
+			fn()
+		}
+	}
+	return true
+}
+
 // jumpCursor moves cursor by delta within [0, total-1].
 func jumpCursor(cursor *int, total, delta int) {
 	*cursor += delta

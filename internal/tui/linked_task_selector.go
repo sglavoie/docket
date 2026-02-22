@@ -196,8 +196,8 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 	if m.pendingPrefix != "" {
 		prefix := m.pendingPrefix
 		m.pendingPrefix = ""
-		if key != "esc" && prefix == "g" && key == "g" {
-			m.cursor = 0
+		if key != "esc" && prefix == "g" {
+			handleGotoTopPrefix(key, &m.cursor)
 		}
 		return m, nil
 	}
@@ -254,26 +254,12 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 		}
 		return m, nil
 
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < len(m.filtered)-1 {
-			m.cursor++
-		}
-		return m, nil
-
 	case "g":
 		m.pendingPrefix = "g"
 		return m, nil
+	}
 
-	case "G":
-		if len(m.filtered) > 0 {
-			m.cursor = len(m.filtered) - 1
-		}
+	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
 		return m, nil
 	}
 

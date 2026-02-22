@@ -263,11 +263,8 @@ func (m *NotesViewModel) renderStatusBar() string {
 	if m.renaming {
 		return "Rename: " + m.renameInput.View()
 	}
-	if m.confirmDelete {
-		if m.pendingDeleteIdx < len(m.notes) {
-			return WarningIconStyle.Render(fmt.Sprintf("Press d again to delete: %s", m.notes[m.pendingDeleteIdx].Title))
-		}
-		return ""
+	if m.confirm.IsActive() {
+		return m.confirm.Render()
 	}
 	if m.statusMessage != "" {
 		if m.statusIsError {
@@ -358,12 +355,8 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 
 // GetHelpItems returns keybinding help for the notes view.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
-	tabSwitchKey := "h/[/]"
-	if m.isGlobal {
-		tabSwitchKey = "h/l/[/]"
-	}
 	items := []HelpItem{
-		{Key: tabSwitchKey, Description: "Switch tab"},
+		{Key: "h/l/[/]", Description: "Switch tab"},
 		{Key: "j/k", Description: "Navigate up/down"},
 		{Key: "Tab", Description: "Switch pane (list/details)"},
 		{Key: "Enter", Description: "View note (glow)"},
@@ -380,7 +373,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	if m.isGlobal {
 		items = append(items, HelpItem{Key: "m", Description: "Move note to project"})
 	} else {
-		items = append(items, HelpItem{Key: "l", Description: "Link note to task"})
+		items = append(items, HelpItem{Key: "L", Description: "Link note to task"})
 	}
 	items = append(items,
 		HelpItem{Key: "p", Description: "Toggle pin"},

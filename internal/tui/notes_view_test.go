@@ -148,7 +148,7 @@ func TestPendingGKeyConsumed(t *testing.T) {
 	// Move cursor down first
 	m.cursor = 2
 
-	// Press g then d — should jump to top, NOT trigger delete
+	// Press g then d — should consume the d, NOT trigger delete
 	m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("g")})
 	if m.pendingPrefix != "g" {
 		t.Error("expected pendingPrefix=\"g\" after g")
@@ -158,10 +158,10 @@ func TestPendingGKeyConsumed(t *testing.T) {
 	if m.pendingPrefix != "" {
 		t.Error("expected pendingPrefix=\"\" after second key")
 	}
-	if m.cursor != 0 {
-		t.Errorf("expected cursor=0 after gd (jump to top), got %d", m.cursor)
+	if m.cursor != 2 {
+		t.Errorf("expected cursor=2 after gd (only gg jumps to top), got %d", m.cursor)
 	}
-	if m.confirmDelete {
+	if m.confirm.IsActive() {
 		t.Error("expected no delete confirmation after gd — second key should be consumed")
 	}
 }

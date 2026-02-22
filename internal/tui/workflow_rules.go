@@ -101,9 +101,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			if msg.String() == "g" {
-				m.cursor = 0
-			}
+			handleGotoTopPrefix(msg.String(), &m.cursor)
 			return m, nil
 		}
 

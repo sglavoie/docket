@@ -194,6 +194,10 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	tasks := m.filteredTasks()
 
+	if handleListNavigation(key, &m.cursor, len(tasks), m.ContentHeight()) {
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		return m, func() tea.Msg {
@@ -205,33 +209,6 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 		return m, func() tea.Msg {
 			return CloseProjectFocusViewMsg{}
 		}
-
-	// Navigation
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-		return m, nil
-
-	case "down", "j":
-		if m.cursor < len(tasks)-1 {
-			m.cursor++
-		}
-		return m, nil
-
-	case "G":
-		if len(tasks) > 0 {
-			m.cursor = len(tasks) - 1
-		}
-		return m, nil
-
-	case "ctrl+u":
-		jumpCursor(&m.cursor, len(tasks), -10)
-		return m, nil
-
-	case "ctrl+d":
-		jumpCursor(&m.cursor, len(tasks), 10)
-		return m, nil
 
 	// Toggle active flag (remove from focus)
 	case "*":
