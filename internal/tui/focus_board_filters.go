@@ -17,10 +17,7 @@ func (m *FocusBoardModel) buildTagCmd() tea.Cmd {
 	for i := range m.rows {
 		tasks[i] = m.rows[i].Task
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusBoard, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewFocusBoard, "Filter by Tags")
 }
 
 // handleFocusBoardFilterPrefix handles the second key after pressing F (filter prefix).
@@ -62,11 +59,26 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
-	hints := buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true)
+	hints := PrefixHints{
+		",": StatusPrefixHints,
+		"!": PriorityPrefixHints,
+		"g": FocusBoardNavigationPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
+		"c": CreateLinkedPrefixHints,
+	}
+	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
+		hints[k] = v
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,
 	}
+}
+
+// FocusBoardNavigationPrefixHints contains "g" prefix hints for focus board.
+var FocusBoardNavigationPrefixHints = []PrefixHint{
+	{Key: "g", Description: "first", Detail: "Jump to first item"},
+	{Key: "p", Description: "go to project", Detail: "Navigate to task in project tree"},
 }
 
 // matchesSearch returns true if the board row matches the search query.

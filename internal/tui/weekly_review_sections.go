@@ -233,7 +233,7 @@ func (m *WeeklyReviewModel) toggleCurrentSection() (tea.Model, tea.Cmd) {
 		}
 
 		if m.cursor >= headerPos && m.cursor < sectionEnd {
-			m.collapsedSections[int(section)] = !m.collapsedSections[int(section)]
+			ToggleSection(m.collapsedSections, int(section))
 			m.calculateNavigation()
 			m.clampCursor()
 			return m, nil

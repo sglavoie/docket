@@ -6,20 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// PriorityFilterBarComponent encapsulates filter bar state for the priority view.
-type PriorityFilterBarComponent struct {
-	enabled bool
-	counts  map[string]int
-}
-
-// NewPriorityFilterBarComponent creates a new filter bar component for priority view.
-func NewPriorityFilterBarComponent() *PriorityFilterBarComponent {
-	return &PriorityFilterBarComponent{
-		enabled: false,
-		counts:  make(map[string]int),
-	}
-}
-
 // passesFilters checks if a task passes all current priority view filters.
 func (m *PriorityViewModel) passesFilters(task *models.Task) bool {
 	return passesCommonFilters(task, &m.filter, m.project.ID, m.config)
@@ -41,22 +27,17 @@ func (m *PriorityViewModel) applyFiltersToGroup(tasks []*PriorityTask) []*Priori
 
 // HasActiveFilters returns true if any filter is currently active.
 func (m *PriorityViewModel) HasActiveFilters() bool {
-	return hasActiveCommonFilters(&m.filter) || m.actionableFilter
+	return hasActiveCommonFilters(&m.filter)
 }
 
 // ClearAllFilters resets all filters to their default state.
 func (m *PriorityViewModel) ClearAllFilters() {
 	clearCommonFilters(&m.filter)
-	m.actionableFilter = false
 }
 
 // renderActiveFilterIndicator returns a compact indicator of all active filters.
 func (m *PriorityViewModel) renderActiveFilterIndicator() string {
-	parts := commonFilterParts(&m.filter)
-	if m.actionableFilter {
-		parts = append(parts, "ready")
-	}
-	return renderFilterBadge(parts)
+	return renderCommonFilterIndicator(&m.filter)
 }
 
 // buildPriorityFilterPrefixHints builds dynamic filter hints for priority view.
@@ -64,12 +45,12 @@ func (m *PriorityViewModel) buildPriorityFilterPrefixHints() []PrefixHint {
 	hints := buildCommonFilterPrefixHints(&m.filter, true, true)
 
 	readyDetail := "off"
-	if m.actionableFilter {
+	if m.filter.Actionable {
 		readyDetail = "on"
 	}
 
 	// Insert "r" (ready) hint before the last "x" (clear-all) hint
-	readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter}
+	readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable}
 	if len(hints) > 0 {
 		hints = append(hints[:len(hints)-1], readyHint, hints[len(hints)-1])
 	} else {
@@ -80,7 +61,7 @@ func (m *PriorityViewModel) buildPriorityFilterPrefixHints() []PrefixHint {
 }
 
 // refreshAndClamp reloads data after filter changes.
-func (m *PriorityViewModel) refreshAndClamp() { m.loadActionableTasks() }
+func (m *PriorityViewModel) refreshAndClamp() { m.loadActionableTasks(); m.clampCursor() }
 
 func (m *PriorityViewModel) buildTagCmd() tea.Cmd {
 	var tasks []*models.Task
@@ -89,10 +70,7 @@ func (m *PriorityViewModel) buildTagCmd() tea.Cmd {
 			tasks = append(tasks, task)
 		}
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewPriorityView, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewPriorityView, "Filter by Tags")
 }
 
 // handlePriorityFilterPrefix handles the second key after pressing F (filter prefix).
@@ -103,7 +81,7 @@ func (m *PriorityViewModel) handlePriorityFilterPrefix(key string) (tea.Model, t
 		m.pendingPrefix = "Fd"
 		return m, nil
 	case "r":
-		m.actionableFilter = !m.actionableFilter
+		m.filter.Actionable = !m.filter.Actionable
 		m.loadActionableTasks()
 		return m, nil
 	case "x":

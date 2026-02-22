@@ -17,10 +17,7 @@ func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
 			tasks = append(tasks, group[i].Task)
 		}
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDueDateOverview, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewDueDateOverview, "Filter by Tags")
 }
 
 // handleDueDateFilterPrefix handles the second key after pressing F (filter prefix) in due date overview.

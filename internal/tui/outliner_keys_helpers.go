@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -33,6 +35,51 @@ func (m *OutlinerModel) collapseAllParents(tasks []*models.Task) {
 			m.collapseAllParents(task.Children)
 		}
 	}
+}
+
+// sendTaskToSection moves the cursor task to the specified section.
+func (m *OutlinerModel) sendTaskToSection(task *models.Task, section string) (tea.Model, tea.Cmd) {
+	if task == nil {
+		return m, nil
+	}
+	m.project.MutateTask(task.ID, func(t *models.Task) {
+		t.Section = section
+		if section == "" {
+			t.Activate()
+		}
+	})
+	m.project.RelocateTaskToEndOfSection(task.ID, section)
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Active"
+	}
+	m.setUndoContext(label, task.Title)
+	m.rebuildRows()
+	return m, m.saveWithWorkflow()
+}
+
+// sendTasksToSectionBulk moves all selected tasks to the specified section.
+func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.Cmd) {
+	count := 0
+	for id := range m.selectedTasks {
+		if m.project.MutateTask(id, func(t *models.Task) {
+			t.Section = section
+			if section == "" {
+				t.Activate()
+			}
+		}) {
+			m.project.RelocateTaskToEndOfSection(id, section)
+			count++
+		}
+	}
+	label := "Move to " + section
+	if section == "" {
+		label = "Move to Active"
+	}
+	m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
+	m.clearMultiSelect()
+	m.rebuildRows()
+	return m, m.saveWithWorkflow()
 }
 
 // moveTaskToPosition moves the cursor task to the top or bottom of its siblings.

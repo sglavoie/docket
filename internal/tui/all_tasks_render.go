@@ -50,11 +50,9 @@ func (m *AllTasksViewModel) View() string {
 	contentHeight := m.Height() - headerLines - 4
 
 	if m.totalNavigableItems() == 0 {
-		helpText := "[/] h/l tabs · q/Esc close"
-		if m.HasActiveFilters() {
-			helpText = "[/] tabs · Fx clear filters · q/Esc clear filters"
-		}
-		b.WriteString(renderEmptyState(EmptyStateFiltered, helpText))
+		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
+			EmptyStateFiltered, "[/] h/l tabs · q/Esc close",
+			"[/] tabs · Fx clear filters · q/Esc clear filters"))
 		return b.String()
 	}
 

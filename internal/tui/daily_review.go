@@ -233,13 +233,11 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		switch pfx {
 		case "z":
-			switch k {
-			case "R":
+			handleZPrefix(k, func() {
 				ExpandAllSections(m.collapsedSections)
 				m.calculateNavigation()
 				m.clampCursor()
-				return m, nil, true
-			case "M":
+			}, func() {
 				sectionInts := make([]int, len(m.sectionOrder))
 				for i, s := range m.sectionOrder {
 					sectionInts[i] = int(s)
@@ -247,8 +245,7 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				CollapseAllSections(m.collapsedSections, sectionInts)
 				m.calculateNavigation()
 				m.clampCursor()
-				return m, nil, true
-			}
+			})
 			return m, nil, true
 
 		case "s":

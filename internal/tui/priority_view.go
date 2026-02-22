@@ -89,8 +89,6 @@ type PriorityViewModel struct {
 
 	// Filter state
 	FilterMixin
-	filterBar        *PriorityFilterBarComponent
-	actionableFilter bool // hide blocked tasks even in All tab
 
 	// Waiting On section state
 	waitingOnCollapsed bool
@@ -106,7 +104,6 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
 		FilterMixin:        FilterMixin{filter: newFilterState()},
-		filterBar:          NewPriorityFilterBarComponent(),
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search tasks...", 100, 30)
@@ -137,9 +134,9 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ShouldCaptureEsc returns true when the priority view is in prefix mode, confirm dialog, or search mode.
+// ShouldCaptureEsc returns true when the priority view is in prefix mode, confirm dialog, search mode, or filters are active.
 func (m *PriorityViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.IsSearchMode()
+	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.SearchQuery() != "" || m.HasActiveFilters()
 }
 
 // HasTextInput returns true when the search input is active.

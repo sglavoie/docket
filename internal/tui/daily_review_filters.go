@@ -20,10 +20,7 @@ func (m *DailyReviewModel) buildTagCmd() tea.Cmd {
 			tasks = append(tasks, section[i].Task)
 		}
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewDailyReview, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewDailyReview, "Filter by Tags")
 }
 
 // handleDailyReviewFilterPrefix handles the second key after pressing F (filter prefix) in daily review.

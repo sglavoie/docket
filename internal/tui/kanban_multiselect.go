@@ -114,6 +114,7 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 		})
 	}
 
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", len(valid), newStatus))
 	m.finishBulk(fmt.Sprintf("Changed %d tasks to %s", len(valid), newStatus))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
@@ -139,6 +140,7 @@ func (m *KanbanViewModel) executePendingBulkStatus() tea.Cmd {
 	count := len(m.bulkOp.GetTasks())
 	status := m.bulkOp.GetStatus()
 	m.bulkOp.Clear()
+	m.setUndoContext("Bulk Status Change", fmt.Sprintf("%d tasks -> %s", count, status))
 	m.statusMessage = fmt.Sprintf("Changed %d tasks to %s", count, status)
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
@@ -176,6 +178,7 @@ func (m *KanbanViewModel) handleBulkSectionMove(targetSection string) tea.Cmd {
 		targetColumnIndex = 0
 	}
 
+	m.setUndoContext("Move to "+sectionDisplayName(targetSection), fmt.Sprintf("%d tasks", changedCount))
 	m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", changedCount, sectionDisplayName(targetSection)))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
@@ -194,6 +197,7 @@ func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 		return nil
 	}
 
+	m.setUndoContext("Delete Tasks", fmt.Sprintf("%d tasks", len(tasks)))
 	pf := m.workflowPersistFn()
 	for _, task := range tasks {
 		result := applyDeleteTask(pf, m.Project, task.ID, m.config.DataDir)
@@ -220,6 +224,7 @@ func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
 	prevStates := captureTaskStates(m.Project.Tasks)
 	count := applyBulkPriority(m.Project, tasks, priority)
 
+	m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
 	m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, count))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {
@@ -237,6 +242,7 @@ func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc strin
 	prevStates := captureTaskStates(m.Project.Tasks)
 	count := applyBulkDueDate(m.Project, tasks, dueDate)
 
+	m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
 	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", desc, count))
 
 	return m.saveWithWorkflow(prevStates, func() tea.Msg {

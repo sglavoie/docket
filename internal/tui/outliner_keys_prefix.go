@@ -293,54 +293,28 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m.handleFilterPrefix(key)
 
 	case "m":
-		// Move to section
-		if section, ok := sectionForMoveKey(key); ok {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				count := 0
-				for id := range m.selectedTasks {
-					if m.project.MutateTask(id, func(t *models.Task) {
-						t.Section = section
-						if section == "" {
-							t.Activate()
-						}
-					}) {
-						m.project.RelocateTaskToEndOfSection(id, section)
-						count++
-					}
+		if model, cmd, handled := handleSectionMovePrefix(key, SectionMoveCallbacks{
+			MoveToSection: func(section string) (tea.Model, tea.Cmd) {
+				return m.sendTaskToSection(cursorTask, section)
+			},
+			BulkMoveToSection: func(section string) (tea.Model, tea.Cmd) {
+				return m.sendTasksToSectionBulk(section)
+			},
+			MoveToTop: func() (tea.Model, tea.Cmd) {
+				if cursorTask == nil {
+					return m, nil
 				}
-				label := "Move to " + section
-				if section == "" {
-					label = "Move to Active"
+				return m.moveTaskToPosition(cursorTask, true)
+			},
+			MoveToBottom: func() (tea.Model, tea.Cmd) {
+				if cursorTask == nil {
+					return m, nil
 				}
-				m.setUndoContext(label, fmt.Sprintf("%d tasks", count))
-				m.clearMultiSelect()
-				m.rebuildRows()
-				return m, m.saveWithWorkflow()
-			}
-			if cursorTask == nil {
-				return m, nil
-			}
-			m.project.MutateTask(cursorTask.ID, func(t *models.Task) {
-				t.Section = section
-				if section == "" {
-					t.Activate()
-				}
-			})
-			m.project.RelocateTaskToEndOfSection(cursorTask.ID, section)
-			label := "Move to " + section
-			if section == "" {
-				label = "Move to Active"
-			}
-			m.setUndoContext(label, cursorTask.Title)
-			m.rebuildRows()
-			return m, m.saveWithWorkflow()
-		}
-		// Move to top/bottom
-		if key == "K" || key == "J" {
-			if cursorTask == nil {
-				return m, nil
-			}
-			return m.moveTaskToPosition(cursorTask, key == "K")
+				return m.moveTaskToPosition(cursorTask, false)
+			},
+			IsMultiSelect: func() bool { return m.multiSelectMode && len(m.selectedTasks) > 0 },
+		}); handled {
+			return model, cmd
 		}
 
 	case "b":

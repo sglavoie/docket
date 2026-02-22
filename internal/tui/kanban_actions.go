@@ -103,6 +103,7 @@ func (m *KanbanViewModel) moveTaskLeft() tea.Cmd {
 	targetColumnIndex := m.ActiveColumn - 1
 	targetKey := m.columnDefs[targetColumnIndex].Key
 
+	m.setUndoContext("Move Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	prevStates := captureTaskStates(m.Project.Tasks)
 
 	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
@@ -145,6 +146,7 @@ func (m *KanbanViewModel) moveTaskRight() tea.Cmd {
 	targetColumnIndex := m.ActiveColumn + 1
 	targetKey := m.columnDefs[targetColumnIndex].Key
 
+	m.setUndoContext("Move Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	prevStates := captureTaskStates(m.Project.Tasks)
 
 	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
@@ -320,6 +322,7 @@ func (m *KanbanViewModel) executeDelete() tea.Cmd {
 	section := task.Section
 	m.deleteTarget = nil
 
+	m.setUndoContext("Delete Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	pf := m.workflowPersistFn()
 	result := applyDeleteTask(pf, m.Project, task.ID, m.config.DataDir)
 	if result.Err != nil {
@@ -356,6 +359,7 @@ func (m *KanbanViewModel) sendTaskToSection(targetSection string) tea.Cmd {
 		targetColumnIndex = 0
 	}
 
+	m.setUndoContext("Move to "+sectionDisplayName(targetSection), fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	prevStates := captureTaskStates(m.Project.Tasks)
 	if !m.Project.MutateTask(task.ID, func(t *models.Task) {
 		t.Section = targetSection

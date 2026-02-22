@@ -142,6 +142,50 @@ func dispatchCommonPrefix(
 	return nil, nil, false
 }
 
+// SectionMoveCallbacks provides the view-specific operations needed by
+// handleSectionMovePrefix. Each primary view populates this with its own
+// move methods so the dispatch logic can be shared.
+type SectionMoveCallbacks struct {
+	// MoveToSection moves the cursor task to the given section.
+	MoveToSection func(section string) (tea.Model, tea.Cmd)
+	// BulkMoveToSection moves all selected tasks to the given section.
+	BulkMoveToSection func(section string) (tea.Model, tea.Cmd)
+	// MoveToTop moves the cursor task to the top of its group.
+	MoveToTop func() (tea.Model, tea.Cmd)
+	// MoveToBottom moves the cursor task to the bottom of its group.
+	MoveToBottom func() (tea.Model, tea.Cmd)
+	// IsMultiSelect returns true when multi-select mode is active with selections.
+	IsMultiSelect func() bool
+	// CanMoveSection returns true when section moves are allowed (e.g. Kanban
+	// only allows them in section group-by mode). Nil means always allowed.
+	CanMoveSection func() bool
+}
+
+// handleSectionMovePrefix dispatches the m-prefix key to the appropriate
+// section move or position move callback. Returns (model, cmd, handled).
+func handleSectionMovePrefix(key string, cb SectionMoveCallbacks) (tea.Model, tea.Cmd, bool) {
+	if section, ok := sectionForMoveKey(key); ok {
+		if cb.CanMoveSection != nil && !cb.CanMoveSection() {
+			return nil, nil, true
+		}
+		if cb.IsMultiSelect != nil && cb.IsMultiSelect() {
+			model, cmd := cb.BulkMoveToSection(section)
+			return model, cmd, true
+		}
+		model, cmd := cb.MoveToSection(section)
+		return model, cmd, true
+	}
+	switch key {
+	case "K":
+		model, cmd := cb.MoveToTop()
+		return model, cmd, true
+	case "J":
+		model, cmd := cb.MoveToBottom()
+		return model, cmd, true
+	}
+	return nil, nil, false
+}
+
 // isFilterSubPrefix returns true if the prefix is a filter sub-prefix (Ft, Fs, etc).
 func isFilterSubPrefix(prefix string) bool {
 	switch prefix {

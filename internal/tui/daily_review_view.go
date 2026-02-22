@@ -26,10 +26,10 @@ func (m *DailyReviewModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(renderEmptyState(EmptyStateFiltered, "Press q or Esc to clear filters."))
-		} else {
-			b.WriteString(renderEmptyState("No tasks to review.", "Your inbox is clear. Press q or Esc to close."))
 		}
+		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
+			"No tasks to review.", "Your inbox is clear. Press q or Esc to close.",
+			"Press q or Esc to clear filters."))
 		return b.String()
 	}
 
@@ -53,11 +53,9 @@ func (m *DailyReviewModel) View() string {
 
 	// Render all sections
 	if m.totalTasks == 0 {
-		if m.HasActiveFilters() {
-			b.WriteString(renderEmptyState(EmptyStateFiltered, "[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
-		} else {
-			b.WriteString(renderEmptyState("No tasks in this tab.", "[/]: tabs · ? help"))
-		}
+		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
+			"No tasks in this tab.", "[/]: tabs · ? help",
+			"[/]: tabs · Fx clear filters · q/Esc clear filters · ? help"))
 		return b.String()
 	}
 

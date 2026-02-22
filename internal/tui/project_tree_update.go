@@ -335,18 +335,20 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "m":
-		// Move/send-to-section operations
-		if section, ok := sectionForMoveKey(key); ok {
-			_, cmd := m.sendTasksToSection(section, visible)
-			return m, cmd
-		}
-		switch key {
-		case "K":
-			// Move task to top of section
-			return m.moveTaskToTop(visible)
-		case "J":
-			// Move task to bottom of section
-			return m.moveTaskToBottom(visible)
+		if model, cmd, handled := handleSectionMovePrefix(key, SectionMoveCallbacks{
+			MoveToSection: func(section string) (tea.Model, tea.Cmd) {
+				_, cmd := m.sendTasksToSection(section, visible)
+				return m, cmd
+			},
+			BulkMoveToSection: func(section string) (tea.Model, tea.Cmd) {
+				_, cmd := m.sendTasksToSection(section, visible)
+				return m, cmd
+			},
+			MoveToTop:     func() (tea.Model, tea.Cmd) { return m.moveTaskToTop(visible) },
+			MoveToBottom:  func() (tea.Model, tea.Cmd) { return m.moveTaskToBottom(visible) },
+			IsMultiSelect: func() bool { return m.multiSelectMode && len(m.selectedTasks) > 0 },
+		}); handled {
+			return model, cmd
 		}
 
 	case "!":

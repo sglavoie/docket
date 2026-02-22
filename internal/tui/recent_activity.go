@@ -127,7 +127,7 @@ func (m *RecentActivityModel) HasTextInput() bool {
 
 // ShouldCaptureEsc returns true when search is active, a query is set, prefix is pending, or filters are active.
 func (m *RecentActivityModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.IsSearchMode() || m.SearchQuery() != "" || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.SearchQuery() != "" || m.HasActiveFilters()
 }
 
 func (m *RecentActivityModel) Init() tea.Cmd {
@@ -135,11 +135,11 @@ func (m *RecentActivityModel) Init() tea.Cmd {
 }
 
 func (m *RecentActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
+	if handled, cmd := handleCommonUpdateMsg(msg, m.SetSize, m.loadTasks, m.clampCursor, func(s string) { m.statusMessage = s }); handled {
+		return m, cmd
+	}
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 	}
@@ -304,10 +304,10 @@ func (m *RecentActivityModel) View() string {
 		if m.HasActiveFilters() {
 			b.WriteString(m.renderActiveFilterIndicator())
 			b.WriteString("\n\n")
-			b.WriteString(renderEmptyState(EmptyStateFiltered, "Press q or Esc to clear filters."))
-		} else {
-			b.WriteString(renderEmptyState("No recent activity found.", "Press q or Esc to close."))
 		}
+		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
+			"No recent activity found.", "Press q or Esc to close.",
+			"Press q or Esc to clear filters."))
 		return b.String()
 	}
 

@@ -14,10 +14,7 @@ func (m *RecentActivityModel) buildTagCmd() tea.Cmd {
 	for i := range m.tasks {
 		tasks[i] = m.tasks[i].Task
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewRecentActivity, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewRecentActivity, "Filter by Tags")
 }
 
 // handleRecentActivityFilterPrefix handles the second key after pressing F (filter prefix) in recent activity.

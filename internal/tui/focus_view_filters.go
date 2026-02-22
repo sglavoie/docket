@@ -14,10 +14,7 @@ func (m *FocusViewModel) buildTagCmd() tea.Cmd {
 	for i := range m.tasks {
 		tasks[i] = m.tasks[i].Task
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewFocusView, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewFocusView, "Filter by Tags")
 }
 
 // handleFocusFilterPrefix handles the second key after pressing F (filter prefix) in focus view.

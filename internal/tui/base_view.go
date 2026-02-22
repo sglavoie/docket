@@ -347,3 +347,8 @@ func CollapseAllSections[K comparable](collapsed map[K]bool, keys []K) {
 		collapsed[k] = true
 	}
 }
+
+// ToggleSection flips a section's collapsed state.
+func ToggleSection[K comparable](collapsed map[K]bool, key K) {
+	collapsed[key] = !collapsed[key]
+}

@@ -34,6 +34,7 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			task := m.getSelectedTask()
 			if task != nil {
+				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: #%d %s", priority, task.ShortID, task.Title))
 				result := applyPriorityChange(m.workflowPersistFn(), m.Project, task.ID, priority)
 				if result.Err != nil {
 					m.statusMessage = result.Err.Error()
@@ -59,8 +60,10 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			}
 			var result TaskOpResult
 			if isClear {
+				m.setUndoContext("Clear Due Date", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 				result = applyClearDueDate(m.workflowPersistFn(), m.Project, task.ID)
 			} else {
+				m.setUndoContext("Set Due Date", fmt.Sprintf("+%dd: #%d %s", days, task.ShortID, task.Title))
 				result = applyQuickDueDate(m.workflowPersistFn(), m.Project, task.ID, days)
 			}
 			if result.Err != nil {
@@ -141,25 +144,19 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "m":
-		// Section move shortcuts (a, n, i, w, s, r) — only in section mode
-		if section, ok := sectionForMoveKey(key); ok {
-			if IsSectionGroupBy(m.groupBy) {
-				if m.multiSelectMode && m.SelectedCount() > 0 {
-					return m, m.handleBulkSectionMove(section)
-				}
+		if model, cmd, handled := handleSectionMovePrefix(key, SectionMoveCallbacks{
+			MoveToSection: func(section string) (tea.Model, tea.Cmd) {
 				return m, m.sendTaskToSection(section)
-			}
-			return m, nil
-		}
-
-		// Move operations — mK/mJ always work
-		switch key {
-		case "K":
-			// Move task to top of column
-			return m, m.moveTaskToTop()
-		case "J":
-			// Move task to bottom of column
-			return m, m.moveTaskToBottom()
+			},
+			BulkMoveToSection: func(section string) (tea.Model, tea.Cmd) {
+				return m, m.handleBulkSectionMove(section)
+			},
+			MoveToTop:      func() (tea.Model, tea.Cmd) { return m, m.moveTaskToTop() },
+			MoveToBottom:   func() (tea.Model, tea.Cmd) { return m, m.moveTaskToBottom() },
+			IsMultiSelect:  func() bool { return m.multiSelectMode && m.SelectedCount() > 0 },
+			CanMoveSection: func() bool { return IsSectionGroupBy(m.groupBy) },
+		}); handled {
+			return model, cmd
 		}
 
 	case "c":
@@ -261,6 +258,7 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			for _, t := range m.getSelectedTasksList() {
 				t.TogglePinned()
 			}
+			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
 			m.ExitMultiSelect()
 			m.statusMessage = fmt.Sprintf("Toggled pin on %d tasks", count)
 			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
@@ -268,6 +266,7 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 			})
 		}
 		if task != nil {
+			m.setUndoContext("Toggle Pin", task.Title)
 			result := applyTogglePinned(m.workflowPersistFn(), m.Project, task.ID)
 			if result.Err != nil {
 				m.statusMessage = result.Err.Error()

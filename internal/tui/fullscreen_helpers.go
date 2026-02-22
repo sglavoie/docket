@@ -606,6 +606,17 @@ func renderEmptyState(msg string, helpText string) string {
 	return s
 }
 
+// renderFilterAwareEmptyState returns an empty-state block that adapts its message
+// based on whether filters are active. When hasFilters is true, it shows the
+// standard "No tasks match current filters" message with filterHelpText; otherwise
+// it shows baseMsg with baseHelpText.
+func renderFilterAwareEmptyState(hasFilters bool, baseMsg, baseHelpText, filterHelpText string) string {
+	if hasFilters {
+		return renderEmptyState(EmptyStateFiltered, filterHelpText)
+	}
+	return renderEmptyState(baseMsg, baseHelpText)
+}
+
 // renderDynamicSubTabBar renders the dynamic sub-tab row when there are
 // multiple sub-tabs (prepends "All"), or returns "" if none.
 func renderDynamicSubTabBar(subTabNames []string, subTab int, subTabRowFocused bool, width int) string {

@@ -205,7 +205,7 @@ func (m *AllTasksViewModel) toggleGroupCollapse() {
 		}
 
 		if m.cursor >= headerPos && m.cursor < sectionEnd {
-			m.collapsedGroups[group.Name] = !m.collapsedGroups[group.Name]
+			ToggleSection(m.collapsedGroups, group.Name)
 			// On collapse, snap cursor to header position
 			if m.collapsedGroups[group.Name] {
 				m.cursor = headerPos

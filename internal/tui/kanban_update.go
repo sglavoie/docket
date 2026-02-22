@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -14,6 +16,7 @@ func (m *KanbanViewModel) handleStatusTransition(status models.TaskStatus) tea.C
 		return nil
 	}
 
+	m.setUndoContext(StatusVerb(status)+" Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	result := applyStatusChange(m.workflowPersistFn(), m.Project, task.ID, status)
 	if result.Err != nil {
 		m.statusMessage = result.Err.Error()

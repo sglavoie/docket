@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -162,6 +163,43 @@ func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
 		m.clampCursor()
 	}
 	return m, nil
+}
+
+// taskOpsView implementation for FocusBoardModel.
+
+func (m *FocusBoardModel) getTaskRef() (*models.Task, *models.Project) {
+	row := m.getRowAtCursor()
+	if row == nil {
+		return nil, nil
+	}
+	return row.Task, row.Project
+}
+
+func (m *FocusBoardModel) getPersister() Persister           { return m.projectService }
+func (m *FocusBoardModel) getConfigManager() *config.Manager { return m.configManager }
+func (m *FocusBoardModel) getDataDir() string                { return m.config.DataDir }
+func (m *FocusBoardModel) reloadData()                       { m.loadItems() }
+func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
+func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }
+
+// prefixDispatchView implementation.
+
+func (m *FocusBoardModel) getTaskAndProject() (*models.Task, *models.Project) {
+	return m.getTaskRef()
+}
+
+func (m *FocusBoardModel) selectMsg(task *models.Task, project *models.Project) tea.Msg {
+	return FocusBoardSelectMsg{Task: task, Project: project}
+}
+
+func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
+
+func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	return m.handleFocusBoardFilterPrefix(key)
+}
+
+func (m *FocusBoardModel) handleFilterSubPrefix(prefix, key string) (tea.Model, tea.Cmd) {
+	return m.handleFocusBoardFilterSubPrefix(prefix, key)
 }
 
 // openBrowserCmd opens a URL in the default browser.

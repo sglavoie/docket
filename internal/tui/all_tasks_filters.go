@@ -14,10 +14,7 @@ func (m *AllTasksViewModel) buildTagCmd() tea.Cmd {
 	for i := range m.allTasks {
 		tasks[i] = m.allTasks[i].Task
 	}
-	tags := buildTagListFromTasks(tasks)
-	return func() tea.Msg {
-		return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewAllTasks, Title: "Filter by Tags"}
-	}
+	return buildTagCmdFromTasks(tasks, m.filter.Tags, ViewAllTasks, "Filter by Tags")
 }
 
 // handleAllTasksFilterPrefix handles the second key after pressing F (filter prefix).

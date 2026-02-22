@@ -125,7 +125,7 @@ type KanbanViewModel struct {
 
 	// Filter state for filtering tasks across all columns
 	filter    KanbanFilterState
-	filterBar *KanbanFilterBarComponent
+	filterBar *FilterBarComponent
 
 	// Quick add mode state
 	quickAddMode    bool
@@ -175,9 +175,6 @@ type KanbanViewModel struct {
 	// Custom section tab filtering
 	customSectionTab        int  // selected custom section tab index (0 = All)
 	customSectionRowFocused bool // true when focus is on custom section row (vs preset row)
-
-	// Additional filter state
-	actionableFilter bool
 
 	// Score filter custom value input
 	scoreFilterInput ScoreFilterInput

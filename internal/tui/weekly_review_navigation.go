@@ -175,36 +175,22 @@ func (m *WeeklyReviewModel) getTaskAtCursor() *WeeklyReviewTask {
 
 // getCurrentSectionIndex returns the index of the section containing the cursor.
 func (m *WeeklyReviewModel) getCurrentSectionIndex() int {
-	for i := len(m.sectionStarts) - 1; i >= 0; i-- {
-		if m.cursor >= m.sectionStarts[i] {
-			return i
-		}
-	}
-	return 0
+	return getCurrentSectionIdx(m.cursor, m.sectionStarts)
 }
 
 // goToNextSection moves cursor to next section header (with wrap).
 func (m *WeeklyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
-	if len(m.sectionOrder) <= 1 {
-		return m, nil
+	if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
+		m.cursor = pos
 	}
-	currentSectionIdx := m.getCurrentSectionIndex()
-	nextSectionIdx := (currentSectionIdx + 1) % len(m.sectionOrder)
-	m.cursor = m.sectionStarts[nextSectionIdx]
 	return m, nil
 }
 
 // goToPrevSection moves cursor to previous section header (with wrap).
 func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
-	if len(m.sectionOrder) <= 1 {
-		return m, nil
+	if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
+		m.cursor = pos
 	}
-	currentSectionIdx := m.getCurrentSectionIndex()
-	prevSectionIdx := currentSectionIdx - 1
-	if prevSectionIdx < 0 {
-		prevSectionIdx = len(m.sectionOrder) - 1
-	}
-	m.cursor = m.sectionStarts[prevSectionIdx]
 	return m, nil
 }
 

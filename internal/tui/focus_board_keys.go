@@ -26,6 +26,12 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Activate prefix keys: F always, ,!g gated on item, mc gated on item
+	if prefix, ok := activateSecondaryPrefix(key, ",!gF", "mc", m.getRowAtCursor() != nil); ok {
+		m.pendingPrefix = prefix
+		return m, nil
+	}
+
 	switch key {
 	case "esc", "q":
 		if m.HasActiveFilters() {
@@ -36,11 +42,6 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m, func() tea.Msg { return CloseFocusBoardMsg{} }
-
-	// Filter prefix
-	case "F":
-		m.pendingPrefix = "F"
-		return m, nil
 
 	// Search
 	case "/":
@@ -178,12 +179,8 @@ func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if isFilterSubPrefix(prefix) {
-		return m.handleFocusBoardFilterSubPrefix(prefix, key)
-	}
-
-	if prefix == "F" {
-		return m.handleFocusBoardFilterPrefix(key)
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+		return model, cmd
 	}
 
 	return m, nil
@@ -209,6 +206,11 @@ func (m *FocusBoardModel) GetHelpItems() []HelpItem {
 		{Key: "d", Description: "Toggle done/open"},
 		{Key: "D", Description: "Delete action permanently"},
 		{Key: "p", Description: "Set priority"},
+		{Key: ",", Description: "Status prefix (,t/,i/,d/,b)"},
+		{Key: "!", Description: "Priority prefix (!1-!5)"},
+		{Key: "g", Description: "Goto prefix (gg/gp)"},
+		{Key: "m", Description: "Move section (mn/ms/md/mr/mw)"},
+		{Key: "c", Description: "Linked task prefix"},
 		{Key: "e", Description: "Edit task"},
 		{Key: "E", Description: "Quick-edit title"},
 		{Key: "P", Description: "Assign project"},

@@ -436,10 +436,11 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if task == nil {
 			return m, nil
 		}
-		op, _, ok := typeChangeOpForKey(key)
+		op, undoAction, ok := typeChangeOpForKey(key)
 		if !ok {
 			return m, nil
 		}
+		m.setUndoContext(undoAction, task.Title)
 		result := applyTypeChange(m.workflowPersistFn(), m.Project, task.ID, op)
 		if result.Err != nil {
 			m.statusMessage = result.Err.Error()

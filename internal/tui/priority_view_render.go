@@ -37,10 +37,10 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	// Insert "r" (ready) hint into F hints before the last entry (clear-all)
 	if fHints, ok := hints["F"]; ok {
 		readyDetail := "off"
-		if m.actionableFilter {
+		if m.filter.Actionable {
 			readyDetail = "on"
 		}
-		readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter}
+		readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable}
 		hints["F"] = append(fHints[:len(fHints)-1], readyHint, fHints[len(fHints)-1])
 	}
 	return &PrefixPopupInfo{

@@ -212,11 +212,10 @@ func (m *KanbanViewModel) applyTabPresetForAllView(tab int) {
 	m.activeTab = tab
 	// Reset manual filters
 	m.ClearAllFilters()
-	m.actionableFilter = false
 
 	switch tab {
 	case kanbanTabActionable:
-		m.actionableFilter = true
+		m.filter.Actionable = true
 	case kanbanTabHighPri:
 		m.filter.Priority = 1
 	case kanbanTabEpics:

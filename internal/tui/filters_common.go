@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
@@ -13,13 +15,14 @@ import (
 // CommonFilterState contains the filter fields shared across views that support
 // the F-prefix filter system. Views embed this struct directly.
 type CommonFilterState struct {
-	Type     models.TaskType   // filter by type (epic/story/task/bug/idea)
-	Status   models.TaskStatus // filter by status
-	Priority int               // 0=all, 1=high only (<=2)
-	Tags     map[string]bool   // filter by tag names (AND logic)
-	DueDate  DueDateFilter     // filter by due date
-	Attrs    map[string]string // type.attribute -> value
-	ScoreMin float64           // minimum score threshold (0 = no filter)
+	Type       models.TaskType   // filter by type (epic/story/task/bug/idea)
+	Status     models.TaskStatus // filter by status
+	Priority   int               // 0=all, 1=high only (<=2)
+	Tags       map[string]bool   // filter by tag names (AND logic)
+	DueDate    DueDateFilter     // filter by due date
+	Attrs      map[string]string // type.attribute -> value
+	ScoreMin   float64           // minimum score threshold (0 = no filter)
+	Actionable bool              // only show tasks ready to work on (no blockers)
 }
 
 // passesCommonFilters checks if a task passes the shared filter criteria.
@@ -83,7 +86,8 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
 		len(f.Attrs) > 0 ||
-		f.ScoreMin > 0
+		f.ScoreMin > 0 ||
+		f.Actionable
 }
 
 // clearCommonFilters resets all common filters to defaults.
@@ -95,6 +99,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.DueDate = DueDateAll
 	f.Attrs = make(map[string]string)
 	f.ScoreMin = 0
+	f.Actionable = false
 }
 
 // commonFilterParts returns the list of active filter description strings.
@@ -137,6 +142,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	if f.ScoreMin > 0 {
 		parts = append(parts, fmt.Sprintf("score>=%.0f", f.ScoreMin))
 	}
+	if f.Actionable {
+		parts = append(parts, "ready")
+	}
 
 	return parts
 }
@@ -145,6 +153,16 @@ func commonFilterParts(f *CommonFilterState) []string {
 // Returns empty string if no filters are active.
 func renderCommonFilterIndicator(f *CommonFilterState) string {
 	return renderFilterBadge(commonFilterParts(f))
+}
+
+// buildTagCmdFromTasks builds a tea.Cmd that emits ShowTagFilterMsg for the given
+// task slice. Views call this from their buildTagCmd() method, passing their
+// collected tasks, current tag selection, source view, and title.
+func buildTagCmdFromTasks(tasks []*models.Task, selected map[string]bool, source ViewType, title string) tea.Cmd {
+	tags := buildTagListFromTasks(tasks)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: selected, Source: source, Title: title}
+	}
 }
 
 // buildTagListFromTasks scans tasks and builds a sorted list of tags with counts.
@@ -205,7 +223,6 @@ func validateSavedStringSet(saved []string, valid []string) map[string]bool {
 type FilterState struct {
 	CommonFilterState                 // embedded common filter fields
 	Sections          map[string]bool // filter by section names (OR logic)
-	Actionable        bool            // only show tasks ready to work on (no blockers, not in Inbox/Backlog)
 }
 
 // NewFilterState returns an initialized FilterState with allocated maps.

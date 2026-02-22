@@ -35,43 +35,11 @@ func NewKanbanFilterState() KanbanFilterState {
 	return KanbanFilterState{CommonFilterState: newFilterState()}
 }
 
-// KanbanFilterBarComponent encapsulates filter bar state for the kanban view.
-type KanbanFilterBarComponent struct {
-	enabled bool           // Toggle filter bar visibility
-	counts  map[string]int // Cached task counts per filter category
-}
-
 // NewKanbanFilterBarComponent creates a new filter bar component for kanban.
-func NewKanbanFilterBarComponent() *KanbanFilterBarComponent {
-	return &KanbanFilterBarComponent{
-		enabled: false, // Filter bar off by default for kanban
-		counts:  make(map[string]int),
-	}
-}
-
-// IsEnabled returns whether the filter bar is visible.
-func (f *KanbanFilterBarComponent) IsEnabled() bool {
-	return f.enabled
-}
-
-// SetEnabled sets the filter bar visibility.
-func (f *KanbanFilterBarComponent) SetEnabled(enabled bool) {
-	f.enabled = enabled
-}
-
-// Toggle toggles the filter bar visibility.
-func (f *KanbanFilterBarComponent) Toggle() {
-	f.enabled = !f.enabled
-}
-
-// GetCounts returns the cached filter counts.
-func (f *KanbanFilterBarComponent) GetCounts() map[string]int {
-	return f.counts
-}
-
-// SetCounts updates the cached filter counts.
-func (f *KanbanFilterBarComponent) SetCounts(counts map[string]int) {
-	f.counts = counts
+func NewKanbanFilterBarComponent() *FilterBarComponent {
+	fb := NewFilterBarComponent()
+	fb.SetEnabled(false) // Filter bar off by default for kanban
+	return fb
 }
 
 // passesFilters checks if a task passes all current filters.
@@ -99,7 +67,7 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 	}
 
 	// Apply actionable filter (hide blocked tasks and tasks with incomplete dependencies)
-	if m.actionableFilter {
+	if m.filter.Actionable {
 		if !m.isActionable(task) {
 			return false
 		}
@@ -133,9 +101,9 @@ func (m *KanbanViewModel) isActionable(task *models.Task) bool {
 
 // toggleActionableFilter toggles the actionable filter.
 func (m *KanbanViewModel) toggleActionableFilter() {
-	m.actionableFilter = !m.actionableFilter
+	m.filter.Actionable = !m.filter.Actionable
 	m.loadTasks()
-	if m.actionableFilter {
+	if m.filter.Actionable {
 		m.statusMessage = "Actionable filter: ON (hiding blocked/dependent)"
 	} else {
 		m.statusMessage = "Actionable filter: OFF"
@@ -207,11 +175,10 @@ func (m *KanbanViewModel) applyTabPreset(tab int) {
 	m.activeTab = tab
 	// Reset manual filters
 	m.ClearAllFilters()
-	m.actionableFilter = false
 
 	switch tab {
 	case kanbanTabActionable:
-		m.actionableFilter = true
+		m.filter.Actionable = true
 	case kanbanTabDueSoon:
 		// Handled in passesFilters via dueSoonFilter flag
 		// No standard filter field; we use a special flag
@@ -270,7 +237,7 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 	}
 
 	readyDetail := "off"
-	if m.actionableFilter {
+	if m.filter.Actionable {
 		readyDetail = "on"
 	}
 
@@ -293,7 +260,7 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		{Key: "d", Description: "due-date", Detail: dueDetail, Active: m.filter.DueDate != DueDateAll},
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
-		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.actionableFilter},
+		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "x", Description: "clear-all"},
 	}
 }
@@ -314,7 +281,6 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 	case "x":
 		// Override common x to also clear view-specific state
 		m.ClearAllFilters()
-		m.actionableFilter = false
 		m.ClearSearch()
 		m.loadTasks()
 		return m, nil

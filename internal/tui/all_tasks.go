@@ -306,38 +306,19 @@ func (m *AllTasksViewModel) totalVisibleTaskCount() int {
 	return count
 }
 
-// getCurrentGroupIndex returns the index of the group containing the cursor.
-func (m *AllTasksViewModel) getCurrentGroupIndex() int {
-	for i := len(m.groupStarts) - 1; i >= 0; i-- {
-		if m.cursor >= m.groupStarts[i] {
-			return i
-		}
-	}
-	return 0
-}
-
 // goToNextGroup moves cursor to next group header (with wrap).
 func (m *AllTasksViewModel) goToNextGroup() (tea.Model, tea.Cmd) {
-	if len(m.groupStarts) <= 1 {
-		return m, nil
+	if pos := navigateToNextSection(m.cursor, m.groupStarts); pos >= 0 {
+		m.cursor = pos
 	}
-	currentIdx := m.getCurrentGroupIndex()
-	nextIdx := (currentIdx + 1) % len(m.groupStarts)
-	m.cursor = m.groupStarts[nextIdx]
 	return m, nil
 }
 
 // goToPrevGroup moves cursor to previous group header (with wrap).
 func (m *AllTasksViewModel) goToPrevGroup() (tea.Model, tea.Cmd) {
-	if len(m.groupStarts) <= 1 {
-		return m, nil
+	if pos := navigateToPrevSection(m.cursor, m.groupStarts); pos >= 0 {
+		m.cursor = pos
 	}
-	currentIdx := m.getCurrentGroupIndex()
-	prevIdx := currentIdx - 1
-	if prevIdx < 0 {
-		prevIdx = len(m.groupStarts) - 1
-	}
-	m.cursor = m.groupStarts[prevIdx]
 	return m, nil
 }
 
@@ -572,13 +553,11 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		switch pfx {
 		case "z":
-			switch k {
-			case "R":
+			handleZPrefix(k, func() {
 				ExpandAllSections(m.collapsedGroups)
 				m.calculateNavigation()
 				m.clampCursor()
-				return m, nil, true
-			case "M":
+			}, func() {
 				groupNames := make([]string, len(m.groups))
 				for i, g := range m.groups {
 					groupNames[i] = g.Name
@@ -595,8 +574,7 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 					m.cursor = best
 				}
 				m.clampCursor()
-				return m, nil, true
-			}
+			})
 			return m, nil, true
 
 		case "!":
