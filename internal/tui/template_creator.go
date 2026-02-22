@@ -394,6 +394,8 @@ func (m *TaskTemplateCreatorModel) ShouldCaptureEsc() bool {
 	return true
 }
 
+func (m *TaskTemplateCreatorModel) SupportsHelpShortcut() bool { return false }
+
 // updateSectionSuggestions filters section cache based on current input.
 func (m *TaskTemplateCreatorModel) updateSectionSuggestions() {
 	query := strings.ToLower(strings.TrimSpace(m.sectionInput.Value()))

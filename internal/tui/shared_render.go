@@ -9,6 +9,18 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// FormatCyclePosition returns a " [i/n]" suffix if projectID appears in the
+// configured cycle list, or "" otherwise.
+func FormatCyclePosition(cfg *config.Config, projectID string) string {
+	cycleProjects := cfg.GetCycleProjects()
+	for i, p := range cycleProjects {
+		if p.ID == projectID {
+			return fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
+		}
+	}
+	return ""
+}
+
 // EmptyStateFiltered is the standard message shown when active filters produce no results.
 const EmptyStateFiltered = "No tasks match current filters."
 

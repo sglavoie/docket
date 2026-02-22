@@ -721,3 +721,5 @@ type WorkflowRulesUpdatedMsg struct{}
 
 // ShowWorkflowRulesMsg triggers showing the workflow rules view.
 type ShowWorkflowRulesMsg struct{}
+
+func (m *WorkflowRulesModel) StatusBarLabel() string { return "Workflow Rules" }

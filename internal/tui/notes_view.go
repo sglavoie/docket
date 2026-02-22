@@ -297,3 +297,10 @@ type GlobalNoteMoveCompleteMsg struct {
 	NoteTitle   string
 	ProjectName string
 }
+
+func (m *NotesViewModel) StatusBarLabel() string {
+	if m.isGlobal {
+		return "Global Notes"
+	}
+	return "Notes"
+}

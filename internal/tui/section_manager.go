@@ -636,3 +636,5 @@ func (m *SectionManagerModel) View() string {
 
 	return b.String()
 }
+
+func (m *SectionManagerModel) StatusBarLabel() string { return "Custom Section Manager" }

@@ -482,3 +482,5 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 
 	return b.String()
 }
+
+func (m *GlobalTagManagerModel) StatusBarLabel() string { return "Global Tags" }

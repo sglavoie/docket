@@ -180,6 +180,8 @@ func (m *GlobalSearchModel) HasTextInput() bool {
 	return true
 }
 
+func (m *GlobalSearchModel) SupportsHelpShortcut() bool { return false }
+
 // SetSize sets the view dimensions and recalculates pane widths.
 func (m *GlobalSearchModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
@@ -313,3 +315,5 @@ type GlobalSearchSelectMsg struct {
 
 // ShowGlobalSearchMsg is sent to open the global search.
 type ShowGlobalSearchMsg struct{}
+
+func (m *GlobalSearchModel) StatusBarLabel() string { return "Global Search" }

@@ -278,6 +278,8 @@ func (m *CustomContextEditorModel) ShouldCaptureEsc() bool {
 	return true
 }
 
+func (m *CustomContextEditorModel) SupportsHelpShortcut() bool { return false }
+
 func (m *CustomContextEditorModel) View() string {
 	var b strings.Builder
 
@@ -382,3 +384,5 @@ func (m *CustomContextEditorModel) View() string {
 
 	return b.String()
 }
+
+func (m *CustomContextEditorModel) StatusBarLabel() string { return "Custom Context Editor" }

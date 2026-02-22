@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -17,9 +16,11 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
-	// Hide status bar for command palette, tutor, and help (they render their own footer)
-	if m.currentView() == ViewCommandPalette || m.currentView() == ViewTutor || m.currentView() == ViewHelp || m.currentView() == ViewAsk {
-		return content
+	// Full-height views render their own footer and skip the external status bar
+	if view := m.views.Get(m.currentView()); view != nil {
+		if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
+			return content
+		}
 	}
 
 	// Add status bar
@@ -93,132 +94,20 @@ func (m *AppModel) renderStatusBar() string {
 	}
 
 	var status string
-
-	switch m.currentView() {
-	case ViewDashboard:
-		status = "Dashboard"
-	case ViewProjectList:
-		status = "Projects"
-	case ViewProjectTree:
-		if m.currentProject != nil {
-			status = fmt.Sprintf("Project: %s", m.currentProject.Name)
-			// Add cycle position indicator if project is in cycle list
-			cycleProjects := m.config.GetCycleProjects()
-			if len(cycleProjects) > 0 {
-				for i, p := range cycleProjects {
-					if p.ID == m.currentProject.ID {
-						status += fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
-						break
-					}
-				}
-			}
-			// Add sidebar focus indicator if sidebar is focused
-			if m.projectTree != nil && m.projectTree.sidebar.IsFocused() {
-				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
-			}
-		} else {
-			status = "Project"
+	if view := m.views.Get(m.currentView()); view != nil {
+		if labeler, ok := view.(StatusBarLabeler); ok {
+			status = labeler.StatusBarLabel()
 		}
-	case ViewOutliner:
-		if m.currentProject != nil {
-			status = fmt.Sprintf("Outliner: %s", m.currentProject.Name)
-			cycleProjects := m.config.GetCycleProjects()
-			if len(cycleProjects) > 0 {
-				for i, p := range cycleProjects {
-					if p.ID == m.currentProject.ID {
-						status += fmt.Sprintf(" [%d/%d]", i+1, len(cycleProjects))
-						break
-					}
-				}
-			}
-			if m.outliner != nil && m.outliner.sidebar.IsFocused() {
-				status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
-			}
-		} else {
-			status = "Outliner"
-		}
-	case ViewProjectCreator:
-		status = "New Project"
-	case ViewProjectEditor:
-		status = "Edit Project"
-	case ViewTaskCreator:
-		status = "New Task"
-	case ViewTaskEditor:
-		status = "Edit Task"
-	case ViewSettings:
-		status = "Settings"
-	case ViewHelp:
-		status = "Help" // fallback; help view renders its own status bar
-	case ViewDateInput:
-		status = "Set Due Date"
-	case ViewFilter:
-		status = "Filters"
-	case ViewTaskJumper:
-		status = "Jump to Task"
-	case ViewProjectPreview:
-		status = "Project Preview"
-	case ViewDueDateOverview:
-		status = "Due Dates"
-	case ViewTagManager:
-		status = "Tag Manager"
-	case ViewGlobalTagManager:
-		status = "Global Tags"
-	case ViewTagFilterSelector:
-		status = "Filter by Tags"
-	case ViewSectionFilterSelector:
-		status = "Filter by Sections"
-	case ViewSectionPicker:
-		status = "Assign Section"
-	case ViewPriorityPicker:
-		status = "Set Priority"
-	case ViewSectionManager:
-		status = "Custom Section Manager"
-	case ViewContextPicker:
-		status = "Filter by Context"
-	case ViewCustomContextEditor:
-		status = "Custom Context Editor"
-	case ViewGlobalSearch:
-		status = "Global Search"
-	case ViewWorkflowRules:
-		status = "Workflow Rules"
-	case ViewKanban:
-		if m.currentProject != nil {
-			status = fmt.Sprintf("Kanban: %s", m.currentProject.Name)
-		} else {
-			status = "Kanban"
-		}
-	case ViewNotes:
-		status = "Notes"
-	case ViewGlobalNotes:
-		status = "Global Notes"
-	case ViewNotesSearch:
-		status = "Notes Search"
-	case ViewAsk:
-		status = "AI Assistant"
-	case ViewTaskDetail:
-		if m.currentProject != nil {
-			status = fmt.Sprintf("Task Detail: %s", m.currentProject.Name)
-		} else {
-			status = "Task Detail"
-		}
-	case ViewScoringProfilePicker:
-		status = "Scoring Profile"
 	}
 
-	// Hide help text in editor/creator/settings/search views where ? doesn't apply
+	// Check if view supports help shortcut hint
 	currentView := m.currentView()
-	showHelp := currentView != ViewTaskCreator &&
-		currentView != ViewTaskEditor &&
-		currentView != ViewProjectCreator &&
-		currentView != ViewProjectEditor &&
-		currentView != ViewSettings &&
-		currentView != ViewTaskJumper &&
-		currentView != ViewGlobalSearch &&
-		currentView != ViewDependencyViewer &&
-		currentView != ViewCustomContextEditor &&
-		currentView != ViewTaskActivity &&
-		currentView != ViewTaskTemplateCreator &&
-		currentView != ViewTaskTemplateEditor
+	showHelp := true
+	if view := m.views.Get(currentView); view != nil {
+		if hs, ok := view.(HelpShortcutSupporter); ok {
+			showHelp = hs.SupportsHelpShortcut()
+		}
+	}
 
 	help := ""
 	if showHelp && m.isNotesFullscreen() {

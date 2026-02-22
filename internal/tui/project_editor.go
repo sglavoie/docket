@@ -108,6 +108,8 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 	formFactory.ResizeTextInput(&m.contextInput, width)
 }
 
+func (m *ProjectEditorModel) SupportsHelpShortcut() bool { return false }
+
 func (m *ProjectEditorModel) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -343,3 +345,5 @@ func (m *ProjectEditorModel) View() string {
 
 	return out.String()
 }
+
+func (m *ProjectEditorModel) StatusBarLabel() string { return "Edit Project" }

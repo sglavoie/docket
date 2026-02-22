@@ -435,3 +435,5 @@ type ShowDueDateOverviewMsg struct{}
 
 // DueDateOverviewRefreshMsg is sent to refresh the due date overview.
 type DueDateOverviewRefreshMsg struct{}
+
+func (m *DueDateOverviewModel) StatusBarLabel() string { return "Due Dates" }

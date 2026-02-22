@@ -61,6 +61,11 @@ func (v *BaseView) HasTextInput() bool {
 	return false
 }
 
+// IsFullHeight returns false by default.
+func (v *BaseView) IsFullHeight() bool {
+	return false
+}
+
 // ContentWidth returns width minus standard padding (2 on each side).
 func (v *BaseView) ContentWidth() int {
 	return max(v.width-4, 20)

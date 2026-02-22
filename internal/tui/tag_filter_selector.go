@@ -107,3 +107,5 @@ func (m *TagFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TagFilterSelectorModel) View() string {
 	return filterSelectorView(m.BasePicker, "tag")
 }
+
+func (m *TagFilterSelectorModel) StatusBarLabel() string { return "Filter by Tags" }

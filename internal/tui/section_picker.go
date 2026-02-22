@@ -410,3 +410,5 @@ func (m *SectionPickerModel) ShouldCaptureEsc() bool {
 func (m *SectionPickerModel) HasTextInput() bool {
 	return m.addMode
 }
+
+func (m *SectionPickerModel) StatusBarLabel() string { return "Assign Section" }

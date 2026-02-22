@@ -585,3 +585,5 @@ func (m *NotesSearchModel) renderPreview() string {
 
 	return b.String()
 }
+
+func (m *NotesSearchModel) StatusBarLabel() string { return "Notes Search" }

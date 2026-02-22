@@ -334,3 +334,5 @@ func (m *FilterViewModel) View() string {
 
 	return out.String()
 }
+
+func (m *FilterViewModel) StatusBarLabel() string { return "Filters" }

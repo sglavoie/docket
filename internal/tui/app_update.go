@@ -242,12 +242,13 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
 	m.views.SetSize(msg.Width, msg.Height-2)
-	// Views that skip the external status bar get the full terminal height
-	if m.helpView != nil {
-		m.helpView.SetSize(msg.Width, msg.Height)
-	}
-	for _, vt := range []ViewType{ViewCommandPalette, ViewTutor, ViewAsk} {
-		if v := m.views.Get(vt); v != nil {
+	// Re-apply full terminal height for views that render their own footer
+	for _, vt := range m.views.Types() {
+		v := m.views.Get(vt)
+		if v == nil {
+			continue
+		}
+		if caps, ok := v.(ViewCapabilities); ok && caps.IsFullHeight() {
 			v.SetSize(msg.Width, msg.Height)
 		}
 	}

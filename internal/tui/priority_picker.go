@@ -188,3 +188,5 @@ func (m *PriorityPickerModel) View() string {
 
 	return b.String()
 }
+
+func (m *PriorityPickerModel) StatusBarLabel() string { return "Set Priority" }

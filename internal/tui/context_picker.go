@@ -509,3 +509,5 @@ func (m *ContextPickerModel) ShouldCaptureEsc() bool {
 func (m *ContextPickerModel) HasTextInput() bool {
 	return m.renameMode
 }
+
+func (m *ContextPickerModel) StatusBarLabel() string { return "Filter by Context" }

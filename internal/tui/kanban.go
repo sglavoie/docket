@@ -538,3 +538,10 @@ func (m *KanbanViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // - Horizontal divider
 // - Bottom half: task details panel for the selected task
 // When in completed view mode, renders a full-width list of completed tasks.
+
+func (m *KanbanViewModel) StatusBarLabel() string {
+	if m.Project != nil {
+		return fmt.Sprintf("Kanban: %s", m.Project.Name)
+	}
+	return "Kanban"
+}

@@ -746,3 +746,7 @@ func (m *TaskEditorModel) HasTextInput() bool {
 func (m *TaskEditorModel) ShouldCaptureEsc() bool {
 	return m.confirmTypeChange
 }
+
+func (m *TaskEditorModel) SupportsHelpShortcut() bool { return false }
+
+func (m *TaskEditorModel) StatusBarLabel() string { return "Edit Task" }

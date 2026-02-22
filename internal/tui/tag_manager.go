@@ -405,3 +405,5 @@ func (m *TagManagerModel) View() string {
 
 	return out.String()
 }
+
+func (m *TagManagerModel) StatusBarLabel() string { return "Tag Manager" }

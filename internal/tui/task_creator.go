@@ -325,6 +325,8 @@ func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
 	return m.confirmDiscard || m.confirmTypeChange
 }
 
+func (m *TaskCreatorModel) SupportsHelpShortcut() bool { return false }
+
 // currentTypeCanHaveChildren returns true if the currently selected type can have children.
 func (m *TaskCreatorModel) currentTypeCanHaveChildren() bool {
 	return m.types[m.typeCursor].CanHaveChildren()
@@ -518,3 +520,5 @@ func (m *TaskCreatorModel) getFocusSection() (section string, idx int) {
 		return "title", -1
 	}
 }
+
+func (m *TaskCreatorModel) StatusBarLabel() string { return "New Task" }

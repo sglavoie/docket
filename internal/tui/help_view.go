@@ -104,6 +104,11 @@ func (m *HelpViewModel) HasTextInput() bool {
 	return m.HasActiveSearch()
 }
 
+// IsFullHeight returns true because the help view renders its own footer.
+func (m *HelpViewModel) IsFullHeight() bool {
+	return true
+}
+
 // ShouldCaptureEsc returns true when help search is active.
 func (m *HelpViewModel) ShouldCaptureEsc() bool {
 	return m.HasActiveSearch()
@@ -569,3 +574,5 @@ type ShowHelpMsg struct {
 	ViewName   string
 	Items      []HelpItem
 }
+
+func (m *HelpViewModel) StatusBarLabel() string { return "Help" }

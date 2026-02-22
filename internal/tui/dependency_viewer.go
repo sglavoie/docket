@@ -51,6 +51,8 @@ func (m *DependencyViewerModel) SetSize(width, height int) {
 	m.height = height
 }
 
+func (m *DependencyViewerModel) SupportsHelpShortcut() bool { return false }
+
 func (m *DependencyViewerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

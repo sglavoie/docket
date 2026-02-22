@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -146,4 +148,11 @@ func (m *TaskDetailModel) clampScroll() {
 	if m.scrollOffset < 0 {
 		m.scrollOffset = 0
 	}
+}
+
+func (m *TaskDetailModel) StatusBarLabel() string {
+	if m.project != nil {
+		return fmt.Sprintf("Task Detail: %s", m.project.Name)
+	}
+	return "Task Detail"
 }

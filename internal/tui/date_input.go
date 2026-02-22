@@ -169,3 +169,5 @@ type DueDateChangedMsg struct {
 func ParseDate(input string) (time.Time, error) {
 	return util.ParseRelativeDate(input)
 }
+
+func (m *DateInputModel) StatusBarLabel() string { return "Set Due Date" }

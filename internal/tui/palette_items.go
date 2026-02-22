@@ -82,6 +82,11 @@ func (m *CommandPaletteModel) HasTextInput() bool {
 	return true
 }
 
+// IsFullHeight returns true because the command palette renders its own footer.
+func (m *CommandPaletteModel) IsFullHeight() bool {
+	return true
+}
+
 // IsActionMode returns true if the palette is showing inline actions for an item.
 func (m *CommandPaletteModel) IsActionMode() bool {
 	return m.actionMode

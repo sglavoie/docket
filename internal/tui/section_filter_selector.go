@@ -131,3 +131,5 @@ func (m *SectionFilterSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *SectionFilterSelectorModel) View() string {
 	return filterSelectorView(m.BasePicker, "section")
 }
+
+func (m *SectionFilterSelectorModel) StatusBarLabel() string { return "Filter by Sections" }

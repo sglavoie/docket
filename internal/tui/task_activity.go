@@ -118,6 +118,8 @@ func (m *TaskActivityModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc()
 }
 
+func (m *TaskActivityModel) SupportsHelpShortcut() bool { return false }
+
 func (m *TaskActivityModel) View() string {
 	var b strings.Builder
 

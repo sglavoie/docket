@@ -62,3 +62,5 @@ func (m *DashboardModel) HasTextInput() bool {
 func (m *DashboardModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch()
 }
+
+func (m *DashboardModel) StatusBarLabel() string { return "Dashboard" }

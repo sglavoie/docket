@@ -74,6 +74,8 @@ func (m *TaskJumperModel) ShouldCaptureEsc() bool {
 	return true
 }
 
+func (m *TaskJumperModel) SupportsHelpShortcut() bool { return false }
+
 // SetSize sets the view dimensions.
 func (m *TaskJumperModel) SetSize(width, height int) {
 	m.width = width
@@ -462,3 +464,5 @@ type TaskJumperSelectMsg struct {
 type ShowTaskJumperMsg struct {
 	Project *models.Project
 }
+
+func (m *TaskJumperModel) StatusBarLabel() string { return "Jump to Task" }

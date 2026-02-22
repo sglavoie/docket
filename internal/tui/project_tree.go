@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -263,4 +265,15 @@ func (m *ProjectTreeModel) clampCursor() {
 
 func (m *ProjectTreeModel) Init() tea.Cmd {
 	return nil
+}
+
+func (m *ProjectTreeModel) StatusBarLabel() string {
+	if m.project != nil {
+		status := fmt.Sprintf("Project: %s", m.project.Name) + FormatCyclePosition(m.config, m.project.ID)
+		if m.sidebar.IsFocused() {
+			status += " " + SidebarFocusBadgeStyle.Render("[SIDEBAR]")
+		}
+		return status
+	}
+	return "Project"
 }

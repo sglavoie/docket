@@ -275,3 +275,5 @@ func (m *ProjectPreviewModel) refreshContent() {
 		m.viewport.SetContent(m.renderContent())
 	}
 }
+
+func (m *ProjectPreviewModel) StatusBarLabel() string { return "Project Preview" }

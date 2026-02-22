@@ -213,6 +213,8 @@ func (m *SettingsModel) SetSize(width, height int) {
 	m.height = height
 }
 
+func (m *SettingsModel) SupportsHelpShortcut() bool { return false }
+
 func (m *SettingsModel) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -265,3 +267,5 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		return SettingsSavedMsg{}
 	}
 }
+
+func (m *SettingsModel) StatusBarLabel() string { return "Settings" }

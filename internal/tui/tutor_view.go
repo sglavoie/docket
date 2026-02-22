@@ -60,6 +60,11 @@ func (m *TutorModel) HasTextInput() bool {
 	return m.searchMode
 }
 
+// IsFullHeight returns true because the tutor view renders its own footer.
+func (m *TutorModel) IsFullHeight() bool {
+	return true
+}
+
 // ShouldCaptureEsc returns true when the view needs to handle esc internally.
 func (m *TutorModel) ShouldCaptureEsc() bool {
 	return m.searchMode || m.searchQuery != ""

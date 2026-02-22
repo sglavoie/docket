@@ -80,6 +80,11 @@ func (m *AskViewModel) HasTextInput() bool {
 	return m.state == askStateInput
 }
 
+// IsFullHeight returns true because the ask view renders its own footer.
+func (m *AskViewModel) IsFullHeight() bool {
+	return true
+}
+
 // ShouldCaptureEsc returns true when the view needs to handle esc internally.
 func (m *AskViewModel) ShouldCaptureEsc() bool {
 	return m.state == askStateInput || m.state == askStateLoading
@@ -445,3 +450,5 @@ func (m *AskViewModel) View() string {
 
 	return b.String()
 }
+
+func (m *AskViewModel) StatusBarLabel() string { return "AI Assistant" }

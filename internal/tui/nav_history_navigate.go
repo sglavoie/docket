@@ -129,9 +129,7 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 	case ViewTaskTemplates:
 		m.showView(ViewTaskTemplates, NewTaskTemplatesModel(m.config, m.configManager))
 	case ViewTutor:
-		tutor := NewTutorModel()
-		m.showView(ViewTutor, tutor)
-		tutor.SetSize(m.width, m.height)
+		m.showView(ViewTutor, NewTutorModel())
 	case ViewScoreProfileManager:
 		projectID := ""
 		if m.currentProject != nil {

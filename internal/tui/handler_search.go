@@ -34,8 +34,6 @@ func (m *AppModel) handleSearchMessages(msg tea.Msg) (bool, tea.Cmd) {
 			palette.filterItems()
 		}
 		m.showView(ViewCommandPalette, palette)
-		// Give palette full height since it renders without an external status bar
-		palette.SetSize(m.width, m.height)
 		return true, palette.Init()
 
 	case CloseCommandPaletteMsg:

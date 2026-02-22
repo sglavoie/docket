@@ -69,6 +69,8 @@ func (m *ProjectCreatorModel) SetSize(width, height int) {
 	formFactory.ResizeTextInput(&m.contextInput, width)
 }
 
+func (m *ProjectCreatorModel) SupportsHelpShortcut() bool { return false }
+
 func (m *ProjectCreatorModel) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -244,3 +246,5 @@ func (m *ProjectCreatorModel) View() string {
 
 	return out.String()
 }
+
+func (m *ProjectCreatorModel) StatusBarLabel() string { return "New Project" }

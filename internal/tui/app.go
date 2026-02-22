@@ -522,7 +522,11 @@ func (m *AppModel) refreshProjectTree() {
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
 // This consolidates the common pattern used by Show*Msg handlers.
 func (m *AppModel) showView(viewType ViewType, view View) {
-	view.SetSize(m.width, m.height-2)
+	if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
+		view.SetSize(m.width, m.height)
+	} else {
+		view.SetSize(m.width, m.height-2)
+	}
 	m.views.Register(viewType, view)
 	m.pushView(viewType)
 }
@@ -531,7 +535,11 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 // Used when switching between peer project views (ProjectTree, Kanban, Outliner)
 // so the stack doesn't accumulate entries.
 func (m *AppModel) replaceView(viewType ViewType, view View) {
-	view.SetSize(m.width, m.height-2)
+	if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
+		view.SetSize(m.width, m.height)
+	} else {
+		view.SetSize(m.width, m.height-2)
+	}
 	m.views.Register(viewType, view)
 	if len(m.viewStack) > 1 {
 		m.viewStack[len(m.viewStack)-1] = viewType

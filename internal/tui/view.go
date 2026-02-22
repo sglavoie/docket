@@ -20,6 +20,22 @@ type ViewCapabilities interface {
 	ShouldCaptureEsc() bool
 	// HasTextInput returns true if the view currently has active text input.
 	HasTextInput() bool
+	// IsFullHeight returns true if the view should use the full terminal height
+	// (no external status bar). Views like Help, Tutor, Ask, and Command Palette
+	// render their own footer and need the entire terminal area.
+	IsFullHeight() bool
+}
+
+// StatusBarLabeler is implemented by views that provide their own status bar label.
+// Views without this interface show an empty label in the status bar.
+type StatusBarLabeler interface {
+	StatusBarLabel() string
+}
+
+// HelpShortcutSupporter is implemented by views that suppress the help shortcut
+// hint from the status bar. Views without this interface show help text by default.
+type HelpShortcutSupporter interface {
+	SupportsHelpShortcut() bool
 }
 
 // SizableView extends View with dimension accessors.

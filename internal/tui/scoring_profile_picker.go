@@ -240,3 +240,5 @@ func (m *ScoringProfilePickerModel) View() string {
 
 	return b.String()
 }
+
+func (m *ScoringProfilePickerModel) StatusBarLabel() string { return "Scoring Profile" }
