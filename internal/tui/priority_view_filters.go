@@ -40,26 +40,6 @@ func (m *PriorityViewModel) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&m.filter)
 }
 
-// buildPriorityFilterPrefixHints builds dynamic filter hints for priority view.
-func (m *PriorityViewModel) buildPriorityFilterPrefixHints() []PrefixHint {
-	hints := buildCommonFilterPrefixHints(&m.filter, true, true)
-
-	readyDetail := "off"
-	if m.filter.Actionable {
-		readyDetail = "on"
-	}
-
-	// Insert "r" (ready) hint before the last "x" (clear-all) hint
-	readyHint := PrefixHint{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable}
-	if len(hints) > 0 {
-		hints = append(hints[:len(hints)-1], readyHint, hints[len(hints)-1])
-	} else {
-		hints = append(hints, readyHint)
-	}
-
-	return hints
-}
-
 // refreshAndClamp reloads data after filter changes.
 func (m *PriorityViewModel) refreshAndClamp() { m.loadActionableTasks(); m.clampCursor() }
 
