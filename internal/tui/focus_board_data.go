@@ -188,4 +188,3 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	score := scoring.ComputeScore(r.Task, profile)
 	return scoring.ScorePercent(score, profile)
 }
-

@@ -437,6 +437,35 @@ func (m *OutlinerModel) clearMultiSelect() {
 	m.statusMessage = ""
 }
 
+// getMultiSelectedTasks returns selected tasks when in multi-select mode, nil otherwise.
+func (m *OutlinerModel) getMultiSelectedTasks() []*models.Task {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		return m.getSelectedTasks()
+	}
+	return nil
+}
+
+// refreshView rebuilds the outliner rows.
+func (m *OutlinerModel) refreshView() {
+	m.rebuildRows()
+}
+
+// saveAndRefreshBulk saves the project with workflow rules and rebuilds rows.
+func (m *OutlinerModel) saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd {
+	opts := m.buildWorkflowOpts(prevStates)
+	return func() tea.Msg {
+		if err := persistWithWorkflow(opts); err != nil {
+			return ErrorMsg{Err: err}
+		}
+		return outlinerRefreshMsg{}
+	}
+}
+
+// setStatusMessage sets the status bar text.
+func (m *OutlinerModel) setStatusMessage(msg string) {
+	m.statusMessage = msg
+}
+
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model
 // state, draining the pending undo context.
 func (m *OutlinerModel) buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions {

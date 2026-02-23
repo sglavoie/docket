@@ -129,6 +129,25 @@ func (m *OutlinerModel) executePendingBulkStatus() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// showDeleteConfirm shows a confirmation dialog for deleting a single task.
+func (m *OutlinerModel) showDeleteConfirm(task *models.Task) {
+	m.deleteTarget = task
+	if task.IsRecurring() {
+		m.confirm.Show("delete-recurring",
+			fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
+				task.ShortID, task.Title))
+	} else {
+		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID))
+	}
+	m.statusMessage = m.confirm.Prompt()
+}
+
+// showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
+func (m *OutlinerModel) showBulkDeleteConfirm() {
+	m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+	m.statusMessage = m.confirm.Prompt()
+}
+
 // executeDelete removes the current deleteTarget task using shared helpers.
 func (m *OutlinerModel) executeDelete() (tea.Model, tea.Cmd) {
 	if m.deleteTarget == nil {

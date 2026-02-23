@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -28,66 +26,13 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "!":
-		if priority, ok := PriorityForPrefixKey(key); ok {
-			if m.multiSelectMode && m.SelectedCount() > 0 {
-				return m, m.handleBulkPriorityChange(priority)
-			}
-			task := m.getSelectedTask()
-			if task != nil {
-				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: #%d %s", priority, task.ShortID, task.Title))
-				result := applyPriorityChange(m.workflowPersistFn(), m.Project, task.ID, priority)
-				if result.Err != nil {
-					m.statusMessage = result.Err.Error()
-					return m, nil
-				}
-				if result.StatusMessage != "" {
-					m.statusMessage = result.StatusMessage
-				}
-				m.loadTasks()
-				return m, result.Cmd
-			}
+		if cmd, ok := handlePriorityPrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if m.multiSelectMode && m.SelectedCount() > 0 {
-				dueDate, desc := dueDateFromDays(days, isClear)
-				return m, m.handleBulkDueDateChange(dueDate, desc)
-			}
-			task := m.getSelectedTask()
-			if task == nil {
-				return m, nil
-			}
-			var result TaskOpResult
-			if isClear {
-				m.setUndoContext("Clear Due Date", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
-				result = applyClearDueDate(m.workflowPersistFn(), m.Project, task.ID)
-			} else {
-				m.setUndoContext("Set Due Date", fmt.Sprintf("+%dd: #%d %s", days, task.ShortID, task.Title))
-				result = applyQuickDueDate(m.workflowPersistFn(), m.Project, task.ID, days)
-			}
-			if result.Err != nil {
-				m.statusMessage = result.Err.Error()
-				return m, nil
-			}
-			if result.StatusMessage != "" {
-				m.statusMessage = result.StatusMessage
-			}
-			m.loadTasks()
-			return m, result.Cmd
-		}
-		if key == "d" {
-			if m.multiSelectMode && m.SelectedCount() > 0 {
-				return m, nil
-			}
-			task := m.getSelectedTask()
-			if task == nil {
-				return m, nil
-			}
-			project := m.Project
-			return m, func() tea.Msg {
-				return SetDueDateMsg{Task: task, Project: project}
-			}
+		if cmd, ok := handleDueDatePrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "g":
@@ -252,44 +197,10 @@ func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd
 		}
 		return m, nil
 	case "p":
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			count := m.SelectedCount()
-			for _, t := range m.getSelectedTasksList() {
-				t.TogglePinned()
-			}
-			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
-			m.ExitMultiSelect()
-			m.statusMessage = fmt.Sprintf("Toggled pin on %d tasks", count)
-			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
-				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
-			})
-		}
-		if task != nil {
-			m.setUndoContext("Toggle Pin", task.Title)
-			result := applyTogglePinned(m.workflowPersistFn(), m.Project, task.ID)
-			if result.Err != nil {
-				m.statusMessage = result.Err.Error()
-				return m, nil
-			}
-			if result.StatusMessage != "" {
-				m.statusMessage = result.StatusMessage
-			}
-			m.loadTasks()
-			return m, result.Cmd
-		}
-		return m, nil
+		cmd, _ := handleTogglePinnedKey(m)
+		return m, cmd
 	case "D":
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
-			m.confirm.Show("delete", m.statusMessage)
-			return m, nil
-		}
-		if task != nil {
-			m.deleteTarget = task
-			m.statusMessage = fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID)
-			m.confirm.Show("delete", m.statusMessage)
-		}
+		handleDeleteConfirmKey(m)
 		return m, nil
 	}
 	return m, nil

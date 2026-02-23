@@ -14,9 +14,13 @@ import (
 func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks func() []*models.Task, clearSel func()) (bool, tea.Cmd) {
 	switch key {
 	case "y":
-		if tasks := getMultiTasks(); len(tasks) > 0 {
-			clearSel()
-			return true, func() tea.Msg { return CopyTasksTitleMsg{Tasks: tasks} }
+		if getMultiTasks != nil {
+			if tasks := getMultiTasks(); len(tasks) > 0 {
+				if clearSel != nil {
+					clearSel()
+				}
+				return true, func() tea.Msg { return CopyTasksTitleMsg{Tasks: tasks} }
+			}
 		}
 		if task := getTask(); task != nil {
 			return true, func() tea.Msg { return CopyTaskTitleMsg{Task: task} }
@@ -24,9 +28,13 @@ func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks f
 		return true, nil
 
 	case "Y":
-		if tasks := getMultiTasks(); len(tasks) > 0 {
-			clearSel()
-			return true, func() tea.Msg { return CopyTasksDetailsMsg{Tasks: tasks} }
+		if getMultiTasks != nil {
+			if tasks := getMultiTasks(); len(tasks) > 0 {
+				if clearSel != nil {
+					clearSel()
+				}
+				return true, func() tea.Msg { return CopyTasksDetailsMsg{Tasks: tasks} }
+			}
 		}
 		if task := getTask(); task != nil {
 			return true, func() tea.Msg { return CopyTaskDetailsMsg{Task: task} }
@@ -34,9 +42,13 @@ func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks f
 		return true, nil
 
 	case "ctrl+y":
-		if tasks := getMultiTasks(); len(tasks) > 0 {
-			clearSel()
-			return true, func() tea.Msg { return CopyTasksTitleAndDescMsg{Tasks: tasks} }
+		if getMultiTasks != nil {
+			if tasks := getMultiTasks(); len(tasks) > 0 {
+				if clearSel != nil {
+					clearSel()
+				}
+				return true, func() tea.Msg { return CopyTasksTitleAndDescMsg{Tasks: tasks} }
+			}
 		}
 		if task := getTask(); task != nil {
 			return true, func() tea.Msg { return CopyTaskTitleAndDescMsg{Task: task} }

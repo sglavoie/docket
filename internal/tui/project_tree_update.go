@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -110,72 +109,13 @@ func (m *ProjectTreeModel) handleSearchMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 
 // handleQuickEditMode handles input while in quick edit mode.
 func (m *ProjectTreeModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.exitQuickEditMode()
-		return m, nil
-
-	case "enter":
-		input := strings.TrimSpace(m.quickEdit.GetInput().Value())
-		if input == "" {
-			m.exitQuickEditMode()
-			return m, nil
-		}
-
-		// Re-lookup task to avoid stale pointer after concurrent reload
-		task := m.project.GetTaskByID(m.quickEdit.GetTask().ID)
-		if task == nil {
-			m.exitQuickEditMode()
-			return m, nil
-		}
-
-		// Parse and apply the edit
-		if m.quickEdit.IsRenameOnly() {
-			// Rename-only mode: just update title, no modifier parsing
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				t.Title = input
-			})
-			m.setUndoContext("Rename Task", task.Title)
-		} else {
-			// Full quick edit mode: parse modifiers
-			result, err := parseQuickEdit(input, task, m.project)
-			if err != nil {
-				// Keep edit mode open with error displayed
-				return m, nil
-			}
-			applyQuickEdit(task, m.project, result)
-			m.setUndoContext("Quick Edit", task.Title)
-		}
-
-		m.exitQuickEditMode()
-		return m, m.saveAndRefresh()
-
-	default:
-		// Update the text input
-		var cmd tea.Cmd
-		input := m.quickEdit.GetInput()
-		input, cmd = input.Update(msg)
-		m.quickEdit.UpdateInput(input)
-
-		// Update preview (only in full edit mode, not rename mode)
-		if !m.quickEdit.IsRenameOnly() {
-			inputValue := m.quickEdit.GetInput().Value()
-			preview, _ := parseQuickEditForPreview(inputValue, m.quickEdit.GetTask(), m.project)
-			m.quickEdit.SetPreview(preview)
-		}
-
-		return m, cmd
-	}
+	_, cmd := handleQuickEditKey(msg, m.quickEdit, m.project, m.saveAndRefresh, m.setUndoContext)
+	return m, cmd
 }
 
 // enterQuickEditMode starts inline editing for the current task.
 func (m *ProjectTreeModel) enterQuickEditMode(task *models.Task, renameOnly bool) {
 	m.quickEdit.Enter(task, renameOnly)
-}
-
-// exitQuickEditMode cleans up quick edit state.
-func (m *ProjectTreeModel) exitQuickEditMode() {
-	m.quickEdit.Exit()
 }
 
 // handlePrefixKey handles the second key in a prefix key sequence.
@@ -352,25 +292,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		}
 
 	case "!":
-		if priority, ok := PriorityForPrefixKey(key); ok {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				prevStates := captureTaskStates(m.project.Tasks)
-				count := applyBulkPriority(m.project, m.getSelectedTasks(), priority)
-				m.clearSelection()
-				m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
-				return m, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-			if CursorInBounds(m.cursor, len(visible)) {
-				task := visible[m.cursor].Task
-				m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
-				result := applyPriorityChange(m.workflowPersistFn(), m.project, task.ID, priority)
-				if result.Err != nil {
-					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-				}
-				m.buildTree()
-				return m, result.Cmd
-			}
-			return m, nil
+		if cmd, ok := handlePriorityPrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "c":
@@ -383,42 +306,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		return m, nil
 
 	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				dueDate, desc := dueDateFromDays(days, isClear)
-				prevStates := captureTaskStates(m.project.Tasks)
-				count := applyBulkDueDate(m.project, m.getSelectedTasks(), dueDate)
-				m.clearSelection()
-				m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
-				return m, m.saveAndRefreshWithPrevStates(prevStates)
-			}
-			if CursorInBounds(m.cursor, len(visible)) {
-				task := visible[m.cursor].Task
-				var result TaskOpResult
-				if isClear {
-					m.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", task.Title))
-					result = applyClearDueDate(m.workflowPersistFn(), m.project, task.ID)
-				} else {
-					m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), task.Title))
-					result = applyQuickDueDate(m.workflowPersistFn(), m.project, task.ID, days)
-				}
-				if result.Err != nil {
-					return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-				}
-				m.buildTree()
-				return m, result.Cmd
-			}
-			return m, nil
-		}
-		if key == "d" {
-			if CursorInBounds(m.cursor, len(visible)) {
-				task := visible[m.cursor].Task
-				project := m.project
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: task, Project: project}
-				}
-			}
-			return m, nil
+		if cmd, ok := handleDueDatePrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "F":
@@ -433,51 +322,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		return m.handleSavedViewPrefix(key)
 
 	case "s":
-		// Snooze quick actions
-		if key == "d" {
-			if CursorInBounds(m.cursor, len(visible)) {
-				task := visible[m.cursor].Task
-				project := m.project
-				return m, func() tea.Msg {
-					return SetSnoozeDateMsg{Task: task, Project: project}
-				}
-			}
-			return m, nil
+		if cmd, ok := handleSnoozePrefix(key, m); ok {
+			return m, cmd
 		}
-
-		snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
-		if !ok {
-			return m, nil
-		}
-
-		// Capture task states before changes for event-based workflow triggers
-		prevStates := captureTaskStates(m.project.Tasks)
-
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := 0
-			for id := range m.selectedTasks {
-				if m.project.MutateTask(id, func(t *models.Task) {
-					t.SnoozedUntil = snoozeDate
-				}) {
-					count++
-				}
-			}
-			m.clearSelection()
-			m.setUndoContext("Snooze", fmt.Sprintf("%s on %d tasks", desc, count))
-			return m, m.saveAndRefreshWithPrevStates(prevStates)
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := m.project.GetTaskByID(visible[m.cursor].Task.ID)
-			if task == nil {
-				return m, nil
-			}
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				t.SnoozedUntil = snoozeDate
-			})
-			m.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, task.Title))
-			return m, m.saveAndRefreshWithPrevStates(prevStates)
-		}
-		return m, nil
 
 	case "t":
 		// Task action prefix
@@ -531,33 +378,10 @@ func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (te
 		}
 		return m, nil
 	case "p":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := len(m.selectedTasks)
-			for _, task := range m.getSelectedTasks() {
-				task.TogglePinned()
-			}
-			m.clearSelection()
-			m.setUndoContext("Toggle Pin", fmt.Sprintf("%d tasks", count))
-			return m, m.saveAndRefresh()
-		}
-		if cursorTask != nil {
-			m.setUndoContext("Toggle Pin", cursorTask.Title)
-			result := applyTogglePinned(m.workflowPersistFn(), m.project, cursorTask.ID)
-			if result.Err != nil {
-				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.buildTree()
-			return m, result.Cmd
-		}
-		return m, nil
+		cmd, _ := handleTogglePinnedKey(m)
+		return m, cmd
 	case "D":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.showBulkDeleteConfirm()
-			return m, nil
-		}
-		if cursorTask != nil {
-			m.showDeleteConfirm(cursorTask)
-		}
+		handleDeleteConfirmKey(m)
 		return m, nil
 	}
 	return m, nil

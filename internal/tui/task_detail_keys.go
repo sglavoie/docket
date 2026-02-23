@@ -1,11 +1,7 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleKeyMsg dispatches key events for the task detail view.
@@ -15,6 +11,10 @@ func (m *TaskDetailModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle pending prefix keys
 	if m.pendingPrefix != "" {
 		return m.handlePrefixKey(key)
+	}
+
+	if m.task == nil {
+		return m, nil
 	}
 
 	switch key {
@@ -144,27 +144,26 @@ func (m *TaskDetailModel) handleStatusPrefix(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	task := m.task
-	project := m.project
-
-	if msg := task.CanTransitionTo(targetStatus); msg != "" {
-		return m, func() tea.Msg { return StatusMsg(msg) }
+	pf := simplePersist(NewProjectService())
+	result := applyStatusChange(pf, m.project, m.task.ID, targetStatus)
+	if result.Err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.Cmd == nil {
+		// No state change (validation message or no-op).
+		if result.StatusMessage != "" {
+			msg := result.StatusMessage
+			return m, func() tea.Msg { return StatusMsg(msg) }
+		}
+		return m, nil
 	}
 
-	// Apply status change via MutateTask for pointer safety
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.ApplyTransition(targetStatus)
-	})
-
 	// Re-fetch task after mutation
-	if fresh := project.GetTaskByID(task.ID); fresh != nil {
+	if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
 		m.task = fresh
 	}
 
-	return m, tea.Batch(
-		startLoading("Saving..."),
-		SaveProjectAsync(project, fmt.Sprintf("Task → %s: %s", targetStatus, task.Title)),
-	)
+	return m, result.Cmd
 }
 
 // handlePriorityPrefix handles priority keys after the "!" prefix.
@@ -178,21 +177,22 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
-	task := m.task
-	project := m.project
+	pf := simplePersist(NewProjectService())
+	result := applyPriorityChange(pf, m.project, m.task.ID, priority)
+	if result.Err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	if result.StatusMessage != "" {
+		msg := result.StatusMessage
+		return m, func() tea.Msg { return StatusMsg(msg) }
+	}
 
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.Priority = priority
-	})
-
-	if fresh := project.GetTaskByID(task.ID); fresh != nil {
+	// Re-fetch task after mutation
+	if fresh := m.project.GetTaskByID(m.task.ID); fresh != nil {
 		m.task = fresh
 	}
 
-	return m, tea.Batch(
-		startLoading("Saving..."),
-		SaveProjectAsync(project, fmt.Sprintf("Priority set to %d", priority)),
-	)
+	return m, nil
 }
 
 // GetHelpItems returns the help items for the task detail view.

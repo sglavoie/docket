@@ -81,24 +81,8 @@ func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model,
 
 // handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
 func (m *ProjectTreeModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		// Save current view
-		return m, func() tea.Msg {
-			return ShowSaveViewDialogMsg{}
-		}
-	case "l":
-		// Load/browse saved views
-		return m, func() tea.Msg {
-			return ShowCommandPaletteMsg{PreFilter: ":sv "}
-		}
-	case "d":
-		// Delete a saved view (browse, then Tab → Delete)
-		return m, func() tea.Msg {
-			return ShowCommandPaletteMsg{PreFilter: ":sv "}
-		}
-	}
-	return m, nil
+	cmd, _ := handleSavedViewPrefixKey(key)
+	return m, cmd
 }
 
 // handleFilterKeys handles P, S, T, N - filter operations.
@@ -109,16 +93,8 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 	// Note: P removed as priority filter toggle — use Fp instead.
 
 	case "T":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			return true, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
-			}
-		}
-		tags := BuildTagList(m.project.Tasks, false)
-		return true, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewProjectTree, Title: "Filter by Tags"}
-		}
+		cmd, _ := handleTagKey(m, ViewProjectTree, false, m.filter.Tags)
+		return true, cmd
 
 		// Note: Due date filter cycling removed from 'u' - use Fd instead.
 		// 'u' is now Vim-style undo (handled in handleMiscActionKeys).
@@ -292,27 +268,8 @@ func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
 func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "*":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := len(m.selectedTasks)
-			for _, task := range m.getSelectedTasks() {
-				task.ToggleActive()
-			}
-			m.clearSelection()
-			m.setUndoContext("Toggle Active", fmt.Sprintf("%d tasks", count))
-			return true, m.saveAndRefresh()
-		}
-		if CursorInBounds(m.cursor, len(visible)) {
-			task := visible[m.cursor].Task
-			m.setUndoContext("Toggle Active", task.Title)
-			result := applyToggleActive(m.workflowPersistFn(), m.project, task.ID)
-			if result.Err != nil {
-				return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.buildTree()
-			return true, result.Cmd
-		}
-		return true, nil
-
+		cmd, _ := handleToggleActiveKey(m)
+		return true, cmd
 	}
 	return false, nil
 }

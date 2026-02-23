@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -297,17 +295,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Tag filter selector (or bulk tag assignment in multi-select)
 	case "T":
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			tasks := m.getSelectedTasksList()
-			project := m.Project
-			return m, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
-			}
-		}
-		tags := BuildTagList(m.Project.Tasks, true)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewKanban, Title: "Filter by Tags"}
-		}
+		cmd, _ := handleTagKey(m, ViewKanban, true, m.filter.Tags)
+		return m, cmd
 
 	case "/":
 		// Activate search mode (pre-populate with existing filter search)
@@ -371,32 +360,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag
 	case "*":
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			prevStates := captureTaskStates(m.Project.Tasks)
-			count := m.SelectedCount()
-			for _, task := range m.getSelectedTasksList() {
-				task.ToggleActive()
-			}
-			m.ExitMultiSelect()
-			m.statusMessage = fmt.Sprintf("Toggled active on %d tasks", count)
-			return m, m.saveWithWorkflow(prevStates, func() tea.Msg {
-				return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
-			})
-		}
-		task := m.getSelectedTask()
-		if task != nil {
-			result := applyToggleActive(m.workflowPersistFn(), m.Project, task.ID)
-			if result.Err != nil {
-				m.statusMessage = result.Err.Error()
-				return m, nil
-			}
-			if result.StatusMessage != "" {
-				m.statusMessage = result.StatusMessage
-			}
-			m.loadTasks()
-			return m, result.Cmd
-		}
-		return m, nil
+		cmd, _ := handleToggleActiveKey(m)
+		return m, cmd
 
 	// Tab row focus switching
 	case "(", ")":

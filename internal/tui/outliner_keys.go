@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -349,16 +348,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Filter keys
 	case "T":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			tasks := m.getSelectedTasks()
-			return m, func() tea.Msg {
-				return ShowBulkTagSelectorMsg{Tasks: tasks, Project: m.project}
-			}
-		}
-		tags := BuildTagList(m.project.Tasks, false)
-		return m, func() tea.Msg {
-			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
-		}
+		cmd, _ := handleTagKey(m, ViewOutliner, false, m.filter.Tags)
+		return m, cmd
 
 	case "n":
 		m.jumpToNextSection(1)
@@ -425,27 +416,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Toggle active flag (with multi-select support)
 	case "*":
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := len(m.selectedTasks)
-			for _, task := range m.getSelectedTasks() {
-				task.ToggleActive()
-			}
-			m.setUndoContext("Toggle Active", fmt.Sprintf("%d tasks", count))
-			m.clearMultiSelect()
-			m.rebuildRows()
-			return m, m.saveWithWorkflow()
-		}
-		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
-			task := m.rows[m.cursor].task
-			m.setUndoContext("Toggle Active", task.Title)
-			result := applyToggleActive(m.workflowPersistFn(), m.project, task.ID)
-			if result.Err != nil {
-				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.rebuildRows()
-			return m, result.Cmd
-		}
-		return m, nil
+		cmd, _ := handleToggleActiveKey(m)
+		return m, cmd
 
 	// Custom section tabs
 	case "[", "]":
@@ -491,57 +463,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleQuickEditMode handles input while in quick edit mode.
 func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.quickEdit.Exit()
-		return m, nil
-
-	case "enter":
-		input := strings.TrimSpace(m.quickEdit.GetInput().Value())
-		if input == "" {
-			m.quickEdit.Exit()
-			return m, nil
-		}
-
-		// Re-lookup task to avoid stale pointer after concurrent reload
-		task := m.project.GetTaskByID(m.quickEdit.GetTask().ID)
-		if task == nil {
-			m.quickEdit.Exit()
-			return m, nil
-		}
-
-		if m.quickEdit.IsRenameOnly() {
-			// Rename-only mode: just update title
-			m.project.MutateTask(task.ID, func(t *models.Task) {
-				t.Title = input
-			})
-		} else {
-			// Full quick edit mode: parse modifiers
-			result, err := parseQuickEdit(input, task, m.project)
-			if err != nil {
-				return m, nil
-			}
-			applyQuickEdit(task, m.project, result)
-		}
-
-		m.quickEdit.Exit()
-		return m, m.saveWithWorkflow()
-
-	default:
-		var cmd tea.Cmd
-		inputModel := m.quickEdit.GetInput()
-		inputModel, cmd = inputModel.Update(msg)
-		m.quickEdit.UpdateInput(inputModel)
-
-		// Update preview (only in full edit mode, not rename mode)
-		if !m.quickEdit.IsRenameOnly() {
-			inputValue := m.quickEdit.GetInput().Value()
-			preview, _ := parseQuickEditForPreview(inputValue, m.quickEdit.GetTask(), m.project)
-			m.quickEdit.SetPreview(preview)
-		}
-
-		return m, cmd
-	}
+	_, cmd := handleQuickEditKey(msg, m.quickEdit, m.project, m.saveWithWorkflow, m.setUndoContext)
+	return m, cmd
 }
 
 // ShouldCaptureEsc returns true only when a transient mode is active or the

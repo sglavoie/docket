@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -115,16 +114,6 @@ func (s SortField) String() string {
 // treeRefreshMsg signals the tree should rebuild itself.
 // This is an internal message that preserves filter state.
 type treeRefreshMsg struct{}
-
-// QuickEditState contains state for inline task editing.
-type QuickEditState struct {
-	Mode     bool             // True when in quick edit mode
-	Rename   bool             // True if rename-only mode (no modifier parsing)
-	Input    textinput.Model  // Text input for editing
-	Task     *models.Task     // Task being edited
-	Preview  *quickEditResult // Live preview of parsed changes
-	Original *quickEditResult // Original task state for comparison
-}
 
 // BulkOperationState contains state for pending bulk operations.
 type BulkOperationState struct {

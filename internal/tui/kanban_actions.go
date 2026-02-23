@@ -42,6 +42,36 @@ func (m *KanbanViewModel) setUndoContext(action, context string) {
 	m.undo.Set(action, context)
 }
 
+// getMultiSelectedTasks returns selected tasks when in multi-select mode, nil otherwise.
+func (m *KanbanViewModel) getMultiSelectedTasks() []*models.Task {
+	if m.multiSelectMode && m.SelectedCount() > 0 {
+		return m.getSelectedTasksList()
+	}
+	return nil
+}
+
+// clearMultiSelect exits multi-select mode and clears the selection.
+func (m *KanbanViewModel) clearMultiSelect() {
+	m.ExitMultiSelect()
+}
+
+// refreshView reloads the task columns.
+func (m *KanbanViewModel) refreshView() {
+	m.loadTasks()
+}
+
+// saveAndRefreshBulk saves the project with workflow rules and refreshes the board.
+func (m *KanbanViewModel) saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd {
+	return m.saveWithWorkflow(prevStates, func() tea.Msg {
+		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
+	})
+}
+
+// setStatusMessage sets the status bar text.
+func (m *KanbanViewModel) setStatusMessage(msg string) {
+	m.statusMessage = msg
+}
+
 // workflowPersistFn returns a persistFn that runs the full save pipeline
 // used by Kanban: auto-unblock, recurring, workflow rules.
 func (m *KanbanViewModel) workflowPersistFn() persistFn {
@@ -310,6 +340,19 @@ func (m *KanbanViewModel) saveWithWorkflowRulesForReorder(prevStates map[string]
 type KanbanTaskDeletedMsg struct {
 	TaskID  string
 	Section string
+}
+
+// showDeleteConfirm shows a confirmation dialog for deleting a single task.
+func (m *KanbanViewModel) showDeleteConfirm(task *models.Task) {
+	m.deleteTarget = task
+	m.statusMessage = fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID)
+	m.confirm.Show("delete", m.statusMessage)
+}
+
+// showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
+func (m *KanbanViewModel) showBulkDeleteConfirm() {
+	m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
+	m.confirm.Show("delete", m.statusMessage)
 }
 
 // executeDelete deletes the currently targeted task using the shared applyDeleteTask.

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -91,34 +89,14 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 		// Toggle pinned (tp)
-		if key == "p" && cursorTask != nil {
-			m.setUndoContext("Toggle Pin", cursorTask.Title)
-			result := applyTogglePinned(m.workflowPersistFn(), m.project, cursorTask.ID)
-			if result.Err != nil {
-				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.rebuildRows()
-			return m, result.Cmd
+		if key == "p" {
+			cmd, _ := handleTogglePinnedKey(m)
+			return m, cmd
 		}
 
 		// Delete task (tD)
 		if key == "D" {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
-				m.statusMessage = m.confirm.Prompt()
-				return m, nil
-			}
-			if cursorTask != nil {
-				if cursorTask.IsRecurring() {
-					m.confirm.Show("delete-recurring",
-						fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
-							cursorTask.ShortID, cursorTask.Title))
-				} else {
-					m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", cursorTask.ShortID))
-				}
-				m.statusMessage = m.confirm.Prompt()
-				m.deleteTarget = cursorTask
-			}
+			handleDeleteConfirmKey(m)
 			return m, nil
 		}
 
@@ -132,107 +110,19 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "!":
-		if priority, ok := PriorityForPrefixKey(key); ok {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				tasks := m.getSelectedTasks()
-				count := applyBulkPriority(m.project, tasks, priority)
-				m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
-				m.clearMultiSelect()
-				m.rebuildRows()
-				return m, m.saveWithWorkflow()
-			}
-			if cursorTask == nil {
-				return m, nil
-			}
-			m.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, cursorTask.Title))
-			result := applyPriorityChange(m.workflowPersistFn(), m.project, cursorTask.ID, priority)
-			if result.Err != nil {
-				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.rebuildRows()
-			return m, result.Cmd
+		if cmd, ok := handlePriorityPrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "d":
-		if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				tasks := m.getSelectedTasks()
-				dueDate, desc := dueDateFromDays(days, isClear)
-				count := applyBulkDueDate(m.project, tasks, dueDate)
-				m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
-				m.clearMultiSelect()
-				m.rebuildRows()
-				return m, m.saveWithWorkflow()
-			}
-			if cursorTask == nil {
-				return m, nil
-			}
-			var result TaskOpResult
-			if isClear {
-				m.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", cursorTask.Title))
-				result = applyClearDueDate(m.workflowPersistFn(), m.project, cursorTask.ID)
-			} else {
-				m.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), cursorTask.Title))
-				result = applyQuickDueDate(m.workflowPersistFn(), m.project, cursorTask.ID, days)
-			}
-			if result.Err != nil {
-				return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-			}
-			m.rebuildRows()
-			return m, result.Cmd
-		}
-		if key == "d" {
-			if cursorTask != nil {
-				task := cursorTask
-				project := m.project
-				return m, func() tea.Msg {
-					return SetDueDateMsg{Task: task, Project: project}
-				}
-			}
-			return m, nil
+		if cmd, ok := handleDueDatePrefix(key, m); ok {
+			return m, cmd
 		}
 
 	case "s":
-		// Snooze quick actions
-		if key == "d" {
-			if cursorTask != nil {
-				task := cursorTask
-				project := m.project
-				return m, func() tea.Msg {
-					return SetSnoozeDateMsg{Task: task, Project: project}
-				}
-			}
-			return m, nil
+		if cmd, ok := handleSnoozePrefix(key, m); ok {
+			return m, cmd
 		}
-
-		snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
-		if !ok {
-			return m, nil
-		}
-
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			count := 0
-			for id := range m.selectedTasks {
-				if m.project.MutateTask(id, func(t *models.Task) {
-					t.SnoozedUntil = snoozeDate
-				}) {
-					count++
-				}
-			}
-			m.setUndoContext("Snooze", fmt.Sprintf("%s on %d tasks", desc, count))
-			m.clearMultiSelect()
-			m.rebuildRows()
-			return m, m.saveWithWorkflow()
-		}
-		if cursorTask != nil {
-			m.project.MutateTask(cursorTask.ID, func(t *models.Task) {
-				t.SnoozedUntil = snoozeDate
-			})
-			m.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, cursorTask.Title))
-			m.rebuildRows()
-			return m, m.saveWithWorkflow()
-		}
-		return m, nil
 
 	case "z":
 		// Fold operations
@@ -418,21 +308,8 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 // handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
 func (m *OutlinerModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "s":
-		return m, func() tea.Msg {
-			return ShowSaveViewDialogMsg{}
-		}
-	case "l":
-		return m, func() tea.Msg {
-			return ShowCommandPaletteMsg{PreFilter: ":sv "}
-		}
-	case "d":
-		return m, func() tea.Msg {
-			return ShowCommandPaletteMsg{PreFilter: ":sv "}
-		}
-	}
-	return m, nil
+	cmd, _ := handleSavedViewPrefixKey(key)
+	return m, cmd
 }
 
 // cycleDueDateFilter cycles through due date filter modes.

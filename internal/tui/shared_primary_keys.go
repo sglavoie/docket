@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -16,6 +19,264 @@ type primaryProjectView interface {
 	getConfig() *config.Config
 	reloadFromDisk() tea.Cmd
 	performUndo() tea.Cmd
+}
+
+// prefixableView is the interface that primary views must implement to use
+// the shared prefix handlers for !, d, and s keys.
+type prefixableView interface {
+	getCursorTask() *models.Task
+	getProject() *models.Project
+	getMultiSelectedTasks() []*models.Task // nil = not in multi-select
+	clearMultiSelect()
+	refreshView()                                                  // buildTree / loadTasks / rebuildRows
+	workflowPersistFn() persistFn                                  // for single-task operations
+	setUndoContext(action, detail string)                          // sets undo label before persist
+	saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd // bulk: persist + refresh
+	setStatusMessage(msg string)                                   // sets the status bar text
+}
+
+// handlePriorityPrefix handles the ! prefix key for setting priority.
+// Returns (cmd, handled). When handled is false the key was not
+// recognized by PriorityForPrefixKey.
+func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
+	priority, ok := PriorityForPrefixKey(key)
+	if !ok {
+		return nil, false
+	}
+
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		count := applyBulkPriority(project, tasks, priority)
+		v.clearMultiSelect()
+		msg := fmt.Sprintf("Set priority %d on %d tasks", priority, count)
+		v.setUndoContext("Set Priority", msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	v.setUndoContext("Set Priority", fmt.Sprintf("P%d: %s", priority, task.Title))
+	result := applyPriorityChange(v.workflowPersistFn(), project, task.ID, priority)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+	}
+	v.refreshView()
+	return result.Cmd, true
+}
+
+// handleDueDatePrefix handles the d prefix key for setting due dates.
+// Returns (cmd, handled). When handled is false the key was not recognized.
+func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if days, isClear, ok := DueDateDaysForPrefixKey(key); ok {
+		if tasks := v.getMultiSelectedTasks(); tasks != nil {
+			dueDate, desc := dueDateFromDays(days, isClear)
+			prevStates := captureTaskStates(project.Tasks)
+			count := applyBulkDueDate(project, tasks, dueDate)
+			v.clearMultiSelect()
+			v.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
+			return v.saveAndRefreshBulk(prevStates), true
+		}
+		task := v.getCursorTask()
+		if task == nil {
+			return nil, true
+		}
+		var result TaskOpResult
+		if isClear {
+			v.setUndoContext("Set Due Date", fmt.Sprintf("cleared: %s", task.Title))
+			result = applyClearDueDate(v.workflowPersistFn(), project, task.ID)
+		} else {
+			v.setUndoContext("Set Due Date", fmt.Sprintf("%s: %s", dueDateLabel(days), task.Title))
+			result = applyQuickDueDate(v.workflowPersistFn(), project, task.ID, days)
+		}
+		if result.Err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+		}
+		if result.StatusMessage != "" {
+			v.setStatusMessage(result.StatusMessage)
+		}
+		v.refreshView()
+		return result.Cmd, true
+	}
+
+	if key == "d" {
+		task := v.getCursorTask()
+		if task == nil {
+			return nil, true
+		}
+		return func() tea.Msg {
+			return SetDueDateMsg{Task: task, Project: project}
+		}, true
+	}
+
+	return nil, false
+}
+
+// handleSnoozePrefix handles the s prefix key for snoozing tasks.
+// Returns (cmd, handled). When handled is false the key was not recognized.
+func handleSnoozePrefix(key string, v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if key == "d" {
+		task := v.getCursorTask()
+		if task == nil {
+			return nil, true
+		}
+		return func() tea.Msg {
+			return SetSnoozeDateMsg{Task: task, Project: project}
+		}, true
+	}
+
+	snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+	if !ok {
+		return nil, false
+	}
+
+	prevStates := captureTaskStates(project.Tasks)
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		count := 0
+		for _, task := range tasks {
+			if project.MutateTask(task.ID, func(t *models.Task) {
+				t.SnoozedUntil = snoozeDate
+			}) {
+				count++
+			}
+		}
+		v.clearMultiSelect()
+		v.setUndoContext("Snooze", fmt.Sprintf("%s on %d tasks", desc, count))
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.SnoozedUntil = snoozeDate
+	})
+	v.setUndoContext("Snooze", fmt.Sprintf("%s: %s", desc, task.Title))
+	return v.saveAndRefreshBulk(prevStates), true
+}
+
+// handleToggleActiveKey handles the * key for toggling the Active flag.
+// Returns (cmd, handled).
+func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		count := 0
+		for _, task := range tasks {
+			task.ToggleActive()
+			count++
+		}
+		v.clearMultiSelect()
+		msg := fmt.Sprintf("Toggled active on %d tasks", count)
+		v.setUndoContext("Toggle Active", msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	v.setUndoContext("Toggle Active", task.Title)
+	result := applyToggleActive(v.workflowPersistFn(), project, task.ID)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+	}
+	v.refreshView()
+	return result.Cmd, true
+}
+
+// handleTogglePinnedKey handles the tp prefix key for toggling the Pinned flag.
+// Returns (cmd, handled).
+func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		count := 0
+		for _, task := range tasks {
+			task.TogglePinned()
+			count++
+		}
+		v.clearMultiSelect()
+		msg := fmt.Sprintf("Toggled pin on %d tasks", count)
+		v.setUndoContext("Toggle Pin", msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	v.setUndoContext("Toggle Pin", task.Title)
+	result := applyTogglePinned(v.workflowPersistFn(), project, task.ID)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+	}
+	v.refreshView()
+	return result.Cmd, true
+}
+
+// handleTagKey handles the T key for tag filtering or bulk tag assignment.
+// selectedTags is the current tag filter selection from the view's filter state.
+// Returns (cmd, handled).
+func handleTagKey(v prefixableView, source ViewType, includeCompleted bool, selectedTags map[string]bool) (tea.Cmd, bool) {
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		return func() tea.Msg {
+			return ShowBulkTagSelectorMsg{Tasks: tasks, Project: project}
+		}, true
+	}
+
+	tags := BuildTagList(project.Tasks, includeCompleted)
+	return func() tea.Msg {
+		return ShowTagFilterMsg{Tags: tags, Selected: selectedTags, Source: source, Title: "Filter by Tags"}
+	}, true
+}
+
+// deleteConfirmView is the interface that views must implement to use the
+// shared delete confirm handler.
+type deleteConfirmView interface {
+	getCursorTask() *models.Task
+	getMultiSelectedTasks() []*models.Task
+	showDeleteConfirm(task *models.Task)
+	showBulkDeleteConfirm()
+}
+
+// handleDeleteConfirmKey handles the tD prefix key for showing delete
+// confirmation dialogs. Returns true if the key was handled.
+func handleDeleteConfirmKey(v deleteConfirmView) bool {
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		v.showBulkDeleteConfirm()
+		return true
+	}
+	task := v.getCursorTask()
+	if task != nil {
+		v.showDeleteConfirm(task)
+	}
+	return true
 }
 
 // handleCommonPrimaryViewKey handles keys shared across the three primary
@@ -179,6 +440,84 @@ func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()
 		return true
 	}
 	return false
+}
+
+// handleSavedViewPrefixKey handles the third key after pressing Fv (saved views
+// sub-prefix). Returns (cmd, handled). This logic is shared between ProjectTree
+// and Outliner.
+func handleSavedViewPrefixKey(key string) (tea.Cmd, bool) {
+	switch key {
+	case "s":
+		return func() tea.Msg { return ShowSaveViewDialogMsg{} }, true
+	case "l", "d":
+		return func() tea.Msg { return ShowCommandPaletteMsg{PreFilter: ":sv "} }, true
+	}
+	return nil, false
+}
+
+// handleQuickEditKey handles key input while in quick edit mode. This is shared
+// between ProjectTree and Outliner. The onSave callback is called after a
+// successful edit to persist and refresh the view. The optional onUndo callback
+// is called with (action, detail) before saving to set undo context.
+func handleQuickEditKey(
+	msg tea.KeyMsg,
+	qe *QuickEditComponent,
+	project *models.Project,
+	onSave func() tea.Cmd,
+	onUndo func(action, detail string),
+) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		qe.Exit()
+		return nil, nil
+
+	case "enter":
+		input := strings.TrimSpace(qe.GetInput().Value())
+		if input == "" {
+			qe.Exit()
+			return nil, nil
+		}
+
+		task := project.GetTaskByID(qe.GetTask().ID)
+		if task == nil {
+			qe.Exit()
+			return nil, nil
+		}
+
+		if qe.IsRenameOnly() {
+			project.MutateTask(task.ID, func(t *models.Task) {
+				t.Title = input
+			})
+			if onUndo != nil {
+				onUndo("Rename Task", task.Title)
+			}
+		} else {
+			result, err := parseQuickEdit(input, task, project)
+			if err != nil {
+				return nil, nil
+			}
+			applyQuickEdit(task, project, result)
+			if onUndo != nil {
+				onUndo("Quick Edit", task.Title)
+			}
+		}
+
+		qe.Exit()
+		return nil, onSave()
+
+	default:
+		inputModel := qe.GetInput()
+		inputModel, cmd := inputModel.Update(msg)
+		qe.UpdateInput(inputModel)
+
+		if !qe.IsRenameOnly() {
+			inputValue := qe.GetInput().Value()
+			preview, _ := parseQuickEditForPreview(inputValue, qe.GetTask(), project)
+			qe.SetPreview(preview)
+		}
+
+		return nil, cmd
+	}
 }
 
 // primaryViewShouldCaptureEsc checks conditions common to all primary views:

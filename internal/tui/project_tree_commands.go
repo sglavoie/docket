@@ -63,6 +63,34 @@ func (m *ProjectTreeModel) setUndoContext(action, context string) {
 	m.undo.Set(action, context)
 }
 
+// getMultiSelectedTasks returns selected tasks when in multi-select mode, nil otherwise.
+func (m *ProjectTreeModel) getMultiSelectedTasks() []*models.Task {
+	if m.multiSelectMode && len(m.selectedTasks) > 0 {
+		return m.getSelectedTasks()
+	}
+	return nil
+}
+
+// clearMultiSelect exits multi-select mode and clears the selection.
+func (m *ProjectTreeModel) clearMultiSelect() {
+	m.clearSelection()
+}
+
+// refreshView rebuilds the tree display.
+func (m *ProjectTreeModel) refreshView() {
+	m.buildTree()
+}
+
+// saveAndRefreshBulk saves the project with workflow rules and rebuilds the tree.
+func (m *ProjectTreeModel) saveAndRefreshBulk(prevStates map[string]*models.Task) tea.Cmd {
+	return m.saveAndRefreshWithPrevStates(prevStates)
+}
+
+// setStatusMessage sets the status bar text.
+func (m *ProjectTreeModel) setStatusMessage(msg string) {
+	m.statusMessage = msg
+}
+
 // saveAndRefresh saves the project and refreshes the tree view.
 func (m *ProjectTreeModel) saveAndRefresh() tea.Cmd {
 	return m.saveAndRefreshWithPrevStates(nil)
