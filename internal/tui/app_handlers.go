@@ -50,6 +50,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 	state.OutlinerFilterSections = filterSections
 	state.OutlinerFilterActionable = m.outliner.filter.Actionable
 	state.OutlinerFilterScoreMin = m.outliner.filter.ScoreMin
+	state.OutlinerColumnToggles = m.outliner.columnConfig.Toggles()
 
 	if len(m.outliner.filter.Attrs) > 0 {
 		state.OutlinerFilterAttrs = make(map[string]string)

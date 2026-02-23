@@ -418,7 +418,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
 	}
 	scoreBadgeLen := 0
-	if m.ColumnWidth >= 25 && m.config != nil {
+	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
 			_ = profile // score badge takes ~7-8 chars: [S:NN] or [S:~NN]
 			scoreBadgeLen = 9
@@ -445,7 +445,7 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 
 	// Score badge (only if column wide enough and profile assigned)
 	scoreBadgeStr := ""
-	if m.ColumnWidth >= 25 && m.config != nil {
+	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
 			scoreBadgeStr = RenderScoreBadge(task, profile)
 		}
@@ -453,6 +453,11 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 
 	statusStyle := GetStatusStyle(string(task.Status))
 	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
+	if m.columnConfig.IsVisible(ColProgress) {
+		if frac := renderProgressFraction(task); frac != "" {
+			content += " " + frac
+		}
+	}
 	if scoreBadgeStr != "" {
 		content += " " + scoreBadgeStr
 	}

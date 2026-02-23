@@ -289,6 +289,61 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.projectTree.updateVisibility()
 		m.showView(ViewProjectTree, m.projectTree)
 		return true, nil
+
+	case ShowColumnPickerMsg:
+		m.showView(ViewColumnPicker, NewColumnPickerModel(msg))
+		return true, nil
+
+	case ColumnPickerDoneMsg:
+		m.popView()
+		if msg.Canceled {
+			return true, nil
+		}
+		m.applyColumnToggles(msg.Source, msg.Toggles)
+		return true, nil
 	}
 	return false, nil
+}
+
+// applyColumnToggles applies the column toggle changes from the picker to the
+// appropriate view and persists them to config.
+func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) {
+	projectID := ""
+	if m.currentProject != nil {
+		projectID = m.currentProject.ID
+	}
+
+	switch source {
+	case ViewProjectTree:
+		if m.projectTree != nil {
+			m.projectTree.columnConfig = NewColumnConfig(toggles, DefaultTreeColumns)
+		}
+		if projectID != "" {
+			state, _ := m.config.GetProjectViewState(projectID)
+			state.TreeColumnToggles = toggles
+			m.config.SetProjectViewState(projectID, state)
+		}
+	case ViewKanban:
+		if m.kanban != nil {
+			m.kanban.columnConfig = NewColumnConfig(toggles, DefaultKanbanColumns)
+			m.kanban.loadTasks()
+		}
+		if projectID != "" {
+			state, _ := m.config.GetProjectViewState(projectID)
+			state.KanbanColumnToggles = toggles
+			m.config.SetProjectViewState(projectID, state)
+		}
+	case ViewOutliner:
+		if m.outliner != nil {
+			m.outliner.columnConfig = NewColumnConfig(toggles, DefaultOutlinerColumns)
+			m.outliner.rebuildRows()
+		}
+		if projectID != "" {
+			state, _ := m.config.GetProjectViewState(projectID)
+			state.OutlinerColumnToggles = toggles
+			m.config.SetProjectViewState(projectID, state)
+		}
+	}
+
+	_ = m.configManager.Save(m.config)
 }

@@ -175,6 +175,9 @@ type KanbanViewModel struct {
 
 	// Last modified task tracking
 	lastModifiedTaskID string
+
+	// Column visibility config (loaded from project view state)
+	columnConfig *ColumnConfig
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -219,6 +222,14 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		}
 	}
 
+	// Load column toggles from config
+	var kanbanToggles map[string]bool
+	if cfg != nil && project != nil {
+		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
+			kanbanToggles = vs.KanbanColumnToggles
+		}
+	}
+
 	m := &KanbanViewModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfg, cfgManager),
 		Project:           project,
@@ -235,6 +246,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		columnSort:        make(map[string]SortField),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: kanbanTabNames},
+		columnConfig:      NewColumnConfig(kanbanToggles, DefaultKanbanColumns),
 	}
 
 	m.InitSearchInput("Search tasks...", 100, 40)

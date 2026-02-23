@@ -480,6 +480,7 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 	hints = append(hints,
 		PrefixHint{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(f.Attrs) > 0},
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
+		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "x", Description: "clear-all"},
 	)
 

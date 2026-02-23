@@ -70,8 +70,11 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
 	}
 
-	// Task ID
-	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
+	// Task ID (includes trailing space when visible for spacing in the format string)
+	idStr := ""
+	if m.columnConfig.IsVisible(ColShortID) {
+		idStr = MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
+	}
 
 	// Title
 	titleStyle := NormalStyle
@@ -100,9 +103,10 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	// Progress for parent tasks
 	progress := ""
-	if task.HasProgressChildren() {
-		pct := task.GetProgress()
-		progress = MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct))
+	if m.columnConfig.IsVisible(ColProgress) {
+		if frac := renderProgressFraction(task); frac != "" {
+			progress = " " + frac
+		}
 	}
 
 	// Build indicators FIRST so we can account for their width when truncating the title
@@ -133,17 +137,19 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Priority indicator (compact)
-	if task.Priority <= 2 {
+	if m.columnConfig.IsVisible(ColPriority) && task.Priority <= 2 {
 		indicators += renderPriorityBadge(task.Priority) + " "
 	}
 
 	// Due date display (compact)
-	if dueStr := formatDueDate(task); dueStr != "" {
-		indicators += dueStr + " "
+	if m.columnConfig.IsVisible(ColDueDate) {
+		if dueStr := formatDueDate(task); dueStr != "" {
+			indicators += dueStr + " "
+		}
 	}
 
 	// Snooze indicator (shown in snoozed view)
-	if task.SnoozedUntil != nil {
+	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
 		snoozeStr := task.SnoozedUntil.Format("Jan 2")
 		if task.SnoozedUntil.Year() != time.Now().Year() {
 			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
@@ -152,48 +158,54 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Recurrence indicator
-	if task.IsRecurring() {
+	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
 		indicators += MutedStyle.Render("↻") + " "
 	}
 
 	// Dependency indicators (compact, only when sidebar is hidden)
-	if !m.sidebar.IsEnabled() {
+	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
 		if s := renderDependencyIndicators(task, m.project); s != "" {
 			indicators += s + " "
 		}
 	}
 
 	// Comment indicator
-	if s := renderCommentIndicator(task); s != "" {
-		indicators += s + " "
+	if m.columnConfig.IsVisible(ColComments) {
+		if s := renderCommentIndicator(task); s != "" {
+			indicators += s + " "
+		}
 	}
 
 	// Attachment indicator
-	if s := renderAttachmentIndicator(task); s != "" {
-		indicators += s + " "
+	if m.columnConfig.IsVisible(ColAttachments) {
+		if s := renderAttachmentIndicator(task); s != "" {
+			indicators += s + " "
+		}
 	}
 
 	// Checklist indicator
-	if s := renderChecklistIndicator(task); s != "" {
-		indicators += s + " "
+	if m.columnConfig.IsVisible(ColChecklist) {
+		if s := renderChecklistIndicator(task); s != "" {
+			indicators += s + " "
+		}
 	}
 
 	// Custom section badge (only when sidebar is hidden)
-	if task.CustomSection != "" && !m.sidebar.IsEnabled() {
+	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
 		csColor := m.project.GetSectionColor(task.CustomSection)
 		csStyle := GetSectionColorStyle(csColor)
 		indicators += csStyle.Render("@ "+task.CustomSection) + " "
 	}
 
 	// Score badge (when sidebar is hidden and scoring profile assigned)
-	if !m.sidebar.IsEnabled() && m.config != nil {
+	if m.columnConfig.IsVisible(ColScore) && !m.sidebar.IsEnabled() && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
 			indicators += RenderScoreBadge(task, profile) + " "
 		}
 	}
 
 	// Tag badges (compact, show first 2 tags + count if more)
-	if len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
+	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
 		indicators += renderTruncatedTags(task.Tags, 2, 8) + " "
 	}
 
@@ -231,7 +243,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s %s %s %s%s%s",
+	content := fmt.Sprintf("%s%s%s%s %s %s%s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
 	return RenderSelectableRow(selected, task.Active, task.Pinned, content, maxWidth)
 }

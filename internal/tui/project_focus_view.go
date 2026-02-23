@@ -444,11 +444,17 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
+	// Progress fraction for parent tasks
+	progressStr := ""
+	if frac := renderProgressFraction(task); frac != "" {
+		progressStr = " " + frac
+	}
+
 	return TaskLine{
 		Task:       task,
 		IsSelected: isSelected,
 		MaxTitle:   maxTitleLen,
-		PostTitle:  csStr + renderInlineTags(task.Tags),
+		PostTitle:  csStr + progressStr + renderInlineTags(task.Tags),
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
 	}.Render()

@@ -372,25 +372,29 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		var indicators strings.Builder
 
 		// Priority badge (only for high/medium)
-		if task.Priority <= 2 {
+		if m.columnConfig.IsVisible(ColPriority) && task.Priority <= 2 {
 			indicators.WriteString(" ")
 			indicators.WriteString(renderPriorityBadge(task.Priority))
 		}
 
 		// Due date badge
-		if dueStr := formatDueDate(task); dueStr != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(dueStr)
+		if m.columnConfig.IsVisible(ColDueDate) {
+			if dueStr := formatDueDate(task); dueStr != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(dueStr)
+			}
 		}
 
 		// Tag badges (first 2 tags, truncated)
-		if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+		if m.columnConfig.IsVisible(ColTags) {
+			if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(s)
+			}
 		}
 
 		// Score badge (only when scoring profile is active and task has scores)
-		if m.config != nil {
+		if m.columnConfig.IsVisible(ColScore) && m.config != nil {
 			if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
 				if HasManualScores(task, profile) {
 					indicators.WriteString(" ")
@@ -400,25 +404,31 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Comment indicator
-		if s := renderCommentIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+		if m.columnConfig.IsVisible(ColComments) {
+			if s := renderCommentIndicator(task); s != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(s)
+			}
 		}
 
 		// Attachment indicator
-		if s := renderAttachmentIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+		if m.columnConfig.IsVisible(ColAttachments) {
+			if s := renderAttachmentIndicator(task); s != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(s)
+			}
 		}
 
 		// Checklist indicator
-		if s := renderChecklistIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+		if m.columnConfig.IsVisible(ColChecklist) {
+			if s := renderChecklistIndicator(task); s != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(s)
+			}
 		}
 
 		// Dependency indicators (only when sidebar is hidden)
-		if !m.sidebar.IsEnabled() {
+		if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
 			if s := renderDependencyIndicators(task, m.project); s != "" {
 				indicators.WriteString(" ")
 				indicators.WriteString(s)
@@ -426,9 +436,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Progress for parent tasks
-		if task.HasProgressChildren() {
-			pct := task.GetProgress()
-			indicators.WriteString(MutedStyle.Render(fmt.Sprintf(" [%.0f%%]", pct)))
+		if m.columnConfig.IsVisible(ColProgress) {
+			if frac := renderProgressFraction(task); frac != "" {
+				indicators.WriteString(" ")
+				indicators.WriteString(frac)
+			}
 		}
 
 		// Section badge (only in non-All perspectives to show which section the task belongs to)

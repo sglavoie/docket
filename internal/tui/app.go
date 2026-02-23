@@ -98,6 +98,7 @@ const (
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
+	ViewColumnPicker
 )
 
 // AppModel is the main TUI model with a view stack.
@@ -583,20 +584,28 @@ func (m *AppModel) saveProjectTreeState() {
 	}
 
 	state := config.ProjectViewState{
-		FilterType:       string(m.projectTree.filter.Type),
-		FilterStatus:     string(m.projectTree.filter.Status),
-		FilterPriority:   m.projectTree.filter.Priority,
-		FilterTags:       filterTags,
-		FilterSections:   filterSections,
-		FilterDueDate:    int(m.projectTree.filter.DueDate),
-		FilterActionable: m.projectTree.filter.Actionable,
-		SortField:        int(m.projectTree.sort.Field),
-		SortAscending:    m.projectTree.sort.Ascending,
-		SidebarEnabled:   m.projectTree.sidebar.IsEnabled(),
-		FilterBarEnabled: m.projectTree.filterBar.IsEnabled(),
-		ViewMode:         int(m.projectTree.viewMode),
-		CustomSectionTab: m.projectTree.activeCustomSectionFilter(),
+		FilterType:        string(m.projectTree.filter.Type),
+		FilterStatus:      string(m.projectTree.filter.Status),
+		FilterPriority:    m.projectTree.filter.Priority,
+		FilterTags:        filterTags,
+		FilterSections:    filterSections,
+		FilterDueDate:     int(m.projectTree.filter.DueDate),
+		FilterActionable:  m.projectTree.filter.Actionable,
+		SortField:         int(m.projectTree.sort.Field),
+		SortAscending:     m.projectTree.sort.Ascending,
+		SidebarEnabled:    m.projectTree.sidebar.IsEnabled(),
+		FilterBarEnabled:  m.projectTree.filterBar.IsEnabled(),
+		ViewMode:          int(m.projectTree.viewMode),
+		CustomSectionTab:  m.projectTree.activeCustomSectionFilter(),
+		TreeColumnToggles: m.projectTree.columnConfig.Toggles(),
 	}
+
+	// Preserve kanban/outliner column toggles from existing state
+	if existing, ok := m.config.ProjectViewStates[m.currentProject.ID]; ok {
+		state.KanbanColumnToggles = existing.KanbanColumnToggles
+		state.OutlinerColumnToggles = existing.OutlinerColumnToggles
+	}
+
 	m.config.SetProjectViewState(m.currentProject.ID, state)
 	_ = m.configManager.Save(m.config)
 }
@@ -679,6 +688,7 @@ func (m *AppModel) saveKanbanState() {
 	state.KanbanFilterDueDate = int(m.kanban.filter.DueDate)
 	state.KanbanFilterScoreMin = m.kanban.filter.ScoreMin
 	state.KanbanActiveTab = m.kanban.tabs.Active
+	state.KanbanColumnToggles = m.kanban.columnConfig.Toggles()
 
 	if len(m.kanban.filter.Attrs) > 0 {
 		state.KanbanFilterAttrs = make(map[string]string)

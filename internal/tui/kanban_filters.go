@@ -261,6 +261,7 @@ func (m *KanbanViewModel) buildKanbanFilterPrefixHints() []PrefixHint {
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
+		{Key: "D", Description: "columns"},
 		{Key: "x", Description: "clear-all"},
 	}
 }
@@ -278,6 +279,10 @@ func (m *KanbanViewModel) handleKanbanFilterPrefix(key string) (tea.Model, tea.C
 	case "r":
 		m.toggleActionableFilter()
 		return m, nil
+	case "D":
+		return m, func() tea.Msg {
+			return ShowColumnPickerMsg{Source: ViewKanban, ColumnConfig: m.columnConfig}
+		}
 	case "x":
 		// Override common x to also clear view-specific state
 		m.ClearAllFilters()

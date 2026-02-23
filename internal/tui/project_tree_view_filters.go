@@ -321,6 +321,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
 		{Key: "v", Description: "saved views"},
+		{Key: "D", Description: "columns"},
 		{Key: "x", Description: "clear-all"},
 	}
 }

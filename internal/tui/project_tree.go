@@ -175,6 +175,9 @@ type ProjectTreeModel struct {
 
 	// Active saved view name (set when a saved view is loaded, cleared on manual filter/sort changes)
 	activeSavedView string
+
+	// Column visibility config (loaded from project view state)
+	columnConfig *ColumnConfig
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -202,6 +205,12 @@ func (m *ProjectTreeModel) clearActiveSavedView() {
 
 // NewProjectTreeModel creates a new project tree model.
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
+	var treeToggles map[string]bool
+	if cfg != nil {
+		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
+			treeToggles = vs.TreeColumnToggles
+		}
+	}
 	m := &ProjectTreeModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfg, manager),
 		project:           project,
@@ -210,6 +219,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		filterBar:         NewFilterBarComponent(),
 		sidebar:           NewSidebarComponent(),
+		columnConfig:      NewColumnConfig(treeToggles, DefaultTreeColumns),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

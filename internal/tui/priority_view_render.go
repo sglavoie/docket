@@ -196,11 +196,18 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 		isSelected := *currentIndex == m.cursor
 		scoreBadge := RenderScoreBadge(pt.Task, profile)
 
+		// Progress fraction for parent tasks
+		progressStr := ""
+		if frac := renderProgressFraction(pt.Task); frac != "" {
+			progressStr = " " + frac
+		}
+
 		line := TaskLine{
 			Task:       pt.Task,
 			IsSelected: isSelected,
 			MaxTitle:   maxTitleLen,
 			PreBadges:  fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
+			PostTitle:  progressStr,
 		}.Render()
 		lines = append(lines, line)
 		*currentIndex++
@@ -279,12 +286,18 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		}
 	}
 
+	// Progress fraction for parent tasks
+	progressStr := ""
+	if frac := renderProgressFraction(task); frac != "" {
+		progressStr = " " + frac
+	}
+
 	return TaskLine{
 		Task:       task,
 		IsSelected: isSelected,
 		MaxTitle:   adjustedMaxTitleLen,
 		Prefix:     starPrefix,
-		PostTitle:  scoreBadge + csStr + renderInlineTags(task.Tags),
+		PostTitle:  scoreBadge + csStr + progressStr + renderInlineTags(task.Tags),
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
 	}.Render()

@@ -51,6 +51,9 @@ type OutlinerModel struct {
 	err          error        // Last error from an operation
 
 	undo UndoContext // Action label and context for next undo snapshot
+
+	// Column visibility config (loaded from project view state)
+	columnConfig *ColumnConfig
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -71,6 +74,14 @@ func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
+	// Load column toggles from config
+	var outlinerToggles map[string]bool
+	if cfg != nil && project != nil {
+		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
+			outlinerToggles = vs.OutlinerColumnToggles
+		}
+	}
+
 	m := &OutlinerModel{
 		PrimaryViewBundle: NewPrimaryViewBundle(cfg, cfgManager),
 		project:           project,
@@ -81,6 +92,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		columnConfig:      NewColumnConfig(outlinerToggles, DefaultOutlinerColumns),
 	}
 	// Seed default collapsed sections from config
 	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {

@@ -87,6 +87,21 @@ func renderChecklistIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("✅%d/%d", completed, len(task.Checklist)))
 }
 
+// renderProgressFraction renders a compact [done/total] fraction for parent tasks.
+// Returns an empty string if the task has no children.
+func renderProgressFraction(task *models.Task) string {
+	if !task.HasProgressChildren() {
+		return ""
+	}
+	completed := 0
+	for _, child := range task.Children {
+		if child.IsComplete() {
+			completed++
+		}
+	}
+	return MutedStyle.Render(fmt.Sprintf("[%d/%d]", completed, len(task.Children)))
+}
+
 // renderDependencyIndicators renders compact dependency arrow indicators.
 func renderDependencyIndicators(task *models.Task, project *models.Project) string {
 	var parts []string
@@ -154,6 +169,9 @@ func RenderCrossProjectTaskLine(
 	preBadges := opts.Prefix + projectBadge + " "
 
 	postTitle := ""
+	if frac := renderProgressFraction(task); frac != "" {
+		postTitle += " " + frac
+	}
 	if opts.ShowTags {
 		postTitle += renderInlineTags(task.Tags)
 	}

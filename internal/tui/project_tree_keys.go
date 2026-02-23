@@ -46,6 +46,10 @@ func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	case "v":
 		m.pendingPrefix = "Fv"
 		return m, nil
+	case "D":
+		return m, func() tea.Msg {
+			return ShowColumnPickerMsg{Source: ViewProjectTree, ColumnConfig: m.columnConfig}
+		}
 	case "x":
 		// Override common x to also clear view-specific filters
 		clearCommonFilters(&m.filter.CommonFilterState)

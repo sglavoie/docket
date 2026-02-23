@@ -61,6 +61,9 @@ type ProjectViewState struct {
 	OutlinerFilterActionable bool              `json:"outliner_filter_actionable,omitempty"` // Outliner actionable filter
 	OutlinerFilterAttrs      map[string]string `json:"outliner_filter_attrs,omitempty"`      // Outliner attribute filters
 	OutlinerFilterScoreMin   float64           `json:"outliner_filter_score_min,omitempty"`  // Outliner score threshold
+	TreeColumnToggles        map[string]bool   `json:"tree_column_toggles,omitempty"`        // Per-column visibility overrides for tree view
+	KanbanColumnToggles      map[string]bool   `json:"kanban_column_toggles,omitempty"`      // Per-column visibility overrides for kanban view
+	OutlinerColumnToggles    map[string]bool   `json:"outliner_column_toggles,omitempty"`    // Per-column visibility overrides for outliner view
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.

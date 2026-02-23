@@ -378,7 +378,15 @@ func (m *KanbanViewModel) renderAllTaskRow(node *KanbanNode, isSelected bool) st
 		statusStyle = BlockedByDepsStyle
 	}
 
-	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title + " " + sectionBadge
+	// Progress fraction for parent tasks
+	progressStr := ""
+	if m.columnConfig.IsVisible(ColProgress) {
+		if frac := renderProgressFraction(task); frac != "" {
+			progressStr = " " + frac
+		}
+	}
+
+	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title + progressStr + " " + sectionBadge
 
 	return RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
 }

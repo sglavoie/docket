@@ -252,6 +252,10 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.filter.Actionable = !m.filter.Actionable
 		m.rebuildRows()
 		return m, nil
+	case "D":
+		return m, func() tea.Msg {
+			return ShowColumnPickerMsg{Source: ViewOutliner, ColumnConfig: m.columnConfig}
+		}
 	case "x":
 		clearCommonFilters(&m.filter.CommonFilterState)
 		m.filter.Actionable = false
