@@ -4,7 +4,7 @@ import "github.com/sglavoie/tt/internal/models"
 
 // jumpToTask moves the cursor to the position of the given task in the list.
 func (m *PriorityViewModel) jumpToTask(task *models.Task) {
-	if m.activeTab == priorityTabByScore {
+	if m.tabs.Active == priorityTabByScore {
 		for i, pt := range m.scoredTasks {
 			if pt.Task.ID == task.ID {
 				m.cursor = i
@@ -68,7 +68,7 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 		return nil
 	}
 
-	if m.activeTab == priorityTabByScore {
+	if m.tabs.Active == priorityTabByScore {
 		scored := m.visibleScoredTasks()
 		if m.cursor < len(scored) {
 			return scored[m.cursor]
@@ -79,7 +79,7 @@ func (m *PriorityViewModel) getTaskAtCursor() *PriorityTask {
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	// For the Blocked tab, navigate waiting tasks directly
-	if m.activeTab == priorityTabBlocked {
+	if m.tabs.Active == priorityTabBlocked {
 		if m.cursor < len(waitingOn) {
 			return waitingOn[m.cursor]
 		}

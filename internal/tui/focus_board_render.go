@@ -29,7 +29,7 @@ func (m *FocusBoardModel) View() string {
 	b.WriteString("\n")
 
 	// Tab bar
-	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.activeTab, nil, false, m.width))
+	b.WriteString(renderTabBarWithOptionalSubTabs(focusBoardTabNames, m.tabs.Active, nil, false, m.width))
 	b.WriteString("\n")
 
 	// Search input
@@ -59,34 +59,9 @@ func (m *FocusBoardModel) View() string {
 
 		// Autocomplete dropdown
 		if m.isAutocompleteActive() {
-			if m.acViewportTop > 0 {
-				b.WriteString(MutedStyle.Render("    ↑ " + fmt.Sprintf("%d more", m.acViewportTop)))
-				b.WriteString("\n")
-				addBlockHeight++
-			}
-
-			visibleEnd := m.acViewportTop + acVisibleCount
-			if visibleEnd > len(m.acSuggestions) {
-				visibleEnd = len(m.acSuggestions)
-			}
-
-			for i := m.acViewportTop; i < visibleEnd; i++ {
-				s := m.acSuggestions[i]
-				if i == m.acCursor {
-					b.WriteString(SelectedStyle.Render("    > " + s.display))
-				} else {
-					b.WriteString(MutedStyle.Render("      " + s.display))
-				}
-				b.WriteString("\n")
-				addBlockHeight++
-			}
-
-			remaining := len(m.acSuggestions) - visibleEnd
-			if remaining > 0 {
-				b.WriteString(MutedStyle.Render("    ↓ " + fmt.Sprintf("%d more", remaining)))
-				b.WriteString("\n")
-				addBlockHeight++
-			}
+			dropdown := m.ac.RenderDropdown("    ")
+			b.WriteString(dropdown)
+			addBlockHeight += strings.Count(dropdown, "\n")
 		}
 
 		// Live preview of parsed prefixes/flags
@@ -149,7 +124,7 @@ func (m *FocusBoardModel) View() string {
 			b.WriteString(MutedStyle.Render("  No items match the active filters."))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
-		} else if m.activeTab == boardTabClosed {
+		} else if m.tabs.Active == boardTabClosed {
 			b.WriteString(MutedStyle.Render("  No closed items."))
 		} else if len(m.rows) == 0 {
 			b.WriteString(MutedStyle.Render("  No items on the board."))
@@ -196,7 +171,7 @@ func (m *FocusBoardModel) View() string {
 	var left string
 	if m.addMode || m.editMode {
 		left = HelpStyle.Render("Enter: save · Esc: cancel")
-	} else if m.activeTab == boardTabClosed {
+	} else if m.tabs.Active == boardTabClosed {
 		left = HelpStyle.Render("d reopen · D delete · o open URL · ? help")
 	} else {
 		left = HelpStyle.Render("a add · x done · X dismiss · p priority · e edit · enter open/go")
@@ -212,7 +187,7 @@ func (m *FocusBoardModel) View() string {
 		}
 		rightParts = append(rightParts, fmt.Sprintf("Sort: %s %s", m.sort.Field.ShortString(), direction))
 	}
-	if m.activeTab == boardTabClosed {
+	if m.tabs.Active == boardTabClosed {
 		rightParts = append(rightParts, fmt.Sprintf("%d closed", len(m.closedRows)))
 	} else {
 		rightParts = append(rightParts, fmt.Sprintf("%d/%d items", len(m.filtered), len(m.rows)))

@@ -53,7 +53,7 @@ type FocusBoardModel struct {
 	filtered   []boardRow
 
 	// Tabs
-	activeTab int
+	tabs TabState
 
 	// Sort
 	sort SortState
@@ -66,11 +66,7 @@ type FocusBoardModel struct {
 	addInput textinput.Model
 
 	// Autocomplete state for add mode
-	acMode         int
-	acSuggestions  []suggestion
-	acCursor       int
-	acViewportTop  int
-	acTriggerPos   int
+	ac             AutocompleteState
 	acProjectCache []*models.Project
 	acTagCache     []string
 
@@ -100,6 +96,7 @@ func NewFocusBoardModel(cfg *config.Config, manager *config.Manager) *FocusBoard
 		editInput:      ei,
 		FilterMixin:    FilterMixin{filter: newFilterState()},
 		sort:           NewSortState(),
+		tabs:           TabState{Names: focusBoardTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search...", 100, 40)

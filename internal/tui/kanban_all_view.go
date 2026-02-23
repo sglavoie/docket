@@ -185,8 +185,8 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 				m.allCursor = 0
 			}
 		} else {
-			CycleTab(&m.activeTab, len(kanbanTabNames), -1)
-			m.applyTabPresetForAllView(m.activeTab)
+			m.tabs.Cycle(-1)
+			m.applyTabPresetForAllView(m.tabs.Active)
 		}
 		return true, nil
 
@@ -198,8 +198,8 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 				m.allCursor = 0
 			}
 		} else {
-			CycleTab(&m.activeTab, len(kanbanTabNames), 1)
-			m.applyTabPresetForAllView(m.activeTab)
+			m.tabs.Cycle(1)
+			m.applyTabPresetForAllView(m.tabs.Active)
 		}
 		return true, nil
 	}
@@ -209,7 +209,7 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 
 // applyTabPresetForAllView applies the preset filter and rebuilds all nodes.
 func (m *KanbanViewModel) applyTabPresetForAllView(tab int) {
-	m.activeTab = tab
+	m.tabs.Active = tab
 	// Reset manual filters
 	m.ClearAllFilters()
 

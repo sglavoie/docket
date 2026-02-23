@@ -44,7 +44,7 @@ func (m *WeeklyReviewModel) View() string {
 
 	if m.totalItems == 0 {
 		emptyMsg := "No items in this tab."
-		if m.activeTab == 2 {
+		if m.tabs.Active == 2 {
 			emptyMsg = "No tasks due in the upcoming week. Use this tab to review and confirm tasks scheduled for the coming week."
 		}
 		b.WriteString(lipgloss.NewStyle().Width(m.width).Render(MutedStyle.Render(emptyMsg)))
@@ -97,11 +97,11 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 		len(m.staleTasks) + len(m.priorityMismatch),
 		len(m.upcomingWeek),
 	}
-	labels := make([]string, len(weeklyReviewTabNames))
-	for i, name := range weeklyReviewTabNames {
+	labels := make([]string, len(m.tabs.Names))
+	for i, name := range m.tabs.Names {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
-	return renderWrappingTabBar(labels, m.activeTab, m.width)
+	return renderWrappingTabBar(labels, m.tabs.Active, m.width)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

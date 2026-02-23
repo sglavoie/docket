@@ -10,7 +10,7 @@ import (
 )
 
 // groupTasks groups tasks based on the current groupBy setting.
-func (m *AllTasksViewModel) groupTasks(tasks []AllTasksItem) []AllTasksGroup {
+func (m *AllTasksViewModel) groupTasks(tasks []CrossProjectTask) []AllTasksGroup {
 	switch m.groupBy {
 	case ATGroupByProject:
 		return m.groupByProject(tasks)
@@ -33,8 +33,8 @@ func (m *AllTasksViewModel) groupTasks(tasks []AllTasksItem) []AllTasksGroup {
 }
 
 // groupByProject groups tasks by their parent project name.
-func (m *AllTasksViewModel) groupByProject(tasks []AllTasksItem) []AllTasksGroup {
-	groups := make(map[string][]AllTasksItem)
+func (m *AllTasksViewModel) groupByProject(tasks []CrossProjectTask) []AllTasksGroup {
+	groups := make(map[string][]CrossProjectTask)
 	var order []string
 
 	for _, item := range tasks {
@@ -55,7 +55,7 @@ func (m *AllTasksViewModel) groupByProject(tasks []AllTasksItem) []AllTasksGroup
 }
 
 // groupByStatus groups tasks by their workflow status in a defined order.
-func (m *AllTasksViewModel) groupByStatus(tasks []AllTasksItem) []AllTasksGroup {
+func (m *AllTasksViewModel) groupByStatus(tasks []CrossProjectTask) []AllTasksGroup {
 	statusOrder := []models.TaskStatus{
 		models.StatusTodo,
 		models.StatusInProgress,
@@ -65,7 +65,7 @@ func (m *AllTasksViewModel) groupByStatus(tasks []AllTasksItem) []AllTasksGroup 
 		models.StatusCanceled,
 	}
 
-	groups := make(map[models.TaskStatus][]AllTasksItem)
+	groups := make(map[models.TaskStatus][]CrossProjectTask)
 	for _, item := range tasks {
 		groups[item.Task.Status] = append(groups[item.Task.Status], item)
 	}
@@ -83,8 +83,8 @@ func (m *AllTasksViewModel) groupByStatus(tasks []AllTasksItem) []AllTasksGroup 
 }
 
 // groupByPriority groups tasks by priority level.
-func (m *AllTasksViewModel) groupByPriority(tasks []AllTasksItem) []AllTasksGroup {
-	groups := make(map[int][]AllTasksItem)
+func (m *AllTasksViewModel) groupByPriority(tasks []CrossProjectTask) []AllTasksGroup {
+	groups := make(map[int][]CrossProjectTask)
 	for _, item := range tasks {
 		groups[item.Task.Priority] = append(groups[item.Task.Priority], item)
 	}
@@ -108,8 +108,8 @@ func (m *AllTasksViewModel) groupByPriority(tasks []AllTasksItem) []AllTasksGrou
 }
 
 // groupBySection groups tasks by their GTD section.
-func (m *AllTasksViewModel) groupBySection(tasks []AllTasksItem) []AllTasksGroup {
-	groups := make(map[string][]AllTasksItem)
+func (m *AllTasksViewModel) groupBySection(tasks []CrossProjectTask) []AllTasksGroup {
+	groups := make(map[string][]CrossProjectTask)
 	var order []string
 
 	for _, item := range tasks {
@@ -133,12 +133,12 @@ func (m *AllTasksViewModel) groupBySection(tasks []AllTasksItem) []AllTasksGroup
 }
 
 // groupByDueDate groups tasks into due date buckets.
-func (m *AllTasksViewModel) groupByDueDate(tasks []AllTasksItem) []AllTasksGroup {
+func (m *AllTasksViewModel) groupByDueDate(tasks []CrossProjectTask) []AllTasksGroup {
 	now := time.Now()
 	today := util.StartOfDay(now)
 	weekEnd := today.AddDate(0, 0, 7)
 
-	var overdue, todayTasks, thisWeek, later, noDate []AllTasksItem
+	var overdue, todayTasks, thisWeek, later, noDate []CrossProjectTask
 
 	for _, item := range tasks {
 		if item.Task.DueDate == nil {

@@ -106,7 +106,7 @@ func (m *PriorityViewModel) loadActionableTasks() {
 
 // activeTabHint returns a brief description of the active tab's purpose for the footer.
 func (m *PriorityViewModel) activeTabHint() string {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case priorityTabUrgent:
 		return " · Showing overdue and due today"
 	case priorityTabUpcoming:
@@ -125,7 +125,7 @@ func (m *PriorityViewModel) activeTabHint() string {
 // filteredGroups returns the task groups visible for the current tab.
 // Returns overdue, today, thisWeek, later, backlog, waitingOn slices filtered by active tab.
 func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, backlog, waitingOn []*PriorityTask) {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case priorityTabUrgent:
 		return m.overdue, m.today, nil, nil, nil, nil
 	case priorityTabUpcoming:
@@ -143,7 +143,7 @@ func (m *PriorityViewModel) filteredGroups() (overdue, today, thisWeek, later, b
 
 // computeSubTabs builds dynamic sub-tab names based on active tab and current groups.
 func (m *PriorityViewModel) computeSubTabs() {
-	if m.project == nil || m.activeTab == priorityTabAll || m.activeTab == priorityTabByScore {
+	if m.project == nil || m.tabs.Active == priorityTabAll || m.tabs.Active == priorityTabByScore {
 		m.subTabNames = nil
 		if m.subTab > len(m.subTabNames) {
 			m.subTab = 0
@@ -246,7 +246,7 @@ func (m *PriorityViewModel) recalculateNavigation() {
 	m.computeSubTabs()
 
 	// By Score tab uses visibleScoredTasks (search-filtered)
-	if m.activeTab == priorityTabByScore {
+	if m.tabs.Active == priorityTabByScore {
 		m.subTabNames = nil
 		m.totalTasks = len(m.visibleScoredTasks())
 		m.groupStarts = []int{0}
@@ -256,7 +256,7 @@ func (m *PriorityViewModel) recalculateNavigation() {
 	overdue, today, thisWeek, later, backlog, waitingOn := m.filteredGroupsWithSubTab()
 
 	// For the Blocked tab, waiting tasks are navigable (not collapsible)
-	if m.activeTab == priorityTabBlocked {
+	if m.tabs.Active == priorityTabBlocked {
 		m.totalTasks = len(waitingOn)
 		m.groupStarts = []int{0}
 	} else {

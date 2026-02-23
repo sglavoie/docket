@@ -16,7 +16,7 @@ func (m *FocusViewModel) View() string {
 	if queueCount > 0 {
 		subtitle = fmt.Sprintf("%d queued, %d tasks", queueCount, len(m.tasks))
 	}
-	if len(m.filtered) != len(m.tasks) && m.activeTab != focusTabQueue {
+	if len(m.filtered) != len(m.tasks) && m.tabs.Active != focusTabQueue {
 		subtitle = fmt.Sprintf("%d/%d tasks", len(m.filtered), len(m.tasks))
 		if queueCount > 0 {
 			subtitle = fmt.Sprintf("%d queued, %d/%d tasks", queueCount, len(m.filtered), len(m.tasks))
@@ -72,7 +72,7 @@ func (m *FocusViewModel) View() string {
 	// Render task lines based on active tab
 	var lines []string
 
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabQueue:
 		lines = m.renderQueueLines()
 	case focusTabSuggested:
@@ -82,7 +82,7 @@ func (m *FocusViewModel) View() string {
 	}
 
 	if len(lines) == 0 {
-		switch m.activeTab {
+		switch m.tabs.Active {
 		case focusTabQueue:
 			lines = append(lines, MutedStyle.Render("Queue is empty. Switch to Suggested tab and press a to add tasks."))
 		case focusTabSuggested:
@@ -99,7 +99,7 @@ func (m *FocusViewModel) View() string {
 	// Suggested tab uses two lines per task (task + reason), so adjust cursor
 	// index for scroll calculation to account for the double-height entries.
 	scrollCursor := m.cursor
-	if m.activeTab == focusTabSuggested {
+	if m.tabs.Active == focusTabSuggested {
 		scrollCursor = m.cursor * 2
 	}
 	b.WriteString(strings.Join(applyScroll(lines, scrollCursor, contentHeight), "\n"))
@@ -109,7 +109,7 @@ func (m *FocusViewModel) View() string {
 
 	// Footer
 	var helpParts []string
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabQueue:
 		helpParts = []string{"j/k nav", "x remove", "J/K reorder", "a add suggestion", "r refresh", "[/] tabs"}
 	case focusTabSuggested:
@@ -192,7 +192,7 @@ func (m *FocusViewModel) renderStandardLines() []string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *FocusViewModel) renderTabBar() string {
-	return renderTabBarWithOptionalSubTabs(focusTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.width)
+	return renderTabBarWithOptionalSubTabs(focusTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.width)
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.

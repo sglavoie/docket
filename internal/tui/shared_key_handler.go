@@ -191,6 +191,68 @@ func handleZPrefix(key string, expandAll, collapseAll func()) bool {
 	return true // consume unknown z-key
 }
 
+// handleTabCycleKey handles the standard tab cycling keys ([ and ] with
+// optional h and l aliases). It calls Cycle on the TabState and then invokes
+// afterCycle. Set withHL to true for views that use h/l as tab cycle keys;
+// views that use h/l for other purposes (e.g., column movement) should pass
+// false. Returns true if the key was consumed.
+func handleTabCycleKey(key string, tabs *TabState, withHL bool, afterCycle func()) bool {
+	delta := 0
+	switch key {
+	case "[":
+		delta = -1
+	case "]":
+		delta = 1
+	case "h":
+		if withHL {
+			delta = -1
+		}
+	case "l":
+		if withHL {
+			delta = 1
+		}
+	}
+	if delta == 0 {
+		return false
+	}
+	tabs.Cycle(delta)
+	if afterCycle != nil {
+		afterCycle()
+	}
+	return true
+}
+
+// EscStep represents one layer in an Esc-key dismissal cascade.
+// Active returns true when this layer is engaged (e.g. filters are active).
+// Clear performs the dismissal action (e.g. clear filters).
+type EscStep struct {
+	Active func() bool
+	Clear  func()
+}
+
+// RunEscCascade walks the steps in order, dismissing the first active layer.
+// Returns true if a step was dismissed, false if no step was active.
+func RunEscCascade(steps []EscStep) bool {
+	for _, step := range steps {
+		if step.Active() {
+			step.Clear()
+			return true
+		}
+	}
+	return false
+}
+
+// AnyEscStepActive returns true if any step in the cascade is currently active.
+// Use this to implement ShouldCaptureEsc() alongside DefaultShouldCaptureEsc().
+func AnyEscStepActive(steps []EscStep) bool {
+	for _, step := range steps {
+		if step.Active() {
+			return true
+		}
+	}
+	return false
+}
+
 // helpCmd returns a tea.Cmd that emits a ShowHelpMsg.
 func helpCmd(source ViewType, name string, items []HelpItem) tea.Cmd {
 	return func() tea.Msg {

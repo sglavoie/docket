@@ -282,11 +282,11 @@ func (m *SettingsModel) View() string {
 	var b strings.Builder
 
 	// Tab bar
-	b.WriteString(renderWrappingTabBar(settingsTabNames, m.activeTab, m.width))
+	b.WriteString(m.tabs.RenderBar(m.width))
 	b.WriteString("\n\n")
 
 	// Tab content
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case 0:
 		b.WriteString(m.renderGeneralTab())
 	case 1:

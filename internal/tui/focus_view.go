@@ -51,7 +51,7 @@ type FocusViewModel struct {
 	dismissedIDs map[string]bool
 
 	// Tabs
-	activeTab int
+	tabs TabState
 
 	// Sub-tabs
 	subTab           int
@@ -72,6 +72,7 @@ func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTa
 		queueIDs:       queueIDs,
 		dismissedIDs:   dismissedIDs,
 		FilterMixin:    FilterMixin{filter: newFilterState()},
+		tabs:           TabState{Names: focusTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
@@ -154,7 +155,7 @@ func (m *FocusViewModel) applyFilter() {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabQueue:
 		// Prune completed/canceled tasks from the queue
 		pruned := false
@@ -213,7 +214,7 @@ func (m *FocusViewModel) applyFilter() {
 		}
 	}
 
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabByProject:
 		m.filtered = make([]FocusTask, len(baseTasks))
 		copy(m.filtered, baseTasks)
@@ -240,7 +241,7 @@ func (m *FocusViewModel) applyFilter() {
 	if filter := m.activeSubTabFilter(); filter != "" {
 		var narrowed []FocusTask
 		for _, ft := range m.filtered {
-			switch m.activeTab {
+			switch m.tabs.Active {
 			case focusTabByProject:
 				if ft.Project.Name == filter {
 					narrowed = append(narrowed, ft)
@@ -261,7 +262,7 @@ func (m *FocusViewModel) computeSubTabs() {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabByProject:
 		seen := map[string]bool{}
 		var names []string
@@ -400,14 +401,8 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key {
-	// Clear filters on esc (only reached when ShouldCaptureEsc() returned true)
 	case "esc":
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.applyFilter()
-			m.clampCursor()
-			m.statusMessage = "Filters cleared"
-		}
+		RunEscCascade(m.escSteps())
 		return m, nil
 
 	case "enter":
@@ -428,7 +423,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Reorder queue down
 	case "J":
-		if m.activeTab == focusTabQueue {
+		if m.tabs.Active == focusTabQueue {
 			q := *m.queue
 			if m.cursor >= 0 && m.cursor < len(q)-1 {
 				m.reorderQueue(m.cursor, m.cursor+1)
@@ -440,7 +435,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Reorder queue up
 	case "K":
-		if m.activeTab == focusTabQueue {
+		if m.tabs.Active == focusTabQueue {
 			q := *m.queue
 			if m.cursor > 0 && m.cursor < len(q) {
 				m.reorderQueue(m.cursor, m.cursor-1)
@@ -464,7 +459,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.applyFilter()
 			m.clampCursor()
 		} else {
-			CycleTab(&m.activeTab, len(focusTabNames), -1)
+			m.tabs.Cycle(-1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.applyFilter()
@@ -478,7 +473,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.applyFilter()
 			m.clampCursor()
 		} else {
-			CycleTab(&m.activeTab, len(focusTabNames), 1)
+			m.tabs.Cycle(1)
 			m.subTab = 0
 			m.subTabRowFocused = false
 			m.applyFilter()
@@ -488,7 +483,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Refresh: on Suggested tab clears dismissed and reloads; on other tabs just reloads
 	case "r":
-		if m.activeTab == focusTabSuggested {
+		if m.tabs.Active == focusTabSuggested {
 			for k := range m.dismissedIDs {
 				delete(m.dismissedIDs, k)
 			}
@@ -521,7 +516,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleAccept accepts a task into the work queue.
 func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabQueue:
 		// On Queue tab, accept the top non-queued suggestion
 		if sft := m.topNonQueuedSuggestion(); sft != nil {
@@ -542,7 +537,7 @@ func (m *FocusViewModel) handleAccept() (tea.Model, tea.Cmd) {
 
 // handleDismissOrRemove dismisses a suggestion or removes from queue.
 func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case focusTabSuggested:
 		if ft := m.getTaskAtCursor(); ft != nil {
 			m.dismissedIDs[ft.Task.ID] = true
@@ -622,9 +617,21 @@ func (m *FocusViewModel) clampCursor() {
 	m.ClampCursorTo(len(m.filtered))
 }
 
+// escSteps defines the Esc dismissal cascade: filters.
+func (m *FocusViewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: m.HasActiveFilters, Clear: func() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *FocusViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }

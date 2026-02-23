@@ -10,7 +10,7 @@ import (
 
 // renderPriorityTabBar renders the tab bar for the priority view.
 func (m *PriorityViewModel) renderPriorityTabBar() string {
-	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.activeTab, m.subTabNames, m.subTabRowFocused, m.Width())
+	return renderTabBarWithOptionalSubTabs(priorityTabNames, m.tabs.Active, m.subTabNames, m.subTabRowFocused, m.Width())
 }
 
 // renderSubTabBar renders the dynamic sub-tab row when applicable.
@@ -99,7 +99,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 
 // renderAllGroups renders all task groups and returns the lines.
 func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
-	if m.activeTab == priorityTabByScore {
+	if m.tabs.Active == priorityTabByScore {
 		return m.renderScoreRanking(currentIndex)
 	}
 
@@ -156,7 +156,7 @@ func (m *PriorityViewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		// In Blocked tab, tasks are navigable (rendered as regular tasks)
-		if m.activeTab == priorityTabBlocked {
+		if m.tabs.Active == priorityTabBlocked {
 			lines = append(lines, renderGroupHeader("BLOCKED / WAITING", len(waitingOn), false))
 			lines = append(lines, m.renderGroup(waitingOn, currentIndex, false)...)
 		} else {

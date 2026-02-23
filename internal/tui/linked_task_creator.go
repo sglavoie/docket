@@ -64,7 +64,7 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":
-			if m.acMode == acModeNone {
+			if m.ac.Mode == acModeNone {
 				return m, m.createTask()
 			}
 		}

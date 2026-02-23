@@ -4,14 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/models"
 )
-
-// DailyReviewTask wraps a task with its parent project for cross-project display.
-type DailyReviewTask struct {
-	Task    *models.Task
-	Project *models.Project
-}
 
 // DailyReviewSection represents the different sections in review.
 type DailyReviewSection int
@@ -39,17 +32,17 @@ type DailyReviewModel struct {
 	configManager *config.Manager
 
 	// Sections
-	overdue    []DailyReviewTask
-	dueToday   []DailyReviewTask
-	dueSoon    []DailyReviewTask
-	dueLater   []DailyReviewTask
-	future     []DailyReviewTask
-	inProgress []DailyReviewTask
-	blocked    []DailyReviewTask
-	inReview   []DailyReviewTask
-	inStandby  []DailyReviewTask
-	old        []DailyReviewTask
-	completed  []DailyReviewTask
+	overdue    []CrossProjectTask
+	dueToday   []CrossProjectTask
+	dueSoon    []CrossProjectTask
+	dueLater   []CrossProjectTask
+	future     []CrossProjectTask
+	inProgress []CrossProjectTask
+	blocked    []CrossProjectTask
+	inReview   []CrossProjectTask
+	inStandby  []CrossProjectTask
+	old        []CrossProjectTask
+	completed  []CrossProjectTask
 
 	// Filter
 	FilterMixin
@@ -60,7 +53,7 @@ type DailyReviewModel struct {
 	collapsedSections map[int]bool         // Track collapsed sections
 	sectionOrder      []DailyReviewSection // Order of non-empty sections
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
-	activeTab         int                  // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
+	tabs              TabState             // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
 	scrollOffset      int
 }
 
@@ -71,6 +64,7 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 		configManager:     mgr,
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
+		tabs:              TabState{Names: dailyReviewTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
@@ -120,20 +114,12 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.err = nil
 
 	// Tab switching
-	switch key {
-	case "[", "h":
-		CycleTab(&m.activeTab, len(dailyReviewTabNames), -1)
+	if handleTabCycleKey(key, &m.tabs, true, func() {
 		m.focusedSection = nil
 		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
-		return m, nil
-	case "]", "l":
-		CycleTab(&m.activeTab, len(dailyReviewTabNames), 1)
-		m.focusedSection = nil
-		m.scrollOffset = 0
-		m.calculateNavigation()
-		m.clampCursor()
+	}) {
 		return m, nil
 	}
 
@@ -150,19 +136,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "esc":
-		// If focused on a section, unfocus to show all sections
-		if m.focusedSection != nil {
-			m.focusedSection = nil
-			m.calculateNavigation()
-			m.clampCursor()
-			return m, nil
-		}
-		// If filters are active, clear them before closing
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.loadTasks()
-			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -170,7 +144,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "q":
-		// If filters are active, clear them before closing
+		// q clears filters but does not unfocus sections
 		if m.HasActiveFilters() {
 			m.ClearAllFilters()
 			m.loadTasks()
@@ -297,9 +271,26 @@ func (m *DailyReviewModel) HasFocusedSection() bool {
 	return m.focusedSection != nil
 }
 
+// escSteps defines the Esc dismissal cascade: section focus → filters.
+func (m *DailyReviewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: m.HasFocusedSection, Clear: func() {
+			m.focusedSection = nil
+			m.calculateNavigation()
+			m.clampCursor()
+		}},
+		{Active: m.HasActiveFilters, Clear: func() {
+			m.ClearAllFilters()
+			m.loadTasks()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when prefix mode, section focus, filters, or confirm dialog are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasFocusedSection() || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 func (m *DailyReviewModel) viewID() ViewType { return ViewDailyReview }

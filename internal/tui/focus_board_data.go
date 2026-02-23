@@ -82,7 +82,7 @@ func (m *FocusBoardModel) loadItems() {
 
 // applyFilter filters rows based on the active tab.
 func (m *FocusBoardModel) applyFilter() {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case boardTabActions:
 		m.filtered = nil
 		for _, r := range m.rows {
@@ -149,7 +149,7 @@ func (m *FocusBoardModel) applyFilter() {
 	// Apply sorting: user-selected field, or default score-descending on By Score tab
 	if m.sort.Field != SortByDefault {
 		m.applySorting()
-	} else if m.activeTab == boardTabByScore {
+	} else if m.tabs.Active == boardTabByScore {
 		sort.SliceStable(m.filtered, func(i, j int) bool {
 			return m.scorePercent(m.filtered[i]) > m.scorePercent(m.filtered[j])
 		})

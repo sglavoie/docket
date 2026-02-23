@@ -154,7 +154,7 @@ func (m *GlobalBlockersModel) updateBlockerData(idx int) (*models.Project, error
 }
 
 func (m *GlobalBlockersModel) getAddProject() *models.Project {
-	visible := m.getVisibleItems(m.state.activeTab)
+	visible := m.getVisibleItems(m.state.tabs.Active)
 	if len(visible) > 0 && m.state.cursor < len(visible) {
 		return visible[m.state.cursor].Project
 	}

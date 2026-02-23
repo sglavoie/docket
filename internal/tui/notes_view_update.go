@@ -54,15 +54,15 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.deselectAllNotes()
 				return m, nil
 			}
-			handleGotoTopPrefix(key, &m.cursor, func() { m.detailsScroll = 0 })
+			handleGotoTopPrefix(key, &m.cursor, func() { m.detailsPane.ResetScroll() })
 			return m, nil
 		}
 
 		// Tab toggles focus between list and details pane
 		if key == "tab" {
-			m.detailsPaneFocused = !m.detailsPaneFocused
-			if m.detailsPaneFocused {
-				m.detailsScroll = 0
+			m.detailsPane.Focused = !m.detailsPane.Focused
+			if m.detailsPane.Focused {
+				m.detailsPane.ResetScroll()
 			}
 			return m, nil
 		}
@@ -88,19 +88,15 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Route keys when details pane is focused
-		if m.detailsPaneFocused {
+		if m.detailsPane.Focused {
 			return m.handleDetailsPaneKey(key)
 		}
 
 		switch key {
-		case "[", "h":
-			CycleTab(&m.activeTab, len(noteTabNames), -1)
-			m.loadNotes()
-			return m, nil
-		case "]", "l":
-			CycleTab(&m.activeTab, len(noteTabNames), 1)
-			m.loadNotes()
-			return m, nil
+		case "[", "h", "]", "l":
+			if handleTabCycleKey(key, &m.tabs, true, m.loadNotes) {
+				return m, nil
+			}
 		case "q", "esc":
 			if m.isGlobal {
 				return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
@@ -109,12 +105,12 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "j", "down":
 			if m.cursor < len(m.notes)-1 {
 				m.cursor++
-				m.detailsScroll = 0
+				m.detailsPane.ResetScroll()
 			}
 		case "k", "up":
 			if m.cursor > 0 {
 				m.cursor--
-				m.detailsScroll = 0
+				m.detailsPane.ResetScroll()
 			}
 		case "g":
 			m.pendingPrefix = "g"
@@ -122,7 +118,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "G":
 			if len(m.notes) > 0 {
 				m.cursor = len(m.notes) - 1
-				m.detailsScroll = 0
+				m.detailsPane.ResetScroll()
 			}
 		case "V":
 			m.toggleNoteMultiSelectMode()
@@ -133,7 +129,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Move cursor down after toggle
 				if m.cursor < len(m.notes)-1 {
 					m.cursor++
-					m.detailsScroll = 0
+					m.detailsPane.ResetScroll()
 				}
 				return m, nil
 			}
@@ -231,7 +227,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.detailsPaneFocused || m.multiSelectMode || m.renaming || m.fullscreenPane
+	return m.confirm.IsActive() || m.detailsPane.Focused || m.multiSelectMode || m.renaming || m.fullscreenPane
 }
 
 // HasTextInput returns false since search is now a separate view.
@@ -240,31 +236,14 @@ func (m *NotesViewModel) HasTextInput() bool {
 }
 
 func (m *NotesViewModel) handleDetailsPaneKey(key string) (tea.Model, tea.Cmd) {
-	halfPage := m.detailsHeight / 2
-	if halfPage < 1 {
-		halfPage = 1
+	// Scroll keys handled by shared state
+	if m.detailsPane.HandleScrollKey(key) {
+		return m, nil
 	}
+
 	switch key {
-	case "j", "down":
-		m.detailsScroll++
-	case "k", "up":
-		if m.detailsScroll > 0 {
-			m.detailsScroll--
-		}
-	case "ctrl+d":
-		m.detailsScroll += halfPage
-	case "ctrl+u":
-		m.detailsScroll -= halfPage
-		if m.detailsScroll < 0 {
-			m.detailsScroll = 0
-		}
-	case "g":
-		m.detailsScroll = 0
-	case "G":
-		// Scroll to bottom; renderDetailsPane will clamp to maxScroll
-		m.detailsScroll = 99999
 	case "esc":
-		m.detailsPaneFocused = false
+		m.detailsPane.Focused = false
 	case "q":
 		if m.isGlobal {
 			return m, func() tea.Msg { return CloseGlobalNotesMsg{} }

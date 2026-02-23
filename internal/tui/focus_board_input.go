@@ -24,17 +24,17 @@ func (m *FocusBoardModel) handleAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.addMode = false
 		m.addInput.Blur()
-		m.resetBoardAutocomplete()
+		m.ac.Clear()
 		return m, nil
 	case "enter":
-		if m.acMode != acModeNone {
+		if m.ac.IsActive() {
 			return m, nil
 		}
 		value := strings.TrimSpace(m.addInput.Value())
 		if value == "" {
 			m.addMode = false
 			m.addInput.Blur()
-			m.resetBoardAutocomplete()
+			m.ac.Clear()
 			return m, nil
 		}
 		return m.createItemFromInput(value)
@@ -85,7 +85,7 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
 	m.addInput.Blur()
-	m.resetBoardAutocomplete()
+	m.ac.Clear()
 
 	result := parseBoardAddInput(input)
 

@@ -128,7 +128,7 @@ func (m *KanbanViewModel) View() string {
 
 	// Render the horizontal divider
 	var dividerOpts []DividerOption
-	if m.detailsPaneFocused {
+	if m.detailsPane.Focused {
 		dividerOpts = append(dividerOpts, WithDividerColor(ColorPrimary))
 	}
 	divider := renderHorizontalDivider(m.Width(), dividerOpts...)
@@ -162,7 +162,7 @@ func (m *KanbanViewModel) View() string {
 	if detailsHeight < KanbanMinDetailsHeight {
 		detailsHeight = KanbanMinDetailsHeight
 	}
-	m.detailsHeight = detailsHeight
+	m.detailsPane.Height = detailsHeight
 	selectedTask := m.getSelectedTask()
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
 	viewParts = append(viewParts, detailsPane)
@@ -207,7 +207,7 @@ func (m *KanbanViewModel) renderKanbanTabBar() string {
 
 	var tabs []string
 	for i, name := range kanbanTabNames {
-		if i == m.activeTab {
+		if i == m.tabs.Active {
 			tabs = append(tabs, active.Render(name))
 		} else {
 			tabs = append(tabs, inactive.Render(name))
@@ -284,7 +284,7 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		// Render visible nodes
 		for i := startIdx; i < endIdx; i++ {
 			node := visibleNodes[i]
-			isSelected := i == cs.Cursor && isActive && !m.detailsPaneFocused
+			isSelected := i == cs.Cursor && isActive && !m.detailsPane.Focused
 			line := m.renderTaskRow(node, isSelected)
 			b.WriteString(line)
 			if i < endIdx-1 {
@@ -577,7 +577,7 @@ func (m *KanbanViewModel) renderDetailsPanel(task *models.Task, width, height in
 // renderDetailsTaskCard renders the main task info card for the details panel.
 func (m *KanbanViewModel) renderDetailsTaskCard(task *models.Task, width int, sectionColor string) string {
 	content := renderTaskHeaderContent(task, m.Project.HasIncompleteDependencies(task), false)
-	return renderSidebarCard("Task", content, width, m.detailsPaneFocused, sectionColor)
+	return renderSidebarCard("Task", content, width, m.detailsPane.Focused, sectionColor)
 }
 
 // renderDetailsInfoCard renders tags and section info for the details panel.
@@ -660,13 +660,12 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 	if maxScroll < 0 {
 		maxScroll = 0
 	}
-	if m.detailsScroll > maxScroll {
-		m.detailsScroll = maxScroll
-	}
+	m.detailsPane.MaxScroll = maxScroll
+	m.detailsPane.ClampScroll()
 
 	// Apply scroll offset
-	if m.detailsScroll > 0 {
-		lines = lines[m.detailsScroll:]
+	if m.detailsPane.Scroll > 0 {
+		lines = lines[m.detailsPane.Scroll:]
 	}
 
 	// Truncate if too tall
@@ -689,7 +688,7 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 // archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit != nil && m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
-		m.detailsPaneFocused || m.quickAddMode || m.FocusedTask != nil ||
+		m.detailsPane.Focused || m.quickAddMode || m.FocusedTask != nil ||
 		m.completedViewMode || m.allViewMode
 }
 

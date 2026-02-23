@@ -19,38 +19,15 @@ type boardAddResult struct {
 	projectSlug string
 }
 
-// detectBoardAutocompleteTrigger scans the add input for prefix triggers.
-// Only supports %project, !priority, and #tag for focus board items.
-func (m *FocusBoardModel) detectBoardAutocompleteTrigger() (int, int, string) {
-	input := m.addInput.Value()
-	if len(input) == 0 {
-		return acModeNone, 0, ""
-	}
-
-	for i := len(input) - 1; i >= 0; i-- {
-		ch := input[i]
-		if ch == ' ' || ch == '\n' {
-			break
-		}
-		atStartOrAfterSpace := i == 0 || input[i-1] == ' ' || input[i-1] == '\n'
-		if !atStartOrAfterSpace {
-			continue
-		}
-		partial := input[i+1:]
-		switch ch {
-		case '%':
-			return acModeProject, i, partial
-		case '!':
-			return acModePriority, i, partial
-		case '#':
-			return acModeTag, i, partial
-		}
-	}
-	return acModeNone, 0, ""
+// boardTriggers defines the trigger characters for focus board autocomplete.
+var boardTriggers = []ACTrigger{
+	{'%', acModeProject},
+	{'!', acModePriority},
+	{'#', acModeTag},
 }
 
 // getBoardProjectSuggestions returns fuzzy-matched project suggestions.
-func (m *FocusBoardModel) getBoardProjectSuggestions(partial string) []suggestion {
+func (m *FocusBoardModel) getBoardProjectSuggestions(partial string) []ACSuggestion {
 	type scoredProject struct {
 		project *models.Project
 		score   int
@@ -69,23 +46,23 @@ func (m *FocusBoardModel) getBoardProjectSuggestions(partial string) []suggestio
 		return scored[i].score > scored[j].score
 	})
 
-	suggestions := make([]suggestion, 0, len(scored))
+	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		project := s.project
 		name := project.Name
 		if len(name) > 25 {
 			name = name[:22] + "..."
 		}
-		suggestions = append(suggestions, suggestion{
-			display: fmt.Sprintf("%%%s [%s]", name, project.Context),
-			value:   project.Slug,
+		suggestions = append(suggestions, ACSuggestion{
+			Display: fmt.Sprintf("%%%s [%s]", name, project.Context),
+			Value:   project.Slug,
 		})
 	}
 	return suggestions
 }
 
 // getBoardPrioritySuggestions returns matching priority options.
-func (m *FocusBoardModel) getBoardPrioritySuggestions(partial string) []suggestion {
+func (m *FocusBoardModel) getBoardPrioritySuggestions(partial string) []ACSuggestion {
 	priorities := []struct {
 		value string
 		desc  string
@@ -97,12 +74,12 @@ func (m *FocusBoardModel) getBoardPrioritySuggestions(partial string) []suggesti
 		{"5", "Lowest"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	for _, p := range priorities {
 		if partial == "" || strings.HasPrefix(p.value, partial) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
-				value:   p.value,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
+				Value:   p.value,
 			})
 		}
 	}
@@ -110,7 +87,7 @@ func (m *FocusBoardModel) getBoardPrioritySuggestions(partial string) []suggesti
 }
 
 // getBoardTagSuggestions returns fuzzy-matched tag suggestions.
-func (m *FocusBoardModel) getBoardTagSuggestions(partial string) []suggestion {
+func (m *FocusBoardModel) getBoardTagSuggestions(partial string) []ACSuggestion {
 	type scoredTag struct {
 		tag   string
 		score int
@@ -128,11 +105,11 @@ func (m *FocusBoardModel) getBoardTagSuggestions(partial string) []suggestion {
 		return scored[i].score > scored[j].score
 	})
 
-	suggestions := make([]suggestion, 0, len(scored))
+	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
-		suggestions = append(suggestions, suggestion{
-			display: "#" + s.tag,
-			value:   s.tag,
+		suggestions = append(suggestions, ACSuggestion{
+			Display: "#" + s.tag,
+			Value:   s.tag,
 		})
 	}
 	return suggestions
@@ -140,107 +117,45 @@ func (m *FocusBoardModel) getBoardTagSuggestions(partial string) []suggestion {
 
 // refreshBoardAutocomplete detects triggers and updates the suggestion list.
 func (m *FocusBoardModel) refreshBoardAutocomplete() {
-	mode, pos, partial := m.detectBoardAutocompleteTrigger()
+	mode, pos, partial := DetectTrigger(m.addInput.Value(), boardTriggers)
 	if mode == acModeNone {
-		m.acMode = acModeNone
-		m.acSuggestions = nil
+		m.ac.Clear()
 		return
 	}
 
-	if mode != m.acMode || pos != m.acTriggerPos {
-		m.acCursor = 0
-		m.acViewportTop = 0
-	}
-	m.acMode = mode
-	m.acTriggerPos = pos
-
+	var items []ACSuggestion
 	switch mode {
 	case acModeProject:
-		m.acSuggestions = m.getBoardProjectSuggestions(partial)
+		items = m.getBoardProjectSuggestions(partial)
 	case acModePriority:
-		m.acSuggestions = m.getBoardPrioritySuggestions(partial)
+		items = m.getBoardPrioritySuggestions(partial)
 	case acModeTag:
-		m.acSuggestions = m.getBoardTagSuggestions(partial)
+		items = m.getBoardTagSuggestions(partial)
 	}
-
-	if m.acCursor >= len(m.acSuggestions) {
-		m.acCursor = max(0, len(m.acSuggestions)-1)
-	}
-	if m.acCursor < m.acViewportTop {
-		m.acViewportTop = m.acCursor
-	} else if m.acCursor >= m.acViewportTop+acVisibleCount {
-		m.acViewportTop = m.acCursor - acVisibleCount + 1
-	}
-	if len(m.acSuggestions) == 0 {
-		m.acMode = acModeNone
-	}
+	m.ac.UpdateSuggestions(mode, pos, items)
 }
 
 // handleBoardAutocompleteKey handles keys when autocomplete is active.
 // Returns true if the key was consumed.
 func (m *FocusBoardModel) handleBoardAutocompleteKey(key string) bool {
-	if m.acMode == acModeNone || len(m.acSuggestions) == 0 {
-		return false
-	}
-
-	switch key {
-	case "tab", "enter":
+	return m.ac.HandleKey(key, func() {
 		m.acceptBoardSuggestion()
-		return true
-	case "esc":
-		m.resetBoardAutocomplete()
-		return true
-	case "up", "ctrl+p", "ctrl+k":
-		if m.acCursor > 0 {
-			m.acCursor--
-			if m.acCursor < m.acViewportTop {
-				m.acViewportTop = m.acCursor
-			}
-		}
-		return true
-	case "down", "ctrl+n", "ctrl+j":
-		if m.acCursor < len(m.acSuggestions)-1 {
-			m.acCursor++
-			if m.acCursor >= m.acViewportTop+acVisibleCount {
-				m.acViewportTop = m.acCursor - acVisibleCount + 1
-			}
-		}
-		return true
-	}
-	return false
+	})
 }
 
 // acceptBoardSuggestion inserts the selected suggestion into the input.
 func (m *FocusBoardModel) acceptBoardSuggestion() {
-	if m.acMode == acModeNone || len(m.acSuggestions) == 0 {
+	if !m.ac.IsActive() {
 		return
 	}
 
-	selected := m.acSuggestions[m.acCursor]
-	input := m.addInput.Value()
-
-	var newInput string
-	switch m.acMode {
-	case acModeProject:
-		newInput = input[:m.acTriggerPos] + "%" + selected.value + " "
-	case acModePriority:
-		newInput = input[:m.acTriggerPos] + "!" + selected.value + " "
-	case acModeTag:
-		newInput = input[:m.acTriggerPos] + "#" + selected.value + " "
-	}
+	triggerChar := TriggerCharForMode(m.ac.Mode, boardTriggers)
+	newInput := m.ac.BuildAcceptedInput(m.addInput.Value(), triggerChar)
 
 	m.addInput.SetValue(newInput)
 	m.addInput.SetCursor(len(newInput))
 
-	m.resetBoardAutocomplete()
-}
-
-// resetBoardAutocomplete clears all autocomplete state.
-func (m *FocusBoardModel) resetBoardAutocomplete() {
-	m.acMode = acModeNone
-	m.acSuggestions = nil
-	m.acCursor = 0
-	m.acViewportTop = 0
+	m.ac.Clear()
 }
 
 // initBoardCaches builds tag and project caches for autocomplete.
@@ -310,5 +225,5 @@ func parseBoardAddInput(input string) boardAddResult {
 
 // isAutocompleteActive returns whether the autocomplete dropdown is showing.
 func (m *FocusBoardModel) isAutocompleteActive() bool {
-	return m.acMode != acModeNone && len(m.acSuggestions) > 0
+	return m.ac.IsActive()
 }

@@ -30,15 +30,8 @@ func (m *GlobalSearchModel) View() string {
 	out.WriteString("\n")
 
 	// Show autocomplete suggestions if active
-	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
-		for i, s := range m.suggestions {
-			if i == m.acCursor {
-				out.WriteString(SelectedStyle.Render("> " + s.display))
-			} else {
-				out.WriteString(MutedStyle.Render("  " + s.display))
-			}
-			out.WriteString("\n")
-		}
+	if m.ac.IsActive() {
+		out.WriteString(m.ac.RenderDropdown(""))
 	}
 	out.WriteString("\n")
 
@@ -80,8 +73,19 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	// Adjust for autocomplete and filter badges
-	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
-		paneHeight -= len(m.suggestions)
+	if m.ac.IsActive() {
+		visible := len(m.ac.Items)
+		if visible > acVisibleCount {
+			visible = acVisibleCount
+		}
+		// Account for items + scroll indicators
+		if m.ac.ViewportTop > 0 {
+			visible++
+		}
+		if m.ac.ViewportTop+acVisibleCount < len(m.ac.Items) {
+			visible++
+		}
+		paneHeight -= visible
 	}
 	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
 		paneHeight -= 2
@@ -103,7 +107,7 @@ func (m *GlobalSearchModel) View() string {
 
 // renderTabBar renders the tab bar for filtering.
 func (m *GlobalSearchModel) renderTabBar() string {
-	return renderWrappingTabBar(globalSearchTabNames, m.activeTab, m.Width())
+	return m.tabs.RenderBar(m.Width())
 }
 
 // renderFilterBadges renders active filters as styled badges.
@@ -168,7 +172,7 @@ func (m *GlobalSearchModel) renderFilterBadges() string {
 
 // renderHelpText renders context-appropriate help text.
 func (m *GlobalSearchModel) renderHelpText() string {
-	if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
+	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
 	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Esc · %d results", len(m.filtered)))

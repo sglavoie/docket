@@ -42,10 +42,10 @@ func (m *GlobalSearchModel) filterTasks() {
 
 	for _, result := range m.allTasks {
 		// Apply tab filter
-		if m.activeTab == globalSearchTabTasks && result.IsNote() {
+		if m.tabs.Active == globalSearchTabTasks && result.IsNote() {
 			continue
 		}
-		if m.activeTab == globalSearchTabNotes && !result.IsNote() {
+		if m.tabs.Active == globalSearchTabNotes && !result.IsNote() {
 			continue
 		}
 

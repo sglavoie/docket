@@ -10,7 +10,7 @@ import (
 func (m *DueDateOverviewModel) refreshAndClamp() { m.loadTasksWithDueDates(); m.clampCursor() }
 
 func (m *DueDateOverviewModel) buildTagCmd() tea.Cmd {
-	groups := [][]DueDateTask{m.overdue, m.today, m.thisWeek, m.later}
+	groups := [][]CrossProjectTask{m.overdue, m.today, m.thisWeek, m.later}
 	var tasks []*models.Task
 	for _, group := range groups {
 		for i := range group {

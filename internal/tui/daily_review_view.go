@@ -84,12 +84,12 @@ func (m *DailyReviewModel) renderReviewTabBar() string {
 		len(m.completed),
 	}
 
-	labels := make([]string, len(dailyReviewTabNames))
-	for i, name := range dailyReviewTabNames {
+	labels := make([]string, len(m.tabs.Names))
+	for i, name := range m.tabs.Names {
 		labels[i] = fmt.Sprintf("%s (%d)", name, tabCounts[i])
 	}
 
-	return renderWrappingTabBar(labels, m.activeTab, m.width)
+	return renderWrappingTabBar(labels, m.tabs.Active, m.width)
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -188,7 +188,7 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 }
 
 // renderTaskLine renders a single task line.
-func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyReviewSection, isSelected bool, maxTitleLen int) string {
+func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyReviewSection, isSelected bool, maxTitleLen int) string {
 	task := dt.Task
 
 	// Custom status badge for blocked tasks
@@ -211,7 +211,7 @@ func (m *DailyReviewModel) renderTaskLine(dt DailyReviewTask, section DailyRevie
 }
 
 // sectionContextStr returns the right-aligned context string for a task in a section.
-func (m *DailyReviewModel) sectionContextStr(dt DailyReviewTask, section DailyReviewSection) string {
+func (m *DailyReviewModel) sectionContextStr(dt CrossProjectTask, section DailyReviewSection) string {
 	task := dt.Task
 	switch section {
 	case SectionCompleted:

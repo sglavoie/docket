@@ -678,7 +678,7 @@ func (m *AppModel) saveKanbanState() {
 	state.KanbanFilterTags = filterTags
 	state.KanbanFilterDueDate = int(m.kanban.filter.DueDate)
 	state.KanbanFilterScoreMin = m.kanban.filter.ScoreMin
-	state.KanbanActiveTab = m.kanban.activeTab
+	state.KanbanActiveTab = m.kanban.tabs.Active
 
 	if len(m.kanban.filter.Attrs) > 0 {
 		state.KanbanFilterAttrs = make(map[string]string)
@@ -708,7 +708,7 @@ func (m *AppModel) restoreKanbanState() {
 	m.kanban.filter.Priority = state.KanbanFilterPriority
 	m.kanban.filter.DueDate = DueDateFilter(state.KanbanFilterDueDate)
 	m.kanban.filter.ScoreMin = state.KanbanFilterScoreMin
-	m.kanban.activeTab = state.KanbanActiveTab
+	m.kanban.tabs.Active = state.KanbanActiveTab
 
 	// Restore attribute filters
 	if len(state.KanbanFilterAttrs) > 0 {

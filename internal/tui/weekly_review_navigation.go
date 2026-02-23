@@ -14,10 +14,10 @@ var weeklyReviewTabSections = [][]WeeklyReviewSection{
 
 // sectionInTab returns true if the given section belongs to the active tab.
 func (m *WeeklyReviewModel) sectionInTab(section WeeklyReviewSection) bool {
-	if m.activeTab < 0 || m.activeTab >= len(weeklyReviewTabSections) {
+	if m.tabs.Active < 0 || m.tabs.Active >= len(weeklyReviewTabSections) {
 		return true
 	}
-	for _, s := range weeklyReviewTabSections[m.activeTab] {
+	for _, s := range weeklyReviewTabSections[m.tabs.Active] {
 		if s == section {
 			return true
 		}
@@ -213,7 +213,7 @@ func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
 		for tabIdx, tabSections := range weeklyReviewTabSections {
 			for _, ts := range tabSections {
 				if ts == section {
-					m.activeTab = tabIdx
+					m.tabs.Active = tabIdx
 					m.focusedSection = nil
 					m.scrollOffset = 0
 					m.calculateNavigation()

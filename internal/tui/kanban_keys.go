@@ -83,15 +83,15 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// TAB toggles focus between kanban and details panes (disabled in swimlane mode)
 	if key == "tab" && !m.swimlaneEnabled() {
-		m.detailsPaneFocused = !m.detailsPaneFocused
-		if m.detailsPaneFocused {
-			m.detailsScroll = 0 // Reset scroll when focusing details
+		m.detailsPane.Focused = !m.detailsPane.Focused
+		if m.detailsPane.Focused {
+			m.detailsPane.ResetScroll()
 		}
 		return m, nil
 	}
 
 	// When details pane is focused, handle its specific keys
-	if m.detailsPaneFocused {
+	if m.detailsPane.Focused {
 		return m.handleDetailsPaneKey(key)
 	}
 
@@ -378,8 +378,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			// Cycle preset tabs with wraparound
-			cycleCustomSectionTab(key, &m.activeTab, len(kanbanTabNames), func() {
-				m.applyTabPreset(m.activeTab)
+			cycleCustomSectionTab(key, &m.tabs.Active, len(kanbanTabNames), func() {
+				m.applyTabPreset(m.tabs.Active)
 			})
 		}
 		return m, nil

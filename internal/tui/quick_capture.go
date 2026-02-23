@@ -61,13 +61,13 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			// Only create task if not in autocomplete mode
-			if m.acMode == acModeNone {
+			if m.ac.Mode == acModeNone {
 				return m, m.createTask(false)
 			}
 
 		case "ctrl+o":
 			// Create task and open description editor
-			if m.acMode == acModeNone {
+			if m.ac.Mode == acModeNone {
 				return m, m.createTask(true)
 			}
 		}

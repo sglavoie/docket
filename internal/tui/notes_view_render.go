@@ -36,7 +36,7 @@ func (m *NotesViewModel) View() string {
 	b.WriteString("\n")
 
 	// Tab bar and count info (hidden when bottom pane is fullscreen)
-	if !m.fullscreenPane || !m.detailsPaneFocused {
+	if !m.fullscreenPane || !m.detailsPane.Focused {
 		b.WriteString(m.renderNotesTabBar())
 		b.WriteString("\n")
 
@@ -55,7 +55,7 @@ func (m *NotesViewModel) View() string {
 		usable = 4
 	}
 
-	if m.fullscreenPane && m.detailsPaneFocused {
+	if m.fullscreenPane && m.detailsPane.Focused {
 		// Fullscreen details pane
 		fullHeight := usable
 		var detailsContent string
@@ -74,7 +74,7 @@ func (m *NotesViewModel) View() string {
 			}
 		}
 		b.WriteString(m.renderStatusBar())
-	} else if m.fullscreenPane && !m.detailsPaneFocused {
+	} else if m.fullscreenPane && !m.detailsPane.Focused {
 		// Fullscreen list pane: temporarily override listHeight
 		origListHeight := m.listHeight
 		m.listHeight = usable
@@ -90,7 +90,7 @@ func (m *NotesViewModel) View() string {
 		b.WriteString("\n")
 
 		// Details pane (render first so scroll values are clamped before building divider)
-		detailsHeight := m.detailsHeight
+		detailsHeight := m.detailsPane.Height
 		if detailsHeight < 1 {
 			detailsHeight = 5
 		}
@@ -147,7 +147,7 @@ func (m *NotesViewModel) renderListPane() string {
 	}
 
 	selectedStyle := TaskJumperSelectedStyle
-	if m.detailsPaneFocused {
+	if m.detailsPane.Focused {
 		selectedStyle = lipgloss.NewStyle().Foreground(ColorMuted)
 	}
 
@@ -216,7 +216,7 @@ func (m *NotesViewModel) renderFooter() string {
 	var helpText string
 	if m.renaming {
 		helpText = "Enter: confirm · Esc: cancel"
-	} else if m.detailsPaneFocused {
+	} else if m.detailsPane.Focused {
 		zHint := "Z:fullscreen"
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
@@ -244,15 +244,15 @@ func (m *NotesViewModel) renderFooter() string {
 
 func (m *NotesViewModel) renderDivider() string {
 	dividerColor := lipgloss.TerminalColor(ColorMuted)
-	if m.detailsPaneFocused {
+	if m.detailsPane.Focused {
 		dividerColor = ColorPrimary
 	}
 
 	var opts []DividerOption
 	opts = append(opts, WithDividerColor(dividerColor))
 
-	if m.detailsMaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
-		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsScroll+1, m.detailsMaxScroll+1)
+	if m.detailsPane.MaxScroll > 0 && len(m.notes) > 0 && m.cursor < len(m.notes) {
+		indicator := fmt.Sprintf(" [%d/%d] ", m.detailsPane.Scroll+1, m.detailsPane.MaxScroll+1)
 		opts = append(opts, WithRightIndicator(indicator))
 	}
 
@@ -276,7 +276,7 @@ func (m *NotesViewModel) renderStatusBar() string {
 }
 
 func (m *NotesViewModel) renderNotesTabBar() string {
-	return RenderTabBar(noteTabNames, m.activeTab, min(m.Width()-6, 54)-2, 1)
+	return RenderTabBar(m.tabs.Names, m.tabs.Active, min(m.Width()-6, 54)-2, 1)
 }
 
 func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int) string {
@@ -336,16 +336,11 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	if maxScroll < 0 {
 		maxScroll = 0
 	}
-	m.detailsMaxScroll = maxScroll
-	if m.detailsScroll > maxScroll {
-		m.detailsScroll = maxScroll
-	}
-	if m.detailsScroll < 0 {
-		m.detailsScroll = 0
-	}
+	m.detailsPane.MaxScroll = maxScroll
+	m.detailsPane.ClampScroll()
 
 	// Apply scroll offset and cap to available height
-	lines = lines[m.detailsScroll:]
+	lines = lines[m.detailsPane.Scroll:]
 	if len(lines) > height {
 		lines = lines[:height]
 	}

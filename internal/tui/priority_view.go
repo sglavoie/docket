@@ -76,7 +76,7 @@ type PriorityViewModel struct {
 	dismissedIDs map[string]bool // Task IDs dismissed this session
 
 	// Tab filtering
-	activeTab int // Index into priorityTabNames
+	tabs TabState
 
 	// Sub-tabs
 	subTab           int
@@ -104,6 +104,7 @@ func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *conf
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),
 		FilterMixin:        FilterMixin{filter: newFilterState()},
+		tabs:               TabState{Names: priorityTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Search tasks...", 100, 30)
@@ -173,7 +174,7 @@ func (m *PriorityViewModel) View() string {
 
 	// Pre-render conditional sections to calculate their actual height
 	suggestionSection := ""
-	if m.activeTab != priorityTabByScore {
+	if m.tabs.Active != priorityTabByScore {
 		suggestionSection = m.renderSuggestionSection()
 	}
 	tabHint := m.activeTabHint()

@@ -13,12 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// AllTasksItem wraps a task with its parent project for cross-project display.
-type AllTasksItem struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
 // AllTasksGroupBy represents the grouping strategy for the all tasks view.
 type AllTasksGroupBy int
 
@@ -53,7 +47,7 @@ func (g AllTasksGroupBy) String() string {
 // AllTasksGroup represents a named group of tasks.
 type AllTasksGroup struct {
 	Name  string
-	Tasks []AllTasksItem
+	Tasks []CrossProjectTask
 }
 
 var allTasksTabNames = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
@@ -78,7 +72,7 @@ type AllTasksViewModel struct {
 	projectCache   map[string]*models.Project
 
 	// All loaded tasks (unfiltered)
-	allTasks []AllTasksItem
+	allTasks []CrossProjectTask
 
 	// Grouped/filtered view
 	groups     []AllTasksGroup
@@ -89,7 +83,7 @@ type AllTasksViewModel struct {
 	collapsedGroups map[string]bool
 
 	// Tabs
-	activeTab int
+	tabs TabState
 
 	// Filter
 	FilterMixin
@@ -118,6 +112,7 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:             NewSortState(),
 		FilterMixin:      FilterMixin{filter: newFilterState()},
+		tabs:             TabState{Names: allTasksTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadAllTasks()
@@ -141,7 +136,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 			if task.Status.IsComplete() {
 				continue
 			}
-			m.allTasks = append(m.allTasks, AllTasksItem{Task: task, Project: project})
+			m.allTasks = append(m.allTasks, CrossProjectTask{Task: task, Project: project})
 		}
 	}
 
@@ -163,7 +158,7 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 
 	// Step 2: Apply project filter
 	if len(m.projectFilter) > 0 {
-		var projectFiltered []AllTasksItem
+		var projectFiltered []CrossProjectTask
 		for _, item := range filtered {
 			if m.projectFilter[item.Project.ID] {
 				projectFiltered = append(projectFiltered, item)
@@ -186,13 +181,13 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 }
 
 // applyTabFilter filters tasks based on the active tab.
-func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem {
+func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProjectTask {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case allTasksTabActive:
-		var result []AllTasksItem
+		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Status == models.StatusInProgress {
 				result = append(result, item)
@@ -202,7 +197,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem 
 
 	case allTasksTabDueSoon:
 		sevenDaysLater := today.AddDate(0, 0, 7)
-		var result []AllTasksItem
+		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.DueDate == nil {
 				continue
@@ -215,7 +210,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem 
 		return result
 
 	case allTasksTabHighPri:
-		var result []AllTasksItem
+		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Priority <= 2 {
 				result = append(result, item)
@@ -224,7 +219,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem 
 		return result
 
 	case allTasksTabBlocked:
-		var result []AllTasksItem
+		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Status == models.StatusBlocked {
 				result = append(result, item)
@@ -234,7 +229,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []AllTasksItem) []AllTasksItem 
 
 	case allTasksTabByScore:
 		// Only tasks with scores; sorted by score descending
-		var result []AllTasksItem
+		var result []CrossProjectTask
 		for _, item := range tasks {
 			profile := m.config.GetProjectScoringProfile(item.Project.ID)
 			if profile != nil && HasManualScores(item.Task, profile) {
@@ -270,7 +265,7 @@ func (m *AllTasksViewModel) calculateNavigation() {
 
 // getTaskAtCursor returns the task at the current cursor position.
 // Returns nil if cursor is on a group header.
-func (m *AllTasksViewModel) getTaskAtCursor() *AllTasksItem {
+func (m *AllTasksViewModel) getTaskAtCursor() *CrossProjectTask {
 	pos := 0
 	for i := range m.groups {
 		if m.cursor == pos {
@@ -419,15 +414,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "esc", "q":
-		if m.multiSelectMode {
-			m.toggleMultiSelectMode()
-			return m, nil
-		}
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.applyFiltersAndGroup()
-			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -447,19 +434,6 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.goToNextGroup()
 	case "N":
 		return m.goToPrevGroup()
-
-	// Tab navigation
-	case "[", "h":
-		CycleTab(&m.activeTab, len(allTasksTabNames), -1)
-		m.applyFiltersAndGroup()
-		m.clampCursor()
-		return m, nil
-
-	case "]", "l":
-		CycleTab(&m.activeTab, len(allTasksTabNames), 1)
-		m.applyFiltersAndGroup()
-		m.clampCursor()
-		return m, nil
 
 	// Group cycling
 	case "ctrl+g":
@@ -500,6 +474,14 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return ShowScoreEditorMsg{Task: item.Task, Project: item.Project}
 			}
 		}
+		return m, nil
+	}
+
+	// Tab navigation
+	if handleTabCycleKey(key, &m.tabs, true, func() {
+		m.applyFiltersAndGroup()
+		m.clampCursor()
+	}) {
 		return m, nil
 	}
 
@@ -631,9 +613,24 @@ func (m *AllTasksViewModel) clampCursor() {
 	m.ClampCursorTo(m.totalNavigableItems())
 }
 
+// escSteps defines the Esc dismissal cascade: multi-select → filters.
+func (m *AllTasksViewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
+			m.toggleMultiSelectMode()
+		}},
+		{Active: m.HasActiveFilters, Clear: func() {
+			m.ClearAllFilters()
+			m.applyFiltersAndGroup()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when prefix mode, filters, multi-select, or confirm dialog are active.
 func (m *AllTasksViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters() || m.multiSelectMode
+	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 func (m *AllTasksViewModel) viewID() ViewType { return ViewAllTasks }

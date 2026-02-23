@@ -58,10 +58,8 @@ type NotesViewModel struct {
 	lastLinkUndo    []noteLinkUndoEntry
 
 	// Details pane state
-	detailsPaneFocused bool
-	detailsScroll      int
-	listHeight         int
-	detailsHeight      int
+	detailsPane DetailsPaneState
+	listHeight  int
 
 	// Multi-select state
 	multiSelectMode bool
@@ -69,7 +67,7 @@ type NotesViewModel struct {
 	pendingPrefix   string          // waiting for second key after prefix (e.g. "g")
 
 	// Tab state
-	activeTab int
+	tabs TabState
 
 	// Sort state
 	sortMode noteSortMode
@@ -80,9 +78,6 @@ type NotesViewModel struct {
 
 	// Fullscreen pane toggle
 	fullscreenPane bool
-
-	// Scroll indicator (set by renderDetailsPane)
-	detailsMaxScroll int
 
 	// Cached tasks for displaying linked task titles
 	tasksLoaded bool
@@ -150,6 +145,7 @@ func NewNotesViewModel(project *models.Project, cfg ...notesConfig) *NotesViewMo
 		project:       project,
 		filterTags:    make(map[string]bool),
 		selectedNotes: make(map[string]bool),
+		tabs:          TabState{Names: noteTabNames},
 	}
 	if len(cfg) > 0 && cfg[0] != nil {
 		m.config = cfg[0]
@@ -165,6 +161,7 @@ func NewGlobalNotesViewModel(notesDir string, cfg ...notesConfig) *NotesViewMode
 		isGlobal:      true,
 		filterTags:    make(map[string]bool),
 		selectedNotes: make(map[string]bool),
+		tabs:          TabState{Names: noteTabNames},
 	}
 	if len(cfg) > 0 && cfg[0] != nil {
 		m.config = cfg[0]
@@ -213,7 +210,7 @@ func (m *NotesViewModel) loadNotes() {
 		notes = filtered
 	}
 	// Apply tab filter
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case noteTabPinned:
 		var filtered []*models.Note
 		for _, n := range notes {
@@ -278,7 +275,7 @@ func (m *NotesViewModel) SetSize(width, height int) {
 		usable = 4
 	}
 	m.listHeight = usable / 2
-	m.detailsHeight = usable - m.listHeight - 1 // -1 for divider
+	m.detailsPane.Height = usable - m.listHeight - 1 // -1 for divider
 }
 
 // ShowGlobalNoteCreatorMsg opens a note creator in global notes mode.

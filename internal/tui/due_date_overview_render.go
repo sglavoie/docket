@@ -30,7 +30,7 @@ func (m *DueDateOverviewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(renderWrappingTabBar(dueDateTabNames, m.activeTab, m.Width()))
+	b.WriteString(m.tabs.RenderBar(m.Width()))
 	b.WriteString("\n")
 
 	// Filter badge
@@ -142,7 +142,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 }
 
 // renderGroup renders a group of tasks.
-func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *int) []string {
+func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentIndex *int) []string {
 	var lines []string
 	maxTitleLen := m.Width() - 35 // Account for date, project, icons
 
@@ -157,7 +157,7 @@ func (m *DueDateOverviewModel) renderGroup(tasks []DueDateTask, currentIndex *in
 }
 
 // renderTaskLine renders a single task line.
-func (m *DueDateOverviewModel) renderTaskLine(dt DueDateTask, isSelected bool, maxTitleLen int) string {
+func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bool, maxTitleLen int) string {
 	dateStr := m.formatDueDate(dt.Task)
 	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
 		MaxProjectLen: 15,

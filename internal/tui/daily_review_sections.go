@@ -55,7 +55,7 @@ func (m *DailyReviewModel) loadTasks() {
 				continue
 			}
 
-			dt := DailyReviewTask{Task: task, Project: project}
+			dt := CrossProjectTask{Task: task, Project: project}
 
 			// 1. Completed: CompletedAt within completedHours
 			if task.Status.IsComplete() && task.CompletedAt != nil {

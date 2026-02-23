@@ -74,7 +74,7 @@ func (m *KanbanViewModel) passesFilters(task *models.Task) bool {
 	}
 
 	// Apply "Due Soon" tab filter (overdue + today + this week)
-	if m.activeTab == kanbanTabDueSoon {
+	if m.tabs.Active == kanbanTabDueSoon {
 		if !task.IsOverdue() && !task.IsDueThisWeek() {
 			return false
 		}
@@ -172,7 +172,7 @@ func (m *KanbanViewModel) ClearAllFilters() {
 
 // applyTabPreset resets manual filters and applies the preset for the given tab.
 func (m *KanbanViewModel) applyTabPreset(tab int) {
-	m.activeTab = tab
+	m.tabs.Active = tab
 	// Reset manual filters
 	m.ClearAllFilters()
 

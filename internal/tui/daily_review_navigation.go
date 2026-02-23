@@ -16,10 +16,10 @@ var dailyReviewTabSections = [][]DailyReviewSection{
 
 // sectionInTab returns true if the given section belongs to the active tab.
 func (m *DailyReviewModel) sectionInTab(section DailyReviewSection) bool {
-	if m.activeTab < 0 || m.activeTab >= len(dailyReviewTabSections) {
+	if m.tabs.Active < 0 || m.tabs.Active >= len(dailyReviewTabSections) {
 		return true
 	}
-	for _, s := range dailyReviewTabSections[m.activeTab] {
+	for _, s := range dailyReviewTabSections[m.tabs.Active] {
 		if s == section {
 			return true
 		}
@@ -36,7 +36,7 @@ func (m *DailyReviewModel) calculateNavigation() {
 
 	sections := []struct {
 		section DailyReviewSection
-		tasks   []DailyReviewTask
+		tasks   []CrossProjectTask
 	}{
 		{SectionOverdue, m.overdue},
 		{SectionDueToday, m.dueToday},
@@ -72,7 +72,7 @@ func (m *DailyReviewModel) calculateNavigation() {
 }
 
 // getSectionTasks returns the tasks for a given section.
-func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []DailyReviewTask {
+func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []CrossProjectTask {
 	switch section {
 	case SectionOverdue:
 		return m.overdue
@@ -102,7 +102,7 @@ func (m *DailyReviewModel) getSectionTasks(section DailyReviewSection) []DailyRe
 
 // getTaskAtCursor returns the task at the current cursor position.
 // Returns nil if cursor is on a section header.
-func (m *DailyReviewModel) getTaskAtCursor() *DailyReviewTask {
+func (m *DailyReviewModel) getTaskAtCursor() *CrossProjectTask {
 	if m.totalTasks == 0 || len(m.sectionOrder) == 0 {
 		return nil
 	}

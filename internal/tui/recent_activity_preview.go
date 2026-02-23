@@ -15,7 +15,7 @@ import (
 
 // RecentActivityPreviewModel shows a scrollable task preview overlay.
 type RecentActivityPreviewModel struct {
-	task     DailyReviewTask
+	task     CrossProjectTask
 	project  *models.Project
 	viewport viewport.Model
 	width    int
@@ -24,7 +24,7 @@ type RecentActivityPreviewModel struct {
 }
 
 // NewRecentActivityPreviewModel creates a new preview model.
-func NewRecentActivityPreviewModel(task DailyReviewTask, project *models.Project) *RecentActivityPreviewModel {
+func NewRecentActivityPreviewModel(task CrossProjectTask, project *models.Project) *RecentActivityPreviewModel {
 	return &RecentActivityPreviewModel{
 		task:    task,
 		project: project,

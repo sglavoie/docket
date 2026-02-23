@@ -26,10 +26,10 @@ type RecentActivityModel struct {
 	InteractiveViewState
 	config *config.Config
 
-	tasks    []DailyReviewTask
-	filtered []DailyReviewTask
+	tasks    []CrossProjectTask
+	filtered []CrossProjectTask
 
-	activeTab int
+	tabs TabState
 
 	// Filter
 	FilterMixin
@@ -40,6 +40,7 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 	m := &RecentActivityModel{
 		config:      cfg,
 		FilterMixin: FilterMixin{filter: newFilterState()},
+		tabs:        TabState{Names: recentActivityTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Filter tasks...", 100, 40)
@@ -58,7 +59,7 @@ func (m *RecentActivityModel) loadTasks() {
 			continue
 		}
 		for _, task := range project.Tasks {
-			m.tasks = append(m.tasks, DailyReviewTask{Task: task, Project: project})
+			m.tasks = append(m.tasks, CrossProjectTask{Task: task, Project: project})
 		}
 	}
 
@@ -77,10 +78,10 @@ func (m *RecentActivityModel) loadTasks() {
 
 func (m *RecentActivityModel) applyFilter() {
 	// First filter by tab and common filters
-	var tabFiltered []DailyReviewTask
+	var tabFiltered []CrossProjectTask
 	hasFilters := hasActiveCommonFilters(&m.filter)
 	for _, dt := range m.tasks {
-		switch m.activeTab {
+		switch m.tabs.Active {
 		case recentActivityTabActive:
 			if dt.Task.Status.IsComplete() {
 				continue
@@ -209,17 +210,13 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 
-	case "[", "h":
-		CycleTab(&m.activeTab, len(recentActivityTabNames), -1)
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-
-	case "]", "l":
-		CycleTab(&m.activeTab, len(recentActivityTabNames), 1)
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
+	case "[", "h", "]", "l":
+		if handleTabCycleKey(msg.String(), &m.tabs, true, func() {
+			m.applyFilter()
+			m.clampCursor()
+		}) {
+			return m, nil
+		}
 
 	case "r":
 		m.loadTasks()
@@ -312,7 +309,7 @@ func (m *RecentActivityModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(renderWrappingTabBar(recentActivityTabNames, m.activeTab, m.Width()))
+	b.WriteString(m.tabs.RenderBar(m.Width()))
 	b.WriteString("\n")
 
 	// Filter badge
@@ -361,7 +358,7 @@ func (m *RecentActivityModel) View() string {
 	return b.String()
 }
 
-func (m *RecentActivityModel) renderTaskLine(dt DailyReviewTask, selected bool) string {
+func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool) string {
 	task := dt.Task
 	projectName := util.Truncate(dt.Project.Name, 12)
 	preBadges := MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +

@@ -19,43 +19,28 @@ type KanbanQuickAddCreatedMsg struct {
 	Task *models.Task
 }
 
+// kanbanQuickAddTriggers defines the trigger characters for kanban quick add autocomplete.
+var kanbanQuickAddTriggers = []ACTrigger{
+	{'#', acModeTag},
+	{'>', acModeParent},
+	{'^', acModeType},
+	{'!', acModePriority},
+	{'@', acModeDate},
+	{'~', acModeRecur},
+	{'/', acModeSection},
+	{'$', acModeStatus},
+}
+
 // handleQuickAddInput processes keyboard input while in quick add mode.
 func (m *KanbanViewModel) handleQuickAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	// Handle autocomplete navigation when active
-	if m.quickAddAcMode != acModeNone && len(m.quickAddSuggestions) > 0 {
-		switch key {
-		case "tab", "enter":
-			m.acceptQuickAddSuggestion()
-			m.updateQuickAddPreview()
-			return m, nil
-		case "esc":
-			// Dismiss autocomplete dropdown only
-			m.quickAddAcMode = acModeNone
-			m.quickAddSuggestions = nil
-			m.quickAddAcCursor = 0
-			m.quickAddAcViewportTop = 0
-			return m, nil
-		case "up", "ctrl+p", "ctrl+k":
-			if m.quickAddAcCursor > 0 {
-				m.quickAddAcCursor--
-				// Scroll viewport up if cursor moves above visible area
-				if m.quickAddAcCursor < m.quickAddAcViewportTop {
-					m.quickAddAcViewportTop = m.quickAddAcCursor
-				}
-			}
-			return m, nil
-		case "down", "ctrl+n", "ctrl+j":
-			if m.quickAddAcCursor < len(m.quickAddSuggestions)-1 {
-				m.quickAddAcCursor++
-				// Scroll viewport down if cursor moves below visible area
-				if m.quickAddAcCursor >= m.quickAddAcViewportTop+acVisibleCount {
-					m.quickAddAcViewportTop = m.quickAddAcCursor - acVisibleCount + 1
-				}
-			}
-			return m, nil
-		}
+	if m.quickAddAc.HandleKey(key, func() {
+		m.acceptQuickAddSuggestion()
+		m.updateQuickAddPreview()
+	}) {
+		return m, nil
 	}
 
 	// Regular key handling
@@ -67,13 +52,12 @@ func (m *KanbanViewModel) handleQuickAddInput(msg tea.KeyMsg) (tea.Model, tea.Cm
 		m.quickAddInput.SetValue("")
 		m.quickAddPreview = nil
 		m.quickAddError = ""
-		m.quickAddAcMode = acModeNone
-		m.quickAddSuggestions = nil
+		m.quickAddAc.Clear()
 		return m, nil
 
 	case "enter":
 		// Create task if not in autocomplete mode
-		if m.quickAddAcMode == acModeNone {
+		if !m.quickAddAc.IsActive() {
 			return m, m.createQuickAddTask()
 		}
 	}
@@ -103,150 +87,47 @@ func (m *KanbanViewModel) updateQuickAddPreview() {
 
 // detectQuickAddTrigger scans the input for autocomplete triggers and populates suggestions.
 func (m *KanbanViewModel) detectQuickAddTrigger() {
-	input := m.quickAddInput.Value()
-	if len(input) == 0 {
-		m.quickAddAcMode = acModeNone
-		m.quickAddSuggestions = nil
-		return
-	}
-
-	// Scan backward from end to find most recent trigger
-	// Triggers only activate if at start of input or preceded by whitespace
-	var mode int
-	var triggerPos int
-	var partial string
-
-	for i := len(input) - 1; i >= 0; i-- {
-		ch := input[i]
-		if ch == ' ' || ch == '\n' {
-			// Hit whitespace before finding trigger
-			break
-		}
-		// Check if trigger is at start or preceded by whitespace
-		atStartOrAfterSpace := i == 0 || input[i-1] == ' ' || input[i-1] == '\n'
-		if !atStartOrAfterSpace {
-			continue
-		}
-		partial = input[i+1:]
-		switch ch {
-		case '#':
-			mode = acModeTag
-			triggerPos = i
-		case '>':
-			mode = acModeParent
-			triggerPos = i
-		case '^':
-			mode = acModeType
-			triggerPos = i
-		case '!':
-			mode = acModePriority
-			triggerPos = i
-		case '@':
-			mode = acModeDate
-			triggerPos = i
-		case '~':
-			mode = acModeRecur
-			triggerPos = i
-		case '/':
-			mode = acModeSection
-			triggerPos = i
-		case '$':
-			mode = acModeStatus
-			triggerPos = i
-		}
-		if mode != acModeNone {
-			break
-		}
-	}
-
+	mode, pos, partial := DetectTrigger(m.quickAddInput.Value(), kanbanQuickAddTriggers)
 	if mode == acModeNone {
-		m.quickAddAcMode = acModeNone
-		m.quickAddSuggestions = nil
+		m.quickAddAc.Clear()
 		return
 	}
 
-	// Only reset cursor if entering new autocomplete context
-	if mode != m.quickAddAcMode || triggerPos != m.quickAddAcTriggerPos {
-		m.quickAddAcCursor = 0
-		m.quickAddAcViewportTop = 0
-	}
-	m.quickAddAcMode = mode
-	m.quickAddAcTriggerPos = triggerPos
-
-	// Get suggestions based on mode
+	var items []ACSuggestion
 	switch mode {
 	case acModeTag:
-		m.quickAddSuggestions = m.getQuickAddTagSuggestions(partial)
+		items = m.getQuickAddTagSuggestions(partial)
 	case acModeParent:
-		m.quickAddSuggestions = m.getQuickAddParentSuggestions(partial)
+		items = m.getQuickAddParentSuggestions(partial)
 	case acModeType:
-		m.quickAddSuggestions = m.getQuickAddTypeSuggestions(partial)
+		items = m.getQuickAddTypeSuggestions(partial)
 	case acModePriority:
-		m.quickAddSuggestions = m.getQuickAddPrioritySuggestions(partial)
+		items = m.getQuickAddPrioritySuggestions(partial)
 	case acModeDate:
-		m.quickAddSuggestions = m.getQuickAddDateSuggestions(partial)
+		items = m.getQuickAddDateSuggestions(partial)
 	case acModeRecur:
-		m.quickAddSuggestions = m.getQuickAddRecurrenceSuggestions(partial)
+		items = m.getQuickAddRecurrenceSuggestions(partial)
 	case acModeSection:
-		m.quickAddSuggestions = m.getQuickAddSectionSuggestions(partial)
+		items = m.getQuickAddSectionSuggestions(partial)
 	case acModeStatus:
-		m.quickAddSuggestions = m.getQuickAddStatusSuggestions(partial)
+		items = m.getQuickAddStatusSuggestions(partial)
 	}
-
-	// Clamp cursor and viewport if suggestions list shrunk
-	if m.quickAddAcCursor >= len(m.quickAddSuggestions) {
-		m.quickAddAcCursor = max(0, len(m.quickAddSuggestions)-1)
-	}
-	// Ensure viewport keeps cursor visible
-	if m.quickAddAcCursor < m.quickAddAcViewportTop {
-		m.quickAddAcViewportTop = m.quickAddAcCursor
-	} else if m.quickAddAcCursor >= m.quickAddAcViewportTop+acVisibleCount {
-		m.quickAddAcViewportTop = m.quickAddAcCursor - acVisibleCount + 1
-	}
-	// If no suggestions, exit autocomplete mode
-	if len(m.quickAddSuggestions) == 0 {
-		m.quickAddAcMode = acModeNone
-	}
+	m.quickAddAc.UpdateSuggestions(mode, pos, items)
 }
 
 // acceptQuickAddSuggestion inserts the selected suggestion into the input.
 func (m *KanbanViewModel) acceptQuickAddSuggestion() {
-	if m.quickAddAcMode == acModeNone || len(m.quickAddSuggestions) == 0 {
+	if !m.quickAddAc.IsActive() {
 		return
 	}
 
-	selected := m.quickAddSuggestions[m.quickAddAcCursor]
-	input := m.quickAddInput.Value()
-
-	// Replace from trigger position to end with the completed value
-	var newInput string
-	switch m.quickAddAcMode {
-	case acModeTag:
-		newInput = input[:m.quickAddAcTriggerPos] + "#" + selected.value + " "
-	case acModeParent:
-		newInput = input[:m.quickAddAcTriggerPos] + ">" + selected.value + " "
-	case acModeType:
-		newInput = input[:m.quickAddAcTriggerPos] + "^" + selected.value + " "
-	case acModePriority:
-		newInput = input[:m.quickAddAcTriggerPos] + "!" + selected.value + " "
-	case acModeDate:
-		newInput = input[:m.quickAddAcTriggerPos] + "@" + selected.value + " "
-	case acModeRecur:
-		newInput = input[:m.quickAddAcTriggerPos] + "~" + selected.value + " "
-	case acModeSection:
-		newInput = input[:m.quickAddAcTriggerPos] + "/" + selected.value + " "
-	case acModeStatus:
-		newInput = input[:m.quickAddAcTriggerPos] + "$" + selected.value + " "
-	}
+	triggerChar := TriggerCharForMode(m.quickAddAc.Mode, kanbanQuickAddTriggers)
+	newInput := m.quickAddAc.BuildAcceptedInput(m.quickAddInput.Value(), triggerChar)
 
 	m.quickAddInput.SetValue(newInput)
 	m.quickAddInput.SetCursor(len(newInput))
 
-	// Reset autocomplete state
-	m.quickAddAcMode = acModeNone
-	m.quickAddSuggestions = nil
-	m.quickAddAcCursor = 0
-	m.quickAddAcViewportTop = 0
+	m.quickAddAc.Clear()
 }
 
 // createQuickAddTask parses the input and creates a new task.
@@ -362,37 +243,9 @@ func (m *KanbanViewModel) renderQuickAddInput() string {
 	b.WriteString(m.quickAddInput.View())
 	b.WriteString("\n")
 
-	// Show autocomplete suggestions if active (scrollable window)
-	if m.quickAddAcMode != acModeNone && len(m.quickAddSuggestions) > 0 {
-		// Show scroll indicator if there are items above
-		if m.quickAddAcViewportTop > 0 {
-			b.WriteString(MutedStyle.Render("  ↑ " + fmt.Sprintf("%d more", m.quickAddAcViewportTop)))
-			b.WriteString("\n")
-		}
-
-		// Calculate visible range
-		visibleEnd := m.quickAddAcViewportTop + acVisibleCount
-		if visibleEnd > len(m.quickAddSuggestions) {
-			visibleEnd = len(m.quickAddSuggestions)
-		}
-
-		// Render visible suggestions
-		for i := m.quickAddAcViewportTop; i < visibleEnd; i++ {
-			s := m.quickAddSuggestions[i]
-			if i == m.quickAddAcCursor {
-				b.WriteString(SelectedStyle.Render("> " + s.display))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + s.display))
-			}
-			b.WriteString("\n")
-		}
-
-		// Show scroll indicator if there are items below
-		remaining := len(m.quickAddSuggestions) - visibleEnd
-		if remaining > 0 {
-			b.WriteString(MutedStyle.Render("  ↓ " + fmt.Sprintf("%d more", remaining)))
-			b.WriteString("\n")
-		}
+	// Show autocomplete suggestions if active
+	if m.quickAddAc.IsActive() {
+		b.WriteString(m.quickAddAc.RenderDropdown("  "))
 	}
 
 	// Show preview or error
@@ -406,7 +259,7 @@ func (m *KanbanViewModel) renderQuickAddInput() string {
 	}
 
 	// Help hints
-	if m.quickAddAcMode != acModeNone {
+	if m.quickAddAc.IsActive() {
 		b.WriteString(MutedStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss"))
 	} else {
 		b.WriteString(MutedStyle.Render("Enter: create · Esc: cancel · ^type !N #tag @date /section"))
@@ -488,17 +341,17 @@ func (m *KanbanViewModel) getQuickAddHeight() int {
 	}
 
 	// Add height for autocomplete suggestions
-	if m.quickAddAcMode != acModeNone && len(m.quickAddSuggestions) > 0 {
-		visibleCount := len(m.quickAddSuggestions)
+	if m.quickAddAc.IsActive() {
+		visibleCount := len(m.quickAddAc.Items)
 		if visibleCount > acVisibleCount {
 			visibleCount = acVisibleCount
 		}
 		height += visibleCount
 		// Add scroll indicators
-		if m.quickAddAcViewportTop > 0 {
+		if m.quickAddAc.ViewportTop > 0 {
 			height++
 		}
-		if m.quickAddAcViewportTop+acVisibleCount < len(m.quickAddSuggestions) {
+		if m.quickAddAc.ViewportTop+acVisibleCount < len(m.quickAddAc.Items) {
 			height++
 		}
 	}
@@ -508,7 +361,7 @@ func (m *KanbanViewModel) getQuickAddHeight() int {
 
 // Autocomplete suggestion getters for quick add mode
 
-func (m *KanbanViewModel) getQuickAddTagSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddTagSuggestions(partial string) []ACSuggestion {
 	type scoredTag struct {
 		tag   string
 		score int
@@ -526,17 +379,17 @@ func (m *KanbanViewModel) getQuickAddTagSuggestions(partial string) []suggestion
 		return scored[i].score > scored[j].score
 	})
 
-	suggestions := make([]suggestion, 0, len(scored))
+	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
-		suggestions = append(suggestions, suggestion{
-			display: "#" + s.tag,
-			value:   s.tag,
+		suggestions = append(suggestions, ACSuggestion{
+			Display: "#" + s.tag,
+			Value:   s.tag,
 		})
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddTypeSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddTypeSuggestions(partial string) []ACSuggestion {
 	types := []struct {
 		name string
 		icon string
@@ -549,21 +402,21 @@ func (m *KanbanViewModel) getQuickAddTypeSuggestions(partial string) []suggestio
 		{"note", "📝"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
 	for _, t := range types {
 		if partial == "" || strings.Contains(t.name, partialLower) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("^%s %s", t.name, t.icon),
-				value:   t.name,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("^%s %s", t.name, t.icon),
+				Value:   t.name,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddPrioritySuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddPrioritySuggestions(partial string) []ACSuggestion {
 	priorities := []struct {
 		value string
 		desc  string
@@ -575,19 +428,19 @@ func (m *KanbanViewModel) getQuickAddPrioritySuggestions(partial string) []sugge
 		{"5", "Lowest"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	for _, p := range priorities {
 		if partial == "" || strings.HasPrefix(p.value, partial) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
-				value:   p.value,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("!%s (%s)", p.value, p.desc),
+				Value:   p.value,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddDateSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddDateSuggestions(partial string) []ACSuggestion {
 	options := []struct {
 		value string
 		desc  string
@@ -603,21 +456,21 @@ func (m *KanbanViewModel) getQuickAddDateSuggestions(partial string) []suggestio
 		{"friday", "next Friday"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
 	for _, o := range options {
 		if partial == "" || strings.Contains(o.value, partialLower) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("@%s (%s)", o.value, o.desc),
-				value:   o.value,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("@%s (%s)", o.value, o.desc),
+				Value:   o.value,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddRecurrenceSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddRecurrenceSuggestions(partial string) []ACSuggestion {
 	options := []struct {
 		value string
 		desc  string
@@ -631,36 +484,36 @@ func (m *KanbanViewModel) getQuickAddRecurrenceSuggestions(partial string) []sug
 		{"2w", "every 2 weeks"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
 	for _, o := range options {
 		if partial == "" || strings.Contains(o.value, partialLower) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("~%s (%s)", o.value, o.desc),
-				value:   o.value,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("~%s (%s)", o.value, o.desc),
+				Value:   o.value,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddSectionSuggestions(partial string) []suggestion {
-	var suggestions []suggestion
+func (m *KanbanViewModel) getQuickAddSectionSuggestions(partial string) []ACSuggestion {
+	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
 	for _, section := range m.quickAddSectionCache {
 		if partial == "" || strings.Contains(strings.ToLower(section), partialLower) {
-			suggestions = append(suggestions, suggestion{
-				display: "/" + section,
-				value:   section,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: "/" + section,
+				Value:   section,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddStatusSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddStatusSuggestions(partial string) []ACSuggestion {
 	statuses := []struct {
 		name string
 		icon string
@@ -672,21 +525,21 @@ func (m *KanbanViewModel) getQuickAddStatusSuggestions(partial string) []suggest
 		{"canceled", "✕", "canceled"},
 	}
 
-	var suggestions []suggestion
+	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 
 	for _, s := range statuses {
 		if partial == "" || strings.Contains(s.name, partialLower) {
-			suggestions = append(suggestions, suggestion{
-				display: fmt.Sprintf("$%s %s (%s)", s.name, s.icon, s.desc),
-				value:   s.name,
+			suggestions = append(suggestions, ACSuggestion{
+				Display: fmt.Sprintf("$%s %s (%s)", s.name, s.icon, s.desc),
+				Value:   s.name,
 			})
 		}
 	}
 	return suggestions
 }
 
-func (m *KanbanViewModel) getQuickAddParentSuggestions(partial string) []suggestion {
+func (m *KanbanViewModel) getQuickAddParentSuggestions(partial string) []ACSuggestion {
 	type scoredParent struct {
 		task  *models.Task
 		score int
@@ -705,16 +558,16 @@ func (m *KanbanViewModel) getQuickAddParentSuggestions(partial string) []suggest
 		return scored[i].score > scored[j].score
 	})
 
-	suggestions := make([]suggestion, 0, len(scored))
+	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		task := s.task
 		title := task.Title
 		if len(title) > 30 {
 			title = title[:27] + "..."
 		}
-		suggestions = append(suggestions, suggestion{
-			display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
-			value:   strconv.Itoa(task.ShortID),
+		suggestions = append(suggestions, ACSuggestion{
+			Display: fmt.Sprintf("%s #%d %s", task.Type.Icon(), task.ShortID, title),
+			Value:   strconv.Itoa(task.ShortID),
 		})
 	}
 	return suggestions

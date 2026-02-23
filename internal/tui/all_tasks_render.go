@@ -25,7 +25,7 @@ func (m *AllTasksViewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(renderWrappingTabBar(allTasksTabNames, m.activeTab, m.Width()))
+	b.WriteString(m.tabs.RenderBar(m.Width()))
 	b.WriteString("\n")
 
 	// Filter badges
@@ -154,7 +154,7 @@ func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed 
 }
 
 // renderTaskLine renders a single task line.
-func (m *AllTasksViewModel) renderTaskLine(item AllTasksItem, isSelected bool, isChecked bool, maxTitleLen int) string {
+func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected bool, isChecked bool, maxTitleLen int) string {
 	task := item.Task
 
 	// Multi-select checkbox

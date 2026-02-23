@@ -118,10 +118,8 @@ type KanbanViewModel struct {
 	ColumnWidth int
 
 	// Split view state: top half is kanban, bottom half is task details
-	detailsPaneFocused bool // which pane has focus (false=kanban, true=details)
-	detailsScroll      int  // scroll offset for description in details pane
-	detailsHeight      int  // computed height for details pane (for half-page scroll)
-	kanbanHeight       int  // computed height for kanban pane (excludes divider)
+	detailsPane  DetailsPaneState
+	kanbanHeight int // computed height for kanban pane (excludes divider)
 
 	// Filter state for filtering tasks across all columns
 	filter    KanbanFilterState
@@ -133,12 +131,8 @@ type KanbanViewModel struct {
 	quickAddPreview *quickCaptureResult
 	quickAddError   string
 
-	// Quick add autocomplete state (reuse patterns from QuickCaptureModel)
-	quickAddAcMode        int          // acModeNone, acModeTag, etc.
-	quickAddSuggestions   []suggestion // Current autocomplete suggestions
-	quickAddAcCursor      int          // Selected suggestion index
-	quickAddAcViewportTop int          // First visible suggestion (for scrolling)
-	quickAddAcTriggerPos  int          // Position of trigger character in input
+	// Quick add autocomplete state
+	quickAddAc AutocompleteState
 
 	// Caches for autocomplete
 	quickAddTagCache     []string
@@ -170,7 +164,7 @@ type KanbanViewModel struct {
 	allScroll   int
 
 	// Tab filtering
-	activeTab int // Index into kanbanTabNames
+	tabs TabState
 
 	// Custom section tab filtering
 	customSectionTab        int  // selected custom section tab index (0 = All)
@@ -240,6 +234,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		sort:              NewSortState(),
 		columnSort:        make(map[string]SortField),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		tabs:              TabState{Names: kanbanTabNames},
 	}
 
 	m.InitSearchInput("Search tasks...", 100, 40)

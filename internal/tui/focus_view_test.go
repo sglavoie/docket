@@ -255,7 +255,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 			{Task: task1, Project: project},
 			{Task: task2, Project: project},
 		}
-		m.activeTab = focusTabByProject
+		m.tabs.Active = focusTabByProject
 		m.applyFilter()
 
 		ft := m.getTaskAtCursor()
@@ -275,7 +275,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 		m.cursor = 10
 		m.tasks = []FocusTask{}
-		m.activeTab = focusTabByProject
+		m.tabs.Active = focusTabByProject
 		m.applyFilter()
 
 		if ft := m.getTaskAtCursor(); ft != nil {
@@ -288,7 +288,7 @@ func TestFocusViewGetTaskAtCursor(t *testing.T) {
 		m := newTestFocusViewModel(cfg)
 		m.cursor = -1
 		m.tasks = []FocusTask{}
-		m.activeTab = focusTabByProject
+		m.tabs.Active = focusTabByProject
 		m.applyFilter()
 
 		if ft := m.getTaskAtCursor(); ft != nil {
@@ -326,7 +326,7 @@ func TestFocusViewClampCursor(t *testing.T) {
 					Project: dummyProject,
 				})
 			}
-			m.activeTab = focusTabByProject
+			m.tabs.Active = focusTabByProject
 			m.applyFilter()
 
 			m.clampCursor()
@@ -594,7 +594,7 @@ func TestStaleQueuePruning(t *testing.T) {
 	m.queueIDs[task3.ID] = true
 
 	// Switch to queue tab and apply filter (triggers pruning)
-	m.activeTab = focusTabQueue
+	m.tabs.Active = focusTabQueue
 	m.applyFilter()
 
 	if len(*m.queue) != 1 {
@@ -734,7 +734,7 @@ func TestAcceptOnAnyTab(t *testing.T) {
 	m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, cfg)
 
 	t.Run("accept on Queue tab adds top non-queued suggestion", func(t *testing.T) {
-		m.activeTab = focusTabQueue
+		m.tabs.Active = focusTabQueue
 		m.handleAccept()
 
 		if len(*m.queue) != 1 {
@@ -764,7 +764,7 @@ func TestAcceptOnAnyTab(t *testing.T) {
 		*m.queue = nil
 		m.queueIDs = make(map[string]bool)
 
-		m.activeTab = focusTabByProject
+		m.tabs.Active = focusTabByProject
 		m.handleAccept()
 
 		if len(*m.queue) != 1 {

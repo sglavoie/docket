@@ -82,7 +82,7 @@ type WeeklyReviewModel struct {
 	collapsedSections map[int]bool
 	sectionOrder      []WeeklyReviewSection
 	focusedSection    *WeeklyReviewSection
-	activeTab         int // 0=Projects, 1=Tasks, 2=Planning
+	tabs              TabState // 0=Projects, 1=Tasks, 2=Planning
 	scrollOffset      int
 
 	// Guided review flow
@@ -99,6 +99,7 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
+		tabs:              TabState{Names: weeklyReviewTabNames},
 	}
 	m.loadData()
 	return m
@@ -162,20 +163,12 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.err = nil
 
 	// Tab switching
-	switch key {
-	case "[", "h":
-		CycleTab(&m.activeTab, 3, -1)
+	if handleTabCycleKey(key, &m.tabs, true, func() {
 		m.focusedSection = nil
 		m.scrollOffset = 0
 		m.calculateNavigation()
 		m.clampCursor()
-		return m, nil
-	case "]", "l":
-		CycleTab(&m.activeTab, 3, 1)
-		m.focusedSection = nil
-		m.scrollOffset = 0
-		m.calculateNavigation()
-		m.clampCursor()
+	}) {
 		return m, nil
 	}
 
@@ -198,10 +191,7 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "esc":
-		if m.focusedSection != nil {
-			m.focusedSection = nil
-			m.calculateNavigation()
-			m.clampCursor()
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -379,9 +369,20 @@ func (m *WeeklyReviewModel) HasFocusedSection() bool {
 	return m.focusedSection != nil
 }
 
+// escSteps defines the Esc dismissal cascade: section focus.
+func (m *WeeklyReviewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: m.HasFocusedSection, Clear: func() {
+			m.focusedSection = nil
+			m.calculateNavigation()
+			m.clampCursor()
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when prefix mode, section focus, confirm dialog, or summary is active.
 func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasFocusedSection() || m.showingSummary
+	return m.DefaultShouldCaptureEsc() || m.showingSummary || AnyEscStepActive(m.escSteps())
 }
 
 func (m *WeeklyReviewModel) viewID() ViewType { return ViewWeeklyReview }

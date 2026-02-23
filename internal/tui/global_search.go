@@ -34,13 +34,10 @@ type GlobalSearchModel struct {
 	parsedFilters *ParsedSearchQuery
 
 	// Tabs
-	activeTab int
+	tabs TabState
 
 	// Autocomplete state
-	acMode       int                // Current autocomplete mode (acSearchMode*)
-	suggestions  []searchSuggestion // Current autocomplete suggestions
-	acCursor     int                // Selected suggestion index
-	acTriggerPos int                // Position of trigger character in input
+	ac AutocompleteState
 
 	// Caches for autocomplete
 	tagCache     []string // All tags across projects
@@ -91,7 +88,7 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 		allTasks:    allTasks,
 		searchInput: searchInput,
 		cursor:      0,
-		acMode:      acSearchModeNone,
+		tabs:        TabState{Names: globalSearchTabNames},
 	}
 
 	// Build caches for autocomplete
@@ -219,29 +216,11 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		key := msg.String()
 
 		// Handle autocomplete navigation when active
-		if m.acMode != acSearchModeNone && len(m.suggestions) > 0 {
-			switch key {
-			case "tab", "enter":
-				m.acceptAutocompleteSuggestion()
-				m.filterTasks()
-				return m, nil
-			case "esc":
-				// Dismiss autocomplete
-				m.acMode = acSearchModeNone
-				m.suggestions = nil
-				m.acCursor = 0
-				return m, nil
-			case "up", "ctrl+p", "ctrl+k":
-				if m.acCursor > 0 {
-					m.acCursor--
-				}
-				return m, nil
-			case "down", "ctrl+n", "ctrl+j":
-				if m.acCursor < len(m.suggestions)-1 {
-					m.acCursor++
-				}
-				return m, nil
-			}
+		if m.ac.HandleKey(key, func() {
+			m.acceptAutocompleteSuggestion()
+			m.filterTasks()
+		}) {
+			return m, nil
 		}
 
 		switch key {
@@ -251,7 +230,7 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			// Only select if not in autocomplete mode
-			if m.acMode == acSearchModeNone && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+			if !m.ac.IsActive() && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				result := m.filtered[m.cursor].result
 				if result.IsNote() {
 					// Open notes view for the project containing the note
@@ -268,23 +247,19 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "up", "ctrl+k":
-			if m.acMode == acSearchModeNone && m.cursor > 0 {
+			if !m.ac.IsActive() && m.cursor > 0 {
 				m.cursor--
 			}
 			return m, nil
 		case "down", "ctrl+j":
-			if m.acMode == acSearchModeNone && m.cursor < len(m.filtered)-1 {
+			if !m.ac.IsActive() && m.cursor < len(m.filtered)-1 {
 				m.cursor++
 			}
 			return m, nil
-		case "[":
-			CycleTab(&m.activeTab, len(globalSearchTabNames), -1)
-			m.filterTasks()
-			return m, nil
-		case "]":
-			CycleTab(&m.activeTab, len(globalSearchTabNames), 1)
-			m.filterTasks()
-			return m, nil
+		case "[", "]":
+			if handleTabCycleKey(key, &m.tabs, false, m.filterTasks) {
+				return m, nil
+			}
 		case "ctrl+u":
 			jumpCursor(&m.cursor, len(m.filtered), -10)
 			return m, nil

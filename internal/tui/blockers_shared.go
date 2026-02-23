@@ -31,8 +31,8 @@ type blockerItem struct {
 
 // blockerViewState holds all the shared UI state for blocker views.
 type blockerViewState struct {
-	cursor    int
-	activeTab int
+	cursor int
+	tabs   TabState
 
 	// Add mode
 	addMode   bool
@@ -74,7 +74,7 @@ func newBlockerViewState(editor string) blockerViewState {
 	editTi.ShowLineNumbers = false
 
 	return blockerViewState{
-		activeTab:     blockersTabActive,
+		tabs:          TabState{Names: blockersTabNames},
 		editor:        editor,
 		textInput:     ti,
 		editTextInput: editTi,
@@ -193,7 +193,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 
 	// Normal mode key handling
 	if msg, ok := msg.(tea.KeyMsg); ok {
-		visible := ds.getVisibleItems(s.activeTab)
+		visible := ds.getVisibleItems(s.tabs.Active)
 
 		switch msg.String() {
 		case "q", "esc":
@@ -255,15 +255,12 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 			}
 			return nil, nil, true
 
-		case "[", "h":
-			CycleTab(&s.activeTab, len(blockersTabNames), -1)
-			blockerClampCursor(s, ds)
-			return nil, nil, true
-
-		case "]", "l":
-			CycleTab(&s.activeTab, len(blockersTabNames), 1)
-			blockerClampCursor(s, ds)
-			return nil, nil, true
+		case "[", "h", "]", "l":
+			if handleTabCycleKey(msg.String(), &s.tabs, true, func() {
+				blockerClampCursor(s, ds)
+			}) {
+				return nil, nil, true
+			}
 
 		case "enter":
 			if len(visible) > 0 && s.cursor < len(visible) {
@@ -283,7 +280,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 }
 
 func blockerClampCursor(s *blockerViewState, ds blockerDataSource) {
-	visible := ds.getVisibleItems(s.activeTab)
+	visible := ds.getVisibleItems(s.tabs.Active)
 	if s.cursor >= len(visible) {
 		s.cursor = len(visible) - 1
 		if s.cursor < 0 {
@@ -327,7 +324,7 @@ func blockerSaveNew(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 
 func blockerExecuteDelete(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 	return func() tea.Msg {
-		visible := ds.getVisibleItems(s.activeTab)
+		visible := ds.getVisibleItems(s.tabs.Active)
 		if s.cursor >= len(visible) {
 			return nil
 		}
@@ -343,7 +340,7 @@ func blockerExecuteDelete(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("failed to save blockers: %w", err)}
 		}
 
-		visible = ds.getVisibleItems(s.activeTab)
+		visible = ds.getVisibleItems(s.tabs.Active)
 		if s.cursor >= len(visible) && s.cursor > 0 {
 			s.cursor--
 		}
@@ -421,8 +418,8 @@ func blockerToggleResolve(s *blockerViewState, ds blockerDataSource, item blocke
 			return ErrorMsg{Err: fmt.Errorf("failed to save blockers: %w", err)}
 		}
 
-		if s.activeTab == blockersTabActive || s.activeTab == blockersTabResolved {
-			visible := ds.getVisibleItems(s.activeTab)
+		if s.tabs.Active == blockersTabActive || s.tabs.Active == blockersTabResolved {
+			visible := ds.getVisibleItems(s.tabs.Active)
 			if s.cursor >= len(visible) && s.cursor > 0 {
 				s.cursor--
 			}
@@ -607,7 +604,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 
 	// Expanded view mode
 	if s.expandedView {
-		visible := ds.getVisibleItems(s.activeTab)
+		visible := ds.getVisibleItems(s.tabs.Active)
 		if len(visible) > 0 && s.cursor < len(visible) {
 			item := visible[s.cursor]
 			blocker := item.Blocker
@@ -683,7 +680,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 
 	// Delete confirmation
 	if s.confirm.IsActive() {
-		visible := ds.getVisibleItems(s.activeTab)
+		visible := ds.getVisibleItems(s.tabs.Active)
 		if len(visible) > 0 && s.cursor < len(visible) {
 			item := visible[s.cursor]
 			warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
@@ -706,14 +703,14 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		b.WriteString("\n\n")
 	}
 
-	visible := ds.getVisibleItems(s.activeTab)
+	visible := ds.getVisibleItems(s.tabs.Active)
 
 	// Tab bar
-	b.WriteString(RenderTabBar(blockersTabNames, s.activeTab, min(s.width-6, 54)-2, 1))
+	b.WriteString(RenderTabBar(blockersTabNames, s.tabs.Active, min(s.width-6, 54)-2, 1))
 	b.WriteString("\n")
 
 	if len(visible) == 0 {
-		switch s.activeTab {
+		switch s.tabs.Active {
 		case blockersTabActive:
 			b.WriteString(MutedStyle.Render("No active blockers. Press 'a' to add one."))
 		case blockersTabResolved:

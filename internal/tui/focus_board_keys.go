@@ -49,16 +49,23 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.ActivateSearch()
 
 	// Tab navigation
-	case "tab", "]", "l":
-		CycleTab(&m.activeTab, len(focusBoardTabNames), 1)
+	case "tab":
+		m.tabs.Cycle(1)
 		m.applyFilter()
 		m.clampCursor()
 		return m, nil
-	case "shift+tab", "[", "h":
-		CycleTab(&m.activeTab, len(focusBoardTabNames), -1)
+	case "shift+tab":
+		m.tabs.Cycle(-1)
 		m.applyFilter()
 		m.clampCursor()
 		return m, nil
+	case "[", "h", "]", "l":
+		if handleTabCycleKey(key, &m.tabs, true, func() {
+			m.applyFilter()
+			m.clampCursor()
+		}) {
+			return m, nil
+		}
 
 	// Quick-add action
 	case "a":

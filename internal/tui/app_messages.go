@@ -631,7 +631,7 @@ type CloseRecentActivityMsg struct{}
 
 // ShowRecentActivityPreviewMsg opens a task preview from recent activity.
 type ShowRecentActivityPreviewMsg struct {
-	Task    DailyReviewTask
+	Task    CrossProjectTask
 	Project *models.Project
 }
 

@@ -29,12 +29,6 @@ const (
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
 const acVisibleCount = 7
 
-// suggestion represents an autocomplete suggestion
-type suggestion struct {
-	display string // Text shown in dropdown
-	value   string // Text to insert
-}
-
 // quickCaptureResult holds parsed metadata from quick capture input.
 type quickCaptureResult struct {
 	title             string
@@ -51,6 +45,19 @@ type quickCaptureResult struct {
 	targetProjectName string            // Target project name (for preview display)
 }
 
+// quickCaptureTriggers defines the trigger characters for quick capture autocomplete.
+var quickCaptureTriggers = []ACTrigger{
+	{'#', acModeTag},
+	{'>', acModeParent},
+	{'^', acModeType},
+	{'!', acModePriority},
+	{'@', acModeDate},
+	{'~', acModeRecur},
+	{'/', acModeSection},
+	{'$', acModeStatus},
+	{'%', acModeProject},
+}
+
 // quickCaptureInput encapsulates the autocomplete, preview, and parsing
 // infrastructure shared between QuickCaptureModel and LinkedTaskCreatorModel.
 type quickCaptureInput struct {
@@ -58,15 +65,11 @@ type quickCaptureInput struct {
 	err   error
 
 	// Autocomplete state
-	acMode        int
-	suggestions   []suggestion
-	acCursor      int
-	acViewportTop int
-	acTriggerPos  int
-	tagCache      []string
-	parentCache   []*models.Task
-	sectionCache  []string
-	projectCache  []*models.Project
+	ac           AutocompleteState
+	tagCache     []string
+	parentCache  []*models.Task
+	sectionCache []string
+	projectCache []*models.Project
 
 	// Live preview
 	preview    *quickCaptureResult
@@ -94,8 +97,6 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 		input:       input,
 		project:     project,
 		allProjects: allProjects,
-		acMode:      acModeNone,
-		suggestions: make([]suggestion, 0),
 	}
 	qci.initCaches()
 	return qci
@@ -146,39 +147,10 @@ func (q *quickCaptureInput) resizeTextarea(width int) {
 // handleAutocompleteKey handles keys when autocomplete is active.
 // Returns true if the key was consumed.
 func (q *quickCaptureInput) handleAutocompleteKey(key string) bool {
-	if q.acMode == acModeNone || len(q.suggestions) == 0 {
-		return false
-	}
-
-	switch key {
-	case "tab", "enter":
+	return q.ac.HandleKey(key, func() {
 		q.acceptSuggestion()
 		q.updatePreview()
-		return true
-	case "esc":
-		q.acMode = acModeNone
-		q.suggestions = nil
-		q.acCursor = 0
-		q.acViewportTop = 0
-		return true
-	case "up", "ctrl+p", "ctrl+k":
-		if q.acCursor > 0 {
-			q.acCursor--
-			if q.acCursor < q.acViewportTop {
-				q.acViewportTop = q.acCursor
-			}
-		}
-		return true
-	case "down", "ctrl+n", "ctrl+j":
-		if q.acCursor < len(q.suggestions)-1 {
-			q.acCursor++
-			if q.acCursor >= q.acViewportTop+acVisibleCount {
-				q.acViewportTop = q.acCursor - acVisibleCount + 1
-			}
-		}
-		return true
-	}
-	return false
+	})
 }
 
 // updateInput updates the textarea and refreshes autocomplete/preview state.
@@ -194,49 +166,34 @@ func (q *quickCaptureInput) updateInput(msg tea.Msg) tea.Cmd {
 
 // refreshAutocomplete detects triggers and updates suggestion list.
 func (q *quickCaptureInput) refreshAutocomplete() {
-	mode, pos, partial := q.detectAutocompleteTrigger()
-	if mode != acModeNone {
-		if mode != q.acMode || pos != q.acTriggerPos {
-			q.acCursor = 0
-			q.acViewportTop = 0
-		}
-		q.acMode = mode
-		q.acTriggerPos = pos
-		switch mode {
-		case acModeTag:
-			q.suggestions = q.getTagSuggestions(partial)
-		case acModeParent:
-			q.suggestions = q.getParentSuggestions(partial)
-		case acModeType:
-			q.suggestions = q.getTypeSuggestions(partial)
-		case acModePriority:
-			q.suggestions = q.getPrioritySuggestions(partial)
-		case acModeDate:
-			q.suggestions = q.getDateSuggestions(partial)
-		case acModeRecur:
-			q.suggestions = q.getRecurrenceSuggestions(partial)
-		case acModeSection:
-			q.suggestions = q.getSectionSuggestions(partial)
-		case acModeStatus:
-			q.suggestions = q.getStatusSuggestions(partial)
-		case acModeProject:
-			q.suggestions = q.getProjectSuggestions(partial)
-		}
-		if q.acCursor >= len(q.suggestions) {
-			q.acCursor = max(0, len(q.suggestions)-1)
-		}
-		if q.acCursor < q.acViewportTop {
-			q.acViewportTop = q.acCursor
-		} else if q.acCursor >= q.acViewportTop+acVisibleCount {
-			q.acViewportTop = q.acCursor - acVisibleCount + 1
-		}
-		if len(q.suggestions) == 0 {
-			q.acMode = acModeNone
-		}
-	} else {
-		q.acMode = acModeNone
-		q.suggestions = nil
+	mode, pos, partial := DetectTrigger(q.input.Value(), quickCaptureTriggers)
+	if mode == acModeNone {
+		q.ac.Clear()
+		return
 	}
+
+	var items []ACSuggestion
+	switch mode {
+	case acModeTag:
+		items = q.getTagSuggestions(partial)
+	case acModeParent:
+		items = q.getParentSuggestions(partial)
+	case acModeType:
+		items = q.getTypeSuggestions(partial)
+	case acModePriority:
+		items = q.getPrioritySuggestions(partial)
+	case acModeDate:
+		items = q.getDateSuggestions(partial)
+	case acModeRecur:
+		items = q.getRecurrenceSuggestions(partial)
+	case acModeSection:
+		items = q.getSectionSuggestions(partial)
+	case acModeStatus:
+		items = q.getStatusSuggestions(partial)
+	case acModeProject:
+		items = q.getProjectSuggestions(partial)
+	}
+	q.ac.UpdateSuggestions(mode, pos, items)
 }
 
 // updatePreview updates the live preview state.
@@ -351,45 +308,15 @@ func wrapPreviewText(text string, width int) string {
 
 // renderAutocomplete renders the autocomplete dropdown.
 func (q *quickCaptureInput) renderAutocomplete() string {
-	if q.acMode == acModeNone || len(q.suggestions) == 0 {
+	if !q.ac.IsActive() {
 		return ""
 	}
-
-	var b strings.Builder
-	b.WriteString("\n")
-
-	if q.acViewportTop > 0 {
-		b.WriteString(MutedStyle.Render("  ↑ " + fmt.Sprintf("%d more", q.acViewportTop)))
-		b.WriteString("\n")
-	}
-
-	visibleEnd := q.acViewportTop + acVisibleCount
-	if visibleEnd > len(q.suggestions) {
-		visibleEnd = len(q.suggestions)
-	}
-
-	for i := q.acViewportTop; i < visibleEnd; i++ {
-		s := q.suggestions[i]
-		if i == q.acCursor {
-			b.WriteString(SelectedStyle.Render("> " + s.display))
-		} else {
-			b.WriteString(MutedStyle.Render("  " + s.display))
-		}
-		b.WriteString("\n")
-	}
-
-	remaining := len(q.suggestions) - visibleEnd
-	if remaining > 0 {
-		b.WriteString(MutedStyle.Render("  ↓ " + fmt.Sprintf("%d more", remaining)))
-		b.WriteString("\n")
-	}
-
-	return b.String()
+	return "\n" + q.ac.RenderDropdown("")
 }
 
 // isAutocompleteActive returns whether autocomplete is currently showing.
 func (q *quickCaptureInput) isAutocompleteActive() bool {
-	return q.acMode != acModeNone && len(q.suggestions) > 0
+	return q.ac.IsActive()
 }
 
 // inputValue returns the current text value, newlines replaced with spaces and trimmed.

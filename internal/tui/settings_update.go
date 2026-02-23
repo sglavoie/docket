@@ -27,25 +27,20 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			// Auto-switch tab to follow focus
-			m.activeTab = tabForField(m.focusIndex)
+			m.tabs.Active = tabForField(m.focusIndex)
 
 			// Focus new field
 			m.focusCurrentField()
 			return m, nil
 
-		case "[":
+		case "[", "]":
 			m.blurCurrentField()
-			CycleTab(&m.activeTab, len(settingsTabNames), -1)
-			m.focusIndex = tabFieldStart[m.activeTab]
-			m.focusCurrentField()
-			return m, nil
-
-		case "]":
-			m.blurCurrentField()
-			CycleTab(&m.activeTab, len(settingsTabNames), 1)
-			m.focusIndex = tabFieldStart[m.activeTab]
-			m.focusCurrentField()
-			return m, nil
+			if handleTabCycleKey(msg.String(), &m.tabs, false, func() {
+				m.focusIndex = tabFieldStart[m.tabs.Active]
+				m.focusCurrentField()
+			}) {
+				return m, nil
+			}
 
 		case " ":
 			// Toggle fields

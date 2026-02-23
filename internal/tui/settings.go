@@ -64,7 +64,7 @@ type SettingsModel struct {
 	contexts               []string
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
-	activeTab     int
+	tabs          TabState
 	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=linkedTaskJump, 10=attachmentEditor, 11=codeEditor, 12=kanbanMaxColumns, 13=kanbanMaxSwimlaneRows, 14-20=outlinerSectionToggles
 	validationErr string
 
@@ -201,7 +201,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		contexts:               contexts,
 		contextCursor:          contextCursor,
 		focusIndex:             0,
-		activeTab:              0,
+		tabs:                   TabState{Names: settingsTabNames},
 		width:                  80,
 		height:                 24,
 	}

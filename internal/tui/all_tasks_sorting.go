@@ -5,7 +5,7 @@ import (
 )
 
 // applySorting sorts the task list based on the current sort field.
-func (m *AllTasksViewModel) applySorting(tasks []AllTasksItem) {
+func (m *AllTasksViewModel) applySorting(tasks []CrossProjectTask) {
 	if m.sort.Field == SortByDefault {
 		return
 	}

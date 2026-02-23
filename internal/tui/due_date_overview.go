@@ -11,12 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// DueDateTask wraps a task with its parent project for cross-project display.
-type DueDateTask struct {
-	Task    *models.Task
-	Project *models.Project
-}
-
 // DueDateGroup represents a category of tasks by due date urgency.
 type DueDateGroup int
 
@@ -47,13 +41,13 @@ type DueDateOverviewModel struct {
 	projectService *ProjectService
 
 	// Grouped tasks
-	overdue  []DueDateTask
-	today    []DueDateTask
-	thisWeek []DueDateTask
-	later    []DueDateTask
+	overdue  []CrossProjectTask
+	today    []CrossProjectTask
+	thisWeek []CrossProjectTask
+	later    []CrossProjectTask
 
 	// Tabs
-	activeTab int
+	tabs TabState
 
 	// Filter
 	FilterMixin
@@ -70,6 +64,7 @@ func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOv
 		configManager:  mgr,
 		projectService: NewProjectService(),
 		FilterMixin:    FilterMixin{filter: newFilterState()},
+		tabs:           TabState{Names: dueDateTabNames},
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasksWithDueDates()
@@ -99,7 +94,7 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 				continue
 			}
 
-			dt := DueDateTask{Task: task, Project: project}
+			dt := CrossProjectTask{Task: task, Project: project}
 			switch m.categorizeTask(task) {
 			case GroupOverdue:
 				m.overdue = append(m.overdue, dt)
@@ -114,7 +109,7 @@ func (m *DueDateOverviewModel) loadTasksWithDueDates() {
 	}
 
 	// Sort each group by due date (earliest first)
-	sortByDueDate := func(tasks []DueDateTask) {
+	sortByDueDate := func(tasks []CrossProjectTask) {
 		sort.Slice(tasks, func(i, j int) bool {
 			return tasks[i].Task.DueDate.Before(*tasks[j].Task.DueDate)
 		})
@@ -136,7 +131,7 @@ func (m *DueDateOverviewModel) applyTabFilter() {
 
 // recalcTotalTasks updates totalTasks and groupStarts based on the active tab.
 func (m *DueDateOverviewModel) recalcTotalTasks() {
-	switch m.activeTab {
+	switch m.tabs.Active {
 	case dueDateTabOverdue:
 		m.totalTasks = len(m.overdue)
 		m.groupStarts = []int{0}
@@ -161,8 +156,8 @@ func (m *DueDateOverviewModel) recalcTotalTasks() {
 }
 
 // visibleGroups returns the groups visible under the current tab.
-func (m *DueDateOverviewModel) visibleGroups() (overdue, today, thisWeek, later []DueDateTask) {
-	switch m.activeTab {
+func (m *DueDateOverviewModel) visibleGroups() (overdue, today, thisWeek, later []CrossProjectTask) {
+	switch m.tabs.Active {
 	case dueDateTabOverdue:
 		return m.overdue, nil, nil, nil
 	case dueDateTabToday:
@@ -200,7 +195,7 @@ func (m *DueDateOverviewModel) categorizeTask(task *models.Task) DueDateGroup {
 }
 
 // getTaskAtCursor returns the task and project at the current cursor position.
-func (m *DueDateOverviewModel) getTaskAtCursor() *DueDateTask {
+func (m *DueDateOverviewModel) getTaskAtCursor() *CrossProjectTask {
 	if m.totalTasks == 0 {
 		return nil
 	}
@@ -286,24 +281,15 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 
 	// Tab navigation
-	switch key {
-	case "[", "h":
-		CycleTab(&m.activeTab, len(dueDateTabNames), -1)
+	if handleTabCycleKey(key, &m.tabs, true, func() {
 		m.applyTabFilter()
-		return m, nil
-	case "]", "l":
-		CycleTab(&m.activeTab, len(dueDateTabNames), 1)
-		m.applyTabFilter()
+	}) {
 		return m, nil
 	}
 
 	switch key {
 	case "esc", "q":
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.loadTasksWithDueDates()
-			m.clampCursor()
-			m.statusMessage = "Filters cleared"
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
 		return m, func() tea.Msg {
@@ -411,9 +397,21 @@ func (m *DueDateOverviewModel) clampCursor() {
 	m.ClampCursorTo(m.totalTasks)
 }
 
+// escSteps defines the Esc dismissal cascade: filters.
+func (m *DueDateOverviewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: m.HasActiveFilters, Clear: func() {
+			m.ClearAllFilters()
+			m.loadTasksWithDueDates()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 // GetHelpItems returns help items for this view.
