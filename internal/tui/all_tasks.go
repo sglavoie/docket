@@ -482,17 +482,15 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
-		if field, isReset, ok := SortFieldForKey(key); ok {
-			if isReset {
-				m.sort.Field = SortByDefault
-				m.sort.Ascending = true
-				m.applyFiltersAndGroup()
-				m.clampCursor()
-				m.statusMessage = "Sort reset"
-			} else {
-				m.cycleSortField(field)
-			}
-		}
+		handleSortKey(key, &m.sort, func() {
+			m.applyFiltersAndGroup()
+			m.clampCursor()
+			m.statusMessage = "Sort reset"
+		}, func(field SortField) {
+			m.applyFiltersAndGroup()
+			m.clampCursor()
+			m.statusMessage = fmt.Sprintf("Sort: %s %s", field, m.sortDirection())
+		})
 		return m, nil
 
 	// Score editor

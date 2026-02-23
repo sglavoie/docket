@@ -45,10 +45,8 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Search
 	case "/":
-		m.searchActive = true
 		m.searchInput.SetValue(m.searchQuery)
-		m.searchInput.Focus()
-		return m, textinput.Blink
+		return m, m.ActivateSearch()
 
 	// Tab navigation
 	case "tab", "]", "l":
@@ -131,17 +129,19 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
-		if field, isReset, ok := SortFieldForKey(key); ok {
-			if isReset {
-				m.sort.Field = SortByDefault
-				m.sort.Ascending = true
-				m.applyFilter()
-				m.clampCursor()
-				m.statusMessage = "Sort reset"
-			} else {
-				m.cycleSortField(field)
+		handleSortKey(key, &m.sort, func() {
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Sort reset"
+		}, func(field SortField) {
+			m.applyFilter()
+			m.clampCursor()
+			direction := "↑"
+			if !m.sort.Ascending {
+				direction = "↓"
 			}
-		}
+			m.statusMessage = fmt.Sprintf("Sort: %s %s", field, direction)
+		})
 		return m, nil
 
 	// Assign to project (move task to another project)

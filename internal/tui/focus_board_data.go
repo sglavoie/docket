@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -190,14 +189,3 @@ func (m *FocusBoardModel) scorePercent(r boardRow) float64 {
 	return scoring.ScorePercent(score, profile)
 }
 
-// cycleSortField toggles sort direction if same field, or switches field if different.
-func (m *FocusBoardModel) cycleSortField(newField SortField) {
-	m.sort.Toggle(newField)
-	m.applyFilter()
-	m.clampCursor()
-	direction := "↑"
-	if !m.sort.Ascending {
-		direction = "↓"
-	}
-	m.statusMessage = fmt.Sprintf("Sort: %s %s", newField, direction)
-}

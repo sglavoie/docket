@@ -132,8 +132,11 @@ func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.editMode {
 			return m.handleEditInput(msg)
 		}
-		if m.searchActive {
-			return m.handleSearchInput(msg)
+		if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
+			m.applyFilter()
+			m.clampCursor()
+		}); handled {
+			return model, cmd
 		}
 		return m.handleKeyMsg(msg)
 	}

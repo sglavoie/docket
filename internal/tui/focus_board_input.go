@@ -81,36 +81,6 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
-// handleSearchInput processes keyboard input while in search mode.
-func (m *FocusBoardModel) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		m.searchActive = false
-		m.searchInput.Blur()
-		m.searchQuery = ""
-		m.searchInput.SetValue("")
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-
-	case "enter":
-		m.searchActive = false
-		m.searchInput.Blur()
-		m.searchQuery = strings.TrimSpace(m.searchInput.Value())
-		m.applyFilter()
-		m.clampCursor()
-		return m, nil
-
-	default:
-		var cmd tea.Cmd
-		m.searchInput, cmd = m.searchInput.Update(msg)
-		m.searchQuery = strings.TrimSpace(m.searchInput.Value())
-		m.applyFilter()
-		m.clampCursor()
-		return m, cmd
-	}
-}
-
 // createItemFromInput parses the add input and creates an Action task.
 func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd) {
 	m.addMode = false
