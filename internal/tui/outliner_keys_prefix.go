@@ -60,44 +60,15 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "t":
-		// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
-		if cursorTask != nil {
-			if handled, cmd := handleTaskPrefixMsgKey(key, cursorTask, m.project); handled {
-				return m, cmd
-			}
-		}
-
-		// Try shared action handlers (tn, tN, ts, tt)
 		var focusedTask *models.Task
 		if len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			focusedTask = m.project.GetTaskByID(topID)
 		}
-		getMultiTasks := func() []*models.Task {
-			if m.multiSelectMode && len(m.selectedTasks) > 0 {
-				return m.getSelectedTasks()
-			}
-			return nil
-		}
-		if handled, cmd := handleTaskActionPrefixKey(key, cursorTask, m.project, focusedTask, getMultiTasks); handled {
+		if cmd, handled := handleSharedTaskPrefix(key, m, focusedTask, func(task *models.Task) tea.Cmd {
+			return m.quickEdit.Enter(task, true)
+		}); handled {
 			return m, cmd
-		}
-
-		// Rename task (tr)
-		if key == "r" && cursorTask != nil {
-			return m, m.quickEdit.Enter(cursorTask, true)
-		}
-
-		// Toggle pinned (tp)
-		if key == "p" {
-			cmd, _ := handleTogglePinnedKey(m)
-			return m, cmd
-		}
-
-		// Delete task (tD)
-		if key == "D" {
-			handleDeleteConfirmKey(m)
-			return m, nil
 		}
 
 	case "P":

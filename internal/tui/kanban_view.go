@@ -682,14 +682,10 @@ func (m *KanbanViewModel) padDetailsToHeight(content string, width, height int) 
 }
 
 // ShouldCaptureEsc implements ViewCapabilities. Returns true when in any
-// internal mode that should capture Esc instead of allowing app-level
-// navigation. Currently tracks pending status prefix mode, details pane focus,
-// search mode, quick add mode, delete confirmation, note conversion confirmation,
-// archive confirmation, focus mode, multi-select mode, quick edit mode, completed view mode, and all view mode.
+// internal mode that should capture Esc instead of allowing app-level navigation.
 func (m *KanbanViewModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit != nil && m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
-		m.detailsPane.Focused || m.quickAddMode || m.FocusedTask != nil ||
-		m.completedViewMode || m.allViewMode
+		m.detailsPane.Focused || m.quickAddMode || AnyEscStepActive(m.escSteps())
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.

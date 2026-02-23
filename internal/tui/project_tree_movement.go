@@ -18,26 +18,10 @@ func typeChangeOpForKey(key string) (TypeChangeOp, string, bool) {
 }
 
 // handleTypeKeys handles <, >, H, L - type change operations.
-// Note: ←/→ are now used for indent/outdent, h/l for section switching.
 // Returns true if the key was handled.
-func (m *ProjectTreeModel) handleTypeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
-	op, undoAction, ok := typeChangeOpForKey(key)
-	if !ok {
-		return false, nil
-	}
-	if !CursorInBounds(m.cursor, len(visible)) {
-		return true, nil
-	}
-	task := visible[m.cursor].Task
-	m.setUndoContext(undoAction, task.Title)
-	result := applyTypeChange(m.workflowPersistFn(), m.project, task.ID, op)
-	if result.Err != nil {
-		return true, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-	}
-	if result.StatusMessage != "" {
-		m.buildTree()
-	}
-	return true, result.Cmd
+func (m *ProjectTreeModel) handleTypeKeys(key string) (bool, tea.Cmd) {
+	cmd, handled := handleTypeChangeKey(key, m)
+	return handled, cmd
 }
 
 // handleMovementKeys handles K, J, ←, → - task movement operations.

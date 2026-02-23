@@ -17,8 +17,7 @@ func (m *AppModel) structureCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				m.projectTree.handleTypeKeys("<", visible)
+				m.projectTree.handleTypeKeys("<")
 				return nil
 			},
 		},
@@ -33,8 +32,7 @@ func (m *AppModel) structureCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				m.projectTree.handleTypeKeys(">", visible)
+				m.projectTree.handleTypeKeys(">")
 				return nil
 			},
 		},
@@ -49,8 +47,7 @@ func (m *AppModel) structureCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				m.projectTree.handleTypeKeys("H", visible)
+				m.projectTree.handleTypeKeys("H")
 				return nil
 			},
 		},
@@ -65,8 +62,7 @@ func (m *AppModel) structureCommands() []Command {
 				if m.projectTree == nil {
 					return nil
 				}
-				visible := m.projectTree.visibleNodes()
-				m.projectTree.handleTypeKeys("L", visible)
+				m.projectTree.handleTypeKeys("L")
 				return nil
 			},
 		},

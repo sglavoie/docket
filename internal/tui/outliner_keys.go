@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // handleKeyMsg processes key events in the outliner view.
@@ -101,6 +99,21 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Perspective cycling (h/l) — analogous to ProjectTree's view-mode cycling
+	if !m.sidebar.IsFocused() {
+		perspCount := len(PerspectivePresets())
+		switch key {
+		case "h":
+			m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
+			m.rebuildRows()
+			return m, nil
+		case "l":
+			m.activePerspective = (m.activePerspective + 1) % perspCount
+			m.rebuildRows()
+			return m, nil
+		}
+	}
+
 	switch key {
 	case "q":
 		if len(m.zoomStack) == 0 {
@@ -114,24 +127,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "esc":
-		if m.multiSelectMode {
-			m.toggleMultiSelectMode()
-			return m, nil
-		}
-		if m.SearchQuery() != "" {
-			m.ClearSearch()
-			m.rebuildRows()
-			return m, nil
-		}
-		if len(m.zoomStack) > 0 {
-			top := m.zoomStack[len(m.zoomStack)-1]
-			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
-			m.cursor = top.CursorIndex
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseOutlinerMsg{}
-		}
+		RunEscCascade(m.escSteps())
+		return m, nil
 
 	// Task movement
 	case "J":
@@ -323,21 +320,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Clipboard operations
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			func() *models.Task {
-				if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
-					return m.rows[m.cursor].task
-				}
-				return nil
-			},
-			func() []*models.Task {
-				if m.multiSelectMode && len(m.selectedTasks) > 0 {
-					return m.getSelectedTasks()
-				}
-				return nil
-			},
-			m.clearMultiSelect,
-		); handled {
+		if handled, cmd := handleClipboardForPrefixableView(key, m); handled {
 			return m, cmd
 		}
 		return m, nil
@@ -396,23 +379,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Type change keys
 	case "<", ">", "H", "L":
-		op, undoAction, ok := typeChangeOpForKey(key)
-		if !ok {
-			return m, nil
-		}
-		if len(m.rows) == 0 || m.cursor >= len(m.rows) || onHeader {
-			return m, nil
-		}
-		task := m.rows[m.cursor].task
-		m.setUndoContext(undoAction, task.Title)
-		result := applyTypeChange(m.workflowPersistFn(), m.project, task.ID, op)
-		if result.Err != nil {
-			return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
-		}
-		if result.StatusMessage != "" {
-			m.rebuildRows()
-		}
-		return m, result.Cmd
+		cmd, _ := handleTypeChangeKey(key, m)
+		return m, cmd
 
 	// Toggle active flag (with multi-select support)
 	case "*":
@@ -467,12 +435,31 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	return m, cmd
 }
 
+// escSteps defines the Esc dismissal cascade for Outliner:
+// multi-select → search query → zoom stack.
+func (m *OutlinerModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
+			m.toggleMultiSelectMode()
+		}},
+		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
+			m.ClearSearch()
+			m.rebuildRows()
+		}},
+		{Active: func() bool { return len(m.zoomStack) > 0 }, Clear: func() {
+			top := m.zoomStack[len(m.zoomStack)-1]
+			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
+			m.cursor = top.CursorIndex
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true only when a transient mode is active or the
 // view is zoomed in, so that the global handleEscKey() can pop the view when
 // at the root level with no active mode.
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
-		len(m.zoomStack) > 0 || m.sidebar.ShouldCaptureEsc()
+		AnyEscStepActive(m.escSteps()) || m.sidebar.ShouldCaptureEsc()
 }
 
 // HasConfirmDialog returns true when a confirmation dialog is active.

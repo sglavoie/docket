@@ -164,44 +164,11 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 // handleKanbanTaskPrefix handles the second key after pressing t (task action prefix).
 func (m *KanbanViewModel) handleKanbanTaskPrefix(key string) (tea.Model, tea.Cmd) {
-	task := m.getSelectedTask()
-	if task == nil && key != "n" && key != "N" {
-		return m, nil
-	}
-	project := m.Project
-
-	// Multi-select getter for shared handlers
-	getMultiTasks := func() []*models.Task {
-		if m.multiSelectMode && m.SelectedCount() > 0 {
-			return m.getSelectedTasksList()
-		}
-		return nil
-	}
-
-	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
-	if task != nil {
-		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
-			return m, cmd
-		}
-	}
-
-	// Try shared action handlers (tn, tN, ts, tt)
-	if handled, cmd := handleTaskActionPrefixKey(key, task, project, m.FocusedTask, getMultiTasks); handled {
+	cmd, handled := handleSharedTaskPrefix(key, m, m.FocusedTask, func(task *models.Task) tea.Cmd {
+		return m.quickEdit.Enter(task, true)
+	})
+	if handled {
 		return m, cmd
-	}
-
-	switch key {
-	case "r":
-		if task != nil {
-			return m, m.handleRenameKey()
-		}
-		return m, nil
-	case "p":
-		cmd, _ := handleTogglePinnedKey(m)
-		return m, cmd
-	case "D":
-		handleDeleteConfirmKey(m)
-		return m, nil
 	}
 	return m, nil
 }

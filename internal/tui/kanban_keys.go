@@ -3,7 +3,6 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -145,7 +144,8 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, helpCmd(ViewKanban, "Kanban", m.GetHelpItems())
 
 	case "esc":
-		return m.handleEscapeSequence()
+		RunEscCascade(m.escSteps())
+		return m, nil
 
 	case "ctrl+j":
 		// In swimlane mode, ctrl+j navigates to next swimlane row
@@ -305,18 +305,7 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case "y", "Y", "ctrl+y":
-		if handled, cmd := handleClipboardKey(key,
-			m.getSelectedTask,
-			func() []*models.Task {
-				if m.multiSelectMode && m.SelectedCount() > 0 {
-					return m.getSelectedTasksList()
-				}
-				return nil
-			},
-			func() {
-				m.ExitMultiSelect()
-			},
-		); handled {
+		if handled, cmd := handleClipboardForPrefixableView(key, m); handled {
 			return m, cmd
 		}
 		return m, nil
@@ -397,63 +386,36 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Type management: promote/demote/cycle leaf types
 	case "<", ">", "H", "L":
-		task := m.getSelectedTask()
-		if task == nil {
-			return m, nil
-		}
-		op, undoAction, ok := typeChangeOpForKey(key)
-		if !ok {
-			return m, nil
-		}
-		m.setUndoContext(undoAction, task.Title)
-		result := applyTypeChange(m.workflowPersistFn(), m.Project, task.ID, op)
-		if result.Err != nil {
-			m.statusMessage = result.Err.Error()
-			return m, nil
-		}
-		if result.StatusMessage != "" {
-			m.statusMessage = result.StatusMessage
-		}
-		m.loadTasks()
-		return m, result.Cmd
+		cmd, _ := handleTypeChangeKey(key, m)
+		return m, cmd
 
 	}
 
 	return m, nil
 }
 
-// handleEscapeSequence handles the shared escape/exit logic for esc and ctrl+k keys.
-func (m *KanbanViewModel) handleEscapeSequence() (tea.Model, tea.Cmd) {
-	// Exit multi-select mode first
-	if m.multiSelectMode {
-		m.ExitMultiSelect()
-		m.statusMessage = ""
-		return m, nil
-	}
-	// Exit completed view mode
-	if m.completedViewMode {
-		m.completedViewMode = false
-		m.statusMessage = ""
-		return m, nil
-	}
-	// Exit all view mode
-	if m.allViewMode {
-		m.allViewMode = false
-		m.statusMessage = ""
-		return m, nil
-	}
-	// Exit quick edit mode
-	if m.quickEdit != nil && m.quickEdit.IsActive() {
-		m.quickEdit.Exit()
-		m.statusMessage = ""
-		return m, nil
-	}
-	// Exit focus mode if active
-	if m.FocusedTask != nil {
-		m.exitFocusMode()
-		return m, nil
-	}
-	return m, func() tea.Msg {
-		return CloseKanbanMsg{}
+// escSteps defines the Esc dismissal cascade for Kanban:
+// multi-select → completed view → all view → quick edit → focus mode.
+func (m *KanbanViewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
+			m.ExitMultiSelect()
+			m.statusMessage = ""
+		}},
+		{Active: func() bool { return m.completedViewMode }, Clear: func() {
+			m.completedViewMode = false
+			m.statusMessage = ""
+		}},
+		{Active: func() bool { return m.allViewMode }, Clear: func() {
+			m.allViewMode = false
+			m.statusMessage = ""
+		}},
+		{Active: func() bool { return m.quickEdit != nil && m.quickEdit.IsActive() }, Clear: func() {
+			m.quickEdit.Exit()
+			m.statusMessage = ""
+		}},
+		{Active: func() bool { return m.FocusedTask != nil }, Clear: func() {
+			m.exitFocusMode()
+		}},
 	}
 }

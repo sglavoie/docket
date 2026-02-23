@@ -236,10 +236,29 @@ func (m *ProjectTreeModel) HasTextInput() bool {
 	return m.DefaultHasTextInput() || m.quickEdit.IsActive() || m.scoreFilterInput.IsActive()
 }
 
+// escSteps defines the Esc dismissal cascade for ProjectTree:
+// multi-select → focus mode → search query.
+func (m *ProjectTreeModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
+			m.clearSelection()
+		}},
+		{Active: m.IsFocusMode, Clear: func() {
+			m.focusedTask = nil
+			m.buildTree()
+			m.clampCursor()
+		}},
+		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
+			m.ClearSearch()
+			m.updateVisibility()
+		}},
+	}
+}
+
 // ShouldCaptureEsc returns true when the tree needs esc/q for internal modes.
 func (m *ProjectTreeModel) ShouldCaptureEsc() bool {
 	return primaryViewShouldCaptureEsc(&m.InteractiveViewState, &m.BaseSearchableView, m.multiSelectMode, m.quickEdit.IsActive(), m.scoreFilterInput.IsActive()) ||
-		m.IsFocusMode() || m.sidebar.IsFocused()
+		AnyEscStepActive(m.escSteps()) || m.sidebar.IsFocused()
 }
 
 // IsFocusMode returns true if the view is focused on a subtree.

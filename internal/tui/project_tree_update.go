@@ -341,48 +341,17 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 // handleTaskPrefix handles the second key after pressing t (task action prefix).
 func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
-	// Get cursor task (may be nil if cursor is out of bounds)
-	var cursorTask *models.Task
-	if CursorInBounds(m.cursor, len(visible)) {
-		cursorTask = visible[m.cursor].Task
+	// tm is blocked for multi-select in ProjectTree
+	if key == "m" && m.multiSelectMode && len(m.selectedTasks) > 1 {
+		return m, nil
 	}
 
-	// Multi-select getter for shared handlers
-	getMultiTasks := func() []*models.Task {
-		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			return m.getSelectedTasks()
-		}
+	cmd, handled := handleSharedTaskPrefix(key, m, m.focusedTask, func(task *models.Task) tea.Cmd {
+		m.enterQuickEditMode(task, true)
 		return nil
-	}
-
-	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
-	if cursorTask != nil {
-		// tm is blocked for multi-select
-		if key == "m" && m.multiSelectMode && len(m.selectedTasks) > 1 {
-			return m, nil
-		}
-		if handled, cmd := handleTaskPrefixMsgKey(key, cursorTask, m.project); handled {
-			return m, cmd
-		}
-	}
-
-	// Try shared action handlers (tn, tN, ts, tt)
-	if handled, cmd := handleTaskActionPrefixKey(key, cursorTask, m.project, m.focusedTask, getMultiTasks); handled {
+	})
+	if handled {
 		return m, cmd
-	}
-
-	switch key {
-	case "r":
-		if cursorTask != nil {
-			m.enterQuickEditMode(cursorTask, true)
-		}
-		return m, nil
-	case "p":
-		cmd, _ := handleTogglePinnedKey(m)
-		return m, cmd
-	case "D":
-		handleDeleteConfirmKey(m)
-		return m, nil
 	}
 	return m, nil
 }
@@ -425,23 +394,10 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 		return m, m.ActivateSearch()
 	}
 
-	// Special case for esc (exit multi-select, focus mode, or clear search)
+	// Esc cascade: dismiss the first active layer
 	if key == "esc" {
-		if m.multiSelectMode {
-			m.clearSelection()
-			return m, nil
-		}
-		if m.focusedTask != nil {
-			m.focusedTask = nil
-			m.buildTree()
-			m.clampCursor()
-			return m, nil
-		}
-		if m.SearchQuery() != "" {
-			m.ClearSearch()
-			m.updateVisibility()
-			return m, nil
-		}
+		RunEscCascade(m.escSteps())
+		return m, nil
 	}
 
 	// Special case for ctrl+a (archive project)
@@ -475,7 +431,7 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	if handled, cmd := m.handleNavigationKeys(key, visible); handled {
 		return m, cmd
 	}
-	if handled, cmd := m.handleTypeKeys(key, visible); handled {
+	if handled, cmd := m.handleTypeKeys(key); handled {
 		return m, cmd
 	}
 	if handled, cmd := m.handleMovementKeys(key, visible); handled {

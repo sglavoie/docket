@@ -520,6 +520,78 @@ func handleQuickEditKey(
 	}
 }
 
+// handleTypeChangeKey handles <, >, H, L keys for type promotion/demotion/cycling.
+// Returns (cmd, handled). When handled is false the key was not a type-change key.
+func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
+	op, undoAction, ok := typeChangeOpForKey(key)
+	if !ok {
+		return nil, false
+	}
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	v.setUndoContext(undoAction, task.Title)
+	result := applyTypeChange(v.workflowPersistFn(), v.getProject(), task.ID, op)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+		v.refreshView()
+	}
+	return result.Cmd, true
+}
+
+// handleSharedTaskPrefix handles the t-prefix key sequence shared across
+// primary views: message-only handlers (to, tc, ta, tl, td, tm), action
+// handlers (tn, tN, ts, tt), rename (tr), toggle pinned (tp), and delete (tD).
+// The onRename callback handles view-specific rename entry. focusedTask is the
+// zoom/focus target (may be nil).
+func handleSharedTaskPrefix(
+	key string,
+	v prefixableView,
+	focusedTask *models.Task,
+	onRename func(task *models.Task) tea.Cmd,
+) (tea.Cmd, bool) {
+	task := v.getCursorTask()
+	project := v.getProject()
+
+	// Multi-select getter for shared handlers
+	getMultiTasks := func() []*models.Task {
+		return v.getMultiSelectedTasks()
+	}
+
+	// Try shared message-only handlers first (to, tc, ta, tl, td, tm)
+	if task != nil {
+		if handled, cmd := handleTaskPrefixMsgKey(key, task, project); handled {
+			return cmd, true
+		}
+	}
+
+	// Try shared action handlers (tn, tN, ts, tt)
+	if handled, cmd := handleTaskActionPrefixKey(key, task, project, focusedTask, getMultiTasks); handled {
+		return cmd, true
+	}
+
+	switch key {
+	case "r":
+		if task != nil && onRename != nil {
+			return onRename(task), true
+		}
+		return nil, true
+	case "p":
+		cmd, _ := handleTogglePinnedKey(v)
+		return cmd, true
+	case "D":
+		if dv, ok := v.(deleteConfirmView); ok {
+			handleDeleteConfirmKey(dv)
+		}
+		return nil, true
+	}
+	return nil, false
+}
+
 // primaryViewShouldCaptureEsc checks conditions common to all primary views:
 // pending prefix, confirm dialog, search active, multi-select, quick edit, score filter.
 func primaryViewShouldCaptureEsc(

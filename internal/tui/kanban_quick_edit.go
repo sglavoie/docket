@@ -19,16 +19,6 @@ func (m *KanbanViewModel) handleQuickEditKey() tea.Cmd {
 	return m.quickEdit.Enter(task, false)
 }
 
-// handleRenameKey handles the r key for rename mode.
-func (m *KanbanViewModel) handleRenameKey() tea.Cmd {
-	task := m.getSelectedTask()
-	if task == nil {
-		return nil
-	}
-
-	return m.quickEdit.Enter(task, true)
-}
-
 // handleQuickEditInput handles keyboard input while in quick edit mode.
 func (m *KanbanViewModel) handleQuickEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()

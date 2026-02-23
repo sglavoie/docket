@@ -59,6 +59,16 @@ func handleClipboardKey(key string, getTask func() *models.Task, getMultiTasks f
 	return false, nil
 }
 
+// handleClipboardForPrefixableView handles y/Y/ctrl+y clipboard operations
+// using the prefixableView interface. Returns (handled, cmd).
+func handleClipboardForPrefixableView(key string, v prefixableView) (bool, tea.Cmd) {
+	return handleClipboardKey(key,
+		func() *models.Task { return v.getCursorTask() },
+		func() []*models.Task { return v.getMultiSelectedTasks() },
+		v.clearMultiSelect,
+	)
+}
+
 // clipboardCmd is a convenience wrapper for views without multi-select.
 // It dispatches y/Y/ctrl+y clipboard operations for a single task.
 // Returns (cmd, true) when the key was consumed, or (nil, false) otherwise.

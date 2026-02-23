@@ -26,6 +26,16 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 			m.cursor = len(visible) - 1
 		}
 		return true, nil
+	case "n":
+		if pos := navigateToNextSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
+			m.cursor = pos
+		}
+		return true, nil
+	case "N":
+		if pos := navigateToPrevSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
+			m.cursor = pos
+		}
+		return true, nil
 	case "h":
 		if !m.sidebar.IsFocused() {
 			m.clearActiveSavedView()
@@ -135,6 +145,18 @@ func (m *ProjectTreeModel) handleSelectionKeys(key string, visible []*TreeNode) 
 		return false, nil
 	}
 	return false, nil
+}
+
+// rootNodeIndices returns the indices of root-level (Level == 0) nodes
+// in the visible list, for use with navigateToNextSection/navigateToPrevSection.
+func rootNodeIndices(visible []*TreeNode) []int {
+	var indices []int
+	for i, node := range visible {
+		if node.Level == 0 {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 // JumpToTask moves the cursor to the specified task in the visible list.
