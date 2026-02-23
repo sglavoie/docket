@@ -108,75 +108,17 @@ func (m *TaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return BackMsg{}
 			}
 
-		case "[":
-			// Switch to previous tab
-			m.blurCurrentField()
-			if m.activeTab > 0 {
-				m.activeTab--
-			} else {
-				// Wrap to last available tab
-				if m.currentTypeCanHaveChildren() {
-					m.activeTab = creatorTabSubtasks
-				} else {
-					m.activeTab = creatorTabAttrs
-				}
-			}
-			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
-			m.scrollOffset = 0
-			cmdFocus := m.focusCurrentField()
-			return m, cmdFocus
-
-		case "]":
-			// Switch to next tab
-			m.blurCurrentField()
-			maxTab := creatorTabAttrs
+		case "[", "]":
+			lastTab := creatorTabAttrs
 			if m.currentTypeCanHaveChildren() {
-				maxTab = creatorTabSubtasks
+				lastTab = creatorTabSubtasks
 			}
-			if m.activeTab < maxTab {
-				m.activeTab++
-			} else {
-				m.activeTab = creatorTabFields
-			}
-			m.focusIndex = m.getFirstFocusIndexForTab(m.activeTab)
-			m.scrollOffset = 0
-			cmdFocus := m.focusCurrentField()
-			return m, cmdFocus
+			s := formTabState{&m.activeTab, &m.focusIndex, &m.scrollOffset}
+			return m, handleFormTabSwitch(m, s, creatorTabFields, lastTab, msg.String() == "]")
 
 		case "tab", "shift+tab":
-			// Blur current field
-			m.blurCurrentField()
-
-			// Navigate within current tab
-			tabStart := m.getFirstFocusIndexForTab(m.activeTab)
-			tabCount := m.getFocusCountForTab(m.activeTab)
-
-			if tabCount == 0 {
-				// Empty tab, stay at current position
-				cmdFocus := m.focusCurrentField()
-				return m, cmdFocus
-			}
-
-			// Calculate relative position within tab
-			relIdx := m.focusIndex - tabStart
-			if relIdx < 0 {
-				relIdx = 0
-			}
-
-			if msg.String() == "tab" {
-				relIdx = (relIdx + 1) % tabCount
-			} else {
-				relIdx = (relIdx + tabCount - 1) % tabCount
-			}
-
-			m.focusIndex = tabStart + relIdx
-
-			// Update active tab based on new focus index
-			m.activeTab = m.getTabForFocusIndex(m.focusIndex)
-
-			// Focus new field
-			cmdFocus := m.focusCurrentField()
-			return m, cmdFocus
+			s := formTabState{&m.activeTab, &m.focusIndex, &m.scrollOffset}
+			return m, handleFormTabKey(m, s, msg.String() == "tab")
 
 		case "enter":
 			// For due date field, parse and validate on enter

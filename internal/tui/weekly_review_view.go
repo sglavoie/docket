@@ -32,15 +32,15 @@ func (m *WeeklyReviewModel) View() string {
 	}
 
 	// Tab bar
-	b.WriteString(m.renderTabBar())
-	b.WriteString("\n\n")
+	chrome, chromeLines := renderFullscreenChrome(m.renderTabBar(), "", true)
+	b.WriteString(chrome)
 
 	if m.showingSummary {
 		b.WriteString(m.renderCompletionSummary())
 		return b.String()
 	}
 
-	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + blank(1)
+	contentHeight := fullscreenContentHeight(m.height, chromeLines)
 
 	if m.totalItems == 0 {
 		emptyMsg := "No items in this tab."
@@ -57,9 +57,6 @@ func (m *WeeklyReviewModel) View() string {
 	lines, cursorLineIndex := m.renderAllSections()
 
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
-	b.WriteString("\n\n")
-
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer — progressively shorten when terminal is narrow
 	reviewed := m.reviewedCount()
@@ -78,7 +75,7 @@ func (m *WeeklyReviewModel) View() string {
 	}
 	left := HelpStyle.Render(leftText)
 	right := MutedStyle.Render(rightText)
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
 
 	return b.String()
 }

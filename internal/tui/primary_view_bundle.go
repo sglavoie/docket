@@ -6,8 +6,7 @@ import "github.com/sglavoie/tt/internal/config"
 // (ProjectTree, Kanban, Outliner). Embed this anonymously so that existing
 // references like m.config, m.quickEdit, etc. continue to work unchanged.
 type PrimaryViewBundle struct {
-	config         *config.Config
-	configManager  *config.Manager
+	ViewBundle
 	projectService *ProjectService
 	quickEdit      *QuickEditComponent
 	bulkOp         *BulkOperationComponent
@@ -17,8 +16,10 @@ type PrimaryViewBundle struct {
 // and BulkOp component.
 func NewPrimaryViewBundle(cfg *config.Config, mgr *config.Manager) PrimaryViewBundle {
 	return PrimaryViewBundle{
-		config:         cfg,
-		configManager:  mgr,
+		ViewBundle: ViewBundle{
+			config:        cfg,
+			configManager: mgr,
+		},
 		projectService: NewProjectService(),
 		quickEdit:      NewQuickEditComponent(),
 		bulkOp:         NewBulkOperationComponent(),

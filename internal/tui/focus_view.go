@@ -33,9 +33,8 @@ type ScoredFocusTask = focus.ScoredFocusTask
 type FocusViewModel struct {
 	BaseView
 	InteractiveViewState
+	ViewBundle
 
-	config         *config.Config
-	configManager  *config.Manager
 	projectService *ProjectService
 
 	// Tasks — all actionable tasks from all active projects
@@ -65,8 +64,7 @@ type FocusViewModel struct {
 // NewFocusViewModel creates a new focus view model.
 func NewFocusViewModel(cfg *config.Config, mgr *config.Manager, queue *[]FocusTask, queueIDs map[string]bool, dismissedIDs map[string]bool) *FocusViewModel {
 	m := &FocusViewModel{
-		config:         cfg,
-		configManager:  mgr,
+		ViewBundle:     ViewBundle{config: cfg, configManager: mgr},
 		projectService: NewProjectService(),
 		queue:          queue,
 		queueIDs:       queueIDs,

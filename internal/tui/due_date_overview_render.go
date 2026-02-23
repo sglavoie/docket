@@ -29,17 +29,13 @@ func (m *DueDateOverviewModel) View() string {
 		return b.String()
 	}
 
-	// Tab bar
-	b.WriteString(m.tabs.RenderBar(m.Width()))
-	b.WriteString("\n")
-
-	// Filter badge
-	filterBadge := m.renderActiveFilterIndicator()
-	if filterBadge != "" {
-		b.WriteString(filterBadge)
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
+	// Tab bar + filter badge
+	chrome, chromeLines := renderFullscreenChrome(
+		m.tabs.RenderBar(m.Width()),
+		m.renderActiveFilterIndicator(),
+		true,
+	)
+	b.WriteString(chrome)
 
 	if m.totalTasks == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
@@ -48,25 +44,17 @@ func (m *DueDateOverviewModel) View() string {
 		return b.String()
 	}
 
-	// Calculate available height for task list
-	contentHeight := fullscreenContentHeight(m.Height(), 3) // tab bar(2) + blank(1)
-	if filterBadge != "" {
-		contentHeight--
-	}
-
 	// Render groups with scroll awareness
+	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex)
 
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
-	b.WriteString("\n\n")
-
-	b.WriteString(renderStatusMessages(m.statusMessage, m.Error()))
 
 	// Footer
 	left := HelpStyle.Render("[/] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalTasks))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.Error(), left, right, m.Width()))
 
 	return b.String()
 }

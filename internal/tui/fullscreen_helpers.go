@@ -505,6 +505,43 @@ func renderConfirmAwareStatus(statusMessage string, confirmActive bool) string {
 	return style.Render(statusMessage)
 }
 
+// renderFullscreenChrome renders the tab bar + optional filter badge + trailing
+// blank line that sits between the title and the content area. It returns the
+// rendered string and the number of lines consumed (for content height calc).
+func renderFullscreenChrome(tabBar, filterBadge string, trailingBlank bool) (string, int) {
+	var b strings.Builder
+	b.WriteString(tabBar)
+	b.WriteString("\n")
+
+	if filterBadge != "" {
+		b.WriteString(filterBadge)
+		b.WriteString("\n")
+	}
+	if trailingBlank {
+		b.WriteString("\n")
+	}
+
+	lines := lipgloss.Height(tabBar) // tab bar may wrap to multiple rows
+	if filterBadge != "" {
+		lines++
+	}
+	if trailingBlank {
+		lines++
+	}
+	return b.String(), lines
+}
+
+// renderFullscreenFooterBlock renders the "\n\n" + status messages + footer bar
+// sequence that most fullscreen views share. The caller supplies the status
+// message, error, and the left/right footer strings already styled.
+func renderFullscreenFooterBlock(statusMsg string, err error, footerLeft, footerRight string, width int) string {
+	var b strings.Builder
+	b.WriteString("\n\n")
+	b.WriteString(renderStatusMessages(statusMsg, err))
+	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, width))
+	return b.String()
+}
+
 // renderStatusMessages renders the standard status/error message block used by
 // fullscreen views. Returns an empty string when neither message is set.
 func renderStatusMessages(statusMessage string, err error) string {

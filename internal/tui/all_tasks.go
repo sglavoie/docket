@@ -65,9 +65,8 @@ const (
 type AllTasksViewModel struct {
 	BaseView
 	InteractiveViewState
+	ViewBundle
 
-	config         *config.Config
-	configManager  *config.Manager
 	projectService *ProjectService
 	projectCache   map[string]*models.Project
 
@@ -103,8 +102,7 @@ type AllTasksViewModel struct {
 // NewAllTasksViewModel creates a new all tasks view model.
 func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksViewModel {
 	m := &AllTasksViewModel{
-		config:           cfg,
-		configManager:    mgr,
+		ViewBundle:       ViewBundle{config: cfg, configManager: mgr},
 		projectService:   NewProjectService(),
 		projectCache:     make(map[string]*models.Project),
 		collapsedGroups:  make(map[string]bool),

@@ -38,7 +38,7 @@ func newTestFocusViewModel(cfg *config.Config) *FocusViewModel {
 	queueIDs := make(map[string]bool)
 	dismissedIDs := make(map[string]bool)
 	return &FocusViewModel{
-		config:       cfg,
+		ViewBundle:   ViewBundle{config: cfg},
 		queue:        &queue,
 		queueIDs:     queueIDs,
 		dismissedIDs: dismissedIDs,

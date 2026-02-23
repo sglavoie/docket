@@ -87,6 +87,20 @@ type NotesViewModel struct {
 	statusIsError bool
 }
 
+// handleConfirmKey processes a key when the confirm dialog is active.
+// Returns (confirmed, handled). On cancel, clears the status message.
+// Mirrors InteractiveViewState.HandleConfirmKey for views that don't embed it.
+func (m *NotesViewModel) handleConfirmKey(key string) (confirmed, handled bool) {
+	if !m.confirm.IsActive() {
+		return false, false
+	}
+	c, h := m.confirm.HandleKey(key)
+	if h && !c {
+		m.statusMessage = ""
+	}
+	return c, h
+}
+
 // Tab constants for notes view filtering.
 var noteTabNames = []string{"All", "Pinned", "Recent", "Tagged"}
 

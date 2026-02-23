@@ -35,9 +35,8 @@ const (
 type DueDateOverviewModel struct {
 	BaseView
 	InteractiveViewState
+	ViewBundle
 
-	config         *config.Config
-	configManager  *config.Manager
 	projectService *ProjectService
 
 	// Grouped tasks
@@ -60,8 +59,7 @@ type DueDateOverviewModel struct {
 // NewDueDateOverviewModel creates a new due date overview model.
 func NewDueDateOverviewModel(cfg *config.Config, mgr *config.Manager) *DueDateOverviewModel {
 	m := &DueDateOverviewModel{
-		config:         cfg,
-		configManager:  mgr,
+		ViewBundle:     ViewBundle{config: cfg, configManager: mgr},
 		projectService: NewProjectService(),
 		FilterMixin:    FilterMixin{filter: newFilterState()},
 		tabs:           TabState{Names: dueDateTabNames},

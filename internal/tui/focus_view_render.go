@@ -35,36 +35,27 @@ func (m *FocusViewModel) View() string {
 		return b.String()
 	}
 
-	// Tab bar
-	tabBar := m.renderTabBar()
-	b.WriteString(tabBar)
-	b.WriteString("\n")
-
-	// Filter badge
-	filterBadge := m.renderActiveFilterIndicator()
-	if filterBadge != "" {
-		b.WriteString(filterBadge)
-		b.WriteString("\n")
-	}
+	// Tab bar + filter badge
+	chrome, chromeLines := renderFullscreenChrome(
+		m.renderTabBar(),
+		m.renderActiveFilterIndicator(),
+		false,
+	)
+	b.WriteString(chrome)
 
 	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()
 	if subTabBar != "" {
 		b.WriteString(subTabBar)
 		b.WriteString("\n")
+		chromeLines += lipgloss.Height(subTabBar)
 	}
 
 	// Pre-render status messages so their height is known
 	statusBlock := renderStatusMessages(m.statusMessage, m.err)
 
 	// Calculate available height for task list
-	contentHeight := fullscreenContentHeight(m.height, lipgloss.Height(tabBar)+1) // tab bar + blank
-	if filterBadge != "" {
-		contentHeight--
-	}
-	if subTabBar != "" {
-		contentHeight -= lipgloss.Height(subTabBar)
-	}
+	contentHeight := fullscreenContentHeight(m.height, chromeLines)
 	if statusBlock != "" {
 		contentHeight -= strings.Count(statusBlock, "\n")
 	}
@@ -103,8 +94,8 @@ func (m *FocusViewModel) View() string {
 		scrollCursor = m.cursor * 2
 	}
 	b.WriteString(strings.Join(applyScroll(lines, scrollCursor, contentHeight), "\n"))
-	b.WriteString("\n\n")
 
+	b.WriteString("\n\n")
 	b.WriteString(statusBlock)
 
 	// Footer

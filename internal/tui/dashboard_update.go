@@ -56,14 +56,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ClearSearch()
 				return m, nil
 			}
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(visible)-1 {
-				m.cursor++
-			}
+		case "up", "k", "down", "j", "G", "pgup", "pgdown":
+			handleListNavigation(msg.String(), &m.cursor, len(visible), m.height)
 		case "enter":
 			if CursorInBounds(m.cursor, len(visible)) {
 				return m, func() tea.Msg {
@@ -235,11 +229,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "g":
 			m.pendingPrefix = "g"
-		case "G":
-			// Go to last item (Vim-style)
-			if len(visible) > 0 {
-				m.cursor = len(visible) - 1
-			}
 		}
 	}
 

@@ -33,23 +33,16 @@ func (m *DailyReviewModel) View() string {
 		return b.String()
 	}
 
-	// Tab bar
-	b.WriteString(m.renderReviewTabBar())
-	b.WriteString("\n")
-
-	// Filter badge
-	filterBadge := m.renderActiveFilterIndicator()
-	if filterBadge != "" {
-		b.WriteString(filterBadge)
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
+	// Tab bar + filter badge
+	chrome, chromeLines := renderFullscreenChrome(
+		m.renderReviewTabBar(),
+		m.renderActiveFilterIndicator(),
+		true,
+	)
+	b.WriteString(chrome)
 
 	// Calculate available height for content
-	contentHeight := fullscreenContentHeight(m.height, 3) // tab bar(2) + blank(1)
-	if filterBadge != "" {
-		contentHeight--
-	}
+	contentHeight := fullscreenContentHeight(m.height, chromeLines)
 
 	// Render all sections
 	if m.totalTasks == 0 {
@@ -62,14 +55,11 @@ func (m *DailyReviewModel) View() string {
 	lines, cursorLineIndex := m.renderAllSections()
 
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
-	b.WriteString("\n\n")
-
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	left := HelpStyle.Render("h/j/k/l nav · n/N section · * active · ,s/d/b/x status · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
-	b.WriteString(renderStatusBarFooter(left, right, m.width))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
 
 	return b.String()
 }

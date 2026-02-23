@@ -24,30 +24,26 @@ func (m *AllTasksViewModel) View() string {
 		return b.String()
 	}
 
-	// Tab bar
-	b.WriteString(m.tabs.RenderBar(m.Width()))
-	b.WriteString("\n")
-
-	// Filter badges
-	filterBadge := m.renderActiveFilterIndicator()
-	if filterBadge != "" {
-		b.WriteString(filterBadge)
-		b.WriteString("\n")
-	}
+	// Tab bar + filter badge
+	chrome, chromeLines := renderFullscreenChrome(
+		m.tabs.RenderBar(m.Width()),
+		m.renderActiveFilterIndicator(),
+		false,
+	)
+	b.WriteString(chrome)
 
 	// Grouping indicator
 	if m.groupBy != ATGroupByProject {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf("  Grouped by: %s", m.groupBy)))
 		b.WriteString("\n")
+		chromeLines++
 	}
 
 	b.WriteString("\n")
+	chromeLines++ // trailing blank
 
-	// Calculate available height for task list dynamically.
-	// Count lines already rendered (header area) and reserve space below
-	// for: blank line(1) + status/error(1) + footer separator(1) + footer text(1) = 4
-	headerLines := strings.Count(b.String(), "\n")
-	contentHeight := m.Height() - headerLines - 4
+	// Calculate available height for task list
+	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
 
 	if m.totalNavigableItems() == 0 {
 		b.WriteString(renderFilterAwareEmptyState(m.HasActiveFilters(),
@@ -91,9 +87,6 @@ func (m *AllTasksViewModel) View() string {
 	}
 
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset), "\n"))
-	b.WriteString("\n\n")
-
-	b.WriteString(renderStatusMessages(m.statusMessage, m.err))
 
 	// Footer
 	footerLeft := "j/k nav · [/] tabs · ctrl+g group · ,s/d/b/x status · 1-5 sort · v multi · ? help"
@@ -102,7 +95,7 @@ func (m *AllTasksViewModel) View() string {
 	}
 	left := HelpStyle.Render(footerLeft)
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", m.totalVisibleTaskCount()))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
+	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.Width()))
 
 	return b.String()
 }

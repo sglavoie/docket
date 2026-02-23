@@ -25,8 +25,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handle delete confirmation mode
 		if m.confirm.IsActive() {
 			action := m.confirm.Action()
-			confirmed, handled := m.confirm.HandleKey(key)
-			if handled {
+			if confirmed, handled := m.handleConfirmKey(key); handled {
 				if confirmed {
 					switch action {
 					case "delete":
@@ -37,8 +36,6 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case "bulk-delete":
 						return m, m.performBulkDelete()
 					}
-				} else {
-					m.statusMessage = ""
 				}
 				return m, nil
 			}
@@ -102,24 +99,15 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return CloseGlobalNotesMsg{} }
 			}
 			return m, func() tea.Msg { return CloseNotesMsg{} }
-		case "j", "down":
-			if m.cursor < len(m.notes)-1 {
-				m.cursor++
-				m.detailsPane.ResetScroll()
-			}
-		case "k", "up":
-			if m.cursor > 0 {
-				m.cursor--
+		case "j", "down", "k", "up", "G", "ctrl+u", "pgup", "ctrl+d", "pgdown":
+			prev := m.cursor
+			handleListNavigation(key, &m.cursor, len(m.notes), m.height)
+			if m.cursor != prev {
 				m.detailsPane.ResetScroll()
 			}
 		case "g":
 			m.pendingPrefix = "g"
 			return m, nil
-		case "G":
-			if len(m.notes) > 0 {
-				m.cursor = len(m.notes) - 1
-				m.detailsPane.ResetScroll()
-			}
 		case "V":
 			m.toggleNoteMultiSelectMode()
 			return m, nil

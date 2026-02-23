@@ -5,7 +5,16 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/config"
 )
+
+// ViewBundle groups the config and config manager fields shared by all views.
+// Embed this anonymously so that m.config and m.configManager work unchanged.
+type ViewBundle struct {
+	config        *config.Config
+	configManager *config.Manager
+}
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.

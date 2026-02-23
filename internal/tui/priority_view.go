@@ -54,10 +54,9 @@ const (
 type PriorityViewModel struct {
 	BaseSearchableView
 	InteractiveViewState
+	ViewBundle
 
 	project        *models.Project
-	config         *config.Config
-	configManager  *config.Manager
 	projectService *ProjectService
 
 	// Grouped tasks by urgency
@@ -97,9 +96,8 @@ type PriorityViewModel struct {
 // NewPriorityViewModel creates a new priority view for the given project.
 func NewPriorityViewModel(project *models.Project, cfg *config.Config, mgr *config.Manager) *PriorityViewModel {
 	m := &PriorityViewModel{
+		ViewBundle:         ViewBundle{config: cfg, configManager: mgr},
 		project:            project,
-		config:             cfg,
-		configManager:      mgr,
 		projectService:     NewProjectService(),
 		waitingOnCollapsed: true,
 		dismissedIDs:       make(map[string]bool),

@@ -61,9 +61,7 @@ type WeeklyReviewSelectTaskMsg struct {
 type WeeklyReviewModel struct {
 	BaseView
 	InteractiveViewState
-
-	config        *config.Config
-	configManager *config.Manager
+	ViewBundle
 
 	// Project sections
 	staleProjects []WeeklyReviewProject
@@ -94,8 +92,7 @@ type WeeklyReviewModel struct {
 // NewWeeklyReviewModel creates a new weekly review model.
 func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReviewModel {
 	m := &WeeklyReviewModel{
-		config:            cfg,
-		configManager:     mgr,
+		ViewBundle:        ViewBundle{config: cfg, configManager: mgr},
 		collapsedSections: make(map[int]bool),
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
