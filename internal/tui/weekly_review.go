@@ -379,7 +379,7 @@ func (m *WeeklyReviewModel) escSteps() []EscStep {
 
 // ShouldCaptureEsc returns true when prefix mode, section focus, confirm dialog, or summary is active.
 func (m *WeeklyReviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.showingSummary || AnyEscStepActive(m.escSteps())
+	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps()) || m.showingSummary
 }
 
 func (m *WeeklyReviewModel) viewID() ViewType { return ViewWeeklyReview }

@@ -126,9 +126,26 @@ func (m *RecentActivityModel) HasTextInput() bool {
 	return m.DefaultHasTextInput()
 }
 
+// escSteps defines the Esc dismissal cascade: search → filters.
+func (m *RecentActivityModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
+			m.ClearSearch()
+			m.applyFilter()
+			m.clampCursor()
+		}},
+		FilterClearEscStep(m.HasActiveFilters, func() {
+			m.ClearAllFilters()
+			m.applyFilter()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}),
+	}
+}
+
 // ShouldCaptureEsc returns true when search is active, a query is set, prefix is pending, or filters are active.
 func (m *RecentActivityModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.SearchQuery() != "" || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 func (m *RecentActivityModel) Init() tea.Cmd {
@@ -162,28 +179,8 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	switch msg.String() {
-	case "esc":
-		if m.SearchQuery() != "" {
-			m.ClearSearch()
-			m.applyFilter()
-			m.clampCursor()
-			return m, nil
-		}
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.applyFilter()
-			m.clampCursor()
-			return m, nil
-		}
-		return m, func() tea.Msg {
-			return CloseRecentActivityMsg{}
-		}
-
-	case "q":
-		if m.HasActiveFilters() {
-			m.ClearAllFilters()
-			m.applyFilter()
-			m.clampCursor()
+	case "esc", "q":
+		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
 		return m, func() tea.Msg {

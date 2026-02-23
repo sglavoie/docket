@@ -618,18 +618,18 @@ func (m *FocusViewModel) clampCursor() {
 // escSteps defines the Esc dismissal cascade: filters.
 func (m *FocusViewModel) escSteps() []EscStep {
 	return []EscStep{
-		{Active: m.HasActiveFilters, Clear: func() {
+		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.applyFilter()
 			m.clampCursor()
 			m.statusMessage = "Filters cleared"
-		}},
+		}),
 	}
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *FocusViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
+	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps())
 }
 
 func (m *FocusViewModel) viewID() ViewType { return ViewFocusView }

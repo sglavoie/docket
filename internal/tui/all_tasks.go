@@ -614,21 +614,19 @@ func (m *AllTasksViewModel) clampCursor() {
 // escSteps defines the Esc dismissal cascade: multi-select → filters.
 func (m *AllTasksViewModel) escSteps() []EscStep {
 	return []EscStep{
-		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
-			m.toggleMultiSelectMode()
-		}},
-		{Active: m.HasActiveFilters, Clear: func() {
+		MultiSelectEscStep(func() bool { return m.multiSelectMode }, m.toggleMultiSelectMode),
+		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.applyFiltersAndGroup()
 			m.clampCursor()
 			m.statusMessage = "Filters cleared"
-		}},
+		}),
 	}
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, multi-select, or confirm dialog are active.
 func (m *AllTasksViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
+	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps())
 }
 
 func (m *AllTasksViewModel) viewID() ViewType { return ViewAllTasks }

@@ -253,6 +253,22 @@ func AnyEscStepActive(steps []EscStep) bool {
 	return false
 }
 
+// FilterClearEscStep builds an EscStep that clears filters and refreshes.
+func FilterClearEscStep(hasFilters func() bool, clearAndRefresh func()) EscStep {
+	return EscStep{Active: hasFilters, Clear: clearAndRefresh}
+}
+
+// MultiSelectEscStep builds an EscStep for exiting multi-select mode.
+func MultiSelectEscStep(isActive func() bool, toggle func()) EscStep {
+	return EscStep{Active: isActive, Clear: toggle}
+}
+
+// SecondaryEscCapture returns the ShouldCaptureEsc value for secondary views
+// that follow the DefaultShouldCaptureEsc || AnyEscStepActive pattern.
+func SecondaryEscCapture(ivs *InteractiveViewState, steps []EscStep) bool {
+	return ivs.DefaultShouldCaptureEsc() || AnyEscStepActive(steps)
+}
+
 // helpCmd returns a tea.Cmd that emits a ShowHelpMsg.
 func helpCmd(source ViewType, name string, items []HelpItem) tea.Cmd {
 	return func() tea.Msg {

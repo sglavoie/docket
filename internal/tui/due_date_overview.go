@@ -398,18 +398,18 @@ func (m *DueDateOverviewModel) clampCursor() {
 // escSteps defines the Esc dismissal cascade: filters.
 func (m *DueDateOverviewModel) escSteps() []EscStep {
 	return []EscStep{
-		{Active: m.HasActiveFilters, Clear: func() {
+		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.loadTasksWithDueDates()
 			m.clampCursor()
 			m.statusMessage = "Filters cleared"
-		}},
+		}),
 	}
 }
 
 // ShouldCaptureEsc returns true when prefix mode, filters, or confirm dialog are active.
 func (m *DueDateOverviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
+	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps())
 }
 
 // GetHelpItems returns help items for this view.

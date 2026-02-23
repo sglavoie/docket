@@ -276,18 +276,18 @@ func (m *DailyReviewModel) escSteps() []EscStep {
 			m.calculateNavigation()
 			m.clampCursor()
 		}},
-		{Active: m.HasActiveFilters, Clear: func() {
+		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.loadTasks()
 			m.clampCursor()
 			m.statusMessage = "Filters cleared"
-		}},
+		}),
 	}
 }
 
 // ShouldCaptureEsc returns true when prefix mode, section focus, filters, or confirm dialog are active.
 func (m *DailyReviewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
+	return SecondaryEscCapture(&m.InteractiveViewState, m.escSteps())
 }
 
 func (m *DailyReviewModel) viewID() ViewType { return ViewDailyReview }

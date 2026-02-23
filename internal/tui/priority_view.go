@@ -133,9 +133,26 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// escSteps defines the Esc dismissal cascade: search → filters.
+func (m *PriorityViewModel) escSteps() []EscStep {
+	return []EscStep{
+		{Active: func() bool { return m.SearchQuery() != "" }, Clear: func() {
+			m.ClearSearch()
+			m.recalculateNavigation()
+			m.clampCursor()
+		}},
+		FilterClearEscStep(m.HasActiveFilters, func() {
+			m.ClearAllFilters()
+			m.loadActionableTasks()
+			m.clampCursor()
+			m.statusMessage = "Filters cleared"
+		}),
+	}
+}
+
 // ShouldCaptureEsc returns true when the priority view is in prefix mode, confirm dialog, search mode, or filters are active.
 func (m *PriorityViewModel) ShouldCaptureEsc() bool {
-	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || m.SearchQuery() != "" || m.HasActiveFilters()
+	return m.DefaultShouldCaptureEsc() || m.SearchShouldCaptureEsc() || AnyEscStepActive(m.escSteps())
 }
 
 // HasTextInput returns true when the search input is active.
