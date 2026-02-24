@@ -474,6 +474,16 @@ func (m *BulkEditModel) ensureFocusedFieldVisible() {
 	}
 }
 
+// HasTextInput returns true when a text input field is active.
+func (m *BulkEditModel) HasTextInput() bool {
+	return m.tagMode == 1 || m.dueDateInputMode
+}
+
+// ShouldCaptureEsc returns true when the view needs to handle esc internally.
+func (m *BulkEditModel) ShouldCaptureEsc() bool {
+	return m.tagMode == 1 || m.tagMode == 2 || m.dueDateInputMode
+}
+
 // Init initializes the model.
 func (m *BulkEditModel) Init() tea.Cmd {
 	return nil

@@ -346,4 +346,7 @@ func (m *ProjectEditorModel) View() string {
 	return out.String()
 }
 
-func (m *ProjectEditorModel) StatusBarLabel() string { return "Edit Project" }
+func (m *ProjectEditorModel) HasTextInput() bool     { return true }
+func (m *ProjectEditorModel) ShouldCaptureEsc() bool  { return true }
+func (m *ProjectEditorModel) IsFullHeight() bool      { return false }
+func (m *ProjectEditorModel) StatusBarLabel() string   { return "Edit Project" }
