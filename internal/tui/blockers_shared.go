@@ -623,20 +623,12 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 			b.WriteString("\n\n")
 
 			if blocker.Description != "" {
-				maxLen := s.width - 4
-				if maxLen < 40 {
-					maxLen = 40
+				renderWidth := s.width - 4
+				if renderWidth < 40 {
+					renderWidth = 40
 				}
-				lines := strings.Split(blocker.Description, "\n")
-				for _, line := range lines {
-					for len(line) > maxLen {
-						b.WriteString(line[:maxLen])
-						b.WriteString("\n")
-						line = line[maxLen:]
-					}
-					b.WriteString(line)
-					b.WriteString("\n")
-				}
+				b.WriteString(renderMarkdown(blocker.Description, renderWidth))
+				b.WriteString("\n")
 			} else {
 				b.WriteString(MutedStyle.Render("No description."))
 				b.WriteString("\n")

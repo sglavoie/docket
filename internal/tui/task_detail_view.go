@@ -270,9 +270,31 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, maxWidth int) string {
 		projectLabel, task.ShortID, depStatus.Render(task.Status.Icon()), task.Title)
 }
 
+// renderMarkdownDescription renders the task description as styled markdown.
+func (m *TaskDetailModel) renderMarkdownDescription(contentWidth int) string {
+	if m.task.Description == "" {
+		return ""
+	}
+
+	innerWidth := contentWidth - CardBorderOverhead
+	if innerWidth < 10 {
+		innerWidth = 10
+	}
+
+	// Return cached result if width hasn't changed
+	if m.renderedDesc != "" && m.renderedDescWidth == innerWidth {
+		return m.renderedDesc
+	}
+
+	m.renderedDesc = renderMarkdown(m.task.Description, innerWidth)
+	m.renderedDescWidth = innerWidth
+	return m.renderedDesc
+}
+
 // renderDescriptionSection renders the full task description.
 func (m *TaskDetailModel) renderDescriptionSection(width int) string {
-	return renderCard("Description", m.task.Description, width, DefaultCardConfig())
+	content := m.renderMarkdownDescription(width)
+	return renderCard("Description", content, width, DefaultCardConfig())
 }
 
 // renderCommentsSection renders all comments with timestamps.
@@ -289,10 +311,11 @@ func (m *TaskDetailModel) renderCommentsSection(width int) string {
 			timestampLine += " [resolved]"
 		}
 		lines = append(lines, MutedStyle.Render(timestampLine))
+		rendered := renderMarkdown(comment.Text, width-CardBorderOverhead)
 		if comment.Resolved {
-			lines = append(lines, MutedStyle.Render(comment.Text))
+			lines = append(lines, MutedStyle.Render(rendered))
 		} else {
-			lines = append(lines, comment.Text)
+			lines = append(lines, rendered)
 		}
 	}
 

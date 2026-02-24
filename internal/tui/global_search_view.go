@@ -423,19 +423,15 @@ func (m *GlobalSearchModel) renderPreview() string {
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
 
-		// Truncate description to fit preview
+		rendered := renderMarkdown(task.Description, m.previewWidth-2)
 		maxLines := m.Height() - 20
 		if maxLines < 3 {
 			maxLines = 3
 		}
-		lines := strings.Split(task.Description, "\n")
+		lines := strings.Split(rendered, "\n")
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 			lines = append(lines, "...")
-		}
-		// Truncate each line to fit preview width
-		for i, line := range lines {
-			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
 		b.WriteString(strings.Join(lines, "\n"))
 	}
@@ -453,7 +449,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		if len(text) > 300 {
 			text = text[:300] + "..."
 		}
-		b.WriteString(text)
+		b.WriteString(renderMarkdown(text, m.previewWidth-2))
 		b.WriteString("\n")
 	}
 

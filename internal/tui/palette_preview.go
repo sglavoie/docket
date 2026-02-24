@@ -439,7 +439,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(task.Description))
+		b.WriteString(renderMarkdown(task.Description, m.previewWidth-2))
 		b.WriteString("\n")
 	}
 
@@ -857,7 +857,7 @@ func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Content"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(strings.TrimSpace(note.Body)))
+		b.WriteString(renderMarkdown(strings.TrimSpace(note.Body), m.previewWidth-2))
 		b.WriteString("\n")
 	}
 

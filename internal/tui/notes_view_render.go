@@ -310,24 +310,11 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 
 	lines = append(lines, "")
 
-	// Body: wrap lines to width
+	// Body: render as markdown
 	if note.Body != "" {
-		bodyLines := strings.Split(note.Body, "\n")
-		for _, bl := range bodyLines {
-			if len(bl) <= width && width > 0 {
-				lines = append(lines, bl)
-			} else if width > 0 {
-				// Word wrap; forces break when no space found (e.g. URLs)
-				for len(bl) > width {
-					cut := width
-					if idx := strings.LastIndex(bl[:cut], " "); idx > 0 {
-						cut = idx + 1
-					}
-					lines = append(lines, bl[:cut])
-					bl = bl[cut:]
-				}
-				lines = append(lines, bl)
-			}
+		rendered := renderMarkdown(note.Body, width)
+		for _, rl := range strings.Split(rendered, "\n") {
+			lines = append(lines, rl)
 		}
 	}
 

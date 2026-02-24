@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -18,17 +19,25 @@ type TaskDetailModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	scrollOffset int
-	totalLines   int
+	scrollOffset      int
+	totalLines        int
+	mdRenderer        *glamour.TermRenderer
+	renderedDesc      string
+	renderedDescWidth int
 }
 
 // NewTaskDetailModel creates a new task detail view.
 func NewTaskDetailModel(task *models.Task, project *models.Project, cfg *config.Config, mgr *config.Manager) *TaskDetailModel {
+	renderer, _ := glamour.NewTermRenderer(
+		glamour.WithStylePath("dark"),
+		glamour.WithWordWrap(0),
+	)
 	return &TaskDetailModel{
 		task:          task,
 		project:       project,
 		config:        cfg,
 		configManager: mgr,
+		mdRenderer:    renderer,
 	}
 }
 
@@ -45,6 +54,7 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Task != nil {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
+				m.renderedDesc = ""
 			}
 		}
 		return m, nil
@@ -52,6 +62,7 @@ func (m *TaskDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Task != nil {
 			if fresh := m.project.GetTaskByID(msg.Task.ID); fresh != nil {
 				m.task = fresh
+				m.renderedDesc = ""
 			}
 		}
 		return m, nil

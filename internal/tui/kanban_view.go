@@ -635,7 +635,12 @@ func (m *KanbanViewModel) renderDetailsDepsCard(task *models.Task, width int) st
 
 // renderDetailsDescriptionCard renders the description card.
 func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width, availableHeight int) string {
-	lines := strings.Split(task.Description, "\n")
+	innerWidth := width - CardBorderOverhead
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+	rendered := renderMarkdown(task.Description, innerWidth)
+	lines := strings.Split(rendered, "\n")
 
 	// Render with all visible lines, then iteratively reduce until the card
 	// fits within availableHeight. This accounts for text wrapping by lipgloss.
@@ -645,9 +650,9 @@ func (m *KanbanViewModel) renderDetailsDescriptionCard(task *models.Task, width,
 		if count < len(lines) {
 			content += "\n" + MutedStyle.Render("...")
 		}
-		rendered := renderSidebarCard("Description", content, width, false, "")
-		if lipgloss.Height(rendered) <= availableHeight {
-			return rendered
+		cardRendered := renderSidebarCard("Description", content, width, false, "")
+		if lipgloss.Height(cardRendered) <= availableHeight {
+			return cardRendered
 		}
 		count--
 	}

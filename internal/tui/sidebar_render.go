@@ -308,10 +308,15 @@ func renderSidebarCommentsCard(task *models.Task, width int) string {
 			timestampLine += " [resolved]"
 		}
 		lines = append(lines, MutedStyle.Render(timestampLine))
+		innerWidth := width - CardBorderOverhead
+		if innerWidth < 20 {
+			innerWidth = 20
+		}
+		rendered := renderMarkdown(comment.Text, innerWidth)
 		if comment.Resolved {
-			lines = append(lines, MutedStyle.Render(comment.Text))
+			lines = append(lines, MutedStyle.Render(rendered))
 		} else {
-			lines = append(lines, comment.Text)
+			lines = append(lines, rendered)
 		}
 	}
 
@@ -345,7 +350,12 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 
 // renderSidebarDescriptionCard renders the description card.
 func renderSidebarDescriptionCard(task *models.Task, width int) string {
-	lines := strings.Split(task.Description, "\n")
+	innerWidth := width - CardBorderOverhead
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+	rendered := renderMarkdown(task.Description, innerWidth)
+	lines := strings.Split(rendered, "\n")
 	maxLines := 5
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]

@@ -637,20 +637,12 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(MutedStyle.Render(timestamp))
 		b.WriteString("\n\n")
 
-		maxLen := contentWidth
-		if maxLen < 40 {
-			maxLen = 40
+		renderWidth := contentWidth
+		if renderWidth < 40 {
+			renderWidth = 40
 		}
-		lines := strings.Split(comment.Text, "\n")
-		for _, line := range lines {
-			for len(line) > maxLen {
-				b.WriteString(line[:maxLen])
-				b.WriteString("\n")
-				line = line[maxLen:]
-			}
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
+		b.WriteString(renderMarkdown(comment.Text, renderWidth))
+		b.WriteString("\n")
 
 		b.WriteString("\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close expanded view"), "", m.Width()))
@@ -759,10 +751,11 @@ func (m *TaskCommentsModel) View() string {
 			}
 			entry.WriteString("\n")
 
-			commentLines := strings.Split(comment.Text, "\n")
-			for j, line := range commentLines {
+			rendered := renderMarkdown(comment.Text, maxLen)
+			renderedLines := strings.Split(rendered, "\n")
+			for j, line := range renderedLines {
 				if j > 1 {
-					remaining := len(commentLines) - 2
+					remaining := len(renderedLines) - 2
 					entry.WriteString(fmt.Sprintf("      ... (%d more lines, press Enter to expand)\n", remaining))
 					break
 				}

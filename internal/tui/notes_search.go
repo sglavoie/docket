@@ -564,11 +564,8 @@ func (m *NotesSearchModel) renderPreview() string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Content"))
 		b.WriteString("\n")
-		body := note.Body
-		if len(body) > 500 {
-			body = body[:500] + "..."
-		}
-		lines := strings.Split(body, "\n")
+		rendered := renderMarkdown(note.Body, m.previewWidth-2)
+		lines := strings.Split(rendered, "\n")
 		maxLines := m.height - 15
 		if maxLines < 3 {
 			maxLines = 3
@@ -576,9 +573,6 @@ func (m *NotesSearchModel) renderPreview() string {
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 			lines = append(lines, "...")
-		}
-		for i, line := range lines {
-			lines[i] = util.Truncate(line, m.previewWidth-2)
 		}
 		b.WriteString(strings.Join(lines, "\n"))
 	}

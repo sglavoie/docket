@@ -228,7 +228,7 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.width - 2).Render(task.Description))
+		b.WriteString(renderMarkdown(task.Description, m.width-2))
 		b.WriteString("\n")
 	}
 

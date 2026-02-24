@@ -143,8 +143,8 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 	// Description: always reserve 3 lines for consistent box height
 	descLines := make([]string, 3)
 	if task.Description != "" {
-		wrapped := lipgloss.NewStyle().Width(inner).Render(task.Description)
-		lines := strings.Split(wrapped, "\n")
+		rendered := renderMarkdown(task.Description, inner)
+		lines := strings.Split(rendered, "\n")
 		if len(lines) > 3 {
 			lines = lines[:3]
 			lines[2] = util.Truncate(lines[2], inner-3) + "..."
