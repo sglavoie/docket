@@ -143,7 +143,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 		if len(rules) > 0 {
 			var result *workflow.EvaluationResult
 			if opts.PrevStates != nil {
-				evalCtx := buildEvaluationContext(opts.Project.Tasks, opts.PrevStates)
+				evalCtx := buildEvaluationContext(opts.Project.Tasks, opts.PrevStates, opts.Project.Name, opts.Project.ID)
 				result = workflow.EvaluateRulesWithContext(evalCtx, rules)
 			} else {
 				result = workflow.EvaluateRules(opts.Project.Tasks, rules)
@@ -151,6 +151,23 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 			if len(result.Conflicts) > 0 {
 				_ = result.Conflicts
 			}
+
+			// Process follow-up tasks created by create_followup actions
+			for _, followup := range result.NewFollowupTasks {
+				followup.ShortID = opts.Project.GetNextShortID()
+				opts.Project.Tasks = append(opts.Project.Tasks, followup)
+			}
+			if len(result.NewFollowupTasks) > 0 {
+				opts.Project.BuildTaskTree()
+			}
+
+			// Process deferred moves (move tasks to other projects)
+			if len(result.DeferredMoves) > 0 {
+				if err := processTUIDeferredMoves(opts.Persister, opts.Project, result.DeferredMoves, opts.Config); err != nil {
+					return fmt.Errorf("workflow move_to_project failed: %w", err)
+				}
+			}
+
 			if len(result.RuleTriggerCounts) > 0 && opts.ConfigManager != nil {
 				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
 				_ = opts.ConfigManager.Save(opts.Config)
@@ -171,6 +188,53 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 		return fmt.Errorf("failed to save project: %w", err)
 	}
 	_ = opts.Persister.Load(opts.Project)
+	return nil
+}
+
+// processTUIDeferredMoves handles move_to_project actions in the TUI context.
+// It transfers tasks from the source project to destination projects.
+func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config) error {
+	for _, move := range moves {
+		destProject := cfg.GetProject(move.Destination)
+		if destProject == nil {
+			return fmt.Errorf("destination project %q not found", move.Destination)
+		}
+
+		if err := storage.LoadProject(destProject); err != nil {
+			return fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
+		}
+
+		// Find and remove the task from source
+		var movedTask *models.Task
+		var remaining []*models.Task
+		for _, t := range srcProject.Tasks {
+			if t.ID == move.TaskID {
+				movedTask = t
+			} else {
+				remaining = append(remaining, t)
+			}
+		}
+		if movedTask == nil {
+			continue
+		}
+
+		srcProject.Tasks = remaining
+		srcProject.BuildTaskTree()
+
+		movedTask.ShortID = destProject.GetNextShortID()
+		movedTask.ParentID = nil
+		movedTask.Parent = nil
+		movedTask.Children = nil
+		destProject.Tasks = append(destProject.Tasks, movedTask)
+		destProject.BuildTaskTree()
+
+		if err := storage.BackupProject(destProject); err != nil {
+			return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
+		}
+		if err := storage.SaveProject(destProject); err != nil {
+			return fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
+		}
+	}
 	return nil
 }
 

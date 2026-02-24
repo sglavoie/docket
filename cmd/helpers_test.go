@@ -494,10 +494,17 @@ func TestBuildEvaluationContext(t *testing.T) {
 		}
 
 		tasks := []*models.Task{task1, task2}
-		ctx := BuildEvaluationContext(tasks, prevStates)
+		ctx := BuildEvaluationContext(tasks, prevStates, "TestProject", "proj-123")
 
 		if ctx == nil {
 			t.Fatal("BuildEvaluationContext() returned nil")
+		}
+
+		if ctx.ProjectName != "TestProject" {
+			t.Errorf("ctx.ProjectName = %s, want TestProject", ctx.ProjectName)
+		}
+		if ctx.ProjectID != "proj-123" {
+			t.Errorf("ctx.ProjectID = %s, want proj-123", ctx.ProjectID)
 		}
 
 		if len(ctx.Changes) != 2 {
@@ -542,7 +549,7 @@ func TestBuildEvaluationContext(t *testing.T) {
 		task := testutil.NewTestTaskWithStatus("Task", models.StatusTodo)
 		tasks := []*models.Task{task}
 
-		ctx := BuildEvaluationContext(tasks, map[string]*models.Task{})
+		ctx := BuildEvaluationContext(tasks, map[string]*models.Task{}, "", "")
 
 		if len(ctx.Changes) != 1 {
 			t.Fatalf("ctx.Changes length = %d, want 1", len(ctx.Changes))

@@ -30,7 +30,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	}
 
 	// Tab bar
-	tabs := []string{"Triggers", "Actions"}
+	tabs := []string{"Triggers", "Actions", "Scope"}
 	tabBar := RenderTabBar(tabs, m.activeTab, m.width, 1)
 
 	// Calculate available height for editor content
@@ -168,10 +168,13 @@ func (m *WorkflowRuleCreatorModel) renderEditorPane() string {
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n\n")
 
-	if m.activeTab == tabTriggers {
+	switch m.activeTab {
+	case tabTriggers:
 		b.WriteString(m.renderTriggersSection(section, itemIdx, fieldIdx))
-	} else {
+	case tabActions:
 		b.WriteString(m.renderActionsSection(section, itemIdx, fieldIdx))
+	case tabScope:
+		b.WriteString(m.renderScopeSection(section, fieldIdx))
 	}
 
 	// Error display
@@ -319,6 +322,45 @@ func (m *WorkflowRuleCreatorModel) renderActionsSection(section string, itemIdx,
 	return b.String()
 }
 
+// renderScopeSection renders the scope form fields.
+func (m *WorkflowRuleCreatorModel) renderScopeSection(section string, fieldIdx int) string {
+	var b strings.Builder
+
+	b.WriteString(BoldStyle.Render("Rule Scope"))
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("  Leave empty for no restriction"))
+	b.WriteString("\n\n")
+
+	// Projects input
+	projLabel := "  Projects: "
+	if section == "scope" && fieldIdx == 0 {
+		projLabel = "  " + FieldLabelFocusedStyle.Render("Projects: ")
+	}
+	b.WriteString(projLabel)
+	b.WriteString(m.scopeProjectsInput.View())
+	b.WriteString("\n\n")
+
+	// Types input
+	typesLabel := "  Types: "
+	if section == "scope" && fieldIdx == 1 {
+		typesLabel = "  " + FieldLabelFocusedStyle.Render("Types: ")
+	}
+	b.WriteString(typesLabel)
+	b.WriteString(m.scopeTypesInput.View())
+	b.WriteString("\n\n")
+
+	// Sections input
+	sectLabel := "  Sections: "
+	if section == "scope" && fieldIdx == 2 {
+		sectLabel = "  " + FieldLabelFocusedStyle.Render("Sections: ")
+	}
+	b.WriteString(sectLabel)
+	b.WriteString(m.scopeSectionsInput.View())
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 // renderPreviewPane renders the rule preview on the right side.
 func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 	var b strings.Builder
@@ -429,7 +471,30 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 		b.WriteString("\n")
 	}
 
+	// Render scope if any fields are set
+	scopeStr := m.buildScopePreviewString()
+	if scopeStr != "" {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Scope: " + scopeStr))
+		b.WriteString("\n")
+	}
+
 	return lipgloss.NewStyle().Width(width).Render(b.String())
+}
+
+// buildScopePreviewString returns a summary of scope settings for preview display.
+func (m *WorkflowRuleCreatorModel) buildScopePreviewString() string {
+	var parts []string
+	if v := strings.TrimSpace(m.scopeProjectsInput.Value()); v != "" {
+		parts = append(parts, "projects=["+v+"]")
+	}
+	if v := strings.TrimSpace(m.scopeTypesInput.Value()); v != "" {
+		parts = append(parts, "types=["+v+"]")
+	}
+	if v := strings.TrimSpace(m.scopeSectionsInput.Value()); v != "" {
+		parts = append(parts, "sections=["+v+"]")
+	}
+	return strings.Join(parts, ", ")
 }
 
 // renderFullscreenPreview renders the preview as a fullscreen view for narrow screens.

@@ -30,13 +30,32 @@ func copyTaskState(task *models.Task) *models.Task {
 	tagsCopy := make([]string, len(task.Tags))
 	copy(tagsCopy, task.Tags)
 
+	// Copy recurrence if present
+	var recurrenceCopy *models.RecurrencePattern
+	if task.Recurrence != nil {
+		recurrenceCopy = &models.RecurrencePattern{
+			Interval:  task.Recurrence.Interval,
+			Unit:      task.Recurrence.Unit,
+			Skipped:   task.Recurrence.Skipped,
+			Streak:    task.Recurrence.Streak,
+			MaxStreak: task.Recurrence.MaxStreak,
+		}
+		if len(task.Recurrence.Weekdays) > 0 {
+			recurrenceCopy.Weekdays = make([]int, len(task.Recurrence.Weekdays))
+			copy(recurrenceCopy.Weekdays, task.Recurrence.Weekdays)
+		}
+	}
+
 	return &models.Task{
-		ID:       task.ID,
-		Status:   task.Status,
-		Priority: task.Priority,
-		Section:  task.Section,
-		Tags:     tagsCopy,
-		Type:     task.Type,
+		ID:          task.ID,
+		Status:      task.Status,
+		Priority:    task.Priority,
+		Section:     task.Section,
+		Tags:        tagsCopy,
+		Type:        task.Type,
+		DueDate:     task.DueDate,
+		Description: task.Description,
+		Recurrence:  recurrenceCopy,
 		// Preserve parent/child relationships for hierarchical triggers
 		Parent:   task.Parent,
 		Children: task.Children,
@@ -45,7 +64,8 @@ func copyTaskState(task *models.Task) *models.Task {
 }
 
 // BuildEvaluationContext creates an evaluation context for workflow rules.
-func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task) *workflow.EvaluationContext {
+// projectName and projectID are used for scope matching on rules.
+func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string) *workflow.EvaluationContext {
 	changes := make([]workflow.TaskChangeContext, len(tasks))
 	taskMap := make(map[string]*models.Task, len(tasks))
 
@@ -58,9 +78,11 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 	}
 
 	return &workflow.EvaluationContext{
-		Changes:  changes,
-		AllTasks: tasks,
-		TaskMap:  taskMap,
+		Changes:     changes,
+		AllTasks:    tasks,
+		TaskMap:     taskMap,
+		ProjectName: projectName,
+		ProjectID:   projectID,
 	}
 }
 
@@ -160,6 +182,9 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 		workflow.FieldStatusChanged: true, workflow.FieldSectionChanged: true,
 		workflow.FieldPriorityChanged: true, workflow.FieldTagAdded: true,
 		workflow.FieldTagRemoved: true, workflow.FieldCompleted: true, workflow.FieldReopened: true,
+		workflow.FieldDueDateChanged: true, workflow.FieldTypeChanged: true,
+		workflow.FieldRecurrenceCompleted: true, workflow.FieldStreakBroken: true,
+		workflow.FieldHasDueDate: true, workflow.FieldHasTags: true, workflow.FieldDescriptionEmpty: true,
 		workflow.FieldParentStatus: true, workflow.FieldParentType: true, workflow.FieldParentTags: true,
 		workflow.FieldLevel: true, workflow.FieldHasChildren: true, workflow.FieldChildrenProgress: true,
 		workflow.FieldAllChildrenDone: true, workflow.FieldIsBlocked: true, workflow.FieldBlockerCount: true,
@@ -335,11 +360,73 @@ func formatGitStyleDiff(before, after *workflow.WorkflowRule) string {
 		}
 	}
 
+	// Scope changes
+	if !scopesEqual(before.Scope, after.Scope) {
+		lines = append(lines, "")
+		if before.Scope != nil {
+			lines = append(lines, fmt.Sprintf("- Scope: %s", formatScope(before.Scope)))
+		} else {
+			lines = append(lines, "- Scope: (none)")
+		}
+		if after.Scope != nil {
+			lines = append(lines, fmt.Sprintf("+ Scope: %s", formatScope(after.Scope)))
+		} else {
+			lines = append(lines, "+ Scope: (none)")
+		}
+	}
+
 	if len(lines) == 0 {
 		return "(no changes)"
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// scopesEqual compares two RuleScope pointers for equality.
+func scopesEqual(a, b *workflow.RuleScope) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return slicesEqual(a.Projects, b.Projects) &&
+		slicesEqual(a.Types, b.Types) &&
+		slicesEqual(a.Sections, b.Sections)
+}
+
+// slicesEqual compares two string slices for equality.
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// formatScope returns a human-readable representation of a RuleScope.
+func formatScope(s *workflow.RuleScope) string {
+	if s == nil {
+		return "all"
+	}
+	var parts []string
+	if len(s.Projects) > 0 {
+		parts = append(parts, fmt.Sprintf("projects=[%s]", strings.Join(s.Projects, ", ")))
+	}
+	if len(s.Types) > 0 {
+		parts = append(parts, fmt.Sprintf("types=[%s]", strings.Join(s.Types, ", ")))
+	}
+	if len(s.Sections) > 0 {
+		parts = append(parts, fmt.Sprintf("sections=[%s]", strings.Join(s.Sections, ", ")))
+	}
+	if len(parts) == 0 {
+		return "all"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // triggersEqual compares two trigger slices for equality.
@@ -402,6 +489,19 @@ func collectValidationErrors(rule *workflow.WorkflowRule) []string {
 	}
 
 	return errors
+}
+
+// buildScopeFromFlags creates a RuleScope from CLI flag values.
+// Returns nil if all slices are empty (no restriction).
+func buildScopeFromFlags(projects, types, sections []string) *workflow.RuleScope {
+	if len(projects) == 0 && len(types) == 0 && len(sections) == 0 {
+		return nil
+	}
+	return &workflow.RuleScope{
+		Projects: projects,
+		Types:    types,
+		Sections: sections,
+	}
 }
 
 // requireYesFlag checks if --yes flag is provided and returns an error if not.

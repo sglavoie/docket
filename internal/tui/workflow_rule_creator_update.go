@@ -73,20 +73,20 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "[":
-			// Switch to Triggers tab
-			if m.activeTab != tabTriggers {
+			// Switch to previous tab
+			if m.activeTab > tabTriggers {
 				m.blurCurrentField()
-				m.activeTab = tabTriggers
+				m.activeTab--
 				m.focusIndex = 0
 				m.focusCurrentField()
 			}
 			return m, nil
 
 		case "]":
-			// Switch to Actions tab
-			if m.activeTab != tabActions {
+			// Switch to next tab
+			if m.activeTab < tabScope {
 				m.blurCurrentField()
-				m.activeTab = tabActions
+				m.activeTab++
 				m.focusIndex = 0
 				m.focusCurrentField()
 			}
@@ -225,6 +225,15 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if fieldIdx == 1 && itemIdx < len(m.actions) {
 			m.actions[itemIdx].valueInput, cmd = m.actions[itemIdx].valueInput.Update(msg)
 		}
+	case "scope":
+		switch fieldIdx {
+		case 0:
+			m.scopeProjectsInput, cmd = m.scopeProjectsInput.Update(msg)
+		case 1:
+			m.scopeTypesInput, cmd = m.scopeTypesInput.Update(msg)
+		case 2:
+			m.scopeSectionsInput, cmd = m.scopeSectionsInput.Update(msg)
+		}
 	}
 
 	return m, cmd
@@ -240,6 +249,8 @@ func (m *WorkflowRuleCreatorModel) isInTextInput() bool {
 		return fieldIdx == 2 // value input
 	case "action":
 		return fieldIdx == 1 // value input
+	case "scope":
+		return true // all scope fields are text inputs
 	}
 	return false
 }
@@ -258,6 +269,15 @@ func (m *WorkflowRuleCreatorModel) blurCurrentField() {
 		if fieldIdx == 1 && itemIdx < len(m.actions) {
 			m.actions[itemIdx].valueInput.Blur()
 		}
+	case "scope":
+		switch fieldIdx {
+		case 0:
+			m.scopeProjectsInput.Blur()
+		case 1:
+			m.scopeTypesInput.Blur()
+		case 2:
+			m.scopeSectionsInput.Blur()
+		}
 	}
 }
 
@@ -274,6 +294,15 @@ func (m *WorkflowRuleCreatorModel) focusCurrentField() {
 	case "action":
 		if fieldIdx == 1 && itemIdx < len(m.actions) {
 			m.actions[itemIdx].valueInput.Focus()
+		}
+	case "scope":
+		switch fieldIdx {
+		case 0:
+			m.scopeProjectsInput.Focus()
+		case 1:
+			m.scopeTypesInput.Focus()
+		case 2:
+			m.scopeSectionsInput.Focus()
 		}
 	}
 }
@@ -342,41 +371,42 @@ func (m *WorkflowRuleCreatorModel) handleRight() tea.Cmd {
 
 // handleUp moves to the previous item (trigger or action).
 func (m *WorkflowRuleCreatorModel) handleUp() tea.Cmd {
-	section, itemIdx, _ := m.getFocusSection()
+	section, itemIdx, fieldIdx := m.getFocusSection()
 	m.blurCurrentField()
 
 	switch section {
 	case "name":
-		// Already at top, wrap to last item or logic
-		if m.activeTab == tabTriggers {
+		// Already at top, wrap to last item
+		switch m.activeTab {
+		case tabTriggers:
 			if len(m.triggers) > 1 {
-				// Go to logic toggle
 				m.focusIndex = 1 + len(m.triggers)*3
 			} else {
-				// Go to last trigger's first field
 				m.focusIndex = 1
 			}
-		} else {
-			// Go to last action's first field
+		case tabActions:
 			m.focusIndex = 1 + (len(m.actions)-1)*2
+		case tabScope:
+			m.focusIndex = 3 // last scope field (sections)
 		}
 	case "trigger":
 		if itemIdx > 0 {
-			// Go to previous trigger's first field
 			m.focusIndex = 1 + (itemIdx-1)*3
 		} else {
-			// Go to name
 			m.focusIndex = 0
 		}
 	case "logic":
-		// Go to last trigger's first field
 		m.focusIndex = 1 + (len(m.triggers)-1)*3
 	case "action":
 		if itemIdx > 0 {
-			// Go to previous action's first field
 			m.focusIndex = 1 + (itemIdx-1)*2
 		} else {
-			// Go to name
+			m.focusIndex = 0
+		}
+	case "scope":
+		if fieldIdx > 0 {
+			m.focusIndex = fieldIdx // move up within scope fields
+		} else {
 			m.focusIndex = 0
 		}
 	}
@@ -388,33 +418,32 @@ func (m *WorkflowRuleCreatorModel) handleUp() tea.Cmd {
 
 // handleDown moves to the next item (trigger or action).
 func (m *WorkflowRuleCreatorModel) handleDown() tea.Cmd {
-	section, itemIdx, _ := m.getFocusSection()
+	section, itemIdx, fieldIdx := m.getFocusSection()
 	m.blurCurrentField()
 
 	switch section {
 	case "name":
-		// Go to first item's first field
 		m.focusIndex = 1
 	case "trigger":
 		if itemIdx < len(m.triggers)-1 {
-			// Go to next trigger's first field
 			m.focusIndex = 1 + (itemIdx+1)*3
 		} else if len(m.triggers) > 1 {
-			// Go to logic toggle
 			m.focusIndex = 1 + len(m.triggers)*3
 		} else {
-			// Wrap to name
 			m.focusIndex = 0
 		}
 	case "logic":
-		// Wrap to name
 		m.focusIndex = 0
 	case "action":
 		if itemIdx < len(m.actions)-1 {
-			// Go to next action's first field
 			m.focusIndex = 1 + (itemIdx+1)*2
 		} else {
-			// Wrap to name
+			m.focusIndex = 0
+		}
+	case "scope":
+		if fieldIdx < 2 {
+			m.focusIndex = fieldIdx + 2 // move down within scope fields
+		} else {
 			m.focusIndex = 0
 		}
 	}
@@ -426,7 +455,7 @@ func (m *WorkflowRuleCreatorModel) handleDown() tea.Cmd {
 
 // updateScrollForFocus adjusts scroll offset to keep focused item visible.
 func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
-	section, itemIdx, _ := m.getFocusSection()
+	section, itemIdx, fieldIdx := m.getFocusSection()
 
 	// Estimate line position of focused item
 	// Name takes ~2 lines, section header ~2 lines
@@ -441,6 +470,8 @@ func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
 		focusLine = 4 + len(m.triggers)*4
 	case "action":
 		focusLine = 4 + itemIdx*3
+	case "scope":
+		focusLine = 4 + fieldIdx*3
 	}
 
 	// Keep focused item visible with some margin

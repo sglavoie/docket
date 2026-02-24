@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/sglavoie/tt/internal/models"
 )
 
 // TriggerField represents the task field that triggers a rule.
@@ -21,13 +23,17 @@ const (
 	FieldCreatedDays TriggerField = "created_days" // Days since creation
 	FieldUpdatedDays TriggerField = "updated_days" // Days since last update
 	// Event-based trigger fields (detect transitions)
-	FieldStatusChanged   TriggerField = "status_changed"   // Value: "old->new", "*->done", "blocked->*"
-	FieldSectionChanged  TriggerField = "section_changed"  // Value: "Backlog->Active", "*->Archive"
-	FieldPriorityChanged TriggerField = "priority_changed" // Value: "*->1", "3->1"
-	FieldTagAdded        TriggerField = "tag_added"        // Value: tag name that was added
-	FieldTagRemoved      TriggerField = "tag_removed"      // Value: tag name that was removed
-	FieldCompleted       TriggerField = "completed"        // Value: "true" (fires on done/canceled)
-	FieldReopened        TriggerField = "reopened"         // Value: "true" (fires when reopened)
+	FieldStatusChanged       TriggerField = "status_changed"       // Value: "old->new", "*->done", "blocked->*"
+	FieldSectionChanged      TriggerField = "section_changed"      // Value: "Backlog->Active", "*->Archive"
+	FieldPriorityChanged     TriggerField = "priority_changed"     // Value: "*->1", "3->1"
+	FieldTagAdded            TriggerField = "tag_added"            // Value: tag name that was added
+	FieldTagRemoved          TriggerField = "tag_removed"          // Value: tag name that was removed
+	FieldCompleted           TriggerField = "completed"            // Value: "true" (fires on done/canceled)
+	FieldReopened            TriggerField = "reopened"             // Value: "true" (fires when reopened)
+	FieldDueDateChanged      TriggerField = "due_date_changed"     // Value: "added"/"removed"/"changed"/"*"
+	FieldTypeChanged         TriggerField = "type_changed"         // Value: "old->new", "*->task"
+	FieldRecurrenceCompleted TriggerField = "recurrence_completed" // Value: "true"
+	FieldStreakBroken        TriggerField = "streak_broken"        // Value: "true"
 	// Hierarchical trigger fields
 	FieldParentStatus     TriggerField = "parent_status"     // Parent task status
 	FieldParentType       TriggerField = "parent_type"       // Parent task type (epic, story)
@@ -38,6 +44,10 @@ const (
 	FieldAllChildrenDone  TriggerField = "all_children_done" // "true" when 100% complete
 	FieldIsBlocked        TriggerField = "is_blocked"        // Has incomplete dependencies
 	FieldBlockerCount     TriggerField = "blocker_count"     // Number of incomplete blockers
+	// Boolean state triggers (absence/presence checks)
+	FieldHasDueDate       TriggerField = "has_due_date"      // Value: "true"/"false"
+	FieldHasTags          TriggerField = "has_tags"          // Value: "true"/"false"
+	FieldDescriptionEmpty TriggerField = "description_empty" // Value: "true"/"false"
 )
 
 // TriggerOperation represents how to compare the field value.
@@ -72,6 +82,11 @@ const (
 	ActionCascadeTag     ActionType = "cascade_tag"     // Add tag to all children
 	ActionInheritTag     ActionType = "inherit_tag"     // Copy tag from parent
 	ActionNotifyParent   ActionType = "notify_parent"   // Add comment to parent task
+	// New actions
+	ActionSetSnooze      ActionType = "set_snooze"      // Value: relative duration "+3d"
+	ActionCreateFollowup ActionType = "create_followup" // Value: title for follow-up task
+	ActionMoveToProject  ActionType = "move_to_project" // Value: project name
+	ActionSetRecurrence  ActionType = "set_recurrence"  // Value: recurrence pattern string
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -149,6 +164,14 @@ func (a RuleAction) String() string {
 		return fmt.Sprintf("inherit tag #%s from parent", a.Value)
 	case ActionNotifyParent:
 		return fmt.Sprintf("notify parent: %s", a.Value)
+	case ActionSetSnooze:
+		return fmt.Sprintf("snooze for %s", a.Value)
+	case ActionCreateFollowup:
+		return fmt.Sprintf("create follow-up: %s", a.Value)
+	case ActionMoveToProject:
+		return fmt.Sprintf("move to project %s", a.Value)
+	case ActionSetRecurrence:
+		return fmt.Sprintf("set recurrence to %s", a.Value)
 	default:
 		return fmt.Sprintf("%s: %s", a.ActionType, a.Value)
 	}
@@ -162,6 +185,14 @@ const (
 	LogicOr  TriggerLogic = "or"  // Any trigger must match
 )
 
+// RuleScope restricts a rule to specific projects, task types, or sections.
+// Nil scope means no restriction. Non-empty fields use AND logic.
+type RuleScope struct {
+	Projects []string `json:"projects,omitempty"` // Match by project name or ID
+	Types    []string `json:"types,omitempty"`    // Match by task type
+	Sections []string `json:"sections,omitempty"` // Match by section
+}
+
 // WorkflowRule defines an automation rule.
 type WorkflowRule struct {
 	ID           string        `json:"id"`
@@ -173,6 +204,7 @@ type WorkflowRule struct {
 	Actions      []RuleAction  `json:"actions"`
 	TriggerCount int64         `json:"trigger_count,omitempty"`
 	Source       string        `json:"source,omitempty"` // "default" for built-in rules, empty for user-created
+	Scope        *RuleScope    `json:"scope,omitempty"`  // Optional scope restriction
 }
 
 // NewRule creates a new workflow rule with a generated ID.
@@ -255,6 +287,11 @@ func (r *WorkflowRule) Validate() error {
 			return fmt.Errorf("invalid action %d: %w", i+1, err)
 		}
 	}
+
+	if err := r.validateScope(); err != nil {
+		return fmt.Errorf("invalid scope: %w", err)
+	}
+
 	return nil
 }
 
@@ -297,13 +334,21 @@ func (t RuleTrigger) Validate() error {
 		FieldCreatedDays: true,
 		FieldUpdatedDays: true,
 		// Event-based triggers
-		FieldStatusChanged:   true,
-		FieldSectionChanged:  true,
-		FieldPriorityChanged: true,
-		FieldTagAdded:        true,
-		FieldTagRemoved:      true,
-		FieldCompleted:       true,
-		FieldReopened:        true,
+		FieldStatusChanged:       true,
+		FieldSectionChanged:      true,
+		FieldPriorityChanged:     true,
+		FieldTagAdded:            true,
+		FieldTagRemoved:          true,
+		FieldCompleted:           true,
+		FieldReopened:            true,
+		FieldDueDateChanged:      true,
+		FieldTypeChanged:         true,
+		FieldRecurrenceCompleted: true,
+		FieldStreakBroken:        true,
+		// Boolean state triggers
+		FieldHasDueDate:       true,
+		FieldHasTags:          true,
+		FieldDescriptionEmpty: true,
 		// Hierarchical triggers
 		FieldParentStatus:     true,
 		FieldParentType:       true,
@@ -357,6 +402,11 @@ func (a RuleAction) Validate() error {
 		ActionCascadeTag:     true,
 		ActionInheritTag:     true,
 		ActionNotifyParent:   true,
+		// New actions
+		ActionSetSnooze:      true,
+		ActionCreateFollowup: true,
+		ActionMoveToProject:  true,
+		ActionSetRecurrence:  true,
 	}
 	if !validActions[a.ActionType] {
 		return fmt.Errorf("invalid action type: %s", a.ActionType)
@@ -383,6 +433,14 @@ func (a RuleAction) Validate() error {
 	case ActionSetDueRelative:
 		if _, err := ParseRelativeDuration(a.Value); err != nil {
 			return fmt.Errorf("invalid relative duration: %s (use format like +3d, +1w, +2m)", a.Value)
+		}
+	case ActionSetSnooze:
+		if _, err := ParseRelativeDuration(a.Value); err != nil {
+			return fmt.Errorf("invalid snooze duration: %s (use format like +3d, +1w, +2m)", a.Value)
+		}
+	case ActionSetRecurrence:
+		if models.ParseRecurrence(a.Value) == nil {
+			return fmt.Errorf("invalid recurrence pattern: %s (use format like daily, weekly, 2d, 3w)", a.Value)
 		}
 	}
 
@@ -444,6 +502,9 @@ func ValidTriggerFields() []TriggerField {
 		// Event-based triggers
 		FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
 		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
+		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken,
+		// Boolean state triggers
+		FieldHasDueDate, FieldHasTags, FieldDescriptionEmpty,
 		// Hierarchical triggers
 		FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
@@ -467,6 +528,8 @@ func ValidActionTypes() []ActionType {
 		// Hierarchical actions
 		ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
 		ActionInheritTag, ActionNotifyParent,
+		// New actions
+		ActionSetSnooze, ActionCreateFollowup, ActionMoveToProject, ActionSetRecurrence,
 	}
 }
 
@@ -474,7 +537,8 @@ func ValidActionTypes() []ActionType {
 func IsEventTrigger(field TriggerField) bool {
 	switch field {
 	case FieldStatusChanged, FieldSectionChanged, FieldPriorityChanged,
-		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened:
+		FieldTagAdded, FieldTagRemoved, FieldCompleted, FieldReopened,
+		FieldDueDateChanged, FieldTypeChanged, FieldRecurrenceCompleted, FieldStreakBroken:
 		return true
 	}
 	return false
@@ -499,4 +563,90 @@ func IsHierarchicalAction(actionType ActionType) bool {
 		return true
 	}
 	return false
+}
+
+// IsBooleanStateTrigger returns true if the trigger checks a boolean property.
+func IsBooleanStateTrigger(field TriggerField) bool {
+	switch field {
+	case FieldHasDueDate, FieldHasTags, FieldDescriptionEmpty:
+		return true
+	}
+	return false
+}
+
+// MatchesScope checks whether a task falls within the rule's scope.
+// A nil scope matches everything. Non-empty fields use AND logic.
+func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID string) bool {
+	if r.Scope == nil {
+		return true
+	}
+
+	if len(r.Scope.Projects) > 0 {
+		matched := false
+		for _, p := range r.Scope.Projects {
+			if strings.EqualFold(p, projectName) || p == projectID {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	if len(r.Scope.Types) > 0 {
+		matched := false
+		taskType := string(task.Type)
+		for _, t := range r.Scope.Types {
+			if strings.EqualFold(t, taskType) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	if len(r.Scope.Sections) > 0 {
+		matched := false
+		for _, s := range r.Scope.Sections {
+			if strings.EqualFold(s, task.Section) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	return true
+}
+
+// validateScope checks that the rule scope contains valid values.
+func (r *WorkflowRule) validateScope() error {
+	if r.Scope == nil {
+		return nil
+	}
+
+	for _, t := range r.Scope.Types {
+		if !models.TaskType(strings.ToLower(t)).IsValid() {
+			return fmt.Errorf("invalid task type in scope: %s", t)
+		}
+	}
+
+	for _, p := range r.Scope.Projects {
+		if strings.TrimSpace(p) == "" {
+			return fmt.Errorf("empty project name in scope")
+		}
+	}
+
+	for _, s := range r.Scope.Sections {
+		if strings.TrimSpace(s) == "" {
+			return fmt.Errorf("empty section name in scope")
+		}
+	}
+
+	return nil
 }

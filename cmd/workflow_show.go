@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -100,6 +101,21 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 			} else {
 				fmt.Printf("  %d. %s\n", i, action.ActionType)
 			}
+		}
+	}
+
+	// Scope
+	if rule.Scope != nil {
+		fmt.Println()
+		fmt.Println("Scope:")
+		if len(rule.Scope.Projects) > 0 {
+			fmt.Printf("  Projects: %s\n", strings.Join(rule.Scope.Projects, ", "))
+		}
+		if len(rule.Scope.Types) > 0 {
+			fmt.Printf("  Types: %s\n", strings.Join(rule.Scope.Types, ", "))
+		}
+		if len(rule.Scope.Sections) > 0 {
+			fmt.Printf("  Sections: %s\n", strings.Join(rule.Scope.Sections, ", "))
 		}
 	}
 

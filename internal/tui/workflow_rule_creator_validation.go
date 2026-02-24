@@ -9,6 +9,40 @@ import (
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
+// buildScopeFromInputs parses the scope text inputs into a RuleScope.
+// Returns nil if all inputs are empty.
+func (m *WorkflowRuleCreatorModel) buildScopeFromInputs() *workflow.RuleScope {
+	projects := parseCommaSeparatedInput(m.scopeProjectsInput.Value())
+	types := parseCommaSeparatedInput(m.scopeTypesInput.Value())
+	sections := parseCommaSeparatedInput(m.scopeSectionsInput.Value())
+
+	if len(projects) == 0 && len(types) == 0 && len(sections) == 0 {
+		return nil
+	}
+	return &workflow.RuleScope{
+		Projects: projects,
+		Types:    types,
+		Sections: sections,
+	}
+}
+
+// parseCommaSeparatedInput splits a comma-separated string into trimmed, non-empty values.
+func parseCommaSeparatedInput(s string) []string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	var result []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
 // saveRule validates the form and saves the workflow rule.
 func (m *WorkflowRuleCreatorModel) saveRule() tea.Cmd {
 	return func() tea.Msg {
@@ -48,6 +82,9 @@ func (m *WorkflowRuleCreatorModel) saveRule() tea.Cmd {
 		} else {
 			rule = workflow.NewCompoundRule(name, triggers, m.triggerLogic, actions)
 		}
+
+		// Build scope from inputs
+		rule.Scope = m.buildScopeFromInputs()
 
 		// Validate the complete rule
 		if err := rule.Validate(); err != nil {

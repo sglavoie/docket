@@ -281,3 +281,113 @@ func TestTestRule(t *testing.T) {
 		t.Error("TestRule should not modify task")
 	}
 }
+
+func TestEvaluation_ScopedRule(t *testing.T) {
+	task := &models.Task{ID: "1", Priority: 1, Tags: []string{}, Type: models.TaskTypeTask}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Scoped to ProjectA",
+			Enabled: true,
+			Scope:   &RuleScope{Projects: []string{"ProjectA"}},
+			Trigger: RuleTrigger{Field: FieldPriority, Operation: OpEquals, Value: "1"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "scoped"}},
+		},
+	}
+
+	// With matching project
+	evalCtx := &EvaluationContext{
+		Changes:     []TaskChangeContext{{Task: task, Previous: nil}},
+		AllTasks:    []*models.Task{task},
+		TaskMap:     map[string]*models.Task{"1": task},
+		ProjectName: "ProjectA",
+		ProjectID:   "pa-1",
+	}
+	result := EvaluateRulesWithContext(evalCtx, rules)
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task for matching project, got %d", len(result.ModifiedTasks))
+	}
+	if !task.HasTag("scoped") {
+		t.Error("expected 'scoped' tag for matching project")
+	}
+
+	// Reset and test with non-matching project
+	task2 := &models.Task{ID: "2", Priority: 1, Tags: []string{}, Type: models.TaskTypeTask}
+	evalCtx2 := &EvaluationContext{
+		Changes:     []TaskChangeContext{{Task: task2, Previous: nil}},
+		AllTasks:    []*models.Task{task2},
+		TaskMap:     map[string]*models.Task{"2": task2},
+		ProjectName: "ProjectB",
+		ProjectID:   "pb-1",
+	}
+	result2 := EvaluateRulesWithContext(evalCtx2, rules)
+	if len(result2.ModifiedTasks) != 0 {
+		t.Errorf("expected 0 modified tasks for non-matching project, got %d", len(result2.ModifiedTasks))
+	}
+	if task2.HasTag("scoped") {
+		t.Error("expected no 'scoped' tag for non-matching project")
+	}
+}
+
+func TestEvaluation_BooleanTriggersEndToEnd(t *testing.T) {
+	// Task without due date should get tagged via has_due_date=false trigger
+	task := &models.Task{ID: "1", DueDate: nil, Tags: []string{}, Type: models.TaskTypeTask}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Tag tasks without due date",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldHasDueDate, Operation: OpEquals, Value: "false"},
+			Actions: []RuleAction{{ActionType: ActionAddTag, Value: "needs-date"}},
+		},
+	}
+
+	result := EvaluateRules([]*models.Task{task}, rules)
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if !task.HasTag("needs-date") {
+		t.Error("expected 'needs-date' tag on task without due date")
+	}
+
+	// Task with due date should NOT be tagged
+	due := time.Now().Add(48 * time.Hour)
+	task2 := &models.Task{ID: "2", DueDate: &due, Tags: []string{}, Type: models.TaskTypeTask}
+	result2 := EvaluateRules([]*models.Task{task2}, rules)
+	if len(result2.ModifiedTasks) != 0 {
+		t.Errorf("expected 0 modified tasks for task with due date, got %d", len(result2.ModifiedTasks))
+	}
+}
+
+func TestEvaluation_DueDateEventEndToEnd(t *testing.T) {
+	// When a due date is added, snooze the task
+	now := time.Now()
+	prevTask := &models.Task{ID: "1", DueDate: nil, Tags: []string{}}
+	currTask := &models.Task{ID: "1", DueDate: &now, Tags: []string{}}
+
+	rules := []WorkflowRule{
+		{
+			ID:      "rule-1",
+			Name:    "Snooze when due date added",
+			Enabled: true,
+			Trigger: RuleTrigger{Field: FieldDueDateChanged, Operation: OpEquals, Value: "added"},
+			Actions: []RuleAction{{ActionType: ActionSetSnooze, Value: "+1d"}},
+		},
+	}
+
+	evalCtx := &EvaluationContext{
+		Changes:  []TaskChangeContext{{Task: currTask, Previous: prevTask}},
+		AllTasks: []*models.Task{currTask},
+		TaskMap:  map[string]*models.Task{"1": currTask},
+	}
+
+	result := EvaluateRulesWithContext(evalCtx, rules)
+	if len(result.ModifiedTasks) != 1 {
+		t.Errorf("expected 1 modified task, got %d", len(result.ModifiedTasks))
+	}
+	if currTask.SnoozedUntil == nil {
+		t.Error("expected SnoozedUntil to be set after due_date_changed trigger")
+	}
+}

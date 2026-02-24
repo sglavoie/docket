@@ -566,6 +566,12 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 		}
 	}
 
+	// Scope info
+	if rule.Scope != nil {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Scope: " + formatRuleScope(rule.Scope)))
+	}
+
 	// Trigger count if any
 	if rule.TriggerCount > 0 {
 		b.WriteString("\n")
@@ -650,6 +656,12 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 		}
 	}
 
+	// Scope info
+	if rule.Scope != nil {
+		b.WriteString("\n")
+		b.WriteString(MutedStyle.Render("Scope: " + formatRuleScope(rule.Scope)))
+	}
+
 	// Trigger count if any
 	if rule.TriggerCount > 0 {
 		b.WriteString("\n")
@@ -721,3 +733,24 @@ type WorkflowRulesUpdatedMsg struct{}
 type ShowWorkflowRulesMsg struct{}
 
 func (m *WorkflowRulesModel) StatusBarLabel() string { return "Workflow Rules" }
+
+// formatRuleScope returns a human-readable summary of a RuleScope.
+func formatRuleScope(s *workflow.RuleScope) string {
+	if s == nil {
+		return "all"
+	}
+	var parts []string
+	if len(s.Projects) > 0 {
+		parts = append(parts, "projects=["+strings.Join(s.Projects, ", ")+"]")
+	}
+	if len(s.Types) > 0 {
+		parts = append(parts, "types=["+strings.Join(s.Types, ", ")+"]")
+	}
+	if len(s.Sections) > 0 {
+		parts = append(parts, "sections=["+strings.Join(s.Sections, ", ")+"]")
+	}
+	if len(parts) == 0 {
+		return "all"
+	}
+	return strings.Join(parts, ", ")
+}

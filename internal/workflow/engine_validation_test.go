@@ -162,6 +162,88 @@ func TestRuleValidation_NewActions(t *testing.T) {
 	}
 }
 
+func TestRuleValidation_NewTriggerFields(t *testing.T) {
+	newFields := []TriggerField{
+		FieldHasDueDate, FieldHasTags, FieldDescriptionEmpty,
+		FieldDueDateChanged, FieldTypeChanged,
+		FieldRecurrenceCompleted, FieldStreakBroken,
+	}
+
+	for _, field := range newFields {
+		t.Run(string(field), func(t *testing.T) {
+			rule := WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: field, Operation: OpEquals, Value: "true"},
+				Actions: []RuleAction{{ActionType: ActionAddTag, Value: "test"}},
+			}
+			if err := rule.Validate(); err != nil {
+				t.Errorf("expected field %q to be valid, got: %v", field, err)
+			}
+		})
+	}
+}
+
+func TestRuleValidation_NewActionTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		action  RuleAction
+		wantErr bool
+	}{
+		{"valid set_snooze", RuleAction{ActionType: ActionSetSnooze, Value: "+3d"}, false},
+		{"invalid set_snooze", RuleAction{ActionType: ActionSetSnooze, Value: "bad"}, true},
+		{"valid create_followup", RuleAction{ActionType: ActionCreateFollowup, Value: "Follow up"}, false},
+		{"empty create_followup", RuleAction{ActionType: ActionCreateFollowup, Value: ""}, true},
+		{"valid move_to_project", RuleAction{ActionType: ActionMoveToProject, Value: "MyProject"}, false},
+		{"empty move_to_project", RuleAction{ActionType: ActionMoveToProject, Value: ""}, true},
+		{"valid set_recurrence", RuleAction{ActionType: ActionSetRecurrence, Value: "daily"}, false},
+		{"invalid set_recurrence", RuleAction{ActionType: ActionSetRecurrence, Value: "badpattern"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+				Actions: []RuleAction{tt.action},
+			}
+			err := rule.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRuleValidation_Scope(t *testing.T) {
+	tests := []struct {
+		name    string
+		scope   *RuleScope
+		wantErr bool
+	}{
+		{"nil scope is valid", nil, false},
+		{"valid scope with project", &RuleScope{Projects: []string{"MyProject"}}, false},
+		{"valid scope with type", &RuleScope{Types: []string{"bug"}}, false},
+		{"invalid task type in scope", &RuleScope{Types: []string{"invalidtype"}}, true},
+		{"empty project name in scope", &RuleScope{Projects: []string{""}}, true},
+		{"empty section name in scope", &RuleScope{Sections: []string{"  "}}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := WorkflowRule{
+				Name:    "Test",
+				Trigger: RuleTrigger{Field: FieldStatus, Operation: OpEquals, Value: "todo"},
+				Actions: []RuleAction{{ActionType: ActionAddTag, Value: "test"}},
+				Scope:   tt.scope,
+			}
+			err := rule.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestParseRelativeDuration(t *testing.T) {
 	tests := []struct {
 		input    string

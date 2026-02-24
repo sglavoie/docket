@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -25,6 +27,7 @@ type ActionFormState struct {
 const (
 	tabTriggers = iota
 	tabActions
+	tabScope
 )
 
 // WorkflowRuleCreatorModel handles creating a new workflow rule via TUI.
@@ -46,6 +49,11 @@ type WorkflowRuleCreatorModel struct {
 
 	// Actions (at least one required)
 	actions []ActionFormState
+
+	// Scope inputs (comma-separated)
+	scopeProjectsInput textinput.Model
+	scopeTypesInput    textinput.Model
+	scopeSectionsInput textinput.Model
 
 	// Static lists for selectors
 	triggerFields []workflow.TriggerField
@@ -99,6 +107,10 @@ func NewWorkflowRuleCreatorModel(cfg *config.Config, manager *config.Manager) *W
 		{typeCursor: 0, valueInput: actionValue},
 	}
 
+	scopeProjectsInput := factory.NewTextInput("Projects (comma-separated)")
+	scopeTypesInput := factory.NewTextInput("Types (comma-separated)")
+	scopeSectionsInput := factory.NewTextInput("Sections (comma-separated)")
+
 	return &WorkflowRuleCreatorModel{
 		config:             cfg,
 		configManager:      manager,
@@ -106,6 +118,9 @@ func NewWorkflowRuleCreatorModel(cfg *config.Config, manager *config.Manager) *W
 		triggers:           triggers,
 		triggerLogic:       workflow.LogicAnd,
 		actions:            actions,
+		scopeProjectsInput: scopeProjectsInput,
+		scopeTypesInput:    scopeTypesInput,
+		scopeSectionsInput: scopeSectionsInput,
 		triggerFields:      workflow.ValidTriggerFields(),
 		triggerOps:         workflow.ValidTriggerOperations(),
 		actionTypes:        workflow.ValidActionTypes(),
@@ -195,6 +210,19 @@ func NewWorkflowRuleEditorModel(cfg *config.Config, manager *config.Manager, rul
 		m.actions = []ActionFormState{{valueInput: valueInput}}
 	}
 
+	// Populate scope
+	if rule.Scope != nil {
+		if len(rule.Scope.Projects) > 0 {
+			m.scopeProjectsInput.SetValue(strings.Join(rule.Scope.Projects, ", "))
+		}
+		if len(rule.Scope.Types) > 0 {
+			m.scopeTypesInput.SetValue(strings.Join(rule.Scope.Types, ", "))
+		}
+		if len(rule.Scope.Sections) > 0 {
+			m.scopeSectionsInput.SetValue(strings.Join(rule.Scope.Sections, ", "))
+		}
+	}
+
 	return m
 }
 
@@ -209,6 +237,9 @@ func (m *WorkflowRuleCreatorModel) SetSize(width, height int) {
 	for i := range m.actions {
 		formFactory.ResizeTextInput(&m.actions[i].valueInput, width)
 	}
+	formFactory.ResizeTextInput(&m.scopeProjectsInput, width)
+	formFactory.ResizeTextInput(&m.scopeTypesInput, width)
+	formFactory.ResizeTextInput(&m.scopeSectionsInput, width)
 }
 
 // Init initializes the model.
@@ -219,32 +250,37 @@ func (m *WorkflowRuleCreatorModel) Init() tea.Cmd {
 // focusFieldCount returns total number of focusable fields for the current tab.
 // Triggers tab: name(1) + triggers(3 each) + logic(1 if >1 trigger)
 // Actions tab: name(1) + actions(2 each)
+// Scope tab: name(1) + 3 text inputs (projects, types, sections)
 func (m *WorkflowRuleCreatorModel) focusFieldCount() int {
 	count := 1 // name is always first
-	if m.activeTab == tabTriggers {
+	switch m.activeTab {
+	case tabTriggers:
 		count += len(m.triggers) * 3
 		if len(m.triggers) > 1 {
 			count++ // logic toggle
 		}
-	} else {
+	case tabActions:
 		count += len(m.actions) * 2
+	case tabScope:
+		count += 3 // projects, types, sections
 	}
 	return count
 }
 
 // getFocusSection returns which section the current focus is in and the offset within that section.
-// Returns: section ("name", "trigger", "logic", "action"), item index, field within item.
+// Returns: section ("name", "trigger", "logic", "action", "scope"), item index, field within item.
 // Focus is scoped to the current tab.
 func (m *WorkflowRuleCreatorModel) getFocusSection() (section string, itemIdx int, fieldIdx int) {
 	idx := m.focusIndex
 
-	// Name field (always index 0 on both tabs)
+	// Name field (always index 0 on all tabs)
 	if idx == 0 {
 		return "name", 0, 0
 	}
 	idx--
 
-	if m.activeTab == tabTriggers {
+	switch m.activeTab {
+	case tabTriggers:
 		// Trigger fields (3 per trigger: field, op, value)
 		triggersTotal := len(m.triggers) * 3
 		if idx < triggersTotal {
@@ -258,12 +294,17 @@ func (m *WorkflowRuleCreatorModel) getFocusSection() (section string, itemIdx in
 		if len(m.triggers) > 1 && idx == 0 {
 			return "logic", 0, 0
 		}
-	} else {
+	case tabActions:
 		// Action fields (2 per action: type, value)
 		if idx < len(m.actions)*2 {
 			itemIdx = idx / 2
 			fieldIdx = idx % 2
 			return "action", itemIdx, fieldIdx
+		}
+	case tabScope:
+		// Scope fields: 0=projects, 1=types, 2=sections
+		if idx < 3 {
+			return "scope", 0, idx
 		}
 	}
 

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -20,12 +22,21 @@ type RuleConflict struct {
 	Rules     []string // Rule names that conflict
 }
 
+// DeferredMove represents a task that should be moved to a different project.
+// The move is deferred because the engine doesn't have access to project storage.
+type DeferredMove struct {
+	TaskID      string
+	Destination string // project name
+}
+
 // EvaluationResult contains the result of rule evaluation.
 type EvaluationResult struct {
 	ModifiedTasks     []*models.Task
 	Conflicts         []RuleConflict
 	AppliedRules      map[string][]string // taskID -> list of applied rule names
 	RuleTriggerCounts map[string]int      // ruleID -> count of tasks affected
+	NewFollowupTasks  []*models.Task      // tasks created by create_followup action
+	DeferredMoves     []DeferredMove      // moves requested by move_to_project action
 }
 
 // TaskChangeContext provides context for event-based triggers.
@@ -37,9 +48,11 @@ type TaskChangeContext struct {
 
 // EvaluationContext provides all context needed for rule evaluation.
 type EvaluationContext struct {
-	Changes  []TaskChangeContext     // Tasks with change context
-	AllTasks []*models.Task          // All tasks for hierarchical lookups
-	TaskMap  map[string]*models.Task // taskID -> task for dependency lookups
+	Changes     []TaskChangeContext     // Tasks with change context
+	AllTasks    []*models.Task          // All tasks for hierarchical lookups
+	TaskMap     map[string]*models.Task // taskID -> task for dependency lookups
+	ProjectName string                  // Current project name (for scope matching)
+	ProjectID   string                  // Current project ID (for scope matching)
 }
 
 // executionContext tracks rule applications to prevent infinite loops.
@@ -134,6 +147,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			if !rule.Enabled {
 				continue
 			}
+			if !rule.MatchesScope(task, evalCtx.ProjectName, evalCtx.ProjectID) {
+				continue
+			}
 			if ctx.wasApplied(task.ID, rule.ID) {
 				continue
 			}
@@ -180,6 +196,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			if !rule.Enabled {
 				continue
 			}
+			if !rule.MatchesScope(task, evalCtx.ProjectName, evalCtx.ProjectID) {
+				continue
+			}
 			if ctx.wasApplied(task.ID, rule.ID) {
 				continue
 			}
@@ -189,7 +208,7 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 
 			ctx.markApplied(task.ID, rule.ID)
 			for _, action := range rule.Actions {
-				if applyActionWithContext(task, action, evalCtx) {
+				if applyActionWithContext(task, action, evalCtx, result) {
 					modified = true
 				}
 			}
@@ -202,9 +221,11 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			// Re-evaluate rules for this task since it changed (without event triggers on re-eval)
 			newChange := TaskChangeContext{Task: task, Previous: task} // same state, no events fire
 			newEvalCtx := &EvaluationContext{
-				Changes:  []TaskChangeContext{newChange},
-				AllTasks: evalCtx.AllTasks,
-				TaskMap:  evalCtx.TaskMap,
+				Changes:     []TaskChangeContext{newChange},
+				AllTasks:    evalCtx.AllTasks,
+				TaskMap:     evalCtx.TaskMap,
+				ProjectName: evalCtx.ProjectName,
+				ProjectID:   evalCtx.ProjectID,
 			}
 			evaluateRulesWithContextRecursive(newEvalCtx, rules, ctx, result)
 		}
@@ -307,6 +328,52 @@ func matchesEventTrigger(task, prev *models.Task, trigger RuleTrigger) bool {
 		wasComplete := prev != nil && prev.Status.IsComplete()
 		isComplete := task.Status.IsComplete()
 		return wasComplete && !isComplete
+
+	case FieldDueDateChanged:
+		prevDue := prev != nil && prev.DueDate != nil
+		curDue := task.DueDate != nil
+		if !prevDue && !curDue {
+			return false // no change
+		}
+		// Determine the kind of change
+		switch {
+		case !prevDue && curDue:
+			return trigger.Value == "added" || trigger.Value == "*"
+		case prevDue && !curDue:
+			return trigger.Value == "removed" || trigger.Value == "*"
+		case prevDue && curDue:
+			if prev.DueDate.Equal(*task.DueDate) {
+				return false
+			}
+			return trigger.Value == "changed" || trigger.Value == "*"
+		}
+		return false
+
+	case FieldTypeChanged:
+		return matchesTransition(
+			getPrevValue(prev, func(t *models.Task) string { return string(t.Type) }),
+			string(task.Type),
+			trigger.Value,
+		)
+
+	case FieldRecurrenceCompleted:
+		if trigger.Value != "true" {
+			return false
+		}
+		// Fires when a recurring task is completed (recurrence cleared on completion)
+		hadRecurrence := prev != nil && prev.Recurrence != nil
+		hasRecurrence := task.Recurrence != nil
+		isComplete := task.Status.IsComplete()
+		return hadRecurrence && !hasRecurrence && isComplete
+
+	case FieldStreakBroken:
+		if trigger.Value != "true" {
+			return false
+		}
+		// Fires when a recurrence streak drops from >0 to 0
+		hadStreak := prev != nil && prev.Recurrence != nil && prev.Recurrence.Streak > 0
+		hasStreak := task.Recurrence != nil && task.Recurrence.Streak > 0
+		return hadStreak && !hasStreak
 	}
 
 	return false
@@ -439,11 +506,19 @@ func countIncompleteBlockers(task *models.Task, taskMap map[string]*models.Task)
 	return count
 }
 
-// applyActionWithContext applies an action with full context for hierarchical actions.
-func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *EvaluationContext) bool {
+// applyActionWithContext applies an action with full context for hierarchical and deferred actions.
+func applyActionWithContext(task *models.Task, action RuleAction, evalCtx *EvaluationContext, result *EvaluationResult) bool {
 	// Handle hierarchical actions
 	if IsHierarchicalAction(action.ActionType) {
 		return applyHierarchicalAction(task, action, evalCtx)
+	}
+
+	// Handle deferred actions that produce side effects in the result
+	switch action.ActionType {
+	case ActionCreateFollowup:
+		return applyCreateFollowup(task, action, result)
+	case ActionMoveToProject:
+		return applyMoveToProject(task, action, result)
 	}
 
 	// Fall back to standard action application
@@ -489,6 +564,29 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 	}
 
 	return false
+}
+
+// applyCreateFollowup creates a new follow-up task linked to the original.
+// The task is appended to result.NewFollowupTasks for the caller to persist.
+func applyCreateFollowup(task *models.Task, action RuleAction, result *EvaluationResult) bool {
+	followup := models.NewTask(uuid.New().String(), 0, models.TaskTypeTask, action.Value)
+	followup.Priority = models.PriorityDefault
+	followup.AddTag("followup")
+	// Bidirectional relationship
+	followup.AddRelatedTo(task.ID)
+	task.AddRelatedTo(followup.ID)
+	result.NewFollowupTasks = append(result.NewFollowupTasks, followup)
+	return true
+}
+
+// applyMoveToProject records a deferred move for the task.
+// The actual move is handled by the caller that has access to project storage.
+func applyMoveToProject(task *models.Task, action RuleAction, result *EvaluationResult) bool {
+	result.DeferredMoves = append(result.DeferredMoves, DeferredMove{
+		TaskID:      task.ID,
+		Destination: action.Value,
+	})
+	return true
 }
 
 func getFieldFromAction(actionType ActionType) string {
@@ -568,6 +666,12 @@ func matchesTrigger(task *models.Task, trigger RuleTrigger) bool {
 		}
 		days := daysSince(task.UpdatedAt)
 		fieldValue = strconv.Itoa(days)
+	case FieldHasDueDate:
+		return compareBool(task.DueDate != nil, trigger.Value)
+	case FieldHasTags:
+		return compareBool(len(task.Tags) > 0, trigger.Value)
+	case FieldDescriptionEmpty:
+		return compareBool(strings.TrimSpace(task.Description) == "", trigger.Value)
 	default:
 		return false
 	}
@@ -737,6 +841,23 @@ func applyAction(task *models.Task, action RuleAction) bool {
 			task.UpdatedAt = time.Now()
 			return true
 		}
+	case ActionSetSnooze:
+		days, err := ParseRelativeDuration(action.Value)
+		if err != nil {
+			return false
+		}
+		snoozeUntil := time.Now().AddDate(0, 0, days)
+		task.SnoozedUntil = &snoozeUntil
+		task.UpdatedAt = time.Now()
+		return true
+	case ActionSetRecurrence:
+		pattern := models.ParseRecurrence(action.Value)
+		if pattern == nil {
+			return false
+		}
+		task.Recurrence = pattern
+		task.UpdatedAt = time.Now()
+		return true
 	}
 	return false
 }

@@ -247,6 +247,15 @@ var TriggerFieldDescriptions = map[workflow.TriggerField]string{
 	workflow.FieldAllChildrenDone:  "All subtasks are complete",
 	workflow.FieldIsBlocked:        "Task has incomplete dependencies",
 	workflow.FieldBlockerCount:     "Number of incomplete blockers",
+	// Event triggers (new)
+	workflow.FieldDueDateChanged:      "Due date was added/removed/changed",
+	workflow.FieldTypeChanged:         "Task type transition (e.g., task->bug)",
+	workflow.FieldRecurrenceCompleted: "Recurring task completed its cycle",
+	workflow.FieldStreakBroken:        "Recurrence streak was reset to zero",
+	// Boolean state triggers
+	workflow.FieldHasDueDate:       "Task has a due date set",
+	workflow.FieldHasTags:          "Task has one or more tags",
+	workflow.FieldDescriptionEmpty: "Task description is empty",
 }
 
 // ActionTypeDescriptions maps action types to human-readable descriptions.
@@ -267,6 +276,10 @@ var ActionTypeDescriptions = map[workflow.ActionType]string{
 	workflow.ActionCascadeTag:     "Add tag to all children",
 	workflow.ActionInheritTag:     "Copy tag from parent",
 	workflow.ActionNotifyParent:   "Add comment to parent task",
+	workflow.ActionSetSnooze:      "Snooze task for a duration (+3d, +1w)",
+	workflow.ActionCreateFollowup: "Create a follow-up task",
+	workflow.ActionMoveToProject:  "Move task to another project",
+	workflow.ActionSetRecurrence:  "Set recurrence pattern (daily, 2w, etc.)",
 }
 
 // BuildTriggerFieldItems creates picker items for all trigger fields.

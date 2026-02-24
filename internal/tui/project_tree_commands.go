@@ -143,7 +143,7 @@ func copyTaskState(task *models.Task) *models.Task {
 // buildEvaluationContext creates an evaluation context for workflow rules.
 // Only tasks that actually changed are included in Changes to avoid excessive rule triggering.
 // AllTasks and TaskMap still contain all tasks for hierarchical trigger lookups.
-func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task) *workflow.EvaluationContext {
+func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.Task, projectName, projectID string) *workflow.EvaluationContext {
 	taskMap := make(map[string]*models.Task, len(tasks))
 	var changes []workflow.TaskChangeContext
 
@@ -159,9 +159,11 @@ func buildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 	}
 
 	return &workflow.EvaluationContext{
-		Changes:  changes,
-		AllTasks: tasks,
-		TaskMap:  taskMap,
+		Changes:     changes,
+		AllTasks:    tasks,
+		TaskMap:     taskMap,
+		ProjectName: projectName,
+		ProjectID:   projectID,
 	}
 }
 

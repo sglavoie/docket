@@ -24,14 +24,23 @@ STATE TRIGGER FIELDS (match current task state):
   status, priority, section, tags, type
   due_days, created_days, updated_days
 
+BOOLEAN STATE TRIGGER FIELDS (presence/absence checks):
+  has_due_date      - Value: "true"/"false"
+  has_tags          - Value: "true"/"false"
+  description_empty - Value: "true"/"false"
+
 EVENT TRIGGER FIELDS (detect transitions):
-  status_changed    - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed   - Value: "old->new" (e.g., "Backlog->Active")
-  priority_changed  - Value: "old->new" (e.g., "*->1")
-  tag_added         - Value: tag name that was added
-  tag_removed       - Value: tag name that was removed
-  completed         - Value: "true" (fires on done/canceled)
-  reopened          - Value: "true" (fires when reopened)
+  status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
+  section_changed       - Value: "old->new" (e.g., "Backlog->Active")
+  priority_changed      - Value: "old->new" (e.g., "*->1")
+  tag_added             - Value: tag name that was added
+  tag_removed           - Value: tag name that was removed
+  completed             - Value: "true" (fires on done/canceled)
+  reopened              - Value: "true" (fires when reopened)
+  due_date_changed      - Value: "added"/"removed"/"changed"/"*"
+  type_changed          - Value: "old->new" (e.g., "task->bug")
+  recurrence_completed  - Value: "true" (recurring task completes cycle)
+  streak_broken         - Value: "true" (recurrence streak resets to zero)
 
 HIERARCHICAL TRIGGER FIELDS:
   parent_status, parent_type, parent_tags, level
@@ -45,6 +54,13 @@ ACTION TYPES:
   set_status, set_priority, set_section, add_tag, remove_tag
   set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
+  set_snooze, create_followup, move_to_project, set_recurrence
+
+RULE SCOPING:
+  Restrict rules to specific projects, types, or sections:
+    --scope-project "MyProject"    Only apply to tasks in this project
+    --scope-type task,bug          Only apply to these task types
+    --scope-section Active         Only apply to tasks in these sections
 
 COMPOUND TRIGGERS:
   Use multiple -f/-o/-V flag groups to create compound triggers.
@@ -80,6 +96,9 @@ var (
 	actionType    string
 	actionValue   string
 	ruleDisabled  bool
+	scopeProjects []string
+	scopeTypes    []string
+	scopeSections []string
 )
 
 func init() {
@@ -93,6 +112,9 @@ func init() {
 	workflowAddCmd.Flags().StringVarP(&actionType, "action", "a", "", "action type (required)")
 	workflowAddCmd.Flags().StringVar(&actionValue, "action-value", "", "action value (empty string for set_section means Active)")
 	workflowAddCmd.Flags().BoolVar(&ruleDisabled, "disabled", false, "create rule in disabled state")
+	workflowAddCmd.Flags().StringSliceVar(&scopeProjects, "scope-project", nil, "restrict rule to projects (comma-separated names or IDs)")
+	workflowAddCmd.Flags().StringSliceVar(&scopeTypes, "scope-type", nil, "restrict rule to task types (comma-separated)")
+	workflowAddCmd.Flags().StringSliceVar(&scopeSections, "scope-section", nil, "restrict rule to sections (comma-separated)")
 
 	_ = workflowAddCmd.MarkFlagRequired("name")
 	_ = workflowAddCmd.MarkFlagRequired("field")
@@ -127,13 +149,21 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.FieldCreatedDays: true,
 		workflow.FieldUpdatedDays: true,
 		// Event triggers
-		workflow.FieldStatusChanged:   true,
-		workflow.FieldSectionChanged:  true,
-		workflow.FieldPriorityChanged: true,
-		workflow.FieldTagAdded:        true,
-		workflow.FieldTagRemoved:      true,
-		workflow.FieldCompleted:       true,
-		workflow.FieldReopened:        true,
+		workflow.FieldStatusChanged:       true,
+		workflow.FieldSectionChanged:      true,
+		workflow.FieldPriorityChanged:     true,
+		workflow.FieldTagAdded:            true,
+		workflow.FieldTagRemoved:          true,
+		workflow.FieldCompleted:           true,
+		workflow.FieldReopened:            true,
+		workflow.FieldDueDateChanged:      true,
+		workflow.FieldTypeChanged:         true,
+		workflow.FieldRecurrenceCompleted: true,
+		workflow.FieldStreakBroken:        true,
+		// Boolean state triggers
+		workflow.FieldHasDueDate:       true,
+		workflow.FieldHasTags:          true,
+		workflow.FieldDescriptionEmpty: true,
 		// Hierarchical triggers
 		workflow.FieldParentStatus:     true,
 		workflow.FieldParentType:       true,
@@ -199,6 +229,11 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.ActionCascadeTag:     true,
 		workflow.ActionInheritTag:     true,
 		workflow.ActionNotifyParent:   true,
+		// New actions
+		workflow.ActionSetSnooze:      true,
+		workflow.ActionCreateFollowup: true,
+		workflow.ActionMoveToProject:  true,
+		workflow.ActionSetRecurrence:  true,
 	}
 	if !validActions[action] {
 		return fmt.Errorf("invalid action type: %s (run 'tt workflow add --help' for valid actions)", actionType)
@@ -245,6 +280,7 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		rule = workflow.NewCompoundRule(ruleName, triggers, logic, actions)
 	}
 	rule.Enabled = !ruleDisabled
+	rule.Scope = buildScopeFromFlags(scopeProjects, scopeTypes, scopeSections)
 
 	if err := rule.Validate(); err != nil {
 		return fmt.Errorf("invalid rule: %w", err)

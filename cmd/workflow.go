@@ -40,14 +40,23 @@ STATE TRIGGER FIELDS (match current task state)
   status, priority, section, tags, type
   due_days, created_days, updated_days
 
+BOOLEAN STATE TRIGGER FIELDS (presence/absence checks)
+  has_due_date      - Value: "true"/"false"
+  has_tags          - Value: "true"/"false"
+  description_empty - Value: "true"/"false"
+
 EVENT TRIGGER FIELDS (detect transitions)
-  status_changed   - Value: "old->new" (e.g., "blocked->*", "*->done")
-  section_changed  - Value: "old->new" (e.g., "Backlog->Active")
-  priority_changed - Value: "old->new" (e.g., "*->1")
-  tag_added        - Value: tag name that was added
-  tag_removed      - Value: tag name that was removed
-  completed        - Value: "true" (fires on done/canceled)
-  reopened         - Value: "true" (fires when reopened)
+  status_changed        - Value: "old->new" (e.g., "blocked->*", "*->done")
+  section_changed       - Value: "old->new" (e.g., "Backlog->Active")
+  priority_changed      - Value: "old->new" (e.g., "*->1")
+  tag_added             - Value: tag name that was added
+  tag_removed           - Value: tag name that was removed
+  completed             - Value: "true" (fires on done/canceled)
+  reopened              - Value: "true" (fires when reopened)
+  due_date_changed      - Value: "added"/"removed"/"changed"/"*"
+  type_changed          - Value: "old->new" (e.g., "task->bug")
+  recurrence_completed  - Value: "true" (fires when recurring task completes)
+  streak_broken         - Value: "true" (fires when recurrence streak resets)
 
 HIERARCHICAL TRIGGER FIELDS
   parent_status, parent_type, parent_tags, level
@@ -58,6 +67,12 @@ ACTION TYPES
   set_status, set_priority, set_section, add_tag, remove_tag
   set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
+  set_snooze, create_followup, move_to_project, set_recurrence
+
+RULE SCOPING
+  Rules can be restricted to specific projects, task types, or sections:
+    tt workflow add ... --scope-project "MyProject"
+    tt workflow add ... --scope-type task,bug --scope-section Active
 
 COMPOUND TRIGGERS
   Multiple triggers can be combined with --logic:

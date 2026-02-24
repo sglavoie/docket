@@ -29,6 +29,12 @@ var (
 	workflowEditRemoveActions  string // Comma-separated indices
 	workflowEditClearActions   bool
 
+	// Scope flags
+	workflowEditScopeProjects []string
+	workflowEditScopeTypes    []string
+	workflowEditScopeSections []string
+	workflowEditClearScope    bool
+
 	// Confirmation flag
 	workflowEditYes bool
 )
@@ -99,6 +105,12 @@ func init() {
 	workflowEditCmd.Flags().StringVar(&workflowEditAddActionValue, "add-action-value", "", "add action value")
 	workflowEditCmd.Flags().StringVar(&workflowEditRemoveActions, "remove-action", "", "remove actions by index (comma-separated, e.g., '0,1')")
 	workflowEditCmd.Flags().BoolVar(&workflowEditClearActions, "clear-actions", false, "clear all actions (use with add-action to replace)")
+
+	// Scope flags
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeProjects, "scope-project", nil, "set rule scope: project names or IDs (comma-separated)")
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeTypes, "scope-type", nil, "set rule scope: task types (comma-separated)")
+	workflowEditCmd.Flags().StringSliceVar(&workflowEditScopeSections, "scope-section", nil, "set rule scope: sections (comma-separated)")
+	workflowEditCmd.Flags().BoolVar(&workflowEditClearScope, "clear-scope", false, "remove all scope restrictions")
 
 	// Confirmation flag
 	workflowEditCmd.Flags().BoolVarP(&workflowEditYes, "yes", "y", false, "apply changes without preview confirmation")
@@ -221,8 +233,33 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 		hasChanges = true
 	}
 
+	// Handle scope modifications
+	if workflowEditClearScope {
+		modifiedRule.Scope = nil
+		hasChanges = true
+	}
+	if cmd.Flags().Changed("scope-project") || cmd.Flags().Changed("scope-type") || cmd.Flags().Changed("scope-section") {
+		if workflowEditClearScope {
+			return fmt.Errorf("cannot use --clear-scope with --scope-project/--scope-type/--scope-section")
+		}
+		// Start from existing scope or create new one
+		if modifiedRule.Scope == nil {
+			modifiedRule.Scope = &workflow.RuleScope{}
+		}
+		if cmd.Flags().Changed("scope-project") {
+			modifiedRule.Scope.Projects = workflowEditScopeProjects
+		}
+		if cmd.Flags().Changed("scope-type") {
+			modifiedRule.Scope.Types = workflowEditScopeTypes
+		}
+		if cmd.Flags().Changed("scope-section") {
+			modifiedRule.Scope.Sections = workflowEditScopeSections
+		}
+		hasChanges = true
+	}
+
 	if !hasChanges {
-		return fmt.Errorf("no changes specified; use --name, --enabled, --add-trigger-*, --remove-trigger, --add-action, etc")
+		return fmt.Errorf("no changes specified; use --name, --enabled, --add-trigger-*, --remove-trigger, --add-action, --scope-*, etc")
 	}
 
 	// Atomic validation: collect all errors before failing
@@ -284,6 +321,11 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 		} else {
 			fmt.Printf("    %d. %s\n", i, action.ActionType)
 		}
+	}
+
+	if modifiedRule.Scope != nil {
+		fmt.Println()
+		fmt.Printf("  Scope: %s\n", formatScope(modifiedRule.Scope))
 	}
 
 	fmt.Println()
