@@ -31,6 +31,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Intercept keys when quick-switch popup is open
+		if m.showQuickSwitch {
+			return m.handleQuickSwitchKey(msg)
+		}
+
 		// Clear temporary status/error messages on any keypress
 		m.statusMessage = ""
 		m.err = nil
@@ -46,6 +51,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.navigateHistoryBack()
 		case "alt+i":
 			return m, m.navigateHistoryForward()
+		case "ctrl+p":
+			if !m.hasActiveTextInput() {
+				m.showQuickSwitch = !m.showQuickSwitch
+				m.quickSwitchCursor = 0
+				return m, nil
+			}
 		case "esc":
 			if handled := m.handleEscKey(); handled {
 				return m, nil

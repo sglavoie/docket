@@ -39,6 +39,11 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
+	// Overlay quick-switch popup if active
+	if popup := m.renderQuickSwitchPopup(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	return content + "\n" + statusBar
 }
 

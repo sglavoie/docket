@@ -193,6 +193,11 @@ type AppModel struct {
 	navHistory          *NavHistory
 	lastNavigatedTaskID string
 
+	// Recent task visits for quick-switch (Alt+R)
+	recentTaskVisits  []RecentTaskVisitEntry
+	showQuickSwitch   bool
+	quickSwitchCursor int
+
 	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
 	lastProjectView ViewType
 
@@ -271,6 +276,22 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	// Hydrate dismissed IDs
 	for _, id := range cfg.GetFocusDismissedIDs() {
 		app.focusDismissedIDs[id] = true
+	}
+
+	// Hydrate recent task visits from persisted config
+	for _, item := range cfg.GetRecentTaskVisits() {
+		for _, p := range activeProjects {
+			if p.ID != item.ProjectID {
+				continue
+			}
+			if err := app.persister.Load(p); err != nil {
+				break
+			}
+			if task := p.GetTaskByID(item.TaskID); task != nil {
+				app.recentTaskVisits = append(app.recentTaskVisits, RecentTaskVisitEntry{Task: task, Project: p})
+			}
+			break
+		}
 	}
 
 	// Ensure sandbox project exists
@@ -383,6 +404,7 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: ",", Description: "Settings", Category: "Actions"},
 		{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
+		{Key: "ctrl+p", Description: "Recent tasks", Category: "Navigation"},
 	}
 }
 

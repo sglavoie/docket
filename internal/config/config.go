@@ -141,11 +141,18 @@ type Config struct {
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
 	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
 	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
+	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
 	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
 }
 
 // FocusQueueItem stores a task reference for the focus queue.
 type FocusQueueItem struct {
+	TaskID    string `json:"task_id"`
+	ProjectID string `json:"project_id"`
+}
+
+// RecentTaskVisit stores a task reference for the recent task quick-switch list.
+type RecentTaskVisit struct {
 	TaskID    string `json:"task_id"`
 	ProjectID string `json:"project_id"`
 }
