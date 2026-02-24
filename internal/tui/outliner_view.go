@@ -427,6 +427,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 
+		// Recurrence indicator (with streak count when > 0)
+		if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+			recurStr := "↻"
+			if task.Recurrence.Streak > 0 {
+				recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+			}
+			indicators.WriteString(" ")
+			indicators.WriteString(MutedStyle.Render(recurStr))
+		}
+
 		// Dependency indicators (only when sidebar is hidden)
 		if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
 			if s := renderDependencyIndicators(task, m.project); s != "" {

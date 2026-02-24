@@ -18,11 +18,24 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
+		if key == "k" {
+			cmd, _ := handleSkipRecurrence(m)
+			return m, cmd
+		}
+		if key == "D" {
+			m.pendingPrefix = ",D"
+			return m, nil
+		}
 		if status, ok := StatusForPrefixKey(key); ok {
 			if m.multiSelectMode && m.SelectedCount() > 0 {
 				return m, m.handleBulkStatusChange(status)
 			}
 			return m, m.handleStatusTransition(status)
+		}
+
+	case ",D":
+		if cmd, ok := handleDeferRecurrence(key, m); ok {
+			return m, cmd
 		}
 
 	case "!":

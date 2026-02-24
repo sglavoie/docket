@@ -20,6 +20,7 @@ func (m *WeeklyReviewModel) loadData() {
 	m.staleTasks = nil
 	m.priorityMismatch = nil
 	m.upcomingWeek = nil
+	m.recurringOverview = nil
 
 	now := time.Now()
 	today := util.StartOfDay(now)
@@ -108,6 +109,11 @@ func (m *WeeklyReviewModel) loadData() {
 					m.upcomingWeek = append(m.upcomingWeek, WeeklyReviewTask{Task: task, Project: project})
 				}
 			}
+
+			// Recurring overview
+			if task.IsRecurring() {
+				m.recurringOverview = append(m.recurringOverview, WeeklyReviewTask{Task: task, Project: project})
+			}
 		}
 
 		// Calculate no-activity days
@@ -140,7 +146,7 @@ func (m *WeeklyReviewModel) loadData() {
 		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
 		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
 		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
-		WeeklySectionUpcomingWeek,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
 	}
 	for _, s := range allSections {
 		if m.getSectionItemCount(s) == 0 {
@@ -211,6 +217,24 @@ func (m *WeeklyReviewModel) sortSections() {
 		}
 		return m.upcomingWeek[i].Task.Priority < m.upcomingWeek[j].Task.Priority
 	})
+
+	// Recurring overview: by next due date ascending (tasks without due date last)
+	sort.Slice(m.recurringOverview, func(i, j int) bool {
+		di := m.recurringOverview[i].Task.DueDate
+		dj := m.recurringOverview[j].Task.DueDate
+		if di != nil && dj != nil {
+			if !di.Equal(*dj) {
+				return di.Before(*dj)
+			}
+		}
+		if di != nil && dj == nil {
+			return true
+		}
+		if di == nil && dj != nil {
+			return false
+		}
+		return m.recurringOverview[i].Task.Priority < m.recurringOverview[j].Task.Priority
+	})
 }
 
 // toggleCurrentSection toggles collapse state for the section containing the cursor.
@@ -260,7 +284,7 @@ func (m *WeeklyReviewModel) toggleSectionFocus(section WeeklyReviewSection) (tea
 // getTotalItemCount returns count across all sections.
 func (m *WeeklyReviewModel) getTotalItemCount() int {
 	return len(m.staleProjects) + len(m.inboxBacklog) + len(m.blockedWork) + len(m.overcommitted) +
-		len(m.staleTasks) + len(m.priorityMismatch) + len(m.upcomingWeek)
+		len(m.staleTasks) + len(m.priorityMismatch) + len(m.upcomingWeek) + len(m.recurringOverview)
 }
 
 // markCurrentSectionReviewed marks the section at the cursor as reviewed.
@@ -278,13 +302,13 @@ func (m *WeeklyReviewModel) markCurrentSectionReviewed() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// allSectionsReviewed returns true if all 7 sections have been reviewed.
+// allSectionsReviewed returns true if all sections have been reviewed.
 func (m *WeeklyReviewModel) allSectionsReviewed() bool {
 	allSections := []WeeklyReviewSection{
 		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
 		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
 		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
-		WeeklySectionUpcomingWeek,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
 	}
 	for _, s := range allSections {
 		if !m.reviewedSections[s] {
@@ -301,7 +325,7 @@ func (m *WeeklyReviewModel) reviewedCount() int {
 		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
 		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
 		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
-		WeeklySectionUpcomingWeek,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
 	}
 	for _, s := range allSections {
 		if m.reviewedSections[s] {
@@ -328,6 +352,8 @@ func getWeeklySectionName(section WeeklyReviewSection) string {
 		return "Priority Mismatch"
 	case WeeklySectionUpcomingWeek:
 		return "Upcoming Week"
+	case WeeklySectionRecurringOverview:
+		return "Recurring Overview"
 	}
 	return ""
 }

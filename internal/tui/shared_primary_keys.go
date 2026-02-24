@@ -168,6 +168,85 @@ func handleSnoozePrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	return v.saveAndRefreshBulk(prevStates), true
 }
 
+// handleSkipRecurrence handles the ,k key for skipping the next occurrence of a
+// recurring task. Advances the due date to the next occurrence, increments the
+// skip counter, and resets the streak. Returns (cmd, handled).
+func handleSkipRecurrence(v prefixableView) (tea.Cmd, bool) {
+	project := v.getProject()
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	if !task.IsRecurring() {
+		v.setStatusMessage("Task is not recurring")
+		return nil, true
+	}
+
+	prevStates := captureTaskStates(project.Tasks)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.SkipRecurrence()
+	})
+	dueStr := "none"
+	if task.DueDate != nil {
+		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+	}
+	msg := fmt.Sprintf("Skipped: next due %s", dueStr)
+	v.setUndoContext("Skip Recurrence", task.Title)
+	v.setStatusMessage(msg)
+	return v.saveAndRefreshBulk(prevStates), true
+}
+
+// resolveDeferDays maps a defer sub-key to a number of days and description.
+// Returns (0, "", false) for unrecognized keys.
+func resolveDeferDays(key string) (int, string, bool) {
+	switch key {
+	case "t":
+		return 1, "1 day", true
+	case "3":
+		return 3, "3 days", true
+	case "w":
+		return 7, "1 week", true
+	case "W":
+		return 14, "2 weeks", true
+	case "m":
+		return 30, "1 month", true
+	default:
+		return 0, "", false
+	}
+}
+
+// handleDeferRecurrence handles the ,D prefix for deferring a recurring task.
+// Sub-keys: t=1d, 3=3d, w=1w, W=2w, m=1m. Returns (cmd, handled).
+func handleDeferRecurrence(key string, v prefixableView) (tea.Cmd, bool) {
+	days, desc, ok := resolveDeferDays(key)
+	if !ok {
+		return nil, false
+	}
+
+	project := v.getProject()
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	if !task.IsRecurring() {
+		v.setStatusMessage("Task is not recurring")
+		return nil, true
+	}
+
+	prevStates := captureTaskStates(project.Tasks)
+	project.MutateTask(task.ID, func(t *models.Task) {
+		t.DeferRecurrence(days)
+	})
+	dueStr := "none"
+	if task.DueDate != nil {
+		dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+	}
+	msg := fmt.Sprintf("Deferred %s: now due %s", desc, dueStr)
+	v.setUndoContext("Defer Recurrence", task.Title)
+	v.setStatusMessage(msg)
+	return v.saveAndRefreshBulk(prevStates), true
+}
+
 // handleToggleActiveKey handles the * key for toggling the Active flag.
 // Returns (cmd, handled).
 func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {

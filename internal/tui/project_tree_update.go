@@ -129,8 +129,22 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 
 	switch prefix {
 	case ",":
+		if key == "k" {
+			cmd, _ := handleSkipRecurrence(m)
+			return m, cmd
+		}
+		if key == "D" {
+			// Enter defer sub-prefix
+			m.pendingPrefix = ",D"
+			return m, nil
+		}
 		if status, ok := StatusForPrefixKey(key); ok {
 			_, cmd := m.handleStatusTransition(status, visible)
+			return m, cmd
+		}
+
+	case ",D":
+		if cmd, ok := handleDeferRecurrence(key, m); ok {
 			return m, cmd
 		}
 

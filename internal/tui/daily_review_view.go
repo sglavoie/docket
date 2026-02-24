@@ -197,6 +197,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		StatusBadge:     statusBadge,
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
+		ShowRecurrence:  true,
 	})
 }
 

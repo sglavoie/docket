@@ -18,7 +18,7 @@ func (m *WeeklyReviewModel) View() string {
 	// Title
 	subtitle := "all clear"
 	if totalCount > 0 {
-		subtitle = fmt.Sprintf("%d projects, %d tasks | %d/7 reviewed", projectCount, taskCount, m.reviewedCount())
+		subtitle = fmt.Sprintf("%d projects, %d tasks | %d/8 reviewed", projectCount, taskCount, m.reviewedCount())
 	}
 	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle))
 	b.WriteString("\n")
@@ -60,8 +60,8 @@ func (m *WeeklyReviewModel) View() string {
 
 	// Footer — progressively shorten when terminal is narrow
 	reviewed := m.reviewedCount()
-	fullRight := fmt.Sprintf("%d/7 reviewed | %d items", reviewed, totalCount)
-	shortRight := fmt.Sprintf("%d/7 reviewed", reviewed)
+	fullRight := fmt.Sprintf("%d/8 reviewed | %d items", reviewed, totalCount)
+	shortRight := fmt.Sprintf("%d/8 reviewed", reviewed)
 	fullLeft := "h/j/k/l nav · n/N section · R reviewed · ,s/d/b/x status"
 	shortLeft := "n/N section · R reviewed · ? help"
 
@@ -83,7 +83,7 @@ func (m *WeeklyReviewModel) View() string {
 // countByType returns separate counts of project items and task items.
 func (m *WeeklyReviewModel) countByType() (int, int) {
 	projectCount := len(m.staleProjects) + len(m.inboxBacklog) + len(m.blockedWork) + len(m.overcommitted)
-	taskCount := len(m.staleTasks) + len(m.priorityMismatch) + len(m.upcomingWeek)
+	taskCount := len(m.staleTasks) + len(m.priorityMismatch) + len(m.upcomingWeek) + len(m.recurringOverview)
 	return projectCount, taskCount
 }
 
@@ -92,7 +92,7 @@ func (m *WeeklyReviewModel) renderTabBar() string {
 	tabCounts := []int{
 		len(m.staleProjects) + len(m.inboxBacklog) + len(m.blockedWork) + len(m.overcommitted),
 		len(m.staleTasks) + len(m.priorityMismatch),
-		len(m.upcomingWeek),
+		len(m.upcomingWeek) + len(m.recurringOverview),
 	}
 	labels := make([]string, len(m.tabs.Names))
 	for i, name := range m.tabs.Names {
@@ -136,6 +136,7 @@ var WeeklyReviewSectionPrefixHints = []PrefixHint{
 	{Key: "t", Description: "stale tasks", Detail: "Jump to stale tasks"},
 	{Key: "m", Description: "priority mismatch", Detail: "Jump to priority mismatch"},
 	{Key: "w", Description: "upcoming week", Detail: "Jump to upcoming week"},
+	{Key: "r", Description: "recurring overview", Detail: "Jump to recurring overview"},
 }
 
 // renderAllSections renders all non-empty sections.
@@ -197,6 +198,8 @@ func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index
 		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, m.width-40)
 	case WeeklySectionUpcomingWeek:
 		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, m.width-40)
+	case WeeklySectionRecurringOverview:
+		return m.renderTaskLine(m.recurringOverview[index], section, isSelected, m.width-40)
 	}
 	return ""
 }
@@ -215,6 +218,8 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 		style = OverdueStyle
 	case WeeklySectionPriorityMismatch:
 		style = DueSoonStyle
+	case WeeklySectionRecurringOverview:
+		style = SectionHeaderStyle
 	default:
 		style = SectionHeaderStyle
 	}
@@ -298,11 +303,28 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		if task.DueDate != nil {
 			contextStr = DueDateStyle.Render(task.DueDate.Format("Mon Jan 2"))
 		}
+	case WeeklySectionRecurringOverview:
+		if task.DueDate != nil {
+			contextStr = DueDateStyle.Render(task.DueDate.Format("Jan 2"))
+		}
+		if dates := task.NextNDueDates(2); len(dates) > 0 {
+			var upcoming []string
+			for _, d := range dates {
+				upcoming = append(upcoming, d.Format("Jan 2"))
+			}
+			nextStr := MutedStyle.Render("→ " + strings.Join(upcoming, ", "))
+			if contextStr != "" {
+				contextStr += " " + nextStr
+			} else {
+				contextStr = nextStr
+			}
+		}
 	}
 
 	return RenderCrossProjectTaskLine(task, dt.Project, nil, isSelected, m.width, maxTitleLen, CrossProjectTaskLineOpts{
 		HideLowPriority: true,
 		DueStr:          contextStr,
+		ShowRecurrence:  section == WeeklySectionRecurringOverview,
 	})
 }
 
@@ -323,6 +345,8 @@ func getWeeklySectionHint(section WeeklyReviewSection) string {
 		return "Start high-priority tasks or lower their priority"
 	case WeeklySectionUpcomingWeek:
 		return "Confirm these tasks are ready for the coming week"
+	case WeeklySectionRecurringOverview:
+		return "Review recurring tasks — skip, defer, or adjust patterns"
 	}
 	return ""
 }
@@ -371,7 +395,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
 		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
 		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
-		WeeklySectionUpcomingWeek,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
 	}
 	for _, s := range allSections {
 		count := m.getSectionItemCount(s)

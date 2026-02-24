@@ -8,12 +8,12 @@ import (
 
 // PendingChanges represents the changes to apply to selected tasks.
 type PendingChanges struct {
-	SetStatus    *models.TaskStatus // nil = no change
-	SetType      *models.TaskType   // nil = no change
-	SetPriority  *int               // nil = no change
-	AddTags      []string           // tags to add
-	RemoveTags   []string           // tags to remove
-	SetSection   *string            // nil = no change, empty string = clear section
+	SetStatus       *models.TaskStatus        // nil = no change
+	SetType         *models.TaskType          // nil = no change
+	SetPriority     *int                      // nil = no change
+	AddTags         []string                  // tags to add
+	RemoveTags      []string                  // tags to remove
+	SetSection      *string                   // nil = no change, empty string = clear section
 	SetDueDate      *time.Time                // nil = no change
 	ClearDueDate    bool                      // true = remove due date
 	SetRecurrence   *models.RecurrencePattern // nil = no change

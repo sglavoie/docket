@@ -35,6 +35,10 @@ func (m *TaskDetailModel) View() string {
 		sections = append(sections, m.renderDueSection(contentWidth))
 	}
 
+	if m.task.IsRecurring() {
+		sections = append(sections, m.renderRecurrenceSection(contentWidth))
+	}
+
 	sections = append(sections, m.renderMetadataSection(contentWidth))
 
 	if m.config != nil {
@@ -148,8 +152,33 @@ func (m *TaskDetailModel) renderHeaderSection(width int) string {
 }
 
 // renderDueSection renders the due date card.
+// Omits the recurrence line since the task detail view has a dedicated Recurrence card.
 func (m *TaskDetailModel) renderDueSection(width int) string {
-	return renderCard("Due", renderDueDateContent(m.task), width, DefaultCardConfig())
+	return renderCard("Due", renderDueDateContentOpts(m.task, m.task.IsRecurring()), width, DefaultCardConfig())
+}
+
+// renderRecurrenceSection renders the recurrence card with pattern and upcoming dates.
+func (m *TaskDetailModel) renderRecurrenceSection(width int) string {
+	var lines []string
+	lines = append(lines, MutedStyle.Render("Pattern: ")+m.task.Recurrence.String())
+
+	if m.task.Recurrence.Streak > 0 || m.task.Recurrence.MaxStreak > 0 {
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("Streak:  %d (best: %d)", m.task.Recurrence.Streak, m.task.Recurrence.MaxStreak)))
+	}
+	if m.task.Recurrence.Skipped > 0 {
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("Skipped: %d times", m.task.Recurrence.Skipped)))
+	}
+
+	upcoming := m.task.NextNDueDates(3)
+	if len(upcoming) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, MutedStyle.Render("Upcoming:"))
+		for _, d := range upcoming {
+			lines = append(lines, "  "+MutedStyle.Render(d.Format("Mon Jan 2, 2006")))
+		}
+	}
+
+	return renderCard("Recurrence", strings.Join(lines, "\n"), width, DefaultCardConfig())
 }
 
 // renderMetadataSection renders tags, section, and type-specific attributes.

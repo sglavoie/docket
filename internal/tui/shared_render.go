@@ -138,6 +138,7 @@ type TaskLine struct {
 type CrossProjectTaskLineOpts struct {
 	ShowScore       bool   // show composite score badge (requires cfg != nil)
 	ShowTags        bool   // show inline tag string
+	ShowRecurrence  bool   // show ↻ indicator with streak count for recurring tasks
 	MaxProjectLen   int    // project name truncation; 0 defaults to 12
 	Prefix          string // prepended before the project badge (e.g. checkbox, date string)
 	StatusBadge     string // pre-styled status badge override
@@ -171,6 +172,13 @@ func RenderCrossProjectTaskLine(
 	postTitle := ""
 	if frac := renderProgressFraction(task); frac != "" {
 		postTitle += " " + frac
+	}
+	if opts.ShowRecurrence && task.IsRecurring() {
+		recurStr := "↻"
+		if task.Recurrence.Streak > 0 {
+			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+		}
+		postTitle += " " + MutedStyle.Render(recurStr)
 	}
 	if opts.ShowTags {
 		postTitle += renderInlineTags(task.Tags)

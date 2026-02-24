@@ -487,6 +487,288 @@ func TestIsDueSoon(t *testing.T) {
 	}
 }
 
+func TestNextNDueDates(t *testing.T) {
+	t.Run("nil when not recurring", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		dates := task.NextNDueDates(3)
+		if dates != nil {
+			t.Errorf("expected nil, got %v", dates)
+		}
+	})
+
+	t.Run("nil when n <= 0", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
+		dates := task.NextNDueDates(0)
+		if dates != nil {
+			t.Errorf("expected nil for n=0, got %v", dates)
+		}
+	})
+
+	t.Run("daily with due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		expected := []time.Time{
+			time.Date(2025, 6, 2, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 6, 3, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 6, 4, 0, 0, 0, 0, time.Local),
+		}
+		for i, d := range dates {
+			if !d.Equal(expected[i]) {
+				t.Errorf("date[%d]: expected %v, got %v", i, expected[i], d)
+			}
+		}
+	})
+
+	t.Run("weekly with due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local) // Sunday
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 1})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		expected := []time.Time{
+			time.Date(2025, 6, 8, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 6, 22, 0, 0, 0, 0, time.Local),
+		}
+		for i, d := range dates {
+			if !d.Equal(expected[i]) {
+				t.Errorf("date[%d]: expected %v, got %v", i, expected[i], d)
+			}
+		}
+	})
+
+	t.Run("monthly with due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 1, 31, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceMonthly, Interval: 1})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		// Jan 31 -> Feb 28, Feb 28 -> Mar 28, Mar 28 -> Apr 28
+		if dates[0].Month() != time.February || dates[0].Day() != 28 {
+			t.Errorf("date[0]: expected Feb 28, got %v", dates[0])
+		}
+		if dates[1].Month() != time.March || dates[1].Day() != 28 {
+			t.Errorf("date[1]: expected Mar 28, got %v", dates[1])
+		}
+		if dates[2].Month() != time.April || dates[2].Day() != 28 {
+			t.Errorf("date[2]: expected Apr 28, got %v", dates[2])
+		}
+	})
+
+	t.Run("yearly with due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 3, 15, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceYearly, Interval: 1})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		expected := []time.Time{
+			time.Date(2026, 3, 15, 0, 0, 0, 0, time.Local),
+			time.Date(2027, 3, 15, 0, 0, 0, 0, time.Local),
+			time.Date(2028, 3, 15, 0, 0, 0, 0, time.Local),
+		}
+		for i, d := range dates {
+			if !d.Equal(expected[i]) {
+				t.Errorf("date[%d]: expected %v, got %v", i, expected[i], d)
+			}
+		}
+	})
+
+	t.Run("weekly with specific weekdays", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		// Wednesday June 4, 2025
+		base := time.Date(2025, 6, 4, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{
+			Unit:     RecurrenceWeekly,
+			Interval: 1,
+			Weekdays: []int{1, 3, 5}, // Mon, Wed, Fri
+		})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		// Wed -> Fri (same week), Fri -> Mon (next week), Mon -> Wed (same week)
+		if dates[0].Weekday() != time.Friday {
+			t.Errorf("date[0]: expected Friday, got %v", dates[0].Weekday())
+		}
+		if dates[1].Weekday() != time.Monday {
+			t.Errorf("date[1]: expected Monday, got %v", dates[1].Weekday())
+		}
+		if dates[2].Weekday() != time.Wednesday {
+			t.Errorf("date[2]: expected Wednesday, got %v", dates[2].Weekday())
+		}
+	})
+
+	t.Run("no due date uses today as base", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 2})
+
+		dates := task.NextNDueDates(2)
+		if len(dates) != 2 {
+			t.Fatalf("expected 2 dates, got %d", len(dates))
+		}
+		// First date should be ~2 days from now, second ~4 days from now
+		now := time.Now()
+		diff1 := dates[0].Sub(now).Hours() / 24
+		if diff1 < 1.5 || diff1 > 2.5 {
+			t.Errorf("date[0]: expected ~2 days from now, got %.1f days", diff1)
+		}
+		diff2 := dates[1].Sub(now).Hours() / 24
+		if diff2 < 3.5 || diff2 > 4.5 {
+			t.Errorf("date[1]: expected ~4 days from now, got %.1f days", diff2)
+		}
+	})
+
+	t.Run("every 2 weeks", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 2})
+
+		dates := task.NextNDueDates(3)
+		if len(dates) != 3 {
+			t.Fatalf("expected 3 dates, got %d", len(dates))
+		}
+		expected := []time.Time{
+			time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 6, 29, 0, 0, 0, 0, time.Local),
+			time.Date(2025, 7, 13, 0, 0, 0, 0, time.Local),
+		}
+		for i, d := range dates {
+			if !d.Equal(expected[i]) {
+				t.Errorf("date[%d]: expected %v, got %v", i, expected[i], d)
+			}
+		}
+	})
+}
+
+func TestSkipRecurrence(t *testing.T) {
+	t.Run("advances due date and resets streak", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceWeekly,
+			Interval: 1,
+			Streak:   5,
+		}
+
+		task.SkipRecurrence()
+
+		expected := time.Date(2025, 6, 8, 0, 0, 0, 0, time.Local)
+		if task.DueDate == nil || !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v, got %v", expected, task.DueDate)
+		}
+		if task.Recurrence.Streak != 0 {
+			t.Errorf("expected streak 0 after skip, got %d", task.Recurrence.Streak)
+		}
+		if task.Recurrence.Skipped != 1 {
+			t.Errorf("expected skipped 1, got %d", task.Recurrence.Skipped)
+		}
+	})
+
+	t.Run("no-op when not recurring", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		before := task.UpdatedAt
+		task.SkipRecurrence()
+		if task.UpdatedAt != before {
+			t.Error("expected no-op for non-recurring task")
+		}
+	})
+
+	t.Run("increments skipped counter", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+			Skipped:  2,
+		}
+
+		task.SkipRecurrence()
+		if task.Recurrence.Skipped != 3 {
+			t.Errorf("expected skipped 3, got %d", task.Recurrence.Skipped)
+		}
+	})
+}
+
+func TestDeferRecurrence(t *testing.T) {
+	t.Run("adds days to existing due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		base := time.Date(2025, 6, 10, 0, 0, 0, 0, time.Local)
+		task.DueDate = &base
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceDaily,
+			Interval: 1,
+			Streak:   3,
+		}
+
+		task.DeferRecurrence(5)
+
+		if task.DueDate == nil {
+			t.Fatal("expected due date to be set")
+		}
+		expected := time.Date(2025, 6, 15, 0, 0, 0, 0, time.Local)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v, got %v", expected, *task.DueDate)
+		}
+		// Streak should be unchanged
+		if task.Recurrence.Streak != 3 {
+			t.Errorf("expected streak unchanged at 3, got %d", task.Recurrence.Streak)
+		}
+	})
+
+	t.Run("falls back to today when no due date", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task.Recurrence = &RecurrencePattern{
+			Unit:     RecurrenceWeekly,
+			Interval: 1,
+		}
+
+		task.DeferRecurrence(3)
+
+		if task.DueDate == nil {
+			t.Fatal("expected due date to be set")
+		}
+		now := time.Now()
+		expected := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, 3)
+		if !task.DueDate.Equal(expected) {
+			t.Errorf("expected due date %v, got %v", expected, *task.DueDate)
+		}
+	})
+
+	t.Run("no-op when not recurring", func(t *testing.T) {
+		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		before := task.UpdatedAt
+		task.DeferRecurrence(5)
+		if task.UpdatedAt != before {
+			t.Error("expected no-op for non-recurring task")
+		}
+	})
+}
+
 func TestIsRecurring(t *testing.T) {
 	task := NewTask("t1", 1, TaskTypeTask, "Test")
 	if task.IsRecurring() {

@@ -20,6 +20,7 @@ type RecurrenceEditorModel struct {
 
 	// For preview calculation
 	dueDate *time.Time
+	streak  int // Current streak from existing pattern (display only)
 
 	// Focus: 0=interval, 1=unit, 2=weekdays (weekday cursor when focused)
 	focusSection  int
@@ -75,6 +76,8 @@ func NewRecurrenceEditorModel(current *models.RecurrencePattern, dueDate *time.T
 				m.weekdays[wd] = true
 			}
 		}
+
+		m.streak = current.Streak
 	}
 
 	return m
@@ -354,24 +357,34 @@ func (m *RecurrenceEditorModel) View() string {
 	}
 	b.WriteString("\n")
 
-	// Next occurrence
-	if m.dueDate != nil {
-		b.WriteString(FieldLabelStyle.Render("Next:    "))
-		// Create a temporary task to calculate next date
-		tempTask := &models.Task{
-			DueDate:    m.dueDate,
-			Recurrence: pattern,
-		}
-		nextDate := tempTask.NextDueDate()
-		if nextDate != nil {
-			b.WriteString(nextDate.Format("Mon Jan 2, 2006"))
-		} else {
-			b.WriteString(MutedStyle.Render("(no due date set)"))
+	// Streak info (from existing pattern)
+	if m.streak > 0 {
+		b.WriteString(FieldLabelStyle.Render("Streak:  "))
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("%d", m.streak)))
+		b.WriteString("\n")
+	}
+
+	// Next occurrences
+	tempTask := &models.Task{
+		DueDate:    m.dueDate,
+		Recurrence: pattern,
+	}
+	upcoming := tempTask.NextNDueDates(3)
+	if len(upcoming) > 0 {
+		for i, d := range upcoming {
+			label := fmt.Sprintf("Next %d:  ", i+1)
+			b.WriteString(FieldLabelStyle.Render(label))
+			if i == 0 {
+				b.WriteString(d.Format("Mon Jan 2, 2006"))
+			} else {
+				b.WriteString(MutedStyle.Render(d.Format("Mon Jan 2, 2006")))
+			}
+			b.WriteString("\n")
 		}
 	} else {
-		b.WriteString(MutedStyle.Render("Set a due date to see next occurrence"))
+		b.WriteString(MutedStyle.Render("Set a due date to see next occurrences"))
+		b.WriteString("\n")
 	}
-	b.WriteString("\n")
 
 	left := HelpStyle.Render("Tab: nav · ←→: select · Space: toggle · Enter: confirm")
 

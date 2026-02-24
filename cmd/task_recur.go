@@ -10,7 +10,11 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
-var taskRecurClear bool
+var (
+	taskRecurClear bool
+	taskRecurSkip  bool
+	taskRecurDefer int
+)
 
 var taskRecurCmd = &cobra.Command{
 	Use:   "recur <task-id> [pattern]",
@@ -37,7 +41,9 @@ Examples:
   tt task recur 12 2w           # Task #12 recurs every 2 weeks
   tt task recur 8 monthly       # Task #8 recurs monthly
   tt task recur 3 weekly:mon,fri # Task #3 recurs on Mondays and Fridays
-  tt task recur 5 --clear       # Remove recurrence from task #5`,
+  tt task recur 5 --clear       # Remove recurrence from task #5
+  tt task recur 5 --skip        # Skip next occurrence, advance due date
+  tt task recur 5 --defer 3     # Defer recurrence by 3 days`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runTaskRecur,
 }
@@ -45,6 +51,8 @@ Examples:
 func init() {
 	taskCmd.AddCommand(taskRecurCmd)
 	taskRecurCmd.Flags().BoolVar(&taskRecurClear, "clear", false, "Remove recurrence pattern")
+	taskRecurCmd.Flags().BoolVar(&taskRecurSkip, "skip", false, "Skip next occurrence and advance due date")
+	taskRecurCmd.Flags().IntVar(&taskRecurDefer, "defer", 0, "Defer recurrence by N days")
 }
 
 func runTaskRecur(cmd *cobra.Command, args []string) error {
@@ -63,6 +71,43 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		return tterrors.NewTaskNotFoundError(taskID)
 	}
 
+	// Handle --skip flag
+	if taskRecurSkip {
+		if task.Recurrence == nil {
+			return fmt.Errorf("task #%d is not recurring", taskID)
+		}
+		task.SkipRecurrence()
+		if err := SaveProject(project, nil); err != nil {
+			return fmt.Errorf("failed to save project: %w", err)
+		}
+		dueStr := "none"
+		if task.DueDate != nil {
+			dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		}
+		fmt.Printf("Skipped: next due %s\n", dueStr)
+		return nil
+	}
+
+	// Handle --defer flag
+	if taskRecurDefer < 0 {
+		return fmt.Errorf("defer days must be positive, got %d", taskRecurDefer)
+	}
+	if taskRecurDefer > 0 {
+		if task.Recurrence == nil {
+			return fmt.Errorf("task #%d is not recurring", taskID)
+		}
+		task.DeferRecurrence(taskRecurDefer)
+		if err := SaveProject(project, nil); err != nil {
+			return fmt.Errorf("failed to save project: %w", err)
+		}
+		dueStr := "none"
+		if task.DueDate != nil {
+			dueStr = task.DueDate.Format("Mon Jan 2, 2006")
+		}
+		fmt.Printf("Deferred: now due %s\n", dueStr)
+		return nil
+	}
+
 	// Handle --clear flag
 	if taskRecurClear {
 		if task.Recurrence == nil {
@@ -77,10 +122,23 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Require pattern argument when not clearing
+	// Require pattern argument when not clearing/skipping/deferring
 	if len(args) < 2 {
 		if task.Recurrence != nil {
 			fmt.Printf("Task #%d recurs %s\n", taskID, task.Recurrence.String())
+			if task.Recurrence.Streak > 0 || task.Recurrence.MaxStreak > 0 {
+				fmt.Printf("Streak: %d (best: %d)\n", task.Recurrence.Streak, task.Recurrence.MaxStreak)
+			}
+			if task.Recurrence.Skipped > 0 {
+				fmt.Printf("Skipped: %d times\n", task.Recurrence.Skipped)
+			}
+			upcoming := task.NextNDueDates(3)
+			if len(upcoming) > 0 {
+				fmt.Println("Upcoming:")
+				for i, d := range upcoming {
+					fmt.Printf("  %d. %s\n", i+1, d.Format("Mon Jan 2, 2006"))
+				}
+			}
 		} else {
 			fmt.Printf("Task #%d has no recurrence pattern\n", taskID)
 		}

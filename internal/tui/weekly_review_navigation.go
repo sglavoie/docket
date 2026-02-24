@@ -9,7 +9,7 @@ var weeklyReviewTabNames = []string{"Projects", "Tasks", "Planning"}
 var weeklyReviewTabSections = [][]WeeklyReviewSection{
 	{WeeklySectionStaleProjects, WeeklySectionInboxBacklog, WeeklySectionBlockedWork, WeeklySectionOvercommitted},
 	{WeeklySectionStaleTasks, WeeklySectionPriorityMismatch},
-	{WeeklySectionUpcomingWeek},
+	{WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview},
 }
 
 // sectionInTab returns true if the given section belongs to the active tab.
@@ -42,6 +42,7 @@ func (m *WeeklyReviewModel) calculateNavigation() {
 		{WeeklySectionStaleTasks, len(m.staleTasks)},
 		{WeeklySectionPriorityMismatch, len(m.priorityMismatch)},
 		{WeeklySectionUpcomingWeek, len(m.upcomingWeek)},
+		{WeeklySectionRecurringOverview, len(m.recurringOverview)},
 	}
 
 	for _, s := range sections {
@@ -79,6 +80,8 @@ func (m *WeeklyReviewModel) getSectionItemCount(section WeeklyReviewSection) int
 		return len(m.priorityMismatch)
 	case WeeklySectionUpcomingWeek:
 		return len(m.upcomingWeek)
+	case WeeklySectionRecurringOverview:
+		return len(m.recurringOverview)
 	}
 	return 0
 }
@@ -163,6 +166,10 @@ func (m *WeeklyReviewModel) getTaskAtCursor() *WeeklyReviewTask {
 				if idx < len(m.upcomingWeek) {
 					return &m.upcomingWeek[idx]
 				}
+			case WeeklySectionRecurringOverview:
+				if idx < len(m.recurringOverview) {
+					return &m.recurringOverview[idx]
+				}
 			}
 			return nil // Project sections don't return tasks
 		}
@@ -200,7 +207,7 @@ func (m *WeeklyReviewModel) goToNextUnreviewed() (tea.Model, tea.Cmd) {
 		WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
 		WeeklySectionBlockedWork, WeeklySectionOvercommitted,
 		WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
-		WeeklySectionUpcomingWeek,
+		WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
 	}
 	for _, section := range allSections {
 		if m.reviewedSections[section] {

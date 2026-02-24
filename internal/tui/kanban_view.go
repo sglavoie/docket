@@ -458,6 +458,13 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 			content += " " + frac
 		}
 	}
+	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+		recurStr := "↻"
+		if task.Recurrence.Streak > 0 {
+			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+		}
+		content += " " + MutedStyle.Render(recurStr)
+	}
 	if scoreBadgeStr != "" {
 		content += " " + scoreBadgeStr
 	}

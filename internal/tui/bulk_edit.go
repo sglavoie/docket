@@ -81,14 +81,14 @@ type BulkEditModel struct {
 	recurrenceSummary string                    // Summary of current values
 
 	// Parent field
-	parentCursor     int              // 0=Keep, 1=Set parent, 2=Move to root
-	parentValue      *string          // Selected parent task ID
-	clearParent      bool             // Whether to move to root
-	parentSummary    string           // Summary of current parents
-	parentCandidates []*models.Task   // Valid parent candidates
-	parentListMode   bool             // True when browsing candidate list
-	parentListCursor int              // Cursor within candidate list
-	parentListOffset int              // Scroll offset for candidate list
+	parentCursor     int            // 0=Keep, 1=Set parent, 2=Move to root
+	parentValue      *string        // Selected parent task ID
+	clearParent      bool           // Whether to move to root
+	parentSummary    string         // Summary of current parents
+	parentCandidates []*models.Task // Valid parent candidates
+	parentListMode   bool           // True when browsing candidate list
+	parentListCursor int            // Cursor within candidate list
+	parentListOffset int            // Scroll offset for candidate list
 
 	// Actions field
 	actionCursor int // 0=Apply, 1=Cancel

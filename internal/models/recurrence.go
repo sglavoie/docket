@@ -19,9 +19,12 @@ const (
 
 // RecurrencePattern defines how a task recurs.
 type RecurrencePattern struct {
-	Interval int            `json:"interval"`           // Every N periods (e.g., 2 = every 2 weeks)
-	Unit     RecurrenceUnit `json:"unit"`               // day, week, month, year
-	Weekdays []int          `json:"weekdays,omitempty"` // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+	Interval  int            `json:"interval"`             // Every N periods (e.g., 2 = every 2 weeks)
+	Unit      RecurrenceUnit `json:"unit"`                 // day, week, month, year
+	Weekdays  []int          `json:"weekdays,omitempty"`   // For weekly: 0=Sun, 1=Mon, ..., 6=Sat
+	Skipped   int            `json:"skipped,omitempty"`    // Number of times this recurrence has been skipped
+	Streak    int            `json:"streak,omitempty"`     // Current consecutive on-time completions
+	MaxStreak int            `json:"max_streak,omitempty"` // Best streak achieved
 }
 
 // String returns a human-readable representation of the recurrence pattern.

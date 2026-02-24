@@ -197,6 +197,13 @@ func renderTaskHeaderContent(task *models.Task, hasIncompleteDeps bool, showSnoo
 // renderDueDateContent builds the styled due date string with overdue/today/normal
 // coloring, and appends a recurrence line when the task has one.
 func renderDueDateContent(task *models.Task) string {
+	return renderDueDateContentOpts(task, false)
+}
+
+// renderDueDateContentOpts builds the styled due date string. When hideRecurrence
+// is true, the "Recurs:" line is omitted (useful when a dedicated Recurrence card
+// is shown nearby).
+func renderDueDateContentOpts(task *models.Task, hideRecurrence bool) string {
 	dueAbsolute := task.DueDate.Format(util.DateFormat)
 	dueRelative := formatRelativeDueVerbose(task.DueDate)
 	dueLine := fmt.Sprintf("%s (%s)", dueAbsolute, dueRelative)
@@ -209,7 +216,7 @@ func renderDueDateContent(task *models.Task) string {
 		dueLine = DueDateStyle.Render(dueLine)
 	}
 
-	if task.Recurrence != nil {
+	if !hideRecurrence && task.Recurrence != nil {
 		dueLine += "\n" + MutedStyle.Render("Recurs: "+task.Recurrence.String())
 	}
 

@@ -35,6 +35,7 @@ const (
 	WeeklySectionStaleTasks
 	WeeklySectionPriorityMismatch
 	WeeklySectionUpcomingWeek
+	WeeklySectionRecurringOverview
 )
 
 // ShowWeeklyReviewMsg opens the weekly review view.
@@ -70,9 +71,10 @@ type WeeklyReviewModel struct {
 	overcommitted []WeeklyReviewProject
 
 	// Task sections
-	staleTasks       []WeeklyReviewTask
-	priorityMismatch []WeeklyReviewTask
-	upcomingWeek     []WeeklyReviewTask
+	staleTasks        []WeeklyReviewTask
+	priorityMismatch  []WeeklyReviewTask
+	upcomingWeek      []WeeklyReviewTask
+	recurringOverview []WeeklyReviewTask
 
 	// Navigation
 	totalItems        int
@@ -313,6 +315,9 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				targetSection = &s
 			case "w":
 				s := WeeklySectionUpcomingWeek
+				targetSection = &s
+			case "r":
+				s := WeeklySectionRecurringOverview
 				targetSection = &s
 			}
 			if targetSection != nil {

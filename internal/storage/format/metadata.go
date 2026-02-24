@@ -49,6 +49,7 @@ type ParseWarning struct {
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
+	"recur.skipped", "recur.streak", "recur.max_streak",
 	"attachments", "snoozed", "checklist", "source", "url",
 	// Type-specific attribute keys
 	"bug.reproducible", "bug.severity", "bug.workaround",
@@ -152,6 +153,22 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		case "recur":
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
+			}
+		// NOTE: recur.* sub-fields require the "recur" key to have been parsed first
+		// (task.Recurrence must be non-nil). WriteMetadata always emits "recur" before
+		// its sub-fields, so roundtrips are safe. Hand-edited metadata with reordered
+		// keys will silently lose these values.
+		case "recur.skipped":
+			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
+				task.Recurrence.Skipped = v
+			}
+		case "recur.streak":
+			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
+				task.Recurrence.Streak = v
+			}
+		case "recur.max_streak":
+			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
+				task.Recurrence.MaxStreak = v
 			}
 		case "snoozed":
 			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
@@ -491,6 +508,15 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.Recurrence != nil {
 		parts = append(parts, fmt.Sprintf("recur: %s", FormatRecurrence(task.Recurrence)))
+		if task.Recurrence.Skipped > 0 {
+			parts = append(parts, fmt.Sprintf("recur.skipped: %d", task.Recurrence.Skipped))
+		}
+		if task.Recurrence.Streak > 0 {
+			parts = append(parts, fmt.Sprintf("recur.streak: %d", task.Recurrence.Streak))
+		}
+		if task.Recurrence.MaxStreak > 0 {
+			parts = append(parts, fmt.Sprintf("recur.max_streak: %d", task.Recurrence.MaxStreak))
+		}
 	}
 
 	if len(task.Attachments) > 0 {

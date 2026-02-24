@@ -42,6 +42,14 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
+		if key == "k" {
+			cmd, _ := handleSkipRecurrence(m)
+			return m, cmd
+		}
+		if key == "D" {
+			m.pendingPrefix = ",D"
+			return m, nil
+		}
 		if status, ok := StatusForPrefixKey(key); ok {
 			if m.multiSelectMode && len(m.selectedTasks) > 0 {
 				return m.applyBulkStatusChange(status)
@@ -57,6 +65,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.statusMessage = result.StatusMessage
 			m.rebuildRows()
 			return m, result.Cmd
+		}
+
+	case ",D":
+		if cmd, ok := handleDeferRecurrence(key, m); ok {
+			return m, cmd
 		}
 
 	case "t":

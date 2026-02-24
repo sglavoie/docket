@@ -278,6 +278,40 @@ func (t *Task) ClearRecurrence() {
 	}
 }
 
+// SkipRecurrence advances the due date to the next occurrence without completing
+// the task. Increments the Skipped counter and resets the Streak to 0 (skipping
+// breaks a streak). No-op if the task is not recurring.
+func (t *Task) SkipRecurrence() {
+	if t.Recurrence == nil {
+		return
+	}
+
+	next := t.NextDueDate()
+	if next != nil {
+		t.DueDate = next
+	}
+	t.Recurrence.Skipped++
+	t.Recurrence.Streak = 0
+	t.UpdatedAt = time.Now()
+}
+
+// DeferRecurrence pushes the due date forward by the given number of days.
+// Unlike SkipRecurrence, deferring does not affect the streak or skipped count.
+// No-op if the task is not recurring.
+func (t *Task) DeferRecurrence(days int) {
+	if t.Recurrence == nil {
+		return
+	}
+
+	base := util.StartOfDay(time.Now())
+	if t.DueDate != nil {
+		base = util.StartOfDay(*t.DueDate)
+	}
+	newDue := base.AddDate(0, 0, days)
+	t.DueDate = &newDue
+	t.UpdatedAt = time.Now()
+}
+
 // NextDueDate calculates the next due date based on the recurrence pattern.
 // Uses fixed interval scheduling: next date is calculated from the current due date.
 // If the task has no due date, calculates from today.
@@ -294,4 +328,27 @@ func (t *Task) NextDueDate() *time.Time {
 
 	next := calculateNextDate(baseDate, t.Recurrence)
 	return &next
+}
+
+// NextNDueDates returns the next n upcoming due dates based on the recurrence
+// pattern. Each date is calculated by iterating from the previous one. If the
+// task has no due date, calculations start from today. Returns nil if the task
+// is not recurring.
+func (t *Task) NextNDueDates(n int) []time.Time {
+	if t.Recurrence == nil || n <= 0 {
+		return nil
+	}
+
+	baseDate := time.Now()
+	if t.DueDate != nil {
+		baseDate = *t.DueDate
+	}
+
+	dates := make([]time.Time, 0, n)
+	current := baseDate
+	for i := 0; i < n; i++ {
+		current = calculateNextDate(current, t.Recurrence)
+		dates = append(dates, current)
+	}
+	return dates
 }

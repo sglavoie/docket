@@ -137,6 +137,12 @@ func statusBindings() []Keybinding {
 		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
 		{Key: ",x", Description: "Cancel task", Category: "Status"},
 		{Key: ",r", Description: "Send to review", Category: "Status"},
+		{Key: ",k", Description: "Skip recurrence", Category: "Recurrence"},
+		{Key: ",Dt", Description: "Defer recurrence 1 day", Category: "Recurrence"},
+		{Key: ",D3", Description: "Defer recurrence 3 days", Category: "Recurrence"},
+		{Key: ",Dw", Description: "Defer recurrence 1 week", Category: "Recurrence"},
+		{Key: ",DW", Description: "Defer recurrence 2 weeks", Category: "Recurrence"},
+		{Key: ",Dm", Description: "Defer recurrence 1 month", Category: "Recurrence"},
 	}
 }
 

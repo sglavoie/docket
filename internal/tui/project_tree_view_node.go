@@ -157,9 +157,13 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		indicators += MutedStyle.Render("zzz "+snoozeStr) + " "
 	}
 
-	// Recurrence indicator
+	// Recurrence indicator (with streak count when > 0)
 	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-		indicators += MutedStyle.Render("↻") + " "
+		recurStr := "↻"
+		if task.Recurrence.Streak > 0 {
+			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+		}
+		indicators += MutedStyle.Render(recurStr) + " "
 	}
 
 	// Dependency indicators (compact, only when sidebar is hidden)

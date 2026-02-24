@@ -19,10 +19,38 @@ func (p *Project) GenerateRecurringInstances() int {
 	}
 
 	for _, task := range toGenerate {
+		// Update streak based on completion timeliness
+		if task.Recurrence != nil {
+			onTime := true
+			if task.DueDate != nil && task.CompletedAt != nil {
+				completedDay := task.CompletedAt.Truncate(24 * time.Hour)
+				dueDay := task.DueDate.Truncate(24 * time.Hour)
+				onTime = !completedDay.After(dueDay)
+			}
+			// No DueDate counts as on-time
+			if onTime {
+				task.Recurrence.Streak++
+				if task.Recurrence.Streak > task.Recurrence.MaxStreak {
+					task.Recurrence.MaxStreak = task.Recurrence.Streak
+				}
+			} else {
+				task.Recurrence.Streak = 0
+			}
+		}
+
 		// Calculate next due date
 		nextDue := task.NextDueDate()
 
-		// Create new instance
+		// Create new instance — carry forward recurrence pattern with streak data
+		newRecurrence := &RecurrencePattern{
+			Interval:  task.Recurrence.Interval,
+			Unit:      task.Recurrence.Unit,
+			Weekdays:  append([]int{}, task.Recurrence.Weekdays...),
+			Skipped:   task.Recurrence.Skipped,
+			Streak:    task.Recurrence.Streak,
+			MaxStreak: task.Recurrence.MaxStreak,
+		}
+
 		newTask := &Task{
 			ID:         generateUUID(),
 			ShortID:    p.GetNextShortID(),
@@ -33,7 +61,7 @@ func (p *Project) GenerateRecurringInstances() int {
 			Section:    SectionInbox, // New instances go to Inbox for triage
 			Tags:       append([]string{}, task.Tags...),
 			DueDate:    nextDue,
-			Recurrence: task.Recurrence, // Carry forward the recurrence pattern
+			Recurrence: newRecurrence,
 			CreatedAt:  now,
 			UpdatedAt:  now,
 		}
