@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -212,40 +211,4 @@ func (m *KanbanViewModel) handleBulkDelete() tea.Cmd {
 	return func() tea.Msg {
 		return KanbanTaskDeletedMsg{TaskID: "", Section: section}
 	}
-}
-
-// handleBulkPriorityChange applies a priority change to all selected tasks.
-func (m *KanbanViewModel) handleBulkPriorityChange(priority int) tea.Cmd {
-	tasks := m.getSelectedTasksList()
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	count := applyBulkPriority(m.Project, tasks, priority)
-
-	m.setUndoContext("Set Priority", fmt.Sprintf("P%d on %d tasks", priority, count))
-	m.finishBulk(fmt.Sprintf("Set priority %d on %d tasks", priority, count))
-
-	return m.saveWithWorkflow(prevStates, func() tea.Msg {
-		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
-	})
-}
-
-// handleBulkDueDateChange applies a due date change to all selected tasks.
-func (m *KanbanViewModel) handleBulkDueDateChange(dueDate *time.Time, desc string) tea.Cmd {
-	tasks := m.getSelectedTasksList()
-	if len(tasks) == 0 {
-		return nil
-	}
-
-	prevStates := captureTaskStates(m.Project.Tasks)
-	count := applyBulkDueDate(m.Project, tasks, dueDate)
-
-	m.setUndoContext("Set Due Date", fmt.Sprintf("%s on %d tasks", desc, count))
-	m.finishBulk(fmt.Sprintf("Due date %s on %d tasks", desc, count))
-
-	return m.saveWithWorkflow(prevStates, func() tea.Msg {
-		return KanbanStatusChangedMsg{TaskID: "", PreviousSection: m.CurrentSection()}
-	})
 }

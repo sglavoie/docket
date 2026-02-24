@@ -248,6 +248,6 @@ func (m *ProjectCreatorModel) View() string {
 }
 
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }
-func (m *ProjectCreatorModel) ShouldCaptureEsc() bool  { return true }
-func (m *ProjectCreatorModel) IsFullHeight() bool      { return false }
-func (m *ProjectCreatorModel) StatusBarLabel() string   { return "New Project" }
+func (m *ProjectCreatorModel) ShouldCaptureEsc() bool { return true }
+func (m *ProjectCreatorModel) IsFullHeight() bool     { return false }
+func (m *ProjectCreatorModel) StatusBarLabel() string { return "New Project" }

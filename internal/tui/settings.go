@@ -269,6 +269,6 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 }
 
 func (m *SettingsModel) HasTextInput() bool     { return true }
-func (m *SettingsModel) ShouldCaptureEsc() bool  { return true }
-func (m *SettingsModel) IsFullHeight() bool      { return false }
-func (m *SettingsModel) StatusBarLabel() string   { return "Settings" }
+func (m *SettingsModel) ShouldCaptureEsc() bool { return true }
+func (m *SettingsModel) IsFullHeight() bool     { return false }
+func (m *SettingsModel) StatusBarLabel() string { return "Settings" }

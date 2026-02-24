@@ -639,6 +639,6 @@ func (m *SectionManagerModel) View() string {
 
 func (m *SectionManagerModel) HasTextInput() bool     { return m.renameMode || m.addMode }
 func (m *SectionManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addMode }
-func (m *SectionManagerModel) IsFullHeight() bool      { return false }
+func (m *SectionManagerModel) IsFullHeight() bool     { return false }
 
 func (m *SectionManagerModel) StatusBarLabel() string { return "Custom Section Manager" }

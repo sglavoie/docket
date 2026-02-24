@@ -313,9 +313,7 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	// Body: render as markdown
 	if note.Body != "" {
 		rendered := renderMarkdown(note.Body, width)
-		for _, rl := range strings.Split(rendered, "\n") {
-			lines = append(lines, rl)
-		}
+		lines = append(lines, strings.Split(rendered, "\n")...)
 	}
 
 	// Clamp scroll so the last line is always visible at the bottom
