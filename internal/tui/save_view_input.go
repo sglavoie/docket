@@ -106,6 +106,8 @@ func (m *SaveViewInputModel) HasTextInput() bool { return true }
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SaveViewInputModel) ShouldCaptureEsc() bool { return true }
 
+func (m *SaveViewInputModel) IsFullHeight() bool { return false }
+
 // describeSavedViewFilters builds a human-readable summary of a saved view's filter state.
 func describeSavedViewFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
 	var parts []string

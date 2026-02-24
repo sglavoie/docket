@@ -107,3 +107,5 @@ func (m *SaveSearchInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SaveSearchInputModel) ShouldCaptureEsc() bool { return true }
+
+func (m *SaveSearchInputModel) IsFullHeight() bool { return false }

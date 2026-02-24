@@ -136,6 +136,8 @@ func (m *LinkedTaskCreatorModel) ShouldCaptureEsc() bool {
 	return false
 }
 
+func (m *LinkedTaskCreatorModel) IsFullHeight() bool { return false }
+
 func (m *LinkedTaskCreatorModel) linkTypeName() string {
 	switch m.linkType {
 	case LinkTypeBlocker:

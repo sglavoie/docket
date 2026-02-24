@@ -129,6 +129,8 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 	return false
 }
 
+func (m *QuickCaptureModel) IsFullHeight() bool { return false }
+
 func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 	return func() tea.Msg {
 		input := m.inputValue()

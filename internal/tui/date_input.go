@@ -159,6 +159,8 @@ func (m *DateInputModel) HasTextInput() bool { return true }
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *DateInputModel) ShouldCaptureEsc() bool { return true }
 
+func (m *DateInputModel) IsFullHeight() bool { return false }
+
 // DueDateChangedMsg is sent when a due date is changed.
 type DueDateChangedMsg struct {
 	Task *models.Task

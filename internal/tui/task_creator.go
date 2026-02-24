@@ -325,6 +325,8 @@ func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
 	return m.confirmDiscard || m.confirmTypeChange
 }
 
+func (m *TaskCreatorModel) IsFullHeight() bool { return false }
+
 func (m *TaskCreatorModel) SupportsHelpShortcut() bool { return false }
 
 // currentTypeCanHaveChildren returns true if the currently selected type can have children.

@@ -406,4 +406,8 @@ func (m *TagManagerModel) View() string {
 	return out.String()
 }
 
+func (m *TagManagerModel) HasTextInput() bool     { return m.renameMode || m.addTagMode }
+func (m *TagManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addTagMode }
+func (m *TagManagerModel) IsFullHeight() bool      { return false }
+
 func (m *TagManagerModel) StatusBarLabel() string { return "Tag Manager" }

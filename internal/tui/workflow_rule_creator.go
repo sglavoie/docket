@@ -292,3 +292,6 @@ type ShowWorkflowRuleEditorMsg struct {
 func (m *WorkflowRuleCreatorModel) ShouldCaptureEsc() bool {
 	return true
 }
+
+func (m *WorkflowRuleCreatorModel) HasTextInput() bool { return true }
+func (m *WorkflowRuleCreatorModel) IsFullHeight() bool { return false }

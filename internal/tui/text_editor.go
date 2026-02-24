@@ -128,6 +128,9 @@ func (m *TextEditorModel) HasTextInput() bool {
 	return true
 }
 
+func (m *TextEditorModel) ShouldCaptureEsc() bool { return true }
+func (m *TextEditorModel) IsFullHeight() bool      { return false }
+
 // ShowTextEditorMsg triggers showing the text editor popup.
 type ShowTextEditorMsg struct {
 	FieldName    string // "title" or "description"

@@ -74,6 +74,8 @@ func (m *TaskJumperModel) ShouldCaptureEsc() bool {
 	return true
 }
 
+func (m *TaskJumperModel) IsFullHeight() bool { return false }
+
 func (m *TaskJumperModel) SupportsHelpShortcut() bool { return false }
 
 // SetSize sets the view dimensions.

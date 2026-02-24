@@ -483,4 +483,8 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 	return b.String()
 }
 
+func (m *GlobalTagManagerModel) HasTextInput() bool     { return m.renameMode }
+func (m *GlobalTagManagerModel) ShouldCaptureEsc() bool { return m.renameMode }
+func (m *GlobalTagManagerModel) IsFullHeight() bool      { return false }
+
 func (m *GlobalTagManagerModel) StatusBarLabel() string { return "Global Tags" }

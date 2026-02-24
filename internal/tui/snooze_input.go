@@ -154,6 +154,8 @@ func (m *SnoozeInputModel) HasTextInput() bool { return true }
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SnoozeInputModel) ShouldCaptureEsc() bool { return true }
 
+func (m *SnoozeInputModel) IsFullHeight() bool { return false }
+
 // SnoozeDateChangedMsg is sent when a snooze date is changed.
 type SnoozeDateChangedMsg struct {
 	Task *models.Task

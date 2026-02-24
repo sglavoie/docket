@@ -122,6 +122,8 @@ func (m *BulkCaptureModel) ShouldCaptureEsc() bool {
 	return false
 }
 
+func (m *BulkCaptureModel) IsFullHeight() bool { return false }
+
 func (m *BulkCaptureModel) createTasks() tea.Cmd {
 	return func() tea.Msg {
 		content := strings.TrimSpace(m.input.Value())
