@@ -288,7 +288,46 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 		prevStates := captureTaskStates(m.project.Tasks)
 
 		// Apply changes to each task
+		typeSkipped := 0
 		for _, task := range tasks {
+			// Handle type change with hierarchy validation (outside MutateTask
+			// since we need to check parent/children relationships)
+			if changes.SetType != nil {
+				newType := *changes.SetType
+				canChange := true
+
+				// Check if new type is valid under current parent
+				if task.Parent != nil {
+					if !newType.CanBeChildOf(task.Parent.Type) {
+						canChange = false
+					}
+				}
+
+				// Check if new type can have children (if task has any)
+				if canChange && len(task.Children) > 0 && !newType.CanHaveChildren() {
+					canChange = false
+				}
+
+				// Check if all children are valid under new type
+				if canChange && len(task.Children) > 0 {
+					for _, child := range task.Children {
+						if !child.Type.CanBeChildOf(newType) {
+							canChange = false
+							break
+						}
+					}
+				}
+
+				if canChange {
+					m.project.MutateTask(task.ID, func(t *models.Task) {
+						t.Type = newType
+						t.ClearTypeAttrs()
+					})
+				} else {
+					typeSkipped++
+				}
+			}
+
 			m.project.MutateTask(task.ID, func(t *models.Task) {
 				if changes.SetStatus != nil {
 					t.Status = *changes.SetStatus
@@ -314,6 +353,15 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 				} else if changes.SetDueDate != nil {
 					t.DueDate = changes.SetDueDate
 				}
+				if changes.ClearRecurrence {
+					t.ClearRecurrence()
+				} else if changes.SetRecurrence != nil {
+					t.Recurrence = &models.RecurrencePattern{
+						Interval: changes.SetRecurrence.Interval,
+						Unit:     changes.SetRecurrence.Unit,
+						Weekdays: changes.SetRecurrence.Weekdays,
+					}
+				}
 			})
 			if changes.SetSection != nil {
 				section := *changes.SetSection
@@ -321,6 +369,73 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 					m.project.RelocateTaskToEndOfSection(task.ID, section)
 				}
 			}
+		}
+		_ = typeSkipped // Available for future status message use
+
+		// Handle reparenting (after other mutations, before persist)
+		if changes.ClearParent || changes.SetParentID != nil {
+			parentSkipped := 0
+			for _, task := range tasks {
+				if changes.ClearParent {
+					m.project.MutateTask(task.ID, func(t *models.Task) {
+						t.ParentID = nil
+					})
+				} else if changes.SetParentID != nil {
+					targetID := *changes.SetParentID
+					canReparent := true
+
+					// Find target parent task
+					var targetParent *models.Task
+					for _, t := range m.project.Tasks {
+						if t.ID == targetID {
+							targetParent = t
+							break
+						}
+					}
+					if targetParent == nil {
+						canReparent = false
+					}
+
+					// Validate type compatibility
+					if canReparent && !task.Type.CanBeChildOf(targetParent.Type) {
+						canReparent = false
+					}
+
+					// Circular dependency check: walk up from target parent,
+					// if any ancestor is the task being moved, skip it
+					if canReparent {
+						current := targetParent
+						for current != nil {
+							if current.ID == task.ID {
+								canReparent = false
+								break
+							}
+							if current.ParentID == nil {
+								break
+							}
+							// Find parent in project tasks
+							var next *models.Task
+							for _, t := range m.project.Tasks {
+								if current.ParentID != nil && t.ID == *current.ParentID {
+									next = t
+									break
+								}
+							}
+							current = next
+						}
+					}
+
+					if canReparent {
+						m.project.MutateTask(task.ID, func(t *models.Task) {
+							t.ParentID = &targetID
+						})
+					} else {
+						parentSkipped++
+					}
+				}
+			}
+			_ = parentSkipped // Available for future status message use
+			m.project.BuildTaskTree()
 		}
 
 		opts := m.buildWorkflowOpts(prevStates)

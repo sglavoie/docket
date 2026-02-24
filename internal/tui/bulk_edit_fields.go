@@ -57,6 +57,73 @@ func (m *BulkEditModel) renderStatusField() string {
 	return b.String()
 }
 
+// renderTypeField renders the type selection field.
+func (m *BulkEditModel) renderTypeField() string {
+	var b strings.Builder
+
+	focused := m.focusIndex == fieldType
+	label := "Type:"
+	if focused {
+		label = "> " + label
+	} else {
+		label = "  " + label
+	}
+
+	b.WriteString(m.fieldLabel(label, focused))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%s)", m.typeSummary)))
+	b.WriteString("\n")
+
+	options := []string{"No change", "Epic", "Story", "Task", "Bug", "Idea", "Action"}
+	for i, opt := range options {
+		prefix := "  "
+		if focused {
+			prefix = "    "
+		}
+
+		selected := (m.typeValue == nil && i == 0) ||
+			(m.typeValue != nil && i > 0 && getTypeIndex(*m.typeValue) == i-1)
+
+		cursor := "[ ]"
+		if selected {
+			cursor = "[x]"
+		}
+		if focused && m.typeCursor == i {
+			cursor = "[>]"
+		}
+
+		line := fmt.Sprintf("%s%s %s", prefix, cursor, opt)
+		if focused && m.typeCursor == i {
+			b.WriteString(TaskJumperSelectedStyle.Render(line))
+		} else {
+			b.WriteString(line)
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// getTypeIndex returns the index of a task type in the type list.
+func getTypeIndex(t models.TaskType) int {
+	switch t {
+	case models.TaskTypeEpic:
+		return 0
+	case models.TaskTypeStory:
+		return 1
+	case models.TaskTypeTask:
+		return 2
+	case models.TaskTypeBug:
+		return 3
+	case models.TaskTypeIdea:
+		return 4
+	case models.TaskTypeAction:
+		return 5
+	default:
+		return 0
+	}
+}
+
 // renderPriorityField renders the priority selection field.
 func (m *BulkEditModel) renderPriorityField() string {
 	var b strings.Builder
@@ -351,6 +418,188 @@ func (m *BulkEditModel) renderDueDateField() string {
 	return b.String()
 }
 
+// renderRecurrenceField renders the recurrence selection field.
+func (m *BulkEditModel) renderRecurrenceField() string {
+	var b strings.Builder
+
+	focused := m.focusIndex == fieldRecurrence
+	label := "Recurrence:"
+	if focused {
+		label = "> " + label
+	} else {
+		label = "  " + label
+	}
+
+	b.WriteString(m.fieldLabel(label, focused))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%s)", m.recurrenceSummary)))
+	b.WriteString("\n")
+
+	options := []string{"Keep current", "Daily", "Weekly", "Every 2 weeks", "Monthly", "Yearly", "Clear recurrence"}
+	for i, opt := range options {
+		prefix := "  "
+		if focused {
+			prefix = "    "
+		}
+
+		selected := false
+		switch {
+		case i == 0:
+			selected = m.recurrenceValue == nil && !m.clearRecurrence
+		case i == len(options)-1:
+			selected = m.clearRecurrence
+		default:
+			selected = m.recurrenceValue != nil && m.recurrenceCursor == i
+		}
+
+		cursor := "[ ]"
+		if selected {
+			cursor = "[x]"
+		}
+		if focused && m.recurrenceCursor == i {
+			cursor = "[>]"
+		}
+
+		line := fmt.Sprintf("%s%s %s", prefix, cursor, opt)
+		if focused && m.recurrenceCursor == i {
+			b.WriteString(TaskJumperSelectedStyle.Render(line))
+		} else {
+			b.WriteString(line)
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
+// renderParentField renders the parent selection field.
+func (m *BulkEditModel) renderParentField() string {
+	var b strings.Builder
+
+	focused := m.focusIndex == fieldParent
+	label := "Parent:"
+	if focused {
+		label = "> " + label
+	} else {
+		label = "  " + label
+	}
+
+	b.WriteString(m.fieldLabel(label, focused))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("(%s)", m.parentSummary)))
+	b.WriteString("\n")
+
+	prefix := "  "
+	if focused {
+		prefix = "    "
+	}
+
+	// Determine which option is selected
+	keepSelected := m.parentValue == nil && !m.clearParent
+	setSelected := m.parentValue != nil
+	rootSelected := m.clearParent
+
+	// Option 0: Keep current
+	cursor := "[ ]"
+	if keepSelected {
+		cursor = "[x]"
+	}
+	if focused && !m.parentListMode && m.parentCursor == 0 {
+		cursor = "[>]"
+	}
+	line := fmt.Sprintf("%s%s Keep current", prefix, cursor)
+	if focused && !m.parentListMode && m.parentCursor == 0 {
+		b.WriteString(TaskJumperSelectedStyle.Render(line))
+	} else {
+		b.WriteString(line)
+	}
+	b.WriteString("\n")
+
+	// Option 1: Set parent
+	if m.parentListMode {
+		// Show candidate list
+		if len(m.parentCandidates) == 0 {
+			b.WriteString(prefix)
+			b.WriteString(MutedStyle.Render("    No valid parent candidates"))
+			b.WriteString("\n")
+		} else {
+			maxVisible := 8
+			end := m.parentListOffset + maxVisible
+			if end > len(m.parentCandidates) {
+				end = len(m.parentCandidates)
+			}
+			if m.parentListOffset > 0 {
+				b.WriteString(prefix)
+				b.WriteString(MutedStyle.Render("    ↑ more"))
+				b.WriteString("\n")
+			}
+			for i := m.parentListOffset; i < end; i++ {
+				candidate := m.parentCandidates[i]
+				indent := strings.Repeat("  ", candidate.Level)
+				icon := candidate.Type.Icon()
+				cLine := fmt.Sprintf("%s    %s[%s] %s", prefix, indent, icon, candidate.Title)
+				if m.parentListCursor == i {
+					b.WriteString(TaskJumperSelectedStyle.Render("> " + cLine[2:]))
+				} else {
+					b.WriteString(cLine)
+				}
+				b.WriteString("\n")
+			}
+			if end < len(m.parentCandidates) {
+				b.WriteString(prefix)
+				b.WriteString(MutedStyle.Render("    ↓ more"))
+				b.WriteString("\n")
+			}
+		}
+	} else {
+		cursor = "[ ]"
+		if setSelected {
+			cursor = "[x]"
+		}
+		if focused && m.parentCursor == 1 {
+			cursor = "[>]"
+		}
+		var setLabel string
+		if m.parentValue != nil {
+			// Find parent name
+			setLabel = "Set parent"
+			for _, t := range m.project.Tasks {
+				if t.ID == *m.parentValue {
+					setLabel = fmt.Sprintf("Parent: [%s] %s", t.Type.Icon(), t.Title)
+					break
+				}
+			}
+		} else {
+			setLabel = "Set parent..."
+		}
+		line = fmt.Sprintf("%s%s %s", prefix, cursor, setLabel)
+		if focused && m.parentCursor == 1 {
+			b.WriteString(TaskJumperSelectedStyle.Render(line))
+		} else {
+			b.WriteString(line)
+		}
+		b.WriteString("\n")
+	}
+
+	// Option 2: Move to root
+	cursor = "[ ]"
+	if rootSelected {
+		cursor = "[x]"
+	}
+	if focused && !m.parentListMode && m.parentCursor == 2 {
+		cursor = "[>]"
+	}
+	line = fmt.Sprintf("%s%s Move to root", prefix, cursor)
+	if focused && !m.parentListMode && m.parentCursor == 2 {
+		b.WriteString(TaskJumperSelectedStyle.Render(line))
+	} else {
+		b.WriteString(line)
+	}
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 // renderPreview renders the preview of pending changes.
 func (m *BulkEditModel) renderPreview() string {
 	changes := m.buildChanges()
@@ -362,6 +611,9 @@ func (m *BulkEditModel) renderPreview() string {
 
 	if changes.SetStatus != nil {
 		parts = append(parts, fmt.Sprintf("Status → %s", *changes.SetStatus))
+	}
+	if changes.SetType != nil {
+		parts = append(parts, fmt.Sprintf("Type → %s", changes.SetType.HeadingPrefix()))
 	}
 	if changes.SetPriority != nil {
 		parts = append(parts, fmt.Sprintf("Priority → P%d", *changes.SetPriority))
@@ -383,6 +635,23 @@ func (m *BulkEditModel) renderPreview() string {
 		parts = append(parts, fmt.Sprintf("Due → %s", changes.SetDueDate.Format("2006-01-02")))
 	} else if changes.ClearDueDate {
 		parts = append(parts, "Clear due dates")
+	}
+	if changes.SetRecurrence != nil {
+		parts = append(parts, fmt.Sprintf("Recurrence → %s", changes.SetRecurrence.String()))
+	} else if changes.ClearRecurrence {
+		parts = append(parts, "Clear recurrence")
+	}
+	if changes.SetParentID != nil {
+		parentName := *changes.SetParentID
+		for _, t := range m.project.Tasks {
+			if t.ID == *changes.SetParentID {
+				parentName = t.Title
+				break
+			}
+		}
+		parts = append(parts, fmt.Sprintf("Parent → %s", parentName))
+	} else if changes.ClearParent {
+		parts = append(parts, "Move to root")
 	}
 
 	previewStyle := lipgloss.NewStyle().Foreground(ColorWarning)
@@ -430,6 +699,9 @@ func (m *BulkEditModel) renderFooter() string {
 	}
 	if m.dueDateInputMode {
 		return MutedStyle.Render("  Enter: set date · Esc: cancel · Formats: tomorrow, +3d, fri, 2024-01-15")
+	}
+	if m.parentListMode {
+		return MutedStyle.Render("  j/k: browse · Enter: select parent · Esc: cancel")
 	}
 	return MutedStyle.Render("  Tab/j/k: navigate · Enter: select · h/l: options · Esc: cancel")
 }

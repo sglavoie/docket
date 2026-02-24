@@ -32,10 +32,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if confirmed {
 				switch action {
 				case "delete":
-					if m.multiSelectMode && m.SelectedCount() > 0 {
-						return m, m.handleBulkDelete()
-					}
 					return m, m.executeDelete()
+				case "bulk-delete":
+					return m, m.handleBulkDelete()
 				case "archive":
 					return m, m.executeArchiveToggle()
 				case "bulk-status":

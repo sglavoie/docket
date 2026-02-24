@@ -85,6 +85,48 @@ func (m *BulkEditModel) handleDueDateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 }
 
+// handleParentListInput handles input when browsing the parent candidate list.
+func (m *BulkEditModel) handleParentListInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.parentListMode = false
+		return m, nil
+
+	case "j", "down":
+		if m.parentListCursor < len(m.parentCandidates)-1 {
+			m.parentListCursor++
+			// Scroll if cursor goes below visible window
+			maxVisible := 8
+			if m.parentListCursor >= m.parentListOffset+maxVisible {
+				m.parentListOffset = m.parentListCursor - maxVisible + 1
+			}
+		}
+		m.ensureFocusedFieldVisible()
+		return m, nil
+
+	case "k", "up":
+		if m.parentListCursor > 0 {
+			m.parentListCursor--
+			if m.parentListCursor < m.parentListOffset {
+				m.parentListOffset = m.parentListCursor
+			}
+		}
+		m.ensureFocusedFieldVisible()
+		return m, nil
+
+	case "enter":
+		if m.parentListCursor < len(m.parentCandidates) {
+			id := m.parentCandidates[m.parentListCursor].ID
+			m.parentValue = &id
+			m.clearParent = false
+		}
+		m.parentListMode = false
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // handleEnter handles the enter key based on current field.
 func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.focusIndex {
@@ -103,6 +145,24 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 			if m.statusCursor <= len(statuses) {
 				s := statuses[m.statusCursor-1]
 				m.statusValue = &s
+			}
+		}
+
+	case fieldType:
+		if m.typeCursor == 0 {
+			m.typeValue = nil
+		} else {
+			types := []models.TaskType{
+				models.TaskTypeEpic,
+				models.TaskTypeStory,
+				models.TaskTypeTask,
+				models.TaskTypeBug,
+				models.TaskTypeIdea,
+				models.TaskTypeAction,
+			}
+			if m.typeCursor <= len(types) {
+				tp := types[m.typeCursor-1]
+				m.typeValue = &tp
 			}
 		}
 
@@ -144,6 +204,48 @@ func (m *BulkEditModel) handleEnter() (tea.Model, tea.Cmd) {
 			m.setDueDate = nil
 		}
 
+	case fieldRecurrence:
+		presets := []models.RecurrencePattern{
+			{Interval: 1, Unit: models.RecurrenceDaily},
+			{Interval: 1, Unit: models.RecurrenceWeekly},
+			{Interval: 2, Unit: models.RecurrenceWeekly},
+			{Interval: 1, Unit: models.RecurrenceMonthly},
+			{Interval: 1, Unit: models.RecurrenceYearly},
+		}
+		switch {
+		case m.recurrenceCursor == 0:
+			// Keep current
+			m.recurrenceValue = nil
+			m.clearRecurrence = false
+		case m.recurrenceCursor >= 1 && m.recurrenceCursor <= len(presets):
+			p := presets[m.recurrenceCursor-1]
+			m.recurrenceValue = &p
+			m.clearRecurrence = false
+		case m.recurrenceCursor == len(presets)+1:
+			// Clear recurrence
+			m.recurrenceValue = nil
+			m.clearRecurrence = true
+		}
+
+	case fieldParent:
+		switch m.parentCursor {
+		case 0:
+			// Keep current
+			m.parentValue = nil
+			m.clearParent = false
+		case 1:
+			// Set parent - enter list mode
+			if len(m.parentCandidates) > 0 {
+				m.parentListMode = true
+				m.parentListCursor = 0
+				m.parentListOffset = 0
+			}
+		case 2:
+			// Move to root
+			m.clearParent = true
+			m.parentValue = nil
+		}
+
 	case fieldActions:
 		if m.actionCursor == 0 {
 			return m, m.apply()
@@ -176,6 +278,10 @@ func (m *BulkEditModel) handleRight() {
 		if m.statusCursor < 5 {
 			m.statusCursor++
 		}
+	case fieldType:
+		if m.typeCursor < 6 {
+			m.typeCursor++
+		}
 	case fieldPriority:
 		if m.priorityCursor < 5 {
 			m.priorityCursor++
@@ -187,6 +293,14 @@ func (m *BulkEditModel) handleRight() {
 	case fieldDueDate:
 		if m.dueDateCursor < 2 {
 			m.dueDateCursor++
+		}
+	case fieldRecurrence:
+		if m.recurrenceCursor < 6 {
+			m.recurrenceCursor++
+		}
+	case fieldParent:
+		if m.parentCursor < 2 {
+			m.parentCursor++
 		}
 	case fieldActions:
 		if m.actionCursor < 1 {
@@ -202,6 +316,10 @@ func (m *BulkEditModel) handleLeft() {
 		if m.statusCursor > 0 {
 			m.statusCursor--
 		}
+	case fieldType:
+		if m.typeCursor > 0 {
+			m.typeCursor--
+		}
 	case fieldPriority:
 		if m.priorityCursor > 0 {
 			m.priorityCursor--
@@ -213,6 +331,14 @@ func (m *BulkEditModel) handleLeft() {
 	case fieldDueDate:
 		if m.dueDateCursor > 0 {
 			m.dueDateCursor--
+		}
+	case fieldRecurrence:
+		if m.recurrenceCursor > 0 {
+			m.recurrenceCursor--
+		}
+	case fieldParent:
+		if m.parentCursor > 0 {
+			m.parentCursor--
 		}
 	case fieldActions:
 		if m.actionCursor > 0 {
@@ -247,12 +373,17 @@ func (m *BulkEditModel) cancel() tea.Cmd {
 // buildChanges creates a PendingChanges struct from current selections.
 func (m *BulkEditModel) buildChanges() PendingChanges {
 	changes := PendingChanges{
-		SetStatus:    m.statusValue,
-		SetPriority:  m.priorityValue,
-		AddTags:      m.addTags,
-		SetSection:   m.sectionValue,
-		ClearDueDate: m.clearDueDate,
-		SetDueDate:   m.setDueDate,
+		SetStatus:       m.statusValue,
+		SetType:         m.typeValue,
+		SetPriority:     m.priorityValue,
+		AddTags:         m.addTags,
+		SetSection:      m.sectionValue,
+		ClearDueDate:    m.clearDueDate,
+		SetDueDate:      m.setDueDate,
+		SetRecurrence:   m.recurrenceValue,
+		ClearRecurrence: m.clearRecurrence,
+		SetParentID:     m.parentValue,
+		ClearParent:     m.clearParent,
 	}
 
 	// Collect remove tags

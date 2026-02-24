@@ -495,6 +495,109 @@ func applyTypeChange(pf persistFn, project *models.Project, taskID string, op Ty
 	return result
 }
 
+// applyTypeChangeOp applies a type change operation to a task in-place without
+// persisting. Returns true if the change was applied, false if the task was
+// skipped (not found or constraint violation). Used by bulk type change.
+func applyTypeChangeOp(project *models.Project, taskID string, op TypeChangeOp) bool {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return false
+	}
+
+	var canDo bool
+	switch op {
+	case TypePromote:
+		canDo, _ = task.CanPromote()
+	case TypeDemote:
+		canDo, _ = task.CanDemote()
+	case TypeCycleLeft:
+		canDo, _ = task.CanCycleLeafType(true)
+	case TypeCycleRight:
+		canDo, _ = task.CanCycleLeafType(false)
+	}
+	if !canDo {
+		return false
+	}
+
+	project.MutateTask(taskID, func(t *models.Task) {
+		switch op {
+		case TypePromote:
+			_ = t.Promote()
+		case TypeDemote:
+			_ = t.Demote()
+		case TypeCycleLeft:
+			_ = t.CycleLeafType(true)
+		case TypeCycleRight:
+			_ = t.CycleLeafType(false)
+		}
+	})
+	return true
+}
+
+// applyBulkTypeCycle sets all selected tasks to the same leaf type, then cycles
+// them together. If the tasks already share a common type, that type is cycled.
+// If types are mixed, all tasks are first normalized to Task before cycling.
+// Non-leaf tasks and tasks that fail hierarchy validation are skipped.
+func applyBulkTypeCycle(project *models.Project, tasks []*models.Task, op TypeChangeOp) int {
+	// Determine whether all tasks share the same leaf type.
+	var commonType models.TaskType
+	uniform := true
+	first := true
+	for _, task := range tasks {
+		t := project.GetTaskByID(task.ID)
+		if t == nil || !t.Type.IsLeafType() {
+			continue
+		}
+		if first {
+			commonType = t.Type
+			first = false
+		} else if t.Type != commonType {
+			uniform = false
+			break
+		}
+	}
+
+	// Compute the target type: cycle from common type, or reset to Task then cycle.
+	var targetType models.TaskType
+	if uniform && !first {
+		// All same leaf type — cycle from it.
+		if op == TypeCycleLeft {
+			targetType = commonType.CycleLeafLeft()
+		} else {
+			targetType = commonType.CycleLeafRight()
+		}
+	} else {
+		// Mixed types — normalize to Task first, then cycle.
+		if op == TypeCycleLeft {
+			targetType = models.TaskTypeTask.CycleLeafLeft()
+		} else {
+			targetType = models.TaskTypeTask.CycleLeafRight()
+		}
+	}
+
+	// Apply the target type to all eligible tasks.
+	changed := 0
+	for _, task := range tasks {
+		t := project.GetTaskByID(task.ID)
+		if t == nil || !t.Type.IsLeafType() {
+			continue
+		}
+		if t.Type == targetType {
+			continue
+		}
+		// Validate hierarchy: new type must be valid under parent.
+		if t.Parent != nil && !targetType.CanBeChildOf(t.Parent.Type) {
+			continue
+		}
+		project.MutateTask(t.ID, func(mt *models.Task) {
+			mt.Type = targetType
+			mt.ClearTypeAttrs()
+		})
+		changed++
+	}
+	return changed
+}
+
 // applyTogglePinned toggles the Pinned flag on a task.
 func applyTogglePinned(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)

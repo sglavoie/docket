@@ -408,7 +408,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 		m.ClearSelection()
 		m.statusMessage = ""
 	} else {
-		m.statusMessage = "Multi-select: Space=toggle, a=all, A=deselect, v/Esc=exit"
+		m.statusMessage = "Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit"
 	}
 }
 

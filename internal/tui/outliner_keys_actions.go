@@ -144,7 +144,15 @@ func (m *OutlinerModel) showDeleteConfirm(task *models.Task) {
 
 // showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
 func (m *OutlinerModel) showBulkDeleteConfirm() {
-	m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+	totalChildren := 0
+	for _, task := range m.getSelectedTasks() {
+		totalChildren += task.CountChildren()
+	}
+	if totalChildren > 0 {
+		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren))
+	} else {
+		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+	}
 	m.statusMessage = m.confirm.Prompt()
 }
 

@@ -15,10 +15,13 @@ import (
 // Field indices for navigation
 const (
 	fieldStatus = iota
+	fieldType
 	fieldPriority
 	fieldTags
 	fieldSection
 	fieldDueDate
+	fieldRecurrence
+	fieldParent
 	fieldActions
 	fieldCount
 )
@@ -36,6 +39,11 @@ type BulkEditModel struct {
 	statusCursor  int                // Cursor within status options (0=no change, 1-5=statuses)
 	statusValue   *models.TaskStatus // nil = no change
 	statusSummary string             // Summary of current values
+
+	// Type field
+	typeCursor  int              // Cursor within type options (0=no change, 1-6=types)
+	typeValue   *models.TaskType // nil = no change
+	typeSummary string           // Summary of current values
 
 	// Priority field
 	priorityCursor  int    // Cursor within priority options (0=no change, 1-5=priorities)
@@ -65,6 +73,22 @@ type BulkEditModel struct {
 	dueDateInputMode bool            // True when typing date
 	dueDateInput     textinput.Model // Text input for date entry
 	dueDateError     error           // Validation error
+
+	// Recurrence field
+	recurrenceCursor  int                       // 0=keep, 1-5=presets, 6=clear
+	recurrenceValue   *models.RecurrencePattern // nil = no change
+	clearRecurrence   bool                      // Whether to clear recurrence
+	recurrenceSummary string                    // Summary of current values
+
+	// Parent field
+	parentCursor     int              // 0=Keep, 1=Set parent, 2=Move to root
+	parentValue      *string          // Selected parent task ID
+	clearParent      bool             // Whether to move to root
+	parentSummary    string           // Summary of current parents
+	parentCandidates []*models.Task   // Valid parent candidates
+	parentListMode   bool             // True when browsing candidate list
+	parentListCursor int              // Cursor within candidate list
+	parentListOffset int              // Scroll offset for candidate list
 
 	// Actions field
 	actionCursor int // 0=Apply, 1=Cancel
@@ -100,6 +124,9 @@ func NewBulkEditModel(tasks []*models.Task, project *models.Project) *BulkEditMo
 	// Build section options
 	m.buildSectionOptions()
 
+	// Build parent candidates
+	m.buildParentCandidates()
+
 	return m
 }
 
@@ -124,6 +151,23 @@ func (m *BulkEditModel) analyzeCurrentValues() {
 			parts = append(parts, fmt.Sprintf("%d %s", count, s))
 		}
 		m.statusSummary = fmt.Sprintf("Mixed: %s", strings.Join(parts, ", "))
+	}
+
+	// Type analysis
+	typeCounts := make(map[models.TaskType]int)
+	for _, t := range m.tasks {
+		typeCounts[t.Type]++
+	}
+	if len(typeCounts) == 1 {
+		for tp := range typeCounts {
+			m.typeSummary = fmt.Sprintf("All: %s", tp.HeadingPrefix())
+		}
+	} else {
+		parts := []string{}
+		for tp, count := range typeCounts {
+			parts = append(parts, fmt.Sprintf("%d %s", count, tp.HeadingPrefix()))
+		}
+		m.typeSummary = fmt.Sprintf("Mixed: %s", strings.Join(parts, ", "))
 	}
 
 	// Priority analysis
@@ -204,6 +248,57 @@ func (m *BulkEditModel) analyzeCurrentValues() {
 	} else {
 		m.dueDateSummary = fmt.Sprintf("%d with dates, %d without", withDate, withoutDate)
 	}
+
+	// Recurrence analysis
+	withRecurrence, withoutRecurrence := 0, 0
+	recurrencePatterns := make(map[string]int)
+	for _, t := range m.tasks {
+		if t.Recurrence != nil {
+			withRecurrence++
+			recurrencePatterns[t.Recurrence.String()]++
+		} else {
+			withoutRecurrence++
+		}
+	}
+	if withRecurrence == 0 {
+		m.recurrenceSummary = "None recurring"
+	} else if withoutRecurrence == 0 {
+		if len(recurrencePatterns) == 1 {
+			for p := range recurrencePatterns {
+				m.recurrenceSummary = fmt.Sprintf("All: %s", p)
+			}
+		} else {
+			m.recurrenceSummary = "All recurring (mixed)"
+		}
+	} else {
+		m.recurrenceSummary = fmt.Sprintf("%d recurring, %d not", withRecurrence, withoutRecurrence)
+	}
+
+	// Parent analysis
+	parentCounts := make(map[string]int)
+	rootCount := 0
+	for _, t := range m.tasks {
+		if t.ParentID == nil {
+			rootCount++
+		} else {
+			parentCounts[*t.ParentID]++
+		}
+	}
+	if rootCount == len(m.tasks) {
+		m.parentSummary = "All at root"
+	} else if rootCount == 0 && len(parentCounts) == 1 {
+		for pid := range parentCounts {
+			// Find parent task name
+			for _, t := range m.project.Tasks {
+				if t.ID == pid {
+					m.parentSummary = fmt.Sprintf("All under: %s", t.Title)
+					break
+				}
+			}
+		}
+	} else {
+		m.parentSummary = fmt.Sprintf("%d root, %d with parent", rootCount, len(m.tasks)-rootCount)
+	}
 }
 
 // buildSectionOptions creates the list of available sections.
@@ -234,12 +329,35 @@ func (m *BulkEditModel) buildSectionOptions() {
 	m.sectionOptions = append(m.sectionOptions, sections...)
 }
 
+// buildParentCandidates creates the list of valid parent targets.
+// Excludes tasks in the selected set and tasks that cannot have children.
+func (m *BulkEditModel) buildParentCandidates() {
+	selectedSet := make(map[string]bool, len(m.tasks))
+	for _, t := range m.tasks {
+		selectedSet[t.ID] = true
+	}
+
+	m.parentCandidates = nil
+	for _, t := range m.project.Tasks {
+		if selectedSet[t.ID] {
+			continue
+		}
+		if !t.Type.CanHaveChildren() {
+			continue
+		}
+		m.parentCandidates = append(m.parentCandidates, t)
+	}
+}
+
 // fieldHeight returns the rendered height of a field in lines.
 func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 	switch fieldIndex {
 	case fieldStatus:
 		// Label line + 6 options + blank line
 		return 8
+	case fieldType:
+		// Label line + 7 options (no change + 6 types) + blank line
+		return 9
 	case fieldPriority:
 		// Label line + 6 options + blank line
 		return 8
@@ -278,6 +396,24 @@ func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 			if m.dueDateError != nil {
 				height++ // Error line
 			}
+		}
+		return height
+	case fieldRecurrence:
+		// Label line + 7 options (keep + 5 presets + clear) + blank line
+		return 9
+	case fieldParent:
+		// Label line + 3 options (keep/set/root) + blank line = 5
+		height := 5
+		if m.parentListMode {
+			// Show up to 8 candidates in the scrollable list
+			visible := len(m.parentCandidates)
+			if visible > 8 {
+				visible = 8
+			}
+			if visible == 0 {
+				visible = 1 // "No valid parents" message
+			}
+			height += visible
 		}
 		return height
 	case fieldActions:
@@ -362,6 +498,11 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleDueDateInput(msg)
 		}
 
+		// Handle parent list browsing mode
+		if m.parentListMode {
+			return m.handleParentListInput(msg)
+		}
+
 		switch msg.String() {
 		case "esc", "q":
 			if m.tagMode == 2 {
@@ -444,6 +585,10 @@ func (m *BulkEditModel) View() string {
 	content.WriteString(m.renderStatusField())
 	content.WriteString("\n")
 
+	// Type field
+	content.WriteString(m.renderTypeField())
+	content.WriteString("\n")
+
 	// Priority field
 	content.WriteString(m.renderPriorityField())
 	content.WriteString("\n")
@@ -458,6 +603,14 @@ func (m *BulkEditModel) View() string {
 
 	// Due date field
 	content.WriteString(m.renderDueDateField())
+	content.WriteString("\n")
+
+	// Recurrence field
+	content.WriteString(m.renderRecurrenceField())
+	content.WriteString("\n")
+
+	// Parent field
+	content.WriteString(m.renderParentField())
 	content.WriteString("\n")
 
 	// Preview

@@ -527,12 +527,42 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 	if !ok {
 		return nil, false
 	}
+
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		changed := 0
+
+		// For cycle operations (H/L), synchronize all tasks to the same
+		// type first so they cycle in lockstep. If types are mixed, reset
+		// to Task before cycling; if uniform, cycle from the common type.
+		if op == TypeCycleLeft || op == TypeCycleRight {
+			changed = applyBulkTypeCycle(project, tasks, op)
+		} else {
+			for _, task := range tasks {
+				if applyTypeChangeOp(project, task.ID, op) {
+					changed++
+				}
+			}
+		}
+
+		if changed == 0 {
+			v.setStatusMessage("No tasks could be changed")
+			return nil, true
+		}
+		msg := fmt.Sprintf("%s: %d tasks", undoAction, changed)
+		v.setUndoContext(undoAction, msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
 	task := v.getCursorTask()
 	if task == nil {
 		return nil, true
 	}
 	v.setUndoContext(undoAction, task.Title)
-	result := applyTypeChange(v.workflowPersistFn(), v.getProject(), task.ID, op)
+	result := applyTypeChange(v.workflowPersistFn(), project, task.ID, op)
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}

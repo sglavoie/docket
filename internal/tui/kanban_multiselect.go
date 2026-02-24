@@ -12,7 +12,7 @@ import (
 const (
 	kanbanMultiSelectEnterMsg = "Multi-select: space=toggle, a=all in column, A=all, gX=clear"
 	kanbanMultiSelectNoSel    = "Multi-select: space=toggle, a=all in column, A=all"
-	kanbanMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b/o=status, gX=clear)"
+	kanbanMultiSelectWithSel  = "%d selected (space=toggle, ,s/d/b/o=status, D=delete, gX=clear)"
 )
 
 // toggleMultiSelectMode enters or exits multi-select mode.

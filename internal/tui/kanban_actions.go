@@ -351,8 +351,16 @@ func (m *KanbanViewModel) showDeleteConfirm(task *models.Task) {
 
 // showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
 func (m *KanbanViewModel) showBulkDeleteConfirm() {
-	m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
-	m.confirm.Show("delete", m.statusMessage)
+	totalChildren := 0
+	for _, task := range m.getSelectedTasksList() {
+		totalChildren += task.CountChildren()
+	}
+	if totalChildren > 0 {
+		m.statusMessage = fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", m.SelectedCount(), totalChildren)
+	} else {
+		m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
+	}
+	m.confirm.Show("bulk-delete", m.statusMessage)
 }
 
 // executeDelete deletes the currently targeted task using the shared applyDeleteTask.
