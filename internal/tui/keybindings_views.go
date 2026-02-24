@@ -425,6 +425,9 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 		Keybinding{Key: "Tab", Description: "Collapse/expand group", Category: "View", Views: views},
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all groups", Category: "View", Views: views},
 		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
+		Keybinding{Key: "ctrl+k", Description: "Toggle layout (list/kanban)", Category: "View", Views: views},
+		Keybinding{Key: "h/l", Description: "Navigate columns (kanban)", Category: "Navigation", Views: views},
+		Keybinding{Key: "{/}", Description: "Move task between columns (kanban)", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close all tasks view", Category: "View", Views: views},
 	)
