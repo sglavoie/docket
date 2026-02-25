@@ -66,7 +66,8 @@ type ProjectViewState struct {
 	OutlinerColumnToggles    map[string]bool   `json:"outliner_column_toggles,omitempty"`    // Per-column visibility overrides for outliner view
 	TreeFoldState            map[string]bool   `json:"tree_fold_state,omitempty"`            // Collapsed node IDs in project tree (persists across restarts)
 	KanbanFoldState          map[string]bool   `json:"kanban_fold_state,omitempty"`          // Collapsed node IDs in kanban (persists across restarts)
-	OutlinerFoldState        map[string]bool   `json:"outliner_fold_state,omitempty"`        // Collapsed node IDs in outliner (persists across restarts)
+	OutlinerFoldState            map[string]bool `json:"outliner_fold_state,omitempty"`              // Collapsed node IDs in outliner (persists across restarts)
+	OutlinerCollapsedSections    map[string]bool `json:"outliner_collapsed_sections,omitempty"`      // Collapsed section headers in outliner (persists across restarts)
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.

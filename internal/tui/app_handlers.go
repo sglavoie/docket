@@ -65,6 +65,12 @@ func (m *AppModel) saveOutlinerFilterState() {
 		state.OutlinerFoldState = nil
 	}
 
+	if len(m.outliner.collapsedSections) > 0 {
+		state.OutlinerCollapsedSections = m.outliner.collapsedSections
+	} else {
+		state.OutlinerCollapsedSections = nil
+	}
+
 	if len(m.outliner.filter.Attrs) > 0 {
 		state.OutlinerFilterAttrs = make(map[string]string)
 		for k, v := range m.outliner.filter.Attrs {
@@ -108,6 +114,13 @@ func (m *AppModel) restoreOutlinerFilterState() {
 
 	// Restore sections - validate they still exist
 	m.outliner.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, m.outliner.project.GetSections())
+
+	// Restore section collapse state from disk if no in-memory cache exists
+	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {
+		for section, collapsed := range state.OutlinerCollapsedSections {
+			m.outliner.collapsedSections[section] = collapsed
+		}
+	}
 
 	// Restore fold state from disk if no in-memory toggle cache exists
 	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerFoldState) > 0 {
