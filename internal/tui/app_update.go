@@ -55,6 +55,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.hasActiveTextInput() {
 				m.showQuickSwitch = !m.showQuickSwitch
 				m.quickSwitchCursor = 0
+				if m.showQuickSwitch {
+					m.refreshRecentTaskVisits()
+				}
 				return m, nil
 			}
 		case "esc":

@@ -56,6 +56,20 @@ func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 	_ = m.configManager.Save(m.config)
 }
 
+// refreshRecentTaskVisits re-hydrates each entry's Task pointer from current project data
+// so that status changes (completions, etc.) are reflected when the popup opens.
+func (m *AppModel) refreshRecentTaskVisits() {
+	valid := m.recentTaskVisits[:0]
+	for _, entry := range m.recentTaskVisits {
+		_ = m.persister.Load(entry.Project)
+		if fresh := entry.Project.GetTaskByID(entry.Task.ID); fresh != nil {
+			entry.Task = fresh
+			valid = append(valid, entry)
+		}
+	}
+	m.recentTaskVisits = valid
+}
+
 // handleQuickSwitchKey handles key events when the quick-switch popup is open.
 func (m *AppModel) handleQuickSwitchKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
@@ -106,12 +120,8 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	title := titleStyle.Render("Recent Tasks")
 
-	// Determine popup width
-	maxTitleLen := 40
-	popupWidth := m.width * 60 / 100
-	if popupWidth > 70 {
-		popupWidth = 70
-	}
+	// Determine popup width: full terminal width minus small margin
+	popupWidth := m.width - 4
 	if popupWidth < 30 {
 		popupWidth = 30
 	}
@@ -121,9 +131,25 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle
 
+	// Find the longest project name for right-aligned column
+	maxProjLen := 0
+	for _, entry := range m.recentTaskVisits {
+		if len(entry.Project.Name) > maxProjLen {
+			maxProjLen = len(entry.Project.Name)
+		}
+	}
+
+	innerWidth := popupWidth - 4 // border + padding
+	// Layout per line: badge(1) + space(1) + icon(1) + space(1) + title + gap(2) + project
+	projColWidth := maxProjLen
+	fixedWidth := 1 + 1 + 1 + 1 + 2 + projColWidth // badge, space, icon, space, gap, project
+	titleWidth := innerWidth - fixedWidth
+	if titleWidth < 10 {
+		titleWidth = 10
+	}
+
 	var contentLines []string
 	for i, entry := range m.recentTaskVisits {
-		// Number badge: 1-9 in accent color, 10+ dimmed
 		var badge string
 		if i < 9 {
 			badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
@@ -134,23 +160,24 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		statusIcon := entry.Task.Status.Icon()
 		projectName := entry.Project.Name
 
-		// Truncate title to fit within popup width, leaving room for badge, icon, project
-		// Layout: "N ● Title (Project)"
-		projSuffix := " (" + projectName + ")"
-		availableForTitle := popupWidth - 4 - 2 - 1 - len(projSuffix) // padding, badge+space, icon+space, project
+		// Truncate title if needed
 		taskTitle := entry.Task.Title
-		if len(taskTitle) > availableForTitle && availableForTitle > 3 {
-			taskTitle = taskTitle[:availableForTitle-3] + "..."
-		} else if availableForTitle <= 3 && len(taskTitle) > maxTitleLen {
-			taskTitle = taskTitle[:maxTitleLen-3] + "..."
+		if len(taskTitle) > titleWidth {
+			taskTitle = taskTitle[:titleWidth-3] + "..."
 		}
 
-		line := badge + " " + statusIcon + " " + taskTitle + projectStyle.Render(projSuffix)
+		// Pad title to fixed width for alignment
+		if len(taskTitle) < titleWidth {
+			taskTitle += strings.Repeat(" ", titleWidth-len(taskTitle))
+		}
+
+		// Right-align project name within its column
+		paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
+
+		line := badge + " " + statusIcon + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
 
 		if i == m.quickSwitchCursor {
-			// Apply cursor highlight: pad line to inner width, then reverse
 			lineWidth := lipgloss.Width(line)
-			innerWidth := popupWidth - 4 // account for border + padding
 			if lineWidth < innerWidth {
 				line += strings.Repeat(" ", innerWidth-lineWidth)
 			}

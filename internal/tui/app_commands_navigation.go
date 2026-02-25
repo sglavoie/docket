@@ -595,6 +595,7 @@ func (m *AppModel) navCommands() []Command {
 			Handler: func() tea.Msg {
 				m.showQuickSwitch = true
 				m.quickSwitchCursor = 0
+				m.refreshRecentTaskVisits()
 				return nil
 			},
 		},
