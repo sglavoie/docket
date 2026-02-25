@@ -17,14 +17,16 @@ func newTestAppModel() *AppModel {
 	manager := config.NewManager(configPath)
 
 	return &AppModel{
-		config:        cfg,
-		configManager: manager,
-		persister:     NewProjectService(),
-		viewStack:     []ViewType{ViewDashboard},
-		width:         80,
-		height:        24,
-		views:         NewViewRegistry(),
-		navHistory:    NewNavHistory(),
+		config:                   cfg,
+		configManager:            manager,
+		persister:                NewProjectService(),
+		viewStack:                []ViewType{ViewDashboard},
+		width:                    80,
+		height:                   24,
+		views:                    NewViewRegistry(),
+		navHistory:               NewNavHistory(),
+		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
 	}
 }
 
@@ -40,15 +42,17 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	manager := config.NewManager(configPath)
 
 	app := &AppModel{
-		config:         cfg,
-		configManager:  manager,
-		persister:      NewProjectService(),
-		viewStack:      []ViewType{ViewDashboard},
-		width:          80,
-		height:         24,
-		views:          NewViewRegistry(),
-		currentProject: project,
-		navHistory:     NewNavHistory(),
+		config:                   cfg,
+		configManager:            manager,
+		persister:                NewProjectService(),
+		viewStack:                []ViewType{ViewDashboard},
+		width:                    80,
+		height:                   24,
+		views:                    NewViewRegistry(),
+		currentProject:           project,
+		navHistory:               NewNavHistory(),
+		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
 	}
 
 	return app, project

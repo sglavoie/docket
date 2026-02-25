@@ -518,13 +518,19 @@ func (m *OutlinerModel) performUndo() tea.Cmd {
 type OutlinerToggleState struct {
 	CollapsedSections map[string]bool // Section collapse state for All perspective
 	ExpandedNodes     map[string]bool // Node fold state (empty = all expanded)
+	CursorTaskID      string          // Task ID at cursor position (session-only)
 }
 
 // SaveToggleState snapshots the current section/fold state.
 func (m *OutlinerModel) SaveToggleState() *OutlinerToggleState {
+	var cursorTaskID string
+	if task := m.getCursorTask(); task != nil {
+		cursorTaskID = task.ID
+	}
 	return &OutlinerToggleState{
 		CollapsedSections: copyBoolMap(m.collapsedSections),
 		ExpandedNodes:     copyBoolMap(m.expandedNodes),
+		CursorTaskID:      cursorTaskID,
 	}
 }
 
@@ -535,6 +541,10 @@ func (m *OutlinerModel) RestoreToggleState(state *OutlinerToggleState) {
 	}
 	m.collapsedSections = copyBoolMap(state.CollapsedSections)
 	m.expandedNodes = copyBoolMap(state.ExpandedNodes)
+	m.rebuildRows()
+	if state.CursorTaskID != "" {
+		m.moveCursorToTask(state.CursorTaskID)
+	}
 }
 
 // copyBoolMap returns a shallow copy of a map[string]bool.

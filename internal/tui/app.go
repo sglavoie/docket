@@ -101,6 +101,21 @@ const (
 	ViewColumnPicker
 )
 
+// ProjectTreeSpatialState captures cursor position and fold state for a project tree
+// so it can survive view recreation within the same TUI session.
+type ProjectTreeSpatialState struct {
+	CursorTaskID string
+	FoldState    map[string]bool // collapsed node IDs (Expanded == false)
+}
+
+// KanbanSpatialState captures cursor position, active column, and fold state
+// for a kanban view so it can survive view recreation within the same TUI session.
+type KanbanSpatialState struct {
+	ActiveColumn int
+	CursorTaskID string
+	ExpandState  map[string]bool
+}
+
 // AppModel is the main TUI model with a view stack.
 type AppModel struct {
 	config        *config.Config
@@ -136,6 +151,11 @@ type AppModel struct {
 	// Per-project outliner toggle state (section collapse + node fold),
 	// keyed by project ID. Survives outliner recreation within a session.
 	outlinerToggleStates map[string]*OutlinerToggleState
+
+	// Per-project spatial state caches (cursor + fold), keyed by project ID.
+	// Survive view recreation within a session (in-memory only for cursor).
+	projectTreeSpatialStates map[string]*ProjectTreeSpatialState
+	kanbanSpatialStates      map[string]*KanbanSpatialState
 
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask
@@ -233,22 +253,24 @@ func WithCLIReference(ref string) AppOption {
 // NewAppModel creates a new TUI application model.
 func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption) *AppModel {
 	app := &AppModel{
-		config:               cfg,
-		configManager:        manager,
-		persister:            NewProjectService(),
-		viewStack:            []ViewType{ViewDashboard},
-		width:                80,
-		height:               24,
-		views:                NewViewRegistry(),
-		commandRegistry:      NewCommandRegistry(),
-		spinner:              NewSpinner(),
-		navHistory:           NewNavHistory(),
-		lastProjectView:      defaultProjectViewType(cfg),
-		projectLastView:      make(map[string]ViewType),
-		outlinerToggleStates: make(map[string]*OutlinerToggleState),
-		focusQueue:           []FocusTask{},
-		focusQueueIDs:        make(map[string]bool),
-		focusDismissedIDs:    make(map[string]bool),
+		config:                   cfg,
+		configManager:            manager,
+		persister:                NewProjectService(),
+		viewStack:                []ViewType{ViewDashboard},
+		width:                    80,
+		height:                   24,
+		views:                    NewViewRegistry(),
+		commandRegistry:          NewCommandRegistry(),
+		spinner:                  NewSpinner(),
+		navHistory:               NewNavHistory(),
+		lastProjectView:          defaultProjectViewType(cfg),
+		projectLastView:          make(map[string]ViewType),
+		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
+		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
+		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
+		focusQueue:               []FocusTask{},
+		focusQueueIDs:            make(map[string]bool),
+		focusDismissedIDs:        make(map[string]bool),
 	}
 
 	// Apply functional options
@@ -605,6 +627,22 @@ func (m *AppModel) saveProjectTreeState() {
 		filterSections = append(filterSections, section)
 	}
 
+	// Capture fold state (only collapsed nodes) and cursor task ID
+	foldState := make(map[string]bool)
+	for _, node := range m.projectTree.nodes {
+		if !node.Expanded {
+			foldState[node.Task.ID] = true
+		}
+	}
+	var cursorTaskID string
+	if task := m.projectTree.getCursorTask(); task != nil {
+		cursorTaskID = task.ID
+	}
+	m.projectTreeSpatialStates[m.currentProject.ID] = &ProjectTreeSpatialState{
+		CursorTaskID: cursorTaskID,
+		FoldState:    foldState,
+	}
+
 	state := config.ProjectViewState{
 		FilterType:        string(m.projectTree.filter.Type),
 		FilterStatus:      string(m.projectTree.filter.Status),
@@ -620,12 +658,15 @@ func (m *AppModel) saveProjectTreeState() {
 		ViewMode:          int(m.projectTree.viewMode),
 		CustomSectionTab:  m.projectTree.activeCustomSectionFilter(),
 		TreeColumnToggles: m.projectTree.columnConfig.Toggles(),
+		TreeFoldState:     foldState,
 	}
 
-	// Preserve kanban/outliner column toggles from existing state
+	// Preserve kanban/outliner column toggles and fold states from existing state
 	if existing, ok := m.config.ProjectViewStates[m.currentProject.ID]; ok {
 		state.KanbanColumnToggles = existing.KanbanColumnToggles
 		state.OutlinerColumnToggles = existing.OutlinerColumnToggles
+		state.KanbanFoldState = existing.KanbanFoldState
+		state.OutlinerFoldState = existing.OutlinerFoldState
 	}
 
 	m.config.SetProjectViewState(m.currentProject.ID, state)
@@ -687,8 +728,34 @@ func (m *AppModel) restoreProjectTreeState() {
 		}
 	}
 
+	// Restore fold state: prefer session cache, fall back to disk
+	var foldState map[string]bool
+	if spatial, ok := m.projectTreeSpatialStates[m.currentProject.ID]; ok && spatial.FoldState != nil {
+		foldState = spatial.FoldState
+	} else if state.TreeFoldState != nil {
+		foldState = state.TreeFoldState
+	}
+	if foldState != nil {
+		for _, node := range m.projectTree.nodes {
+			if foldState[node.Task.ID] {
+				node.Expanded = false
+			}
+		}
+	}
+
 	m.projectTree.updateVisibility()
 	m.projectTree.clampCursor()
+
+	// Restore cursor position from session cache
+	if spatial, ok := m.projectTreeSpatialStates[m.currentProject.ID]; ok && spatial.CursorTaskID != "" {
+		visible := m.projectTree.visibleNodes()
+		for i, node := range visible {
+			if node.Task.ID == spatial.CursorTaskID {
+				m.projectTree.cursor = i
+				break
+			}
+		}
+	}
 }
 
 // saveKanbanState persists the current kanban filter/tab state to config.
@@ -702,6 +769,25 @@ func (m *AppModel) saveKanbanState() {
 		filterTags = append(filterTags, tag)
 	}
 
+	// Capture cursor task ID and expand state for session cache
+	var cursorTaskID string
+	if task := m.kanban.getCursorTask(); task != nil {
+		cursorTaskID = task.ID
+	}
+	m.kanbanSpatialStates[m.currentProject.ID] = &KanbanSpatialState{
+		ActiveColumn: m.kanban.ActiveColumn,
+		CursorTaskID: cursorTaskID,
+		ExpandState:  copyBoolMap(m.kanban.ExpandState),
+	}
+
+	// Build fold state for disk persistence (only collapsed nodes)
+	collapsedNodes := make(map[string]bool)
+	for id, expanded := range m.kanban.ExpandState {
+		if !expanded {
+			collapsedNodes[id] = true
+		}
+	}
+
 	state := m.config.ProjectViewStates[m.currentProject.ID]
 	state.KanbanFilterType = string(m.kanban.filter.Type)
 	state.KanbanFilterStatus = string(m.kanban.filter.Status)
@@ -711,6 +797,11 @@ func (m *AppModel) saveKanbanState() {
 	state.KanbanFilterScoreMin = m.kanban.filter.ScoreMin
 	state.KanbanActiveTab = m.kanban.tabs.Active
 	state.KanbanColumnToggles = m.kanban.columnConfig.Toggles()
+	if len(collapsedNodes) > 0 {
+		state.KanbanFoldState = collapsedNodes
+	} else {
+		state.KanbanFoldState = nil
+	}
 
 	if len(m.kanban.filter.Attrs) > 0 {
 		state.KanbanFilterAttrs = make(map[string]string)
@@ -753,8 +844,35 @@ func (m *AppModel) restoreKanbanState() {
 	// Restore tags - validate they still exist in the project
 	m.kanban.filter.Tags = validateSavedStringSet(state.KanbanFilterTags, CollectProjectTagNames(m.kanban.Project.Tasks))
 
-	// Reload tasks with restored filters applied
+	// Restore expand state: prefer session cache, fall back to disk
+	if spatial, ok := m.kanbanSpatialStates[m.currentProject.ID]; ok && spatial.ExpandState != nil {
+		m.kanban.ExpandState = copyBoolMap(spatial.ExpandState)
+	} else if len(state.KanbanFoldState) > 0 {
+		for id := range state.KanbanFoldState {
+			m.kanban.ExpandState[id] = false
+		}
+	}
+
+	// Reload tasks with restored filters and expand state applied
 	m.kanban.loadTasks()
+
+	// Restore active column and cursor position from session cache
+	if spatial, ok := m.kanbanSpatialStates[m.currentProject.ID]; ok {
+		if spatial.ActiveColumn >= 0 && spatial.ActiveColumn < len(m.kanban.columnDefs) {
+			m.kanban.ActiveColumn = spatial.ActiveColumn
+			m.kanban.ensureActiveColumnVisible()
+		}
+		if spatial.CursorTaskID != "" {
+			visibleNodes := m.kanban.currentVisibleNodes()
+			cs := m.kanban.CurrentColumnState()
+			for i, node := range visibleNodes {
+				if node.Task.ID == spatial.CursorTaskID {
+					cs.Cursor = i
+					break
+				}
+			}
+		}
+	}
 }
 
 // defaultProjectViewType maps the config's default_project_view string to a ViewType.

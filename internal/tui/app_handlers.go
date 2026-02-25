@@ -52,6 +52,19 @@ func (m *AppModel) saveOutlinerFilterState() {
 	state.OutlinerFilterScoreMin = m.outliner.filter.ScoreMin
 	state.OutlinerColumnToggles = m.outliner.columnConfig.Toggles()
 
+	// Persist fold state to disk (only collapsed nodes)
+	collapsedNodes := make(map[string]bool)
+	for id, expanded := range m.outliner.expandedNodes {
+		if !expanded {
+			collapsedNodes[id] = true
+		}
+	}
+	if len(collapsedNodes) > 0 {
+		state.OutlinerFoldState = collapsedNodes
+	} else {
+		state.OutlinerFoldState = nil
+	}
+
 	if len(m.outliner.filter.Attrs) > 0 {
 		state.OutlinerFilterAttrs = make(map[string]string)
 		for k, v := range m.outliner.filter.Attrs {
@@ -95,6 +108,14 @@ func (m *AppModel) restoreOutlinerFilterState() {
 
 	// Restore sections - validate they still exist
 	m.outliner.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, m.outliner.project.GetSections())
+
+	// Restore fold state from disk if no in-memory toggle cache exists
+	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerFoldState) > 0 {
+		m.outliner.ensureExpandedNodes()
+		for id := range state.OutlinerFoldState {
+			m.outliner.expandedNodes[id] = false
+		}
+	}
 
 	m.outliner.rebuildRows()
 }
