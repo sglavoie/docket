@@ -146,6 +146,8 @@ type Config struct {
 	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
 	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
 	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
+	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
+	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs
 }
 
 // FocusQueueItem stores a task reference for the focus queue.

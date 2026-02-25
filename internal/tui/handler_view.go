@@ -170,6 +170,35 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowSmartListBuilderMsg:
+		builder := NewSmartListBuilderModel(m.config, m.configManager)
+		m.showView(ViewSmartListBuilder, builder)
+		return true, builder.Init()
+
+	case ShowSmartListEditorMsg:
+		builder := NewSmartListEditorModel(m.config, m.configManager, msg.SmartList)
+		m.showView(ViewSmartListBuilder, builder)
+		return true, builder.Init()
+
+	case SmartListSavedMsg:
+		m.popView()
+		// Rebuild AllTasks tab entries if it's on the stack
+		if m.allTasksView != nil {
+			m.allTasksView.buildTabEntries()
+			m.allTasksView.loadAllTasks()
+		}
+		return true, nil
+
+	case SmartListDeletedMsg:
+		m.config.RemoveSmartList(msg.ID)
+		_ = m.configManager.Save(m.config)
+		// Rebuild AllTasks tab entries
+		if m.allTasksView != nil {
+			m.allTasksView.buildTabEntries()
+			m.allTasksView.loadAllTasks()
+		}
+		return true, nil
+
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)

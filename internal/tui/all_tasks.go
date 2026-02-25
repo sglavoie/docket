@@ -58,16 +58,25 @@ type AllTasksGroup struct {
 	Tasks []CrossProjectTask
 }
 
-var allTasksTabNames = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
+var defaultBuiltInTabNames = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
 
 const (
-	allTasksTabAll     = 0
-	allTasksTabActive  = 1
-	allTasksTabDueSoon = 2
-	allTasksTabHighPri = 3
-	allTasksTabBlocked = 4
-	allTasksTabByScore = 5
+	builtInTabAll     = 0
+	builtInTabActive  = 1
+	builtInTabDueSoon = 2
+	builtInTabHighPri = 3
+	builtInTabBlocked = 4
+	builtInTabByScore = 5
 )
+
+// TabEntry represents a single tab in the AllTasks view, which can be either
+// a built-in filter tab or a user-defined smart list.
+type TabEntry struct {
+	Name        string
+	IsBuiltIn   bool
+	BuiltInID   int
+	SmartListID string
+}
 
 // AllTasksViewModel displays all tasks across all projects.
 type AllTasksViewModel struct {
@@ -90,7 +99,8 @@ type AllTasksViewModel struct {
 	collapsedGroups map[string]bool
 
 	// Tabs
-	tabs TabState
+	tabs       TabState
+	tabEntries []TabEntry
 
 	// Filter
 	FilterMixin
@@ -128,18 +138,85 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:             NewSortState(),
 		FilterMixin:      FilterMixin{filter: newFilterState()},
-		tabs:             TabState{Names: allTasksTabNames},
 		kanbanColumns:    make(map[string]*ColumnState),
 	}
+	m.buildTabEntries()
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadAllTasks()
 	return m
+}
+
+// buildTabEntries constructs the ordered list of tab entries from config.
+// If AllTasksTabOrder is set, it determines ordering; otherwise built-in tabs
+// come first followed by smart lists in definition order.
+func (m *AllTasksViewModel) buildTabEntries() {
+	builtInByName := make(map[string]int)
+	for i, name := range defaultBuiltInTabNames {
+		builtInByName[name] = i
+	}
+
+	smartByID := make(map[string]bool)
+	for _, sl := range m.config.SmartLists {
+		smartByID[sl.ID] = true
+	}
+
+	var entries []TabEntry
+	used := make(map[string]bool)
+
+	if len(m.config.AllTasksTabOrder) > 0 {
+		for _, key := range m.config.AllTasksTabOrder {
+			if id, ok := builtInByName[key]; ok && !used[key] {
+				entries = append(entries, TabEntry{Name: key, IsBuiltIn: true, BuiltInID: id})
+				used[key] = true
+			} else if smartByID[key] && !used[key] {
+				sl := m.config.GetSmartList(key)
+				if sl != nil {
+					entries = append(entries, TabEntry{Name: sl.Name, IsBuiltIn: false, SmartListID: key})
+					used[key] = true
+				}
+			}
+		}
+	}
+
+	// Append any built-in tabs not yet included (preserve default order)
+	for i, name := range defaultBuiltInTabNames {
+		if !used[name] {
+			entries = append(entries, TabEntry{Name: name, IsBuiltIn: true, BuiltInID: i})
+		}
+	}
+
+	// Append any smart lists not yet included
+	for _, sl := range m.config.SmartLists {
+		if !used[sl.ID] {
+			entries = append(entries, TabEntry{Name: sl.Name, IsBuiltIn: false, SmartListID: sl.ID})
+		}
+	}
+
+	m.tabEntries = entries
+
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		if !e.IsBuiltIn {
+			names[i] = "● " + e.Name
+		} else {
+			names[i] = e.Name
+		}
+	}
+	m.tabs.Names = names
+
+	// Clamp active tab in case entries shrank
+	if m.tabs.Active >= len(entries) {
+		m.tabs.Active = 0
+	}
 }
 
 // loadAllTasks loads tasks from all active projects.
 func (m *AllTasksViewModel) loadAllTasks() {
 	m.allTasks = nil
 	m.projectCache = make(map[string]*models.Project)
+
+	// Check if the active tab is a smart list that includes completed tasks
+	includeCompleted := m.activeTabIncludesCompleted()
 
 	projects := m.config.GetActiveProjects()
 	for _, project := range projects {
@@ -149,8 +226,7 @@ func (m *AllTasksViewModel) loadAllTasks() {
 		m.projectCache[project.ID] = project
 
 		for _, task := range project.Tasks {
-			// Skip completed/canceled by default
-			if task.Status.IsComplete() {
+			if task.Status.IsComplete() && !includeCompleted {
 				continue
 			}
 			m.allTasks = append(m.allTasks, CrossProjectTask{Task: task, Project: project})
@@ -158,6 +234,20 @@ func (m *AllTasksViewModel) loadAllTasks() {
 	}
 
 	m.applyFiltersAndGroup()
+}
+
+// activeTabIncludesCompleted returns true if the current tab is a smart list
+// with IncludeCompleted enabled.
+func (m *AllTasksViewModel) activeTabIncludesCompleted() bool {
+	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
+		return false
+	}
+	entry := m.tabEntries[m.tabs.Active]
+	if entry.IsBuiltIn {
+		return false
+	}
+	sl := m.config.GetSmartList(entry.SmartListID)
+	return sl != nil && sl.IncludeCompleted
 }
 
 // applyFiltersAndGroup applies filters, tab filter, grouping, and sorting.
@@ -197,13 +287,32 @@ func (m *AllTasksViewModel) applyFiltersAndGroup() {
 	m.calculateNavigation()
 }
 
-// applyTabFilter filters tasks based on the active tab.
+// applyTabFilter filters tasks based on the active tab entry.
 func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProjectTask {
+	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
+		return tasks
+	}
+	entry := m.tabEntries[m.tabs.Active]
+
+	if entry.IsBuiltIn {
+		return m.applyBuiltInTabFilter(tasks, entry.BuiltInID)
+	}
+
+	// Smart list tab
+	sl := m.config.GetSmartList(entry.SmartListID)
+	if sl == nil {
+		return tasks
+	}
+	return m.applySmartListFilter(tasks, sl)
+}
+
+// applyBuiltInTabFilter applies the filter logic for built-in tabs.
+func (m *AllTasksViewModel) applyBuiltInTabFilter(tasks []CrossProjectTask, builtInID int) []CrossProjectTask {
 	now := time.Now()
 	today := util.StartOfDay(now)
 
-	switch m.tabs.Active {
-	case allTasksTabActive:
+	switch builtInID {
+	case builtInTabActive:
 		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Status == models.StatusInProgress {
@@ -212,7 +321,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 		}
 		return result
 
-	case allTasksTabDueSoon:
+	case builtInTabDueSoon:
 		sevenDaysLater := today.AddDate(0, 0, 7)
 		var result []CrossProjectTask
 		for _, item := range tasks {
@@ -226,7 +335,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 		}
 		return result
 
-	case allTasksTabHighPri:
+	case builtInTabHighPri:
 		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Priority <= 2 {
@@ -235,7 +344,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 		}
 		return result
 
-	case allTasksTabBlocked:
+	case builtInTabBlocked:
 		var result []CrossProjectTask
 		for _, item := range tasks {
 			if item.Task.Status == models.StatusBlocked {
@@ -244,8 +353,7 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 		}
 		return result
 
-	case allTasksTabByScore:
-		// Only tasks with scores; sorted by score descending
+	case builtInTabByScore:
 		var result []CrossProjectTask
 		for _, item := range tasks {
 			profile := m.config.GetProjectScoringProfile(item.Project.ID)
@@ -264,6 +372,21 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 	}
 
 	return tasks
+}
+
+// applySmartListFilter filters tasks using a smart list's criteria.
+func (m *AllTasksViewModel) applySmartListFilter(tasks []CrossProjectTask, sl *config.SmartList) []CrossProjectTask {
+	var result []CrossProjectTask
+	for _, item := range tasks {
+		// Smart lists skip completed tasks unless explicitly included
+		if item.Task.Status.IsComplete() && !sl.IncludeCompleted {
+			continue
+		}
+		if passesSmartListCriteria(item.Task, item.Project, sl, m.config) {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 // calculateNavigation counts navigable items (headers + visible tasks)
@@ -378,14 +501,20 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.statusMessage = ""
 
 	// Handle confirm dialog
-	if confirmed, handled := m.HandleConfirmKey(key); handled {
-		if confirmed {
-			if m.multiSelectMode && m.SelectedCount() > 0 {
-				return m.handleBulkDelete()
+	if m.confirm.IsActive() {
+		action := m.confirm.Action()
+		if confirmed, handled := m.HandleConfirmKey(key); handled {
+			if confirmed {
+				if action == "delete-smart-list" {
+					return m.handleDeleteSmartList()
+				}
+				if m.multiSelectMode && m.SelectedCount() > 0 {
+					return m.handleBulkDelete()
+				}
+				return taskOpsDeleteTask(m)
 			}
-			return taskOpsDeleteTask(m)
+			return m, nil
 		}
-		return m, nil
 	}
 
 	// Multi-select key handling
@@ -528,6 +657,50 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if item := m.getTaskAtCursor(); item != nil {
 			return m, func() tea.Msg {
 				return ShowScoreEditorMsg{Task: item.Task, Project: item.Project}
+			}
+		}
+		return m, nil
+
+	// Smart list: create
+	case "+":
+		return m, func() tea.Msg {
+			return ShowSmartListBuilderMsg{}
+		}
+
+	// Smart list: edit current tab
+	case "E":
+		if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
+			entry := m.tabEntries[m.tabs.Active]
+			if !entry.IsBuiltIn {
+				sl := m.config.GetSmartList(entry.SmartListID)
+				if sl != nil {
+					return m, func() tea.Msg {
+						return ShowSmartListEditorMsg{SmartList: sl}
+					}
+				}
+			}
+		}
+		return m, nil
+
+	// Tab reordering (list mode only — kanban uses {/} for task movement)
+	case "{":
+		if m.layoutMode == ATLayoutList {
+			m.moveTabLeft()
+			return m, nil
+		}
+	case "}":
+		if m.layoutMode == ATLayoutList {
+			m.moveTabRight()
+			return m, nil
+		}
+
+	// Smart list: delete current tab
+	case "X":
+		if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
+			entry := m.tabEntries[m.tabs.Active]
+			if !entry.IsBuiltIn {
+				m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q? (y/n)", entry.Name))
+				m.statusMessage = m.confirm.Prompt()
 			}
 		}
 		return m, nil
@@ -827,4 +1000,65 @@ func (m *AllTasksViewModel) getKanbanTaskAtCursor() *CrossProjectTask {
 		return nil
 	}
 	return &group.Tasks[cs.Cursor]
+}
+
+// ensureTabOrderInitialized populates AllTasksTabOrder from the current
+// tabEntries if it hasn't been set yet, so that reordering has something
+// to permute.
+func (m *AllTasksViewModel) ensureTabOrderInitialized() {
+	if len(m.config.AllTasksTabOrder) > 0 {
+		return
+	}
+	order := make([]string, len(m.tabEntries))
+	for i, e := range m.tabEntries {
+		if e.IsBuiltIn {
+			order[i] = e.Name
+		} else {
+			order[i] = e.SmartListID
+		}
+	}
+	m.config.AllTasksTabOrder = order
+}
+
+// moveTabLeft swaps the active tab with the one to its left.
+func (m *AllTasksViewModel) moveTabLeft() {
+	if m.tabs.Active <= 0 {
+		return
+	}
+	m.ensureTabOrderInitialized()
+	i := m.tabs.Active
+	m.config.AllTasksTabOrder[i-1], m.config.AllTasksTabOrder[i] = m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i-1]
+	m.tabs.Active--
+	m.buildTabEntries()
+	_ = m.configManager.Save(m.config)
+	m.statusMessage = "Tab moved left"
+}
+
+// moveTabRight swaps the active tab with the one to its right.
+func (m *AllTasksViewModel) moveTabRight() {
+	if m.tabs.Active >= len(m.tabEntries)-1 {
+		return
+	}
+	m.ensureTabOrderInitialized()
+	i := m.tabs.Active
+	m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i+1] = m.config.AllTasksTabOrder[i+1], m.config.AllTasksTabOrder[i]
+	m.tabs.Active++
+	m.buildTabEntries()
+	_ = m.configManager.Save(m.config)
+	m.statusMessage = "Tab moved right"
+}
+
+// handleDeleteSmartList deletes the smart list on the currently active tab.
+func (m *AllTasksViewModel) handleDeleteSmartList() (tea.Model, tea.Cmd) {
+	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
+		return m, nil
+	}
+	entry := m.tabEntries[m.tabs.Active]
+	if entry.IsBuiltIn || entry.SmartListID == "" {
+		return m, nil
+	}
+	id := entry.SmartListID
+	return m, func() tea.Msg {
+		return SmartListDeletedMsg{ID: id}
+	}
 }

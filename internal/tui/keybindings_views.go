@@ -427,8 +427,11 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 		Keybinding{Key: "h/l or [/]", Description: "Navigate tabs", Category: "View", Views: views},
 		Keybinding{Key: "ctrl+k", Description: "Toggle layout (list/kanban)", Category: "View", Views: views},
 		Keybinding{Key: "h/l", Description: "Navigate columns (kanban)", Category: "Navigation", Views: views},
-		Keybinding{Key: "{/}", Description: "Move task between columns (kanban)", Category: "Actions", Views: views},
+		Keybinding{Key: "{/}", Description: "Move tab (list) / move task between columns (kanban)", Category: "Actions", Views: views},
 		Keybinding{Key: "r", Description: "Refresh", Category: "View", Views: views},
+		Keybinding{Key: "+", Description: "Create smart list tab", Category: "Smart Lists", Views: views},
+		Keybinding{Key: "E", Description: "Edit current smart list tab", Category: "Smart Lists", Views: views},
+		Keybinding{Key: "X", Description: "Delete current smart list tab", Category: "Smart Lists", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close all tasks view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
@@ -497,5 +500,19 @@ func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
 		Keybinding{Key: "d", Description: "Delete template", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerSmartListBuilderBindings() {
+	views := []ViewType{ViewSmartListBuilder}
+	r.add(
+		Keybinding{Key: "[/]", Description: "Switch tabs (Criteria/Options)", Category: "Navigation", Views: views},
+		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},
+		Keybinding{Key: "←/→", Description: "Cycle field/op/value", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Next field", Category: "Navigation", Views: views},
+		Keybinding{Key: "Space", Description: "Toggle (logic/sort/completed)", Category: "Actions", Views: views},
+		Keybinding{Key: "+/-", Description: "Add/remove criterion", Category: "Criteria", Views: views},
+		Keybinding{Key: "Ctrl+S", Description: "Save smart list", Category: "Actions", Views: views},
+		Keybinding{Key: "Esc", Description: "Cancel", Category: "Navigation", Views: views},
 	)
 }
