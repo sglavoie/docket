@@ -482,7 +482,19 @@ func (r *KeybindingRegistry) registerWorkflowRulesBindings() {
 		Keybinding{Key: "n", Description: "New rule", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit rule", Category: "Actions", Views: views},
 		Keybinding{Key: "d", Description: "Delete rule", Category: "Actions", Views: views},
+		Keybinding{Key: "t", Description: "Dry run all rules", Category: "Actions", Views: views},
+		Keybinding{Key: "T", Description: "Test selected rule", Category: "Actions", Views: views},
 		Keybinding{Key: "Enter", Description: "Preview (narrow screen)", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
+func (r *KeybindingRegistry) registerWorkflowDryRunBindings() {
+	views := []ViewType{ViewWorkflowDryRun}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Top/Bottom", Category: "Navigation", Views: views},
+		Keybinding{Key: "/", Description: "Search tasks", Category: "Navigation", Views: views},
 		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
 	)
 }

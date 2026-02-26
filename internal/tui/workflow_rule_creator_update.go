@@ -103,7 +103,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to triggers tab and open field picker for first trigger
 			m.blurCurrentField()
 			m.activeTab = tabTriggers
-			m.focusIndex = 1 // First trigger's field selector
+			m.focusIndex = 2 // First trigger's field selector
 			m.focusCurrentField()
 
 			// Open field picker
@@ -121,7 +121,7 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to actions tab and open type picker for first action
 			m.blurCurrentField()
 			m.activeTab = tabActions
-			m.focusIndex = 1 // First action's type selector
+			m.focusIndex = 2 // First action's type selector
 			m.focusCurrentField()
 
 			// Open action type picker
@@ -157,11 +157,42 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+s":
 			return m, m.saveRule()
 
+		case "ctrl+r":
+			// Test current rule via dry run
+			rule, err := m.buildRuleFromForm()
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+			return m, func() tea.Msg {
+				return ShowWorkflowDryRunMsg{SingleRule: rule}
+			}
+
 		case "+", "=":
 			return m, m.handleAdd()
 
 		case "-", "_":
 			return m, m.handleRemove()
+
+		case "c":
+			// Toggle condition on current action (only on actions tab, when focused on action)
+			if m.activeTab == tabActions && !m.isInTextInput() {
+				section, itemIdx, _ := m.getFocusSection()
+				if section == "action" && itemIdx < len(m.actions) {
+					m.actions[itemIdx].hasCondition = !m.actions[itemIdx].hasCondition
+				}
+			}
+			return m, nil
+
+		case "g":
+			// Toggle trigger grouping (only on triggers tab, when focused on trigger)
+			if m.activeTab == tabTriggers && !m.isInTextInput() {
+				section, itemIdx, _ := m.getFocusSection()
+				if section == "trigger" && itemIdx < len(m.triggers) {
+					m.toggleTriggerGroup(itemIdx)
+				}
+			}
+			return m, nil
 
 		case " ":
 			section, _, _ := m.getFocusSection()
@@ -217,13 +248,20 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch section {
 	case "name":
 		m.nameInput, cmd = m.nameInput.Update(msg)
+	case "priority":
+		m.priorityInput, cmd = m.priorityInput.Update(msg)
 	case "trigger":
 		if fieldIdx == 2 && itemIdx < len(m.triggers) {
 			m.triggers[itemIdx].valueInput, cmd = m.triggers[itemIdx].valueInput.Update(msg)
 		}
 	case "action":
-		if fieldIdx == 1 && itemIdx < len(m.actions) {
-			m.actions[itemIdx].valueInput, cmd = m.actions[itemIdx].valueInput.Update(msg)
+		if itemIdx < len(m.actions) {
+			switch fieldIdx {
+			case 1:
+				m.actions[itemIdx].valueInput, cmd = m.actions[itemIdx].valueInput.Update(msg)
+			case 4: // condValue
+				m.actions[itemIdx].condValueInput, cmd = m.actions[itemIdx].condValueInput.Update(msg)
+			}
 		}
 	case "scope":
 		switch fieldIdx {
@@ -243,12 +281,12 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *WorkflowRuleCreatorModel) isInTextInput() bool {
 	section, _, fieldIdx := m.getFocusSection()
 	switch section {
-	case "name":
+	case "name", "priority":
 		return true
 	case "trigger":
 		return fieldIdx == 2 // value input
 	case "action":
-		return fieldIdx == 1 // value input
+		return fieldIdx == 1 || fieldIdx == 4 // value input or condValue input
 	case "scope":
 		return true // all scope fields are text inputs
 	}
@@ -261,13 +299,20 @@ func (m *WorkflowRuleCreatorModel) blurCurrentField() {
 	switch section {
 	case "name":
 		m.nameInput.Blur()
+	case "priority":
+		m.priorityInput.Blur()
 	case "trigger":
 		if fieldIdx == 2 && itemIdx < len(m.triggers) {
 			m.triggers[itemIdx].valueInput.Blur()
 		}
 	case "action":
-		if fieldIdx == 1 && itemIdx < len(m.actions) {
-			m.actions[itemIdx].valueInput.Blur()
+		if itemIdx < len(m.actions) {
+			switch fieldIdx {
+			case 1:
+				m.actions[itemIdx].valueInput.Blur()
+			case 4: // condValue
+				m.actions[itemIdx].condValueInput.Blur()
+			}
 		}
 	case "scope":
 		switch fieldIdx {
@@ -287,13 +332,20 @@ func (m *WorkflowRuleCreatorModel) focusCurrentField() {
 	switch section {
 	case "name":
 		m.nameInput.Focus()
+	case "priority":
+		m.priorityInput.Focus()
 	case "trigger":
 		if fieldIdx == 2 && itemIdx < len(m.triggers) {
 			m.triggers[itemIdx].valueInput.Focus()
 		}
 	case "action":
-		if fieldIdx == 1 && itemIdx < len(m.actions) {
-			m.actions[itemIdx].valueInput.Focus()
+		if itemIdx < len(m.actions) {
+			switch fieldIdx {
+			case 1:
+				m.actions[itemIdx].valueInput.Focus()
+			case 4: // condValue
+				m.actions[itemIdx].condValueInput.Focus()
+			}
 		}
 	case "scope":
 		switch fieldIdx {
@@ -329,9 +381,20 @@ func (m *WorkflowRuleCreatorModel) handleLeft() tea.Cmd {
 			m.triggerLogic = workflow.LogicAnd
 		}
 	case "action":
-		if itemIdx < len(m.actions) && fieldIdx == 0 {
-			if m.actions[itemIdx].typeCursor > 0 {
-				m.actions[itemIdx].typeCursor--
+		if itemIdx < len(m.actions) {
+			switch fieldIdx {
+			case 0: // type selector
+				if m.actions[itemIdx].typeCursor > 0 {
+					m.actions[itemIdx].typeCursor--
+				}
+			case 2: // condField selector
+				if m.actions[itemIdx].condFieldCursor > 0 {
+					m.actions[itemIdx].condFieldCursor--
+				}
+			case 3: // condOp selector
+				if m.actions[itemIdx].condOpCursor > 0 {
+					m.actions[itemIdx].condOpCursor--
+				}
 			}
 		}
 	}
@@ -360,9 +423,20 @@ func (m *WorkflowRuleCreatorModel) handleRight() tea.Cmd {
 			m.triggerLogic = workflow.LogicOr
 		}
 	case "action":
-		if itemIdx < len(m.actions) && fieldIdx == 0 {
-			if m.actions[itemIdx].typeCursor < len(m.actionTypes)-1 {
-				m.actions[itemIdx].typeCursor++
+		if itemIdx < len(m.actions) {
+			switch fieldIdx {
+			case 0: // type selector
+				if m.actions[itemIdx].typeCursor < len(m.actionTypes)-1 {
+					m.actions[itemIdx].typeCursor++
+				}
+			case 2: // condField selector
+				if m.actions[itemIdx].condFieldCursor < len(m.triggerFields)-1 {
+					m.actions[itemIdx].condFieldCursor++
+				}
+			case 3: // condOp selector
+				if m.actions[itemIdx].condOpCursor < len(m.triggerOps)-1 {
+					m.actions[itemIdx].condOpCursor++
+				}
 			}
 		}
 	}
@@ -380,34 +454,36 @@ func (m *WorkflowRuleCreatorModel) handleUp() tea.Cmd {
 		switch m.activeTab {
 		case tabTriggers:
 			if len(m.triggers) > 1 {
-				m.focusIndex = 1 + len(m.triggers)*3
+				m.focusIndex = 2 + len(m.triggers)*3
 			} else {
-				m.focusIndex = 1
+				m.focusIndex = 2
 			}
 		case tabActions:
-			m.focusIndex = 1 + (len(m.actions)-1)*2
+			m.focusIndex = 2 + m.actionFieldOffset(len(m.actions)-1)
 		case tabScope:
-			m.focusIndex = 3 // last scope field (sections)
+			m.focusIndex = 4 // last scope field (sections)
 		}
+	case "priority":
+		m.focusIndex = 0
 	case "trigger":
 		if itemIdx > 0 {
-			m.focusIndex = 1 + (itemIdx-1)*3
+			m.focusIndex = 2 + (itemIdx-1)*3
 		} else {
-			m.focusIndex = 0
+			m.focusIndex = 1 // priority
 		}
 	case "logic":
-		m.focusIndex = 1 + (len(m.triggers)-1)*3
+		m.focusIndex = 2 + (len(m.triggers)-1)*3
 	case "action":
 		if itemIdx > 0 {
-			m.focusIndex = 1 + (itemIdx-1)*2
+			m.focusIndex = 2 + m.actionFieldOffset(itemIdx-1)
 		} else {
-			m.focusIndex = 0
+			m.focusIndex = 1 // priority
 		}
 	case "scope":
 		if fieldIdx > 0 {
-			m.focusIndex = fieldIdx // move up within scope fields
+			m.focusIndex = fieldIdx + 1 // move up within scope fields
 		} else {
-			m.focusIndex = 0
+			m.focusIndex = 1 // priority
 		}
 	}
 
@@ -423,12 +499,14 @@ func (m *WorkflowRuleCreatorModel) handleDown() tea.Cmd {
 
 	switch section {
 	case "name":
-		m.focusIndex = 1
+		m.focusIndex = 1 // priority
+	case "priority":
+		m.focusIndex = 2 // first item in current tab
 	case "trigger":
 		if itemIdx < len(m.triggers)-1 {
-			m.focusIndex = 1 + (itemIdx+1)*3
+			m.focusIndex = 2 + (itemIdx+1)*3
 		} else if len(m.triggers) > 1 {
-			m.focusIndex = 1 + len(m.triggers)*3
+			m.focusIndex = 2 + len(m.triggers)*3
 		} else {
 			m.focusIndex = 0
 		}
@@ -436,13 +514,13 @@ func (m *WorkflowRuleCreatorModel) handleDown() tea.Cmd {
 		m.focusIndex = 0
 	case "action":
 		if itemIdx < len(m.actions)-1 {
-			m.focusIndex = 1 + (itemIdx+1)*2
+			m.focusIndex = 2 + m.actionFieldOffset(itemIdx+1)
 		} else {
 			m.focusIndex = 0
 		}
 	case "scope":
 		if fieldIdx < 2 {
-			m.focusIndex = fieldIdx + 2 // move down within scope fields
+			m.focusIndex = fieldIdx + 3 // move down within scope fields
 		} else {
 			m.focusIndex = 0
 		}
@@ -464,14 +542,16 @@ func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
 	switch section {
 	case "name":
 		focusLine = 0
+	case "priority":
+		focusLine = 2
 	case "trigger":
-		focusLine = 4 + itemIdx*4
+		focusLine = 6 + itemIdx*4
 	case "logic":
-		focusLine = 4 + len(m.triggers)*4
+		focusLine = 6 + len(m.triggers)*4
 	case "action":
-		focusLine = 4 + itemIdx*3
+		focusLine = 6 + itemIdx*3
 	case "scope":
-		focusLine = 4 + fieldIdx*3
+		focusLine = 6 + fieldIdx*3
 	}
 
 	// Keep focused item visible with some margin
@@ -491,6 +571,19 @@ func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
 	}
 }
 
+// actionFieldOffset returns the cumulative focus offset for the given action index,
+// accounting for variable field counts (2 base + 3 if hasCondition).
+func (m *WorkflowRuleCreatorModel) actionFieldOffset(actionIdx int) int {
+	offset := 0
+	for i := 0; i < actionIdx && i < len(m.actions); i++ {
+		offset += 2
+		if m.actions[i].hasCondition {
+			offset += 3
+		}
+	}
+	return offset
+}
+
 // handleAdd adds a new trigger or action based on current tab.
 func (m *WorkflowRuleCreatorModel) handleAdd() tea.Cmd {
 	factory := DefaultFormFieldFactory()
@@ -498,11 +591,12 @@ func (m *WorkflowRuleCreatorModel) handleAdd() tea.Cmd {
 	if m.activeTab == tabTriggers {
 		// Add a new trigger
 		valueInput := factory.NewTextInput("Value")
-		m.triggers = append(m.triggers, TriggerFormState{valueInput: valueInput})
+		m.triggers = append(m.triggers, TriggerFormState{valueInput: valueInput, groupIndex: -1})
 	} else {
 		// Add a new action
 		valueInput := factory.NewTextInput("Value")
-		m.actions = append(m.actions, ActionFormState{valueInput: valueInput})
+		condValueInput := factory.NewTextInput("Condition value")
+		m.actions = append(m.actions, ActionFormState{valueInput: valueInput, condValueInput: condValueInput})
 	}
 	return nil
 }
@@ -533,4 +627,54 @@ func (m *WorkflowRuleCreatorModel) handleRemove() tea.Cmd {
 		}
 	}
 	return nil
+}
+
+// toggleTriggerGroup toggles a trigger in/out of a sub-group.
+// If the trigger is ungrouped, it joins or creates a group.
+// If the trigger is in a group, it is removed from the group.
+func (m *WorkflowRuleCreatorModel) toggleTriggerGroup(triggerIdx int) {
+	t := &m.triggers[triggerIdx]
+	if t.groupIndex >= 0 {
+		// Remove from group
+		oldGroup := t.groupIndex
+		t.groupIndex = -1
+		// Clean up empty groups
+		m.cleanupEmptyGroups(oldGroup)
+	} else {
+		// Add to the first existing group, or create a new one
+		if len(m.triggerGroups) == 0 {
+			m.triggerGroups = append(m.triggerGroups, TriggerGroupFormState{logic: workflow.LogicAnd})
+		}
+		t.groupIndex = 0
+	}
+}
+
+// cleanupEmptyGroups removes a trigger group if it has fewer than 2 members,
+// and reassigns remaining triggers.
+func (m *WorkflowRuleCreatorModel) cleanupEmptyGroups(groupIdx int) {
+	// Count members of this group
+	count := 0
+	for _, t := range m.triggers {
+		if t.groupIndex == groupIdx {
+			count++
+		}
+	}
+	if count >= 2 {
+		return // group still has enough members
+	}
+
+	// Ungroup any remaining single member
+	for i := range m.triggers {
+		if m.triggers[i].groupIndex == groupIdx {
+			m.triggers[i].groupIndex = -1
+		}
+	}
+
+	// Remove the group and re-index
+	m.triggerGroups = append(m.triggerGroups[:groupIdx], m.triggerGroups[groupIdx+1:]...)
+	for i := range m.triggers {
+		if m.triggers[i].groupIndex > groupIdx {
+			m.triggers[i].groupIndex--
+		}
+	}
 }

@@ -222,6 +222,26 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 	return triggers, nil
 }
 
+// buildConditionFromFlags creates a RuleTrigger from condition CLI flags.
+func buildConditionFromFlags(field, op, value string) (*workflow.RuleTrigger, error) {
+	if field == "" {
+		return nil, fmt.Errorf("condition field is required")
+	}
+	if value == "" {
+		return nil, fmt.Errorf("condition value is required when condition field is specified")
+	}
+
+	cond := &workflow.RuleTrigger{
+		Field:     workflow.TriggerField(strings.ToLower(field)),
+		Operation: workflow.TriggerOperation(strings.ToLower(op)),
+		Value:     value,
+	}
+	if err := cond.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid action condition: %w", err)
+	}
+	return cond, nil
+}
+
 // buildActionFromFlags creates an action from flags.
 func buildActionFromFlags(actionType, actionValue string) (workflow.RuleAction, error) {
 	action := workflow.RuleAction{
@@ -450,6 +470,17 @@ func actionsEqual(a, b []workflow.RuleAction) bool {
 	for i := range a {
 		if a[i].ActionType != b[i].ActionType || a[i].Value != b[i].Value {
 			return false
+		}
+		// Compare conditions
+		if (a[i].Condition == nil) != (b[i].Condition == nil) {
+			return false
+		}
+		if a[i].Condition != nil && b[i].Condition != nil {
+			if a[i].Condition.Field != b[i].Condition.Field ||
+				a[i].Condition.Operation != b[i].Condition.Operation ||
+				a[i].Condition.Value != b[i].Condition.Value {
+				return false
+			}
 		}
 	}
 	return true

@@ -97,7 +97,10 @@ func (m *WorkflowRuleCreatorModel) renderHelpText() string {
 			"Tab: nav",
 			"↑↓: items",
 			"+/-: add/rem",
+			"c: condition",
+			"g: group",
 			"Ctrl+S: save",
+			"Ctrl+R: test",
 			"Esc: cancel",
 		}
 	} else {
@@ -106,7 +109,10 @@ func (m *WorkflowRuleCreatorModel) renderHelpText() string {
 			"Ctrl+p: preview",
 			"↑↓: items",
 			"+/-: add/rem",
+			"c: condition",
+			"g: group",
 			"Ctrl+S: save",
+			"Ctrl+R: test",
 			"Esc: cancel",
 		}
 	}
@@ -166,6 +172,17 @@ func (m *WorkflowRuleCreatorModel) renderEditorPane() string {
 	}
 	b.WriteString(nameLabel)
 	b.WriteString(m.nameInput.View())
+	b.WriteString("\n")
+
+	// Priority input (always shown)
+	var priorityLabel string
+	if section == "priority" {
+		priorityLabel = FieldLabelFocusedStyle.Render("Priority: ")
+	} else {
+		priorityLabel = FieldLabelStyle.Render("Priority: ")
+	}
+	b.WriteString(priorityLabel)
+	b.WriteString(m.priorityInput.View())
 	b.WriteString("\n\n")
 
 	switch m.activeTab {
@@ -195,17 +212,29 @@ func (m *WorkflowRuleCreatorModel) renderTriggersSection(section string, itemIdx
 	if len(m.triggers) > 1 {
 		b.WriteString(MutedStyle.Render(fmt.Sprintf(" (%d)", len(m.triggers))))
 	}
+	if len(m.triggerGroups) > 0 {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf(" [%d group(s)]", len(m.triggerGroups))))
+	}
 	b.WriteString("\n")
 
 	for i, t := range m.triggers {
 		isFocusedTrigger := section == "trigger" && itemIdx == i
 
+		// Determine indent and group marker
+		indent := "  "
+		groupMarker := ""
+		if t.groupIndex >= 0 {
+			indent = "    " // extra indent for grouped triggers
+			groupMarker = MutedStyle.Render(fmt.Sprintf("[G%d] ", t.groupIndex+1))
+		}
+
 		// Trigger number
 		if len(m.triggers) > 1 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d. ", i+1)))
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("%s%d. ", indent, i+1)))
 		} else {
-			b.WriteString("  ")
+			b.WriteString(indent)
 		}
+		b.WriteString(groupMarker)
 
 		// Field selector
 		fieldLabel := "Field: "
@@ -217,7 +246,8 @@ func (m *WorkflowRuleCreatorModel) renderTriggersSection(section string, itemIdx
 		b.WriteString("\n")
 
 		// Operation selector
-		b.WriteString("     ")
+		b.WriteString(indent)
+		b.WriteString("   ")
 		opLabel := "Op: "
 		if isFocusedTrigger && fieldIdx == 1 {
 			opLabel = FieldLabelFocusedStyle.Render("Op: ")
@@ -227,7 +257,8 @@ func (m *WorkflowRuleCreatorModel) renderTriggersSection(section string, itemIdx
 		b.WriteString("\n")
 
 		// Value input
-		b.WriteString("     ")
+		b.WriteString(indent)
+		b.WriteString("   ")
 		valueLabel := "Value: "
 		if isFocusedTrigger && fieldIdx == 2 {
 			valueLabel = FieldLabelFocusedStyle.Render("Value: ")
@@ -264,6 +295,18 @@ func (m *WorkflowRuleCreatorModel) renderTriggersSection(section string, itemIdx
 			} else {
 				b.WriteString(BoldStyle.Render("[OR]"))
 			}
+		}
+		b.WriteString("\n")
+	}
+
+	// Sub-group logic toggles
+	for gi, g := range m.triggerGroups {
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("Group %d logic: ", gi+1)))
+		if g.logic == workflow.LogicAnd {
+			b.WriteString(BoldStyle.Render("[AND]"))
+		} else {
+			b.WriteString(BoldStyle.Render("[OR]"))
 		}
 		b.WriteString("\n")
 	}
@@ -311,6 +354,36 @@ func (m *WorkflowRuleCreatorModel) renderActionsSection(section string, itemIdx,
 			}
 			b.WriteString(valueLabel)
 			b.WriteString(a.valueInput.View())
+			b.WriteString("\n")
+		}
+
+		// Condition fields (when condition is enabled)
+		if a.hasCondition {
+			b.WriteString("     ")
+			condFieldLabel := "IF Field: "
+			if isFocusedAction && fieldIdx == 2 {
+				condFieldLabel = FieldLabelFocusedStyle.Render("IF Field: ")
+			}
+			b.WriteString(condFieldLabel)
+			b.WriteString(m.renderSelector(m.triggerFields, a.condFieldCursor, isFocusedAction && fieldIdx == 2, 3))
+			b.WriteString("\n")
+
+			b.WriteString("     ")
+			condOpLabel := "IF Op: "
+			if isFocusedAction && fieldIdx == 3 {
+				condOpLabel = FieldLabelFocusedStyle.Render("IF Op: ")
+			}
+			b.WriteString(condOpLabel)
+			b.WriteString(m.renderOpsSelector(a.condOpCursor, isFocusedAction && fieldIdx == 3))
+			b.WriteString("\n")
+
+			b.WriteString("     ")
+			condValueLabel := "IF Value: "
+			if isFocusedAction && fieldIdx == 4 {
+				condValueLabel = FieldLabelFocusedStyle.Render("IF Value: ")
+			}
+			b.WriteString(condValueLabel)
+			b.WriteString(a.condValueInput.View())
 			b.WriteString("\n")
 		}
 
@@ -372,57 +445,71 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true) // Yellow for focused field
 
 	b.WriteString(BoldStyle.Render("Preview"))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
-	// Render IF conditions (triggers)
-	for i, t := range m.triggers {
-		var prefix string
-		if i == 0 {
-			prefix = keywordStyle.Render("IF") + " "
+	// Show priority if set
+	if v := strings.TrimSpace(m.priorityInput.Value()); v != "" && v != "0" {
+		if section == "priority" {
+			b.WriteString(highlightStyle.Render(fmt.Sprintf("Priority: %s", v)))
 		} else {
-			if m.triggerLogic == workflow.LogicAnd {
-				prefix = keywordStyle.Render("AND") + " "
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("Priority: %s", v)))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	// Render IF conditions (triggers), with group awareness
+	if len(m.triggerGroups) > 0 {
+		m.renderGroupedTriggersPreview(&b, section, itemIdx, fieldIdx, keywordStyle, operatorStyle, highlightStyle)
+	} else {
+		for i, t := range m.triggers {
+			var prefix string
+			if i == 0 {
+				prefix = keywordStyle.Render("IF") + " "
 			} else {
-				prefix = keywordStyle.Render("OR") + " "
+				if m.triggerLogic == workflow.LogicAnd {
+					prefix = keywordStyle.Render("AND") + " "
+				} else {
+					prefix = keywordStyle.Render("OR") + " "
+				}
 			}
-		}
 
-		field := string(m.triggerFields[t.fieldCursor])
-		op := m.getOpSymbol(m.triggerOps[t.opCursor])
-		value := t.valueInput.Value()
-		if value == "" {
-			value = "?"
-		}
+			field := string(m.triggerFields[t.fieldCursor])
+			op := m.getOpSymbol(m.triggerOps[t.opCursor])
+			value := t.valueInput.Value()
+			if value == "" {
+				value = "?"
+			}
 
-		// Highlight if this trigger is being edited
-		isFocused := section == "trigger" && itemIdx == i
-		var fieldStr, opStr, valueStr string
-		if isFocused {
-			switch fieldIdx {
-			case 0:
-				fieldStr = highlightStyle.Render(field)
-				opStr = operatorStyle.Render(op)
-				valueStr = value
-			case 1:
-				fieldStr = field
-				opStr = highlightStyle.Render(op)
-				valueStr = value
-			case 2:
-				fieldStr = field
-				opStr = operatorStyle.Render(op)
-				valueStr = highlightStyle.Render(value)
-			default:
+			isFocused := section == "trigger" && itemIdx == i
+			var fieldStr, opStr, valueStr string
+			if isFocused {
+				switch fieldIdx {
+				case 0:
+					fieldStr = highlightStyle.Render(field)
+					opStr = operatorStyle.Render(op)
+					valueStr = value
+				case 1:
+					fieldStr = field
+					opStr = highlightStyle.Render(op)
+					valueStr = value
+				case 2:
+					fieldStr = field
+					opStr = operatorStyle.Render(op)
+					valueStr = highlightStyle.Render(value)
+				default:
+					fieldStr = field
+					opStr = operatorStyle.Render(op)
+					valueStr = value
+				}
+			} else {
 				fieldStr = field
 				opStr = operatorStyle.Render(op)
 				valueStr = value
 			}
-		} else {
-			fieldStr = field
-			opStr = operatorStyle.Render(op)
-			valueStr = value
-		}
 
-		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, fieldStr, opStr, valueStr))
+			b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, fieldStr, opStr, valueStr))
+		}
 	}
 
 	// Render THEN actions
@@ -467,6 +554,18 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 			}
 		}
 
+		// Append condition suffix if present
+		if a.hasCondition {
+			condField := string(m.triggerFields[a.condFieldCursor])
+			condOp := m.getOpSymbol(m.triggerOps[a.condOpCursor])
+			condValue := a.condValueInput.Value()
+			if condValue == "" {
+				condValue = "?"
+			}
+			condStr := fmt.Sprintf(" (%s %s %s %s)", keywordStyle.Render("IF"), condField, operatorStyle.Render(condOp), condValue)
+			line += condStr
+		}
+
 		b.WriteString(line)
 		b.WriteString("\n")
 	}
@@ -480,6 +579,90 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 	}
 
 	return lipgloss.NewStyle().Width(width).Render(b.String())
+}
+
+// renderGroupedTriggersPreview renders the preview for triggers that include sub-groups.
+func (m *WorkflowRuleCreatorModel) renderGroupedTriggersPreview(b *strings.Builder, section string, itemIdx, fieldIdx int, keywordStyle, operatorStyle, highlightStyle lipgloss.Style) {
+	// Separate ungrouped and grouped triggers
+	type indexedTrigger struct {
+		index   int
+		trigger TriggerFormState
+	}
+
+	var ungrouped []indexedTrigger
+	grouped := make(map[int][]indexedTrigger) // groupIndex -> triggers
+
+	for i, t := range m.triggers {
+		if t.groupIndex < 0 {
+			ungrouped = append(ungrouped, indexedTrigger{i, t})
+		} else {
+			grouped[t.groupIndex] = append(grouped[t.groupIndex], indexedTrigger{i, t})
+		}
+	}
+
+	rootLogic := m.triggerLogic
+	first := true
+
+	renderTrigger := func(it indexedTrigger) string {
+		t := it.trigger
+		field := string(m.triggerFields[t.fieldCursor])
+		op := m.getOpSymbol(m.triggerOps[t.opCursor])
+		value := t.valueInput.Value()
+		if value == "" {
+			value = "?"
+		}
+		isFocused := section == "trigger" && itemIdx == it.index
+		if isFocused && fieldIdx == 0 {
+			return fmt.Sprintf("%s %s %s", highlightStyle.Render(field), operatorStyle.Render(op), value)
+		} else if isFocused && fieldIdx == 1 {
+			return fmt.Sprintf("%s %s %s", field, highlightStyle.Render(op), value)
+		} else if isFocused && fieldIdx == 2 {
+			return fmt.Sprintf("%s %s %s", field, operatorStyle.Render(op), highlightStyle.Render(value))
+		}
+		return fmt.Sprintf("%s %s %s", field, operatorStyle.Render(op), value)
+	}
+
+	writePrefix := func() {
+		if first {
+			b.WriteString(keywordStyle.Render("IF") + " ")
+			first = false
+		} else {
+			if rootLogic == workflow.LogicOr {
+				b.WriteString(keywordStyle.Render("OR") + " ")
+			} else {
+				b.WriteString(keywordStyle.Render("AND") + " ")
+			}
+		}
+	}
+
+	// Render ungrouped triggers
+	for _, it := range ungrouped {
+		writePrefix()
+		b.WriteString(renderTrigger(it))
+		b.WriteString("\n")
+	}
+
+	// Render each group with parentheses
+	for gi := 0; gi < len(m.triggerGroups); gi++ {
+		members := grouped[gi]
+		if len(members) == 0 {
+			continue
+		}
+		writePrefix()
+		groupLogic := m.triggerGroups[gi].logic
+		b.WriteString("( ")
+		for j, it := range members {
+			if j > 0 {
+				if groupLogic == workflow.LogicOr {
+					b.WriteString(" " + keywordStyle.Render("OR") + " ")
+				} else {
+					b.WriteString(" " + keywordStyle.Render("AND") + " ")
+				}
+			}
+			b.WriteString(renderTrigger(it))
+		}
+		b.WriteString(" )\n")
+	}
 }
 
 // buildScopePreviewString returns a summary of scope settings for preview display.

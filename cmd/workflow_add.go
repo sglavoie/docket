@@ -83,18 +83,35 @@ Examples:
   tt workflow add -n "Overdue Alert" -f due_days -o less_than -V 0 -a add_tag --action-value overdue
 
   # Tag stale in-progress tasks (not updated in 7 days)
-  tt workflow add -n "Stale WIP" -f updated_days -o greater_than -V 7 -f status -o equals -V in_progress --logic and -a add_tag --action-value stale`,
+  tt workflow add -n "Stale WIP" -f updated_days -o greater_than -V 7 -f status -o equals -V in_progress --logic and -a add_tag --action-value stale
+
+CONDITIONAL ACTIONS:
+  Add an optional condition to the action. The rule's triggers decide if the
+  rule fires; the condition is a secondary gate on the specific action.
+    --cond-field priority   Only run action if this field matches
+    --cond-op greater_than  Condition operation
+    --cond-value 2          Condition value
+
+Examples:
+  # Set section based on priority (conditional branching)
+  tt workflow add -n "Priority Route" -f status -o equals -V todo \
+    -a set_section --action-value Active \
+    --cond-field priority --cond-op less_than --cond-value 3`,
 	RunE: runWorkflowAdd,
 }
 
 var (
 	ruleName      string
+	rulePriority  int
 	triggerFields []string
 	triggerOps    []string
 	triggerValues []string
 	triggerLogic  string
 	actionType    string
 	actionValue   string
+	condField     string
+	condOp        string
+	condValue     string
 	ruleDisabled  bool
 	scopeProjects []string
 	scopeTypes    []string
@@ -105,12 +122,16 @@ func init() {
 	workflowCmd.AddCommand(workflowAddCmd)
 
 	workflowAddCmd.Flags().StringVarP(&ruleName, "name", "n", "", "rule name (required)")
+	workflowAddCmd.Flags().IntVar(&rulePriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerFields, "field", "f", nil, "trigger field: status, priority, section, tags, type (can specify multiple)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerOps, "op", "o", nil, "trigger operation: equals, not_equals, contains, greater_than, less_than (default: equals)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerValues, "value", "V", nil, "trigger value (can specify multiple)")
 	workflowAddCmd.Flags().StringVar(&triggerLogic, "logic", "and", "trigger logic for compound rules: and, or")
 	workflowAddCmd.Flags().StringVarP(&actionType, "action", "a", "", "action type (required)")
 	workflowAddCmd.Flags().StringVar(&actionValue, "action-value", "", "action value (empty string for set_section means Active)")
+	workflowAddCmd.Flags().StringVar(&condField, "cond-field", "", "condition field for the action (action only runs if condition matches)")
+	workflowAddCmd.Flags().StringVar(&condOp, "cond-op", "equals", "condition operation (default: equals)")
+	workflowAddCmd.Flags().StringVar(&condValue, "cond-value", "", "condition value")
 	workflowAddCmd.Flags().BoolVar(&ruleDisabled, "disabled", false, "create rule in disabled state")
 	workflowAddCmd.Flags().StringSliceVar(&scopeProjects, "scope-project", nil, "restrict rule to projects (comma-separated names or IDs)")
 	workflowAddCmd.Flags().StringSliceVar(&scopeTypes, "scope-type", nil, "restrict rule to task types (comma-separated)")
@@ -268,9 +289,29 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	actions := []workflow.RuleAction{
-		{ActionType: action, Value: actionValue},
+	ruleAction := workflow.RuleAction{ActionType: action, Value: actionValue}
+
+	// Build action condition if specified
+	if condField != "" {
+		cField := workflow.TriggerField(strings.ToLower(condField))
+		if !validFields[cField] {
+			return fmt.Errorf("invalid condition field: %s", condField)
+		}
+		cOp := workflow.TriggerOperation(strings.ToLower(condOp))
+		if !validOps[cOp] {
+			return fmt.Errorf("invalid condition operation: %s", condOp)
+		}
+		if condValue == "" {
+			return fmt.Errorf("--cond-value is required when --cond-field is specified")
+		}
+		ruleAction.Condition = &workflow.RuleTrigger{
+			Field:     cField,
+			Operation: cOp,
+			Value:     condValue,
+		}
 	}
+
+	actions := []workflow.RuleAction{ruleAction}
 
 	// Create rule - use compound constructor if multiple triggers
 	var rule *workflow.WorkflowRule
@@ -280,6 +321,10 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		rule = workflow.NewCompoundRule(ruleName, triggers, logic, actions)
 	}
 	rule.Enabled = !ruleDisabled
+	if rulePriority < 0 || rulePriority > 99 {
+		return fmt.Errorf("priority must be 0-99, got: %d", rulePriority)
+	}
+	rule.Priority = rulePriority
 	rule.Scope = buildScopeFromFlags(scopeProjects, scopeTypes, scopeSections)
 
 	if err := rule.Validate(); err != nil {

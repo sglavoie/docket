@@ -183,6 +183,36 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, nil
+
+		case "J":
+			// Move rule priority down (increase priority number = lower priority)
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+				return m, m.adjustCurrentRulePriority(1)
+			}
+			return m, nil
+
+		case "K":
+			// Move rule priority up (decrease priority number = higher priority)
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+				return m, m.adjustCurrentRulePriority(-1)
+			}
+			return m, nil
+
+		case "t":
+			// Dry run with all enabled rules
+			return m, func() tea.Msg {
+				return ShowWorkflowDryRunMsg{}
+			}
+
+		case "T":
+			// Dry run with selected rule only
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
+				rule := m.filteredRules[m.cursor]
+				return m, func() tea.Msg {
+					return ShowWorkflowDryRunMsg{SingleRule: &rule}
+				}
+			}
+			return m, nil
 		}
 	}
 
@@ -248,6 +278,45 @@ func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
 		for i := range m.allRules {
 			if m.allRules[i].ID == rule.ID {
 				m.allRules[i].Enabled = enabled
+				break
+			}
+		}
+
+		if err := m.configManager.Save(m.config); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
+		}
+
+		return WorkflowRulesUpdatedMsg{}
+	}
+}
+
+func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
+	return func() tea.Msg {
+		if m.cursor >= len(m.filteredRules) {
+			return nil
+		}
+
+		rule := &m.filteredRules[m.cursor]
+		newPriority := rule.Priority + delta
+		if newPriority < 0 {
+			newPriority = 0
+		}
+		if newPriority > 99 {
+			newPriority = 99
+		}
+		rule.Priority = newPriority
+
+		// Update in config
+		configRule := m.config.GetWorkflowRule(rule.ID)
+		if configRule == nil {
+			return ErrorMsg{Err: fmt.Errorf("rule not found")}
+		}
+		configRule.Priority = newPriority
+
+		// Also update in allRules
+		for i := range m.allRules {
+			if m.allRules[i].ID == rule.ID {
+				m.allRules[i].Priority = newPriority
 				break
 			}
 		}
@@ -514,38 +583,21 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
 	b.WriteString("\n")
 
-	// Status
+	// Status and priority
+	var statusParts []string
 	if rule.Enabled {
-		b.WriteString(DoneStyle.Render("● Enabled"))
+		statusParts = append(statusParts, DoneStyle.Render("● Enabled"))
 	} else {
-		b.WriteString(MutedStyle.Render("○ Disabled"))
+		statusParts = append(statusParts, MutedStyle.Render("○ Disabled"))
 	}
+	if rule.Priority > 0 {
+		statusParts = append(statusParts, MutedStyle.Render(fmt.Sprintf("Priority: %d", rule.Priority)))
+	}
+	b.WriteString(strings.Join(statusParts, "  "))
 	b.WriteString("\n\n")
 
 	// Render triggers with syntax highlighting
-	triggers := rule.GetTriggers()
-	for i, t := range triggers {
-		var prefix string
-		if i == 0 {
-			prefix = keywordStyle.Render("IF") + " "
-		} else {
-			logic := rule.GetTriggerLogic()
-			if logic == workflow.LogicAnd {
-				prefix = keywordStyle.Render("AND") + " "
-			} else {
-				prefix = keywordStyle.Render("OR") + " "
-			}
-		}
-
-		field := string(t.Field)
-		op := m.getOpSymbol(t.Operation)
-		value := t.Value
-		if value == "" {
-			value = "?"
-		}
-
-		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
-	}
+	m.renderRuleTriggersPreview(&b, rule, keywordStyle, operatorStyle)
 
 	// Render actions with syntax highlighting
 	for i, a := range rule.Actions {
@@ -559,11 +611,21 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 		actionType := string(a.ActionType)
 		value := a.Value
 
+		var line string
 		if value == "" {
-			b.WriteString(fmt.Sprintf("%s%s\n", prefix, actionType))
+			line = fmt.Sprintf("%s%s", prefix, actionType)
 		} else {
-			b.WriteString(fmt.Sprintf("%s%s%s %s\n", prefix, actionType, operatorStyle.Render(":"), value))
+			line = fmt.Sprintf("%s%s%s %s", prefix, actionType, operatorStyle.Render(":"), value)
 		}
+
+		// Show condition if present
+		if a.Condition != nil {
+			condOp := m.getOpSymbol(a.Condition.Operation)
+			line += fmt.Sprintf(" (%s %s %s %s)", keywordStyle.Render("IF"), string(a.Condition.Field), operatorStyle.Render(condOp), a.Condition.Value)
+		}
+
+		b.WriteString(line)
+		b.WriteString("\n")
 	}
 
 	// Scope info
@@ -604,38 +666,21 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	}
 	b.WriteString("\n\n")
 
-	// Status
+	// Status and priority
+	var statusParts2 []string
 	if rule.Enabled {
-		b.WriteString(DoneStyle.Render("● Enabled"))
+		statusParts2 = append(statusParts2, DoneStyle.Render("● Enabled"))
 	} else {
-		b.WriteString(MutedStyle.Render("○ Disabled"))
+		statusParts2 = append(statusParts2, MutedStyle.Render("○ Disabled"))
 	}
+	if rule.Priority > 0 {
+		statusParts2 = append(statusParts2, MutedStyle.Render(fmt.Sprintf("Priority: %d", rule.Priority)))
+	}
+	b.WriteString(strings.Join(statusParts2, "  "))
 	b.WriteString("\n\n")
 
 	// Render triggers with syntax highlighting
-	triggers := rule.GetTriggers()
-	for i, t := range triggers {
-		var prefix string
-		if i == 0 {
-			prefix = keywordStyle.Render("IF") + " "
-		} else {
-			logic := rule.GetTriggerLogic()
-			if logic == workflow.LogicAnd {
-				prefix = keywordStyle.Render("AND") + " "
-			} else {
-				prefix = keywordStyle.Render("OR") + " "
-			}
-		}
-
-		field := string(t.Field)
-		op := m.getOpSymbol(t.Operation)
-		value := t.Value
-		if value == "" {
-			value = "?"
-		}
-
-		b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
-	}
+	m.renderRuleTriggersPreview(&b, rule, keywordStyle, operatorStyle)
 
 	// Render actions with syntax highlighting
 	for i, a := range rule.Actions {
@@ -649,11 +694,21 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 		actionType := string(a.ActionType)
 		value := a.Value
 
+		var line string
 		if value == "" {
-			b.WriteString(fmt.Sprintf("%s%s\n", prefix, actionType))
+			line = fmt.Sprintf("%s%s", prefix, actionType)
 		} else {
-			b.WriteString(fmt.Sprintf("%s%s%s %s\n", prefix, actionType, operatorStyle.Render(":"), value))
+			line = fmt.Sprintf("%s%s%s %s", prefix, actionType, operatorStyle.Render(":"), value)
 		}
+
+		// Show condition if present
+		if a.Condition != nil {
+			condOp := m.getOpSymbol(a.Condition.Operation)
+			line += fmt.Sprintf(" (%s %s %s %s)", keywordStyle.Render("IF"), string(a.Condition.Field), operatorStyle.Render(condOp), a.Condition.Value)
+		}
+
+		b.WriteString(line)
+		b.WriteString("\n")
 	}
 
 	// Scope info
@@ -672,6 +727,101 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	b.WriteString(renderStatusBarFooter(HelpStyle.Render("Enter/Esc: close · e: edit · Space: toggle · d: delete"), "", m.Width()))
 
 	return b.String()
+}
+
+// renderRuleTriggersPreview renders triggers for a rule in the preview pane,
+// handling both flat triggers and nested TriggerGroup.
+func (m *WorkflowRulesModel) renderRuleTriggersPreview(b *strings.Builder, rule workflow.WorkflowRule, keywordStyle, operatorStyle lipgloss.Style) {
+	if rule.TriggerGroup != nil {
+		m.renderTriggerGroupPreview(b, rule.TriggerGroup, true, keywordStyle, operatorStyle)
+	} else {
+		triggers := rule.GetTriggers()
+		for i, t := range triggers {
+			var prefix string
+			if i == 0 {
+				prefix = keywordStyle.Render("IF") + " "
+			} else {
+				logic := rule.GetTriggerLogic()
+				if logic == workflow.LogicAnd {
+					prefix = keywordStyle.Render("AND") + " "
+				} else {
+					prefix = keywordStyle.Render("OR") + " "
+				}
+			}
+
+			field := string(t.Field)
+			op := m.getOpSymbol(t.Operation)
+			value := t.Value
+			if value == "" {
+				value = "?"
+			}
+
+			b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
+		}
+	}
+}
+
+// renderTriggerGroupPreview recursively renders a TriggerGroup for preview.
+func (m *WorkflowRulesModel) renderTriggerGroupPreview(b *strings.Builder, group *workflow.TriggerGroup, isRoot bool, keywordStyle, operatorStyle lipgloss.Style) {
+	logic := group.Logic
+	if logic == "" {
+		logic = workflow.LogicAnd
+	}
+
+	first := true
+	writePrefix := func() {
+		if first {
+			if isRoot {
+				b.WriteString(keywordStyle.Render("IF") + " ")
+			}
+			first = false
+		} else {
+			if logic == workflow.LogicOr {
+				b.WriteString(keywordStyle.Render("OR") + " ")
+			} else {
+				b.WriteString(keywordStyle.Render("AND") + " ")
+			}
+		}
+	}
+
+	for _, t := range group.Triggers {
+		writePrefix()
+		field := string(t.Field)
+		op := m.getOpSymbol(t.Operation)
+		value := t.Value
+		if value == "" {
+			value = "?"
+		}
+		b.WriteString(fmt.Sprintf("%s %s %s\n", field, operatorStyle.Render(op), value))
+	}
+
+	for i := range group.Groups {
+		writePrefix()
+		b.WriteString("( ")
+		// Render sub-group inline
+		sub := &group.Groups[i]
+		subLogic := sub.Logic
+		if subLogic == "" {
+			subLogic = workflow.LogicAnd
+		}
+		for j, t := range sub.Triggers {
+			if j > 0 {
+				if subLogic == workflow.LogicOr {
+					b.WriteString(" " + keywordStyle.Render("OR") + " ")
+				} else {
+					b.WriteString(" " + keywordStyle.Render("AND") + " ")
+				}
+			}
+			field := string(t.Field)
+			op := m.getOpSymbol(t.Operation)
+			value := t.Value
+			if value == "" {
+				value = "?"
+			}
+			b.WriteString(fmt.Sprintf("%s %s %s", field, operatorStyle.Render(op), value))
+		}
+		b.WriteString(" )\n")
+	}
 }
 
 // getOpSymbol returns a symbol for the operation.
@@ -703,9 +853,9 @@ func (m *WorkflowRulesModel) renderHelpText() string {
 			parts = []string{"Esc: clear search", "n: new rule", "q: close"}
 		}
 	} else if m.isWideScreen() {
-		parts = []string{"/: search", "j/k: nav", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Space: toggle", "n: new", "e: edit", "d: delete", "t: dry run", "T: test rule", "q: close"}
 	} else {
-		parts = []string{"/: search", "j/k: nav", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "q: close"}
+		parts = []string{"/: search", "j/k: nav", "J/K: priority", "Enter: preview", "Space: toggle", "n: new", "e: edit", "d: delete", "t: dry run", "q: close"}
 	}
 
 	return renderWrappingHelpLine(strings.Join(parts, " · "), m.Width()-2)

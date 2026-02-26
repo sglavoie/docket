@@ -170,6 +170,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowWorkflowDryRunMsg:
+		dryRun := NewWorkflowDryRunModel(m.config, m.configManager, m.persister, msg.SingleRule)
+		m.showView(ViewWorkflowDryRun, dryRun)
+		return true, dryRun.Init()
+
 	case ShowSmartListBuilderMsg:
 		builder := NewSmartListBuilderModel(m.config, m.configManager)
 		m.showView(ViewSmartListBuilder, builder)

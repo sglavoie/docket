@@ -100,6 +100,7 @@ const (
 	ViewOutliner
 	ViewColumnPicker
 	ViewSmartListBuilder
+	ViewWorkflowDryRun
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree

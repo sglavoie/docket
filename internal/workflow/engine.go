@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -101,6 +102,30 @@ func EvaluateRules(tasks []*models.Task, rules []WorkflowRule) *EvaluationResult
 	return EvaluateRulesWithContext(evalCtx, rules)
 }
 
+// sortRulesByPriority returns a stable-sorted copy of rules: non-zero priorities
+// ascending (1 first), then zero-priority rules in original order.
+func sortRulesByPriority(rules []WorkflowRule) []WorkflowRule {
+	sorted := make([]WorkflowRule, len(rules))
+	copy(sorted, rules)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		pi, pj := sorted[i].Priority, sorted[j].Priority
+		// Both zero: preserve original order (stable sort)
+		if pi == 0 && pj == 0 {
+			return false
+		}
+		// Zero sorts after non-zero
+		if pi == 0 {
+			return false
+		}
+		if pj == 0 {
+			return true
+		}
+		// Both non-zero: lower number = higher priority
+		return pi < pj
+	})
+	return sorted
+}
+
 // EvaluateRulesWithContext evaluates rules with full context for event and hierarchical triggers.
 // This is the preferred function when change detection is needed.
 func EvaluateRulesWithContext(evalCtx *EvaluationContext, rules []WorkflowRule) *EvaluationResult {
@@ -115,8 +140,9 @@ func EvaluateRulesWithContext(evalCtx *EvaluationContext, rules []WorkflowRule) 
 		return result
 	}
 
+	sorted := sortRulesByPriority(rules)
 	ctx := newExecutionContext()
-	evaluateRulesWithContextRecursive(evalCtx, rules, ctx, result)
+	evaluateRulesWithContextRecursive(evalCtx, sorted, ctx, result)
 	return result
 }
 
@@ -127,6 +153,13 @@ func buildTaskMap(tasks []*models.Task) map[string]*models.Task {
 		m[task.ID] = task
 	}
 	return m
+}
+
+// fieldSetter tracks which rule wants to set a field, with its priority.
+type fieldSetter struct {
+	ruleName string
+	ruleID   string
+	priority int
 }
 
 func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []WorkflowRule, ctx *executionContext, result *EvaluationResult) {
@@ -141,9 +174,16 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 		prev := change.Previous
 
 		// Track which fields are being set by which rules for conflict detection
-		fieldSetters := make(map[string][]string) // field -> rule names
+		fieldSetters := make(map[string][]fieldSetter) // field -> setters
 
-		for _, rule := range rules {
+		// Collect matching rules
+		type matchedRule struct {
+			rule  WorkflowRule
+			index int
+		}
+		var matched []matchedRule
+
+		for i, rule := range rules {
 			if !rule.Enabled {
 				continue
 			}
@@ -157,63 +197,114 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 				continue
 			}
 
-			// Check for conflicts before applying
+			matched = append(matched, matchedRule{rule: rule, index: i})
 			for _, action := range rule.Actions {
+				// Skip actions whose condition is not met for conflict detection
+				if action.Condition != nil && !matchesTriggerWithContext(task, prev, *action.Condition, evalCtx) {
+					continue
+				}
 				field := getFieldFromAction(action.ActionType)
 				if field != "" {
-					fieldSetters[field] = append(fieldSetters[field], rule.Name)
+					fieldSetters[field] = append(fieldSetters[field], fieldSetter{
+						ruleName: rule.Name,
+						ruleID:   rule.ID,
+						priority: rule.Priority,
+					})
 				}
 			}
 		}
 
-		// Detect conflicts (multiple rules setting same field)
-		for field, ruleNames := range fieldSetters {
-			if len(ruleNames) > 1 {
+		// Resolve conflicts per-field using priority
+		// Build a set of rule IDs that should be skipped for specific fields
+		skippedFieldRules := make(map[string]map[string]bool) // field -> ruleID -> skip
+		for field, setters := range fieldSetters {
+			if len(setters) <= 1 {
+				continue
+			}
+
+			// Find the highest priority (lowest non-zero number) among setters
+			bestPriority := 0
+			for _, s := range setters {
+				if s.priority > 0 && (bestPriority == 0 || s.priority < bestPriority) {
+					bestPriority = s.priority
+				}
+			}
+
+			// Collect winners and losers
+			var winners []fieldSetter
+			for _, s := range setters {
+				effectivePri := s.priority
+				if effectivePri == 0 {
+					effectivePri = 1<<31 - 1 // treat unset as lowest
+				}
+				bestEffective := bestPriority
+				if bestEffective == 0 {
+					bestEffective = 1<<31 - 1
+				}
+				if effectivePri == bestEffective {
+					winners = append(winners, s)
+				}
+			}
+
+			if len(winners) > 1 {
+				// Same-priority conflict: report and skip all conflicting rules for this field
+				var names []string
+				for _, w := range winners {
+					names = append(names, w.ruleName)
+				}
 				result.Conflicts = append(result.Conflicts, RuleConflict{
 					TaskID:    task.ID,
 					TaskTitle: task.Title,
 					Field:     field,
-					Rules:     ruleNames,
+					Rules:     names,
 				})
-			}
-		}
-
-		// If there are conflicts, skip this task
-		hasConflict := false
-		for field := range fieldSetters {
-			if len(fieldSetters[field]) > 1 {
-				hasConflict = true
-				break
-			}
-		}
-		if hasConflict {
-			continue
-		}
-
-		// Apply rules that matched
-		modified := false
-		for _, rule := range rules {
-			if !rule.Enabled {
-				continue
-			}
-			if !rule.MatchesScope(task, evalCtx.ProjectName, evalCtx.ProjectID) {
-				continue
-			}
-			if ctx.wasApplied(task.ID, rule.ID) {
-				continue
-			}
-			if !matchesRuleWithContext(task, prev, &rule, evalCtx) {
-				continue
-			}
-
-			ctx.markApplied(task.ID, rule.ID)
-			for _, action := range rule.Actions {
-				if applyActionWithContext(task, action, evalCtx, result) {
-					modified = true
+				if skippedFieldRules[field] == nil {
+					skippedFieldRules[field] = make(map[string]bool)
+				}
+				for _, w := range winners {
+					skippedFieldRules[field][w.ruleID] = true
+				}
+			} else {
+				// Clear winner: skip lower-priority rules for this field
+				winnerID := winners[0].ruleID
+				if skippedFieldRules[field] == nil {
+					skippedFieldRules[field] = make(map[string]bool)
+				}
+				for _, s := range setters {
+					if s.ruleID != winnerID {
+						skippedFieldRules[field][s.ruleID] = true
+					}
 				}
 			}
-			result.AppliedRules[task.ID] = append(result.AppliedRules[task.ID], rule.Name)
-			result.RuleTriggerCounts[rule.ID]++
+		}
+
+		// Apply matched rules, skipping conflicted actions per-field
+		modified := false
+		for _, mr := range matched {
+			rule := mr.rule
+			ctx.markApplied(task.ID, rule.ID)
+
+			ruleApplied := false
+			for _, action := range rule.Actions {
+				// Check action condition before applying
+				if action.Condition != nil && !matchesTriggerWithContext(task, prev, *action.Condition, evalCtx) {
+					continue // condition not met, skip this action
+				}
+				field := getFieldFromAction(action.ActionType)
+				if field != "" {
+					if skipSet, ok := skippedFieldRules[field]; ok && skipSet[rule.ID] {
+						continue // skip this action due to conflict/lower priority
+					}
+				}
+				if applyActionWithContext(task, action, evalCtx, result) {
+					modified = true
+					ruleApplied = true
+				}
+			}
+			if ruleApplied {
+				result.AppliedRules[task.ID] = append(result.AppliedRules[task.ID], rule.Name)
+				result.RuleTriggerCounts[rule.ID]++
+			}
 		}
 
 		if modified {
@@ -234,6 +325,11 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 
 // matchesRuleWithContext checks if a task matches all trigger conditions with full context.
 func matchesRuleWithContext(task, prev *models.Task, rule *WorkflowRule, evalCtx *EvaluationContext) bool {
+	// Use TriggerGroup if present (takes precedence over flat triggers)
+	if rule.TriggerGroup != nil {
+		return matchesTriggerGroup(task, prev, rule.TriggerGroup, evalCtx)
+	}
+
 	triggers := rule.GetTriggers()
 	if len(triggers) == 0 {
 		return false
@@ -253,6 +349,42 @@ func matchesRuleWithContext(task, prev *models.Task, rule *WorkflowRule, evalCtx
 	// AND (default): all triggers must match
 	for _, trigger := range triggers {
 		if !matchesTriggerWithContext(task, prev, trigger, evalCtx) {
+			return false
+		}
+	}
+	return true
+}
+
+// matchesTriggerGroup recursively evaluates a nested trigger group against a task.
+func matchesTriggerGroup(task, prev *models.Task, group *TriggerGroup, evalCtx *EvaluationContext) bool {
+	logic := group.getLogic()
+
+	// Collect results from leaf triggers
+	var results []bool
+	for _, trigger := range group.Triggers {
+		results = append(results, matchesTriggerWithContext(task, prev, trigger, evalCtx))
+	}
+	// Collect results from sub-groups
+	for _, sub := range group.Groups {
+		results = append(results, matchesTriggerGroup(task, prev, &sub, evalCtx))
+	}
+
+	if len(results) == 0 {
+		return false
+	}
+
+	if logic == LogicOr {
+		for _, r := range results {
+			if r {
+				return true
+			}
+		}
+		return false
+	}
+
+	// AND
+	for _, r := range results {
+		if !r {
 			return false
 		}
 	}

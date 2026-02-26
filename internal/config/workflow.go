@@ -30,7 +30,8 @@ func (c *Config) GetEnabledWorkflowRules() []workflow.WorkflowRule {
 }
 
 // GetWorkflowRulesSorted returns rules sorted: default first, then custom.
-// Within each group, rules are sorted alphabetically by name.
+// Within each group, rules are sorted by priority (non-zero ascending, then zero),
+// then alphabetically by name within the same priority.
 func (c *Config) GetWorkflowRulesSorted() (defaultRules, customRules []workflow.WorkflowRule) {
 	for _, rule := range c.WorkflowRules {
 		if rule.Source == "default" {
@@ -39,12 +40,29 @@ func (c *Config) GetWorkflowRulesSorted() (defaultRules, customRules []workflow.
 			customRules = append(customRules, rule)
 		}
 	}
-	sort.Slice(defaultRules, func(i, j int) bool {
-		return defaultRules[i].Name < defaultRules[j].Name
-	})
-	sort.Slice(customRules, func(i, j int) bool {
-		return customRules[i].Name < customRules[j].Name
-	})
+	sortByPriorityThenName := func(rules []workflow.WorkflowRule) {
+		sort.SliceStable(rules, func(i, j int) bool {
+			pi, pj := rules[i].Priority, rules[j].Priority
+			// Both zero: sort alphabetically
+			if pi == 0 && pj == 0 {
+				return rules[i].Name < rules[j].Name
+			}
+			// Zero sorts after non-zero
+			if pi == 0 {
+				return false
+			}
+			if pj == 0 {
+				return true
+			}
+			// Same non-zero priority: sort alphabetically
+			if pi == pj {
+				return rules[i].Name < rules[j].Name
+			}
+			return pi < pj
+		})
+	}
+	sortByPriorityThenName(defaultRules)
+	sortByPriorityThenName(customRules)
 	return defaultRules, customRules
 }
 
@@ -216,11 +234,16 @@ func (c *Config) ResetChangedDefaultRules(enableRules bool) (updated, readded, u
 }
 
 // rulesAreDifferent compares rule content semantically (ignoring metadata).
-// Returns true if the rules differ in name, triggers, trigger logic, or actions.
+// Returns true if the rules differ in name, priority, triggers, trigger logic, or actions.
 // Compares triggers and actions by content, not by order.
 func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
 	// Compare name
 	if a.Name != b.Name {
+		return true
+	}
+
+	// Compare priority
+	if a.Priority != b.Priority {
 		return true
 	}
 
@@ -256,18 +279,32 @@ func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
 		}
 	}
 
+	// Compare trigger groups
+	aTG := a.TriggerGroup
+	bTG := b.TriggerGroup
+	if (aTG == nil) != (bTG == nil) {
+		return true
+	}
+	if aTG != nil && bTG != nil {
+		aTGJSON, _ := json.Marshal(aTG)
+		bTGJSON, _ := json.Marshal(bTG)
+		if string(aTGJSON) != string(bTGJSON) {
+			return true
+		}
+	}
+
 	// Compare actions (order-insensitive)
 	if len(a.Actions) != len(b.Actions) {
 		return true
 	}
 	aActionSigs := make(map[string]int)
 	for _, act := range a.Actions {
-		sig := string(act.ActionType) + "|" + act.Value
+		sig := string(act.ActionType) + "|" + act.Value + "|" + conditionSignature(act.Condition)
 		aActionSigs[sig]++
 	}
 	bActionSigs := make(map[string]int)
 	for _, act := range b.Actions {
-		sig := string(act.ActionType) + "|" + act.Value
+		sig := string(act.ActionType) + "|" + act.Value + "|" + conditionSignature(act.Condition)
 		bActionSigs[sig]++
 	}
 	if len(aActionSigs) != len(bActionSigs) {
@@ -280,6 +317,14 @@ func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
 	}
 
 	return false
+}
+
+// conditionSignature returns a stable string signature for an action condition.
+func conditionSignature(c *workflow.RuleTrigger) string {
+	if c == nil {
+		return ""
+	}
+	return string(c.Field) + "|" + string(c.Operation) + "|" + c.Value
 }
 
 // GetWorkflowEvalState returns the evaluation state for a project.

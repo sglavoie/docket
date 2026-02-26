@@ -57,6 +57,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerTaskChecklistBindings()
 	r.registerTaskCommentsBindings()
 	r.registerWorkflowRulesBindings()
+	r.registerWorkflowDryRunBindings()
 	r.registerTaskTemplatesBindings()
 	r.registerSmartListBuilderBindings()
 	return r

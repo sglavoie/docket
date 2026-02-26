@@ -12,8 +12,9 @@ import (
 
 var (
 	// Simple field updates
-	workflowEditName    string
-	workflowEditEnabled bool
+	workflowEditName     string
+	workflowEditEnabled  bool
+	workflowEditPriority int
 
 	// Trigger modifications
 	workflowEditAddTriggerFields []string
@@ -26,6 +27,9 @@ var (
 	// Action modifications
 	workflowEditAddActionType  string
 	workflowEditAddActionValue string
+	workflowEditCondField      string
+	workflowEditCondOp         string
+	workflowEditCondValue      string
 	workflowEditRemoveActions  string // Comma-separated indices
 	workflowEditClearActions   bool
 
@@ -91,6 +95,7 @@ func init() {
 	// Simple field flags
 	workflowEditCmd.Flags().StringVarP(&workflowEditName, "name", "n", "", "new rule name")
 	workflowEditCmd.Flags().BoolVar(&workflowEditEnabled, "enabled", false, "enable or disable rule (must set explicitly)")
+	workflowEditCmd.Flags().IntVar(&workflowEditPriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
 
 	// Trigger flags
 	workflowEditCmd.Flags().StringSliceVarP(&workflowEditAddTriggerFields, "add-trigger-field", "f", nil, "add trigger field (can specify multiple)")
@@ -103,6 +108,9 @@ func init() {
 	// Action flags
 	workflowEditCmd.Flags().StringVarP(&workflowEditAddActionType, "add-action", "a", "", "add action type")
 	workflowEditCmd.Flags().StringVar(&workflowEditAddActionValue, "add-action-value", "", "add action value")
+	workflowEditCmd.Flags().StringVar(&workflowEditCondField, "cond-field", "", "condition field for the added action")
+	workflowEditCmd.Flags().StringVar(&workflowEditCondOp, "cond-op", "equals", "condition operation for the added action")
+	workflowEditCmd.Flags().StringVar(&workflowEditCondValue, "cond-value", "", "condition value for the added action")
 	workflowEditCmd.Flags().StringVar(&workflowEditRemoveActions, "remove-action", "", "remove actions by index (comma-separated, e.g., '0,1')")
 	workflowEditCmd.Flags().BoolVar(&workflowEditClearActions, "clear-actions", false, "clear all actions (use with add-action to replace)")
 
@@ -153,6 +161,14 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 
 	if cmd.Flags().Changed("enabled") {
 		modifiedRule.Enabled = workflowEditEnabled
+		hasChanges = true
+	}
+
+	if cmd.Flags().Changed("priority") {
+		if workflowEditPriority < 0 || workflowEditPriority > 99 {
+			return fmt.Errorf("priority must be 0-99, got: %d", workflowEditPriority)
+		}
+		modifiedRule.Priority = workflowEditPriority
 		hasChanges = true
 	}
 
@@ -216,6 +232,14 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 		action, err := buildActionFromFlags(workflowEditAddActionType, workflowEditAddActionValue)
 		if err != nil {
 			return err
+		}
+		// Attach condition if specified
+		if cmd.Flags().Changed("cond-field") {
+			cond, err := buildConditionFromFlags(workflowEditCondField, workflowEditCondOp, workflowEditCondValue)
+			if err != nil {
+				return err
+			}
+			action.Condition = cond
 		}
 		modifiedRule.Actions = append(modifiedRule.Actions, action)
 		hasChanges = true
@@ -317,10 +341,14 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	fmt.Println("  Actions:")
 	for i, action := range modifiedRule.Actions {
 		if action.Value != "" {
-			fmt.Printf("    %d. %s → %q\n", i, action.ActionType, action.Value)
+			fmt.Printf("    %d. %s → %q", i, action.ActionType, action.Value)
 		} else {
-			fmt.Printf("    %d. %s\n", i, action.ActionType)
+			fmt.Printf("    %d. %s", i, action.ActionType)
 		}
+		if action.Condition != nil {
+			fmt.Printf(" (if %s)", action.Condition.String())
+		}
+		fmt.Println()
 	}
 
 	if modifiedRule.Scope != nil {

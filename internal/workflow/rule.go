@@ -116,8 +116,9 @@ func (t RuleTrigger) String() string {
 
 // RuleAction defines what happens when a rule matches.
 type RuleAction struct {
-	ActionType ActionType `json:"action_type"`
-	Value      string     `json:"value"`
+	ActionType ActionType   `json:"action_type"`
+	Value      string       `json:"value"`
+	Condition  *RuleTrigger `json:"condition,omitempty"` // Optional: action only executes if condition matches
 }
 
 // String returns a human-readable description of the action.
@@ -177,6 +178,15 @@ func (a RuleAction) String() string {
 	}
 }
 
+// stringWithCondition returns the action string with condition suffix if present.
+func (a RuleAction) stringWithCondition() string {
+	s := a.String()
+	if a.Condition != nil {
+		s += fmt.Sprintf(" (if %s)", a.Condition.String())
+	}
+	return s
+}
+
 // TriggerLogic defines how multiple triggers are combined.
 type TriggerLogic string
 
@@ -184,6 +194,17 @@ const (
 	LogicAnd TriggerLogic = "and" // All triggers must match (default)
 	LogicOr  TriggerLogic = "or"  // Any trigger must match
 )
+
+// maxTriggerGroupDepth is the maximum nesting depth allowed for trigger groups.
+const maxTriggerGroupDepth = 5
+
+// TriggerGroup represents a nested group of triggers with its own logic.
+// Supports recursive nesting: groups can contain leaf triggers and sub-groups.
+type TriggerGroup struct {
+	Logic    TriggerLogic   `json:"logic"`
+	Triggers []RuleTrigger  `json:"triggers,omitempty"`
+	Groups   []TriggerGroup `json:"groups,omitempty"`
+}
 
 // RuleScope restricts a rule to specific projects, task types, or sections.
 // Nil scope means no restriction. Non-empty fields use AND logic.
@@ -198,9 +219,11 @@ type WorkflowRule struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
 	Enabled      bool          `json:"enabled"`
+	Priority     int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
 	Trigger      RuleTrigger   `json:"trigger"`                 // Legacy single trigger (for backward compat)
 	Triggers     []RuleTrigger `json:"triggers,omitempty"`      // Multiple triggers
 	TriggerLogic TriggerLogic  `json:"trigger_logic,omitempty"` // "and" or "or" (default: "and")
+	TriggerGroup *TriggerGroup `json:"trigger_group,omitempty"` // Nested trigger groups (takes precedence over flat Triggers/TriggerLogic)
 	Actions      []RuleAction  `json:"actions"`
 	TriggerCount int64         `json:"trigger_count,omitempty"`
 	Source       string        `json:"source,omitempty"` // "default" for built-in rules, empty for user-created
@@ -256,27 +279,109 @@ func (r *WorkflowRule) IsCompound() bool {
 	return len(r.Triggers) > 1
 }
 
+// HasTriggerGroup returns true if the rule uses nested trigger groups.
+func (r *WorkflowRule) HasTriggerGroup() bool {
+	return r.TriggerGroup != nil
+}
+
+// GetTriggerGroup returns the canonical trigger group for the rule.
+// If TriggerGroup is set, it is returned directly.
+// Otherwise, a group is synthesized from the flat Triggers/TriggerLogic fields.
+func (r *WorkflowRule) GetTriggerGroup() *TriggerGroup {
+	if r.TriggerGroup != nil {
+		return r.TriggerGroup
+	}
+	triggers := r.GetTriggers()
+	if len(triggers) == 0 {
+		return nil
+	}
+	return &TriggerGroup{
+		Logic:    r.GetTriggerLogic(),
+		Triggers: triggers,
+	}
+}
+
+// Validate checks that a TriggerGroup is properly configured.
+func (g *TriggerGroup) Validate() error {
+	return g.validateAtDepth(0)
+}
+
+func (g *TriggerGroup) validateAtDepth(depth int) error {
+	if depth >= maxTriggerGroupDepth {
+		return fmt.Errorf("trigger group nesting exceeds maximum depth of %d", maxTriggerGroupDepth)
+	}
+	if g.Logic != LogicAnd && g.Logic != LogicOr && g.Logic != "" {
+		return fmt.Errorf("invalid trigger group logic: %s (valid: and, or)", g.Logic)
+	}
+	if len(g.Triggers) == 0 && len(g.Groups) == 0 {
+		return fmt.Errorf("trigger group must contain at least one trigger or sub-group")
+	}
+	for i, t := range g.Triggers {
+		if err := t.Validate(); err != nil {
+			return fmt.Errorf("trigger %d in group: %w", i+1, err)
+		}
+	}
+	for i, sub := range g.Groups {
+		if err := sub.validateAtDepth(depth + 1); err != nil {
+			return fmt.Errorf("sub-group %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// Summary returns a human-readable expression for the trigger group.
+func (g *TriggerGroup) Summary() string {
+	logic := g.getLogic()
+	var parts []string
+	for _, t := range g.Triggers {
+		parts = append(parts, t.String())
+	}
+	for _, sub := range g.Groups {
+		parts = append(parts, "("+sub.Summary()+")")
+	}
+	joiner := " AND "
+	if logic == LogicOr {
+		joiner = " OR "
+	}
+	return strings.Join(parts, joiner)
+}
+
+// getLogic returns the trigger group's logic, defaulting to AND.
+func (g *TriggerGroup) getLogic() TriggerLogic {
+	if g.Logic == LogicOr {
+		return LogicOr
+	}
+	return LogicAnd
+}
+
 // Validate checks if the rule is properly configured.
 func (r *WorkflowRule) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("rule name is required")
 	}
 
-	triggers := r.GetTriggers()
-	if len(triggers) == 0 {
-		return fmt.Errorf("at least one trigger is required")
-	}
-	for i, trigger := range triggers {
-		if err := trigger.Validate(); err != nil {
-			if len(triggers) > 1 {
-				return fmt.Errorf("invalid trigger %d: %w", i+1, err)
-			}
-			return fmt.Errorf("invalid trigger: %w", err)
+	// Validate trigger group if present, otherwise validate flat triggers
+	if r.TriggerGroup != nil {
+		if err := r.TriggerGroup.Validate(); err != nil {
+			return fmt.Errorf("invalid trigger group: %w", err)
 		}
-	}
+	} else {
+		triggers := r.GetTriggers()
+		if len(triggers) == 0 {
+			return fmt.Errorf("at least one trigger is required")
+		}
+		for i, trigger := range triggers {
+			if err := trigger.Validate(); err != nil {
+				if len(triggers) > 1 {
+					return fmt.Errorf("invalid trigger %d: %w", i+1, err)
+				}
+				return fmt.Errorf("invalid trigger: %w", err)
+			}
+		}
 
-	if r.TriggerLogic != "" && r.TriggerLogic != LogicAnd && r.TriggerLogic != LogicOr {
-		return fmt.Errorf("invalid trigger logic: %s (valid: and, or)", r.TriggerLogic)
+		if r.TriggerLogic != "" && r.TriggerLogic != LogicAnd && r.TriggerLogic != LogicOr {
+			return fmt.Errorf("invalid trigger logic: %s (valid: and, or)", r.TriggerLogic)
+		}
 	}
 
 	if len(r.Actions) == 0 {
@@ -299,15 +404,25 @@ func (r *WorkflowRule) Validate() error {
 func (r *WorkflowRule) Summary() string {
 	var actionStrs []string
 	for _, a := range r.Actions {
-		actionStrs = append(actionStrs, a.String())
+		actionStrs = append(actionStrs, a.stringWithCondition())
+	}
+
+	var prefix string
+	if r.Priority > 0 {
+		prefix = fmt.Sprintf("[P%d] ", r.Priority)
+	}
+
+	// Use TriggerGroup summary if present
+	if r.TriggerGroup != nil {
+		return fmt.Sprintf("%sWhen (%s): %s", prefix, r.TriggerGroup.Summary(), strings.Join(actionStrs, ", "))
 	}
 
 	triggers := r.GetTriggers()
 	if len(triggers) == 0 {
-		return fmt.Sprintf("(no triggers): %s", strings.Join(actionStrs, ", "))
+		return fmt.Sprintf("%s(no triggers): %s", prefix, strings.Join(actionStrs, ", "))
 	}
 	if len(triggers) == 1 {
-		return fmt.Sprintf("When %s: %s", triggers[0].String(), strings.Join(actionStrs, ", "))
+		return fmt.Sprintf("%sWhen %s: %s", prefix, triggers[0].String(), strings.Join(actionStrs, ", "))
 	}
 
 	// Compound triggers
@@ -319,7 +434,7 @@ func (r *WorkflowRule) Summary() string {
 	if r.GetTriggerLogic() == LogicOr {
 		logic = " OR "
 	}
-	return fmt.Sprintf("When (%s): %s", strings.Join(triggerStrs, logic), strings.Join(actionStrs, ", "))
+	return fmt.Sprintf("%sWhen (%s): %s", prefix, strings.Join(triggerStrs, logic), strings.Join(actionStrs, ", "))
 }
 
 // Validate checks if the trigger is properly configured.
@@ -441,6 +556,13 @@ func (a RuleAction) Validate() error {
 	case ActionSetRecurrence:
 		if models.ParseRecurrence(a.Value) == nil {
 			return fmt.Errorf("invalid recurrence pattern: %s (use format like daily, weekly, 2d, 3w)", a.Value)
+		}
+	}
+
+	// Validate embedded condition if present
+	if a.Condition != nil {
+		if err := a.Condition.Validate(); err != nil {
+			return fmt.Errorf("invalid action condition: %w", err)
 		}
 	}
 
