@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -86,6 +87,9 @@ func (c *inboxCore) initCore(backend inboxBackend, model tea.Model, cfg *config.
 }
 
 // --- tea.Model implementation ---
+
+// IsFullHeight returns true so the inbox processor controls its own height and footer.
+func (c *inboxCore) IsFullHeight() bool { return true }
 
 // Init initializes the model.
 func (c *inboxCore) Init() tea.Cmd {
@@ -178,7 +182,11 @@ func (c *inboxCore) View() string {
 		b.WriteString(ValidationErrorStyle.Render(c.err.Error()))
 	}
 
-	return b.String()
+	output := b.String()
+	if outputHeight := lipgloss.Height(output); outputHeight < c.height {
+		output += strings.Repeat("\n", c.height-outputHeight)
+	}
+	return output
 }
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -609,5 +617,10 @@ func (c *inboxCore) renderEmptyInbox() string {
 	b.WriteString(BoxStyle.Render(content))
 	b.WriteString("\n\n")
 	b.WriteString(HelpKeyStyle.Render("q") + MutedStyle.Render(": "+c.backend.returnHint()))
-	return b.String()
+
+	output := b.String()
+	if outputHeight := lipgloss.Height(output); outputHeight < c.height {
+		output += strings.Repeat("\n", c.height-outputHeight)
+	}
+	return output
 }
