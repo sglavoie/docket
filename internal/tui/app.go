@@ -427,7 +427,7 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: ",", Description: "Settings", Category: "Actions"},
 		{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
-		{Key: "ctrl+p", Description: "Recent tasks", Category: "Navigation"},
+		{Key: "|", Description: "Recent tasks", Category: "Navigation"},
 	}
 }
 

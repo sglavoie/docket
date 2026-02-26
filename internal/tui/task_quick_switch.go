@@ -85,7 +85,7 @@ func (m *AppModel) handleQuickSwitchKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.quickSwitchSelect(m.quickSwitchCursor)
-	case "esc", "ctrl+p":
+	case "esc", "|":
 		m.showQuickSwitch = false
 		return m, nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":

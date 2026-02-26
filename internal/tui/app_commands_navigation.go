@@ -589,7 +589,7 @@ func (m *AppModel) navCommands() []Command {
 		{
 			Name:        "recent tasks",
 			Description: "Quick-switch between recently visited tasks",
-			Shortcut:    "ctrl+P",
+			Shortcut:    "|",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"quick switch", "task switcher", "recent visits"},
 			Handler: func() tea.Msg {

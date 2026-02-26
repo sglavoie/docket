@@ -51,8 +51,14 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.navigateHistoryBack()
 		case "alt+i":
 			return m, m.navigateHistoryForward()
-		case "ctrl+p":
+		case "|":
 			if !m.hasActiveTextInput() {
+				// On dashboard, dismiss tutor prompt if active
+				if m.currentView() == ViewDashboard && !m.config.GetTutorDismissed() {
+					return m, func() tea.Msg {
+						return TutorDismissedMsg{}
+					}
+				}
 				m.showQuickSwitch = !m.showQuickSwitch
 				m.quickSwitchCursor = 0
 				if m.showQuickSwitch {
