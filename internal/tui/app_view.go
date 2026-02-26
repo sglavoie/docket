@@ -44,6 +44,11 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
+	// Overlay project cycle popup if active
+	if popup := m.renderProjectCyclePopup(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	return content + "\n" + statusBar
 }
 

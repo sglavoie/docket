@@ -36,10 +36,10 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 			_ = m.configManager.Save(m.config)
 
 			if msg.FromCycle {
-				// Refresh the Project Cycle Manager with new context
-				if cycleManager, ok := m.views.Get(ViewProjectCycleManager).(*ProjectCycleManagerModel); ok {
-					cycleManager.RefreshWithContext()
-				}
+				// Reopen the popup with refreshed items
+				m.refreshProjectCycleItems()
+				m.showProjectCycle = true
+				m.projectCycleCursor = 0
 			} else if m.dashboard != nil {
 				// Update dashboard filter
 				if msg.IsCustomContext {

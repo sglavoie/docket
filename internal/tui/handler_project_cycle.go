@@ -13,45 +13,10 @@ import (
 func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowProjectCycleManagerMsg:
-		m.showView(ViewProjectCycleManager, NewProjectCycleManagerModel(m.config, m.configManager))
-		return true, nil
-
-	case CloseProjectCycleManagerMsg:
-		m.popView()
-		// Rebuild project tree since buildProjectInfoList() reloads all projects,
-		// which replaces task objects and invalidates the tree's task pointers
-		if m.projectTree != nil {
-			m.projectTree.buildTree()
-		}
-		// Refresh dashboard to reflect any pin changes
-		var dash *DashboardModel
-		if v := m.views.Get(ViewDashboard); v != nil {
-			dash, _ = v.(*DashboardModel)
-		}
-		if dash == nil {
-			dash = m.dashboard
-		}
-		if dash != nil {
-			dash.Refresh(m.config)
-		}
-		if msg.Changed {
-			contextKey := m.config.FilterContext
-			if m.config.FilterCustomContext != "" {
-				contextKey = "+" + m.config.FilterCustomContext
-			}
-			count := len(m.config.GetCycleProjectsForContext(contextKey))
-			if count == 0 {
-				m.statusMessage = "Project cycle cleared"
-			} else {
-				contextInfo := ""
-				if m.config.FilterCustomContext != "" {
-					contextInfo = fmt.Sprintf(" for +%s", m.config.FilterCustomContext)
-				} else if m.config.FilterContext != "" {
-					contextInfo = fmt.Sprintf(" for %s", m.config.FilterContext)
-				}
-				m.statusMessage = fmt.Sprintf("Project cycle updated%s: %d projects", contextInfo, count)
-			}
-			return true, defaultStatusTimeout()
+		m.showProjectCycle = !m.showProjectCycle
+		m.projectCycleCursor = 0
+		if m.showProjectCycle {
+			m.refreshProjectCycleItems()
 		}
 		return true, nil
 

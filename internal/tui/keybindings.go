@@ -34,7 +34,6 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerGlobalBindings()
 	r.registerDashboardBindings()
 	r.registerProjectTreeBindings()
-	r.registerProjectCycleManagerBindings()
 	r.registerPriorityViewBindings()
 	r.registerInboxProcessorBindings()
 	r.registerGlobalInboxProcessorBindings()

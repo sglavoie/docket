@@ -136,8 +136,6 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 			projectID = m.currentProject.ID
 		}
 		m.showView(ViewScoreProfileManager, NewScoreProfileManagerModel(m.config, m.configManager, projectID))
-	case ViewProjectCycleManager:
-		m.showView(ViewProjectCycleManager, NewProjectCycleManagerModel(m.config, m.configManager))
 	case ViewMetricsDashboard:
 		if m.metricsDashboard != nil {
 			m.metricsDashboard.computeMetrics()

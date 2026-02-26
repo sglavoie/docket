@@ -6,56 +6,17 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// ProjectCycleManagerModel allows selecting projects for quick cycling with ` and ~.
-type ProjectCycleManagerModel struct {
-	*BasePicker[ProjectInfo]
-	config        *config.Config
-	configManager *config.Manager
-}
-
 // ShowProjectCycleManagerMsg is sent to open the project cycle manager.
 type ShowProjectCycleManagerMsg struct{}
 
-// CloseProjectCycleManagerMsg is sent when the project cycle manager is done.
-type CloseProjectCycleManagerMsg struct {
-	Changed bool
-}
-
 // ShowContextPickerForCycleMsg is sent to open context picker from cycle manager.
 type ShowContextPickerForCycleMsg struct{}
-
-// NewProjectCycleManagerModel creates a new project cycle manager.
-func NewProjectCycleManagerModel(cfg *config.Config, manager *config.Manager) *ProjectCycleManagerModel {
-	projects := buildProjectInfoListFiltered(cfg, cfg.FilterContext, cfg.FilterCustomContext)
-
-	picker := NewBasePicker(projects, PickerConfig{
-		Title:          "Project Cycle Manager",
-		Subtitle:       "Select projects for ` / ~ cycling",
-		EmptyMessage:   "No projects available.",
-		NoMatchMessage: "No matching projects.",
-		MultiSelect:    true,
-		ShowCounts:     true,
-		BoxWidth:       60,
-	})
-
-	// Pre-select currently configured cycle projects for the current context
-	contextKey := getContextKey(cfg.FilterContext, cfg.FilterCustomContext)
-	cycleIDs := cfg.GetCycleProjectIDsForContext(contextKey)
-	for _, id := range cycleIDs {
-		picker.PreSelectByID(id)
-	}
-
-	return &ProjectCycleManagerModel{
-		BasePicker:    picker,
-		config:        cfg,
-		configManager: manager,
-	}
-}
 
 // getContextKey returns the context key for cycle project storage.
 // Custom contexts use "+" prefix to distinguish from regular contexts.
@@ -94,166 +55,174 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 	return projects
 }
 
-// RefreshWithContext reloads the project list with the current context filter.
-// Also reloads selections from the context-specific cycle list.
-func (m *ProjectCycleManagerModel) RefreshWithContext() {
-	currentID := ""
-	if item := m.SelectedItem(); item.Project != nil {
-		currentID = item.Project.ID
-	}
-	m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext))
+// --- Popup overlay methods (on *AppModel) ---
 
-	// Clear existing selections and reload from context-specific storage
-	m.Selected = make(map[string]bool)
-	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
-	for _, id := range cycleIDs {
-		m.Selected[id] = true
-	}
+// refreshProjectCycleItems rebuilds the projectCycleItems list from current config.
+func (m *AppModel) refreshProjectCycleItems() {
+	m.projectCycleItems = buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext)
+}
 
-	if currentID != "" {
-		m.SetCursorToID(currentID)
+// closeProjectCyclePopup closes the popup and does cleanup.
+func (m *AppModel) closeProjectCyclePopup() {
+	m.showProjectCycle = false
+	if m.projectTree != nil {
+		m.projectTree.buildTree()
+	}
+	var dash *DashboardModel
+	if v := m.views.Get(ViewDashboard); v != nil {
+		dash, _ = v.(*DashboardModel)
+	}
+	if dash == nil {
+		dash = m.dashboard
+	}
+	if dash != nil {
+		dash.Refresh(m.config)
 	}
 }
 
-// Init initializes the model.
-func (m *ProjectCycleManagerModel) Init() tea.Cmd {
-	return nil
-}
-
-// Update handles messages.
-func (m *ProjectCycleManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.SetSize(msg.Width, msg.Height)
-		return m, nil
-
-	case tea.KeyMsg:
-		// Let search mode handle all input
-		if m.IsSearchMode() {
-			_, cmd := m.HandleKeyMsg(msg)
+// handleProjectCycleKey handles key events when the project cycle popup is open.
+func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+	switch msg.String() {
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		idx := int(msg.String()[0]-'0') - 1
+		if idx < len(m.projectCycleItems) {
+			m.closeProjectCyclePopup()
+			_, cmd := m.switchToCycleProject(m.projectCycleItems[idx].Project, len(m.projectCycleItems))
 			return m, cmd
 		}
+		return m, nil
 
-		switch msg.String() {
-		case "esc":
-			// If there's an active filter, clear it first
-			if m.SearchQuery() != "" {
-				m.ClearSearch()
-				m.Filter("")
-				return m, nil
-			}
-			return m, func() tea.Msg {
-				return CloseProjectCycleManagerMsg{Changed: false}
-			}
+	case "j", "down":
+		if m.projectCycleCursor < len(m.projectCycleItems)-1 {
+			m.projectCycleCursor++
+		}
+		return m, nil
 
-		case "q":
-			return m, func() tea.Msg {
-				return CloseProjectCycleManagerMsg{Changed: false}
-			}
+	case "k", "up":
+		if m.projectCycleCursor > 0 {
+			m.projectCycleCursor--
+		}
+		return m, nil
 
-		case "enter":
-			// Save selected projects to config, preserving selection order
-			// Use context-specific storage when a context filter is active
-			ids := m.getSelectedIDsInOrder()
+	case " ":
+		// Toggle cycle membership for highlighted project
+		if m.projectCycleCursor < len(m.projectCycleItems) {
+			item := m.projectCycleItems[m.projectCycleCursor]
 			contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
-			m.config.SetCycleProjectsForContext(contextKey, ids)
-			if err := m.configManager.Save(m.config); err != nil {
-				return m, func() tea.Msg {
-					return ErrorMsg{Err: fmt.Errorf("failed to save config: %w", err)}
+			cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+			// Check if already in cycle
+			found := false
+			var newIDs []string
+			for _, id := range cycleIDs {
+				if id == item.Project.ID {
+					found = true
+				} else {
+					newIDs = append(newIDs, id)
 				}
 			}
+			if !found {
+				newIDs = append(newIDs, item.Project.ID)
+			}
+			m.config.SetCycleProjectsForContext(contextKey, newIDs)
+			_ = m.configManager.Save(m.config)
+		}
+		return m, nil
+
+	case "enter", "g":
+		// Navigate to highlighted project
+		if m.projectCycleCursor < len(m.projectCycleItems) {
+			project := m.projectCycleItems[m.projectCycleCursor].Project
+			m.closeProjectCyclePopup()
 			return m, func() tea.Msg {
-				return CloseProjectCycleManagerMsg{Changed: true}
-			}
-
-		case "g":
-			// Go to the highlighted project
-			item := m.SelectedItem()
-			if item.Project != nil {
-				return m, func() tea.Msg {
-					return SelectProjectMsg{Project: item.Project}
-				}
-			}
-			return m, nil
-
-		case "p":
-			// Toggle pin status on highlighted project
-			item := m.SelectedItem()
-			if item.Project != nil {
-				item.Project.TogglePinned()
-				if err := m.configManager.Save(m.config); err != nil {
-					return m, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-					}
-				}
-				// Refresh list (re-sorts with pinned first)
-				currentID := item.Project.ID
-				m.SetItems(buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext))
-				m.SetCursorToID(currentID)
-			}
-			return m, nil
-
-		case "c":
-			// Show context picker
-			return m, func() tea.Msg {
-				return ShowContextPickerForCycleMsg{}
-			}
-
-		case "C":
-			// Clear context filter (both regular and custom)
-			if m.config.FilterContext != "" || m.config.FilterCustomContext != "" {
-				m.config.FilterContext = ""
-				m.config.FilterCustomContext = ""
-				if err := m.configManager.Save(m.config); err != nil {
-					return m, func() tea.Msg {
-						return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
-					}
-				}
-				m.RefreshWithContext()
-			}
-			return m, nil
-
-		case "u":
-			// Clear selection for visible (filtered) projects
-			for _, item := range m.Filtered {
-				delete(m.Selected, item.ItemID())
-			}
-			return m, nil
-
-		case "?":
-			return m, helpCmd(ViewProjectCycleManager, "Project Cycle", m.GetHelpItems())
-
-		default:
-			handled, cmd := m.HandleKeyMsg(msg)
-			if handled {
-				return m, cmd
+				return SelectProjectMsg{Project: project}
 			}
 		}
-	}
+		return m, nil
 
-	return m, nil
-}
-
-// getSelectedIDsInOrder returns selected project IDs in the order they appear in the list.
-func (m *ProjectCycleManagerModel) getSelectedIDsInOrder() []string {
-	var ids []string
-	for _, item := range m.Items {
-		if m.Selected[item.ItemID()] {
-			ids = append(ids, item.ItemID())
+	case "p":
+		// Toggle pin on highlighted project
+		if m.projectCycleCursor < len(m.projectCycleItems) {
+			item := m.projectCycleItems[m.projectCycleCursor]
+			item.Project.TogglePinned()
+			_ = m.configManager.Save(m.config)
+			currentID := item.Project.ID
+			m.refreshProjectCycleItems()
+			// Restore cursor to same project
+			for i, pi := range m.projectCycleItems {
+				if pi.Project.ID == currentID {
+					m.projectCycleCursor = i
+					break
+				}
+			}
 		}
+		return m, nil
+
+	case "c":
+		// Open context picker
+		m.showProjectCycle = false
+		return m, func() tea.Msg {
+			return ShowContextPickerForCycleMsg{}
+		}
+
+	case "C":
+		// Clear context filter
+		if m.config.FilterContext != "" || m.config.FilterCustomContext != "" {
+			m.config.FilterContext = ""
+			m.config.FilterCustomContext = ""
+			_ = m.configManager.Save(m.config)
+			m.refreshProjectCycleItems()
+			m.projectCycleCursor = 0
+		}
+		return m, nil
+
+	case "u":
+		// Clear all cycle selections for current context
+		contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+		m.config.SetCycleProjectsForContext(contextKey, nil)
+		_ = m.configManager.Save(m.config)
+		return m, nil
+
+	case "esc", "@":
+		m.closeProjectCyclePopup()
+		return m, nil
+
+	default:
+		// Close popup and let the key pass through
+		m.closeProjectCyclePopup()
+		return m, nil
 	}
-	return ids
 }
 
-// View renders the project cycle manager.
-func (m *ProjectCycleManagerModel) View() string {
-	var b strings.Builder
+// renderProjectCyclePopup renders the project cycle overlay popup.
+func (m *AppModel) renderProjectCyclePopup() string {
+	if !m.showProjectCycle || len(m.projectCycleItems) == 0 {
+		return ""
+	}
+
+	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+	title := titleStyle.Render("Project Cycle")
+
+	popupWidth := m.width - 4
+	if popupWidth < 30 {
+		popupWidth = 30
+	}
+
+	cursorStyle := lipgloss.NewStyle().Reverse(true)
+	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	dimBadgeStyle := MutedStyle
+
+	innerWidth := popupWidth - 4
 
 	// Build subtitle: context indicator + selection count
-	var subtitleParts []string
+	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+	cycleIDSet := make(map[string]bool, len(cycleIDs))
+	for _, id := range cycleIDs {
+		cycleIDSet[id] = true
+	}
 
-	// Context indicator (colored) - custom context takes precedence
+	var subtitleParts []string
 	contextStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	if m.config.FilterCustomContext != "" {
 		subtitleParts = append(subtitleParts, fmt.Sprintf("Context: %s", contextStyle.Render("+ "+m.config.FilterCustomContext)))
@@ -262,68 +231,106 @@ func (m *ProjectCycleManagerModel) View() string {
 	} else {
 		subtitleParts = append(subtitleParts, "Context: All")
 	}
-
-	selectedCount := len(m.Selected)
+	selectedCount := len(cycleIDs)
 	if selectedCount == 0 {
 		subtitleParts = append(subtitleParts, "No projects selected")
 	} else {
 		subtitleParts = append(subtitleParts, fmt.Sprintf("%d %s selected", selectedCount, pluralize(selectedCount, "project", "projects")))
 	}
+	subtitle := MutedStyle.Render(strings.Join(subtitleParts, " · "))
 
-	subtitle := strings.Join(subtitleParts, " · ")
-
-	// Title
-	b.WriteString(renderFullscreenTitle("Project Cycle", subtitle))
-	b.WriteString("\n\n")
-
-	// Search bar
-	b.WriteString(m.RenderSearchBar())
-
-	// List
-	maxVisible := 15
-	if m.Height() > 0 {
-		maxVisible = m.Height() - 8
-	}
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
-	b.WriteString(m.RenderList(maxVisible))
-
-	// Footer
-	left := HelpStyle.Render(m.RenderFooter())
-	right := MutedStyle.Render(fmt.Sprintf("%d projects", len(m.Filtered)))
-	b.WriteString(renderStatusBarFooter(left, right, m.Width()))
-
-	return b.String()
-}
-
-// ShouldCaptureEsc returns true when in search mode or has active filter.
-func (m *ProjectCycleManagerModel) ShouldCaptureEsc() bool {
-	return m.IsSearchMode() || m.SearchQuery() != ""
-}
-
-// HasTextInput returns true when in search mode.
-func (m *ProjectCycleManagerModel) HasTextInput() bool {
-	return m.DefaultHasTextInput()
-}
-
-// RenderFooter renders context-appropriate keyboard hints (overrides BasePicker).
-func (m *ProjectCycleManagerModel) RenderFooter() string {
-	if m.IsSearchMode() {
-		return MutedStyle.Render("enter done · esc clear")
-	}
-
-	if len(m.Filtered) == 0 {
-		if m.config.FilterContext != "" {
-			return MutedStyle.Render("c/C context set/clear · esc cancel")
+	// Find max task count width for right-alignment
+	maxCountWidth := 0
+	for _, item := range m.projectCycleItems {
+		w := len(fmt.Sprintf("%d", item.TaskCount))
+		if w > maxCountWidth {
+			maxCountWidth = w
 		}
-		return MutedStyle.Render("c context · esc cancel")
 	}
 
-	return MutedStyle.Render("space toggle · / search · c/C context · u clear\np pin · g go · enter apply · esc cancel")
-}
+	var contentLines []string
+	contentLines = append(contentLines, subtitle)
+	contentLines = append(contentLines, "")
 
-// GetHelpItems returns the help items for the project cycle manager.
-func (m *ProjectCycleManagerModel) GetHelpItems() []HelpItem {
-	return GetKeybindingRegistry().GetForView(ViewProjectCycleManager)
+	for i, item := range m.projectCycleItems {
+		// Badge
+		var badge string
+		if i < 9 {
+			badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
+		} else {
+			badge = dimBadgeStyle.Render("·")
+		}
+
+		// Checkbox
+		var checkbox string
+		if cycleIDSet[item.Project.ID] {
+			checkbox = SelectionCheckStyle.Render("[x]")
+		} else {
+			checkbox = MutedStyle.Render("[ ]")
+		}
+
+		// Project name
+		name := item.Project.Name
+		if item.Project.Pinned {
+			name = PinnedProjectStyle.Render(name)
+		}
+
+		// Task count (right-aligned)
+		countStr := MutedStyle.Render(fmt.Sprintf("%*d", maxCountWidth, item.TaskCount))
+
+		// Layout: badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count
+		fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
+		nameWidth := innerWidth - fixedWidth
+		if nameWidth < 10 {
+			nameWidth = 10
+		}
+
+		// Truncate name if needed
+		plainName := item.Project.Name
+		if len(plainName) > nameWidth {
+			plainName = plainName[:nameWidth-3] + "..."
+		}
+		// Re-render with style after truncation
+		displayName := plainName
+		if item.Project.Pinned {
+			displayName = PinnedProjectStyle.Render(plainName)
+		}
+		// Pad to fixed width
+		if len(plainName) < nameWidth {
+			displayName += strings.Repeat(" ", nameWidth-len(plainName))
+		}
+
+		line := badge + " " + checkbox + " " + displayName + "  " + countStr
+		_ = name // suppress unused warning from earlier assignment
+
+		if i == m.projectCycleCursor {
+			lineWidth := lipgloss.Width(line)
+			if lineWidth < innerWidth {
+				line += strings.Repeat(" ", innerWidth-lineWidth)
+			}
+			line = cursorStyle.Render(ansi.Truncate(line, innerWidth, ""))
+		}
+
+		contentLines = append(contentLines, line)
+	}
+
+	content := strings.Join(contentLines, "\n")
+
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(ColorPrimary).
+		Padding(0, 1).
+		Width(popupWidth - 2)
+
+	rendered := boxStyle.Render(content)
+
+	lines := strings.Split(rendered, "\n")
+	if len(lines) >= 2 {
+		actualWidth := lipgloss.Width(lines[0])
+		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
+		footer := MutedStyle.Render("1-9 jump · space toggle · p pin · enter go · esc close")
+		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
+	}
+
+	return strings.Join(lines, "\n")
 }

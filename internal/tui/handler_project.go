@@ -22,13 +22,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.currentView() == ViewCommandPalette {
 			m.popView()
 		}
-		if m.currentView() == ViewProjectCycleManager {
-			m.popView()
-			// Refresh dashboard in case pins were changed
-			if m.dashboard != nil {
-				m.dashboard.Refresh(m.config)
-			}
-		}
 		m.saveCurrentProjectView()
 		m.switchToProject(msg.Project, true)
 		targetView := m.getProjectLastView(msg.Project.ID)

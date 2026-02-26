@@ -36,6 +36,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleQuickSwitchKey(msg)
 		}
 
+		// Intercept keys when project cycle popup is open
+		if m.showProjectCycle {
+			return m.handleProjectCycleKey(msg)
+		}
+
 		// Clear temporary status/error messages on any keypress
 		m.statusMessage = ""
 		m.err = nil
@@ -228,17 +233,6 @@ func (m *AppModel) handleEscKey() bool {
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		m.popView()
-		// Rebuild project tree when closing ProjectCycleManager since it reloads
-		// all projects in buildProjectInfoList(), invalidating tree's task pointers
-		if closingView == ViewProjectCycleManager {
-			if m.projectTree != nil {
-				m.projectTree.buildTree()
-			}
-			// Refresh dashboard to re-sort with pinned projects first
-			if m.dashboard != nil {
-				m.dashboard.Refresh(m.config)
-			}
-		}
 		// Persist kanban filter state and refresh project tree when closing Kanban
 		if closingView == ViewKanban {
 			m.saveKanbanState()

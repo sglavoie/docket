@@ -49,7 +49,6 @@ const (
 	ViewBulkTagSelector
 	ViewUndoHistory
 	ViewTaskComments
-	ViewProjectCycleManager
 	ViewCommandPalette
 	ViewBulkEdit
 	ViewSaveSearchInput
@@ -219,6 +218,11 @@ type AppModel struct {
 	recentTaskVisits  []RecentTaskVisitEntry
 	showQuickSwitch   bool
 	quickSwitchCursor int
+
+	// Project cycle popup state
+	showProjectCycle   bool
+	projectCycleCursor int
+	projectCycleItems  []ProjectInfo
 
 	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
 	lastProjectView ViewType
