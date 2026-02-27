@@ -100,7 +100,7 @@ func (m *KanbanViewModel) handleBulkStatusChange(newStatus models.TaskStatus) te
 	// If some tasks are blocked, show confirmation before proceeding
 	if blockedCount > 0 {
 		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
-		m.statusMessage = fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks? (y/n)", blockedCount, len(valid))
+		m.statusMessage = fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks?", blockedCount, len(valid))
 		m.confirm.Show("bulk-status", m.statusMessage)
 		m.ExitMultiSelect()
 		return nil

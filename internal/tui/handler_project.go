@@ -258,7 +258,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		totalItems := taskCount + noteCount + sectionCount
 		m.pendingSandboxReset = true
 		m.pendingSandboxTaskCount = totalItems
-		m.statusMessage = fmt.Sprintf("Reset sandbox? Delete %d item(s)? (y/n)", totalItems)
+		m.statusMessage = fmt.Sprintf("Reset sandbox? Delete %d item(s)?", totalItems)
 		return true, nil
 
 	case SandboxResetDoneMsg:

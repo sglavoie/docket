@@ -181,8 +181,8 @@ func (m *KanbanViewModel) View() string {
 	}
 
 	// Render status message if set
-	if msg := renderConfirmAwareStatus(m.statusMessage, m.confirm.IsActive()); msg != "" {
-		viewParts = append(viewParts, msg)
+	if m.statusMessage != "" {
+		viewParts = append(viewParts, lipgloss.NewStyle().Foreground(ColorWarning).Render(m.statusMessage))
 	}
 
 	// Join vertically: filterBar + kanban + divider + details + quickAdd + status + popup

@@ -49,6 +49,8 @@ func (m *ScoreProfileManagerModel) SetSize(width, height int) {
 	m.height = height
 }
 
+func (m *ScoreProfileManagerModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
+
 func (m *ScoreProfileManagerModel) Init() tea.Cmd {
 	return nil
 }
@@ -128,7 +130,7 @@ func (m *ScoreProfileManagerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, te
 	case "d":
 		if len(m.profiles) > 0 && m.cursor < len(m.profiles) {
 			profile := m.profiles[m.cursor]
-			m.confirm.Show("delete", fmt.Sprintf("Delete profile %q? (y/n)", profile.Name))
+			m.confirm.Show("delete", fmt.Sprintf("Delete profile %q?", profile.Name))
 		}
 		return m, nil
 
@@ -384,12 +386,6 @@ func (m *ScoreProfileManagerModel) View() string {
 		if wideScreen && len(detailLines) > 0 {
 			lines = m.renderWithDetailPane(lines, detailLines)
 		}
-	}
-
-	// Confirm dialog
-	if m.confirm.IsActive() {
-		lines = append(lines, "")
-		lines = append(lines, m.confirm.Render())
 	}
 
 	// Preset picker sub-mode

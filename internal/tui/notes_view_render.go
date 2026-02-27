@@ -263,9 +263,6 @@ func (m *NotesViewModel) renderStatusBar() string {
 	if m.renaming {
 		return "Rename: " + m.renameInput.View()
 	}
-	if m.confirm.IsActive() {
-		return m.confirm.Render()
-	}
 	if m.statusMessage != "" {
 		if m.statusIsError {
 			return WarningIconStyle.Render(m.statusMessage)

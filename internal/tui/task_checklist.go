@@ -197,7 +197,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Checklist) > 0 && m.cursor < len(m.task.Checklist) {
-				m.confirm.Show("delete", fmt.Sprintf("Delete item [%d]? (y/n)", m.cursor))
+				m.confirm.Show("delete", fmt.Sprintf("Delete item [%d]?", m.cursor))
 				return m, nil
 			}
 
@@ -602,23 +602,6 @@ func (m *TaskChecklistModel) View() string {
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusBarFooter(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"), "", m.Width()))
-		return b.String()
-	}
-
-	// Delete confirmation
-	if m.confirm.IsActive() && len(m.task.Checklist) > 0 && m.cursor < len(m.task.Checklist) {
-		item := m.task.Checklist[m.cursor]
-		preview := item.Text
-		if len(preview) > 50 {
-			preview = preview[:47] + "..."
-		}
-		preview = strings.ReplaceAll(preview, "\n", " ")
-
-		b.WriteString(ValidationErrorStyle.Bold(true).Render(fmt.Sprintf("Delete item [%d]?", m.cursor)))
-		b.WriteString("\n\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", preview)))
-		b.WriteString("\n\n")
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render("y: confirm delete · n/Esc: cancel"), "", m.Width()))
 		return b.String()
 	}
 

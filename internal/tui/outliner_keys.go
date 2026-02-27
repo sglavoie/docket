@@ -253,8 +253,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Delete with confirmation
 	case "D":
 		if m.multiSelectMode && len(m.selectedTasks) > 0 {
-			m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
-			m.statusMessage = m.confirm.Prompt()
+			m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", len(m.selectedTasks)))
 			return m, nil
 		}
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
@@ -264,9 +263,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
 						task.ShortID, task.Title))
 			} else {
-				m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID))
+				m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
 			}
-			m.statusMessage = m.confirm.Prompt()
 			m.deleteTarget = task
 		}
 		return m, nil
@@ -359,8 +357,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			completedCount := m.project.CountCompletedTasks()
 			if completedCount > 0 {
 				m.confirm.Show("archive-tasks",
-					fmt.Sprintf("Archive %d completed task(s) to completed.md? (y/n)", completedCount))
-				m.statusMessage = m.confirm.Prompt()
+					fmt.Sprintf("Archive %d completed task(s) to completed.md?", completedCount))
 			}
 			return m, nil
 		}

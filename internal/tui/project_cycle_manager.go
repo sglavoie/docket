@@ -203,7 +203,7 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	title := titleStyle.Render("Project Cycle")
 
-	cursorStyle := lipgloss.NewStyle().Reverse(true)
+	cursorStyle := SelectionRowStyle
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	dimBadgeStyle := MutedStyle
 

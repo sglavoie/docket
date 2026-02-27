@@ -345,7 +345,7 @@ type KanbanTaskDeletedMsg struct {
 // showDeleteConfirm shows a confirmation dialog for deleting a single task.
 func (m *KanbanViewModel) showDeleteConfirm(task *models.Task) {
 	m.deleteTarget = task
-	m.statusMessage = fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID)
+	m.statusMessage = fmt.Sprintf("Delete task #%d?", task.ShortID)
 	m.confirm.Show("delete", m.statusMessage)
 }
 
@@ -356,9 +356,9 @@ func (m *KanbanViewModel) showBulkDeleteConfirm() {
 		totalChildren += task.CountChildren()
 	}
 	if totalChildren > 0 {
-		m.statusMessage = fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", m.SelectedCount(), totalChildren)
+		m.statusMessage = fmt.Sprintf("Delete %d selected tasks and %d children?", m.SelectedCount(), totalChildren)
 	} else {
-		m.statusMessage = fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount())
+		m.statusMessage = fmt.Sprintf("Delete %d selected tasks?", m.SelectedCount())
 	}
 	m.confirm.Show("bulk-delete", m.statusMessage)
 }

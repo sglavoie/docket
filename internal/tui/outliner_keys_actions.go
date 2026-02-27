@@ -78,8 +78,7 @@ func (m *OutlinerModel) applyBulkStatusChange(newStatus models.TaskStatus) (tea.
 	if blockedCount > 0 {
 		m.bulkOp.SetOperation(newStatus, valid, blockedCount, prevStates)
 		m.confirm.Show("bulk-status",
-			fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks? (y/n)", blockedCount, len(valid)))
-		m.statusMessage = m.confirm.Prompt()
+			fmt.Sprintf("%d tasks blocked by dependencies. Apply to %d valid tasks?", blockedCount, len(valid)))
 		m.clearMultiSelect()
 		return m, nil
 	}
@@ -137,9 +136,8 @@ func (m *OutlinerModel) showDeleteConfirm(task *models.Task) {
 			fmt.Sprintf("Delete recurring task #%d '%s'? (d)elete instance / (s)top recurrence / (n)o",
 				task.ShortID, task.Title))
 	} else {
-		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID))
+		m.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
 	}
-	m.statusMessage = m.confirm.Prompt()
 }
 
 // showBulkDeleteConfirm shows a confirmation dialog for deleting multiple selected tasks.
@@ -149,11 +147,10 @@ func (m *OutlinerModel) showBulkDeleteConfirm() {
 		totalChildren += task.CountChildren()
 	}
 	if totalChildren > 0 {
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren))
+		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks and %d children?", len(m.selectedTasks), totalChildren))
 	} else {
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+		m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", len(m.selectedTasks)))
 	}
-	m.statusMessage = m.confirm.Prompt()
 }
 
 // executeDelete removes the current deleteTarget task using shared helpers.
@@ -262,15 +259,13 @@ func (m *OutlinerModel) handleCutKey() (tea.Model, tea.Cmd) {
 	if m.multiSelectMode && len(m.selectedTasks) > 0 {
 		tasks := m.getSelectedTasks()
 		copyCmd := func() tea.Msg { return CopyTasksTitleMsg{Tasks: tasks} }
-		m.confirm.Show("bulk-delete", fmt.Sprintf("Cut %d selected tasks? (y/n)", len(tasks)))
-		m.statusMessage = m.confirm.Prompt()
+		m.confirm.Show("bulk-delete", fmt.Sprintf("Cut %d selected tasks?", len(tasks)))
 		return m, copyCmd
 	}
 	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		task := m.rows[m.cursor].task
 		copyCmd := func() tea.Msg { return CopyTaskTitleMsg{Task: task} }
-		m.confirm.Show("delete", fmt.Sprintf("Cut task #%d? (y/n)", task.ShortID))
-		m.statusMessage = m.confirm.Prompt()
+		m.confirm.Show("delete", fmt.Sprintf("Cut task #%d?", task.ShortID))
 		m.deleteTarget = task
 		return m, copyCmd
 	}

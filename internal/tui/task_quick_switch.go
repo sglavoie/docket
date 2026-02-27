@@ -126,7 +126,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		popupWidth = 30
 	}
 
-	cursorStyle := lipgloss.NewStyle().Reverse(true)
+	cursorStyle := SelectionRowStyle
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle

@@ -99,7 +99,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "d", "D":
 				// Delete from preview
 				if len(m.filteredTemplates) > 0 {
-					m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'? (y/n)", m.filteredTemplates[m.cursor].Name))
+					m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'?", m.filteredTemplates[m.cursor].Name))
 				}
 				return m, nil
 			case "ctrl+d":
@@ -212,7 +212,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			// Delete template (with confirmation)
 			if len(m.filteredTemplates) > 0 {
-				m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'? (y/n)", m.filteredTemplates[m.cursor].Name))
+				m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'?", m.filteredTemplates[m.cursor].Name))
 			}
 			return m, nil
 
@@ -402,13 +402,9 @@ func (m *TaskTemplatesModel) View() string {
 		b.WriteString(listContent)
 	}
 
-	// Footer area - confirmation dialog replaces help when active
+	// Footer
 	b.WriteString("\n")
-	if m.confirm.IsActive() {
-		b.WriteString(m.confirm.Render())
-	} else {
-		b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width()))
-	}
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render(m.renderHelpText()), "", m.Width()))
 
 	return b.String()
 }

@@ -178,9 +178,9 @@ func (m *AppModel) otherCommands() []Command {
 					return nil
 				}
 				if m.currentProject.Archived {
-					m.projectTree.confirm.Show("unarchive", "Are you sure you want to unarchive this project? (y/n)")
+					m.projectTree.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
 				} else {
-					m.projectTree.confirm.Show("archive", "Are you sure you want to archive this project? (y/n)")
+					m.projectTree.confirm.Show("archive", "Are you sure you want to archive this project?")
 				}
 				return nil
 			},
@@ -523,8 +523,7 @@ func (m *AppModel) outlinerCommands() []Command {
 				}
 				task := cursorTask()
 				if task != nil {
-					m.outliner.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID))
-					m.outliner.statusMessage = m.outliner.confirm.Prompt()
+					m.outliner.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
 					m.outliner.deleteTarget = task
 				}
 				return nil

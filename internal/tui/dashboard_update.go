@@ -104,7 +104,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 				m.deleteTarget = project
-				m.confirm.Show("delete", fmt.Sprintf("Delete project '%s'? (y/n)", project.Name))
+				m.confirm.Show("delete", fmt.Sprintf("Delete project '%s'?", project.Name))
 			}
 		case "e":
 			if CursorInBounds(m.cursor, len(visible)) {

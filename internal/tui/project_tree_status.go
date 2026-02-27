@@ -63,7 +63,7 @@ func (m *ProjectTreeModel) handleBulkStatusTransition(status models.TaskStatus) 
 	if blockedCount > 0 {
 		m.bulkOp.SetOperation(status, valid, blockedCount, prevStates)
 		m.confirm.Show("bulk-status",
-			fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway? (y/n)", blockedCount, len(valid)))
+			fmt.Sprintf("%d tasks have incomplete deps, complete %d anyway?", blockedCount, len(valid)))
 		m.clearSelection()
 		return true, nil
 	}

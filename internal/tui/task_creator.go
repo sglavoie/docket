@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -107,6 +108,9 @@ type TaskCreatorModel struct {
 
 	// Discard confirmation state
 	confirmDiscard bool
+
+	// Overlay for floating confirm rendering
+	confirmOverlay ConfirmDialog
 
 	// Template support
 	fromTemplate *template.TaskTemplate // Template used to create this task (for children creation)
@@ -318,6 +322,18 @@ func (m *TaskCreatorModel) Init() tea.Cmd {
 // HasTextInput returns true because the task creator always has inputs.
 func (m *TaskCreatorModel) HasTextInput() bool {
 	return true
+}
+
+// GetConfirmDialog syncs boolean confirm state into the overlay for floating rendering.
+func (m *TaskCreatorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmTypeChange {
+		m.confirmOverlay.Show("type-change", fmt.Sprintf("Changing type will clear %s attributes. Continue?", m.taskType.HeadingPrefix()))
+	} else if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 // ShouldCaptureEsc returns true when confirmation is active.

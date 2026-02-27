@@ -422,9 +422,9 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 			}
 		}
 		if m.project.Archived {
-			m.confirm.Show("unarchive", "Are you sure you want to unarchive this project? (y/n)")
+			m.confirm.Show("unarchive", "Are you sure you want to unarchive this project?")
 		} else {
-			m.confirm.Show("archive", "Are you sure you want to archive this project? (y/n)")
+			m.confirm.Show("archive", "Are you sure you want to archive this project?")
 		}
 		return m, nil
 	}

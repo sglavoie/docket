@@ -534,8 +534,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "D":
 			if m.SelectedCount() > 0 {
-				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks? (y/n)", m.SelectedCount()))
-				m.statusMessage = m.confirm.Prompt()
+				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d selected tasks?", m.SelectedCount()))
 			}
 			return m, nil
 		}
@@ -699,8 +698,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
 			entry := m.tabEntries[m.tabs.Active]
 			if !entry.IsBuiltIn {
-				m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q? (y/n)", entry.Name))
-				m.statusMessage = m.confirm.Prompt()
+				m.confirm.Show("delete-smart-list", fmt.Sprintf("Delete smart list %q?", entry.Name))
 			}
 		}
 		return m, nil

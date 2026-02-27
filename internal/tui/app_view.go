@@ -54,6 +54,11 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
+	// Overlay confirm dialog last so it renders on top of all other popups
+	if popup := m.renderConfirmDialogOverlay(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	return content + "\n" + statusBar
 }
 
@@ -73,6 +78,24 @@ func (m *AppModel) renderPrefixPopupOverlay() string {
 		return ""
 	}
 	return RenderPrefixPopup(info.Prefix, info.Hints, m.width, m.height)
+}
+
+// renderConfirmDialogOverlay checks if the current view has an active confirm
+// dialog and renders it as a floating overlay box.
+func (m *AppModel) renderConfirmDialogOverlay() string {
+	view := m.views.Get(m.currentView())
+	if view == nil {
+		return ""
+	}
+	provider, ok := view.(ConfirmDialogProvider)
+	if !ok {
+		return ""
+	}
+	cd := provider.GetConfirmDialog()
+	if cd == nil || !cd.IsActive() {
+		return ""
+	}
+	return cd.RenderOverlay(m.width)
 }
 
 func (m *AppModel) renderStatusBar() string {

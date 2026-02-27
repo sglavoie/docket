@@ -106,6 +106,9 @@ type TaskEditorModel struct {
 	height     int
 	err        error
 	hasChanges bool
+
+	// Overlay for floating confirm rendering
+	confirmOverlay ConfirmDialog
 }
 
 // NewTaskEditorModel creates a new task editor.
@@ -705,12 +708,6 @@ func (m *TaskEditorModel) View() string {
 	content.WriteString("  ")
 	content.WriteString(HelpStyle.Render("Ctrl+E"))
 
-	// Type change confirmation
-	if m.confirmTypeChange {
-		content.WriteString("\n")
-		content.WriteString(PreviewWarningStyle.Render(fmt.Sprintf("Changing type will clear %s attributes. Continue? (y/n)", m.taskType.HeadingPrefix())))
-	}
-
 	// Error display inside card
 	if m.err != nil {
 		content.WriteString("\n\n")
@@ -740,6 +737,16 @@ func (m *TaskEditorModel) View() string {
 // HasTextInput returns true because the task editor contains inputs.
 func (m *TaskEditorModel) HasTextInput() bool {
 	return true
+}
+
+// GetConfirmDialog syncs boolean confirm state into the overlay for floating rendering.
+func (m *TaskEditorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmTypeChange {
+		m.confirmOverlay.Show("type-change", fmt.Sprintf("Changing type will clear %s attributes. Continue?", m.taskType.HeadingPrefix()))
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 // ShouldCaptureEsc returns true when confirmation is active.

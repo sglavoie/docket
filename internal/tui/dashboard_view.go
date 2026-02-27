@@ -17,13 +17,6 @@ import (
 func (m *DashboardModel) View() string {
 	var b strings.Builder
 
-	// Confirmation prompt
-	if m.confirm.IsActive() {
-		b.WriteString("\n")
-		b.WriteString(m.confirm.Render())
-		b.WriteString("\n\n")
-	}
-
 	filterBar, chromeHeight := m.renderFilterBar()
 	b.WriteString(filterBar)
 

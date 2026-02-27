@@ -160,14 +160,14 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d", "x":
 			// Request delete confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]? (y/n)", m.cursor))
+				m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.cursor))
 				return m, nil
 			}
 
 		case "u":
 			// Request unlink (keep file) confirmation
 			if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-				m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]? (y/n)", m.cursor))
+				m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.cursor))
 				return m, nil
 			}
 
@@ -680,50 +680,6 @@ func (m *TaskAttachmentsModel) View() string {
 		b.WriteString(m.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Enter: add · Esc: cancel"))
-		b.WriteString("\n")
-		return b.String()
-	}
-
-	// Delete confirmation
-	if m.confirm.Action() == "delete" && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-		att := m.task.Attachments[m.cursor]
-		name := att.Filename
-		if len(name) > 50 {
-			name = name[:47] + "..."
-		}
-
-		warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-		b.WriteString(warningStyle.Render(fmt.Sprintf("Delete attachment [%d]?", m.cursor)))
-		b.WriteString("\n\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", name)))
-		if !att.IsURL {
-			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render("  (copy will be deleted from .attachments/)"))
-		}
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("y: confirm delete · n/Esc: cancel"))
-		b.WriteString("\n")
-		return b.String()
-	}
-
-	// Keep-file (unlink) confirmation
-	if m.confirm.Action() == "unlink" && len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments) {
-		att := m.task.Attachments[m.cursor]
-		name := att.Filename
-		if len(name) > 50 {
-			name = name[:47] + "..."
-		}
-
-		warningStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
-		b.WriteString(warningStyle.Render(fmt.Sprintf("Unlink attachment [%d]?", m.cursor)))
-		b.WriteString("\n\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  \"%s\"", name)))
-		if !att.IsURL {
-			b.WriteString("\n")
-			b.WriteString(MutedStyle.Render("  (copy stays in .attachments/)"))
-		}
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("y: confirm unlink · n/Esc: cancel"))
 		b.WriteString("\n")
 		return b.String()
 	}

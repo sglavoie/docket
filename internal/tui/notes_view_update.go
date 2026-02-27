@@ -134,8 +134,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.createNote()
 		case "d":
 			if m.multiSelectMode && m.selectedNoteCount() > 0 {
-				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d notes? (y/n)", m.selectedNoteCount()))
-				m.statusMessage = m.confirm.Prompt()
+				m.confirm.Show("bulk-delete", fmt.Sprintf("Delete %d notes?", m.selectedNoteCount()))
 				return m, nil
 			}
 			return m, m.deleteCurrentNote()

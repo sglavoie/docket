@@ -24,6 +24,8 @@ func NewBlockersModelWithEditor(project *models.Project, editor string) *Blocker
 	}
 }
 
+func (m *BlockersModel) GetConfirmDialog() *ConfirmDialog { return m.state.GetConfirmDialog() }
+
 func (m *BlockersModel) Init() tea.Cmd { return nil }
 
 func (m *BlockersModel) SetSize(width, height int) {

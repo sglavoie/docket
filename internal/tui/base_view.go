@@ -118,10 +118,14 @@ func (s *InteractiveViewState) ResetCursor() {
 	s.cursor = 0
 }
 
+// GetConfirmDialog returns a pointer to the embedded confirm dialog.
+func (s *InteractiveViewState) GetConfirmDialog() *ConfirmDialog {
+	return &s.confirm
+}
+
 // showDeleteConfirm activates the delete confirmation dialog for the given task.
 func (s *InteractiveViewState) showDeleteConfirm(shortID int) {
-	s.confirm.Show("delete", fmt.Sprintf("Delete task #%d? (y/n)", shortID))
-	s.statusMessage = s.confirm.Prompt()
+	s.confirm.Show("delete", fmt.Sprintf("Delete task #%d?", shortID))
 }
 
 // HandleConfirmKey checks if a confirm dialog is active and processes the key.
@@ -133,9 +137,6 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 		return false, false
 	}
 	c, h := s.confirm.HandleKey(key)
-	if h && !c {
-		s.statusMessage = ""
-	}
 	return c, h
 }
 

@@ -536,14 +536,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		b.WriteString("\n")
 	}
 
-	// Render status message or confirm prompt
+	// Render status message
 	if m.statusMessage != "" {
 		b.WriteString("\n")
-		if m.confirm.IsActive() {
-			b.WriteString(PreviewWarningStyle.Render(m.statusMessage))
-		} else {
-			b.WriteString(MutedStyle.Render(m.statusMessage))
-		}
+		b.WriteString(MutedStyle.Render(m.statusMessage))
 		b.WriteString("\n")
 	}
 

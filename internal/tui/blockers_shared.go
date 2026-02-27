@@ -8,7 +8,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -80,6 +79,8 @@ func newBlockerViewState(editor string) blockerViewState {
 		editTextInput: editTi,
 	}
 }
+
+func (s *blockerViewState) GetConfirmDialog() *ConfirmDialog { return &s.confirm }
 
 func (s *blockerViewState) setSize(width, height int) {
 	s.width = width
@@ -251,7 +252,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 
 		case "d", "x":
 			if len(visible) > 0 && s.cursor < len(visible) {
-				s.confirm.Show("delete", "Delete blocker? (y/n)")
+				s.confirm.Show("delete", "Delete blocker?")
 			}
 			return nil, nil, true
 
@@ -667,25 +668,6 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 		b.WriteString(s.textInput.View())
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("Ctrl+S: save · Ctrl+E: external editor · Esc: cancel"))
-		return b.String()
-	}
-
-	// Delete confirmation
-	if s.confirm.IsActive() {
-		visible := ds.getVisibleItems(s.tabs.Active)
-		if len(visible) > 0 && s.cursor < len(visible) {
-			item := visible[s.cursor]
-			warningStyle := lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-			b.WriteString(warningStyle.Render("Delete blocker?"))
-			b.WriteString("\n\n")
-			titleText := fmt.Sprintf("  \"%s\"", item.Blocker.Title)
-			if ds.showProjectName() {
-				titleText += fmt.Sprintf(" (%s)", item.Project.Name)
-			}
-			b.WriteString(MutedStyle.Render(titleText))
-			b.WriteString("\n\n")
-			b.WriteString(HelpStyle.Render("y: confirm delete · n/Esc: cancel"))
-		}
 		return b.String()
 	}
 

@@ -98,7 +98,7 @@ func TestConfirmDialog_DefaultPrompt(t *testing.T) {
 	var c ConfirmDialog
 	c.Show("test", "")
 
-	if c.Prompt() != "Are you sure? (y/n)" {
+	if c.Prompt() != "Are you sure?" {
 		t.Errorf("expected default prompt, got '%s'", c.Prompt())
 	}
 }
@@ -106,15 +106,22 @@ func TestConfirmDialog_DefaultPrompt(t *testing.T) {
 func TestConfirmDialog_Render(t *testing.T) {
 	var c ConfirmDialog
 
-	// Inactive - empty render
+	// Render() always returns empty (inline rendering is disabled)
+	c.Show("delete", "Delete?")
 	if c.Render() != "" {
-		t.Error("expected empty render when inactive")
+		t.Error("expected empty render from Render()")
 	}
 
-	// Active - should render something
+	// RenderOverlay returns empty when inactive
+	c.Cancel()
+	if c.RenderOverlay(80) != "" {
+		t.Error("expected empty overlay when inactive")
+	}
+
+	// RenderOverlay returns non-empty when active
 	c.Show("delete", "Delete?")
-	rendered := c.Render()
+	rendered := c.RenderOverlay(80)
 	if rendered == "" {
-		t.Error("expected non-empty render when active")
+		t.Error("expected non-empty overlay when active")
 	}
 }

@@ -92,8 +92,7 @@ func (m *NotesViewModel) deleteCurrentNote() tea.Cmd {
 	}
 
 	note := m.notes[m.cursor]
-	m.confirm.Show("delete", fmt.Sprintf("Delete '%s'? (y/n)", note.Title))
-	m.statusMessage = m.confirm.Prompt()
+	m.confirm.Show("delete", fmt.Sprintf("Delete '%s'?", note.Title))
 	m.pendingDeleteIdx = m.cursor
 	return nil
 }

@@ -36,18 +36,6 @@ func (m *TaskCreatorModel) View() string {
 		b.WriteString(m.renderSubtasksTab())
 	}
 
-	// Type change confirmation
-	if m.confirmTypeChange {
-		b.WriteString("\n")
-		b.WriteString(PreviewWarningStyle.Render(fmt.Sprintf("Changing type will clear %s attributes. Continue? (y/n)", m.taskType.HeadingPrefix())))
-	}
-
-	// Discard confirmation
-	if m.confirmDiscard {
-		b.WriteString("\n")
-		b.WriteString(PreviewWarningStyle.Render("Discard unsaved changes? (y/n)"))
-	}
-
 	// Error display
 	if m.err != nil {
 		b.WriteString("\n")

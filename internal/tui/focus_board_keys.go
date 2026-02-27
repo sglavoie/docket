@@ -126,8 +126,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "D":
 		if row := m.getRowAtCursor(); row != nil {
 			if row.isAction() {
-				m.confirm.Show("delete", fmt.Sprintf("Delete action #%d? (y/n)", row.Task.ShortID))
-				m.statusMessage = m.confirm.Prompt()
+				m.confirm.Show("delete", fmt.Sprintf("Delete action #%d?", row.Task.ShortID))
 				return m, nil
 			}
 			m.statusMessage = "Use project tree to delete non-action tasks"

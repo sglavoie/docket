@@ -47,6 +47,8 @@ func (m *GlobalBlockersModel) loadAllBlockers() {
 	}
 }
 
+func (m *GlobalBlockersModel) GetConfirmDialog() *ConfirmDialog { return m.state.GetConfirmDialog() }
+
 func (m *GlobalBlockersModel) Init() tea.Cmd { return nil }
 
 func (m *GlobalBlockersModel) SetSize(width, height int) {

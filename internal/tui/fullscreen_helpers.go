@@ -575,19 +575,6 @@ func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollO
 	return visible
 }
 
-// renderConfirmAwareStatus renders a status message that switches to error
-// styling when a confirm dialog is active. Used by kanban and swimlane views.
-func renderConfirmAwareStatus(statusMessage string, confirmActive bool) string {
-	if statusMessage == "" {
-		return ""
-	}
-	style := lipgloss.NewStyle().Foreground(ColorWarning)
-	if confirmActive {
-		style = lipgloss.NewStyle().Foreground(ColorError).Bold(true)
-	}
-	return style.Render(statusMessage)
-}
-
 // renderFullscreenChrome renders the tab bar + optional filter badge + trailing
 // blank line that sits between the title and the content area. It returns the
 // rendered string and the number of lines consumed (for content height calc).

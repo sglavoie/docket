@@ -193,7 +193,5 @@ func inboxDeletePrompt(v inboxOpsView, confirm *ConfirmDialog) {
 	if task == nil {
 		return
 	}
-	msg := fmt.Sprintf("Delete task #%d? (y/n)", task.ShortID)
-	v.setInboxStatus(msg)
-	confirm.Show("delete", msg)
+	confirm.Show("delete", fmt.Sprintf("Delete task #%d?", task.ShortID))
 }

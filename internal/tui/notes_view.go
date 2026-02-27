@@ -95,9 +95,6 @@ func (m *NotesViewModel) handleConfirmKey(key string) (confirmed, handled bool) 
 		return false, false
 	}
 	c, h := m.confirm.HandleKey(key)
-	if h && !c {
-		m.statusMessage = ""
-	}
 	return c, h
 }
 
@@ -308,6 +305,8 @@ type GlobalNoteMoveCompleteMsg struct {
 	NoteTitle   string
 	ProjectName string
 }
+
+func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
 
 func (m *NotesViewModel) StatusBarLabel() string {
 	if m.isGlobal {

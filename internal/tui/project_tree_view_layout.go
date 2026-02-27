@@ -93,12 +93,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString(m.renderMultiSelectIndicator(m.width))
 	}
 
-	// Confirmation prompt
-	if m.confirm.IsActive() {
-		b.WriteString(m.confirm.Render())
-		b.WriteString("\n")
-	}
-
 	// Stats by status
 	statusCounts := make(map[models.TaskStatus]int)
 	for _, task := range m.project.Tasks {
@@ -390,12 +384,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	// Multi-select mode indicator
 	if m.multiSelectMode {
 		b.WriteString(m.renderMultiSelectIndicator(width))
-	}
-
-	// Confirmation prompt
-	if m.confirm.IsActive() {
-		b.WriteString(m.confirm.Render())
-		b.WriteString("\n")
 	}
 
 	// Stats by status (compact for narrower width)

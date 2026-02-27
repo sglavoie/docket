@@ -200,10 +200,10 @@ func (m *ProjectTreeModel) showDeleteConfirm(task *models.Task) {
 		childCount := task.CountChildren()
 		if childCount > 0 {
 			m.confirm.Show("delete",
-				fmt.Sprintf("Delete task #%d '%s' and %d children? (y/n)", task.ShortID, task.Title, childCount))
+				fmt.Sprintf("Delete task #%d '%s' and %d children?", task.ShortID, task.Title, childCount))
 		} else {
 			m.confirm.Show("delete",
-				fmt.Sprintf("Delete task #%d '%s'? (y/n)", task.ShortID, task.Title))
+				fmt.Sprintf("Delete task #%d '%s'?", task.ShortID, task.Title))
 		}
 	}
 }
@@ -216,10 +216,10 @@ func (m *ProjectTreeModel) showBulkDeleteConfirm() {
 	}
 	if totalChildren > 0 {
 		m.confirm.Show("bulk-delete",
-			fmt.Sprintf("Delete %d selected tasks and %d children? (y/n)", len(m.selectedTasks), totalChildren))
+			fmt.Sprintf("Delete %d selected tasks and %d children?", len(m.selectedTasks), totalChildren))
 	} else {
 		m.confirm.Show("bulk-delete",
-			fmt.Sprintf("Delete %d selected tasks? (y/n)", len(m.selectedTasks)))
+			fmt.Sprintf("Delete %d selected tasks?", len(m.selectedTasks)))
 	}
 }
 

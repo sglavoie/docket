@@ -311,7 +311,7 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				selected := m.Filtered[m.Cursor]
 				if selected.IsCustom && m.config != nil {
-					m.confirm.Show("delete", "Delete this custom context? (y/n)")
+					m.confirm.Show("delete", "Delete this custom context?")
 					m.statusMessage = ""
 				} else if selected.Name != "" {
 					// Can't delete regular contexts
@@ -479,8 +479,6 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 		b.WriteString(m.renameInput.View())
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("enter save · esc cancel"))
-	} else if m.confirm.IsActive() {
-		b.WriteString(lipgloss.NewStyle().Foreground(ColorWarning).Render(m.confirm.Prompt()))
 	} else if m.statusMessage != "" {
 		b.WriteString(MutedStyle.Render(m.statusMessage))
 	}
@@ -509,5 +507,7 @@ func (m *ContextPickerModel) ShouldCaptureEsc() bool {
 func (m *ContextPickerModel) HasTextInput() bool {
 	return m.renameMode
 }
+
+func (m *ContextPickerModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
 
 func (m *ContextPickerModel) StatusBarLabel() string { return "Filter by Context" }

@@ -653,7 +653,7 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 
 		// Apply selection highlighting
 		if isSelected {
-			lineStyle = lineStyle.Reverse(true)
+			lineStyle = lineStyle.Background(ColorSelectedBg)
 		}
 
 		b.WriteString(lineStyle.Render(prefix + content))

@@ -237,7 +237,7 @@ func (m *AppModel) renderPinnedPopup() string {
 		popupWidth = 30
 	}
 
-	cursorStyle := lipgloss.NewStyle().Reverse(true)
+	cursorStyle := SelectionRowStyle
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle

@@ -65,6 +65,8 @@ func NewTrashedProjectsModel(dataDir string) *TrashedProjectsModel {
 	}
 }
 
+func (m *TrashedProjectsModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
+
 // Init initializes the model.
 func (m *TrashedProjectsModel) Init() tea.Cmd {
 	return nil
@@ -104,7 +106,7 @@ func (m *TrashedProjectsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.Filtered) > 0 && m.Cursor < len(m.Filtered) {
 				target := m.Filtered[m.Cursor]
 				m.purgeTarget = &target
-				m.confirm.Show("purge", fmt.Sprintf("PERMANENTLY delete '%s'? (y/n)", target.Slug))
+				m.confirm.Show("purge", fmt.Sprintf("PERMANENTLY delete '%s'?", target.Slug))
 			}
 			return m, nil
 
@@ -138,12 +140,7 @@ func (m *TrashedProjectsModel) View() string {
 	out.WriteString(renderFullscreenTitle(m.Config.Title, subtitle))
 	out.WriteString("\n\n")
 
-	// Confirmation prompt or keybinding hints
-	if m.confirm.IsActive() {
-		out.WriteString(m.confirm.Render())
-	} else {
-		out.WriteString(MutedStyle.Render("Enter: restore · d: delete · q: close"))
-	}
+	out.WriteString(MutedStyle.Render("Enter: restore · d: delete · q: close"))
 	out.WriteString("\n\n")
 
 	// Search bar
