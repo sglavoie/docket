@@ -324,11 +324,7 @@ func (m *CustomContextEditorModel) View() string {
 			end = len(m.projects)
 		}
 
-		// Scroll up indicator
-		if m.scrollOffset > 0 {
-			b.WriteString("  " + ScrollUpIndicator(m.scrollOffset) + "\n")
-		}
-
+		var rowBuilder strings.Builder
 		for i := m.scrollOffset; i < end; i++ {
 			p := m.projects[i]
 
@@ -349,19 +345,17 @@ func (m *CustomContextEditorModel) View() string {
 
 			// Style based on selection
 			if m.projectListMode && i == m.cursor {
-				b.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
+				rowBuilder.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
 			} else if m.selectedIDs[p.ID] {
-				b.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
+				rowBuilder.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
 			} else {
-				b.WriteString(fmt.Sprintf("%s%s %s", cursor, checkbox, MutedStyle.Render(info)))
+				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, checkbox, MutedStyle.Render(info)))
 			}
-			b.WriteString("\n")
+			rowBuilder.WriteString("\n")
 		}
 
-		// Scroll down indicator
-		if remaining := len(m.projects) - end; remaining > 0 {
-			b.WriteString("  " + ScrollDownIndicator(remaining) + "\n")
-		}
+		scrollbar := RenderScrollbar(len(m.projects), maxVisible, m.scrollOffset)
+		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 	}
 	b.WriteString("\n")
 

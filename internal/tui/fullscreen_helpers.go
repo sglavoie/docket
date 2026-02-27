@@ -132,6 +132,82 @@ func renderWrappingTabBar(tabs []string, activeIdx, availableWidth int) string {
 	return strings.Join(rows, "\n")
 }
 
+// RenderScrollbar returns a viewportHeight-line string of ░/█ characters
+// representing the scroll position. Returns "" when content fits (no scroll
+// needed). Thumb height is proportional (viewportHeight²/totalItems, min 1).
+// Thumb position maps scrollOffset linearly to the track range.
+func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
+	if totalItems <= viewportHeight || viewportHeight <= 0 {
+		return ""
+	}
+
+	// Thumb size: proportional, min 1
+	thumbHeight := (viewportHeight * viewportHeight) / totalItems
+	if thumbHeight < 1 {
+		thumbHeight = 1
+	}
+
+	// Thumb position: map scrollOffset to track range
+	trackRange := viewportHeight - thumbHeight
+	maxOffset := totalItems - viewportHeight
+	thumbTop := 0
+	if maxOffset > 0 {
+		thumbTop = (scrollOffset * trackRange) / maxOffset
+	}
+	if thumbTop > trackRange {
+		thumbTop = trackRange
+	}
+
+	var b strings.Builder
+	for i := 0; i < viewportHeight; i++ {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		if i >= thumbTop && i < thumbTop+thumbHeight {
+			b.WriteString(ScrollbarThumbStyle.Render("█"))
+		} else {
+			b.WriteString(ScrollbarTrackStyle.Render("░"))
+		}
+	}
+	return b.String()
+}
+
+// AttachScrollbar takes a content block and a scrollbar string (both newline-
+// delimited), pads each content line to contentWidth, and zips them together.
+// If scrollbar is empty, returns content unchanged. Content lines are padded
+// using lipgloss width to handle ANSI escape sequences correctly.
+func AttachScrollbar(content, scrollbar string) string {
+	if scrollbar == "" {
+		return content
+	}
+
+	contentLines := strings.Split(content, "\n")
+	scrollLines := strings.Split(scrollbar, "\n")
+
+	var b strings.Builder
+	maxLines := len(contentLines)
+	if len(scrollLines) > maxLines {
+		maxLines = len(scrollLines)
+	}
+
+	for i := 0; i < maxLines; i++ {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		cl := ""
+		if i < len(contentLines) {
+			cl = contentLines[i]
+		}
+		sl := ""
+		if i < len(scrollLines) {
+			sl = scrollLines[i]
+		}
+		b.WriteString(cl)
+		b.WriteString(sl)
+	}
+	return b.String()
+}
+
 // renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
 func renderFullscreenTitle(title, subtitle string) string {
 	t := TitleStyle.Render(title)

@@ -476,12 +476,6 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 		endIdx = len(m.filteredRules)
 	}
 
-	// Show scroll indicator for rules above
-	if startIdx > 0 {
-		b.WriteString(ScrollUpIndicator(startIdx))
-		b.WriteString("\n")
-	}
-
 	// Calculate max name length based on available width
 	// On wide screen: use list pane width (45% of total)
 	// On narrow screen: use full width minus some padding
@@ -498,6 +492,7 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 		maxNameLen = 15
 	}
 
+	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		rule := m.filteredRules[i]
 		isDefault := m.isDefaultRule(rule.ID)
@@ -526,8 +521,8 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 
 		if i == m.cursor {
 			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
-			b.WriteString(line)
-			b.WriteString("\n")
+			rowBuilder.WriteString(line)
+			rowBuilder.WriteString("\n")
 			// Show summary for selected rule on narrow screens only
 			if !m.isWideScreen() {
 				summary := rule.Summary()
@@ -538,20 +533,17 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 				if len(summary) > maxSummaryLen {
 					summary = summary[:maxSummaryLen-3] + "..."
 				}
-				b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
-				b.WriteString("\n")
+				rowBuilder.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
+				rowBuilder.WriteString("\n")
 			}
 		} else {
-			b.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
-			b.WriteString("\n")
+			rowBuilder.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
+			rowBuilder.WriteString("\n")
 		}
 	}
 
-	// Show scroll indicator if needed
-	if len(m.filteredRules) > maxVisible {
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d rules", m.cursor+1, len(m.filteredRules))))
-	}
+	scrollbar := RenderScrollbar(len(m.filteredRules), maxVisible, startIdx)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	return b.String()
 }

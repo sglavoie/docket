@@ -444,12 +444,6 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 		endIdx = len(m.filteredTemplates)
 	}
 
-	// Show scroll indicator for templates above
-	if startIdx > 0 {
-		b.WriteString(ScrollUpIndicator(startIdx))
-		b.WriteString("\n")
-	}
-
 	// Calculate max name length based on available width
 	var maxNameLen int
 	if m.isWideScreen() {
@@ -462,6 +456,7 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 		maxNameLen = 15
 	}
 
+	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		t := m.filteredTemplates[i]
 		isDefault := m.isDefaultTemplate(t.ID)
@@ -490,8 +485,8 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 
 		if i == m.cursor {
 			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
-			b.WriteString(line)
-			b.WriteString("\n")
+			rowBuilder.WriteString(line)
+			rowBuilder.WriteString("\n")
 			// Show summary for selected template on narrow screens only
 			if !m.isWideScreen() {
 				summary := t.Summary()
@@ -502,20 +497,17 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 				if len(summary) > maxSummaryLen {
 					summary = summary[:maxSummaryLen-3] + "..."
 				}
-				b.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
-				b.WriteString("\n")
+				rowBuilder.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
+				rowBuilder.WriteString("\n")
 			}
 		} else {
-			b.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
-			b.WriteString("\n")
+			rowBuilder.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
+			rowBuilder.WriteString("\n")
 		}
 	}
 
-	// Show scroll indicator if needed
-	if len(m.filteredTemplates) > maxVisible {
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d templates", m.cursor+1, len(m.filteredTemplates))))
-	}
+	scrollbar := RenderScrollbar(len(m.filteredTemplates), maxVisible, startIdx)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	return b.String()
 }

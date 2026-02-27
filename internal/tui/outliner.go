@@ -364,10 +364,6 @@ func (m *OutlinerModel) contentHeight() int {
 		headerLines++ // breadcrumb
 	}
 	h := m.height - headerLines
-	// Reserve space for scroll indicators when content overflows
-	if len(m.rows) > h {
-		h -= 2
-	}
 	if h < 1 {
 		return 1
 	}

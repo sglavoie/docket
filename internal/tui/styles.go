@@ -191,6 +191,13 @@ var (
 	ProgressEmptyStyle = lipgloss.NewStyle().
 				Foreground(ColorMuted)
 
+	// Scrollbar styles (vertical track on right edge of scrollable lists)
+	ScrollbarThumbStyle = lipgloss.NewStyle().
+				Foreground(ColorPrimary) // Blue 39
+
+	ScrollbarTrackStyle = lipgloss.NewStyle().
+				Foreground(ColorMuted) // Gray 241
+
 	// Badge styles
 	ArchivedBadgeStyle = lipgloss.NewStyle().
 				Background(ColorWarning).

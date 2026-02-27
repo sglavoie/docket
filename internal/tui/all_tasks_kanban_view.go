@@ -117,18 +117,7 @@ func (m *AllTasksViewModel) renderKanbanColumn(groupIdx int) string {
 		viewportHeight = 1
 	}
 
-	// Validate scroll
-	reducedHeight := viewportHeight - 1
-	if reducedHeight < 1 {
-		reducedHeight = 1
-	}
-	cs.ValidateScroll(len(group.Tasks), reducedHeight)
-
-	hasUpIndicator := cs.ScrollOffset > 0
-	effectiveHeight := viewportHeight
-	if hasUpIndicator {
-		effectiveHeight = reducedHeight
-	}
+	cs.ValidateScroll(len(group.Tasks), viewportHeight)
 
 	if len(group.Tasks) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)"))
@@ -139,28 +128,18 @@ func (m *AllTasksViewModel) renderKanbanColumn(groupIdx int) string {
 			endIdx = len(group.Tasks)
 		}
 
-		if hasUpIndicator {
-			b.WriteString(ScrollUpIndicator(startIdx))
-			b.WriteString("\n")
-			endIdx = startIdx + effectiveHeight
-			if endIdx > len(group.Tasks) {
-				endIdx = len(group.Tasks)
-			}
-		}
-
+		var rowBuilder strings.Builder
 		for i := startIdx; i < endIdx; i++ {
 			isSelected := i == cs.Cursor && isActive
 			line := m.renderKanbanTaskRow(group.Tasks[i], isSelected)
-			b.WriteString(line)
+			rowBuilder.WriteString(line)
 			if i < endIdx-1 {
-				b.WriteString("\n")
+				rowBuilder.WriteString("\n")
 			}
 		}
 
-		if endIdx < len(group.Tasks) {
-			b.WriteString("\n")
-			b.WriteString(ScrollDownIndicator(len(group.Tasks) - endIdx))
-		}
+		scrollbar := RenderScrollbar(len(group.Tasks), viewportHeight, startIdx)
+		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 	}
 
 	// Pad to exact height

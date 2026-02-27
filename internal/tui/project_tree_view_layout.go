@@ -123,7 +123,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 
 	visible := m.visibleNodes()
 
-	// Build card content (task list + scroll indicator)
+	// Build card content (task list + scrollbar)
 	var cardContent strings.Builder
 
 	cardContentWidth := m.width - CardBorderOverhead
@@ -147,6 +147,12 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
+		// Reserve 1 char for scrollbar when content overflows
+		needsScrollbar := len(visible) > availableHeight
+		if needsScrollbar {
+			cardContentWidth--
+		}
+
 		// Determine visible range
 		startIdx := 0
 		endIdx := len(visible)
@@ -169,22 +175,20 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 
 		// Render visible tasks
+		var lines []string
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
-			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth)
-			cardContent.WriteString(line)
-			if i < endIdx-1 {
-				cardContent.WriteString("\n")
-			}
+			lines = append(lines, m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth))
 		}
+		content := strings.Join(lines, "\n")
 
-		// Scroll indicator inside card
-		if len(visible) > availableHeight {
-			scrollInfo := fmt.Sprintf("Showing %d-%d of %d", startIdx+1, endIdx, len(visible))
-			cardContent.WriteString("\n")
-			cardContent.WriteString(MutedStyle.Render(scrollInfo))
+		// Attach scrollbar when content overflows
+		if needsScrollbar {
+			scrollbar := RenderScrollbar(len(visible), availableHeight, startIdx)
+			content = AttachScrollbar(content, scrollbar)
 		}
+		cardContent.WriteString(content)
 	}
 
 	// Render the card with view mode as title
@@ -418,7 +422,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	visible := m.visibleNodes()
 
-	// Build card content (task list + scroll indicator)
+	// Build card content (task list + scrollbar)
 	var cardContent strings.Builder
 
 	if len(visible) == 0 {
@@ -443,6 +447,12 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		// Card has 4 chars horizontal overhead (2 border + 2 padding)
 		cardContentWidth := width - 4
 
+		// Reserve 1 char for scrollbar when content overflows
+		needsScrollbar := len(visible) > availableHeight
+		if needsScrollbar {
+			cardContentWidth--
+		}
+
 		// Determine visible range
 		startIdx := 0
 		endIdx := len(visible)
@@ -465,22 +475,20 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 
 		// Render visible tasks (with adjusted width for card content)
+		var lines []string
 		for i := startIdx; i < endIdx; i++ {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
-			line := m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth)
-			cardContent.WriteString(line)
-			if i < endIdx-1 {
-				cardContent.WriteString("\n")
-			}
+			lines = append(lines, m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth))
 		}
+		content := strings.Join(lines, "\n")
 
-		// Scroll indicator inside card
-		if len(visible) > availableHeight {
-			scrollInfo := fmt.Sprintf("%d-%d/%d", startIdx+1, endIdx, len(visible))
-			cardContent.WriteString("\n")
-			cardContent.WriteString(MutedStyle.Render(scrollInfo))
+		// Attach scrollbar when content overflows
+		if needsScrollbar {
+			scrollbar := RenderScrollbar(len(visible), availableHeight, startIdx)
+			content = AttachScrollbar(content, scrollbar)
 		}
+		cardContent.WriteString(content)
 	}
 
 	// Render the card with view mode as title

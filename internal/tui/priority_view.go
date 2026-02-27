@@ -224,12 +224,6 @@ func (m *PriorityViewModel) View() string {
 	currentIndex := 0
 	lines := m.renderAllGroups(&currentIndex)
 
-	// Reserve line for scroll indicator if we'll need to scroll
-	needsScrolling := len(lines) > contentHeight
-	if needsScrolling {
-		contentHeight--
-	}
-
 	if contentHeight < 1 {
 		contentHeight = 1
 	}
@@ -279,14 +273,9 @@ func (m *PriorityViewModel) View() string {
 
 	// Visible task lines
 	visibleLines := lines[startIdx:endIdx]
-	b.WriteString(strings.Join(visibleLines, "\n"))
-
-	// Scroll indicator
-	if needsScrolling {
-		scrollInfo := fmt.Sprintf("Showing %d-%d of %d", startIdx+1, endIdx, len(lines))
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(scrollInfo))
-	}
+	visibleContent := strings.Join(visibleLines, "\n")
+	scrollbar := RenderScrollbar(len(lines), endIdx-startIdx, startIdx)
+	b.WriteString(AttachScrollbar(visibleContent, scrollbar))
 	b.WriteString("\n")
 
 	// Search bar (shown above footer when active)

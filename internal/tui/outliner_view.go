@@ -294,11 +294,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	startIdx := calcScrollOffset(m.cursor, visibleRows)
 	endIdx := min(startIdx+visibleRows, len(m.rows))
 
-	if startIdx > 0 {
-		b.WriteString(ScrollUpIndicator(startIdx))
-		b.WriteString("\n")
-	}
-
+	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		row := m.rows[i]
 		selected := i == m.cursor
@@ -334,9 +330,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 				line = SelectionRowStyle.Width(width).Render(line)
 			}
 
-			b.WriteString(line)
-			if i < endIdx-1 || endIdx < len(m.rows) {
-				b.WriteString("\n")
+			rowBuilder.WriteString(line)
+			if i < endIdx-1 {
+				rowBuilder.WriteString("\n")
 			}
 			continue
 		}
@@ -517,15 +513,15 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			line = SelectionRowStyle.Width(width).Render(line)
 		}
 
-		b.WriteString(line)
-		if i < endIdx-1 || endIdx < len(m.rows) {
-			b.WriteString("\n")
+		rowBuilder.WriteString(line)
+		if i < endIdx-1 {
+			rowBuilder.WriteString("\n")
 		}
 	}
 
-	if endIdx < len(m.rows) {
-		b.WriteString(ScrollDownIndicator(len(m.rows) - endIdx))
-	}
+	// Attach scrollbar to the right edge when content overflows
+	scrollbar := RenderScrollbar(len(m.rows), visibleRows, startIdx)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	if notice != "" {
 		b.WriteString("\n")

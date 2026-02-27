@@ -462,12 +462,6 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		cardContent.WriteString("\n")
 	}
 
-	// Scroll-up indicator inside card
-	if scrollOffset > 0 {
-		cardContent.WriteString(ScrollUpIndicator(scrollOffset))
-		cardContent.WriteString("\n")
-	}
-
 	// Project list (windowed)
 	end := scrollOffset + maxVisible
 	if end > len(visible) {
@@ -481,6 +475,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 	}
 
+	var rowBuilder strings.Builder
 	for i := scrollOffset; i < end; i++ {
 		p := visible[i]
 		selected := i == m.cursor
@@ -612,8 +607,8 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if narrowMode {
 			line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
 			line1 := RenderSelectableRow(selected, false, false, line1Content, cardWidth-4)
-			cardContent.WriteString(line1)
-			cardContent.WriteString("\n")
+			rowBuilder.WriteString(line1)
+			rowBuilder.WriteString("\n")
 
 			statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
 			if noteCount > 0 {
@@ -625,7 +620,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			if statusIndicator != "" {
 				statsLine += "  " + statusIndicator
 			}
-			cardContent.WriteString(statsLine)
+			rowBuilder.WriteString(statsLine)
 		} else {
 			activeStr := MutedStyle.Render(fmt.Sprintf("%6d", active))
 			totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
@@ -641,18 +636,16 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 				content += "  " + statusIndicator
 			}
 			line := RenderSelectableRow(selected, false, false, content, cardWidth-4)
-			cardContent.WriteString(line)
+			rowBuilder.WriteString(line)
 		}
 
-		if i < end-1 || (len(visible)-end) > 0 {
-			cardContent.WriteString("\n")
+		if i < end-1 {
+			rowBuilder.WriteString("\n")
 		}
 	}
 
-	// Scroll-down indicator inside card
-	if remaining := len(visible) - end; remaining > 0 {
-		cardContent.WriteString(ScrollDownIndicator(remaining))
-	}
+	scrollbar := RenderScrollbar(len(visible), maxVisible, scrollOffset)
+	cardContent.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	return cardContent.String()
 }

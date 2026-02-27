@@ -434,13 +434,8 @@ func (m *LinkedTaskSelectorModel) View() string {
 		return b.String()
 	}
 
-	// Show scroll indicator at top if items are hidden above
-	if visibleStart > 0 {
-		b.WriteString("  " + ScrollUpIndicator(visibleStart))
-		b.WriteString("\n\n")
-	}
-
 	// Render sections, but only items within the visible range
+	var sectionBuilder strings.Builder
 	itemIndex := 0
 	needSpacer := false
 
@@ -451,10 +446,10 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 		if sectionEnd > visibleStart && sectionStart < visibleEnd {
 			if needSpacer {
-				b.WriteString("\n")
+				sectionBuilder.WriteString("\n")
 			}
-			b.WriteString(SubtitleStyle.Render("→ Blocks"))
-			b.WriteString("\n")
+			sectionBuilder.WriteString(SubtitleStyle.Render("→ Blocks"))
+			sectionBuilder.WriteString("\n")
 			needSpacer = true
 
 			for i, rel := range blocksItems {
@@ -464,7 +459,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 					if idx == m.cursor {
 						cursor = "> "
 					}
-					b.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
+					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}
 			}
 		}
@@ -478,10 +473,10 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 		if sectionEnd > visibleStart && sectionStart < visibleEnd {
 			if needSpacer {
-				b.WriteString("\n")
+				sectionBuilder.WriteString("\n")
 			}
-			b.WriteString(SubtitleStyle.Render("← Blocked By"))
-			b.WriteString("\n")
+			sectionBuilder.WriteString(SubtitleStyle.Render("← Blocked By"))
+			sectionBuilder.WriteString("\n")
 			needSpacer = true
 
 			for i, rel := range blockedByItems {
@@ -491,7 +486,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 					if idx == m.cursor {
 						cursor = "> "
 					}
-					b.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
+					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}
 			}
 		}
@@ -505,10 +500,10 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 		if sectionEnd > visibleStart && sectionStart < visibleEnd {
 			if needSpacer {
-				b.WriteString("\n")
+				sectionBuilder.WriteString("\n")
 			}
-			b.WriteString(SubtitleStyle.Render("↔ Related"))
-			b.WriteString("\n")
+			sectionBuilder.WriteString(SubtitleStyle.Render("↔ Related"))
+			sectionBuilder.WriteString("\n")
 
 			for i, rel := range relatedItems {
 				idx := sectionStart + i
@@ -517,17 +512,14 @@ func (m *LinkedTaskSelectorModel) View() string {
 					if idx == m.cursor {
 						cursor = "> "
 					}
-					b.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
+					sectionBuilder.WriteString(cursor + m.renderRelationLine(rel, false) + "\n")
 				}
 			}
 		}
 	}
 
-	// Show scroll indicator at bottom if items are hidden below
-	if visibleEnd < len(m.filtered) {
-		b.WriteString("\n  " + ScrollDownIndicator(len(m.filtered)-visibleEnd))
-		b.WriteString("\n")
-	}
+	scrollbar := RenderScrollbar(len(m.filtered), visibleEnd-visibleStart, visibleStart)
+	b.WriteString(AttachScrollbar(sectionBuilder.String(), scrollbar))
 
 	// Footer
 	var footerLeft string

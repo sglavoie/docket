@@ -245,21 +245,7 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 		viewportHeight = 1
 	}
 
-	// Always validate with reduced height to ensure cursor remains visible when
-	// the "↑ N more" indicator appears. The indicator takes 1 line, so we
-	// conservatively assume it will be shown during validation.
-	reducedHeight := viewportHeight - 1
-	if reducedHeight < 1 {
-		reducedHeight = 1
-	}
-	cs.ValidateScroll(len(visibleNodes), reducedHeight)
-
-	// Determine if indicator is actually needed after validation
-	hasUpIndicator := cs.ScrollOffset > 0
-	effectiveHeight := viewportHeight
-	if hasUpIndicator {
-		effectiveHeight = reducedHeight
-	}
+	cs.ValidateScroll(len(visibleNodes), viewportHeight)
 
 	if len(visibleNodes) == 0 {
 		b.WriteString(MutedStyle.Render("(empty)"))
@@ -271,33 +257,21 @@ func (m *KanbanViewModel) renderColumn(section string, isActive bool) string {
 			endIdx = len(visibleNodes)
 		}
 
-		// Show "↑ N more" indicator if tasks are hidden above
-		if hasUpIndicator {
-			b.WriteString(ScrollUpIndicator(startIdx))
-			b.WriteString("\n")
-			// Adjust visible range since we used a line for the indicator
-			endIdx = startIdx + effectiveHeight
-			if endIdx > len(visibleNodes) {
-				endIdx = len(visibleNodes)
-			}
-		}
-
 		// Render visible nodes
+		var rowBuilder strings.Builder
 		for i := startIdx; i < endIdx; i++ {
 			node := visibleNodes[i]
 			isSelected := i == cs.Cursor && isActive && !m.detailsPane.Focused
 			line := m.renderTaskRow(node, isSelected)
-			b.WriteString(line)
+			rowBuilder.WriteString(line)
 			if i < endIdx-1 {
-				b.WriteString("\n")
+				rowBuilder.WriteString("\n")
 			}
 		}
 
-		// Show "↓ N more" indicator if tasks are hidden below
-		if endIdx < len(visibleNodes) {
-			b.WriteString("\n")
-			b.WriteString(ScrollDownIndicator(len(visibleNodes) - endIdx))
-		}
+		// Attach scrollbar when content overflows
+		scrollbar := RenderScrollbar(len(visibleNodes), viewportHeight, startIdx)
+		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 	}
 
 	// Pad column to exact height for consistent layout

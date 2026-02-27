@@ -461,25 +461,36 @@ func renderSidebarScoreCard(task *models.Task, width int, profile *scoring.Scori
 
 // padSidebarToHeight ensures the sidebar content fills the exact height.
 // When a sidebar component is provided, applies and clamps its scroll offset.
+// Attaches a scrollbar when content overflows.
 func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height int) string {
 	lines := strings.Split(content, "\n")
+	totalLines := len(lines)
 
 	// Apply and clamp scroll offset from sidebar
+	scrollOffset := 0
 	if sidebar != nil {
-		maxScroll := len(lines) - height
+		maxScroll := totalLines - height
 		if maxScroll < 0 {
 			maxScroll = 0
 		}
 		if sidebar.scroll > maxScroll {
 			sidebar.scroll = maxScroll
 		}
-		if sidebar.scroll > 0 {
-			lines = lines[sidebar.scroll:]
+		scrollOffset = sidebar.scroll
+		if scrollOffset > 0 {
+			lines = lines[scrollOffset:]
 		}
 	}
 
 	if len(lines) > height {
 		lines = lines[:height]
+	}
+
+	// Attach scrollbar when content overflows
+	scrollbar := RenderScrollbar(totalLines, height, scrollOffset)
+	if scrollbar != "" {
+		result := AttachScrollbar(strings.Join(lines, "\n"), scrollbar)
+		lines = strings.Split(result, "\n")
 	}
 
 	for len(lines) < height {

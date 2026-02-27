@@ -475,6 +475,7 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 	maxVisible := 8
 	scrollOffset := calcScrollOffset(m.projectCursor, maxVisible)
 
+	var rowBuilder strings.Builder
 	for i, p := range m.filteredProjects {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
 			continue
@@ -488,17 +489,12 @@ func (m *CrossProjectLinkerModel) viewProjectSelection() string {
 		if i == m.projectCursor {
 			line = BoldStyle.Render(line)
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
+		rowBuilder.WriteString(line)
+		rowBuilder.WriteString("\n")
 	}
 
-	if len(m.filteredProjects) > maxVisible {
-		remaining := len(m.filteredProjects) - scrollOffset - maxVisible
-		if remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
-			b.WriteString("\n")
-		}
-	}
+	scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, scrollOffset)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {
@@ -544,6 +540,7 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 	maxVisible := 8
 	scrollOffset := calcScrollOffset(m.taskCursor, maxVisible)
 
+	var rowBuilder strings.Builder
 	for i, t := range m.filteredTasks {
 		if i < scrollOffset || i >= scrollOffset+maxVisible {
 			continue
@@ -559,17 +556,12 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		if i == m.taskCursor {
 			line = BoldStyle.Render(line)
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
+		rowBuilder.WriteString(line)
+		rowBuilder.WriteString("\n")
 	}
 
-	if len(m.filteredTasks) > maxVisible {
-		remaining := len(m.filteredTasks) - scrollOffset - maxVisible
-		if remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
-			b.WriteString("\n")
-		}
-	}
+	scrollbar := RenderScrollbar(len(m.filteredTasks), maxVisible, scrollOffset)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	b.WriteString("\n")
 	if m.IsSearchMode() {

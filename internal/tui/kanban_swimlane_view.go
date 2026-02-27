@@ -257,48 +257,27 @@ func (m *KanbanViewModel) renderSwimlaneCell(laneKey, colKey string, isActive bo
 	if len(nodes) == 0 {
 		b.WriteString(MutedStyle.Render("·"))
 	} else {
-		// Always validate with reduced height to ensure cursor remains visible when
-		// the "↑ N more" indicator appears. The indicator takes 1 line, so we
-		// conservatively assume it will be shown during validation.
-		reducedHeight := height - 1
-		if reducedHeight < 1 {
-			reducedHeight = 1
-		}
-		cs.ValidateScroll(len(nodes), reducedHeight)
-
-		// Determine if indicator is actually needed after validation
-		hasUpIndicator := cs.ScrollOffset > 0
-		effectiveHeight := height
-		if hasUpIndicator {
-			effectiveHeight = reducedHeight
-		}
+		cs.ValidateScroll(len(nodes), height)
 
 		startIdx := cs.ScrollOffset
-		endIdx := startIdx + effectiveHeight
+		endIdx := startIdx + height
 		if endIdx > len(nodes) {
 			endIdx = len(nodes)
 		}
 
-		if hasUpIndicator {
-			b.WriteString(ScrollUpIndicator(cs.ScrollOffset))
-			b.WriteString("\n")
-		}
-
+		var rowBuilder strings.Builder
 		for i := startIdx; i < endIdx; i++ {
 			node := nodes[i]
 			isSelected := i == cs.Cursor && isActive
 			line := m.renderSwimlaneCellTask(node, isSelected, isActive)
-			b.WriteString(line)
+			rowBuilder.WriteString(line)
 			if i < endIdx-1 {
-				b.WriteString("\n")
+				rowBuilder.WriteString("\n")
 			}
 		}
 
-		// "↓ N more" indicator
-		if endIdx < len(nodes) {
-			b.WriteString("\n")
-			b.WriteString(ScrollDownIndicator(len(nodes) - endIdx))
-		}
+		scrollbar := RenderScrollbar(len(nodes), height, startIdx)
+		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 	}
 
 	// Pad to exact height

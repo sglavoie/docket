@@ -210,32 +210,20 @@ func (m *KanbanViewModel) renderCompletedView() string {
 		endIdx = len(m.completedNodes)
 	}
 
-	// Show "↑ N more" indicator if tasks are hidden above
-	if startIdx > 0 {
-		b.WriteString(ScrollUpIndicator(startIdx))
-		b.WriteString("\n")
-		endIdx = startIdx + viewportHeight - 1 // Account for indicator
-		if endIdx > len(m.completedNodes) {
-			endIdx = len(m.completedNodes)
-		}
-	}
-
+	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		node := m.completedNodes[i]
 		isSelected := i == m.completedCursor
 
 		line := m.renderCompletedTaskRow(node, isSelected)
-		b.WriteString(line)
+		rowBuilder.WriteString(line)
 		if i < endIdx-1 {
-			b.WriteString("\n")
+			rowBuilder.WriteString("\n")
 		}
 	}
 
-	// Show "↓ N more" indicator if tasks are hidden below
-	if endIdx < len(m.completedNodes) {
-		b.WriteString("\n")
-		b.WriteString(ScrollDownIndicator(len(m.completedNodes) - endIdx))
-	}
+	scrollbar := RenderScrollbar(len(m.completedNodes), viewportHeight, startIdx)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	// Footer
 	b.WriteString("\n")

@@ -137,16 +137,12 @@ func (m *WorkflowDryRunModel) renderTaskList() string {
 		endIdx = len(m.filtered)
 	}
 
-	if startIdx > 0 {
-		b.WriteString(ScrollUpIndicator(startIdx))
-		b.WriteString("\n")
-	}
-
 	listWidth := m.Width()*45/100 - 4
 	if listWidth < 20 {
 		listWidth = 20
 	}
 
+	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]
 		title := result.Task.Title
@@ -159,22 +155,20 @@ func (m *WorkflowDryRunModel) renderTaskList() string {
 
 		if i == m.cursor {
 			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", title))
-			b.WriteString(line)
-			b.WriteString(" ")
-			b.WriteString(changeCount)
-			b.WriteString("\n")
-			b.WriteString("  ")
-			b.WriteString(projectTag)
-			b.WriteString("\n")
+			rowBuilder.WriteString(line)
+			rowBuilder.WriteString(" ")
+			rowBuilder.WriteString(changeCount)
+			rowBuilder.WriteString("\n")
+			rowBuilder.WriteString("  ")
+			rowBuilder.WriteString(projectTag)
+			rowBuilder.WriteString("\n")
 		} else {
-			b.WriteString(fmt.Sprintf("  %s %s\n", title, changeCount))
+			rowBuilder.WriteString(fmt.Sprintf("  %s %s\n", title, changeCount))
 		}
 	}
 
-	if len(m.filtered) > maxVisible {
-		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("  %d of %d tasks", m.cursor+1, len(m.filtered))))
-	}
+	scrollbar := RenderScrollbar(len(m.filtered), maxVisible, startIdx)
+	b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 
 	return b.String()
 }
