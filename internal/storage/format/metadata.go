@@ -12,6 +12,10 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// pinnedAtFormat uses second-level precision so reordering swaps are never lost
+// to minute-level truncation.
+const pinnedAtFormat = "2006-01-02 15:04:05"
+
 // metadataRegex matches metadata comments like "<!-- id: uuid, status: todo, priority: 1 -->"
 var metadataRegex = regexp.MustCompile(`^<!--\s*(.+?)\s*-->$`)
 
@@ -48,7 +52,7 @@ type ParseWarning struct {
 // metadataKeys lists all known metadata keys for smart splitting.
 var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
-	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "active", "recur",
+	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "recur",
 	"recur.skipped", "recur.streak", "recur.max_streak",
 	"attachments", "snoozed", "checklist", "source", "url",
 	// Type-specific attribute keys
@@ -148,6 +152,12 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			task.CustomSection = value
 		case "pinned":
 			task.Pinned = value == "true"
+		case "pinned_at":
+			if t, err := time.ParseInLocation(pinnedAtFormat, value, time.Local); err == nil {
+				task.PinnedAt = &t
+			} else if t, ok := ParseTimeField(value); ok {
+				task.PinnedAt = &t
+			}
 		case "active":
 			task.Active = value == "true"
 		case "recur":
@@ -496,6 +506,10 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.Pinned {
 		parts = append(parts, "pinned: true")
+	}
+
+	if task.PinnedAt != nil {
+		parts = append(parts, fmt.Sprintf("pinned_at: %s", task.PinnedAt.Format(pinnedAtFormat)))
 	}
 
 	if task.Active {

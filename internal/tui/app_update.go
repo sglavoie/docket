@@ -36,6 +36,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleQuickSwitchKey(msg)
 		}
 
+		// Intercept keys when pinned tasks popup is open
+		if m.showPinnedPopup {
+			return m.handlePinnedPopupKey(msg)
+		}
+
 		// Intercept keys when project cycle popup is open
 		if m.showProjectCycle {
 			return m.handleProjectCycleKey(msg)
@@ -69,6 +74,17 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.showQuickSwitch {
 					m.refreshRecentTaskVisits()
 				}
+				return m, nil
+			}
+		case "#":
+			if !m.hasActiveTextInput() {
+				m.pinnedPopupItems = m.collectPinnedTasks()
+				if len(m.pinnedPopupItems) == 0 {
+					m.statusMessage = "No pinned tasks"
+					return m, defaultStatusTimeout()
+				}
+				m.showPinnedPopup = !m.showPinnedPopup
+				m.pinnedPopupCursor = 0
 				return m, nil
 			}
 		case "esc":

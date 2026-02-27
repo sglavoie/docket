@@ -49,6 +49,11 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
+	// Overlay pinned tasks popup if active
+	if popup := m.renderPinnedPopup(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
 	return content + "\n" + statusBar
 }
 
@@ -101,6 +106,11 @@ func (m *AppModel) renderStatusBar() string {
 	if m.statusMessage != "" {
 		msg := SuccessStyle.Render("✓ " + m.statusMessage)
 		return separator + "\n" + renderLeftAlignedMsg(msg)
+	}
+
+	// Show pinned tasks bar if any tasks are pinned
+	if pinnedBar := m.renderPinnedTasksBar(m.width); pinnedBar != "" {
+		return separator + "\n" + pinnedBar
 	}
 
 	var status string
