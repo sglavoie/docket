@@ -14,8 +14,8 @@ import (
 var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban", "Outliner"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-9, tab 3 → fields 10-11, tab 4 → fields 12-13, tab 5 → fields 14-20
-	tabFieldStart = []int{0, 4, 8, 10, 12, 14}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-10, tab 3 → fields 11-12, tab 4 → fields 13-14, tab 5 → fields 15-21
+	tabFieldStart = []int{0, 4, 8, 11, 13, 15}
 
 	// outlinerSectionNames maps toggle index (0-6) to the section key used in config.
 	// Active uses "" (empty string) since tasks with no explicit section are "Active".
@@ -54,6 +54,7 @@ type SettingsModel struct {
 	oldDaysInput           textinput.Model
 	completedHoursInput    textinput.Model
 	recentActivityInput    textinput.Model
+	recentActivityShowAll  bool // Whether to show completed tasks in recent activity by default
 	linkedTaskJump         bool // Whether to jump to new task after linked creation
 	attachmentEditorInput  textinput.Model
 	codeEditorInput        textinput.Model
@@ -65,7 +66,7 @@ type SettingsModel struct {
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
 	tabs          TabState
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=linkedTaskJump, 10=attachmentEditor, 11=codeEditor, 12=kanbanMaxColumns, 13=kanbanMaxSwimlaneRows, 14-20=outlinerSectionToggles
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=attachmentEditor, 12=codeEditor, 13=kanbanMaxColumns, 14=kanbanMaxSwimlaneRows, 15-21=outlinerSectionToggles
 	validationErr string
 
 	width  int
@@ -191,6 +192,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		oldDaysInput:           oldDaysInput,
 		completedHoursInput:    completedHoursInput,
 		recentActivityInput:    recentActivityInput,
+		recentActivityShowAll:  cfg.GetRecentActivityShowAll(),
 		defaultViewCursor:      defaultViewCursor,
 		linkedTaskJump:         cfg.GetLinkedTaskJumpToNew(),
 		attachmentEditorInput:  attachmentEditorInput,
@@ -239,6 +241,7 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.ReviewCompletedHours = &completedHours
 		recentActivityLimit, _ := strconv.Atoi(strings.TrimSpace(m.recentActivityInput.Value()))
 		m.config.RecentActivityLimit = &recentActivityLimit
+		m.config.RecentActivityShowAll = &m.recentActivityShowAll
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())

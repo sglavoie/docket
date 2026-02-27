@@ -155,6 +155,14 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString(renderFormFieldDesc("Maximum tasks shown in recent activity", indent, m.focusIndex == 8))
 
 	b.WriteString("\n")
+
+	// Recent Activity Show All Toggle
+	b.WriteString(renderFormLabelWithWidth("Show completed: ", labelWidth, m.focusIndex == 9))
+	b.WriteString(renderFormToggle("Yes", "No", m.recentActivityShowAll, m.focusIndex == 9))
+	b.WriteString("\n")
+	b.WriteString(renderFormFieldDesc("Include completed tasks in recent activity view", indent, m.focusIndex == 9))
+
+	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
 	b.WriteString("\n\n")
 
@@ -162,10 +170,10 @@ func (m *SettingsModel) renderBehaviorTab() string {
 	b.WriteString("\n\n")
 
 	// Linked Task Jump Toggle
-	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 9))
-	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 9))
+	b.WriteString(renderFormLabelWithWidth("After creation: ", labelWidth, m.focusIndex == 10))
+	b.WriteString(renderFormToggle("Jump to new", "Stay on source", m.linkedTaskJump, m.focusIndex == 10))
 	b.WriteString("\n")
-	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 9))
+	b.WriteString(renderFormFieldDesc("Where to navigate after creating a linked task", indent, m.focusIndex == 10))
 
 	return b.String()
 }
@@ -179,28 +187,28 @@ func (m *SettingsModel) renderAttachmentsTab() string {
 	b.WriteString("\n\n")
 
 	// Attachment Editor
-	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 10))
+	b.WriteString(renderFormLabelWithWidth("Attachment Editor: ", labelWidth, m.focusIndex == 11))
 	b.WriteString(m.attachmentEditorInput.View())
-	b.WriteString("\n")
-	if m.focusIndex == 10 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 10))
-
-	b.WriteString("\n")
-
-	// Code Editor
-	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 11))
-	b.WriteString(m.codeEditorInput.View())
 	b.WriteString("\n")
 	if m.focusIndex == 11 && m.validationErr != "" {
 		b.WriteString(strings.Repeat(" ", indent))
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 11))
+	b.WriteString(renderFormFieldDesc("Editor for general attachments (empty = OS default)", indent, m.focusIndex == 11))
+
+	b.WriteString("\n")
+
+	// Code Editor
+	b.WriteString(renderFormLabelWithWidth("Code Editor: ", labelWidth, m.focusIndex == 12))
+	b.WriteString(m.codeEditorInput.View())
+	b.WriteString("\n")
+	if m.focusIndex == 12 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Editor for code references (empty = code)", indent, m.focusIndex == 12))
 
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
@@ -225,23 +233,8 @@ func (m *SettingsModel) renderKanbanTab() string {
 	b.WriteString("\n\n")
 
 	// Max Columns
-	b.WriteString(renderFormLabelWithWidth("Max Columns: ", labelWidth, m.focusIndex == 12))
+	b.WriteString(renderFormLabelWithWidth("Max Columns: ", labelWidth, m.focusIndex == 13))
 	b.WriteString(m.kanbanMaxColumnsInput.View())
-	b.WriteString("  ")
-	b.WriteString(MutedStyle.Render("(1-20)"))
-	b.WriteString("\n")
-	if m.focusIndex == 12 && m.validationErr != "" {
-		b.WriteString(strings.Repeat(" ", indent))
-		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
-		b.WriteString("\n")
-	}
-	b.WriteString(renderFormFieldDesc("Maximum visible columns (auto-reduces for narrow terminals)", indent, m.focusIndex == 12))
-
-	b.WriteString("\n")
-
-	// Max Swimlane Rows
-	b.WriteString(renderFormLabelWithWidth("Max Swimlane Rows: ", labelWidth, m.focusIndex == 13))
-	b.WriteString(m.kanbanMaxSwimlaneInput.View())
 	b.WriteString("  ")
 	b.WriteString(MutedStyle.Render("(1-20)"))
 	b.WriteString("\n")
@@ -250,7 +243,22 @@ func (m *SettingsModel) renderKanbanTab() string {
 		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
 		b.WriteString("\n")
 	}
-	b.WriteString(renderFormFieldDesc("Maximum visible swimlane rows when swimlanes are active", indent, m.focusIndex == 13))
+	b.WriteString(renderFormFieldDesc("Maximum visible columns (auto-reduces for narrow terminals)", indent, m.focusIndex == 13))
+
+	b.WriteString("\n")
+
+	// Max Swimlane Rows
+	b.WriteString(renderFormLabelWithWidth("Max Swimlane Rows: ", labelWidth, m.focusIndex == 14))
+	b.WriteString(m.kanbanMaxSwimlaneInput.View())
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("(1-20)"))
+	b.WriteString("\n")
+	if m.focusIndex == 14 && m.validationErr != "" {
+		b.WriteString(strings.Repeat(" ", indent))
+		b.WriteString(ValidationErrorStyle.Render(m.validationErr))
+		b.WriteString("\n")
+	}
+	b.WriteString(renderFormFieldDesc("Maximum visible swimlane rows when swimlanes are active", indent, m.focusIndex == 14))
 
 	return b.String()
 }
@@ -266,7 +274,7 @@ func (m *SettingsModel) renderOutlinerTab() string {
 	b.WriteString("\n\n")
 
 	for i, label := range outlinerSectionLabels {
-		focusIdx := 14 + i
+		focusIdx := 15 + i
 		b.WriteString(renderFormLabelWithWidth(label+": ", labelWidth, m.focusIndex == focusIdx))
 		b.WriteString(renderFormToggle("Collapsed", "Expanded", m.outlinerCollapsed[i], m.focusIndex == focusIdx))
 		b.WriteString("\n")

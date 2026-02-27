@@ -19,11 +19,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (21 fields total: 0-20)
+			// Move focus (22 fields total: 0-21)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 21
+				m.focusIndex = (m.focusIndex + 1) % 22
 			} else {
-				m.focusIndex = (m.focusIndex + 20) % 21 // +20 is -1 mod 21
+				m.focusIndex = (m.focusIndex + 21) % 22 // +21 is -1 mod 22
 			}
 
 			// Auto-switch tab to follow focus
@@ -45,11 +45,14 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ":
 			// Toggle fields
 			if m.focusIndex == 9 {
+				m.recentActivityShowAll = !m.recentActivityShowAll
+			}
+			if m.focusIndex == 10 {
 				m.linkedTaskJump = !m.linkedTaskJump
 			}
-			// Outliner section toggles (indices 14-20)
-			if m.focusIndex >= 14 && m.focusIndex <= 20 {
-				idx := m.focusIndex - 14
+			// Outliner section toggles (indices 15-21)
+			if m.focusIndex >= 15 && m.focusIndex <= 21 {
+				idx := m.focusIndex - 15
 				m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
 			}
 			return m, nil
@@ -156,13 +159,13 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.completedHoursInput, cmd = m.completedHoursInput.Update(msg)
 	case 8:
 		m.recentActivityInput, cmd = m.recentActivityInput.Update(msg)
-	case 10:
-		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
 	case 11:
-		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
+		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
 	case 12:
-		m.kanbanMaxColumnsInput, cmd = m.kanbanMaxColumnsInput.Update(msg)
+		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
 	case 13:
+		m.kanbanMaxColumnsInput, cmd = m.kanbanMaxColumnsInput.Update(msg)
+	case 14:
 		m.kanbanMaxSwimlaneInput, cmd = m.kanbanMaxSwimlaneInput.Update(msg)
 	}
 
@@ -190,15 +193,15 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.validateRecentActivityLimit(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 10:
+	case 11:
 		if err := m.validateAttachmentEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 11:
+	case 12:
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 12, 13:
+	case 13, 14:
 		if err := m.validateKanbanSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
@@ -228,17 +231,17 @@ func (m *SettingsModel) blurCurrentField() {
 		m.completedHoursInput.Blur()
 	case 8:
 		m.recentActivityInput.Blur()
-	case 9:
+	case 9, 10:
 		// Toggle field - no blur needed
-	case 10:
-		m.attachmentEditorInput.Blur()
 	case 11:
-		m.codeEditorInput.Blur()
+		m.attachmentEditorInput.Blur()
 	case 12:
-		m.kanbanMaxColumnsInput.Blur()
+		m.codeEditorInput.Blur()
 	case 13:
+		m.kanbanMaxColumnsInput.Blur()
+	case 14:
 		m.kanbanMaxSwimlaneInput.Blur()
-	case 14, 15, 16, 17, 18, 19, 20:
+	case 15, 16, 17, 18, 19, 20, 21:
 		// Toggle fields - no blur needed
 	}
 }
@@ -264,17 +267,17 @@ func (m *SettingsModel) focusCurrentField() {
 		m.completedHoursInput.Focus()
 	case 8:
 		m.recentActivityInput.Focus()
-	case 9:
+	case 9, 10:
 		// Toggle field - no focus needed
-	case 10:
-		m.attachmentEditorInput.Focus()
 	case 11:
-		m.codeEditorInput.Focus()
+		m.attachmentEditorInput.Focus()
 	case 12:
-		m.kanbanMaxColumnsInput.Focus()
+		m.codeEditorInput.Focus()
 	case 13:
+		m.kanbanMaxColumnsInput.Focus()
+	case 14:
 		m.kanbanMaxSwimlaneInput.Focus()
-	case 14, 15, 16, 17, 18, 19, 20:
+	case 15, 16, 17, 18, 19, 20, 21:
 		// Toggle fields - no focus needed
 	}
 }

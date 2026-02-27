@@ -42,6 +42,9 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 		FilterMixin: FilterMixin{filter: newFilterState()},
 		tabs:        TabState{Names: recentActivityTabNames},
 	}
+	if !cfg.GetRecentActivityShowAll() {
+		m.tabs.Active = recentActivityTabActive
+	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.InitSearchInput("Filter tasks...", 100, 40)
 	m.loadTasks()
