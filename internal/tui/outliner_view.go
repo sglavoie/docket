@@ -197,6 +197,13 @@ func (m *OutlinerModel) renderWithSidebar() string {
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
 	divider := renderVerticalDivider(m.height-2, m.sidebar.IsFocused())
 
+	// Dim the unfocused pane to reinforce which pane has focus
+	if m.sidebar.IsFocused() {
+		treeContentStyled = DimStyle.Render(treeContentStyled)
+	} else {
+		sidebarContent = DimStyle.Render(sidebarContent)
+	}
+
 	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
 }
 

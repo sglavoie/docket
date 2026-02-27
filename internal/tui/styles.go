@@ -52,6 +52,9 @@ var (
 			Foreground(ColorSecondary).
 			MarginBottom(1)
 
+	// DimStyle applies the ANSI faint attribute to visually de-emphasize unfocused panes.
+	DimStyle = lipgloss.NewStyle().Faint(true)
+
 	// Text styles
 	NormalStyle = lipgloss.NewStyle()
 

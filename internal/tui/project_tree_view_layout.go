@@ -331,6 +331,13 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Render vertical divider
 	divider := renderVerticalDivider(m.height-2, m.sidebar.IsFocused())
 
+	// Dim the unfocused pane to reinforce which pane has focus
+	if m.sidebar.IsFocused() {
+		treeContentStyled = DimStyle.Render(treeContentStyled)
+	} else {
+		sidebarContent = DimStyle.Render(sidebarContent)
+	}
+
 	// Join horizontally: tree | divider | sidebar
 	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
 }

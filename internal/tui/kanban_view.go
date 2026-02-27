@@ -126,6 +126,10 @@ func (m *KanbanViewModel) View() string {
 		kanbanPane = lipgloss.Place(m.Width(), m.kanbanHeight, lipgloss.Center, lipgloss.Center, emptyMsg)
 	}
 
+	// Dim the kanban columns when the details pane has focus
+	if m.detailsPane.Focused {
+		kanbanPane = DimStyle.Render(kanbanPane)
+	}
 	viewParts = append(viewParts, kanbanPane)
 
 	// Render the horizontal divider
@@ -167,6 +171,10 @@ func (m *KanbanViewModel) View() string {
 	m.detailsPane.Height = detailsHeight
 	selectedTask := m.getSelectedTask()
 	detailsPane := m.renderDetailsPanel(selectedTask, m.Width(), detailsHeight)
+	// Dim the details pane when the kanban columns have focus
+	if !m.detailsPane.Focused {
+		detailsPane = DimStyle.Render(detailsPane)
+	}
 	viewParts = append(viewParts, detailsPane)
 
 	// Render quick add input if in quick add mode
