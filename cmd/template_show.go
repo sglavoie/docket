@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/template"
 )
 
 var templateShowCmd = &cobra.Command{
@@ -87,6 +90,25 @@ func runTemplateShow(cmd *cobra.Command, args []string) error {
 	}
 	if len(t.Tags) > 0 {
 		fmt.Printf("  Tags: %v\n", t.Tags)
+	}
+
+	// Variables
+	if vars := template.ExtractVariables(t); len(vars) > 0 {
+		fmt.Println()
+		fmt.Println("Variables:")
+		for _, v := range vars {
+			if v.Default != "" {
+				fmt.Printf("  %s (default: %s)\n", v.Name, v.Default)
+			} else {
+				fmt.Printf("  %s\n", v.Name)
+			}
+		}
+		// Also show a one-liner for quick reference
+		names := make([]string, len(vars))
+		for i, v := range vars {
+			names[i] = v.Name
+		}
+		fmt.Printf("  Use: --var %s=<value>\n", strings.Join(names, " --var "))
 	}
 
 	// Description

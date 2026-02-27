@@ -1,14 +1,18 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -22,9 +26,14 @@ If a title is provided, it will be used; otherwise, the template name is used.
 
 Checklist items are created automatically based on the template definition.
 
+Templates may contain {{variable}} placeholders. These are prompted interactively
+or can be supplied via --var flags. Use {{name:default}} for optional variables
+with a default value.
+
 FLAGS
   --skip-optional  Don't create optional children
   --parent         Parent task ID for the new task
+  --var            Set a template variable (name=value), repeatable
 
 EXAMPLES
 
@@ -38,7 +47,13 @@ EXAMPLES
   tt template use def-bug-report "Crash on startup" --skip-optional
 
   # Create under a parent task
-  tt template use def-api-endpoint "GET /users" --parent 42`,
+  tt template use def-api-endpoint "GET /users" --parent 42
+
+  # Supply template variables via flags
+  tt template use onboarding --var client=Acme --var env=staging
+
+  # Mix flags and interactive prompting (unprovided vars are prompted)
+  tt template use onboarding --var client=Acme`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: runTemplateUse,
 }
@@ -46,6 +61,7 @@ EXAMPLES
 var (
 	templateUseSkipOptional bool
 	templateUseParent       string
+	templateUseVars         []string
 )
 
 func init() {
@@ -53,6 +69,7 @@ func init() {
 
 	templateUseCmd.Flags().BoolVar(&templateUseSkipOptional, "skip-optional", false, "don't create optional children")
 	templateUseCmd.Flags().StringVarP(&templateUseParent, "parent", "p", "", "parent task ID or short ID")
+	templateUseCmd.Flags().StringArrayVar(&templateUseVars, "var", nil, "set template variable (name=value), repeatable")
 }
 
 func runTemplateUse(cmd *cobra.Command, args []string) error {
@@ -76,6 +93,17 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	}
 	if t == nil {
 		return fmt.Errorf("task template not found: %s", templateID)
+	}
+
+	// Resolve template variables if present
+	vars := template.ExtractVariables(t)
+	if len(vars) > 0 {
+		values, err := resolveTemplateVars(vars, templateUseVars)
+		if err != nil {
+			return err
+		}
+		resolved := template.ApplyVariables(*t, values)
+		t = &resolved
 	}
 
 	// Use template name as title if not provided
@@ -178,4 +206,53 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// parseVarFlags parses --var flag values ("name=value") into a map.
+func parseVarFlags(flags []string) (map[string]string, error) {
+	values := make(map[string]string, len(flags))
+	for _, f := range flags {
+		idx := strings.Index(f, "=")
+		if idx < 1 {
+			return nil, fmt.Errorf("invalid --var format %q, expected name=value", f)
+		}
+		values[f[:idx]] = f[idx+1:]
+	}
+	return values, nil
+}
+
+// resolveTemplateVars builds a complete variable values map by combining --var
+// flags with interactive prompts for any unsatisfied variables. When stdin is
+// not a terminal, unsatisfied variables use their defaults silently.
+func resolveTemplateVars(vars []template.TemplateVariable, flags []string) (map[string]string, error) {
+	values, err := parseVarFlags(flags)
+	if err != nil {
+		return nil, err
+	}
+
+	interactive := isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd())
+	reader := bufio.NewReader(os.Stdin)
+
+	for _, v := range vars {
+		if _, ok := values[v.Name]; ok {
+			continue
+		}
+		if !interactive {
+			values[v.Name] = v.Default
+			continue
+		}
+		prompt := fmt.Sprintf("Enter %s", v.Name)
+		if v.Default != "" {
+			prompt += fmt.Sprintf(" [%s]", v.Default)
+		}
+		fmt.Fprintf(os.Stderr, "%s: ", prompt)
+		line, _ := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if line == "" {
+			line = v.Default
+		}
+		values[v.Name] = line
+	}
+
+	return values, nil
 }

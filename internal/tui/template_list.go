@@ -572,6 +572,11 @@ func (m *TaskTemplatesModel) renderPreviewPane(width, height int) string {
 		lines = append(lines, MutedStyle.Render("Tags: ")+strings.Join(t.Tags, ", "))
 	}
 
+	// Variables
+	if varNames := template.VariableNames(&t); len(varNames) > 0 {
+		lines = append(lines, MutedStyle.Render("Variables: ")+strings.Join(varNames, ", "))
+	}
+
 	// Description
 	if t.Description != "" {
 		lines = append(lines, "", MutedStyle.Render("Description:"))
@@ -680,6 +685,11 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 	// Tags
 	if len(t.Tags) > 0 {
 		lines = append(lines, MutedStyle.Render("Tags: ")+strings.Join(t.Tags, ", "))
+	}
+
+	// Variables
+	if varNames := template.VariableNames(&t); len(varNames) > 0 {
+		lines = append(lines, MutedStyle.Render("Variables: ")+strings.Join(varNames, ", "))
 	}
 
 	// Description

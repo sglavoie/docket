@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 )
 
 // handleViewMessages handles view navigation and display messages.
@@ -123,13 +124,44 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case TemplatePickerDoneMsg:
 		m.popView()
-		parentTask := m.pendingCreateTaskParent
-		m.pendingCreateTaskParent = nil
 
 		if msg.Canceled {
+			m.pendingCreateTaskParent = nil
 			return true, nil
 		}
-		// Forward to task creation with template
+		// If template has variables, show the var filler before task creator
+		if msg.Template != nil && template.HasVariables(msg.Template) {
+			m.pendingVarFillerTemplate = msg.Template
+			filler := NewTemplateVarFillerModel(msg.Template)
+			m.showView(ViewTemplateVarFiller, filler)
+			return true, filler.Init()
+		}
+		// No variables, go directly to task creator
+		parentTask := m.pendingCreateTaskParent
+		m.pendingCreateTaskParent = nil
+		if m.currentProject != nil {
+			creator := NewTaskCreatorModelWithTemplate(m.currentProject, m.config, m.configManager, parentTask, msg.Template)
+			m.showView(ViewTaskCreator, creator)
+			return true, creator.Init()
+		}
+		return true, nil
+
+	case TemplateVarFillerDoneMsg:
+		m.popView()
+		if msg.Canceled {
+			// Return to template picker so user can pick a different template
+			m.pendingVarFillerTemplate = nil
+			if m.currentProject != nil {
+				picker := NewTemplatePickerModel(m.config, m.currentProject)
+				m.showView(ViewTaskTemplatePicker, picker)
+				return true, picker.Init()
+			}
+			return true, nil
+		}
+		// Proceed to task creator with resolved template
+		parentTask := m.pendingCreateTaskParent
+		m.pendingCreateTaskParent = nil
+		m.pendingVarFillerTemplate = nil
 		if m.currentProject != nil {
 			creator := NewTaskCreatorModelWithTemplate(m.currentProject, m.config, m.configManager, parentTask, msg.Template)
 			m.showView(ViewTaskCreator, creator)

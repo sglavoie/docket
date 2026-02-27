@@ -382,6 +382,11 @@ func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
 		}
 		t.Children = children
 
+		// Validate variable tokens
+		if err := template.ValidateTokens(&t); err != nil {
+			return ErrorMsg{Err: err}
+		}
+
 		// Validate
 		if err := t.Validate(); err != nil {
 			return ErrorMsg{Err: err}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/template"
 )
 
 // ViewType represents the different views in the TUI.
@@ -100,6 +101,7 @@ const (
 	ViewColumnPicker
 	ViewSmartListBuilder
 	ViewWorkflowDryRun
+	ViewTemplateVarFiller
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree
@@ -196,6 +198,9 @@ type AppModel struct {
 
 	// Pending task creation parent (for template picker flow)
 	pendingCreateTaskParent *models.Task
+
+	// Pending template for variable filler (between picker and task creator)
+	pendingVarFillerTemplate *template.TaskTemplate
 
 	// Pending description edit context (for text editor popup flow)
 	pendingDescEdit *struct {
