@@ -439,7 +439,7 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 	if task.CustomSection != "" {
 		csColor := m.project.GetSectionColor(task.CustomSection)
 		csStyle := GetSectionColorStyle(csColor)
-		csStr = " " + csStyle.Render("@ "+task.CustomSection)
+		csStr = csStyle.Render("@ " + task.CustomSection)
 	}
 
 	dueStr := ""
@@ -447,17 +447,20 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		dueStr = FormatRelativeDue(task.DueDate, true)
 	}
 
-	// Progress fraction for parent tasks
-	progressStr := ""
-	if frac := renderProgressFraction(task); frac != "" {
-		progressStr = " " + frac
+	// Build indicator groups
+	orgGroup := csStr
+	structureGroup := renderProgressFraction(task)
+	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+	postTitle := JoinIndicatorGroups(orgGroup, structureGroup, contentGroup)
+	if postTitle != "" {
+		postTitle = " " + postTitle
 	}
 
 	return TaskLine{
 		Task:       task,
 		IsSelected: isSelected,
 		MaxTitle:   maxTitleLen,
-		PostTitle:  csStr + progressStr + renderInlineTags(task.Tags),
+		PostTitle:  postTitle,
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
 		Flash:      m.cursorFlash,

@@ -198,9 +198,9 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 		scoreBadge := RenderScoreBadge(pt.Task, profile)
 
 		// Progress fraction for parent tasks
-		progressStr := ""
-		if frac := renderProgressFraction(pt.Task); frac != "" {
-			progressStr = " " + frac
+		postTitle := renderProgressFraction(pt.Task)
+		if postTitle != "" {
+			postTitle = " " + postTitle
 		}
 
 		line := TaskLine{
@@ -208,7 +208,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 			IsSelected: isSelected,
 			MaxTitle:   maxTitleLen,
 			PreBadges:  fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
-			PostTitle:  progressStr,
+			PostTitle:  postTitle,
 			Flash:      m.cursorFlash,
 		}.Render()
 		lines = append(lines, line)
@@ -284,14 +284,17 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	scoreBadge := ""
 	if m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			scoreBadge = " " + RenderScoreBadge(task, profile)
+			scoreBadge = RenderScoreBadge(task, profile)
 		}
 	}
 
-	// Progress fraction for parent tasks
-	progressStr := ""
-	if frac := renderProgressFraction(task); frac != "" {
-		progressStr = " " + frac
+	// Build indicator groups
+	structureGroup := JoinGroupParts(scoreBadge, renderProgressFraction(task))
+	orgGroup := strings.TrimSpace(csStr)
+	contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+	postTitle := JoinIndicatorGroups(structureGroup, orgGroup, contentGroup)
+	if postTitle != "" {
+		postTitle = " " + postTitle
 	}
 
 	return TaskLine{
@@ -299,7 +302,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		IsSelected: isSelected,
 		MaxTitle:   adjustedMaxTitleLen,
 		Prefix:     starPrefix,
-		PostTitle:  scoreBadge + csStr + progressStr + renderInlineTags(task.Tags),
+		PostTitle:  postTitle,
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
 		Flash:      m.cursorFlash,

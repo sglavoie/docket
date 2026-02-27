@@ -255,21 +255,25 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 		dueStr := ""
 		if task.DueDate != nil {
-			dueStr = "  " + FormatRelativeDue(task.DueDate, true)
+			dueStr = FormatRelativeDue(task.DueDate, true)
 		}
 
 		scoreBadge := ""
 		if profile := m.config.GetProjectScoringProfile(row.Project.ID); profile != nil {
-			scoreBadge = " " + RenderScoreBadge(task, profile)
+			scoreBadge = RenderScoreBadge(task, profile)
 		}
 
 		truncatedTitle := util.Truncate(task.Title, maxTitleLen)
 		title := m.highlightTitle(truncatedTitle, task.Title)
 		bullet := BoldStyle.Render("●")
-		content := fmt.Sprintf("  %s %s %s%s %s%s%s", bullet, priorityBadge, projectBadge, typeIcon, title, scoreBadge, dueStr)
+		content := fmt.Sprintf("  %s %s %s%s %s", bullet, priorityBadge, projectBadge, typeIcon, title)
 
-		if len(task.Tags) > 0 {
-			content += " " + renderInlineTags(task.Tags)
+		structureGroup := scoreBadge
+		lifecycleGroup := dueStr
+		contentGroup := renderTruncatedTags(task.Tags, 2, 8)
+		trailing := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
+		if trailing != "" {
+			content += " " + trailing
 		}
 
 		line := RenderSelectableRow(isSelected, false, false, m.cursorFlash, content, m.width-2)

@@ -9,6 +9,32 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// IndicatorGroupSep is the dim separator rendered between indicator groups.
+var IndicatorGroupSep = MutedStyle.Render(" · ")
+
+// JoinIndicatorGroups joins non-empty group strings with a dim "·" separator.
+// Empty groups are skipped so no orphan separators appear.
+func JoinIndicatorGroups(groups ...string) string {
+	var nonEmpty []string
+	for _, g := range groups {
+		if g != "" {
+			nonEmpty = append(nonEmpty, g)
+		}
+	}
+	return strings.Join(nonEmpty, IndicatorGroupSep)
+}
+
+// JoinGroupParts joins non-empty parts within one indicator group with a space.
+func JoinGroupParts(parts ...string) string {
+	var nonEmpty []string
+	for _, p := range parts {
+		if p != "" {
+			nonEmpty = append(nonEmpty, p)
+		}
+	}
+	return strings.Join(nonEmpty, " ")
+}
+
 // FormatCyclePosition returns a " [i/n]" suffix if projectID appears in the
 // configured cycle list, or "" otherwise.
 func FormatCyclePosition(cfg *config.Config, projectID string) string {
@@ -171,26 +197,34 @@ func RenderCrossProjectTaskLine(
 	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(proj.Name, maxProjLen)))
 	preBadges := opts.Prefix + projectBadge + " "
 
-	postTitle := ""
-	if frac := renderProgressFraction(task); frac != "" {
-		postTitle += " " + frac
-	}
+	// Build indicator groups
+	structureGroup := renderProgressFraction(task)
+
+	recurStr := ""
 	if opts.ShowRecurrence && task.IsRecurring() {
-		recurStr := "↻"
+		recurStr = "↻"
 		if task.Recurrence.Streak > 0 {
 			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
 		}
-		postTitle += " " + MutedStyle.Render(recurStr)
+		recurStr = MutedStyle.Render(recurStr)
 	}
+	lifecycleGroup := JoinGroupParts(recurStr)
+
+	tagsStr := ""
 	if opts.ShowTags {
-		postTitle += renderInlineTags(task.Tags)
+		tagsStr = renderTruncatedTags(task.Tags, 2, 8)
 	}
+	scoreBadge := ""
 	if opts.ShowScore && cfg != nil {
 		if profile := cfg.GetProjectScoringProfile(proj.ID); profile != nil {
-			if badge := RenderScoreBadge(task, profile); badge != "" {
-				postTitle += " " + badge
-			}
+			scoreBadge = RenderScoreBadge(task, profile)
 		}
+	}
+	contentGroup := JoinGroupParts(tagsStr, scoreBadge)
+
+	postTitle := JoinIndicatorGroups(structureGroup, lifecycleGroup, contentGroup)
+	if postTitle != "" {
+		postTitle = " " + postTitle
 	}
 
 	return TaskLine{

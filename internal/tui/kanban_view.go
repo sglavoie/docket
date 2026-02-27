@@ -382,112 +382,89 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		badge = MutedStyle.Render(fmt.Sprintf("+%d", node.ChildrenElsewhere))
 	}
 
-	// Build all post-title indicators into a single string
-	var indicators strings.Builder
-
-	// ShortID
+	// Build indicators in semantic groups for visual clustering
+	// Organization group: short ID, custom section
+	var orgParts []string
 	if m.columnConfig.IsVisible(ColShortID) {
-		indicators.WriteString(" ")
-		indicators.WriteString(MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+		orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 	}
+	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
+		csColor := m.Project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
+	}
+	orgGroup := JoinGroupParts(orgParts...)
 
-	// Priority badge
+	// Lifecycle group: priority, due date, snooze, recurrence
+	var lifecycleParts []string
 	if m.columnConfig.ShouldShowPriority(task.Priority) {
-		indicators.WriteString(" ")
-		indicators.WriteString(renderPriorityBadge(task.Priority))
+		lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
 	}
-
-	// Due date
 	if m.columnConfig.IsVisible(ColDueDate) {
 		if dueStr := formatDueDate(task); dueStr != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(dueStr)
+			lifecycleParts = append(lifecycleParts, dueStr)
 		}
 	}
-
-	// Snooze
 	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
 		snoozeStr := task.SnoozedUntil.Format("Jan 2")
 		if task.SnoozedUntil.Year() != time.Now().Year() {
 			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
 		}
-		indicators.WriteString(" ")
-		indicators.WriteString(MutedStyle.Render("zzz " + snoozeStr))
+		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
 	}
-
-	// Progress
-	if m.columnConfig.IsVisible(ColProgress) {
-		if frac := renderProgressFraction(task); frac != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(frac)
-		}
-	}
-
-	// Recurrence
 	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
 		recurStr := "↻"
 		if task.Recurrence.Streak > 0 {
 			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
 		}
-		indicators.WriteString(" ")
-		indicators.WriteString(MutedStyle.Render(recurStr))
+		lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
 	}
+	lifecycleGroup := JoinGroupParts(lifecycleParts...)
 
-	// Score (only if column wide enough and profile assigned)
+	// Structure group: progress, score
+	var structureParts []string
+	if m.columnConfig.IsVisible(ColProgress) {
+		if frac := renderProgressFraction(task); frac != "" {
+			structureParts = append(structureParts, frac)
+		}
+	}
 	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
-			indicators.WriteString(" ")
-			indicators.WriteString(RenderScoreBadge(task, profile))
+			if badge := RenderScoreBadge(task, profile); badge != "" {
+				structureParts = append(structureParts, badge)
+			}
 		}
 	}
+	structureGroup := JoinGroupParts(structureParts...)
 
-	// Tags (compact: 1 tag, 6 chars)
+	// Content group: tags, dependencies, comments, attachments, checklist
+	var contentParts []string
 	if m.columnConfig.IsVisible(ColTags) {
 		if s := renderTruncatedTags(task.Tags, 1, 6); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+			contentParts = append(contentParts, s)
 		}
 	}
-
-	// Custom section
-	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
-		csColor := m.Project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		indicators.WriteString(" ")
-		indicators.WriteString(csStyle.Render("@ " + task.CustomSection))
-	}
-
-	// Dependencies
 	if m.columnConfig.IsVisible(ColDependencies) {
 		if s := renderDependencyIndicators(task, m.Project); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+			contentParts = append(contentParts, s)
 		}
 	}
-
-	// Comments
 	if m.columnConfig.IsVisible(ColComments) {
 		if s := renderCommentIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+			contentParts = append(contentParts, s)
 		}
 	}
-
-	// Attachments
 	if m.columnConfig.IsVisible(ColAttachments) {
 		if s := renderAttachmentIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+			contentParts = append(contentParts, s)
 		}
 	}
-
-	// Checklist
 	if m.columnConfig.IsVisible(ColChecklist) {
 		if s := renderChecklistIndicator(task); s != "" {
-			indicators.WriteString(" ")
-			indicators.WriteString(s)
+			contentParts = append(contentParts, s)
 		}
 	}
+	contentGroup := JoinGroupParts(contentParts...)
 
 	// Calculate available space for title using measured indicator width
 	// Layout: cursor (3) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + indicators + badge
@@ -500,7 +477,10 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	if badge != "" {
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
 	}
-	indicatorStr := indicators.String()
+	indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
+	if indicatorStr != "" {
+		indicatorStr = " " + indicatorStr
+	}
 	indicatorWidth := lipgloss.Width(indicatorStr)
 	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen - indicatorWidth
 	if maxTitleLen < KanbanMinTitleWidth {

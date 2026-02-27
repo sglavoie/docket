@@ -370,126 +370,99 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			titleStyle = SuccessStyle
 		}
 
-		// Build inline indicators reusing existing helpers
-		var indicators strings.Builder
-
-		// Short ID
+		// Build indicators in semantic groups for visual clustering
+		// Organization group: short ID, custom section, section badge
+		var orgParts []string
 		if m.columnConfig.IsVisible(ColShortID) {
-			indicators.WriteString(" ")
-			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+			orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
 		}
-
-		// Priority badge
-		if m.columnConfig.ShouldShowPriority(task.Priority) {
-			indicators.WriteString(" ")
-			indicators.WriteString(renderPriorityBadge(task.Priority))
-		}
-
-		// Due date badge
-		if m.columnConfig.IsVisible(ColDueDate) {
-			if dueStr := formatDueDate(task); dueStr != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(dueStr)
-			}
-		}
-
-		// Snooze indicator
-		if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
-			snoozeStr := task.SnoozedUntil.Format("Jan 2")
-			if task.SnoozedUntil.Year() != time.Now().Year() {
-				snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
-			}
-			indicators.WriteString(" ")
-			indicators.WriteString(MutedStyle.Render("zzz " + snoozeStr))
-		}
-
-		// Tag badges (first 2 tags, truncated)
-		if m.columnConfig.IsVisible(ColTags) {
-			if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(s)
-			}
-		}
-
-		// Score badge (only when scoring profile is active and task has scores)
-		if m.columnConfig.IsVisible(ColScore) && m.config != nil {
-			if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-				if HasManualScores(task, profile) {
-					indicators.WriteString(" ")
-					indicators.WriteString(RenderScoreBadge(task, profile))
-				}
-			}
-		}
-
-		// Comment indicator
-		if m.columnConfig.IsVisible(ColComments) {
-			if s := renderCommentIndicator(task); s != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(s)
-			}
-		}
-
-		// Attachment indicator
-		if m.columnConfig.IsVisible(ColAttachments) {
-			if s := renderAttachmentIndicator(task); s != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(s)
-			}
-		}
-
-		// Checklist indicator
-		if m.columnConfig.IsVisible(ColChecklist) {
-			if s := renderChecklistIndicator(task); s != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(s)
-			}
-		}
-
-		// Recurrence indicator (with streak count when > 0)
-		if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-			recurStr := "↻"
-			if task.Recurrence.Streak > 0 {
-				recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-			}
-			indicators.WriteString(" ")
-			indicators.WriteString(MutedStyle.Render(recurStr))
-		}
-
-		// Dependency indicators (only when sidebar is hidden)
-		if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
-			if s := renderDependencyIndicators(task, m.project); s != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(s)
-			}
-		}
-
-		// Custom section badge
 		if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
 			csColor := m.project.GetSectionColor(task.CustomSection)
 			csStyle := GetSectionColorStyle(csColor)
-			indicators.WriteString(" ")
-			indicators.WriteString(csStyle.Render("@ " + task.CustomSection))
+			orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
 		}
-
-		// Progress for parent tasks
-		if m.columnConfig.IsVisible(ColProgress) {
-			if frac := renderProgressFraction(task); frac != "" {
-				indicators.WriteString(" ")
-				indicators.WriteString(frac)
-			}
-		}
-
-		// Section badge (only in non-All perspectives to show which section the task belongs to)
-		p := m.currentPerspective()
-		if p.Name != "All" {
+		if p := m.currentPerspective(); p.Name != "All" {
 			sectionName := task.Section
 			if sectionName == "" {
 				sectionName = "Active"
 			}
 			sectionStyle := GetViewModeStyleForSection(task.Section)
-			indicators.WriteString(" ")
-			indicators.WriteString(sectionStyle.Render("@ " + sectionName))
+			orgParts = append(orgParts, sectionStyle.Render("@ "+sectionName))
 		}
+		orgGroup := JoinGroupParts(orgParts...)
+
+		// Lifecycle group: priority, due date, snooze, recurrence
+		var lifecycleParts []string
+		if m.columnConfig.ShouldShowPriority(task.Priority) {
+			lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
+		}
+		if m.columnConfig.IsVisible(ColDueDate) {
+			if dueStr := formatDueDate(task); dueStr != "" {
+				lifecycleParts = append(lifecycleParts, dueStr)
+			}
+		}
+		if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
+			snoozeStr := task.SnoozedUntil.Format("Jan 2")
+			if task.SnoozedUntil.Year() != time.Now().Year() {
+				snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+			}
+			lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
+		}
+		if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+			recurStr := "↻"
+			if task.Recurrence.Streak > 0 {
+				recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+			}
+			lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
+		}
+		lifecycleGroup := JoinGroupParts(lifecycleParts...)
+
+		// Structure group: progress, dependencies, score
+		var structureParts []string
+		if m.columnConfig.IsVisible(ColProgress) {
+			if frac := renderProgressFraction(task); frac != "" {
+				structureParts = append(structureParts, frac)
+			}
+		}
+		if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
+			if s := renderDependencyIndicators(task, m.project); s != "" {
+				structureParts = append(structureParts, s)
+			}
+		}
+		if m.columnConfig.IsVisible(ColScore) && m.config != nil {
+			if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
+				if HasManualScores(task, profile) {
+					structureParts = append(structureParts, RenderScoreBadge(task, profile))
+				}
+			}
+		}
+		structureGroup := JoinGroupParts(structureParts...)
+
+		// Content group: tags, comments, attachments, checklist
+		var contentParts []string
+		if m.columnConfig.IsVisible(ColTags) {
+			if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
+				contentParts = append(contentParts, s)
+			}
+		}
+		if m.columnConfig.IsVisible(ColComments) {
+			if s := renderCommentIndicator(task); s != "" {
+				contentParts = append(contentParts, s)
+			}
+		}
+		if m.columnConfig.IsVisible(ColAttachments) {
+			if s := renderAttachmentIndicator(task); s != "" {
+				contentParts = append(contentParts, s)
+			}
+		}
+		if m.columnConfig.IsVisible(ColChecklist) {
+			if s := renderChecklistIndicator(task); s != "" {
+				contentParts = append(contentParts, s)
+			}
+		}
+		contentGroup := JoinGroupParts(contentParts...)
+
+		indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
 
 		cursorPrefix := RenderCursorPrefix(selected, task.Active, task.Pinned)
 
@@ -503,8 +476,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 
+		// Build final indicator string with leading space
+		indicators := indicatorStr
+		if indicators != "" {
+			indicators = " " + indicators
+		}
+
 		// Truncate title to fit available width
-		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
+		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators), 10)
 		truncatedTitle := util.Truncate(task.Title, availableWidth)
 		var title string
 		query := strings.TrimSpace(m.SearchQuery())
@@ -524,7 +503,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			checkbox,
 			MutedStyle.Render(row.prefix),
 			foldIndicator,
-			typeIcon, statusIcon, title, indicators.String())
+			typeIcon, statusIcon, title, indicators)
 
 		if selected {
 			rowStyle := SelectionRowStyle

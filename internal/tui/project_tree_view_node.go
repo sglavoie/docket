@@ -109,111 +109,98 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		}
 	}
 
-	// Build indicators FIRST so we can account for their width when truncating the title
-	indicators := ""
-
-	// Section badge for context nodes (show which section the parent is actually in)
-	// Also show section badge in Completed view to indicate where the task was originally
-	// Also show section badge in All view since tasks from all sections are shown together
+	// Build indicators in semantic groups for visual clustering
+	// Organization group: section badge, children-elsewhere, short ID, custom section
+	var orgParts []string
 	if node.IsContextNode || m.viewMode == ViewModeCompleted || m.viewMode == ViewModeAll {
 		sectionName := task.Section
 		if sectionName == "" {
 			sectionName = "Active"
 		}
-		// Use colored style in All view to match the GTD section colors
 		if m.viewMode == ViewModeAll {
 			sectionStyle := GetViewModeStyleForSection(task.Section)
-			indicators += sectionStyle.Render("@ "+sectionName) + " "
+			orgParts = append(orgParts, sectionStyle.Render("@ "+sectionName))
 		} else {
-			indicators += SectionBadgeStyle.Render("@ "+sectionName) + " "
+			orgParts = append(orgParts, SectionBadgeStyle.Render("@ "+sectionName))
 		}
 	}
-
-	// Children in other sections badge (only for non-context nodes with children)
 	if !node.IsContextNode && len(task.Children) > 0 {
 		if childBadge := m.renderChildrenInOtherSectionsBadge(task); childBadge != "" {
-			indicators += childBadge + " "
+			orgParts = append(orgParts, childBadge)
 		}
 	}
-
-	// Priority indicator (compact)
-	if m.columnConfig.ShouldShowPriority(task.Priority) {
-		indicators += renderPriorityBadge(task.Priority) + " "
+	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
+		csColor := m.project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		orgParts = append(orgParts, csStyle.Render("@ "+task.CustomSection))
 	}
+	orgGroup := JoinGroupParts(orgParts...)
 
-	// Due date display (compact)
+	// Lifecycle group: priority, due date, snooze, recurrence
+	var lifecycleParts []string
+	if m.columnConfig.ShouldShowPriority(task.Priority) {
+		lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
+	}
 	if m.columnConfig.IsVisible(ColDueDate) {
 		if dueStr := formatDueDate(task); dueStr != "" {
-			indicators += dueStr + " "
+			lifecycleParts = append(lifecycleParts, dueStr)
 		}
 	}
-
-	// Snooze indicator (shown in snoozed view)
 	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
 		snoozeStr := task.SnoozedUntil.Format("Jan 2")
 		if task.SnoozedUntil.Year() != time.Now().Year() {
 			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
 		}
-		indicators += MutedStyle.Render("zzz "+snoozeStr) + " "
+		lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
 	}
-
-	// Recurrence indicator (with streak count when > 0)
 	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
 		recurStr := "↻"
 		if task.Recurrence.Streak > 0 {
 			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
 		}
-		indicators += MutedStyle.Render(recurStr) + " "
+		lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
 	}
+	lifecycleGroup := JoinGroupParts(lifecycleParts...)
 
-	// Dependency indicators (compact, only when sidebar is hidden)
+	// Structure group: dependencies, score
+	var structureParts []string
 	if m.columnConfig.IsVisible(ColDependencies) && !m.sidebar.IsEnabled() {
 		if s := renderDependencyIndicators(task, m.project); s != "" {
-			indicators += s + " "
+			structureParts = append(structureParts, s)
 		}
 	}
-
-	// Comment indicator
-	if m.columnConfig.IsVisible(ColComments) {
-		if s := renderCommentIndicator(task); s != "" {
-			indicators += s + " "
-		}
-	}
-
-	// Attachment indicator
-	if m.columnConfig.IsVisible(ColAttachments) {
-		if s := renderAttachmentIndicator(task); s != "" {
-			indicators += s + " "
-		}
-	}
-
-	// Checklist indicator
-	if m.columnConfig.IsVisible(ColChecklist) {
-		if s := renderChecklistIndicator(task); s != "" {
-			indicators += s + " "
-		}
-	}
-
-	// Custom section badge (only when sidebar is hidden)
-	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" && !m.sidebar.IsEnabled() {
-		csColor := m.project.GetSectionColor(task.CustomSection)
-		csStyle := GetSectionColorStyle(csColor)
-		indicators += csStyle.Render("@ "+task.CustomSection) + " "
-	}
-
-	// Score badge (when sidebar is hidden and scoring profile assigned)
 	if m.columnConfig.IsVisible(ColScore) && !m.sidebar.IsEnabled() && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.project.ID); profile != nil {
-			indicators += RenderScoreBadge(task, profile) + " "
+			if badge := RenderScoreBadge(task, profile); badge != "" {
+				structureParts = append(structureParts, badge)
+			}
 		}
 	}
+	structureGroup := JoinGroupParts(structureParts...)
 
-	// Tag badges (compact, show first 2 tags + count if more)
-	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
-		indicators += renderTruncatedTags(task.Tags, 2, 8) + " "
+	// Content group: comments, attachments, checklist, tags
+	var contentParts []string
+	if m.columnConfig.IsVisible(ColComments) {
+		if s := renderCommentIndicator(task); s != "" {
+			contentParts = append(contentParts, s)
+		}
 	}
+	if m.columnConfig.IsVisible(ColAttachments) {
+		if s := renderAttachmentIndicator(task); s != "" {
+			contentParts = append(contentParts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColChecklist) {
+		if s := renderChecklistIndicator(task); s != "" {
+			contentParts = append(contentParts, s)
+		}
+	}
+	if m.columnConfig.IsVisible(ColTags) && len(task.Tags) > 0 && !m.sidebar.IsEnabled() {
+		contentParts = append(contentParts, renderTruncatedTags(task.Tags, 2, 8))
+	}
+	contentGroup := JoinGroupParts(contentParts...)
 
-	// Add leading space to indicators if non-empty (separates from title/progress)
+	indicators := JoinIndicatorGroups(orgGroup, lifecycleGroup, structureGroup, contentGroup)
 	if indicators != "" {
 		indicators = " " + indicators
 	}
