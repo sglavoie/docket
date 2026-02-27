@@ -120,10 +120,20 @@ func (m *ProjectPreviewModel) renderContent() string {
 	b.WriteString("\n\n")
 
 	// Status
-	if p.Description != "" {
+	hasIcon := p.StatusIcon != ""
+	hasDesc := p.Description != ""
+	if hasIcon || hasDesc {
 		b.WriteString(BoldStyle.Render("Status"))
 		b.WriteString("\n")
-		b.WriteString(p.Description)
+		if icon := models.ProjectStatusIconByKey(p.StatusIcon); icon != nil {
+			b.WriteString(fmt.Sprintf("%s %s", icon.Emoji, icon.Label))
+			if hasDesc {
+				b.WriteString(" — ")
+				b.WriteString(p.Description)
+			}
+		} else if hasDesc {
+			b.WriteString(p.Description)
+		}
 		b.WriteString("\n\n")
 	}
 

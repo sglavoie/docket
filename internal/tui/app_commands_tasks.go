@@ -184,7 +184,7 @@ func (m *AppModel) projectCommands() []Command {
 				if m.dashboard != nil {
 					visible := m.dashboard.visibleProjects()
 					if CursorInBounds(m.dashboard.cursor, len(visible)) {
-						return ShowStatusInputMsg{Project: visible[m.dashboard.cursor]}
+						return ShowStatusIconPickerMsg{Project: visible[m.dashboard.cursor]}
 					}
 				}
 				return nil

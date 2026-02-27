@@ -184,6 +184,14 @@ func AttachScrollbar(content, scrollbar string) string {
 	contentLines := strings.Split(content, "\n")
 	scrollLines := strings.Split(scrollbar, "\n")
 
+	// Measure max visual width across all content lines so we can pad uniformly.
+	maxWidth := 0
+	for _, cl := range contentLines {
+		if w := lipgloss.Width(cl); w > maxWidth {
+			maxWidth = w
+		}
+	}
+
 	var b strings.Builder
 	maxLines := len(contentLines)
 	if len(scrollLines) > maxLines {
@@ -197,6 +205,10 @@ func AttachScrollbar(content, scrollbar string) string {
 		cl := ""
 		if i < len(contentLines) {
 			cl = contentLines[i]
+		}
+		// Pad content line to uniform width so scrollbar aligns vertically.
+		if pad := maxWidth - lipgloss.Width(cl); pad > 0 {
+			cl += strings.Repeat(" ", pad)
 		}
 		sl := ""
 		if i < len(scrollLines) {

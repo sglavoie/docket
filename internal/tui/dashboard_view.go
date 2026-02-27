@@ -256,18 +256,30 @@ func (m *DashboardModel) renderProjectSummarySection(width int, selected *models
 
 // renderProjectSummaryContent renders the section and status breakdown for a project.
 func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) string {
-	if len(project.Tasks) == 0 {
+	// Build status line: icon + description
+	var statusLine string
+	if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
 		if project.Description != "" {
-			return MutedStyle.Render(project.Description) + "\n\n" + MutedStyle.Render("No tasks yet.")
+			statusLine = fmt.Sprintf("%s %s — %s", icon.Emoji, icon.Label, project.Description)
+		} else {
+			statusLine = fmt.Sprintf("%s %s", icon.Emoji, icon.Label)
+		}
+	} else if project.Description != "" {
+		statusLine = project.Description
+	}
+
+	if len(project.Tasks) == 0 {
+		if statusLine != "" {
+			return MutedStyle.Render(statusLine) + "\n\n" + MutedStyle.Render("No tasks yet.")
 		}
 		return MutedStyle.Render("No tasks yet.")
 	}
 
 	var lines []string
 
-	// Show status note at the top if set
-	if project.Description != "" {
-		lines = append(lines, MutedStyle.Render(project.Description))
+	// Show status line at the top if set
+	if statusLine != "" {
+		lines = append(lines, MutedStyle.Render(statusLine))
 		lines = append(lines, "")
 	}
 
@@ -382,6 +394,18 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	maxNameWidth := 0
 	maxContextWidth := 0
 	maxStatusWidth := 0
+	// Check if any visible project has a status icon (reserves a fixed 3-col icon column)
+	hasAnyIcon := false
+	for _, p := range visible {
+		if p.StatusIconEmoji() != "" {
+			hasAnyIcon = true
+			break
+		}
+	}
+	iconColWidth := 0 // visual columns reserved for icon column
+	if hasAnyIcon {
+		iconColWidth = 3 // 2-col emoji + 1 space
+	}
 	for _, p := range visible {
 		nameStr := p.Name
 		if p.ID == m.config.CurrentProject {
@@ -402,10 +426,25 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 	}
 
+	// Calculate max visible projects (needed early to know if scrollbar appears).
+	cardOverhead := 2
+	headerLines := 1
+	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
+	if narrowMode {
+		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
+	}
+	if maxVisible < DashboardMinVisibleProjects {
+		maxVisible = 3
+	}
+
 	// Clamp column widths to fit available row width (wide mode only).
+	// Reserve 1 column for the scrollbar when scrolling is needed.
 	rowWidth := cardWidth - 4
+	if len(visible) > maxVisible {
+		rowWidth--
+	}
 	if !narrowMode {
-		fixedCols := 20
+		fixedCols := 20 + iconColWidth
 		if maxStatusWidth > 0 {
 			fixedCols += 2 + maxStatusWidth
 		}
@@ -429,17 +468,6 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 	}
 
-	// Calculate max visible projects
-	cardOverhead := 2
-	headerLines := 1
-	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
-	if narrowMode {
-		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
-	}
-	if maxVisible < DashboardMinVisibleProjects {
-		maxVisible = 3
-	}
-
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 	if scrollOffset > len(visible)-maxVisible {
 		scrollOffset = len(visible) - maxVisible
@@ -450,7 +478,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 
 	// Column header row
 	if !narrowMode {
-		prefix := strings.Repeat(" ", 5)
+		prefix := strings.Repeat(" ", 5+iconColWidth)
 		namePad := strings.Repeat(" ", maxNameWidth)
 		ctxPad := ""
 		if showContext && maxContextWidth > 0 {
@@ -513,6 +541,16 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
 		}
 
+		// Build icon column (fixed visual width, separate from name)
+		iconRendered := ""
+		if hasAnyIcon {
+			if emoji := p.StatusIconEmoji(); emoji != "" {
+				iconRendered = emoji + " "
+			} else {
+				iconRendered = strings.Repeat(" ", iconColWidth)
+			}
+		}
+
 		// Build the name string, padded/truncated to max width
 		nameRaw := p.Name
 		if p.ID == m.config.CurrentProject {
@@ -539,7 +577,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if namePadding < 0 {
 			namePadding = 0
 		}
-		nameRendered := style.Render(displayName) + currentMarker + strings.Repeat(" ", namePadding)
+		nameRendered := iconRendered + style.Render(displayName) + currentMarker + strings.Repeat(" ", namePadding)
 
 		// Context badge, padded/truncated
 		contextRendered := ""
@@ -607,21 +645,30 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			}
 		}
 
+		// Maximum visual width for content (rowWidth minus cursor prefix from RenderSelectableRow)
+		maxContentWidth := rowWidth - 3
+
 		if narrowMode {
 			line1Content := fmt.Sprintf("%s%s %s", numberPrefix, nameRendered, contextRendered)
-			line1 := RenderSelectableRow(selected, false, false, m.cursorFlash, line1Content, cardWidth-4)
+			line1 := RenderSelectableRow(selected, false, false, m.cursorFlash, line1Content, rowWidth)
 			rowBuilder.WriteString(line1)
 			rowBuilder.WriteString("\n")
 
 			statsLine := fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("Active: %d  Total: %d", active, total)))
+			appendIfFits := func(badge string) {
+				candidate := statsLine + "  " + badge
+				if lipgloss.Width(candidate) <= rowWidth {
+					statsLine = candidate
+				}
+			}
 			if noteCount > 0 {
-				statsLine += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+				appendIfFits(MutedStyle.Render(fmt.Sprintf("📝%d", noteCount)))
 			}
 			if scoreCoverageBadge != "" {
-				statsLine += "  " + scoreCoverageBadge
+				appendIfFits(scoreCoverageBadge)
 			}
 			if statusIndicator != "" {
-				statsLine += "  " + statusIndicator
+				appendIfFits(statusIndicator)
 			}
 			rowBuilder.WriteString(statsLine)
 		} else {
@@ -629,16 +676,22 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			totalStr := MutedStyle.Render(fmt.Sprintf("%6d", total))
 
 			content := fmt.Sprintf("%s%s %s %s %s", numberPrefix, nameRendered, contextRendered, activeStr, totalStr)
+			appendIfFits := func(badge string) {
+				candidate := content + "  " + badge
+				if lipgloss.Width(candidate) <= maxContentWidth {
+					content = candidate
+				}
+			}
 			if noteCount > 0 {
-				content += "  " + MutedStyle.Render(fmt.Sprintf("📝%d", noteCount))
+				appendIfFits(MutedStyle.Render(fmt.Sprintf("📝%d", noteCount)))
 			}
 			if scoreCoverageBadge != "" {
-				content += "  " + scoreCoverageBadge
+				appendIfFits(scoreCoverageBadge)
 			}
 			if statusIndicator != "" {
-				content += "  " + statusIndicator
+				appendIfFits(statusIndicator)
 			}
-			line := RenderSelectableRow(selected, false, false, m.cursorFlash, content, cardWidth-4)
+			line := RenderSelectableRow(selected, false, false, m.cursorFlash, content, rowWidth)
 			rowBuilder.WriteString(line)
 		}
 

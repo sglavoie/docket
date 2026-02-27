@@ -15,6 +15,7 @@ var (
 	editName        string
 	editContext     string
 	editDescription string
+	editStatusIcon  string
 )
 
 var projectEditCmd = &cobra.Command{
@@ -29,7 +30,8 @@ Examples:
   tt project edit --name "New Name"
   tt project edit --context work
   tt project edit my-project --description "Updated description"
-  tt project edit --name "New Name" --context personal`,
+  tt project edit --name "New Name" --context personal
+  tt project edit --status-icon wip`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runProjectEdit,
 }
@@ -40,6 +42,7 @@ func init() {
 	projectEditCmd.Flags().StringVarP(&editName, "name", "n", "", "new project name")
 	projectEditCmd.Flags().StringVarP(&editContext, "context", "c", "", "new context (e.g., personal, work)")
 	projectEditCmd.Flags().StringVarP(&editDescription, "description", "d", "", "new status note")
+	projectEditCmd.Flags().StringVarP(&editStatusIcon, "status-icon", "i", "", "project status icon (e.g., wip, active, paused)")
 }
 
 func runProjectEdit(cmd *cobra.Command, args []string) error {
@@ -52,9 +55,10 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	nameChanged := cmd.Flags().Changed("name")
 	contextChanged := cmd.Flags().Changed("context")
 	descriptionChanged := cmd.Flags().Changed("description")
+	statusIconChanged := cmd.Flags().Changed("status-icon")
 
-	if !nameChanged && !contextChanged && !descriptionChanged {
-		return fmt.Errorf("no changes specified; use --name, --context, or --description")
+	if !nameChanged && !contextChanged && !descriptionChanged && !statusIconChanged {
+		return fmt.Errorf("no changes specified; use --name, --context, --description, or --status-icon")
 	}
 
 	// Validate and apply name change
@@ -90,6 +94,17 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		project.Description = strings.TrimSpace(editDescription)
 	}
 
+	// Apply status icon change
+	if statusIconChanged {
+		iconKey := strings.TrimSpace(editStatusIcon)
+		if iconKey != "" {
+			if models.ProjectStatusIconByKey(iconKey) == nil {
+				return fmt.Errorf("unknown status icon '%s'; valid keys: planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived", iconKey)
+			}
+		}
+		project.StatusIcon = iconKey
+	}
+
 	// Update timestamp
 	project.UpdatedAt = time.Now()
 
@@ -110,6 +125,13 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 			fmt.Printf("  Status: %s\n", project.Description)
 		} else {
 			fmt.Printf("  Status: (cleared)\n")
+		}
+	}
+	if statusIconChanged {
+		if icon := models.ProjectStatusIconByKey(project.StatusIcon); icon != nil {
+			fmt.Printf("  Status icon: %s %s\n", icon.Emoji, icon.Label)
+		} else {
+			fmt.Printf("  Status icon: (cleared)\n")
 		}
 	}
 

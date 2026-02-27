@@ -15,6 +15,7 @@ import (
 var (
 	projectContext     string
 	projectDescription string
+	projectStatusIcon  string
 )
 
 var projectNewCmd = &cobra.Command{
@@ -25,7 +26,8 @@ var projectNewCmd = &cobra.Command{
 Examples:
   tt project new "My Project"
   tt project new "Work Tasks" --context work
-  tt project new "Side Project" --description "A cool side project"`,
+  tt project new "Side Project" --description "A cool side project"
+  tt project new "Side Project" --status-icon wip`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runProjectNew,
 }
@@ -35,6 +37,7 @@ func init() {
 
 	projectNewCmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "project context (personal or work)")
 	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
+	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (e.g., wip, active, paused)")
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {
@@ -76,6 +79,14 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	project := models.NewProject(projectID, name, projectPath)
 	project.Description = projectDescription
 	project.Context = projectContext
+
+	// Validate and apply status icon
+	if projectStatusIcon != "" {
+		if models.ProjectStatusIconByKey(projectStatusIcon) == nil {
+			return fmt.Errorf("unknown status icon '%s'; valid keys: planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived", projectStatusIcon)
+		}
+		project.StatusIcon = projectStatusIcon
+	}
 
 	// Ensure data directory exists
 	if err := cfg.EnsureDataDir(); err != nil {

@@ -12,6 +12,7 @@ type Project struct {
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
+	StatusIcon  string     `json:"status_icon,omitempty"`
 	Context     string     `json:"context"`
 	Path        string     `json:"path"`
 	CreatedAt   time.Time  `json:"created_at"`
@@ -109,6 +110,17 @@ func (p *Project) MutateTask(taskID string, fn func(*Task)) bool {
 		}
 	}
 	return false
+}
+
+// StatusIconEmoji returns the emoji for the project's status icon, or empty string if not set.
+func (p *Project) StatusIconEmoji() string {
+	if p.StatusIcon == "" {
+		return ""
+	}
+	if icon := ProjectStatusIconByKey(p.StatusIcon); icon != nil {
+		return icon.Emoji
+	}
+	return ""
 }
 
 // TogglePinned toggles the pinned status.

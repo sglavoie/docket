@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -91,6 +92,14 @@ func (m *StatusInputModel) View() string {
 	b.WriteString(MutedStyle.Render("Project: "))
 	b.WriteString(BoldStyle.Render(m.project.Name))
 	b.WriteString("\n\n")
+
+	// Show current status icon if set
+	if m.project.StatusIcon != "" {
+		if icon := models.ProjectStatusIconByKey(m.project.StatusIcon); icon != nil {
+			b.WriteString(fmt.Sprintf("%s %s", icon.Emoji, MutedStyle.Render(icon.Label)))
+			b.WriteString("\n\n")
+		}
+	}
 
 	b.WriteString(SubtitleStyle.Render("Status"))
 	b.WriteString("\n")

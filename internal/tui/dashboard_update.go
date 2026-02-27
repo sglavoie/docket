@@ -98,7 +98,7 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if CursorInBounds(m.cursor, len(visible)) {
 				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return ShowStatusInputMsg{Project: project}
+					return ShowStatusIconPickerMsg{Project: project}
 				}
 			}
 		case "D":

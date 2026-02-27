@@ -301,6 +301,26 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		return true, nil
 
+	case ShowStatusIconPickerMsg:
+		if msg.Project != nil {
+			m.showView(ViewStatusIconPicker, NewStatusIconPickerModel(msg.Project))
+		}
+		return true, nil
+
+	case StatusIconSelectedMsg:
+		m.popView() // pop icon picker
+		if msg.Project == nil {
+			return true, nil
+		}
+		if !msg.Canceled {
+			msg.Project.StatusIcon = msg.Key
+			msg.Project.UpdatedAt = time.Now()
+			_ = m.configManager.Save(m.config)
+		}
+		// Proceed to text input regardless (cancel skips icon change, not text input)
+		m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.config, m.configManager))
+		return true, nil
+
 	case StatusUpdatedMsg:
 		m.popView()
 		if m.dashboard != nil {

@@ -103,6 +103,7 @@ const (
 	ViewWorkflowDryRun
 	ViewTemplateVarFiller
 	ViewStatusInput
+	ViewStatusIconPicker
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree
