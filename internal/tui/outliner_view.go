@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -500,7 +501,19 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 		// Truncate title to fit available width
 		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators.String()), 10)
-		title := titleStyle.Render(util.Truncate(task.Title, availableWidth))
+		truncatedTitle := util.Truncate(task.Title, availableWidth)
+		var title string
+		query := strings.TrimSpace(m.SearchQuery())
+		if query != "" {
+			_, positions := fuzzy.ScoreTermsWithPositions(truncatedTitle, query)
+			if len(positions) > 0 {
+				title = HighlightText(truncatedTitle, positions, titleStyle)
+			} else {
+				title = titleStyle.Render(truncatedTitle)
+			}
+		} else {
+			title = titleStyle.Render(truncatedTitle)
+		}
 
 		line := fmt.Sprintf("%s%s%s%s%s %s %s%s",
 			cursorPrefix,

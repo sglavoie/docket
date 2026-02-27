@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -507,17 +508,31 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 	title = util.Truncate(title, maxTitleLen)
 
-	// Apply active/pinned title styling
+	// Determine base style for active/pinned
+	var baseStyle lipgloss.Style
 	if isSelected {
 		if task.Active {
-			title = ActiveStyle.Bold(true).Render(title)
+			baseStyle = ActiveStyle.Bold(true)
 		} else if task.Pinned {
-			title = BoldStyle.Foreground(ColorSuccess).Render(title)
+			baseStyle = BoldStyle.Foreground(ColorSuccess)
 		}
 	} else if task.Active {
-		title = ActiveStyle.Render(title)
+		baseStyle = ActiveStyle
 	} else if task.Pinned {
-		title = SuccessStyle.Render(title)
+		baseStyle = SuccessStyle
+	}
+
+	// Apply search highlighting
+	query := strings.TrimSpace(m.SearchQuery())
+	if query != "" {
+		_, positions := fuzzy.ScoreTermsWithPositions(title, query)
+		if len(positions) > 0 {
+			title = HighlightText(title, positions, baseStyle)
+		} else {
+			title = baseStyle.Render(title)
+		}
+	} else {
+		title = baseStyle.Render(title)
 	}
 
 	statusStyle := GetStatusStyle(string(task.Status))

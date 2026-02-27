@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -336,13 +337,27 @@ func (m *KanbanViewModel) renderSwimlaneCellTask(node *KanbanNode, isSelected, i
 	}
 	title = util.Truncate(title, maxTitleLen)
 
-	// Apply styling
+	// Determine base style from active state
+	var baseStyle lipgloss.Style
 	if isSelected {
 		if task.Active {
-			title = ActiveStyle.Bold(true).Render(title)
+			baseStyle = ActiveStyle.Bold(true)
 		}
 	} else if task.Active {
-		title = ActiveStyle.Render(title)
+		baseStyle = ActiveStyle
+	}
+
+	// Apply search highlighting
+	query := strings.TrimSpace(m.SearchQuery())
+	if query != "" {
+		_, positions := fuzzy.ScoreTermsWithPositions(title, query)
+		if len(positions) > 0 {
+			title = HighlightText(title, positions, baseStyle)
+		} else {
+			title = baseStyle.Render(title)
+		}
+	} else {
+		title = baseStyle.Render(title)
 	}
 
 	statusStyle := GetStatusStyle(string(task.Status))
