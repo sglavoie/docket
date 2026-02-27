@@ -126,13 +126,8 @@ func (m *DashboardModel) GetHelpItems() []HelpItem {
 	if m.showArchived {
 		toggleArchiveDesc = "Show active"
 	}
-	toggleInfoDesc := "Hide info panel"
-	if !m.config.GetShowInfoPanel() {
-		toggleInfoDesc = "Show info panel"
-	}
 	overrides := map[string]string{
 		"a": toggleArchiveDesc,
-		"R": toggleInfoDesc,
 	}
 	return GetKeybindingRegistry().GetForViewWithOverrides(ViewDashboard, overrides)
 }

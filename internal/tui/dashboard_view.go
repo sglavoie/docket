@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
@@ -45,13 +46,18 @@ func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight
 	// Pre-render info section to measure its actual height
 	var infoContent string
 	bottomHeight := 0
-	showInfoPanel := m.config.GetShowInfoPanel()
-	if showInfoPanel && m.SearchQuery() == "" {
+	panelMode := m.config.GetInfoPanelMode()
+	if panelMode != config.InfoPanelOff && m.SearchQuery() == "" {
 		var selected *models.Project
 		if len(visible) > 0 && m.cursor >= 0 && m.cursor < len(visible) {
 			selected = visible[m.cursor]
 		}
-		infoContent = m.renderInfoSection(cardWidth, selected)
+		switch panelMode {
+		case config.InfoPanelInfoCards:
+			infoContent = m.renderInfoSection(cardWidth, selected)
+		case config.InfoPanelProjectSummary:
+			infoContent = m.renderProjectSummarySection(cardWidth, selected)
+		}
 		if infoContent != "" {
 			// +1 for the final line (Count gives separators), +1 for the gap newline
 			bottomHeight = strings.Count(infoContent, "\n") + 2
@@ -187,6 +193,156 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		parts = append(parts, renderCard(c.title, c.content, width, cfg))
 	}
 	return strings.Join(parts, "\n")
+}
+
+// renderProjectSummarySection renders the project summary card and alerts card.
+func (m *DashboardModel) renderProjectSummarySection(width int, selected *models.Project) string {
+	cfg := DashboardCardConfig()
+
+	numCards := 1 // Alerts always present
+	hasSummary := selected != nil
+	if hasSummary {
+		numCards++
+	}
+
+	wide := m.width >= DashboardInfoSectionWideMinWidth && numCards > 1
+	summaryCardW := width
+	alertsCardW := width
+	if wide {
+		alertsReduction := width / 10
+		summaryCardW = width - (width/numCards - alertsReduction)
+		alertsCardW = width - summaryCardW
+		if alertsCardW < MinCardWidth {
+			alertsCardW = MinCardWidth
+		}
+		if summaryCardW < MinCardWidth {
+			summaryCardW = MinCardWidth
+		}
+	}
+	alertsContentW := alertsCardW - CardBorderOverhead
+	if alertsContentW < 1 {
+		alertsContentW = 1
+	}
+
+	type card struct {
+		title   string
+		content string
+		width   int
+	}
+	var cards []card
+
+	if hasSummary {
+		summaryContent := m.renderProjectSummaryContent(selected)
+		summaryTitle := fmt.Sprintf("%s Summary", util.Truncate(selected.Name, summaryCardW-16))
+		cards = append(cards, card{title: summaryTitle, content: summaryContent, width: summaryCardW})
+	}
+
+	alertsContent := m.renderGlobalAlerts(alertsContentW)
+	cards = append(cards, card{title: "Alerts", content: alertsContent, width: alertsCardW})
+
+	if wide && len(cards) > 1 {
+		var rendered []string
+		usedWidth := 0
+		for i, c := range cards {
+			w := c.width
+			if i == len(cards)-1 {
+				w = width - usedWidth
+			}
+			usedWidth += w
+			rendered = append(rendered, renderCard(c.title, c.content, w, cfg))
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Top, rendered...)
+	}
+
+	var parts []string
+	for _, c := range cards {
+		parts = append(parts, renderCard(c.title, c.content, width, cfg))
+	}
+	return strings.Join(parts, "\n")
+}
+
+// renderProjectSummaryContent renders the section and status breakdown for a project.
+func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) string {
+	if len(project.Tasks) == 0 {
+		return MutedStyle.Render("No tasks yet.")
+	}
+
+	// Count by section and status, skipping completed/canceled tasks
+	sectionCounts := make(map[string]int)
+	statusCounts := make(map[models.TaskStatus]int)
+	var latestUpdate time.Time
+
+	for _, task := range project.Tasks {
+		if task.Status.IsComplete() {
+			continue
+		}
+		section := task.Section
+		if section == "" {
+			section = "Active"
+		}
+		sectionCounts[section]++
+		statusCounts[task.Status]++
+		if task.UpdatedAt.After(latestUpdate) {
+			latestUpdate = task.UpdatedAt
+		}
+	}
+
+	// GTD section order
+	sectionOrder := []struct {
+		key   string
+		label string
+	}{
+		{models.SectionInbox, "Inbox"},
+		{models.SectionNext, "Next"},
+		{"Active", "Active"},
+		{models.SectionWaiting, "Waiting"},
+		{models.SectionSomeday, "Someday"},
+		{models.SectionStandby, "Standby"},
+		{models.SectionReview, "Review"},
+	}
+
+	var lines []string
+	for _, s := range sectionOrder {
+		count := sectionCounts[s.key]
+		if count == 0 {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("  %-12s%d", s.label, count))
+	}
+
+	if len(lines) > 0 {
+		lines = append(lines, "")
+	}
+
+	// Status breakdown
+	statusOrder := []struct {
+		status models.TaskStatus
+		label  string
+	}{
+		{models.StatusTodo, "Todo"},
+		{models.StatusInProgress, "In Progress"},
+		{models.StatusReview, "Review"},
+		{models.StatusBlocked, "Blocked"},
+	}
+
+	for _, s := range statusOrder {
+		count := statusCounts[s.status]
+		if count == 0 {
+			continue
+		}
+		icon := s.status.Icon()
+		lines = append(lines, fmt.Sprintf("  %s %-12s%d", icon, s.label, count))
+	}
+
+	if !latestUpdate.IsZero() {
+		lines = append(lines, "")
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("  Last activity: %s", storage.FormatRelativeTime(latestUpdate))))
+	}
+
+	if len(lines) == 0 {
+		return MutedStyle.Render("No active tasks.")
+	}
+	return strings.Join(lines, "\n")
 }
 
 // projectCardTitle returns the title for the project list card.

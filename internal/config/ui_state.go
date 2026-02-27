@@ -89,13 +89,51 @@ func (c *Config) SetCycleProjectsForContext(context string, ids []string) {
 	c.ContextCycleProjects[context] = ids
 }
 
-// GetShowInfoPanel returns whether to show the info panel section on dashboard.
-// Defaults to true if not set.
-func (c *Config) GetShowInfoPanel() bool {
-	if c.ShowInfoPanel == nil {
-		return true
+// InfoPanelMode represents the dashboard info panel display mode.
+type InfoPanelMode int
+
+const (
+	InfoPanelOff            InfoPanelMode = 0
+	InfoPanelInfoCards      InfoPanelMode = 1
+	InfoPanelProjectSummary InfoPanelMode = 2
+	infoPanelModeCount                    = 3
+)
+
+// GetInfoPanelMode returns the current info panel mode.
+// If InfoPanelMode is nil, migrates from legacy ShowInfoPanel bool.
+func (c *Config) GetInfoPanelMode() InfoPanelMode {
+	if c.InfoPanelMode == nil {
+		// Migrate from legacy ShowInfoPanel
+		if c.ShowInfoPanel == nil || *c.ShowInfoPanel {
+			return InfoPanelInfoCards
+		}
+		return InfoPanelOff
 	}
-	return *c.ShowInfoPanel
+	mode := InfoPanelMode(*c.InfoPanelMode)
+	if mode < 0 || mode >= infoPanelModeCount {
+		return InfoPanelInfoCards
+	}
+	return mode
+}
+
+// SetInfoPanelMode sets the info panel mode and clears the legacy ShowInfoPanel field.
+func (c *Config) SetInfoPanelMode(mode InfoPanelMode) {
+	m := int(mode)
+	c.InfoPanelMode = &m
+	c.ShowInfoPanel = nil
+}
+
+// CycleInfoPanelMode advances to the next info panel mode and returns it.
+func (c *Config) CycleInfoPanelMode() InfoPanelMode {
+	next := (c.GetInfoPanelMode() + 1) % infoPanelModeCount
+	c.SetInfoPanelMode(next)
+	return next
+}
+
+// GetShowInfoPanel returns whether to show the info panel section on dashboard.
+// Delegates to GetInfoPanelMode for backward compatibility.
+func (c *Config) GetShowInfoPanel() bool {
+	return c.GetInfoPanelMode() != InfoPanelOff
 }
 
 // SetShowInfoPanel sets whether to show the info panel section on dashboard.

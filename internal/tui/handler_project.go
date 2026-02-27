@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -135,16 +136,18 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, defaultStatusTimeout()
 
 	case ToggleInfoPanelMsg:
-		newValue := !m.config.GetShowInfoPanel()
-		m.config.SetShowInfoPanel(newValue)
+		mode := m.config.CycleInfoPanelMode()
 		if err := m.configManager.Save(m.config); err != nil {
 			m.err = err
 			return true, nil
 		}
-		if newValue {
-			m.statusMessage = "Info panel shown"
-		} else {
+		switch mode {
+		case config.InfoPanelOff:
 			m.statusMessage = "Info panel hidden"
+		case config.InfoPanelInfoCards:
+			m.statusMessage = "Info panel: info cards"
+		case config.InfoPanelProjectSummary:
+			m.statusMessage = "Info panel: project summary"
 		}
 		return true, defaultStatusTimeout()
 

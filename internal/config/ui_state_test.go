@@ -109,6 +109,125 @@ func TestGetCycleProjectIndex_Empty(t *testing.T) {
 	}
 }
 
+func TestGetInfoPanelMode_DefaultInfoCards(t *testing.T) {
+	cfg := NewConfig()
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelInfoCards {
+		t.Errorf("expected InfoPanelInfoCards (1), got %d", mode)
+	}
+}
+
+func TestGetInfoPanelMode_LegacyFalse(t *testing.T) {
+	cfg := NewConfig()
+	f := false
+	cfg.ShowInfoPanel = &f
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelOff {
+		t.Errorf("expected InfoPanelOff (0), got %d", mode)
+	}
+}
+
+func TestGetInfoPanelMode_LegacyTrue(t *testing.T) {
+	cfg := NewConfig()
+	tr := true
+	cfg.ShowInfoPanel = &tr
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelInfoCards {
+		t.Errorf("expected InfoPanelInfoCards (1), got %d", mode)
+	}
+}
+
+func TestGetInfoPanelMode_ExplicitMode(t *testing.T) {
+	cfg := NewConfig()
+	m := int(InfoPanelProjectSummary)
+	cfg.InfoPanelMode = &m
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelProjectSummary {
+		t.Errorf("expected InfoPanelProjectSummary (2), got %d", mode)
+	}
+}
+
+func TestGetInfoPanelMode_ClampOutOfRange(t *testing.T) {
+	cfg := NewConfig()
+	m := 99
+	cfg.InfoPanelMode = &m
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelInfoCards {
+		t.Errorf("expected InfoPanelInfoCards (1) for out-of-range, got %d", mode)
+	}
+}
+
+func TestGetInfoPanelMode_ClampNegative(t *testing.T) {
+	cfg := NewConfig()
+	m := -1
+	cfg.InfoPanelMode = &m
+
+	mode := cfg.GetInfoPanelMode()
+	if mode != InfoPanelInfoCards {
+		t.Errorf("expected InfoPanelInfoCards (1) for negative, got %d", mode)
+	}
+}
+
+func TestCycleInfoPanelMode(t *testing.T) {
+	cfg := NewConfig()
+
+	// Default is InfoPanelInfoCards (1), cycle -> 2
+	mode := cfg.CycleInfoPanelMode()
+	if mode != InfoPanelProjectSummary {
+		t.Errorf("expected InfoPanelProjectSummary (2), got %d", mode)
+	}
+
+	// 2 -> 0
+	mode = cfg.CycleInfoPanelMode()
+	if mode != InfoPanelOff {
+		t.Errorf("expected InfoPanelOff (0), got %d", mode)
+	}
+
+	// 0 -> 1
+	mode = cfg.CycleInfoPanelMode()
+	if mode != InfoPanelInfoCards {
+		t.Errorf("expected InfoPanelInfoCards (1), got %d", mode)
+	}
+}
+
+func TestSetInfoPanelMode_ClearsLegacy(t *testing.T) {
+	cfg := NewConfig()
+	tr := true
+	cfg.ShowInfoPanel = &tr
+
+	cfg.SetInfoPanelMode(InfoPanelProjectSummary)
+
+	if cfg.ShowInfoPanel != nil {
+		t.Error("SetInfoPanelMode should clear legacy ShowInfoPanel")
+	}
+	if cfg.InfoPanelMode == nil || *cfg.InfoPanelMode != int(InfoPanelProjectSummary) {
+		t.Error("InfoPanelMode should be set to ProjectSummary")
+	}
+}
+
+func TestGetShowInfoPanel_DelegatesToMode(t *testing.T) {
+	cfg := NewConfig()
+	cfg.SetInfoPanelMode(InfoPanelOff)
+	if cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should return false when mode is Off")
+	}
+
+	cfg.SetInfoPanelMode(InfoPanelInfoCards)
+	if !cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should return true when mode is InfoCards")
+	}
+
+	cfg.SetInfoPanelMode(InfoPanelProjectSummary)
+	if !cfg.GetShowInfoPanel() {
+		t.Error("GetShowInfoPanel should return true when mode is ProjectSummary")
+	}
+}
+
 func TestGetShowInfoPanel_DefaultTrue(t *testing.T) {
 	cfg := NewConfig()
 

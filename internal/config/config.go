@@ -106,7 +106,8 @@ type Config struct {
 	ProjectViewStates         map[string]ProjectViewState  `json:"project_view_states,omitempty"`          // Per-project filter/sort state
 	CycleProjects             []string                     `json:"cycle_projects,omitempty"`               // Project IDs for quick cycling with ` and ~ (global, when no context filter)
 	ContextCycleProjects      map[string][]string          `json:"context_cycle_projects,omitempty"`       // Per-context cycle project IDs (context name -> project IDs)
-	ShowInfoPanel             *bool                        `json:"show_info_panel,omitempty"`              // Show info panel section on dashboard (default: true)
+	ShowInfoPanel             *bool                        `json:"show_info_panel,omitempty"`              // Legacy: show info panel section on dashboard (default: true)
+	InfoPanelMode             *int                         `json:"info_panel_mode,omitempty"`              // Info panel mode: 0=off, 1=info cards, 2=project summary
 	RecentPaletteItems        []RecentPaletteItem          `json:"recent_palette_items,omitempty"`         // Recently selected items in command palette
 	LastPaletteCategory       string                       `json:"last_palette_category,omitempty"`        // Last category filter used (e.g., ":task ")
 	PaletteSearchHistory      []string                     `json:"palette_search_history,omitempty"`       // Recent search queries in command palette
