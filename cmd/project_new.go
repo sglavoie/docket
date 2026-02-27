@@ -34,7 +34,7 @@ func init() {
 	projectCmd.AddCommand(projectNewCmd)
 
 	projectNewCmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "project context (personal or work)")
-	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project description")
+	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {

@@ -95,10 +95,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return SettingsMsg{}
 			}
 		case "S":
-			sandbox := m.config.GetSandboxProject()
-			if sandbox != nil {
+			if CursorInBounds(m.cursor, len(visible)) {
+				project := visible[m.cursor]
 				return m, func() tea.Msg {
-					return SelectProjectMsg{Project: sandbox}
+					return ShowStatusInputMsg{Project: project}
 				}
 			}
 		case "D":

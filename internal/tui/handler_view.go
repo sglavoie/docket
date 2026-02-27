@@ -295,6 +295,20 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		return true, nil
 
+	case ShowStatusInputMsg:
+		if msg.Project != nil {
+			m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.config, m.configManager))
+		}
+		return true, nil
+
+	case StatusUpdatedMsg:
+		m.popView()
+		if m.dashboard != nil {
+			m.dashboard.loadProjects()
+		}
+		m.statusMessage = "Status updated"
+		return true, defaultStatusTimeout()
+
 	case ShowDueDateOverviewMsg:
 		m.showView(ViewDueDateOverview, NewDueDateOverviewModel(m.config, m.configManager))
 		return true, nil

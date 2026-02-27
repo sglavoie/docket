@@ -119,9 +119,9 @@ func (m *ProjectPreviewModel) renderContent() string {
 	b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", p.Context)))
 	b.WriteString("\n\n")
 
-	// Description
+	// Status
 	if p.Description != "" {
-		b.WriteString(BoldStyle.Render("Description"))
+		b.WriteString(BoldStyle.Render("Status"))
 		b.WriteString("\n")
 		b.WriteString(p.Description)
 		b.WriteString("\n\n")

@@ -257,7 +257,18 @@ func (m *DashboardModel) renderProjectSummarySection(width int, selected *models
 // renderProjectSummaryContent renders the section and status breakdown for a project.
 func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) string {
 	if len(project.Tasks) == 0 {
+		if project.Description != "" {
+			return MutedStyle.Render(project.Description) + "\n\n" + MutedStyle.Render("No tasks yet.")
+		}
 		return MutedStyle.Render("No tasks yet.")
+	}
+
+	var lines []string
+
+	// Show status note at the top if set
+	if project.Description != "" {
+		lines = append(lines, MutedStyle.Render(project.Description))
+		lines = append(lines, "")
 	}
 
 	// Count by section and status, skipping completed/canceled tasks
@@ -294,7 +305,6 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 		{models.SectionReview, "Review"},
 	}
 
-	var lines []string
 	for _, s := range sectionOrder {
 		count := sectionCounts[s.key]
 		if count == 0 {

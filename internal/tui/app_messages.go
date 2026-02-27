@@ -835,6 +835,18 @@ type ShowOutlinerMsg struct {
 type CloseOutlinerMsg struct{}
 
 // =============================================================================
+// Status Input Messages
+// =============================================================================
+
+// ShowStatusInputMsg opens the status input overlay for a project.
+type ShowStatusInputMsg struct {
+	Project *models.Project
+}
+
+// StatusUpdatedMsg signals the project status was updated.
+type StatusUpdatedMsg struct{}
+
+// =============================================================================
 // Sandbox Messages
 // =============================================================================
 

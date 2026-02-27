@@ -102,6 +102,7 @@ const (
 	ViewSmartListBuilder
 	ViewWorkflowDryRun
 	ViewTemplateVarFiller
+	ViewStatusInput
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree

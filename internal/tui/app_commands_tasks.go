@@ -163,13 +163,29 @@ func (m *AppModel) projectCommands() []Command {
 		{
 			Name:        "open sandbox",
 			Description: "Open the sandbox project",
-			Shortcut:    "S",
 			Category:    CategoryProjects,
 			Aliases:     []string{"sandbox", "scratch", "scratchpad"},
 			Handler: func() tea.Msg {
 				sandbox := m.config.GetSandboxProject()
 				if sandbox != nil {
 					return SelectProjectMsg{Project: sandbox}
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "edit project status",
+			Description: "Edit status note for the selected project",
+			Shortcut:    "S",
+			Category:    CategoryProjects,
+			Views:       []ViewType{ViewDashboard},
+			Aliases:     []string{"status", "project status"},
+			Handler: func() tea.Msg {
+				if m.dashboard != nil {
+					visible := m.dashboard.visibleProjects()
+					if CursorInBounds(m.dashboard.cursor, len(visible)) {
+						return ShowStatusInputMsg{Project: visible[m.dashboard.cursor]}
+					}
 				}
 				return nil
 			},
