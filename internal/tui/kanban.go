@@ -224,10 +224,15 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 
 	// Load column toggles from config
 	var kanbanToggles map[string]bool
+	var kanbanPriorityMode string
 	if cfg != nil && project != nil {
 		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
 			kanbanToggles = vs.KanbanColumnToggles
+			kanbanPriorityMode = vs.KanbanPriorityMode
 		}
+	}
+	if kanbanPriorityMode == "" && cfg != nil {
+		kanbanPriorityMode = cfg.KanbanPriorityMode
 	}
 
 	m := &KanbanViewModel{
@@ -246,7 +251,7 @@ func NewKanbanViewModel(project *models.Project, cfg *config.Config, cfgManager 
 		columnSort:        make(map[string]SortField),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		tabs:              TabState{Names: kanbanTabNames},
-		columnConfig:      NewColumnConfig(kanbanToggles, DefaultKanbanColumns),
+		columnConfig:      NewColumnConfig(kanbanToggles, cfg.KanbanDefaultColumns, DefaultKanbanColumns, kanbanPriorityMode),
 	}
 
 	m.InitSearchInput("Search tasks...", 100, 40)

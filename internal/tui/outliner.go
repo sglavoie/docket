@@ -76,10 +76,15 @@ func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *config.Manager) *OutlinerModel {
 	// Load column toggles from config
 	var outlinerToggles map[string]bool
+	var outlinerPriorityMode string
 	if cfg != nil && project != nil {
 		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
 			outlinerToggles = vs.OutlinerColumnToggles
+			outlinerPriorityMode = vs.OutlinerPriorityMode
 		}
+	}
+	if outlinerPriorityMode == "" && cfg != nil {
+		outlinerPriorityMode = cfg.OutlinerPriorityMode
 	}
 
 	m := &OutlinerModel{
@@ -92,7 +97,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
-		columnConfig:      NewColumnConfig(outlinerToggles, DefaultOutlinerColumns),
+		columnConfig:      NewColumnConfig(outlinerToggles, cfg.OutlinerDefaultColumns, DefaultOutlinerColumns, outlinerPriorityMode),
 	}
 	// Seed default collapsed sections from config
 	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {

@@ -206,9 +206,14 @@ func (m *ProjectTreeModel) clearActiveSavedView() {
 // NewProjectTreeModel creates a new project tree model.
 func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *config.Manager) *ProjectTreeModel {
 	var treeToggles map[string]bool
+	var treePriorityMode string
 	if cfg != nil {
 		if vs, ok := cfg.ProjectViewStates[project.ID]; ok {
 			treeToggles = vs.TreeColumnToggles
+			treePriorityMode = vs.TreePriorityMode
+		}
+		if treePriorityMode == "" {
+			treePriorityMode = cfg.TreePriorityMode
 		}
 	}
 	m := &ProjectTreeModel{
@@ -219,7 +224,7 @@ func NewProjectTreeModel(project *models.Project, cfg *config.Config, manager *c
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
 		filterBar:         NewFilterBarComponent(),
 		sidebar:           NewSidebarComponent(),
-		columnConfig:      NewColumnConfig(treeToggles, DefaultTreeColumns),
+		columnConfig:      NewColumnConfig(treeToggles, cfg.TreeDefaultColumns, DefaultTreeColumns, treePriorityMode),
 	}
 	m.InitSearchInput("Search tasks...", 100, 40)
 	m.buildTree()

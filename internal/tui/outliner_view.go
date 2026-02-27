@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -371,8 +372,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		// Build inline indicators reusing existing helpers
 		var indicators strings.Builder
 
-		// Priority badge (only for high/medium)
-		if m.columnConfig.IsVisible(ColPriority) && task.Priority <= 2 {
+		// Short ID
+		if m.columnConfig.IsVisible(ColShortID) {
+			indicators.WriteString(" ")
+			indicators.WriteString(MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+		}
+
+		// Priority badge
+		if m.columnConfig.ShouldShowPriority(task.Priority) {
 			indicators.WriteString(" ")
 			indicators.WriteString(renderPriorityBadge(task.Priority))
 		}
@@ -383,6 +390,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 				indicators.WriteString(" ")
 				indicators.WriteString(dueStr)
 			}
+		}
+
+		// Snooze indicator
+		if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
+			snoozeStr := task.SnoozedUntil.Format("Jan 2")
+			if task.SnoozedUntil.Year() != time.Now().Year() {
+				snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+			}
+			indicators.WriteString(" ")
+			indicators.WriteString(MutedStyle.Render("zzz " + snoozeStr))
 		}
 
 		// Tag badges (first 2 tags, truncated)
@@ -443,6 +460,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 				indicators.WriteString(" ")
 				indicators.WriteString(s)
 			}
+		}
+
+		// Custom section badge
+		if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
+			csColor := m.project.GetSectionColor(task.CustomSection)
+			csStyle := GetSectionColorStyle(csColor)
+			indicators.WriteString(" ")
+			indicators.WriteString(csStyle.Render("@ " + task.CustomSection))
 		}
 
 		// Progress for parent tasks

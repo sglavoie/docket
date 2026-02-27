@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -406,8 +407,115 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		badge = MutedStyle.Render(fmt.Sprintf("+%d", node.ChildrenElsewhere))
 	}
 
-	// Calculate available space for title
-	// Layout: cursor (3) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + badge
+	// Build all post-title indicators into a single string
+	var indicators strings.Builder
+
+	// ShortID
+	if m.columnConfig.IsVisible(ColShortID) {
+		indicators.WriteString(" ")
+		indicators.WriteString(MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+	}
+
+	// Priority badge
+	if m.columnConfig.ShouldShowPriority(task.Priority) {
+		indicators.WriteString(" ")
+		indicators.WriteString(renderPriorityBadge(task.Priority))
+	}
+
+	// Due date
+	if m.columnConfig.IsVisible(ColDueDate) {
+		if dueStr := formatDueDate(task); dueStr != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(dueStr)
+		}
+	}
+
+	// Snooze
+	if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
+		snoozeStr := task.SnoozedUntil.Format("Jan 2")
+		if task.SnoozedUntil.Year() != time.Now().Year() {
+			snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+		}
+		indicators.WriteString(" ")
+		indicators.WriteString(MutedStyle.Render("zzz " + snoozeStr))
+	}
+
+	// Progress
+	if m.columnConfig.IsVisible(ColProgress) {
+		if frac := renderProgressFraction(task); frac != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(frac)
+		}
+	}
+
+	// Recurrence
+	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+		recurStr := "↻"
+		if task.Recurrence.Streak > 0 {
+			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+		}
+		indicators.WriteString(" ")
+		indicators.WriteString(MutedStyle.Render(recurStr))
+	}
+
+	// Score (only if column wide enough and profile assigned)
+	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
+		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
+			indicators.WriteString(" ")
+			indicators.WriteString(RenderScoreBadge(task, profile))
+		}
+	}
+
+	// Tags (compact: 1 tag, 6 chars)
+	if m.columnConfig.IsVisible(ColTags) {
+		if s := renderTruncatedTags(task.Tags, 1, 6); s != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(s)
+		}
+	}
+
+	// Custom section
+	if m.columnConfig.IsVisible(ColCustomSection) && task.CustomSection != "" {
+		csColor := m.Project.GetSectionColor(task.CustomSection)
+		csStyle := GetSectionColorStyle(csColor)
+		indicators.WriteString(" ")
+		indicators.WriteString(csStyle.Render("@ " + task.CustomSection))
+	}
+
+	// Dependencies
+	if m.columnConfig.IsVisible(ColDependencies) {
+		if s := renderDependencyIndicators(task, m.Project); s != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(s)
+		}
+	}
+
+	// Comments
+	if m.columnConfig.IsVisible(ColComments) {
+		if s := renderCommentIndicator(task); s != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(s)
+		}
+	}
+
+	// Attachments
+	if m.columnConfig.IsVisible(ColAttachments) {
+		if s := renderAttachmentIndicator(task); s != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(s)
+		}
+	}
+
+	// Checklist
+	if m.columnConfig.IsVisible(ColChecklist) {
+		if s := renderChecklistIndicator(task); s != "" {
+			indicators.WriteString(" ")
+			indicators.WriteString(s)
+		}
+	}
+
+	// Calculate available space for title using measured indicator width
+	// Layout: cursor (3) + checkbox (4 if multi-select) + indent + expand (1) + space (1) + status (1) + space (1) + title + indicators + badge
 	checkboxLen := 0
 	if m.multiSelectMode {
 		checkboxLen = KanbanCheckboxWidth
@@ -417,14 +525,9 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	if badge != "" {
 		badgeLen = len(fmt.Sprintf("+%d", node.ChildrenElsewhere)) + 1 // +1 for space before badge
 	}
-	scoreBadgeLen := 0
-	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
-			_ = profile // score badge takes ~7-8 chars: [S:NN] or [S:~NN]
-			scoreBadgeLen = 9
-		}
-	}
-	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen - scoreBadgeLen
+	indicatorStr := indicators.String()
+	indicatorWidth := lipgloss.Width(indicatorStr)
+	maxTitleLen := m.ColumnWidth - prefixLen - badgeLen - indicatorWidth
 	if maxTitleLen < KanbanMinTitleWidth {
 		maxTitleLen = KanbanMinTitleWidth
 	}
@@ -443,31 +546,8 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		title = SuccessStyle.Render(title)
 	}
 
-	// Score badge (only if column wide enough and profile assigned)
-	scoreBadgeStr := ""
-	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
-		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
-			scoreBadgeStr = RenderScoreBadge(task, profile)
-		}
-	}
-
 	statusStyle := GetStatusStyle(string(task.Status))
-	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title
-	if m.columnConfig.IsVisible(ColProgress) {
-		if frac := renderProgressFraction(task); frac != "" {
-			content += " " + frac
-		}
-	}
-	if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
-		recurStr := "↻"
-		if task.Recurrence.Streak > 0 {
-			recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
-		}
-		content += " " + MutedStyle.Render(recurStr)
-	}
-	if scoreBadgeStr != "" {
-		content += " " + scoreBadgeStr
-	}
+	content := checkbox + indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title + indicatorStr
 	if badge != "" {
 		content += " " + badge
 	}

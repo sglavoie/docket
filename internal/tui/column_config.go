@@ -1,5 +1,14 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/config"
+
+// Priority display mode constants.
+const (
+	PriorityModeAll         = "all"
+	PriorityModeConditional = "conditional"
+	PriorityModeHidden      = "hidden"
+)
+
 // Column name constants for configurable column visibility.
 const (
 	ColPriority      = "priority"
@@ -69,20 +78,38 @@ var DefaultOutlinerColumns = map[string]bool{
 }
 
 // ColumnConfig controls which indicator columns are visible in a view.
-// User toggles override the defaults: an explicit false hides a column that
-// would otherwise be shown, and an explicit true shows a column that would
-// otherwise be hidden.
+// Resolution chain: per-project toggles > global defaults > hardcoded defaults > true.
 type ColumnConfig struct {
-	toggles  map[string]bool
-	defaults map[string]bool
+	toggles        map[string]bool // per-project overrides
+	globalDefaults map[string]bool // global settings defaults
+	defaults       map[string]bool // hardcoded defaults
+	priorityMode   string          // "all", "conditional", "hidden" (empty = conditional)
 }
 
-// NewColumnConfig creates a ColumnConfig from user toggles and a set of defaults.
-// Either argument may be nil.
-func NewColumnConfig(toggles map[string]bool, defaults map[string]bool) *ColumnConfig {
+// NewColumnConfig creates a ColumnConfig with a 3-tier resolution chain.
+// Any argument may be nil. priorityMode controls priority badge display.
+func NewColumnConfig(toggles, globalDefaults, defaults map[string]bool, priorityMode string) *ColumnConfig {
 	return &ColumnConfig{
-		toggles:  toggles,
-		defaults: defaults,
+		toggles:        toggles,
+		globalDefaults: globalDefaults,
+		defaults:       defaults,
+		priorityMode:   priorityMode,
+	}
+}
+
+// ShouldShowPriority returns whether a priority badge should be displayed for
+// the given priority level, based on the configured priority display mode.
+func (c *ColumnConfig) ShouldShowPriority(priority int) bool {
+	if c == nil {
+		return priority <= 2
+	}
+	switch c.priorityMode {
+	case PriorityModeAll:
+		return true
+	case PriorityModeHidden:
+		return false
+	default:
+		return priority <= 2
 	}
 }
 
@@ -94,6 +121,51 @@ func (c *ColumnConfig) Toggles() map[string]bool {
 	return c.toggles
 }
 
+// PriorityMode returns the current priority display mode string.
+func (c *ColumnConfig) PriorityMode() string {
+	if c == nil {
+		return PriorityModeConditional
+	}
+	if c.priorityMode == "" {
+		return PriorityModeConditional
+	}
+	return c.priorityMode
+}
+
+// resolvePriorityMode resolves the priority mode for a view, checking per-project
+// state first, then falling back to the global config default.
+// viewName must be "tree", "kanban", or "outliner".
+func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) string {
+	if cfg == nil {
+		return ""
+	}
+	if projectID != "" {
+		if vs, ok := cfg.ProjectViewStates[projectID]; ok {
+			var mode string
+			switch viewName {
+			case "tree":
+				mode = vs.TreePriorityMode
+			case "kanban":
+				mode = vs.KanbanPriorityMode
+			case "outliner":
+				mode = vs.OutlinerPriorityMode
+			}
+			if mode != "" {
+				return mode
+			}
+		}
+	}
+	switch viewName {
+	case "tree":
+		return cfg.TreePriorityMode
+	case "kanban":
+		return cfg.KanbanPriorityMode
+	case "outliner":
+		return cfg.OutlinerPriorityMode
+	}
+	return ""
+}
+
 // IsVisible returns whether the named column should be rendered.
 // User toggles take precedence over defaults. If neither map contains the
 // column, it is visible by default.
@@ -103,6 +175,11 @@ func (c *ColumnConfig) IsVisible(col string) bool {
 	}
 	if c.toggles != nil {
 		if v, ok := c.toggles[col]; ok {
+			return v
+		}
+	}
+	if c.globalDefaults != nil {
+		if v, ok := c.globalDefaults[col]; ok {
 			return v
 		}
 	}

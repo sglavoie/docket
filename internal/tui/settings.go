@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban", "Outliner"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Kanban", "Outliner"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-15, tab 5 → fields 16-22
-	tabFieldStart = []int{0, 4, 8, 12, 14, 16}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-41, tab 6 → fields 42-61
+	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 42}
 
 	// outlinerSectionNames maps toggle index (0-6) to the section key used in config.
 	// Active uses "" (empty string) since tasks with no explicit section are "Active".
@@ -29,6 +29,12 @@ var (
 
 	// defaultProjectViewValues maps cursor index to config string value.
 	defaultProjectViewValues = []string{"outliner", "project_tree", "kanban"}
+
+	// priorityModeOptions lists the display labels for priority display mode.
+	priorityModeOptions = []string{"All", "Conditional", "Hidden"}
+
+	// priorityModeValues maps cursor index to config string value.
+	priorityModeValues = []string{PriorityModeAll, PriorityModeConditional, PriorityModeHidden}
 )
 
 // tabForField returns which tab a given focusIndex belongs to.
@@ -62,12 +68,19 @@ type SettingsModel struct {
 	defaultViewCursor      int // Index into defaultProjectViewOptions
 	kanbanMaxColumnsInput  textinput.Model
 	kanbanMaxSwimlaneInput textinput.Model
-	outlinerCollapsed      [7]bool // Per-section default collapse state (indexed by outlinerSectionNames)
+	outlinerCollapsed      [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
+	treeColumnDefaults     [13]bool // Global default column visibility for tree view
+	kanbanColumnDefaults   [13]bool // Global default column visibility for kanban view
+	outlinerColumnDefaults [13]bool // Global default column visibility for outliner view
+	treePriorityMode       int      // 0=All, 1=Conditional, 2=Hidden
+	kanbanPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
+	outlinerPriorityMode   int      // 0=All, 1=Conditional, 2=Hidden
 	contexts               []string
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
 	tabs          TabState
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=maxPinnedBarItems, 12=attachmentEditor, 13=codeEditor, 14=kanbanMaxColumns, 15=kanbanMaxSwimlaneRows, 16-22=outlinerSectionToggles
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=maxPinnedBarItems, 12=attachmentEditor, 13=codeEditor, 14-26=treeColumnDefaults, 27=kanbanMaxColumns, 28=kanbanMaxSwimlaneRows, 29-41=kanbanColumnDefaults, 42-48=outlinerSectionToggles, 49-61=outlinerColumnDefaults
+	scrollOffset  int // vertical scroll offset within current tab content
 	validationErr string
 
 	width  int
@@ -181,6 +194,11 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		}
 	}
 
+	// Initialize column default toggles from config
+	treeColumnDefaults := initColumnDefaults(cfg.TreeDefaultColumns)
+	kanbanColumnDefaults := initColumnDefaults(cfg.KanbanDefaultColumns)
+	outlinerColumnDefaults := initColumnDefaults(cfg.OutlinerDefaultColumns)
+
 	// Initialize outliner collapsed toggles from config
 	var outlinerCollapsed [7]bool
 	collapsedMap := cfg.GetOutlinerCollapsedSections()
@@ -208,6 +226,12 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		kanbanMaxColumnsInput:  kanbanMaxColumnsInput,
 		kanbanMaxSwimlaneInput: kanbanMaxSwimlaneInput,
 		outlinerCollapsed:      outlinerCollapsed,
+		treeColumnDefaults:     treeColumnDefaults,
+		kanbanColumnDefaults:   kanbanColumnDefaults,
+		outlinerColumnDefaults: outlinerColumnDefaults,
+		treePriorityMode:       priorityModeToCursor(cfg.TreePriorityMode),
+		kanbanPriorityMode:     priorityModeToCursor(cfg.KanbanPriorityMode),
+		outlinerPriorityMode:   priorityModeToCursor(cfg.OutlinerPriorityMode),
 		contexts:               contexts,
 		contextCursor:          contextCursor,
 		focusIndex:             0,
@@ -260,6 +284,26 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		kanbanMaxRows, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value()))
 		m.config.KanbanMaxSwimlaneRows = &kanbanMaxRows
 
+		// Persist column default visibility
+		m.config.TreeDefaultColumns = columnDefaultsToMap(m.treeColumnDefaults)
+		m.config.KanbanDefaultColumns = columnDefaultsToMap(m.kanbanColumnDefaults)
+		m.config.OutlinerDefaultColumns = columnDefaultsToMap(m.outlinerColumnDefaults)
+
+		// Persist priority display modes (empty string = conditional, omitted from JSON)
+		m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
+		m.config.KanbanPriorityMode = priorityModeValues[m.kanbanPriorityMode]
+		m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
+		// Omit "conditional" from config (it's the default)
+		if m.config.TreePriorityMode == PriorityModeConditional {
+			m.config.TreePriorityMode = ""
+		}
+		if m.config.KanbanPriorityMode == PriorityModeConditional {
+			m.config.KanbanPriorityMode = ""
+		}
+		if m.config.OutlinerPriorityMode == PriorityModeConditional {
+			m.config.OutlinerPriorityMode = ""
+		}
+
 		// Persist outliner collapsed sections
 		collapsed := make(map[string]bool)
 		for i, name := range outlinerSectionNames {
@@ -279,6 +323,55 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 
 		return SettingsSavedMsg{}
 	}
+}
+
+// priorityModeToCursor converts a config string to cursor index.
+// Empty string defaults to 1 (Conditional).
+func priorityModeToCursor(mode string) int {
+	switch mode {
+	case PriorityModeAll:
+		return 0
+	case PriorityModeHidden:
+		return 2
+	default:
+		return 1
+	}
+}
+
+// initColumnDefaults converts a config map to a [13]bool array using AllColumns order.
+// nil map or missing keys default to true (visible).
+func initColumnDefaults(cfgMap map[string]bool) [13]bool {
+	var result [13]bool
+	for i, col := range AllColumns {
+		if cfgMap != nil {
+			if v, ok := cfgMap[col.ID]; ok {
+				result[i] = v
+				continue
+			}
+		}
+		result[i] = true // default visible
+	}
+	return result
+}
+
+// columnDefaultsToMap converts a [13]bool array back to a config map.
+// Returns nil if all columns are visible (to keep config clean).
+func columnDefaultsToMap(defaults [13]bool) map[string]bool {
+	allTrue := true
+	for _, v := range defaults {
+		if !v {
+			allTrue = false
+			break
+		}
+	}
+	if allTrue {
+		return nil
+	}
+	m := make(map[string]bool, 13)
+	for i, col := range AllColumns {
+		m[col.ID] = defaults[i]
+	}
+	return m
 }
 
 func (m *SettingsModel) HasTextInput() bool     { return true }

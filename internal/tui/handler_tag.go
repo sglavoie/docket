@@ -315,8 +315,9 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 
 	switch source {
 	case ViewProjectTree:
+		priorityMode := resolvePriorityMode(projectID, m.config, "tree")
 		if m.projectTree != nil {
-			m.projectTree.columnConfig = NewColumnConfig(toggles, DefaultTreeColumns)
+			m.projectTree.columnConfig = NewColumnConfig(toggles, m.config.TreeDefaultColumns, DefaultTreeColumns, priorityMode)
 		}
 		if projectID != "" {
 			state, _ := m.config.GetProjectViewState(projectID)
@@ -324,8 +325,9 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 			m.config.SetProjectViewState(projectID, state)
 		}
 	case ViewKanban:
+		priorityMode := resolvePriorityMode(projectID, m.config, "kanban")
 		if m.kanban != nil {
-			m.kanban.columnConfig = NewColumnConfig(toggles, DefaultKanbanColumns)
+			m.kanban.columnConfig = NewColumnConfig(toggles, m.config.KanbanDefaultColumns, DefaultKanbanColumns, priorityMode)
 			m.kanban.loadTasks()
 		}
 		if projectID != "" {
@@ -334,8 +336,9 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 			m.config.SetProjectViewState(projectID, state)
 		}
 	case ViewOutliner:
+		priorityMode := resolvePriorityMode(projectID, m.config, "outliner")
 		if m.outliner != nil {
-			m.outliner.columnConfig = NewColumnConfig(toggles, DefaultOutlinerColumns)
+			m.outliner.columnConfig = NewColumnConfig(toggles, m.config.OutlinerDefaultColumns, DefaultOutlinerColumns, priorityMode)
 			m.outliner.rebuildRows()
 		}
 		if projectID != "" {

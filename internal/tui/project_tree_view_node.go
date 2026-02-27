@@ -137,7 +137,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	}
 
 	// Priority indicator (compact)
-	if m.columnConfig.IsVisible(ColPriority) && task.Priority <= 2 {
+	if m.columnConfig.ShouldShowPriority(task.Priority) {
 		indicators += renderPriorityBadge(task.Priority) + " "
 	}
 

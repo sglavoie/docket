@@ -64,6 +64,9 @@ type ProjectViewState struct {
 	TreeColumnToggles         map[string]bool   `json:"tree_column_toggles,omitempty"`         // Per-column visibility overrides for tree view
 	KanbanColumnToggles       map[string]bool   `json:"kanban_column_toggles,omitempty"`       // Per-column visibility overrides for kanban view
 	OutlinerColumnToggles     map[string]bool   `json:"outliner_column_toggles,omitempty"`     // Per-column visibility overrides for outliner view
+	TreePriorityMode          string            `json:"tree_priority_mode,omitempty"`          // Per-project priority display mode for tree view
+	KanbanPriorityMode        string            `json:"kanban_priority_mode,omitempty"`        // Per-project priority display mode for kanban view
+	OutlinerPriorityMode      string            `json:"outliner_priority_mode,omitempty"`      // Per-project priority display mode for outliner view
 	TreeFoldState             map[string]bool   `json:"tree_fold_state,omitempty"`             // Collapsed node IDs in project tree (persists across restarts)
 	KanbanFoldState           map[string]bool   `json:"kanban_fold_state,omitempty"`           // Collapsed node IDs in kanban (persists across restarts)
 	OutlinerFoldState         map[string]bool   `json:"outliner_fold_state,omitempty"`         // Collapsed node IDs in outliner (persists across restarts)
@@ -149,6 +152,12 @@ type Config struct {
 	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
 	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
 	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
+	TreeDefaultColumns        map[string]bool              `json:"tree_default_columns,omitempty"`         // Global default column visibility for tree view
+	KanbanDefaultColumns      map[string]bool              `json:"kanban_default_columns,omitempty"`       // Global default column visibility for kanban view
+	OutlinerDefaultColumns    map[string]bool              `json:"outliner_default_columns,omitempty"`     // Global default column visibility for outliner view
+	TreePriorityMode          string                       `json:"tree_priority_mode,omitempty"`           // Global priority display mode for tree view
+	KanbanPriorityMode        string                       `json:"kanban_priority_mode,omitempty"`         // Global priority display mode for kanban view
+	OutlinerPriorityMode      string                       `json:"outliner_priority_mode,omitempty"`       // Global priority display mode for outliner view
 	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs
 }

@@ -19,11 +19,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (23 fields total: 0-22)
+			// Move focus (62 fields total: 0-61)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 23
+				m.focusIndex = (m.focusIndex + 1) % 62
 			} else {
-				m.focusIndex = (m.focusIndex + 22) % 23 // +22 is -1 mod 23
+				m.focusIndex = (m.focusIndex + 61) % 62 // +61 is -1 mod 62
 			}
 
 			// Auto-switch tab to follow focus
@@ -37,6 +37,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.blurCurrentField()
 			if handleTabCycleKey(msg.String(), &m.tabs, false, func() {
 				m.focusIndex = tabFieldStart[m.tabs.Active]
+				m.scrollOffset = 0
 				m.focusCurrentField()
 			}) {
 				return m, nil
@@ -50,10 +51,37 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusIndex == 10 {
 				m.linkedTaskJump = !m.linkedTaskJump
 			}
-			// Outliner section toggles (indices 16-22)
-			if m.focusIndex >= 16 && m.focusIndex <= 22 {
-				idx := m.focusIndex - 16
+			// Tree column defaults (indices 14-26)
+			if m.focusIndex >= 14 && m.focusIndex <= 26 {
+				idx := m.focusIndex - 14
+				if m.focusIndex == 15 { // Priority: cycle 3-way
+					m.treePriorityMode = (m.treePriorityMode + 1) % 3
+				} else {
+					m.treeColumnDefaults[idx] = !m.treeColumnDefaults[idx]
+				}
+			}
+			// Kanban column defaults (indices 29-41)
+			if m.focusIndex >= 29 && m.focusIndex <= 41 {
+				idx := m.focusIndex - 29
+				if m.focusIndex == 30 { // Priority: cycle 3-way
+					m.kanbanPriorityMode = (m.kanbanPriorityMode + 1) % 3
+				} else {
+					m.kanbanColumnDefaults[idx] = !m.kanbanColumnDefaults[idx]
+				}
+			}
+			// Outliner section toggles (indices 42-48)
+			if m.focusIndex >= 42 && m.focusIndex <= 48 {
+				idx := m.focusIndex - 42
 				m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
+			}
+			// Outliner column defaults (indices 49-61)
+			if m.focusIndex >= 49 && m.focusIndex <= 61 {
+				if m.focusIndex == 50 { // Priority: cycle 3-way
+					m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
+				} else {
+					idx := m.focusIndex - 49
+					m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
+				}
 			}
 			return m, nil
 
@@ -114,6 +142,21 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.defaultViewCursor--
 				}
 			}
+			// Cycle priority mode left
+			switch m.focusIndex {
+			case 15:
+				if m.treePriorityMode > 0 {
+					m.treePriorityMode--
+				}
+			case 30:
+				if m.kanbanPriorityMode > 0 {
+					m.kanbanPriorityMode--
+				}
+			case 50:
+				if m.outlinerPriorityMode > 0 {
+					m.outlinerPriorityMode--
+				}
+			}
 
 		case "right", "l":
 			// Cycle through contexts when on context field
@@ -127,6 +170,21 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusIndex == 3 {
 				if m.defaultViewCursor < len(defaultProjectViewOptions)-1 {
 					m.defaultViewCursor++
+				}
+			}
+			// Cycle priority mode right
+			switch m.focusIndex {
+			case 15:
+				if m.treePriorityMode < 2 {
+					m.treePriorityMode++
+				}
+			case 30:
+				if m.kanbanPriorityMode < 2 {
+					m.kanbanPriorityMode++
+				}
+			case 50:
+				if m.outlinerPriorityMode < 2 {
+					m.outlinerPriorityMode++
 				}
 			}
 		}
@@ -169,9 +227,9 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
 	case 13:
 		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
-	case 14:
+	case 27:
 		m.kanbanMaxColumnsInput, cmd = m.kanbanMaxColumnsInput.Update(msg)
-	case 15:
+	case 28:
 		m.kanbanMaxSwimlaneInput, cmd = m.kanbanMaxSwimlaneInput.Update(msg)
 	}
 
@@ -211,7 +269,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 14, 15:
+	case 27, 28:
 		if err := m.validateKanbanSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
@@ -249,12 +307,15 @@ func (m *SettingsModel) blurCurrentField() {
 		m.attachmentEditorInput.Blur()
 	case 13:
 		m.codeEditorInput.Blur()
-	case 14:
+	case 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26:
+		// Tree column toggle fields - no blur needed
+	case 27:
 		m.kanbanMaxColumnsInput.Blur()
-	case 15:
+	case 28:
 		m.kanbanMaxSwimlaneInput.Blur()
-	case 16, 17, 18, 19, 20, 21, 22:
-		// Toggle fields - no blur needed
+	default:
+		// Kanban column toggles (29-41), outliner section toggles (42-48),
+		// outliner column toggles (49-61) - no blur needed
 	}
 }
 
@@ -287,11 +348,14 @@ func (m *SettingsModel) focusCurrentField() {
 		m.attachmentEditorInput.Focus()
 	case 13:
 		m.codeEditorInput.Focus()
-	case 14:
+	case 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26:
+		// Tree column toggle fields - no focus needed
+	case 27:
 		m.kanbanMaxColumnsInput.Focus()
-	case 15:
+	case 28:
 		m.kanbanMaxSwimlaneInput.Focus()
-	case 16, 17, 18, 19, 20, 21, 22:
-		// Toggle fields - no focus needed
+	default:
+		// Kanban column toggles (29-41), outliner section toggles (42-48),
+		// outliner column toggles (49-61) - no focus needed
 	}
 }
