@@ -165,6 +165,21 @@ func (m *SettingsModel) validateCodeEditor() error {
 	return m.validateEditorCommand(editor)
 }
 
+func (m *SettingsModel) validateMaxPinnedBarItems() error {
+	value := strings.TrimSpace(m.maxPinnedInput.Value())
+	if value == "" {
+		return fmt.Errorf("bar limit is required")
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("must be a number")
+	}
+	if n < 0 || n > 20 {
+		return fmt.Errorf("must be 0-20")
+	}
+	return nil
+}
+
 func (m *SettingsModel) validateKanbanSettings() error {
 	colsStr := strings.TrimSpace(m.kanbanMaxColumnsInput.Value())
 	if colsStr == "" {

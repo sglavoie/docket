@@ -14,8 +14,8 @@ import (
 var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Kanban", "Outliner"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-10, tab 3 → fields 11-12, tab 4 → fields 13-14, tab 5 → fields 15-21
-	tabFieldStart = []int{0, 4, 8, 11, 13, 15}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-15, tab 5 → fields 16-22
+	tabFieldStart = []int{0, 4, 8, 12, 14, 16}
 
 	// outlinerSectionNames maps toggle index (0-6) to the section key used in config.
 	// Active uses "" (empty string) since tasks with no explicit section are "Active".
@@ -56,6 +56,7 @@ type SettingsModel struct {
 	recentActivityInput    textinput.Model
 	recentActivityShowAll  bool // Whether to show completed tasks in recent activity by default
 	linkedTaskJump         bool // Whether to jump to new task after linked creation
+	maxPinnedInput         textinput.Model
 	attachmentEditorInput  textinput.Model
 	codeEditorInput        textinput.Model
 	defaultViewCursor      int // Index into defaultProjectViewOptions
@@ -66,7 +67,7 @@ type SettingsModel struct {
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
 	tabs          TabState
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=attachmentEditor, 12=codeEditor, 13=kanbanMaxColumns, 14=kanbanMaxSwimlaneRows, 15-21=outlinerSectionToggles
+	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=maxPinnedBarItems, 12=attachmentEditor, 13=codeEditor, 14=kanbanMaxColumns, 15=kanbanMaxSwimlaneRows, 16-22=outlinerSectionToggles
 	validationErr string
 
 	width  int
@@ -127,6 +128,12 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	recentActivityInput.CharLimit = 3
 	recentActivityInput.Width = 6
 	recentActivityInput.SetValue(strconv.Itoa(cfg.GetRecentActivityLimit()))
+
+	maxPinnedInput := textinput.New()
+	maxPinnedInput.Placeholder = strconv.Itoa(config.DefaultMaxPinnedBarItems)
+	maxPinnedInput.CharLimit = 2
+	maxPinnedInput.Width = 6
+	maxPinnedInput.SetValue(strconv.Itoa(cfg.GetMaxPinnedBarItems()))
 
 	attachmentEditorInput := textinput.New()
 	attachmentEditorInput.Placeholder = "(OS default)"
@@ -195,6 +202,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		recentActivityShowAll:  cfg.GetRecentActivityShowAll(),
 		defaultViewCursor:      defaultViewCursor,
 		linkedTaskJump:         cfg.GetLinkedTaskJumpToNew(),
+		maxPinnedInput:         maxPinnedInput,
 		attachmentEditorInput:  attachmentEditorInput,
 		codeEditorInput:        codeEditorInput,
 		kanbanMaxColumnsInput:  kanbanMaxColumnsInput,
@@ -243,6 +251,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.RecentActivityLimit = &recentActivityLimit
 		m.config.RecentActivityShowAll = &m.recentActivityShowAll
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
+		maxPinned, _ := strconv.Atoi(strings.TrimSpace(m.maxPinnedInput.Value()))
+		m.config.MaxPinnedBarItems = &maxPinned
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 		kanbanMaxCols, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxColumnsInput.Value()))

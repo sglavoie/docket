@@ -142,6 +142,7 @@ type Config struct {
 	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
 	KanbanMaxColumns          *int                         `json:"kanban_max_columns,omitempty"`           // nil=6, max visible kanban columns
 	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
+	MaxPinnedBarItems         *int                         `json:"max_pinned_bar_items,omitempty"`         // nil=5, max pinned tasks in status bar
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
 	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
