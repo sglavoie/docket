@@ -203,16 +203,9 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	title := titleStyle.Render("Project Cycle")
 
-	popupWidth := m.width - 4
-	if popupWidth < 30 {
-		popupWidth = 30
-	}
-
 	cursorStyle := lipgloss.NewStyle().Reverse(true)
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	dimBadgeStyle := MutedStyle
-
-	innerWidth := popupWidth - 4
 
 	// Build subtitle: context indicator + selection count
 	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
@@ -247,6 +240,31 @@ func (m *AppModel) renderProjectCyclePopup() string {
 			maxCountWidth = w
 		}
 	}
+
+	// Calculate ideal width from content
+	maxNameLen := 0
+	for _, item := range m.projectCycleItems {
+		if len(item.Project.Name) > maxNameLen {
+			maxNameLen = len(item.Project.Name)
+		}
+	}
+	// badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count + border/padding(4)
+	idealWidth := 1 + 1 + 3 + 1 + maxNameLen + 2 + maxCountWidth + 4
+	// Footer text must fit within the border: "╰─ " + footer + " ─╯" = 5 + footerLen
+	footerText := "1-9 jump · space toggle · p pin · enter go · esc close"
+	minWidth := lipgloss.Width(footerText) + 6
+	popupWidth := idealWidth
+	if popupWidth < minWidth {
+		popupWidth = minWidth
+	}
+	if popupWidth > 60 {
+		popupWidth = 60
+	}
+	if popupWidth > m.width-4 {
+		popupWidth = m.width - 4
+	}
+
+	innerWidth := popupWidth - 4
 
 	var contentLines []string
 	contentLines = append(contentLines, subtitle)
