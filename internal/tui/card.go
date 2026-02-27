@@ -60,7 +60,7 @@ func renderOverlaySplitPane(leftContent, rightContent string, leftWidth, rightWi
 
 	// Build the split pane line by line
 	var result strings.Builder
-	sep := OverlaySplitStyle.Render("│")
+	sep := OverlaySplitStyle.Render("┃")
 
 	for i := 0; i < height; i++ {
 		// Truncate left line to exact width and pad with spaces

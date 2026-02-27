@@ -82,7 +82,7 @@ func (m *WorkflowDryRunModel) View() string {
 				Height(availableHeight).
 				Render(detailContent)
 
-			separator := SeparatorStyle.Render(strings.Repeat("│\n", availableHeight))
+			separator := SeparatorStyle.Render(strings.Repeat("┃\n", availableHeight))
 			mainContent := lipgloss.JoinHorizontal(lipgloss.Top, listPane, " ", separator, " ", detailPane)
 			b.WriteString(mainContent)
 		} else {

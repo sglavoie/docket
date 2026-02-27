@@ -195,7 +195,7 @@ func (m *OutlinerModel) renderWithSidebar() string {
 
 	sidebarContent := renderSidebarContent(m, selectedTask, sidebarWidth-SidebarContentOverhead, m.height-CardVerticalBorderOverhead)
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
-	divider := renderVerticalDivider(m.height - 2)
+	divider := renderVerticalDivider(m.height-2, m.sidebar.IsFocused())
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)
 }

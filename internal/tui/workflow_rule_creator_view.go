@@ -64,7 +64,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 			Render(m.renderPreviewPane(previewWidth))
 
 		// Full-height separator
-		separator := SeparatorStyle.Render(strings.Repeat("│\n", paneHeight))
+		separator := SeparatorStyle.Render(strings.Repeat("┃\n", paneHeight))
 
 		mainContent = lipgloss.JoinHorizontal(lipgloss.Top, editorPane, " ", separator, " ", previewPane)
 	} else {

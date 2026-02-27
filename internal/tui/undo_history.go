@@ -314,7 +314,7 @@ func (m *UndoHistoryModel) View() string {
 	diffContent := m.renderDiffPreview(diffWidth, availableHeight)
 
 	// Separator
-	separator := SeparatorStyle.Render(strings.Repeat("│\n", availableHeight))
+	separator := SeparatorStyle.Render(strings.Repeat("┃\n", availableHeight))
 
 	// Join horizontally
 	row := lipgloss.JoinHorizontal(lipgloss.Top, listContent, " ", separator, " ", diffContent)

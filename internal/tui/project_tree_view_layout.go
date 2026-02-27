@@ -329,7 +329,7 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 	treeContentStyled := lipgloss.NewStyle().Width(treeWidth).Render(treeContent)
 
 	// Render vertical divider
-	divider := renderVerticalDivider(m.height - 2)
+	divider := renderVerticalDivider(m.height-2, m.sidebar.IsFocused())
 
 	// Join horizontally: tree | divider | sidebar
 	return lipgloss.JoinHorizontal(lipgloss.Top, treeContentStyled, divider, sidebarContent)

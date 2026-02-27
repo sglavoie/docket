@@ -396,7 +396,7 @@ func (m *TaskTemplatesModel) View() string {
 			Render(previewPane)
 
 		// Full-height separator
-		separator := SeparatorStyle.Render(strings.Repeat("│\n", availableHeight))
+		separator := SeparatorStyle.Render(strings.Repeat("┃\n", availableHeight))
 
 		mainContent := lipgloss.JoinHorizontal(lipgloss.Top, listPane, " ", separator, " ", previewPane)
 		b.WriteString(mainContent)

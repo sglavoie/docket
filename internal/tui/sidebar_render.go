@@ -631,16 +631,21 @@ func formatTaskAttributes(task *models.Task, maxWidth int) []string {
 }
 
 // renderVerticalDivider renders a vertical line for split-pane separation.
-func renderVerticalDivider(height int) string {
+// When focused is true, the divider uses ColorPrimary; otherwise ColorBorder.
+func renderVerticalDivider(height int, focused bool) string {
 	if height <= 0 {
 		return ""
 	}
 	var b strings.Builder
 	for i := 0; i < height; i++ {
-		b.WriteString("│")
+		b.WriteString("┃")
 		if i < height-1 {
 			b.WriteString("\n")
 		}
 	}
-	return MutedStyle.Render(b.String())
+	color := ColorBorder
+	if focused {
+		color = ColorPrimary
+	}
+	return lipgloss.NewStyle().Foreground(color).Render(b.String())
 }
