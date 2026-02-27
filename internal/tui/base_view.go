@@ -91,6 +91,7 @@ func (v *BaseView) ContentHeight() int {
 // field declarations and HasPendingPrefix() methods.
 type InteractiveViewState struct {
 	cursor        int
+	cursorFlash   bool
 	pendingPrefix string
 	statusMessage string
 	confirm       ConfirmDialog
@@ -116,6 +117,14 @@ func (s *InteractiveViewState) ClampCursorTo(length int) {
 // ResetCursor sets the cursor to position 0.
 func (s *InteractiveViewState) ResetCursor() {
 	s.cursor = 0
+}
+
+// JumpToTop resets the cursor to 0 and returns a flash cmd if the jump
+// was more than 1 position.
+func (s *InteractiveViewState) JumpToTop() tea.Cmd {
+	old := s.cursor
+	s.cursor = 0
+	return flashIfJumped(old, s.cursor, &s.cursorFlash)
 }
 
 // GetConfirmDialog returns a pointer to the embedded confirm dialog.

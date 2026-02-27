@@ -194,6 +194,12 @@ func (m *FocusBoardModel) selectMsg(task *models.Task, project *models.Project) 
 
 func (m *FocusBoardModel) ResetCursor() { m.cursor = 0 }
 
+func (m *FocusBoardModel) JumpToTop() tea.Cmd {
+	old := m.cursor
+	m.cursor = 0
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
+}
+
 func (m *FocusBoardModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	return m.handleFocusBoardFilterPrefix(key)
 }

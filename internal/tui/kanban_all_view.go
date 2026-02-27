@@ -141,10 +141,11 @@ func (m *KanbanViewModel) handleAllViewKey(key string) (bool, interface{}) {
 
 	case "G":
 		// Go to last
+		old := m.allCursor
 		if len(m.allNodes) > 0 {
 			m.allCursor = len(m.allNodes) - 1
 		}
-		return true, nil
+		return true, flashIfJumped(old, m.allCursor, &m.cursorFlash)
 
 	case "q", "esc":
 		// Exit all view
@@ -376,5 +377,9 @@ func (m *KanbanViewModel) renderAllTaskRow(node *KanbanNode, isSelected bool) st
 
 	content := indent + expandIcon + " " + statusStyle.Render(statusIcon) + " " + title + progressStr + " " + sectionBadge
 
-	return RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
+	row := RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
+	if isSelected && m.cursorFlash {
+		return CursorFlashRowStyle.Render(row)
+	}
+	return row
 }

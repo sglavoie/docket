@@ -227,7 +227,7 @@ func (m *WeeklyReviewModel) renderSectionHeader(section WeeklyReviewSection, cou
 	if m.reviewedSections[section] {
 		checkbox = "[x] "
 	}
-	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, style)
+	return renderCollapsibleHeader(checkbox+getWeeklySectionName(section), count, collapsed, isSelected, m.cursorFlash, style)
 }
 
 // renderProjectLine renders a single project line with metric badges.
@@ -270,7 +270,11 @@ func (m *WeeklyReviewModel) renderProjectLine(wp WeeklyReviewProject, section We
 	line := fmt.Sprintf("%s%s%s", cursor, name, badgeStr)
 
 	if isSelected {
-		line = SelectedStyle.Render(line)
+		selStyle := SelectedStyle
+		if m.cursorFlash {
+			selStyle = selStyle.Background(ColorFlashBg)
+		}
+		line = selStyle.Render(line)
 	}
 
 	return line
@@ -325,6 +329,7 @@ func (m *WeeklyReviewModel) renderTaskLine(dt WeeklyReviewTask, section WeeklyRe
 		HideLowPriority: true,
 		DueStr:          contextStr,
 		ShowRecurrence:  section == WeeklySectionRecurringOverview,
+		Flash:           m.cursorFlash,
 	})
 }
 

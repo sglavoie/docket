@@ -14,6 +14,9 @@ import (
 
 func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		key := msg.String()
 
@@ -51,8 +54,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.deselectAllNotes()
 				return m, nil
 			}
-			handleGotoTopPrefix(key, &m.cursor, func() { m.detailsPane.ResetScroll() })
-			return m, nil
+			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash, func() { m.detailsPane.ResetScroll() })
+			return m, cmd
 		}
 
 		// Tab toggles focus between list and details pane
@@ -101,9 +104,12 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CloseNotesMsg{} }
 		case "j", "down", "k", "up", "G", "ctrl+u", "pgup", "ctrl+d", "pgdown":
 			prev := m.cursor
-			handleListNavigation(key, &m.cursor, len(m.notes), m.height)
+			_, navCmd := handleListNavigation(key, &m.cursor, len(m.notes), m.height, &m.cursorFlash)
 			if m.cursor != prev {
 				m.detailsPane.ResetScroll()
+			}
+			if navCmd != nil {
+				return m, navCmd
 			}
 		case "g":
 			m.pendingPrefix = "g"

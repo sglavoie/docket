@@ -126,6 +126,9 @@ func (m *PriorityViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeypress(msg)
 	}

@@ -137,10 +137,11 @@ func (m *KanbanViewModel) handleCompletedViewKey(key string) (bool, interface{})
 
 	case "G":
 		// Go to last
+		old := m.completedCursor
 		if len(m.completedNodes) > 0 {
 			m.completedCursor = len(m.completedNodes) - 1
 		}
-		return true, nil
+		return true, flashIfJumped(old, m.completedCursor, &m.cursorFlash)
 
 	case "gc", "f1":
 		// Exit completed view
@@ -274,7 +275,11 @@ func (m *KanbanViewModel) renderCompletedTaskRow(node *KanbanNode, isSelected bo
 	}
 
 	if isSelected {
-		return SelectionCursorStyle.Render(">") + " " + content
+		row := SelectionCursorStyle.Render(">") + " " + content
+		if m.cursorFlash {
+			return CursorFlashRowStyle.Render(row)
+		}
+		return row
 	}
 	return "  " + content
 }

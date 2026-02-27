@@ -161,6 +161,9 @@ func (m *RecentActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 	}
@@ -233,8 +236,8 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, helpCmd(ViewRecentActivity, "Recent Activity", m.GetHelpItems())
 	}
 
-	if handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	return m, nil
@@ -373,5 +376,6 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 		PreBadges:  preBadges,
 		PostTitle:  relTime,
 		ViewWidth:  m.Width(),
+		Flash:      m.cursorFlash,
 	}.Render()
 }

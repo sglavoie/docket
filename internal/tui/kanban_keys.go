@@ -49,10 +49,13 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Handle completed view mode input
 	if m.completedViewMode {
-		if handled, _ := m.handleCompletedViewKey(key); handled {
+		if handled, cmd := m.handleCompletedViewKey(key); handled {
 			// Check for pending prefix from completed view
 			if m.pendingPrefix != "" {
 				return m, nil
+			}
+			if cmd, ok := cmd.(tea.Cmd); ok {
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -60,10 +63,13 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Handle all view mode input
 	if m.allViewMode {
-		if handled, _ := m.handleAllViewKey(key); handled {
+		if handled, cmd := m.handleAllViewKey(key); handled {
 			// Check for pending prefix from all view
 			if m.pendingPrefix != "" {
 				return m, nil
+			}
+			if cmd, ok := cmd.(tea.Cmd); ok {
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -199,7 +205,9 @@ func (m *KanbanViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		visibleCount := m.currentVisibleNodeCount()
 		if visibleCount > 0 {
 			cs := m.CurrentColumnState()
+			old := cs.Cursor
 			cs.Cursor = visibleCount - 1
+			return m, flashIfJumped(old, cs.Cursor, &m.cursorFlash)
 		}
 		return m, nil
 

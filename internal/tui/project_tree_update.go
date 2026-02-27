@@ -220,8 +220,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		switch key {
 		case "g":
 			// Go to first task (Vim-style gg)
+			old := m.cursor
 			m.cursor = 0
-			return m, nil
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 		case "o":
 			// Jump to context node's home section
 			if m.cursor < len(visible) {

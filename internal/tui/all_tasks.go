@@ -446,18 +446,20 @@ func (m *AllTasksViewModel) totalVisibleTaskCount() int {
 
 // goToNextGroup moves cursor to next group header (with wrap).
 func (m *AllTasksViewModel) goToNextGroup() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToNextSection(m.cursor, m.groupStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // goToPrevGroup moves cursor to previous group header (with wrap).
 func (m *AllTasksViewModel) goToPrevGroup() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToPrevSection(m.cursor, m.groupStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // projectCount returns the number of unique projects loaded.
@@ -481,6 +483,10 @@ func (m *AllTasksViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case AllTasksRefreshMsg:
 		m.loadAllTasks()
 		m.clampCursor()
+		return m, nil
+
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
 		return m, nil
 	}
 
@@ -564,8 +570,8 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Navigation (list mode only — kanban intercepts j/k/G/etc. above)
 	if m.layoutMode == ATLayoutList {
-		if handleListNavigation(key, &m.cursor, m.totalNavigableItems(), m.Height()) {
-			return m, nil
+		if handled, cmd := handleListNavigation(key, &m.cursor, m.totalNavigableItems(), m.Height(), &m.cursorFlash); handled {
+			return m, cmd
 		}
 	}
 

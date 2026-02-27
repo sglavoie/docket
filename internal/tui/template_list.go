@@ -53,6 +53,9 @@ func (m *TaskTemplatesModel) Init() tea.Cmd {
 
 func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case TemplateDeletedMsg:
 		if msg.Error != nil {
 			return m, func() tea.Msg { return ErrorMsg{Err: msg.Error} }
@@ -146,8 +149,8 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			handleGotoTopPrefix(msg.String(), &m.cursor, func() { m.previewScroll = 0 })
-			return m, nil
+			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash, func() { m.previewScroll = 0 })
+			return m, cmd
 		}
 
 		switch msg.String() {

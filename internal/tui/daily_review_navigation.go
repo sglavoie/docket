@@ -137,18 +137,20 @@ func (m *DailyReviewModel) getTaskAtCursor() *CrossProjectTask {
 
 // goToNextSection moves cursor to next section header (with wrap).
 func (m *DailyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // goToPrevSection moves cursor to previous section header (with wrap).
 func (m *DailyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // clampCursor ensures cursor is within valid range.

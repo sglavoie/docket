@@ -33,8 +33,8 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, m.totalTasks, m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalTasks, m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	// Common task actions (t, Z, D, e, r, y/Y/ctrl+y, ?)

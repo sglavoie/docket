@@ -145,6 +145,9 @@ func (m *ProjectFocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 	}
@@ -194,8 +197,8 @@ func (m *ProjectFocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd
 
 	tasks := m.filteredTasks()
 
-	if handleListNavigation(key, &m.cursor, len(tasks), m.ContentHeight()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, len(tasks), m.ContentHeight(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	switch key {
@@ -457,5 +460,6 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		PostTitle:  csStr + progressStr + renderInlineTags(task.Tags),
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
+		Flash:      m.cursorFlash,
 	}.Render()
 }

@@ -48,14 +48,17 @@ func (m *TaskActivityModel) SetSize(width, height int) {
 
 func (m *TaskActivityModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			handleGotoTopPrefix(msg.String(), &m.cursor)
-			return m, nil
+			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
+			return m, cmd
 		}
 
 		switch msg.String() {

@@ -65,16 +65,19 @@ func (m *KanbanViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		case "g":
 			// Go to first task in current column (vim-style gg)
 			if m.completedViewMode {
+				old := m.completedCursor
 				m.completedCursor = 0
-				return m, nil
+				return m, flashIfJumped(old, m.completedCursor, &m.cursorFlash)
 			}
 			if m.allViewMode {
+				old := m.allCursor
 				m.allCursor = 0
-				return m, nil
+				return m, flashIfJumped(old, m.allCursor, &m.cursorFlash)
 			}
 			cs := m.CurrentColumnState()
+			old := cs.Cursor
 			cs.Cursor = 0
-			return m, nil
+			return m, flashIfJumped(old, cs.Cursor, &m.cursorFlash)
 		case "c":
 			// Toggle completed view
 			m.toggleCompletedView()

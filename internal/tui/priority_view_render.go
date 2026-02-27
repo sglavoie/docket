@@ -78,6 +78,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 		Prefix:    star,
 		DueStr:    dueStr,
 		ViewWidth: boxWidth,
+		Flash:     m.cursorFlash,
 	}.Render()
 
 	// Reason line (muted, indented)
@@ -208,6 +209,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int) []string {
 			MaxTitle:   maxTitleLen,
 			PreBadges:  fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
 			PostTitle:  progressStr,
+			Flash:      m.cursorFlash,
 		}.Render()
 		lines = append(lines, line)
 		*currentIndex++
@@ -300,6 +302,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		PostTitle:  scoreBadge + csStr + progressStr + renderInlineTags(task.Tags),
 		DueStr:     dueStr,
 		ViewWidth:  m.Width(),
+		Flash:      m.cursorFlash,
 	}.Render()
 }
 

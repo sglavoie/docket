@@ -328,7 +328,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			line := fmt.Sprintf("%s%s %s (%d)", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount)
 
 			if selected {
-				line = SelectionRowStyle.Width(width).Render(line)
+				rowStyle := SelectionRowStyle
+				if m.cursorFlash {
+					rowStyle = CursorFlashRowStyle
+				}
+				line = rowStyle.Width(width).Render(line)
 			}
 
 			rowBuilder.WriteString(line)
@@ -523,7 +527,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			typeIcon, statusIcon, title, indicators.String())
 
 		if selected {
-			line = SelectionRowStyle.Width(width).Render(line)
+			rowStyle := SelectionRowStyle
+			if m.cursorFlash {
+				rowStyle = CursorFlashRowStyle
+			}
+			line = rowStyle.Width(width).Render(line)
 		}
 
 		rowBuilder.WriteString(line)

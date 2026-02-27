@@ -31,6 +31,7 @@ type LinkedTaskSelectorModel struct {
 	relations     []LinkedTaskRelation
 	filtered      []LinkedTaskRelation // filtered relations based on search
 	cursor        int
+	cursorFlash   bool
 	scrollOffset  int
 	pendingPrefix string
 }
@@ -183,6 +184,9 @@ func (m *LinkedTaskSelectorModel) Init() tea.Cmd {
 
 func (m *LinkedTaskSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeypress(msg)
 	}
@@ -197,7 +201,8 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 		prefix := m.pendingPrefix
 		m.pendingPrefix = ""
 		if key != "esc" && prefix == "g" {
-			handleGotoTopPrefix(key, &m.cursor)
+			_, cmd := handleGotoTopPrefix(key, &m.cursor, &m.cursorFlash)
+			return m, cmd
 		}
 		return m, nil
 	}
@@ -259,8 +264,8 @@ func (m *LinkedTaskSelectorModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 		return m, nil
 	}
 
-	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	return m, nil

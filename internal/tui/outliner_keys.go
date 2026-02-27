@@ -95,8 +95,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Cursor movement
-	if handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	// Perspective cycling (h/l) — analogous to ProjectTree's view-mode cycling
@@ -333,12 +333,10 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case "n":
-		m.jumpToNextSection(1)
-		return m, nil
+		return m, m.jumpToNextSection(1)
 
 	case "N":
-		m.jumpToNextSection(-1)
-		return m, nil
+		return m, m.jumpToNextSection(-1)
 
 	case "C":
 		return m, func() tea.Msg {

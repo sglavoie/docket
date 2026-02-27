@@ -38,8 +38,8 @@ type prefixDispatchView interface {
 	// selectMsg returns the tea.Msg to emit when gp (go to project) is used.
 	selectMsg(task *models.Task, project *models.Project) tea.Msg
 
-	// ResetCursor sets cursor to 0 (for gg).
-	ResetCursor()
+	// JumpToTop resets cursor to 0 and returns flash cmd (for gg).
+	JumpToTop() tea.Cmd
 
 	// handleFilterPrefix handles the F prefix key.
 	handleFilterPrefix(key string) (tea.Model, tea.Cmd)
@@ -109,8 +109,8 @@ func dispatchCommonPrefix(
 	case "g":
 		switch key {
 		case "g":
-			v.ResetCursor()
-			return v.(tea.Model), nil, true
+			cmd := v.JumpToTop()
+			return v.(tea.Model), cmd, true
 		case "p":
 			task, project := v.getTaskAndProject()
 			if task != nil {

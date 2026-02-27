@@ -87,6 +87,9 @@ func (m *TemplatePickerModel) Init() tea.Cmd {
 
 func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		// Navigation keys that work regardless of search mode
 		switch msg.String() {
@@ -124,8 +127,8 @@ func (m *TemplatePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.searchActive {
 			if m.pendingPrefix == "g" {
 				m.pendingPrefix = ""
-				handleGotoTopPrefix(msg.String(), &m.cursor, func() { m.previewScroll = 0 })
-				return m, nil
+				_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash, func() { m.previewScroll = 0 })
+				return m, cmd
 			}
 
 			switch msg.String() {

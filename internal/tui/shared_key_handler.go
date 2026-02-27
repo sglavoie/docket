@@ -20,14 +20,16 @@ type commonActionView interface {
 // any extra callbacks (e.g. resetting a scroll offset). Returns true so
 // callers can short-circuit. For views with custom g-prefix keys (e.g. gX),
 // check those first and fall through to this for the default "gg" behavior.
-func handleGotoTopPrefix(key string, cursor *int, extras ...func()) bool {
+func handleGotoTopPrefix(key string, cursor *int, flash *bool, extras ...func()) (bool, tea.Cmd) {
 	if key == "g" {
+		old := *cursor
 		*cursor = 0
 		for _, fn := range extras {
 			fn()
 		}
+		return true, flashIfJumped(old, *cursor, flash)
 	}
-	return true
+	return true, nil
 }
 
 // jumpCursor moves cursor by delta within [0, total-1].
@@ -43,35 +45,60 @@ func jumpCursor(cursor *int, total, delta int) {
 
 // handleListNavigation handles standard list navigation keys (up/k, down/j,
 // G, ctrl+u/pgup, ctrl+d/pgdown). Returns true if the key was handled.
-func handleListNavigation(key string, cursor *int, total, height int) bool {
+func handleListNavigation(key string, cursor *int, total, height int, flash *bool) (bool, tea.Cmd) {
+	old := *cursor
 	switch key {
 	case "up", "k":
 		if *cursor > 0 {
 			*cursor--
 		}
-		return true
+		return true, nil
 
 	case "down", "j":
 		if *cursor < total-1 {
 			*cursor++
 		}
-		return true
+		return true, nil
 
 	case "G":
 		if total > 0 {
 			*cursor = total - 1
 		}
-		return true
+		return true, flashIfJumped(old, *cursor, flash)
 
 	case "ctrl+u", "pgup":
 		jumpCursor(cursor, total, -HalfPage(height))
-		return true
+		return true, flashIfJumped(old, *cursor, flash)
 
 	case "ctrl+d", "pgdown":
 		jumpCursor(cursor, total, HalfPage(height))
-		return true
+		return true, flashIfJumped(old, *cursor, flash)
 	}
 
+	return false, nil
+}
+
+// flashIfJumped sets *flash to true and returns cursorFlashTimeout() if the
+// cursor moved by more than 1 position. Otherwise returns nil.
+func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
+	delta := newCursor - oldCursor
+	if delta < 0 {
+		delta = -delta
+	}
+	if delta > 1 {
+		*flash = true
+		return cursorFlashTimeout()
+	}
+	return nil
+}
+
+// handleCursorFlashClear handles CursorFlashClearMsg by clearing the flash flag.
+// Returns true if the message was handled.
+func handleCursorFlashClear(msg tea.Msg, flash *bool) bool {
+	if _, ok := msg.(CursorFlashClearMsg); ok {
+		*flash = false
+		return true
+	}
 	return false
 }
 

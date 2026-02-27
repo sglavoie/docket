@@ -41,8 +41,9 @@ type NotesViewModel struct {
 	isGlobal bool   // true when operating on global notes
 	config   interface{ GetEditor() string }
 
-	notes  []*models.Note
-	cursor int
+	notes       []*models.Note
+	cursor      int
+	cursorFlash bool
 
 	// Filter state
 	filterTags map[string]bool

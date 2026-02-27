@@ -124,9 +124,9 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 
 // jumpToNextSection moves the cursor to the next (direction=1) or previous
 // (direction=-1) section header, cycling through the list.
-func (m *OutlinerModel) jumpToNextSection(direction int) {
+func (m *OutlinerModel) jumpToNextSection(direction int) tea.Cmd {
 	if len(m.rows) == 0 {
-		return
+		return nil
 	}
 
 	// Collect section header indices
@@ -137,30 +137,40 @@ func (m *OutlinerModel) jumpToNextSection(direction int) {
 		}
 	}
 	if len(sectionIndices) == 0 {
-		return
+		return nil
 	}
 
+	old := m.cursor
 	if direction > 0 {
 		// Find the next section header after the cursor
+		found := false
 		for _, idx := range sectionIndices {
 			if idx > m.cursor {
 				m.cursor = idx
-				return
+				found = true
+				break
 			}
 		}
-		// Wrap to first section
-		m.cursor = sectionIndices[0]
+		if !found {
+			// Wrap to first section
+			m.cursor = sectionIndices[0]
+		}
 	} else {
 		// Find the previous section header before the cursor
+		found := false
 		for i := len(sectionIndices) - 1; i >= 0; i-- {
 			if sectionIndices[i] < m.cursor {
 				m.cursor = sectionIndices[i]
-				return
+				found = true
+				break
 			}
 		}
-		// Wrap to last section
-		m.cursor = sectionIndices[len(sectionIndices)-1]
+		if !found {
+			// Wrap to last section
+			m.cursor = sectionIndices[len(sectionIndices)-1]
+		}
 	}
+	return flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // getSiblings returns the sibling list for a task at the current zoom level.

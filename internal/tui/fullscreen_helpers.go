@@ -648,7 +648,7 @@ func renderGroupHeader(name string, count int, isOverdue bool) string {
 
 // renderCollapsibleHeader renders a collapsible section/group header with cursor
 // indicator, collapse toggle, name, count, and selection highlight.
-func renderCollapsibleHeader(name string, count int, collapsed, isSelected bool, style lipgloss.Style) string {
+func renderCollapsibleHeader(name string, count int, collapsed, isSelected, flash bool, style lipgloss.Style) string {
 	indicator := "▼"
 	if collapsed {
 		indicator = "▶"
@@ -660,7 +660,11 @@ func renderCollapsibleHeader(name string, count int, collapsed, isSelected bool,
 	header := fmt.Sprintf("%s%s %s (%d)", cursor, indicator, name, count)
 	styled := style.Bold(true).Render(header)
 	if isSelected {
-		return SelectedStyle.Render(styled)
+		selStyle := SelectedStyle
+		if flash {
+			selStyle = selStyle.Background(ColorFlashBg)
+		}
+		return selStyle.Render(styled)
 	}
 	return styled
 }

@@ -174,7 +174,7 @@ func (m *DailyReviewModel) renderSectionHeader(section DailyReviewSection, count
 	default:
 		style = SectionHeaderStyle
 	}
-	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, style)
+	return renderCollapsibleHeader(getSectionName(section), count, collapsed, isSelected, m.cursorFlash, style)
 }
 
 // renderTaskLine renders a single task line.
@@ -198,6 +198,7 @@ func (m *DailyReviewModel) renderTaskLine(dt CrossProjectTask, section DailyRevi
 		HideLowPriority: true,
 		DueStr:          m.sectionContextStr(dt, section),
 		ShowRecurrence:  true,
+		Flash:           m.cursorFlash,
 	})
 }
 

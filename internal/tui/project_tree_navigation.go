@@ -22,20 +22,23 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		}
 		return true, nil
 	case "G":
+		old := m.cursor
 		if len(visible) > 0 {
 			m.cursor = len(visible) - 1
 		}
-		return true, nil
+		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
 	case "n":
+		old := m.cursor
 		if pos := navigateToNextSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
 			m.cursor = pos
 		}
-		return true, nil
+		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
 	case "N":
+		old := m.cursor
 		if pos := navigateToPrevSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
 			m.cursor = pos
 		}
-		return true, nil
+		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
 	case "h":
 		if !m.sidebar.IsFocused() {
 			m.clearActiveSavedView()

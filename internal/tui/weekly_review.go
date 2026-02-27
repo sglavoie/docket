@@ -114,6 +114,9 @@ func (m *WeeklyReviewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
@@ -184,8 +187,8 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, m.totalItems, m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalItems, m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	switch key {

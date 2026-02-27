@@ -210,8 +210,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	case "g":
 		switch key {
 		case "g":
+			old := m.cursor
 			m.cursor = 0
-			return m, nil
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 		case "h":
 			if cursorTask != nil {
 				task := cursorTask

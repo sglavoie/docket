@@ -150,6 +150,7 @@ func (m *DueDateOverviewModel) renderTaskLine(dt CrossProjectTask, isSelected bo
 	return RenderCrossProjectTaskLine(dt.Task, dt.Project, nil, isSelected, m.Width(), maxTitleLen, CrossProjectTaskLineOpts{
 		MaxProjectLen: 15,
 		Prefix:        dateStr + " ",
+		Flash:         m.cursorFlash,
 	})
 }
 

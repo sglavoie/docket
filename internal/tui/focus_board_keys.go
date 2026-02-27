@@ -22,8 +22,8 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	// Activate prefix keys: F always, ,!g gated on item, mc gated on item

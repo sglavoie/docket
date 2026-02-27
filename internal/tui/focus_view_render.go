@@ -237,5 +237,6 @@ func (m *FocusViewModel) renderTaskLineWithPrefix(ft FocusTask, isSelected bool,
 		ShowTags: true,
 		Prefix:   prefix,
 		DueStr:   dueStr,
+		Flash:    m.cursorFlash,
 	})
 }

@@ -541,7 +541,11 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 		content += " " + badge
 	}
 
-	return RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
+	row := RenderCursorPrefix(isSelected, task.Active, task.Pinned) + content
+	if isSelected && m.cursorFlash {
+		return CursorFlashRowStyle.Render(row)
+	}
+	return row
 }
 
 // sectionDisplayName returns the display name for a section.

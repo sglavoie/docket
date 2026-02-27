@@ -52,6 +52,9 @@ func (m *WorkflowRulesModel) Init() tea.Cmd {
 
 func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		// Handle expanded view mode first (narrow screen only)
 		if m.expandedView && !m.isWideScreen() {
@@ -101,8 +104,8 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			handleGotoTopPrefix(msg.String(), &m.cursor)
-			return m, nil
+			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
+			return m, cmd
 		}
 
 		switch msg.String() {

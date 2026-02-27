@@ -13,6 +13,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	visible := m.visibleProjects()
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		// Handle confirmation mode
 		if m.confirm.IsActive() {
@@ -37,8 +40,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.pendingPrefix == "g" {
 			m.pendingPrefix = ""
-			handleGotoTopPrefix(msg.String(), &m.cursor)
-			return m, nil
+			_, cmd := handleGotoTopPrefix(msg.String(), &m.cursor, &m.cursorFlash)
+			return m, cmd
 		}
 
 		switch msg.String() {
@@ -57,7 +60,10 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "up", "k", "down", "j", "G", "pgup", "pgdown":
-			handleListNavigation(msg.String(), &m.cursor, len(visible), m.height)
+			_, navCmd := handleListNavigation(msg.String(), &m.cursor, len(visible), m.height, &m.cursorFlash)
+			if navCmd != nil {
+				return m, navCmd
+			}
 		case "enter":
 			if CursorInBounds(m.cursor, len(visible)) {
 				return m, func() tea.Msg {

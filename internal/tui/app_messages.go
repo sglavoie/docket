@@ -27,6 +27,9 @@ type ErrorMsg struct{ Err error }
 // StatusClearMsg clears the status message after a timeout.
 type StatusClearMsg struct{}
 
+// CursorFlashClearMsg clears the cursor flash highlight after a timeout.
+type CursorFlashClearMsg struct{}
+
 // StatusMsg sets a temporary status message (used by command palette handlers).
 type StatusMsg string
 
@@ -552,6 +555,16 @@ func statusTimeout(d time.Duration) tea.Cmd {
 // defaultStatusTimeout returns a command that clears the status message after the default timeout.
 func defaultStatusTimeout() tea.Cmd {
 	return statusTimeout(StatusUpdateTimeout)
+}
+
+// CursorFlashDuration is how long the cursor flash highlight stays visible.
+const CursorFlashDuration = 150 * time.Millisecond
+
+// cursorFlashTimeout returns a command that clears the cursor flash after CursorFlashDuration.
+func cursorFlashTimeout() tea.Cmd {
+	return tea.Tick(CursorFlashDuration, func(time.Time) tea.Msg {
+		return CursorFlashClearMsg{}
+	})
 }
 
 // =============================================================================

@@ -38,6 +38,7 @@ var (
 	ColorPrefixPopup = lipgloss.Color("226")     // Yellow for prefix popup border
 	ColorSelectedBg  = lipgloss.Color("#4c0163") // Light purple background for selections
 	ColorSelectedFg  = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
+	ColorFlashBg     = lipgloss.Color("#7b2fa0") // Brighter purple for cursor flash highlight
 )
 
 // Base styles
@@ -408,6 +409,9 @@ var (
 
 	SelectionRowStyle = lipgloss.NewStyle().
 				Background(ColorSelectedBg)
+
+	CursorFlashRowStyle = lipgloss.NewStyle().
+				Background(ColorFlashBg)
 
 	// Multi-select styles
 	SelectionStyle = lipgloss.NewStyle().
@@ -896,10 +900,14 @@ func RenderCursorPrefix(selected, active, pinned bool) string {
 // RenderSelectableRow renders a row with cursor prefix and optional full-width
 // selection highlight. Uses RenderCursorPrefix for the 3-char prefix, then
 // applies SelectionRowStyle with the given width when selected.
-func RenderSelectableRow(selected bool, active bool, pinned bool, content string, width int) string {
+func RenderSelectableRow(selected bool, active bool, pinned bool, flash bool, content string, width int) string {
 	row := RenderCursorPrefix(selected, active, pinned) + content
 	if selected {
-		return SelectionRowStyle.Width(width).Render(row)
+		style := SelectionRowStyle
+		if flash {
+			style = CursorFlashRowStyle
+		}
+		return style.Width(width).Render(row)
 	}
 	return row
 }

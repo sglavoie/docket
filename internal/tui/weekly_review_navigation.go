@@ -187,18 +187,20 @@ func (m *WeeklyReviewModel) getCurrentSectionIndex() int {
 
 // goToNextSection moves cursor to next section header (with wrap).
 func (m *WeeklyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // goToPrevSection moves cursor to previous section header (with wrap).
 func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
+	old := m.cursor
 	if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
 		m.cursor = pos
 	}
-	return m, nil
+	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 }
 
 // goToNextUnreviewed jumps to the next unreviewed section with items, crossing tabs.

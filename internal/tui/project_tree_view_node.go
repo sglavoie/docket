@@ -249,7 +249,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 
 	content := fmt.Sprintf("%s%s%s%s %s %s%s%s%s",
 		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
-	return RenderSelectableRow(selected, task.Active, task.Pinned, content, maxWidth)
+	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth)
 }
 
 // renderQuickEditNode renders a task node in quick edit mode.

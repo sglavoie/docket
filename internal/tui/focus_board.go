@@ -110,6 +110,9 @@ func (m *FocusBoardModel) Init() tea.Cmd {
 
 func (m *FocusBoardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 		inputWidth := max(msg.Width-8, 30)

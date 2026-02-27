@@ -130,6 +130,7 @@ type TaskLine struct {
 	ViewWidth       int    // total view width for due date right-alignment
 	StatusBadge     string // override computed status badge (pre-styled by caller)
 	HideLowPriority bool   // only show priority badge for priority ≤ 2
+	Flash           bool   // cursor flash highlight active
 }
 
 // CrossProjectTaskLineOpts configures optional elements for a cross-project task line.
@@ -144,6 +145,7 @@ type CrossProjectTaskLineOpts struct {
 	StatusBadge     string // pre-styled status badge override
 	DueStr          string // right-aligned context string, already styled by caller
 	HideLowPriority bool   // omit priority badge when priority > 2
+	Flash           bool   // cursor flash highlight active
 }
 
 // RenderCrossProjectTaskLine renders a standard task line for views that aggregate
@@ -201,6 +203,7 @@ func RenderCrossProjectTaskLine(
 		DueStr:          opts.DueStr,
 		ViewWidth:       width,
 		HideLowPriority: opts.HideLowPriority,
+		Flash:           opts.Flash,
 	}.Render()
 }
 
@@ -240,7 +243,11 @@ func (tl TaskLine) Render() string {
 
 	if tl.IsSelected {
 		if tl.ViewWidth > 0 {
-			line = SelectionRowStyle.Width(tl.ViewWidth).Render(line)
+			style := SelectionRowStyle
+			if tl.Flash {
+				style = CursorFlashRowStyle
+			}
+			line = style.Width(tl.ViewWidth).Render(line)
 		} else {
 			line = SelectedStyle.Render(line)
 		}

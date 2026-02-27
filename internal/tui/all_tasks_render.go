@@ -147,7 +147,7 @@ var AllTasksNavigationPrefixHints = []PrefixHint{
 
 // renderGroupHeader renders a group header with task count and collapse indicator.
 func (m *AllTasksViewModel) renderGroupHeader(name string, count int, collapsed bool, isSelected bool) string {
-	return renderCollapsibleHeader(name, count, collapsed, isSelected, SectionHeaderStyle)
+	return renderCollapsibleHeader(name, count, collapsed, isSelected, m.cursorFlash, SectionHeaderStyle)
 }
 
 // renderTaskLine renders a single task line.
@@ -175,6 +175,7 @@ func (m *AllTasksViewModel) renderTaskLine(item CrossProjectTask, isSelected boo
 		MaxProjectLen: 15,
 		Prefix:        checkbox,
 		DueStr:        dueStr,
+		Flash:         m.cursorFlash,
 	})
 }
 

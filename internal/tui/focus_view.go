@@ -354,6 +354,9 @@ func (m *FocusViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 
@@ -394,8 +397,8 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Navigation
-	if handleListNavigation(key, &m.cursor, len(m.filtered), m.Height()) {
-		return m, nil
+	if handled, cmd := handleListNavigation(key, &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	switch key {

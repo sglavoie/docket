@@ -378,6 +378,9 @@ func (m *OutlinerModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
 	case tea.KeyMsg:
 		return m.handleKeyMsg(msg)
 	case outlinerRefreshMsg:
