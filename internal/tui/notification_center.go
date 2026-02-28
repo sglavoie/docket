@@ -20,11 +20,12 @@ var (
 
 // alertCenterItem is a flattened item for cursor-based navigation.
 type alertCenterItem struct {
-	isHeader bool   // true for group headers (not selectable)
-	group    int    // index into snapshot.Groups
-	alert    int    // index into group.Alerts (-1 for headers)
-	label    string // pre-rendered display text (title only for alerts)
-	details  string // reasoning/context appended after title
+	isHeader  bool   // true for group headers (not selectable)
+	group     int    // index into the active snapshot's Groups
+	alert     int    // index into group.Alerts (-1 for headers)
+	label     string // pre-rendered display text (title only for alerts)
+	details   string // reasoning/context appended after title
+	dismissed bool   // true if this alert is in the dismissed set (only when showDismissed)
 }
 
 // NotificationCenterModel shows proactive alerts grouped by category.
@@ -32,15 +33,20 @@ type NotificationCenterModel struct {
 	BaseView
 	InteractiveViewState
 
-	snapshot     *alerts.AlertSnapshot
-	items        []alertCenterItem // flattened items for navigation
-	expandedItem int               // index of expanded item, -1 = none
+	snapshot      *alerts.AlertSnapshot // filtered snapshot (what's normally shown)
+	rawSnapshot   *alerts.AlertSnapshot // unfiltered snapshot (includes dismissed)
+	dismissedSet  map[string]bool       // keys of currently dismissed alerts
+	showDismissed bool                  // true = show all alerts including dismissed
+	items         []alertCenterItem     // flattened items for navigation
+	expandedItem  int                   // index of expanded item, -1 = none
 }
 
 // NewNotificationCenterModel creates an alert center from the current snapshot.
-func NewNotificationCenterModel(snapshot *alerts.AlertSnapshot) *NotificationCenterModel {
+func NewNotificationCenterModel(filtered, raw *alerts.AlertSnapshot, dismissedSet map[string]bool) *NotificationCenterModel {
 	m := &NotificationCenterModel{
-		snapshot:     snapshot,
+		snapshot:     filtered,
+		rawSnapshot:  raw,
+		dismissedSet: dismissedSet,
 		expandedItem: -1,
 	}
 	m.buildItems()
@@ -54,16 +60,26 @@ func NewNotificationCenterModel(snapshot *alerts.AlertSnapshot) *NotificationCen
 	return m
 }
 
+// activeSnapshot returns the snapshot to use for rendering: raw when showing
+// dismissed alerts, filtered otherwise.
+func (m *NotificationCenterModel) activeSnapshot() *alerts.AlertSnapshot {
+	if m.showDismissed && m.rawSnapshot != nil {
+		return m.rawSnapshot
+	}
+	return m.snapshot
+}
+
 // buildItems flattens alert groups into navigable items, ordered by severity (urgent first).
 func (m *NotificationCenterModel) buildItems() {
 	m.items = nil
-	if m.snapshot == nil || len(m.snapshot.Groups) == 0 {
+	snap := m.activeSnapshot()
+	if snap == nil || len(snap.Groups) == 0 {
 		return
 	}
 
 	// Sort groups by max severity descending
-	groups := make([]alerts.AlertGroup, len(m.snapshot.Groups))
-	copy(groups, m.snapshot.Groups)
+	groups := make([]alerts.AlertGroup, len(snap.Groups))
+	copy(groups, snap.Groups)
 	sort.SliceStable(groups, func(i, j int) bool {
 		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
 	})
@@ -79,14 +95,21 @@ func (m *NotificationCenterModel) buildItems() {
 		// Individual alerts
 		for ai, a := range group.Alerts {
 			m.items = append(m.items, alertCenterItem{
-				isHeader: false,
-				group:    gi,
-				alert:    ai,
-				label:    a.Title,
-				details:  a.Details,
+				isHeader:  false,
+				group:     gi,
+				alert:     ai,
+				label:     a.Title,
+				details:   a.Details,
+				dismissed: m.showDismissed && m.dismissedSet[a.DismissalKey()],
 			})
 		}
 	}
+}
+
+// rebuildForShowDismissed switches to showing the raw snapshot and rebuilds items.
+func (m *NotificationCenterModel) rebuildForShowDismissed() {
+	m.buildItems()
+	m.clampCursor()
 }
 
 func maxSeverity(as []alerts.Alert) int {
@@ -146,6 +169,27 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case "d":
+			if a := m.selectedAlert(); a != nil {
+				key := a.DismissalKey()
+				cat := string(a.Category)
+				// If the selected alert is dismissed, un-dismiss it
+				if m.selectedItem().dismissed {
+					return m, func() tea.Msg {
+						return UndismissAlertMsg{Key: key}
+					}
+				}
+				return m, func() tea.Msg {
+					return DismissAlertMsg{Key: key, Category: cat}
+				}
+			}
+
+		case "D":
+			m.showDismissed = !m.showDismissed
+			m.buildItems()
+			m.clampCursor()
+			m.expandedItem = -1
+
 		case "enter":
 			if a := m.selectedAlert(); a != nil {
 				return m, m.navigateToAlert(*a)
@@ -178,6 +222,58 @@ func (m *NotificationCenterModel) moveUp() {
 	}
 }
 
+// selectedItem returns the currently selected item, or nil if out of bounds.
+func (m *NotificationCenterModel) selectedItem() *alertCenterItem {
+	if m.cursor < 0 || m.cursor >= len(m.items) {
+		return nil
+	}
+	return &m.items[m.cursor]
+}
+
+// clampCursor ensures the cursor is on a valid selectable item.
+func (m *NotificationCenterModel) clampCursor() {
+	if len(m.items) == 0 {
+		m.cursor = 0
+		return
+	}
+	// If current position is valid and selectable, keep it
+	if m.cursor >= 0 && m.cursor < len(m.items) && !m.items[m.cursor].isHeader {
+		return
+	}
+	// Find nearest selectable item (prefer moving up, then down)
+	start := m.cursor - 1
+	if start >= len(m.items) {
+		start = len(m.items) - 1
+	}
+	for i := start; i >= 0; i-- {
+		if !m.items[i].isHeader {
+			m.cursor = i
+			return
+		}
+	}
+	for i := 0; i < len(m.items); i++ {
+		if !m.items[i].isHeader {
+			m.cursor = i
+			return
+		}
+	}
+	m.cursor = 0
+}
+
+// sortedGroups returns a copy of the active snapshot's groups sorted by severity.
+func (m *NotificationCenterModel) sortedGroups() []alerts.AlertGroup {
+	snap := m.activeSnapshot()
+	if snap == nil {
+		return nil
+	}
+	groups := make([]alerts.AlertGroup, len(snap.Groups))
+	copy(groups, snap.Groups)
+	sort.SliceStable(groups, func(i, j int) bool {
+		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
+	})
+	return groups
+}
+
 // selectedAlert returns the currently selected alert, or nil if on a header.
 func (m *NotificationCenterModel) selectedAlert() *alerts.Alert {
 	if m.cursor < 0 || m.cursor >= len(m.items) {
@@ -187,12 +283,7 @@ func (m *NotificationCenterModel) selectedAlert() *alerts.Alert {
 	if item.isHeader {
 		return nil
 	}
-	// Re-sort groups the same way buildItems does
-	groups := make([]alerts.AlertGroup, len(m.snapshot.Groups))
-	copy(groups, m.snapshot.Groups)
-	sort.SliceStable(groups, func(i, j int) bool {
-		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
-	})
+	groups := m.sortedGroups()
 	if item.group >= len(groups) {
 		return nil
 	}
@@ -226,7 +317,15 @@ func (m *NotificationCenterModel) View() string {
 	b.WriteString("\n\n")
 
 	if len(m.items) == 0 {
-		b.WriteString(MutedStyle.Render("  No alerts — everything looks good!"))
+		if m.showDismissed {
+			b.WriteString(MutedStyle.Render("  No alerts — everything looks good!"))
+		} else {
+			msg := "  No alerts — everything looks good!"
+			if m.rawSnapshot != nil && m.rawSnapshot.TotalCount > 0 {
+				msg = fmt.Sprintf("  All alerts dismissed (%d hidden). Press D to show.", m.rawSnapshot.TotalCount)
+			}
+			b.WriteString(MutedStyle.Render(msg))
+		}
 		b.WriteString("\n\n")
 		b.WriteString(HelpStyle.Render("  Press Esc to close"))
 		return b.String()
@@ -270,6 +369,9 @@ func (m *NotificationCenterModel) View() string {
 				wrapped := wrapText(full, maxLabelWidth)
 				for li, wl := range wrapped {
 					styled := m.styleAlertLine(wl, title, details)
+					if item.dismissed {
+						styled = MutedStyle.Render(wl)
+					}
 					if li == 0 {
 						lines = append(lines, prefix+sev+styled)
 					} else {
@@ -283,6 +385,9 @@ func (m *NotificationCenterModel) View() string {
 				}
 				truncated := truncateToWidth(full, maxLabelWidth)
 				styled := m.styleAlertLine(truncated, title, details)
+				if item.dismissed {
+					styled = MutedStyle.Render(truncated)
+				}
 				lines = append(lines, prefix+sev+styled)
 			}
 		}
@@ -329,8 +434,23 @@ func (m *NotificationCenterModel) View() string {
 	b.WriteString("\n")
 
 	// Footer
-	left := HelpStyle.Render("j/k: navigate · Tab: expand · Enter: go to task · Esc: close")
-	right := MutedStyle.Render(fmt.Sprintf("%d alerts", m.snapshot.TotalCount))
+	dismissLabel := "d: dismiss"
+	if m.showDismissed {
+		if item := m.selectedItem(); item != nil && item.dismissed {
+			dismissLabel = "d: restore"
+		}
+	}
+	toggleLabel := "D: show all"
+	if m.showDismissed {
+		toggleLabel = "D: hide dismissed"
+	}
+	left := HelpStyle.Render("j/k: navigate · Tab: expand · Enter: go to task · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
+	snap := m.activeSnapshot()
+	count := 0
+	if snap != nil {
+		count = snap.TotalCount
+	}
+	right := MutedStyle.Render(fmt.Sprintf("%d alerts", count))
 	b.WriteString(renderStatusBarFooter(left, right, m.width))
 
 	return b.String()
@@ -338,11 +458,7 @@ func (m *NotificationCenterModel) View() string {
 
 // severityPrefix returns a colored severity indicator for an alert item.
 func (m *NotificationCenterModel) severityPrefix(item alertCenterItem) string {
-	groups := make([]alerts.AlertGroup, len(m.snapshot.Groups))
-	copy(groups, m.snapshot.Groups)
-	sort.SliceStable(groups, func(i, j int) bool {
-		return maxSeverity(groups[i].Alerts) > maxSeverity(groups[j].Alerts)
-	})
+	groups := m.sortedGroups()
 	if item.group >= len(groups) || item.alert >= len(groups[item.group].Alerts) {
 		return ""
 	}

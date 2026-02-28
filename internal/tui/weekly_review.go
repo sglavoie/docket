@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -89,6 +91,10 @@ type WeeklyReviewModel struct {
 	reviewedSections map[WeeklyReviewSection]bool
 	mutationCounts   map[string]int
 	showingSummary   bool
+
+	// Review completion state
+	reviewCompleted bool
+	completedAt     time.Time
 }
 
 // NewWeeklyReviewModel creates a new weekly review model.
@@ -99,6 +105,24 @@ func NewWeeklyReviewModel(cfg *config.Config, mgr *config.Manager) *WeeklyReview
 		reviewedSections:  make(map[WeeklyReviewSection]bool),
 		mutationCounts:    make(map[string]int),
 		tabs:              TabState{Names: weeklyReviewTabNames},
+	}
+	if t := cfg.GetLastWeeklyReviewAt(); t != nil {
+		tYear, tWeek := t.ISOWeek()
+		nowYear, nowWeek := time.Now().ISOWeek()
+		if tYear == nowYear && tWeek == nowWeek {
+			m.reviewCompleted = true
+			m.completedAt = *t
+			// Mark all sections as reviewed
+			allSections := []WeeklyReviewSection{
+				WeeklySectionStaleProjects, WeeklySectionInboxBacklog,
+				WeeklySectionBlockedWork, WeeklySectionOvercommitted,
+				WeeklySectionStaleTasks, WeeklySectionPriorityMismatch,
+				WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview,
+			}
+			for _, s := range allSections {
+				m.reviewedSections[s] = true
+			}
+		}
 	}
 	m.loadData()
 	return m
@@ -220,8 +244,18 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+n":
 		return m.goToNextUnreviewed()
 
-	// Mark section reviewed
+	// Toggle review completion / mark section reviewed
 	case "R":
+		if m.reviewCompleted {
+			m.reviewCompleted = false
+			m.showingSummary = false
+			for k := range m.reviewedSections {
+				delete(m.reviewedSections, k)
+			}
+			// Re-auto-review empty sections
+			m.loadData()
+			return m, func() tea.Msg { return ResetWeeklyReviewMsg{} }
+		}
 		return m.markCurrentSectionReviewed()
 
 	// Toggle active flag (task only)

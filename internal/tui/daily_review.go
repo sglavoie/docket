@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -42,6 +44,10 @@ type DailyReviewModel struct {
 	old        []CrossProjectTask
 	completed  []CrossProjectTask
 
+	// Review completion state
+	reviewCompleted bool
+	completedAt     time.Time
+
 	// Filter
 	FilterMixin
 
@@ -62,6 +68,10 @@ func NewDailyReviewModel(cfg *config.Config, mgr *config.Manager) *DailyReviewMo
 		collapsedSections: make(map[int]bool),
 		FilterMixin:       FilterMixin{filter: newFilterState()},
 		tabs:              TabState{Names: dailyReviewTabNames},
+	}
+	if t := cfg.GetLastDailyReviewAt(); t != nil && isToday(*t) {
+		m.reviewCompleted = true
+		m.completedAt = *t
 	}
 	m.initFilterMixin(&m.pendingPrefix, cfg)
 	m.loadTasks()
@@ -186,8 +196,14 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
 
-	// Mark daily review as done
+	// Toggle daily review completion
 	case "R":
+		if m.reviewCompleted {
+			m.reviewCompleted = false
+			return m, func() tea.Msg { return ResetDailyReviewMsg{} }
+		}
+		m.reviewCompleted = true
+		m.completedAt = time.Now()
 		return m, func() tea.Msg { return MarkDailyReviewDoneMsg{} }
 	}
 
@@ -303,4 +319,10 @@ func (m *DailyReviewModel) viewName() string { return "Review" }
 // GetHelpItems returns help items for this view.
 func (m *DailyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewDailyReview)
+}
+
+// isToday returns true if t falls on the current calendar day.
+func isToday(t time.Time) bool {
+	now := time.Now()
+	return t.Year() == now.Year() && t.YearDay() == now.YearDay()
 }

@@ -52,6 +52,20 @@ type AlertSnapshot struct {
 	EvaluatedAt time.Time
 }
 
+// DismissalKey returns a stable identity string for this alert, used to track
+// dismissals across sessions. The key is built from category + the most specific
+// identifier available: taskID for task-specific alerts, projectID for
+// project-level alerts, or category alone for singletons like review reminders.
+func (a Alert) DismissalKey() string {
+	if a.TaskID != "" {
+		return string(a.Category) + ":" + a.TaskID
+	}
+	if a.ProjectID != "" {
+		return string(a.Category) + ":" + a.ProjectID
+	}
+	return string(a.Category)
+}
+
 // ProjectData is a lightweight struct holding project metadata and parsed tasks,
 // used to avoid importing TUI types into the alerts package.
 type ProjectData struct {

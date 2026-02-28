@@ -14,9 +14,13 @@ func (m *DailyReviewModel) View() string {
 	var b strings.Builder
 
 	// Title
-	subtitle := "all caught up"
-	if totalCount > 0 {
+	var subtitle string
+	if m.reviewCompleted {
+		subtitle = fmt.Sprintf("completed today at %s", m.completedAt.Format("15:04"))
+	} else if totalCount > 0 {
 		subtitle = fmt.Sprintf("%d tasks across %d sections", totalCount, len(m.sectionOrder))
+	} else {
+		subtitle = "all caught up"
 	}
 	b.WriteString(renderFullscreenTitle("Review", subtitle))
 	b.WriteString("\n")
@@ -57,7 +61,11 @@ func (m *DailyReviewModel) View() string {
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
 
 	// Footer
-	left := HelpStyle.Render("h/j/k/l nav · n/N section · * active · ,s/d/b/x status · ? help")
+	reviewHint := "R: mark reviewed"
+	if m.reviewCompleted {
+		reviewHint = "R: unmark"
+	}
+	left := HelpStyle.Render("h/j/k/l nav · n/N section · " + reviewHint + " · ? help")
 	right := MutedStyle.Render(fmt.Sprintf("%d tasks", totalCount))
 	b.WriteString(renderFullscreenFooterBlock(m.statusMessage, m.err, left, right, m.width))
 

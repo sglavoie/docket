@@ -33,6 +33,16 @@ func (c *Config) SetLastWeeklyReviewAt(t time.Time) {
 	c.LastWeeklyReviewAt = &t
 }
 
+// ClearLastDailyReviewAt resets the last daily review timestamp.
+func (c *Config) ClearLastDailyReviewAt() {
+	c.LastDailyReviewAt = nil
+}
+
+// ClearLastWeeklyReviewAt resets the last weekly review timestamp.
+func (c *Config) ClearLastWeeklyReviewAt() {
+	c.LastWeeklyReviewAt = nil
+}
+
 // GetAlertDailyReviewEnabled returns whether daily review alerts are enabled. True if not set.
 func (c *Config) GetAlertDailyReviewEnabled() bool {
 	if c.AlertDailyReviewEnabled == nil {

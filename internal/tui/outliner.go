@@ -637,8 +637,11 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 		}
 	}
 
-	// Task not found — it may be inside a collapsed parent.
-	// Expand all ancestors and rebuild rows, then search again.
+	// Task not found — it may be inside a collapsed section or parent.
+	// Uncollapse the task's section and expand all ancestor nodes, then rebuild.
+	if task.Section != "" {
+		delete(m.collapsedSections, task.Section)
+	}
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
 		m.expandedNodes[ancestor.ID] = true

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -248,8 +249,10 @@ type AppModel struct {
 
 	pendingSemicolonPrefix bool
 
-	// Proactive alert snapshot (ephemeral, regenerated on navigation)
-	proactiveAlerts *alerts.AlertSnapshot
+	// Proactive alert snapshots (ephemeral, regenerated on navigation)
+	rawAlerts       *alerts.AlertSnapshot // unfiltered (before dismissal filter)
+	proactiveAlerts *alerts.AlertSnapshot // filtered (after dismissals applied)
+	dismissedSet    map[string]bool       // active dismissal keys
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -464,7 +467,8 @@ func (m *AppModel) Init() tea.Cmd {
 	return nil
 }
 
-// reevaluateAlerts loads all active projects and runs the alert engine.
+// reevaluateAlerts loads all active projects and runs the alert engine,
+// then applies the dismissal post-filter pipeline.
 func (m *AppModel) reevaluateAlerts() {
 	cfg := m.buildAlertConfig()
 	activeProjects := m.config.GetActiveProjects()
@@ -480,7 +484,76 @@ func (m *AppModel) reevaluateAlerts() {
 		})
 	}
 
-	m.proactiveAlerts = alerts.Evaluate(cfg, projectData)
+	rawSnapshot := alerts.Evaluate(cfg, projectData)
+	m.rawAlerts = rawSnapshot
+
+	// Post-filter pipeline: apply dismissals
+	dismissals := m.config.GetAlertDismissals()
+	if len(dismissals) == 0 {
+		m.dismissedSet = nil
+		m.proactiveAlerts = rawSnapshot
+		return
+	}
+
+	now := time.Now()
+
+	// Build set of active alert keys from the raw snapshot for GC
+	activeKeys := make(map[string]bool)
+	if rawSnapshot != nil {
+		for _, g := range rawSnapshot.Groups {
+			for _, a := range g.Alerts {
+				activeKeys[a.DismissalKey()] = true
+			}
+		}
+	}
+
+	// Filter dismissals: expire time-based ones, GC condition-resolved ones
+	var surviving []config.AlertDismissal
+	dismissedSet := make(map[string]bool)
+	for _, d := range dismissals {
+		if alerts.ShouldExpireDismissal(d.Category, d.DismissedAt, now) {
+			continue
+		}
+		if !activeKeys[d.Key] {
+			continue // condition resolved, GC this dismissal
+		}
+		surviving = append(surviving, d)
+		dismissedSet[d.Key] = true
+	}
+
+	// Persist if dismissal list changed
+	if len(surviving) != len(dismissals) {
+		m.config.SetAlertDismissals(surviving)
+		_ = m.configManager.Save(m.config)
+	}
+
+	m.dismissedSet = dismissedSet
+	m.proactiveAlerts = alerts.FilterDismissed(rawSnapshot, dismissedSet)
+}
+
+// refreshNotificationCenter recreates the notification center if it's the current view,
+// preserving the cursor position and showDismissed toggle state.
+func (m *AppModel) refreshNotificationCenter() {
+	if m.currentView() != ViewNotificationCenter {
+		return
+	}
+	var showDismissed bool
+	var prevCursor int
+	if v := m.views.Get(ViewNotificationCenter); v != nil {
+		if nc, ok := v.(*NotificationCenterModel); ok {
+			showDismissed = nc.showDismissed
+			prevCursor = nc.cursor
+		}
+	}
+	nc := NewNotificationCenterModel(m.proactiveAlerts, m.rawAlerts, m.dismissedSet)
+	nc.showDismissed = showDismissed
+	if showDismissed {
+		nc.rebuildForShowDismissed()
+	}
+	nc.cursor = prevCursor
+	nc.clampCursor()
+	nc.SetSize(m.width, m.height-2)
+	m.views.Register(ViewNotificationCenter, nc)
 }
 
 // buildAlertConfig creates an AlertConfig from the current config state.

@@ -297,6 +297,8 @@ func (m *WeeklyReviewModel) markCurrentSectionReviewed() (tea.Model, tea.Cmd) {
 	m.reviewedSections[section] = true
 	m.statusMessage = "Marked \"" + getWeeklySectionName(section) + "\" as reviewed"
 	if m.allSectionsReviewed() {
+		m.reviewCompleted = true
+		m.completedAt = time.Now()
 		m.showingSummary = true
 		return m, func() tea.Msg { return MarkWeeklyReviewDoneMsg{} }
 	}

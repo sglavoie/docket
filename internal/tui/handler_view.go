@@ -379,6 +379,20 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.statusMessage = "Weekly review completed"
 		return true, nil
 
+	case ResetDailyReviewMsg:
+		m.config.ClearLastDailyReviewAt()
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.statusMessage = "Daily review reset"
+		return true, nil
+
+	case ResetWeeklyReviewMsg:
+		m.config.ClearLastWeeklyReviewAt()
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.statusMessage = "Weekly review reset"
+		return true, nil
+
 	case ShowTutorMsg:
 		m.showView(ViewTutor, NewTutorModel())
 		return true, nil
@@ -737,7 +751,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowNotificationCenterMsg:
 		m.reevaluateAlerts()
-		m.showView(ViewNotificationCenter, NewNotificationCenterModel(m.proactiveAlerts))
+		m.showView(ViewNotificationCenter, NewNotificationCenterModel(m.proactiveAlerts, m.rawAlerts, m.dismissedSet))
 		return true, nil
 
 	case AlertCenterNavigateMsg:
@@ -763,6 +777,22 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.navigateToTaskInProject(nil, project)
 		return true, nil
+
+	case DismissAlertMsg:
+		m.config.DismissAlert(msg.Key, msg.Category)
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.refreshNotificationCenter()
+		m.statusMessage = "Alert dismissed"
+		return true, defaultStatusTimeout()
+
+	case UndismissAlertMsg:
+		m.config.UndismissAlert(msg.Key)
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.refreshNotificationCenter()
+		m.statusMessage = "Alert restored"
+		return true, defaultStatusTimeout()
 
 	case CloseNotificationCenterMsg:
 		m.popView()

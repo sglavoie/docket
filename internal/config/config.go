@@ -150,6 +150,7 @@ type Config struct {
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
 	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
 	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
+	AlertDismissals           []AlertDismissal             `json:"alert_dismissals,omitempty"`             // Dismissed proactive alerts
 	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
 	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
 	TreeDefaultColumns        map[string]bool              `json:"tree_default_columns,omitempty"`         // Global default column visibility for tree view
@@ -184,6 +185,14 @@ type Config struct {
 	// Proactive alert system: schedule
 	AlertDailyReviewHour *int `json:"alert_daily_review_hour,omitempty"` // nil=9 (hour 0-23)
 	AlertWeeklyReviewDay *int `json:"alert_weekly_review_day,omitempty"` // nil=1 (Monday, 0=Sunday)
+}
+
+// AlertDismissal records a user-dismissed alert so it can be suppressed until
+// it expires or the underlying condition resolves.
+type AlertDismissal struct {
+	Key         string    `json:"key"`
+	Category    string    `json:"category"`
+	DismissedAt time.Time `json:"dismissed_at"`
 }
 
 // FocusQueueItem stores a task reference for the focus queue.

@@ -619,6 +619,12 @@ type MarkDailyReviewDoneMsg struct{}
 // MarkWeeklyReviewDoneMsg signals that the user has completed their weekly review.
 type MarkWeeklyReviewDoneMsg struct{}
 
+// ResetDailyReviewMsg signals that the user wants to reset their daily review completion.
+type ResetDailyReviewMsg struct{}
+
+// ResetWeeklyReviewMsg signals that the user wants to reset their weekly review completion.
+type ResetWeeklyReviewMsg struct{}
+
 // =============================================================================
 // Focus View Messages (Show/Close Pattern)
 // =============================================================================
@@ -870,3 +876,14 @@ type ShowNotificationCenterMsg struct{}
 
 // CloseNotificationCenterMsg closes the alert center view.
 type CloseNotificationCenterMsg struct{}
+
+// DismissAlertMsg requests dismissal of a specific alert.
+type DismissAlertMsg struct {
+	Key      string
+	Category string
+}
+
+// UndismissAlertMsg requests removal of a dismissal for a specific alert.
+type UndismissAlertMsg struct {
+	Key string
+}

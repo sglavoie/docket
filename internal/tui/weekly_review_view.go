@@ -16,9 +16,13 @@ func (m *WeeklyReviewModel) View() string {
 	var b strings.Builder
 
 	// Title
-	subtitle := "all clear"
-	if totalCount > 0 {
+	var subtitle string
+	if m.reviewCompleted {
+		subtitle = fmt.Sprintf("completed %s at %s", m.completedAt.Format("Mon"), m.completedAt.Format("15:04"))
+	} else if totalCount > 0 {
 		subtitle = fmt.Sprintf("%d projects, %d tasks | %d/8 reviewed", projectCount, taskCount, m.reviewedCount())
+	} else {
+		subtitle = "all clear"
 	}
 	b.WriteString(renderFullscreenTitle("Weekly Review", subtitle))
 	b.WriteString("\n")
@@ -62,8 +66,12 @@ func (m *WeeklyReviewModel) View() string {
 	reviewed := m.reviewedCount()
 	fullRight := fmt.Sprintf("%d/8 reviewed | %d items", reviewed, totalCount)
 	shortRight := fmt.Sprintf("%d/8 reviewed", reviewed)
-	fullLeft := "h/j/k/l nav · n/N section · R reviewed · ,s/d/b/x status"
-	shortLeft := "n/N section · R reviewed · ? help"
+	reviewHint := "R: reviewed"
+	if m.reviewCompleted {
+		reviewHint = "R: unmark"
+	}
+	fullLeft := "h/j/k/l nav · n/N section · " + reviewHint + " · ,s/d/b/x status"
+	shortLeft := "n/N section · " + reviewHint + " · ? help"
 
 	rightText := fullRight
 	leftText := fullLeft
