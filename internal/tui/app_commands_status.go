@@ -54,6 +54,21 @@ func (m *AppModel) statusCommands() []Command {
 			},
 		},
 		{
+			Name:        "standby task",
+			Description: "Set task status to standby",
+			Shortcut:    ",S",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"standby", "pause task"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleStatusTransition(models.StatusStandby, visible)
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "cancel task",
 			Description: "Set task status to canceled",
 			Shortcut:    ",x",
@@ -79,6 +94,21 @@ func (m *AppModel) statusCommands() []Command {
 				if m.projectTree != nil {
 					visible := m.projectTree.visibleNodes()
 					m.projectTree.handleStatusTransition(models.StatusTodo, visible)
+				}
+				return nil
+			},
+		},
+		{
+			Name:        "review task",
+			Description: "Set task status to review",
+			Shortcut:    ",r",
+			Category:    CategoryStatus,
+			Views:       []ViewType{ViewProjectTree},
+			Aliases:     []string{"mark review", "in review"},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					visible := m.projectTree.visibleNodes()
+					m.projectTree.handleStatusTransition(models.StatusReview, visible)
 				}
 				return nil
 			},

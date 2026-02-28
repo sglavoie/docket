@@ -221,7 +221,7 @@ func (m *NotesViewModel) renderFooter() string {
 		if m.fullscreenPane {
 			zHint = "Z:exit fullscreen"
 		}
-		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+d/u: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · q: close"
+		helpText = "j/k: scroll · g/G: top/bottom · Ctrl+D/U: half page · Tab/Esc: list pane · Enter: view · e: edit · " + zHint + " · q: close"
 	} else if m.multiSelectMode {
 		helpText = "space: toggle · a: all · gX: clear · d: delete · t: tag · l: link · y: copy · V/Esc: exit multi-select"
 	} else {
@@ -345,7 +345,7 @@ func (m *NotesViewModel) GetHelpItems() []HelpItem {
 		{Key: "s", Description: "Cycle sort mode"},
 		{Key: "y", Description: "Copy title to clipboard"},
 		{Key: "Y", Description: "Copy body to clipboard"},
-		{Key: "Ctrl+y", Description: "Copy title and body to clipboard"},
+		{Key: "Ctrl+Y", Description: "Copy title and body to clipboard"},
 	}
 	if m.isGlobal {
 		items = append(items, HelpItem{Key: "m", Description: "Move note to project"})

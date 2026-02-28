@@ -203,7 +203,7 @@ func (m *TaskDetailModel) handlePriorityPrefix(key string) (tea.Model, tea.Cmd) 
 func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 	return []HelpItem{
 		{Key: "j/k", Description: "Scroll down/up", Category: "Navigation"},
-		{Key: "Ctrl+d/u", Description: "Half page down/up", Category: "Navigation"},
+		{Key: "Ctrl+D/U", Description: "Half page down/up", Category: "Navigation"},
 		{Key: "g/G", Description: "Top/bottom (g also opens glow at top)", Category: "Navigation"},
 		{Key: "o/q/Esc", Description: "Close detail view", Category: "Navigation"},
 		{Key: ",s/d/b/x/o/r", Description: "Status: start/done/block/cancel/reopen/review", Category: "Actions"},
@@ -219,6 +219,6 @@ func (m *TaskDetailModel) GetHelpItems() []HelpItem {
 		{Key: "S", Description: "Score editor", Category: "Sub-views"},
 		{Key: "y", Description: "Copy title", Category: "Clipboard"},
 		{Key: "Y", Description: "Copy description", Category: "Clipboard"},
-		{Key: "Ctrl+y", Description: "Copy title and description", Category: "Clipboard"},
+		{Key: "Ctrl+Y", Description: "Copy title and description", Category: "Clipboard"},
 	}
 }

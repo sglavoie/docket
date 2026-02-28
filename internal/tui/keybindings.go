@@ -136,6 +136,7 @@ func statusBindings() []Keybinding {
 		{Key: ",s", Description: "Start (in progress)", Category: "Status"},
 		{Key: ",d", Description: "Mark done", Category: "Status"},
 		{Key: ",b", Description: "Block task", Category: "Status"},
+		{Key: ",S", Description: "Put task on standby", Category: "Status"},
 		{Key: ",o", Description: "Reopen (todo)", Category: "Status"},
 		{Key: ",x", Description: "Cancel task", Category: "Status"},
 		{Key: ",r", Description: "Send to review", Category: "Status"},
@@ -266,6 +267,8 @@ func blockerPrefixBindings() []Keybinding {
 func (r *KeybindingRegistry) registerGlobalBindings() {
 	r.add(
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},
+		Keybinding{Key: "|", Description: "Recent tasks", Category: "Navigation"},
+		Keybinding{Key: "#", Description: "Pinned tasks", Category: "Navigation"},
 		Keybinding{Key: ";n", Description: "Open Notification Center", Category: "Navigation"},
 		Keybinding{Key: ";s", Description: "Open Settings", Category: "Navigation"},
 		Keybinding{Key: ";d", Description: "Open Daily Review", Category: "Navigation"},
@@ -273,6 +276,7 @@ func (r *KeybindingRegistry) registerGlobalBindings() {
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},
+		Keybinding{Key: "q", Description: "Back / quit (dashboard)", Category: "Navigation"},
 		Keybinding{Key: "ctrl+c", Description: "Quit", Category: "Navigation"},
 		Keybinding{Key: "esc", Description: "Back / close", Category: "Navigation"},
 		Keybinding{Key: "?", Description: "Toggle help", Category: "Navigation"},

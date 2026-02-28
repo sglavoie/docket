@@ -93,7 +93,7 @@ func (m *AllTasksViewModel) View() string {
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset), "\n"))
 
 	// Footer
-	footerLeft := "j/k nav · [/] tabs · ctrl+k Kanban · ctrl+g group · ,s/d/b/x status · 1-5 sort · v multi"
+	footerLeft := "j/k nav · [/] tabs · Ctrl+K Kanban · Ctrl+G group · ,s/d/b/x status · 1-5 sort · v multi"
 	if m.multiSelectMode {
 		footerLeft = "MULTI-SELECT: space toggle · a select all · A deselect · ,s/d/b status · D delete · v exit"
 	}

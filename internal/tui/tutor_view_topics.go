@@ -618,7 +618,7 @@ Use ! followed by a number to set priority on the selected task:
 			Category: "TUI",
 			Content: `# Section Picker
 
-Press @ on a selected task to open the section picker. Choose
+Press t then s on a selected task (ts) to open the section picker. Choose
 from Active, Next, Inbox, Waiting, or Someday to reassign
 the task quickly.`,
 		},
@@ -687,7 +687,8 @@ then press the key combination.`,
 			Category: "TUI",
 			Content: `# Filtering by Tag
 
-Press f to open the filter view. From there you can filter
+Press T to open the tag filter selector, or use F then # (F#)
+to filter by tag from the filter popup. From there you can filter
 tasks by tag across all tasks in the current project.`,
 		},
 	}

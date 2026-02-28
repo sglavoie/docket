@@ -374,7 +374,7 @@ The TUI provides a rich visual interface with extensive keyboard navigation and 
 - Use j/k or arrow keys to navigate, Enter to select project
 - Press `s` to set project as current, `a` to archive, `D` to delete
 
-**Project Tree** (default view)
+**Outliner** (default project view)
 
 - Shows tasks in hierarchical tree with expand/collapse support
 - Press space to toggle expansion, `zR`/`zM` to expand/collapse all
@@ -383,11 +383,12 @@ The TUI provides a rich visual interface with extensive keyboard navigation and 
 - Press `N` to filter by sections, `Ctrl+N` to assign section
 - Press `Ctrl+S` to open section manager (add, rename, remove)
 - Multi-select mode: `V` to toggle, bulk operations available
-- Quick capture: `n` for new task with autocomplete syntax
+- Quick capture: `i` for new task with autocomplete syntax
 - Bulk capture: `Shift+I` for rapid multi-task creation
-- Command palette: `Ctrl+P` for fuzzy command search
+- Command palette: `:` for fuzzy command search
 - Toggle sidebar: `Tab` (shows task details, comments, dependencies)
 - Focus mode: `f` to isolate task subtree
+- View switching: `Ctrl+P` (project tree), `Ctrl+K` (kanban), `Ctrl+O` (outliner)
 
 **Kanban Board** (`k`)
 
@@ -487,7 +488,7 @@ Press `V` to enter multi-select mode in any list view:
 - **Bulk edit**: Set priority, due date, or flags for all selected
 - **Bulk archive**: Archive multiple completed tasks
 
-### Command Palette (Ctrl+P)
+### Command Palette (:)
 
 Fuzzy search across:
 
@@ -499,94 +500,87 @@ Fuzzy search across:
 
 Features:
 
-- Category filtering with prefixes (`:task`, `:view`, `:project`)
+- Category filtering with prefixes (`:cmd`, `:task`, `:prj`, `:view`, `:note`, `:tag`, `:sec`, `:saved`, `:sv`, `:recent`)
 - Recent commands and pinned items
 - Live preview pane
 - Inline task creation
 
 ### Quick Capture Syntax
 
-When creating tasks with quick capture (`n`), use shortcuts:
+When creating tasks with quick capture (`i`), use shortcuts:
 
 ```text
-^5 Set up API      # Priority 5 (lowest)
-!3 Fix login       # Priority 3
-@backend           # Add tag "backend"
-#Active            # Assign to Active section
-%my-project        # Create in different project
-in_progress        # Set status
-bug:               # Make it a bug
-due:2024-12-25     # Set due date
-due:3d             # Due in 3 days
-recur:weekly       # Weekly recurrence
+^bug Fix login             # Set task type (^epic/^story/^task/^bug/^idea/^note)
+!2                         # Set priority (1-5)
+#backend                   # Add tag
+@tomorrow                  # Set due date (@today, @tomorrow, @next monday, @in 3 days)
+~weekly                    # Set recurrence (~daily, ~weekly, ~2w, etc.)
+%my-project                # Create in a different project
+>123                       # Set parent by short ID (or title prefix)
+/Active                    # Assign section
+$start                     # Set status ($start, $blocked, $done, $canceled, $review)
 ```
 
 ### Keybindings
 
-**Global**
+#### Global
 
-- `q` or `Esc`: Go back / close overlay
+- `:`: Open command palette
+- `Ctrl+X`: Switch project
+- `;n` / `;s` / `;d` / `;w`: Notification center / settings / daily review / weekly review
+- `Alt+O` / `Alt+I`: History back / forward
+- `|`: Recent tasks popup
+- `#`: Pinned tasks popup
+- `q` or `Esc`: Go back / close overlay (`q` quits on dashboard)
 - `?`: Show help for current view
 - `Ctrl+C`: Quit application
-- `Tab`: Toggle sidebar (in tree views)
 
-**Navigation**
+#### Navigation
 
-- `j`/`k` or `↓`/`↑`: Move cursor
-- `h`/`l` or `←`/`→`: Navigate tabs or collapse/expand
-- `g`/`G`: Jump to top/bottom
-- `Ctrl+D`/`Ctrl+U`: Page down/up
-- `Enter`: Select/open item
+- `j`/`k` or `↑`/`↓`: Move cursor in most views
+- `gg`/`G`: Jump to first/last item in tree-style views
+- `Ctrl+D` / `Ctrl+U`: Page down/up in list views
+- `Enter`: Open/select focused item
+- `Tab`: Toggle/cycle split panes where available
 
-**Views**
+#### Primary project views
 
-- `d`: Dashboard
-- `k`: Kanban board
-- `F`: Focus view
-- `P`: Priority view
-- `D`: Due date overview
-- `R`: Daily review
-- `W`: Weekly review
-- `A`: Recent activity
-- `N`: Notes
+- `Ctrl+O`: Outliner
+- `Ctrl+P`: Project tree
+- `Ctrl+K`: Kanban
+- `p`: Priority view
+- `A`: All tasks
+- `w`: Inbox processor
 - `B`: Blockers
-- `I`: Inbox processing
-- `/` or `Ctrl+F`: Global search
-- `1-9`: Quick select pinned items
 
-**Task Operations**
+#### Task Operations
 
-- `n`: New task (quick capture)
-- `Shift+I`: Bulk capture
+- `i`: Quick capture
+- `I`: Bulk capture
 - `e`: Edit task
-- `dd`: Set due date
-- `x`: Complete task
-- `X`: Toggle complete/todo
-- `s`: Start task
-- `c`: Cancel task
-- `o`: Reopen completed task
-- `a`: Toggle active flag
-- `1-5`: Set priority (in priority view)
-- `Space`: Toggle expand/collapse
-- `V`: Multi-select mode
-- `Ctrl+Y`: Copy task title
+- `*`: Toggle active flag
 - `Ctrl+L`: Edit last modified task
-- `f`: Focus on task subtree
+- `u` / `Ctrl+Z`: Undo / undo history
+- `v`: Toggle multi-select mode
+- `y` / `Y` / `Ctrl+Y`: Copy title / description / both
 
-**Prefix Commands (Vim-style)**
+#### Prefix Commands (Vim-style)
 
-- `ga`, `gn`, `gi`, `gw`, `gs`: Go to section view
-- `gA`, `gN`, `gI`, `gW`, `gS`: Send task to section
-- `zR`: Expand all
-- `zM`: Collapse all
+- `,s`, `,d`, `,b`, `,o`, `,x`: Status changes
+- `!1`-`!5`: Priority
+- `dt`, `dm`, `dw`, `dn`, `d0`, `dd`: Due dates
+- `st`, `sw`, `sm`, `sn`, `s0`, `sd`: Snooze
+- `ga`, `gn`, `gi`, `gw`, `gs`, `gc`, `g*`: Section/view navigation
+- `ma`, `mn`, `mi`, `mw`, `mr`, `ms`: Move to section
+- `za`, `zo`, `zc`, `zR`, `zM`, `zv`: Fold controls
+- `tn`, `tN`, `tr`, `ts`, `to`, `tp`, `tt`, `tc`, `ta`, `tl`, `td`, `tm`, `tD`: Task prefix actions
 
-**Other**
+#### Other
 
-- `Ctrl+P`: Command palette
-- `Ctrl+A`: AI assistant
-- `Ctrl+S`: Section manager
-- `Ctrl+N`: Assign section
-- `u`: Undo
+- `Ctrl+S`: Custom section manager
+- `Ctrl+T`: Tag manager
+- `Ctrl+F`: Filter summary
+- `F`: Filter popup (`Fx` clears filters)
 
 ## External Tool Integration
 

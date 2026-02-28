@@ -93,7 +93,7 @@ func (m *WorkflowRuleCreatorModel) renderHelpText() string {
 	if m.isWideScreen() {
 		parts = []string{
 			"[ ]: tabs",
-			"Ctrl+f/t: pickers",
+			"Ctrl+F/T: pickers",
 			"Tab: nav",
 			"↑↓: items",
 			"+/-: add/rem",
@@ -106,7 +106,7 @@ func (m *WorkflowRuleCreatorModel) renderHelpText() string {
 	} else {
 		parts = []string{
 			"[ ]: tabs",
-			"Ctrl+p: preview",
+			"Ctrl+P: preview",
 			"↑↓: items",
 			"+/-: add/rem",
 			"c: condition",
@@ -686,7 +686,7 @@ func (m *WorkflowRuleCreatorModel) renderFullscreenPreview() string {
 
 	preview := m.renderPreviewPane(m.width - 4)
 
-	left := HelpStyle.Render("Ctrl+p: back to editor · Esc: cancel")
+	left := HelpStyle.Render("Ctrl+P: back to editor · Esc: cancel")
 
 	var out strings.Builder
 	out.WriteString(renderFullscreenTitle(title, ""))

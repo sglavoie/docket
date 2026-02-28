@@ -55,8 +55,8 @@ func (m *AllTasksViewModel) renderKanbanView() string {
 
 	if len(m.groups) == 0 {
 		viewParts = append(viewParts, renderFilterAwareEmptyState(m.HasActiveFilters(),
-			EmptyStateFiltered, "ctrl+k list · q/Esc close",
-			"ctrl+k list · Fx clear filters · q/Esc close"))
+			EmptyStateFiltered, "Ctrl+K list · q/Esc close",
+			"Ctrl+K list · Fx clear filters · q/Esc close"))
 		return strings.Join(viewParts, "\n")
 	}
 
@@ -83,7 +83,7 @@ func (m *AllTasksViewModel) renderKanbanView() string {
 	viewParts = append(viewParts, kanbanPane)
 
 	// Footer
-	footerLeft := "h/l cols · j/k nav · ctrl+k list · ctrl+g group · [/] tabs"
+	footerLeft := "h/l cols · j/k nav · Ctrl+K list · Ctrl+G group · [/] tabs"
 	if m.multiSelectMode {
 		footerLeft = "MULTI-SELECT: space toggle · a select col · A deselect · ,s/d/b status · D delete · v exit"
 	}
