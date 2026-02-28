@@ -438,8 +438,8 @@ func (m *KanbanViewModel) renderTaskRow(node *KanbanNode, isSelected bool) strin
 	}
 	if m.columnConfig.IsVisible(ColScore) && m.ColumnWidth >= 25 && m.config != nil {
 		if profile := m.config.GetProjectScoringProfile(m.Project.ID); profile != nil {
-			if badge := RenderScoreBadge(task, profile); badge != "" {
-				structureParts = append(structureParts, badge)
+			if scoreBadge := RenderScoreBadge(task, profile); scoreBadge != "" {
+				structureParts = append(structureParts, scoreBadge)
 			}
 		}
 	}

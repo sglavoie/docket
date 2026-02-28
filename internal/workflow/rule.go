@@ -761,15 +761,6 @@ func IsProjectTrigger(field TriggerField) bool {
 	return false
 }
 
-// IsBooleanStateTrigger returns true if the trigger checks a boolean property.
-func IsBooleanStateTrigger(field TriggerField) bool {
-	switch field {
-	case FieldHasDueDate, FieldHasTags, FieldDescriptionEmpty:
-		return true
-	}
-	return false
-}
-
 // MatchesScope checks whether a task falls within the rule's scope.
 // A nil scope matches everything. Non-empty fields use AND logic.
 func (r *WorkflowRule) MatchesScope(task *models.Task, projectName, projectID string) bool {

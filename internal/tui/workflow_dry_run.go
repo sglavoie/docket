@@ -39,7 +39,6 @@ type WorkflowDryRunModel struct {
 	results     []DryRunTaskResult
 	filtered    []DryRunTaskResult
 	conflicts   []workflow.RuleConflict
-	showAll     bool // show all tasks including non-matching
 	singleRule  *workflow.WorkflowRule
 	ruleCount   int
 	taskCount   int

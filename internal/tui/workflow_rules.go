@@ -757,7 +757,7 @@ func (m *WorkflowRulesModel) renderRuleTriggersPreview(b *strings.Builder, rule 
 				value = "?"
 			}
 
-			b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value))
+			fmt.Fprintf(b, "%s%s %s %s\n", prefix, field, operatorStyle.Render(op), value)
 		}
 	}
 }
@@ -793,7 +793,7 @@ func (m *WorkflowRulesModel) renderTriggerGroupPreview(b *strings.Builder, group
 		if value == "" {
 			value = "?"
 		}
-		b.WriteString(fmt.Sprintf("%s %s %s\n", field, operatorStyle.Render(op), value))
+		fmt.Fprintf(b, "%s %s %s\n", field, operatorStyle.Render(op), value)
 	}
 
 	for i := range group.Groups {
@@ -819,7 +819,7 @@ func (m *WorkflowRulesModel) renderTriggerGroupPreview(b *strings.Builder, group
 			if value == "" {
 				value = "?"
 			}
-			b.WriteString(fmt.Sprintf("%s %s %s", field, operatorStyle.Render(op), value))
+			fmt.Fprintf(b, "%s %s %s", field, operatorStyle.Render(op), value)
 		}
 		b.WriteString(" )\n")
 	}

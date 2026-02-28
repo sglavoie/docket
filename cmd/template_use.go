@@ -98,9 +98,9 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	// Resolve template variables if present
 	vars := template.ExtractVariables(t)
 	if len(vars) > 0 {
-		values, err := resolveTemplateVars(vars, templateUseVars)
-		if err != nil {
-			return err
+		values, resolveErr := resolveTemplateVars(vars, templateUseVars)
+		if resolveErr != nil {
+			return resolveErr
 		}
 		resolved := template.ApplyVariables(*t, values)
 		t = &resolved

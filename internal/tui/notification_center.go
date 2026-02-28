@@ -129,7 +129,7 @@ func (m *NotificationCenterModel) Init() tea.Cmd {
 func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.BaseView.SetSize(msg.Width, msg.Height)
+		m.SetSize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
 		switch msg.String() {

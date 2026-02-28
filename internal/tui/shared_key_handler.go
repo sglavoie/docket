@@ -92,16 +92,6 @@ func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 	return nil
 }
 
-// handleCursorFlashClear handles CursorFlashClearMsg by clearing the flash flag.
-// Returns true if the message was handled.
-func handleCursorFlashClear(msg tea.Msg, flash *bool) bool {
-	if _, ok := msg.(CursorFlashClearMsg); ok {
-		*flash = false
-		return true
-	}
-	return false
-}
-
 // handleCommonTaskAction handles task actions shared across secondary views:
 // t (tags), Z (snooze), D (delete confirm), e (edit), r (refresh),
 // y/Y/ctrl+y (clipboard), ? (help).

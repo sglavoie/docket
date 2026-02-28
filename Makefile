@@ -88,7 +88,7 @@ ci: ## Run all CI checks locally (build, test, coverage, lint)
 	go test -race -coverprofile=coverage.out ./...
 	@echo "📊 Checking coverage threshold..."
 	@THRESHOLD=$$(cat .coverage-threshold); \
-	COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
+	COVERAGE=$$(go tool cover -func=coverage.out | awk '/^total:/ { gsub(/%/, "", $$3); print $$3; exit }'); \
 	echo "Total coverage: $${COVERAGE}%"; \
 	if [ "$$(echo "$$COVERAGE < $$THRESHOLD" | bc)" -eq 1 ]; then \
 		echo "❌ Coverage $${COVERAGE}% is below $${THRESHOLD}% threshold"; \
