@@ -40,7 +40,6 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit project", Category: "Actions", Views: views},
 		Keybinding{Key: "p", Description: "Preview project", Category: "Actions", Views: views},
-		Keybinding{Key: "s", Description: "Set as current", Category: "Actions", Views: views},
 		Keybinding{Key: "D", Description: "Delete project", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+P", Description: "Toggle pinned", Category: "Actions", Views: views},
 		Keybinding{Key: "a", Description: "Toggle archived filter", Category: "Actions", Views: views},
@@ -49,8 +48,5 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "R", Description: "Cycle info panel", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Actions", Views: views},
 		Keybinding{Key: ",", Description: "Settings", Category: "Actions", Views: views},
-
-		// Legend
-		Keybinding{Key: "*", Description: "Current project", Category: "Legend", Views: views},
 	)
 }

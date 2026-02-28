@@ -43,6 +43,9 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 
 	model := NewAppModel(cfg, manager, opts...)
 
+	// Evaluate proactive alerts at startup
+	model.reevaluateAlerts()
+
 	// Pass startup eval result to model for status display
 	if startupResult != nil && startupResult.Evaluated && startupResult.ModifiedTasks > 0 {
 		model.statusMessage = fmt.Sprintf("%d task(s) updated by %d workflow rule(s)",

@@ -159,7 +159,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "u":
 			return m, m.undoDelete()
 		case "p":
-			m.togglePin()
+			return m, m.togglePin()
 		case "s":
 			m.cycleSortMode()
 			return m, nil

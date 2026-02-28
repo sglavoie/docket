@@ -5,8 +5,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/template"
 )
 
@@ -104,6 +106,7 @@ const (
 	ViewTemplateVarFiller
 	ViewStatusInput
 	ViewStatusIconPicker
+	ViewNotificationCenter
 )
 
 // ProjectTreeSpatialState captures cursor position and fold state for a project tree
@@ -242,6 +245,11 @@ type AppModel struct {
 	// Per-project last view memory: remembers which project-level view was active
 	// for each project so switching back restores the same view.
 	projectLastView map[string]ViewType
+
+	pendingSemicolonPrefix bool
+
+	// Proactive alert snapshot (ephemeral, regenerated on navigation)
+	proactiveAlerts *alerts.AlertSnapshot
 }
 
 // pendingNoteMove holds state for a global note move operation.
@@ -442,6 +450,10 @@ func getGlobalHelpItems() []HelpItem {
 		{Key: "g/G", Description: "Go to first/last item", Category: "Navigation"},
 		{Key: "Enter", Description: "Select / confirm", Category: "Actions"},
 		{Key: ",", Description: "Settings", Category: "Actions"},
+		{Key: ";n", Description: "Notification Center", Category: "Navigation"},
+		{Key: ";s", Description: "Settings", Category: "Navigation"},
+		{Key: ";d", Description: "Daily Review", Category: "Navigation"},
+		{Key: ";w", Description: "Weekly Review", Category: "Navigation"},
 		{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		{Key: "alt+i", Description: "History forward", Category: "Navigation"},
 		{Key: "|", Description: "Recent tasks", Category: "Navigation"},
@@ -450,6 +462,59 @@ func getGlobalHelpItems() []HelpItem {
 
 func (m *AppModel) Init() tea.Cmd {
 	return nil
+}
+
+// reevaluateAlerts loads all active projects and runs the alert engine.
+func (m *AppModel) reevaluateAlerts() {
+	cfg := m.buildAlertConfig()
+	activeProjects := m.config.GetActiveProjects()
+
+	var projectData []alerts.ProjectData
+	for _, p := range activeProjects {
+		if err := storage.LoadProject(p); err != nil {
+			continue
+		}
+		projectData = append(projectData, alerts.ProjectData{
+			Project: p,
+			Tasks:   p.Tasks,
+		})
+	}
+
+	m.proactiveAlerts = alerts.Evaluate(cfg, projectData)
+}
+
+// buildAlertConfig creates an AlertConfig from the current config state.
+func (m *AppModel) buildAlertConfig() alerts.AlertConfig {
+	return alerts.AlertConfig{
+		DailyReviewHour: m.config.GetAlertDailyReviewHour(),
+		WeeklyReviewDay: m.config.GetAlertWeeklyReviewDay(),
+
+		LastDailyReviewAt:  m.config.GetLastDailyReviewAt(),
+		LastWeeklyReviewAt: m.config.GetLastWeeklyReviewAt(),
+
+		DailyReviewEnabled:   m.config.GetAlertDailyReviewEnabled(),
+		WeeklyReviewEnabled:  m.config.GetAlertWeeklyReviewEnabled(),
+		OverdueEnabled:       m.config.GetAlertOverdueEnabled(),
+		DueSoonEnabled:       m.config.GetAlertDueSoonEnabled(),
+		StaleEnabled:         m.config.GetAlertStaleEnabled(),
+		InboxEnabled:         m.config.GetAlertInboxEnabled(),
+		BlockedEnabled:       m.config.GetAlertBlockedEnabled(),
+		ProjectHealthEnabled: m.config.GetAlertProjectHealthEnabled(),
+
+		DueSoonDays:      m.config.GetAlertDueSoonDays(),
+		StaleDays:        m.config.GetAlertStaleDays(),
+		InboxThreshold:   m.config.GetAlertInboxThreshold(),
+		BlockedDays:      m.config.GetAlertBlockedDays(),
+		ProjectStaleDays: m.config.GetAlertProjectStaleDays(),
+	}
+}
+
+// alertCount returns the current proactive alert count, or 0 if not evaluated.
+func (m *AppModel) alertCount() int {
+	if m.proactiveAlerts == nil {
+		return 0
+	}
+	return m.proactiveAlerts.TotalCount
 }
 
 // GetCommandRegistry returns the command registry for the application.
@@ -545,6 +610,10 @@ func (m *AppModel) pushView(view ViewType) {
 func (m *AppModel) popView() {
 	if len(m.viewStack) > 1 {
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
+	}
+	// Re-evaluate alerts when returning to dashboard
+	if m.currentView() == ViewDashboard {
+		m.reevaluateAlerts()
 	}
 }
 

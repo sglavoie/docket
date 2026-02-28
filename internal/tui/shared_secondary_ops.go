@@ -45,6 +45,9 @@ func taskOpsApply(v taskOpsView, op func(pf persistFn, project *models.Project, 
 	}
 	v.reloadData()
 	v.clampCursor()
+	if result.StatusMessage != "" {
+		return result.Cmd
+	}
 	return result.Cmd
 }
 

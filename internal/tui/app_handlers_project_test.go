@@ -100,21 +100,3 @@ func TestHandleProjectMessagesProjectPinnedToggled(t *testing.T) {
 		})
 	}
 }
-
-func TestHandleProjectMessagesSetCurrentProject(t *testing.T) {
-	app := newTestAppModel()
-	project := testutil.NewTestProject("New Current Project")
-
-	msg := SetCurrentProjectMsg{Project: project}
-	handled, _ := app.handleProjectMessages(msg)
-
-	if !handled {
-		t.Error("SetCurrentProjectMsg should be handled")
-	}
-	if app.config.CurrentProject != project.ID {
-		t.Error("config.CurrentProject should be set to project ID")
-	}
-	if app.statusMessage == "" {
-		t.Error("statusMessage should be set for project change")
-	}
-}

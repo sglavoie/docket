@@ -271,9 +271,9 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.ActionInheritTag:     true,
 		workflow.ActionNotifyParent:   true,
 		// New actions
-		workflow.ActionSetSnooze:      true,
-		workflow.ActionCreateFollowup: true,
-		workflow.ActionMoveToProject:  true,
+		workflow.ActionSetSnooze:        true,
+		workflow.ActionCreateFollowup:   true,
+		workflow.ActionMoveToProject:    true,
 		workflow.ActionSetRecurrence:    true,
 		workflow.ActionSetProjectStatus: true,
 	}

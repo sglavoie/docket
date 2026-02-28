@@ -185,6 +185,10 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Priority changes
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
+
+	// Mark daily review as done
+	case "R":
+		return m, func() tea.Msg { return MarkDailyReviewDoneMsg{} }
 	}
 
 	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)

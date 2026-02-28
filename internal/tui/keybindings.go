@@ -59,6 +59,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerWorkflowDryRunBindings()
 	r.registerTaskTemplatesBindings()
 	r.registerSmartListBuilderBindings()
+	r.registerNotificationCenterBindings()
 	return r
 }
 
@@ -265,6 +266,10 @@ func blockerPrefixBindings() []Keybinding {
 func (r *KeybindingRegistry) registerGlobalBindings() {
 	r.add(
 		Keybinding{Key: ":", Description: "Command palette", Category: "Navigation"},
+		Keybinding{Key: ";n", Description: "Open Notification Center", Category: "Navigation"},
+		Keybinding{Key: ";s", Description: "Open Settings", Category: "Navigation"},
+		Keybinding{Key: ";d", Description: "Open Daily Review", Category: "Navigation"},
+		Keybinding{Key: ";w", Description: "Open Weekly Review", Category: "Navigation"},
 		Keybinding{Key: "ctrl+X", Description: "Switch project", Category: "Navigation"},
 		Keybinding{Key: "alt+o", Description: "History back", Category: "Navigation"},
 		Keybinding{Key: "alt+i", Description: "History forward", Category: "Navigation"},

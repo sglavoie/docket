@@ -9,9 +9,9 @@ import (
 
 func makeProject(statusIcon string) *models.Project {
 	return &models.Project{
-		ID:        "proj-1",
-		Name:      "Test Project",
-		UpdatedAt: time.Now(),
+		ID:         "proj-1",
+		Name:       "Test Project",
+		UpdatedAt:  time.Now(),
 		StatusIcon: statusIcon,
 	}
 }
@@ -27,12 +27,12 @@ func makeTask(status models.TaskStatus, taskType models.TaskType) *models.Task {
 
 func projectRule(id, name string, priority int, triggers []RuleTrigger, statusKey string) WorkflowRule {
 	return WorkflowRule{
-		ID:       id,
-		Name:     name,
-		Level:    RuleLevelProject,
-		Enabled:  true,
-		Priority: priority,
-		Triggers: triggers,
+		ID:           id,
+		Name:         name,
+		Level:        RuleLevelProject,
+		Enabled:      true,
+		Priority:     priority,
+		Triggers:     triggers,
 		TriggerLogic: LogicAnd,
 		Actions: []RuleAction{
 			{ActionType: ActionSetProjectStatus, Value: statusKey},

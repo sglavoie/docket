@@ -160,6 +160,30 @@ type Config struct {
 	OutlinerPriorityMode      string                       `json:"outliner_priority_mode,omitempty"`       // Global priority display mode for outliner view
 	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs
+	// Proactive alert system: review tracking
+	LastDailyReviewAt  *time.Time `json:"last_daily_review_at,omitempty"`
+	LastWeeklyReviewAt *time.Time `json:"last_weekly_review_at,omitempty"`
+
+	// Proactive alert system: per-type toggles (nil = enabled)
+	AlertDailyReviewEnabled   *bool `json:"alert_daily_review_enabled,omitempty"`
+	AlertWeeklyReviewEnabled  *bool `json:"alert_weekly_review_enabled,omitempty"`
+	AlertOverdueEnabled       *bool `json:"alert_overdue_enabled,omitempty"`
+	AlertDueSoonEnabled       *bool `json:"alert_due_soon_enabled,omitempty"`
+	AlertStaleEnabled         *bool `json:"alert_stale_enabled,omitempty"`
+	AlertInboxEnabled         *bool `json:"alert_inbox_enabled,omitempty"`
+	AlertBlockedEnabled       *bool `json:"alert_blocked_enabled,omitempty"`
+	AlertProjectHealthEnabled *bool `json:"alert_project_health_enabled,omitempty"`
+
+	// Proactive alert system: thresholds
+	AlertDueSoonDays      *int `json:"alert_due_soon_days,omitempty"`      // nil=3
+	AlertStaleDays        *int `json:"alert_stale_days,omitempty"`         // nil=14
+	AlertInboxThreshold   *int `json:"alert_inbox_threshold,omitempty"`    // nil=5
+	AlertBlockedDays      *int `json:"alert_blocked_days,omitempty"`       // nil=7
+	AlertProjectStaleDays *int `json:"alert_project_stale_days,omitempty"` // nil=14
+
+	// Proactive alert system: schedule
+	AlertDailyReviewHour *int `json:"alert_daily_review_hour,omitempty"` // nil=9 (hour 0-23)
+	AlertWeeklyReviewDay *int `json:"alert_weekly_review_day,omitempty"` // nil=1 (Monday, 0=Sunday)
 }
 
 // FocusQueueItem stores a task reference for the focus queue.

@@ -12,10 +12,13 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Kanban", "Outliner"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Kanban", "Outliner", "Notifications"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-41, tab 6 → fields 42-61
-	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 42}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-41, tab 6 → fields 42-61, tab 7 → fields 62-76
+	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 42, 62}
+
+	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
+	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 
 	// outlinerSectionNames maps toggle index (0-6) to the section key used in config.
 	// Active uses "" (empty string) since tasks with no explicit section are "Active".
@@ -78,8 +81,25 @@ type SettingsModel struct {
 	contexts               []string
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
+	// Alert settings (Notifications tab, indices 62-76)
+	alertDailyReviewEnabled    bool
+	alertDailyReviewHourInput  textinput.Model
+	alertWeeklyReviewEnabled   bool
+	alertWeeklyReviewDay       int // 0=Sunday..6=Saturday
+	alertOverdueEnabled        bool
+	alertDueSoonEnabled        bool
+	alertDueSoonDaysInput      textinput.Model
+	alertStaleEnabled          bool
+	alertStaleDaysInput        textinput.Model
+	alertInboxEnabled          bool
+	alertInboxThresholdInput   textinput.Model
+	alertBlockedEnabled        bool
+	alertBlockedDaysInput      textinput.Model
+	alertProjectHealthEnabled  bool
+	alertProjectStaleDaysInput textinput.Model
+
 	tabs          TabState
-	focusIndex    int // 0=editor, 1=context, 2=undoDepth, 3=defaultView, 4=dueSoon, 5=future, 6=oldDays, 7=completedHours, 8=recentActivityLimit, 9=recentActivityShowAll, 10=linkedTaskJump, 11=maxPinnedBarItems, 12=attachmentEditor, 13=codeEditor, 14-26=treeColumnDefaults, 27=kanbanMaxColumns, 28=kanbanMaxSwimlaneRows, 29-41=kanbanColumnDefaults, 42-48=outlinerSectionToggles, 49-61=outlinerColumnDefaults
+	focusIndex    int // 0=editor .. 61=outlinerColumnDefaults, 62-76=alert settings
 	scrollOffset  int // vertical scroll offset within current tab content
 	validationErr string
 
@@ -206,38 +226,90 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		outlinerCollapsed[i] = collapsedMap[sectionName]
 	}
 
+	// Alert setting inputs
+	alertDailyReviewHourInput := textinput.New()
+	alertDailyReviewHourInput.Placeholder = strconv.Itoa(config.DefaultAlertDailyReviewHour)
+	alertDailyReviewHourInput.CharLimit = 2
+	alertDailyReviewHourInput.Width = 6
+	alertDailyReviewHourInput.SetValue(strconv.Itoa(cfg.GetAlertDailyReviewHour()))
+
+	alertDueSoonDaysInput := textinput.New()
+	alertDueSoonDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertDueSoonDays)
+	alertDueSoonDaysInput.CharLimit = 3
+	alertDueSoonDaysInput.Width = 6
+	alertDueSoonDaysInput.SetValue(strconv.Itoa(cfg.GetAlertDueSoonDays()))
+
+	alertStaleDaysInput := textinput.New()
+	alertStaleDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertStaleDays)
+	alertStaleDaysInput.CharLimit = 3
+	alertStaleDaysInput.Width = 6
+	alertStaleDaysInput.SetValue(strconv.Itoa(cfg.GetAlertStaleDays()))
+
+	alertInboxThresholdInput := textinput.New()
+	alertInboxThresholdInput.Placeholder = strconv.Itoa(config.DefaultAlertInboxThreshold)
+	alertInboxThresholdInput.CharLimit = 3
+	alertInboxThresholdInput.Width = 6
+	alertInboxThresholdInput.SetValue(strconv.Itoa(cfg.GetAlertInboxThreshold()))
+
+	alertBlockedDaysInput := textinput.New()
+	alertBlockedDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertBlockedDays)
+	alertBlockedDaysInput.CharLimit = 3
+	alertBlockedDaysInput.Width = 6
+	alertBlockedDaysInput.SetValue(strconv.Itoa(cfg.GetAlertBlockedDays()))
+
+	alertProjectStaleDaysInput := textinput.New()
+	alertProjectStaleDaysInput.Placeholder = strconv.Itoa(config.DefaultAlertProjectStaleDays)
+	alertProjectStaleDaysInput.CharLimit = 3
+	alertProjectStaleDaysInput.Width = 6
+	alertProjectStaleDaysInput.SetValue(strconv.Itoa(cfg.GetAlertProjectStaleDays()))
+
 	return &SettingsModel{
-		config:                 cfg,
-		configManager:          manager,
-		editorInput:            editorInput,
-		contextInput:           contextInput,
-		undoDepthInput:         undoDepthInput,
-		dueSoonInput:           dueSoonInput,
-		futureInput:            futureInput,
-		oldDaysInput:           oldDaysInput,
-		completedHoursInput:    completedHoursInput,
-		recentActivityInput:    recentActivityInput,
-		recentActivityShowAll:  cfg.GetRecentActivityShowAll(),
-		defaultViewCursor:      defaultViewCursor,
-		linkedTaskJump:         cfg.GetLinkedTaskJumpToNew(),
-		maxPinnedInput:         maxPinnedInput,
-		attachmentEditorInput:  attachmentEditorInput,
-		codeEditorInput:        codeEditorInput,
-		kanbanMaxColumnsInput:  kanbanMaxColumnsInput,
-		kanbanMaxSwimlaneInput: kanbanMaxSwimlaneInput,
-		outlinerCollapsed:      outlinerCollapsed,
-		treeColumnDefaults:     treeColumnDefaults,
-		kanbanColumnDefaults:   kanbanColumnDefaults,
-		outlinerColumnDefaults: outlinerColumnDefaults,
-		treePriorityMode:       priorityModeToCursor(cfg.TreePriorityMode),
-		kanbanPriorityMode:     priorityModeToCursor(cfg.KanbanPriorityMode),
-		outlinerPriorityMode:   priorityModeToCursor(cfg.OutlinerPriorityMode),
-		contexts:               contexts,
-		contextCursor:          contextCursor,
-		focusIndex:             0,
-		tabs:                   TabState{Names: settingsTabNames},
-		width:                  80,
-		height:                 24,
+		config:                     cfg,
+		configManager:              manager,
+		editorInput:                editorInput,
+		contextInput:               contextInput,
+		undoDepthInput:             undoDepthInput,
+		dueSoonInput:               dueSoonInput,
+		futureInput:                futureInput,
+		oldDaysInput:               oldDaysInput,
+		completedHoursInput:        completedHoursInput,
+		recentActivityInput:        recentActivityInput,
+		recentActivityShowAll:      cfg.GetRecentActivityShowAll(),
+		defaultViewCursor:          defaultViewCursor,
+		linkedTaskJump:             cfg.GetLinkedTaskJumpToNew(),
+		maxPinnedInput:             maxPinnedInput,
+		attachmentEditorInput:      attachmentEditorInput,
+		codeEditorInput:            codeEditorInput,
+		kanbanMaxColumnsInput:      kanbanMaxColumnsInput,
+		kanbanMaxSwimlaneInput:     kanbanMaxSwimlaneInput,
+		outlinerCollapsed:          outlinerCollapsed,
+		treeColumnDefaults:         treeColumnDefaults,
+		kanbanColumnDefaults:       kanbanColumnDefaults,
+		outlinerColumnDefaults:     outlinerColumnDefaults,
+		treePriorityMode:           priorityModeToCursor(cfg.TreePriorityMode),
+		kanbanPriorityMode:         priorityModeToCursor(cfg.KanbanPriorityMode),
+		outlinerPriorityMode:       priorityModeToCursor(cfg.OutlinerPriorityMode),
+		alertDailyReviewEnabled:    cfg.GetAlertDailyReviewEnabled(),
+		alertDailyReviewHourInput:  alertDailyReviewHourInput,
+		alertWeeklyReviewEnabled:   cfg.GetAlertWeeklyReviewEnabled(),
+		alertWeeklyReviewDay:       cfg.GetAlertWeeklyReviewDay(),
+		alertOverdueEnabled:        cfg.GetAlertOverdueEnabled(),
+		alertDueSoonEnabled:        cfg.GetAlertDueSoonEnabled(),
+		alertDueSoonDaysInput:      alertDueSoonDaysInput,
+		alertStaleEnabled:          cfg.GetAlertStaleEnabled(),
+		alertStaleDaysInput:        alertStaleDaysInput,
+		alertInboxEnabled:          cfg.GetAlertInboxEnabled(),
+		alertInboxThresholdInput:   alertInboxThresholdInput,
+		alertBlockedEnabled:        cfg.GetAlertBlockedEnabled(),
+		alertBlockedDaysInput:      alertBlockedDaysInput,
+		alertProjectHealthEnabled:  cfg.GetAlertProjectHealthEnabled(),
+		alertProjectStaleDaysInput: alertProjectStaleDaysInput,
+		contexts:                   contexts,
+		contextCursor:              contextCursor,
+		focusIndex:                 0,
+		tabs:                       TabState{Names: settingsTabNames},
+		width:                      80,
+		height:                     24,
 	}
 }
 
@@ -303,6 +375,31 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		if m.config.OutlinerPriorityMode == PriorityModeConditional {
 			m.config.OutlinerPriorityMode = ""
 		}
+
+		// Persist alert settings
+		m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
+		m.config.AlertWeeklyReviewEnabled = boolPtr(m.alertWeeklyReviewEnabled)
+		m.config.AlertOverdueEnabled = boolPtr(m.alertOverdueEnabled)
+		m.config.AlertDueSoonEnabled = boolPtr(m.alertDueSoonEnabled)
+		m.config.AlertStaleEnabled = boolPtr(m.alertStaleEnabled)
+		m.config.AlertInboxEnabled = boolPtr(m.alertInboxEnabled)
+		m.config.AlertBlockedEnabled = boolPtr(m.alertBlockedEnabled)
+		m.config.AlertProjectHealthEnabled = boolPtr(m.alertProjectHealthEnabled)
+
+		alertDailyHour, _ := strconv.Atoi(strings.TrimSpace(m.alertDailyReviewHourInput.Value()))
+		m.config.AlertDailyReviewHour = &alertDailyHour
+		m.config.AlertWeeklyReviewDay = &m.alertWeeklyReviewDay
+
+		alertDueSoonDays, _ := strconv.Atoi(strings.TrimSpace(m.alertDueSoonDaysInput.Value()))
+		m.config.AlertDueSoonDays = &alertDueSoonDays
+		alertStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertStaleDaysInput.Value()))
+		m.config.AlertStaleDays = &alertStaleDays
+		alertInboxThreshold, _ := strconv.Atoi(strings.TrimSpace(m.alertInboxThresholdInput.Value()))
+		m.config.AlertInboxThreshold = &alertInboxThreshold
+		alertBlockedDays, _ := strconv.Atoi(strings.TrimSpace(m.alertBlockedDaysInput.Value()))
+		m.config.AlertBlockedDays = &alertBlockedDays
+		alertProjectStaleDays, _ := strconv.Atoi(strings.TrimSpace(m.alertProjectStaleDaysInput.Value()))
+		m.config.AlertProjectStaleDays = &alertProjectStaleDays
 
 		// Persist outliner collapsed sections
 		collapsed := make(map[string]bool)
@@ -373,6 +470,9 @@ func columnDefaultsToMap(defaults [13]bool) map[string]bool {
 	}
 	return m
 }
+
+// boolPtr returns a pointer to the given bool value.
+func boolPtr(b bool) *bool { return &b }
 
 func (m *SettingsModel) HasTextInput() bool     { return true }
 func (m *SettingsModel) ShouldCaptureEsc() bool { return true }

@@ -46,6 +46,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleProjectCycleKey(msg)
 		}
 
+		// Intercept keys when semicolon prefix is pending
+		if m.pendingSemicolonPrefix {
+			m.pendingSemicolonPrefix = false
+			switch msg.String() {
+			case "n":
+				return m, func() tea.Msg { return ShowNotificationCenterMsg{} }
+			case "s":
+				return m, func() tea.Msg { return SettingsMsg{} }
+			case "d":
+				return m, func() tea.Msg { return ShowDailyReviewMsg{} }
+			case "w":
+				return m, func() tea.Msg { return ShowWeeklyReviewMsg{} }
+			}
+			return m, nil
+		}
+
 		// Clear temporary status/error messages on any keypress
 		m.statusMessage = ""
 		m.err = nil
@@ -120,6 +136,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					return ShowCommandPaletteMsg{}
 				}
+			}
+		case ";":
+			if !m.hasActiveTextInput() {
+				m.pendingSemicolonPrefix = true
+				return m, nil
 			}
 		}
 
@@ -243,6 +264,10 @@ func (m *AppModel) hasActiveTextInput() bool {
 // handleEscKey handles the escape/q key for view navigation.
 // Returns true if the key was handled (should not propagate to views).
 func (m *AppModel) handleEscKey() bool {
+	if m.pendingSemicolonPrefix {
+		m.pendingSemicolonPrefix = false
+		return true
+	}
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false
 	}

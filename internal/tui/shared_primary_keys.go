@@ -275,11 +275,12 @@ func handleToggleActiveKey(v prefixableView) (tea.Cmd, bool) {
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
+	cmds := []tea.Cmd{result.Cmd}
 	if result.StatusMessage != "" {
 		v.setStatusMessage(result.StatusMessage)
 	}
 	v.refreshView()
-	return result.Cmd, true
+	return tea.Batch(cmds...), true
 }
 
 // handleTogglePinnedKey handles the tp prefix key for toggling the Pinned flag.
@@ -310,11 +311,12 @@ func handleTogglePinnedKey(v prefixableView) (tea.Cmd, bool) {
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
+	cmds := []tea.Cmd{result.Cmd}
 	if result.StatusMessage != "" {
 		v.setStatusMessage(result.StatusMessage)
 	}
 	v.refreshView()
-	return result.Cmd, true
+	return tea.Batch(cmds...), true
 }
 
 // handleTagKey handles the T key for tag filtering or bulk tag assignment.
@@ -645,11 +647,12 @@ func handleTypeChangeKey(key string, v prefixableView) (tea.Cmd, bool) {
 	if result.Err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
 	}
+	cmds := []tea.Cmd{result.Cmd}
 	if result.StatusMessage != "" {
 		v.setStatusMessage(result.StatusMessage)
 		v.refreshView()
 	}
-	return result.Cmd, true
+	return tea.Batch(cmds...), true
 }
 
 // handleSharedTaskPrefix handles the t-prefix key sequence shared across

@@ -161,7 +161,8 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case UndoPerformedMsg:
 		// Pop the undo history view if it's on top; otherwise stay in the current view
 		popView := m.currentView() == ViewUndoHistory
-		return true, m.handleWithRefresh(popView, false, fmt.Sprintf("Undid: %s", msg.Action))
+		undoMsg := fmt.Sprintf("Undid: %s", msg.Action)
+		return true, m.handleWithRefresh(popView, false, undoMsg)
 
 	case OpenParentSelectorMsg:
 		selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)

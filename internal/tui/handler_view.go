@@ -314,11 +314,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if !msg.Canceled {
 			msg.Project.StatusIcon = msg.Key
-			if msg.Key != "" {
-				msg.Project.StatusIconSource = "user"
-			} else {
-				msg.Project.StatusIconSource = ""
-			}
 			msg.Project.UpdatedAt = time.Now()
 			_ = m.configManager.Save(m.config)
 		}
@@ -368,6 +363,20 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CloseDailyReviewMsg:
 		m.popView()
+		return true, nil
+
+	case MarkDailyReviewDoneMsg:
+		m.config.SetLastDailyReviewAt(time.Now())
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.statusMessage = "Daily review completed"
+		return true, nil
+
+	case MarkWeeklyReviewDoneMsg:
+		m.config.SetLastWeeklyReviewAt(time.Now())
+		_ = m.configManager.Save(m.config)
+		m.reevaluateAlerts()
+		m.statusMessage = "Weekly review completed"
 		return true, nil
 
 	case ShowTutorMsg:
@@ -424,6 +433,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case ShowFocusBoardMsg:
+		m.reevaluateAlerts()
 		m.showView(ViewFocusBoard, NewFocusBoardModel(m.config, m.configManager))
 		return true, nil
 
@@ -723,6 +733,39 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popView()
 		m.kanban = nil
 		m.reloadAndRefreshProjectTree()
+		return true, nil
+
+	case ShowNotificationCenterMsg:
+		m.reevaluateAlerts()
+		m.showView(ViewNotificationCenter, NewNotificationCenterModel(m.proactiveAlerts))
+		return true, nil
+
+	case AlertCenterNavigateMsg:
+		m.popView() // close alert center
+		if msg.ProjectID == "" {
+			return true, nil
+		}
+		project := m.config.GetProject(msg.ProjectID)
+		if project == nil {
+			return true, nil
+		}
+		if msg.TaskID != "" {
+			task := project.GetTaskByID(msg.TaskID)
+			if task == nil {
+				// Task may not be loaded yet
+				_ = m.persister.Load(project)
+				task = project.GetTaskByID(msg.TaskID)
+			}
+			if task != nil {
+				m.navigateToTaskInProject(task, project)
+				return true, nil
+			}
+		}
+		m.navigateToTaskInProject(nil, project)
+		return true, nil
+
+	case CloseNotificationCenterMsg:
+		m.popView()
 		return true, nil
 	}
 	return false, nil

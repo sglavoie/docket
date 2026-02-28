@@ -64,9 +64,6 @@ type ProjectDeletedMsg struct{ Project *models.Project }
 // ProjectPinnedToggledMsg signals a project's pinned state changed.
 type ProjectPinnedToggledMsg struct{ Project *models.Project }
 
-// SetCurrentProjectMsg sets the default/current project.
-type SetCurrentProjectMsg struct{ Project *models.Project }
-
 // =============================================================================
 // Task CRUD Messages
 // =============================================================================
@@ -616,6 +613,12 @@ type DailyReviewSelectMsg struct {
 	Project *models.Project
 }
 
+// MarkDailyReviewDoneMsg signals that the user has completed their daily review.
+type MarkDailyReviewDoneMsg struct{}
+
+// MarkWeeklyReviewDoneMsg signals that the user has completed their weekly review.
+type MarkWeeklyReviewDoneMsg struct{}
+
 // =============================================================================
 // Focus View Messages (Show/Close Pattern)
 // =============================================================================
@@ -857,3 +860,13 @@ type SandboxResetRequestMsg struct{}
 type SandboxResetDoneMsg struct {
 	TaskCount int // Number of tasks that were cleared
 }
+
+// =============================================================================
+// Alert Center Messages (Show/Close Pattern)
+// =============================================================================
+
+// ShowNotificationCenterMsg opens the alert center view.
+type ShowNotificationCenterMsg struct{}
+
+// CloseNotificationCenterMsg closes the alert center view.
+type CloseNotificationCenterMsg struct{}

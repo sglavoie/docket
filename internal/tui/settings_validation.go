@@ -208,6 +208,77 @@ func (m *SettingsModel) validateKanbanSettings() error {
 	return nil
 }
 
+func (m *SettingsModel) validateAlertSettings() error {
+	// Daily review hour (0-23)
+	hourStr := strings.TrimSpace(m.alertDailyReviewHourInput.Value())
+	if hourStr != "" {
+		hour, err := strconv.Atoi(hourStr)
+		if err != nil {
+			return fmt.Errorf("review hour must be a number")
+		}
+		if hour < 0 || hour > 23 {
+			return fmt.Errorf("review hour must be 0-23")
+		}
+	}
+
+	// Due soon days (positive)
+	if v := strings.TrimSpace(m.alertDueSoonDaysInput.Value()); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("due soon days must be a number")
+		}
+		if n < 1 {
+			return fmt.Errorf("due soon days must be at least 1")
+		}
+	}
+
+	// Stale days (positive)
+	if v := strings.TrimSpace(m.alertStaleDaysInput.Value()); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("stale days must be a number")
+		}
+		if n < 1 {
+			return fmt.Errorf("stale days must be at least 1")
+		}
+	}
+
+	// Inbox threshold (positive)
+	if v := strings.TrimSpace(m.alertInboxThresholdInput.Value()); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("inbox threshold must be a number")
+		}
+		if n < 1 {
+			return fmt.Errorf("inbox threshold must be at least 1")
+		}
+	}
+
+	// Blocked days (positive)
+	if v := strings.TrimSpace(m.alertBlockedDaysInput.Value()); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("blocked days must be a number")
+		}
+		if n < 1 {
+			return fmt.Errorf("blocked days must be at least 1")
+		}
+	}
+
+	// Project stale days (positive)
+	if v := strings.TrimSpace(m.alertProjectStaleDaysInput.Value()); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil {
+			return fmt.Errorf("project stale days must be a number")
+		}
+		if n < 1 {
+			return fmt.Errorf("project stale days must be at least 1")
+		}
+	}
+
+	return nil
+}
+
 func (m *SettingsModel) validateEditorCommand(editor string) error {
 	// Check if it's an absolute path
 	if strings.HasPrefix(editor, "/") {

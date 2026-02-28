@@ -123,18 +123,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.refreshProjectTree()
 		return true, nil
 
-	case SetCurrentProjectMsg:
-		m.config.CurrentProject = msg.Project.ID
-		if err := m.configManager.Save(m.config); err != nil {
-			m.err = err
-			return true, nil
-		}
-		if m.dashboard != nil {
-			m.dashboard.Refresh(m.config)
-		}
-		m.statusMessage = fmt.Sprintf("Set current: %s", msg.Project.Name)
-		return true, defaultStatusTimeout()
-
 	case ToggleInfoPanelMsg:
 		mode := m.config.CycleInfoPanelMode()
 		if err := m.configManager.Save(m.config); err != nil {

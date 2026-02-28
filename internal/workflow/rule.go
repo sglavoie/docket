@@ -101,11 +101,11 @@ const (
 	ActionInheritTag     ActionType = "inherit_tag"     // Copy tag from parent
 	ActionNotifyParent   ActionType = "notify_parent"   // Add comment to parent task
 	// New actions
-	ActionSetSnooze      ActionType = "set_snooze"      // Value: relative duration "+3d"
-	ActionCreateFollowup ActionType = "create_followup" // Value: title for follow-up task
-	ActionMoveToProject  ActionType = "move_to_project" // Value: project name
-	ActionSetRecurrence     ActionType = "set_recurrence"      // Value: recurrence pattern string
-	ActionSetProjectStatus  ActionType = "set_project_status"  // Value: project status icon key
+	ActionSetSnooze        ActionType = "set_snooze"         // Value: relative duration "+3d"
+	ActionCreateFollowup   ActionType = "create_followup"    // Value: title for follow-up task
+	ActionMoveToProject    ActionType = "move_to_project"    // Value: project name
+	ActionSetRecurrence    ActionType = "set_recurrence"     // Value: recurrence pattern string
+	ActionSetProjectStatus ActionType = "set_project_status" // Value: project status icon key
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -242,7 +242,7 @@ type RuleScope struct {
 type WorkflowRule struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
-	Level        RuleLevel     `json:"level,omitempty"`         // "task" (default) or "project"
+	Level        RuleLevel     `json:"level,omitempty"` // "task" (default) or "project"
 	Enabled      bool          `json:"enabled"`
 	Priority     int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
 	Trigger      RuleTrigger   `json:"trigger"`                 // Legacy single trigger (for backward compat)
@@ -570,11 +570,11 @@ func (a RuleAction) Validate() error {
 		ActionInheritTag:     true,
 		ActionNotifyParent:   true,
 		// New actions
-		ActionSetSnooze:      true,
-		ActionCreateFollowup: true,
-		ActionMoveToProject:  true,
-		ActionSetRecurrence:     true,
-		ActionSetProjectStatus:  true,
+		ActionSetSnooze:        true,
+		ActionCreateFollowup:   true,
+		ActionMoveToProject:    true,
+		ActionSetRecurrence:    true,
+		ActionSetProjectStatus: true,
 	}
 	if !validActions[a.ActionType] {
 		return fmt.Errorf("invalid action type: %s", a.ActionType)

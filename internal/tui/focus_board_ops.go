@@ -35,6 +35,7 @@ func (m *FocusBoardModel) markDone() (tea.Model, tea.Cmd) {
 		m.statusMessage = fmt.Sprintf("Marked #%d done", task.ShortID)
 		m.loadItems()
 		m.clampCursor()
+		return m, nil
 	}
 	return m, nil
 }
@@ -62,6 +63,7 @@ func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 		m.statusMessage = fmt.Sprintf("Dismissed #%d", task.ShortID)
 		m.loadItems()
 		m.clampCursor()
+		return m, nil
 	}
 	return m, nil
 }
@@ -100,6 +102,7 @@ func (m *FocusBoardModel) toggleDone() (tea.Model, tea.Cmd) {
 		}
 		m.loadItems()
 		m.clampCursor()
+		return m, nil
 	}
 	return m, nil
 }
@@ -161,6 +164,7 @@ func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
 		m.statusMessage = fmt.Sprintf("Deleted #%d", task.ShortID)
 		m.loadItems()
 		m.clampCursor()
+		return m, nil
 	}
 	return m, nil
 }

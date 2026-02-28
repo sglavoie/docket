@@ -1,0 +1,60 @@
+package alerts
+
+import (
+	"time"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// AlertCategory identifies the type of proactive alert.
+type AlertCategory string
+
+const (
+	CategoryDailyReview   AlertCategory = "daily_review"
+	CategoryWeeklyReview  AlertCategory = "weekly_review"
+	CategoryOverdue       AlertCategory = "overdue"
+	CategoryDueSoon       AlertCategory = "due_soon"
+	CategoryStale         AlertCategory = "stale"
+	CategoryInbox         AlertCategory = "inbox"
+	CategoryBlocked       AlertCategory = "blocked"
+	CategoryProjectHealth AlertCategory = "project_health"
+)
+
+// Severity levels for alerts.
+const (
+	SeverityInfo    = 0
+	SeverityWarning = 1
+	SeverityUrgent  = 2
+)
+
+// Alert represents a single proactive alert.
+type Alert struct {
+	Category  AlertCategory
+	Title     string
+	Details   string
+	TaskID    string
+	ProjectID string
+	Count     int
+	Severity  int // 0=info, 1=warning, 2=urgent
+}
+
+// AlertGroup groups alerts of the same category for display.
+type AlertGroup struct {
+	Category AlertCategory
+	Label    string // Display string like "Overdue (3)"
+	Alerts   []Alert
+}
+
+// AlertSnapshot holds the result of a single evaluation pass.
+type AlertSnapshot struct {
+	Groups      []AlertGroup
+	TotalCount  int
+	EvaluatedAt time.Time
+}
+
+// ProjectData is a lightweight struct holding project metadata and parsed tasks,
+// used to avoid importing TUI types into the alerts package.
+type ProjectData struct {
+	Project *models.Project
+	Tasks   []*models.Task
+}

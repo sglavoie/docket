@@ -41,11 +41,21 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "settings",
 			Description: "Open application settings",
-			Shortcut:    ",",
+			Shortcut:    ";s",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"preferences", "config", "options"},
 			Handler: func() tea.Msg {
 				return SettingsMsg{}
+			},
+		},
+		{
+			Name:        "notifications",
+			Description: "Open the Notification Center",
+			Shortcut:    ";n",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"notification center", "messages", "alerts"},
+			Handler: func() tea.Msg {
+				return ShowNotificationCenterMsg{}
 			},
 		},
 		{
@@ -356,12 +366,21 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "daily review",
 			Description: "Daily planning and review view",
-			Shortcut:    "r",
+			Shortcut:    ";d",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"planning", "today", "morning review"},
 			Handler: func() tea.Msg {
 				return ShowDailyReviewMsg{}
+			},
+		},
+		{
+			Name:        "weekly review",
+			Description: "Strategic project health review",
+			Shortcut:    ";w",
+			Category:    CategoryViews,
+			Aliases:     []string{"weekly", "project health", "strategic review"},
+			Handler: func() tea.Msg {
+				return ShowWeeklyReviewMsg{}
 			},
 		},
 		{

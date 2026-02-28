@@ -504,3 +504,14 @@ func (r *KeybindingRegistry) registerSmartListBuilderBindings() {
 		Keybinding{Key: "Esc", Description: "Cancel", Category: "Navigation", Views: views},
 	)
 }
+
+func (r *KeybindingRegistry) registerNotificationCenterBindings() {
+	views := []ViewType{ViewNotificationCenter}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Navigate notifications", Category: "Navigation", Views: views},
+		Keybinding{Key: "d/x", Description: "Clear notification", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Clear all notifications", Category: "Actions", Views: views},
+		Keybinding{Key: "g/G", Description: "Jump to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}

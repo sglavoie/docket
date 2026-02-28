@@ -133,10 +133,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
 			}
-		case "r":
-			return m, func() tea.Msg {
-				return ShowDailyReviewMsg{}
-			}
 		case "f":
 			return m, func() tea.Msg {
 				return ShowFocusViewMsg{}
@@ -170,19 +166,9 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				project := visible[m.cursor]
 				return m, m.toggleProjectPinned(project)
 			}
-		case "s":
-			if CursorInBounds(m.cursor, len(visible)) {
-				return m, func() tea.Msg {
-					return SetCurrentProjectMsg{Project: visible[m.cursor]}
-				}
-			}
 		case "T":
 			return m, func() tea.Msg {
 				return ShowTrashedProjectsMsg{}
-			}
-		case "W":
-			return m, func() tea.Msg {
-				return ShowWeeklyReviewMsg{}
 			}
 		case "w":
 			return m, func() tea.Msg {

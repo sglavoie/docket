@@ -8,22 +8,22 @@ import (
 
 // Project represents a collection of tasks.
 type Project struct {
-	ID          string     `json:"id"`
-	Slug        string     `json:"slug"`
-	Name        string     `json:"name"`
-	Description string     `json:"description,omitempty"`
-	StatusIcon       string `json:"status_icon,omitempty"`
-	StatusIconSource string `json:"status_icon_source,omitempty"` // "user" (manually set), "auto" (workflow-inferred), "" (unset)
-	Context     string     `json:"context"`
-	Path        string     `json:"path"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	Archived    bool       `json:"archived"`
-	ArchivedAt  *time.Time `json:"archived_at,omitempty"`
-	Pinned      bool       `json:"pinned"`
-	PinnedAt    *time.Time `json:"pinned_at,omitempty"`
-	Sandbox     bool       `json:"sandbox,omitempty"`
-	Internal    bool       `json:"internal,omitempty"`
+	ID               string     `json:"id"`
+	Slug             string     `json:"slug"`
+	Name             string     `json:"name"`
+	Description      string     `json:"description,omitempty"`
+	StatusIcon       string     `json:"status_icon,omitempty"`
+	StatusIconSource string     `json:"status_icon_source,omitempty"` // "user" (manually set), "auto" (workflow-inferred), "" (unset)
+	Context          string     `json:"context"`
+	Path             string     `json:"path"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Archived         bool       `json:"archived"`
+	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
+	Pinned           bool       `json:"pinned"`
+	PinnedAt         *time.Time `json:"pinned_at,omitempty"`
+	Sandbox          bool       `json:"sandbox,omitempty"`
+	Internal         bool       `json:"internal,omitempty"`
 
 	// Computed fields (not persisted in config, stored in tasks.md)
 	Tasks         []*Task           `json:"-"`

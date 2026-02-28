@@ -60,6 +60,7 @@ var prefixCategoryNames = map[string]string{
 	"Fap": "points",
 	"FS":  "filter-score",
 	"Fv":  "saved-views",
+	";":   "tt",
 }
 
 // RenderPrefixPopup renders a which-key style popup as a bordered overlay box.
@@ -649,6 +650,14 @@ var (
 		{Key: "d", Description: "description", Detail: "Edit description"},
 		{Key: "m", Description: "move", Detail: "Move to another project"},
 		{Key: "D", Description: "delete", Detail: "Delete task"},
+	}
+
+	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
+	SemicolonPrefixHints = []PrefixHint{
+		{Key: "n", Description: "notifications", Detail: "Open Notification Center"},
+		{Key: "s", Description: "settings", Detail: "Open Settings"},
+		{Key: "d", Description: "daily review", Detail: "Open Daily Review"},
+		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 	}
 
 	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.

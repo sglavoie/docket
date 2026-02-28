@@ -88,14 +88,14 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 
 // WorkflowEvalResult holds the result of evaluating workflow rules for a project.
 type WorkflowEvalResult struct {
-	ProjectName        string
-	ModifiedTasks      int
-	RulesApplied       map[string]int // rule ID -> count of tasks affected
-	Skipped            bool           // true if evaluation was skipped (recently evaluated)
-	ProjectStatusSet   bool           // true if project status was auto-set
-	ProjectStatusIcon  string         // new project status icon key (if set)
-	ProjectRuleName    string         // name of the project rule that matched
-	Error              error
+	ProjectName       string
+	ModifiedTasks     int
+	RulesApplied      map[string]int // rule ID -> count of tasks affected
+	Skipped           bool           // true if evaluation was skipped (recently evaluated)
+	ProjectStatusSet  bool           // true if project status was auto-set
+	ProjectStatusIcon string         // new project status icon key (if set)
+	ProjectRuleName   string         // name of the project rule that matched
+	Error             error
 }
 
 // EvaluateProjectWorkflowRules evaluates workflow rules for a project.

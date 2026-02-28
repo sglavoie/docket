@@ -16,6 +16,12 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
+	// Overlay alert indicator on the first row of main views
+	if m.shouldShowAlertIndicator() {
+		indicator := renderAlertIndicator(m.alertCount())
+		content = overlayAlertIndicator(content, indicator, m.width)
+	}
+
 	// Full-height views render their own footer and skip the external status bar
 	if view := m.views.Get(m.currentView()); view != nil {
 		if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
@@ -36,6 +42,11 @@ func (m *AppModel) View() string {
 
 	// Overlay prefix popup if the current view provides one
 	if popup := m.renderPrefixPopupOverlay(); popup != "" {
+		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+	}
+
+	// Overlay semicolon prefix popup if active (global, not view-specific)
+	if popup := m.renderSemicolonPrefixPopup(); popup != "" {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
@@ -78,6 +89,15 @@ func (m *AppModel) renderPrefixPopupOverlay() string {
 		return ""
 	}
 	return RenderPrefixPopup(info.Prefix, info.Hints, m.width, m.height)
+}
+
+// renderSemicolonPrefixPopup renders the ";" prefix popup when pendingSemicolonPrefix is true.
+func (m *AppModel) renderSemicolonPrefixPopup() string {
+	if !m.pendingSemicolonPrefix {
+		return ""
+	}
+	hints := PrefixHints{";": SemicolonPrefixHints}
+	return RenderPrefixPopup(";", hints, m.width, m.height)
 }
 
 // renderConfirmDialogOverlay checks if the current view has an active confirm

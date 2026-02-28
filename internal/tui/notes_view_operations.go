@@ -221,16 +221,16 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 	}
 }
 
-func (m *NotesViewModel) togglePin() {
+func (m *NotesViewModel) togglePin() tea.Cmd {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
-		return
+		return nil
 	}
 	note := m.notes[m.cursor]
 	note.Pinned = !note.Pinned
 	note.ModifiedAt = time.Now()
 	if err := storage.SaveNoteTo(m.effectiveDir(), note); err != nil {
 		m.statusMessage = "Failed to save: " + err.Error()
-		return
+		return nil
 	}
 	if note.Pinned {
 		m.statusMessage = "Pinned: " + note.Title
@@ -238,6 +238,7 @@ func (m *NotesViewModel) togglePin() {
 		m.statusMessage = "Unpinned: " + note.Title
 	}
 	m.loadNotes()
+	return nil
 }
 
 func (m *NotesViewModel) performBulkDelete() tea.Cmd {

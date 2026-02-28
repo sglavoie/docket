@@ -19,11 +19,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (62 fields total: 0-61)
+			// Move focus (77 fields total: 0-76)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 62
+				m.focusIndex = (m.focusIndex + 1) % 77
 			} else {
-				m.focusIndex = (m.focusIndex + 61) % 62 // +61 is -1 mod 62
+				m.focusIndex = (m.focusIndex + 76) % 77 // +76 is -1 mod 77
 			}
 
 			// Auto-switch tab to follow focus
@@ -83,6 +83,25 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
 				}
 			}
+			// Alert toggles (indices 62, 64, 66, 67, 69, 71, 73, 75)
+			switch m.focusIndex {
+			case 62:
+				m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
+			case 64:
+				m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
+			case 66:
+				m.alertOverdueEnabled = !m.alertOverdueEnabled
+			case 67:
+				m.alertDueSoonEnabled = !m.alertDueSoonEnabled
+			case 69:
+				m.alertStaleEnabled = !m.alertStaleEnabled
+			case 71:
+				m.alertInboxEnabled = !m.alertInboxEnabled
+			case 73:
+				m.alertBlockedEnabled = !m.alertBlockedEnabled
+			case 75:
+				m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
+			}
 			return m, nil
 
 		case "enter":
@@ -122,6 +141,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.validationErr = err.Error()
 				return m, nil
 			}
+			if err := m.validateAlertSettings(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
 			return m, m.saveSettings()
 
 		case "left", "h":
@@ -157,6 +180,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.outlinerPriorityMode--
 				}
 			}
+			// Weekly review day left
+			if m.focusIndex == 65 && m.alertWeeklyReviewDay > 0 {
+				m.alertWeeklyReviewDay--
+			}
 
 		case "right", "l":
 			// Cycle through contexts when on context field
@@ -186,6 +213,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.outlinerPriorityMode < 2 {
 					m.outlinerPriorityMode++
 				}
+			}
+			// Weekly review day right
+			if m.focusIndex == 65 && m.alertWeeklyReviewDay < 6 {
+				m.alertWeeklyReviewDay++
 			}
 		}
 	}
@@ -231,6 +262,18 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.kanbanMaxColumnsInput, cmd = m.kanbanMaxColumnsInput.Update(msg)
 	case 28:
 		m.kanbanMaxSwimlaneInput, cmd = m.kanbanMaxSwimlaneInput.Update(msg)
+	case 63:
+		m.alertDailyReviewHourInput, cmd = m.alertDailyReviewHourInput.Update(msg)
+	case 68:
+		m.alertDueSoonDaysInput, cmd = m.alertDueSoonDaysInput.Update(msg)
+	case 70:
+		m.alertStaleDaysInput, cmd = m.alertStaleDaysInput.Update(msg)
+	case 72:
+		m.alertInboxThresholdInput, cmd = m.alertInboxThresholdInput.Update(msg)
+	case 74:
+		m.alertBlockedDaysInput, cmd = m.alertBlockedDaysInput.Update(msg)
+	case 76:
+		m.alertProjectStaleDaysInput, cmd = m.alertProjectStaleDaysInput.Update(msg)
 	}
 
 	// Validate on each keystroke
@@ -273,6 +316,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err := m.validateKanbanSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
+	case 63, 68, 70, 72, 74, 76:
+		if err := m.validateAlertSettings(); err != nil {
+			m.validationErr = err.Error()
+		}
 	}
 
 	return m, cmd
@@ -313,9 +360,21 @@ func (m *SettingsModel) blurCurrentField() {
 		m.kanbanMaxColumnsInput.Blur()
 	case 28:
 		m.kanbanMaxSwimlaneInput.Blur()
+	case 63:
+		m.alertDailyReviewHourInput.Blur()
+	case 68:
+		m.alertDueSoonDaysInput.Blur()
+	case 70:
+		m.alertStaleDaysInput.Blur()
+	case 72:
+		m.alertInboxThresholdInput.Blur()
+	case 74:
+		m.alertBlockedDaysInput.Blur()
+	case 76:
+		m.alertProjectStaleDaysInput.Blur()
 	default:
 		// Kanban column toggles (29-41), outliner section toggles (42-48),
-		// outliner column toggles (49-61) - no blur needed
+		// outliner column toggles (49-61), alert toggles/enums - no blur needed
 	}
 }
 
@@ -354,8 +413,20 @@ func (m *SettingsModel) focusCurrentField() {
 		m.kanbanMaxColumnsInput.Focus()
 	case 28:
 		m.kanbanMaxSwimlaneInput.Focus()
+	case 63:
+		m.alertDailyReviewHourInput.Focus()
+	case 68:
+		m.alertDueSoonDaysInput.Focus()
+	case 70:
+		m.alertStaleDaysInput.Focus()
+	case 72:
+		m.alertInboxThresholdInput.Focus()
+	case 74:
+		m.alertBlockedDaysInput.Focus()
+	case 76:
+		m.alertProjectStaleDaysInput.Focus()
 	default:
 		// Kanban column toggles (29-41), outliner section toggles (42-48),
-		// outliner column toggles (49-61) - no focus needed
+		// outliner column toggles (49-61), alert toggles/enums - no focus needed
 	}
 }

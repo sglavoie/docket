@@ -408,9 +408,6 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 	for _, p := range visible {
 		nameStr := p.Name
-		if p.ID == m.config.CurrentProject {
-			nameStr += " *"
-		}
 		if len(nameStr) > maxNameWidth {
 			maxNameWidth = len(nameStr)
 		}
@@ -536,11 +533,6 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		blocked := p.CountBlockedTasks()
 		blockerCount := storage.GetActiveBlockerCount(p)
 
-		currentMarker := ""
-		if p.ID == m.config.CurrentProject {
-			currentMarker = " " + MutedStyle.Foreground(ColorSecondary).Render("*")
-		}
-
 		// Build icon column (fixed visual width, separate from name)
 		iconRendered := ""
 		if hasAnyIcon {
@@ -552,32 +544,15 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 
 		// Build the name string, padded/truncated to max width
-		nameRaw := p.Name
-		if p.ID == m.config.CurrentProject {
-			nameRaw += " *"
-		}
 		displayName := p.Name
-		if len(nameRaw) > maxNameWidth && maxNameWidth > 2 {
-			truncLen := maxNameWidth
-			if p.ID == m.config.CurrentProject {
-				truncLen -= 2
-			}
-			if truncLen < 1 {
-				truncLen = 1
-			}
-			if truncLen < len(p.Name) {
-				displayName = p.Name[:truncLen-1] + "…"
-				nameRaw = displayName
-				if p.ID == m.config.CurrentProject {
-					nameRaw += " *"
-				}
-			}
+		if len(displayName) > maxNameWidth && maxNameWidth > 2 {
+			displayName = p.Name[:maxNameWidth-1] + "…"
 		}
-		namePadding := maxNameWidth - len(nameRaw)
+		namePadding := maxNameWidth - len(displayName)
 		if namePadding < 0 {
 			namePadding = 0
 		}
-		nameRendered := iconRendered + style.Render(displayName) + currentMarker + strings.Repeat(" ", namePadding)
+		nameRendered := iconRendered + style.Render(displayName) + strings.Repeat(" ", namePadding)
 
 		// Context badge, padded/truncated
 		contextRendered := ""
