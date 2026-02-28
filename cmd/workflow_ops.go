@@ -88,11 +88,14 @@ func BuildEvaluationContext(tasks []*models.Task, prevStates map[string]*models.
 
 // WorkflowEvalResult holds the result of evaluating workflow rules for a project.
 type WorkflowEvalResult struct {
-	ProjectName   string
-	ModifiedTasks int
-	RulesApplied  map[string]int // rule ID -> count of tasks affected
-	Skipped       bool           // true if evaluation was skipped (recently evaluated)
-	Error         error
+	ProjectName        string
+	ModifiedTasks      int
+	RulesApplied       map[string]int // rule ID -> count of tasks affected
+	Skipped            bool           // true if evaluation was skipped (recently evaluated)
+	ProjectStatusSet   bool           // true if project status was auto-set
+	ProjectStatusIcon  string         // new project status icon key (if set)
+	ProjectRuleName    string         // name of the project rule that matched
+	Error              error
 }
 
 // EvaluateProjectWorkflowRules evaluates workflow rules for a project.
@@ -139,6 +142,17 @@ func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, c
 		}
 	}
 
+	// Evaluate project-level rules against aggregate task data
+	projResult := evaluateAndApplyProjectRules(project, cfg, rules)
+	result.ProjectStatusSet = projResult.ProjectStatusSet
+	result.ProjectStatusIcon = projResult.ProjectStatusIcon
+	result.ProjectRuleName = projResult.ProjectRuleName
+	if projResult.ProjectStatusSet {
+		for _, id := range projResult.TriggeredRuleIDs {
+			result.RulesApplied[id]++
+		}
+	}
+
 	// Update eval state
 	cfg.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
 		LastEvalTime: time.Now(),
@@ -154,6 +168,45 @@ func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, c
 	}
 
 	return result
+}
+
+// projectRuleResult holds the outcome of project-level rule evaluation.
+type projectRuleResult struct {
+	ProjectStatusSet  bool
+	ProjectStatusIcon string
+	ProjectRuleName   string
+	TriggeredRuleIDs  []string
+}
+
+// evaluateAndApplyProjectRules evaluates project-level rules and applies the result
+// if the project's status was not manually set by the user.
+func evaluateAndApplyProjectRules(project *models.Project, cfg *config.Config, rules []workflow.WorkflowRule) projectRuleResult {
+	var res projectRuleResult
+
+	ctx := &workflow.ProjectEvaluationContext{
+		Project: project,
+		Tasks:   project.Tasks,
+	}
+
+	projEval := workflow.EvaluateProjectRules(ctx, rules)
+	res.TriggeredRuleIDs = projEval.TriggeredRuleIDs
+
+	if projEval.NewStatusIcon == "" {
+		return res
+	}
+
+	// Only apply if source is not "user" (manual override protection)
+	if project.StatusIconSource == "user" {
+		return res
+	}
+
+	project.StatusIcon = projEval.NewStatusIcon
+	project.StatusIconSource = "auto"
+
+	res.ProjectStatusSet = true
+	res.ProjectStatusIcon = projEval.NewStatusIcon
+	res.ProjectRuleName = projEval.AppliedRuleName
+	return res
 }
 
 // Helper functions for workflow edit command
@@ -188,6 +241,12 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 		workflow.FieldParentStatus: true, workflow.FieldParentType: true, workflow.FieldParentTags: true,
 		workflow.FieldLevel: true, workflow.FieldHasChildren: true, workflow.FieldChildrenProgress: true,
 		workflow.FieldAllChildrenDone: true, workflow.FieldIsBlocked: true, workflow.FieldBlockerCount: true,
+		// Project-level triggers
+		workflow.FieldHasInProgressTasks: true, workflow.FieldActiveTaskCount: true,
+		workflow.FieldAllTasksStatus: true, workflow.FieldMajorityTaskType: true,
+		workflow.FieldMajorityTaskStatus: true, workflow.FieldCompletionRatio: true,
+		workflow.FieldDaysSinceUpdate: true, workflow.FieldProjectStatus: true,
+		workflow.FieldHasTasksWithStatus: true,
 	}
 	validOps := map[workflow.TriggerOperation]bool{
 		workflow.OpEquals: true, workflow.OpNotEquals: true, workflow.OpContains: true,

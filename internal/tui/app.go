@@ -340,7 +340,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 	}
 
 	// Initialize dashboard and register it
-	app.dashboard = NewDashboardModel(cfg)
+	app.dashboard = NewDashboardModel(cfg, manager)
 	app.views.Register(ViewDashboard, app.dashboard)
 
 	// Record initial dashboard view in navigation history

@@ -9,6 +9,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// RuleLevel indicates whether a rule operates on individual tasks or on projects.
+type RuleLevel string
+
+const (
+	RuleLevelTask    RuleLevel = "task"
+	RuleLevelProject RuleLevel = "project"
+)
+
 // TriggerField represents the task field that triggers a rule.
 type TriggerField string
 
@@ -48,6 +56,16 @@ const (
 	FieldHasDueDate       TriggerField = "has_due_date"      // Value: "true"/"false"
 	FieldHasTags          TriggerField = "has_tags"          // Value: "true"/"false"
 	FieldDescriptionEmpty TriggerField = "description_empty" // Value: "true"/"false"
+	// Project-level trigger fields (aggregate task data)
+	FieldHasInProgressTasks TriggerField = "has_in_progress_tasks" // bool: any task is in_progress
+	FieldActiveTaskCount    TriggerField = "active_task_count"     // numeric: tasks where Status.IsActive()
+	FieldAllTasksStatus     TriggerField = "all_tasks_status"      // string: all non-complete tasks share this status
+	FieldMajorityTaskType   TriggerField = "majority_task_type"    // string: >50% of active tasks are this type
+	FieldMajorityTaskStatus TriggerField = "majority_task_status"  // string: >50% of active tasks have this status
+	FieldCompletionRatio    TriggerField = "completion_ratio"      // numeric 0-100
+	FieldDaysSinceUpdate    TriggerField = "days_since_update"     // numeric: max of project/task UpdatedAt
+	FieldProjectStatus      TriggerField = "project_status"        // string: current StatusIcon key
+	FieldHasTasksWithStatus TriggerField = "has_tasks_with_status" // string: any task has this status
 )
 
 // TriggerOperation represents how to compare the field value.
@@ -86,7 +104,8 @@ const (
 	ActionSetSnooze      ActionType = "set_snooze"      // Value: relative duration "+3d"
 	ActionCreateFollowup ActionType = "create_followup" // Value: title for follow-up task
 	ActionMoveToProject  ActionType = "move_to_project" // Value: project name
-	ActionSetRecurrence  ActionType = "set_recurrence"  // Value: recurrence pattern string
+	ActionSetRecurrence     ActionType = "set_recurrence"      // Value: recurrence pattern string
+	ActionSetProjectStatus  ActionType = "set_project_status"  // Value: project status icon key
 )
 
 // RuleTrigger defines when a rule should fire.
@@ -173,6 +192,11 @@ func (a RuleAction) String() string {
 		return fmt.Sprintf("move to project %s", a.Value)
 	case ActionSetRecurrence:
 		return fmt.Sprintf("set recurrence to %s", a.Value)
+	case ActionSetProjectStatus:
+		if icon := models.ProjectStatusIconByKey(a.Value); icon != nil {
+			return fmt.Sprintf("set project status to %s %s", icon.Emoji, icon.Label)
+		}
+		return fmt.Sprintf("set project status to %s", a.Value)
 	default:
 		return fmt.Sprintf("%s: %s", a.ActionType, a.Value)
 	}
@@ -218,6 +242,7 @@ type RuleScope struct {
 type WorkflowRule struct {
 	ID           string        `json:"id"`
 	Name         string        `json:"name"`
+	Level        RuleLevel     `json:"level,omitempty"`         // "task" (default) or "project"
 	Enabled      bool          `json:"enabled"`
 	Priority     int           `json:"priority,omitempty"`      // Evaluation order: 1=highest (runs first), 0=unset (sorts last)
 	Trigger      RuleTrigger   `json:"trigger"`                 // Legacy single trigger (for backward compat)
@@ -282,6 +307,19 @@ func (r *WorkflowRule) IsCompound() bool {
 // HasTriggerGroup returns true if the rule uses nested trigger groups.
 func (r *WorkflowRule) HasTriggerGroup() bool {
 	return r.TriggerGroup != nil
+}
+
+// GetLevel returns the rule's level, defaulting to task when empty.
+func (r *WorkflowRule) GetLevel() RuleLevel {
+	if r.Level == RuleLevelProject {
+		return RuleLevelProject
+	}
+	return RuleLevelTask
+}
+
+// IsProjectLevel returns true if this rule operates at the project level.
+func (r *WorkflowRule) IsProjectLevel() bool {
+	return r.GetLevel() == RuleLevelProject
 }
 
 // GetTriggerGroup returns the canonical trigger group for the rule.
@@ -397,6 +435,10 @@ func (r *WorkflowRule) Validate() error {
 		return fmt.Errorf("invalid scope: %w", err)
 	}
 
+	if err := r.validateLevel(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -474,6 +516,16 @@ func (t RuleTrigger) Validate() error {
 		FieldAllChildrenDone:  true,
 		FieldIsBlocked:        true,
 		FieldBlockerCount:     true,
+		// Project-level triggers
+		FieldHasInProgressTasks: true,
+		FieldActiveTaskCount:    true,
+		FieldAllTasksStatus:     true,
+		FieldMajorityTaskType:   true,
+		FieldMajorityTaskStatus: true,
+		FieldCompletionRatio:    true,
+		FieldDaysSinceUpdate:    true,
+		FieldProjectStatus:      true,
+		FieldHasTasksWithStatus: true,
 	}
 	if !validFields[t.Field] {
 		return fmt.Errorf("invalid field: %s", t.Field)
@@ -521,7 +573,8 @@ func (a RuleAction) Validate() error {
 		ActionSetSnooze:      true,
 		ActionCreateFollowup: true,
 		ActionMoveToProject:  true,
-		ActionSetRecurrence:  true,
+		ActionSetRecurrence:     true,
+		ActionSetProjectStatus:  true,
 	}
 	if !validActions[a.ActionType] {
 		return fmt.Errorf("invalid action type: %s", a.ActionType)
@@ -556,6 +609,10 @@ func (a RuleAction) Validate() error {
 	case ActionSetRecurrence:
 		if models.ParseRecurrence(a.Value) == nil {
 			return fmt.Errorf("invalid recurrence pattern: %s (use format like daily, weekly, 2d, 3w)", a.Value)
+		}
+	case ActionSetProjectStatus:
+		if models.ProjectStatusIconByKey(a.Value) == nil {
+			return fmt.Errorf("invalid project status icon key: %s", a.Value)
 		}
 	}
 
@@ -631,6 +688,10 @@ func ValidTriggerFields() []TriggerField {
 		FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
 		FieldIsBlocked, FieldBlockerCount,
+		// Project-level triggers
+		FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksStatus,
+		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
+		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithStatus,
 	}
 }
 
@@ -652,6 +713,8 @@ func ValidActionTypes() []ActionType {
 		ActionInheritTag, ActionNotifyParent,
 		// New actions
 		ActionSetSnooze, ActionCreateFollowup, ActionMoveToProject, ActionSetRecurrence,
+		// Project-level actions
+		ActionSetProjectStatus,
 	}
 }
 
@@ -682,6 +745,17 @@ func IsHierarchicalAction(actionType ActionType) bool {
 	switch actionType {
 	case ActionCompleteParent, ActionBlockParent, ActionCascadeTag,
 		ActionInheritTag, ActionNotifyParent:
+		return true
+	}
+	return false
+}
+
+// IsProjectTrigger returns true if the trigger field is a project-level aggregate field.
+func IsProjectTrigger(field TriggerField) bool {
+	switch field {
+	case FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksStatus,
+		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
+		FieldDaysSinceUpdate, FieldProjectStatus, FieldHasTasksWithStatus:
 		return true
 	}
 	return false
@@ -771,4 +845,52 @@ func (r *WorkflowRule) validateScope() error {
 	}
 
 	return nil
+}
+
+// validateLevel checks that triggers and actions match the rule's level.
+func (r *WorkflowRule) validateLevel() error {
+	level := r.GetLevel()
+
+	// Collect all leaf triggers (from trigger group or flat list)
+	var triggers []RuleTrigger
+	if r.TriggerGroup != nil {
+		triggers = collectTriggers(r.TriggerGroup)
+	} else {
+		triggers = r.GetTriggers()
+	}
+
+	if level == RuleLevelProject {
+		for _, t := range triggers {
+			if !IsProjectTrigger(t.Field) {
+				return fmt.Errorf("project-level rule %q has task-level trigger field %q", r.Name, t.Field)
+			}
+		}
+		for _, a := range r.Actions {
+			if a.ActionType != ActionSetProjectStatus {
+				return fmt.Errorf("project-level rule %q has non-project action %q", r.Name, a.ActionType)
+			}
+		}
+	} else {
+		for _, t := range triggers {
+			if IsProjectTrigger(t.Field) {
+				return fmt.Errorf("task-level rule %q has project-level trigger field %q", r.Name, t.Field)
+			}
+		}
+		for _, a := range r.Actions {
+			if a.ActionType == ActionSetProjectStatus {
+				return fmt.Errorf("task-level rule %q has project-level action %q", r.Name, a.ActionType)
+			}
+		}
+	}
+	return nil
+}
+
+// collectTriggers recursively collects all leaf triggers from a trigger group.
+func collectTriggers(group *TriggerGroup) []RuleTrigger {
+	var result []RuleTrigger
+	result = append(result, group.Triggers...)
+	for i := range group.Groups {
+		result = append(result, collectTriggers(&group.Groups[i])...)
+	}
+	return result
 }

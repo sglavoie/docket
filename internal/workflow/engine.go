@@ -187,6 +187,9 @@ func evaluateRulesWithContextRecursive(evalCtx *EvaluationContext, rules []Workf
 			if !rule.Enabled {
 				continue
 			}
+			if rule.GetLevel() == RuleLevelProject {
+				continue
+			}
 			if !rule.MatchesScope(task, evalCtx.ProjectName, evalCtx.ProjectID) {
 				continue
 			}

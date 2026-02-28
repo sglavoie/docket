@@ -86,6 +86,7 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown status icon '%s'; valid keys: planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived", projectStatusIcon)
 		}
 		project.StatusIcon = projectStatusIcon
+		project.StatusIconSource = "user"
 	}
 
 	// Ensure data directory exists

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/workflow"
 )
 
 // getAllContexts returns a sorted list of unique contexts from loaded projects.
@@ -117,6 +118,31 @@ func (m *DashboardModel) loadProjects() {
 	for _, p := range m.projects {
 		_ = storage.LoadProject(p)
 	}
+
+	// Evaluate project-level workflow rules for all loaded projects
+	rules := m.config.GetEnabledWorkflowRules()
+	if len(rules) > 0 {
+		changed := false
+		for _, p := range m.projects {
+			if p.StatusIconSource == "user" {
+				continue
+			}
+			projCtx := &workflow.ProjectEvaluationContext{
+				Project: p,
+				Tasks:   p.Tasks,
+			}
+			projResult := workflow.EvaluateProjectRules(projCtx, rules)
+			if projResult.NewStatusIcon != "" && projResult.NewStatusIcon != p.StatusIcon {
+				p.StatusIcon = projResult.NewStatusIcon
+				p.StatusIconSource = "auto"
+				changed = true
+			}
+		}
+		if changed && m.configManager != nil {
+			_ = m.configManager.Save(m.config)
+		}
+	}
+
 	m.contexts = m.getAllContexts()
 }
 

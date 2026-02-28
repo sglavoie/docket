@@ -11,9 +11,10 @@ import (
 type DashboardModel struct {
 	BaseSearchableView
 	InteractiveViewState
-	config       *config.Config
-	projects     []*models.Project
-	showArchived bool
+	config        *config.Config
+	configManager *config.Manager
+	projects      []*models.Project
+	showArchived  bool
 
 	// Context filter state
 	filterContext       string   // Empty string means "all contexts"
@@ -25,9 +26,10 @@ type DashboardModel struct {
 }
 
 // NewDashboardModel creates a new dashboard model.
-func NewDashboardModel(cfg *config.Config) *DashboardModel {
+func NewDashboardModel(cfg *config.Config, manager *config.Manager) *DashboardModel {
 	m := &DashboardModel{
 		config:              cfg,
+		configManager:       manager,
 		filterContext:       cfg.FilterContext,       // Load persisted context filter
 		filterCustomContext: cfg.FilterCustomContext, // Load persisted custom context filter
 	}

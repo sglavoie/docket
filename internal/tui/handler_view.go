@@ -314,6 +314,11 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if !msg.Canceled {
 			msg.Project.StatusIcon = msg.Key
+			if msg.Key != "" {
+				msg.Project.StatusIconSource = "user"
+			} else {
+				msg.Project.StatusIconSource = ""
+			}
 			msg.Project.UpdatedAt = time.Now()
 			_ = m.configManager.Save(m.config)
 		}

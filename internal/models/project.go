@@ -12,7 +12,8 @@ type Project struct {
 	Slug        string     `json:"slug"`
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`
-	StatusIcon  string     `json:"status_icon,omitempty"`
+	StatusIcon       string `json:"status_icon,omitempty"`
+	StatusIconSource string `json:"status_icon_source,omitempty"` // "user" (manually set), "auto" (workflow-inferred), "" (unset)
 	Context     string     `json:"context"`
 	Path        string     `json:"path"`
 	CreatedAt   time.Time  `json:"created_at"`

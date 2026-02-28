@@ -502,11 +502,15 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 			status = MutedStyle.Render("○")
 		}
 
-		// Default marker
+		// Level and default markers
 		defaultMarker := ""
 		effectiveMaxLen := maxNameLen
+		if rule.IsProjectLevel() {
+			defaultMarker += MutedStyle.Render("[P]") + " "
+			effectiveMaxLen -= 4
+		}
 		if isDefault {
-			defaultMarker = MutedStyle.Render("[D]") + " "
+			defaultMarker += MutedStyle.Render("[D]") + " "
 			effectiveMaxLen -= 4 // Account for [D] marker
 		}
 
@@ -562,6 +566,10 @@ func (m *WorkflowRulesModel) renderPreviewPane(width int) string {
 
 	// Rule name header
 	b.WriteString(BoldStyle.Render("Preview"))
+	if rule.IsProjectLevel() {
+		b.WriteString(" ")
+		b.WriteString(MutedStyle.Render("[Project]"))
+	}
 	if isDefault {
 		b.WriteString(" ")
 		b.WriteString(MutedStyle.Render("[Default]"))
@@ -647,8 +655,12 @@ func (m *WorkflowRulesModel) renderFullscreenPreview() string {
 	keywordStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))  // Cyan for IF/AND/OR/THEN
 	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13")) // Magenta for =, !=, <, >, :
 
-	// Rule name with default indicator
+	// Rule name with level and default indicator
 	b.WriteString(BoldStyle.Foreground(ColorPrimary).Render(rule.Name))
+	if rule.IsProjectLevel() {
+		b.WriteString(" ")
+		b.WriteString(MutedStyle.Render("[Project]"))
+	}
 	if isDefault {
 		b.WriteString(" ")
 		b.WriteString(MutedStyle.Render("[Default]"))

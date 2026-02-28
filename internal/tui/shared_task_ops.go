@@ -172,6 +172,27 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
 				_ = opts.ConfigManager.Save(opts.Config)
 			}
+
+			// Evaluate project-level rules against aggregate task data
+			if opts.Project.StatusIconSource != "user" {
+				projCtx := &workflow.ProjectEvaluationContext{
+					Project: opts.Project,
+					Tasks:   opts.Project.Tasks,
+				}
+				projResult := workflow.EvaluateProjectRules(projCtx, rules)
+				if projResult.NewStatusIcon != "" {
+					opts.Project.StatusIcon = projResult.NewStatusIcon
+					opts.Project.StatusIconSource = "auto"
+					if len(projResult.TriggeredRuleIDs) > 0 && opts.ConfigManager != nil {
+						counts := make(map[string]int, len(projResult.TriggeredRuleIDs))
+						for _, id := range projResult.TriggeredRuleIDs {
+							counts[id]++
+						}
+						opts.Config.IncrementRuleTriggerCounts(counts)
+						_ = opts.ConfigManager.Save(opts.Config)
+					}
+				}
+			}
 		}
 	}
 

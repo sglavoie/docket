@@ -55,6 +55,14 @@ ACTION TYPES:
   set_due_relative, clear_due, set_active, set_pinned, add_comment, set_type
   complete_parent, block_parent, cascade_tag, inherit_tag, notify_parent
   set_snooze, create_followup, move_to_project, set_recurrence
+  set_project_status (project-level only)
+
+PROJECT-LEVEL RULES:
+  Use --level project to create rules that operate on aggregate task data.
+  Project triggers: has_in_progress_tasks, active_task_count, all_tasks_status,
+    majority_task_type, majority_task_status, completion_ratio,
+    days_since_update, project_status, has_tasks_with_status
+  Project action: set_project_status (value = icon key: planning, active, etc.)
 
 RULE SCOPING:
   Restrict rules to specific projects, types, or sections:
@@ -102,6 +110,7 @@ Examples:
 
 var (
 	ruleName      string
+	ruleLevel     string
 	rulePriority  int
 	triggerFields []string
 	triggerOps    []string
@@ -122,6 +131,7 @@ func init() {
 	workflowCmd.AddCommand(workflowAddCmd)
 
 	workflowAddCmd.Flags().StringVarP(&ruleName, "name", "n", "", "rule name (required)")
+	workflowAddCmd.Flags().StringVar(&ruleLevel, "level", "task", "rule level: task (default) or project")
 	workflowAddCmd.Flags().IntVar(&rulePriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerFields, "field", "f", nil, "trigger field: status, priority, section, tags, type (can specify multiple)")
 	workflowAddCmd.Flags().StringArrayVarP(&triggerOps, "op", "o", nil, "trigger operation: equals, not_equals, contains, greater_than, less_than (default: equals)")
@@ -195,6 +205,16 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.FieldAllChildrenDone:  true,
 		workflow.FieldIsBlocked:        true,
 		workflow.FieldBlockerCount:     true,
+		// Project-level triggers
+		workflow.FieldHasInProgressTasks: true,
+		workflow.FieldActiveTaskCount:    true,
+		workflow.FieldAllTasksStatus:     true,
+		workflow.FieldMajorityTaskType:   true,
+		workflow.FieldMajorityTaskStatus: true,
+		workflow.FieldCompletionRatio:    true,
+		workflow.FieldDaysSinceUpdate:    true,
+		workflow.FieldProjectStatus:      true,
+		workflow.FieldHasTasksWithStatus: true,
 	}
 	validOps := map[workflow.TriggerOperation]bool{
 		workflow.OpEquals:      true,
@@ -254,7 +274,8 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.ActionSetSnooze:      true,
 		workflow.ActionCreateFollowup: true,
 		workflow.ActionMoveToProject:  true,
-		workflow.ActionSetRecurrence:  true,
+		workflow.ActionSetRecurrence:    true,
+		workflow.ActionSetProjectStatus: true,
 	}
 	if !validActions[action] {
 		return fmt.Errorf("invalid action type: %s (run 'tt workflow add --help' for valid actions)", actionType)
@@ -321,6 +342,13 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		rule = workflow.NewCompoundRule(ruleName, triggers, logic, actions)
 	}
 	rule.Enabled = !ruleDisabled
+	level := workflow.RuleLevel(strings.ToLower(ruleLevel))
+	if level != workflow.RuleLevelTask && level != workflow.RuleLevelProject {
+		return fmt.Errorf("invalid level: %s (valid: task, project)", ruleLevel)
+	}
+	if level == workflow.RuleLevelProject {
+		rule.Level = workflow.RuleLevelProject
+	}
 	if rulePriority < 0 || rulePriority > 99 {
 		return fmt.Errorf("priority must be 0-99, got: %d", rulePriority)
 	}
@@ -346,6 +374,9 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Created workflow rule: %s [%s]\n", rule.Name, rule.ID)
+	if rule.IsProjectLevel() {
+		fmt.Println("  Level: project")
+	}
 	fmt.Printf("  %s\n", rule.Summary())
 	if !rule.Enabled {
 		fmt.Println("  (disabled)")

@@ -103,6 +103,11 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 			}
 		}
 		project.StatusIcon = iconKey
+		if iconKey != "" {
+			project.StatusIconSource = "user"
+		} else {
+			project.StatusIconSource = ""
+		}
 	}
 
 	// Update timestamp

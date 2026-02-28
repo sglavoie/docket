@@ -102,6 +102,23 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 		}
 	}
 
+	// Evaluate project-level rules against aggregate task data
+	if project.StatusIconSource != "user" {
+		projCtx := &workflow.ProjectEvaluationContext{
+			Project: project,
+			Tasks:   project.Tasks,
+		}
+		projResult := workflow.EvaluateProjectRules(projCtx, rules)
+		if projResult.NewStatusIcon != "" {
+			project.StatusIcon = projResult.NewStatusIcon
+			project.StatusIconSource = "auto"
+			// Count triggered project rules
+			for _, id := range projResult.TriggeredRuleIDs {
+				cfg.IncrementRuleTriggerCounts(map[string]int{id: 1})
+			}
+		}
+	}
+
 	// Update eval state regardless of changes
 	cfg.SetWorkflowEvalState(project.ID, config.WorkflowEvalState{
 		LastEvalTime: time.Now(),

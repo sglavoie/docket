@@ -132,7 +132,7 @@ func TestHandleViewMessagesMoveBlocked(t *testing.T) {
 
 func TestHandleViewMessagesRefresh(t *testing.T) {
 	app := newTestAppModel()
-	app.dashboard = NewDashboardModel(app.config)
+	app.dashboard = NewDashboardModel(app.config, nil)
 
 	msg := RefreshMsg{}
 	handled, _ := app.handleViewMessages(msg)

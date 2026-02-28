@@ -46,6 +46,13 @@ func runWorkflowShow(cmd *cobra.Command, args []string) error {
 	// Display rule details
 	fmt.Printf("Rule: %s [%s]\n", rule.Name, rule.ID)
 
+	// Level
+	level := "task"
+	if rule.IsProjectLevel() {
+		level = "project"
+	}
+	fmt.Printf("Level: %s\n", level)
+
 	// Source
 	source := "custom"
 	if rule.Source == "default" {

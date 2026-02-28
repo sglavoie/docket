@@ -243,5 +243,93 @@ func GetDefaultRules() []WorkflowRule {
 				{ActionType: ActionSetStatus, Value: "in_progress"},
 			},
 		},
+
+		// --- Project-level rules ---
+
+		// Project Bugfix Mode: majority of active tasks are bugs
+		{
+			ID:       "def-proj-bugfix",
+			Name:     "Project Bugfix Mode",
+			Level:    RuleLevelProject,
+			Enabled:  false,
+			Priority: 30,
+			Source:   "default",
+			Trigger: RuleTrigger{
+				Field:     FieldMajorityTaskType,
+				Operation: OpEquals,
+				Value:     "bug",
+			},
+			Actions: []RuleAction{
+				{ActionType: ActionSetProjectStatus, Value: "bugfix"},
+			},
+		},
+		// Project In Review: majority of active tasks are in review
+		{
+			ID:       "def-proj-review",
+			Name:     "Project In Review",
+			Level:    RuleLevelProject,
+			Enabled:  false,
+			Priority: 30,
+			Source:   "default",
+			Trigger: RuleTrigger{
+				Field:     FieldMajorityTaskStatus,
+				Operation: OpEquals,
+				Value:     "review",
+			},
+			Actions: []RuleAction{
+				{ActionType: ActionSetProjectStatus, Value: "review"},
+			},
+		},
+		// Project Paused: no updates in 14+ days with active tasks
+		{
+			ID:       "def-proj-paused",
+			Name:     "Project Paused",
+			Level:    RuleLevelProject,
+			Enabled:  false,
+			Priority: 40,
+			Source:   "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldDaysSinceUpdate, Operation: OpGreaterThan, Value: "14"},
+				{Field: FieldActiveTaskCount, Operation: OpGreaterThan, Value: "0"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetProjectStatus, Value: "paused"},
+			},
+		},
+		// Project Active: has tasks currently in progress
+		{
+			ID:       "def-proj-active",
+			Name:     "Project Active",
+			Level:    RuleLevelProject,
+			Enabled:  false,
+			Priority: 50,
+			Source:   "default",
+			Trigger: RuleTrigger{
+				Field:     FieldHasInProgressTasks,
+				Operation: OpEquals,
+				Value:     "true",
+			},
+			Actions: []RuleAction{
+				{ActionType: ActionSetProjectStatus, Value: "active"},
+			},
+		},
+		// Project Planning: has active tasks but none in progress
+		{
+			ID:       "def-proj-planning",
+			Name:     "Project Planning",
+			Level:    RuleLevelProject,
+			Enabled:  false,
+			Priority: 60,
+			Source:   "default",
+			Triggers: []RuleTrigger{
+				{Field: FieldActiveTaskCount, Operation: OpGreaterThan, Value: "0"},
+				{Field: FieldHasInProgressTasks, Operation: OpEquals, Value: "false"},
+			},
+			TriggerLogic: LogicAnd,
+			Actions: []RuleAction{
+				{ActionType: ActionSetProjectStatus, Value: "planning"},
+			},
+		},
 	}
 }

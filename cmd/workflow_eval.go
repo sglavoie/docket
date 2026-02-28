@@ -112,11 +112,14 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 	}
 
 	type evalResultItem struct {
-		project      *models.Project
-		modified     int
-		rulesApplied map[string]int
-		skipped      bool
-		err          error
+		project           *models.Project
+		modified          int
+		rulesApplied      map[string]int
+		skipped           bool
+		projectStatusSet  bool
+		projectStatusIcon string
+		projectRuleName   string
+		err               error
 	}
 
 	results := make([]evalResultItem, len(projects))
@@ -140,12 +143,29 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 			evalResult := workflow.EvaluateRules(p.Tasks, rules)
 			results[i].modified = len(evalResult.ModifiedTasks)
 			results[i].rulesApplied = evalResult.RuleTriggerCounts
+
+			// Dry-run project-level eval
+			if p.StatusIconSource != "user" {
+				projCtx := &workflow.ProjectEvaluationContext{
+					Project: p,
+					Tasks:   p.Tasks,
+				}
+				projResult := workflow.EvaluateProjectRules(projCtx, rules)
+				if projResult.NewStatusIcon != "" {
+					results[i].projectStatusSet = true
+					results[i].projectStatusIcon = projResult.NewStatusIcon
+					results[i].projectRuleName = projResult.AppliedRuleName
+				}
+			}
 		} else {
 			// Normal evaluation
 			result := EvaluateProjectWorkflowRules(p, cfg, configManager, evalForce)
 			results[i].modified = result.ModifiedTasks
 			results[i].rulesApplied = result.RulesApplied
 			results[i].skipped = result.Skipped
+			results[i].projectStatusSet = result.ProjectStatusSet
+			results[i].projectStatusIcon = result.ProjectStatusIcon
+			results[i].projectRuleName = result.ProjectRuleName
 			results[i].err = result.Error
 		}
 
@@ -173,11 +193,18 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 				fmt.Printf("  %s: ERROR - %v\n", name, r.err)
 			} else if r.skipped {
 				fmt.Printf("  %s: skipped (recently evaluated)\n", name)
-			} else if r.modified == 0 {
+			} else if r.modified == 0 && !r.projectStatusSet {
 				fmt.Printf("  %s: no changes\n", name)
 			} else {
-				ruleCount := len(r.rulesApplied)
-				fmt.Printf("  %s: %d task(s) modified by %d rule(s)\n", name, r.modified, ruleCount)
+				if r.modified > 0 {
+					ruleCount := len(r.rulesApplied)
+					fmt.Printf("  %s: %d task(s) modified by %d rule(s)\n", name, r.modified, ruleCount)
+				}
+				if r.projectStatusSet {
+					if icon := models.ProjectStatusIconByKey(r.projectStatusIcon); icon != nil {
+						fmt.Printf("  %s: project status -> %s %s (rule: %s)\n", name, icon.Emoji, icon.Label, r.projectRuleName)
+					}
+				}
 			}
 		}
 

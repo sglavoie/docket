@@ -13,6 +13,7 @@ import (
 var (
 	// Simple field updates
 	workflowEditName     string
+	workflowEditLevel    string
 	workflowEditEnabled  bool
 	workflowEditPriority int
 
@@ -94,6 +95,7 @@ func init() {
 
 	// Simple field flags
 	workflowEditCmd.Flags().StringVarP(&workflowEditName, "name", "n", "", "new rule name")
+	workflowEditCmd.Flags().StringVar(&workflowEditLevel, "level", "", "rule level: task or project")
 	workflowEditCmd.Flags().BoolVar(&workflowEditEnabled, "enabled", false, "enable or disable rule (must set explicitly)")
 	workflowEditCmd.Flags().IntVar(&workflowEditPriority, "priority", 0, "rule priority (1=highest, runs first; 0=default, runs last)")
 
@@ -156,6 +158,19 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("rule name cannot be empty")
 		}
 		modifiedRule.Name = strings.TrimSpace(workflowEditName)
+		hasChanges = true
+	}
+
+	if cmd.Flags().Changed("level") {
+		level := workflow.RuleLevel(strings.ToLower(workflowEditLevel))
+		if level != workflow.RuleLevelTask && level != workflow.RuleLevelProject {
+			return fmt.Errorf("invalid level: %s (valid: task, project)", workflowEditLevel)
+		}
+		if level == workflow.RuleLevelProject {
+			modifiedRule.Level = workflow.RuleLevelProject
+		} else {
+			modifiedRule.Level = ""
+		}
 		hasChanges = true
 	}
 
@@ -320,6 +335,9 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 	// Display final result
 	fmt.Println("Updated workflow rule:")
 	fmt.Printf("  Rule: %s [%s]\n", modifiedRule.Name, modifiedRule.ID)
+	if modifiedRule.IsProjectLevel() {
+		fmt.Println("  Level: project")
+	}
 	fmt.Println()
 
 	// Show full details
