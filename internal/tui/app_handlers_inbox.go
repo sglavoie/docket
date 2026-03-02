@@ -44,7 +44,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseGlobalInboxProcessorMsg:
-		m.popView()
+		m.popToAnchorView()
 		// Refresh dashboard to reflect any changes
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)

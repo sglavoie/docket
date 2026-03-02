@@ -25,6 +25,10 @@ func (m *AppModel) View() string {
 	// Full-height views render their own footer and skip the external status bar
 	if view := m.views.Get(m.currentView()); view != nil {
 		if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
+			// Still overlay the semicolon prefix popup on full-height views
+			if popup := m.renderSemicolonPrefixPopup(); popup != "" {
+				content = OverlayPopup(content, popup, m.width, m.height)
+			}
 			return content
 		}
 	}

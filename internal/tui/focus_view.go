@@ -311,7 +311,12 @@ func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) stri
 		return "Later"
 	}
 	dueDay := util.StartOfDay(*task.DueDate)
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+	// Compare calendar dates to avoid DST boundary skew.
+	y1, m1, d1 := today.Date()
+	y2, m2, d2 := dueDay.Date()
+	todayUTC := time.Date(y1, m1, d1, 0, 0, 0, 0, time.UTC)
+	dueUTC := time.Date(y2, m2, d2, 0, 0, 0, 0, time.UTC)
+	daysUntil := int(dueUTC.Sub(todayUTC).Hours() / 24)
 	switch {
 	case daysUntil < 0:
 		return "Overdue"

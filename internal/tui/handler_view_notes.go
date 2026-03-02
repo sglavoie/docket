@@ -31,7 +31,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseGlobalNotesMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case ShowGlobalNoteCreatorMsg:

@@ -58,6 +58,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return ShowDailyReviewMsg{} }
 			case "w":
 				return m, func() tea.Msg { return ShowWeeklyReviewMsg{} }
+			case "i":
+				return m, func() tea.Msg { return ShowGlobalInboxProcessorMsg{} }
+			case "N":
+				return m, func() tea.Msg { return ShowGlobalNotesMsg{} }
+			case "f":
+				return m, func() tea.Msg { return ShowFocusViewMsg{} }
+			case "F":
+				return m, func() tea.Msg { return ShowFocusBoardMsg{} }
+			case "l":
+				return m, func() tea.Msg { return ShowRecentActivityMsg{} }
+			case "B":
+				return m, func() tea.Msg { return ShowGlobalBlockersMsg{} }
+			case "m":
+				return m, func() tea.Msg { return ShowMetricsDashboardMsg{} }
+			case "a":
+				return m, func() tea.Msg { return ShowAllTasksMsg{} }
 			}
 			return m, nil
 		}
@@ -273,7 +289,11 @@ func (m *AppModel) handleEscKey() bool {
 	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
-		m.popView()
+		if isGlobalOverlayView(closingView) {
+			m.popToAnchorView()
+		} else {
+			m.popView()
+		}
 		// Persist kanban filter state and refresh project tree when closing Kanban
 		if closingView == ViewKanban {
 			m.saveKanbanState()

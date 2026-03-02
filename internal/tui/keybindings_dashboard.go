@@ -12,8 +12,8 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "/", Description: "Global search", Category: "Navigation", Views: views},
 		Keybinding{Key: "\\", Description: "Search projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+D", Description: "⏰ Due date overview", Category: "Navigation", Views: views},
-		Keybinding{Key: "r", Description: "Daily review", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
+		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+W", Description: "Workflow rules", Category: "Navigation", Views: views},
 
 		// Project Cycling
@@ -23,18 +23,6 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},
-
-		// Views
-		Keybinding{Key: "w", Description: "Global inbox processor", Category: "Views", Views: views},
-		Keybinding{Key: "N", Description: "Global notes", Category: "Views", Views: views},
-		Keybinding{Key: "f", Description: "🎯 Focus view", Category: "Views", Views: views},
-		Keybinding{Key: "l", Description: "Latest activity", Category: "Views", Views: views},
-		Keybinding{Key: "W", Description: "Weekly review", Category: "Views", Views: views},
-		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Views", Views: views},
-		Keybinding{Key: "B", Description: "Global project blockers", Category: "Views", Views: views},
-		Keybinding{Key: "m", Description: "Metrics dashboard", Category: "Views", Views: views},
-		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
-		Keybinding{Key: "F", Description: "Focus board", Category: "Views", Views: views},
 
 		// Actions
 		Keybinding{Key: "n", Description: "New project", Category: "Actions", Views: views},

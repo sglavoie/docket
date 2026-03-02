@@ -345,9 +345,9 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "all tasks",
 			Description: "View all tasks across every project",
-			Shortcut:    "A",
+			Shortcut:    ";a",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Views:       []ViewType{ViewProjectTree, ViewOutliner},
 			Aliases:     []string{"cross-project tasks", "every task"},
 			Handler: func() tea.Msg {
 				return ShowAllTasksMsg{}
@@ -386,9 +386,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "latest activity",
 			Description: "View recently modified tasks across all projects",
-			Shortcut:    "l",
+			Shortcut:    ";l",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"recent", "activity", "latest", "recent tasks"},
 			Handler: func() tea.Msg {
 				return ShowRecentActivityMsg{}
@@ -397,9 +396,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "what's next",
 			Description: "Cross-project task suggestions and work queue",
-			Shortcut:    "f",
+			Shortcut:    ";f",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"active tasks", "focus", "today tasks", "focus view", "suggestions"},
 			Handler: func() tea.Msg {
 				return ShowFocusViewMsg{}
@@ -408,9 +406,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "focus board",
 			Description: "Personal command center with external items and tasks",
-			Shortcut:    "F",
+			Shortcut:    ";F",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"board", "command center", "external items"},
 			Handler: func() tea.Msg {
 				return ShowFocusBoardMsg{}
@@ -459,9 +456,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global inbox processor",
 			Description: "Process inbox items across all projects",
-			Shortcut:    "w",
+			Shortcut:    ";i",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"global inbox", "all inbox", "process all inbox"},
 			Handler: func() tea.Msg {
 				return ShowGlobalInboxProcessorMsg{}
@@ -470,9 +466,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global notes",
 			Description: "Open global notes (not tied to any project)",
-			Shortcut:    "N",
+			Shortcut:    ";N",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"global notes", "notes", "scratch notes"},
 			Handler: func() tea.Msg {
 				return ShowGlobalNotesMsg{}
@@ -481,9 +476,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "global blockers",
 			Description: "View blockers across all projects",
-			Shortcut:    "B",
+			Shortcut:    ";B",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"all blockers", "blockers overview"},
 			Handler: func() tea.Msg {
 				return ShowGlobalBlockersMsg{}
@@ -492,9 +486,8 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "metrics dashboard",
 			Description: "View completion rates, cycle time, and throughput",
-			Shortcut:    "m",
+			Shortcut:    ";m",
 			Category:    CategoryViews,
-			Views:       []ViewType{ViewDashboard},
 			Aliases:     []string{"metrics", "analytics", "stats", "statistics"},
 			Handler: func() tea.Msg {
 				return ShowMetricsDashboardMsg{}

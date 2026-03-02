@@ -82,10 +82,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return CreateProjectMsg{}
 			}
-		case "N":
-			return m, func() tea.Msg {
-				return ShowGlobalNotesMsg{}
-			}
 		case "a":
 			m.showArchived = !m.showArchived
 			m.cursor = 0
@@ -133,18 +129,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowDueDateOverviewMsg{}
 			}
-		case "f":
-			return m, func() tea.Msg {
-				return ShowFocusViewMsg{}
-			}
-		case "F":
-			return m, func() tea.Msg {
-				return ShowFocusBoardMsg{}
-			}
-		case "l":
-			return m, func() tea.Msg {
-				return ShowRecentActivityMsg{}
-			}
 		case "ctrl+t":
 			return m, func() tea.Msg {
 				return ShowGlobalTagManagerMsg{}
@@ -170,10 +154,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowTrashedProjectsMsg{}
 			}
-		case "w":
-			return m, func() tea.Msg {
-				return ShowGlobalInboxProcessorMsg{}
-			}
 		case "b":
 			// Open blockers for selected project
 			if len(visible) > 0 && m.cursor < len(visible) {
@@ -181,18 +161,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					return ShowBlockersMsg{Project: project}
 				}
-			}
-		case "m":
-			return m, func() tea.Msg {
-				return ShowMetricsDashboardMsg{}
-			}
-		case "A":
-			return m, func() tea.Msg {
-				return ShowAllTasksMsg{}
-			}
-		case "B":
-			return m, func() tea.Msg {
-				return ShowGlobalBlockersMsg{}
 			}
 		case "ctrl+w":
 			return m, func() tea.Msg {

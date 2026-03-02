@@ -105,6 +105,38 @@ func (m *AppModel) popView() {
 	}
 }
 
+// isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.
+// These views can be opened from any context and should return to an anchor view when closed.
+func isGlobalOverlayView(v ViewType) bool {
+	switch v {
+	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
+		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
+		ViewMetricsDashboard, ViewAllTasks:
+		return true
+	}
+	return false
+}
+
+// popToAnchorView pops the view stack until the top is a project-level view
+// (ProjectTree, Kanban, Outliner) or the Dashboard, or the stack has only one entry.
+func (m *AppModel) popToAnchorView() {
+	for len(m.viewStack) > 1 {
+		top := m.viewStack[len(m.viewStack)-1]
+		switch top {
+		case ViewDashboard, ViewProjectTree, ViewKanban, ViewOutliner:
+			if top == ViewDashboard {
+				m.reevaluateAlerts()
+			}
+			return
+		}
+		m.viewStack = m.viewStack[:len(m.viewStack)-1]
+	}
+	// Stack has 1 entry — re-evaluate if it's the dashboard
+	if m.currentView() == ViewDashboard {
+		m.reevaluateAlerts()
+	}
+}
+
 // showView is a helper that registers a view, sets its size, and pushes it onto the view stack.
 // This consolidates the common pattern used by Show*Msg handlers.
 func (m *AppModel) showView(viewType ViewType, view View) {

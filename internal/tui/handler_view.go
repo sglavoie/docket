@@ -347,7 +347,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseMetricsDashboardMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case MetricsDashboardSelectMsg:
@@ -436,7 +436,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseAllTasksMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case AllTasksSelectMsg:
@@ -452,7 +452,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseFocusBoardMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case FocusBoardSelectMsg:
@@ -484,7 +484,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseRecentActivityMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case ShowRecentActivityPreviewMsg:
@@ -633,7 +633,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return true, nil
 
 	case CloseGlobalBlockersMsg:
-		m.popView()
+		m.popToAnchorView()
 		return true, nil
 
 	case BlockerGoToProjectMsg:
