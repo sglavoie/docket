@@ -32,11 +32,13 @@ func (m *GlobalSearchModel) View() string {
 	// Show autocomplete suggestions if active
 	if m.ac.IsActive() {
 		out.WriteString(m.ac.RenderDropdown(""))
+	} else {
+		out.WriteString(MutedStyle.Render("!priority  #tag  @due  $status  ^type  /section  *active"))
 	}
 	out.WriteString("\n")
 
 	// Show active filters as badges
-	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
+	if m.hideCompleted || (m.parsedFilters != nil && m.parsedFilters.HasFilters()) {
 		out.WriteString(m.renderFilterBadges())
 		out.WriteString("\n\n")
 	}
@@ -50,10 +52,8 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
-	if query == "" {
+	if query == "" && !m.hideCompleted {
 		out.WriteString(MutedStyle.Render("Type to search across all tasks..."))
-		out.WriteString("\n\n")
-		out.WriteString(MutedStyle.Render("Filters: !priority #tag @due $status ^type /section *active"))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
 		return out.String()
@@ -67,13 +67,14 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.Height() - 8 // title + tab bar + input + footer
+	paneHeight := m.Height() - 9 // title + tab bar + input + hint + footer
 	if paneHeight < 5 {
 		paneHeight = 5
 	}
 
 	// Adjust for autocomplete and filter badges
-	if m.ac.IsActive() {
+	if m.ac.IsActive() { //nolint:nestif
+		paneHeight++ // hint line is hidden when autocomplete is active
 		visible := len(m.ac.Items)
 		if visible > acVisibleCount {
 			visible = acVisibleCount
@@ -87,7 +88,7 @@ func (m *GlobalSearchModel) View() string {
 		}
 		paneHeight -= visible
 	}
-	if m.parsedFilters != nil && m.parsedFilters.HasFilters() {
+	if m.hideCompleted || (m.parsedFilters != nil && m.parsedFilters.HasFilters()) {
 		paneHeight -= 2
 	}
 
@@ -112,11 +113,14 @@ func (m *GlobalSearchModel) renderTabBar() string {
 
 // renderFilterBadges renders active filters as styled badges.
 func (m *GlobalSearchModel) renderFilterBadges() string {
+	var badges []string
+
 	if m.parsedFilters == nil {
+		if m.hideCompleted {
+			return "Filters: " + FilterBadgeStyle.Render("hide:completed")
+		}
 		return ""
 	}
-
-	var badges []string
 
 	// Priority badges
 	if len(m.parsedFilters.Priorities) > 0 {
@@ -157,6 +161,11 @@ func (m *GlobalSearchModel) renderFilterBadges() string {
 		badges = append(badges, "*active")
 	}
 
+	// Hide completed toggle badge
+	if m.hideCompleted {
+		badges = append(badges, "hide:completed")
+	}
+
 	if len(badges) == 0 {
 		return ""
 	}
@@ -175,7 +184,7 @@ func (m *GlobalSearchModel) renderHelpText() string {
 	if m.ac.IsActive() {
 		return HelpStyle.Render("Tab: accept · ↑↓: navigate · Esc: dismiss")
 	}
-	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Esc · %d results", len(m.filtered)))
+	return HelpStyle.Render(fmt.Sprintf("[/] tabs · ↑↓ nav · Enter · Ctrl+O completed · Esc · %d results", len(m.filtered)))
 }
 
 // renderTaskList renders the filtered task list.

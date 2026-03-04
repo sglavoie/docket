@@ -46,6 +46,9 @@ type GlobalSearchModel struct {
 	// Pane dimensions
 	listWidth    int
 	previewWidth int
+
+	// Toggle to hide completed/canceled tasks
+	hideCompleted bool
 }
 
 // NewGlobalSearchModel creates a new global search model.
@@ -83,19 +86,20 @@ func NewGlobalSearchModel(cfg *config.Config) *GlobalSearchModel {
 	}
 
 	m := &GlobalSearchModel{
-		config:      cfg,
-		projects:    projects,
-		allTasks:    allTasks,
-		searchInput: searchInput,
-		cursor:      0,
-		tabs:        TabState{Names: globalSearchTabNames},
+		config:        cfg,
+		projects:      projects,
+		allTasks:      allTasks,
+		searchInput:   searchInput,
+		cursor:        0,
+		tabs:          TabState{Names: globalSearchTabNames},
+		hideCompleted: true,
 	}
 
 	// Build caches for autocomplete
 	m.buildCaches()
 
-	// Start with no results (empty query shows nothing)
-	m.filtered = nil
+	// Apply initial filter (hideCompleted shows non-completed tasks by default)
+	m.filterTasks()
 	return m
 }
 
@@ -260,6 +264,10 @@ func (m *GlobalSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if handleTabCycleKey(key, &m.tabs, false, m.filterTasks) {
 				return m, nil
 			}
+		case "ctrl+o":
+			m.hideCompleted = !m.hideCompleted
+			m.filterTasks()
+			return m, nil
 		case "ctrl+u":
 			jumpCursor(&m.cursor, len(m.filtered), -10)
 			return m, nil

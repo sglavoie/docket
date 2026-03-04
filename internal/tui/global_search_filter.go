@@ -23,8 +23,8 @@ func (m *GlobalSearchModel) filterTasks() {
 	// Parse structured filters from query
 	m.parsedFilters = ParseSearchQuery(query)
 
-	// Empty query shows no results (unless filters are active)
-	if query == "" {
+	// Empty query shows no results unless hideCompleted is on or filters are active
+	if query == "" && !m.hideCompleted {
 		m.filtered = nil
 		m.cursor = 0
 		return
@@ -47,6 +47,13 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 		if m.tabs.Active == globalSearchTabNotes && !result.IsNote() {
 			continue
+		}
+
+		// Hide completed/canceled tasks when toggle is on and no explicit status filter
+		if m.hideCompleted && !result.IsNote() && len(m.parsedFilters.Statuses) == 0 {
+			if result.Task.Status.IsComplete() {
+				continue
+			}
 		}
 
 		if result.IsNote() {
