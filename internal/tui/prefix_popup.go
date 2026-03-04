@@ -624,6 +624,7 @@ var (
 
 	// SemicolonPrefixHints contains hints for the ";" (tt global) prefix.
 	SemicolonPrefixHints = []PrefixHint{
+		{Key: "/", Description: "global search", Detail: "Search tasks across all projects"},
 		{Key: "a", Description: "all tasks", Detail: "View all tasks across projects"},
 		{Key: "d", Description: "daily review", Detail: "Open Daily Review"},
 		{Key: "f", Description: "what's next", Detail: "Cross-project task suggestions"},

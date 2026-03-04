@@ -74,6 +74,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return ShowMetricsDashboardMsg{} }
 			case "a":
 				return m, func() tea.Msg { return ShowAllTasksMsg{} }
+			case "/":
+				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
 			}
 			return m, nil
 		}

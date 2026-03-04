@@ -45,12 +45,8 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "\\":
-			return m, m.ActivateSearch()
 		case "/":
-			return m, func() tea.Msg {
-				return ShowGlobalSearchMsg{}
-			}
+			return m, m.ActivateSearch()
 		case "esc":
 			// Clear filters if active
 			if m.filterContext != "" || m.filterCustomContext != "" || m.SearchQuery() != "" {

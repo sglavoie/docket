@@ -31,7 +31,7 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "global search",
 			Description: "Search tasks across all projects",
-			Shortcut:    "/",
+			Shortcut:    ";/",
 			Category:    CategorySearch,
 			Aliases:     []string{"find tasks", "search all"},
 			Handler: func() tea.Msg {
@@ -327,7 +327,7 @@ func (m *AppModel) filterCommands() []Command {
 		{
 			Name:        "search projects",
 			Description: "Filter projects by name",
-			Shortcut:    "\\",
+			Shortcut:    "/",
 			Category:    CategorySearch,
 			Views:       []ViewType{ViewDashboard},
 			Handler: func() tea.Msg {

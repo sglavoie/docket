@@ -403,8 +403,8 @@ func TestNewAppModelRegistersGlobalCommands(t *testing.T) {
 	if !found {
 		t.Fatal("expected 'global search' command to be registered")
 	}
-	if searchCmd.Shortcut != "/" {
-		t.Errorf("expected global search command shortcut to be '/', got '%s'", searchCmd.Shortcut)
+	if searchCmd.Shortcut != ";/" {
+		t.Errorf("expected global search command shortcut to be ';/', got '%s'", searchCmd.Shortcut)
 	}
 	if searchCmd.Handler == nil {
 		t.Error("expected global search command to have a handler")
