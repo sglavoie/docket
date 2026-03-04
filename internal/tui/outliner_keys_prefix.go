@@ -233,6 +233,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.cycleDueDateFilter()
 			m.rebuildRows()
 			return m, nil
+		case "z":
+			// Jump directly to Snoozed perspective (P0)
+			m.activePerspective = 0
+			m.rebuildRows()
+			return m, nil
 		}
 	}
 
@@ -242,6 +247,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	// Any manual filter change clears the saved view indicator
+	if key != "v" {
+		m.clearActiveSavedView()
+	}
+
 	// View-specific filter keys
 	switch key {
 	case "v":

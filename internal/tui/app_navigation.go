@@ -61,14 +61,14 @@ func (m *AppModel) currentView() ViewType {
 }
 
 // baseProjectView walks the view stack from the top to find the underlying
-// project-level view (ProjectTree, Kanban, or Outliner), skipping overlays
+// project-level view (ProjectTree or Outliner), skipping overlays
 // like the command palette. This is needed by command handlers that run inside
 // the palette's Cmd — at that point currentView() returns ViewCommandPalette,
 // but the handler needs to know which project view it was invoked from.
 func (m *AppModel) baseProjectView() ViewType {
 	for i := len(m.viewStack) - 1; i >= 0; i-- {
 		switch m.viewStack[i] {
-		case ViewProjectTree, ViewKanban, ViewOutliner:
+		case ViewProjectTree, ViewOutliner:
 			return m.viewStack[i]
 		}
 	}
@@ -79,7 +79,7 @@ func (m *AppModel) baseProjectView() ViewType {
 // if it is a tracked view and history is not locked.
 func (m *AppModel) pushView(view ViewType) {
 	m.viewStack = append(m.viewStack, view)
-	if view == ViewProjectTree || view == ViewKanban || view == ViewOutliner {
+	if view == ViewProjectTree || view == ViewOutliner {
 		m.lastProjectView = view
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(view) {
@@ -118,12 +118,12 @@ func isGlobalOverlayView(v ViewType) bool {
 }
 
 // popToAnchorView pops the view stack until the top is a project-level view
-// (ProjectTree, Kanban, Outliner) or the Dashboard, or the stack has only one entry.
+// (ProjectTree, Outliner) or the Dashboard, or the stack has only one entry.
 func (m *AppModel) popToAnchorView() {
 	for len(m.viewStack) > 1 {
 		top := m.viewStack[len(m.viewStack)-1]
 		switch top {
-		case ViewDashboard, ViewProjectTree, ViewKanban, ViewOutliner:
+		case ViewDashboard, ViewProjectTree, ViewOutliner:
 			if top == ViewDashboard {
 				m.reevaluateAlerts()
 			}
@@ -150,7 +150,7 @@ func (m *AppModel) showView(viewType ViewType, view View) {
 }
 
 // replaceView replaces the top of the view stack instead of pushing.
-// Used when switching between peer project views (ProjectTree, Kanban, Outliner)
+// Used when switching between peer project views (ProjectTree, Outliner)
 // so the stack doesn't accumulate entries.
 func (m *AppModel) replaceView(viewType ViewType, view View) {
 	if caps, ok := view.(ViewCapabilities); ok && caps.IsFullHeight() {
@@ -164,7 +164,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 	} else {
 		m.viewStack = append(m.viewStack, viewType)
 	}
-	if viewType == ViewProjectTree || viewType == ViewKanban || viewType == ViewOutliner {
+	if viewType == ViewProjectTree || viewType == ViewOutliner {
 		m.lastProjectView = viewType
 	}
 	if !m.navHistory.IsLocked() && isTrackedView(viewType) {
@@ -182,7 +182,7 @@ func (m *AppModel) replaceView(viewType ViewType, view View) {
 // isOnProjectView returns true if the current view is a peer project view.
 func (m *AppModel) isOnProjectView() bool {
 	cur := m.currentView()
-	return cur == ViewProjectTree || cur == ViewKanban || cur == ViewOutliner
+	return cur == ViewProjectTree || cur == ViewOutliner
 }
 
 // defaultProjectViewType maps the config's default_project_view string to a ViewType.
@@ -190,8 +190,6 @@ func defaultProjectViewType(cfg *config.Config) ViewType {
 	switch cfg.GetDefaultProjectView() {
 	case "project_tree":
 		return ViewProjectTree
-	case "kanban":
-		return ViewKanban
 	default:
 		return ViewOutliner
 	}
@@ -203,7 +201,7 @@ func (m *AppModel) saveCurrentProjectView() {
 		return
 	}
 	cv := m.currentView()
-	if cv == ViewProjectTree || cv == ViewKanban || cv == ViewOutliner {
+	if cv == ViewProjectTree || cv == ViewOutliner {
 		m.projectLastView[m.currentProject.ID] = cv
 	}
 }
@@ -233,10 +231,6 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 
 	targetView := m.getProjectLastView(project.ID)
 	switch targetView {
-	case ViewKanban:
-		m.kanban = NewKanbanViewModel(project, m.config, m.configManager)
-		m.showView(ViewKanban, m.kanban)
-		m.restoreKanbanState()
 	case ViewProjectTree:
 		if task != nil {
 			m.projectTree.NavigateToTask(task)

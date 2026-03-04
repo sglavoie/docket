@@ -296,7 +296,6 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		description string
 		viewType    ViewType
 	}{
-		{"Kanban Board", "Visual board with task columns", ViewKanban},
 		{"Daily Review", "Review and plan your day", ViewDailyReview},
 		{"Weekly Review", "Strategic project health review", ViewWeeklyReview},
 		{"What's Next", "Cross-project task suggestions and work queue", ViewFocusView},

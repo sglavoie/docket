@@ -449,38 +449,8 @@ var (
 		{Key: "x", Description: "unlink", Detail: "Remove a link"},
 	}
 
-	// KanbanNavigationPrefixHints contains "g" prefix hints for kanban view.
-	// Supports column navigation operations.
-	KanbanNavigationPrefixHints = []PrefixHint{
-		{Key: "g", Description: "first", Detail: "Jump to first item"},
-		{Key: "a", Description: "active", Detail: "Go to Active column"},
-		{Key: "n", Description: "next", Detail: "Go to Next column"},
-		{Key: "i", Description: "inbox", Detail: "Go to Inbox column"},
-		{Key: "w", Description: "waiting", Detail: "Go to Waiting column"},
-		{Key: "s", Description: "someday", Detail: "Go to Someday column"},
-		{Key: "r", Description: "review", Detail: "Go to Review column"},
-		{Key: "S", Description: "standby", Detail: "Go to Standby column"},
-		{Key: "c", Description: "completed", Detail: "Go to Completed view"},
-		{Key: "*", Description: "all", Detail: "Go to All view"},
-		{Key: "h", Description: "history", Detail: "Show task history"},
-		{Key: "X", Description: "deselect", Detail: "Clear selection"},
-	}
-
-	// KanbanMovePrefixHints contains "m" prefix hints for kanban move operations.
-	KanbanMovePrefixHints = []PrefixHint{
-		{Key: "a", Description: "→Active", Detail: "Send task to Active column"},
-		{Key: "n", Description: "→Next", Detail: "Send task to Next column"},
-		{Key: "i", Description: "→Inbox", Detail: "Send task to Inbox column"},
-		{Key: "w", Description: "→Waiting", Detail: "Send task to Waiting column"},
-		{Key: "r", Description: "→Review", Detail: "Send task to Review column"},
-		{Key: "S", Description: "→Standby", Detail: "Send task to Standby column"},
-		{Key: "s", Description: "→Someday", Detail: "Send task to Someday column"},
-		{Key: "K", Description: "to-top", Detail: "Move task to top of column"},
-		{Key: "J", Description: "to-bottom", Detail: "Move task to bottom of column"},
-	}
-
-	// KanbanFoldPrefixHints contains "z" prefix hints for kanban fold operations.
-	KanbanFoldPrefixHints = []PrefixHint{
+	// OutlinerFoldPrefixHints contains "z" prefix hints for outliner fold operations.
+	OutlinerFoldPrefixHints = []PrefixHint{
 		{Key: "a", Description: "toggle", Detail: "Toggle fold on current node"},
 		{Key: "o", Description: "expand", Detail: "Expand current node"},
 		{Key: "c", Description: "collapse", Detail: "Collapse current node"},
@@ -676,7 +646,7 @@ var (
 )
 
 // BuildFilterScorePrefixHints builds dynamic filter score hints showing the
-// current custom value from config. Used by project tree and kanban views.
+// current custom value from config. Used by project tree and outliner views.
 func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 	customDetail := "(not set)"
 	if cfg != nil && cfg.ScoreFilterCustom != nil {

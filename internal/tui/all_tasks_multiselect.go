@@ -30,23 +30,14 @@ func (m *AllTasksViewModel) toggleTaskSelection() {
 	m.ToggleAndUpdateStatus(item.Task.ID, &m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
 }
 
-// selectAllVisible selects all visible tasks. In kanban mode, selects all tasks
-// in the active column. In list mode, selects all tasks in non-collapsed groups.
+// selectAllVisible selects all visible tasks in non-collapsed groups.
 func (m *AllTasksViewModel) selectAllVisible() {
-	if m.layoutMode == ATLayoutKanban {
-		if m.kanbanActiveCol >= 0 && m.kanbanActiveCol < len(m.groups) {
-			for _, item := range m.groups[m.kanbanActiveCol].Tasks {
-				m.selectedTasks[item.Task.ID] = true
-			}
+	for _, group := range m.groups {
+		if m.collapsedGroups[group.Name] {
+			continue
 		}
-	} else {
-		for _, group := range m.groups {
-			if m.collapsedGroups[group.Name] {
-				continue
-			}
-			for _, item := range group.Tasks {
-				m.selectedTasks[item.Task.ID] = true
-			}
+		for _, item := range group.Tasks {
+			m.selectedTasks[item.Task.ID] = true
 		}
 	}
 	m.UpdateStatus(&m.statusMessage, allTasksMultiSelectNoSel, allTasksMultiSelectWithSel)
@@ -199,7 +190,7 @@ func (m *AllTasksViewModel) handleBulkSectionMove(targetSection string) (tea.Mod
 	if count == 0 {
 		m.finishBulk("No tasks were moved")
 	} else {
-		m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", count, sectionDisplayName(targetSection)))
+		m.finishBulk(fmt.Sprintf("Moved %d tasks to %s", count, targetSection))
 	}
 	return m, nil
 }

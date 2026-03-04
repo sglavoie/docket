@@ -24,7 +24,7 @@ func renderAlertIndicator(count int) string {
 // shouldShowAlertIndicator returns true for views that display the alert indicator.
 func (m *AppModel) shouldShowAlertIndicator() bool {
 	switch m.currentView() {
-	case ViewDashboard, ViewProjectTree, ViewOutliner, ViewKanban, ViewFocusBoard:
+	case ViewDashboard, ViewProjectTree, ViewOutliner, ViewFocusBoard:
 		return m.alertCount() > 0
 	}
 	return false

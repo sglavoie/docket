@@ -53,7 +53,7 @@ func workflowPersist(optsProvider func() WorkflowSaveOptions) persistFn {
 }
 
 // workflowOptsBuilder is implemented by views that provide workflow save options.
-// ProjectTree, Kanban, and Outliner all satisfy this interface.
+// ProjectTree and Outliner both satisfy this interface.
 type workflowOptsBuilder interface {
 	buildWorkflowOpts(prevStates map[string]*models.Task) WorkflowSaveOptions
 }
@@ -114,7 +114,7 @@ func BuildWorkflowOpts(persister Persister, project *models.Project, cfg *config
 	return opts
 }
 
-// persistWithWorkflow runs the full save pipeline used by both ProjectTree and Kanban:
+// persistWithWorkflow runs the full save pipeline used by both ProjectTree and Outliner:
 // auto-unblock, recurring generation, workflow rules, root reorder, undo snapshot, backup, save, load.
 func persistWithWorkflow(opts WorkflowSaveOptions) error {
 	opts.Project.CheckAndAutoUnblock()

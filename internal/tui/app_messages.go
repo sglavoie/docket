@@ -754,18 +754,6 @@ type ShowProjectTreeMsg struct {
 }
 
 // =============================================================================
-// Kanban View Messages (Show/Close Pattern)
-// =============================================================================
-
-// ShowKanbanMsg opens the kanban view.
-type ShowKanbanMsg struct {
-	Project *models.Project
-}
-
-// CloseKanbanMsg closes the kanban view.
-type CloseKanbanMsg struct{}
-
-// =============================================================================
 // Cross-Project Linking Messages (Show/Close Pattern)
 // =============================================================================
 

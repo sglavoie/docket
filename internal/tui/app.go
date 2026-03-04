@@ -42,7 +42,6 @@ const (
 	ViewQuickCapture
 	ViewBulkCapture
 	ViewInboxProcessor
-	ViewKanban
 	ViewTagSelector
 	ViewBulkTagSelector
 	ViewUndoHistory
@@ -90,7 +89,6 @@ const (
 	ViewScoreProfileManager
 	ViewSaveViewInput
 	ViewMetricsDashboard
-	ViewKanbanDisplaySettings
 	ViewAllTasks
 	ViewScoringProfilePicker
 	ViewFocusBoard
@@ -109,14 +107,6 @@ const (
 type ProjectTreeSpatialState struct {
 	CursorTaskID string
 	FoldState    map[string]bool // collapsed node IDs (Expanded == false)
-}
-
-// KanbanSpatialState captures cursor position, active column, and fold state
-// for a kanban view so it can survive view recreation within the same TUI session.
-type KanbanSpatialState struct {
-	ActiveColumn int
-	CursorTaskID string
-	ExpandState  map[string]bool
 }
 
 // AppModel is the main TUI model with a view stack.
@@ -146,7 +136,6 @@ type AppModel struct {
 	globalSearch         *GlobalSearchModel
 	inboxProcessor       *InboxProcessorModel
 	globalInboxProcessor *GlobalInboxProcessorModel
-	kanban               *KanbanViewModel
 	metricsDashboard     *MetricsDashboardModel
 	allTasksView         *AllTasksViewModel
 	outliner             *OutlinerModel
@@ -158,7 +147,6 @@ type AppModel struct {
 	// Per-project spatial state caches (cursor + fold), keyed by project ID.
 	// Survive view recreation within a session (in-memory only for cursor).
 	projectTreeSpatialStates map[string]*ProjectTreeSpatialState
-	kanbanSpatialStates      map[string]*KanbanSpatialState
 
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask
@@ -234,7 +222,7 @@ type AppModel struct {
 	projectCycleCursor int
 	projectCycleItems  []ProjectInfo
 
-	// Last project-level view used (ProjectTree, Kanban, Outliner) for cycle preservation
+	// Last project-level view used (ProjectTree, Outliner) for cycle preservation
 	lastProjectView ViewType
 
 	// Per-project last view memory: remembers which project-level view was active

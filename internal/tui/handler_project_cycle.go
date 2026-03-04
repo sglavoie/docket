@@ -102,20 +102,11 @@ func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int)
 	// Determine which project view to show: preserve current view if it's a
 	// project-level view, otherwise use the last project view the user was on.
 	targetView := m.currentView()
-	if targetView != ViewProjectTree && targetView != ViewKanban && targetView != ViewOutliner {
+	if targetView != ViewProjectTree && targetView != ViewOutliner {
 		targetView = m.lastProjectView
 	}
 
 	switch targetView {
-	case ViewKanban:
-		m.kanban = NewKanbanViewModel(project, m.config, m.configManager)
-		m.kanban.projectTree = m.projectTree
-		m.restoreKanbanState()
-		m.kanban.SetSize(m.width, m.height-2)
-		m.views.Register(ViewKanban, m.kanban)
-		if m.currentView() != ViewKanban {
-			m.pushView(ViewKanban)
-		}
 	case ViewOutliner:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()

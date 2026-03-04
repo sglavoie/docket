@@ -100,25 +100,12 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Kanban-specific navigation (intercept before list navigation and tab cycling)
-	if m.layoutMode == ATLayoutKanban {
-		if model, cmd, handled := m.handleKanbanKeyMsg(key); handled {
-			return model, cmd
-		}
-	}
-
-	// Navigation (list mode only — kanban intercepts j/k/G/etc. above)
-	if m.layoutMode == ATLayoutList {
-		if handled, cmd := handleListNavigation(key, &m.cursor, m.totalNavigableItems(), m.Height(), &m.cursorFlash); handled {
-			return m, cmd
-		}
+	// Navigation
+	if handled, cmd := handleListNavigation(key, &m.cursor, m.totalNavigableItems(), m.Height(), &m.cursorFlash); handled {
+		return m, cmd
 	}
 
 	switch key {
-	case "ctrl+k":
-		m.toggleLayout()
-		return m, nil
-
 	case "esc", "q":
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
@@ -135,37 +122,20 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Group header navigation (list mode only)
+	// Group header navigation
 	case "n":
-		if m.layoutMode == ATLayoutList {
-			return m.goToNextGroup()
-		}
+		return m.goToNextGroup()
 	case "N":
-		if m.layoutMode == ATLayoutList {
-			return m.goToPrevGroup()
-		}
+		return m.goToPrevGroup()
 
 	// Group cycling
 	case "ctrl+g":
 		m.cycleGroupBy()
-		if m.layoutMode == ATLayoutKanban {
-			// Flat grouping is degenerate in kanban — auto-switch
-			if m.groupBy == ATGroupByFlat {
-				m.groupBy = ATGroupByProject
-				m.applyFiltersAndGroup()
-				m.clampCursor()
-				m.statusMessage = "Switched to Project grouping for kanban"
-			}
-			m.reinitKanbanColumns()
-			m.ensureActiveKanbanColumnVisible()
-		}
 		return m, nil
 
-	// Group collapse/expand (list mode only)
+	// Group collapse/expand
 	case "tab":
-		if m.layoutMode == ATLayoutList {
-			m.toggleGroupCollapse()
-		}
+		m.toggleGroupCollapse()
 		return m, nil
 
 	// Multi-select
@@ -182,16 +152,10 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		handleSortKey(key, &m.sort, func() {
 			m.applyFiltersAndGroup()
 			m.clampCursor()
-			if m.layoutMode == ATLayoutKanban {
-				m.reinitKanbanColumns()
-			}
 			m.statusMessage = "Sort reset"
 		}, func(field SortField) {
 			m.applyFiltersAndGroup()
 			m.clampCursor()
-			if m.layoutMode == ATLayoutKanban {
-				m.reinitKanbanColumns()
-			}
 			m.statusMessage = fmt.Sprintf("Sort: %s %s", field, m.sortDirection())
 		})
 		return m, nil
@@ -226,17 +190,13 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Tab reordering (list mode only — kanban uses {/} for task movement)
+	// Tab reordering
 	case "{":
-		if m.layoutMode == ATLayoutList {
-			m.moveTabLeft()
-			return m, nil
-		}
+		m.moveTabLeft()
+		return m, nil
 	case "}":
-		if m.layoutMode == ATLayoutList {
-			m.moveTabRight()
-			return m, nil
-		}
+		m.moveTabRight()
+		return m, nil
 
 	// Smart list: delete current tab
 	case "X":
@@ -249,14 +209,10 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Tab navigation — in kanban mode, only [/] cycle tabs (h/l are column nav)
-	if handleTabCycleKey(key, &m.tabs, m.layoutMode == ATLayoutList, func() {
+	// Tab navigation
+	if handleTabCycleKey(key, &m.tabs, true, func() {
 		m.applyFiltersAndGroup()
 		m.clampCursor()
-		if m.layoutMode == ATLayoutKanban {
-			m.reinitKanbanColumns()
-			m.ensureActiveKanbanColumnVisible()
-		}
 	}) {
 		return m, nil
 	}

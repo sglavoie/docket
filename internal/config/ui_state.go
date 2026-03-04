@@ -10,7 +10,7 @@ import (
 // Returns "outliner" if not set or if the value is invalid.
 func (c *Config) GetDefaultProjectView() string {
 	switch c.DefaultProjectView {
-	case "outliner", "project_tree", "kanban":
+	case "outliner", "project_tree":
 		return c.DefaultProjectView
 	default:
 		return "outliner"

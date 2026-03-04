@@ -7,7 +7,7 @@ func TestNavHistory_RecordAndGoBack(t *testing.T) {
 
 	h.Record(NavEntry{ViewType: ViewDashboard})
 	h.Record(NavEntry{ViewType: ViewProjectTree, ProjectID: "p1"})
-	h.Record(NavEntry{ViewType: ViewKanban, ProjectID: "p1"})
+	h.Record(NavEntry{ViewType: ViewOutliner, ProjectID: "p1"})
 
 	if !h.CanGoBack() {
 		t.Fatal("expected CanGoBack to be true")
@@ -39,7 +39,7 @@ func TestNavHistory_GoForward(t *testing.T) {
 
 	h.Record(NavEntry{ViewType: ViewDashboard})
 	h.Record(NavEntry{ViewType: ViewProjectTree, ProjectID: "p1"})
-	h.Record(NavEntry{ViewType: ViewKanban, ProjectID: "p1"})
+	h.Record(NavEntry{ViewType: ViewOutliner, ProjectID: "p1"})
 
 	h.GoBack()
 	h.GoBack()
@@ -60,8 +60,8 @@ func TestNavHistory_GoForward(t *testing.T) {
 	if !ok {
 		t.Fatal("expected GoForward to succeed")
 	}
-	if entry.ViewType != ViewKanban {
-		t.Fatalf("expected Kanban, got %v", entry.ViewType)
+	if entry.ViewType != ViewOutliner {
+		t.Fatalf("expected Outliner, got %v", entry.ViewType)
 	}
 
 	if h.CanGoForward() {
@@ -74,7 +74,7 @@ func TestNavHistory_RecordTruncatesForwardHistory(t *testing.T) {
 
 	h.Record(NavEntry{ViewType: ViewDashboard})
 	h.Record(NavEntry{ViewType: ViewProjectTree, ProjectID: "p1"})
-	h.Record(NavEntry{ViewType: ViewKanban, ProjectID: "p1"})
+	h.Record(NavEntry{ViewType: ViewOutliner, ProjectID: "p1"})
 
 	// Go back to Dashboard
 	h.GoBack()
@@ -244,7 +244,7 @@ func TestNavHistory_Current(t *testing.T) {
 		h := NewNavHistory()
 		h.Record(NavEntry{ViewType: ViewDashboard})
 		h.Record(NavEntry{ViewType: ViewProjectTree, ProjectID: "p1"})
-		h.Record(NavEntry{ViewType: ViewKanban, ProjectID: "p1"})
+		h.Record(NavEntry{ViewType: ViewOutliner, ProjectID: "p1"})
 
 		h.GoBack() // cursor now at ProjectTree
 
@@ -257,7 +257,7 @@ func TestNavHistory_Current(t *testing.T) {
 
 func TestIsTrackedView(t *testing.T) {
 	tracked := []ViewType{
-		ViewDashboard, ViewProjectTree, ViewKanban, ViewDailyReview,
+		ViewDashboard, ViewProjectTree, ViewDailyReview,
 		ViewTaskComments, ViewTaskChecklist, ViewTaskAttachments, ViewTaskActivity,
 		ViewGlobalNotes, ViewSettings, ViewScoreProfileManager, ViewMetricsDashboard,
 	}

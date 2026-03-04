@@ -26,7 +26,6 @@ func newTestAppModel() *AppModel {
 		views:                    NewViewRegistry(),
 		navHistory:               NewNavHistory(),
 		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
-		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
 	}
 }
 
@@ -52,7 +51,6 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		currentProject:           project,
 		navHistory:               NewNavHistory(),
 		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
-		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
 	}
 
 	return app, project

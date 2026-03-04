@@ -156,7 +156,7 @@ type SectionMoveCallbacks struct {
 	MoveToBottom func() (tea.Model, tea.Cmd)
 	// IsMultiSelect returns true when multi-select mode is active with selections.
 	IsMultiSelect func() bool
-	// CanMoveSection returns true when section moves are allowed (e.g. Kanban
+	// CanMoveSection returns true when section moves are allowed (e.g. Outliner
 	// only allows them in section group-by mode). Nil means always allowed.
 	CanMoveSection func() bool
 }

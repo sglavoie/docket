@@ -90,13 +90,6 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		sectionCounts[name] = count
 	}
 
-	// Include all standard kanban sections, even if empty
-	for _, section := range KanbanColumnOrder {
-		if _, exists := sectionCounts[section]; !exists {
-			sectionCounts[section] = 0
-		}
-	}
-
 	// Include all project-defined sections, even if empty
 	for _, section := range project.GetSections() {
 		if _, exists := sectionCounts[section]; !exists {

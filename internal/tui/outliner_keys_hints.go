@@ -17,6 +17,7 @@ func (m *OutlinerModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 var OutlinerNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},
 	{Key: "h", Description: "history", Detail: "Show task activity log"},
+	{Key: "z", Description: "snoozed", Detail: "Jump to Snoozed perspective"},
 }
 
 // OutlinerPerspectivePrefixHints provides the hint list for the p-prefix popup overlay.
@@ -45,7 +46,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 		"c": CreateLinkedPrefixHints,
 		"g": OutlinerNavigationPrefixHints,
 		"m": ProjectTreeMovePrefixHints,
-		"z": KanbanFoldPrefixHints,
+		"z": OutlinerFoldPrefixHints,
 	}
 
 	// Add perspective hints with active annotation
@@ -86,9 +87,13 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 			PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == 8},
 			PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
 			PrefixHint{Key: "@", Description: "section", Detail: "selector"},
+			PrefixHint{Key: "v", Description: "saved views"},
 		)
 		hints["F"] = fHints
 	}
+
+	// Add saved view sub-prefix hints
+	hints["Fv"] = SavedViewPrefixHints
 
 	// Annotate current task's status as active in status hints
 	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) {

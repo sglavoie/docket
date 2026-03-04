@@ -88,11 +88,9 @@ func (m *AppModel) saveProjectTreeState() {
 		TreeFoldState:     foldState,
 	}
 
-	// Preserve kanban/outliner column toggles and fold states from existing state
+	// Preserve outliner column toggles and fold states from existing state
 	if existing, ok := m.config.ProjectViewStates[m.currentProject.ID]; ok {
-		state.KanbanColumnToggles = existing.KanbanColumnToggles
 		state.OutlinerColumnToggles = existing.OutlinerColumnToggles
-		state.KanbanFoldState = existing.KanbanFoldState
 		state.OutlinerFoldState = existing.OutlinerFoldState
 	}
 
@@ -185,119 +183,3 @@ func (m *AppModel) restoreProjectTreeState() {
 	}
 }
 
-// saveKanbanState persists the current kanban filter/tab state to config.
-func (m *AppModel) saveKanbanState() {
-	if m.kanban == nil || m.currentProject == nil {
-		return
-	}
-
-	var filterTags []string
-	for tag := range m.kanban.filter.Tags {
-		filterTags = append(filterTags, tag)
-	}
-
-	// Capture cursor task ID and expand state for session cache
-	var cursorTaskID string
-	if task := m.kanban.getCursorTask(); task != nil {
-		cursorTaskID = task.ID
-	}
-	m.kanbanSpatialStates[m.currentProject.ID] = &KanbanSpatialState{
-		ActiveColumn: m.kanban.ActiveColumn,
-		CursorTaskID: cursorTaskID,
-		ExpandState:  copyBoolMap(m.kanban.ExpandState),
-	}
-
-	// Build fold state for disk persistence (only collapsed nodes)
-	collapsedNodes := make(map[string]bool)
-	for id, expanded := range m.kanban.ExpandState {
-		if !expanded {
-			collapsedNodes[id] = true
-		}
-	}
-
-	state := m.config.ProjectViewStates[m.currentProject.ID]
-	state.KanbanFilterType = string(m.kanban.filter.Type)
-	state.KanbanFilterStatus = string(m.kanban.filter.Status)
-	state.KanbanFilterPriority = m.kanban.filter.Priority
-	state.KanbanFilterTags = filterTags
-	state.KanbanFilterDueDate = int(m.kanban.filter.DueDate)
-	state.KanbanFilterScoreMin = m.kanban.filter.ScoreMin
-	state.KanbanActiveTab = m.kanban.tabs.Active
-	state.KanbanColumnToggles = m.kanban.columnConfig.Toggles()
-	if len(collapsedNodes) > 0 {
-		state.KanbanFoldState = collapsedNodes
-	} else {
-		state.KanbanFoldState = nil
-	}
-
-	if len(m.kanban.filter.Attrs) > 0 {
-		state.KanbanFilterAttrs = make(map[string]string)
-		for k, v := range m.kanban.filter.Attrs {
-			state.KanbanFilterAttrs[k] = v
-		}
-	} else {
-		state.KanbanFilterAttrs = nil
-	}
-
-	m.config.ProjectViewStates[m.currentProject.ID] = state
-	_ = m.configManager.Save(m.config)
-}
-
-// restoreKanbanState applies saved kanban filter state from config.
-func (m *AppModel) restoreKanbanState() {
-	if m.kanban == nil || m.currentProject == nil {
-		return
-	}
-	state, exists := m.config.GetProjectViewState(m.currentProject.ID)
-	if !exists {
-		return
-	}
-
-	m.kanban.filter.Type = models.TaskType(state.KanbanFilterType)
-	m.kanban.filter.Status = models.TaskStatus(state.KanbanFilterStatus)
-	m.kanban.filter.Priority = state.KanbanFilterPriority
-	m.kanban.filter.DueDate = DueDateFilter(state.KanbanFilterDueDate)
-	m.kanban.filter.ScoreMin = state.KanbanFilterScoreMin
-	m.kanban.tabs.Active = state.KanbanActiveTab
-
-	// Restore attribute filters
-	if len(state.KanbanFilterAttrs) > 0 {
-		m.kanban.filter.Attrs = make(map[string]string)
-		for k, v := range state.KanbanFilterAttrs {
-			m.kanban.filter.Attrs[k] = v
-		}
-	}
-
-	// Restore tags - validate they still exist in the project
-	m.kanban.filter.Tags = validateSavedStringSet(state.KanbanFilterTags, CollectProjectTagNames(m.kanban.Project.Tasks))
-
-	// Restore expand state: prefer session cache, fall back to disk
-	if spatial, ok := m.kanbanSpatialStates[m.currentProject.ID]; ok && spatial.ExpandState != nil {
-		m.kanban.ExpandState = copyBoolMap(spatial.ExpandState)
-	} else if len(state.KanbanFoldState) > 0 {
-		for id := range state.KanbanFoldState {
-			m.kanban.ExpandState[id] = false
-		}
-	}
-
-	// Reload tasks with restored filters and expand state applied
-	m.kanban.loadTasks()
-
-	// Restore active column and cursor position from session cache
-	if spatial, ok := m.kanbanSpatialStates[m.currentProject.ID]; ok {
-		if spatial.ActiveColumn >= 0 && spatial.ActiveColumn < len(m.kanban.columnDefs) {
-			m.kanban.ActiveColumn = spatial.ActiveColumn
-			m.kanban.ensureActiveColumnVisible()
-		}
-		if spatial.CursorTaskID != "" {
-			visibleNodes := m.kanban.currentVisibleNodes()
-			cs := m.kanban.CurrentColumnState()
-			for i, node := range visibleNodes {
-				if node.Task.ID == spatial.CursorTaskID {
-					cs.Cursor = i
-					break
-				}
-			}
-		}
-	}
-}

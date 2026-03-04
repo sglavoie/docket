@@ -58,7 +58,7 @@ func handleLinkedTaskPrefixKey(key string, task *models.Task, project *models.Pr
 // handleTaskPrefixMsgKey handles the message-only subset of the "t" prefix
 // dispatch: to (edit content), tc (comments), ta (attachments), tl (checklist),
 // td (description editor), tm (move to project).
-// These keys produce identical messages across ProjectTree and Kanban.
+// These keys produce identical messages across ProjectTree and Outliner.
 // Returns (handled, cmd).
 func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Project) (bool, tea.Cmd) {
 	switch key {
@@ -91,7 +91,7 @@ func handleTaskPrefixMsgKey(key string, task *models.Task, project *models.Proje
 }
 
 // handleTaskActionPrefixKey handles the "t" prefix keys that need task/project
-// and produce identical messages across ProjectTree and Kanban for single-task
+// and produce identical messages across ProjectTree and Outliner for single-task
 // paths: tn/tN (create), ts (section picker), tt (tag selector), tD (delete).
 // focusedTask is the subtree focus task (may be nil), used as parent for tn/tN.
 // getMultiTasks returns selected tasks when in multi-select mode (nil if not).

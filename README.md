@@ -33,7 +33,6 @@ A powerful CLI-first project and task management tool with a rich TUI built on B
 
 ### Advanced Views
 
-- **Kanban board** with drag-and-drop, multi-select, and bulk operations
 - **Focus view** for active-flagged tasks across projects
 - **Priority view** with smart suggestions for what to work on
 - **Due date overview** for cross-project deadline visibility
@@ -388,17 +387,7 @@ The TUI provides a rich visual interface with extensive keyboard navigation and 
 - Command palette: `:` for fuzzy command search
 - Toggle sidebar: `Tab` (shows task details, comments, dependencies)
 - Focus mode: `f` to isolate task subtree
-- View switching: `Ctrl+P` (project tree), `Ctrl+K` (kanban), `Ctrl+O` (outliner)
-
-**Kanban Board** (`k`)
-
-- Visual column view (Inbox, Active, Next, Waiting, Someday)
-- Drag tasks between columns with `h`/`l` or `←`/`→`
-- Multi-select with `V`, bulk status changes
-- Quick add with `n`, inline editing with `e`
-- Sort by priority, due date, or creation time
-- Filter with `Ctrl+F`, search with `/`
-- Split view with task details pane
+- View switching: `Ctrl+P` (project tree), `Ctrl+O` (outliner)
 
 **Focus View** (`F`)
 
@@ -547,7 +536,6 @@ $start                     # Set status ($start, $blocked, $done, $canceled, $re
 
 - `Ctrl+O`: Outliner
 - `Ctrl+P`: Project tree
-- `Ctrl+K`: Kanban
 - `p`: Priority view
 - `A`: All tasks
 - `w`: Inbox processor

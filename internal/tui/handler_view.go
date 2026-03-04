@@ -671,9 +671,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
 			replacing := m.isOnProjectView()
-			if replacing {
-				m.saveKanbanState()
-			}
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
@@ -700,7 +697,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if replacing {
 				m.saveOutlinerToggleState()
 				m.saveOutlinerFilterState()
-				m.saveKanbanState()
 				m.refreshProjectTree()
 				m.replaceView(ViewProjectTree, m.projectTree)
 			} else {
@@ -710,43 +706,6 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.showView(ViewProjectTree, m.projectTree)
 			}
 		}
-		return true, nil
-
-	case ShowKanbanMsg:
-		if msg.Project != nil {
-			replacing := m.isOnProjectView()
-			if replacing {
-				m.saveOutlinerToggleState()
-				m.saveOutlinerFilterState()
-			}
-			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
-			m.kanban.projectTree = m.projectTree
-			m.restoreKanbanState()
-			if replacing {
-				m.replaceView(ViewKanban, m.kanban)
-			} else {
-				m.showView(ViewKanban, m.kanban)
-			}
-		}
-		return true, nil
-
-	case ShowKanbanDisplaySettingsMsg:
-		editor := NewKanbanDisplaySettingsModel(m.config, m.configManager)
-		m.showView(ViewKanbanDisplaySettings, editor)
-		return true, nil
-
-	case KanbanDisplaySettingsDoneMsg:
-		m.popView()
-		// Recalculate column widths with updated config
-		if m.kanban != nil {
-			m.kanban.SetSize(m.width, m.height-2)
-		}
-		return true, nil
-
-	case CloseKanbanMsg:
-		m.popView()
-		m.kanban = nil
-		m.reloadAndRefreshProjectTree()
 		return true, nil
 
 	case ShowNotificationCenterMsg:

@@ -55,18 +55,6 @@ const (
 	// SidebarContentOverhead is the horizontal overhead for sidebar content.
 	SidebarContentOverhead = 3
 
-	// KanbanCheckboxWidth is the character width of the multi-select checkbox "[x] ".
-	KanbanCheckboxWidth = 4
-
-	// KanbanCursorWidth is the character width of the cursor indicator area.
-	KanbanCursorWidth = 3
-
-	// KanbanMinDetailsHeight is the minimum height for the kanban details panel.
-	KanbanMinDetailsHeight = 3
-
-	// KanbanMinTitleWidth is the minimum width for task titles in kanban columns.
-	KanbanMinTitleWidth = 5
-
 	// AlertsCardHeight is the fixed height for the alerts card in dashboard.
 	AlertsCardHeight = 8
 

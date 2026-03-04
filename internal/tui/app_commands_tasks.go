@@ -104,7 +104,7 @@ func (m *AppModel) taskCommands() []Command {
 			Name:        "archive completed tasks",
 			Description: "Move completed tasks to archive file",
 			Category:    CategoryActions,
-			Views:       []ViewType{ViewProjectTree, ViewKanban},
+			Views:       []ViewType{ViewProjectTree},
 			Aliases:     []string{"archive", "archive done", "archive completed"},
 			Handler: func() tea.Msg {
 				return ArchiveCompletedTasksMsg{}

@@ -163,10 +163,6 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 
 	// Push the target view on top of the project tree
 	switch entry.ViewType {
-	case ViewKanban:
-		m.kanban = NewKanbanViewModel(project, m.config, m.configManager)
-		m.kanban.projectTree = m.projectTree
-		m.showView(ViewKanban, m.kanban)
 	case ViewPriorityView:
 		m.showView(ViewPriorityView, NewPriorityViewModel(project, m.config, m.configManager))
 	case ViewNotes:

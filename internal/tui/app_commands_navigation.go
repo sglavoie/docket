@@ -440,20 +440,6 @@ func (m *AppModel) viewCommands() []Command {
 			},
 		},
 		{
-			Name:        "kanban board",
-			Description: "View tasks in Kanban board layout",
-			Shortcut:    "ctrl+k",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"kanban", "board", "columns"},
-			Handler: func() tea.Msg {
-				if m.currentProject != nil {
-					return ShowKanbanMsg{Project: m.currentProject}
-				}
-				return nil
-			},
-		},
-		{
 			Name:        "global inbox processor",
 			Description: "Process inbox items across all projects",
 			Shortcut:    ";i",

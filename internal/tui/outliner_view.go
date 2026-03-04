@@ -224,7 +224,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	bc := m.breadcrumb(width)
 
-	// Build search/filter indicators
+	// Build search indicator (stays inline on title)
 	searchIndicator := ""
 	if m.IsSearchMode() {
 		searchIndicator = "  " + MutedStyle.Render("Search: ") + m.SearchInputView()
@@ -232,22 +232,11 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		searchIndicator = "  " + MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
 	}
 
-	filterBadge := ""
-	if hasActiveCommonFilters(&m.filter.CommonFilterState) || m.filter.Actionable || len(m.filter.Sections) > 0 {
-		filterBadge = "  " + MutedStyle.Render("[filtered]")
-	}
-
-	sortBadge := ""
-	if m.sort.Field != SortByDefault {
-		direction := "↑"
-		if !m.sort.Ascending {
-			direction = "↓"
-		}
-		sortBadge = "  " + MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sort.Field, direction))
-	}
+	// Filter bar rendered on its own dedicated line
+	filterBarLine := m.renderFilterBar()
 
 	if len(m.rows) == 0 {
-		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + filterBadge + sortBadge + searchIndicator
+		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + searchIndicator
 		emptyMsg := EmptyStateNoTasks
 		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
@@ -260,6 +249,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			emptyMsg = fmt.Sprintf("No tasks match the %s perspective.", perspective.Name)
 		}
 		result := header + "\n"
+		if filterBarLine != "" {
+			result += filterBarLine + "\n"
+		}
 		if tabs := m.customSectionTabs(); tabs != nil {
 			result += RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors) + "\n"
 		}
@@ -276,8 +268,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render(m.project.Name))
 	b.WriteString(perspectiveLabel)
-	b.WriteString(filterBadge)
-	b.WriteString(sortBadge)
 	b.WriteString(searchIndicator)
 	if m.multiSelectMode {
 		count := m.SelectedCount()
@@ -285,6 +275,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		b.WriteString(SelectionCountStyle.Render(fmt.Sprintf("[MULTI-SELECT: %d selected]", count)))
 	}
 	b.WriteString("\n")
+
+	// Filter bar on dedicated line (below title, above tabs/breadcrumb)
+	if filterBarLine != "" {
+		b.WriteString(filterBarLine)
+		b.WriteString("\n")
+	}
 
 	// Custom section tab bar
 	if tabs := m.customSectionTabs(); tabs != nil {
@@ -551,6 +547,79 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	return b.String()
+}
+
+// hasActiveFilters returns true if any filter, sort, or saved view is currently active.
+func (m *OutlinerModel) hasActiveFilters() bool {
+	return m.activeSavedView != "" ||
+		m.sort.Field != SortByDefault ||
+		hasActiveCommonFilters(&m.filter.CommonFilterState) ||
+		len(m.filter.Sections) > 0 ||
+		m.filter.Actionable
+}
+
+// renderFilterBar renders the filter bar on its own dedicated line.
+// Returns empty string when filter bar is disabled or no filters/sort are active.
+func (m *OutlinerModel) renderFilterBar() string {
+	if !m.filterBar.IsEnabled() || !m.hasActiveFilters() {
+		return ""
+	}
+
+	var parts []string
+
+	// Filter indicator
+	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
+		parts = append(parts, indicator)
+	}
+
+	// Sort badge
+	if m.sort.Field != SortByDefault {
+		direction := "↑"
+		if !m.sort.Ascending {
+			direction = "↓"
+		}
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sort.Field, direction)))
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return strings.Join(parts, "  ")
+}
+
+// clearActiveSavedView clears the active saved view indicator when the user
+// manually changes filter/sort state.
+func (m *OutlinerModel) clearActiveSavedView() {
+	m.activeSavedView = ""
+}
+
+// renderActiveFilterIndicator returns a compact indicator of all active filters.
+// Returns empty string when no filters are active.
+func (m *OutlinerModel) renderActiveFilterIndicator() string {
+	var parts []string
+
+	// Show saved view badge if active
+	if m.activeSavedView != "" {
+		parts = append(parts, SavedViewBadgeStyle.Render("View: "+m.activeSavedView))
+	}
+
+	// Add common filter parts (type, status, priority, tags, due date, attrs, score)
+	parts = append(parts, commonFilterParts(&m.filter.CommonFilterState)...)
+
+	// Add view-specific filter parts
+	if len(m.filter.Sections) > 0 {
+		var secNames []string
+		for sec := range m.filter.Sections {
+			secNames = append(secNames, "@"+sec)
+		}
+		parts = append(parts, strings.Join(secNames, " "))
+	}
+	if m.filter.Actionable {
+		parts = append(parts, "ready")
+	}
+
+	return renderFilterBadge(parts)
 }
 
 // renderQuickEditBar renders the quick edit input bar at the bottom of the view.

@@ -43,23 +43,6 @@ var DefaultTreeColumns = map[string]bool{
 	ColShortID:       true,
 }
 
-// DefaultKanbanColumns defines which columns are visible by default in the kanban view.
-var DefaultKanbanColumns = map[string]bool{
-	ColPriority:      true,
-	ColDueDate:       true,
-	ColTags:          true,
-	ColScore:         true,
-	ColCustomSection: true,
-	ColDependencies:  true,
-	ColComments:      true,
-	ColAttachments:   true,
-	ColChecklist:     true,
-	ColProgress:      true,
-	ColRecurrence:    true,
-	ColSnooze:        true,
-	ColShortID:       true,
-}
-
 // DefaultOutlinerColumns defines which columns are visible by default in the outliner view.
 var DefaultOutlinerColumns = map[string]bool{
 	ColPriority:      true,
@@ -134,7 +117,7 @@ func (c *ColumnConfig) PriorityMode() string {
 
 // resolvePriorityMode resolves the priority mode for a view, checking per-project
 // state first, then falling back to the global config default.
-// viewName must be "tree", "kanban", or "outliner".
+// viewName must be "tree" or "outliner".
 func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) string {
 	if cfg == nil {
 		return ""
@@ -145,8 +128,6 @@ func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) 
 			switch viewName {
 			case "tree":
 				mode = vs.TreePriorityMode
-			case "kanban":
-				mode = vs.KanbanPriorityMode
 			case "outliner":
 				mode = vs.OutlinerPriorityMode
 			}
@@ -158,8 +139,6 @@ func resolvePriorityMode(projectID string, cfg *config.Config, viewName string) 
 	switch viewName {
 	case "tree":
 		return cfg.TreePriorityMode
-	case "kanban":
-		return cfg.KanbanPriorityMode
 	case "outliner":
 		return cfg.OutlinerPriorityMode
 	}

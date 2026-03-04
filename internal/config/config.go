@@ -42,16 +42,6 @@ type ProjectViewState struct {
 	FilterBarEnabled          bool              `json:"filter_bar_enabled"`                    // Filter bar toggle state per project
 	ViewMode                  int               `json:"view_mode,omitempty"`                   // View mode: 0=Active, 1=Inbox, 2=Backlog, 3=Completed
 	CustomSectionTab          string            `json:"custom_section_tab,omitempty"`          // Selected custom section tab name (empty = "All")
-	KanbanGroupBy             int               `json:"kanban_group_by,omitempty"`             // 0=Section, 1=Status, 2=Priority, 3=Type
-	KanbanSwimlaneBy          *int              `json:"kanban_swimlane_by,omitempty"`          // nil=off, 0-4=GroupBy modes
-	KanbanFilterType          string            `json:"kanban_filter_type,omitempty"`          // Task type filter
-	KanbanFilterStatus        string            `json:"kanban_filter_status,omitempty"`        // Status filter
-	KanbanFilterPriority      int               `json:"kanban_filter_priority,omitempty"`      // 0=all, 1=high only
-	KanbanFilterTags          []string          `json:"kanban_filter_tags,omitempty"`          // Tag filter names
-	KanbanFilterDueDate       int               `json:"kanban_filter_due_date,omitempty"`      // Due date filter enum
-	KanbanFilterAttrs         map[string]string `json:"kanban_filter_attrs,omitempty"`         // Attribute filters
-	KanbanFilterScoreMin      float64           `json:"kanban_filter_score_min,omitempty"`     // Score threshold
-	KanbanActiveTab           int               `json:"kanban_active_tab,omitempty"`           // Active tab index
 	OutlinerFilterType        string            `json:"outliner_filter_type,omitempty"`        // Outliner task type filter
 	OutlinerFilterStatus      string            `json:"outliner_filter_status,omitempty"`      // Outliner status filter
 	OutlinerFilterPriority    int               `json:"outliner_filter_priority,omitempty"`    // Outliner 0=all, 1=high only
@@ -62,15 +52,16 @@ type ProjectViewState struct {
 	OutlinerFilterAttrs       map[string]string `json:"outliner_filter_attrs,omitempty"`       // Outliner attribute filters
 	OutlinerFilterScoreMin    float64           `json:"outliner_filter_score_min,omitempty"`   // Outliner score threshold
 	TreeColumnToggles         map[string]bool   `json:"tree_column_toggles,omitempty"`         // Per-column visibility overrides for tree view
-	KanbanColumnToggles       map[string]bool   `json:"kanban_column_toggles,omitempty"`       // Per-column visibility overrides for kanban view
 	OutlinerColumnToggles     map[string]bool   `json:"outliner_column_toggles,omitempty"`     // Per-column visibility overrides for outliner view
 	TreePriorityMode          string            `json:"tree_priority_mode,omitempty"`          // Per-project priority display mode for tree view
-	KanbanPriorityMode        string            `json:"kanban_priority_mode,omitempty"`        // Per-project priority display mode for kanban view
 	OutlinerPriorityMode      string            `json:"outliner_priority_mode,omitempty"`      // Per-project priority display mode for outliner view
 	TreeFoldState             map[string]bool   `json:"tree_fold_state,omitempty"`             // Collapsed node IDs in project tree (persists across restarts)
-	KanbanFoldState           map[string]bool   `json:"kanban_fold_state,omitempty"`           // Collapsed node IDs in kanban (persists across restarts)
 	OutlinerFoldState         map[string]bool   `json:"outliner_fold_state,omitempty"`         // Collapsed node IDs in outliner (persists across restarts)
 	OutlinerCollapsedSections map[string]bool   `json:"outliner_collapsed_sections,omitempty"` // Collapsed section headers in outliner (persists across restarts)
+	OutlinerSortField         int               `json:"outliner_sort_field,omitempty"`          // Outliner sort field (int encoding of SortField enum)
+	OutlinerSortAscending     bool              `json:"outliner_sort_ascending"`                // Outliner sort direction
+	OutlinerActivePerspective int               `json:"outliner_active_perspective,omitempty"`  // Outliner active perspective index (0-9)
+	OutlinerFilterBarEnabled  bool              `json:"outliner_filter_bar_enabled"`             // Outliner filter bar toggle state
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.
@@ -143,21 +134,17 @@ type Config struct {
 	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
 	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
 	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
-	KanbanMaxColumns          *int                         `json:"kanban_max_columns,omitempty"`           // nil=6, max visible kanban columns
-	KanbanMaxSwimlaneRows     *int                         `json:"kanban_max_swimlane_rows,omitempty"`     // nil=4, max visible swimlane rows
 	MaxPinnedBarItems         *int                         `json:"max_pinned_bar_items,omitempty"`         // nil=5, max pinned tasks in status bar
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
-	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree, kanban
+	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree
 	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue
 	FocusDismissedIDs         []string                     `json:"focus_dismissed_ids,omitempty"`          // Dismissed suggestion task IDs
 	AlertDismissals           []AlertDismissal             `json:"alert_dismissals,omitempty"`             // Dismissed proactive alerts
 	RecentTaskVisits          []RecentTaskVisit            `json:"recent_task_visits,omitempty"`           // Recently visited tasks for quick-switch
 	OutlinerCollapsedSections map[string]bool              `json:"outliner_collapsed_sections,omitempty"`  // Default collapsed sections in outliner All perspective
 	TreeDefaultColumns        map[string]bool              `json:"tree_default_columns,omitempty"`         // Global default column visibility for tree view
-	KanbanDefaultColumns      map[string]bool              `json:"kanban_default_columns,omitempty"`       // Global default column visibility for kanban view
 	OutlinerDefaultColumns    map[string]bool              `json:"outliner_default_columns,omitempty"`     // Global default column visibility for outliner view
 	TreePriorityMode          string                       `json:"tree_priority_mode,omitempty"`           // Global priority display mode for tree view
-	KanbanPriorityMode        string                       `json:"kanban_priority_mode,omitempty"`         // Global priority display mode for kanban view
 	OutlinerPriorityMode      string                       `json:"outliner_priority_mode,omitempty"`       // Global priority display mode for outliner view
 	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs

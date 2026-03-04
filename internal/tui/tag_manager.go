@@ -36,7 +36,7 @@ type TagManagerModel struct {
 // ShowTagManagerMsg is sent to open the tag manager view.
 type ShowTagManagerMsg struct {
 	ProjectTree *ProjectTreeModel
-	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner/kanban)
+	Project     *models.Project // Used when ProjectTree is nil (e.g., from outliner)
 }
 
 // CloseTagManagerMsg is sent when the tag manager should close.
@@ -142,7 +142,7 @@ func (m *TagManagerModel) renameTag(oldName, newName string) tea.Cmd {
 }
 
 // filterByTag sets the project tree filter and closes the tag manager.
-// When projectTree is nil (outliner/kanban), it just closes without applying filters.
+// When projectTree is nil (outliner), it just closes without applying filters.
 func (m *TagManagerModel) filterByTag(tagName string) tea.Cmd {
 	return func() tea.Msg {
 		if m.projectTree != nil {

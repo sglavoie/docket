@@ -112,7 +112,6 @@ func isTrackedView(vt ViewType) bool {
 	switch vt {
 	case ViewDashboard,
 		ViewProjectTree,
-		ViewKanban,
 		ViewDailyReview,
 		ViewWeeklyReview,
 		ViewFocusView,

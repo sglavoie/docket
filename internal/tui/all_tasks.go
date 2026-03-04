@@ -5,14 +5,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// AllTasksLayoutMode controls list vs kanban rendering for the all tasks view.
-type AllTasksLayoutMode int
-
-const (
-	ATLayoutList   AllTasksLayoutMode = iota
-	ATLayoutKanban                    // horizontal columns per group
-)
-
 // AllTasksGroupBy represents the grouping strategy for the all tasks view.
 type AllTasksGroupBy int
 
@@ -96,16 +88,6 @@ type AllTasksViewModel struct {
 	// Navigation
 	scrollOffset int
 	groupStarts  []int // cursor positions of group headers
-
-	// Layout mode (list vs kanban)
-	layoutMode AllTasksLayoutMode
-
-	// Kanban state
-	kanbanColumns   map[string]*ColumnState // per-group cursor+scroll
-	kanbanActiveCol int                     // index into m.groups
-	kanbanColScroll int                     // first visible column index
-	kanbanColWidth  int                     // calculated column width
-	kanbanHeight    int                     // available height for columns
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.
@@ -119,7 +101,6 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 		MultiSelectState: MultiSelectState{selectedTasks: make(map[string]bool)},
 		sort:             NewSortState(),
 		FilterMixin:      FilterMixin{filter: newFilterState()},
-		kanbanColumns:    make(map[string]*ColumnState),
 	}
 	m.buildTabEntries()
 	m.initFilterMixin(&m.pendingPrefix, cfg)

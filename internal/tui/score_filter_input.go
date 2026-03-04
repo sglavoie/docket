@@ -11,7 +11,7 @@ import (
 )
 
 // ScoreFilterInput encapsulates the inline text input for entering a custom
-// score filter threshold. Both the project tree and kanban views embed this
+// score filter threshold. Both the project tree and outliner views embed this
 // component instead of duplicating the input setup and key handling.
 type ScoreFilterInput struct {
 	Input  textinput.Model

@@ -14,6 +14,7 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "n", Description: "Jump to next section", Category: "Navigation", Views: views},
 		Keybinding{Key: "N", Description: "Jump to previous section", Category: "Navigation", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Navigation", Views: views},
+		Keybinding{Key: "gz", Description: "Jump to Snoozed perspective", Category: "Navigation", Views: views},
 
 		// Perspectives
 		Keybinding{Key: "h/l", Description: "Cycle perspective left/right", Category: "Perspectives", Views: views},
@@ -21,7 +22,6 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 
 		// View switching
 		Keybinding{Key: "ctrl+P", Description: "Project tree view", Category: "Views", Views: views},
-		Keybinding{Key: "ctrl+K", Description: "Kanban board view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+F", Description: "Filter summary", Category: "Views", Views: views},
 		Keybinding{Key: "p", Description: "Priority view", Category: "Views", Views: views},
 		Keybinding{Key: "f", Description: "Focus view (project)", Category: "Views", Views: views},

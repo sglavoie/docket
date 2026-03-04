@@ -86,7 +86,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			m.saveProjectTreeState()
 			m.saveOutlinerFilterState()
-			m.saveKanbanState()
 			m.quitting = true
 			return m, tea.Quit
 		case "alt+o":
@@ -132,7 +131,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.currentView() == ViewDashboard {
 				m.saveProjectTreeState()
 				m.saveOutlinerFilterState()
-				m.saveKanbanState()
 				m.quitting = true
 				return m, tea.Quit
 			}
@@ -166,7 +164,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case QuitMsg:
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
-		m.saveKanbanState()
 		m.quitting = true
 		return m, tea.Quit
 
@@ -189,10 +186,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loadingMessage = ""
 		m.statusMessage = msg.SuccessMessage
 		m.refreshProjectTree()
-		// Refresh kanban if open (async save reloads project from disk)
-		if m.kanban != nil {
-			m.kanban.loadTasks()
-		}
 		// Refresh all-tasks if open (cross-project view may show stale data)
 		if m.allTasksView != nil {
 			m.allTasksView.loadAllTasks()
@@ -293,11 +286,6 @@ func (m *AppModel) handleEscKey() bool {
 			m.popToAnchorView()
 		} else {
 			m.popView()
-		}
-		// Persist kanban filter state and refresh project tree when closing Kanban
-		if closingView == ViewKanban {
-			m.saveKanbanState()
-			m.reloadAndRefreshProjectTree()
 		}
 		// Restore previous project when popping a stacked project tree
 		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {

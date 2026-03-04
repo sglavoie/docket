@@ -31,7 +31,6 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "Snooze", Views: views},
 		Keybinding{Key: "gz", Description: "Go to Snoozed view", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+P", Description: "Open outliner view", Category: "Views", Views: views},
-		Keybinding{Key: "ctrl+K", Description: "Open kanban board", Category: "Views", Views: views},
 		Keybinding{Key: "ctrl+O", Description: "Open outliner view", Category: "Views", Views: views},
 		Keybinding{Key: "A", Description: "All tasks", Category: "Views", Views: views},
 
@@ -47,6 +46,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 		Keybinding{Key: "o", Description: "View task details", Category: "Task Operations", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "E", Description: "Quick edit (inline with modifiers)", Category: "Task Operations", Views: views},
+		Keybinding{Key: "D", Description: "Delete task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "ctrl+L", Description: "Edit last modified task", Category: "Task Operations", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Task Operations", Views: views},
 		Keybinding{Key: "gh", Description: "View activity log", Category: "Task Operations", Views: views},

@@ -11,7 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// primaryProjectView is the interface that primary views (ProjectTree, Kanban,
+// primaryProjectView is the interface that primary views (ProjectTree,
 // Outliner) must implement to use the shared key dispatcher.
 type primaryProjectView interface {
 	getProject() *models.Project
@@ -361,7 +361,7 @@ func handleDeleteConfirmKey(v deleteConfirmView) bool {
 }
 
 // handleCommonPrimaryViewKey handles keys shared across the three primary
-// project views (ProjectTree, Kanban, Outliner). It returns (cmd, true) when
+// project views (ProjectTree, Outliner). It returns (cmd, true) when
 // the key was consumed, or (nil, false) when the caller should continue with
 // view-specific handling.
 func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool) {
@@ -371,8 +371,6 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 	// View switching
 	case "ctrl+p":
 		return func() tea.Msg { return ShowProjectTreeMsg{Project: project} }, true
-	case "ctrl+k":
-		return func() tea.Msg { return ShowKanbanMsg{Project: project} }, true
 	case "ctrl+o":
 		return func() tea.Msg { return ShowOutlinerMsg{Project: project} }, true
 

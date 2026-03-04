@@ -27,10 +27,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.switchToProject(msg.Project, true)
 		targetView := m.getProjectLastView(msg.Project.ID)
 		switch targetView {
-		case ViewKanban:
-			m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
-			m.showView(ViewKanban, m.kanban)
-			m.restoreKanbanState()
 		case ViewProjectTree:
 			m.showView(ViewProjectTree, m.projectTree)
 		default:
@@ -204,10 +200,6 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.switchToProject(msg.Project, true)
 			targetView := m.getProjectLastView(msg.Project.ID)
 			switch targetView {
-			case ViewKanban:
-				m.kanban = NewKanbanViewModel(msg.Project, m.config, m.configManager)
-				m.showView(ViewKanban, m.kanban)
-				m.restoreKanbanState()
 			case ViewOutliner:
 				m.saveOutlinerToggleState()
 				m.saveOutlinerFilterState()

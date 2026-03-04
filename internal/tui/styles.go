@@ -666,7 +666,7 @@ var SectionColorPalette = []SectionColorEntry{
 
 // GetViewModeStyleForSection returns the ViewMode style for a section name.
 // This maps section strings to their corresponding ViewMode styles, providing
-// consistent styling between the view mode indicator and kanban column headers.
+// consistent styling between the view mode indicator and section headers.
 func GetViewModeStyleForSection(section string) lipgloss.Style {
 	switch section {
 	case "": // Active section
@@ -847,7 +847,7 @@ var (
 	OverlaySplitStyle = lipgloss.NewStyle().
 				Foreground(ColorBorder)
 
-	// Overlay panel styles (used by kanban display settings, score profile manager, etc.)
+	// Overlay panel styles (used by score profile manager, etc.)
 	OverlayTitleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
 	OverlaySelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
 	OverlayDetailStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))

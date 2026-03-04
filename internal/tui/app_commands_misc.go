@@ -610,20 +610,6 @@ func (m *AppModel) outlinerCommands() []Command {
 			},
 		},
 		{
-			Name:        "kanban board",
-			Description: "Switch to kanban board view",
-			Shortcut:    "ctrl+k",
-			Category:    CategoryViews,
-			Views:       []ViewType{ViewOutliner},
-			Aliases:     []string{"kanban view", "board view"},
-			Handler: func() tea.Msg {
-				if m.outliner != nil {
-					return ShowKanbanMsg{Project: m.outliner.project}
-				}
-				return nil
-			},
-		},
-		{
 			Name:        "focus board",
 			Description: "Switch to focus board view",
 			Shortcut:    "ctrl+f",

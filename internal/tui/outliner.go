@@ -45,7 +45,8 @@ type OutlinerModel struct {
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
-	sidebar *SidebarComponent // Sidebar detail panel
+	sidebar   *SidebarComponent   // Sidebar detail panel
+	filterBar *FilterBarComponent // Filter bar component (dedicated line for filter/sort indicators)
 
 	deleteTarget *models.Task // Task to delete when confirmation is accepted
 	err          error        // Last error from an operation
@@ -54,6 +55,8 @@ type OutlinerModel struct {
 
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
+
+	activeSavedView string // Name of the currently loaded saved view (if any)
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -92,6 +95,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		project:           project,
 		activePerspective: 1,
 		sidebar:           NewSidebarComponent(),
+		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
 		filter:            NewFilterState(),
@@ -104,10 +108,11 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		m.collapsedSections[section] = collapsed
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
-	// Restore sidebar state from config
+	// Restore sidebar and filter bar state from config
 	if project != nil {
 		if state, exists := cfg.GetProjectViewState(project.ID); exists {
 			m.sidebar.SetEnabled(state.SidebarEnabled)
+			m.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
 		}
 	}
 	return m
@@ -357,6 +362,9 @@ func (m *OutlinerModel) activeCustomSectionFilter() string {
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
 	headerLines := 1 // title
+	if m.filterBar.IsEnabled() && m.hasActiveFilters() {
+		headerLines++ // filter bar line
+	}
 	if m.customSectionTabs() != nil {
 		headerLines += 2 // custom section tab bar (text + bottom border)
 	}
@@ -523,6 +531,7 @@ type OutlinerToggleState struct {
 	CollapsedSections map[string]bool // Section collapse state for All perspective
 	ExpandedNodes     map[string]bool // Node fold state (empty = all expanded)
 	CursorTaskID      string          // Task ID at cursor position (session-only)
+	ZoomStack         []ZoomEntry     // Zoom stack (session-only)
 }
 
 // SaveToggleState snapshots the current section/fold state.
@@ -531,10 +540,16 @@ func (m *OutlinerModel) SaveToggleState() *OutlinerToggleState {
 	if task := m.getCursorTask(); task != nil {
 		cursorTaskID = task.ID
 	}
+	var zoomCopy []ZoomEntry
+	if len(m.zoomStack) > 0 {
+		zoomCopy = make([]ZoomEntry, len(m.zoomStack))
+		copy(zoomCopy, m.zoomStack)
+	}
 	return &OutlinerToggleState{
 		CollapsedSections: copyBoolMap(m.collapsedSections),
 		ExpandedNodes:     copyBoolMap(m.expandedNodes),
 		CursorTaskID:      cursorTaskID,
+		ZoomStack:         zoomCopy,
 	}
 }
 
@@ -545,6 +560,10 @@ func (m *OutlinerModel) RestoreToggleState(state *OutlinerToggleState) {
 	}
 	m.collapsedSections = copyBoolMap(state.CollapsedSections)
 	m.expandedNodes = copyBoolMap(state.ExpandedNodes)
+	if len(state.ZoomStack) > 0 {
+		m.zoomStack = make([]ZoomEntry, len(state.ZoomStack))
+		copy(m.zoomStack, state.ZoomStack)
+	}
 	m.rebuildRows()
 	if state.CursorTaskID != "" {
 		m.moveCursorToTask(state.CursorTaskID)

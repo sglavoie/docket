@@ -79,11 +79,6 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.projectTree.updateVisibility()
 				m.projectTree.clampCursor()
 			}
-		case ViewKanban:
-			if m.kanban != nil {
-				m.kanban.filter.Tags = tags
-				m.kanban.loadTasks()
-			}
 		case ViewFocusView:
 			if v := m.views.Get(ViewFocusView); v != nil {
 				if fv, ok := v.(*FocusViewModel); ok {
@@ -322,17 +317,6 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 		if projectID != "" {
 			state, _ := m.config.GetProjectViewState(projectID)
 			state.TreeColumnToggles = toggles
-			m.config.SetProjectViewState(projectID, state)
-		}
-	case ViewKanban:
-		priorityMode := resolvePriorityMode(projectID, m.config, "kanban")
-		if m.kanban != nil {
-			m.kanban.columnConfig = NewColumnConfig(toggles, m.config.KanbanDefaultColumns, DefaultKanbanColumns, priorityMode)
-			m.kanban.loadTasks()
-		}
-		if projectID != "" {
-			state, _ := m.config.GetProjectViewState(projectID)
-			state.KanbanColumnToggles = toggles
 			m.config.SetProjectViewState(projectID, state)
 		}
 	case ViewOutliner:

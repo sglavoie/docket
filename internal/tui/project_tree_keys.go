@@ -221,6 +221,11 @@ func (m *ProjectTreeModel) handleTaskCRUDKeys(key string, visible []*TreeNode) (
 		}
 		return true, nil
 
+	case "D":
+		// Standalone delete with confirmation (same as tD)
+		handleDeleteConfirmKey(m)
+		return true, nil
+
 	}
 	return false, nil
 }

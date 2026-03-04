@@ -39,7 +39,6 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 		projectLastView:          make(map[string]ViewType),
 		outlinerToggleStates:     make(map[string]*OutlinerToggleState),
 		projectTreeSpatialStates: make(map[string]*ProjectTreeSpatialState),
-		kanbanSpatialStates:      make(map[string]*KanbanSpatialState),
 		focusQueue:               []FocusTask{},
 		focusQueueIDs:            make(map[string]bool),
 		focusDismissedIDs:        make(map[string]bool),
@@ -162,8 +161,6 @@ func (m *AppModel) registerGlobalCommands() {
 	_ = m.commandRegistry.RegisterBatch(m.foldCommands())
 	_ = m.commandRegistry.RegisterBatch(m.filterBarCommands())
 	_ = m.commandRegistry.RegisterBatch(m.notesViewCommands())
-	_ = m.commandRegistry.RegisterBatch(m.kanbanCommands())
-	_ = m.commandRegistry.RegisterBatch(m.kanbanExtCommands())
 	_ = m.commandRegistry.RegisterBatch(m.blockersCommands())
 	_ = m.commandRegistry.RegisterBatch(m.taskCommentsCommands())
 	_ = m.commandRegistry.RegisterBatch(m.undoHistoryCommands())

@@ -77,10 +77,6 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return m.handleGlowView(msg)
 
 	case GlowViewDoneMsg:
-		// Force re-layout of kanban view after returning from glow pager
-		if m.kanban != nil {
-			m.kanban.SetSize(m.width, m.height-2)
-		}
 		return true, nil
 
 	case OpenDataFolderMsg:

@@ -3,7 +3,7 @@ package tui
 import "github.com/sglavoie/tt/internal/config"
 
 // PrimaryViewBundle groups fields shared by all three primary project views
-// (ProjectTree, Kanban, Outliner). Embed this anonymously so that existing
+// (ProjectTree, Outliner). Embed this anonymously so that existing
 // references like m.config, m.quickEdit, etc. continue to work unchanged.
 type PrimaryViewBundle struct {
 	ViewBundle

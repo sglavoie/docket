@@ -312,7 +312,7 @@ func renderDueDateContentOpts(task *models.Task, hideRecurrence bool) string {
 }
 
 // renderMetadataContent builds the tags, section, custom section, and type-specific
-// attributes content shared by sidebar, task detail, and kanban info cards.
+// attributes content shared by sidebar and task detail.
 func renderMetadataContent(task *models.Task, project *models.Project, innerWidth int, showAttrs ...bool) string {
 	var lines []string
 

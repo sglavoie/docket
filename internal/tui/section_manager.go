@@ -35,7 +35,7 @@ type SectionManagerModel struct {
 // ShowSectionManagerMsg is sent to open the section manager view.
 type ShowSectionManagerMsg struct {
 	ProjectTree  *ProjectTreeModel
-	Project      *models.Project // Used when ProjectTree is nil (e.g., from kanban view)
+	Project      *models.Project // Used when ProjectTree is nil (e.g., from outliner view)
 	StartAddMode bool            // If true, open directly in add mode
 }
 
@@ -248,7 +248,7 @@ func (m *SectionManagerModel) removeSection(name string) tea.Cmd {
 }
 
 // filterBySection sets the project tree filter and closes the section manager.
-// When opened from kanban view (no projectTree), it just closes without filtering.
+// When opened from outliner view (no projectTree), it just closes without filtering.
 func (m *SectionManagerModel) filterBySection(sectionName string) tea.Cmd {
 	return func() tea.Msg {
 		if m.projectTree != nil {

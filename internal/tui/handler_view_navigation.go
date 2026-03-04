@@ -11,11 +11,6 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 	project := m.config.GetCurrentProject()
 
 	switch msg.ViewType {
-	case ViewKanban:
-		if project != nil {
-			_ = storage.LoadProject(project)
-			return m.handleViewMessages(ShowKanbanMsg{Project: project})
-		}
 	case ViewDailyReview:
 		return m.handleViewMessages(ShowDailyReviewMsg{})
 	case ViewWeeklyReview:

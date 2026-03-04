@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Kanban", "Outliner", "Notifications"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-41, tab 6 → fields 42-61, tab 7 → fields 62-76
-	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 42, 62}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-46, tab 6 → fields 47-61
+	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 47}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
 	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -28,10 +28,10 @@ var (
 	outlinerSectionLabels = []string{"Active", "Inbox", "Next", "Waiting", "Review", "Standby", "Someday"}
 
 	// defaultProjectViewOptions lists the display labels for the default project view selector.
-	defaultProjectViewOptions = []string{"Outliner", "Project Tree", "Kanban"}
+	defaultProjectViewOptions = []string{"Outliner", "Project Tree"}
 
 	// defaultProjectViewValues maps cursor index to config string value.
-	defaultProjectViewValues = []string{"outliner", "project_tree", "kanban"}
+	defaultProjectViewValues = []string{"outliner", "project_tree"}
 
 	// priorityModeOptions lists the display labels for priority display mode.
 	priorityModeOptions = []string{"All", "Conditional", "Hidden"}
@@ -69,19 +69,15 @@ type SettingsModel struct {
 	attachmentEditorInput  textinput.Model
 	codeEditorInput        textinput.Model
 	defaultViewCursor      int // Index into defaultProjectViewOptions
-	kanbanMaxColumnsInput  textinput.Model
-	kanbanMaxSwimlaneInput textinput.Model
 	outlinerCollapsed      [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
 	treeColumnDefaults     [13]bool // Global default column visibility for tree view
-	kanbanColumnDefaults   [13]bool // Global default column visibility for kanban view
 	outlinerColumnDefaults [13]bool // Global default column visibility for outliner view
 	treePriorityMode       int      // 0=All, 1=Conditional, 2=Hidden
-	kanbanPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
 	outlinerPriorityMode   int      // 0=All, 1=Conditional, 2=Hidden
 	contexts               []string
 	contextCursor          int // -1 for custom mode, 0+ for selecting from list
 
-	// Alert settings (Notifications tab, indices 62-76)
+	// Alert settings (Notifications tab, indices 47-61)
 	alertDailyReviewEnabled    bool
 	alertDailyReviewHourInput  textinput.Model
 	alertWeeklyReviewEnabled   bool
@@ -99,7 +95,7 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs          TabState
-	focusIndex    int // 0=editor .. 61=outlinerColumnDefaults, 62-76=alert settings
+	focusIndex    int // 0=editor .. 46=outlinerColumnDefaults, 47-61=alert settings
 	scrollOffset  int // vertical scroll offset within current tab content
 	validationErr string
 
@@ -180,18 +176,6 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	codeEditorInput.Width = 40
 	codeEditorInput.SetValue(cfg.CodeEditor) // Use raw value, not getter (to distinguish default from explicit)
 
-	kanbanMaxColumnsInput := textinput.New()
-	kanbanMaxColumnsInput.Placeholder = strconv.Itoa(config.DefaultKanbanMaxColumns)
-	kanbanMaxColumnsInput.CharLimit = 2
-	kanbanMaxColumnsInput.Width = 6
-	kanbanMaxColumnsInput.SetValue(strconv.Itoa(cfg.GetKanbanMaxColumns()))
-
-	kanbanMaxSwimlaneInput := textinput.New()
-	kanbanMaxSwimlaneInput.Placeholder = strconv.Itoa(config.DefaultKanbanMaxSwimlaneRows)
-	kanbanMaxSwimlaneInput.CharLimit = 2
-	kanbanMaxSwimlaneInput.Width = 6
-	kanbanMaxSwimlaneInput.SetValue(strconv.Itoa(cfg.GetKanbanMaxSwimlaneRows()))
-
 	// Determine default view cursor from config
 	defaultViewCursor := 0
 	configView := cfg.GetDefaultProjectView()
@@ -216,7 +200,6 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 
 	// Initialize column default toggles from config
 	treeColumnDefaults := initColumnDefaults(cfg.TreeDefaultColumns)
-	kanbanColumnDefaults := initColumnDefaults(cfg.KanbanDefaultColumns)
 	outlinerColumnDefaults := initColumnDefaults(cfg.OutlinerDefaultColumns)
 
 	// Initialize outliner collapsed toggles from config
@@ -280,14 +263,10 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		maxPinnedInput:             maxPinnedInput,
 		attachmentEditorInput:      attachmentEditorInput,
 		codeEditorInput:            codeEditorInput,
-		kanbanMaxColumnsInput:      kanbanMaxColumnsInput,
-		kanbanMaxSwimlaneInput:     kanbanMaxSwimlaneInput,
 		outlinerCollapsed:          outlinerCollapsed,
 		treeColumnDefaults:         treeColumnDefaults,
-		kanbanColumnDefaults:       kanbanColumnDefaults,
 		outlinerColumnDefaults:     outlinerColumnDefaults,
 		treePriorityMode:           priorityModeToCursor(cfg.TreePriorityMode),
-		kanbanPriorityMode:         priorityModeToCursor(cfg.KanbanPriorityMode),
 		outlinerPriorityMode:       priorityModeToCursor(cfg.OutlinerPriorityMode),
 		alertDailyReviewEnabled:    cfg.GetAlertDailyReviewEnabled(),
 		alertDailyReviewHourInput:  alertDailyReviewHourInput,
@@ -351,26 +330,16 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.MaxPinnedBarItems = &maxPinned
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
-		kanbanMaxCols, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxColumnsInput.Value()))
-		m.config.KanbanMaxColumns = &kanbanMaxCols
-		kanbanMaxRows, _ := strconv.Atoi(strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value()))
-		m.config.KanbanMaxSwimlaneRows = &kanbanMaxRows
-
 		// Persist column default visibility
 		m.config.TreeDefaultColumns = columnDefaultsToMap(m.treeColumnDefaults)
-		m.config.KanbanDefaultColumns = columnDefaultsToMap(m.kanbanColumnDefaults)
 		m.config.OutlinerDefaultColumns = columnDefaultsToMap(m.outlinerColumnDefaults)
 
 		// Persist priority display modes (empty string = conditional, omitted from JSON)
 		m.config.TreePriorityMode = priorityModeValues[m.treePriorityMode]
-		m.config.KanbanPriorityMode = priorityModeValues[m.kanbanPriorityMode]
 		m.config.OutlinerPriorityMode = priorityModeValues[m.outlinerPriorityMode]
 		// Omit "conditional" from config (it's the default)
 		if m.config.TreePriorityMode == PriorityModeConditional {
 			m.config.TreePriorityMode = ""
-		}
-		if m.config.KanbanPriorityMode == PriorityModeConditional {
-			m.config.KanbanPriorityMode = ""
 		}
 		if m.config.OutlinerPriorityMode == PriorityModeConditional {
 			m.config.OutlinerPriorityMode = ""

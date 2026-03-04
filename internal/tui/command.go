@@ -25,7 +25,6 @@ const (
 	CategoryMultiSelect   CommandCategory = "Multi-Select"
 	CategoryFold          CommandCategory = "Fold"
 	CategoryAttachments   CommandCategory = "Attachments"
-	CategoryKanban        CommandCategory = "Kanban"
 	CategoryBlockers      CommandCategory = "Blockers"
 	CategoryComments      CommandCategory = "Comments"
 	CategoryUndoHistory   CommandCategory = "Undo History"
@@ -46,8 +45,7 @@ type Command struct {
 }
 
 // projectTreeAndOutlinerViews returns the Views slice for commands that work
-// in both the project tree and outliner views. Kanban is excluded because it
-// has its own comprehensive command set that would cause name collisions.
+// in both the project tree and outliner views.
 func projectTreeAndOutlinerViews() []ViewType {
 	return []ViewType{ViewProjectTree, ViewOutliner}
 }

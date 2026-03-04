@@ -77,9 +77,6 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if m.projectTree != nil {
 				m.projectTree.buildTree()
 			}
-			if m.kanban != nil {
-				m.kanban.loadTasks()
-			}
 			if m.allTasksView != nil {
 				m.allTasksView.loadAllTasks()
 			}

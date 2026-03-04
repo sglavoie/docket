@@ -7,7 +7,7 @@ import (
 
 // CommandRegistry manages command instances and provides centralized command lookup.
 // Commands are keyed by their name. Multiple commands with the same name can coexist
-// if they have non-overlapping view scopes (e.g., one for ProjectTree and one for Kanban).
+// if they have non-overlapping view scopes (e.g., one for ProjectTree and one for Outliner).
 type CommandRegistry struct {
 	commands map[string][]Command
 }

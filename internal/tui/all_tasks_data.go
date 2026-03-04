@@ -101,9 +101,6 @@ func (m *AllTasksViewModel) calculateNavigation() {
 // getTaskAtCursor returns the task at the current cursor position.
 // Returns nil if cursor is on a group header.
 func (m *AllTasksViewModel) getTaskAtCursor() *CrossProjectTask {
-	if m.layoutMode == ATLayoutKanban {
-		return m.getKanbanTaskAtCursor()
-	}
 	pos := 0
 	for i := range m.groups {
 		if m.cursor == pos {

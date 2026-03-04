@@ -573,15 +573,6 @@ suggest next steps, and generate tt commands. Requires the
 claude CLI to be installed.`,
 		},
 		{
-			Title:    "Kanban",
-			Category: "TUI",
-			Content: `# Kanban Board
-
-Press Ctrl+K in the project tree view to open the kanban board.
-Tasks are displayed in columns by status, giving a visual
-overview of work in progress.`,
-		},
-		{
 			Title:    "Navigation",
 			Category: "TUI",
 			Content: `# View Stack
@@ -641,7 +632,7 @@ Tasks with a scoring profile show a badge like [S:72] in green when
 all dimensions are explicitly set, or [S:~50] in orange when some
 dimensions use default values. The number is a normalized 0-300 score
 where 150 means all dimensions are at their defaults. The badge appears
-in the priority view and kanban task rows.
+in the priority view and outliner task rows.
 
 # Score in Sidebar
 
@@ -653,7 +644,7 @@ the computed total when a scored task is selected.
 Use the FS prefix to filter tasks by minimum normalized score (0-300).
 Press F then S to open the score filter popup. Keys 1 through 9 set
 thresholds at 30, 60, 90, ..., 270 respectively. Press 0 to clear the
-filter. Works in both project tree and kanban views.`,
+filter. Works in both project tree and outliner views.`,
 		},
 		{
 			Title:    "Snooze",

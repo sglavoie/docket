@@ -80,6 +80,11 @@ func (m *AppModel) saveOutlinerFilterState() {
 		state.OutlinerFilterAttrs = nil
 	}
 
+	state.OutlinerSortField = int(m.outliner.sort.Field)
+	state.OutlinerSortAscending = m.outliner.sort.Ascending
+	state.OutlinerActivePerspective = m.outliner.activePerspective
+	state.OutlinerFilterBarEnabled = m.outliner.filterBar.IsEnabled()
+
 	m.config.ProjectViewStates[m.outliner.project.ID] = state
 	_ = m.configManager.Save(m.config)
 }
@@ -114,6 +119,20 @@ func (m *AppModel) restoreOutlinerFilterState() {
 
 	// Restore sections - validate they still exist
 	m.outliner.filter.Sections = validateSavedStringSet(state.OutlinerFilterSections, m.outliner.project.GetSections())
+
+	// Restore sort state
+	m.outliner.sort.Field = SortField(state.OutlinerSortField)
+	m.outliner.sort.Ascending = state.OutlinerSortAscending
+
+	// Restore filter bar state
+	m.outliner.filterBar.SetEnabled(state.OutlinerFilterBarEnabled)
+
+	// Restore active perspective (0 is Snoozed, 1 is All/default;
+	// only override the default if explicitly saved as non-zero or if sort
+	// was also saved, indicating outliner state was persisted at least once)
+	if state.OutlinerActivePerspective != 0 || state.OutlinerSortField != 0 {
+		m.outliner.activePerspective = state.OutlinerActivePerspective
+	}
 
 	// Restore section collapse state from disk if no in-memory cache exists
 	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {
@@ -204,7 +223,6 @@ func (m *AppModel) processMessage(msg tea.Msg) (bool, tea.Cmd) {
 	if _, ok := msg.(QuitMsg); ok {
 		m.saveProjectTreeState()
 		m.saveOutlinerFilterState()
-		m.saveKanbanState()
 		m.quitting = true
 		return true, tea.Quit
 	}

@@ -180,34 +180,6 @@ func (m *SettingsModel) validateMaxPinnedBarItems() error {
 	return nil
 }
 
-func (m *SettingsModel) validateKanbanSettings() error {
-	colsStr := strings.TrimSpace(m.kanbanMaxColumnsInput.Value())
-	if colsStr == "" {
-		return fmt.Errorf("max columns is required")
-	}
-	cols, err := strconv.Atoi(colsStr)
-	if err != nil {
-		return fmt.Errorf("max columns must be a number")
-	}
-	if cols < 1 || cols > 20 {
-		return fmt.Errorf("max columns must be 1-20")
-	}
-
-	rowsStr := strings.TrimSpace(m.kanbanMaxSwimlaneInput.Value())
-	if rowsStr == "" {
-		return fmt.Errorf("max swimlane rows is required")
-	}
-	rows, err := strconv.Atoi(rowsStr)
-	if err != nil {
-		return fmt.Errorf("max swimlane rows must be a number")
-	}
-	if rows < 1 || rows > 20 {
-		return fmt.Errorf("max swimlane rows must be 1-20")
-	}
-
-	return nil
-}
-
 func (m *SettingsModel) validateAlertSettings() error {
 	// Daily review hour (0-23)
 	hourStr := strings.TrimSpace(m.alertDailyReviewHourInput.Value())

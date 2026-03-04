@@ -629,7 +629,7 @@ func TestRegisterSameNameDifferentViewsSucceeds(t *testing.T) {
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewKanban},
+		Views:    []ViewType{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -647,13 +647,13 @@ func TestRegisterSameNameOverlappingViewsFails(t *testing.T) {
 	cmd1 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewProjectTree, ViewKanban},
+		Views:    []ViewType{ViewProjectTree, ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewKanban, ViewOutliner},
+		Views:    []ViewType{ViewOutliner, ViewDashboard},
 		Handler:  func() tea.Msg { return nil },
 	}
 
@@ -706,8 +706,8 @@ func TestGetForViewReturnsCorrectVariant(t *testing.T) {
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewKanban},
-		Handler:  func() tea.Msg { return resultMsg{"kanban"} },
+		Views:    []ViewType{ViewOutliner},
+		Handler:  func() tea.Msg { return resultMsg{"outliner"} },
 	}
 
 	_ = registry.Register(cmd1)
@@ -728,19 +728,19 @@ func TestGetForViewReturnsCorrectVariant(t *testing.T) {
 		t.Error("expected to find 'Start Task' in project tree view commands")
 	}
 
-	kanbanCommands := registry.GetForView(ViewKanban)
+	outlinerCommands := registry.GetForView(ViewOutliner)
 	found = false
-	for _, cmd := range kanbanCommands {
+	for _, cmd := range outlinerCommands {
 		if cmd.Name == "Start Task" {
 			found = true
 			msg := cmd.Handler().(resultMsg)
-			if msg.view != "kanban" {
-				t.Errorf("expected kanban handler, got %s", msg.view)
+			if msg.view != "outliner" {
+				t.Errorf("expected outliner handler, got %s", msg.view)
 			}
 		}
 	}
 	if !found {
-		t.Error("expected to find 'Start Task' in kanban view commands")
+		t.Error("expected to find 'Start Task' in outliner view commands")
 	}
 }
 
@@ -756,7 +756,7 @@ func TestGetForViewNoDuplicates(t *testing.T) {
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewKanban},
+		Views:    []ViewType{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	global := Command{
@@ -793,7 +793,7 @@ func TestGetAllDeduplicatesSameNameCommands(t *testing.T) {
 	cmd2 := Command{
 		Name:     "Start Task",
 		Category: CategoryTasks,
-		Views:    []ViewType{ViewKanban},
+		Views:    []ViewType{ViewOutliner},
 		Handler:  func() tea.Msg { return nil },
 	}
 	other := Command{
@@ -834,12 +834,12 @@ func TestViewsOverlap(t *testing.T) {
 	}
 
 	// Shared view — overlaps
-	if !viewsOverlap([]ViewType{ViewProjectTree, ViewKanban}, []ViewType{ViewKanban, ViewOutliner}) {
+	if !viewsOverlap([]ViewType{ViewProjectTree, ViewOutliner}, []ViewType{ViewOutliner, ViewDashboard}) {
 		t.Error("expected overlapping view lists to overlap")
 	}
 
 	// Disjoint — no overlap
-	if viewsOverlap([]ViewType{ViewProjectTree}, []ViewType{ViewKanban}) {
+	if viewsOverlap([]ViewType{ViewProjectTree}, []ViewType{ViewDashboard}) {
 		t.Error("expected disjoint view lists to not overlap")
 	}
 }

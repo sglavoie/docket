@@ -71,7 +71,6 @@ var commandCategoryPrefixes = map[string]CommandCategory{
 	"fold":      CategoryFold,
 	"link":      CategoryLinkedTasks,
 	"attach":    CategoryAttachments,
-	"kanban":    CategoryKanban,
 	"block":     CategoryBlockers,
 	"comment":   CategoryComments,
 	"structure": CategoryStructure,

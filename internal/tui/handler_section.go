@@ -141,10 +141,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			m.config.ApplyGlobalColorsToProject(project)
 
-			if m.kanban != nil {
-				m.kanban.loadTasks()
-			}
-
 			m.pendingBulkSectionTasks = nil
 			m.pendingBulkSectionProject = nil
 
@@ -179,11 +175,6 @@ func (m *AppModel) handleSectionMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 
 			m.config.ApplyGlobalColorsToProject(msg.Project)
-
-			// Refresh kanban view if open
-			if m.kanban != nil {
-				m.kanban.loadTasks()
-			}
 
 			var successMsg string
 			switch msg.Section {
