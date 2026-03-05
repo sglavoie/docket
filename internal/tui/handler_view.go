@@ -671,11 +671,20 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
 			replacing := m.isOnProjectView()
+			// Extract shared state from tree before creating new outliner
+			var shared *sharedViewState
+			if replacing && m.projectTree != nil {
+				shared = m.extractSharedStateFromTree()
+			}
 			m.saveOutlinerToggleState()
 			m.saveOutlinerFilterState()
 			m.outliner = NewOutlinerModel(msg.Project, m.config, m.configManager)
 			m.restoreOutlinerToggleState()
-			m.restoreOutlinerFilterState()
+			if shared != nil {
+				m.applySharedStateToOutliner(shared)
+			} else {
+				m.restoreOutlinerFilterState()
+			}
 			if replacing {
 				m.replaceView(ViewOutliner, m.outliner)
 			} else {
@@ -695,9 +704,17 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if msg.Project != nil {
 			replacing := m.isOnProjectView()
 			if replacing {
+				// Extract shared state from outliner before rebuilding tree
+				var shared *sharedViewState
+				if m.outliner != nil {
+					shared = m.extractSharedStateFromOutliner()
+				}
 				m.saveOutlinerToggleState()
 				m.saveOutlinerFilterState()
 				m.refreshProjectTree()
+				if shared != nil {
+					m.applySharedStateToTree(shared)
+				}
 				m.replaceView(ViewProjectTree, m.projectTree)
 			} else {
 				if m.projectTree == nil {
