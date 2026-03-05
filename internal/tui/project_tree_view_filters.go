@@ -131,12 +131,6 @@ func (m *ProjectTreeModel) renderViewModeIndicator() string {
 func (m *ProjectTreeModel) renderFilterBar() string {
 	var result strings.Builder
 
-	// Active filter indicator line (only shown when filters are active)
-	if indicator := m.renderActiveFilterIndicator(); indicator != "" {
-		result.WriteString(indicator)
-		result.WriteString("\n")
-	}
-
 	// View mode indicator (always shown)
 	result.WriteString(m.renderViewModeIndicator())
 	result.WriteString("\n")
@@ -144,18 +138,8 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 	return result.String()
 }
 
-// hasActiveFilters returns true if any filter is currently active.
-func (m *ProjectTreeModel) hasActiveFilters() bool {
-	return m.activeSavedView != "" ||
-		m.viewMode == ViewModeCompleted ||
-		hasActiveCommonFilters(&m.filter.CommonFilterState) ||
-		len(m.filter.Sections) > 0 ||
-		m.filter.Actionable
-}
-
-// renderActiveFilterIndicator returns a compact indicator of all active filters.
-// Returns empty string when no filters are active.
-func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
+// activeFilterParts returns the list of active filter description strings.
+func (m *ProjectTreeModel) activeFilterParts() []string {
 	var parts []string
 
 	// Show saved view badge if active
@@ -182,7 +166,7 @@ func (m *ProjectTreeModel) renderActiveFilterIndicator() string {
 		parts = append(parts, "ready")
 	}
 
-	return renderFilterBadge(parts)
+	return parts
 }
 
 // renderChildrenInOtherSectionsBadge returns a badge showing how many children

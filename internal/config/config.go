@@ -58,10 +58,10 @@ type ProjectViewState struct {
 	TreeFoldState             map[string]bool   `json:"tree_fold_state,omitempty"`             // Collapsed node IDs in project tree (persists across restarts)
 	OutlinerFoldState         map[string]bool   `json:"outliner_fold_state,omitempty"`         // Collapsed node IDs in outliner (persists across restarts)
 	OutlinerCollapsedSections map[string]bool   `json:"outliner_collapsed_sections,omitempty"` // Collapsed section headers in outliner (persists across restarts)
-	OutlinerSortField         int               `json:"outliner_sort_field,omitempty"`          // Outliner sort field (int encoding of SortField enum)
-	OutlinerSortAscending     bool              `json:"outliner_sort_ascending"`                // Outliner sort direction
-	OutlinerActivePerspective int               `json:"outliner_active_perspective,omitempty"`  // Outliner active perspective index (0-9)
-	OutlinerFilterBarEnabled  bool              `json:"outliner_filter_bar_enabled"`             // Outliner filter bar toggle state
+	OutlinerSortField         int               `json:"outliner_sort_field,omitempty"`         // Outliner sort field (int encoding of SortField enum)
+	OutlinerSortAscending     bool              `json:"outliner_sort_ascending"`               // Outliner sort direction
+	OutlinerActivePerspective int               `json:"outliner_active_perspective,omitempty"` // Outliner active perspective index (0-9)
+	OutlinerFilterBarEnabled  bool              `json:"outliner_filter_bar_enabled"`           // Outliner filter bar toggle state
 }
 
 // SavedView represents a named filter+sort+view-mode preset that can be recalled instantly.

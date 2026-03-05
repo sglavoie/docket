@@ -40,11 +40,9 @@ const (
 	DashboardMinVisibleProjects = 3
 
 	// TreeHeaderOffset is the number of lines consumed by the tree view
-	// header chrome (title, breadcrumbs, status, etc.).
+	// header chrome (title, view mode tabs, status stats, etc.).
+	// Filter/sort info is now inline on the title line, so no extra line needed.
 	TreeHeaderOffset = 7
-
-	// TreeHeaderOffsetWithFilterBar adds an extra line for the filter bar.
-	TreeHeaderOffsetWithFilterBar = 8
 
 	// TreeMinWidth is the minimum width for the tree pane in split layout.
 	TreeMinWidth = 35

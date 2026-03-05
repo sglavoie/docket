@@ -68,7 +68,7 @@ type SettingsModel struct {
 	maxPinnedInput         textinput.Model
 	attachmentEditorInput  textinput.Model
 	codeEditorInput        textinput.Model
-	defaultViewCursor      int // Index into defaultProjectViewOptions
+	defaultViewCursor      int      // Index into defaultProjectViewOptions
 	outlinerCollapsed      [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
 	treeColumnDefaults     [13]bool // Global default column visibility for tree view
 	outlinerColumnDefaults [13]bool // Global default column visibility for outliner view

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -16,8 +15,14 @@ import (
 func (m *ProjectTreeModel) renderFullWidth() string {
 	var b strings.Builder
 
-	// Title
-	b.WriteString(renderProjectTitle(m.project, m.config))
+	// Title with inline filter/sort
+	titleParams := &TitleParams{
+		FilterParts:   m.activeFilterParts(),
+		SortField:     m.sort.Field,
+		SortAscending: m.sort.Ascending,
+		Width:         m.width,
+	}
+	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	b.WriteString("\n")
 
 	// Custom section tab bar
@@ -26,7 +31,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		b.WriteString("\n")
 	}
 
-	// Filter bar
+	// Filter bar (view mode tabs only)
 	b.WriteString(m.renderFilterBar())
 
 	// Search bar
@@ -100,12 +105,8 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 	} else {
 		// Calculate available height for task list
-		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := TreeHeaderOffset
-		if m.hasActiveFilters() {
-			headerOffset = TreeHeaderOffsetWithFilterBar
-		}
 		if m.customSectionTabs() != nil {
 			headerOffset++
 		}
@@ -178,71 +179,6 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 	sectionAccent := m.getSingleFilteredSectionColor()
 	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), m.width, true, sectionAccent))
 	b.WriteString("\n")
-
-	// Filter and sort status - outside the card
-	var filters []string
-	if m.filter.Type != "" {
-		filters = append(filters, fmt.Sprintf("type: %s", m.filter.Type))
-	}
-	if m.filter.Status != "" {
-		filters = append(filters, fmt.Sprintf("status: %s", m.filter.Status))
-	}
-	if m.filter.Priority == 1 {
-		filters = append(filters, "priority: high")
-	}
-	if len(m.filter.Tags) > 0 {
-		tags := make([]string, 0, len(m.filter.Tags))
-		for tag := range m.filter.Tags {
-			tags = append(tags, tag)
-		}
-		sort.Strings(tags)
-		filters = append(filters, fmt.Sprintf("tags: %s", strings.Join(tags, ", ")))
-	}
-	if len(m.filter.Sections) > 0 {
-		sections := make([]string, 0, len(m.filter.Sections))
-		for section := range m.filter.Sections {
-			sections = append(sections, section)
-		}
-		sort.Strings(sections)
-		filters = append(filters, fmt.Sprintf("sections: %s", strings.Join(sections, ", ")))
-	}
-	if m.filter.DueDate != DueDateAll {
-		var dueName string
-		switch m.filter.DueDate {
-		case DueDateOverdue:
-			dueName = "overdue"
-		case DueDateToday:
-			dueName = "today"
-		case DueDateThisWeek:
-			dueName = "this week"
-		case DueDateNone:
-			dueName = "no due date"
-		}
-		filters = append(filters, fmt.Sprintf("due: %s", dueName))
-	}
-	if m.SearchQuery() != "" {
-		filters = append(filters, fmt.Sprintf("search: \"%s\"", m.SearchQuery()))
-	}
-
-	// Build status line
-	var statusParts []string
-	if len(filters) > 0 {
-		// Use prominent badge style when filters are active
-		filterBadge := FilterBadgeStyle.Render(fmt.Sprintf("[%d filters]", len(filters)))
-		filterText := strings.Join(filters, ", ")
-		statusParts = append(statusParts, filterBadge+" "+filterText)
-	}
-	if m.sort.Field != SortByDefault {
-		direction := "↑"
-		if !m.sort.Ascending {
-			direction = "↓"
-		}
-		statusParts = append(statusParts, fmt.Sprintf("Sort: %s %s", m.sort.Field, direction))
-	}
-	if len(statusParts) > 0 {
-		b.WriteString(strings.Join(statusParts, " | "))
-		b.WriteString("\n")
-	}
 
 	return b.String()
 }
@@ -333,8 +269,14 @@ func (m *ProjectTreeModel) renderWithSidebar() string {
 func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	var b strings.Builder
 
-	// Title
-	b.WriteString(renderProjectTitle(m.project, m.config))
+	// Title with inline filter/sort
+	titleParams := &TitleParams{
+		FilterParts:   m.activeFilterParts(),
+		SortField:     m.sort.Field,
+		SortAscending: m.sort.Ascending,
+		Width:         width,
+	}
+	b.WriteString(renderProjectTitle(m.project, m.config, titleParams))
 	b.WriteString("\n")
 
 	// Custom section tab bar
@@ -343,7 +285,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		b.WriteString("\n")
 	}
 
-	// Filter bar
+	// Filter bar (view mode tabs only)
 	b.WriteString(m.renderFilterBar())
 
 	// Search bar
@@ -415,12 +357,8 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 	} else {
 		// Calculate available height for task list
-		// Extra line needed when filter bar is enabled (filters on own line)
 		// Card border consumes 2 lines (top + bottom)
 		headerOffset := TreeHeaderOffset
-		if m.hasActiveFilters() {
-			headerOffset = TreeHeaderOffsetWithFilterBar
-		}
 		if m.customSectionTabs() != nil {
 			headerOffset++
 		}
@@ -497,30 +435,6 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 	sectionAccent := m.getSingleFilteredSectionColor()
 	b.WriteString(renderSidebarCard(m.getViewModeTitle(), cardContent.String(), width, focused, sectionAccent))
 	b.WriteString("\n")
-
-	// Filter status (compact) - outside the card
-	var filters []string
-	if m.filter.Type != "" {
-		filters = append(filters, string(m.filter.Type))
-	}
-	if m.filter.Priority == 1 {
-		filters = append(filters, "!high")
-	}
-	if len(m.filter.Tags) > 0 {
-		filters = append(filters, fmt.Sprintf("%d tags", len(m.filter.Tags)))
-	}
-
-	if len(filters) > 0 {
-		b.WriteString(FilterBadgeStyle.Render(fmt.Sprintf("[%s]", strings.Join(filters, ","))))
-		b.WriteString(" ")
-	}
-	if m.sort.Field != SortByDefault {
-		direction := "↑"
-		if !m.sort.Ascending {
-			direction = "↓"
-		}
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("Sort: %s %s", m.sort.Field, direction)))
-	}
 
 	return b.String()
 }

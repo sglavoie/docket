@@ -213,11 +213,11 @@ type AppModel struct {
 	quickSwitchCursor int
 
 	// Pinned tasks popup state
-	showPinnedPopup      bool
-	pinnedPopupCursor    int
-	pinnedPopupItems     []pinnedTaskInfo
-	pinnedPendingPrefix  string
-	pinnedLastUnpinned   *pinnedTaskInfo
+	showPinnedPopup     bool
+	pinnedPopupCursor   int
+	pinnedPopupItems    []pinnedTaskInfo
+	pinnedPendingPrefix string
+	pinnedLastUnpinned  *pinnedTaskInfo
 
 	// Project cycle popup state
 	showProjectCycle   bool

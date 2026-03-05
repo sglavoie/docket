@@ -364,10 +364,7 @@ func (m *OutlinerModel) activeCustomSectionFilter() string {
 // contentHeight returns the number of task rows visible on screen,
 // accounting for the title header, optional tab bar, and optional breadcrumb line.
 func (m *OutlinerModel) contentHeight() int {
-	headerLines := 1 // title
-	if m.filterBar.IsEnabled() && m.hasActiveFilters() {
-		headerLines++ // filter bar line
-	}
+	headerLines := 1 // title (filter/sort info is now inline on this line)
 	if m.customSectionTabs() != nil {
 		headerLines += 2 // custom section tab bar (text + bottom border)
 	}
