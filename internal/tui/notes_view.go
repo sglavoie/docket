@@ -309,6 +309,25 @@ type GlobalNoteMoveCompleteMsg struct {
 
 func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
 
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *NotesViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	gHints := make([]PrefixHint, len(NavigationPrefixHints))
+	copy(gHints, NavigationPrefixHints)
+	if m.multiSelectMode {
+		gHints = append(gHints, PrefixHint{Key: "X", Description: "deselect-all", Detail: "Clear all selections"})
+	}
+	hints := PrefixHints{
+		"g": gHints,
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints:  hints,
+	}
+}
+
 func (m *NotesViewModel) StatusBarLabel() string {
 	if m.isGlobal {
 		return "Global Notes"

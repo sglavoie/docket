@@ -700,3 +700,16 @@ func (m *TaskChecklistModel) HasTextInput() bool {
 func (m *TaskChecklistModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
 }
+
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *TaskChecklistModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			"g": NavigationPrefixHints,
+		},
+	}
+}

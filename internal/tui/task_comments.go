@@ -790,3 +790,16 @@ func (m *TaskCommentsModel) HasTextInput() bool {
 func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 	return m.expandedView || m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
 }
+
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *TaskCommentsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			"g": NavigationPrefixHints,
+		},
+	}
+}

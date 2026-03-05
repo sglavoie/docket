@@ -65,4 +65,17 @@ func (m *DashboardModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.HasActiveSearch()
 }
 
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *DashboardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			"g": NavigationPrefixHints,
+		},
+	}
+}
+
 func (m *DashboardModel) StatusBarLabel() string { return "Dashboard" }

@@ -856,6 +856,19 @@ func (m *TaskAttachmentsModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() || m.addMode
 }
 
+// GetPrefixPopupInfo returns prefix popup data for overlay rendering.
+func (m *TaskAttachmentsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
+	if m.pendingPrefix == "" {
+		return nil
+	}
+	return &PrefixPopupInfo{
+		Prefix: m.pendingPrefix,
+		Hints: PrefixHints{
+			"g": NavigationPrefixHints,
+		},
+	}
+}
+
 // GetHelpItems returns help items for the attachments view.
 func (m *TaskAttachmentsModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewTaskAttachments)

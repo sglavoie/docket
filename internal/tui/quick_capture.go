@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -15,8 +16,9 @@ import (
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
 	quickCaptureInput
-	width  int
-	height int
+	width        int
+	height       int
+	helpExpanded bool
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
@@ -51,6 +53,12 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Handle autocomplete navigation when active
 		if m.handleAutocompleteKey(key) {
+			return m, nil
+		}
+
+		// Toggle syntax help
+		if key == "?" && m.ac.Mode == acModeNone {
+			m.helpExpanded = !m.helpExpanded
 			return m, nil
 		}
 
@@ -100,13 +108,17 @@ func (m *QuickCaptureModel) View() string {
 	}
 
 	// Help text
-	b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
+	if m.helpExpanded {
+		b.WriteString(m.renderSyntaxGuide())
+	} else {
+		b.WriteString(MutedStyle.Render("^type · !N · #tag · @date · ~recur · >parent · /section · $status · %project"))
+	}
 	b.WriteString("\n")
 	var helpText string
 	if m.isAutocompleteActive() {
 		helpText = "Tab: accept · ↑↓: navigate · Esc: dismiss"
 	} else {
-		helpText = "Enter: create · Ctrl+O: create & open · Esc: cancel"
+		helpText = "Enter: create · Ctrl+O: create & open · ?: help · Esc: cancel"
 	}
 
 	var out strings.Builder
@@ -130,6 +142,35 @@ func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
 }
 
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }
+
+func (m *QuickCaptureModel) renderSyntaxGuide() string {
+	prefixStyle := lipgloss.NewStyle().Foreground(ColorHighlight)
+	type row struct{ prefix, desc, examples string }
+	rows := []row{
+		{"^type", "Task type", "^epic  ^story  ^task  ^bug  ^idea"},
+		{"!N", "Priority (1-5)", "!1 urgent  !2 high  !3 normal  !4 low  !5 lowest"},
+		{"#tag", "Add tag", "#backend  #urgent  (multiple allowed)"},
+		{"@date", "Due date", "@tomorrow  @friday  @jan15  @+3d  @+1w"},
+		{"~recur", "Recurrence", "~daily  ~weekly  ~2w  ~monthly"},
+		{">parent", "Parent task", ">42  >Login  (short ID or title prefix)"},
+		{"/section", "Section", "/next  /inbox  /waiting  /someday"},
+		{"$status", "Initial status", "$start  $blocked  $done  $review"},
+		{"%project", "Target project", "%myproject  (slug or name)"},
+	}
+	var b strings.Builder
+	b.WriteString(MutedStyle.Render("Quick Capture Syntax"))
+	b.WriteString("\n\n")
+	for _, r := range rows {
+		b.WriteString("  ")
+		b.WriteString(prefixStyle.Render(fmt.Sprintf("%-10s", r.prefix)))
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("%-16s", r.desc)))
+		b.WriteString("  ")
+		b.WriteString(MutedStyle.Render(r.examples))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
 
 func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 	return func() tea.Msg {
