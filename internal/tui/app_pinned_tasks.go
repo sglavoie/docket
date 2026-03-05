@@ -117,7 +117,43 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 
 // handlePinnedPopupKey handles key events when the pinned tasks popup is open.
 func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+	// Handle second key of a pending prefix
+	if m.pinnedPendingPrefix != "" {
+		prefix := m.pinnedPendingPrefix
+		m.pinnedPendingPrefix = ""
+		key := msg.String()
+
+		if key == "esc" {
+			return m, nil
+		}
+
+		if prefix == "," {
+			status, ok := StatusForPrefixKey(key)
+			if !ok {
+				return m, nil
+			}
+			if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
+				return m, nil
+			}
+			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
+			result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
+			m.statusMessage = result.StatusMessage
+
+			// Rebuild list (task may have been completed and filtered out)
+			m.pinnedPopupItems = m.collectPinnedTasks()
+			if len(m.pinnedPopupItems) == 0 {
+				m.showPinnedPopup = false
+			} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
+				m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
+			}
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
+	case ",":
+		m.pinnedPendingPrefix = ","
+		return m, nil
 	case "j", "down":
 		if m.pinnedPopupCursor < len(m.pinnedPopupItems)-1 {
 			m.pinnedPopupCursor++
@@ -138,6 +174,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		return m.reorderPinnedTask(-1)
 	case "esc", "#":
 		m.showPinnedPopup = false
+		m.pinnedPendingPrefix = ""
 		return m, nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
@@ -307,7 +344,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	if len(lines) >= 2 {
 		actualWidth := lipgloss.Width(lines[0])
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("j/k navigate  J/K reorder  u unpin  enter select  esc close")
+		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  u unpin  enter select  esc close")
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
 
