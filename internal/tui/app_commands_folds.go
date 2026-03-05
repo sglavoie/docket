@@ -123,5 +123,18 @@ func (m *AppModel) foldCommands() []Command {
 				return nil
 			},
 		},
+		{
+			Name:        "toggle preview",
+			Description: "Toggle inline preview for cursor task",
+			Shortcut:    "zp",
+			Category:    CategoryFold,
+			Views:       []ViewType{ViewProjectTree},
+			Handler: func() tea.Msg {
+				if m.projectTree != nil {
+					m.projectTree.previewMode = !m.projectTree.previewMode
+				}
+				return nil
+			},
+		},
 	}
 }

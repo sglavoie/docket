@@ -57,6 +57,9 @@ type OutlinerModel struct {
 	columnConfig *ColumnConfig
 
 	activeSavedView string // Name of the currently loaded saved view (if any)
+
+	// Inline preview mode: show description/checklist below cursor task
+	previewMode bool
 }
 
 // primaryProjectView interface implementation for shared key dispatch.

@@ -220,6 +220,7 @@ func foldBindings() []Keybinding {
 		{Key: "zo/zc", Description: "Expand/collapse fold", Category: "Folds"},
 		{Key: "zR/zM", Description: "Expand/collapse all", Category: "Folds"},
 		{Key: "zv", Description: "Focus on subtree", Category: "Folds"},
+		{Key: "zp", Description: "Toggle inline preview", Category: "Folds"},
 	}
 }
 

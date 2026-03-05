@@ -178,6 +178,9 @@ type ProjectTreeModel struct {
 
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
+
+	// Inline preview mode: show description/checklist below cursor task
+	previewMode bool
 }
 
 // primaryProjectView interface implementation for shared key dispatch.

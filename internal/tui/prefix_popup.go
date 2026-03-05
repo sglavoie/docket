@@ -351,6 +351,7 @@ var (
 		{Key: "R", Description: "expand-all", Detail: "Expand all nodes"},
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
 	}
 
 	// NavigationPrefixHints contains hints for the "g" (go/navigation) prefix - basic version.
@@ -457,6 +458,7 @@ var (
 		{Key: "R", Description: "expand-all", Detail: "Expand all nodes"},
 		{Key: "M", Description: "collapse-all", Detail: "Collapse all nodes"},
 		{Key: "v", Description: "focus", Detail: "Focus on current subtree"},
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview for cursor task"},
 	}
 
 	// SectionFoldPrefixHints contains hints for the "z" (fold) prefix in section-based views.

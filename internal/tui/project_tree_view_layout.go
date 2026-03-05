@@ -111,6 +111,16 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		}
 		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
+		// Reserve space for inline preview lines when preview mode is on
+		previewLines := 0
+		if m.previewMode && m.cursor >= 0 && m.cursor < len(visible) {
+			previewLines = inlinePreviewLineCount(visible[m.cursor].Task)
+			availableHeight -= previewLines
+			if availableHeight < 1 {
+				availableHeight = 1
+			}
+		}
+
 		// Reserve 1 char for scrollbar when content overflows
 		needsScrollbar := len(visible) > availableHeight
 		if needsScrollbar {
@@ -144,6 +154,13 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
 			lines = append(lines, m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth))
+			// Append inline preview lines after the cursor task
+			if m.previewMode && i == m.cursor {
+				indent := strings.Repeat(" ", (node.Level+1)*2)
+				for _, pl := range inlinePreviewLines(node.Task, indent, cardContentWidth) {
+					lines = append(lines, pl)
+				}
+			}
 		}
 		content := strings.Join(lines, "\n")
 
@@ -409,6 +426,16 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		}
 		availableHeight := m.height - headerOffset - CardVerticalBorderOverhead
 
+		// Reserve space for inline preview lines when preview mode is on
+		previewLines := 0
+		if m.previewMode && m.cursor >= 0 && m.cursor < len(visible) {
+			previewLines = inlinePreviewLineCount(visible[m.cursor].Task)
+			availableHeight -= previewLines
+			if availableHeight < 1 {
+				availableHeight = 1
+			}
+		}
+
 		// Card has 4 chars horizontal overhead (2 border + 2 padding)
 		cardContentWidth := width - 4
 
@@ -445,6 +472,13 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			node := visible[i]
 			inSelection := m.selectedTasks[node.Task.ID]
 			lines = append(lines, m.renderNodeWithWidth(node, i == m.cursor, inSelection, cardContentWidth))
+			// Append inline preview lines after the cursor task
+			if m.previewMode && i == m.cursor {
+				indent := strings.Repeat(" ", (node.Level+1)*2)
+				for _, pl := range inlinePreviewLines(node.Task, indent, cardContentWidth) {
+					lines = append(lines, pl)
+				}
+			}
 		}
 		content := strings.Join(lines, "\n")
 

@@ -295,6 +295,17 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	// Compute scroll window.
 	visibleRows := m.contentHeight()
+
+	// Reserve space for inline preview lines when preview mode is on
+	previewLines := 0
+	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+		previewLines = inlinePreviewLineCount(m.rows[m.cursor].task)
+		visibleRows -= previewLines
+		if visibleRows < 1 {
+			visibleRows = 1
+		}
+	}
+
 	startIdx := calcScrollOffset(m.cursor, visibleRows)
 	endIdx := min(startIdx+visibleRows, len(m.rows))
 
@@ -517,6 +528,14 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		rowBuilder.WriteString(line)
+		// Append inline preview lines after the cursor task
+		if m.previewMode && i == m.cursor && !row.IsSectionHeader {
+			indent := row.prefix + "    " // indent past the tree connector
+			for _, pl := range inlinePreviewLines(task, indent, width) {
+				rowBuilder.WriteString("\n")
+				rowBuilder.WriteString(pl)
+			}
+		}
 		if i < endIdx-1 {
 			rowBuilder.WriteString("\n")
 		}

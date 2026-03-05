@@ -160,6 +160,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				m.cursor = 0
 			}
 			return m, nil
+		case "p":
+			m.previewMode = !m.previewMode
+			return m, nil
 		}
 
 	case "F":
