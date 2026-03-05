@@ -51,7 +51,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 	if len(cycleProjects) == 1 {
 		// Single project in cycle - switch to it if not current
 		if m.currentProject == nil || m.currentProject.ID != cycleProjects[0].ID {
-			return m.switchToCycleProject(cycleProjects[0], len(cycleProjects))
+			return m.switchToCycleProject(cycleProjects[0])
 		}
 		m.statusMessage = "Only one project in cycle"
 		return true, defaultStatusTimeout()
@@ -79,12 +79,11 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 		nextIdx = (currentIdx - 1 + len(cycleProjects)) % len(cycleProjects)
 	}
 
-	return m.switchToCycleProject(cycleProjects[nextIdx], len(cycleProjects))
+	return m.switchToCycleProject(cycleProjects[nextIdx])
 }
 
 // switchToCycleProject switches to a project from the cycle list.
-// cycleTotal is the number of projects in the filtered cycle list.
-func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int) (bool, tea.Cmd) {
+func (m *AppModel) switchToCycleProject(project *models.Project) (bool, tea.Cmd) {
 	m.saveCurrentProjectView()
 	m.saveProjectTreeState()
 	m.currentProject = project
@@ -126,7 +125,5 @@ func (m *AppModel) switchToCycleProject(project *models.Project, cycleTotal int)
 		}
 	}
 
-	// Show cycle position in status (using filtered count)
-	m.statusMessage = fmt.Sprintf("Switched to: %s [%d projects in cycle]", project.Name, cycleTotal)
-	return true, defaultStatusTimeout()
+	return true, nil
 }

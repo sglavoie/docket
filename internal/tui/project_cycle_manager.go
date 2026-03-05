@@ -107,7 +107,7 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		idx := int(msg.String()[0]-'0') - 1
 		if idx < len(m.projectCycleItems) {
 			m.closeProjectCyclePopup()
-			_, cmd := m.switchToCycleProject(m.projectCycleItems[idx].Project, len(m.projectCycleItems))
+			_, cmd := m.switchToCycleProject(m.projectCycleItems[idx].Project)
 			return m, cmd
 		}
 		return m, nil
