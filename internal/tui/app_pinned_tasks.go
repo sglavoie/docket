@@ -191,6 +191,8 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		return m.pinnedPopupSelect(m.pinnedPopupCursor)
 	case "u":
 		return m.unpinFromPopup()
+	case "r":
+		return m.repinFromPopup()
 	case "J":
 		return m.reorderPinnedTask(1)
 	case "K":
@@ -198,12 +200,14 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	case "esc", "#":
 		m.showPinnedPopup = false
 		m.pinnedPendingPrefix = ""
+		m.pinnedLastUnpinned = nil
 		return m, nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
 		return m.pinnedPopupSelect(idx)
 	default:
 		m.showPinnedPopup = false
+		m.pinnedLastUnpinned = nil
 		return m, nil
 	}
 }
@@ -267,6 +271,8 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 	}
 
 	entry := m.pinnedPopupItems[m.pinnedPopupCursor]
+	saved := entry
+	m.pinnedLastUnpinned = &saved
 	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
 		t.Unpin()
 	})
@@ -278,6 +284,24 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 	} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
 		m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
 	}
+
+	return m, nil
+}
+
+// repinFromPopup re-pins the last unpinned task (undo for unpin).
+func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
+	if m.pinnedLastUnpinned == nil {
+		return m, nil
+	}
+
+	entry := m.pinnedLastUnpinned
+	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
+		t.Pin()
+	})
+	_ = m.persister.SaveWithBackupSync(entry.Project)
+
+	m.pinnedLastUnpinned = nil
+	m.pinnedPopupItems = m.collectPinnedTasks()
 
 	return m, nil
 }
@@ -368,7 +392,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	if len(lines) >= 2 {
 		actualWidth := lipgloss.Width(lines[0])
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  enter select  esc close")
+		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  r repin  enter select  esc close")
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
 

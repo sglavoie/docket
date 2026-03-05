@@ -217,6 +217,7 @@ type AppModel struct {
 	pinnedPopupCursor    int
 	pinnedPopupItems     []pinnedTaskInfo
 	pinnedPendingPrefix  string
+	pinnedLastUnpinned   *pinnedTaskInfo
 
 	// Project cycle popup state
 	showProjectCycle   bool
