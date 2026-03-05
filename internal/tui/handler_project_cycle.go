@@ -17,6 +17,7 @@ func (m *AppModel) handleProjectCycleMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.projectCycleCursor = 0
 		if m.showProjectCycle {
 			m.refreshProjectCycleItems()
+			m.sortCycleItemsSelectedFirst()
 		}
 		return true, nil
 

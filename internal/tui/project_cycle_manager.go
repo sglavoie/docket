@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -60,6 +61,25 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 // refreshProjectCycleItems rebuilds the projectCycleItems list from current config.
 func (m *AppModel) refreshProjectCycleItems() {
 	m.projectCycleItems = buildProjectInfoListFiltered(m.config, m.config.FilterContext, m.config.FilterCustomContext)
+}
+
+// sortCycleItemsSelectedFirst sorts projectCycleItems so that projects
+// in the cycle appear first, preserving existing order within each group.
+func (m *AppModel) sortCycleItemsSelectedFirst() {
+	contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
+	cycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+	cycleIDSet := make(map[string]bool, len(cycleIDs))
+	for _, id := range cycleIDs {
+		cycleIDSet[id] = true
+	}
+	sort.SliceStable(m.projectCycleItems, func(i, j int) bool {
+		iSel := cycleIDSet[m.projectCycleItems[i].Project.ID]
+		jSel := cycleIDSet[m.projectCycleItems[j].Project.ID]
+		if iSel != jSel {
+			return iSel
+		}
+		return false
+	})
 }
 
 // closeProjectCyclePopup closes the popup and does cleanup.
