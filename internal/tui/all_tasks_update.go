@@ -85,17 +85,14 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Allow prefix keys in multi-select for bulk operations
 		switch key {
-		case ",", "!", "d", "z":
+		case ",", "!", "d", "s", "z", "m":
 			m.pendingPrefix = key
-			return m, nil
-		case "m":
-			m.pendingPrefix = "m"
 			return m, nil
 		}
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, ",!dgzF", "mc", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -265,6 +262,10 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		switch pfx {
 		case "z":
+			if k == "p" {
+				m.previewMode = !m.previewMode
+				return m, nil, true
+			}
 			handleZPrefix(k, func() {
 				ExpandAllSections(m.collapsedGroups)
 				m.calculateNavigation()
@@ -289,11 +290,6 @@ func (m *AllTasksViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			})
 			return m, nil, true
 
-		case "!":
-			if _, ok := PriorityForPrefixKey(k); ok {
-				model, cmd := taskOpsChangePriority(m, k)
-				return model, cmd, true
-			}
 		}
 		return nil, nil, false
 	}

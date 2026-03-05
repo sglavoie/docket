@@ -68,45 +68,6 @@ func (m *FocusBoardModel) dismiss() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// toggleDone toggles between done and open.
-func (m *FocusBoardModel) toggleDone() (tea.Model, tea.Cmd) {
-	row := m.getRowAtCursor()
-	if row == nil {
-		return m, nil
-	}
-	task := row.Task
-	project := row.Project
-
-	var targetStatus models.TaskStatus
-	if task.Status.IsComplete() {
-		targetStatus = models.StatusTodo
-	} else {
-		targetStatus = models.StatusDone
-	}
-
-	if msg := task.CanTransitionTo(targetStatus); msg != "" {
-		m.statusMessage = msg
-		return m, nil
-	}
-
-	project.MutateTask(task.ID, func(t *models.Task) {
-		t.ApplyTransition(targetStatus)
-	})
-	if err := saveProjectSync(project); err != nil {
-		m.statusMessage = "Failed to save: " + err.Error()
-	} else {
-		if targetStatus == models.StatusDone {
-			m.statusMessage = fmt.Sprintf("Marked #%d done", task.ShortID)
-		} else {
-			m.statusMessage = fmt.Sprintf("Reopened #%d", task.ShortID)
-		}
-		m.loadItems()
-		m.clampCursor()
-		return m, nil
-	}
-	return m, nil
-}
-
 // handleEnter opens URL or navigates to task.
 func (m *FocusBoardModel) handleEnter() (tea.Model, tea.Cmd) {
 	row := m.getRowAtCursor()
@@ -185,6 +146,18 @@ func (m *FocusBoardModel) getDataDir() string                { return m.config.D
 func (m *FocusBoardModel) reloadData()                       { m.loadItems() }
 func (m *FocusBoardModel) setErr(err error)                  { m.statusMessage = err.Error() }
 func (m *FocusBoardModel) setStatus(msg string)              { m.statusMessage = msg }
+func (m *FocusBoardModel) viewID() ViewType                  { return ViewFocusBoard }
+func (m *FocusBoardModel) viewName() string                  { return "Focus Board" }
+
+func (m *FocusBoardModel) showDeleteConfirm(shortID int) {
+	if row := m.getRowAtCursor(); row != nil {
+		if row.isAction() {
+			m.confirm.Show("delete", fmt.Sprintf("Delete action #%d?", shortID))
+		} else {
+			m.statusMessage = "Use project tree to delete non-action tasks"
+		}
+	}
+}
 
 // prefixDispatchView implementation.
 

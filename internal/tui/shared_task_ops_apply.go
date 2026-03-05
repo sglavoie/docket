@@ -144,6 +144,28 @@ func resolveQuickSnoozeDate(key string) (snoozeDate *time.Time, desc string, ok 
 	}
 }
 
+// applyQuickSnooze sets the snooze date on a task.
+func applyQuickSnooze(pf persistFn, project *models.Project, taskID string, snoozeDate *time.Time) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		t.SnoozedUntil = snoozeDate
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	if snoozeDate == nil {
+		result.StatusMessage = "Snooze cleared"
+	} else {
+		result.StatusMessage = fmt.Sprintf("Snoozed until %s", snoozeDate.Format("Mon Jan 2"))
+	}
+	return result
+}
+
 // applyToggleActive toggles the Active flag on a task.
 func applyToggleActive(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 	task := project.GetTaskByID(taskID)

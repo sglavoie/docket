@@ -86,6 +86,7 @@ type WeeklyReviewModel struct {
 	focusedSection    *WeeklyReviewSection
 	tabs              TabState // 0=Projects, 1=Tasks, 2=Planning
 	scrollOffset      int
+	previewMode       bool
 
 	// Guided review flow
 	reviewedSections map[WeeklyReviewSection]bool
@@ -199,13 +200,7 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix mode
-	hasTask := m.getTaskAtCursor() != nil
-	hasItem := hasTask || m.getProjectAtCursor() != nil
-	if prefix, ok := activateSecondaryPrefix(key, "z", ",dgs", hasItem); ok {
-		m.pendingPrefix = prefix
-		return m, nil
-	}
-	if prefix, ok := activateSecondaryPrefix(key, "", "!cm", hasTask); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -314,6 +309,10 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		switch pfx {
 		case "z":
+			if k == "p" {
+				m.previewMode = !m.previewMode
+				return m, nil, true
+			}
 			handleZPrefix(k, func() {
 				ExpandAllSections(m.collapsedSections)
 				m.calculateNavigation()
@@ -329,10 +328,25 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			})
 			return m, nil, true
 
-		case "s":
+		case "g":
+			// Let gg (jump-to-top) fall through to common dispatch
+			if k == "g" {
+				return nil, nil, false
+			}
+			// gp: go-to-project (common dispatch handles task gp; override for project rows)
+			if k == "p" {
+				if wp := m.getProjectAtCursor(); wp != nil {
+					return m, func() tea.Msg {
+						return WeeklyReviewSelectProjectMsg{Project: wp.Project}
+					}, true
+				}
+				// Fall through to common gp (task go-to-project)
+				return nil, nil, false
+			}
+			// Section-focus sub-keys (moved from s prefix)
 			var targetSection *WeeklyReviewSection
 			switch k {
-			case "p":
+			case "P":
 				s := WeeklySectionStaleProjects
 				targetSection = &s
 			case "i":
@@ -362,26 +376,6 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				return model, cmd, true
 			}
 			return m, nil, true
-
-		case "!":
-			if _, ok := PriorityForPrefixKey(k); ok {
-				model, cmd := taskOpsChangePriority(m, k)
-				if m.err == nil {
-					m.trackMutation("priority")
-				}
-				return model, cmd, true
-			}
-			return m, nil, true
-
-		case "g":
-			// WeeklyReview: gp also supports project navigation
-			if k == "p" {
-				if wp := m.getProjectAtCursor(); wp != nil {
-					return m, func() tea.Msg {
-						return WeeklyReviewSelectProjectMsg{Project: wp.Project}
-					}, true
-				}
-			}
 		}
 		return nil, nil, false
 	}
@@ -391,8 +385,12 @@ func (m *WeeklyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			switch prefix {
 			case ",":
 				m.trackMutation("status")
+			case "!":
+				m.trackMutation("priority")
 			case "d":
 				m.trackMutation("due_date")
+			case "s":
+				m.trackMutation("snooze")
 			case "m":
 				m.trackMutation("move")
 			}

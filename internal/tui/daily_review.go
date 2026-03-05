@@ -59,6 +59,7 @@ type DailyReviewModel struct {
 	focusedSection    *DailyReviewSection  // nil = all shown, otherwise show only this section
 	tabs              TabState             // 0=Due, 1=Active, 2=In Review, 3=Stale, 4=Done
 	scrollOffset      int
+	previewMode       bool
 }
 
 // NewDailyReviewModel creates a new daily review model.
@@ -134,7 +135,7 @@ func (m *DailyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "Fz", ",dgsmc", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -227,6 +228,10 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
 		switch pfx {
 		case "z":
+			if k == "p" {
+				m.previewMode = !m.previewMode
+				return m, nil, true
+			}
 			handleZPrefix(k, func() {
 				ExpandAllSections(m.collapsedSections)
 				m.calculateNavigation()
@@ -242,7 +247,11 @@ func (m *DailyReviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			})
 			return m, nil, true
 
-		case "s":
+		case "g":
+			// Let gg (jump-to-top) and gp (go-to-project) fall through to common dispatch
+			if k == "g" || k == "p" {
+				return nil, nil, false
+			}
 			var targetSection *DailyReviewSection
 			switch k {
 			case "d":

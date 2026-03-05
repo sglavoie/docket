@@ -59,6 +59,9 @@ type FocusViewModel struct {
 
 	// Filter
 	FilterMixin
+
+	// Inline preview
+	previewMode bool
 }
 
 // NewFocusViewModel creates a new focus view model.
@@ -396,7 +399,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, ",dgF", "mc", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -576,7 +579,15 @@ func (m *FocusViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "z" && k == "p" {
+			m.previewMode = !m.previewMode
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
 		return model, cmd
 	}
 

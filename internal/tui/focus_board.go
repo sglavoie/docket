@@ -74,6 +74,8 @@ type FocusBoardModel struct {
 	editMode  bool
 	editInput textinput.Model
 	editIdx   int
+
+	previewMode bool
 }
 
 // NewFocusBoardModel creates a new focus board model.

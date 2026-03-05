@@ -177,6 +177,17 @@ func clipboardBindings() []Keybinding {
 	}
 }
 
+func snoozeBindings() []Keybinding {
+	return []Keybinding{
+		{Key: "st", Description: "Snooze until tomorrow", Category: "Snooze"},
+		{Key: "sw", Description: "Snooze 1 week", Category: "Snooze"},
+		{Key: "sm", Description: "Snooze 1 month", Category: "Snooze"},
+		{Key: "sn", Description: "Snooze until next Monday", Category: "Snooze"},
+		{Key: "s0", Description: "Clear snooze", Category: "Snooze"},
+		{Key: "sd", Description: "Open snooze date picker", Category: "Snooze"},
+	}
+}
+
 func linkedTaskBindings() []Keybinding {
 	return []Keybinding{
 		{Key: "cb", Description: "Create blocker", Category: "Linked Tasks"},

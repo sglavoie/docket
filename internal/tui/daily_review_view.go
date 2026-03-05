@@ -58,6 +58,18 @@ func (m *DailyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
+	// Account for preview lines in scroll calculation
+	if m.previewMode {
+		task := m.getTaskAtCursor()
+		if task != nil {
+			previewCount := inlinePreviewLineCount(task.Task)
+			contentHeight -= previewCount
+			if contentHeight < 1 {
+				contentHeight = 1
+			}
+		}
+	}
+
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
 
 	// Footer
@@ -99,10 +111,11 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		",": StatusPrefixHints,
 		"d": DueDatePrefixHints,
 		"g": DailyReviewNavigationPrefixHints,
-		"s": SectionPrefixHints,
+		"!": PriorityPrefixHints,
+		"s": SnoozePrefixHints,
 		"c": CreateLinkedPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
-		"z": SectionFoldPrefixHints,
+		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
 	}
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false) {
@@ -118,6 +131,14 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 var DailyReviewNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},
 	{Key: "p", Description: "go to project", Detail: "Navigate to project"},
+	{Key: "d", Description: "overdue", Detail: "Focus Overdue section"},
+	{Key: "t", Description: "today", Detail: "Focus Today section"},
+	{Key: "s", Description: "due soon", Detail: "Focus Due Soon section"},
+	{Key: "l", Description: "due later", Detail: "Focus Due Later section"},
+	{Key: "f", Description: "future", Detail: "Focus Future section"},
+	{Key: "r", Description: "in review", Detail: "Focus In Review section"},
+	{Key: "S", Description: "standby", Detail: "Focus On Standby section"},
+	{Key: "o", Description: "old", Detail: "Focus Old section"},
 }
 
 // renderAllSections renders all non-empty sections.
@@ -154,6 +175,23 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 				line := m.renderTaskLine(dt, section, isSelected, m.width-40)
 				lines = append(lines, line)
 				currentIndex++
+			}
+		}
+	}
+
+	// Insert inline preview after cursor task
+	if m.previewMode && cursorLineIndex >= 0 && cursorLineIndex < len(lines) {
+		task := m.getTaskAtCursor()
+		if task != nil {
+			indent := "        " // align with cross-project task line content
+			pLines := inlinePreviewLines(task.Task, indent, m.width)
+			if len(pLines) > 0 {
+				insertAt := cursorLineIndex + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+				}
 			}
 		}
 	}

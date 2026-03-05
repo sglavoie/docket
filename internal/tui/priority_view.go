@@ -91,6 +91,9 @@ type PriorityViewModel struct {
 
 	// Waiting On section state
 	waitingOnCollapsed bool
+
+	// Inline preview
+	previewMode bool
 }
 
 // NewPriorityViewModel creates a new priority view for the given project.
@@ -225,10 +228,31 @@ func (m *PriorityViewModel) View() string {
 
 	// Render groups
 	currentIndex := 0
-	lines := m.renderAllGroups(&currentIndex)
+	lines, cursorLineIdx := m.renderAllGroups(&currentIndex)
 
 	if contentHeight < 1 {
 		contentHeight = 1
+	}
+
+	// Insert inline preview after cursor
+	if m.previewMode && cursorLineIdx >= 0 && cursorLineIdx < len(lines) {
+		task, _ := m.getTaskRef()
+		if task != nil {
+			indent := "      " // 6 spaces for single-project task line alignment
+			pLines := inlinePreviewLines(task, indent, m.Width())
+			if len(pLines) > 0 {
+				insertAt := cursorLineIdx + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+					contentHeight -= len(pLines)
+					if contentHeight < 1 {
+						contentHeight = 1
+					}
+				}
+			}
+		}
 	}
 
 	// Apply centered scrolling (keep cursor in middle of viewport)
@@ -237,7 +261,7 @@ func (m *PriorityViewModel) View() string {
 
 	if len(lines) > contentHeight {
 		halfView := contentHeight / 2
-		startIdx = m.cursor - halfView
+		startIdx = cursorLineIdx - halfView
 		if startIdx < 0 {
 			startIdx = 0
 		}

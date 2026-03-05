@@ -80,7 +80,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, ",gdF", "mc", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -122,7 +122,7 @@ func (m *PriorityViewModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m.changeTaskPriority(5)
 
 	// Suggestion actions
-	case "s":
+	case "w":
 		// Start suggested task (or jump to it if already in progress)
 		return m.startSuggestedTask()
 
@@ -182,6 +182,10 @@ func (m *PriorityViewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 				}
 				return m, nil, true
 			}
+		}
+		if pfx == "z" && k == "p" {
+			m.previewMode = !m.previewMode
+			return m, nil, true
 		}
 		return nil, nil, false
 	}

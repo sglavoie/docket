@@ -60,6 +60,17 @@ func (m *WeeklyReviewModel) View() string {
 
 	lines, cursorLineIndex := m.renderAllSections()
 
+	// Account for preview lines in scroll calculation
+	if m.previewMode {
+		if dt := m.getTaskAtCursor(); dt != nil {
+			previewCount := inlinePreviewLineCount(dt.Task)
+			contentHeight -= previewCount
+			if contentHeight < 1 {
+				contentHeight = 1
+			}
+		}
+	}
+
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIndex, contentHeight, &m.scrollOffset), "\n"))
 
 	// Footer — progressively shorten when terminal is narrow
@@ -121,10 +132,10 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"!": PriorityPrefixHints,
 			"d": DueDatePrefixHints,
 			"g": WeeklyReviewNavigationPrefixHints,
-			"s": WeeklyReviewSectionPrefixHints,
+			"s": SnoozePrefixHints,
 			"c": CreateLinkedPrefixHints,
 			"m": SecondaryViewMovePrefixHints,
-			"z": SectionFoldPrefixHints,
+			"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
 		},
 	}
 }
@@ -133,19 +144,16 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 var WeeklyReviewNavigationPrefixHints = []PrefixHint{
 	{Key: "g", Description: "first", Detail: "Jump to first item"},
 	{Key: "p", Description: "go to project/task", Detail: "Navigate to project or task"},
+	{Key: "P", Description: "stale projects", Detail: "Focus Stale Projects section"},
+	{Key: "i", Description: "inbox backlog", Detail: "Focus Inbox Backlog section"},
+	{Key: "b", Description: "blocked work", Detail: "Focus Blocked Work section"},
+	{Key: "o", Description: "overcommitted", Detail: "Focus Overcommitted section"},
+	{Key: "t", Description: "stale tasks", Detail: "Focus Stale Tasks section"},
+	{Key: "m", Description: "priority mismatch", Detail: "Focus Priority Mismatch section"},
+	{Key: "w", Description: "upcoming week", Detail: "Focus Upcoming Week section"},
+	{Key: "r", Description: "recurring", Detail: "Focus Recurring Overview section"},
 }
 
-// WeeklyReviewSectionPrefixHints contains "s" prefix hints.
-var WeeklyReviewSectionPrefixHints = []PrefixHint{
-	{Key: "p", Description: "stale projects", Detail: "Jump to stale projects"},
-	{Key: "i", Description: "inbox backlog", Detail: "Jump to inbox backlog"},
-	{Key: "b", Description: "blocked work", Detail: "Jump to blocked work"},
-	{Key: "o", Description: "overcommitted", Detail: "Jump to overcommitted"},
-	{Key: "t", Description: "stale tasks", Detail: "Jump to stale tasks"},
-	{Key: "m", Description: "priority mismatch", Detail: "Jump to priority mismatch"},
-	{Key: "w", Description: "upcoming week", Detail: "Jump to upcoming week"},
-	{Key: "r", Description: "recurring overview", Detail: "Jump to recurring overview"},
-}
 
 // renderAllSections renders all non-empty sections.
 func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
@@ -182,6 +190,22 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 				}
 				lines = append(lines, m.renderSectionItem(section, idx, isSelected))
 				currentIndex++
+			}
+		}
+	}
+
+	// Insert inline preview after cursor task
+	if m.previewMode && cursorLineIndex >= 0 && cursorLineIndex < len(lines) {
+		if dt := m.getTaskAtCursor(); dt != nil {
+			indent := "        " // align with cross-project task line content
+			pLines := inlinePreviewLines(dt.Task, indent, m.width)
+			if len(pLines) > 0 {
+				insertAt := cursorLineIndex + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+				}
 			}
 		}
 	}

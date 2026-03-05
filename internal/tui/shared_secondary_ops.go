@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strconv"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -80,6 +81,14 @@ func taskOpsSetQuickDueDate(v taskOpsView, daysFromNow int) (tea.Model, tea.Cmd)
 func taskOpsClearDueDate(v taskOpsView) (tea.Model, tea.Cmd) {
 	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
 		return applyClearDueDate(pf, project, taskID)
+	})
+	return v.(tea.Model), cmd
+}
+
+// taskOpsQuickSnooze sets the snooze date on the task at cursor.
+func taskOpsQuickSnooze(v taskOpsView, snoozeDate *time.Time) (tea.Model, tea.Cmd) {
+	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+		return applyQuickSnooze(pf, project, taskID, snoozeDate)
 	})
 	return v.(tea.Model), cmd
 }

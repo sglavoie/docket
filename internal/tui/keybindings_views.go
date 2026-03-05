@@ -11,7 +11,7 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 
 		// Suggestion
-		Keybinding{Key: "s", Description: "Start suggested task", Category: "Suggestion", Views: views},
+		Keybinding{Key: "w", Description: "Start suggested task", Category: "Suggestion", Views: views},
 		Keybinding{Key: "x", Description: "Dismiss suggestion", Category: "Suggestion", Views: views},
 
 		// Actions
@@ -39,7 +39,9 @@ func (r *KeybindingRegistry) registerPriorityViewBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close priority view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 
@@ -132,7 +134,9 @@ func (r *KeybindingRegistry) registerDueDateOverviewBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close due date overview", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 
@@ -145,14 +149,15 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all sections", Category: "Navigation", Views: views},
+		Keybinding{Key: "zp", Description: "Toggle inline preview", Category: "Navigation", Views: views},
 		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
-		Keybinding{Key: "sd", Description: "Focus Overdue", Category: "Sections", Views: views},
-		Keybinding{Key: "st", Description: "Focus Today", Category: "Sections", Views: views},
-		Keybinding{Key: "ss", Description: "Focus Due Soon", Category: "Sections", Views: views},
-		Keybinding{Key: "sl", Description: "Focus Due Later", Category: "Sections", Views: views},
-		Keybinding{Key: "sf", Description: "Focus Future", Category: "Sections", Views: views},
-		Keybinding{Key: "sr", Description: "Focus In Review", Category: "Sections", Views: views},
-		Keybinding{Key: "so", Description: "Focus Old", Category: "Sections", Views: views},
+		Keybinding{Key: "gd", Description: "Focus Overdue", Category: "Sections", Views: views},
+		Keybinding{Key: "gt", Description: "Focus Today", Category: "Sections", Views: views},
+		Keybinding{Key: "gs", Description: "Focus Due Soon", Category: "Sections", Views: views},
+		Keybinding{Key: "gl", Description: "Focus Due Later", Category: "Sections", Views: views},
+		Keybinding{Key: "gf", Description: "Focus Future", Category: "Sections", Views: views},
+		Keybinding{Key: "gr", Description: "Focus In Review", Category: "Sections", Views: views},
+		Keybinding{Key: "go", Description: "Focus Old", Category: "Sections", Views: views},
 		Keybinding{Key: "Enter", Description: "Jump to task in project", Category: "Actions", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
@@ -170,7 +175,9 @@ func (r *KeybindingRegistry) registerDailyReviewBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close review", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 
@@ -183,14 +190,15 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 		Keybinding{Key: "ctrl+u/d", Description: "Page up/down", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab", Description: "Collapse/expand section", Category: "Navigation", Views: views},
 		Keybinding{Key: "zR/zM", Description: "Expand/collapse all sections", Category: "Navigation", Views: views},
+		Keybinding{Key: "zp", Description: "Toggle inline preview", Category: "Navigation", Views: views},
 		Keybinding{Key: "n/N", Description: "Cycle sections (show all)", Category: "Navigation", Views: views},
-		Keybinding{Key: "sp", Description: "Focus Stale Projects", Category: "Sections", Views: views},
-		Keybinding{Key: "si", Description: "Focus Inbox Backlog", Category: "Sections", Views: views},
-		Keybinding{Key: "sb", Description: "Focus Blocked Work", Category: "Sections", Views: views},
-		Keybinding{Key: "so", Description: "Focus Overcommitted", Category: "Sections", Views: views},
-		Keybinding{Key: "st", Description: "Focus Stale Tasks", Category: "Sections", Views: views},
-		Keybinding{Key: "sm", Description: "Focus Priority Mismatch", Category: "Sections", Views: views},
-		Keybinding{Key: "sw", Description: "Focus Upcoming Week", Category: "Sections", Views: views},
+		Keybinding{Key: "gP", Description: "Focus Stale Projects", Category: "Sections", Views: views},
+		Keybinding{Key: "gi", Description: "Focus Inbox Backlog", Category: "Sections", Views: views},
+		Keybinding{Key: "gb", Description: "Focus Blocked Work", Category: "Sections", Views: views},
+		Keybinding{Key: "go", Description: "Focus Overcommitted", Category: "Sections", Views: views},
+		Keybinding{Key: "gt", Description: "Focus Stale Tasks", Category: "Sections", Views: views},
+		Keybinding{Key: "gm", Description: "Focus Priority Mismatch", Category: "Sections", Views: views},
+		Keybinding{Key: "gw", Description: "Focus Upcoming Week", Category: "Sections", Views: views},
 		Keybinding{Key: "Enter", Description: "Jump to project/task", Category: "Actions", Views: views},
 		Keybinding{Key: "*", Description: "Toggle active flag (tasks)", Category: "Actions", Views: views},
 		Keybinding{Key: "e", Description: "Edit task", Category: "Actions", Views: views},
@@ -211,6 +219,7 @@ func (r *KeybindingRegistry) registerWeeklyReviewBindings() {
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 
@@ -266,7 +275,10 @@ func (r *KeybindingRegistry) registerProjectFocusViewBindings() {
 		Keybinding{Key: "q/Esc", Description: "Close focus view", Category: "View", Views: views},
 	)
 	r.addForViews(views, statusBindings())
+	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
+	r.addForViews(views, linkedTaskBindings())
 }
 
 func (r *KeybindingRegistry) registerTaskAttachmentsBindings() {
@@ -411,6 +423,7 @@ func (r *KeybindingRegistry) registerAllTasksBindings() {
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())
 }
 

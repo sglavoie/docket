@@ -204,6 +204,9 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
+		case "p":
+			m.previewMode = !m.previewMode
+			return m, nil
 		}
 
 	case "g":

@@ -162,6 +162,27 @@ func (m *FocusBoardModel) View() string {
 		lines = append(lines, line)
 	}
 
+	// Insert inline preview after cursor row
+	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.filtered) {
+		row := m.getRowAtCursor()
+		if row != nil {
+			indent := "        " // align with board row content
+			pLines := inlinePreviewLines(row.Task, indent, m.width)
+			if len(pLines) > 0 {
+				insertAt := m.cursor + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+					contentHeight -= len(pLines)
+					if contentHeight < 1 {
+						contentHeight = 1
+					}
+				}
+			}
+		}
+	}
+
 	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
 	b.WriteString("\n\n")
 

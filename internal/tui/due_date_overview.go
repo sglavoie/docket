@@ -54,6 +54,9 @@ type DueDateOverviewModel struct {
 	// Navigation
 	totalTasks  int
 	groupStarts []int // Starting index of each group in flattened view
+
+	// Inline preview
+	previewMode bool
 }
 
 // NewDueDateOverviewModel creates a new due date overview model.
@@ -276,7 +279,7 @@ func (m *DueDateOverviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, ",dgF", "m", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -335,7 +338,15 @@ func (m *DueDateOverviewModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) 
 		return m, nil // Cancel prefix mode
 	}
 
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "z" && k == "p" {
+			m.previewMode = !m.previewMode
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
 		return model, cmd
 	}
 

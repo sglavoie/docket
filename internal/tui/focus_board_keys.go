@@ -27,7 +27,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix keys: F always, ,!g gated on item, mc gated on item
-	if prefix, ok := activateSecondaryPrefix(key, ",!gF", "mc", m.getRowAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getRowAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
@@ -92,10 +92,6 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "X":
 		return m.dismiss()
 
-	// Toggle done/open
-	case "d":
-		return m.toggleDone()
-
 	// Set priority
 	case "p":
 		if row := m.getRowAtCursor(); row != nil {
@@ -113,25 +109,6 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if row := m.getRowAtCursor(); row != nil && row.Task.URL != "" {
 			return m, openBrowserCmd(row.Task.URL)
 		}
-
-	// Edit task
-	case "e":
-		if row := m.getRowAtCursor(); row != nil {
-			return m, func() tea.Msg {
-				return EditTaskMsg{Task: row.Task, Project: row.Project}
-			}
-		}
-
-	// Delete permanently
-	case "D":
-		if row := m.getRowAtCursor(); row != nil {
-			if row.isAction() {
-				m.confirm.Show("delete", fmt.Sprintf("Delete action #%d?", row.Task.ShortID))
-				return m, nil
-			}
-			m.statusMessage = "Use project tree to delete non-action tasks"
-		}
-		return m, nil
 
 	// Sort keys (1-5 for sort field, 0 to reset)
 	case "1", "2", "3", "4", "5", "0":
@@ -168,9 +145,11 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Help
-	case "?":
-		return m, helpCmd(ViewFocusBoard, "Focus Board", m.GetHelpItems())
+	}
+
+	// Common task actions (t, Z, D, e, r, y/Y/ctrl+y, ?)
+	if model, cmd, handled := handleCommonTaskAction(key, m); handled {
+		return model, cmd
 	}
 
 	return m, nil
@@ -185,7 +164,14 @@ func (m *FocusBoardModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, nil); handled {
+	viewSpecific := func(pfx, k string) (tea.Model, tea.Cmd, bool) {
+		if pfx == "z" && k == "p" {
+			m.previewMode = !m.previewMode
+			return m, nil, true
+		}
+		return nil, nil, false
+	}
+	if model, cmd, handled := dispatchCommonPrefix(prefix, key, m, viewSpecific); handled {
 		return model, cmd
 	}
 
@@ -205,31 +191,5 @@ func (m *FocusBoardModel) handleConfirmKey(key string) (tea.Model, tea.Cmd) {
 
 // GetHelpItems returns help items for this view.
 func (m *FocusBoardModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
-		{Key: "a", Description: "Quick-add action"},
-		{Key: "x", Description: "Mark done"},
-		{Key: "X", Description: "Dismiss (cancel)"},
-		{Key: "d", Description: "Toggle done/open"},
-		{Key: "D", Description: "Delete action permanently"},
-		{Key: "p", Description: "Set priority"},
-		{Key: ",", Description: "Status prefix (,t/,i/,d/,b)"},
-		{Key: "!", Description: "Priority prefix (!1-!5)"},
-		{Key: "g", Description: "Goto prefix (gg/gp)"},
-		{Key: "m", Description: "Move section (mn/ms/md/mr/mw)"},
-		{Key: "c", Description: "Linked task prefix"},
-		{Key: "e", Description: "Edit task"},
-		{Key: "E", Description: "Quick-edit title"},
-		{Key: "P", Description: "Assign project"},
-		{Key: "S", Description: "Edit score dimensions"},
-		{Key: "o", Description: "Open URL"},
-		{Key: "enter", Description: "Navigate to task / open URL"},
-		{Key: "tab/[/]", Description: "Switch tabs"},
-		{Key: "F", Description: "Filter (F-prefix)"},
-		{Key: "/", Description: "Search"},
-		{Key: "Fx", Description: "Clear filters"},
-		{Key: "1-5", Description: "Sort by field (pri/due/new/sts/scr)"},
-		{Key: "0", Description: "Reset sort"},
-		{Key: "j/k", Description: "Navigate list"},
-		{Key: "q/esc", Description: "Close (clears filters first)"},
-	}
+	return GetKeybindingRegistry().GetForView(ViewFocusBoard)
 }

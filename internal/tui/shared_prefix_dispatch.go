@@ -49,8 +49,8 @@ type prefixDispatchView interface {
 }
 
 // dispatchCommonPrefix handles prefix key sequences shared across secondary
-// views: , (status), d (due date), g (goto), m (section move), c (linked
-// task), F (filter), and filter sub-prefixes.
+// views: , (status), ! (priority), d (due date), s (snooze), g (goto),
+// m (section move), c (linked task), F (filter), and filter sub-prefixes.
 //
 // viewSpecific is called first for prefixes the view handles differently (like
 // z, s, bulk ops). It returns (model, cmd, handled). If handled is true, the
@@ -126,6 +126,30 @@ func dispatchCommonPrefix(
 			return v.(tea.Model), nil, true
 		}
 		model, cmd := taskOpsSectionMove(v, section)
+		return model, cmd, true
+
+	case "!":
+		if _, ok := PriorityForPrefixKey(key); ok {
+			model, cmd := taskOpsChangePriority(v, key)
+			return model, cmd, true
+		}
+		return v.(tea.Model), nil, true
+
+	case "s":
+		if key == "d" {
+			task, project := v.getTaskAndProject()
+			if task != nil {
+				return v.(tea.Model), func() tea.Msg {
+					return SetSnoozeDateMsg{Task: task, Project: project}
+				}, true
+			}
+			return v.(tea.Model), nil, true
+		}
+		snoozeDate, _, ok := resolveQuickSnoozeDate(key)
+		if !ok {
+			return v.(tea.Model), nil, true
+		}
+		model, cmd := taskOpsQuickSnooze(v, snoozeDate)
 		return model, cmd, true
 
 	case "c":

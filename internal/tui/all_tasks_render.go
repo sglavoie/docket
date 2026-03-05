@@ -86,6 +86,27 @@ func (m *AllTasksViewModel) View() string {
 		}
 	}
 
+	// Insert inline preview lines after cursor task
+	if m.previewMode && cursorLineIdx >= 0 && cursorLineIdx < len(lines) {
+		task, _ := m.getTaskRef()
+		if task != nil {
+			indent := "        " // align with cross-project task line content
+			pLines := inlinePreviewLines(task, indent, m.Width())
+			if len(pLines) > 0 {
+				insertAt := cursorLineIdx + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+					contentHeight -= len(pLines)
+					if contentHeight < 1 {
+						contentHeight = 1
+					}
+				}
+			}
+		}
+	}
+
 	b.WriteString(strings.Join(applyPersistentScroll(lines, cursorLineIdx, contentHeight, &m.scrollOffset), "\n"))
 
 	// Footer
@@ -112,7 +133,7 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"g": AllTasksNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
 		"c": CreateLinkedPrefixHints,
-		"z": SectionFoldPrefixHints,
+		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
 	}
 	// Merge filter prefix hints
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {

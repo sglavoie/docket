@@ -62,9 +62,14 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	hints := PrefixHints{
 		",": StatusPrefixHints,
 		"!": PriorityPrefixHints,
+		"d": DueDatePrefixHints,
+		"s": SnoozePrefixHints,
 		"g": FocusBoardNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
 		"c": CreateLinkedPrefixHints,
+		"z": {
+			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
+		},
 	}
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
 		hints[k] = v

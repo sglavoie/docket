@@ -88,6 +88,9 @@ type AllTasksViewModel struct {
 	// Navigation
 	scrollOffset int
 	groupStarts  []int // cursor positions of group headers
+
+	// Inline preview
+	previewMode bool
 }
 
 // NewAllTasksViewModel creates a new all tasks view model.

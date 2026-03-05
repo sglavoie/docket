@@ -46,10 +46,32 @@ func (m *DueDateOverviewModel) View() string {
 
 	// Render groups with scroll awareness
 	contentHeight := fullscreenContentHeight(m.Height(), chromeLines)
+	cursorLineIdx := 0
 	currentIndex := 0
-	lines := m.renderAllGroups(&currentIndex)
+	lines := m.renderAllGroups(&currentIndex, &cursorLineIdx)
 
-	b.WriteString(strings.Join(applyScroll(lines, m.cursor, contentHeight), "\n"))
+	// Insert inline preview lines after cursor task
+	if m.previewMode && m.cursor >= 0 && m.cursor < m.totalTasks {
+		task, _ := m.getTaskRef()
+		if task != nil {
+			indent := "        " // align with cross-project task line content
+			pLines := inlinePreviewLines(task, indent, m.Width())
+			if len(pLines) > 0 {
+				insertAt := cursorLineIdx + 1
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+					contentHeight -= len(pLines)
+					if contentHeight < 1 {
+						contentHeight = 1
+					}
+				}
+			}
+		}
+	}
+
+	b.WriteString(strings.Join(applyScroll(lines, cursorLineIdx, contentHeight), "\n"))
 
 	// Footer
 	left := HelpStyle.Render("[/] tabs · ↑/↓ navigate · ,s/d/b/x/o status · 1-5 priority · dt/dm/dw due · e edit · ? help")
@@ -69,6 +91,9 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"d": DueDatePrefixHints,
 		"g": DueDateOverviewNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
+		"z": {
+			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
+		},
 	}
 	// Merge filter prefix hints (no DueDate category — the view IS organized by due date)
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
@@ -87,7 +112,7 @@ var DueDateOverviewNavigationPrefixHints = []PrefixHint{
 }
 
 // renderAllGroups renders all task groups and returns the lines.
-func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
+func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int, cursorLineIdx *int) []string {
 	var lines []string
 	hasContent := false
 	separator := renderHorizontalDivider(m.Width())
@@ -96,7 +121,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 
 	if len(overdue) > 0 {
 		lines = append(lines, renderGroupHeader("Overdue", len(overdue), true))
-		lines = append(lines, m.renderGroup(overdue, currentIndex)...)
+		lines = append(lines, m.renderGroup(overdue, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
 
@@ -105,7 +130,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("Today", len(today), false))
-		lines = append(lines, m.renderGroup(today, currentIndex)...)
+		lines = append(lines, m.renderGroup(today, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
 
@@ -114,7 +139,7 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("This Week", len(thisWeek), false))
-		lines = append(lines, m.renderGroup(thisWeek, currentIndex)...)
+		lines = append(lines, m.renderGroup(thisWeek, currentIndex, cursorLineIdx, len(lines))...)
 		hasContent = true
 	}
 
@@ -123,19 +148,22 @@ func (m *DueDateOverviewModel) renderAllGroups(currentIndex *int) []string {
 			lines = append(lines, separator)
 		}
 		lines = append(lines, renderGroupHeader("Later", len(later), false))
-		lines = append(lines, m.renderGroup(later, currentIndex)...)
+		lines = append(lines, m.renderGroup(later, currentIndex, cursorLineIdx, len(lines))...)
 	}
 
 	return lines
 }
 
 // renderGroup renders a group of tasks.
-func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentIndex *int) []string {
+func (m *DueDateOverviewModel) renderGroup(tasks []CrossProjectTask, currentIndex *int, cursorLineIdx *int, baseLine int) []string {
 	var lines []string
 	maxTitleLen := m.Width() - 35 // Account for date, project, icons
 
 	for _, dt := range tasks {
 		isSelected := *currentIndex == m.cursor
+		if isSelected && cursorLineIdx != nil {
+			*cursorLineIdx = baseLine + len(lines)
+		}
 		line := m.renderTaskLine(dt, isSelected, maxTitleLen)
 		lines = append(lines, line)
 		*currentIndex++

@@ -87,12 +87,37 @@ func (m *FocusViewModel) View() string {
 		}
 	}
 
-	// Suggested tab uses two lines per task (task + reason), so adjust cursor
-	// index for scroll calculation to account for the double-height entries.
+	// Scroll cursor maps cursor to line index (suggested tab has 2 lines per entry)
 	scrollCursor := m.cursor
 	if m.tabs.Active == focusTabSuggested {
 		scrollCursor = m.cursor * 2
 	}
+
+	// Insert inline preview lines after cursor task
+	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.filtered) {
+		task, _ := m.getTaskRef()
+		if task != nil {
+			indent := "        " // align with cross-project task line content
+			pLines := inlinePreviewLines(task, indent, m.width)
+			if len(pLines) > 0 {
+				insertAt := scrollCursor + 1
+				// For suggested tab, insert after reason line
+				if m.tabs.Active == focusTabSuggested {
+					insertAt = scrollCursor + 2
+				}
+				if insertAt <= len(lines) {
+					tail := append([]string{}, lines[insertAt:]...)
+					lines = append(lines[:insertAt], pLines...)
+					lines = append(lines, tail...)
+					contentHeight -= len(pLines)
+					if contentHeight < 1 {
+						contentHeight = 1
+					}
+				}
+			}
+		}
+	}
+
 	b.WriteString(strings.Join(applyScroll(lines, scrollCursor, contentHeight), "\n"))
 
 	b.WriteString("\n\n")
@@ -202,6 +227,9 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"g": FocusViewNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,
 		"c": CreateLinkedPrefixHints,
+		"z": {
+			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
+		},
 	}
 	// Merge filter prefix hints (no DueDate category -- view has "By Due Date" tab)
 	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
