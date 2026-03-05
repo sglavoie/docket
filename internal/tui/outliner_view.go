@@ -236,7 +236,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	filterBarLine := m.renderFilterBar()
 
 	if len(m.rows) == 0 {
-		header := TitleStyle.Render(m.project.Name) + perspectiveLabel + searchIndicator
+		header := renderProjectTitle(m.project, m.config) + perspectiveLabel + searchIndicator
 		emptyMsg := EmptyStateNoTasks
 		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
@@ -266,7 +266,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	var b strings.Builder
-	b.WriteString(TitleStyle.Render(m.project.Name))
+	b.WriteString(renderProjectTitle(m.project, m.config))
 	b.WriteString(perspectiveLabel)
 	b.WriteString(searchIndicator)
 	if m.multiSelectMode {
