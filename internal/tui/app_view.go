@@ -69,7 +69,7 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 		// Overlay prefix hints on top of pinned popup when prefix is pending
 		if m.pinnedPendingPrefix != "" {
-			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints}, m.width, targetContentHeight)
+			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": PriorityPrefixHints}, m.width, targetContentHeight)
 			content = OverlayPopup(content, prefixPopup, m.width, targetContentHeight)
 		}
 	}

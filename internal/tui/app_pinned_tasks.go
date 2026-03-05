@@ -127,6 +127,26 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 			return m, nil
 		}
 
+		if prefix == "!" {
+			priority, ok := PriorityForPrefixKey(key)
+			if !ok {
+				return m, nil
+			}
+			if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
+				return m, nil
+			}
+			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
+			result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
+			m.statusMessage = result.StatusMessage
+
+			m.pinnedPopupItems = m.collectPinnedTasks()
+			if len(m.pinnedPopupItems) == 0 {
+				m.showPinnedPopup = false
+			} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
+				m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
+			}
+		}
+
 		if prefix == "," {
 			status, ok := StatusForPrefixKey(key)
 			if !ok {
@@ -153,6 +173,9 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
 	case ",":
 		m.pinnedPendingPrefix = ","
+		return m, nil
+	case "!":
+		m.pinnedPendingPrefix = "!"
 		return m, nil
 	case "j", "down":
 		if m.pinnedPopupCursor < len(m.pinnedPopupItems)-1 {
@@ -288,7 +311,7 @@ func (m *AppModel) renderPinnedPopup() string {
 
 	innerWidth := popupWidth - 4
 	projColWidth := maxProjLen
-	fixedWidth := 1 + 1 + 1 + 1 + 2 + projColWidth // badge, space, icon, space, gap, project
+	fixedWidth := 1 + 1 + 1 + 1 + 3 + 1 + 2 + projColWidth // badge, space, icon, space, priority(3), space, gap, project
 	titleWidth := innerWidth - fixedWidth
 	if titleWidth < 10 {
 		titleWidth = 10
@@ -304,6 +327,7 @@ func (m *AppModel) renderPinnedPopup() string {
 		}
 
 		statusIcon := entry.Task.Status.Icon()
+		priorityBadge := renderPriorityBadge(entry.Task.Priority)
 		projectName := entry.ProjectName
 
 		taskTitle := entry.Title
@@ -317,7 +341,7 @@ func (m *AppModel) renderPinnedPopup() string {
 
 		paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
 
-		line := badge + " " + statusIcon + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
+		line := badge + " " + statusIcon + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
 
 		if i == m.pinnedPopupCursor {
 			lineWidth := lipgloss.Width(line)
@@ -344,7 +368,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	if len(lines) >= 2 {
 		actualWidth := lipgloss.Width(lines[0])
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  u unpin  enter select  esc close")
+		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  enter select  esc close")
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
 
