@@ -38,6 +38,7 @@ type NotificationCenterModel struct {
 	dismissedSet  map[string]bool       // keys of currently dismissed alerts
 	showDismissed bool                  // true = show all alerts including dismissed
 	items         []alertCenterItem     // flattened items for navigation
+	sectionStarts []int                 // cursor indices of first selectable item per section
 	expandedItem  int                   // index of expanded item, -1 = none
 }
 
@@ -72,6 +73,7 @@ func (m *NotificationCenterModel) activeSnapshot() *alerts.AlertSnapshot {
 // buildItems flattens alert groups into navigable items, ordered by severity (urgent first).
 func (m *NotificationCenterModel) buildItems() {
 	m.items = nil
+	m.sectionStarts = nil
 	snap := m.activeSnapshot()
 	if snap == nil || len(snap.Groups) == 0 {
 		return
@@ -92,6 +94,8 @@ func (m *NotificationCenterModel) buildItems() {
 			alert:    -1,
 			label:    group.Label,
 		})
+		// Record the first selectable item index for this section
+		m.sectionStarts = append(m.sectionStarts, len(m.items))
 		// Individual alerts
 		for ai, a := range group.Alerts {
 			m.items = append(m.items, alertCenterItem{
@@ -128,6 +132,10 @@ func (m *NotificationCenterModel) Init() tea.Cmd {
 
 func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Width, msg.Height)
 
@@ -159,6 +167,20 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
+
+		case "n":
+			old := m.cursor
+			if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
+				m.cursor = pos
+			}
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+
+		case "N":
+			old := m.cursor
+			if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
+				m.cursor = pos
+			}
+			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
 
 		case "tab":
 			if m.cursor >= 0 && m.cursor < len(m.items) && !m.items[m.cursor].isHeader {
@@ -353,12 +375,15 @@ func (m *NotificationCenterModel) View() string {
 			lines = append(lines, header)
 		} else {
 			prefix := "  "
-			if i == m.cursor {
+			isSelected := i == m.cursor
+			if isSelected {
 				prefix = BoldStyle.Foreground(ColorPrimary).Render("▸ ")
 			}
 			sev := m.severityPrefix(item)
 			title := item.label
 			details := item.details
+
+			flash := isSelected && m.cursorFlash
 
 			if i == m.expandedItem {
 				// Wrap the full combined text across multiple lines
@@ -372,11 +397,16 @@ func (m *NotificationCenterModel) View() string {
 					if item.dismissed {
 						styled = MutedStyle.Render(wl)
 					}
+					var line string
 					if li == 0 {
-						lines = append(lines, prefix+sev+styled)
+						line = prefix + sev + styled
 					} else {
-						lines = append(lines, strings.Repeat(" ", prefixWidth)+styled)
+						line = strings.Repeat(" ", prefixWidth) + styled
 					}
+					if flash {
+						line = CursorFlashRowStyle.Width(m.width).Render(line)
+					}
+					lines = append(lines, line)
 				}
 			} else {
 				full := title
@@ -388,7 +418,11 @@ func (m *NotificationCenterModel) View() string {
 				if item.dismissed {
 					styled = MutedStyle.Render(truncated)
 				}
-				lines = append(lines, prefix+sev+styled)
+				line := prefix + sev + styled
+				if flash {
+					line = CursorFlashRowStyle.Width(m.width).Render(line)
+				}
+				lines = append(lines, line)
 			}
 		}
 	}
@@ -444,7 +478,7 @@ func (m *NotificationCenterModel) View() string {
 	if m.showDismissed {
 		toggleLabel = "D: hide dismissed"
 	}
-	left := HelpStyle.Render("j/k: navigate · Tab: expand · Enter: go to task · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
+	left := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: go to task · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
 	snap := m.activeSnapshot()
 	count := 0
 	if snap != nil {
