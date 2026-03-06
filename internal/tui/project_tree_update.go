@@ -290,6 +290,12 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 				}
 			}
 			return m, nil
+		case "l":
+			// Go to project recent activity
+			project := m.project
+			return m, func() tea.Msg {
+				return ShowProjectRecentActivityMsg{Project: project}
+			}
 		}
 
 	case "m":

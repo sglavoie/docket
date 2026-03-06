@@ -46,6 +46,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerCustomContextEditorBindings()
 	r.registerNotesBindings()
 	r.registerRecentActivityBindings()
+	r.registerProjectRecentActivityBindings()
 	r.registerProjectPreviewBindings()
 	r.registerScoreProfileManagerBindings()
 	r.registerMetricsDashboardBindings()

@@ -362,6 +362,23 @@ func (r *KeybindingRegistry) registerRecentActivityBindings() {
 	)
 }
 
+func (r *KeybindingRegistry) registerProjectRecentActivityBindings() {
+	views := []ViewType{ViewProjectRecentActivity}
+	r.add(
+		Keybinding{Key: "j/k", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "↑/↓", Description: "Move cursor", Category: "Navigation", Views: views},
+		Keybinding{Key: "g/G", Description: "Go to first/last", Category: "Navigation", Views: views},
+		Keybinding{Key: "ctrl+U/D", Description: "Page up/down", Category: "Navigation", Views: views},
+		Keybinding{Key: "Enter", Description: "Open task in project", Category: "Actions", Views: views},
+		Keybinding{Key: "p", Description: "Preview task", Category: "Actions", Views: views},
+		Keybinding{Key: "/", Description: "Filter tasks", Category: "Filters", Views: views},
+		Keybinding{Key: "F", Description: "Filter prefix (type/status/tags/due/attr/score)", Category: "Filters", Views: views},
+		Keybinding{Key: "[/]", Description: "Switch tabs", Category: "Navigation", Views: views},
+		Keybinding{Key: "r", Description: "Refresh", Category: "Actions", Views: views},
+		Keybinding{Key: "q/Esc", Description: "Close", Category: "Navigation", Views: views},
+	)
+}
+
 func (r *KeybindingRegistry) registerProjectPreviewBindings() {
 	views := []ViewType{ViewProjectPreview}
 	r.add(

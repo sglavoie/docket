@@ -72,6 +72,7 @@ const (
 	ViewTaskActivity
 	ViewRecentActivity
 	ViewRecentActivityPreview
+	ViewProjectRecentActivity
 	ViewGlobalNotes
 	ViewWeeklyReview
 	ViewGlobalBlockers

@@ -168,7 +168,7 @@ func (m *TextEditorModel) GetConfirmDialog() *ConfirmDialog {
 	}
 	return &m.confirmOverlay
 }
-func (m *TextEditorModel) IsFullHeight() bool     { return false }
+func (m *TextEditorModel) IsFullHeight() bool { return false }
 
 // ShowTextEditorMsg triggers showing the text editor popup.
 type ShowTextEditorMsg struct {

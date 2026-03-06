@@ -16,10 +16,10 @@ import (
 // BulkCaptureModel handles rapid multi-task creation with inline metadata parsing.
 // Each line is parsed using the same syntax as quick capture.
 type BulkCaptureModel struct {
-	project *models.Project
-	input   textarea.Model
-	errors  []lineError
-	created int
+	project        *models.Project
+	input          textarea.Model
+	errors         []lineError
+	created        int
 	width          int
 	height         int
 	confirmDiscard bool

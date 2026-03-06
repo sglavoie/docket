@@ -192,6 +192,8 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 			m.metricsDashboard = NewMetricsDashboardModelForProject(m.config, project)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		}
+	case ViewProjectRecentActivity:
+		m.showView(ViewProjectRecentActivity, NewProjectRecentActivityModel(m.config, project))
 	}
 	return nil
 }

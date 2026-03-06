@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -33,6 +34,9 @@ type RecentActivityModel struct {
 
 	// Filter
 	FilterMixin
+
+	// When non-nil, scopes to a single project (omits project badges).
+	projectScope *models.Project
 }
 
 // NewRecentActivityModel creates a new recent activity model.
@@ -51,18 +55,41 @@ func NewRecentActivityModel(cfg *config.Config) *RecentActivityModel {
 	return m
 }
 
+// NewProjectRecentActivityModel creates a project-scoped recent activity model.
+func NewProjectRecentActivityModel(cfg *config.Config, project *models.Project) *RecentActivityModel {
+	m := &RecentActivityModel{
+		config:       cfg,
+		projectScope: project,
+		FilterMixin:  FilterMixin{filter: newFilterState()},
+		tabs:         TabState{Names: recentActivityTabNames},
+	}
+	if !cfg.GetRecentActivityShowAll() {
+		m.tabs.Active = recentActivityTabActive
+	}
+	m.initFilterMixin(&m.pendingPrefix, cfg)
+	m.InitSearchInput("Filter tasks...", 100, 40)
+	m.loadTasks()
+	return m
+}
+
 // loadTasks aggregates tasks from all active projects, sorted by UpdatedAt desc.
 func (m *RecentActivityModel) loadTasks() {
 	m.tasks = nil
 	limit := m.config.GetRecentActivityLimit()
 
-	projects := m.config.GetActiveProjects()
-	for _, project := range projects {
-		if err := storage.LoadProject(project); err != nil {
-			continue
+	if m.projectScope != nil {
+		for _, task := range m.projectScope.Tasks {
+			m.tasks = append(m.tasks, CrossProjectTask{Task: task, Project: m.projectScope})
 		}
-		for _, task := range project.Tasks {
-			m.tasks = append(m.tasks, CrossProjectTask{Task: task, Project: project})
+	} else {
+		projects := m.config.GetActiveProjects()
+		for _, project := range projects {
+			if err := storage.LoadProject(project); err != nil {
+				continue
+			}
+			for _, task := range project.Tasks {
+				m.tasks = append(m.tasks, CrossProjectTask{Task: task, Project: project})
+			}
 		}
 	}
 
@@ -189,6 +216,11 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		if RunEscCascade(m.escSteps()) {
 			return m, nil
 		}
+		if m.projectScope != nil {
+			return m, func() tea.Msg {
+				return CloseProjectRecentActivityMsg{}
+			}
+		}
 		return m, func() tea.Msg {
 			return CloseRecentActivityMsg{}
 		}
@@ -233,7 +265,13 @@ func (m *RecentActivityModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		return m, m.ActivateSearch()
 
 	case "?":
-		return m, helpCmd(ViewRecentActivity, "Recent Activity", m.GetHelpItems())
+		viewType := ViewRecentActivity
+		viewName := "Recent Activity"
+		if m.projectScope != nil {
+			viewType = ViewProjectRecentActivity
+			viewName = "Project Activity"
+		}
+		return m, helpCmd(viewType, viewName, m.GetHelpItems())
 	}
 
 	if handled, cmd := handleListNavigation(msg.String(), &m.cursor, len(m.filtered), m.Height(), &m.cursorFlash); handled {
@@ -286,17 +324,24 @@ func (m *RecentActivityModel) clampCursor() {
 
 // GetHelpItems returns help items for this view.
 func (m *RecentActivityModel) GetHelpItems() []HelpItem {
+	if m.projectScope != nil {
+		return GetKeybindingRegistry().GetForView(ViewProjectRecentActivity)
+	}
 	return GetKeybindingRegistry().GetForView(ViewRecentActivity)
 }
 
 func (m *RecentActivityModel) View() string {
 	var b strings.Builder
 
+	title := "Latest Activity"
+	if m.projectScope != nil {
+		title = fmt.Sprintf("Project Activity: %s", m.projectScope.Name)
+	}
 	subtitle := fmt.Sprintf("%d tasks", len(m.filtered))
 	if m.SearchQuery() != "" || m.IsSearchMode() {
 		subtitle = fmt.Sprintf("%d/%d tasks", len(m.filtered), len(m.tasks))
 	}
-	b.WriteString(renderFullscreenTitle("Latest Activity", subtitle))
+	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n")
 
 	if len(m.filtered) == 0 && !m.IsSearchMode() && m.SearchQuery() == "" {
@@ -363,12 +408,17 @@ func (m *RecentActivityModel) View() string {
 
 func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool) string {
 	task := dt.Task
-	projectName := util.Truncate(dt.Project.Name, 12)
-	preBadges := MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +
-		MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
-	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
-
+	var preBadges string
 	maxTitleLen := m.Width() - 50
+	if m.projectScope == nil {
+		projectName := util.Truncate(dt.Project.Name, 12)
+		preBadges = MutedStyle.Render(fmt.Sprintf("[%s]", projectName)) + " " +
+			MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
+	} else {
+		preBadges = MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
+		maxTitleLen += 14
+	}
+	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
 	return TaskLine{
 		Task:       task,
 		IsSelected: selected,

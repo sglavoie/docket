@@ -487,6 +487,16 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.popToAnchorView()
 		return true, nil
 
+	case ShowProjectRecentActivityMsg:
+		if msg.Project != nil {
+			m.showView(ViewProjectRecentActivity, NewProjectRecentActivityModel(m.config, msg.Project))
+		}
+		return true, nil
+
+	case CloseProjectRecentActivityMsg:
+		m.popView()
+		return true, nil
+
 	case ShowRecentActivityPreviewMsg:
 		preview := NewRecentActivityPreviewModel(msg.Task, msg.Project)
 		m.showView(ViewRecentActivityPreview, preview)

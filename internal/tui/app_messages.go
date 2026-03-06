@@ -666,6 +666,14 @@ type RecentActivitySelectMsg struct {
 	Project *models.Project
 }
 
+// ShowProjectRecentActivityMsg opens the project-scoped recent activity view.
+type ShowProjectRecentActivityMsg struct {
+	Project *models.Project
+}
+
+// CloseProjectRecentActivityMsg closes the project-scoped recent activity view.
+type CloseProjectRecentActivityMsg struct{}
+
 // =============================================================================
 // Project Focus View Messages (Show/Close Pattern)
 // =============================================================================

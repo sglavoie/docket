@@ -241,6 +241,12 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.activePerspective = 0
 			m.rebuildRows()
 			return m, nil
+		case "l":
+			// Go to project recent activity
+			project := m.project
+			return m, func() tea.Msg {
+				return ShowProjectRecentActivityMsg{Project: project}
+			}
 		}
 	}
 
