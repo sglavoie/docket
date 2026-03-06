@@ -228,11 +228,11 @@ func TestShouldExpire_Inbox_At24h(t *testing.T) {
 	}
 }
 
-func TestShouldExpire_ProjectHealth_At24h(t *testing.T) {
-	dismissed := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
-	now := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
-	if !ShouldExpireDismissal("project_health", dismissed, now) {
-		t.Error("project_health should expire at 24h")
+func TestShouldExpire_ProjectHealth_NeverExpires(t *testing.T) {
+	dismissed := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC)
+	if ShouldExpireDismissal("project_health", dismissed, now) {
+		t.Error("project_health should never time-expire")
 	}
 }
 

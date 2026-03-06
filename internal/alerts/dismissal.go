@@ -85,9 +85,9 @@ func CategoryDisplayName(c AlertCategory) string {
 // Expiration policies:
 //   - daily_review: expires at the next midnight after dismissedAt
 //   - weekly_review: expires 7 days after dismissedAt
-//   - inbox, project_health: expires 24 hours after dismissedAt
-//   - overdue, due_soon, stale, blocked: never time-expires (cleaned up by GC
-//     when the underlying condition resolves)
+//   - inbox: expires 24 hours after dismissedAt
+//   - overdue, due_soon, stale, blocked, project_health: never time-expires
+//     (cleaned up by GC when the underlying condition resolves)
 func ShouldExpireDismissal(category string, dismissedAt time.Time, now time.Time) bool {
 	switch AlertCategory(category) {
 	case CategoryDailyReview:
@@ -98,7 +98,7 @@ func ShouldExpireDismissal(category string, dismissedAt time.Time, now time.Time
 		return !now.Before(nextMidnight)
 	case CategoryWeeklyReview:
 		return now.Sub(dismissedAt) >= 7*24*time.Hour
-	case CategoryInbox, CategoryProjectHealth:
+	case CategoryInbox:
 		return now.Sub(dismissedAt) >= 24*time.Hour
 	default:
 		return false
