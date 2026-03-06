@@ -154,7 +154,6 @@ var WeeklyReviewNavigationPrefixHints = []PrefixHint{
 	{Key: "r", Description: "recurring", Detail: "Focus Recurring Overview section"},
 }
 
-
 // renderAllSections renders all non-empty sections.
 func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 	var lines []string

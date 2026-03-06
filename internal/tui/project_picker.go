@@ -98,11 +98,11 @@ func (m *ProjectPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			return m, m.selectCurrent()
 
-		case "up", "ctrl+k":
+		case "up", "ctrl+k", "ctrl+p":
 			m.moveCursor(-1)
 			return m, nil
 
-		case "down", "ctrl+j":
+		case "down", "ctrl+j", "ctrl+n":
 			m.moveCursor(1)
 			return m, nil
 

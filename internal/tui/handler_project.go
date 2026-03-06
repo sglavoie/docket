@@ -184,6 +184,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowProjectPickerMsg:
 		projects := m.config.GetActiveProjects()
+		for _, p := range projects {
+			_ = storage.LoadProject(p)
+		}
 		picker := NewProjectPickerModel(projects)
 		m.showView(ViewProjectPicker, picker)
 		return true, picker.Init()

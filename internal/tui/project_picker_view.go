@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -17,28 +19,50 @@ func (m *ProjectPickerModel) View() string {
 	b.WriteString(m.SearchInputView())
 	b.WriteString("\n\n")
 
-	// Render the list
-	b.WriteString(m.renderList())
-	b.WriteString("\n")
-
-	// Footer
-	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓ navigate · Enter select · Esc cancel"), "", m.Width()))
-
-	return b.String()
-}
-
-func (m *ProjectPickerModel) renderList() string {
-	var b strings.Builder
-
+	totalWidth := m.Width()
 	maxVisible := m.Height() - 10
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
 
+	var content string
+	if totalWidth >= 80 {
+		leftWidth := totalWidth * 55 / 100
+		rightWidth := totalWidth - leftWidth - 1 // 1 for divider
+
+		listContent := m.renderList(leftWidth)
+		detailContent := m.renderProjectDetail(rightWidth, maxVisible)
+
+		leftStyled := lipgloss.NewStyle().Width(leftWidth).Height(maxVisible).Render(listContent)
+		divider := renderVerticalDivider(maxVisible, false)
+		rightStyled := lipgloss.NewStyle().Width(rightWidth).Height(maxVisible).Render(detailContent)
+
+		content = lipgloss.JoinHorizontal(lipgloss.Top, leftStyled, divider, rightStyled)
+	} else {
+		content = m.renderList(totalWidth)
+	}
+
+	b.WriteString(content)
+	b.WriteString("\n")
+
+	// Footer
+	b.WriteString(renderStatusBarFooter(HelpStyle.Render("↑/↓/Ctrl+J/K/N/P navigate · Ctrl+U/D page · Enter select · Esc cancel"), "", totalWidth))
+
+	return b.String()
+}
+
+func (m *ProjectPickerModel) renderList(width int) string {
+	var b strings.Builder
+
 	totalItems := len(m.Filtered)
 
 	if totalItems == 0 {
 		return MutedStyle.Render("No matching projects.")
+	}
+
+	maxVisible := m.Height() - 10
+	if maxVisible < 5 {
+		maxVisible = 5
 	}
 
 	// Calculate max name length from filtered items for aligned columns
@@ -48,8 +72,8 @@ func (m *ProjectPickerModel) renderList() string {
 			maxNameLen = n
 		}
 	}
-	// Cap to terminal width with room for cursor, context badge, and task count
-	cap := m.Width() - 30
+	// Cap to width with room for cursor, context badge, and task count
+	cap := width - 30
 	if cap < 10 {
 		cap = 10
 	}
@@ -92,6 +116,121 @@ func (m *ProjectPickerModel) renderList() string {
 		if remaining > 0 {
 			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
 			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
+}
+
+func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
+	if len(m.Filtered) == 0 || m.Cursor >= len(m.Filtered) {
+		return MutedStyle.Render("No project selected")
+	}
+
+	p := m.Filtered[m.Cursor].Project
+	var b strings.Builder
+	lines := 0
+
+	// Project name
+	b.WriteString(lipgloss.NewStyle().Bold(true).Render(p.Name))
+	b.WriteString("\n")
+	lines++
+
+	// Context
+	b.WriteString(MutedStyle.Render("Context: ") + p.Context)
+	b.WriteString("\n")
+	lines++
+
+	// Created date
+	b.WriteString(MutedStyle.Render("Created: ") + p.CreatedAt.Format("2006-01-02"))
+	b.WriteString("\n")
+	lines++
+
+	// Pinned status
+	if p.Pinned {
+		b.WriteString(MutedStyle.Render("Pinned: ") + "yes")
+		b.WriteString("\n")
+		lines++
+	}
+
+	// Description (word-wrapped, max 5 lines)
+	if p.Description != "" {
+		b.WriteString("\n")
+		lines++
+		descLines := wrapText(p.Description, width)
+		maxDescLines := 5
+		if len(descLines) > maxDescLines {
+			descLines = descLines[:maxDescLines]
+		}
+		for _, dl := range descLines {
+			b.WriteString(dl)
+			b.WriteString("\n")
+			lines++
+		}
+	}
+
+	// Separator
+	b.WriteString("\n")
+	lines++
+	b.WriteString(MutedStyle.Render(strings.Repeat("─", width)))
+	b.WriteString("\n")
+	lines++
+
+	// Task stats
+	active := p.CountActiveTasks()
+	completed := p.CountCompletedTasks()
+	overdue := p.CountOverdueTasks()
+	blocked := p.CountBlockedTasks()
+	dueSoon := p.CountDueSoonTasks(7)
+
+	b.WriteString(MutedStyle.Render("Active: ") + fmt.Sprintf("%d", active))
+	b.WriteString("  ")
+	b.WriteString(MutedStyle.Render("Done: ") + fmt.Sprintf("%d", completed))
+	b.WriteString("\n")
+	lines++
+
+	if overdue > 0 {
+		overdueStr := lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("%d", overdue))
+		b.WriteString(MutedStyle.Render("Overdue: ") + overdueStr)
+	} else {
+		b.WriteString(MutedStyle.Render("Overdue: ") + "0")
+	}
+	b.WriteString("  ")
+	if blocked > 0 {
+		blockedStr := lipgloss.NewStyle().Foreground(ColorWarning).Render(fmt.Sprintf("%d", blocked))
+		b.WriteString(MutedStyle.Render("Blocked: ") + blockedStr)
+	} else {
+		b.WriteString(MutedStyle.Render("Blocked: ") + "0")
+	}
+	b.WriteString("\n")
+	lines++
+
+	if dueSoon > 0 {
+		b.WriteString(MutedStyle.Render("Due soon: ") + fmt.Sprintf("%d", dueSoon))
+		b.WriteString("\n")
+		lines++
+	}
+
+	// Section breakdown
+	sections := p.GetSections()
+	sectionCounts := p.CountTasksBySection()
+	if len(sections) > 0 && lines < height-2 {
+		b.WriteString("\n")
+		lines++
+		b.WriteString(MutedStyle.Render(strings.Repeat("─", width)))
+		b.WriteString("\n")
+		lines++
+		b.WriteString(lipgloss.NewStyle().Bold(true).Render("Sections"))
+		b.WriteString("\n")
+		lines++
+		for _, sec := range sections {
+			if lines >= height {
+				break
+			}
+			count := sectionCounts[sec]
+			b.WriteString(fmt.Sprintf("  %s %s", MutedStyle.Render(sec+":"), fmt.Sprintf("%d", count)))
+			b.WriteString("\n")
+			lines++
 		}
 	}
 
