@@ -356,7 +356,7 @@ func (m *AppModel) viewCommands() []Command {
 		{
 			Name:        "due date overview",
 			Description: "View tasks by due date",
-			Shortcut:    "ctrl+d",
+			Shortcut:    ";D",
 			Category:    CategoryViews,
 			Views:       []ViewType{ViewProjectTree, ViewDashboard, ViewOutliner},
 			Handler: func() tea.Msg {

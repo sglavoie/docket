@@ -70,6 +70,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return ShowRecentActivityMsg{} }
 			case "B":
 				return m, func() tea.Msg { return ShowGlobalBlockersMsg{} }
+			case "D":
+				return m, func() tea.Msg { return ShowDueDateOverviewMsg{} }
 			case "m":
 				return m, func() tea.Msg { return ShowMetricsDashboardMsg{} }
 			case "a":

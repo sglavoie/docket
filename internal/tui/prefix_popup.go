@@ -684,6 +684,7 @@ var (
 		{Key: "s", Description: "settings", Detail: "Open Settings"},
 		{Key: "w", Description: "weekly review", Detail: "Open Weekly Review"},
 		{Key: "B", Description: "global blockers", Detail: "Blockers across all projects"},
+		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
 		{Key: "F", Description: "focus board", Detail: "Personal command center"},
 		{Key: "N", Description: "global notes", Detail: "Open global notes"},
 	}
