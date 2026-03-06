@@ -240,7 +240,7 @@ func (r *KeybindingRegistry) registerFocusViewBindings() {
 		Keybinding{Key: "1-5", Description: "Set priority (1=highest)", Category: "Actions", Views: views},
 		Keybinding{Key: "t", Description: "Manage task tags", Category: "Actions", Views: views},
 		Keybinding{Key: "Z", Description: "Snooze task", Category: "Actions", Views: views},
-		Keybinding{Key: "D", Description: "Delete task", Category: "Actions", Views: views},
+		Keybinding{Key: "D", Description: "Delete task / Show dismissed (Suggested)", Category: "Actions", Views: views},
 		Keybinding{Key: "m", Description: "Move to section (ma/mn/mi/mw/ms/mr)", Category: "Actions", Views: views},
 		Keybinding{Key: "y", Description: "Copy task title", Category: "Actions", Views: views},
 		Keybinding{Key: "Y", Description: "Copy task description", Category: "Actions", Views: views},

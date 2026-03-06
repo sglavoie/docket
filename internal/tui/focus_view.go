@@ -62,6 +62,9 @@ type FocusViewModel struct {
 
 	// Inline preview
 	previewMode bool
+
+	// Show dismissed suggestions (Suggested tab)
+	showDismissed bool
 }
 
 // NewFocusViewModel creates a new focus view model.
@@ -146,8 +149,23 @@ func (m *FocusViewModel) loadTasks() {
 	}
 
 	// Compute ranked suggestions
-	m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
+	m.recomputeSuggested()
+}
 
+// recomputeSuggested re-ranks suggestions, respecting showDismissed mode.
+func (m *FocusViewModel) recomputeSuggested() {
+	if m.showDismissed {
+		// Show only dismissed items
+		all := focus.RankCrossProjectTasks(m.tasks, nil, m.config)
+		m.ranked = nil
+		for _, sft := range all {
+			if m.dismissedIDs[sft.Task.ID] {
+				m.ranked = append(m.ranked, sft)
+			}
+		}
+	} else {
+		m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
+	}
 	m.applyFilter()
 }
 
@@ -471,7 +489,8 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.tabs.Cycle(-1)
 			m.subTab = 0
 			m.subTabRowFocused = false
-			m.applyFilter()
+			m.showDismissed = false
+			m.recomputeSuggested()
 			m.clampCursor()
 		}
 		return m, nil
@@ -485,7 +504,8 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.tabs.Cycle(1)
 			m.subTab = 0
 			m.subTabRowFocused = false
-			m.applyFilter()
+			m.showDismissed = false
+			m.recomputeSuggested()
 			m.clampCursor()
 		}
 		return m, nil
@@ -493,6 +513,7 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Refresh: on Suggested tab clears dismissed and reloads; on other tabs just reloads
 	case "r":
 		if m.tabs.Active == focusTabSuggested {
+			m.showDismissed = false
 			for k := range m.dismissedIDs {
 				delete(m.dismissedIDs, k)
 			}
@@ -513,6 +534,15 @@ func (m *FocusViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Priority changes
 	case "1", "2", "3", "4", "5":
 		return taskOpsChangePriority(m, key)
+
+	// Toggle show-dismissed on Suggested tab (intercept before common D=delete)
+	case "D":
+		if m.tabs.Active == focusTabSuggested {
+			m.showDismissed = !m.showDismissed
+			m.recomputeSuggested()
+			m.clampCursor()
+			return m, nil
+		}
 	}
 
 	// Common task actions (tags, snooze, delete, edit, refresh, copy, help)
@@ -549,12 +579,21 @@ func (m *FocusViewModel) handleDismissOrRemove() (tea.Model, tea.Cmd) {
 	switch m.tabs.Active {
 	case focusTabSuggested:
 		if ft := m.getTaskAtCursor(); ft != nil {
-			m.dismissedIDs[ft.Task.ID] = true
-			m.persistDismissed()
-			m.ranked = focus.RankCrossProjectTasks(m.tasks, m.dismissedIDs, m.config)
-			m.applyFilter()
-			m.clampCursor()
-			m.statusMessage = "Dismissed suggestion"
+			if m.showDismissed && m.dismissedIDs[ft.Task.ID] {
+				// Restore a dismissed item
+				delete(m.dismissedIDs, ft.Task.ID)
+				m.persistDismissed()
+				m.recomputeSuggested()
+				m.clampCursor()
+				m.statusMessage = "Restored suggestion"
+			} else {
+				// Dismiss the item
+				m.dismissedIDs[ft.Task.ID] = true
+				m.persistDismissed()
+				m.recomputeSuggested()
+				m.clampCursor()
+				m.statusMessage = "Dismissed suggestion"
+			}
 		}
 	case focusTabQueue:
 		if m.cursor >= 0 && m.cursor < len(*m.queue) {
@@ -637,6 +676,11 @@ func (m *FocusViewModel) clampCursor() {
 // escSteps defines the Esc dismissal cascade: filters.
 func (m *FocusViewModel) escSteps() []EscStep {
 	return []EscStep{
+		{Active: func() bool { return m.showDismissed }, Clear: func() {
+			m.showDismissed = false
+			m.recomputeSuggested()
+			m.clampCursor()
+		}},
 		FilterClearEscStep(m.HasActiveFilters, func() {
 			m.ClearAllFilters()
 			m.applyFilter()

@@ -79,6 +79,8 @@ func (m *FocusViewModel) View() string {
 		case focusTabSuggested:
 			if m.HasActiveFilters() {
 				lines = append(lines, MutedStyle.Render(EmptyStateFiltered))
+			} else if len(m.dismissedIDs) > 0 && !m.showDismissed {
+				lines = append(lines, MutedStyle.Render(fmt.Sprintf("All suggestions dismissed (%d hidden). Press D to show or r to refresh.", len(m.dismissedIDs))))
 			} else {
 				lines = append(lines, MutedStyle.Render("All suggestions dismissed. Press r to refresh."))
 			}
@@ -129,7 +131,15 @@ func (m *FocusViewModel) View() string {
 	case focusTabQueue:
 		helpParts = []string{"j/k nav", "x remove", "J/K reorder", "a add suggestion", "r refresh", "[/] tabs"}
 	case focusTabSuggested:
-		helpParts = []string{"j/k nav", "a accept", "x dismiss", "[/] tabs", ",s/d/b/x status"}
+		if m.showDismissed {
+			xLabel := "x dismiss"
+			if ft := m.getTaskAtCursor(); ft != nil && m.dismissedIDs[ft.Task.ID] {
+				xLabel = "x restore"
+			}
+			helpParts = []string{"j/k nav", "a accept", xLabel, "D hide dismissed", "[/] tabs"}
+		} else {
+			helpParts = []string{"j/k nav", "a accept", "x dismiss", "D show dismissed", "[/] tabs"}
+		}
 	default:
 		helpParts = []string{"j/k nav", "[/] tabs", "(/) row focus", ",s/d/b/x status", "1-5 priority"}
 	}
@@ -169,15 +179,18 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 	starShown := false
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
+		isDismissed := m.showDismissed && m.dismissedIDs[ft.Task.ID]
 
 		// Check if task is already in queue
 		prefix := ""
-		if m.isInQueue(ft.Task.ID) {
+		if isDismissed {
+			prefix = MutedStyle.Render("[dismissed] ")
+		} else if m.isInQueue(ft.Task.ID) {
 			prefix = lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true).Render("[Q] ")
 		}
 
 		// Star indicator on the first non-queued item
-		if !starShown && prefix == "" {
+		if !starShown && !isDismissed && prefix == "" {
 			prefix = DueSoonStyle.Render("* ")
 			starShown = true
 		}
