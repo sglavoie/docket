@@ -50,6 +50,9 @@ func (m *DailyReviewModel) loadTasks() {
 		}
 
 		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
 			// Apply common filters (no DueDate or Status — sections group by these)
 			if hasActiveCommonFilters(&m.filter) && !passesCommonFilters(task, &m.filter, project.ID, m.config) {
 				continue

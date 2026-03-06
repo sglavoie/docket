@@ -85,6 +85,9 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 		scoringProfile = m.config.GetProjectScoringProfile(selected.ID)
 		if scoringProfile != nil {
 			for _, task := range selected.Tasks {
+				if task == nil {
+					continue
+				}
 				if !task.Status.IsComplete() {
 					hasTopScored = true
 					break
@@ -289,7 +292,7 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 	var latestUpdate time.Time
 
 	for _, task := range project.Tasks {
-		if task.Status.IsComplete() {
+		if task == nil || task.Status.IsComplete() {
 			continue
 		}
 		section := task.Section
@@ -607,6 +610,9 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			scoredCount := 0
 			totalScorable := 0
 			for _, task := range p.Tasks {
+				if task == nil {
+					continue
+				}
 				if !task.Status.IsComplete() {
 					totalScorable++
 					if HasManualScores(task, profile) {
@@ -739,6 +745,9 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 		totalBlockers += storage.GetActiveBlockerCount(p)
 
 		for _, task := range p.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.DueDate != nil && !task.Status.IsComplete() {
 				dueDay := util.StartOfDay(*task.DueDate)
 				if dueDay.Equal(today) {
@@ -752,6 +761,9 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 
 		inboxCount := 0
 		for _, task := range p.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Section == models.SectionInbox && !task.Status.IsComplete() {
 				inboxCount++
 			}
@@ -798,7 +810,7 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	var bestTask *models.Task
 	var bestScore float64
 	for _, task := range project.Tasks {
-		if task.Status.IsComplete() {
+		if task == nil || task.Status.IsComplete() {
 			continue
 		}
 		score := scoring.ComputeScore(task, profile)

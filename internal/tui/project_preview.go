@@ -186,6 +186,9 @@ func (m *ProjectPreviewModel) renderContent() string {
 		statusCounts := make(map[models.TaskStatus]int)
 
 		for _, task := range p.Tasks {
+			if task == nil {
+				continue
+			}
 			typeCounts[task.Type]++
 			statusCounts[task.Status]++
 		}
@@ -218,6 +221,9 @@ func (m *ProjectPreviewModel) renderContent() string {
 		overdueCount := 0
 		today := time.Now().Truncate(util.Day)
 		for _, task := range p.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.DueDate != nil && !task.Status.IsComplete() && task.DueDate.Before(today) {
 				overdueCount++
 			}

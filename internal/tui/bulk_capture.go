@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 // BulkCaptureModel handles rapid multi-task creation with inline metadata parsing.
@@ -156,97 +155,92 @@ func (m *BulkCaptureModel) GetConfirmDialog() *ConfirmDialog {
 func (m *BulkCaptureModel) IsFullHeight() bool { return false }
 
 func (m *BulkCaptureModel) createTasks() tea.Cmd {
-	return func() tea.Msg {
-		content := strings.TrimSpace(m.input.Value())
-		if content == "" {
-			m.errors = []lineError{{line: 1, message: "no tasks to create"}}
-			return nil
-		}
+	// All mutations run synchronously in the Update() goroutine to avoid
+	// data races with View() reading project.Tasks concurrently.
 
-		lines := strings.Split(content, "\n")
-		var validResults []*quickCaptureResult
-		var failedLines []string
-		var errors []lineError
-
-		// Parse all lines
-		for i, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-
-			result, err := parseQuickCapture(line, m.project, nil)
-			if err != nil {
-				errors = append(errors, lineError{
-					line:    len(failedLines) + 1, // Line number in the remaining content
-					message: err.Error(),
-				})
-				failedLines = append(failedLines, lines[i]) // Keep original line
-			} else {
-				validResults = append(validResults, result)
-			}
-		}
-
-		// If we have valid tasks, create them
-		if len(validResults) > 0 {
-			// Ensure Inbox section exists with red color
-			if !m.project.HasSection(models.SectionInbox) {
-				m.project.EnsureSection(models.SectionInbox)
-				m.project.SetSectionColor(models.SectionInbox, "red")
-			}
-
-			// Create all valid tasks
-			var newTasks []*models.Task
-			for _, result := range validResults {
-				task := &models.Task{
-					ID:        uuid.New().String(),
-					ShortID:   m.project.GetNextShortID(),
-					Type:      result.taskType,
-					Title:     result.title,
-					Status:    models.StatusTodo,
-					Priority:  result.priority,
-					Section:   models.SectionInbox,
-					ParentID:  result.parentID,
-					DueDate:   result.dueDate,
-					CreatedAt: time.Now(),
-					UpdatedAt: time.Now(),
-				}
-
-				for _, tag := range result.tags {
-					task.AddTag(tag)
-				}
-
-				newTasks = append(newTasks, task)
-			}
-
-			// Prepend all new tasks at once (newest first)
-			m.project.Tasks = append(newTasks, m.project.Tasks...)
-			m.project.BuildTaskTree()
-			m.project.ReorderRootTasksByCompletion()
-
-			// Update created count
-			m.created += len(validResults)
-
-			// Backup and save
-			if err := storage.BackupProject(m.project); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-			}
-			if err := storage.SaveProject(m.project); err != nil {
-				return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-			}
-
-			// Reload to rebuild tree properly
-			_ = storage.LoadProject(m.project)
-		}
-
-		// Update textarea with only failed lines and show errors if any
-		if len(errors) > 0 {
-			m.errors = errors
-			m.input.SetValue(strings.Join(failedLines, "\n"))
-			return nil
-		}
-
-		// All succeeded, close the view
-		return TaskCreatedMsg{Task: nil}
+	content := strings.TrimSpace(m.input.Value())
+	if content == "" {
+		m.errors = []lineError{{line: 1, message: "no tasks to create"}}
+		return nil
 	}
+
+	lines := strings.Split(content, "\n")
+	var validResults []*quickCaptureResult
+	var failedLines []string
+	var errors []lineError
+
+	// Parse all lines
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		result, err := parseQuickCapture(line, m.project, nil)
+		if err != nil {
+			errors = append(errors, lineError{
+				line:    len(failedLines) + 1, // Line number in the remaining content
+				message: err.Error(),
+			})
+			failedLines = append(failedLines, lines[i]) // Keep original line
+		} else {
+			validResults = append(validResults, result)
+		}
+	}
+
+	// If we have valid tasks, create them
+	if len(validResults) > 0 {
+		// Ensure Inbox section exists with red color
+		if !m.project.HasSection(models.SectionInbox) {
+			m.project.EnsureSection(models.SectionInbox)
+			m.project.SetSectionColor(models.SectionInbox, "red")
+		}
+
+		// Create all valid tasks
+		var newTasks []*models.Task
+		for _, result := range validResults {
+			task := &models.Task{
+				ID:        uuid.New().String(),
+				ShortID:   m.project.GetNextShortID(),
+				Type:      result.taskType,
+				Title:     result.title,
+				Status:    models.StatusTodo,
+				Priority:  result.priority,
+				Section:   models.SectionInbox,
+				ParentID:  result.parentID,
+				DueDate:   result.dueDate,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+
+			for _, tag := range result.tags {
+				task.AddTag(tag)
+			}
+
+			newTasks = append(newTasks, task)
+		}
+
+		// Prepend all new tasks at once (newest first)
+		m.project.Tasks = append(newTasks, m.project.Tasks...)
+		m.project.BuildTaskTree()
+		m.project.ReorderRootTasksByCompletion()
+
+		// Update created count
+		m.created += len(validResults)
+
+		// Save with backup and reload
+		if err := saveProjectSync(m.project); err != nil {
+			return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
+		}
+	}
+
+	// Update textarea with only failed lines and show errors if any
+	if len(errors) > 0 {
+		m.errors = errors
+		m.input.SetValue(strings.Join(failedLines, "\n"))
+		return nil
+	}
+
+	// All succeeded, close the view
+	return func() tea.Msg { return TaskCreatedMsg{Task: nil} }
 }

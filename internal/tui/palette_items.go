@@ -181,6 +181,9 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		// Add tasks and collect tags/sections
 		// By default only show active tasks; when includeCompleted is true, show all
 		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
 			if !m.includeCompleted && !task.Status.IsActive() {
 				continue
 			}

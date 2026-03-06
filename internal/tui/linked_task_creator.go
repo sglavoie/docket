@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -185,113 +184,110 @@ func (m *LinkedTaskCreatorModel) linkTypeName() string {
 }
 
 func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
-	return func() tea.Msg {
-		input := m.inputValue()
-		if input == "" {
-			m.err = fmt.Errorf("task title cannot be empty")
-			return nil
-		}
+	// All mutations run synchronously in the Update() goroutine to avoid
+	// data races with View() reading project.Tasks concurrently.
 
-		// Parse inline metadata from input
-		result, err := parseQuickCapture(input, m.project, nil)
-		if err != nil {
-			m.err = err
-			return nil
-		}
+	input := m.inputValue()
+	if input == "" {
+		m.err = fmt.Errorf("task title cannot be empty")
+		return nil
+	}
 
-		// Create the new task with parsed metadata
-		newTask := &models.Task{
-			ID:         uuid.New().String(),
-			ShortID:    m.project.GetNextShortID(),
-			Type:       result.taskType,
-			Title:      result.title,
-			Status:     models.StatusTodo,
-			Priority:   result.priority,
-			Section:    m.sourceTask.Section, // Inherit section from source by default
-			DueDate:    result.dueDate,
-			Recurrence: result.recurrence,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
-			DependsOn:  []string{},
-			RelatedTo:  []string{},
-			Tags:       []string{},
-		}
+	// Parse inline metadata from input
+	result, err := parseQuickCapture(input, m.project, nil)
+	if err != nil {
+		m.err = err
+		return nil
+	}
 
-		// Apply parsed section if explicitly set, otherwise keep inherited
-		if result.section != "" {
-			newTask.Section = result.section
-		}
+	// Create the new task with parsed metadata
+	newTask := &models.Task{
+		ID:         uuid.New().String(),
+		ShortID:    m.project.GetNextShortID(),
+		Type:       result.taskType,
+		Title:      result.title,
+		Status:     models.StatusTodo,
+		Priority:   result.priority,
+		Section:    m.sourceTask.Section, // Inherit section from source by default
+		DueDate:    result.dueDate,
+		Recurrence: result.recurrence,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		DependsOn:  []string{},
+		RelatedTo:  []string{},
+		Tags:       []string{},
+	}
 
-		// Apply parsed parent if set (for non-subtask link types)
-		if result.parentID != nil && m.linkType != LinkTypeSubtask {
-			newTask.ParentID = result.parentID
-		}
+	// Apply parsed section if explicitly set, otherwise keep inherited
+	if result.section != "" {
+		newTask.Section = result.section
+	}
 
-		// Apply tags from parsing
-		for _, tag := range result.tags {
+	// Apply parsed parent if set (for non-subtask link types)
+	if result.parentID != nil && m.linkType != LinkTypeSubtask {
+		newTask.ParentID = result.parentID
+	}
+
+	// Apply tags from parsing
+	for _, tag := range result.tags {
+		newTask.AddTag(tag)
+	}
+
+	// Apply status transition
+	switch result.status {
+	case models.StatusInProgress:
+		newTask.Start()
+		if result.activate {
+			newTask.Activate()
+		}
+	case models.StatusBlocked:
+		newTask.Block()
+	case models.StatusDone:
+		newTask.Complete()
+	case models.StatusCanceled:
+		newTask.Cancel()
+	}
+
+	// Establish the relationship based on link type
+	switch m.linkType {
+	case LinkTypeBlocker:
+		// New task blocks source: source depends on new task
+		m.sourceTask.AddDependency(newTask.ID)
+
+	case LinkTypeDependent:
+		// New task depends on source
+		newTask.AddDependency(m.sourceTask.ID)
+
+	case LinkTypeSubtask:
+		// Promote leaf types to Story so they can have subtasks
+		if m.sourceTask.Type.IsLeafType() {
+			m.project.MutateTask(m.sourceTask.ID, func(t *models.Task) {
+				t.Type = models.TaskTypeStory
+			})
+		}
+		// New task is a child of source
+		newTask.ParentID = &m.sourceTask.ID
+
+	case LinkTypeFollowUp:
+		// Bidirectional relationship + inherit tags
+		m.sourceTask.AddRelatedTo(newTask.ID)
+		newTask.AddRelatedTo(m.sourceTask.ID)
+		// Copy tags from source task (in addition to any parsed tags)
+		for _, tag := range m.sourceTask.Tags {
 			newTask.AddTag(tag)
 		}
+	}
 
-		// Apply status transition
-		switch result.status {
-		case models.StatusInProgress:
-			newTask.Start()
-			if result.activate {
-				newTask.Activate()
-			}
-		case models.StatusBlocked:
-			newTask.Block()
-		case models.StatusDone:
-			newTask.Complete()
-		case models.StatusCanceled:
-			newTask.Cancel()
-		}
+	// Add task to project
+	m.project.Tasks = append([]*models.Task{newTask}, m.project.Tasks...)
+	m.project.BuildTaskTree()
 
-		// Establish the relationship based on link type
-		switch m.linkType {
-		case LinkTypeBlocker:
-			// New task blocks source: source depends on new task
-			m.sourceTask.AddDependency(newTask.ID)
+	// Save with backup and reload
+	if err := saveProjectSync(m.project); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
+	}
 
-		case LinkTypeDependent:
-			// New task depends on source
-			newTask.AddDependency(m.sourceTask.ID)
-
-		case LinkTypeSubtask:
-			// Promote leaf types to Story so they can have subtasks
-			if m.sourceTask.Type.IsLeafType() {
-				m.project.MutateTask(m.sourceTask.ID, func(t *models.Task) {
-					t.Type = models.TaskTypeStory
-				})
-			}
-			// New task is a child of source
-			newTask.ParentID = &m.sourceTask.ID
-
-		case LinkTypeFollowUp:
-			// Bidirectional relationship + inherit tags
-			m.sourceTask.AddRelatedTo(newTask.ID)
-			newTask.AddRelatedTo(m.sourceTask.ID)
-			// Copy tags from source task (in addition to any parsed tags)
-			for _, tag := range m.sourceTask.Tags {
-				newTask.AddTag(tag)
-			}
-		}
-
-		// Add task to project
-		m.project.Tasks = append([]*models.Task{newTask}, m.project.Tasks...)
-		m.project.BuildTaskTree()
-
-		// Backup and save
-		if err := storage.BackupProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(m.project); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Reload to rebuild tree properly
-		_ = storage.LoadProject(m.project)
-
+	return func() tea.Msg {
 		return LinkedTaskCreatedMsg{
 			SourceTask: m.sourceTask,
 			NewTask:    newTask,

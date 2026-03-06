@@ -34,6 +34,9 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 			}
 		}
 		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Pinned && !task.Status.IsComplete() {
 				info := pinnedTaskInfo{
 					Title:       task.Title,

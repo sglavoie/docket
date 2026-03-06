@@ -23,6 +23,9 @@ func (m *AllTasksViewModel) loadAllTasks() {
 		m.projectCache[project.ID] = project
 
 		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
 			if task.Status.IsComplete() && !includeCompleted {
 				continue
 			}

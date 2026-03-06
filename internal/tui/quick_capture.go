@@ -204,120 +204,115 @@ func (m *QuickCaptureModel) renderSyntaxGuide() string {
 }
 
 func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
-	return func() tea.Msg {
-		input := m.inputValue()
-		if input == "" {
-			m.err = fmt.Errorf("task title cannot be empty")
-			return nil
-		}
+	// All mutations run synchronously in the Update() goroutine to avoid
+	// data races with View() reading project.Tasks concurrently.
 
-		result, err := parseQuickCapture(input, m.project, m.allProjects)
-		if err != nil {
-			m.err = err
-			return nil
-		}
-
-		// Determine target project (may be different for cross-project capture)
-		targetProject := m.project
-		if result.targetProjectID != nil {
-			// Find the target project
-			for _, p := range m.allProjects {
-				if p.ID == *result.targetProjectID {
-					targetProject = p
-					// Load the target project to get its tasks
-					if err := storage.LoadProject(targetProject); err != nil {
-						return ErrorMsg{Err: fmt.Errorf("failed to load target project: %w", err)}
-					}
-					break
-				}
-			}
-		}
-
-		// Determine target section and custom section
-		targetSection := result.section
-		var customSection string
-		if targetSection == "" {
-			targetSection = models.SectionInbox
-		} else if !models.IsGTDSection(targetSection) {
-			// Custom section: route to Inbox, store as CustomSection
-			customSection = targetSection
-			targetSection = models.SectionInbox
-		}
-
-		// Ensure Inbox exists (gets red color)
-		if !targetProject.HasSection(models.SectionInbox) {
-			targetProject.EnsureSection(models.SectionInbox)
-			targetProject.SetSectionColor(models.SectionInbox, "red")
-		}
-		// Ensure target section exists (for GTD sections other than Inbox)
-		if targetSection != models.SectionInbox && !targetProject.HasSection(targetSection) {
-			targetProject.EnsureSection(targetSection)
-		}
-		// Ensure custom section exists
-		if customSection != "" && !targetProject.HasSection(customSection) {
-			targetProject.EnsureSection(customSection)
-		}
-
-		// Create task
-		task := &models.Task{
-			ID:            uuid.New().String(),
-			ShortID:       targetProject.GetNextShortID(),
-			Type:          result.taskType,
-			Title:         result.title,
-			Status:        models.StatusTodo,
-			Priority:      result.priority,
-			Section:       targetSection,
-			CustomSection: customSection,
-			ParentID:      result.parentID,
-			DueDate:       result.dueDate,
-			Recurrence:    result.recurrence,
-			CreatedAt:     time.Now(),
-			UpdatedAt:     time.Now(),
-		}
-
-		for _, tag := range result.tags {
-			task.AddTag(tag)
-		}
-
-		// Apply status transition using Task methods (handles auto-triage)
-		switch result.status {
-		case models.StatusInProgress:
-			task.Start()
-			if result.activate {
-				task.Activate()
-			}
-		case models.StatusBlocked:
-			task.Block()
-		case models.StatusDone:
-			task.Complete()
-		case models.StatusCanceled:
-			task.Cancel()
-		case models.StatusReview:
-			task.Review()
-		}
-
-		// Add to project at the beginning so it's prominently visible
-		targetProject.Tasks = append([]*models.Task{task}, targetProject.Tasks...)
-		targetProject.BuildTaskTree()
-		targetProject.ReorderRootTasksByCompletion()
-
-		// Backup and save
-		if err := storage.BackupProject(targetProject); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create backup: %w", err)}
-		}
-		if err := storage.SaveProject(targetProject); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
-		}
-
-		// Reload to rebuild tree properly
-		_ = storage.LoadProject(targetProject)
-
-		// Also reload the current project if it's different from the target
-		// (so that the view refreshes correctly)
-		if result.targetProjectID != nil && m.project.ID != *result.targetProjectID {
-			_ = storage.LoadProject(m.project)
-		}
-
-		return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter}
+	input := m.inputValue()
+	if input == "" {
+		m.err = fmt.Errorf("task title cannot be empty")
+		return nil
 	}
+
+	result, err := parseQuickCapture(input, m.project, m.allProjects)
+	if err != nil {
+		m.err = err
+		return nil
+	}
+
+	// Determine target project (may be different for cross-project capture)
+	targetProject := m.project
+	if result.targetProjectID != nil {
+		// Find the target project
+		for _, p := range m.allProjects {
+			if p.ID == *result.targetProjectID {
+				targetProject = p
+				// Load the target project to get its tasks
+				if err := storage.LoadProject(targetProject); err != nil {
+					return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to load target project: %w", err)} }
+				}
+				break
+			}
+		}
+	}
+
+	// Determine target section and custom section
+	targetSection := result.section
+	var customSection string
+	if targetSection == "" {
+		targetSection = models.SectionInbox
+	} else if !models.IsGTDSection(targetSection) {
+		// Custom section: route to Inbox, store as CustomSection
+		customSection = targetSection
+		targetSection = models.SectionInbox
+	}
+
+	// Ensure Inbox exists (gets red color)
+	if !targetProject.HasSection(models.SectionInbox) {
+		targetProject.EnsureSection(models.SectionInbox)
+		targetProject.SetSectionColor(models.SectionInbox, "red")
+	}
+	// Ensure target section exists (for GTD sections other than Inbox)
+	if targetSection != models.SectionInbox && !targetProject.HasSection(targetSection) {
+		targetProject.EnsureSection(targetSection)
+	}
+	// Ensure custom section exists
+	if customSection != "" && !targetProject.HasSection(customSection) {
+		targetProject.EnsureSection(customSection)
+	}
+
+	// Create task
+	task := &models.Task{
+		ID:            uuid.New().String(),
+		ShortID:       targetProject.GetNextShortID(),
+		Type:          result.taskType,
+		Title:         result.title,
+		Status:        models.StatusTodo,
+		Priority:      result.priority,
+		Section:       targetSection,
+		CustomSection: customSection,
+		ParentID:      result.parentID,
+		DueDate:       result.dueDate,
+		Recurrence:    result.recurrence,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	for _, tag := range result.tags {
+		task.AddTag(tag)
+	}
+
+	// Apply status transition using Task methods (handles auto-triage)
+	switch result.status {
+	case models.StatusInProgress:
+		task.Start()
+		if result.activate {
+			task.Activate()
+		}
+	case models.StatusBlocked:
+		task.Block()
+	case models.StatusDone:
+		task.Complete()
+	case models.StatusCanceled:
+		task.Cancel()
+	case models.StatusReview:
+		task.Review()
+	}
+
+	// Add to project at the beginning so it's prominently visible
+	targetProject.Tasks = append([]*models.Task{task}, targetProject.Tasks...)
+	targetProject.BuildTaskTree()
+	targetProject.ReorderRootTasksByCompletion()
+
+	// Save with backup and reload
+	if err := saveProjectSync(targetProject); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)} }
+	}
+
+	// Also reload the current project if it's different from the target
+	// (so that the view refreshes correctly)
+	if result.targetProjectID != nil && m.project.ID != *result.targetProjectID {
+		_ = storage.LoadProject(m.project)
+	}
+
+	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter} }
 }
