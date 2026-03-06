@@ -39,7 +39,35 @@ var (
 	ColorSelectedBg  = lipgloss.Color("#4c0163") // Light purple background for selections
 	ColorSelectedFg  = lipgloss.Color("#fbeeff") // Dark purple foreground for selections
 	ColorFlashBg     = lipgloss.Color("#7b2fa0") // Brighter purple for cursor flash highlight
+
+	// TaskCountColorScale is a 10-step gradient from red (low) to green (high).
+	TaskCountColorScale = [10]lipgloss.Color{
+		"196", // Red
+		"202", // Red-orange
+		"208", // Orange
+		"214", // Orange-yellow
+		"220", // Yellow
+		"226", // Yellow-green
+		"154", // Light green
+		"118", // Green
+		"82",  // Bright green
+		"42",  // Full green
+	}
 )
+
+// TaskCountColor maps a value within [min, max] to a color from TaskCountColorScale.
+func TaskCountColor(value, min, max int) lipgloss.Color {
+	if min == max {
+		return TaskCountColorScale[4] // middle color
+	}
+	idx := (value - min) * 9 / (max - min)
+	if idx < 0 {
+		idx = 0
+	} else if idx > 9 {
+		idx = 9
+	}
+	return TaskCountColorScale[idx]
+}
 
 // Base styles
 var (

@@ -372,6 +372,21 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	contentLines = append(contentLines, subtitle)
 	contentLines = append(contentLines, "")
 
+	// Compute min/max task counts for dynamic color scaling
+	minCount, maxCount := 0, 0
+	if len(m.projectCycleItems) > 0 {
+		minCount = m.projectCycleItems[0].TaskCount
+		maxCount = m.projectCycleItems[0].TaskCount
+		for _, item := range m.projectCycleItems[1:] {
+			if item.TaskCount < minCount {
+				minCount = item.TaskCount
+			}
+			if item.TaskCount > maxCount {
+				maxCount = item.TaskCount
+			}
+		}
+	}
+
 	for i, item := range m.projectCycleItems {
 		// Badge
 		var badge string
@@ -395,8 +410,10 @@ func (m *AppModel) renderProjectCyclePopup() string {
 			name = PinnedProjectStyle.Render(name)
 		}
 
-		// Task count (right-aligned)
-		countStr := MutedStyle.Render(fmt.Sprintf("%*d", maxCountWidth, item.TaskCount))
+		// Task count (right-aligned) — colored on a red→green gradient
+		countText := fmt.Sprintf("%*d", maxCountWidth, item.TaskCount)
+		color := TaskCountColor(item.TaskCount, minCount, maxCount)
+		countStr := lipgloss.NewStyle().Foreground(color).Render(countText)
 
 		// Layout: badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count
 		fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
