@@ -71,13 +71,20 @@ func (m *AppModel) View() string {
 		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
 	}
 
+	// Replace base content with task preview when pinned popup is active
+	if m.showPinnedPopup && len(m.pinnedPopupItems) > 0 {
+		if preview := m.renderPinnedPreviewBackground(); preview != "" {
+			content = preview
+		}
+	}
+
 	// Overlay pinned tasks popup if active
 	if popup := m.renderPinnedPopup(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
 		// Overlay prefix hints on top of pinned popup when prefix is pending
 		if m.pinnedPendingPrefix != "" {
 			prefixPopup := RenderPrefixPopup(m.pinnedPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": PriorityPrefixHints}, m.width, targetContentHeight)
-			content = OverlayPopup(content, prefixPopup, m.width, targetContentHeight)
+			content = OverlayPopupBottomLeft(content, prefixPopup, m.width, targetContentHeight)
 		}
 	}
 

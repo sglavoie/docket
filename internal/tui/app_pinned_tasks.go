@@ -197,10 +197,50 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		return m.reorderPinnedTask(1)
 	case "K":
 		return m.reorderPinnedTask(-1)
+	case "ctrl+j":
+		if m.pinnedPreview != nil {
+			visible := m.pinnedPreview.visibleNodes()
+			if m.pinnedPreview.cursor < len(visible)-1 {
+				m.pinnedPreview.cursor++
+			}
+		}
+		return m, nil
+	case "ctrl+k":
+		if m.pinnedPreview != nil {
+			if m.pinnedPreview.cursor > 0 {
+				m.pinnedPreview.cursor--
+			}
+		}
+		return m, nil
+	case "ctrl+h":
+		if m.pinnedPreview != nil {
+			modes := m.pinnedPreview.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.pinnedPreview.viewMode); idx >= 0 {
+				m.pinnedPreview.viewMode = modes[(idx+len(modes)-1)%len(modes)]
+			} else {
+				m.pinnedPreview.viewMode = modes[len(modes)-1]
+			}
+			m.pinnedPreview.updateVisibility()
+			m.pinnedPreview.clampCursor()
+		}
+		return m, nil
+	case "ctrl+l":
+		if m.pinnedPreview != nil {
+			modes := m.pinnedPreview.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.pinnedPreview.viewMode); idx >= 0 {
+				m.pinnedPreview.viewMode = modes[(idx+1)%len(modes)]
+			} else {
+				m.pinnedPreview.viewMode = modes[0]
+			}
+			m.pinnedPreview.updateVisibility()
+			m.pinnedPreview.clampCursor()
+		}
+		return m, nil
 	case "esc", "#":
 		m.showPinnedPopup = false
 		m.pinnedPendingPrefix = ""
 		m.pinnedLastUnpinned = nil
+		m.invalidatePinnedPreview()
 		return m, nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
@@ -208,6 +248,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	default:
 		m.showPinnedPopup = false
 		m.pinnedLastUnpinned = nil
+		m.invalidatePinnedPreview()
 		return m, nil
 	}
 }
@@ -216,10 +257,12 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 func (m *AppModel) pinnedPopupSelect(idx int) (*AppModel, tea.Cmd) {
 	if idx < 0 || idx >= len(m.pinnedPopupItems) {
 		m.showPinnedPopup = false
+		m.invalidatePinnedPreview()
 		return m, nil
 	}
 	entry := m.pinnedPopupItems[idx]
 	m.showPinnedPopup = false
+	m.invalidatePinnedPreview()
 	m.navigateToTaskInProject(entry.Task, entry.Project)
 	return m, nil
 }
@@ -392,7 +435,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	if len(lines) >= 2 {
 		actualWidth := lipgloss.Width(lines[0])
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  r repin  enter select  esc close")
+		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
 

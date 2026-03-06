@@ -218,6 +218,9 @@ type AppModel struct {
 	pinnedPopupItems    []pinnedTaskInfo
 	pinnedPendingPrefix string
 	pinnedLastUnpinned  *pinnedTaskInfo
+	pinnedPreview       *ProjectTreeModel // cached preview tree for highlighted pinned task's project
+	pinnedPreviewID     string            // project ID the preview was built for
+	pinnedPreviewTaskID string            // task ID the preview cursor was set for
 
 	// Project cycle popup state
 	showProjectCycle      bool
