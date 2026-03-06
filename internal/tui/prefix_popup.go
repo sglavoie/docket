@@ -300,6 +300,53 @@ func OverlayPopup(base, popup string, baseWidth, baseHeight int) string {
 	return strings.Join(baseLines, "\n")
 }
 
+// OverlayPopupBottomLeft places a popup string on top of base content at bottom-left.
+// Same as OverlayPopup but left-aligned with a 1-column margin instead of centered.
+func OverlayPopupBottomLeft(base, popup string, baseWidth, baseHeight int) string {
+	if popup == "" {
+		return base
+	}
+
+	baseLines := strings.Split(base, "\n")
+	popupLines := strings.Split(popup, "\n")
+
+	popupHeight := len(popupLines)
+	popupWidth := 0
+	for _, line := range popupLines {
+		w := lipgloss.Width(line)
+		if w > popupWidth {
+			popupWidth = w
+		}
+	}
+
+	// Pad base to baseHeight lines
+	for len(baseLines) < baseHeight {
+		baseLines = append(baseLines, "")
+	}
+
+	// Position: bottom-left, 1 line above the bottom
+	startRow := baseHeight - popupHeight - 1
+	if startRow < 0 {
+		startRow = 0
+	}
+	startCol := 1
+
+	// Overlay popup lines onto base lines.
+	for i, popupLine := range popupLines {
+		row := startRow + i
+		if row >= len(baseLines) {
+			break
+		}
+		lineWidth := lipgloss.Width(popupLine)
+		if lineWidth < popupWidth {
+			popupLine += strings.Repeat(" ", popupWidth-lineWidth)
+		}
+		baseLines[row] = overlayLineAt(baseLines[row], popupLine, startCol, baseWidth)
+	}
+
+	return strings.Join(baseLines, "\n")
+}
+
 // overlayLineAt places overlayStr on top of baseLine starting at column startCol.
 func overlayLineAt(baseLine, overlayStr string, startCol, totalWidth int) string {
 	// Ensure base is at least totalWidth wide

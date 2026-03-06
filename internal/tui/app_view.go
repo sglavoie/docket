@@ -16,6 +16,13 @@ func (m *AppModel) View() string {
 		content = "Unknown view"
 	}
 
+	// Replace base content with task preview when cycle overlay is active
+	if m.showProjectCycle && len(m.projectCycleItems) > 0 {
+		if preview := m.renderCyclePreviewBackground(); preview != "" {
+			content = preview
+		}
+	}
+
 	// Overlay alert indicator on the first row of main views
 	if m.shouldShowAlertIndicator() {
 		indicator := renderAlertIndicator(m.alertCount())
@@ -59,9 +66,9 @@ func (m *AppModel) View() string {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
 	}
 
-	// Overlay project cycle popup if active
+	// Overlay project cycle popup if active (bottom-left to avoid covering sidebar)
 	if popup := m.renderProjectCyclePopup(); popup != "" {
-		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		content = OverlayPopupBottomLeft(content, popup, m.width, targetContentHeight)
 	}
 
 	// Overlay pinned tasks popup if active

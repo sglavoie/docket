@@ -317,6 +317,9 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 			v.SetSize(msg.Width, msg.Height)
 		}
 	}
+	if m.projectCyclePreview != nil {
+		m.projectCyclePreview.SetSize(msg.Width, msg.Height-2)
+	}
 }
 
 // delegateToCurrentView forwards messages to the active view model.

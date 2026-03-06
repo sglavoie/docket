@@ -85,6 +85,8 @@ func (m *AppModel) sortCycleItemsSelectedFirst() {
 // closeProjectCyclePopup closes the popup and does cleanup.
 func (m *AppModel) closeProjectCyclePopup() {
 	m.showProjectCycle = false
+	m.projectCycleScroll = 0
+	m.invalidateCyclePreview()
 	if m.projectTree != nil {
 		m.projectTree.buildTree()
 	}
@@ -115,12 +117,14 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	case "j", "down":
 		if m.projectCycleCursor < len(m.projectCycleItems)-1 {
 			m.projectCycleCursor++
+			m.adjustCycleScroll()
 		}
 		return m, nil
 
 	case "k", "up":
 		if m.projectCycleCursor > 0 {
 			m.projectCycleCursor--
+			m.adjustCycleScroll()
 		}
 		return m, nil
 
@@ -202,6 +206,53 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		_ = m.configManager.Save(m.config)
 		return m, nil
 
+	case "ctrl+j":
+		// Scroll preview background down
+		if m.projectCyclePreview != nil {
+			visible := m.projectCyclePreview.visibleNodes()
+			if m.projectCyclePreview.cursor < len(visible)-1 {
+				m.projectCyclePreview.cursor++
+			}
+		}
+		return m, nil
+
+	case "ctrl+k":
+		// Scroll preview background up
+		if m.projectCyclePreview != nil {
+			if m.projectCyclePreview.cursor > 0 {
+				m.projectCyclePreview.cursor--
+			}
+		}
+		return m, nil
+
+	case "ctrl+h":
+		// Cycle preview section backward (like h in project tree)
+		if m.projectCyclePreview != nil {
+			modes := m.projectCyclePreview.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.projectCyclePreview.viewMode); idx >= 0 {
+				m.projectCyclePreview.viewMode = modes[(idx+len(modes)-1)%len(modes)]
+			} else {
+				m.projectCyclePreview.viewMode = modes[len(modes)-1]
+			}
+			m.projectCyclePreview.updateVisibility()
+			m.projectCyclePreview.clampCursor()
+		}
+		return m, nil
+
+	case "ctrl+l":
+		// Cycle preview section forward (like l in project tree)
+		if m.projectCyclePreview != nil {
+			modes := m.projectCyclePreview.cyclableViewModes()
+			if idx := viewModeIndex(modes, m.projectCyclePreview.viewMode); idx >= 0 {
+				m.projectCyclePreview.viewMode = modes[(idx+1)%len(modes)]
+			} else {
+				m.projectCyclePreview.viewMode = modes[0]
+			}
+			m.projectCyclePreview.updateVisibility()
+			m.projectCyclePreview.clampCursor()
+		}
+		return m, nil
+
 	case "esc", "@":
 		m.closeProjectCyclePopup()
 		return m, nil
@@ -210,6 +261,32 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		// Close popup and let the key pass through
 		m.closeProjectCyclePopup()
 		return m, nil
+	}
+}
+
+// cycleMaxVisibleItems returns the maximum number of project items visible
+// in the cycle popup viewport, based on terminal height.
+func (m *AppModel) cycleMaxVisibleItems() int {
+	// Leave room for border (2), subtitle (1), blank line (1), footer (1), margin (3)
+	max := m.height - 8
+	if max < 3 {
+		max = 3
+	}
+	return max
+}
+
+// adjustCycleScroll ensures projectCycleScroll keeps the cursor visible.
+func (m *AppModel) adjustCycleScroll() {
+	maxVisible := m.cycleMaxVisibleItems()
+	if len(m.projectCycleItems) <= maxVisible {
+		m.projectCycleScroll = 0
+		return
+	}
+	if m.projectCycleCursor < m.projectCycleScroll {
+		m.projectCycleScroll = m.projectCycleCursor
+	}
+	if m.projectCycleCursor >= m.projectCycleScroll+maxVisible {
+		m.projectCycleScroll = m.projectCycleCursor - maxVisible + 1
 	}
 }
 
@@ -279,6 +356,11 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	}
 	if popupWidth > 60 {
 		popupWidth = 60
+	}
+	// Constrain to tree area width so popup doesn't cover the sidebar
+	treeWidth := (m.width * 55) / 100
+	if maxTreePopup := treeWidth - 2; popupWidth > maxTreePopup && maxTreePopup > minWidth {
+		popupWidth = maxTreePopup
 	}
 	if popupWidth > m.width-4 {
 		popupWidth = m.width - 4
@@ -350,6 +432,29 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		}
 
 		contentLines = append(contentLines, line)
+	}
+
+	// Apply viewport scrolling if there are more items than fit
+	maxVisible := m.cycleMaxVisibleItems()
+	itemCount := len(m.projectCycleItems)
+	if itemCount > maxVisible {
+		// contentLines has 2 header lines (subtitle + blank), then item lines
+		headerLines := contentLines[:2]
+		itemLines := contentLines[2:]
+		end := m.projectCycleScroll + maxVisible
+		if end > len(itemLines) {
+			end = len(itemLines)
+		}
+		visibleItems := itemLines[m.projectCycleScroll:end]
+		contentLines = append(headerLines, visibleItems...)
+		// Add scroll indicators
+		if m.projectCycleScroll > 0 {
+			contentLines = append(contentLines, MutedStyle.Render(fmt.Sprintf("  ↑ %d more above", m.projectCycleScroll)))
+		}
+		below := itemCount - end
+		if below > 0 {
+			contentLines = append(contentLines, MutedStyle.Render(fmt.Sprintf("  ↓ %d more below", below)))
+		}
 	}
 
 	content := strings.Join(contentLines, "\n")

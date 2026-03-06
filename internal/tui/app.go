@@ -220,9 +220,12 @@ type AppModel struct {
 	pinnedLastUnpinned  *pinnedTaskInfo
 
 	// Project cycle popup state
-	showProjectCycle   bool
-	projectCycleCursor int
-	projectCycleItems  []ProjectInfo
+	showProjectCycle      bool
+	projectCycleCursor    int
+	projectCycleScroll    int // scroll offset for cycle popup viewport
+	projectCycleItems     []ProjectInfo
+	projectCyclePreview   *ProjectTreeModel // cached preview tree for highlighted project
+	projectCyclePreviewID string            // project ID the preview was built for
 
 	// Last project-level view used (ProjectTree, Outliner) for cycle preservation
 	lastProjectView ViewType

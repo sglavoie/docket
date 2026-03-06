@@ -18,7 +18,16 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},
 		Keybinding{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling", Views: views},
-		Keybinding{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@", Description: "Open cycle manager", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ j/k", Description: "Move cursor in popup", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ space", Description: "Toggle cycle membership", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ 1-9", Description: "Jump to project by number", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ enter/g", Description: "Navigate to project", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ p", Description: "Toggle pin on project", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ c/C", Description: "Switch / clear context filter", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ u", Description: "Clear all cycle selections", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ ctrl+j/k", Description: "Scroll preview tree", Category: "Project Cycling", Views: views},
+		Keybinding{Key: "@ ctrl+h/l", Description: "Cycle preview section", Category: "Project Cycling", Views: views},
 
 		// Filters
 		Keybinding{Key: "C", Description: "Filter by context", Category: "Filters", Views: views},

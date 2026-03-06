@@ -203,7 +203,16 @@ func projectCyclingBindings() []Keybinding {
 	return []Keybinding{
 		{Key: "`", Description: "Next project in cycle", Category: "Project Cycling"},
 		{Key: "~", Description: "Previous project in cycle", Category: "Project Cycling"},
-		{Key: "@", Description: "Configure project cycle, jump to project", Category: "Project Cycling"},
+		{Key: "@", Description: "Open cycle manager", Category: "Project Cycling"},
+		{Key: "@ j/k", Description: "Move cursor in popup", Category: "Project Cycling"},
+		{Key: "@ space", Description: "Toggle cycle membership", Category: "Project Cycling"},
+		{Key: "@ 1-9", Description: "Jump to project by number", Category: "Project Cycling"},
+		{Key: "@ enter/g", Description: "Navigate to project", Category: "Project Cycling"},
+		{Key: "@ p", Description: "Toggle pin on project", Category: "Project Cycling"},
+		{Key: "@ c/C", Description: "Switch / clear context filter", Category: "Project Cycling"},
+		{Key: "@ u", Description: "Clear all cycle selections", Category: "Project Cycling"},
+		{Key: "@ ctrl+j/k", Description: "Scroll preview tree", Category: "Project Cycling"},
+		{Key: "@ ctrl+h/l", Description: "Cycle preview section", Category: "Project Cycling"},
 	}
 }
 
