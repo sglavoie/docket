@@ -19,8 +19,10 @@ type LinkedTaskCreatorModel struct {
 	quickCaptureInput
 	sourceTask *models.Task
 	linkType   LinkType
-	width      int
-	height     int
+	width          int
+	height         int
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewLinkedTaskCreatorModel creates a new linked task creator.
@@ -50,6 +52,21 @@ func (m *LinkedTaskCreatorModel) Init() tea.Cmd {
 }
 
 func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return BackMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		key := msg.String()
@@ -61,6 +78,10 @@ func (m *LinkedTaskCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch key {
 		case "esc":
+			if strings.TrimSpace(m.inputValue()) != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":
@@ -131,9 +152,19 @@ func (m *LinkedTaskCreatorModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the global handler closes the view on Esc.
+// ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *LinkedTaskCreatorModel) ShouldCaptureEsc() bool {
-	return false
+	return true
+}
+
+// GetConfirmDialog returns the confirm dialog for overlay rendering.
+func (m *LinkedTaskCreatorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 func (m *LinkedTaskCreatorModel) IsFullHeight() bool { return false }

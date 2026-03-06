@@ -13,12 +13,15 @@ import (
 
 // SnoozeInputModel handles setting a snooze date for a task.
 type SnoozeInputModel struct {
-	task    *models.Task
-	project *models.Project
-	input   textinput.Model
-	err     error
-	width   int
-	height  int
+	task           *models.Task
+	project        *models.Project
+	input          textinput.Model
+	err            error
+	width          int
+	height         int
+	initialValue   string
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewSnoozeInputModel creates a new snooze input model.
@@ -35,9 +38,10 @@ func NewSnoozeInputModel(task *models.Task, project *models.Project) *SnoozeInpu
 	}
 
 	return &SnoozeInputModel{
-		task:    task,
-		project: project,
-		input:   input,
+		task:         task,
+		project:      project,
+		input:        input,
+		initialValue: input.Value(),
 	}
 }
 
@@ -53,10 +57,28 @@ func (m *SnoozeInputModel) Init() tea.Cmd {
 }
 
 func (m *SnoozeInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return BackMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if m.input.Value() != m.initialValue {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg { return BackMsg{} }
 
 		case "enter":
@@ -153,6 +175,15 @@ func (m *SnoozeInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SnoozeInputModel) ShouldCaptureEsc() bool { return true }
+
+func (m *SnoozeInputModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *SnoozeInputModel) IsFullHeight() bool { return false }
 

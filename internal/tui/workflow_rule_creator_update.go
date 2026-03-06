@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/workflow"
@@ -59,6 +61,23 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg {
+					return BackMsg{}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -66,6 +85,29 @@ func (m *WorkflowRuleCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// If showing preview on narrow screen, go back to editor
 			if m.previewShown && !m.isWideScreen() {
 				m.previewShown = false
+				return m, nil
+			}
+			// Check if form has content
+			hasContent := strings.TrimSpace(m.nameInput.Value()) != "" || len(m.triggers) > 1 || len(m.actions) > 1
+			if !hasContent {
+				// Check if the single trigger or action has a value filled in
+				for _, t := range m.triggers {
+					if strings.TrimSpace(t.valueInput.Value()) != "" {
+						hasContent = true
+						break
+					}
+				}
+				if !hasContent {
+					for _, a := range m.actions {
+						if strings.TrimSpace(a.valueInput.Value()) != "" {
+							hasContent = true
+							break
+						}
+					}
+				}
+			}
+			if hasContent {
+				m.confirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg {

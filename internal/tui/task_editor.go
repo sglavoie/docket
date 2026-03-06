@@ -107,6 +107,9 @@ type TaskEditorModel struct {
 	err        error
 	hasChanges bool
 
+	// Discard confirmation state
+	confirmDiscard bool
+
 	// Overlay for floating confirm rendering
 	confirmOverlay ConfirmDialog
 }
@@ -313,6 +316,21 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle discard confirmation
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg {
+					return BackMsg{}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle type change confirmation
 		if m.confirmTypeChange {
 			switch msg.String() {
@@ -332,6 +350,10 @@ func (m *TaskEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.String() {
 		case "esc":
+			if m.checkChanges() {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
@@ -743,15 +765,17 @@ func (m *TaskEditorModel) HasTextInput() bool {
 func (m *TaskEditorModel) GetConfirmDialog() *ConfirmDialog {
 	if m.confirmTypeChange {
 		m.confirmOverlay.Show("type-change", fmt.Sprintf("Changing type will clear %s attributes. Continue?", m.taskType.HeadingPrefix()))
+	} else if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
 	} else {
 		m.confirmOverlay.Cancel()
 	}
 	return &m.confirmOverlay
 }
 
-// ShouldCaptureEsc returns true when confirmation is active.
+// ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *TaskEditorModel) ShouldCaptureEsc() bool {
-	return m.confirmTypeChange
+	return true
 }
 
 func (m *TaskEditorModel) IsFullHeight() bool { return false }

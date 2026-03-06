@@ -107,9 +107,21 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirm.IsActive() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
+			action := m.confirm.Action()
 			if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 				if confirmed {
-					return m, m.executeDelete()
+					switch action {
+					case "delete":
+						return m, m.executeDelete()
+					case "discard-add":
+						m.addMode = false
+						m.textInput.Reset()
+						return m, nil
+					case "discard-edit":
+						m.editMode = false
+						m.editTextInput.Reset()
+						return m, nil
+					}
 				}
 				m.ClearError()
 				return m, nil
@@ -124,6 +136,10 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc":
+				if m.cursor < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Comments[m.editIndex].Text {
+					m.confirm.Show("discard-edit", "Discard changes?")
+					return m, nil
+				}
 				m.editMode = false
 				m.editTextInput.Reset()
 				return m, nil
@@ -143,6 +159,10 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc":
+				if strings.TrimSpace(m.textInput.Value()) != "" {
+					m.confirm.Show("discard-add", "Discard comment?")
+					return m, nil
+				}
 				m.addMode = false
 				m.textInput.Reset()
 				return m, nil

@@ -28,6 +28,10 @@ type ProjectCreatorModel struct {
 	height     int
 
 	canceled bool
+
+	// Discard confirmation state
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewProjectCreatorModel creates a new project creator.
@@ -78,10 +82,32 @@ func (m *ProjectCreatorModel) Init() tea.Cmd {
 func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				m.canceled = true
+				return m, func() tea.Msg {
+					return BackMsg{}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if strings.TrimSpace(m.nameInput.Value()) != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			m.canceled = true
 			return m, func() tea.Msg {
 				return BackMsg{}
@@ -250,4 +276,14 @@ func (m *ProjectCreatorModel) View() string {
 func (m *ProjectCreatorModel) HasTextInput() bool     { return true }
 func (m *ProjectCreatorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectCreatorModel) IsFullHeight() bool     { return false }
+
+// GetConfirmDialog returns the confirm dialog for overlay rendering.
+func (m *ProjectCreatorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 func (m *ProjectCreatorModel) StatusBarLabel() string { return "New Project" }

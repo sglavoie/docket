@@ -11,12 +11,14 @@ import (
 
 // SaveViewInputModel handles naming a saved view.
 type SaveViewInputModel struct {
-	summary  string // Summary of active filters being saved
-	input    textinput.Model
-	err      string
-	width    int
-	height   int
-	canceled bool
+	summary        string // Summary of active filters being saved
+	input          textinput.Model
+	err            string
+	width          int
+	height         int
+	canceled       bool
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewSaveViewInputModel creates a new save view input model.
@@ -45,10 +47,28 @@ func (m *SaveViewInputModel) Init() tea.Cmd {
 }
 
 func (m *SaveViewInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return BackMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if strings.TrimSpace(m.input.Value()) != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			m.canceled = true
 			return m, func() tea.Msg { return BackMsg{} }
 
@@ -105,6 +125,15 @@ func (m *SaveViewInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *SaveViewInputModel) ShouldCaptureEsc() bool { return true }
+
+func (m *SaveViewInputModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *SaveViewInputModel) IsFullHeight() bool { return false }
 

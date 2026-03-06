@@ -32,6 +32,8 @@ type ContextPickerModel struct {
 	renameMode          bool           // True when renaming a context
 	renameInput         textinput.Model
 	renameOldName       string // The context name being renamed
+	confirmDiscard      bool
+	confirmOverlay      ConfirmDialog
 }
 
 // ShowContextPickerMsg is sent to open the context picker.
@@ -188,10 +190,29 @@ func (m *ContextPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle discard confirmation for rename mode
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				m.renameMode = false
+				m.renameOldName = ""
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle rename mode input
 		if m.renameMode {
 			switch msg.String() {
 			case "esc":
+				if strings.TrimSpace(m.renameInput.Value()) != m.renameOldName {
+					m.confirmDiscard = true
+					return m, nil
+				}
 				m.renameMode = false
 				m.renameOldName = ""
 				return m, nil
@@ -500,7 +521,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 
 // ShouldCaptureEsc returns true when in rename mode or delete confirmation.
 func (m *ContextPickerModel) ShouldCaptureEsc() bool {
-	return m.renameMode || m.confirm.IsActive()
+	return m.renameMode || m.confirm.IsActive() || m.confirmDiscard
 }
 
 // HasTextInput returns true when in rename mode.
@@ -508,6 +529,13 @@ func (m *ContextPickerModel) HasTextInput() bool {
 	return m.renameMode
 }
 
-func (m *ContextPickerModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
+func (m *ContextPickerModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+		return &m.confirmOverlay
+	}
+	m.confirmOverlay.Cancel()
+	return &m.confirm
+}
 
 func (m *ContextPickerModel) StatusBarLabel() string { return "Filter by Context" }

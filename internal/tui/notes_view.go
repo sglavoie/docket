@@ -74,8 +74,10 @@ type NotesViewModel struct {
 	sortMode noteSortMode
 
 	// Rename state
-	renaming    bool
-	renameInput textinput.Model
+	renaming       bool
+	renameInput    textinput.Model
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 
 	// Fullscreen pane toggle
 	fullscreenPane bool
@@ -307,7 +309,14 @@ type GlobalNoteMoveCompleteMsg struct {
 	ProjectName string
 }
 
-func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog { return &m.confirm }
+func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+		return &m.confirmOverlay
+	}
+	m.confirmOverlay.Cancel()
+	return &m.confirm
+}
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *NotesViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {

@@ -16,9 +16,11 @@ import (
 // QuickCaptureModel handles rapid task creation with inline metadata parsing.
 type QuickCaptureModel struct {
 	quickCaptureInput
-	width        int
-	height       int
-	helpExpanded bool
+	width          int
+	height         int
+	helpExpanded   bool
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewQuickCaptureModel creates a new quick capture model.
@@ -47,6 +49,21 @@ func (m *QuickCaptureModel) Init() tea.Cmd {
 }
 
 func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return CloseQuickCaptureMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		key := msg.String()
@@ -65,6 +82,10 @@ func (m *QuickCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Regular key handling
 		switch key {
 		case "esc":
+			if strings.TrimSpace(m.inputValue()) != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg { return CloseQuickCaptureMsg{} }
 
 		case "enter":
@@ -136,9 +157,19 @@ func (m *QuickCaptureModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the global handler closes the view on Esc.
+// ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *QuickCaptureModel) ShouldCaptureEsc() bool {
-	return false
+	return true
+}
+
+// GetConfirmDialog returns the confirm dialog for overlay rendering.
+func (m *QuickCaptureModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 func (m *QuickCaptureModel) IsFullHeight() bool { return false }

@@ -40,6 +40,10 @@ type GlobalTagManagerModel struct {
 	renameTarget string
 	errorMsg     string
 
+	// Discard confirmation state
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
+
 	// Project picker state
 	showProjectPicker bool
 	projectCursor     int
@@ -231,6 +235,22 @@ func (m *GlobalTagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		// Handle discard confirmation
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				m.renameMode = false
+				m.renameTarget = ""
+				m.renameInput.SetValue("")
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		m.errorMsg = ""
 
 		if m.renameMode {
@@ -310,6 +330,10 @@ func (m *GlobalTagManagerModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea
 func (m *GlobalTagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		if strings.TrimSpace(m.renameInput.Value()) != m.renameTarget {
+			m.confirmDiscard = true
+			return m, nil
+		}
 		m.renameMode = false
 		m.renameTarget = ""
 		m.renameInput.SetValue("")
@@ -484,7 +508,16 @@ func (m *GlobalTagManagerModel) renderProjectPicker() string {
 }
 
 func (m *GlobalTagManagerModel) HasTextInput() bool     { return m.renameMode }
-func (m *GlobalTagManagerModel) ShouldCaptureEsc() bool { return m.renameMode }
+func (m *GlobalTagManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.confirmDiscard }
 func (m *GlobalTagManagerModel) IsFullHeight() bool     { return false }
+
+func (m *GlobalTagManagerModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *GlobalTagManagerModel) StatusBarLabel() string { return "Global Tags" }

@@ -15,21 +15,24 @@ import (
 
 // SectionManagerModel is the model for the section management view.
 type SectionManagerModel struct {
-	projectTree   *ProjectTreeModel
-	project       *models.Project // Used directly when projectTree is nil
-	config        *config.Config
-	configManager *config.Manager
-	sections      []SectionInfo
-	cursor        int
-	width         int
-	height        int
-	renameMode    bool
-	renameInput   textinput.Model
-	addMode       bool
-	addInput      textinput.Model
-	errorMsg      string
-	colorPickMode bool
-	colorCursor   int // Index in SectionColorPalette
+	projectTree    *ProjectTreeModel
+	project        *models.Project // Used directly when projectTree is nil
+	config         *config.Config
+	configManager  *config.Manager
+	sections       []SectionInfo
+	cursor         int
+	width          int
+	height         int
+	renameMode     bool
+	renameInput    textinput.Model
+	addMode        bool
+	addInput       textinput.Model
+	errorMsg       string
+	colorPickMode  bool
+	colorCursor    int // Index in SectionColorPalette
+	confirmDiscard bool
+	confirmAction  string
+	confirmOverlay ConfirmDialog
 }
 
 // ShowSectionManagerMsg is sent to open the section manager view.
@@ -337,6 +340,29 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle discard confirmation
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				switch m.confirmAction {
+				case "discard-rename":
+					m.renameMode = false
+					m.renameInput.SetValue("")
+				case "discard-add":
+					m.addMode = false
+					m.addInput.SetValue("")
+				}
+				m.confirmAction = ""
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				m.confirmAction = ""
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Clear error on any key press
 		m.errorMsg = ""
 
@@ -439,6 +465,11 @@ func (m *SectionManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *SectionManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		if m.cursor < len(m.sections) && strings.TrimSpace(m.renameInput.Value()) != m.sections[m.cursor].Name {
+			m.confirmDiscard = true
+			m.confirmAction = "discard-rename"
+			return m, nil
+		}
 		m.renameMode = false
 		m.renameInput.SetValue("")
 		return m, nil
@@ -466,6 +497,11 @@ func (m *SectionManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.C
 func (m *SectionManagerModel) handleAddMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		if strings.TrimSpace(m.addInput.Value()) != "" {
+			m.confirmDiscard = true
+			m.confirmAction = "discard-add"
+			return m, nil
+		}
 		m.addMode = false
 		m.addInput.SetValue("")
 		return m, nil
@@ -638,7 +674,16 @@ func (m *SectionManagerModel) View() string {
 }
 
 func (m *SectionManagerModel) HasTextInput() bool     { return m.renameMode || m.addMode }
-func (m *SectionManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addMode }
+func (m *SectionManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addMode || m.confirmDiscard }
 func (m *SectionManagerModel) IsFullHeight() bool     { return false }
+
+func (m *SectionManagerModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *SectionManagerModel) StatusBarLabel() string { return "Custom Section Manager" }

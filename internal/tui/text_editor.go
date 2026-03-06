@@ -17,6 +17,10 @@ type TextEditorModel struct {
 	initialValue string // for cancel restoration
 	width        int
 	height       int
+
+	// Discard confirmation state
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewTextEditorModel creates a new text editor popup.
@@ -50,6 +54,27 @@ func (m *TextEditorModel) Init() tea.Cmd {
 }
 
 func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg {
+					return TextEditorDoneMsg{
+						FieldName: m.fieldName,
+						Value:     m.initialValue,
+						Canceled:  true,
+					}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case TextEditorExternalDoneMsg:
 		// External editor finished - update textarea with result
@@ -61,7 +86,11 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			// Cancel - restore original value
+			// Show confirmation if content changed from initial value
+			if m.textarea.Value() != m.initialValue {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return TextEditorDoneMsg{
 					FieldName: m.fieldName,
@@ -129,6 +158,16 @@ func (m *TextEditorModel) HasTextInput() bool {
 }
 
 func (m *TextEditorModel) ShouldCaptureEsc() bool { return true }
+
+// GetConfirmDialog returns the confirm dialog for overlay rendering.
+func (m *TextEditorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 func (m *TextEditorModel) IsFullHeight() bool     { return false }
 
 // ShowTextEditorMsg triggers showing the text editor popup.

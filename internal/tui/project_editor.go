@@ -39,6 +39,10 @@ type ProjectEditorModel struct {
 	height     int
 	err        error
 	hasChanges bool
+
+	// Discard confirmation state
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewProjectEditorModel creates a new project editor.
@@ -117,10 +121,31 @@ func (m *ProjectEditorModel) Init() tea.Cmd {
 func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg {
+					return BackMsg{}
+				}
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if m.checkChanges() {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
@@ -349,4 +374,14 @@ func (m *ProjectEditorModel) View() string {
 func (m *ProjectEditorModel) HasTextInput() bool     { return true }
 func (m *ProjectEditorModel) ShouldCaptureEsc() bool { return true }
 func (m *ProjectEditorModel) IsFullHeight() bool     { return false }
+
+// GetConfirmDialog returns the confirm dialog for overlay rendering.
+func (m *ProjectEditorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 func (m *ProjectEditorModel) StatusBarLabel() string { return "Edit Project" }

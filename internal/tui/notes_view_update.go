@@ -20,6 +20,21 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		key := msg.String()
 
+		// Handle discard confirmation for rename mode
+		if m.confirmDiscard {
+			switch key {
+			case "y", "Y":
+				m.confirmDiscard = false
+				m.renaming = false
+				m.statusMessage = "Rename canceled"
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle rename input mode
 		if m.renaming {
 			return m.handleRenameKey(msg)
@@ -220,7 +235,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ShouldCaptureEsc returns true when delete confirmation or multi-select is active.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.detailsPane.Focused || m.multiSelectMode || m.renaming || m.fullscreenPane
+	return m.confirm.IsActive() || m.detailsPane.Focused || m.multiSelectMode || m.renaming || m.fullscreenPane || m.confirmDiscard
 }
 
 // HasTextInput returns false since search is now a separate view.
@@ -281,6 +296,10 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.renaming = false
 		return m, func() tea.Msg { return NotesRefreshMsg{} }
 	case "esc":
+		if m.cursor < len(m.notes) && strings.TrimSpace(m.renameInput.Value()) != m.notes[m.cursor].Title {
+			m.confirmDiscard = true
+			return m, nil
+		}
 		m.renaming = false
 		m.statusMessage = "Rename canceled"
 		return m, nil

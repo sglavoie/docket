@@ -20,8 +20,10 @@ type BulkCaptureModel struct {
 	input   textarea.Model
 	errors  []lineError
 	created int
-	width   int
-	height  int
+	width          int
+	height         int
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // lineError represents a parsing error for a specific line.
@@ -60,10 +62,29 @@ func (m *BulkCaptureModel) Init() tea.Cmd {
 }
 
 func (m *BulkCaptureModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle discard confirmation
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return CloseBulkCaptureMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if strings.TrimSpace(m.input.Value()) != "" {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			return m, func() tea.Msg { return CloseBulkCaptureMsg{} }
 
 		case "ctrl+s":
@@ -117,9 +138,19 @@ func (m *BulkCaptureModel) HasTextInput() bool {
 	return true
 }
 
-// ShouldCaptureEsc returns false so the global handler closes the view on Esc.
+// ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *BulkCaptureModel) ShouldCaptureEsc() bool {
-	return false
+	return true
+}
+
+// GetConfirmDialog returns the confirm dialog for the discard overlay.
+func (m *BulkCaptureModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 func (m *BulkCaptureModel) IsFullHeight() bool { return false }

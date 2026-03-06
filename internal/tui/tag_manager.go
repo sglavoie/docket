@@ -19,18 +19,21 @@ type TagInfo struct {
 
 // TagManagerModel is the model for the tag management view.
 type TagManagerModel struct {
-	projectTree  *ProjectTreeModel
-	project      *models.Project // Used directly when projectTree is nil
-	tags         []TagInfo
-	cursor       int
-	width        int
-	height       int
-	renameMode   bool
-	renameInput  textinput.Model
-	renameTarget string
-	addTagMode   bool
-	addTagInput  textinput.Model
-	errorMsg     string
+	projectTree    *ProjectTreeModel
+	project        *models.Project // Used directly when projectTree is nil
+	tags           []TagInfo
+	cursor         int
+	width          int
+	height         int
+	renameMode     bool
+	renameInput    textinput.Model
+	renameTarget   string
+	addTagMode     bool
+	addTagInput    textinput.Model
+	errorMsg       string
+	confirmDiscard bool
+	confirmAction  string
+	confirmOverlay ConfirmDialog
 }
 
 // ShowTagManagerMsg is sent to open the tag manager view.
@@ -176,6 +179,31 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		// Handle discard confirmation
+		if m.confirmDiscard {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				switch m.confirmAction {
+				case "discard-rename":
+					m.renameMode = false
+					m.renameTarget = ""
+					m.renameInput.SetValue("")
+				case "discard-add":
+					m.addTagMode = false
+					m.addTagInput.SetValue("")
+					m.addTagInput.Blur()
+				}
+				m.confirmAction = ""
+				return m, nil
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				m.confirmAction = ""
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Clear error on any key press
 		m.errorMsg = ""
 
@@ -255,6 +283,11 @@ func (m *TagManagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		if strings.TrimSpace(m.renameInput.Value()) != m.renameTarget {
+			m.confirmDiscard = true
+			m.confirmAction = "discard-rename"
+			return m, nil
+		}
 		m.renameMode = false
 		m.renameTarget = ""
 		m.renameInput.SetValue("")
@@ -281,6 +314,11 @@ func (m *TagManagerModel) handleRenameMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 func (m *TagManagerModel) handleAddTagMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
+		if strings.TrimSpace(m.addTagInput.Value()) != "" {
+			m.confirmDiscard = true
+			m.confirmAction = "discard-add"
+			return m, nil
+		}
 		m.addTagMode = false
 		m.addTagInput.SetValue("")
 		m.addTagInput.Blur()
@@ -407,7 +445,16 @@ func (m *TagManagerModel) View() string {
 }
 
 func (m *TagManagerModel) HasTextInput() bool     { return m.renameMode || m.addTagMode }
-func (m *TagManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addTagMode }
+func (m *TagManagerModel) ShouldCaptureEsc() bool { return m.renameMode || m.addTagMode || m.confirmDiscard }
 func (m *TagManagerModel) IsFullHeight() bool     { return false }
+
+func (m *TagManagerModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *TagManagerModel) StatusBarLabel() string { return "Tag Manager" }

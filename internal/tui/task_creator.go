@@ -336,9 +336,9 @@ func (m *TaskCreatorModel) GetConfirmDialog() *ConfirmDialog {
 	return &m.confirmOverlay
 }
 
-// ShouldCaptureEsc returns true when confirmation is active.
+// ShouldCaptureEsc returns true so the view always handles Esc internally.
 func (m *TaskCreatorModel) ShouldCaptureEsc() bool {
-	return m.confirmDiscard || m.confirmTypeChange
+	return true
 }
 
 func (m *TaskCreatorModel) IsFullHeight() bool { return false }

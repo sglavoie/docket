@@ -78,6 +78,10 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, m.executeDelete()
 					case "unlink":
 						return m, m.executeKeep()
+					case "discard-add":
+						m.addMode = false
+						m.textInput.Reset()
+						return m, nil
 					}
 				}
 				m.ClearError()
@@ -93,6 +97,10 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc":
+				if strings.TrimSpace(m.textInput.Value()) != "" {
+					m.confirm.Show("discard-add", "Discard attachment?")
+					return m, nil
+				}
 				m.addMode = false
 				m.textInput.Reset()
 				return m, nil

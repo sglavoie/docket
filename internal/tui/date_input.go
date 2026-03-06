@@ -14,13 +14,16 @@ import (
 
 // DateInputModel handles setting a due date for a task.
 type DateInputModel struct {
-	task     *models.Task
-	project  *models.Project
-	input    textinput.Model
-	err      error
-	width    int
-	height   int
-	canceled bool
+	task           *models.Task
+	project        *models.Project
+	input          textinput.Model
+	err            error
+	width          int
+	height         int
+	canceled       bool
+	initialValue   string
+	confirmDiscard bool
+	confirmOverlay ConfirmDialog
 }
 
 // NewDateInputModel creates a new date input model.
@@ -37,9 +40,10 @@ func NewDateInputModel(task *models.Task, project *models.Project) *DateInputMod
 	}
 
 	return &DateInputModel{
-		task:    task,
-		project: project,
-		input:   input,
+		task:         task,
+		project:      project,
+		input:        input,
+		initialValue: input.Value(),
 	}
 }
 
@@ -55,10 +59,28 @@ func (m *DateInputModel) Init() tea.Cmd {
 }
 
 func (m *DateInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return BackMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
+			if m.input.Value() != m.initialValue {
+				m.confirmDiscard = true
+				return m, nil
+			}
 			m.canceled = true
 			return m, func() tea.Msg { return BackMsg{} }
 
@@ -158,6 +180,15 @@ func (m *DateInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
 func (m *DateInputModel) ShouldCaptureEsc() bool { return true }
+
+func (m *DateInputModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
+}
 
 func (m *DateInputModel) IsFullHeight() bool { return false }
 

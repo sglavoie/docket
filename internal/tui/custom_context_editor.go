@@ -33,6 +33,11 @@ type CustomContextEditorModel struct {
 	width  int
 	height int
 	err    error
+
+	// Discard confirmation
+	confirmDiscard     bool
+	confirmOverlay     ConfirmDialog
+	initialSelectedIDs map[string]bool
 }
 
 // CustomContextSavedMsg is sent when a custom context is saved.
@@ -64,16 +69,22 @@ func NewCustomContextEditorModel(cfg *config.Config, editName string) *CustomCon
 		}
 	}
 
+	initialSelectedIDs := make(map[string]bool, len(selectedIDs))
+	for k, v := range selectedIDs {
+		initialSelectedIDs[k] = v
+	}
+
 	return &CustomContextEditorModel{
-		config:       cfg,
-		editMode:     editMode,
-		originalName: editName,
-		nameInput:    nameInput,
-		projects:     projects,
-		selectedIDs:  selectedIDs,
-		cursor:       0,
-		width:        80,
-		height:       24,
+		config:             cfg,
+		editMode:           editMode,
+		originalName:       editName,
+		nameInput:          nameInput,
+		projects:           projects,
+		selectedIDs:        selectedIDs,
+		cursor:             0,
+		width:              80,
+		height:             24,
+		initialSelectedIDs: initialSelectedIDs,
 	}
 }
 
@@ -88,8 +99,37 @@ func (m *CustomContextEditorModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+func (m *CustomContextEditorModel) hasChanges() bool {
+	if strings.TrimSpace(m.nameInput.Value()) != m.originalName {
+		return true
+	}
+	if len(m.selectedIDs) != len(m.initialSelectedIDs) {
+		return true
+	}
+	for k := range m.selectedIDs {
+		if !m.initialSelectedIDs[k] {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
+	if m.confirmDiscard {
+		if msg, ok := msg.(tea.KeyMsg); ok {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirmDiscard = false
+				return m, func() tea.Msg { return BackMsg{} }
+			case "n", "N", "esc":
+				m.confirmDiscard = false
+				return m, nil
+			}
+			return m, nil
+		}
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -103,6 +143,10 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Exit project list mode, go back to name input
 				m.projectListMode = false
 				m.nameInput.Focus()
+				return m, nil
+			}
+			if m.hasChanges() {
+				m.confirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg {
@@ -377,6 +421,15 @@ func (m *CustomContextEditorModel) View() string {
 	b.WriteString(renderStatusBarFooter(footerLeft, footerRight, m.width))
 
 	return b.String()
+}
+
+func (m *CustomContextEditorModel) GetConfirmDialog() *ConfirmDialog {
+	if m.confirmDiscard {
+		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
+	} else {
+		m.confirmOverlay.Cancel()
+	}
+	return &m.confirmOverlay
 }
 
 func (m *CustomContextEditorModel) StatusBarLabel() string { return "Custom Context Editor" }
