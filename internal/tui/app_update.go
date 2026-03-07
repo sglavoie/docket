@@ -78,6 +78,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return ShowAllTasksMsg{} }
 			case "/":
 				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
+			case "W":
+				return m, func() tea.Msg { return ShowWorkflowRulesMsg{} }
 			}
 			return m, nil
 		}

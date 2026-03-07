@@ -56,21 +56,23 @@ func (m *WorkflowDryRunModel) View() string {
 		b.WriteString(DoneStyle.Render(summaryText))
 		b.WriteString("\n\n")
 
+		// Calculate available height for content
+		// Title(1) + blank(1) + search(2 if active) + summary(2) + conflicts(variable) + footer(2) = ~8 lines overhead
+		availableHeight := m.Height() - 8
+		if m.searchActive || m.searchQuery != "" {
+			availableHeight -= 2
+		}
+		if availableHeight < 5 {
+			availableHeight = 5
+		}
+
 		// Wide screen: split layout
 		if m.isWideScreen() {
-			listContent := m.renderTaskList()
+			listContent := m.renderTaskList(availableHeight)
 			detailContent := m.renderDetailPane()
 
 			listWidth := m.Width() * 45 / 100
 			detailWidth := m.Width() - listWidth - 3
-
-			availableHeight := m.Height() - 8
-			if m.searchActive || m.searchQuery != "" {
-				availableHeight -= 2
-			}
-			if availableHeight < 5 {
-				availableHeight = 5
-			}
 
 			listPane := lipgloss.NewStyle().
 				Width(listWidth).
@@ -87,7 +89,7 @@ func (m *WorkflowDryRunModel) View() string {
 			b.WriteString(mainContent)
 		} else {
 			// Narrow screen: list with inline details
-			b.WriteString(m.renderTaskListWithDetails())
+			b.WriteString(m.renderTaskListWithDetails(availableHeight))
 		}
 	}
 
@@ -113,7 +115,7 @@ func (m *WorkflowDryRunModel) View() string {
 }
 
 // renderTaskList renders the scrollable task list for split layout.
-func (m *WorkflowDryRunModel) renderTaskList() string {
+func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 	if len(m.filtered) == 0 {
 		if m.searchQuery != "" {
 			return MutedStyle.Render("No tasks match your search.")
@@ -123,7 +125,7 @@ func (m *WorkflowDryRunModel) renderTaskList() string {
 
 	var b strings.Builder
 
-	maxVisible := m.Height() - 12
+	maxVisible := paneHeight
 	if maxVisible < 3 {
 		maxVisible = 3
 	}
@@ -223,7 +225,7 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 }
 
 // renderTaskListWithDetails renders the task list with inline details for narrow screens.
-func (m *WorkflowDryRunModel) renderTaskListWithDetails() string {
+func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 	if len(m.filtered) == 0 {
 		if m.searchQuery != "" {
 			return MutedStyle.Render("No tasks match your search.")
@@ -234,7 +236,7 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails() string {
 	var b strings.Builder
 	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
 
-	maxVisible := m.Height() - 12
+	maxVisible := paneHeight
 	if maxVisible < 3 {
 		maxVisible = 3
 	}

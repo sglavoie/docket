@@ -52,7 +52,7 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	query := strings.TrimSpace(m.searchInput.Value())
-	if query == "" && !m.hideCompleted {
+	if query == "" && !m.hideCompleted && m.tabs.Active != globalSearchTabNotes {
 		out.WriteString(MutedStyle.Render("Type to search across all tasks..."))
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
@@ -60,7 +60,15 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	if len(m.filtered) == 0 {
-		out.WriteString(MutedStyle.Render(fmt.Sprintf("No tasks match \"%s\".", query)))
+		itemType := "tasks"
+		if m.tabs.Active == globalSearchTabNotes {
+			itemType = "notes"
+		}
+		if query != "" {
+			out.WriteString(MutedStyle.Render(fmt.Sprintf("No %s match \"%s\".", itemType, query)))
+		} else {
+			out.WriteString(MutedStyle.Render(fmt.Sprintf("No %s found.", itemType)))
+		}
 		out.WriteString("\n\n")
 		out.WriteString(m.renderHelpText())
 		return out.String()
@@ -93,7 +101,7 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	// Split pane: list on left, preview on right
-	listContent := m.renderTaskList()
+	listContent := m.renderTaskList(paneHeight)
 	previewContent := m.renderPreview()
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
@@ -188,13 +196,13 @@ func (m *GlobalSearchModel) renderHelpText() string {
 }
 
 // renderTaskList renders the filtered task list.
-func (m *GlobalSearchModel) renderTaskList() string {
+func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 	if len(m.filtered) == 0 {
 		return MutedStyle.Render("No matching tasks.")
 	}
 
 	var b strings.Builder
-	maxVisible := m.Height() - 7 // Account for chrome
+	maxVisible := paneHeight
 
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 

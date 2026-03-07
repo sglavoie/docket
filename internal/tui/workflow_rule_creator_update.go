@@ -597,7 +597,7 @@ func (m *WorkflowRuleCreatorModel) updateScrollForFocus() {
 	}
 
 	// Keep focused item visible with some margin
-	visibleHeight := m.height - 10 // Approximate visible area
+	visibleHeight := m.height - 7 // Match View()'s availableHeight
 	if visibleHeight < 5 {
 		visibleHeight = 5
 	}

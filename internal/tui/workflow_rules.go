@@ -333,28 +333,27 @@ func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
 }
 
 func (m *WorkflowRulesModel) deleteCurrentRule() tea.Cmd {
+	if m.cursor >= len(m.filteredRules) {
+		return nil
+	}
+
+	rule := m.filteredRules[m.cursor]
+	if !m.config.DeleteWorkflowRule(rule.ID) {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("rule not found")} }
+	}
+
+	// Update local copy with sorted rules synchronously to avoid data races
+	defaultRules, customRules := m.config.GetWorkflowRulesSorted()
+	m.allRules = append(defaultRules, customRules...)
+	m.defaultCount = len(defaultRules)
+
+	// Re-filter to update filteredRules
+	m.filterRules()
+
 	return func() tea.Msg {
-		if m.cursor >= len(m.filteredRules) {
-			return nil
-		}
-
-		rule := m.filteredRules[m.cursor]
-		if !m.config.DeleteWorkflowRule(rule.ID) {
-			return ErrorMsg{Err: fmt.Errorf("rule not found")}
-		}
-
-		// Update local copy with sorted rules
-		defaultRules, customRules := m.config.GetWorkflowRulesSorted()
-		m.allRules = append(defaultRules, customRules...)
-		m.defaultCount = len(defaultRules)
-
-		// Re-filter to update filteredRules
-		m.filterRules()
-
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
-
 		return WorkflowRulesUpdatedMsg{}
 	}
 }
@@ -385,23 +384,23 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString("\n\n")
 	}
 
+	// Calculate available height for content
+	// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
+	availableHeight := m.Height() - 6
+	if m.searchActive || m.searchQuery != "" {
+		availableHeight -= 2
+	}
+	if availableHeight < 5 {
+		availableHeight = 5
+	}
+
 	// Build list content
-	listContent := m.renderRulesList()
+	listContent := m.renderRulesList(availableHeight)
 
 	// Wide screen: split layout with preview
 	if m.isWideScreen() {
 		listWidth := m.Width() * 45 / 100
 		previewWidth := m.Width() - listWidth - 3 // 3 for separator
-
-		// Calculate available height for content
-		// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
-		availableHeight := m.Height() - 6
-		if m.searchActive || m.searchQuery != "" {
-			availableHeight -= 2
-		}
-		if availableHeight < 5 {
-			availableHeight = 5
-		}
 
 		listPane := lipgloss.NewStyle().
 			Width(listWidth).
@@ -441,7 +440,7 @@ func (m *WorkflowRulesModel) View() string {
 }
 
 // renderRulesList renders the list of rules.
-func (m *WorkflowRulesModel) renderRulesList() string {
+func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 	var b strings.Builder
 
 	if len(m.filteredRules) == 0 {
@@ -455,11 +454,7 @@ func (m *WorkflowRulesModel) renderRulesList() string {
 		return b.String()
 	}
 
-	// Calculate visible area - adjust for wide screen (less height needed for summary)
-	maxVisible := m.Height() - 12
-	if m.isWideScreen() {
-		maxVisible = m.Height() - 10 // More room since preview is on the side
-	}
+	maxVisible := paneHeight
 	if maxVisible < 3 {
 		maxVisible = 3
 	}

@@ -154,10 +154,6 @@ func (m *DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return ShowBlockersMsg{Project: project}
 				}
 			}
-		case "ctrl+w":
-			return m, func() tea.Msg {
-				return ShowWorkflowRulesMsg{}
-			}
 		case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			// Quick select pinned project by number
 			n := int(msg.String()[0] - '0')

@@ -358,23 +358,23 @@ func (m *TaskTemplatesModel) View() string {
 		b.WriteString("\n\n")
 	}
 
+	// Calculate available height for content
+	// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
+	availableHeight := m.Height() - 6
+	if m.searchActive || m.searchQuery != "" {
+		availableHeight -= 2
+	}
+	if availableHeight < 5 {
+		availableHeight = 5
+	}
+
 	// Build list content
-	listContent := m.renderTemplatesList()
+	listContent := m.renderTemplatesList(availableHeight)
 
 	// Wide screen: split layout with preview
 	if m.isWideScreen() {
 		listWidth := m.Width() * 45 / 100
 		previewWidth := m.Width() - listWidth - 3 // 3 for separator
-
-		// Calculate available height for content
-		// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
-		availableHeight := m.Height() - 6
-		if m.searchActive || m.searchQuery != "" {
-			availableHeight -= 2
-		}
-		if availableHeight < 5 {
-			availableHeight = 5
-		}
 
 		listPane := lipgloss.NewStyle().
 			Width(listWidth).
@@ -413,7 +413,7 @@ func (m *TaskTemplatesModel) View() string {
 }
 
 // renderTemplatesList renders the list of templates.
-func (m *TaskTemplatesModel) renderTemplatesList() string {
+func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 	var b strings.Builder
 
 	if len(m.filteredTemplates) == 0 {
@@ -425,11 +425,7 @@ func (m *TaskTemplatesModel) renderTemplatesList() string {
 		return b.String()
 	}
 
-	// Calculate visible area - adjust for wide screen (less height needed for summary)
-	maxVisible := m.Height() - 12
-	if m.isWideScreen() {
-		maxVisible = m.Height() - 10 // More room since preview is on the side
-	}
+	maxVisible := paneHeight
 	if maxVisible < 3 {
 		maxVisible = 3
 	}

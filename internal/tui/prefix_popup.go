@@ -687,6 +687,7 @@ var (
 		{Key: "D", Description: "due date overview", Detail: "View tasks by due date"},
 		{Key: "F", Description: "focus board", Detail: "Personal command center"},
 		{Key: "N", Description: "global notes", Detail: "Open global notes"},
+		{Key: "W", Description: "workflow rules", Detail: "Manage workflow automation rules"},
 	}
 
 	// BlockerPrefixHints contains hints for the "b" (blocker/dependency) prefix.

@@ -23,8 +23,9 @@ func (m *GlobalSearchModel) filterTasks() {
 	// Parse structured filters from query
 	m.parsedFilters = ParseSearchQuery(query)
 
-	// Empty query shows no results unless hideCompleted is on or filters are active
-	if query == "" && !m.hideCompleted {
+	// Empty query shows no results unless hideCompleted is on, filters are active,
+	// or we're on the Notes tab (which always shows available notes).
+	if query == "" && !m.hideCompleted && m.tabs.Active != globalSearchTabNotes {
 		m.filtered = nil
 		m.cursor = 0
 		return
@@ -68,6 +69,12 @@ func (m *GlobalSearchModel) filterTasks() {
 						titlePositions: titlePositions,
 					})
 				}
+			} else {
+				// No text query - include all notes with base score
+				scored = append(scored, scoredResult{
+					result: result,
+					score:  1,
+				})
 			}
 			continue
 		}

@@ -111,7 +111,7 @@ func isGlobalOverlayView(v ViewType) bool {
 	switch v {
 	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
 		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
-		ViewMetricsDashboard, ViewAllTasks:
+		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules:
 		return true
 	}
 	return false

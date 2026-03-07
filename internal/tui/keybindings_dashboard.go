@@ -12,7 +12,7 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "/", Description: "Search projects", Category: "Navigation", Views: views},
 		Keybinding{Key: "ctrl+T", Description: "Global tag manager", Category: "Navigation", Views: views},
 		Keybinding{Key: "b", Description: "🚧 Project blockers", Category: "Navigation", Views: views},
-		Keybinding{Key: "ctrl+W", Description: "Workflow rules", Category: "Navigation", Views: views},
+		Keybinding{Key: ";W", Description: "Workflow rules", Category: "Navigation", Views: views},
 
 		// Project Cycling
 		Keybinding{Key: "`", Description: "Next project in cycle", Category: "Project Cycling", Views: views},

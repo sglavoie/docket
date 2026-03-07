@@ -99,10 +99,9 @@ func (m *AppModel) globalCommands() []Command {
 		{
 			Name:        "workflow rules",
 			Description: "Manage workflow automation rules",
-			Shortcut:    "ctrl+W",
+			Shortcut:    ";W",
 			Category:    CategoryNavigation,
 			Aliases:     []string{"automation", "rules", "workflow"},
-			Views:       []ViewType{ViewDashboard},
 			Handler: func() tea.Msg {
 				return ShowWorkflowRulesMsg{}
 			},

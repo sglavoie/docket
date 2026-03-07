@@ -76,6 +76,7 @@ func NewNotesSearchModel(project *models.Project) *NotesSearchModel {
 	if loadErr := storage.LoadProject(project); loadErr == nil {
 		m.tasksLoaded = true
 	}
+	m.filterNotes()
 	return m
 }
 
@@ -179,8 +180,17 @@ func (m *NotesSearchModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *NotesSearchModel) filterNotes() {
 	query := strings.TrimSpace(m.searchInput.Value())
 	if query == "" {
-		m.filtered = nil
-		m.cursor = 0
+		// Show all notes when no search query
+		m.filtered = make([]notesSearchResult, len(m.notes))
+		for i, note := range m.notes {
+			m.filtered[i] = notesSearchResult{note: note, score: 1}
+		}
+		if m.cursor >= len(m.filtered) {
+			m.cursor = len(m.filtered) - 1
+		}
+		if m.cursor < 0 {
+			m.cursor = 0
+		}
 		return
 	}
 
@@ -412,16 +422,12 @@ func (m *NotesSearchModel) View() string {
 	b.WriteString(m.searchInput.View())
 	b.WriteString("\n\n")
 
-	if query == "" {
-		b.WriteString(MutedStyle.Render("Type to search note titles, tags, and body content..."))
-		b.WriteString("\n")
-		left := HelpStyle.Render("Esc close")
-		b.WriteString(renderStatusBarFooter(left, "", m.width))
-		return b.String()
-	}
-
 	if len(m.filtered) == 0 {
-		b.WriteString(MutedStyle.Render(fmt.Sprintf("No notes match \"%s\".", query)))
+		if query != "" {
+			b.WriteString(MutedStyle.Render(fmt.Sprintf("No notes match \"%s\".", query)))
+		} else {
+			b.WriteString(MutedStyle.Render("No notes found."))
+		}
 		b.WriteString("\n")
 		left := HelpStyle.Render("Esc close")
 		b.WriteString(renderStatusBarFooter(left, "", m.width))
@@ -433,7 +439,7 @@ func (m *NotesSearchModel) View() string {
 		paneHeight = 5
 	}
 
-	listContent := m.renderNoteList()
+	listContent := m.renderNoteList(paneHeight)
 	previewContent := m.renderPreview()
 
 	splitPane := renderOverlaySplitPane(listContent, previewContent, m.listWidth, m.previewWidth, paneHeight)
@@ -448,13 +454,13 @@ func (m *NotesSearchModel) View() string {
 }
 
 // renderNoteList renders the filtered note list.
-func (m *NotesSearchModel) renderNoteList() string {
+func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 	if len(m.filtered) == 0 {
 		return MutedStyle.Render("No matching notes.")
 	}
 
 	var b strings.Builder
-	maxVisible := m.height - 7
+	maxVisible := paneHeight
 
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
