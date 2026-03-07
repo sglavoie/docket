@@ -347,20 +347,22 @@ func (m *CommandPaletteModel) scoreItemWithDetails(item PaletteItem, query strin
 		}
 	}
 
+	// Always preserve name positions when name matches (for highlighting)
+	var positions []int
+	if nameScore > 0 {
+		positions = namePositions
+	}
+
 	// Use the best score between name, description, and aliases
 	bestScore := nameScore
 	matchedField := MatchFieldName
-	var positions []int
 	if descScore > bestScore {
 		bestScore = descScore
 		matchedField = MatchFieldDescription
-		positions = nil // Description matched better, don't highlight name
 	} else if aliasScore > bestScore {
 		bestScore = aliasScore
 		matchedField = MatchFieldAlias
-		positions = nil // Alias matched better, don't highlight name
 	} else if nameScore > 0 {
-		positions = namePositions
 		matchedField = MatchFieldName
 	}
 

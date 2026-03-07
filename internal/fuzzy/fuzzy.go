@@ -139,6 +139,7 @@ func ScoreTermsWithPositions(text, query string) (int, []int) {
 
 // scoreSubsequenceWithPositions finds the best subsequence match and returns a score and positions.
 // Returns 0 and nil if no match is found.
+// Tries starting from each occurrence of pattern[0] to avoid greedy mismatches.
 func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 	if len(pattern) == 0 {
 		return 1, nil
@@ -147,13 +148,33 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 		return 0, nil
 	}
 
+	bestScore := 0
+	var bestPositions []int
+
+	for startIdx := 0; startIdx <= len(text)-len(pattern); startIdx++ {
+		if text[startIdx] != pattern[0] {
+			continue
+		}
+
+		score, positions := tryGreedyFromWithPositions(text, pattern, startIdx)
+		if score > bestScore {
+			bestScore = score
+			bestPositions = positions
+		}
+	}
+
+	return bestScore, bestPositions
+}
+
+// tryGreedyFromWithPositions attempts a greedy subsequence match starting from startIdx.
+func tryGreedyFromWithPositions(text, pattern []rune, startIdx int) (int, []int) {
 	patternIdx := 0
 	score := 0
 	prevMatchIdx := -2
 	firstMatchIdx := -1
 	var positions []int
 
-	for textIdx := 0; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
+	for textIdx := startIdx; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
 		if text[textIdx] == pattern[patternIdx] {
 			positions = append(positions, textIdx)
 			matchScore := 1
@@ -204,6 +225,7 @@ func scoreSubsequenceWithPositions(text, pattern []rune) (int, []int) {
 
 // scoreSubsequence finds the best subsequence match and returns a score.
 // Returns 0 if no match is found.
+// Tries starting from each occurrence of pattern[0] to avoid greedy mismatches.
 func scoreSubsequence(text, pattern []rune) int {
 	if len(pattern) == 0 {
 		return 1
@@ -212,35 +234,47 @@ func scoreSubsequence(text, pattern []rune) int {
 		return 0
 	}
 
-	// Find if pattern is a subsequence of text and calculate score
+	bestScore := 0
+
+	for startIdx := 0; startIdx <= len(text)-len(pattern); startIdx++ {
+		if text[startIdx] != pattern[0] {
+			continue
+		}
+
+		score := tryGreedyFrom(text, pattern, startIdx)
+		if score > bestScore {
+			bestScore = score
+		}
+	}
+
+	return bestScore
+}
+
+// tryGreedyFrom attempts a greedy subsequence match starting from startIdx.
+func tryGreedyFrom(text, pattern []rune, startIdx int) int {
 	patternIdx := 0
 	score := 0
-	prevMatchIdx := -2 // Use -2 so first match at 0 isn't considered consecutive
+	prevMatchIdx := -2
 	firstMatchIdx := -1
 
-	for textIdx := 0; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
+	for textIdx := startIdx; textIdx < len(text) && patternIdx < len(pattern); textIdx++ {
 		if text[textIdx] == pattern[patternIdx] {
-			// Base score for match
 			matchScore := 1
 
-			// Track first match position
 			if firstMatchIdx == -1 {
 				firstMatchIdx = textIdx
 			}
 
-			// Consecutive match bonus
 			if textIdx == prevMatchIdx+1 {
 				matchScore += 3
 			}
 
-			// Word boundary bonus (start of word)
 			if textIdx == 0 {
-				matchScore += 2 // Start of text bonus
+				matchScore += 2
 			} else if isWordBoundary(text[textIdx-1]) {
 				matchScore += 2
 			}
 
-			// First character of pattern matching first char of text
 			if patternIdx == 0 && textIdx == 0 {
 				matchScore += 1
 			}
@@ -251,7 +285,6 @@ func scoreSubsequence(text, pattern []rune) int {
 		}
 	}
 
-	// Check if entire pattern was matched
 	if patternIdx < len(pattern) {
 		return 0
 	}
@@ -262,13 +295,11 @@ func scoreSubsequence(text, pattern []rune) int {
 		return 0
 	}
 
-	// Adjust score to prefer shorter texts (exact or near-exact matches)
-	// Bonus for texts that are close in length to the pattern
 	lengthDiff := len(text) - len(pattern)
 	if lengthDiff == 0 {
-		score += 10 // Exact length match bonus
+		score += 10
 	} else if lengthDiff <= 3 {
-		score += 5 // Near-exact length bonus
+		score += 5
 	}
 
 	return score
