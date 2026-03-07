@@ -31,7 +31,7 @@ var (
 	ColorWarning     = lipgloss.Color("214")     // Orange
 	ColorError       = lipgloss.Color("196")     // Red
 	ColorMuted       = lipgloss.Color("241")     // Gray
-	ColorHighlight   = lipgloss.Color("229")     // Light yellow
+	ColorHighlight   = lipgloss.Color("#f2eb16") // Bright yellow
 	ColorBackground  = lipgloss.Color("236")     // Dark gray
 	ColorBorder      = lipgloss.Color("240")     // Border gray
 	ColorDiffContext = lipgloss.Color("245")     // Diff context gray
@@ -313,11 +313,6 @@ var (
 	// Error status bar style (red for errors)
 	ErrorStatusStyle = lipgloss.NewStyle().
 				Foreground(ColorError)
-
-	// Search highlight style
-	SearchHighlightStyle = lipgloss.NewStyle().
-				Background(ColorHighlight).
-				Foreground(lipgloss.Color("0"))
 
 	// Help view styles
 	HelpViewTitleStyle = lipgloss.NewStyle().
