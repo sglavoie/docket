@@ -323,6 +323,7 @@ func (m *NotificationCenterModel) navigateToAlert(a alerts.Alert) tea.Cmd {
 		return AlertCenterNavigateMsg{
 			TaskID:    a.TaskID,
 			ProjectID: a.ProjectID,
+			Category:  a.Category,
 		}
 	}
 }
@@ -478,7 +479,7 @@ func (m *NotificationCenterModel) View() string {
 	if m.showDismissed {
 		toggleLabel = "D: hide dismissed"
 	}
-	left := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: go to task · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
+	left := HelpStyle.Render("j/k/n/N: navigate · Tab: expand · Enter: open · " + dismissLabel + " · " + toggleLabel + " · Esc: close")
 	snap := m.activeSnapshot()
 	count := 0
 	if snap != nil {
@@ -555,4 +556,5 @@ func (m *NotificationCenterModel) styleAlertLine(line, title, details string) st
 type AlertCenterNavigateMsg struct {
 	TaskID    string
 	ProjectID string
+	Category  alerts.AlertCategory
 }

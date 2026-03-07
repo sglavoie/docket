@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
 )
@@ -747,6 +748,14 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case AlertCenterNavigateMsg:
 		m.popView() // close alert center
+		switch msg.Category {
+		case alerts.CategoryDailyReview:
+			m.showView(ViewDailyReview, NewDailyReviewModel(m.config, m.configManager))
+			return true, nil
+		case alerts.CategoryWeeklyReview:
+			m.showView(ViewWeeklyReview, NewWeeklyReviewModel(m.config, m.configManager))
+			return true, nil
+		}
 		if msg.ProjectID == "" {
 			return true, nil
 		}
