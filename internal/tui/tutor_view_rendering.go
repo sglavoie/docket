@@ -207,14 +207,21 @@ func colorizeTutorLine(line string) string {
 	return result.String()
 }
 
-func renderTutorContent(topic TutorTopic, width int) string {
+func renderTutorContent(topic TutorTopic, width int, searchQuery string) string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	headingStyle := lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
 	codeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("114"))
 	proseStyle := lipgloss.NewStyle()
 
+	hl := func(s string) string {
+		if searchQuery != "" {
+			return HighlightStyledText(s, searchQuery)
+		}
+		return s
+	}
+
 	var b strings.Builder
-	b.WriteString(titleStyle.Render(colorizeTutorLine(topic.Title)))
+	b.WriteString(hl(titleStyle.Render(colorizeTutorLine(topic.Title))))
 	b.WriteString("\n")
 	b.WriteString(lipgloss.NewStyle().Foreground(ColorMuted).Render(topic.Category))
 	b.WriteString("\n\n")
@@ -223,7 +230,7 @@ func renderTutorContent(topic TutorTopic, width int) string {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(trimmed, "# "):
-			b.WriteString(headingStyle.Render(colorizeTutorLine(trimmed[2:])))
+			b.WriteString(hl(headingStyle.Render(colorizeTutorLine(trimmed[2:]))))
 		case strings.HasPrefix(line, "  ") && (strings.HasPrefix(trimmed, "tt ") || strings.HasPrefix(trimmed, "$ ")):
 			b.WriteString("  " + codeStyle.Render(colorizeTutorLine(trimmed)))
 		case trimmed == "":
@@ -234,7 +241,7 @@ func renderTutorContent(topic TutorTopic, width int) string {
 			for _, wl := range strings.Split(wrapped, "\n") {
 				colorized = append(colorized, colorizeTutorLine(wl))
 			}
-			b.WriteString(proseStyle.Render(strings.Join(colorized, "\n")))
+			b.WriteString(hl(proseStyle.Render(strings.Join(colorized, "\n"))))
 		}
 		b.WriteString("\n")
 	}

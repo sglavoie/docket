@@ -392,12 +392,24 @@ func (m *TutorModel) renderTopicList() string {
 
 		if idx == m.selectedIndex {
 			if m.activePane == 0 {
-				lines = append(lines, cursorStyle.Render("▸ "+title))
+				if m.searchQuery != "" {
+					lines = append(lines, "▸ "+HighlightSubstring(title, m.searchQuery, cursorStyle))
+				} else {
+					lines = append(lines, cursorStyle.Render("▸ "+title))
+				}
 			} else {
-				lines = append(lines, normalStyle.Bold(true).Render("▸ "+title))
+				if m.searchQuery != "" {
+					lines = append(lines, "▸ "+HighlightSubstring(title, m.searchQuery, normalStyle.Bold(true)))
+				} else {
+					lines = append(lines, normalStyle.Bold(true).Render("▸ "+title))
+				}
 			}
 		} else {
-			lines = append(lines, "  "+normalStyle.Render(title))
+			if m.searchQuery != "" {
+				lines = append(lines, "  "+HighlightSubstring(title, m.searchQuery, normalStyle))
+			} else {
+				lines = append(lines, "  "+normalStyle.Render(title))
+			}
 		}
 		idx++
 	}
@@ -434,7 +446,7 @@ func (m *TutorModel) renderTopicContent() string {
 		contentW = 20
 	}
 
-	return renderTutorContent(topic, contentW)
+	return renderTutorContent(topic, contentW, m.searchQuery)
 }
 
 func (m *TutorModel) renderTabBar() string {
