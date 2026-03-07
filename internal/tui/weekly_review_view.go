@@ -401,7 +401,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 		totalMutations += count
 	}
 	if totalMutations > 0 {
-		b.WriteString(fmt.Sprintf("Changes made during this review: %d\n", totalMutations))
+		fmt.Fprintf(&b, "Changes made during this review: %d\n", totalMutations)
 		categoryLabels := []struct {
 			key   string
 			label string
@@ -417,7 +417,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 		}
 		for _, cl := range categoryLabels {
 			if count, ok := m.mutationCounts[cl.key]; ok && count > 0 {
-				b.WriteString(fmt.Sprintf("  %s: %d\n", cl.label, count))
+				fmt.Fprintf(&b, "  %s: %d\n", cl.label, count)
 			}
 		}
 	} else {
@@ -440,7 +440,7 @@ func (m *WeeklyReviewModel) renderCompletionSummary() string {
 				b.WriteString("Remaining items:\n")
 				hasRemaining = true
 			}
-			b.WriteString(fmt.Sprintf("  %s: %d\n", getWeeklySectionName(s), count))
+			fmt.Fprintf(&b, "  %s: %d\n", getWeeklySectionName(s), count)
 		}
 	}
 	if !hasRemaining {

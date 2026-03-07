@@ -213,9 +213,9 @@ func (m *CommandPaletteModel) renderInlineTaskPreview() string {
 
 	// Priority
 	priorityStyle := GetPriorityStyle(m.inlineTaskParsed.priority)
-	b.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
-		priorityStyle.Render(fmt.Sprintf("%d", m.inlineTaskParsed.priority))))
+		priorityStyle.Render(fmt.Sprintf("%d", m.inlineTaskParsed.priority)))
 
 	// Tags
 	if len(m.inlineTaskParsed.tags) > 0 {
@@ -223,16 +223,16 @@ func (m *CommandPaletteModel) renderInlineTaskPreview() string {
 		for i, tag := range m.inlineTaskParsed.tags {
 			tags[i] = TagInlineStyle.Render("#" + tag)
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Tags:"),
-			strings.Join(tags, " ")))
+			strings.Join(tags, " "))
 	}
 
 	// Due date
 	if m.inlineTaskParsed.dueDate != nil {
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			DueDateStyle.Render(m.inlineTaskParsed.dueDate.Format(util.DateFormat))))
+			DueDateStyle.Render(m.inlineTaskParsed.dueDate.Format(util.DateFormat)))
 	}
 
 	// Syntax help
@@ -321,16 +321,16 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 
 	// Status
 	statusStyle := GetStatusStyle(string(task.Status))
-	b.WriteString(fmt.Sprintf("%s %s %s\n",
+	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
 		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status))))
+		statusStyle.Render(string(task.Status)))
 
 	// Priority
 	priorityStyle := GetPriorityStyle(task.Priority)
-	b.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
-		priorityStyle.Render(fmt.Sprintf("%d", task.Priority))))
+		priorityStyle.Render(fmt.Sprintf("%d", task.Priority)))
 
 	// Tags
 	if len(task.Tags) > 0 {
@@ -338,16 +338,16 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		for i, tag := range task.Tags {
 			tags[i] = TagInlineStyle.Render(tag)
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Tags:"),
-			strings.Join(tags, ", ")))
+			strings.Join(tags, ", "))
 	}
 
 	// Section
 	if task.Section != "" {
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
-			task.Section))
+			task.Section)
 	}
 
 	// Due date
@@ -361,17 +361,17 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		} else if dueDay.Equal(today) {
 			dueStyle = DueTodayStyle
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			dueStyle.Render(task.DueDate.Format(util.DateFormat))))
+			dueStyle.Render(task.DueDate.Format(util.DateFormat)))
 	}
 
 	// Parent reference
 	if task.Parent != nil {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(parentRef)))
+			MutedStyle.Render(parentRef))
 	}
 
 	// Subtasks count
@@ -382,9 +382,9 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 				completed++
 			}
 		}
-		b.WriteString(fmt.Sprintf("%s %d/%d done\n",
+		fmt.Fprintf(&b, "%s %d/%d done\n",
 			MutedStyle.Render("Subtasks:"),
-			completed, len(task.Children)))
+			completed, len(task.Children))
 	}
 
 	// Dependencies - show blocking and blocked-by relationships
@@ -392,7 +392,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		// Tasks this task depends on (blockers)
 		blockers := item.Project.GetBlockingTasks(task)
 		if len(blockers) > 0 {
-			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocked by:")))
+			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocked by:"))
 			maxShow := 3
 			if len(blockers) < maxShow {
 				maxShow = len(blockers)
@@ -414,7 +414,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		// Tasks that depend on this task (blocked by this)
 		blocked := item.Project.GetBlockedByTasks(task)
 		if len(blocked) > 0 {
-			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocking:")))
+			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocking:"))
 			maxShow := 3
 			if len(blocked) < maxShow {
 				maxShow = len(blocked)
@@ -546,48 +546,48 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 
 		// Show overdue in red if any
 		if overdue > 0 {
-			b.WriteString(fmt.Sprintf("  %s %d overdue\n",
+			fmt.Fprintf(&b, "  %s %d overdue\n",
 				OverdueStyle.Render("!"),
-				overdue))
+				overdue)
 		}
 
 		// Show due today in yellow if any
 		if dueToday > 0 {
-			b.WriteString(fmt.Sprintf("  %s %d due today\n",
+			fmt.Fprintf(&b, "  %s %d due today\n",
 				DueTodayStyle.Render("!"),
-				dueToday))
+				dueToday)
 		}
 
 		// Show due this week
 		if dueThisWeek > 0 {
-			b.WriteString(fmt.Sprintf("  %s %d due this week\n",
+			fmt.Fprintf(&b, "  %s %d due this week\n",
 				WarningIconStyle.Render("~"),
-				dueThisWeek))
+				dueThisWeek)
 		}
 
 		// Show high priority count
 		if highPriority > 0 {
-			b.WriteString(fmt.Sprintf("  %s %d high priority\n",
+			fmt.Fprintf(&b, "  %s %d high priority\n",
 				WarningIconStyle.Render("!"),
-				highPriority))
+				highPriority)
 		}
 
 		// Show blocked count
 		if blocked > 0 {
-			b.WriteString(fmt.Sprintf("  %s %d blocked\n",
+			fmt.Fprintf(&b, "  %s %d blocked\n",
 				ErrorIconStyle.Render("◈"),
-				blocked))
+				blocked)
 		}
 
 		// Show if no urgent items
 		if overdue == 0 && dueToday == 0 && blocked == 0 {
-			b.WriteString(fmt.Sprintf("  %s No urgent items\n",
-				CheckmarkStyle.Render("✓")))
+			fmt.Fprintf(&b, "  %s No urgent items\n",
+				CheckmarkStyle.Render("✓"))
 		}
 
 		b.WriteString("\n")
 		b.WriteString(MutedStyle.Render("Tasks: "))
-		b.WriteString(fmt.Sprintf("%d active, %d completed", active, completed))
+		fmt.Fprintf(&b, "%d active, %d completed", active, completed)
 		b.WriteString("\n")
 	}
 
@@ -726,7 +726,7 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 	categoryFilter, searchQuery := m.parseQueryPrefix(query)
 
 	if categoryFilter != "" {
-		b.WriteString(fmt.Sprintf("  Category: %s\n", getCategoryDisplayName(categoryFilter)))
+		fmt.Fprintf(&b, "  Category: %s\n", getCategoryDisplayName(categoryFilter))
 	}
 
 	// Parse field filters
@@ -735,35 +735,35 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 		switch f.field {
 		case "priority":
 			if f.op == "range" {
-				b.WriteString(fmt.Sprintf("  Priority: %s\n", f.value))
+				fmt.Fprintf(&b, "  Priority: %s\n", f.value)
 			} else {
-				b.WriteString(fmt.Sprintf("  Priority: %s\n", f.value))
+				fmt.Fprintf(&b, "  Priority: %s\n", f.value)
 			}
 		case "status":
 			if f.op == "in" {
-				b.WriteString(fmt.Sprintf("  Status: %s\n", strings.Join(f.alt, " or ")))
+				fmt.Fprintf(&b, "  Status: %s\n", strings.Join(f.alt, " or "))
 			} else {
-				b.WriteString(fmt.Sprintf("  Status: %s\n", f.value))
+				fmt.Fprintf(&b, "  Status: %s\n", f.value)
 			}
 		case "tag":
 			if f.op == "in" {
-				b.WriteString(fmt.Sprintf("  Tag: %s\n", strings.Join(f.alt, " or ")))
+				fmt.Fprintf(&b, "  Tag: %s\n", strings.Join(f.alt, " or "))
 			} else {
-				b.WriteString(fmt.Sprintf("  Tag: %s\n", f.value))
+				fmt.Fprintf(&b, "  Tag: %s\n", f.value)
 			}
 		case "section":
 			if f.op == "in" {
-				b.WriteString(fmt.Sprintf("  Section: %s\n", strings.Join(f.alt, " or ")))
+				fmt.Fprintf(&b, "  Section: %s\n", strings.Join(f.alt, " or "))
 			} else {
-				b.WriteString(fmt.Sprintf("  Section: %s\n", f.value))
+				fmt.Fprintf(&b, "  Section: %s\n", f.value)
 			}
 		case "date":
-			b.WriteString(fmt.Sprintf("  Due: %s\n", f.value))
+			fmt.Fprintf(&b, "  Due: %s\n", f.value)
 		}
 	}
 
 	if remaining != "" {
-		b.WriteString(fmt.Sprintf("  Search: %s\n", remaining))
+		fmt.Fprintf(&b, "  Search: %s\n", remaining)
 	}
 
 	b.WriteString("\n")
@@ -834,9 +834,9 @@ func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
 		for i, tag := range note.Tags {
 			tags[i] = TagInlineStyle.Render("#" + tag)
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Tags:"),
-			strings.Join(tags, " ")))
+			strings.Join(tags, " "))
 	}
 
 	// Pinned
@@ -847,9 +847,9 @@ func (m *CommandPaletteModel) renderNotePreview(item PaletteItem) string {
 
 	// Linked tasks
 	if len(note.LinkedTasks) > 0 {
-		b.WriteString(fmt.Sprintf("%s %d\n",
+		fmt.Fprintf(&b, "%s %d\n",
 			MutedStyle.Render("Linked tasks:"),
-			len(note.LinkedTasks)))
+			len(note.LinkedTasks))
 	}
 
 	// Body excerpt
@@ -907,10 +907,10 @@ func (m *CommandPaletteModel) renderActionPreview() string {
 		if action.KeyHint != "" {
 			hint = fmt.Sprintf(" [%s]", action.KeyHint)
 		}
-		b.WriteString(fmt.Sprintf("  %s %s%s\n",
+		fmt.Fprintf(&b, "  %s %s%s\n",
 			action.Icon,
 			action.Name,
-			MutedStyle.Render(hint)))
+			MutedStyle.Render(hint))
 	}
 
 	return b.String()

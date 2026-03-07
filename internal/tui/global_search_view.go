@@ -350,10 +350,10 @@ func (m *GlobalSearchModel) renderPreview() string {
 		b.WriteString(TaskJumperPreviewHeaderStyle.Render("Note: " + result.Note.Title))
 		b.WriteString("\n\n")
 		if len(result.Note.Tags) > 0 {
-			b.WriteString(fmt.Sprintf("%s %s\n", MutedStyle.Render("Tags:"), strings.Join(result.Note.Tags, ", ")))
+			fmt.Fprintf(&b, "%s %s\n", MutedStyle.Render("Tags:"), strings.Join(result.Note.Tags, ", "))
 		}
 		if len(result.Note.LinkedTasks) > 0 {
-			b.WriteString(fmt.Sprintf("%s %d\n", MutedStyle.Render("Linked tasks:"), len(result.Note.LinkedTasks)))
+			fmt.Fprintf(&b, "%s %d\n", MutedStyle.Render("Linked tasks:"), len(result.Note.LinkedTasks))
 		}
 		b.WriteString("\n")
 		body := result.Note.Body
@@ -388,24 +388,24 @@ func (m *GlobalSearchModel) renderPreview() string {
 
 	// Status
 	statusStyle := GetStatusStyle(string(task.Status))
-	b.WriteString(fmt.Sprintf("%s %s %s\n",
+	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
 		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status))))
+		statusStyle.Render(string(task.Status)))
 
 	// Priority
 	priorityStyle := NormalStyle
 	if task.Priority <= 2 {
 		priorityStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	}
-	b.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
-		priorityStyle.Render(fmt.Sprintf("%d", task.Priority))))
+		priorityStyle.Render(fmt.Sprintf("%d", task.Priority)))
 
 	// Type
-	b.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Type:"),
-		typeStyle.Render(task.Type.HeadingPrefix())))
+		typeStyle.Render(task.Type.HeadingPrefix()))
 
 	// Tags
 	if len(task.Tags) > 0 {
@@ -414,24 +414,24 @@ func (m *GlobalSearchModel) renderPreview() string {
 		for i, tag := range task.Tags {
 			tags[i] = tagStyle.Render(tag)
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Tags:"),
-			strings.Join(tags, ", ")))
+			strings.Join(tags, ", "))
 	}
 
 	// Due date
 	if task.DueDate != nil {
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			task.DueDate.Format(util.DateFormat)))
+			task.DueDate.Format(util.DateFormat))
 	}
 
 	// Parent reference
 	if task.Parent != nil {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10))))
+			MutedStyle.Render(util.Truncate(parentRef, m.previewWidth-10)))
 	}
 
 	// Description (truncated)
@@ -479,9 +479,9 @@ func (m *GlobalSearchModel) renderPreview() string {
 				completed++
 			}
 		}
-		b.WriteString(fmt.Sprintf("%s %d/%d completed\n",
+		fmt.Fprintf(&b, "%s %d/%d completed\n",
 			MutedStyle.Render("Subtasks:"),
-			completed, len(task.Children)))
+			completed, len(task.Children))
 	}
 
 	return b.String()

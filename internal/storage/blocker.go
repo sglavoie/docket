@@ -158,14 +158,14 @@ func renderBlockersMarkdown(blockers []*models.Blocker) string {
 
 	for _, blocker := range blockers {
 		// Title as heading
-		b.WriteString(fmt.Sprintf("## %s\n", blocker.Title))
+		fmt.Fprintf(&b, "## %s\n", blocker.Title)
 
 		// Metadata comment
 		meta := fmt.Sprintf("id: %s, created: %s", blocker.ID, blocker.CreatedAt.Format(time.RFC3339))
 		if blocker.ResolvedAt != nil {
 			meta += fmt.Sprintf(", resolved: %s", blocker.ResolvedAt.Format(time.RFC3339))
 		}
-		b.WriteString(fmt.Sprintf("<!-- %s -->\n", meta))
+		fmt.Fprintf(&b, "<!-- %s -->\n", meta)
 
 		// Description (if any)
 		if blocker.Description != "" {

@@ -149,7 +149,7 @@ func WriteTasksMarkdown(projectName string, tasks []*models.Task) string {
 func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, sections []string, sectionColors map[string]string) string {
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("# Project: %s\n", projectName))
+	fmt.Fprintf(&b, "# Project: %s\n", projectName)
 
 	// Write sections metadata with optional colors
 	// Format: "<!-- sections: Backlog;Active:green;Done:blue -->"
@@ -166,7 +166,7 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 				sectionParts = append(sectionParts, name)
 			}
 		}
-		b.WriteString(fmt.Sprintf("<!-- sections: %s -->\n", strings.Join(sectionParts, ";")))
+		fmt.Fprintf(&b, "<!-- sections: %s -->\n", strings.Join(sectionParts, ";"))
 	}
 	b.WriteString("\n")
 

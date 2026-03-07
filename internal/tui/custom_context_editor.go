@@ -393,7 +393,7 @@ func (m *CustomContextEditorModel) View() string {
 			} else if m.selectedIDs[p.ID] {
 				rowBuilder.WriteString(TagManagerItemSelectedStyle.Render(fmt.Sprintf("%s%s %s", cursor, checkbox, info)))
 			} else {
-				rowBuilder.WriteString(fmt.Sprintf("%s%s %s", cursor, checkbox, MutedStyle.Render(info)))
+				fmt.Fprintf(&rowBuilder, "%s%s %s", cursor, checkbox, MutedStyle.Render(info))
 			}
 			rowBuilder.WriteString("\n")
 		}

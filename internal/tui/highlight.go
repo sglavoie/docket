@@ -92,7 +92,7 @@ func HighlightStyledText(styled, query string) string {
 			// Copy the entire escape sequence as-is.
 			start := i
 			i += 2
-			for i < len(bytes) && !((bytes[i] >= 0x40 && bytes[i] <= 0x7e) && bytes[i] != '[') {
+			for i < len(bytes) && (bytes[i] < 0x40 || bytes[i] > 0x7e || bytes[i] == '[') {
 				i++
 			}
 			if i < len(bytes) {

@@ -74,34 +74,34 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 	var b strings.Builder
 
 	// Header
-	b.WriteString(fmt.Sprintf("# %s #%d: %s\n\n",
-		task.Type.HeadingPrefix(), task.ShortID, task.Title))
+	fmt.Fprintf(&b, "# %s #%d: %s\n\n",
+		task.Type.HeadingPrefix(), task.ShortID, task.Title)
 
 	// Metadata table
 	b.WriteString("| Property | Value |\n")
 	b.WriteString("|----------|-------|\n")
-	b.WriteString(fmt.Sprintf("| Status | %s %s |\n", task.Status.Icon(), task.Status))
-	b.WriteString(fmt.Sprintf("| Priority | %d |\n", task.Priority))
-	b.WriteString(fmt.Sprintf("| Type | %s |\n", task.Type.HeadingPrefix()))
+	fmt.Fprintf(&b, "| Status | %s %s |\n", task.Status.Icon(), task.Status)
+	fmt.Fprintf(&b, "| Priority | %d |\n", task.Priority)
+	fmt.Fprintf(&b, "| Type | %s |\n", task.Type.HeadingPrefix())
 
 	if len(task.Tags) > 0 {
-		b.WriteString(fmt.Sprintf("| Tags | %s |\n", strings.Join(task.Tags, ", ")))
+		fmt.Fprintf(&b, "| Tags | %s |\n", strings.Join(task.Tags, ", "))
 	}
 
 	if !task.CreatedAt.IsZero() {
-		b.WriteString(fmt.Sprintf("| Created | %s |\n", task.CreatedAt.Format(util.DateTimeFormat)))
+		fmt.Fprintf(&b, "| Created | %s |\n", task.CreatedAt.Format(util.DateTimeFormat))
 	}
 
 	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
-		b.WriteString(fmt.Sprintf("| Updated | %s |\n", task.UpdatedAt.Format(util.DateTimeFormat)))
+		fmt.Fprintf(&b, "| Updated | %s |\n", task.UpdatedAt.Format(util.DateTimeFormat))
 	}
 
 	if task.CompletedAt != nil {
-		b.WriteString(fmt.Sprintf("| Completed | %s |\n", task.CompletedAt.Format(util.DateTimeFormat)))
+		fmt.Fprintf(&b, "| Completed | %s |\n", task.CompletedAt.Format(util.DateTimeFormat))
 	}
 
 	if task.DueDate != nil {
-		b.WriteString(fmt.Sprintf("| Due | %s |\n", task.DueDate.Format(util.DateFormat)))
+		fmt.Fprintf(&b, "| Due | %s |\n", task.DueDate.Format(util.DateFormat))
 	}
 
 	b.WriteString("\n")
@@ -125,9 +125,9 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 		b.WriteString("## Attachments\n\n")
 		for i, att := range task.Attachments {
 			if att.IsURL {
-				b.WriteString(fmt.Sprintf("%d. [URL] %s\n", i+1, att.Filename))
+				fmt.Fprintf(&b, "%d. [URL] %s\n", i+1, att.Filename)
 			} else {
-				b.WriteString(fmt.Sprintf("%d. [File] %s\n", i+1, att.Filename))
+				fmt.Fprintf(&b, "%d. [File] %s\n", i+1, att.Filename)
 			}
 		}
 		b.WriteString("\n")
@@ -147,8 +147,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 					completed++
 				}
 			}
-			b.WriteString(fmt.Sprintf("Progress: %d/%d completed (%.0f%%)\n\n",
-				completed, total, task.GetProgress()))
+			fmt.Fprintf(&b, "Progress: %d/%d completed (%.0f%%)\n\n",
+				completed, total, task.GetProgress())
 		}
 
 		// List all children
@@ -157,8 +157,8 @@ func FormatTaskAsMarkdown(task *models.Task) string {
 			if child.IsComplete() {
 				checkbox = "[x]"
 			}
-			b.WriteString(fmt.Sprintf("- %s %s #%d: %s\n",
-				checkbox, child.Type.Icon(), child.ShortID, child.Title))
+			fmt.Fprintf(&b, "- %s %s #%d: %s\n",
+				checkbox, child.Type.Icon(), child.ShortID, child.Title)
 		}
 	}
 

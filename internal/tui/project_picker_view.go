@@ -228,7 +228,7 @@ func (m *ProjectPickerModel) renderProjectDetail(width, height int) string {
 				break
 			}
 			count := sectionCounts[sec]
-			b.WriteString(fmt.Sprintf("  %s %s", MutedStyle.Render(sec+":"), fmt.Sprintf("%d", count)))
+			fmt.Fprintf(&b, "  %s %s", MutedStyle.Render(sec+":"), fmt.Sprintf("%d", count))
 			b.WriteString("\n")
 			lines++
 		}

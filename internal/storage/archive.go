@@ -162,8 +162,8 @@ func WriteArchivedTasks(projectName string, tasks []*models.Task) string {
 	var b strings.Builder
 
 	// Write archive header with timestamp
-	b.WriteString(fmt.Sprintf("\n## Archived: %s\n", time.Now().Format(util.DateTimeFormat)))
-	b.WriteString(fmt.Sprintf("<!-- project: %s, count: %d -->\n\n", projectName, len(tasks)))
+	fmt.Fprintf(&b, "\n## Archived: %s\n", time.Now().Format(util.DateTimeFormat))
+	fmt.Fprintf(&b, "<!-- project: %s, count: %d -->\n\n", projectName, len(tasks))
 
 	// Write each task in a flat format (no hierarchy in archive)
 	for _, task := range tasks {
@@ -179,7 +179,7 @@ func writeArchivedTask(task *models.Task) string {
 	var b strings.Builder
 
 	// Write heading (always level 3 for archived tasks)
-	b.WriteString(fmt.Sprintf("### %s: %s\n", task.Type.HeadingPrefix(), task.Title))
+	fmt.Fprintf(&b, "### %s: %s\n", task.Type.HeadingPrefix(), task.Title)
 
 	// Write metadata
 	b.WriteString(writeArchivedMetadata(task))

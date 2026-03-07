@@ -60,21 +60,21 @@ func ClaudeAskStreaming(ctx context.Context, query, systemPrompt string) (io.Rea
 func BuildTaskContext(project *models.Project) string {
 	var b strings.Builder
 
-	b.WriteString(fmt.Sprintf("You are an AI assistant for the tt task manager. The current project is \"%s\".\n\n", project.Name))
+	fmt.Fprintf(&b, "You are an AI assistant for the tt task manager. The current project is \"%s\".\n\n", project.Name)
 
 	if len(project.Tasks) > 0 {
 		b.WriteString("Current tasks:\n")
 		for _, task := range project.Tasks {
-			b.WriteString(fmt.Sprintf("- #%d [%s] %s: \"%s\" (status: %s, priority: %d",
-				task.ShortID, task.Type, task.Type.HeadingPrefix(), task.Title, task.Status, task.Priority))
+			fmt.Fprintf(&b, "- #%d [%s] %s: \"%s\" (status: %s, priority: %d",
+				task.ShortID, task.Type, task.Type.HeadingPrefix(), task.Title, task.Status, task.Priority)
 			if task.Section != "" {
-				b.WriteString(fmt.Sprintf(", section: %s", task.Section))
+				fmt.Fprintf(&b, ", section: %s", task.Section)
 			}
 			if len(task.Tags) > 0 {
-				b.WriteString(fmt.Sprintf(", tags: %s", strings.Join(task.Tags, ",")))
+				fmt.Fprintf(&b, ", tags: %s", strings.Join(task.Tags, ","))
 			}
 			if task.DueDate != nil {
-				b.WriteString(fmt.Sprintf(", due: %s", task.DueDate.Format("2006-01-02")))
+				fmt.Fprintf(&b, ", due: %s", task.DueDate.Format("2006-01-02"))
 			}
 			b.WriteString(")\n")
 		}

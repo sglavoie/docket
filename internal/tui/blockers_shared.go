@@ -737,9 +737,9 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 			line.WriteString("\n")
 
 			if ds.showProjectName() {
-				line.WriteString(fmt.Sprintf("      %s", MutedStyle.Render(fmt.Sprintf("[%s] %s", item.Project.Name, relativeTime))))
+				fmt.Fprintf(&line, "      %s", MutedStyle.Render(fmt.Sprintf("[%s] %s", item.Project.Name, relativeTime)))
 			} else {
-				line.WriteString(fmt.Sprintf("      %s", MutedStyle.Render(relativeTime)))
+				fmt.Fprintf(&line, "      %s", MutedStyle.Render(relativeTime))
 			}
 
 			if blocker.Description != "" {

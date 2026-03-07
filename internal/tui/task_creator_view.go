@@ -161,7 +161,7 @@ func (m *TaskCreatorModel) renderChecklistTab() string {
 			if isFocused {
 				b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %d. ☐ ", i+1)))
 			} else {
-				b.WriteString(fmt.Sprintf("  %d. ☐ ", i+1))
+				fmt.Fprintf(&b, "  %d. ☐ ", i+1)
 			}
 
 			b.WriteString(item.View())
@@ -216,7 +216,7 @@ func (m *TaskCreatorModel) renderSubtasksTab() string {
 				b.WriteString(typeBadge)
 				b.WriteString(" ")
 			} else {
-				b.WriteString(fmt.Sprintf("  %d. %s ", i+1, optMarker))
+				fmt.Fprintf(&b, "  %d. %s ", i+1, optMarker)
 				b.WriteString(typeBadge)
 				b.WriteString(" ")
 			}

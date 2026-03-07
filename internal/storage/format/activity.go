@@ -99,15 +99,15 @@ func WriteActivity(task *models.Task) string {
 		ts := entry.Timestamp.Format(util.DateTimeFormat)
 
 		if entry.Field == "created" {
-			b.WriteString(fmt.Sprintf("<!-- act: %s, created -->\n", ts))
+			fmt.Fprintf(&b, "<!-- act: %s, created -->\n", ts)
 			continue
 		}
 
 		if entry.OldValue == "" {
 			// Single-value entry (e.g., tags: +backend +api)
-			b.WriteString(fmt.Sprintf("<!-- act: %s, %s: %s -->\n", ts, entry.Field, entry.NewValue))
+			fmt.Fprintf(&b, "<!-- act: %s, %s: %s -->\n", ts, entry.Field, entry.NewValue)
 		} else {
-			b.WriteString(fmt.Sprintf("<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, entry.OldValue, entry.NewValue))
+			fmt.Fprintf(&b, "<!-- act: %s, %s: %s > %s -->\n", ts, entry.Field, entry.OldValue, entry.NewValue)
 		}
 	}
 

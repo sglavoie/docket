@@ -508,7 +508,7 @@ func (m *WorkflowRuleCreatorModel) renderPreviewPane(width int) string {
 				valueStr = value
 			}
 
-			b.WriteString(fmt.Sprintf("%s%s %s %s\n", prefix, fieldStr, opStr, valueStr))
+			fmt.Fprintf(&b, "%s%s %s %s\n", prefix, fieldStr, opStr, valueStr)
 		}
 	}
 

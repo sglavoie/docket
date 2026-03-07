@@ -165,7 +165,7 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 			rowBuilder.WriteString(projectTag)
 			rowBuilder.WriteString("\n")
 		} else {
-			rowBuilder.WriteString(fmt.Sprintf("  %s %s\n", title, changeCount))
+			fmt.Fprintf(&rowBuilder, "  %s %s\n", title, changeCount)
 		}
 	}
 
@@ -198,7 +198,7 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	b.WriteString(BoldStyle.Render("Matched Rules"))
 	b.WriteString("\n")
 	for _, name := range result.MatchedRules {
-		b.WriteString(fmt.Sprintf("  %s %s\n", keywordStyle.Render("▸"), name))
+		fmt.Fprintf(&b, "  %s %s\n", keywordStyle.Render("▸"), name)
 	}
 	b.WriteString("\n")
 
@@ -207,17 +207,17 @@ func (m *WorkflowDryRunModel) renderDetailPane() string {
 	b.WriteString("\n")
 	for _, c := range result.Changes {
 		if c.Field == "comment" {
-			b.WriteString(fmt.Sprintf("  %s %s %s\n",
+			fmt.Fprintf(&b, "  %s %s %s\n",
 				c.Field,
 				operatorStyle.Render("+"),
-				c.NewValue))
+				c.NewValue)
 		} else {
-			b.WriteString(fmt.Sprintf("  %s%s %s %s %s\n",
+			fmt.Fprintf(&b, "  %s%s %s %s %s\n",
 				c.Field,
 				operatorStyle.Render(":"),
 				c.OldValue,
 				operatorStyle.Render("→"),
-				c.NewValue))
+				c.NewValue)
 		}
 	}
 
@@ -283,7 +283,7 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 				b.WriteString("\n")
 			}
 		} else {
-			b.WriteString(fmt.Sprintf("  %s", title))
+			fmt.Fprintf(&b, "  %s", title)
 			b.WriteString("\n")
 		}
 	}

@@ -262,7 +262,7 @@ func (m *TemplatePickerModel) renderListPanel(width int) string {
 				if listIdx == m.cursor {
 					b.WriteString(SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s", name)))
 				} else {
-					b.WriteString(fmt.Sprintf("  %s", name))
+					fmt.Fprintf(&b, "  %s", name)
 				}
 				b.WriteString("\n")
 				listIdx++

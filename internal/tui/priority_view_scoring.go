@@ -28,10 +28,7 @@ func (m *PriorityViewModel) computeUrgencyScore(task *models.Task) int {
 
 	// Due date proximity: overdue adds points, future subtracts
 	if task.DueDate != nil {
-		now := time.Now()
-		today := util.StartOfDay(now)
-		dueDay := util.StartOfDay(*task.DueDate)
-		daysUntil := int(dueDay.Sub(today).Hours() / 24)
+		daysUntil := util.DaysBetween(time.Now(), *task.DueDate)
 		score += (-daysUntil) * 50
 	}
 

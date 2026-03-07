@@ -545,7 +545,7 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 
 		b.WriteString(line)
 		b.WriteString("\n")
-		b.WriteString(fmt.Sprintf("   %s", MutedStyle.Render(timeAgo)))
+		fmt.Fprintf(&b, "   %s", MutedStyle.Render(timeAgo))
 		b.WriteString("\n")
 	}
 

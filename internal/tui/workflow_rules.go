@@ -533,7 +533,7 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 				rowBuilder.WriteString("\n")
 			}
 		} else {
-			rowBuilder.WriteString(fmt.Sprintf("  %s %s%s", status, defaultMarker, name))
+			fmt.Fprintf(&rowBuilder, "  %s %s%s", status, defaultMarker, name)
 			rowBuilder.WriteString("\n")
 		}
 	}

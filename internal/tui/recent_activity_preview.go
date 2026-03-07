@@ -114,16 +114,16 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 
 	// Status
 	statusStyle := GetStatusStyle(string(task.Status))
-	b.WriteString(fmt.Sprintf("%s %s %s\n",
+	fmt.Fprintf(&b, "%s %s %s\n",
 		MutedStyle.Render("Status:"),
 		statusStyle.Render(task.Status.Icon()),
-		statusStyle.Render(string(task.Status))))
+		statusStyle.Render(string(task.Status)))
 
 	// Priority
 	priorityStyle := GetPriorityStyle(task.Priority)
-	b.WriteString(fmt.Sprintf("%s %s\n",
+	fmt.Fprintf(&b, "%s %s\n",
 		MutedStyle.Render("Priority:"),
-		priorityStyle.Render(fmt.Sprintf("%d", task.Priority))))
+		priorityStyle.Render(fmt.Sprintf("%d", task.Priority)))
 
 	// Tags
 	if len(task.Tags) > 0 {
@@ -131,16 +131,16 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		for i, tag := range task.Tags {
 			tags[i] = TagInlineStyle.Render(tag)
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Tags:"),
-			strings.Join(tags, ", ")))
+			strings.Join(tags, ", "))
 	}
 
 	// Section
 	if task.Section != "" {
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Section:"),
-			task.Section))
+			task.Section)
 	}
 
 	// Due date
@@ -154,17 +154,17 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		} else if dueDay.Equal(today) {
 			dueStyle = DueTodayStyle
 		}
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Due:"),
-			dueStyle.Render(task.DueDate.Format(util.DateFormat))))
+			dueStyle.Render(task.DueDate.Format(util.DateFormat)))
 	}
 
 	// Parent
 	if task.Parent != nil {
 		parentRef := fmt.Sprintf("#%d: %s", task.Parent.ShortID, task.Parent.Title)
-		b.WriteString(fmt.Sprintf("%s %s\n",
+		fmt.Fprintf(&b, "%s %s\n",
 			MutedStyle.Render("Parent:"),
-			MutedStyle.Render(parentRef)))
+			MutedStyle.Render(parentRef))
 	}
 
 	// Subtasks
@@ -175,16 +175,16 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 				completed++
 			}
 		}
-		b.WriteString(fmt.Sprintf("%s %d/%d done\n",
+		fmt.Fprintf(&b, "%s %d/%d done\n",
 			MutedStyle.Render("Subtasks:"),
-			completed, len(task.Children)))
+			completed, len(task.Children))
 	}
 
 	// Dependencies
 	if m.task.Project != nil {
 		blockers := m.task.Project.GetBlockingTasks(task)
 		if len(blockers) > 0 {
-			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocked by:")))
+			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocked by:"))
 			maxShow := 3
 			if len(blockers) < maxShow {
 				maxShow = len(blockers)
@@ -204,7 +204,7 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 
 		blocked := m.task.Project.GetBlockedByTasks(task)
 		if len(blocked) > 0 {
-			b.WriteString(fmt.Sprintf("%s ", MutedStyle.Render("Blocking:")))
+			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocking:"))
 			maxShow := 3
 			if len(blocked) < maxShow {
 				maxShow = len(blocked)

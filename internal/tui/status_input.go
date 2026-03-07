@@ -96,7 +96,7 @@ func (m *StatusInputModel) View() string {
 	// Show current status icon if set
 	if m.project.StatusIcon != "" {
 		if icon := models.ProjectStatusIconByKey(m.project.StatusIcon); icon != nil {
-			b.WriteString(fmt.Sprintf("%s %s", icon.Emoji, MutedStyle.Render(icon.Label)))
+			fmt.Fprintf(&b, "%s %s", icon.Emoji, MutedStyle.Render(icon.Label))
 			b.WriteString("\n\n")
 		}
 	}

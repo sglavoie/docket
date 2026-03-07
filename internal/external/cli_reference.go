@@ -167,7 +167,7 @@ func buildIndex(sections []CLISection) string {
 				break
 			}
 		}
-		b.WriteString(fmt.Sprintf("- %s — %s\n", s.Heading, desc))
+		fmt.Fprintf(&b, "- %s — %s\n", s.Heading, desc)
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

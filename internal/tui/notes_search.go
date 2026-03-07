@@ -524,7 +524,7 @@ func (m *NotesSearchModel) renderPreview() string {
 	b.WriteString("\n\n")
 
 	if len(note.Tags) > 0 {
-		b.WriteString(fmt.Sprintf("%s %s\n", MutedStyle.Render("Tags:"), strings.Join(note.Tags, ", ")))
+		fmt.Fprintf(&b, "%s %s\n", MutedStyle.Render("Tags:"), strings.Join(note.Tags, ", "))
 	}
 	if len(note.LinkedTasks) > 0 {
 		b.WriteString(MutedStyle.Render("Linked tasks:"))
@@ -534,14 +534,14 @@ func (m *NotesSearchModel) renderPreview() string {
 			if task := m.project.GetTaskByID(taskID); task != nil {
 				taskTitle = task.Title
 			}
-			b.WriteString(fmt.Sprintf("  → %s\n", taskTitle))
+			fmt.Fprintf(&b, "  → %s\n", taskTitle)
 		}
 	}
 	if note.Pinned {
-		b.WriteString(fmt.Sprintf("%s Yes\n", MutedStyle.Render("Pinned:")))
+		fmt.Fprintf(&b, "%s Yes\n", MutedStyle.Render("Pinned:"))
 	}
 
-	b.WriteString(fmt.Sprintf("%s %s\n", MutedStyle.Render("Modified:"), formatNoteAge(note.ModifiedAt)))
+	fmt.Fprintf(&b, "%s %s\n", MutedStyle.Render("Modified:"), formatNoteAge(note.ModifiedAt))
 
 	if fr.bodySnippet != "" {
 		b.WriteString("\n")

@@ -158,9 +158,7 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 			// Append inline preview lines after the cursor task
 			if m.previewMode && i == m.cursor {
 				indent := strings.Repeat(" ", (node.Level+1)*2)
-				for _, pl := range inlinePreviewLines(node.Task, indent, cardContentWidth) {
-					lines = append(lines, pl)
-				}
+				lines = append(lines, inlinePreviewLines(node.Task, indent, cardContentWidth)...)
 			}
 		}
 		content := strings.Join(lines, "\n")
@@ -413,9 +411,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 			// Append inline preview lines after the cursor task
 			if m.previewMode && i == m.cursor {
 				indent := strings.Repeat(" ", (node.Level+1)*2)
-				for _, pl := range inlinePreviewLines(node.Task, indent, cardContentWidth) {
-					lines = append(lines, pl)
-				}
+				lines = append(lines, inlinePreviewLines(node.Task, indent, cardContentWidth)...)
 			}
 		}
 		content := strings.Join(lines, "\n")

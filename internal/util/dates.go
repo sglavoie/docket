@@ -27,6 +27,15 @@ func StartOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+// DaysBetween returns the number of calendar days from a to b (b - a).
+// This is DST-safe unlike computing hours/24, which can be off by one
+// around daylight saving transitions.
+func DaysBetween(a, b time.Time) int {
+	aDate := time.Date(a.Year(), a.Month(), a.Day(), 12, 0, 0, 0, time.UTC)
+	bDate := time.Date(b.Year(), b.Month(), b.Day(), 12, 0, 0, 0, time.UTC)
+	return int(bDate.Sub(aDate).Hours() / 24)
+}
+
 // FormatDate formats a time as date only (YYYY-MM-DD).
 func FormatDate(t time.Time) string {
 	return t.Format(DateFormat)

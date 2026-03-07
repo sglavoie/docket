@@ -762,7 +762,7 @@ func (m *TaskCommentsModel) View() string {
 			for j, line := range renderedLines {
 				if j > 1 {
 					remaining := len(renderedLines) - 2
-					entry.WriteString(fmt.Sprintf("      ... (%d more lines, press Enter to expand)\n", remaining))
+					fmt.Fprintf(&entry, "      ... (%d more lines, press Enter to expand)\n", remaining)
 					break
 				}
 				if len(line) > maxLen {

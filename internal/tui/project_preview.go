@@ -126,7 +126,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 		b.WriteString(BoldStyle.Render("Status"))
 		b.WriteString("\n")
 		if icon := models.ProjectStatusIconByKey(p.StatusIcon); icon != nil {
-			b.WriteString(fmt.Sprintf("%s %s", icon.Emoji, icon.Label))
+			fmt.Fprintf(&b, "%s %s", icon.Emoji, icon.Label)
 			if hasDesc {
 				b.WriteString(" — ")
 				b.WriteString(p.Description)
@@ -140,8 +140,8 @@ func (m *ProjectPreviewModel) renderContent() string {
 	// Timestamps
 	b.WriteString(BoldStyle.Render("Timestamps"))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  Created: %s\n", p.CreatedAt.Format(util.DateTimeFormat)))
-	b.WriteString(fmt.Sprintf("  Updated: %s\n", p.UpdatedAt.Format(util.DateTimeFormat)))
+	fmt.Fprintf(&b, "  Created: %s\n", p.CreatedAt.Format(util.DateTimeFormat))
+	fmt.Fprintf(&b, "  Updated: %s\n", p.UpdatedAt.Format(util.DateTimeFormat))
 
 	// Archived status
 	if p.Archived && p.ArchivedAt != nil {
@@ -156,7 +156,7 @@ func (m *ProjectPreviewModel) renderContent() string {
 		b.WriteString("\n")
 		profile := m.config.GetProjectScoringProfile(p.ID)
 		if profile != nil {
-			b.WriteString(fmt.Sprintf("  %s (%s)\n", profile.Name, profile.Formula))
+			fmt.Fprintf(&b, "  %s (%s)\n", profile.Name, profile.Formula)
 		} else {
 			b.WriteString(MutedStyle.Render("  None"))
 			b.WriteString("\n")
@@ -176,8 +176,8 @@ func (m *ProjectPreviewModel) renderContent() string {
 
 	b.WriteString(BoldStyle.Render("Task Summary"))
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  Total: %d  Active: %d  Completed: %d\n", total, active, done))
-	b.WriteString(fmt.Sprintf("  Progress: %s %.0f%%\n", RenderProgressBar(progress, 20), progress))
+	fmt.Fprintf(&b, "  Total: %d  Active: %d  Completed: %d\n", total, active, done)
+	fmt.Fprintf(&b, "  Progress: %s %.0f%%\n", RenderProgressBar(progress, 20), progress)
 	b.WriteString("\n")
 
 	// Task type breakdown

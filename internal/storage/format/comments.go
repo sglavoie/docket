@@ -95,7 +95,7 @@ func WriteComments(task *models.Task) string {
 		if comment.Resolved {
 			resolvedSuffix = ", resolved"
 		}
-		b.WriteString(fmt.Sprintf("<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix))
+		fmt.Fprintf(&b, "<!-- comment: %s%s -->\n", comment.CreatedAt.Format(util.DateTimeFormat), resolvedSuffix)
 		// Escape HTML comment markers to prevent parser corruption
 		escapedText := escapeCommentText(comment.Text)
 		b.WriteString(escapedText)
