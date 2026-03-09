@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -78,6 +79,15 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case GlowViewDoneMsg:
 		return true, nil
+
+	case OpenLogDirMsg:
+		c := exec.Command("open", logging.LogDir())
+		return true, tea.ExecProcess(c, func(err error) tea.Msg {
+			if err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to open log directory: %w", err)}
+			}
+			return nil
+		})
 
 	case OpenDataFolderMsg:
 		var path string

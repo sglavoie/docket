@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -190,7 +191,7 @@ func RecordUndoSnapshot(project *models.Project, action, context string, maxDept
 	if len(meta.Entries) > maxDepth {
 		if err := pruneOldSnapshots(project, meta, maxDepth); err != nil {
 			// Log error but don't fail the operation
-			fmt.Fprintf(os.Stderr, "warning: failed to prune old snapshots: %v\n", err)
+			logging.Warn("failed to prune old snapshots: %v", err)
 		}
 	}
 

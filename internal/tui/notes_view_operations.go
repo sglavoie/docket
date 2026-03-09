@@ -20,6 +20,12 @@ func (m *NotesViewModel) viewCurrentNote() tea.Cmd {
 	}
 	note := m.notes[m.cursor]
 
+	if note.ParseError != "" {
+		m.statusMessage = "Cannot preview — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
+
 	if !external.GlowAvailable() {
 		m.statusMessage = "glow not available for viewing"
 		return nil
@@ -200,6 +206,11 @@ func (m *NotesViewModel) linkCurrentNote() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.cursor]
+	if note.ParseError != "" {
+		m.statusMessage = "Cannot link — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
 	return func() tea.Msg {
 		return ShowNoteTaskLinkerMsg{Project: m.project, Note: note}
 	}
@@ -210,6 +221,11 @@ func (m *NotesViewModel) showTagSelector() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.cursor]
+	if note.ParseError != "" {
+		m.statusMessage = "Cannot edit tags — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
 	return func() tea.Msg {
 		return ShowNoteTagSelectorMsg{
 			Note:        note,
@@ -226,6 +242,11 @@ func (m *NotesViewModel) togglePin() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.cursor]
+	if note.ParseError != "" {
+		m.statusMessage = "Cannot pin — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
 	note.Pinned = !note.Pinned
 	note.ModifiedAt = time.Now()
 	if err := storage.SaveNoteTo(m.effectiveDir(), note); err != nil {
@@ -315,6 +336,11 @@ func (m *NotesViewModel) copyNoteContent(
 	bulkFn func([]*models.Note) (string, error),
 	singleMsg, bulkMsg string,
 ) tea.Cmd {
+	if !m.multiSelectMode && len(m.notes) > 0 && m.cursor < len(m.notes) && m.notes[m.cursor].ParseError != "" {
+		m.statusMessage = "Cannot copy — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
 	if m.multiSelectMode && m.selectedNoteCount() > 0 {
 		selected := m.getSelectedNotesList()
 		_, err := bulkFn(selected)
@@ -367,6 +393,11 @@ func (m *NotesViewModel) moveNoteToProject() tea.Cmd {
 		return nil
 	}
 	note := m.notes[m.cursor]
+	if note.ParseError != "" {
+		m.statusMessage = "Cannot move — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return nil
+	}
 	return func() tea.Msg {
 		return ShowGlobalNoteMoveMsg{Note: note, SourceDir: m.notesDir}
 	}

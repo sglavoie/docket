@@ -342,6 +342,11 @@ func (m *NotesViewModel) startRename() {
 	if len(m.notes) == 0 || m.cursor >= len(m.notes) {
 		return
 	}
+	if m.notes[m.cursor].ParseError != "" {
+		m.statusMessage = "Cannot rename — note has parse error. Press e to edit."
+		m.statusIsError = true
+		return
+	}
 	ti := textinput.New()
 	ti.SetValue(m.notes[m.cursor].Title)
 	ti.CharLimit = 100

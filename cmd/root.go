@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -43,6 +44,7 @@ func RootCmd() *cobra.Command {
 }
 
 func Execute() {
+	defer logging.Close()
 	rootCmd.SilenceUsage = true
 	rootCmd.SilenceErrors = true
 
@@ -54,6 +56,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file path (default: ~/.tt.json)")

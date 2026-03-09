@@ -314,6 +314,15 @@ func (m *AppModel) filterCommands() []Command {
 			},
 		},
 		{
+			Name:        "open log directory",
+			Description: "Open log directory in Finder",
+			Category:    CategoryActions,
+			Aliases:     []string{"logs", "log files", "open logs"},
+			Handler: func() tea.Msg {
+				return OpenLogDirMsg{}
+			},
+		},
+		{
 			Name:        "open project folder",
 			Description: "Open project data folder in editor",
 			Category:    CategoryActions,

@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
@@ -52,8 +52,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 			}
 
 			if len(result.Conflicts) > 0 {
-				fmt.Fprintln(os.Stderr, "Warning: workflow rule conflicts detected:")
-				fmt.Fprintln(os.Stderr, workflow.FormatConflicts(result.Conflicts))
+				logging.Warn("workflow rule conflicts detected:\n%s", workflow.FormatConflicts(result.Conflicts))
 			}
 
 			// Process follow-up tasks created by create_followup actions
@@ -78,7 +77,7 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 				Debugf("workflow rules triggered: %v", result.RuleTriggerCounts)
 				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
 				if err := opts.ConfigManager.Save(opts.Config); err != nil {
-					fmt.Fprintln(os.Stderr, "Warning: failed to save rule trigger counts:", err)
+					logging.Warn("failed to save rule trigger counts: %v", err)
 				}
 			}
 		}

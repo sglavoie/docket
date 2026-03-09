@@ -22,6 +22,10 @@ type Note struct {
 
 	// Body is the markdown content after the frontmatter.
 	Body string `yaml:"-"`
+
+	// ParseError holds the parse error message if frontmatter failed to parse.
+	// Non-empty means the note is in an error state and only Filename is reliable.
+	ParseError string `yaml:"-"`
 }
 
 // NewNote creates a new note with a dated slug filename.
@@ -102,6 +106,17 @@ func (n *Note) HasLink(taskID string) bool {
 		}
 	}
 	return false
+}
+
+// TitleFromFilename derives a human-readable title from a note filename
+// by stripping the date prefix and .md extension, then replacing hyphens with spaces.
+func TitleFromFilename(filename string) string {
+	name := strings.TrimSuffix(filename, ".md")
+	// Strip date prefix like "2025-01-28-150405-"
+	if len(name) > 18 && name[4] == '-' && name[7] == '-' && name[10] == '-' {
+		name = name[18:]
+	}
+	return strings.ReplaceAll(name, "-", " ")
 }
 
 // slugify converts a title to a URL-safe slug.

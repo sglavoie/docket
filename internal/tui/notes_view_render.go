@@ -164,38 +164,55 @@ func (m *NotesViewModel) renderListPane() string {
 			}
 		}
 
-		pin := " "
-		if note.Pinned {
-			pin = pinnedStyle.Render("P")
-		}
+		var row string
+		if note.ParseError != "" {
+			// Error indicator for broken notes
+			indicator := WarningIconStyle.Render("!")
+			titleStr := note.Title
+			maxTitle := 40
+			if m.multiSelectMode {
+				maxTitle = 36
+			}
+			if len(titleStr) > maxTitle {
+				titleStr = titleStr[:maxTitle-3] + "..."
+			}
+			paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
+			paddedTitle = MutedStyle.Render(paddedTitle)
+			row = fmt.Sprintf("%s %s %8s", indicator, paddedTitle, MutedStyle.Render("error"))
+		} else {
+			pin := " "
+			if note.Pinned {
+				pin = pinnedStyle.Render("P")
+			}
 
-		titleStr := note.Title
-		maxTitle := 40
-		if m.multiSelectMode {
-			maxTitle = 36
-		}
-		if len(titleStr) > maxTitle {
-			titleStr = titleStr[:maxTitle-3] + "..."
-		}
-		paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
+			titleStr := note.Title
+			maxTitle := 40
+			if m.multiSelectMode {
+				maxTitle = 36
+			}
+			if len(titleStr) > maxTitle {
+				titleStr = titleStr[:maxTitle-3] + "..."
+			}
+			paddedTitle := fmt.Sprintf("%-40s", checkbox+titleStr)
 
-		tags := ""
-		if len(note.Tags) > 0 {
-			tags = " [" + strings.Join(note.Tags, ", ") + "]"
+			tags := ""
+			if len(note.Tags) > 0 {
+				tags = " [" + strings.Join(note.Tags, ", ") + "]"
+			}
+
+			linked := ""
+			if len(note.LinkedTasks) > 0 && !m.isGlobal {
+				linked = fmt.Sprintf(" (%d)", len(note.LinkedTasks))
+			}
+
+			age := formatNoteAge(note.ModifiedAt)
+
+			if note.Pinned {
+				paddedTitle = pinnedStyle.Render(paddedTitle)
+			}
+
+			row = fmt.Sprintf("%s %s %8s%s%s", pin, paddedTitle, age, tags, linked)
 		}
-
-		linked := ""
-		if len(note.LinkedTasks) > 0 && !m.isGlobal {
-			linked = fmt.Sprintf(" (%d)", len(note.LinkedTasks))
-		}
-
-		age := formatNoteAge(note.ModifiedAt)
-
-		if note.Pinned {
-			paddedTitle = pinnedStyle.Render(paddedTitle)
-		}
-
-		row := fmt.Sprintf("%s %s %8s%s%s", pin, paddedTitle, age, tags, linked)
 
 		if isCurrent {
 			b.WriteString(selectedStyle.Render(row))
@@ -283,34 +300,43 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 
 	var lines []string
 
-	// Title
-	titleLine := TitleStyle.Render(note.Title)
-	lines = append(lines, titleLine)
+	if note.ParseError != "" {
+		lines = append(lines, WarningIconStyle.Render("Parse Error"))
+		lines = append(lines, "")
+		lines = append(lines, MutedStyle.Render("File: "+note.Filename))
+		lines = append(lines, WarningIconStyle.Render(note.ParseError))
+		lines = append(lines, "")
+		lines = append(lines, MutedStyle.Render("Press e to edit and fix this note"))
+	} else {
+		// Title
+		titleLine := TitleStyle.Render(note.Title)
+		lines = append(lines, titleLine)
 
-	// Tags
-	if len(note.Tags) > 0 {
-		lines = append(lines, MutedStyle.Render("Tags: "+strings.Join(note.Tags, ", ")))
-	}
-
-	// Linked tasks
-	if len(note.LinkedTasks) > 0 && !m.isGlobal {
-		for _, taskID := range note.LinkedTasks {
-			taskTitle := "[deleted]"
-			if m.project != nil {
-				if task := m.project.GetTaskByID(taskID); task != nil {
-					taskTitle = task.Title
-				}
-			}
-			lines = append(lines, MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle)))
+		// Tags
+		if len(note.Tags) > 0 {
+			lines = append(lines, MutedStyle.Render("Tags: "+strings.Join(note.Tags, ", ")))
 		}
-	}
 
-	lines = append(lines, "")
+		// Linked tasks
+		if len(note.LinkedTasks) > 0 && !m.isGlobal {
+			for _, taskID := range note.LinkedTasks {
+				taskTitle := "[deleted]"
+				if m.project != nil {
+					if task := m.project.GetTaskByID(taskID); task != nil {
+						taskTitle = task.Title
+					}
+				}
+				lines = append(lines, MutedStyle.Render(fmt.Sprintf("  → %s", taskTitle)))
+			}
+		}
 
-	// Body: render as markdown
-	if note.Body != "" {
-		rendered := renderMarkdown(note.Body, width)
-		lines = append(lines, strings.Split(rendered, "\n")...)
+		lines = append(lines, "")
+
+		// Body: render as markdown
+		if note.Body != "" {
+			rendered := renderMarkdown(note.Body, width)
+			lines = append(lines, strings.Split(rendered, "\n")...)
+		}
 	}
 
 	// Clamp scroll so the last line is always visible at the bottom

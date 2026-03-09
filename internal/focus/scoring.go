@@ -23,7 +23,6 @@ type ScoredFocusTask struct {
 // Higher scores = more recommended as the next task to work on.
 func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *config.Config, now time.Time) int {
 	score := 0
-	today := util.StartOfDay(now)
 
 	// Priority weight: priority 1 = 5000, priority 5 = 1000
 	score += (6 - task.Priority) * 1000
@@ -35,8 +34,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 
 	// Due date proximity
 	if task.DueDate != nil {
-		dueDay := util.StartOfDay(*task.DueDate)
-		daysUntil := int(dueDay.Sub(today).Hours() / 24)
+		daysUntil := util.DaysBetween(now, *task.DueDate)
 		score += (-daysUntil) * 50
 	}
 
@@ -67,7 +65,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 
 	// Task age: older tasks get a small boost to avoid stagnation
 	// 30 points per completed week, capped at 10 weeks (max 300 points)
-	daysSinceCreated := int(now.Sub(task.CreatedAt).Hours() / 24)
+	daysSinceCreated := util.DaysBetween(task.CreatedAt, now)
 	ageBonus := daysSinceCreated / 7
 	if ageBonus > 10 {
 		ageBonus = 10
@@ -75,7 +73,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	score += ageBonus * 30
 
 	// Recent momentum: boost tasks with recent activity
-	daysSinceUpdated := int(now.Sub(task.UpdatedAt).Hours() / 24)
+	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, now)
 	if daysSinceUpdated == 0 {
 		score += 400
 	} else if daysSinceUpdated <= 3 {
@@ -152,7 +150,7 @@ func getSuggestionReason(task *models.Task, project *models.Project, cfg *config
 		}
 	}
 
-	daysSinceUpdated := int(now.Sub(task.UpdatedAt).Hours() / 24)
+	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, now)
 	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
 		reasons = append(reasons, "recent activity")
 	}

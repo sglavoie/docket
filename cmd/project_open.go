@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -58,7 +58,7 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 		if cfg.FzfEnabled && Deps.Selector.Available() {
 			for _, p := range projects {
 				if err := storage.LoadProject(p); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: failed to load project %s: %v\n", p.Name, err)
+					logging.Warn("failed to load project %s: %v", p.Name, err)
 				}
 			}
 			selected, err := Deps.Selector.SelectProject(projects, "Open project:")
@@ -69,7 +69,7 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 		} else {
 			for _, p := range projects {
 				if err := storage.LoadProject(p); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: failed to load project %s: %v\n", p.Name, err)
+					logging.Warn("failed to load project %s: %v", p.Name, err)
 				}
 			}
 

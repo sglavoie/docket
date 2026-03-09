@@ -516,6 +516,9 @@ type OpenDataFolderMsg struct {
 	Project *models.Project
 }
 
+// OpenLogDirMsg opens the log directory in Finder.
+type OpenLogDirMsg struct{}
+
 // =============================================================================
 // Async Save Messages
 // =============================================================================

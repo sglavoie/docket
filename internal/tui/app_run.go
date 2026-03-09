@@ -2,13 +2,13 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -93,10 +93,10 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 
 		// Create backup and save (log errors instead of ignoring)
 		if err := storage.BackupProject(project); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to backup project: %v\n", err)
+			logging.Warn("failed to backup project: %v", err)
 		}
 		if err := storage.SaveProject(project); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save project: %v\n", err)
+			logging.Warn("failed to save project: %v", err)
 		}
 
 		// Update trigger counts
@@ -130,7 +130,7 @@ func evaluateWorkflowAtStartup(cfg *config.Config, manager *config.Manager, proj
 
 	// Persist config changes
 	if err := manager.Save(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to save config: %v\n", err)
+		logging.Warn("failed to save config: %v", err)
 	}
 
 	return result

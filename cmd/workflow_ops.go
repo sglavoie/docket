@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/workflow"
 )
@@ -163,7 +163,7 @@ func EvaluateProjectWorkflowRules(project *models.Project, cfg *config.Config, c
 	if configManager != nil {
 		if err := configManager.Save(cfg); err != nil {
 			// Non-fatal, just log
-			fmt.Fprintln(os.Stderr, "Warning: failed to save workflow eval state:", err)
+			logging.Warn("failed to save workflow eval state: %v", err)
 		}
 	}
 

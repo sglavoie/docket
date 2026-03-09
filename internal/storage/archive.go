@@ -2,12 +2,12 @@ package storage
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/util"
@@ -43,7 +43,7 @@ func LoadArchivedTasks(project *models.Project) []*models.Task {
 	for _, p := range paths {
 		tasks, err := parseArchiveFile(p)
 		if err != nil {
-			log.Printf("warning: failed to parse archive %s: %v", p, err)
+			logging.Warn("failed to parse archive %s: %v", p, err)
 			continue
 		}
 		allTasks = append(allTasks, tasks...)

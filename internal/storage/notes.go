@@ -10,6 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -109,14 +110,23 @@ func ListNotesFrom(dir string) ([]*models.Note, error) {
 		}
 		note, err := LoadNoteFrom(dir, entry.Name())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "tt: skipping unparseable note %s: %v\n", entry.Name(), err)
+			logging.Warn("skipping unreadable note %s: %v", entry.Name(), err)
 			continue
+		}
+		if note.ParseError != "" {
+			logging.Warn("note %s has parse error: %s", entry.Name(), note.ParseError)
 		}
 		notes = append(notes, note)
 	}
 
 	sort.Slice(notes, func(i, j int) bool {
-		if notes[i].Pinned != notes[j].Pinned {
+		// Pinned first, then normal, then broken
+		iErr := notes[i].ParseError != ""
+		jErr := notes[j].ParseError != ""
+		if iErr != jErr {
+			return !iErr // non-error sorts before error
+		}
+		if !iErr && notes[i].Pinned != notes[j].Pinned {
 			return notes[i].Pinned
 		}
 		return notes[i].ModifiedAt.After(notes[j].ModifiedAt)
@@ -225,15 +235,29 @@ type frontmatter struct {
 const timeFormat = "2006-01-02T15:04:05Z07:00"
 
 // parseNote parses a markdown file with YAML frontmatter into a Note.
+// On parse failure, it returns a partial Note with ParseError set instead of an error.
 func parseNote(filename, content string) (*models.Note, error) {
 	fm, body, err := splitFrontmatter(content)
 	if err != nil {
-		return nil, fmt.Errorf("invalid frontmatter in %s: %w", filename, err)
+		return &models.Note{
+			Filename:    filename,
+			Title:       models.TitleFromFilename(filename),
+			Tags:        []string{},
+			LinkedTasks: []string{},
+			ParseError:  fmt.Sprintf("invalid frontmatter: %v", err),
+		}, nil
 	}
 
 	var meta frontmatter
 	if err := yaml.Unmarshal([]byte(fm), &meta); err != nil {
-		return nil, fmt.Errorf("invalid YAML in %s: %w", filename, err)
+		return &models.Note{
+			Filename:    filename,
+			Title:       models.TitleFromFilename(filename),
+			Tags:        []string{},
+			LinkedTasks: []string{},
+			Body:        body,
+			ParseError:  fmt.Sprintf("invalid YAML: %v", err),
+		}, nil
 	}
 
 	note := &models.Note{

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/storage/format"
@@ -36,7 +37,7 @@ var Deps = Dependencies{
 // Debugf prints a formatted message to stderr if verbose mode is enabled.
 func Debugf(format string, args ...any) {
 	if IsVerbose() {
-		fmt.Fprintf(os.Stderr, "[debug] "+format+"\n", args...)
+		logging.Warn("[debug] "+format, args...)
 	}
 }
 

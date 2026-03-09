@@ -368,10 +368,7 @@ func FormatRelativeDue(dueDate *time.Time, styled bool) string {
 	}
 
 	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*dueDate)
-
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+	daysUntil := util.DaysBetween(now, *dueDate)
 
 	var text string
 	var style lipgloss.Style
@@ -415,9 +412,7 @@ func formatRelativeDueVerbose(dueDate *time.Time) string {
 	}
 
 	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*dueDate)
-	daysUntil := int(dueDay.Sub(today).Hours() / 24)
+	daysUntil := util.DaysBetween(now, *dueDate)
 
 	switch {
 	case daysUntil < -1:
