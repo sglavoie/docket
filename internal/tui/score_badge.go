@@ -134,10 +134,7 @@ func renderScoreCardContent(task *models.Task, profile *scoring.ScoringProfile, 
 			roleStr = MutedStyle.Render(" [d]")
 		}
 
-		padding := maxNameWidth - len(name)
-		if padding < 0 {
-			padding = 0
-		}
+		padding := max(maxNameWidth-len(name), 0)
 		line := fmt.Sprintf("%s%s %s %s%s",
 			MutedStyle.Render(name), strings.Repeat(" ", padding),
 			valStr, sourceLabel, roleStr)

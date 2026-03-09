@@ -226,7 +226,7 @@ func renderTutorContent(topic TutorTopic, width int, searchQuery string) string 
 	b.WriteString(lipgloss.NewStyle().Foreground(ColorMuted).Render(topic.Category))
 	b.WriteString("\n\n")
 
-	for _, line := range strings.Split(topic.Content, "\n") {
+	for line := range strings.SplitSeq(topic.Content, "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(trimmed, "# "):
@@ -238,7 +238,7 @@ func renderTutorContent(topic TutorTopic, width int, searchQuery string) string 
 		default:
 			wrapped := wrapTutorText(trimmed, width)
 			colorized := make([]string, 0)
-			for _, wl := range strings.Split(wrapped, "\n") {
+			for wl := range strings.SplitSeq(wrapped, "\n") {
 				colorized = append(colorized, colorizeTutorLine(wl))
 			}
 			b.WriteString(hl(proseStyle.Render(strings.Join(colorized, "\n"))))

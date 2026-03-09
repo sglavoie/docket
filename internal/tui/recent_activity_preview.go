@@ -185,12 +185,9 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		blockers := m.task.Project.GetBlockingTasks(task)
 		if len(blockers) > 0 {
 			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocked by:"))
-			maxShow := 3
-			if len(blockers) < maxShow {
-				maxShow = len(blockers)
-			}
+			maxShow := min(len(blockers), 3)
 			var refs []string
-			for i := 0; i < maxShow; i++ {
+			for i := range maxShow {
 				blocker := blockers[i]
 				ss := GetStatusStyle(string(blocker.Status))
 				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(blocker.Status.Icon()), blocker.ShortID))
@@ -205,12 +202,9 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		blocked := m.task.Project.GetBlockedByTasks(task)
 		if len(blocked) > 0 {
 			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocking:"))
-			maxShow := 3
-			if len(blocked) < maxShow {
-				maxShow = len(blocked)
-			}
+			maxShow := min(len(blocked), 3)
 			var refs []string
-			for i := 0; i < maxShow; i++ {
+			for i := range maxShow {
 				dep := blocked[i]
 				ss := GetStatusStyle(string(dep.Status))
 				refs = append(refs, fmt.Sprintf("%s #%d", ss.Render(dep.Status.Icon()), dep.ShortID))

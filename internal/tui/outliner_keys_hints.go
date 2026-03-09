@@ -1,5 +1,7 @@
 package tui
 
+import "maps"
+
 import "fmt"
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
@@ -69,9 +71,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 
 	// Add filter hints
 	filterHints := buildCommonFilterPrefixPopupHints(&m.filter.CommonFilterState, m.config, true, true)
-	for k, v := range filterHints {
-		hints[k] = v
-	}
+	maps.Copy(hints, filterHints)
 
 	// Add view-specific filter hints to F prefix
 	if fHints, ok := hints["F"]; ok {

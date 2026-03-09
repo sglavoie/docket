@@ -584,10 +584,7 @@ func (m *SettingsModel) View() string {
 	}
 
 	// Clamp scroll offset
-	maxScroll := len(contentLines) - visibleHeight
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
+	maxScroll := max(len(contentLines)-visibleHeight, 0)
 	if m.scrollOffset > maxScroll {
 		m.scrollOffset = maxScroll
 	}
@@ -596,10 +593,7 @@ func (m *SettingsModel) View() string {
 	}
 
 	// Extract visible slice
-	end := m.scrollOffset + visibleHeight
-	if end > len(contentLines) {
-		end = len(contentLines)
-	}
+	end := min(m.scrollOffset+visibleHeight, len(contentLines))
 	visibleContent := strings.Join(contentLines[m.scrollOffset:end], "\n")
 
 	// Build final output

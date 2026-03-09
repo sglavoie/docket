@@ -214,8 +214,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					att = att[:origIdx]
 				}
 
-				if strings.HasPrefix(att, "url:") {
-					filename := strings.TrimPrefix(att, "url:")
+				if after, ok := strings.CutPrefix(att, "url:"); ok {
+					filename := after
 					if originalPath == "" {
 						originalPath = filename // URLs: original path same as filename if not specified
 					}
@@ -225,8 +225,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 						OriginalPath: originalPath,
 						AddedAt:      addedAt,
 					})
-				} else if strings.HasPrefix(att, "code:") {
-					filename := strings.TrimPrefix(att, "code:")
+				} else if after, ok := strings.CutPrefix(att, "code:"); ok {
+					filename := after
 					// Extract line number from originalPath (format: path:line)
 					if colonIdx := strings.LastIndex(originalPath, ":"); colonIdx > 0 {
 						if ln, err := strconv.Atoi(originalPath[colonIdx+1:]); err == nil && ln > 0 {

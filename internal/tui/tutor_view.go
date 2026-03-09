@@ -246,21 +246,14 @@ func (m *TutorModel) updateViewport() {
 }
 
 func (m *TutorModel) innerWidth() int {
-	w := m.width - 2 // 1 char padding each side
-	if w < 40 {
-		w = 40
-	}
+	w := max(
+		// 1 char padding each side
+		m.width-2, 40)
 	return w
 }
 
 func (m *TutorModel) listWidth() int {
-	lw := m.innerWidth() * 30 / 100
-	if lw < 18 {
-		lw = 18
-	}
-	if lw > 30 {
-		lw = 30
-	}
+	lw := min(max(m.innerWidth()*30/100, 18), 30)
 	return lw
 }
 
@@ -417,14 +410,8 @@ func (m *TutorModel) renderTopicList() string {
 	// Apply scroll offset
 	m.ensureSelectedVisible()
 	h := m.listViewHeight()
-	start := m.listOffset
-	if start > len(lines) {
-		start = len(lines)
-	}
-	end := start + h
-	if end > len(lines) {
-		end = len(lines)
-	}
+	start := min(m.listOffset, len(lines))
+	end := min(start+h, len(lines))
 	visible := lines[start:end]
 
 	return strings.Join(visible, "\n")
@@ -441,10 +428,9 @@ func (m *TutorModel) renderTopicContent() string {
 	}
 	topic := m.filteredTopics[idx]
 
-	contentW := m.contentWidth() - 2 // some padding
-	if contentW < 20 {
-		contentW = 20
-	}
+	contentW := max(
+		// some padding
+		m.contentWidth()-2, 20)
 
 	return renderTutorContent(topic, contentW, m.searchQuery)
 }

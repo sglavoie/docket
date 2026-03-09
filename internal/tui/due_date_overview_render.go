@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -96,9 +97,7 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		},
 	}
 	// Merge filter prefix hints (no DueDate category — the view IS organized by due date)
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

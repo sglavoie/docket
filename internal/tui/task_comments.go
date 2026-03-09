@@ -73,10 +73,7 @@ func (m *TaskCommentsModel) Init() tea.Cmd {
 // SetSize updates the view dimensions.
 func (m *TaskCommentsModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
-	cardWidth := width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
+	cardWidth := min(width-4, 80)
 	contentWidth := cardWidth - 6 // card border + padding
 	m.textInput.SetWidth(contentWidth)
 	m.editTextInput.SetWidth(contentWidth)
@@ -660,10 +657,7 @@ func (m *TaskCommentsModel) View() string {
 		b.WriteString(MutedStyle.Render(timestamp))
 		b.WriteString("\n\n")
 
-		renderWidth := contentWidth
-		if renderWidth < 40 {
-			renderWidth = 40
-		}
+		renderWidth := max(contentWidth, 40)
 		b.WriteString(renderMarkdown(comment.Text, renderWidth))
 		b.WriteString("\n")
 
@@ -717,17 +711,11 @@ func (m *TaskCommentsModel) View() string {
 	} else {
 		headerLines := 6
 		availableHeight := m.Height() - headerLines
-		maxVisible := availableHeight / 4
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
+		maxVisible := max(availableHeight/4, 3)
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
-		maxLen := contentWidth - 8
-		if maxLen < 40 {
-			maxLen = 40
-		}
+		maxLen := max(contentWidth-8, 40)
 
 		for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
 			comment := m.task.Comments[i]

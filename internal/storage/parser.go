@@ -73,8 +73,8 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		// Format: "<!-- sections: Backlog;Active:green;Done:blue -->"
 		if !foundFirstTask {
 			if matches := sectionsRegex.FindStringSubmatch(line); matches != nil {
-				sectionList := strings.Split(matches[1], ";")
-				for _, s := range sectionList {
+				sectionList := strings.SplitSeq(matches[1], ";")
+				for s := range sectionList {
 					s = strings.TrimSpace(s)
 					if s == "" {
 						continue

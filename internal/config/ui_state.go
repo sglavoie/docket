@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -206,12 +207,7 @@ func (c *Config) SetPinnedCommands(commands []string) {
 
 // IsCommandPinned returns true if the command is in the pinned list.
 func (c *Config) IsCommandPinned(name string) bool {
-	for _, cmd := range c.PinnedCommands {
-		if cmd == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.PinnedCommands, name)
 }
 
 // TogglePinnedCommand adds or removes a command from the pinned list.
@@ -410,10 +406,5 @@ func (c *Config) GetCustomContextProjects(name string) []*models.Project {
 // IsProjectInCustomContext checks if a project is in a custom context.
 func (c *Config) IsProjectInCustomContext(customContextName, projectID string) bool {
 	projectIDs := c.GetCustomContext(customContextName)
-	for _, id := range projectIDs {
-		if id == projectID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(projectIDs, projectID)
 }

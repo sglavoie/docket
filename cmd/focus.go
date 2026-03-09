@@ -174,10 +174,7 @@ func runFocusSuggest(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	limit := focusSuggestLimit
-	if limit > len(ranked) {
-		limit = len(ranked)
-	}
+	limit := min(focusSuggestLimit, len(ranked))
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)

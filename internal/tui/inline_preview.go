@@ -17,10 +17,7 @@ func inlinePreviewLines(task *models.Task, indentStr string, maxWidth int) []str
 	}
 
 	var lines []string
-	availWidth := maxWidth - len(indentStr)
-	if availWidth < 10 {
-		availWidth = 10
-	}
+	availWidth := max(maxWidth-len(indentStr), 10)
 
 	// Description lines (up to 2)
 	if task.Description != "" {

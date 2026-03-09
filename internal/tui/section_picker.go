@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -86,9 +87,7 @@ func buildSectionPickerList(project *models.Project) []SectionInfo {
 		}
 	}
 	// Merge custom counts into sectionCounts (custom names won't collide with GTD names)
-	for name, count := range customCounts {
-		sectionCounts[name] = count
-	}
+	maps.Copy(sectionCounts, customCounts)
 
 	// Include all project-defined sections, even if empty
 	for _, section := range project.GetSections() {
@@ -286,10 +285,7 @@ func (m *SectionPickerModel) View() string {
 	if maxVisible < 5 {
 		maxVisible = 5
 	}
-	rowWidth := m.Width() - 4
-	if rowWidth < 30 {
-		rowWidth = 30
-	}
+	rowWidth := max(m.Width()-4, 30)
 	b.WriteString(m.renderSectionList(maxVisible, rowWidth))
 
 	// Add mode input
@@ -331,10 +327,7 @@ func (m *SectionPickerModel) renderSectionList(maxVisible, boxWidth int) string 
 	if m.Cursor >= maxVisible {
 		start = m.Cursor - maxVisible + 1
 	}
-	end := start + maxVisible
-	if end > len(m.Filtered) {
-		end = len(m.Filtered)
-	}
+	end := min(start+maxVisible, len(m.Filtered))
 
 	rowWidth := boxWidth - 6
 

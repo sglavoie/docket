@@ -76,10 +76,7 @@ func (m *TaskChecklistModel) Init() tea.Cmd {
 // SetSize updates the view dimensions.
 func (m *TaskChecklistModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
-	cardWidth := width - 4
-	if cardWidth > 80 {
-		cardWidth = 80
-	}
+	cardWidth := min(width-4, 80)
 	contentWidth := cardWidth - 6 // card border + padding
 	m.textInput.SetWidth(contentWidth)
 	m.editTextInput.SetWidth(contentWidth)
@@ -641,17 +638,11 @@ func (m *TaskChecklistModel) View() string {
 	} else {
 		headerLines := 6
 		availableHeight := m.Height() - headerLines
-		maxVisible := availableHeight / 2
-		if maxVisible < 5 {
-			maxVisible = 5
-		}
+		maxVisible := max(availableHeight/2, 5)
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
-		maxLen := contentWidth - 8
-		if maxLen < 40 {
-			maxLen = 40
-		}
+		maxLen := max(contentWidth-8, 40)
 
 		for i := scrollOffset; i < len(m.task.Checklist) && i < scrollOffset+maxVisible; i++ {
 			item := m.task.Checklist[i]

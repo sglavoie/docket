@@ -21,10 +21,7 @@ func (m *TaskDetailModel) View() string {
 	}
 
 	// Determine content width (capped, centered if wider)
-	contentWidth := m.width
-	if contentWidth > maxContentWidth {
-		contentWidth = maxContentWidth
-	}
+	contentWidth := min(m.width, maxContentWidth)
 
 	// Build all sections
 	var sections []string
@@ -79,10 +76,7 @@ func (m *TaskDetailModel) View() string {
 	m.clampScroll()
 
 	vh := m.viewHeight()
-	end := m.scrollOffset + vh
-	if end > len(allLines) {
-		end = len(allLines)
-	}
+	end := min(m.scrollOffset+vh, len(allLines))
 	visibleLines := allLines[m.scrollOffset:end]
 
 	// Pad to fill viewport
@@ -305,10 +299,7 @@ func (m *TaskDetailModel) renderMarkdownDescription(contentWidth int) string {
 		return ""
 	}
 
-	innerWidth := contentWidth - CardBorderOverhead
-	if innerWidth < 10 {
-		innerWidth = 10
-	}
+	innerWidth := max(contentWidth-CardBorderOverhead, 10)
 
 	// Return cached result if width hasn't changed
 	if m.renderedDesc != "" && m.renderedDescWidth == innerWidth {

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -393,12 +394,9 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		blockers := item.Project.GetBlockingTasks(task)
 		if len(blockers) > 0 {
 			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocked by:"))
-			maxShow := 3
-			if len(blockers) < maxShow {
-				maxShow = len(blockers)
-			}
+			maxShow := min(len(blockers), 3)
 			var refs []string
-			for i := 0; i < maxShow; i++ {
+			for i := range maxShow {
 				blocker := blockers[i]
 				statusStyle := GetStatusStyle(string(blocker.Status))
 				ref := fmt.Sprintf("%s #%d", statusStyle.Render(blocker.Status.Icon()), blocker.ShortID)
@@ -415,12 +413,9 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		blocked := item.Project.GetBlockedByTasks(task)
 		if len(blocked) > 0 {
 			fmt.Fprintf(&b, "%s ", MutedStyle.Render("Blocking:"))
-			maxShow := 3
-			if len(blocked) < maxShow {
-				maxShow = len(blocked)
-			}
+			maxShow := min(len(blocked), 3)
 			var refs []string
-			for i := 0; i < maxShow; i++ {
+			for i := range maxShow {
 				dep := blocked[i]
 				statusStyle := GetStatusStyle(string(dep.Status))
 				ref := fmt.Sprintf("%s #%d", statusStyle.Render(dep.Status.Icon()), dep.ShortID)
@@ -609,11 +604,8 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 	var tasksWithTag []PaletteItem
 	for _, fi := range m.filteredItems {
 		if fi.Item.Category == ItemCategoryTasks && fi.Item.Task != nil {
-			for _, tag := range fi.Item.Task.Tags {
-				if tag == item.Tag {
-					tasksWithTag = append(tasksWithTag, fi.Item)
-					break
-				}
+			if slices.Contains(fi.Item.Task.Tags, item.Tag) {
+				tasksWithTag = append(tasksWithTag, fi.Item)
 			}
 		}
 	}
@@ -627,12 +619,9 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 	b.WriteString("\n")
 
 	// Show up to 5 tasks
-	maxShow := 5
-	if len(tasksWithTag) < maxShow {
-		maxShow = len(tasksWithTag)
-	}
+	maxShow := min(len(tasksWithTag), 5)
 	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
-	for i := 0; i < maxShow; i++ {
+	for i := range maxShow {
 		task := tasksWithTag[i].Task
 		line := fmt.Sprintf("  %s #%d: %s",
 			GetTypeBadge(string(task.Type), task.Type.Icon()),
@@ -679,12 +668,9 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 	b.WriteString("\n")
 
 	// Show up to 5 tasks
-	maxShow := 5
-	if len(tasksInSection) < maxShow {
-		maxShow = len(tasksInSection)
-	}
+	maxShow := min(len(tasksInSection), 5)
 	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
-	for i := 0; i < maxShow; i++ {
+	for i := range maxShow {
 		task := tasksInSection[i].Task
 		line := fmt.Sprintf("  %s #%d: %s",
 			GetTypeBadge(string(task.Type), task.Type.Icon()),

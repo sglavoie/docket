@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -34,9 +35,7 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		},
 	}
 	// Merge filter prefix hints (due date + status both included)
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	// Insert "r" (ready) hint into F hints before the last entry (clear-all)
 	if fHints, ok := hints["F"]; ok {
 		readyDetail := "off"

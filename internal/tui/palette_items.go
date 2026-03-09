@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -106,21 +107,12 @@ func (m *CommandPaletteModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := width - 10
-	if innerWidth < 60 {
-		innerWidth = 60
-	}
+	innerWidth := max(width-10, 60)
 
 	m.searchInput.Width = innerWidth - 4
 
 	// Calculate split pane widths: 65% list, 35% preview based on inner width
-	m.listWidth = innerWidth * 65 / 100
-	if m.listWidth < 35 {
-		m.listWidth = 35
-	}
-	if m.listWidth > innerWidth-25 {
-		m.listWidth = innerWidth - 25
-	}
+	m.listWidth = min(max(innerWidth*65/100, 35), innerWidth-25)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
 	// Auto-enable compact mode on narrow terminals unless user explicitly toggled
@@ -616,10 +608,8 @@ func (m *CommandPaletteModel) createInlineTask() (tea.Model, tea.Cmd) {
 func (m *CommandPaletteModel) findProjectWithTag(tag string) *models.Project {
 	for _, item := range m.allItems {
 		if item.Category == ItemCategoryTasks && item.Task != nil {
-			for _, t := range item.Task.Tags {
-				if t == tag {
-					return item.Project
-				}
+			if slices.Contains(item.Task.Tags, tag) {
+				return item.Project
 			}
 		}
 	}

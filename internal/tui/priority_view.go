@@ -261,17 +261,11 @@ func (m *PriorityViewModel) View() string {
 
 	if len(lines) > contentHeight {
 		halfView := contentHeight / 2
-		startIdx = cursorLineIdx - halfView
-		if startIdx < 0 {
-			startIdx = 0
-		}
+		startIdx = max(cursorLineIdx-halfView, 0)
 		endIdx = startIdx + contentHeight
 		if endIdx > len(lines) {
 			endIdx = len(lines)
-			startIdx = endIdx - contentHeight
-			if startIdx < 0 {
-				startIdx = 0
-			}
+			startIdx = max(endIdx-contentHeight, 0)
 		}
 	}
 

@@ -125,7 +125,7 @@ func TestNavHistory_DeduplicateIncludesProjectAndTask(t *testing.T) {
 func TestNavHistory_CapAt200(t *testing.T) {
 	h := NewNavHistory()
 
-	for i := 0; i < 250; i++ {
+	for i := range 250 {
 		// Alternate between two view types to avoid dedup
 		if i%2 == 0 {
 			h.Record(NavEntry{ViewType: ViewDashboard})
@@ -227,7 +227,7 @@ func TestNavHistory_Current(t *testing.T) {
 		h.Record(NavEntry{ViewType: ViewDashboard})
 		h.Record(NavEntry{ViewType: ViewProjectTree, ProjectID: "p1"})
 
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			entry, ok := h.Current()
 			if !ok || entry.ViewType != ViewProjectTree {
 				t.Fatalf("call %d: unexpected result %+v ok=%v", i, entry, ok)

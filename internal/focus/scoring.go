@@ -66,10 +66,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 	// Task age: older tasks get a small boost to avoid stagnation
 	// 30 points per completed week, capped at 10 weeks (max 300 points)
 	daysSinceCreated := util.DaysBetween(task.CreatedAt, now)
-	ageBonus := daysSinceCreated / 7
-	if ageBonus > 10 {
-		ageBonus = 10
-	}
+	ageBonus := min(daysSinceCreated/7, 10)
 	score += ageBonus * 30
 
 	// Recent momentum: boost tasks with recent activity
@@ -82,10 +79,7 @@ func computeCrossProjectScore(task *models.Task, project *models.Project, cfg *c
 
 	// Unblocking bonus: prefer tasks that unblock others
 	blockedByThisCount := len(project.GetBlockedByTasks(task))
-	unblockingBonus := blockedByThisCount
-	if unblockingBonus > 3 {
-		unblockingBonus = 3
-	}
+	unblockingBonus := min(blockedByThisCount, 3)
 	score += unblockingBonus * 150
 
 	// Section scoring: Next is boosted, Waiting/Someday penalized

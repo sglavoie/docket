@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -61,9 +61,7 @@ func computeCycleTime(tasks []*models.Task, cutoff, now time.Time, buckets []buc
 	}
 
 	// Sort for median and percentile calculations
-	sort.Slice(allDurations, func(i, j int) bool {
-		return allDurations[i] < allDurations[j]
-	})
+	slices.Sort(allDurations)
 
 	result.Average = averageDuration(allDurations)
 	result.Median = percentileDuration(allDurations, 0.5)
@@ -108,10 +106,7 @@ func percentileDuration(sorted []time.Duration, p float64) time.Duration {
 	if len(sorted) == 0 {
 		return 0
 	}
-	idx := int(float64(len(sorted)-1) * p)
-	if idx < 0 {
-		idx = 0
-	}
+	idx := max(int(float64(len(sorted)-1)*p), 0)
 	if idx >= len(sorted) {
 		idx = len(sorted) - 1
 	}

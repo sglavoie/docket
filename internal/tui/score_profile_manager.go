@@ -434,19 +434,10 @@ func (m *ScoreProfileManagerModel) View() string {
 
 // detailPaneWidth computes the fixed width for the right detail pane.
 func (m *ScoreProfileManagerModel) detailPaneWidth() int {
-	leftWidth := 40
-	if leftWidth > m.width/2 {
-		leftWidth = m.width / 2
-	}
+	leftWidth := min(40, m.width/2)
 	separatorWidth := 3
-	totalContentWidth := m.width * 70 / 100
-	if totalContentWidth < leftWidth+separatorWidth+10 {
-		totalContentWidth = leftWidth + separatorWidth + 10
-	}
-	rightWidth := totalContentWidth - leftWidth - separatorWidth
-	if rightWidth < 10 {
-		rightWidth = 10
-	}
+	totalContentWidth := max(m.width*70/100, leftWidth+separatorWidth+10)
+	rightWidth := max(totalContentWidth-leftWidth-separatorWidth, 10)
 	return rightWidth
 }
 
@@ -517,28 +508,21 @@ func wrapLine(text string, maxWidth int) []string {
 // renderWithDetailPane merges the profile list (left) with detail pane (right).
 func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines []string) []string {
 	// Find the separator point: after the blank line following subtitle
-	listStart := 3 // title + subtitle + blank line
-	if listStart > len(leftLines) {
-		listStart = len(leftLines)
-	}
+	listStart := min(
+		// title + subtitle + blank line
+		3, len(leftLines))
 
 	// Split header vs list
 	header := leftLines[:listStart]
 	listLines := leftLines[listStart:]
 
 	// Determine pane widths
-	leftWidth := 40
-	if leftWidth > m.width/2 {
-		leftWidth = m.width / 2
-	}
+	leftWidth := min(40, m.width/2)
 
 	rightWidth := m.detailPaneWidth()
 
 	// Build merged lines
-	maxLines := len(listLines)
-	if len(detailLines) > maxLines {
-		maxLines = len(detailLines)
-	}
+	maxLines := max(len(detailLines), len(listLines))
 
 	var merged []string
 	merged = append(merged, header...)
@@ -546,7 +530,7 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 	separator := MutedStyle.Render(" │ ")
 	truncStyle := lipgloss.NewStyle().MaxWidth(rightWidth)
 
-	for i := 0; i < maxLines; i++ {
+	for i := range maxLines {
 		left := ""
 		if i < len(listLines) {
 			left = listLines[i]
@@ -558,17 +542,11 @@ func (m *ScoreProfileManagerModel) renderWithDetailPane(leftLines, detailLines [
 
 		// Pad left side (use visual width)
 		leftVis := lipgloss.Width(left)
-		padding := leftWidth - leftVis
-		if padding < 0 {
-			padding = 0
-		}
+		padding := max(leftWidth-leftVis, 0)
 
 		// Pad right side to fixed width
 		rightVis := lipgloss.Width(right)
-		rightPad := rightWidth - rightVis
-		if rightPad < 0 {
-			rightPad = 0
-		}
+		rightPad := max(rightWidth-rightVis, 0)
 
 		merged = append(merged, left+strings.Repeat(" ", padding)+separator+right+strings.Repeat(" ", rightPad))
 	}

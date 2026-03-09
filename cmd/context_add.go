@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -46,10 +47,8 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check if already in context
-	for _, id := range projectIDs {
-		if id == project.ID {
-			return fmt.Errorf("project '%s' is already in custom context '%s'", project.Name, contextName)
-		}
+	if slices.Contains(projectIDs, project.ID) {
+		return fmt.Errorf("project '%s' is already in custom context '%s'", project.Name, contextName)
 	}
 
 	// Add project

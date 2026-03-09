@@ -10,14 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and Development Commands
 
 ```bash
-make build       # Build the tt binary in current directory
-make install     # Build and install to ~/.local/bin
-make test        # Run all tests
-make lint        # Run fmt and vet
-make fmt         # Format Go code
-make vet         # Run go vet
-make tidy        # Clean up go.mod and go.sum
-make clean       # Remove build artifacts
+just build       # Build the tt binary in current directory
+just install     # Build and install to ~/.local/bin
+just test        # Run all tests
+just lint        # Run fmt and vet
+just fmt         # Format Go code
+just vet         # Run go vet
+just tidy        # Clean up go.mod and go.sum
+just clean       # Remove build artifacts
 ```
 
 Run a single test file: `go test ./internal/models/task_test.go`

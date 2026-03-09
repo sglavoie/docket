@@ -1,5 +1,7 @@
 package tui
 
+import "strings"
+
 import "github.com/charmbracelet/lipgloss"
 
 // makeBadgeStyle creates a badge style with the given foreground and background ANSI colors.
@@ -656,15 +658,15 @@ func RenderProgressBar(percent float64, width int) string {
 	filled := int(float64(width) * percent / 100)
 	empty := width - filled
 
-	bar := ""
-	for i := 0; i < filled; i++ {
-		bar += ProgressFullStyle.Render("█")
+	var bar strings.Builder
+	for range filled {
+		bar.WriteString(ProgressFullStyle.Render("█"))
 	}
-	for i := 0; i < empty; i++ {
-		bar += ProgressEmptyStyle.Render("░")
+	for range empty {
+		bar.WriteString(ProgressEmptyStyle.Render("░"))
 	}
 
-	return bar
+	return bar.String()
 }
 
 // SectionColorEntry represents a color in the section color palette.

@@ -1,0 +1,129 @@
+# tt - CLI task manager
+
+binary_name := "tt"
+install_dir := env("HOME") / ".local/bin"
+
+# Build information
+version := env("VERSION", "dev")
+git_commit := `git rev-parse --short HEAD 2>/dev/null || echo "unknown"`
+build_time := `date -u '+%Y-%m-%dT%H:%M:%SZ'`
+ldflags := "-ldflags \"-X github.com/sglavoie/tt/cmd.Version=" + version + " -X github.com/sglavoie/tt/cmd.GitCommit=" + git_commit + " -X github.com/sglavoie/tt/cmd.BuildTime=" + build_time + "\""
+
+# Show available recipes
+help:
+    @just --list
+
+# Generate CLI reference for embedding
+docs:
+    @echo "Generating CLI reference..."
+    go run ./scripts/gen-api-ref > cmd/cli-reference.md
+    @echo "Generated cmd/cli-reference.md"
+
+# Build the binary in the current directory
+build: docs
+    @echo "Building {{ binary_name }}..."
+    go build {{ ldflags }} -o {{ binary_name }} .
+    @echo "Built {{ binary_name }}"
+
+# Install the binary to ~/.local/bin
+install: build
+    @echo "Installing {{ binary_name }} to {{ install_dir }}..."
+    @mkdir -p {{ install_dir }}
+    rm -f {{ install_dir }}/{{ binary_name }}
+    cp {{ binary_name }} {{ install_dir }}/{{ binary_name }}
+    @echo "Installed to {{ install_dir }}/{{ binary_name }}"
+
+# Alias for install
+tt: install
+
+# Run tests
+test:
+    @echo "Running tests..."
+    go test ./...
+
+# Run tests with race detector
+test-race:
+    @echo "Running tests with race detector..."
+    go test -race ./...
+
+# Run tests with coverage report
+coverage:
+    @echo "Running tests with coverage..."
+    go test -coverprofile=coverage.out ./...
+    go tool cover -html=coverage.out -o coverage.html
+    @echo "Coverage report: coverage.html"
+
+# Format Go code
+fmt:
+    @echo "Formatting code..."
+    go fmt ./...
+
+# Clean up go.mod and go.sum
+tidy:
+    go mod tidy
+
+# Run go vet
+vet:
+    go vet ./...
+
+# Run go fix
+fix:
+    go fix ./...
+
+# Run formatting and vetting
+lint: fmt vet
+
+# Run golangci-lint (requires golangci-lint installed)
+lint-ci:
+    @echo "Running golangci-lint..."
+    golangci-lint run
+
+# Run all CI checks locally (build, test, coverage, lint)
+ci:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running CI checks locally..."
+    echo "Building..."
+    go build -v ./...
+    echo "Running tests with race detector..."
+    go test -race -coverprofile=coverage.out ./...
+    echo "Checking coverage threshold..."
+    THRESHOLD=$(cat .coverage-threshold)
+    COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub(/%/, "", $3); print $3; exit }')
+    echo "Total coverage: ${COVERAGE}%"
+    if [ "$(echo "$COVERAGE < $THRESHOLD" | bc)" -eq 1 ]; then
+        echo "Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
+        exit 1
+    fi
+    echo "Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
+    MARGIN=5
+    if [ "$(echo "$COVERAGE >= $THRESHOLD + $MARGIN" | bc)" -eq 1 ]; then
+        echo "Coverage ${COVERAGE}% exceeds threshold by ${MARGIN}%+. Consider increasing .coverage-threshold."
+    fi
+    echo "Running golangci-lint..."
+    golangci-lint run
+    echo "All CI checks passed!"
+
+# Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
+check:
+    @echo "Running code quality checks..."
+    ./scripts/check.sh
+
+# Find dead code in the codebase
+dead:
+    @echo "Finding dead code..."
+    ./scripts/dead_code.sh
+
+# Remove build artifacts
+clean:
+    @echo "Cleaning..."
+    rm -f {{ binary_name }}
+    go clean
+    @echo "Clean complete"
+
+# Install git hooks for pre-push checks
+install-hooks:
+    @echo "Installing git hooks..."
+    @chmod +x scripts/pre-push
+    @ln -sf ../../scripts/pre-push .git/hooks/pre-push
+    @echo "Pre-push hook installed"

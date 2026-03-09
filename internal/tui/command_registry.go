@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -26,10 +27,8 @@ func viewsOverlap(views1, views2 []ViewType) bool {
 		return true
 	}
 	for _, v1 := range views1 {
-		for _, v2 := range views2 {
-			if v1 == v2 {
-				return true
-			}
+		if slices.Contains(views2, v1) {
+			return true
 		}
 	}
 	return false
@@ -114,11 +113,8 @@ func (r *CommandRegistry) GetForView(view ViewType) []Command {
 			if len(entries[i].Views) == 0 {
 				globalCmd = &entries[i]
 			} else {
-				for _, v := range entries[i].Views {
-					if v == view {
-						viewCmd = &entries[i]
-						break
-					}
+				if slices.Contains(entries[i].Views, view) {
+					viewCmd = &entries[i]
 				}
 			}
 		}

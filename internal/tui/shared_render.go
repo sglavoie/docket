@@ -258,10 +258,7 @@ func (tl TaskLine) Render() string {
 		priorityBadge = ""
 	}
 
-	maxTitleLen := tl.MaxTitle
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
+	maxTitleLen := max(tl.MaxTitle, 10)
 	title := util.Truncate(tl.Task.Title, maxTitleLen)
 
 	// Build priority segment: "badge " when present, "" when hidden

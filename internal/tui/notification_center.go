@@ -355,17 +355,11 @@ func (m *NotificationCenterModel) View() string {
 	}
 
 	// Calculate available content height (title=1, blank=1, footer=1, padding=1)
-	contentHeight := m.height - 4
-	if contentHeight < 3 {
-		contentHeight = 3
-	}
+	contentHeight := max(m.height-4, 3)
 
 	// Prefix overhead: cursor/space (2) + severity dot (2) = 4 visible chars
 	const prefixWidth = 4
-	maxLabelWidth := m.width - prefixWidth
-	if maxLabelWidth < 20 {
-		maxLabelWidth = 20
-	}
+	maxLabelWidth := max(m.width-prefixWidth, 20)
 
 	// Build all lines first
 	var lines []string
@@ -452,18 +446,12 @@ func (m *NotificationCenterModel) View() string {
 	if scrollOffset < 0 {
 		scrollOffset = 0
 	}
-	maxScroll := len(lines) - contentHeight
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
+	maxScroll := max(len(lines)-contentHeight, 0)
 	if scrollOffset > maxScroll {
 		scrollOffset = maxScroll
 	}
 
-	end := scrollOffset + contentHeight
-	if end > len(lines) {
-		end = len(lines)
-	}
+	end := min(scrollOffset+contentHeight, len(lines))
 	visible := lines[scrollOffset:end]
 	b.WriteString(strings.Join(visible, "\n"))
 	b.WriteString("\n")

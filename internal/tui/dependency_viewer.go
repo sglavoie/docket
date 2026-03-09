@@ -156,10 +156,7 @@ func (m *DependencyViewerModel) View() string {
 	headerLines := 4    // title + newline + footer
 	sectionHeaders := 4 // 2 headers with newlines
 	availableHeight := m.height - headerLines - sectionHeaders
-	maxPerSection := availableHeight / 2
-	if maxPerSection < 3 {
-		maxPerSection = 3
-	}
+	maxPerSection := max(availableHeight/2, 3)
 
 	// Depends On section (→)
 	b.WriteString(m.renderSection(0, "Depends On", "→", m.dependsOn, maxPerSection))
@@ -227,10 +224,7 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 
 		// Title (truncated)
 		title := task.Title
-		maxTitleLen := m.width - 20
-		if maxTitleLen < 20 {
-			maxTitleLen = 20
-		}
+		maxTitleLen := max(m.width-20, 20)
 		if len(title) > maxTitleLen {
 			title = title[:maxTitleLen-3] + "..."
 		}

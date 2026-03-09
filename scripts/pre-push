@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Pre-push hook: runs quality checks before pushing
-# Install with: make install-hooks
+# Install with: just install-hooks
 
 set -e
 

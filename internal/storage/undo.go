@@ -216,7 +216,7 @@ func pruneOldSnapshots(project *models.Project, meta *UndoMeta, maxDepth int) er
 
 	// Remove oldest entries
 	toRemove := len(meta.Entries) - maxDepth
-	for i := 0; i < toRemove; i++ {
+	for i := range toRemove {
 		snapshotPath := getSnapshotPath(project, meta.Entries[i].Num)
 		_ = os.Remove(snapshotPath) // Ignore errors for missing files
 	}

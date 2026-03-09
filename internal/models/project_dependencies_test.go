@@ -260,7 +260,7 @@ func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
 	tasks := make([]*Task, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
 	}
 	project.Tasks = tasks
@@ -299,7 +299,7 @@ func TestProjectHasCircularDependencyBranching(t *testing.T) {
 	//     0 -> 1 -> 3
 	//     0 -> 2 -> 3
 	tasks := make([]*Task, 4)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
 	}
 	project.Tasks = tasks

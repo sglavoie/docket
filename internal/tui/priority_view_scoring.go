@@ -69,10 +69,11 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 
 	// Task age: older tasks get a small boost to avoid stagnation
 	daysSinceCreated := int(time.Since(task.CreatedAt).Hours() / 24)
-	ageBonus := daysSinceCreated / 7 // 30 points per week
-	if ageBonus > 10 {
-		ageBonus = 10 // Cap at 300 points
-	}
+	ageBonus := min(
+		// 30 points per week
+		daysSinceCreated/7,
+		// Cap at 300 points
+		10)
 	score += ageBonus * 30
 
 	// Recent momentum: boost tasks with recent activity
@@ -85,10 +86,9 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 
 	// Unblocking bonus: prefer tasks that unblock others
 	blockedByThisCount := len(m.project.GetBlockedByTasks(task))
-	unblockingBonus := blockedByThisCount
-	if unblockingBonus > 3 {
-		unblockingBonus = 3 // Cap at 3
-	}
+	unblockingBonus := min(blockedByThisCount,
+		// Cap at 3
+		3)
 	score += unblockingBonus * 150
 
 	// Section penalty: deprioritize Next, Waiting, and Someday section tasks
@@ -226,19 +226,19 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	}
 
 	// Join reasons with " + "
-	result := ""
+	var result strings.Builder
 	for i, r := range reasons {
 		if i > 0 {
-			result += " + "
+			result.WriteString(" + ")
 		}
 		// Capitalize first reason
 		if i == 0 {
-			result += strings.ToUpper(r[:1]) + r[1:]
+			result.WriteString(strings.ToUpper(r[:1]) + r[1:])
 		} else {
-			result += r
+			result.WriteString(r)
 		}
 	}
-	return result
+	return result.String()
 }
 
 // dismissSuggestion adds the current suggestion to the dismissed set.

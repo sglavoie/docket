@@ -524,10 +524,7 @@ func (m *BulkEditModel) renderParentField() string {
 			b.WriteString("\n")
 		} else {
 			maxVisible := 8
-			end := m.parentListOffset + maxVisible
-			if end > len(m.parentCandidates) {
-				end = len(m.parentCandidates)
-			}
+			end := min(m.parentListOffset+maxVisible, len(m.parentCandidates))
 			if m.parentListOffset > 0 {
 				b.WriteString(prefix)
 				b.WriteString(MutedStyle.Render("    ↑ more"))

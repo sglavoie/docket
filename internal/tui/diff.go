@@ -83,14 +83,8 @@ func filterWithContext(lines []DiffLine, contextLines int) []DiffLine {
 	for i, line := range lines {
 		if line.Kind != DiffContext {
 			// Include this line and surrounding context
-			start := i - contextLines
-			if start < 0 {
-				start = 0
-			}
-			end := i + contextLines + 1
-			if end > len(lines) {
-				end = len(lines)
-			}
+			start := max(i-contextLines, 0)
+			end := min(i+contextLines+1, len(lines))
 			for j := start; j < end; j++ {
 				include[j] = true
 			}

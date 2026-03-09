@@ -45,28 +45,28 @@ var (
 
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
 // Use this for consistent error messaging across the codebase.
-func NewTaskNotFoundError(taskID interface{}) error {
+func NewTaskNotFoundError(taskID any) error {
 	return fmt.Errorf("%w: '%v'", ErrTaskNotFound, taskID)
 }
 
 // NewParentTaskNotFoundError creates a parent task not found error with the specified task identifier.
-func NewParentTaskNotFoundError(taskID interface{}) error {
+func NewParentTaskNotFoundError(taskID any) error {
 	return fmt.Errorf("parent %w: '%v'", ErrTaskNotFound, taskID)
 }
 
 // NewBlockerTaskNotFoundError creates a blocker task not found error with the specified task identifier.
-func NewBlockerTaskNotFoundError(taskID interface{}) error {
+func NewBlockerTaskNotFoundError(taskID any) error {
 	return fmt.Errorf("blocker %w: '%v'", ErrTaskNotFound, taskID)
 }
 
 // NewProjectNotFoundError creates a project not found error with the specified project identifier.
 // Use this for consistent error messaging across the codebase.
-func NewProjectNotFoundError(projectID interface{}) error {
+func NewProjectNotFoundError(projectID any) error {
 	return fmt.Errorf("%w: '%v'", ErrProjectNotFound, projectID)
 }
 
 // NewProjectNotFoundInTrashError creates a project not found in trash error with the specified project identifier.
-func NewProjectNotFoundInTrashError(projectID interface{}) error {
+func NewProjectNotFoundInTrashError(projectID any) error {
 	return fmt.Errorf("%w in trash: '%v'", ErrProjectNotFound, projectID)
 }
 
@@ -78,7 +78,7 @@ func NewRequiredFieldError(field string) error {
 
 // NewInvalidValueError creates an error for an invalid field value with a reason.
 // Use this for consistent validation error messaging across the codebase.
-func NewInvalidValueError(field string, value interface{}, reason string) error {
+func NewInvalidValueError(field string, value any, reason string) error {
 	return fmt.Errorf("%w for %s: '%v' (%s)", ErrInvalidValue, field, value, reason)
 }
 

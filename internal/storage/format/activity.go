@@ -57,13 +57,13 @@ func parseActivityPayload(payload string, timestamp time.Time) *models.ActivityE
 	}
 
 	// Split on first ": "
-	idx := strings.Index(payload, ": ")
-	if idx < 0 {
+	before, after, ok := strings.Cut(payload, ": ")
+	if !ok {
 		return nil
 	}
 
-	field := payload[:idx]
-	value := payload[idx+2:]
+	field := before
+	value := after
 
 	// Check for "old > new" pattern
 	if parts := strings.SplitN(value, " > ", 2); len(parts) == 2 {

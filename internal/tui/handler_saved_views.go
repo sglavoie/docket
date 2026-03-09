@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"maps"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -110,9 +112,7 @@ func (m *AppModel) captureProjectTreeView(name string) config.SavedView {
 	}
 	if len(pt.filter.Attrs) > 0 {
 		view.FilterAttrs = make(map[string]string)
-		for k, v := range pt.filter.Attrs {
-			view.FilterAttrs[k] = v
-		}
+		maps.Copy(view.FilterAttrs, pt.filter.Attrs)
 	}
 
 	// Capture custom section tab name
@@ -153,9 +153,7 @@ func (m *AppModel) captureOutlinerView(name string) config.SavedView {
 	}
 	if len(ol.filter.Attrs) > 0 {
 		view.FilterAttrs = make(map[string]string)
-		for k, v := range ol.filter.Attrs {
-			view.FilterAttrs[k] = v
-		}
+		maps.Copy(view.FilterAttrs, ol.filter.Attrs)
 	}
 
 	// Capture custom section tab name
@@ -203,9 +201,7 @@ func (m *AppModel) applySavedView(view config.SavedView) {
 
 	// Restore attributes
 	pt.filter.Attrs = make(map[string]string)
-	for k, v := range view.FilterAttrs {
-		pt.filter.Attrs[k] = v
-	}
+	maps.Copy(pt.filter.Attrs, view.FilterAttrs)
 
 	// Restore custom section tab
 	if view.CustomSectionTab != "" {
@@ -266,9 +262,7 @@ func (m *AppModel) applySavedViewToOutliner(view config.SavedView) {
 
 	// Restore attributes
 	ol.filter.Attrs = make(map[string]string)
-	for k, v := range view.FilterAttrs {
-		ol.filter.Attrs[k] = v
-	}
+	maps.Copy(ol.filter.Attrs, view.FilterAttrs)
 
 	// Restore custom section tab
 	if view.CustomSectionTab != "" {

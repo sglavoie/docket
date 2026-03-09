@@ -106,10 +106,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea
 }
 
 func (m *GlobalNoteMoveProjectSelectorModel) moveCursor(delta int) {
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 	m.Cursor += delta
 	if m.Cursor < 0 {
 		m.Cursor = 0
@@ -145,10 +142,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) fuzzyFilter(query string) {
 	for i, s := range scored {
 		m.Filtered[i] = s.item
 	}
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 	if m.Cursor > maxCursor {
 		m.Cursor = maxCursor
 	}
@@ -183,10 +177,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) View() string {
 func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 	var b strings.Builder
 
-	maxVisible := m.Height() - 10
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(m.Height()-10, 5)
 
 	totalItems := len(m.Filtered)
 	if totalItems == 0 {
@@ -206,10 +197,7 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 		}
 
 		contextBadge := MutedStyle.Render(fmt.Sprintf("[%s]", item.Project.Context))
-		maxNameLen := m.Width() - 20
-		if maxNameLen < 10 {
-			maxNameLen = 10
-		}
+		maxNameLen := max(m.Width()-20, 10)
 		name := util.Truncate(item.Project.Name, maxNameLen)
 		line := fmt.Sprintf("%s%-*s %s", cursor, maxNameLen, name, contextBadge)
 

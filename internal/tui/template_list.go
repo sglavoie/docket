@@ -425,19 +425,13 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 		return b.String()
 	}
 
-	maxVisible := paneHeight
-	if maxVisible < 3 {
-		maxVisible = 3
-	}
+	maxVisible := max(paneHeight, 3)
 
 	startIdx := 0
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(m.filteredTemplates) {
-		endIdx = len(m.filteredTemplates)
-	}
+	endIdx := min(startIdx+maxVisible, len(m.filteredTemplates))
 
 	// Calculate max name length based on available width
 	var maxNameLen int
@@ -485,10 +479,7 @@ func (m *TaskTemplatesModel) renderTemplatesList(paneHeight int) string {
 			// Show summary for selected template on narrow screens only
 			if !m.isWideScreen() {
 				summary := t.Summary()
-				maxSummaryLen := m.Width() - 8
-				if maxSummaryLen < 20 {
-					maxSummaryLen = 20
-				}
+				maxSummaryLen := max(m.Width()-8, 20)
 				if len(summary) > maxSummaryLen {
 					summary = summary[:maxSummaryLen-3] + "..."
 				}
@@ -730,10 +721,7 @@ func (m *TaskTemplatesModel) renderFullscreenPreview() string {
 	}
 
 	// Calculate available content height (minus header and footer)
-	availableHeight := m.Height() - 6
-	if availableHeight < 5 {
-		availableHeight = 5
-	}
+	availableHeight := max(m.Height()-6, 5)
 	if len(lines) > availableHeight {
 		lines = lines[:availableHeight]
 	}

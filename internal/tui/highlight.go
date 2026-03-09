@@ -25,14 +25,14 @@ func HighlightSubstring(text, query string, baseStyle lipgloss.Style) string {
 	var positions []int
 	for i := 0; i <= len(textLower)-queryLen; i++ {
 		match := true
-		for j := 0; j < queryLen; j++ {
+		for j := range queryLen {
 			if textLower[i+j] != queryRunes[j] {
 				match = false
 				break
 			}
 		}
 		if match {
-			for j := 0; j < queryLen; j++ {
+			for j := range queryLen {
 				positions = append(positions, i+j)
 			}
 		}
@@ -61,14 +61,14 @@ func HighlightStyledText(styled, query string) string {
 	qLen := len(queryRunes)
 	for i := 0; i <= len(plainRunes)-qLen; i++ {
 		match := true
-		for j := 0; j < qLen; j++ {
+		for j := range qLen {
 			if plainRunes[i+j] != queryRunes[j] {
 				match = false
 				break
 			}
 		}
 		if match {
-			for j := 0; j < qLen; j++ {
+			for j := range qLen {
 				matchSet[i+j] = struct{}{}
 			}
 		}

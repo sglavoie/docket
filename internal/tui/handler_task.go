@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -488,13 +489,7 @@ func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 			} else {
 				// Check if current section still has items
 				currentSection := sidebar.GetDependencySection()
-				sectionHasItems := false
-				for _, s := range sections {
-					if s == currentSection {
-						sectionHasItems = true
-						break
-					}
-				}
+				sectionHasItems := slices.Contains(sections, currentSection)
 				if !sectionHasItems {
 					// Switch to first available section
 					sidebar.SetDependencySection(sections[0])
@@ -522,13 +517,7 @@ func (m *AppModel) handleLinkRemoved(msg LinkRemovedMsg) (bool, tea.Cmd) {
 				sidebar.SetFocused(false)
 			} else {
 				currentSection := sidebar.GetDependencySection()
-				sectionHasItems := false
-				for _, s := range sections {
-					if s == currentSection {
-						sectionHasItems = true
-						break
-					}
-				}
+				sectionHasItems := slices.Contains(sections, currentSection)
 				if !sectionHasItems {
 					sidebar.SetDependencySection(sections[0])
 				}

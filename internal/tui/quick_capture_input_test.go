@@ -73,10 +73,10 @@ func TestWrapPreviewTextBreaksAtSeparator(t *testing.T) {
 	width := 20
 
 	result := wrapPreviewText(input, width)
-	lines := strings.Split(result, "\n")
+	lines := strings.SplitSeq(result, "\n")
 
 	// Should break at separators, not in the middle of words
-	for _, line := range lines {
+	for line := range lines {
 		trimmed := strings.TrimSpace(line)
 		// Check that lines don't start or end with incomplete metadata markers
 		if strings.HasPrefix(trimmed, "·") {

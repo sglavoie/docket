@@ -143,10 +143,7 @@ func (m *NoteTaskLinkerModel) View() string {
 		if m.picker.Cursor >= maxVisible {
 			start = m.picker.Cursor - maxVisible + 1
 		}
-		end := start + maxVisible
-		if end > len(m.picker.Filtered) {
-			end = len(m.picker.Filtered)
-		}
+		end := min(start+maxVisible, len(m.picker.Filtered))
 
 		for i := start; i < end; i++ {
 			item := m.picker.Filtered[i]

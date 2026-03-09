@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -192,10 +193,7 @@ func (m *ScoreEditorModel) View() string {
 	totalScore := m.computeLiveScore()
 
 	// Content width for wrapping (box border=2, padding=4, margin=4)
-	contentWidth := m.width - 10
-	if contentWidth < 30 {
-		contentWidth = 30
-	}
+	contentWidth := max(m.width-10, 30)
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
 	headerStyle := lipgloss.NewStyle().Bold(true)
@@ -220,12 +218,12 @@ func (m *ScoreEditorModel) View() string {
 
 		// Value bar
 		barLen := dim.Max - dim.Min + 1
-		bar := ""
+		var bar strings.Builder
 		for v := dim.Min; v <= dim.Max; v++ {
 			if v == m.values[i] {
-				bar += "█"
+				bar.WriteString("█")
 			} else {
-				bar += "░"
+				bar.WriteString("░")
 			}
 		}
 		_ = barLen
@@ -243,7 +241,7 @@ func (m *ScoreEditorModel) View() string {
 		line := fmt.Sprintf("%s%-20s %s %d/%d  %s%s",
 			cursor,
 			dim.Name+roleStr,
-			bar,
+			bar.String(),
 			m.values[i], dim.Max,
 			sourceTag,
 			"",
@@ -258,12 +256,12 @@ func (m *ScoreEditorModel) View() string {
 	helpText := "j/k: navigate · h/l: adjust · 0-9: set · d: reset · Enter: save · Esc: cancel"
 	lines = append(lines, mutedStyle.Render(renderWrappingHelpLine(helpText, contentWidth)))
 
-	content := ""
+	var content strings.Builder
 	for i, l := range lines {
 		if i > 0 {
-			content += "\n"
+			content.WriteString("\n")
 		}
-		content += l
+		content.WriteString(l)
 	}
 
 	// Render as a centered box
@@ -272,7 +270,7 @@ func (m *ScoreEditorModel) View() string {
 		BorderForeground(lipgloss.Color("99")).
 		Padding(1, 2)
 
-	box := boxStyle.Render(content)
+	box := boxStyle.Render(content.String())
 
 	// Center the box in the terminal
 	return lipgloss.Place(m.width, m.height,

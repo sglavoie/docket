@@ -191,10 +191,7 @@ func renderSidebarDepSectionItems(sidebar *SidebarComponent, items []sidebarLink
 		lines = append(lines, "  "+ScrollUpIndicator(sectionScroll))
 	}
 
-	visibleEnd := sectionScroll + maxVisiblePerSection
-	if visibleEnd > len(items) {
-		visibleEnd = len(items)
-	}
+	visibleEnd := min(sectionScroll+maxVisiblePerSection, len(items))
 
 	for i := sectionScroll; i < visibleEnd; i++ {
 		isCursor := sidebar.IsFocused() && sidebar.GetDependencySection() == sectionIndex && i == sidebar.GetDependencyCursor()
@@ -308,10 +305,7 @@ func renderSidebarCommentsCard(task *models.Task, width int) string {
 			timestampLine += " [resolved]"
 		}
 		lines = append(lines, MutedStyle.Render(timestampLine))
-		innerWidth := width - CardBorderOverhead
-		if innerWidth < 20 {
-			innerWidth = 20
-		}
+		innerWidth := max(width-CardBorderOverhead, 20)
 		rendered := renderMarkdown(comment.Text, innerWidth)
 		if comment.Resolved {
 			lines = append(lines, MutedStyle.Render(rendered))
@@ -327,10 +321,7 @@ func renderSidebarCommentsCard(task *models.Task, width int) string {
 func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 	var lines []string
 
-	maxLen := width - 10
-	if maxLen < 20 {
-		maxLen = 20
-	}
+	maxLen := max(width-10, 20)
 
 	for i, attachment := range task.Attachments {
 		if i > 0 {
@@ -350,10 +341,7 @@ func renderSidebarAttachmentsCard(task *models.Task, width int) string {
 
 // renderSidebarDescriptionCard renders the description card.
 func renderSidebarDescriptionCard(task *models.Task, width int) string {
-	innerWidth := width - CardBorderOverhead
-	if innerWidth < 20 {
-		innerWidth = 20
-	}
+	innerWidth := max(width-CardBorderOverhead, 20)
 	rendered := renderMarkdown(task.Description, innerWidth)
 	lines := strings.Split(rendered, "\n")
 	maxLines := 5
@@ -469,10 +457,7 @@ func padSidebarToHeight(content string, sidebar *SidebarComponent, width, height
 	// Apply and clamp scroll offset from sidebar
 	scrollOffset := 0
 	if sidebar != nil {
-		maxScroll := totalLines - height
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
+		maxScroll := max(totalLines-height, 0)
 		if sidebar.scroll > maxScroll {
 			sidebar.scroll = maxScroll
 		}
@@ -637,7 +622,7 @@ func renderVerticalDivider(height int, focused bool) string {
 		return ""
 	}
 	var b strings.Builder
-	for i := 0; i < height; i++ {
+	for i := range height {
 		b.WriteString("┃")
 		if i < height-1 {
 			b.WriteString("\n")

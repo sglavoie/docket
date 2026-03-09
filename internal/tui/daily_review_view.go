@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -118,9 +119,7 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
 	}
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

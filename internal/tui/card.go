@@ -62,7 +62,7 @@ func renderOverlaySplitPane(leftContent, rightContent string, leftWidth, rightWi
 	var result strings.Builder
 	sep := OverlaySplitStyle.Render("┃")
 
-	for i := 0; i < height; i++ {
+	for i := range height {
 		// Truncate left line to exact width and pad with spaces
 		leftLine := truncateAndPad(leftLines[i], leftWidth)
 		// Truncate right line to content width and pad with spaces (then add 1 space for padding)
@@ -109,10 +109,7 @@ func truncateAndPad(line string, maxWidth int) string {
 func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Style) string {
 	titleVisualWidth := lipgloss.Width(titleText)
 	usedByTitle := 5 + titleVisualWidth // "╭─ " + title + " " + "╮"
-	remainingDashes := width - usedByTitle
-	if remainingDashes < 1 {
-		remainingDashes = 1
-	}
+	remainingDashes := max(width-usedByTitle, 1)
 	return borderStyle.Render("╭─ ") + titleText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╮")
 }
 
@@ -121,10 +118,7 @@ func renderTitledTopBorder(titleText string, width int, borderStyle lipgloss.Sty
 func renderTitledBottomBorder(footerText string, width int, borderStyle lipgloss.Style) string {
 	footerVisualWidth := lipgloss.Width(footerText)
 	usedByFooter := 5 + footerVisualWidth // "╰─ " + footer + " " + "╯"
-	remainingDashes := width - usedByFooter
-	if remainingDashes < 1 {
-		remainingDashes = 1
-	}
+	remainingDashes := max(width-usedByFooter, 1)
 	return borderStyle.Render("╰─ ") + footerText + borderStyle.Render(" "+strings.Repeat("─", remainingDashes)+"╯")
 }
 

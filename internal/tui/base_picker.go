@@ -210,10 +210,7 @@ func (p *BasePicker[T]) RenderList(maxVisible int) string {
 	if p.Cursor >= maxVisible {
 		start = p.Cursor - maxVisible + 1
 	}
-	end := start + maxVisible
-	if end > len(p.Filtered) {
-		end = len(p.Filtered)
-	}
+	end := min(start+maxVisible, len(p.Filtered))
 
 	// Determine width for selection row
 	rowWidth := p.Width()

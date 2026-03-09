@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -245,9 +246,7 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		},
 	}
 	// Merge filter prefix hints (no DueDate category -- view has "By Due Date" tab)
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

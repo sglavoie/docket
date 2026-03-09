@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -319,12 +320,7 @@ func (t *Task) EnsureEpicAttrs() *EpicAttrs {
 // Generic enum helpers.
 
 func isValidEnum[T comparable](val T, valid []T) bool {
-	for _, v := range valid {
-		if val == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(valid, val)
 }
 
 func joinEnum[T ~string](valid []T) string {

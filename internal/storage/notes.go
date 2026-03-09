@@ -331,13 +331,13 @@ func splitFrontmatter(content string) (frontmatter string, body string, err erro
 	// Find the closing ---
 	rest := content[3:] // skip opening ---
 	rest = strings.TrimLeft(rest, "\r\n")
-	idx := strings.Index(rest, "\n---")
-	if idx < 0 {
+	before, after, ok := strings.Cut(rest, "\n---")
+	if !ok {
 		return "", content, fmt.Errorf("missing closing frontmatter delimiter")
 	}
 
-	fm := rest[:idx]
-	body = strings.TrimPrefix(rest[idx+4:], "\n")
+	fm := before
+	body = strings.TrimPrefix(after, "\n")
 	body = strings.TrimLeft(body, "\r\n")
 
 	return fm, body, nil

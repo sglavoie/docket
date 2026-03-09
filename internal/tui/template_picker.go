@@ -325,10 +325,7 @@ func (m *TemplatePickerModel) renderPreviewPanel(t *template.TaskTemplate, width
 		lines = append(lines, "")
 		lines = append(lines, MutedStyle.Render("Description:"))
 		// Word-wrap description (width-4 accounts for indent and margins)
-		wrapWidth := width - 4
-		if wrapWidth < 20 {
-			wrapWidth = 20
-		}
+		wrapWidth := max(width-4, 20)
 		wrapped := wrapTemplateText(t.Description, wrapWidth)
 		for _, line := range wrapped {
 			lines = append(lines, "  "+line)
@@ -430,10 +427,7 @@ func (m *TemplatePickerModel) View() string {
 
 	// Calculate content height (total height minus header, search, help footer)
 	// Header: 2 lines, Search: 2 lines, Help: 2 lines = 6 lines overhead
-	contentHeight := m.Height() - 10
-	if contentHeight < 5 {
-		contentHeight = 5
-	}
+	contentHeight := max(m.Height()-10, 5)
 
 	if totalWidth >= minWidthForSplitView {
 		// Wide mode: split view

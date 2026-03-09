@@ -384,10 +384,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 	}
 
 	// Max visible ITEMS - use available height
-	maxVisibleItems := m.height - 10
-	if maxVisibleItems < 8 {
-		maxVisibleItems = 8
-	}
+	maxVisibleItems := max(m.height-10, 8)
 
 	// Update scroll offset to keep cursor visible within the item window
 	if m.cursor >= m.scrollOffset+maxVisibleItems {
@@ -412,10 +409,7 @@ func (m *LinkedTaskSelectorModel) View() string {
 
 	// Determine visible item range
 	visibleStart := m.scrollOffset
-	visibleEnd := m.scrollOffset + maxVisibleItems
-	if visibleEnd > len(m.filtered) {
-		visibleEnd = len(m.filtered)
-	}
+	visibleEnd := min(m.scrollOffset+maxVisibleItems, len(m.filtered))
 
 	// Title
 	b.WriteString(renderFullscreenTitle("Navigate Linked Tasks", taskSubtitle))
@@ -559,10 +553,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 	statusIcon := GetStatusBadge(string(rel.Task.Status), rel.Task.Status.Icon())
 	typeIcon := GetTypeBadge(string(rel.Task.Type), rel.Task.Type.Icon())
 
-	maxTitleLen := m.width - 35
-	if maxTitleLen < 20 {
-		maxTitleLen = 20
-	}
+	maxTitleLen := max(m.width-35, 20)
 
 	// Show project name for cross-project links
 	var projectLabel string

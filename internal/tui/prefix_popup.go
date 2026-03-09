@@ -96,13 +96,11 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 	title := titleKeyStyle.Render(prefix) + borderStyle.Render(" → ") + categoryTitle
 
 	// Determine layout mode
-	maxAvailableHeight := height - 4 // account for border, footer line, some margin
-	if maxAvailableHeight > 20 {
-		maxAvailableHeight = 20
-	}
-	if maxAvailableHeight < 3 {
-		maxAvailableHeight = 3
-	}
+	maxAvailableHeight := max(
+		// account for border, footer line, some margin
+		min(
+
+			height-4, 20), 3)
 
 	onePerLine := len(keyHints) <= maxAvailableHeight
 
@@ -166,13 +164,11 @@ func RenderPrefixPopup(prefix string, hints PrefixHints, width, height int) stri
 		}
 
 		// Set box width based on content
-		boxInnerWidth := contentWidth + 2 // 1 padding each side
-		if boxInnerWidth < minWidth {
-			boxInnerWidth = minWidth
-		}
-		if boxInnerWidth > maxWidth {
-			boxInnerWidth = maxWidth
-		}
+		boxInnerWidth := min(
+			// 1 padding each side
+			max(
+
+				contentWidth+2, minWidth), maxWidth)
 
 		return renderPrefixBox(title, contentLines, boxInnerWidth, borderStyle)
 	}
@@ -274,14 +270,8 @@ func OverlayPopup(base, popup string, baseWidth, baseHeight int) string {
 	}
 
 	// Position: bottom-center, 1 line above the bottom
-	startRow := baseHeight - popupHeight - 1
-	if startRow < 0 {
-		startRow = 0
-	}
-	startCol := (baseWidth - popupWidth) / 2
-	if startCol < 0 {
-		startCol = 0
-	}
+	startRow := max(baseHeight-popupHeight-1, 0)
+	startCol := max((baseWidth-popupWidth)/2, 0)
 
 	// Overlay popup lines onto base lines.
 	// Pad each popup line to popupWidth so shorter lines fully cover the background.
@@ -325,10 +315,7 @@ func OverlayPopupBottomLeft(base, popup string, baseWidth, baseHeight int) strin
 	}
 
 	// Position: bottom-left, 1 line above the bottom
-	startRow := baseHeight - popupHeight - 1
-	if startRow < 0 {
-		startRow = 0
-	}
+	startRow := max(baseHeight-popupHeight-1, 0)
 	startCol := 1
 
 	// Overlay popup lines onto base lines.

@@ -171,10 +171,7 @@ func (m *OutlinerModel) renderFullWidth() string {
 
 // renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
 func (m *OutlinerModel) renderWithSidebar() string {
-	treeWidth := (m.width * 55) / 100
-	if treeWidth < TreeMinWidth {
-		treeWidth = TreeMinWidth
-	}
+	treeWidth := max((m.width*55)/100, TreeMinWidth)
 
 	dividerWidth := 1
 	sidebarWidth := m.width - treeWidth - dividerWidth

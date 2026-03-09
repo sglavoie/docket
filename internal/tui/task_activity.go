@@ -142,10 +142,7 @@ func (m *TaskActivityModel) View() string {
 	} else {
 		headerLines := 5
 		availableHeight := m.Height() - headerLines
-		maxVisible := availableHeight / 2
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
+		maxVisible := max(availableHeight/2, 3)
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 

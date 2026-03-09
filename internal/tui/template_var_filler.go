@@ -125,10 +125,7 @@ func (m *TemplateVarFillerModel) View() string {
 func (m *TemplateVarFillerModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	inputWidth := width - 10
-	if inputWidth < 20 {
-		inputWidth = 20
-	}
+	inputWidth := max(width-10, 20)
 	for i := range m.inputs {
 		m.inputs[i].Width = inputWidth
 	}

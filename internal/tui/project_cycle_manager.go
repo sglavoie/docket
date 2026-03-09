@@ -350,13 +350,7 @@ func (m *AppModel) renderProjectCyclePopup() string {
 	// Footer text must fit within the border: "╰─ " + footer + " ─╯" = 5 + footerLen
 	footerText := "1-9 jump · space toggle · p pin · enter go · esc close"
 	minWidth := lipgloss.Width(footerText) + 6
-	popupWidth := idealWidth
-	if popupWidth < minWidth {
-		popupWidth = minWidth
-	}
-	if popupWidth > 60 {
-		popupWidth = 60
-	}
+	popupWidth := min(max(idealWidth, minWidth), 60)
 	// Constrain to tree area width so popup doesn't cover the sidebar
 	treeWidth := (m.width * 55) / 100
 	if maxTreePopup := treeWidth - 2; popupWidth > maxTreePopup && maxTreePopup > minWidth {
@@ -417,10 +411,7 @@ func (m *AppModel) renderProjectCyclePopup() string {
 
 		// Layout: badge(1) + space(1) + checkbox(3) + space(1) + name + gap(2) + count
 		fixedWidth := 1 + 1 + 3 + 1 + 2 + maxCountWidth
-		nameWidth := innerWidth - fixedWidth
-		if nameWidth < 10 {
-			nameWidth = 10
-		}
+		nameWidth := max(innerWidth-fixedWidth, 10)
 
 		// Truncate name if needed
 		plainName := item.Project.Name
@@ -458,10 +449,7 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		// contentLines has 2 header lines (subtitle + blank), then item lines
 		headerLines := contentLines[:2]
 		itemLines := contentLines[2:]
-		end := m.projectCycleScroll + maxVisible
-		if end > len(itemLines) {
-			end = len(itemLines)
-		}
+		end := min(m.projectCycleScroll+maxVisible, len(itemLines))
 		visibleItems := itemLines[m.projectCycleScroll:end]
 		contentLines = append(headerLines, visibleItems...)
 		// Add scroll indicators

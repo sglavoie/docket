@@ -300,13 +300,7 @@ func (m *WorkflowRulesModel) adjustCurrentRulePriority(delta int) tea.Cmd {
 		}
 
 		rule := &m.filteredRules[m.cursor]
-		newPriority := rule.Priority + delta
-		if newPriority < 0 {
-			newPriority = 0
-		}
-		if newPriority > 99 {
-			newPriority = 99
-		}
+		newPriority := min(max(rule.Priority+delta, 0), 99)
 		rule.Priority = newPriority
 
 		// Update in config
@@ -454,19 +448,13 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 		return b.String()
 	}
 
-	maxVisible := paneHeight
-	if maxVisible < 3 {
-		maxVisible = 3
-	}
+	maxVisible := max(paneHeight, 3)
 
 	startIdx := 0
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(m.filteredRules) {
-		endIdx = len(m.filteredRules)
-	}
+	endIdx := min(startIdx+maxVisible, len(m.filteredRules))
 
 	// Calculate max name length based on available width
 	// On wide screen: use list pane width (45% of total)
@@ -522,10 +510,7 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 			// Show summary for selected rule on narrow screens only
 			if !m.isWideScreen() {
 				summary := rule.Summary()
-				maxSummaryLen := m.Width() - 8
-				if maxSummaryLen < 20 {
-					maxSummaryLen = 20
-				}
+				maxSummaryLen := max(m.Width()-8, 20)
 				if len(summary) > maxSummaryLen {
 					summary = summary[:maxSummaryLen-3] + "..."
 				}

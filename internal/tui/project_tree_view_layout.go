@@ -135,17 +135,11 @@ func (m *ProjectTreeModel) renderFullWidth() string {
 		if len(visible) > availableHeight {
 			// Center cursor in view
 			halfView := availableHeight / 2
-			startIdx = m.cursor - halfView
-			if startIdx < 0 {
-				startIdx = 0
-			}
+			startIdx = max(m.cursor-halfView, 0)
 			endIdx = startIdx + availableHeight
 			if endIdx > len(visible) {
 				endIdx = len(visible)
-				startIdx = endIdx - availableHeight
-				if startIdx < 0 {
-					startIdx = 0
-				}
+				startIdx = max(endIdx-availableHeight, 0)
 			}
 		}
 
@@ -214,12 +208,9 @@ func (m *ProjectTreeModel) renderMultiSelectIndicator(width int) string {
 // renderWithSidebar renders the split-pane view with tree on left and sidebar on right.
 func (m *ProjectTreeModel) renderWithSidebar() string {
 	// Calculate widths: 55% tree, 1 for divider, remainder for sidebar
-	treeWidth := (m.width * 55) / 100
-
-	// Ensure minimum width for tree
-	if treeWidth < TreeMinWidth {
-		treeWidth = TreeMinWidth
-	}
+	treeWidth := max(
+		// Ensure minimum width for tree
+		(m.width*55)/100, TreeMinWidth)
 
 	// Account for divider (1 char)
 	dividerWidth := 1
@@ -388,17 +379,11 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 		if len(visible) > availableHeight {
 			// Center cursor in view
 			halfView := availableHeight / 2
-			startIdx = m.cursor - halfView
-			if startIdx < 0 {
-				startIdx = 0
-			}
+			startIdx = max(m.cursor-halfView, 0)
 			endIdx = startIdx + availableHeight
 			if endIdx > len(visible) {
 				endIdx = len(visible)
-				startIdx = endIdx - availableHeight
-				if startIdx < 0 {
-					startIdx = 0
-				}
+				startIdx = max(endIdx-availableHeight, 0)
 			}
 		}
 

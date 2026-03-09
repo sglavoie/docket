@@ -206,10 +206,7 @@ func (m *UndoHistoryModel) ShouldCaptureEsc() bool {
 // ensureDiffCursorVisible adjusts diffScroll to keep the cursor visible.
 func (m *UndoHistoryModel) ensureDiffCursorVisible() {
 	availableHeight := m.Height() - 6
-	visibleLines := availableHeight - 5
-	if visibleLines < 1 {
-		visibleLines = 1
-	}
+	visibleLines := max(availableHeight-5, 1)
 
 	// If cursor is above visible area, scroll up
 	if m.diffCursor < m.diffScroll {
@@ -299,10 +296,7 @@ func (m *UndoHistoryModel) View() string {
 	}
 
 	// Calculate layout
-	listWidth := m.Width() * 35 / 100
-	if listWidth < 30 {
-		listWidth = 30
-	}
+	listWidth := max(m.Width()*35/100, 30)
 	diffWidth := m.Width() - listWidth - 3 // 3 for separator
 
 	availableHeight := m.Height() - 6 // Title, help, padding
@@ -342,10 +336,7 @@ func (m *UndoHistoryModel) View() string {
 func (m *UndoHistoryModel) renderDetailView() string {
 	var b strings.Builder
 
-	wrapWidth := m.Width() - 4
-	if wrapWidth < 20 {
-		wrapWidth = 20
-	}
+	wrapWidth := max(m.Width()-4, 20)
 
 	// Check if this is part of a modification (remove followed by add or add preceded by remove)
 	var pairedLine *DiffLine
@@ -498,20 +489,14 @@ func (m *UndoHistoryModel) renderEntryList(width, height int) string {
 
 	// Calculate visible range
 	// Each entry takes 2 lines (action text + timestamp), header takes 1 line
-	visibleEntries := (height - 2) / 2
-	if visibleEntries < 1 {
-		visibleEntries = 1
-	}
+	visibleEntries := max((height-2)/2, 1)
 
 	startIdx := 0
 	if m.cursor >= visibleEntries {
 		startIdx = m.cursor - visibleEntries + 1
 	}
 
-	endIdx := startIdx + visibleEntries
-	if endIdx > len(m.entries) {
-		endIdx = len(m.entries)
-	}
+	endIdx := min(startIdx+visibleEntries, len(m.entries))
 
 	// Render entries
 	for i := startIdx; i < endIdx; i++ {
@@ -589,23 +574,14 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 	b.WriteString("\n\n")
 
 	// Calculate visible range
-	visibleLines := height - 5
-	if visibleLines < 1 {
-		visibleLines = 1
-	}
+	visibleLines := max(height-5, 1)
 
 	startIdx := m.diffScroll
 	if startIdx >= len(m.diffLines) {
-		startIdx = len(m.diffLines) - 1
-		if startIdx < 0 {
-			startIdx = 0
-		}
+		startIdx = max(len(m.diffLines)-1, 0)
 	}
 
-	endIdx := startIdx + visibleLines
-	if endIdx > len(m.diffLines) {
-		endIdx = len(m.diffLines)
-	}
+	endIdx := min(startIdx+visibleLines, len(m.diffLines))
 
 	// Available width for content (minus prefix)
 	contentWidth := width - 3

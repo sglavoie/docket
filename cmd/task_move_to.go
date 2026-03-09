@@ -87,7 +87,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 	} else {
 		// Interactive selection - exclude current project
 		var candidates []*struct {
-			Project interface{}
+			Project any
 			ID      string
 			Name    string
 			Context string
@@ -96,7 +96,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		for _, p := range cfg.GetActiveProjects() {
 			if p.ID != sourceProject.ID {
 				candidates = append(candidates, &struct {
-					Project interface{}
+					Project any
 					ID      string
 					Name    string
 					Context string

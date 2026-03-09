@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -198,12 +199,13 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		// Block completion if task has incomplete dependencies
 		if action == "complete" {
 			if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
-				msg := fmt.Sprintf("cannot complete task #%d: has %d incomplete dependencies:\n",
-					task.ShortID, len(incompleteDeps))
+				var msg strings.Builder
+				msg.WriteString(fmt.Sprintf("cannot complete task #%d: has %d incomplete dependencies:\n",
+					task.ShortID, len(incompleteDeps)))
 				for _, dep := range incompleteDeps {
-					msg += fmt.Sprintf("  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+					msg.WriteString(fmt.Sprintf("  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status))
 				}
-				return errors.New(msg)
+				return errors.New(msg.String())
 			}
 		}
 

@@ -1,5 +1,7 @@
 package models
 
+import "slices"
+
 import "strings"
 
 // TaskType represents the kind of task item.
@@ -52,12 +54,7 @@ func (t TaskType) CanHaveChildren() bool {
 
 // CanBeChildOf returns true if this task type can be a child of the given parent type.
 func (t TaskType) CanBeChildOf(parent TaskType) bool {
-	for _, allowed := range parent.AllowedChildren() {
-		if t == allowed {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(parent.AllowedChildren(), t)
 }
 
 // Icon returns a single-character icon for the task type.

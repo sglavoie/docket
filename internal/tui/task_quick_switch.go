@@ -121,10 +121,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	title := titleStyle.Render("Recent Tasks")
 
 	// Determine popup width: full terminal width minus small margin
-	popupWidth := m.width - 4
-	if popupWidth < 30 {
-		popupWidth = 30
-	}
+	popupWidth := max(m.width-4, 30)
 
 	cursorStyle := SelectionRowStyle
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -143,10 +140,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	// Layout per line: badge(1) + space(1) + icon(1) + space(1) + title + gap(2) + project
 	projColWidth := maxProjLen
 	fixedWidth := 1 + 1 + 1 + 1 + 2 + projColWidth // badge, space, icon, space, gap, project
-	titleWidth := innerWidth - fixedWidth
-	if titleWidth < 10 {
-		titleWidth = 10
-	}
+	titleWidth := max(innerWidth-fixedWidth, 10)
 
 	var contentLines []string
 	for i, entry := range m.recentTaskVisits {

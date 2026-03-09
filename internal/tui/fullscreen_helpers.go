@@ -19,10 +19,7 @@ import (
 // header lines such as blank separators or filter badges.
 func fullscreenContentHeight(totalHeight, tabBarOverhead int) int {
 	const fixedOverhead = 4 // title(1) + newline(1) + footer(2)
-	h := totalHeight - fixedOverhead - tabBarOverhead
-	if h < 1 {
-		h = 1
-	}
+	h := max(totalHeight-fixedOverhead-tabBarOverhead, 1)
 	return h
 }
 
@@ -42,10 +39,7 @@ func ScrollDownIndicator(n int) string {
 func renderStatusBarFooter(left, right string, width int) string {
 	separator := MutedStyle.Render(strings.Repeat("─", width))
 
-	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
-	if gap < 1 {
-		gap = 1
-	}
+	gap := max(width-lipgloss.Width(left)-lipgloss.Width(right), 1)
 	spacer := lipgloss.NewStyle().Width(gap).Render("")
 
 	return fmt.Sprintf("%s\n%s", separator, lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right))
@@ -142,10 +136,7 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 	}
 
 	// Thumb size: proportional, min 1
-	thumbHeight := (viewportHeight * viewportHeight) / totalItems
-	if thumbHeight < 1 {
-		thumbHeight = 1
-	}
+	thumbHeight := max((viewportHeight*viewportHeight)/totalItems, 1)
 
 	// Thumb position: map scrollOffset to track range
 	trackRange := viewportHeight - thumbHeight
@@ -159,7 +150,7 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 	}
 
 	var b strings.Builder
-	for i := 0; i < viewportHeight; i++ {
+	for i := range viewportHeight {
 		if i > 0 {
 			b.WriteByte('\n')
 		}
@@ -193,12 +184,9 @@ func AttachScrollbar(content, scrollbar string) string {
 	}
 
 	var b strings.Builder
-	maxLines := len(contentLines)
-	if len(scrollLines) > maxLines {
-		maxLines = len(scrollLines)
-	}
+	maxLines := max(len(scrollLines), len(contentLines))
 
-	for i := 0; i < maxLines; i++ {
+	for i := range maxLines {
 		if i > 0 {
 			b.WriteByte('\n')
 		}
@@ -563,10 +551,7 @@ func applyPersistentScroll(lines []string, cursorIdx, contentHeight int, scrollO
 		if cursorIdx >= *scrollOffset+contentHeight {
 			*scrollOffset = cursorIdx - contentHeight + 1
 		}
-		maxOffset := len(lines) - contentHeight
-		if maxOffset < 0 {
-			maxOffset = 0
-		}
+		maxOffset := max(len(lines)-contentHeight, 0)
 		if *scrollOffset > maxOffset {
 			*scrollOffset = maxOffset
 		}

@@ -129,10 +129,7 @@ func (m *ProjectPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProjectPickerModel) moveCursor(delta int) {
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 
 	m.Cursor += delta
 	if m.Cursor < 0 {
@@ -174,10 +171,7 @@ func (m *ProjectPickerModel) fuzzyFilter(query string) {
 		m.Filtered[i] = s.item
 	}
 
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 	if m.Cursor > maxCursor {
 		m.Cursor = maxCursor
 	}

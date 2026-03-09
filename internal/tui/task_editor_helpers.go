@@ -591,11 +591,11 @@ func (m *TaskEditorModel) handleAttrRight(fieldIdx int) {
 }
 
 // handleAttrEnter handles enter key for text attribute fields.
-func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() interface{} {
+func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() any {
 	switch m.taskType {
 	case models.TaskTypeBug:
 		if fieldIdx == 2 {
-			return func() interface{} {
+			return func() any {
 				return ShowTextEditorMsg{
 					FieldName:    "bugWorkaround",
 					CurrentValue: m.bugWorkaround,
@@ -604,7 +604,7 @@ func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() interface{} {
 		}
 	case models.TaskTypeStory:
 		if fieldIdx == 1 {
-			return func() interface{} {
+			return func() any {
 				return ShowTextEditorMsg{
 					FieldName:    "storyPersona",
 					CurrentValue: m.storyPersona,
@@ -613,7 +613,7 @@ func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() interface{} {
 		}
 	case models.TaskTypeEpic:
 		if fieldIdx == 1 {
-			return func() interface{} {
+			return func() any {
 				return ShowTextEditorMsg{
 					FieldName:    "epicMilestone",
 					CurrentValue: m.epicMilestone,
@@ -621,7 +621,7 @@ func (m *TaskEditorModel) handleAttrEnter(fieldIdx int) func() interface{} {
 			}
 		}
 		if fieldIdx == 2 {
-			return func() interface{} {
+			return func() any {
 				return ShowTextEditorMsg{
 					FieldName:    "epicSuccessMetrics",
 					CurrentValue: m.epicSuccessMetrics,

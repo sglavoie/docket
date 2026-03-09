@@ -612,7 +612,7 @@ func TestAddCommandToHistory_MaxLimit(t *testing.T) {
 	cfg := NewConfig()
 
 	// Add 12 commands
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		cfg.AddCommandToHistory("cmd" + string(rune('a'+i)))
 	}
 
@@ -648,7 +648,7 @@ func TestAddCommandToHistory_MaxWithDuplicates(t *testing.T) {
 	cfg := NewConfig()
 
 	// Add 10 unique commands
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		cfg.AddCommandToHistory("cmd" + string(rune('a'+i)))
 	}
 

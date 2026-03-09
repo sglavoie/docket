@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
@@ -166,9 +167,7 @@ func (m *MockRepository) Load(project *models.Project) error {
 		project.NextShortID = stored.NextShortID
 		project.Sections = append([]string{}, stored.Sections...)
 		project.SectionColors = make(map[string]string)
-		for k, v := range stored.SectionColors {
-			project.SectionColors[k] = v
-		}
+		maps.Copy(project.SectionColors, stored.SectionColors)
 
 		// Deep copy tasks
 		project.Tasks = make([]*models.Task, len(stored.Tasks))
@@ -229,9 +228,7 @@ func (m *MockRepository) Save(project *models.Project) error {
 		savedProject.Tasks[i] = &taskCopy
 	}
 
-	for k, v := range project.SectionColors {
-		savedProject.SectionColors[k] = v
-	}
+	maps.Copy(savedProject.SectionColors, project.SectionColors)
 	m.Projects[project.ID] = savedProject
 	return nil
 }

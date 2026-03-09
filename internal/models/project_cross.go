@@ -79,10 +79,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	task.ParentID = nil
 
 	// Remove tasks from source project
-	newCap := len(p.Tasks) - len(movedTasks)
-	if newCap < 0 {
-		newCap = 0
-	}
+	newCap := max(len(p.Tasks)-len(movedTasks), 0)
 	newTasks := make([]*Task, 0, newCap)
 	for _, t := range p.Tasks {
 		if !movedIDs[t.ID] {

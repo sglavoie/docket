@@ -2,6 +2,7 @@ package tui
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -160,13 +161,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 
 	// Status filter
 	if len(filters.Statuses) > 0 {
-		found := false
-		for _, status := range filters.Statuses {
-			if task.Status == status {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(filters.Statuses, task.Status)
 		if !found {
 			return false
 		}
@@ -174,13 +169,7 @@ func TaskMatchesFilters(task *models.Task, filters *ParsedSearchQuery) bool {
 
 	// Type filter
 	if len(filters.Types) > 0 {
-		found := false
-		for _, taskType := range filters.Types {
-			if task.Type == taskType {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(filters.Types, task.Type)
 		if !found {
 			return false
 		}
@@ -252,10 +241,5 @@ func matchesDueDateFilter(task *models.Task, filter string) bool {
 
 // containsInt checks if a slice contains an integer.
 func containsInt(slice []int, val int) bool {
-	for _, v := range slice {
-		if v == val {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, val)
 }

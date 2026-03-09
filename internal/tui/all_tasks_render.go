@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 )
 
@@ -136,9 +137,7 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
 	}
 	// Merge filter prefix hints
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	// Add project filter hint to the F prefix (before the clear-all entry)
 	if fHints, ok := hints["F"]; ok {
 		detail := "(all)"

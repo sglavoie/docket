@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -388,12 +389,12 @@ func FormatBreakdown(results []DimensionResult, formula Formula, totalScore floa
 }
 
 func joinLines(lines []string) string {
-	result := ""
+	var result strings.Builder
 	for i, l := range lines {
 		if i > 0 {
-			result += "\n"
+			result.WriteString("\n")
 		}
-		result += l
+		result.WriteString(l)
 	}
-	return result
+	return result.String()
 }

@@ -64,7 +64,7 @@ func TestRecordTaskVisit(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 
-		for i := 0; i < maxRecentTaskVisits+5; i++ {
+		for i := range maxRecentTaskVisits + 5 {
 			task := &models.Task{ID: fmt.Sprintf("t%d", i), Title: fmt.Sprintf("Task %d", i)}
 			app.recordTaskVisit(task, p)
 		}

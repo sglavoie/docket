@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 	"regexp"
+	"slices"
 )
 
 // TemplateVariable represents a variable placeholder found in a template.
@@ -161,15 +162,11 @@ func HasVariables(t *TaskTemplate) bool {
 	if check(t.Name) || check(t.Description) || check(t.Section) {
 		return true
 	}
-	for _, tag := range t.Tags {
-		if check(tag) {
-			return true
-		}
+	if slices.ContainsFunc(t.Tags, check) {
+		return true
 	}
-	for _, item := range t.Checklist {
-		if check(item) {
-			return true
-		}
+	if slices.ContainsFunc(t.Checklist, check) {
+		return true
 	}
 	for _, child := range t.Children {
 		if check(child.Title) {

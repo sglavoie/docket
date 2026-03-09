@@ -32,10 +32,7 @@ func handleFormTabKey(f FormTabNavigable, s formTabState, forward bool) tea.Cmd 
 		return f.focusCurrentField()
 	}
 
-	relIdx := *s.focusIndex - tabStart
-	if relIdx < 0 {
-		relIdx = 0
-	}
+	relIdx := max(*s.focusIndex-tabStart, 0)
 
 	if forward {
 		relIdx = (relIdx + 1) % tabCount

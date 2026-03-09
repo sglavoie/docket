@@ -172,9 +172,9 @@ func displayTaskTree(project *models.Project) {
 }
 
 func printTaskNode(task *models.Task, depth int) {
-	indent := ""
-	for i := 0; i < depth; i++ {
-		indent += "  "
+	var indent strings.Builder
+	for range depth {
+		indent.WriteString("  ")
 	}
 
 	// Build prefix with expand indicator
@@ -199,7 +199,7 @@ func printTaskNode(task *models.Task, depth int) {
 	}
 
 	line := fmt.Sprintf("%s%s%s %s #%d %s",
-		indent,
+		indent.String(),
 		prefix,
 		task.Type.Icon(),
 		task.Status.Icon(),

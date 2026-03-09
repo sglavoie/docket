@@ -212,10 +212,7 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 	indicatorWidth := lipgloss.Width(indicators)
 	progressWidth := lipgloss.Width(progress)
 	usedWidth := 3 + len(checkbox) + node.Level*2 + len(expandIcon) + baseOverhead + indicatorWidth + progressWidth
-	availableTitleWidth := maxWidth - usedWidth
-	if availableTitleWidth < 10 {
-		availableTitleWidth = 10
-	}
+	availableTitleWidth := max(maxWidth-usedWidth, 10)
 	truncatedTitle := util.Truncate(task.Title, availableTitleWidth)
 
 	// Apply search highlighting if there's an active search query
@@ -255,10 +252,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 
 	// Calculate width for the text input
 	prefixWidth := len(indent) + 2 + 2 + 2 + 1 + 5 + 1 // indent + typeIcon + statusIcon + space + idStr + space
-	inputWidth := maxWidth - prefixWidth - 4
-	if inputWidth < 20 {
-		inputWidth = 20
-	}
+	inputWidth := max(maxWidth-prefixWidth-4, 20)
 	input := m.quickEdit.GetInput()
 	input.Width = inputWidth
 	m.quickEdit.UpdateInput(input)

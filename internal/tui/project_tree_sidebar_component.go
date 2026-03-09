@@ -195,18 +195,12 @@ func (s *SidebarComponent) HandleKeys(host SidebarHost, msg tea.KeyMsg) (bool, t
 		return true, nil
 
 	case "ctrl+d", "pgdown":
-		halfPage := host.SidebarHeight() / 2
-		if halfPage < 1 {
-			halfPage = 1
-		}
+		halfPage := max(host.SidebarHeight()/2, 1)
 		s.scroll += halfPage
 		return true, nil
 
 	case "ctrl+u", "pgup":
-		halfPage := host.SidebarHeight() / 2
-		if halfPage < 1 {
-			halfPage = 1
-		}
+		halfPage := max(host.SidebarHeight()/2, 1)
 		s.scroll -= halfPage
 		if s.scroll < 0 {
 			s.scroll = 0

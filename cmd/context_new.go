@@ -81,8 +81,8 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 			fmt.Println("No projects selected.")
 			return nil
 		}
-		slugs := strings.Split(input, ",")
-		for _, slug := range slugs {
+		slugs := strings.SplitSeq(input, ",")
+		for slug := range slugs {
 			slug = strings.TrimSpace(slug)
 			if p := cfg.GetProject(slug); p != nil {
 				selectedIDs = append(selectedIDs, p.ID)

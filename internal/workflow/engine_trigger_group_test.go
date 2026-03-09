@@ -254,7 +254,7 @@ func TestTriggerGroup_ValidateRejectsDeepNesting(t *testing.T) {
 		Triggers: []RuleTrigger{{Field: FieldStatus, Operation: OpEquals, Value: "todo"}},
 	}
 	// Wrap it 5 times to reach depth 6 (exceeds limit of 5)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		deepest = TriggerGroup{
 			Logic:  LogicAnd,
 			Groups: []TriggerGroup{deepest},
@@ -273,7 +273,7 @@ func TestTriggerGroup_ValidateAcceptsMaxDepth(t *testing.T) {
 		Logic:    LogicAnd,
 		Triggers: []RuleTrigger{{Field: FieldStatus, Operation: OpEquals, Value: "todo"}},
 	}
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		deepest = TriggerGroup{
 			Logic:  LogicAnd,
 			Groups: []TriggerGroup{deepest},

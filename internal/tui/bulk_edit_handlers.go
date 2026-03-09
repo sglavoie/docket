@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"sort"
 	"strings"
 
@@ -22,13 +23,7 @@ func (m *BulkEditModel) handleTagAddInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		tag := strings.TrimSpace(m.tagAddInput.Value())
 		if tag != "" {
 			// Check if already in add list
-			found := false
-			for _, t := range m.addTags {
-				if t == tag {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(m.addTags, tag)
 			if !found {
 				m.addTags = append(m.addTags, tag)
 				sort.Strings(m.addTags)

@@ -406,10 +406,7 @@ func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 		height := 5
 		if m.parentListMode {
 			// Show up to 8 candidates in the scrollable list
-			visible := len(m.parentCandidates)
-			if visible > 8 {
-				visible = 8
-			}
+			visible := min(len(m.parentCandidates), 8)
 			if visible == 0 {
 				visible = 1 // "No valid parents" message
 			}
@@ -428,7 +425,7 @@ func (m *BulkEditModel) fieldHeight(fieldIndex int) int {
 func (m *BulkEditModel) fieldStartLine(fieldIndex int) int {
 	// Header: title + blank line = 2 lines
 	line := 0
-	for i := 0; i < fieldIndex; i++ {
+	for i := range fieldIndex {
 		line += m.fieldHeight(i)
 	}
 	return line
@@ -438,10 +435,7 @@ func (m *BulkEditModel) fieldStartLine(fieldIndex int) int {
 func (m *BulkEditModel) viewportHeight() int {
 	// Account for box border (2 lines) and some padding
 	// The centered box adds vertical padding, so we need to be conservative
-	vh := m.Height() - 8
-	if vh < 15 {
-		vh = 15
-	}
+	vh := max(m.Height()-8, 15)
 	return vh
 }
 
@@ -461,11 +455,9 @@ func (m *BulkEditModel) ensureFocusedFieldVisible() {
 	// But ensure we show at least the start of the field
 	if fieldEnd > m.scrollOffset+viewportH {
 		// Scroll so the field end is at the bottom of viewport
-		m.scrollOffset = fieldEnd - viewportH
-		// But don't scroll past the field start
-		if m.scrollOffset > fieldStart {
-			m.scrollOffset = fieldStart
-		}
+		m.scrollOffset = min(
+			// But don't scroll past the field start
+			fieldEnd-viewportH, fieldStart)
 	}
 
 	// Ensure scrollOffset doesn't go negative
@@ -649,11 +641,7 @@ func (m *BulkEditModel) View() string {
 	// Only apply scrolling if content exceeds viewport
 	if len(lines) > viewportH {
 		start := m.scrollOffset
-		end := start + viewportH
-
-		if end > len(lines) {
-			end = len(lines)
-		}
+		end := min(start+viewportH, len(lines))
 
 		if start > 0 {
 			out.WriteString(MutedStyle.Render("  ↑ scroll up for more"))

@@ -59,7 +59,7 @@ func extractKeywords(s CLISection) []string {
 	}
 
 	// First non-empty line of body (the short description)
-	for _, line := range strings.Split(s.Body, "\n") {
+	for line := range strings.SplitSeq(s.Body, "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
 			for _, w := range tokenize(line) {
@@ -70,11 +70,11 @@ func extractKeywords(s CLISection) []string {
 	}
 
 	// Flag names from lines like "  --tags stringSlice" or "  --parent, -p string"
-	for _, line := range strings.Split(s.Body, "\n") {
+	for line := range strings.SplitSeq(s.Body, "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "--") {
+		if after, ok := strings.CutPrefix(trimmed, "--"); ok {
 			// Extract the flag name
-			name := strings.TrimPrefix(trimmed, "--")
+			name := after
 			// Take up to first space or comma
 			for i, ch := range name {
 				if ch == ' ' || ch == ',' {
@@ -160,7 +160,7 @@ func buildIndex(sections []CLISection) string {
 	b.WriteString("# Command Index\n")
 	for _, s := range sections {
 		desc := ""
-		for _, line := range strings.Split(s.Body, "\n") {
+		for line := range strings.SplitSeq(s.Body, "\n") {
 			line = strings.TrimSpace(line)
 			if line != "" {
 				desc = line

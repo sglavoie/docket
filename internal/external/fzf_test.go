@@ -141,7 +141,7 @@ func TestParseMultiSelectOutput(t *testing.T) {
 	output := "#1\t📋\t⬜\tFirst task\n#3\t📋\t⬜\tThird task"
 
 	var selectedTasks []*models.Task
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		parts := strings.Split(line, "\t")
 		if len(parts) > 0 {
 			idStr := strings.TrimPrefix(parts[0], "#")

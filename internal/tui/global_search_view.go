@@ -75,18 +75,14 @@ func (m *GlobalSearchModel) View() string {
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.Height() - 9 // title + tab bar + input + hint + footer
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
+	paneHeight := max(
+		// title + tab bar + input + hint + footer
+		m.Height()-9, 5)
 
 	// Adjust for autocomplete and filter badges
 	if m.ac.IsActive() { //nolint:nestif
 		paneHeight++ // hint line is hidden when autocomplete is active
-		visible := len(m.ac.Items)
-		if visible > acVisibleCount {
-			visible = acVisibleCount
-		}
+		visible := min(len(m.ac.Items), acVisibleCount)
 		// Account for items + scroll indicators
 		if m.ac.ViewportTop > 0 {
 			visible++
@@ -224,10 +220,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 			noteIcon := MutedStyle.Render("[N]")
 			prefix := fmt.Sprintf("%s%s %s ", cursor, noteIcon, projectName)
 			prefixWidth := lipgloss.Width(prefix)
-			maxTitleLen := m.listWidth - prefixWidth - 2
-			if maxTitleLen < 10 {
-				maxTitleLen = 10
-			}
+			maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
 			title := util.Truncate(note.Title, maxTitleLen)
 			var titleRendered string
 			if len(fr.titlePositions) > 0 {
@@ -269,10 +262,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 
 		// Title (truncated) - use measured prefix width for accuracy
 		// Subtract extra buffer to ensure no wrapping
-		maxTitleLen := m.listWidth - prefixWidth - 2
-		if maxTitleLen < 10 {
-			maxTitleLen = 10
-		}
+		maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
 		title := util.Truncate(task.Title, maxTitleLen)
 
 		// Adjust positions for truncated title and apply highlighting
@@ -375,10 +365,9 @@ func (m *GlobalSearchModel) renderPreview() string {
 	// Header with type and title (truncate to fit preview width)
 	typeStyle := GetTypeStyle(string(task.Type))
 	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
-	maxTitleLen := m.previewWidth - len(titlePrefix) - 4 // -4 for padding/margin
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
+	maxTitleLen := max(
+		// -4 for padding/margin
+		m.previewWidth-len(titlePrefix)-4, 10)
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
@@ -441,10 +430,7 @@ func (m *GlobalSearchModel) renderPreview() string {
 		b.WriteString("\n")
 
 		rendered := renderMarkdown(task.Description, m.previewWidth-2)
-		maxLines := m.Height() - 20
-		if maxLines < 3 {
-			maxLines = 3
-		}
+		maxLines := max(m.Height()-20, 3)
 		lines := strings.Split(rendered, "\n")
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]

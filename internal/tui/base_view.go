@@ -152,13 +152,7 @@ func (s *InteractiveViewState) HandleConfirmKey(key string) (confirmed, handled 
 // SearchInputWidth returns a dynamic search input width based on the view width.
 // The width is capped between 20 and 60 characters.
 func SearchInputWidth(viewWidth int) int {
-	w := viewWidth / 3
-	if w < 20 {
-		w = 20
-	}
-	if w > 60 {
-		w = 60
-	}
+	w := min(max(viewWidth/3, 20), 60)
 	return w
 }
 
@@ -375,17 +369,11 @@ func (d *DetailsPaneState) HandleScrollKey(key string) bool {
 		}
 		return true
 	case "ctrl+d", "pgdown":
-		halfPage := d.Height / 2
-		if halfPage < 1 {
-			halfPage = 1
-		}
+		halfPage := max(d.Height/2, 1)
 		d.Scroll += halfPage
 		return true
 	case "ctrl+u", "pgup":
-		halfPage := d.Height / 2
-		if halfPage < 1 {
-			halfPage = 1
-		}
+		halfPage := max(d.Height/2, 1)
 		d.Scroll -= halfPage
 		if d.Scroll < 0 {
 			d.Scroll = 0

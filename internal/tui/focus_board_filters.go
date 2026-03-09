@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"maps"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -71,9 +72,7 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 		},
 	}
-	for k, v := range buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true) {
-		hints[k] = v
-	}
+	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints:  hints,

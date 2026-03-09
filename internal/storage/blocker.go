@@ -126,8 +126,8 @@ func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 // parseBlockerMetadata parses metadata string and sets blocker fields.
 // Format: "id: uuid, created: 2026-01-15T10:30:00, resolved: 2026-01-16T14:30:00"
 func parseBlockerMetadata(blocker *models.Blocker, metaStr string) {
-	pairs := strings.Split(metaStr, ",")
-	for _, pair := range pairs {
+	pairs := strings.SplitSeq(metaStr, ",")
+	for pair := range pairs {
 		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
 		if len(parts) != 2 {
 			continue

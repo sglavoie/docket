@@ -89,7 +89,7 @@ func TestErrorsIsWithDifferentErrors(t *testing.T) {
 func TestNewTaskNotFoundError(t *testing.T) {
 	testCases := []struct {
 		name   string
-		taskID interface{}
+		taskID any
 	}{
 		{"string ID", "abc-123"},
 		{"int ID", 42},
@@ -138,7 +138,7 @@ func TestNewBlockerTaskNotFoundError(t *testing.T) {
 func TestNewProjectNotFoundError(t *testing.T) {
 	testCases := []struct {
 		name      string
-		projectID interface{}
+		projectID any
 	}{
 		{"string ID", "project-abc"},
 		{"slug", "my-project"},
@@ -196,7 +196,7 @@ func TestNewInvalidValueError(t *testing.T) {
 	testCases := []struct {
 		name   string
 		field  string
-		value  interface{}
+		value  any
 		reason string
 	}{
 		{"string value", "priority", "invalid", "must be 1-5"},

@@ -71,10 +71,9 @@ func (m *CommandPaletteModel) View() string {
 		listContent = m.renderItemList()
 	}
 
-	paneHeight := m.height - 8 // title + input + spacing + footer
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
+	paneHeight := max(
+		// title + input + spacing + footer
+		m.height-8, 5)
 
 	// Build title
 	title := "Command Palette"
@@ -245,20 +244,13 @@ func (m *CommandPaletteModel) renderActionList() string {
 	}
 
 	var b strings.Builder
-	contentWidth := m.listWidth - 4
-	if contentWidth < 40 {
-		contentWidth = 40
-	}
+	contentWidth := max(m.listWidth-4, 40)
 
 	// Calculate max visible items based on pane height
-	paneHeight := m.height - 8
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
-	maxVisible := paneHeight - 2 // Account for item description header
-	if maxVisible < 3 {
-		maxVisible = 3
-	}
+	paneHeight := max(m.height-8, 5)
+	maxVisible := max(
+		// Account for item description header
+		paneHeight-2, 3)
 
 	// Calculate scroll offset to keep cursor visible
 	if m.actionCursor < m.actionScrollOffset {
@@ -268,10 +260,7 @@ func (m *CommandPaletteModel) renderActionList() string {
 	}
 
 	// Render only visible items
-	endIdx := m.actionScrollOffset + maxVisible
-	if endIdx > len(m.availableActions) {
-		endIdx = len(m.availableActions)
-	}
+	endIdx := min(m.actionScrollOffset+maxVisible, len(m.availableActions))
 
 	for i := m.actionScrollOffset; i < endIdx; i++ {
 		line := m.renderActionItem(m.availableActions[i], i == m.actionCursor, contentWidth)
@@ -309,10 +298,7 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 
 	// Calculate remaining width for name using actual icon width
 	fixedWidth := 2 + iconWidth + keyHintLen + 2 // cursor + icon + key hint + gap
-	nameWidth := width - fixedWidth
-	if nameWidth < 10 {
-		nameWidth = 10
-	}
+	nameWidth := max(width-fixedWidth, 10)
 
 	// Truncate name if needed
 	name := action.Name
@@ -321,10 +307,7 @@ func (m *CommandPaletteModel) renderActionItem(action PaletteAction, selected bo
 	}
 
 	// Calculate gap for right-alignment
-	gap := nameWidth - len(name)
-	if gap < 1 {
-		gap = 1
-	}
+	gap := max(nameWidth-len(name), 1)
 
 	// Build the line
 	var line strings.Builder
@@ -453,10 +436,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 	}
 
 	// Calculate pane height (must match View's paneHeight calculation: m.height - 8)
-	paneHeight := m.height - 8
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
+	paneHeight := max(m.height-8, 5)
 
 	// maxVisible accounts for hints and category headers within the pane
 	maxVisible := paneHeight
@@ -468,10 +448,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 	}
 
 	// Available width for content - use listWidth, not full width
-	contentWidth := m.listWidth - 4
-	if contentWidth < 40 {
-		contentWidth = 40
-	}
+	contentWidth := max(m.listWidth-4, 40)
 
 	// Calculate scroll offset to keep cursor visible (accounts for headers)
 	scrollOffset := m.calculateScrollOffset(maxVisible, showHeaders)
@@ -546,27 +523,17 @@ func (m *CommandPaletteModel) renderScrollIndicator(scrollOffset, maxVisible, wi
 	}
 
 	// Build progress bar
-	barWidth := width - 20 // Leave room for text
-	if barWidth < 10 {
-		barWidth = 10
-	}
-	filled := int(float64(barWidth) * progress)
-	if filled < 0 {
-		filled = 0
-	}
-	if filled > barWidth {
-		filled = barWidth
-	}
+	barWidth := max(
+		// Leave room for text
+		width-20, 10)
+	filled := min(max(int(float64(barWidth)*progress), 0), barWidth)
 
 	// Create the bar
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
 
 	// Position info
 	showing := scrollOffset + 1
-	showingEnd := scrollOffset + maxVisible
-	if showingEnd > total {
-		showingEnd = total
-	}
+	showingEnd := min(scrollOffset+maxVisible, total)
 	posInfo := fmt.Sprintf(" %d-%d/%d", showing, showingEnd, total)
 
 	return MutedStyle.Render(bar + posInfo)
@@ -643,10 +610,7 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 
 	// Calculate space for name + extra info + description
 	fixedWidth := 2 + checkboxLen + pinLen + catBadgeLen + 1 + shortcutReserved
-	remainingWidth := width - fixedWidth
-	if remainingWidth < 20 {
-		remainingWidth = 20
-	}
+	remainingWidth := max(width-fixedWidth, 20)
 
 	// Build the left content with highlighting
 	leftContent, leftLen := m.renderItemContentWithHighlight(item, filtered.NamePositions, remainingWidth)
@@ -655,14 +619,8 @@ func (m *CommandPaletteModel) renderPaletteItemWithHighlight(filtered filteredPa
 	gap := remainingWidth - leftLen
 	shortcutDisplayLen := len(shortcutText)
 	// Right-align the shortcut text within the reserved column
-	shortcutPad := shortcutColWidth - shortcutDisplayLen
-	if shortcutPad < 0 {
-		shortcutPad = 0
-	}
-	totalGap := gap + shortcutPad
-	if totalGap < 1 {
-		totalGap = 1
-	}
+	shortcutPad := max(shortcutColWidth-shortcutDisplayLen, 0)
+	totalGap := max(gap+shortcutPad, 1)
 
 	// Build the complete line
 	var line strings.Builder
@@ -777,10 +735,7 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 	}
 
 	// Give the name its full length; description gets whatever space remains
-	maxNameLen := maxWidth - totalLen
-	if maxNameLen < 10 {
-		maxNameLen = 10
-	}
+	maxNameLen := max(maxWidth-totalLen, 10)
 
 	// Name with highlighting (truncated if needed)
 	name := util.Truncate(item.Name, maxNameLen)

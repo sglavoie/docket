@@ -1,5 +1,7 @@
 package tui
 
+import "slices"
+
 import "sync"
 
 // Keybinding represents a single keyboard shortcut with metadata.
@@ -109,12 +111,7 @@ func (r *KeybindingRegistry) GetGlobalBindings() []HelpItem {
 }
 
 func containsView(views []ViewType, target ViewType) bool {
-	for _, v := range views {
-		if v == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(views, target)
 }
 
 func (r *KeybindingRegistry) add(bindings ...Keybinding) {

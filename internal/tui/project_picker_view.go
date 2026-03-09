@@ -20,10 +20,7 @@ func (m *ProjectPickerModel) View() string {
 	b.WriteString("\n\n")
 
 	totalWidth := m.Width()
-	maxVisible := m.Height() - 10
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(m.Height()-10, 5)
 
 	var content string
 	if totalWidth >= 80 {
@@ -60,10 +57,7 @@ func (m *ProjectPickerModel) renderList(width int) string {
 		return MutedStyle.Render("No matching projects.")
 	}
 
-	maxVisible := m.Height() - 10
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(m.Height()-10, 5)
 
 	// Calculate max name length from filtered items for aligned columns
 	maxNameLen := 0
@@ -73,10 +67,7 @@ func (m *ProjectPickerModel) renderList(width int) string {
 		}
 	}
 	// Cap to width with room for cursor, context badge, and task count
-	cap := width - 30
-	if cap < 10 {
-		cap = 10
-	}
+	cap := max(width-30, 10)
 	if maxNameLen > cap {
 		maxNameLen = cap
 	}

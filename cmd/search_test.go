@@ -194,7 +194,7 @@ func TestSearchLimit(t *testing.T) {
 		storage.DefaultRepository = deps.Repository
 		defer func() { storage.DefaultRepository = oldStorageRepo }()
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			task := testutil.NewTestTask("Limittest matching task", models.TaskTypeTask)
 			project.Tasks = append(project.Tasks, task)
 		}

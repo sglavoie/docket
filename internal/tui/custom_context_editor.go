@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -70,9 +71,7 @@ func NewCustomContextEditorModel(cfg *config.Config, editName string) *CustomCon
 	}
 
 	initialSelectedIDs := make(map[string]bool, len(selectedIDs))
-	for k, v := range selectedIDs {
-		initialSelectedIDs[k] = v
-	}
+	maps.Copy(initialSelectedIDs, selectedIDs)
 
 	return &CustomContextEditorModel{
 		config:             cfg,
@@ -248,10 +247,7 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *CustomContextEditorModel) maxVisibleProjects() int {
 	// Reserve space for header, name input, help, etc.
-	available := m.height - 15
-	if available < 5 {
-		available = 5
-	}
+	available := max(m.height-15, 5)
 	return available
 }
 
@@ -363,10 +359,7 @@ func (m *CustomContextEditorModel) View() string {
 		b.WriteString("\n")
 	} else {
 		maxVisible := m.maxVisibleProjects()
-		end := m.scrollOffset + maxVisible
-		if end > len(m.projects) {
-			end = len(m.projects)
-		}
+		end := min(m.scrollOffset+maxVisible, len(m.projects))
 
 		var rowBuilder strings.Builder
 		for i := m.scrollOffset; i < end; i++ {

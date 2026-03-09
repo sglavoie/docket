@@ -50,10 +50,7 @@ func (m *NotesViewModel) View() string {
 	}
 
 	// Fullscreen mode: show only the focused pane using full usable height
-	usable := m.Height() - 8
-	if usable < 4 {
-		usable = 4
-	}
+	usable := max(m.Height()-8, 4)
 
 	if m.fullscreenPane && m.detailsPane.Focused {
 		// Fullscreen details pane
@@ -69,7 +66,7 @@ func (m *NotesViewModel) View() string {
 				b.WriteString("\n")
 			}
 		} else {
-			for i := 0; i < fullHeight; i++ {
+			for range fullHeight {
 				b.WriteString("\n")
 			}
 		}
@@ -132,19 +129,15 @@ func (m *NotesViewModel) renderListPane() string {
 	if listHeight < 1 {
 		listHeight = 10
 	}
-	noteListHeight := listHeight - 1 // -1 for footer in list pane
-	if noteListHeight < 1 {
-		noteListHeight = 1
-	}
+	noteListHeight := max(
+		// -1 for footer in list pane
+		listHeight-1, 1)
 
 	startIdx := 0
 	if m.cursor >= noteListHeight {
 		startIdx = m.cursor - noteListHeight + 1
 	}
-	endIdx := startIdx + noteListHeight
-	if endIdx > len(m.notes) {
-		endIdx = len(m.notes)
-	}
+	endIdx := min(startIdx+noteListHeight, len(m.notes))
 
 	selectedStyle := TaskJumperSelectedStyle
 	if m.detailsPane.Focused {
@@ -340,10 +333,7 @@ func (m *NotesViewModel) renderDetailsPane(note *models.Note, width, height int)
 	}
 
 	// Clamp scroll so the last line is always visible at the bottom
-	maxScroll := len(lines) - height
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
+	maxScroll := max(len(lines)-height, 0)
 	m.detailsPane.MaxScroll = maxScroll
 	m.detailsPane.ClampScroll()
 

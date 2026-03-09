@@ -92,10 +92,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 		initial := MutedStyle.Render(string([]rune(p.ProjectName)[0:1]))
 
 		prefixWidth := 1 + 1
-		titleWidth := perEntryWidth - prefixWidth
-		if titleWidth < 3 {
-			titleWidth = 3
-		}
+		titleWidth := max(perEntryWidth-prefixWidth, 3)
 
 		title := p.Title
 		titleRunes := []rune(title)
@@ -362,10 +359,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	title := titleStyle.Render("Pinned Tasks")
 
-	popupWidth := m.width - 4
-	if popupWidth < 30 {
-		popupWidth = 30
-	}
+	popupWidth := max(m.width-4, 30)
 
 	cursorStyle := SelectionRowStyle
 	badgeStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
@@ -382,10 +376,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	innerWidth := popupWidth - 4
 	projColWidth := maxProjLen
 	fixedWidth := 1 + 1 + 1 + 1 + 3 + 1 + 2 + projColWidth // badge, space, icon, space, priority(3), space, gap, project
-	titleWidth := innerWidth - fixedWidth
-	if titleWidth < 10 {
-		titleWidth = 10
-	}
+	titleWidth := max(innerWidth-fixedWidth, 10)
 
 	var contentLines []string
 	for i, entry := range m.pinnedPopupItems {

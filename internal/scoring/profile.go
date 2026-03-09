@@ -2,6 +2,7 @@ package scoring
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -23,12 +24,7 @@ func ValidFormulas() []Formula {
 
 // IsValid returns true if the formula is a recognized type.
 func (f Formula) IsValid() bool {
-	for _, v := range ValidFormulas() {
-		if f == v {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ValidFormulas(), f)
 }
 
 // DimensionSource indicates where a dimension's value comes from.

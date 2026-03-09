@@ -105,15 +105,9 @@ func (m *NotesSearchModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	innerWidth := width - 10
-	if innerWidth < 60 {
-		innerWidth = 60
-	}
+	innerWidth := max(width-10, 60)
 
-	m.listWidth = innerWidth * 50 / 100
-	if m.listWidth < 30 {
-		m.listWidth = 30
-	}
+	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1
 
 	m.searchInput.Width = innerWidth - 4
@@ -212,13 +206,7 @@ func (m *NotesSearchModel) filterNotes() {
 			}
 		}
 
-		bestScore := titleScore
-		if bodyScore > bestScore {
-			bestScore = bodyScore
-		}
-		if tagScore > bestScore {
-			bestScore = tagScore
-		}
+		bestScore := max(tagScore, max(bodyScore, titleScore))
 
 		if bestScore > 0 {
 			snippet := ""
@@ -273,8 +261,8 @@ func scoreBodyTerms(body, query string) int {
 	lowerBody := strings.ToLower(body)
 	total := 0
 	for _, term := range terms {
-		idx := strings.Index(lowerBody, term)
-		if idx < 0 {
+		found := strings.Contains(lowerBody, term)
+		if !found {
 			// Fall back to fuzzy for this term
 			s := fuzzy.Score(body, term)
 			if s == 0 {
@@ -311,14 +299,8 @@ func extractSnippets(body, query string) (string, []int) {
 			continue
 		}
 		seen[idx] = true
-		start := idx - 30
-		if start < 0 {
-			start = 0
-		}
-		end := idx + len(term) + 50
-		if end > len(body) {
-			end = len(body)
-		}
+		start := max(idx-30, 0)
+		end := min(idx+len(term)+50, len(body))
 		windows = append(windows, window{start: start, end: end, termIdx: ti})
 		if len(windows) >= 3 {
 			break
@@ -388,7 +370,7 @@ func extractSnippets(body, query string) (string, []int) {
 				segRunes := []rune(result.String()[:absOffset])
 				runeStart := len(segRunes)
 				termRunes := []rune(term)
-				for ri := 0; ri < len(termRunes); ri++ {
+				for ri := range termRunes {
 					positions = append(positions, runeStart+ri)
 				}
 				offset += idx + len(term)
@@ -434,10 +416,7 @@ func (m *NotesSearchModel) View() string {
 		return b.String()
 	}
 
-	paneHeight := m.height - 8
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
+	paneHeight := max(m.height-8, 5)
 
 	listContent := m.renderNoteList(paneHeight)
 	previewContent := m.renderPreview()
@@ -477,10 +456,7 @@ func (m *NotesSearchModel) renderNoteList(paneHeight int) string {
 		prefix := fmt.Sprintf("%s%s ", cursor, noteIcon)
 		prefixWidth := lipgloss.Width(prefix)
 
-		maxTitleLen := m.listWidth - prefixWidth - 2
-		if maxTitleLen < 10 {
-			maxTitleLen = 10
-		}
+		maxTitleLen := max(m.listWidth-prefixWidth-2, 10)
 		title := util.Truncate(note.Title, maxTitleLen)
 
 		var titleRendered string
@@ -572,10 +548,7 @@ func (m *NotesSearchModel) renderPreview() string {
 		b.WriteString("\n")
 		rendered := renderMarkdown(note.Body, m.previewWidth-2)
 		lines := strings.Split(rendered, "\n")
-		maxLines := m.height - 15
-		if maxLines < 3 {
-			maxLines = 3
-		}
+		maxLines := max(m.height-15, 3)
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]
 			lines = append(lines, "...")

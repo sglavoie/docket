@@ -143,10 +143,7 @@ func (m *FocusBoardModel) View() string {
 
 	// Render rows
 	var lines []string
-	maxTitleLen := m.width - 40
-	if maxTitleLen < 20 {
-		maxTitleLen = 20
-	}
+	maxTitleLen := max(m.width-40, 20)
 
 	for i, row := range m.filtered {
 		isSelected := i == m.cursor

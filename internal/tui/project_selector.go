@@ -150,10 +150,7 @@ func (m *ProjectSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // moveCursor moves the cursor by delta.
 func (m *ProjectSelectorModel) moveCursor(delta int) {
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 
 	m.Cursor += delta
 	if m.Cursor < 0 {
@@ -200,10 +197,7 @@ func (m *ProjectSelectorModel) fuzzyFilter(query string) {
 	}
 
 	// Reset cursor if out of bounds
-	maxCursor := len(m.Filtered) - 1
-	if maxCursor < 0 {
-		maxCursor = 0
-	}
+	maxCursor := max(len(m.Filtered)-1, 0)
 	if m.Cursor > maxCursor {
 		m.Cursor = maxCursor
 	}
@@ -254,10 +248,9 @@ func (m *ProjectSelectorModel) View() string {
 func (m *ProjectSelectorModel) renderList() string {
 	var b strings.Builder
 
-	maxVisible := m.Height() - 12 // Account for title, task info, input, footer
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(
+		// Account for title, task info, input, footer
+		m.Height()-12, 5)
 
 	totalItems := len(m.Filtered)
 
@@ -285,10 +278,7 @@ func (m *ProjectSelectorModel) renderList() string {
 		taskCount := fmt.Sprintf("%d tasks", item.Project.CountTasks())
 
 		// Project name (truncated)
-		maxNameLen := m.Width() - 30
-		if maxNameLen < 10 {
-			maxNameLen = 10
-		}
+		maxNameLen := max(m.Width()-30, 10)
 		name := util.Truncate(item.Project.Name, maxNameLen)
 
 		// Build line

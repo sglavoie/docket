@@ -123,7 +123,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	// Parse tags
 	var tags []string
 	if templateAddTags != "" {
-		for _, tag := range strings.Split(templateAddTags, ",") {
+		for tag := range strings.SplitSeq(templateAddTags, ",") {
 			tag = strings.TrimSpace(tag)
 			if tag != "" {
 				tags = append(tags, tag)

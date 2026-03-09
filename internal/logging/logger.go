@@ -53,7 +53,7 @@ func pruneOldLogs() {
 // LogDir returns the log directory path.
 func LogDir() string { return LogDirPath }
 
-// File returns the current log file path, or empty if not initialised.
+// File returns the current log file path, or empty if not initialized.
 func File() string {
 	if logFile == nil {
 		return ""

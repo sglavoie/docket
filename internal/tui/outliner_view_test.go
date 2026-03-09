@@ -92,7 +92,7 @@ func TestFlattenTaskTreeDeep(t *testing.T) {
 			"id"+string(rune('0'+i)), i+1, models.TaskTypeTask, "Level "+string(rune('1'+i)),
 		)
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		tasks[i].Children = []*models.Task{tasks[i+1]}
 	}
 

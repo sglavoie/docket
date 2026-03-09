@@ -183,10 +183,7 @@ func (ac *AutocompleteState) RenderDropdown(indent string) string {
 		b.WriteString("\n")
 	}
 
-	visibleEnd := ac.ViewportTop + acVisibleCount
-	if visibleEnd > len(ac.Items) {
-		visibleEnd = len(ac.Items)
-	}
+	visibleEnd := min(ac.ViewportTop+acVisibleCount, len(ac.Items))
 
 	for i := ac.ViewportTop; i < visibleEnd; i++ {
 		s := ac.Items[i]

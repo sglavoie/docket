@@ -43,10 +43,7 @@ func NewStatusInputModel(project *models.Project, cfg *config.Config, mgr *confi
 func (m *StatusInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
-	inputWidth := min(width-20, 60)
-	if inputWidth < 20 {
-		inputWidth = 20
-	}
+	inputWidth := max(min(width-20, 60), 20)
 	m.input.Width = inputWidth
 }
 

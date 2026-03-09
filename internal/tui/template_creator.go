@@ -251,14 +251,14 @@ func NewTaskTemplateEditorModel(cfg *config.Config, manager *config.Manager, t t
 
 // joinTags joins tags with commas.
 func joinTags(tags []string) string {
-	result := ""
+	var result strings.Builder
 	for i, tag := range tags {
 		if i > 0 {
-			result += ", "
+			result.WriteString(", ")
 		}
-		result += tag
+		result.WriteString(tag)
 	}
-	return result
+	return result.String()
 }
 
 // SetSize sets the view dimensions.

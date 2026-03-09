@@ -304,10 +304,7 @@ func (m *AskViewModel) renderResponse() string {
 		b.WriteString("\n")
 		for i, c := range m.commands {
 			prefix := fmt.Sprintf("  %d. ", i+1)
-			wrapWidth := m.viewport.Width - 2
-			if wrapWidth < 40 {
-				wrapWidth = 40
-			}
+			wrapWidth := max(m.viewport.Width-2, 40)
 			indent := strings.Repeat(" ", len(prefix))
 			line := prefix + c
 			if len(line) > wrapWidth {
@@ -363,20 +360,11 @@ func (m *AskViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 
-	taWidth := width - 4
-	if taWidth < 30 {
-		taWidth = 30
-	}
+	taWidth := max(width-4, 30)
 	m.textarea.SetWidth(taWidth)
 
-	vpHeight := height - 5
-	if vpHeight < 5 {
-		vpHeight = 5
-	}
-	vpWidth := width - 2
-	if vpWidth < 30 {
-		vpWidth = 30
-	}
+	vpHeight := max(height-5, 5)
+	vpWidth := max(width-2, 30)
 
 	// Recreate renderer with updated word wrap width
 	if r, err := glamour.NewTermRenderer(

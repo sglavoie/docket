@@ -191,16 +191,10 @@ func (m *GlobalSearchModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := width - 10
-	if innerWidth < 60 {
-		innerWidth = 60
-	}
+	innerWidth := max(width-10, 60)
 
 	// Calculate split pane widths: 50/50 based on inner width
-	m.listWidth = innerWidth * 50 / 100
-	if m.listWidth < 30 {
-		m.listWidth = 30
-	}
+	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
 	m.searchInput.Width = innerWidth - 4

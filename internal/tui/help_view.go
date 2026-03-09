@@ -116,10 +116,9 @@ func (m *HelpViewModel) ShouldCaptureEsc() bool {
 
 // SetSize sets the view dimensions.
 func (m *HelpViewModel) innerWidth() int {
-	w := m.width - 2 // 1 char padding each side
-	if w < 40 {
-		w = 40
-	}
+	w := max(
+		// 1 char padding each side
+		m.width-2, 40)
 	return w
 }
 
@@ -339,17 +338,11 @@ func (m *HelpViewModel) renderContent() string {
 	// Calculate column widths based on viewport width (not full width)
 	// Each column: keyWidth + separator(2) + descWidth
 	// Total: 2 * (keyWidth + 2 + descWidth) + columnGap(4)
-	contentWidth := m.viewport.Width
-	if contentWidth < 40 {
-		contentWidth = 40
-	}
+	contentWidth := max(m.viewport.Width, 40)
 	keyWidth := 12
 	columnGap := 4
 	columnOverhead := keyWidth + 2 // key + separator
-	descWidth := (contentWidth - 2*columnOverhead - columnGap) / 2
-	if descWidth < 20 {
-		descWidth = 20
-	}
+	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 20)
 	columnWidth := keyWidth + 2 + descWidth
 
 	keyStyle := lipgloss.NewStyle().

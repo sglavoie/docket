@@ -444,10 +444,7 @@ func (m *ContextPickerModel) renderContextPicker(headerContent string) string {
 		if m.Cursor >= maxVisible {
 			start = m.Cursor - maxVisible + 1
 		}
-		end := start + maxVisible
-		if end > len(m.Filtered) {
-			end = len(m.Filtered)
-		}
+		end := min(start+maxVisible, len(m.Filtered))
 
 		for i := start; i < end; i++ {
 			ctx := m.Filtered[i]

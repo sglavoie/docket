@@ -283,10 +283,7 @@ func blockerUpdateShared(s *blockerViewState, ds blockerDataSource, msg tea.Msg)
 func blockerClampCursor(s *blockerViewState, ds blockerDataSource) {
 	visible := ds.getVisibleItems(s.tabs.Active)
 	if s.cursor >= len(visible) {
-		s.cursor = len(visible) - 1
-		if s.cursor < 0 {
-			s.cursor = 0
-		}
+		s.cursor = max(len(visible)-1, 0)
 	}
 }
 
@@ -314,10 +311,7 @@ func blockerSaveNew(s *blockerViewState, ds blockerDataSource) tea.Cmd {
 		s.addMode = false
 		s.textInput.Reset()
 		s.err = nil
-		s.cursor = ds.activeCount() - 1
-		if s.cursor < 0 {
-			s.cursor = 0
-		}
+		s.cursor = max(ds.activeCount()-1, 0)
 
 		return BlockerAddedMsg{Project: project}
 	}
@@ -624,10 +618,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 			b.WriteString("\n\n")
 
 			if blocker.Description != "" {
-				renderWidth := s.width - 4
-				if renderWidth < 40 {
-					renderWidth = 40
-				}
+				renderWidth := max(s.width-4, 40)
 				b.WriteString(renderMarkdown(blocker.Description, renderWidth))
 				b.WriteString("\n")
 			} else {
@@ -696,10 +687,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 	} else {
 		headerLines := 7
 		availableHeight := s.height - headerLines
-		maxVisible := availableHeight / 3
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
+		maxVisible := max(availableHeight/3, 3)
 
 		scrollOffset := calcScrollOffset(s.cursor, maxVisible)
 
@@ -744,10 +732,7 @@ func blockerViewShared(s *blockerViewState, ds blockerDataSource) string {
 
 			if blocker.Description != "" {
 				desc := blocker.Description
-				maxLen := s.width - 10
-				if maxLen < 30 {
-					maxLen = 30
-				}
+				maxLen := max(s.width-10, 30)
 				desc = strings.ReplaceAll(desc, "\n", " ")
 				if len(desc) > maxLen {
 					desc = desc[:maxLen-3] + "..."

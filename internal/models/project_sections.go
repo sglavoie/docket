@@ -1,6 +1,7 @@
 package models
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -11,13 +12,7 @@ func (p *Project) GetSections() []string {
 		return []string{SectionNext}
 	}
 	// Ensure Next is first
-	hasNext := false
-	for _, s := range p.Sections {
-		if s == SectionNext {
-			hasNext = true
-			break
-		}
-	}
+	hasNext := slices.Contains(p.Sections, SectionNext)
 	if !hasNext {
 		return append([]string{SectionNext}, p.Sections...)
 	}
@@ -37,12 +32,7 @@ func (p *Project) GetSections() []string {
 
 // HasSection returns true if the section exists in the project.
 func (p *Project) HasSection(name string) bool {
-	for _, s := range p.Sections {
-		if s == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.Sections, name)
 }
 
 // EnsureSection adds a section if it does not already exist.

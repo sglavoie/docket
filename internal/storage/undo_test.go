@@ -175,7 +175,7 @@ func TestUndoHistoryPruning(t *testing.T) {
 
 	// Record more snapshots than maxDepth
 	maxDepth := 3
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		content := "# Test content " + string(rune('A'+i)) + "\n"
 		if err := os.WriteFile(tasksPath, []byte(content), 0644); err != nil {
 			t.Fatalf("failed to write tasks file: %v", err)

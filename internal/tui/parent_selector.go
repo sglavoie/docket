@@ -272,10 +272,9 @@ func (m *ParentSelectorModel) View() string {
 func (m *ParentSelectorModel) renderList() string {
 	var b strings.Builder
 
-	maxVisible := m.Height() - 10 // Account for title, input, footer
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
+	maxVisible := max(
+		// Account for title, input, footer
+		m.Height()-10, 5)
 
 	// Calculate total items (including "None" if allowed)
 	totalItems := len(m.Filtered)
@@ -330,10 +329,7 @@ func (m *ParentSelectorModel) renderList() string {
 			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
 			// Title (truncated)
-			maxTitleLen := m.Width() - 20
-			if maxTitleLen < 10 {
-				maxTitleLen = 10
-			}
+			maxTitleLen := max(m.Width()-20, 10)
 			title := util.Truncate(item.Task.Title, maxTitleLen)
 
 			// Build line

@@ -1,5 +1,7 @@
 package tui
 
+import "slices"
+
 import tea "github.com/charmbracelet/bubbletea"
 
 // weeklyReviewTabNames are the tab labels for the weekly review view.
@@ -17,12 +19,7 @@ func (m *WeeklyReviewModel) sectionInTab(section WeeklyReviewSection) bool {
 	if m.tabs.Active < 0 || m.tabs.Active >= len(weeklyReviewTabSections) {
 		return true
 	}
-	for _, s := range weeklyReviewTabSections[m.tabs.Active] {
-		if s == section {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(weeklyReviewTabSections[m.tabs.Active], section)
 }
 
 // calculateNavigation builds navigation indices including section headers.

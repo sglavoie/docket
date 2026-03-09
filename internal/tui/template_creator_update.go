@@ -345,7 +345,7 @@ func (m *TaskTemplateCreatorModel) saveTemplate() tea.Cmd {
 		tagsStr := strings.TrimSpace(m.tagsInput.Value())
 		if tagsStr != "" {
 			var tags []string
-			for _, tag := range strings.Split(tagsStr, ",") {
+			for tag := range strings.SplitSeq(tagsStr, ",") {
 				tag = strings.TrimSpace(tag)
 				if tag != "" {
 					tags = append(tags, tag)

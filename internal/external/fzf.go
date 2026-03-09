@@ -203,7 +203,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 
 	// Parse selections
 	var selectedProjects []*models.Project
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		parts := strings.Split(line, "\t")
 		if len(parts) > 0 {
 			id := parts[0]
@@ -274,7 +274,7 @@ func FzfMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, e
 
 	// Parse selections
 	var selectedTasks []*models.Task
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		parts := strings.Split(line, "\t")
 		if len(parts) > 0 {
 			idStr := strings.TrimPrefix(parts[0], "#")

@@ -182,7 +182,7 @@ func (m *WeeklyReviewModel) renderAllSections() ([]string, int) {
 			if hint := getWeeklySectionHint(section); hint != "" {
 				lines = append(lines, "    "+MutedStyle.Render(hint))
 			}
-			for idx := 0; idx < count; idx++ {
+			for idx := range count {
 				isSelected := currentIndex == m.cursor
 				if isSelected {
 					cursorLineIndex = len(lines)

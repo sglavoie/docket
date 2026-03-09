@@ -17,7 +17,7 @@ func TestWithFileLock_ExclusiveSerializesConcurrentAccess(t *testing.T) {
 	var maxConcurrent atomic.Int32
 	var wg sync.WaitGroup
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -54,7 +54,7 @@ func TestWithFileLock_SharedAllowsConcurrentReads(t *testing.T) {
 	var maxConcurrent atomic.Int32
 	var wg sync.WaitGroup
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

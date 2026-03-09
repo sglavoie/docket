@@ -125,24 +125,15 @@ func (m *WorkflowDryRunModel) renderTaskList(paneHeight int) string {
 
 	var b strings.Builder
 
-	maxVisible := paneHeight
-	if maxVisible < 3 {
-		maxVisible = 3
-	}
+	maxVisible := max(paneHeight, 3)
 
 	startIdx := 0
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(m.filtered) {
-		endIdx = len(m.filtered)
-	}
+	endIdx := min(startIdx+maxVisible, len(m.filtered))
 
-	listWidth := m.Width()*45/100 - 4
-	if listWidth < 20 {
-		listWidth = 20
-	}
+	listWidth := max(m.Width()*45/100-4, 20)
 
 	var rowBuilder strings.Builder
 	for i := startIdx; i < endIdx; i++ {
@@ -236,24 +227,15 @@ func (m *WorkflowDryRunModel) renderTaskListWithDetails(paneHeight int) string {
 	var b strings.Builder
 	operatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
 
-	maxVisible := paneHeight
-	if maxVisible < 3 {
-		maxVisible = 3
-	}
+	maxVisible := max(paneHeight, 3)
 
 	startIdx := 0
 	if m.cursor >= maxVisible {
 		startIdx = m.cursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(m.filtered) {
-		endIdx = len(m.filtered)
-	}
+	endIdx := min(startIdx+maxVisible, len(m.filtered))
 
-	maxTitleLen := m.Width() - 8
-	if maxTitleLen < 20 {
-		maxTitleLen = 20
-	}
+	maxTitleLen := max(m.Width()-8, 20)
 
 	for i := startIdx; i < endIdx; i++ {
 		result := m.filtered[i]

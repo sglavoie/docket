@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -107,9 +108,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		columnConfig:      NewColumnConfig(outlinerToggles, cfg.OutlinerDefaultColumns, DefaultOutlinerColumns, outlinerPriorityMode),
 	}
 	// Seed default collapsed sections from config
-	for section, collapsed := range cfg.GetOutlinerCollapsedSections() {
-		m.collapsedSections[section] = collapsed
-	}
+	maps.Copy(m.collapsedSections, cfg.GetOutlinerCollapsedSections())
 	m.InitSearchInput("Search tasks...", 100, 30)
 	// Restore sidebar and filter bar state from config
 	if project != nil {
@@ -576,9 +575,7 @@ func copyBoolMap(src map[string]bool) map[string]bool {
 		return nil
 	}
 	dst := make(map[string]bool, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 	return dst
 }
 

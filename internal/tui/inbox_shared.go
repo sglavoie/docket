@@ -31,10 +31,7 @@ func inboxSelectedBoxStyle() lipgloss.Style {
 // inboxInnerWidth returns the available content width inside a box (border + padding).
 func inboxInnerWidth(width int) int {
 	// 2 border chars + 4 padding chars (2 each side)
-	w := width - 6
-	if w < 20 {
-		w = 20
-	}
+	w := max(width-6, 20)
 	return w
 }
 

@@ -147,10 +147,7 @@ func (m *AppModel) renderStatusBar() string {
 
 	// Helper to render left-aligned message with spacer
 	renderLeftAlignedMsg := func(msg string) string {
-		gap := m.width - lipgloss.Width(msg)
-		if gap < 0 {
-			gap = 0
-		}
+		gap := max(m.width-lipgloss.Width(msg), 0)
 		spacer := lipgloss.NewStyle().Width(gap).Render("")
 		return lipgloss.JoinHorizontal(lipgloss.Top, msg, spacer)
 	}
@@ -212,10 +209,7 @@ func (m *AppModel) renderStatusBar() string {
 	}
 	right := HelpStyle.Render(help)
 
-	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right)
-	if gap < 1 {
-		gap = 1
-	}
+	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 1)
 
 	spacer := lipgloss.NewStyle().Width(gap).Render("")
 

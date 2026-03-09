@@ -346,7 +346,7 @@ func (t *Task) NextNDueDates(n int) []time.Time {
 
 	dates := make([]time.Time, 0, n)
 	current := baseDate
-	for i := 0; i < n; i++ {
+	for range n {
 		current = calculateNextDate(current, t.Recurrence)
 		dates = append(dates, current)
 	}

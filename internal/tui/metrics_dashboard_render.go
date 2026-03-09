@@ -37,10 +37,9 @@ func (m *MetricsDashboardModel) View() string {
 	helpText := HelpStyle.Render(strings.Join(helpParts, " · "))
 	footer := renderStatusBarFooter("", helpText, m.width)
 
-	contentHeight := fullscreenContentHeight(m.height, 2) // tab bar(2)
-	if contentHeight < 4 {
-		contentHeight = 4
-	}
+	contentHeight := max(
+		// tab bar(2)
+		fullscreenContentHeight(m.height, 2), 4)
 
 	var content string
 	switch m.activeTab {
@@ -67,10 +66,7 @@ func (m *MetricsDashboardModel) renderSummaryTab(height int) string {
 	if narrow {
 		// Single column layout
 		cardWidth := contentWidth
-		cardHeight := (height - 2) / 4
-		if cardHeight < 4 {
-			cardHeight = 4
-		}
+		cardHeight := max((height-2)/4, 4)
 
 		cards := []string{
 			m.renderCompletionCard(cardWidth, cardHeight),
@@ -83,10 +79,7 @@ func (m *MetricsDashboardModel) renderSummaryTab(height int) string {
 
 	// 2x2 grid layout
 	cardWidth := contentWidth / 2
-	cardHeight := (height - 1) / 2
-	if cardHeight < 4 {
-		cardHeight = 4
-	}
+	cardHeight := max((height-1)/2, 4)
 
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top,
 		m.renderCompletionCard(cardWidth, cardHeight),
@@ -152,10 +145,7 @@ func (m *MetricsDashboardModel) renderBlockedCard(width, height int) string {
 func (m *MetricsDashboardModel) renderCompletionTab(height int) string {
 	c := m.metrics.Completion
 	chartWidth := m.width - 8
-	chartHeight := height - 6
-	if chartHeight < 3 {
-		chartHeight = 3
-	}
+	chartHeight := max(height-6, 3)
 
 	rateStr := fmt.Sprintf("%.0f%%", c.Rate*100)
 	header := fmt.Sprintf("Completion Rate: %s (%d resolved, %d done)",
@@ -169,10 +159,7 @@ func (m *MetricsDashboardModel) renderCompletionTab(height int) string {
 func (m *MetricsDashboardModel) renderCycleTimeTab(height int) string {
 	c := m.metrics.CycleTime
 	chartWidth := m.width - 8
-	chartHeight := height - 6
-	if chartHeight < 3 {
-		chartHeight = 3
-	}
+	chartHeight := max(height-6, 3)
 
 	header := fmt.Sprintf("Average: %s  Median: %s  P90: %s  (%d tasks)",
 		BoldStyle.Render(formatDuration(c.Average)),
@@ -188,10 +175,7 @@ func (m *MetricsDashboardModel) renderCycleTimeTab(height int) string {
 func (m *MetricsDashboardModel) renderThroughputTab(height int) string {
 	c := m.metrics.Throughput
 	chartWidth := m.width - 8
-	chartHeight := height - 6
-	if chartHeight < 3 {
-		chartHeight = 3
-	}
+	chartHeight := max(height-6, 3)
 
 	header := fmt.Sprintf("Total: %s  Average: %s/day",
 		BoldStyle.Render(fmt.Sprintf("%d", c.Total)),
@@ -221,10 +205,7 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 	}
 
 	// Scrollable task list
-	listHeight := height - 4
-	if listHeight < 3 {
-		listHeight = 3
-	}
+	listHeight := max(height-4, 3)
 
 	var lines []string
 	headerLine := MutedStyle.Render(fmt.Sprintf("%-5s %-40s %12s %8s", "#", "Task", "Blocked", "Periods"))
@@ -233,15 +214,9 @@ func (m *MetricsDashboardModel) renderBlockedTab(height int) string {
 	// Scroll window
 	start := m.blockedCursor
 	if start > 0 && start+listHeight-1 >= len(b.Entries) {
-		start = len(b.Entries) - listHeight + 1
-		if start < 0 {
-			start = 0
-		}
+		start = max(len(b.Entries)-listHeight+1, 0)
 	}
-	end := start + listHeight - 1
-	if end > len(b.Entries) {
-		end = len(b.Entries)
-	}
+	end := min(start+listHeight-1, len(b.Entries))
 
 	for i := start; i < end; i++ {
 		entry := b.Entries[i]

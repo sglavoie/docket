@@ -266,20 +266,14 @@ func (m *TaskTemplateCreatorModel) renderPrioritySelector() string {
 func (m *TaskTemplateCreatorModel) renderSuggestionsDropdown(suggestions []string) string {
 	var b strings.Builder
 	// Limit to 5 visible suggestions
-	maxVisible := 5
-	if len(suggestions) < maxVisible {
-		maxVisible = len(suggestions)
-	}
+	maxVisible := min(len(suggestions), 5)
 
 	// Calculate start index for scrolling
 	startIdx := 0
 	if m.suggestionCursor >= maxVisible {
 		startIdx = m.suggestionCursor - maxVisible + 1
 	}
-	endIdx := startIdx + maxVisible
-	if endIdx > len(suggestions) {
-		endIdx = len(suggestions)
-	}
+	endIdx := min(startIdx+maxVisible, len(suggestions))
 
 	indent := "              " // Match label width (12 chars + "  ")
 	for i := startIdx; i < endIdx; i++ {

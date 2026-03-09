@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"maps"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -215,21 +217,15 @@ func (m *AppModel) extractSharedStateFromTree() *sharedViewState {
 	// Deep-copy maps
 	if len(m.projectTree.filter.Tags) > 0 {
 		s.Filter.Tags = make(map[string]bool, len(m.projectTree.filter.Tags))
-		for k, v := range m.projectTree.filter.Tags {
-			s.Filter.Tags[k] = v
-		}
+		maps.Copy(s.Filter.Tags, m.projectTree.filter.Tags)
 	}
 	if len(m.projectTree.filter.Sections) > 0 {
 		s.Filter.Sections = make(map[string]bool, len(m.projectTree.filter.Sections))
-		for k, v := range m.projectTree.filter.Sections {
-			s.Filter.Sections[k] = v
-		}
+		maps.Copy(s.Filter.Sections, m.projectTree.filter.Sections)
 	}
 	if len(m.projectTree.filter.Attrs) > 0 {
 		s.Filter.Attrs = make(map[string]string, len(m.projectTree.filter.Attrs))
-		for k, v := range m.projectTree.filter.Attrs {
-			s.Filter.Attrs[k] = v
-		}
+		maps.Copy(s.Filter.Attrs, m.projectTree.filter.Attrs)
 	}
 	return s
 }
@@ -256,21 +252,15 @@ func (m *AppModel) extractSharedStateFromOutliner() *sharedViewState {
 	}
 	if len(m.outliner.filter.Tags) > 0 {
 		s.Filter.Tags = make(map[string]bool, len(m.outliner.filter.Tags))
-		for k, v := range m.outliner.filter.Tags {
-			s.Filter.Tags[k] = v
-		}
+		maps.Copy(s.Filter.Tags, m.outliner.filter.Tags)
 	}
 	if len(m.outliner.filter.Sections) > 0 {
 		s.Filter.Sections = make(map[string]bool, len(m.outliner.filter.Sections))
-		for k, v := range m.outliner.filter.Sections {
-			s.Filter.Sections[k] = v
-		}
+		maps.Copy(s.Filter.Sections, m.outliner.filter.Sections)
 	}
 	if len(m.outliner.filter.Attrs) > 0 {
 		s.Filter.Attrs = make(map[string]string, len(m.outliner.filter.Attrs))
-		for k, v := range m.outliner.filter.Attrs {
-			s.Filter.Attrs[k] = v
-		}
+		maps.Copy(s.Filter.Attrs, m.outliner.filter.Attrs)
 	}
 	return s
 }

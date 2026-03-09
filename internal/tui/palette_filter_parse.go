@@ -259,9 +259,9 @@ func parseSearchTerms(query string) (positiveGroups []searchTermGroup, negativeG
 	}
 
 	// Process remaining non-quoted terms
-	terms := strings.Fields(remaining)
+	terms := strings.FieldsSeq(remaining)
 
-	for _, term := range terms {
+	for term := range terms {
 		if strings.HasPrefix(term, "-") && len(term) > 1 {
 			// Negative term - remove the "-" prefix
 			termContent := term[1:]

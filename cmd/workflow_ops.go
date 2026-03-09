@@ -368,7 +368,7 @@ func removeByIndices[T any](slice []T, indices []int) ([]T, error) {
 	// Sort indices in reverse order for safe removal
 	sortedIndices := make([]int, len(indices))
 	copy(sortedIndices, indices)
-	for i := 0; i < len(sortedIndices); i++ {
+	for i := range sortedIndices {
 		for j := i + 1; j < len(sortedIndices); j++ {
 			if sortedIndices[i] < sortedIndices[j] {
 				sortedIndices[i], sortedIndices[j] = sortedIndices[j], sortedIndices[i]

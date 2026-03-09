@@ -299,10 +299,7 @@ func (m *SmartListBuilderModel) updateScrollForFocus() {
 		focusLine = 8
 	}
 
-	visibleHeight := m.height - 7
-	if visibleHeight < 5 {
-		visibleHeight = 5
-	}
+	visibleHeight := max(m.height-7, 5)
 
 	if focusLine < m.editorScrollOffset {
 		m.editorScrollOffset = focusLine

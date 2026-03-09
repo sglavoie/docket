@@ -54,13 +54,7 @@ func NewRecurrenceEditorModel(current *models.RecurrencePattern, dueDate *time.T
 
 	// Load from existing pattern if provided
 	if current != nil {
-		m.interval = current.Interval
-		if m.interval < 1 {
-			m.interval = 1
-		}
-		if m.interval > 99 {
-			m.interval = 99
-		}
+		m.interval = min(max(current.Interval, 1), 99)
 
 		// Find unit cursor
 		for i, u := range m.units {
@@ -259,10 +253,7 @@ func (m *RecurrenceEditorModel) handleDown() tea.Cmd {
 	case 2: // weekdays
 		if m.weekdayCursor < 4 {
 			// Move from top row to bottom row
-			newCursor := m.weekdayCursor + 4
-			if newCursor > 6 {
-				newCursor = 6
-			}
+			newCursor := min(m.weekdayCursor+4, 6)
 			m.weekdayCursor = newCursor
 		}
 	}
@@ -270,10 +261,9 @@ func (m *RecurrenceEditorModel) handleDown() tea.Cmd {
 }
 
 func (m *RecurrenceEditorModel) buildPattern() *models.RecurrencePattern {
-	interval := m.interval
-	if interval < 1 {
-		interval = 1 // Ensure minimum interval of 1
-	}
+	interval := max(m.interval,
+		// Ensure minimum interval of 1
+		1)
 	pattern := &models.RecurrencePattern{
 		Interval: interval,
 		Unit:     m.units[m.unitCursor],
@@ -282,7 +272,7 @@ func (m *RecurrenceEditorModel) buildPattern() *models.RecurrencePattern {
 	// Add weekdays if weekly and any selected
 	if m.isWeeklyUnit() {
 		var weekdays []int
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			if m.weekdays[i] {
 				weekdays = append(weekdays, i)
 			}
@@ -430,7 +420,7 @@ func (m *RecurrenceEditorModel) renderWeekdays() string {
 
 	// First row: Sun, Mon, Tue, Wed (0-3)
 	b.WriteString("  ")
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		b.WriteString(m.renderWeekdayToggle(i, dayNames[i]))
 		if i < 3 {
 			b.WriteString("  ")

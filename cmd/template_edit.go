@@ -130,7 +130,7 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().Changed("tags") {
 		var tags []string
 		if templateEditTags != "" {
-			for _, tag := range strings.Split(templateEditTags, ",") {
+			for tag := range strings.SplitSeq(templateEditTags, ",") {
 				tag = strings.TrimSpace(tag)
 				if tag != "" {
 					tags = append(tags, tag)
@@ -179,7 +179,7 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 		// Sort indices in reverse order to remove from end first
 		indices := make([]int, len(templateEditRemoveChild))
 		copy(indices, templateEditRemoveChild)
-		for i := 0; i < len(indices); i++ {
+		for i := range indices {
 			for j := i + 1; j < len(indices); j++ {
 				if indices[j] > indices[i] {
 					indices[i], indices[j] = indices[j], indices[i]

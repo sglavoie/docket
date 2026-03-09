@@ -78,10 +78,7 @@ func (m *SmartListBuilderModel) applyEditorScroll(content string, availableHeigh
 		m.editorScrollOffset = 0
 	}
 
-	endLine := m.editorScrollOffset + availableHeight
-	if endLine > totalLines {
-		endLine = totalLines
-	}
+	endLine := min(m.editorScrollOffset+availableHeight, totalLines)
 	visibleLines := lines[m.editorScrollOffset:endLine]
 
 	return strings.Join(visibleLines, "\n")
@@ -279,17 +276,11 @@ func (m *SmartListBuilderModel) renderFieldSelector(cursor int, focused bool) st
 	var b strings.Builder
 
 	visible := 3
-	start := cursor - visible/2
-	if start < 0 {
-		start = 0
-	}
+	start := max(cursor-visible/2, 0)
 	end := start + visible
 	if end > len(smartListFields) {
 		end = len(smartListFields)
-		start = end - visible
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-visible, 0)
 	}
 
 	if start > 0 {
@@ -359,17 +350,11 @@ func (m *SmartListBuilderModel) renderEnumSelector(values []string, cursor int, 
 	var b strings.Builder
 
 	visible := 4
-	start := cursor - visible/2
-	if start < 0 {
-		start = 0
-	}
+	start := max(cursor-visible/2, 0)
 	end := start + visible
 	if end > len(values) {
 		end = len(values)
-		start = end - visible
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-visible, 0)
 	}
 
 	if start > 0 {

@@ -31,10 +31,7 @@ func (m *DashboardModel) View() string {
 func (m *DashboardModel) renderDashboard(visible []*models.Project, chromeHeight int) string {
 	var b strings.Builder
 
-	cardWidth := m.width - 2
-	if cardWidth < MinCardWidth {
-		cardWidth = MinCardWidth
-	}
+	cardWidth := max(m.width-2, MinCardWidth)
 
 	// Pre-render info section to measure its actual height
 	var infoContent string
@@ -126,14 +123,8 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 			otherCardW = MinCardWidth
 		}
 	}
-	otherContentW := otherCardW - CardBorderOverhead
-	if otherContentW < 1 {
-		otherContentW = 1
-	}
-	alertsContentW := alertsCardW - CardBorderOverhead
-	if alertsContentW < 1 {
-		alertsContentW = 1
-	}
+	otherContentW := max(otherCardW-CardBorderOverhead, 1)
+	alertsContentW := max(alertsCardW-CardBorderOverhead, 1)
 
 	// Render card contents at the correct width
 	type card struct {
@@ -207,18 +198,12 @@ func (m *DashboardModel) renderProjectSummarySection(width int, selected *models
 	if wide {
 		alertsReduction := width / 10
 		summaryCardW = width - (width/numCards - alertsReduction)
-		alertsCardW = width - summaryCardW
-		if alertsCardW < MinCardWidth {
-			alertsCardW = MinCardWidth
-		}
+		alertsCardW = max(width-summaryCardW, MinCardWidth)
 		if summaryCardW < MinCardWidth {
 			summaryCardW = MinCardWidth
 		}
 	}
-	alertsContentW := alertsCardW - CardBorderOverhead
-	if alertsContentW < 1 {
-		alertsContentW = 1
-	}
+	alertsContentW := max(alertsCardW-CardBorderOverhead, 1)
 
 	type card struct {
 		title   string
@@ -448,10 +433,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if maxStatusWidth > 0 {
 			fixedCols += 2 + maxStatusWidth
 		}
-		availForNameCtx := rowWidth - fixedCols
-		if availForNameCtx < 10 {
-			availForNameCtx = 10
-		}
+		availForNameCtx := max(rowWidth-fixedCols, 10)
 		if showContext && maxContextWidth > 0 {
 			needed := maxNameWidth + maxContextWidth
 			if needed > availForNameCtx {
@@ -468,13 +450,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		}
 	}
 
-	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
-	if scrollOffset > len(visible)-maxVisible {
-		scrollOffset = len(visible) - maxVisible
-	}
-	if scrollOffset < 0 {
-		scrollOffset = 0
-	}
+	scrollOffset := max(min(calcScrollOffset(m.cursor, maxVisible), len(visible)-maxVisible), 0)
 
 	// Column header row
 	if !narrowMode {
@@ -494,10 +470,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	// Project list (windowed)
-	end := scrollOffset + maxVisible
-	if end > len(visible) {
-		end = len(visible)
-	}
+	end := min(scrollOffset+maxVisible, len(visible))
 
 	pinnedNum := 0
 	for i := 0; i < scrollOffset; i++ {
@@ -551,10 +524,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 		if len(displayName) > maxNameWidth && maxNameWidth > 2 {
 			displayName = p.Name[:maxNameWidth-1] + "…"
 		}
-		namePadding := maxNameWidth - len(displayName)
-		if namePadding < 0 {
-			namePadding = 0
-		}
+		namePadding := max(maxNameWidth-len(displayName), 0)
 		nameRendered := iconRendered + style.Render(displayName) + strings.Repeat(" ", namePadding)
 
 		// Context badge, padded/truncated
@@ -567,10 +537,7 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 				} else if len(ctxStr) > maxContextWidth {
 					ctxStr = ctxStr[:maxContextWidth]
 				}
-				ctxPadding := maxContextWidth - len(ctxStr)
-				if ctxPadding < 0 {
-					ctxPadding = 0
-				}
+				ctxPadding := max(maxContextWidth-len(ctxStr), 0)
 				contextRendered = MutedStyle.Render(ctxStr) + strings.Repeat(" ", ctxPadding)
 			} else {
 				contextRendered = strings.Repeat(" ", maxContextWidth)
@@ -825,10 +792,7 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 
 	bar := RenderScoreBar(bestTask, profile)
 	badge := RenderScoreBadge(bestTask, profile)
-	titleWidth := contentWidth - 15
-	if titleWidth < 10 {
-		titleWidth = 10
-	}
+	titleWidth := max(contentWidth-15, 10)
 	title := util.Truncate(bestTask.Title, titleWidth)
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
 	statusIcon := GetStatusBadge(string(bestTask.Status), bestTask.Status.Icon())
@@ -843,10 +807,7 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 	}
 
 	// Type badge + status badge + spaces = ~5 visible columns
-	titleWidth := contentWidth - 5
-	if titleWidth < MinTitleTruncWidth {
-		titleWidth = MinTitleTruncWidth
-	}
+	titleWidth := max(contentWidth-5, MinTitleTruncWidth)
 
 	var lines []string
 	for _, task := range recentTasks {
@@ -855,10 +816,7 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 		fitsOnOneLine := len(task.Title)+2+len(timeStr) <= titleWidth
 
 		if fitsOnOneLine {
-			gap := titleWidth - len(task.Title) - len(timeStr)
-			if gap < 2 {
-				gap = 2
-			}
+			gap := max(titleWidth-len(task.Title)-len(timeStr), 2)
 			line1 := fmt.Sprintf("%s %s %s%s%s",
 				GetTypeBadge(string(task.Type), task.Type.Icon()),
 				GetStatusBadge(string(task.Status), task.Status.Icon()),
@@ -872,10 +830,7 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 				GetStatusBadge(string(task.Status), task.Status.Icon()),
 				util.Truncate(task.Title, titleWidth))
 
-			padding := contentWidth - len(timeStr)
-			if padding < 0 {
-				padding = 0
-			}
+			padding := max(contentWidth-len(timeStr), 0)
 			line2 := MutedStyle.Render(strings.Repeat(" ", padding) + timeStr)
 			lines = append(lines, line1, line2)
 		}

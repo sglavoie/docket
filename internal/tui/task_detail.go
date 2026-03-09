@@ -140,19 +140,15 @@ func (m *TaskDetailModel) prefixHints() PrefixHints {
 
 // viewHeight returns the number of visible content lines (total minus title and footer).
 func (m *TaskDetailModel) viewHeight() int {
-	h := m.height - 2 // title bar + footer
-	if h < 1 {
-		h = 1
-	}
+	h := max(
+		// title bar + footer
+		m.height-2, 1)
 	return h
 }
 
 // clampScroll ensures scrollOffset is within valid bounds.
 func (m *TaskDetailModel) clampScroll() {
-	maxScroll := m.totalLines - m.viewHeight()
-	if maxScroll < 0 {
-		maxScroll = 0
-	}
+	maxScroll := max(m.totalLines-m.viewHeight(), 0)
 	if m.scrollOffset > maxScroll {
 		m.scrollOffset = maxScroll
 	}

@@ -713,10 +713,9 @@ func (m *TaskAttachmentsModel) View() string {
 		// Calculate visible attachments based on height
 		headerLines := 5 // title+subtitle, spacing, help
 		availableHeight := m.Height() - headerLines
-		maxVisible := availableHeight / 3 // ~3 lines per attachment
-		if maxVisible < 3 {
-			maxVisible = 3
-		}
+		maxVisible := max(
+			// ~3 lines per attachment
+			availableHeight/3, 3)
 
 		scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 
@@ -764,10 +763,7 @@ func (m *TaskAttachmentsModel) View() string {
 			} else {
 				name = att.Filename
 			}
-			maxLen := m.Width() - 8
-			if maxLen < 40 {
-				maxLen = 40
-			}
+			maxLen := max(m.Width()-8, 40)
 			if len(name) > maxLen {
 				name = name[:maxLen-3] + "..."
 			}

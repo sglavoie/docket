@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -60,13 +61,7 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 
 	for _, note := range notes {
 		if noteListTag != "" {
-			found := false
-			for _, t := range note.Tags {
-				if t == noteListTag {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(note.Tags, noteListTag)
 			if !found {
 				continue
 			}

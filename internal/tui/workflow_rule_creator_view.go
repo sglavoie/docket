@@ -48,10 +48,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 		previewWidth := m.width - editorWidth - 3 // 3 for separator
 
 		// Calculate pane height
-		paneHeight := availableHeight
-		if paneHeight < 5 {
-			paneHeight = 5
-		}
+		paneHeight := max(availableHeight, 5)
 
 		editorPane := lipgloss.NewStyle().
 			Width(editorWidth).
@@ -149,10 +146,7 @@ func (m *WorkflowRuleCreatorModel) applyEditorScroll(content string, availableHe
 	}
 
 	// Extract visible lines
-	endLine := m.editorScrollOffset + availableHeight
-	if endLine > totalLines {
-		endLine = totalLines
-	}
+	endLine := min(m.editorScrollOffset+availableHeight, totalLines)
 	visibleLines := lines[m.editorScrollOffset:endLine]
 
 	return strings.Join(visibleLines, "\n")
@@ -721,17 +715,11 @@ func (m *WorkflowRuleCreatorModel) renderSelector(fields []workflow.TriggerField
 	var b strings.Builder
 
 	// Calculate visible range
-	start := cursor - visible/2
-	if start < 0 {
-		start = 0
-	}
+	start := max(cursor-visible/2, 0)
 	end := start + visible
 	if end > len(fields) {
 		end = len(fields)
-		start = end - visible
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-visible, 0)
 	}
 
 	// Show left arrow if there are items before
@@ -804,17 +792,11 @@ func (m *WorkflowRuleCreatorModel) renderActionSelector(cursor int, focused bool
 
 	// Show limited context around cursor
 	visible := 3
-	start := cursor - visible/2
-	if start < 0 {
-		start = 0
-	}
+	start := max(cursor-visible/2, 0)
 	end := start + visible
 	if end > len(m.actionTypes) {
 		end = len(m.actionTypes)
-		start = end - visible
-		if start < 0 {
-			start = 0
-		}
+		start = max(end-visible, 0)
 	}
 
 	if start > 0 {

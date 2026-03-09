@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -73,9 +74,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 
 	if len(m.outliner.filter.Attrs) > 0 {
 		state.OutlinerFilterAttrs = make(map[string]string)
-		for k, v := range m.outliner.filter.Attrs {
-			state.OutlinerFilterAttrs[k] = v
-		}
+		maps.Copy(state.OutlinerFilterAttrs, m.outliner.filter.Attrs)
 	} else {
 		state.OutlinerFilterAttrs = nil
 	}
@@ -109,9 +108,7 @@ func (m *AppModel) restoreOutlinerFilterState() {
 	// Restore attribute filters
 	if len(state.OutlinerFilterAttrs) > 0 {
 		m.outliner.filter.Attrs = make(map[string]string)
-		for k, v := range state.OutlinerFilterAttrs {
-			m.outliner.filter.Attrs[k] = v
-		}
+		maps.Copy(m.outliner.filter.Attrs, state.OutlinerFilterAttrs)
 	}
 
 	// Restore tags - validate they still exist in the project
@@ -136,9 +133,7 @@ func (m *AppModel) restoreOutlinerFilterState() {
 
 	// Restore section collapse state from disk if no in-memory cache exists
 	if _, hasCached := m.outlinerToggleStates[m.outliner.project.ID]; !hasCached && len(state.OutlinerCollapsedSections) > 0 {
-		for section, collapsed := range state.OutlinerCollapsedSections {
-			m.outliner.collapsedSections[section] = collapsed
-		}
+		maps.Copy(m.outliner.collapsedSections, state.OutlinerCollapsedSections)
 	}
 
 	// Restore fold state from disk if no in-memory toggle cache exists

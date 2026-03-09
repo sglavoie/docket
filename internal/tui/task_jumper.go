@@ -87,16 +87,10 @@ func (m *TaskJumperModel) SetSize(width, height int) {
 	// cardWidth = viewWidth - 4 (margin)
 	// lipgloss Width = cardWidth - 2 (border adds 2 to total)
 	// usable text area = Width - 4 (padding inside) = viewWidth - 10
-	innerWidth := width - 10
-	if innerWidth < 60 {
-		innerWidth = 60
-	}
+	innerWidth := max(width-10, 60)
 
 	// Calculate split pane widths: 50/50 based on inner width
-	m.listWidth = innerWidth * 50 / 100
-	if m.listWidth < 30 {
-		m.listWidth = 30
-	}
+	m.listWidth = max(innerWidth*50/100, 30)
 	m.previewWidth = innerWidth - m.listWidth - 1 // -1 for separator
 
 	m.searchInput.Width = innerWidth - 4
@@ -256,10 +250,9 @@ func (m *TaskJumperModel) View() string {
 	}
 
 	// Calculate pane height for split view
-	paneHeight := m.height - 8 // title + input + footer
-	if paneHeight < 5 {
-		paneHeight = 5
-	}
+	paneHeight := max(
+		// title + input + footer
+		m.height-8, 5)
 
 	// Split pane: list on left, preview on right
 	listContent := m.renderTaskList()
@@ -307,10 +300,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 
 		// Title (truncated) with highlighting
 		// Account for: cursor(2) + icons(4) + spaces(3) + ID(5) = 14
-		maxTitleLen := m.listWidth - 14
-		if maxTitleLen < 10 {
-			maxTitleLen = 10
-		}
+		maxTitleLen := max(m.listWidth-14, 10)
 		title := util.Truncate(task.Title, maxTitleLen)
 
 		// Adjust positions for truncated title and apply highlighting
@@ -355,10 +345,9 @@ func (m *TaskJumperModel) renderPreview() string {
 	// Header with type and title (truncate to fit preview width)
 	typeStyle := GetTypeStyle(string(task.Type))
 	titlePrefix := fmt.Sprintf("%s #%d: ", task.Type.HeadingPrefix(), task.ShortID)
-	maxTitleLen := m.previewWidth - len(titlePrefix) - 4 // -4 for padding/margin
-	if maxTitleLen < 10 {
-		maxTitleLen = 10
-	}
+	maxTitleLen := max(
+		// -4 for padding/margin
+		m.previewWidth-len(titlePrefix)-4, 10)
 	header := fmt.Sprintf("%s #%d: %s",
 		typeStyle.Render(task.Type.HeadingPrefix()),
 		task.ShortID,
@@ -421,10 +410,7 @@ func (m *TaskJumperModel) renderPreview() string {
 		b.WriteString("\n")
 
 		rendered := renderMarkdown(task.Description, m.previewWidth-2)
-		maxLines := m.height - 18
-		if maxLines < 3 {
-			maxLines = 3
-		}
+		maxLines := max(m.height-18, 3)
 		lines := strings.Split(rendered, "\n")
 		if len(lines) > maxLines {
 			lines = lines[:maxLines]

@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -48,10 +49,8 @@ func (n *Note) AddTag(tag string) {
 	if tag == "" {
 		return
 	}
-	for _, t := range n.Tags {
-		if t == tag {
-			return
-		}
+	if slices.Contains(n.Tags, tag) {
+		return
 	}
 	n.Tags = append(n.Tags, tag)
 	n.ModifiedAt = time.Now()
@@ -78,10 +77,8 @@ func (n *Note) SetTags(tags []string) {
 
 // AddLink adds a task UUID to the linked tasks list if not already present.
 func (n *Note) AddLink(taskID string) {
-	for _, id := range n.LinkedTasks {
-		if id == taskID {
-			return
-		}
+	if slices.Contains(n.LinkedTasks, taskID) {
+		return
 	}
 	n.LinkedTasks = append(n.LinkedTasks, taskID)
 	n.ModifiedAt = time.Now()
@@ -100,12 +97,7 @@ func (n *Note) RemoveLink(taskID string) {
 
 // HasLink returns true if the note is linked to the given task UUID.
 func (n *Note) HasLink(taskID string) bool {
-	for _, id := range n.LinkedTasks {
-		if id == taskID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(n.LinkedTasks, taskID)
 }
 
 // TitleFromFilename derives a human-readable title from a note filename

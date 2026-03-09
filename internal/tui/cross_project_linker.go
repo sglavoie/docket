@@ -263,17 +263,11 @@ func (m *CrossProjectLinkerModel) goToLast() {
 func (m *CrossProjectLinkerModel) moveCursor(delta int) {
 	switch m.step {
 	case StepSelectProject:
-		maxCursor := len(m.filteredProjects) - 1
-		if maxCursor < 0 {
-			maxCursor = 0
-		}
+		maxCursor := max(len(m.filteredProjects)-1, 0)
 		m.projectCursor = clamp(m.projectCursor+delta, 0, maxCursor)
 
 	case StepSelectTask:
-		maxCursor := len(m.filteredTasks) - 1
-		if maxCursor < 0 {
-			maxCursor = 0
-		}
+		maxCursor := max(len(m.filteredTasks)-1, 0)
 		m.taskCursor = clamp(m.taskCursor+delta, 0, maxCursor)
 
 	case StepSelectLinkType:
