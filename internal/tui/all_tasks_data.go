@@ -46,8 +46,8 @@ func (m *AllTasksViewModel) activeTabIncludesCompleted() bool {
 	if entry.IsBuiltIn {
 		return false
 	}
-	sl := m.config.GetSmartList(entry.SmartListID)
-	return sl != nil && sl.IncludeCompleted
+	sf := m.config.GetSavedFilter(entry.SavedFilterID)
+	return sf != nil && sf.IncludeCompleted
 }
 
 // applyFiltersAndGroup applies filters, tab filter, grouping, and sorting.

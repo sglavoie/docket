@@ -134,19 +134,19 @@ func (m *CommandPaletteModel) buildSubtitle() string {
 
 	var parts []string
 	if c := counts[ItemCategoryCommands]; c > 0 {
-		parts = append(parts, fmt.Sprintf("%dc", c))
+		parts = append(parts, fmt.Sprintf("%d %s", c, pluralize(c, "command", "commands")))
 	}
 	if c := counts[ItemCategoryTasks]; c > 0 {
-		parts = append(parts, fmt.Sprintf("%dt", c))
+		parts = append(parts, fmt.Sprintf("%d %s", c, pluralize(c, "task", "tasks")))
 	}
 	if c := counts[ItemCategoryProjects]; c > 0 {
-		parts = append(parts, fmt.Sprintf("%dp", c))
+		parts = append(parts, fmt.Sprintf("%d %s", c, pluralize(c, "project", "projects")))
 	}
 
 	if len(parts) == 0 {
 		return fmt.Sprintf("%d items", len(m.filteredItems))
 	}
-	return strings.Join(parts, " ")
+	return strings.Join(parts, " · ")
 }
 
 // buildFooter constructs the footer text with navigation hints and category counts.
@@ -158,34 +158,29 @@ func (m *CommandPaletteModel) buildFooter() string {
 		counts[filtered.Item.Category]++
 	}
 
-	// Build count summary (only non-zero categories, compact format)
+	// Build count summary (only non-zero categories)
+	type catLabel struct {
+		cat            ItemCategory
+		singular, plural string
+	}
+	catLabels := []catLabel{
+		{ItemCategorySavedSearch, "saved search", "saved searches"},
+		{ItemCategoryCommands, "command", "commands"},
+		{ItemCategoryProjects, "project", "projects"},
+		{ItemCategoryTasks, "task", "tasks"},
+		{ItemCategoryTags, "tag", "tags"},
+		{ItemCategorySections, "section", "sections"},
+		{ItemCategoryNotes, "note", "notes"},
+		{ItemCategoryViews, "view", "views"},
+	}
 	var countParts []string
-	if c := counts[ItemCategorySavedSearch]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%d★", c))
-	}
-	if c := counts[ItemCategoryCommands]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dc", c))
-	}
-	if c := counts[ItemCategoryProjects]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dp", c))
-	}
-	if c := counts[ItemCategoryTasks]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dt", c))
-	}
-	if c := counts[ItemCategoryTags]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dg", c))
-	}
-	if c := counts[ItemCategorySections]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%ds", c))
-	}
-	if c := counts[ItemCategoryNotes]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dn", c))
-	}
-	if c := counts[ItemCategoryViews]; c > 0 {
-		countParts = append(countParts, fmt.Sprintf("%dv", c))
+	for _, cl := range catLabels {
+		if c := counts[cl.cat]; c > 0 {
+			countParts = append(countParts, fmt.Sprintf("%d %s", c, pluralize(c, cl.singular, cl.plural)))
+		}
 	}
 
-	countSummary := strings.Join(countParts, " ")
+	countSummary := strings.Join(countParts, " · ")
 	if countSummary == "" {
 		countSummary = "0"
 	}
@@ -669,9 +664,9 @@ func (m *CommandPaletteModel) renderCategoryBadge(cat ItemCategory) (string, int
 	case ItemCategorySavedSearch:
 		badge = "★ SAV"
 		style = CategorySavedSearchStyle
-	case ItemCategorySavedView:
+	case ItemCategorySavedFilter:
 		badge = "⊡ SVW"
-		style = CategorySavedViewStyle
+		style = CategorySavedFilterStyle
 	case ItemCategoryNotes:
 		badge = "✎ NTE"
 		style = CategoryNoteStyle

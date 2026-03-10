@@ -173,8 +173,11 @@ type ProjectTreeModel struct {
 	// Undo context for the next save operation
 	undo UndoContext
 
-	// Active saved view name (set when a saved view is loaded, cleared on manual filter/sort changes)
-	activeSavedView string
+	// Active saved filter name (set when a saved filter is loaded, cleared on manual filter/sort changes)
+	activeSavedFilter string
+
+	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
+	activeCriteriaFilter *config.SavedFilter
 
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
@@ -200,10 +203,11 @@ func (m *ProjectTreeModel) reloadFromDisk() tea.Cmd {
 	return nil
 }
 
-// clearActiveSavedView clears the active saved view indicator.
-// Called when the user manually changes filter, sort, or view mode.
-func (m *ProjectTreeModel) clearActiveSavedView() {
-	m.activeSavedView = ""
+// clearActiveSavedFilter clears the active saved filter indicator and any
+// criteria filter. Called when the user manually changes filter, sort, or view mode.
+func (m *ProjectTreeModel) clearActiveSavedFilter() {
+	m.activeSavedFilter = ""
+	m.activeCriteriaFilter = nil
 }
 
 // NewProjectTreeModel creates a new project tree model.

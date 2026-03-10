@@ -25,16 +25,17 @@ const (
 
 // buildTabEntries constructs the ordered list of tab entries from config.
 // If AllTasksTabOrder is set, it determines ordering; otherwise built-in tabs
-// come first followed by smart lists in definition order.
+// come first followed by saved filters with ShowAsTab=true in definition order.
 func (m *AllTasksViewModel) buildTabEntries() {
 	builtInByName := make(map[string]int)
 	for i, name := range defaultBuiltInTabNames {
 		builtInByName[name] = i
 	}
 
-	smartByID := make(map[string]bool)
-	for _, sl := range m.config.SmartLists {
-		smartByID[sl.ID] = true
+	tabFilters := m.config.GetTabFilters()
+	filterByID := make(map[string]bool)
+	for _, sf := range tabFilters {
+		filterByID[sf.ID] = true
 	}
 
 	var entries []TabEntry
@@ -45,10 +46,10 @@ func (m *AllTasksViewModel) buildTabEntries() {
 			if id, ok := builtInByName[key]; ok && !used[key] {
 				entries = append(entries, TabEntry{Name: key, IsBuiltIn: true, BuiltInID: id})
 				used[key] = true
-			} else if smartByID[key] && !used[key] {
-				sl := m.config.GetSmartList(key)
-				if sl != nil {
-					entries = append(entries, TabEntry{Name: sl.Name, IsBuiltIn: false, SmartListID: key})
+			} else if filterByID[key] && !used[key] {
+				sf := m.config.GetSavedFilter(key)
+				if sf != nil {
+					entries = append(entries, TabEntry{Name: sf.Name, IsBuiltIn: false, SavedFilterID: key})
 					used[key] = true
 				}
 			}
@@ -62,10 +63,10 @@ func (m *AllTasksViewModel) buildTabEntries() {
 		}
 	}
 
-	// Append any smart lists not yet included
-	for _, sl := range m.config.SmartLists {
-		if !used[sl.ID] {
-			entries = append(entries, TabEntry{Name: sl.Name, IsBuiltIn: false, SmartListID: sl.ID})
+	// Append any tab filters not yet included
+	for _, sf := range tabFilters {
+		if !used[sf.ID] {
+			entries = append(entries, TabEntry{Name: sf.Name, IsBuiltIn: false, SavedFilterID: sf.ID})
 		}
 	}
 
@@ -98,12 +99,12 @@ func (m *AllTasksViewModel) applyTabFilter(tasks []CrossProjectTask) []CrossProj
 		return m.applyBuiltInTabFilter(tasks, entry.BuiltInID)
 	}
 
-	// Smart list tab
-	sl := m.config.GetSmartList(entry.SmartListID)
-	if sl == nil {
+	// Saved filter tab
+	sf := m.config.GetSavedFilter(entry.SavedFilterID)
+	if sf == nil {
 		return tasks
 	}
-	return m.applySmartListFilter(tasks, sl)
+	return m.applySavedFilterToAllTasks(tasks, sf)
 }
 
 // applyBuiltInTabFilter applies the filter logic for built-in tabs.
@@ -174,15 +175,17 @@ func (m *AllTasksViewModel) applyBuiltInTabFilter(tasks []CrossProjectTask, buil
 	return tasks
 }
 
-// applySmartListFilter filters tasks using a smart list's criteria.
-func (m *AllTasksViewModel) applySmartListFilter(tasks []CrossProjectTask, sl *config.SmartList) []CrossProjectTask {
+// applySavedFilterToAllTasks filters tasks using a saved filter.
+// For criteria-mode filters, applies per-task criteria matching.
+// For snapshot-mode filters, applies flat filter fields.
+func (m *AllTasksViewModel) applySavedFilterToAllTasks(tasks []CrossProjectTask, sf *config.SavedFilter) []CrossProjectTask {
 	var result []CrossProjectTask
 	for _, item := range tasks {
-		// Smart lists skip completed tasks unless explicitly included
-		if item.Task.Status.IsComplete() && !sl.IncludeCompleted {
+		// Skip completed tasks unless explicitly included
+		if item.Task.Status.IsComplete() && !sf.IncludeCompleted {
 			continue
 		}
-		if passesSmartListCriteria(item.Task, item.Project, sl, m.config) {
+		if passesSavedFilterCriteria(item.Task, item.Project, sf, m.config) {
 			result = append(result, item)
 		}
 	}
@@ -201,7 +204,7 @@ func (m *AllTasksViewModel) ensureTabOrderInitialized() {
 		if e.IsBuiltIn {
 			order[i] = e.Name
 		} else {
-			order[i] = e.SmartListID
+			order[i] = e.SavedFilterID
 		}
 	}
 	m.config.AllTasksTabOrder = order
@@ -235,17 +238,17 @@ func (m *AllTasksViewModel) moveTabRight() {
 	m.statusMessage = "Tab moved right"
 }
 
-// handleDeleteSmartList deletes the smart list on the currently active tab.
-func (m *AllTasksViewModel) handleDeleteSmartList() (tea.Model, tea.Cmd) {
+// handleDeleteSavedFilterTab deletes the saved filter on the currently active tab.
+func (m *AllTasksViewModel) handleDeleteSavedFilterTab() (tea.Model, tea.Cmd) {
 	if m.tabs.Active < 0 || m.tabs.Active >= len(m.tabEntries) {
 		return m, nil
 	}
 	entry := m.tabEntries[m.tabs.Active]
-	if entry.IsBuiltIn || entry.SmartListID == "" {
+	if entry.IsBuiltIn || entry.SavedFilterID == "" {
 		return m, nil
 	}
-	id := entry.SmartListID
+	id := entry.SavedFilterID
 	return m, func() tea.Msg {
-		return SmartListDeletedMsg{ID: id}
+		return DeleteSavedFilterMsg{ID: id}
 	}
 }

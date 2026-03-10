@@ -92,6 +92,14 @@ func (m *Manager) Load() (*Config, error) {
 		}
 	}
 
+	// Migrate legacy SavedViews and SmartLists to unified SavedFilters.
+	if config.MigrateLegacyFilters() {
+		// Auto-save so legacy fields are cleared on disk.
+		if err := m.Save(&config); err != nil {
+			return nil, fmt.Errorf("failed to save config after filter migration: %w", err)
+		}
+	}
+
 	return &config, nil
 }
 

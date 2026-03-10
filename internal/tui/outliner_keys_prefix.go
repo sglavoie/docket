@@ -31,7 +31,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "Fv":
-		return m.handleSavedViewPrefix(key)
+		return m.handleSavedFilterPrefix(key)
 	}
 
 	// Get cursor task (may be nil if cursor is out of bounds)
@@ -256,9 +256,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	// Any manual filter change clears the saved view indicator
+	// Any manual filter change clears the saved filter indicator
 	if key != "v" {
-		m.clearActiveSavedView()
+		m.clearActiveSavedFilter()
 	}
 
 	// View-specific filter keys
@@ -314,9 +314,9 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
-func (m *OutlinerModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd) {
-	cmd, _ := handleSavedViewPrefixKey(key)
+// handleSavedFilterPrefix handles the third key after pressing Fv (saved filters sub-prefix).
+func (m *OutlinerModel) handleSavedFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	cmd, _ := handleSavedFilterPrefixKey(key)
 	return m, cmd
 }
 

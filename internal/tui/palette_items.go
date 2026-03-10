@@ -268,20 +268,19 @@ func (m *CommandPaletteModel) loadAllItems() []PaletteItem {
 		}
 	}
 
-	// Add saved views from config
-	for i := range m.config.GetSavedViews() {
-		sv := m.config.GetSavedViews()[i]
-		desc := describeSavedViewFilters(
-			sv.FilterType, sv.FilterStatus, sv.FilterPriority,
-			sv.FilterTags, sv.FilterSections, sv.FilterDueDate,
-			sv.FilterActionable, sv.FilterAttrs, sv.FilterScoreMin,
-			sv.SortField, sv.ViewMode,
-		)
+	// Add saved filters from config
+	for i := range m.config.GetSavedFilters() {
+		sf := m.config.GetSavedFilters()[i]
+		desc := describeSavedFilterSummary(&sf)
+		modeBadge := "[S] "
+		if sf.Mode == "criteria" {
+			modeBadge = "[C] "
+		}
 		items = append(items, PaletteItem{
-			Name:        sv.Name,
+			Name:        modeBadge + sf.Name,
 			Description: desc,
-			Category:    ItemCategorySavedView,
-			SavedView:   &sv,
+			Category:    ItemCategorySavedFilter,
+			SavedFilter: &sf,
 		})
 	}
 
@@ -410,8 +409,11 @@ func (m *CommandPaletteModel) getItemID(item PaletteItem) string {
 		return item.Section
 	case ItemCategorySavedSearch:
 		return item.Name // Use the saved search name as ID
-	case ItemCategorySavedView:
-		return item.Name // Use the saved view name as ID
+	case ItemCategorySavedFilter:
+		if item.SavedFilter != nil {
+			return item.SavedFilter.ID
+		}
+		return item.Name
 	case ItemCategoryNotes:
 		if item.Note != nil {
 			return item.Note.Filename
@@ -703,11 +705,11 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			// Don't close the palette - let user see the results
 			return m, nil
 		}
-	case ItemCategorySavedView:
-		if item.SavedView != nil {
-			sv := *item.SavedView
+	case ItemCategorySavedFilter:
+		if item.SavedFilter != nil {
+			sf := *item.SavedFilter
 			return m, func() tea.Msg {
-				return CommandPaletteExecuteMsg{ResultMsg: LoadSavedViewMsg{View: sv}}
+				return CommandPaletteExecuteMsg{ResultMsg: LoadSavedFilterMsg{Filter: sf}}
 			}
 		}
 	case ItemCategoryNotes:

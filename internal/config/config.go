@@ -133,7 +133,8 @@ type Config struct {
 	ScoringProfiles           []scoring.ScoringProfile     `json:"scoring_profiles,omitempty"`             // Available scoring profiles
 	ProjectScoringProfile     map[string]string            `json:"project_scoring_profile,omitempty"`      // Project ID → scoring profile ID
 	ScoreFilterCustom         *float64                     `json:"score_filter_custom,omitempty"`          // Custom score filter threshold for FS→c
-	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Named filter+sort+view-mode presets
+	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Legacy: migrated to SavedFilters
+	SavedFilters              []SavedFilter                `json:"saved_filters,omitempty"`                // Unified filter presets (snapshot + criteria)
 	MaxPinnedBarItems         *int                         `json:"max_pinned_bar_items,omitempty"`         // nil=5, max pinned tasks in status bar
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree

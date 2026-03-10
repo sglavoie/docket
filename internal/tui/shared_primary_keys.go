@@ -521,15 +521,17 @@ func cycleCustomSectionTab(key string, tab *int, tabCount int, afterCycle func()
 	return false
 }
 
-// handleSavedViewPrefixKey handles the third key after pressing Fv (saved views
+// handleSavedFilterPrefixKey handles the third key after pressing Fv (saved filters
 // sub-prefix). Returns (cmd, handled). This logic is shared between ProjectTree
 // and Outliner.
-func handleSavedViewPrefixKey(key string) (tea.Cmd, bool) {
+func handleSavedFilterPrefixKey(key string) (tea.Cmd, bool) {
 	switch key {
 	case "s":
-		return func() tea.Msg { return ShowSaveViewDialogMsg{} }, true
+		return func() tea.Msg { return ShowSaveFilterDialogMsg{} }, true
 	case "l", "d":
 		return func() tea.Msg { return ShowCommandPaletteMsg{PreFilter: ":sv "} }, true
+	case "c":
+		return func() tea.Msg { return ShowFilterBuilderMsg{} }, true
 	}
 	return nil, false
 }

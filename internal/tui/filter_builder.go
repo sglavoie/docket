@@ -10,7 +10,7 @@ import (
 
 // Smart list field definitions for the criteria builder.
 
-// SLField represents a filterable field in the smart list builder.
+// SLField represents a filterable field in the filter builder.
 type SLField struct {
 	Name       string
 	Operations []string
@@ -40,17 +40,17 @@ type CriterionFormState struct {
 	valueInput  textinput.Model
 }
 
-// Tab indices for the smart list builder.
+// Tab indices for the filter builder.
 const (
 	slTabCriteria = iota
 	slTabOptions
 )
 
-// Sort field options for the smart list builder.
+// Sort field options for the filter builder.
 var slSortFieldNames = []string{"Default", "Priority", "Due Date", "Created", "Status", "Score"}
 
-// SmartListBuilderModel handles creating or editing a smart list via TUI.
-type SmartListBuilderModel struct {
+// FilterBuilderModel handles creating or editing a smart list via TUI.
+type FilterBuilderModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
@@ -65,6 +65,7 @@ type SmartListBuilderModel struct {
 	sortField        int
 	sortAscending    bool
 	includeCompleted bool
+	showAsTab        bool
 
 	// Tab and layout state
 	activeTab int // 0=criteria, 1=options
@@ -85,8 +86,8 @@ type SmartListBuilderModel struct {
 	err    error
 }
 
-// NewSmartListBuilderModel creates a new smart list builder (create mode).
-func NewSmartListBuilderModel(cfg *config.Config, manager *config.Manager) *SmartListBuilderModel {
+// NewFilterBuilderModel creates a new filter builder (create mode).
+func NewFilterBuilderModel(cfg *config.Config, manager *config.Manager) *FilterBuilderModel {
 	factory := DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInput("Smart list name")
@@ -97,7 +98,7 @@ func NewSmartListBuilderModel(cfg *config.Config, manager *config.Manager) *Smar
 		{fieldCursor: 0, opCursor: 0, valueInput: valueInput},
 	}
 
-	return &SmartListBuilderModel{
+	return &FilterBuilderModel{
 		config:        cfg,
 		configManager: manager,
 		nameInput:     nameInput,
@@ -110,21 +111,22 @@ func NewSmartListBuilderModel(cfg *config.Config, manager *config.Manager) *Smar
 	}
 }
 
-// NewSmartListEditorModel creates a builder for editing an existing smart list.
-func NewSmartListEditorModel(cfg *config.Config, manager *config.Manager, sl *config.SmartList) *SmartListBuilderModel {
-	m := NewSmartListBuilderModel(cfg, manager)
-	m.editingID = sl.ID
+// NewFilterEditorModel creates a builder for editing an existing saved filter.
+func NewFilterEditorModel(cfg *config.Config, manager *config.Manager, sf *config.SavedFilter) *FilterBuilderModel {
+	m := NewFilterBuilderModel(cfg, manager)
+	m.editingID = sf.ID
 
-	m.nameInput.SetValue(sl.Name)
-	m.logic = sl.EffectiveLogic()
-	m.sortField = sl.SortField
-	m.sortAscending = sl.SortAscending
-	m.includeCompleted = sl.IncludeCompleted
+	m.nameInput.SetValue(sf.Name)
+	m.logic = sf.EffectiveLogic()
+	m.sortField = sf.SortField
+	m.sortAscending = sf.SortAscending
+	m.includeCompleted = sf.IncludeCompleted
+	m.showAsTab = sf.ShowAsTab
 
 	// Populate criteria
-	if len(sl.Criteria) > 0 {
-		m.criteria = make([]CriterionFormState, len(sl.Criteria))
-		for i, c := range sl.Criteria {
+	if len(sf.Criteria) > 0 {
+		m.criteria = make([]CriterionFormState, len(sf.Criteria))
+		for i, c := range sf.Criteria {
 			factory := DefaultFormFieldFactory()
 			valueInput := factory.NewTextInput("Value")
 
@@ -170,7 +172,7 @@ func NewSmartListEditorModel(cfg *config.Config, manager *config.Manager, sl *co
 }
 
 // SetSize sets the view dimensions.
-func (m *SmartListBuilderModel) SetSize(width, height int) {
+func (m *FilterBuilderModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	formFactory.ResizeTextInput(&m.nameInput, width)
@@ -180,12 +182,12 @@ func (m *SmartListBuilderModel) SetSize(width, height int) {
 }
 
 // Init initializes the model.
-func (m *SmartListBuilderModel) Init() tea.Cmd {
+func (m *FilterBuilderModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
 // focusFieldCount returns total number of focusable fields for the current tab.
-func (m *SmartListBuilderModel) focusFieldCount() int {
+func (m *FilterBuilderModel) focusFieldCount() int {
 	switch m.activeTab {
 	case slTabCriteria:
 		count := 1 // name
@@ -195,13 +197,13 @@ func (m *SmartListBuilderModel) focusFieldCount() int {
 		}
 		return count
 	case slTabOptions:
-		return 3 // sort field, sort direction, include completed
+		return 4 // sort field, sort direction, include completed, show as tab
 	}
 	return 1
 }
 
 // getFocusSection returns which section the current focus is in and the offset within that section.
-func (m *SmartListBuilderModel) getFocusSection() (section string, itemIdx int, fieldIdx int) {
+func (m *FilterBuilderModel) getFocusSection() (section string, itemIdx int, fieldIdx int) {
 	idx := m.focusIndex
 
 	switch m.activeTab {
@@ -231,6 +233,8 @@ func (m *SmartListBuilderModel) getFocusSection() (section string, itemIdx int, 
 			return "sort_dir", 0, 0
 		case 2:
 			return "include_completed", 0, 0
+		case 3:
+			return "show_as_tab", 0, 0
 		}
 	}
 
@@ -238,7 +242,7 @@ func (m *SmartListBuilderModel) getFocusSection() (section string, itemIdx int, 
 }
 
 // currentField returns the SLField for a criterion at the given index.
-func (m *SmartListBuilderModel) currentField(criterionIdx int) SLField {
+func (m *FilterBuilderModel) currentField(criterionIdx int) SLField {
 	if criterionIdx < 0 || criterionIdx >= len(m.criteria) {
 		return smartListFields[0]
 	}
@@ -250,47 +254,39 @@ func (m *SmartListBuilderModel) currentField(criterionIdx int) SLField {
 }
 
 // isEnumValue returns true if the current criterion's field uses enum values.
-func (m *SmartListBuilderModel) isEnumValue(criterionIdx int) bool {
+func (m *FilterBuilderModel) isEnumValue(criterionIdx int) bool {
 	f := m.currentField(criterionIdx)
 	return f.ValueType == "enum"
 }
 
-// SmartListSavedMsg signals a smart list was created or updated.
-type SmartListSavedMsg struct {
-	SmartList config.SmartList
-	IsNew     bool
-}
+// FilterBuilderSavedMsg signals a saved filter was created or updated via the builder.
+type FilterBuilderSavedMsg struct{}
 
-// SmartListDeletedMsg signals a smart list was deleted.
-type SmartListDeletedMsg struct {
-	ID string
-}
+// ShowFilterBuilderMsg triggers showing the filter builder (create mode).
+type ShowFilterBuilderMsg struct{}
 
-// ShowSmartListBuilderMsg triggers showing the smart list builder (create mode).
-type ShowSmartListBuilderMsg struct{}
-
-// ShowSmartListEditorMsg triggers showing the smart list builder (edit mode).
-type ShowSmartListEditorMsg struct {
-	SmartList *config.SmartList
+// ShowFilterEditorMsg triggers showing the filter builder (edit mode).
+type ShowFilterEditorMsg struct {
+	Filter *config.SavedFilter
 }
 
 // ShouldCaptureEsc returns true to let the builder handle esc internally.
-func (m *SmartListBuilderModel) ShouldCaptureEsc() bool {
+func (m *FilterBuilderModel) ShouldCaptureEsc() bool {
 	return true
 }
 
-func (m *SmartListBuilderModel) HasTextInput() bool { return true }
-func (m *SmartListBuilderModel) IsFullHeight() bool { return false }
+func (m *FilterBuilderModel) HasTextInput() bool { return true }
+func (m *FilterBuilderModel) IsFullHeight() bool { return false }
 
 // addCriterion appends a new empty criterion.
-func (m *SmartListBuilderModel) addCriterion() {
+func (m *FilterBuilderModel) addCriterion() {
 	factory := DefaultFormFieldFactory()
 	valueInput := factory.NewTextInput("Value")
 	m.criteria = append(m.criteria, CriterionFormState{valueInput: valueInput})
 }
 
 // removeCriterion removes the criterion at the given index (minimum 1 kept).
-func (m *SmartListBuilderModel) removeCriterion(idx int) {
+func (m *FilterBuilderModel) removeCriterion(idx int) {
 	if len(m.criteria) <= 1 || idx < 0 || idx >= len(m.criteria) {
 		return
 	}
@@ -301,8 +297,8 @@ func (m *SmartListBuilderModel) removeCriterion(idx int) {
 	}
 }
 
-// buildSmartList constructs a SmartList from the current form state.
-func (m *SmartListBuilderModel) buildSmartList() config.SmartList {
+// buildSavedFilter constructs a SavedFilter from the current form state.
+func (m *FilterBuilderModel) buildSavedFilter() config.SavedFilter {
 	criteria := make([]config.SmartListCriterion, len(m.criteria))
 	for i, c := range m.criteria {
 		field := smartListFields[c.fieldCursor]
@@ -329,13 +325,15 @@ func (m *SmartListBuilderModel) buildSmartList() config.SmartList {
 		id = uuid.New().String()
 	}
 
-	return config.SmartList{
+	return config.SavedFilter{
 		ID:               id,
 		Name:             m.nameInput.Value(),
+		Mode:             "criteria",
 		Criteria:         criteria,
 		Logic:            m.logic,
 		SortField:        m.sortField,
 		SortAscending:    m.sortAscending,
 		IncludeCompleted: m.includeCompleted,
+		ShowAsTab:        m.showAsTab,
 	}
 }

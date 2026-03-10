@@ -51,8 +51,8 @@ func (m *CommandPaletteModel) renderPreview() string {
 		preview = m.renderSectionPreview(item)
 	case ItemCategorySavedSearch:
 		preview = m.renderSavedSearchPreview(item)
-	case ItemCategorySavedView:
-		preview = m.renderSavedViewPreview(item)
+	case ItemCategorySavedFilter:
+		preview = m.renderSavedFilterPreview(item)
 	case ItemCategoryNotes:
 		preview = m.renderNotePreview(item)
 	case ItemCategoryViews:
@@ -114,7 +114,7 @@ func (m *CommandPaletteModel) renderHelpReference() string {
 	b.WriteString("  :tag    Tags only\n")
 	b.WriteString("  :sec    Sections only\n")
 	b.WriteString("  :saved  Saved searches\n")
-	b.WriteString("  :sv     Saved views\n")
+	b.WriteString("  :sv     Saved filters\n")
 	b.WriteString("  :note   Notes only\n")
 	b.WriteString("  :view   Views only\n")
 	b.WriteString("  :recent Recent commands\n")
@@ -758,32 +758,28 @@ func (m *CommandPaletteModel) renderSavedSearchPreview(item PaletteItem) string 
 	return b.String()
 }
 
-// renderSavedViewPreview shows details for a saved view.
-func (m *CommandPaletteModel) renderSavedViewPreview(item PaletteItem) string {
-	if item.SavedView == nil {
-		return MutedStyle.Render("No saved view details.")
+// renderSavedFilterPreview shows details for a saved filter.
+func (m *CommandPaletteModel) renderSavedFilterPreview(item PaletteItem) string {
+	if item.SavedFilter == nil {
+		return MutedStyle.Render("No saved filter details.")
 	}
-	sv := item.SavedView
+	sf := item.SavedFilter
 	var b strings.Builder
 
 	// Header
-	b.WriteString(TaskJumperPreviewHeaderStyle.Render(sv.Name))
+	b.WriteString(TaskJumperPreviewHeaderStyle.Render(sf.Name))
+	b.WriteString("\n\n")
+
+	// Mode badge
+	if sf.Mode == "criteria" {
+		b.WriteString(MutedStyle.Render("Mode: criteria"))
+	} else {
+		b.WriteString(MutedStyle.Render("Mode: snapshot"))
+	}
 	b.WriteString("\n\n")
 
 	// Filter description
-	desc := describeSavedViewFilters(
-		sv.FilterType,
-		sv.FilterStatus,
-		sv.FilterPriority,
-		sv.FilterTags,
-		sv.FilterSections,
-		sv.FilterDueDate,
-		sv.FilterActionable,
-		sv.FilterAttrs,
-		sv.FilterScoreMin,
-		sv.SortField,
-		sv.ViewMode,
-	)
+	desc := describeSavedFilterSummary(sf)
 
 	b.WriteString(SubtitleStyle.Render("Filters"))
 	b.WriteString("\n")

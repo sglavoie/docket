@@ -10,22 +10,22 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// ShowSaveViewDialogMsg triggers the save view name input dialog.
-type ShowSaveViewDialogMsg struct{}
+// ShowSaveFilterDialogMsg triggers the save view name input dialog.
+type ShowSaveFilterDialogMsg struct{}
 
-// SaveViewMsg saves the current filter state with the given name.
-type SaveViewMsg struct {
+// SaveFilterMsg saves the current filter state as a SavedFilter with the given name.
+type SaveFilterMsg struct {
 	Name string
 }
 
-// LoadSavedViewMsg applies a saved view's filter/sort/viewMode state.
-type LoadSavedViewMsg struct {
-	View config.SavedView
+// LoadSavedFilterMsg applies a saved filter's state to the current view.
+type LoadSavedFilterMsg struct {
+	Filter config.SavedFilter
 }
 
-// DeleteSavedViewMsg removes a saved view by name.
-type DeleteSavedViewMsg struct {
-	Name string
+// DeleteSavedFilterMsg removes a saved filter by ID.
+type DeleteSavedFilterMsg struct {
+	ID string
 }
 
 // ItemCategory represents the type of searchable entity in the command palette.
@@ -41,7 +41,7 @@ const (
 	ItemCategorySections    ItemCategory = "Sections"
 	ItemCategorySavedSearch ItemCategory = "Saved"
 	ItemCategoryNotes       ItemCategory = "Notes"
-	ItemCategorySavedView   ItemCategory = "Saved Views"
+	ItemCategorySavedFilter ItemCategory = "Saved Filters"
 	ItemCategoryViews       ItemCategory = "Views"
 )
 
@@ -56,7 +56,7 @@ var categoryPrefixes = map[string]ItemCategory{
 	"saved":  ItemCategorySavedSearch,
 	"recent": ItemCategoryCommands, // Special: filters to recently executed commands
 	"note":   ItemCategoryNotes,
-	"sv":     ItemCategorySavedView,
+	"sv":     ItemCategorySavedFilter,
 	"view":   ItemCategoryViews,
 }
 
@@ -78,7 +78,7 @@ var commandCategoryPrefixes = map[string]CommandCategory{
 
 // categoryOrder defines the display order for categories when showing headers.
 var categoryOrder = []ItemCategory{
-	ItemCategorySavedView,
+	ItemCategorySavedFilter,
 	ItemCategorySavedSearch,
 	ItemCategoryCommands,
 	ItemCategoryProjects,
@@ -114,15 +114,15 @@ type PaletteItem struct {
 	Category    ItemCategory // The type of item (Commands, Tasks, Projects, Tags, Sections)
 
 	// Underlying data - only one of these will be set based on Category
-	Command     *Command          // Set when Category is CategoryCommands
-	Task        *models.Task      // Set when Category is CategoryTasks
-	Project     *models.Project   // Set when Category is CategoryProjects
-	Tag         string            // Set when Category is CategoryTags
-	Section     string            // Set when Category is CategorySections
-	SavedSearch string            // Set when Category is CategorySavedSearch (the query)
-	Note        *models.Note      // Set when Category is CategoryNotes
-	SavedView   *config.SavedView // Set when Category is CategorySavedView
-	ViewTarget  ViewType          // Set when Category is CategoryViews
+	Command     *Command            // Set when Category is CategoryCommands
+	Task        *models.Task        // Set when Category is CategoryTasks
+	Project     *models.Project     // Set when Category is CategoryProjects
+	Tag         string              // Set when Category is CategoryTags
+	Section     string              // Set when Category is CategorySections
+	SavedSearch string              // Set when Category is CategorySavedSearch (the query)
+	Note        *models.Note        // Set when Category is CategoryNotes
+	SavedFilter *config.SavedFilter // Set when Category is CategorySavedView
+	ViewTarget  ViewType            // Set when Category is CategoryViews
 }
 
 // PaletteAction represents an inline action that can be performed on a palette item.
@@ -261,6 +261,12 @@ type InlineTaskCreateMsg struct {
 	DueDate  *time.Time
 }
 
+// toggleSavedFilterTabMsg toggles the ShowAsTab flag on a saved filter.
+type toggleSavedFilterTabMsg struct {
+	ID        string
+	ShowAsTab bool
+}
+
 // CloseCommandPaletteMsg is sent when the command palette should close.
 type CloseCommandPaletteMsg struct{}
 
@@ -298,7 +304,7 @@ type CommandPaletteSectionSelectMsg struct {
 }
 
 // ShowCommandPaletteMsg is sent to open the command palette.
-// PreFilter can be set to pre-fill the search input (e.g., ":sv " for saved views).
+// PreFilter can be set to pre-fill the search input (e.g., ":sv " for saved filters).
 type ShowCommandPaletteMsg struct {
 	PreFilter string
 }
@@ -388,8 +394,8 @@ func categoryWeight(cat ItemCategory) int {
 		return weightProjects
 	case ItemCategorySavedSearch:
 		return weightCommands // Saved searches rank high like commands
-	case ItemCategorySavedView:
-		return weightCommands // Saved views rank high like commands
+	case ItemCategorySavedFilter:
+		return weightCommands // Saved filters rank high like commands
 	case ItemCategoryViews:
 		return weightProjects // Views are navigational like projects
 	default:
@@ -414,8 +420,8 @@ func getCategoryDisplayName(cat ItemCategory) string {
 		return "Saved Searches"
 	case ItemCategoryNotes:
 		return "Notes"
-	case ItemCategorySavedView:
-		return "Saved Views"
+	case ItemCategorySavedFilter:
+		return "Saved Filters"
 	case ItemCategoryViews:
 		return "Views"
 	default:

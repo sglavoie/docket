@@ -51,7 +51,7 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if confirmed, handled := m.HandleConfirmKey(key); handled {
 			if confirmed {
 				if action == "delete-smart-list" {
-					return m.handleDeleteSmartList()
+					return m.handleDeleteSavedFilterTab()
 				}
 				if m.multiSelectMode && m.SelectedCount() > 0 {
 					return m.handleBulkDelete()
@@ -166,21 +166,22 @@ func (m *AllTasksViewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	// Smart list: create
+	// Criteria filter: create
 	case "+":
 		return m, func() tea.Msg {
-			return ShowSmartListBuilderMsg{}
+			return ShowFilterBuilderMsg{}
 		}
 
-	// Smart list: edit current tab
+	// Criteria filter: edit current tab
 	case "E":
 		if m.tabs.Active >= 0 && m.tabs.Active < len(m.tabEntries) {
 			entry := m.tabEntries[m.tabs.Active]
 			if !entry.IsBuiltIn {
-				sl := m.config.GetSmartList(entry.SmartListID)
-				if sl != nil {
+				sf := m.config.GetSavedFilter(entry.SavedFilterID)
+				if sf != nil && sf.Mode == "criteria" {
+					filter := *sf
 					return m, func() tea.Msg {
-						return ShowSmartListEditorMsg{SmartList: sl}
+						return ShowFilterEditorMsg{Filter: &filter}
 					}
 				}
 			}

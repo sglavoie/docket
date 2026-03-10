@@ -88,14 +88,14 @@ const (
 	ViewTaskDetail
 	ViewScoreEditor
 	ViewScoreProfileManager
-	ViewSaveViewInput
+	ViewSaveFilterInput
 	ViewMetricsDashboard
 	ViewAllTasks
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
 	ViewColumnPicker
-	ViewSmartListBuilder
+	ViewFilterBuilder
 	ViewWorkflowDryRun
 	ViewTemplateVarFiller
 	ViewStatusInput

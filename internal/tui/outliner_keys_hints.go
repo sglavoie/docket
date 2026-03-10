@@ -87,13 +87,13 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 			PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == 8},
 			PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
 			PrefixHint{Key: "@", Description: "section", Detail: "selector"},
-			PrefixHint{Key: "v", Description: "saved views"},
+			PrefixHint{Key: "v", Description: "saved filters"},
 		)
 		hints["F"] = fHints
 	}
 
-	// Add saved view sub-prefix hints
-	hints["Fv"] = SavedViewPrefixHints
+	// Add saved filter sub-prefix hints
+	hints["Fv"] = SavedFilterPrefixHints
 
 	// Annotate current task's status as active in status hints
 	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) {

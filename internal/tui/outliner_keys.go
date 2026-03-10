@@ -414,7 +414,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Sort keys: bare 1-5, 0
 	case "1", "2", "3", "4", "5", "0":
-		m.clearActiveSavedView()
+		m.clearActiveSavedFilter()
 		handleSortKey(key, &m.sort,
 			func() { m.rebuildRows() },
 			func(SortField) { m.rebuildRows() },

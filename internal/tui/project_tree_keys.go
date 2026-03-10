@@ -17,9 +17,9 @@ func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
 
 // handleFilterPrefix handles the second key after pressing F (filter prefix).
 func (m *ProjectTreeModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
-	// Clear active saved view for filter changes (but not for Fv which opens saved views)
+	// Clear active saved filter for filter changes (but not for Fv which opens saved filters)
 	if key != "v" {
-		m.clearActiveSavedView()
+		m.clearActiveSavedFilter()
 	}
 
 	// View-specific keys
@@ -83,9 +83,9 @@ func (m *ProjectTreeModel) handleFilterSubPrefix(prefix, key string) (tea.Model,
 	return m, nil
 }
 
-// handleSavedViewPrefix handles the third key after pressing Fv (saved views sub-prefix).
-func (m *ProjectTreeModel) handleSavedViewPrefix(key string) (tea.Model, tea.Cmd) {
-	cmd, _ := handleSavedViewPrefixKey(key)
+// handleSavedFilterPrefix handles the third key after pressing Fv (saved filters sub-prefix).
+func (m *ProjectTreeModel) handleSavedFilterPrefix(key string) (tea.Model, tea.Cmd) {
+	cmd, _ := handleSavedFilterPrefixKey(key)
 	return m, cmd
 }
 
@@ -109,7 +109,7 @@ func (m *ProjectTreeModel) handleFilterKeys(key string) (bool, tea.Cmd) {
 
 // toggleSort sets the sort field, toggling ascending/descending if already set.
 func (m *ProjectTreeModel) toggleSort(field SortField) {
-	m.clearActiveSavedView()
+	m.clearActiveSavedFilter()
 	m.sort.Toggle(field)
 	m.sortNodes()
 	m.updateVisibility()
@@ -170,11 +170,11 @@ func (m *ProjectTreeModel) sendTasksToSection(section string, visible []*TreeNod
 func (m *ProjectTreeModel) handleSortKeys(key string) (bool, tea.Cmd) {
 	handled := handleSortKey(key, &m.sort,
 		func() {
-			m.clearActiveSavedView()
+			m.clearActiveSavedFilter()
 			m.buildTree()
 		},
 		func(SortField) {
-			m.clearActiveSavedView()
+			m.clearActiveSavedFilter()
 			m.sortNodes()
 			m.updateVisibility()
 		},

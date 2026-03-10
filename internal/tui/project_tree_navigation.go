@@ -41,7 +41,7 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
 	case "h":
 		if !m.sidebar.IsFocused() {
-			m.clearActiveSavedView()
+			m.clearActiveSavedFilter()
 			modes := m.cyclableViewModes()
 			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
 				m.viewMode = modes[(idx+len(modes)-1)%len(modes)]
@@ -54,7 +54,7 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		}
 	case "l":
 		if !m.sidebar.IsFocused() {
-			m.clearActiveSavedView()
+			m.clearActiveSavedFilter()
 			modes := m.cyclableViewModes()
 			if idx := viewModeIndex(modes, m.viewMode); idx >= 0 {
 				m.viewMode = modes[(idx+1)%len(modes)]

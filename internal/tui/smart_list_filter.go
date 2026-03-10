@@ -12,15 +12,15 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// passesSmartListCriteria returns true if the task matches all (AND) or any (OR)
-// of the smart list's criteria.
-func passesSmartListCriteria(task *models.Task, project *models.Project, sl *config.SmartList, cfg *config.Config) bool {
-	if len(sl.Criteria) == 0 {
+// passesSavedFilterCriteria returns true if the task matches the criteria of a
+// SavedFilter in criteria mode. For snapshot-mode filters this always returns true.
+func passesSavedFilterCriteria(task *models.Task, project *models.Project, sf *config.SavedFilter, cfg *config.Config) bool {
+	if sf.Mode != "criteria" || len(sf.Criteria) == 0 {
 		return true
 	}
 
-	isAnd := sl.EffectiveLogic() == "and"
-	for _, c := range sl.Criteria {
+	isAnd := sf.EffectiveLogic() == "and"
+	for _, c := range sf.Criteria {
 		passes := evaluateCriterion(task, project, c, cfg)
 		if isAnd && !passes {
 			return false
@@ -29,7 +29,7 @@ func passesSmartListCriteria(task *models.Task, project *models.Project, sl *con
 			return true
 		}
 	}
-	return isAnd // AND: all passed; OR: none passed
+	return isAnd
 }
 
 // evaluateCriterion checks a single criterion against a task.

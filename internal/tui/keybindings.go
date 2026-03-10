@@ -60,7 +60,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerWorkflowRulesBindings()
 	r.registerWorkflowDryRunBindings()
 	r.registerTaskTemplatesBindings()
-	r.registerSmartListBuilderBindings()
+	r.registerFilterBuilderBindings()
 	r.registerNotificationCenterBindings()
 	return r
 }

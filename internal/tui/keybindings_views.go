@@ -519,8 +519,8 @@ func (r *KeybindingRegistry) registerTaskTemplatesBindings() {
 	)
 }
 
-func (r *KeybindingRegistry) registerSmartListBuilderBindings() {
-	views := []ViewType{ViewSmartListBuilder}
+func (r *KeybindingRegistry) registerFilterBuilderBindings() {
+	views := []ViewType{ViewFilterBuilder}
 	r.add(
 		Keybinding{Key: "[/]", Description: "Switch tabs (Criteria/Options)", Category: "Navigation", Views: views},
 		Keybinding{Key: "Tab/Shift+Tab", Description: "Navigate fields", Category: "Navigation", Views: views},

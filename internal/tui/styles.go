@@ -354,7 +354,7 @@ var (
 				Foreground(lipgloss.Color("0")).
 				Padding(0, 1)
 
-	SavedViewBadgeStyle = lipgloss.NewStyle().
+	SavedFilterBadgeStyle = lipgloss.NewStyle().
 				Background(ColorSecondary).
 				Foreground(lipgloss.Color("15")).
 				Bold(true).
@@ -851,7 +851,7 @@ var (
 	CategoryTagStyle         = lipgloss.NewStyle().Foreground(ColorWarning)
 	CategorySectionStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("135")) // Purple
 	CategorySavedSearchStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // Orange
-	CategorySavedViewStyle   = lipgloss.NewStyle().Foreground(ColorSecondary)        // Blue (matches saved view badge)
+	CategorySavedFilterStyle = lipgloss.NewStyle().Foreground(ColorSecondary)        // Blue (matches saved filter badge)
 	CategoryNoteStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("108")) // Sage green
 	CategoryViewStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("75"))  // Sky blue
 

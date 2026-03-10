@@ -7,8 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Update handles state transitions for the smart list builder.
-func (m *SmartListBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// Update handles state transitions for the filter builder.
+func (m *FilterBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -57,7 +57,7 @@ func (m *SmartListBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "ctrl+s":
-			return m, m.saveSmartList()
+			return m, m.saveSavedFilter()
 
 		case "+", "=":
 			if m.activeTab == slTabCriteria {
@@ -87,6 +87,8 @@ func (m *SmartListBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sortAscending = !m.sortAscending
 			case "include_completed":
 				m.includeCompleted = !m.includeCompleted
+			case "show_as_tab":
+				m.showAsTab = !m.showAsTab
 			}
 			return m, nil
 
@@ -139,7 +141,7 @@ func (m *SmartListBuilderModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // isInTextInput returns true if the current focus is on a text input field.
-func (m *SmartListBuilderModel) isInTextInput() bool {
+func (m *FilterBuilderModel) isInTextInput() bool {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 	switch section {
 	case "name":
@@ -151,7 +153,7 @@ func (m *SmartListBuilderModel) isInTextInput() bool {
 }
 
 // blurCurrentField removes focus from the currently focused field.
-func (m *SmartListBuilderModel) blurCurrentField() {
+func (m *FilterBuilderModel) blurCurrentField() {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 	switch section {
 	case "name":
@@ -164,7 +166,7 @@ func (m *SmartListBuilderModel) blurCurrentField() {
 }
 
 // focusCurrentField sets focus on the currently focused field.
-func (m *SmartListBuilderModel) focusCurrentField() {
+func (m *FilterBuilderModel) focusCurrentField() {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 	switch section {
 	case "name":
@@ -177,7 +179,7 @@ func (m *SmartListBuilderModel) focusCurrentField() {
 }
 
 // handleLeft moves cursor left within selectors.
-func (m *SmartListBuilderModel) handleLeft() tea.Cmd {
+func (m *FilterBuilderModel) handleLeft() tea.Cmd {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 	switch section {
 	case "criterion":
@@ -212,12 +214,14 @@ func (m *SmartListBuilderModel) handleLeft() tea.Cmd {
 		m.sortAscending = !m.sortAscending
 	case "include_completed":
 		m.includeCompleted = !m.includeCompleted
+	case "show_as_tab":
+		m.showAsTab = !m.showAsTab
 	}
 	return nil
 }
 
 // handleRight moves cursor right within selectors.
-func (m *SmartListBuilderModel) handleRight() tea.Cmd {
+func (m *FilterBuilderModel) handleRight() tea.Cmd {
 	section, itemIdx, fieldIdx := m.getFocusSection()
 	switch section {
 	case "criterion":
@@ -255,12 +259,14 @@ func (m *SmartListBuilderModel) handleRight() tea.Cmd {
 		m.sortAscending = !m.sortAscending
 	case "include_completed":
 		m.includeCompleted = !m.includeCompleted
+	case "show_as_tab":
+		m.showAsTab = !m.showAsTab
 	}
 	return nil
 }
 
 // handleUp moves to the previous focusable item.
-func (m *SmartListBuilderModel) handleUp() tea.Cmd {
+func (m *FilterBuilderModel) handleUp() tea.Cmd {
 	m.blurCurrentField()
 	total := m.focusFieldCount()
 	m.focusIndex = (m.focusIndex + total - 1) % total
@@ -270,7 +276,7 @@ func (m *SmartListBuilderModel) handleUp() tea.Cmd {
 }
 
 // handleDown moves to the next focusable item.
-func (m *SmartListBuilderModel) handleDown() tea.Cmd {
+func (m *FilterBuilderModel) handleDown() tea.Cmd {
 	m.blurCurrentField()
 	total := m.focusFieldCount()
 	m.focusIndex = (m.focusIndex + 1) % total
@@ -280,7 +286,7 @@ func (m *SmartListBuilderModel) handleDown() tea.Cmd {
 }
 
 // updateScrollForFocus adjusts scroll offset to keep focused item visible.
-func (m *SmartListBuilderModel) updateScrollForFocus() {
+func (m *FilterBuilderModel) updateScrollForFocus() {
 	section, itemIdx, _ := m.getFocusSection()
 
 	var focusLine int
@@ -297,6 +303,8 @@ func (m *SmartListBuilderModel) updateScrollForFocus() {
 		focusLine = 5
 	case "include_completed":
 		focusLine = 8
+	case "show_as_tab":
+		focusLine = 11
 	}
 
 	visibleHeight := max(m.height-7, 5)
@@ -312,32 +320,24 @@ func (m *SmartListBuilderModel) updateScrollForFocus() {
 	}
 }
 
-// saveSmartList validates and saves the smart list.
-func (m *SmartListBuilderModel) saveSmartList() tea.Cmd {
+// saveSavedFilter validates and saves the filter directly as a SavedFilter.
+func (m *FilterBuilderModel) saveSavedFilter() tea.Cmd {
 	return func() tea.Msg {
 		name := strings.TrimSpace(m.nameInput.Value())
 		if name == "" {
-			return ErrorMsg{Err: fmt.Errorf("smart list name is required")}
+			return ErrorMsg{Err: fmt.Errorf("filter name is required")}
 		}
 		if len(m.criteria) == 0 {
 			return ErrorMsg{Err: fmt.Errorf("at least one criterion is required")}
 		}
 
-		sl := m.buildSmartList()
-		isNew := m.editingID == ""
-
-		if isNew {
-			if err := m.config.AddSmartList(sl); err != nil {
-				return ErrorMsg{Err: err}
-			}
-		} else {
-			m.config.UpdateSmartList(sl)
-		}
+		sf := m.buildSavedFilter()
+		m.config.SaveFilter(sf)
 
 		if err := m.configManager.Save(m.config); err != nil {
 			return ErrorMsg{Err: fmt.Errorf("failed to save: %w", err)}
 		}
 
-		return SmartListSavedMsg{SmartList: sl, IsNew: isNew}
+		return FilterBuilderSavedMsg{}
 	}
 }

@@ -209,6 +209,13 @@ func (m *ProjectTreeModel) passesFilters(node *TreeNode) bool {
 		return false
 	}
 
+	// Apply criteria filter (from a loaded criteria-mode SavedFilter)
+	if m.activeCriteriaFilter != nil {
+		if !passesSavedFilterCriteria(node.Task, m.project, m.activeCriteriaFilter, m.config) {
+			return false
+		}
+	}
+
 	// Apply custom section tab filter (must belong to the selected custom section)
 	if csFilter := m.activeCustomSectionFilter(); csFilter != "" {
 		if node.Task.CustomSection != csFilter {

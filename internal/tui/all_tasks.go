@@ -43,12 +43,12 @@ type AllTasksGroup struct {
 }
 
 // TabEntry represents a single tab in the AllTasks view, which can be either
-// a built-in filter tab or a user-defined smart list.
+// a built-in filter tab or a user-defined saved filter (shown as tab).
 type TabEntry struct {
-	Name        string
-	IsBuiltIn   bool
-	BuiltInID   int
-	SmartListID string
+	Name          string
+	IsBuiltIn     bool
+	BuiltInID     int
+	SavedFilterID string
 }
 
 // AllTasksViewModel displays all tasks across all projects.

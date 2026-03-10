@@ -7,10 +7,12 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
-// SaveViewInputModel handles naming a saved view.
-type SaveViewInputModel struct {
+// SaveFilterInputModel handles naming a saved filter preset.
+type SaveFilterInputModel struct {
 	summary        string // Summary of active filters being saved
 	input          textinput.Model
 	err            string
@@ -21,32 +23,32 @@ type SaveViewInputModel struct {
 	confirmOverlay ConfirmDialog
 }
 
-// NewSaveViewInputModel creates a new save view input model.
-func NewSaveViewInputModel(summary string) *SaveViewInputModel {
+// NewSaveFilterInputModel creates a new save view input model.
+func NewSaveFilterInputModel(summary string) *SaveFilterInputModel {
 	input := textinput.New()
 	input.Placeholder = "Enter a name for this view"
 	input.Focus()
 	input.CharLimit = 50
 	input.Width = 40
 
-	return &SaveViewInputModel{
+	return &SaveFilterInputModel{
 		summary: summary,
 		input:   input,
 	}
 }
 
 // SetSize sets the view dimensions.
-func (m *SaveViewInputModel) SetSize(width, height int) {
+func (m *SaveFilterInputModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
 	m.input.Width = min(width-20, 40)
 }
 
-func (m *SaveViewInputModel) Init() tea.Cmd {
+func (m *SaveFilterInputModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *SaveViewInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *SaveFilterInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.confirmDiscard {
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
@@ -80,7 +82,7 @@ func (m *SaveViewInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			return m, func() tea.Msg {
-				return SaveViewMsg{Name: name}
+				return SaveFilterMsg{Name: name}
 			}
 		}
 	}
@@ -91,7 +93,7 @@ func (m *SaveViewInputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *SaveViewInputModel) View() string {
+func (m *SaveFilterInputModel) View() string {
 	var b strings.Builder
 
 	b.WriteString(renderFullscreenTitle("Save View", ""))
@@ -121,12 +123,12 @@ func (m *SaveViewInputModel) View() string {
 }
 
 // HasTextInput returns true because the save view input is active.
-func (m *SaveViewInputModel) HasTextInput() bool { return true }
+func (m *SaveFilterInputModel) HasTextInput() bool { return true }
 
 // ShouldCaptureEsc returns true so esc is handled by the view (cancels via BackMsg).
-func (m *SaveViewInputModel) ShouldCaptureEsc() bool { return true }
+func (m *SaveFilterInputModel) ShouldCaptureEsc() bool { return true }
 
-func (m *SaveViewInputModel) GetConfirmDialog() *ConfirmDialog {
+func (m *SaveFilterInputModel) GetConfirmDialog() *ConfirmDialog {
 	if m.confirmDiscard {
 		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
 	} else {
@@ -135,10 +137,40 @@ func (m *SaveViewInputModel) GetConfirmDialog() *ConfirmDialog {
 	return &m.confirmOverlay
 }
 
-func (m *SaveViewInputModel) IsFullHeight() bool { return false }
+func (m *SaveFilterInputModel) IsFullHeight() bool { return false }
 
-// describeSavedViewFilters builds a human-readable summary of a saved view's filter state.
-func describeSavedViewFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
+// describeSavedFilterSummary builds a human-readable summary of a SavedFilter.
+func describeSavedFilterSummary(sf *config.SavedFilter) string {
+	if sf.Mode == "criteria" {
+		return describeCriteriaFilter(sf)
+	}
+	return describeSnapshotFilters(
+		sf.FilterType, sf.FilterStatus, sf.FilterPriority,
+		sf.FilterTags, sf.FilterSections, sf.FilterDueDate,
+		sf.FilterActionable, sf.FilterAttrs, sf.FilterScoreMin,
+		sf.SortField, sf.ViewMode,
+	)
+}
+
+// describeCriteriaFilter builds a summary for a criteria-mode saved filter.
+func describeCriteriaFilter(sf *config.SavedFilter) string {
+	if len(sf.Criteria) == 0 {
+		return "No criteria"
+	}
+	var parts []string
+	for _, c := range sf.Criteria {
+		parts = append(parts, c.Field+" "+c.Operation+" "+c.Value)
+	}
+	logic := sf.EffectiveLogic()
+	sep := " AND "
+	if logic == "or" {
+		sep = " OR "
+	}
+	return strings.Join(parts, sep)
+}
+
+// describeSnapshotFilters builds a human-readable summary of a snapshot filter's state.
+func describeSnapshotFilters(filterType string, filterStatus string, filterPriority int, filterTags []string, filterSections []string, filterDueDate int, filterActionable bool, filterAttrs map[string]string, filterScoreMin float64, sortField int, viewMode int) string {
 	var parts []string
 
 	switch viewMode {

@@ -14,9 +14,9 @@ func (m *AppModel) filterBarCommands() []Command {
 			Shortcut:    "Fvs",
 			Category:    CategoryFilters,
 			Views:       []ViewType{ViewProjectTree},
-			Aliases:     []string{"save view", "saved view", "view preset"},
+			Aliases:     []string{"save filter", "saved filter", "save view", "view preset"},
 			Handler: func() tea.Msg {
-				return ShowSaveViewDialogMsg{}
+				return ShowSaveFilterDialogMsg{}
 			},
 		},
 		{

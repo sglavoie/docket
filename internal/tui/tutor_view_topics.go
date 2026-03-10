@@ -153,41 +153,45 @@ recurrence interval. The completed instance remains in your
 history.`,
 		},
 		{
-			Title:    "Saved Views",
+			Title:    "Saved Filters",
 			Category: "Concepts",
-			Content: `# What Are Saved Views
+			Content: `# What Are Saved Filters
 
-A saved view is a named preset that captures your current filter,
+A saved filter is a named preset that captures your current filter,
 sort, and view-mode settings. Instead of manually re-applying
 filters every time you want to see the same slice of tasks, you
 save the combination once and load it with a couple of keystrokes.
 
-# Creating a Saved View
+There are two modes: snapshot (flat filter state) and criteria
+(compound rules like smart lists). Both are managed uniformly.
+
+# Creating a Saved Filter
 
 Set up the filters and sort order you want, then press Fv followed
 by s (or use the command palette). A dialog asks for a name. Once
-saved, the view name appears as a badge in the filter bar whenever
-it is active.
+saved, the filter name appears as a badge in the filter bar whenever
+it is active. Press Fv then c to create a criteria-mode filter.
 
-# Loading a Saved View
+# Loading a Saved Filter
 
 Press Fv then l to open the command palette pre-filtered to saved
-views. Select a view and press Enter to apply it. The project tree
-immediately updates to match the saved filter/sort/view-mode state.
-You can also type :sv in the command palette to browse saved views.
+filters. Select a filter and press Enter to apply it. The view
+immediately updates to match the saved filter state.
+You can also type :sv in the command palette to browse saved filters.
 
-# Deleting a Saved View
+# Deleting a Saved Filter
 
-Press Fv then d to open the saved views palette. Select the view
+Press Fv then d to open the saved filters palette. Select the filter
 you want to remove, press Tab to open the action menu, then choose
-Delete. The view is removed from the config file.
+Delete. The filter is removed from the config file.
 
 # Storage
 
-Saved views are stored in the JSON config file (~/.tt.json) and
-are available across all projects. They capture view mode, type/
-status/priority/tag/section/due-date/attribute/score filters,
-sort field and direction, and the active custom section tab.`,
+Saved filters are stored in the JSON config file (~/.tt.json) and
+are available across all projects. Snapshot filters capture view mode,
+type/status/priority/tag/section/due-date/attribute/score filters,
+sort field and direction, and the active custom section tab. Criteria
+filters store compound rules with AND/OR logic.`,
 		},
 		{
 			Title:    "Sections (GTD)",

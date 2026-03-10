@@ -565,19 +565,20 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	return b.String()
 }
 
-// clearActiveSavedView clears the active saved view indicator when the user
-// manually changes filter/sort state.
-func (m *OutlinerModel) clearActiveSavedView() {
-	m.activeSavedView = ""
+// clearActiveSavedFilter clears the active saved filter indicator and any
+// criteria filter. Called when the user manually changes filter/sort state.
+func (m *OutlinerModel) clearActiveSavedFilter() {
+	m.activeSavedFilter = ""
+	m.activeCriteriaFilter = nil
 }
 
 // activeFilterParts returns the list of active filter description strings.
 func (m *OutlinerModel) activeFilterParts() []string {
 	var parts []string
 
-	// Show saved view badge if active
-	if m.activeSavedView != "" {
-		parts = append(parts, SavedViewBadgeStyle.Render("View: "+m.activeSavedView))
+	// Show saved filter badge if active
+	if m.activeSavedFilter != "" {
+		parts = append(parts, SavedFilterBadgeStyle.Render("View: "+m.activeSavedFilter))
 	}
 
 	// Add common filter parts (type, status, priority, tags, due date, attrs, score)

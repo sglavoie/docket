@@ -59,7 +59,7 @@ var prefixCategoryNames = map[string]string{
 	"Fao": "scope",
 	"Fap": "points",
 	"FS":  "filter-score",
-	"Fv":  "saved-views",
+	"Fv":  "saved-filters",
 	";":   "tt",
 }
 
@@ -617,11 +617,12 @@ var (
 		{Key: "0", Description: "clear"},
 	}
 
-	// SavedViewPrefixHints contains hints for the "Fv" (saved views) sub-prefix.
-	SavedViewPrefixHints = []PrefixHint{
+	// SavedFilterPrefixHints contains hints for the "Fv" (saved filters/filters) sub-prefix.
+	SavedFilterPrefixHints = []PrefixHint{
 		{Key: "s", Description: "save", Detail: "Save current view"},
-		{Key: "l", Description: "load", Detail: "Browse/apply saved views"},
-		{Key: "d", Description: "delete", Detail: "Delete a saved view"},
+		{Key: "l", Description: "load", Detail: "Browse/apply saved filters"},
+		{Key: "d", Description: "delete", Detail: "Delete a saved filter"},
+		{Key: "c", Description: "criteria", Detail: "Create criteria filter"},
 	}
 
 	// FilterScorePrefixHints contains hints for the "FS" (filter score) sub-prefix.

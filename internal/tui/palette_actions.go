@@ -22,8 +22,8 @@ func (m *CommandPaletteModel) getActionsForItem(item PaletteItem) []PaletteActio
 		return m.getSectionActions(item)
 	case ItemCategorySavedSearch:
 		return m.getSavedSearchActions(item)
-	case ItemCategorySavedView:
-		return m.getSavedViewActions(item)
+	case ItemCategorySavedFilter:
+		return m.getSavedFilterActions(item)
 	case ItemCategoryNotes:
 		return m.getNoteActions(item)
 	case ItemCategoryViews:
@@ -507,13 +507,12 @@ func (m *CommandPaletteModel) getSavedSearchActions(item PaletteItem) []PaletteA
 	return actions
 }
 
-// getSavedViewActions returns inline actions for a saved view item.
-func (m *CommandPaletteModel) getSavedViewActions(item PaletteItem) []PaletteAction {
-	if item.SavedView == nil {
+// getSavedFilterActions returns inline actions for a saved filter item.
+func (m *CommandPaletteModel) getSavedFilterActions(item PaletteItem) []PaletteAction {
+	if item.SavedFilter == nil {
 		return nil
 	}
-	sv := *item.SavedView
-	name := sv.Name
+	sf := *item.SavedFilter
 
 	actions := []PaletteAction{
 		{
@@ -521,7 +520,7 @@ func (m *CommandPaletteModel) getSavedViewActions(item PaletteItem) []PaletteAct
 			Icon:    "→",
 			KeyHint: "enter",
 			Handler: func() tea.Msg {
-				return LoadSavedViewMsg{View: sv}
+				return LoadSavedFilterMsg{Filter: sf}
 			},
 		},
 		{
@@ -529,18 +528,37 @@ func (m *CommandPaletteModel) getSavedViewActions(item PaletteItem) []PaletteAct
 			Icon:    "✏",
 			KeyHint: "o",
 			Handler: func() tea.Msg {
-				return SaveViewMsg{Name: name}
-			},
-		},
-		{
-			Name:    "Delete",
-			Icon:    "✕",
-			KeyHint: "d",
-			Handler: func() tea.Msg {
-				return DeleteSavedViewMsg{Name: name}
+				return SaveFilterMsg{Name: sf.Name}
 			},
 		},
 	}
+
+	// Toggle ShowAsTab
+	tabName := "Show as tab"
+	tabIcon := "☐"
+	if sf.ShowAsTab {
+		tabName = "Hide from tabs"
+		tabIcon = "☑"
+	}
+	filterID := sf.ID
+	currentTab := sf.ShowAsTab
+	actions = append(actions, PaletteAction{
+		Name:    tabName,
+		Icon:    tabIcon,
+		KeyHint: "t",
+		Handler: func() tea.Msg {
+			return toggleSavedFilterTabMsg{ID: filterID, ShowAsTab: !currentTab}
+		},
+	})
+
+	actions = append(actions, PaletteAction{
+		Name:    "Delete",
+		Icon:    "✕",
+		KeyHint: "d",
+		Handler: func() tea.Msg {
+			return DeleteSavedFilterMsg{ID: sf.ID}
+		},
+	})
 
 	return actions
 }

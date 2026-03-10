@@ -57,7 +57,10 @@ type OutlinerModel struct {
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig
 
-	activeSavedView string // Name of the currently loaded saved view (if any)
+	activeSavedFilter string // Name of the currently loaded saved filter (if any)
+
+	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
+	activeCriteriaFilter *config.SavedFilter
 
 	// Inline preview mode: show description/checklist below cursor task
 	previewMode bool
@@ -191,6 +194,13 @@ func (m *OutlinerModel) rebuildRows() {
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
 			return passesCommonFilters(t, &m.filter.CommonFilterState, m.project.ID, m.config)
+		})
+	}
+
+	// Apply criteria filter (from a loaded criteria-mode SavedFilter)
+	if m.activeCriteriaFilter != nil {
+		tasks = filterTaskTree(tasks, func(t *models.Task) bool {
+			return passesSavedFilterCriteria(t, m.project, m.activeCriteriaFilter, m.config)
 		})
 	}
 

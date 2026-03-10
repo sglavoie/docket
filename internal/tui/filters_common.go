@@ -251,6 +251,9 @@ type FilterMixin struct {
 	filter    CommonFilterState
 	filterCfg *config.Config
 	prefixPtr *string // points to InteractiveViewState.pendingPrefix
+
+	// Active criteria filter (set when a criteria-mode SavedFilter is loaded)
+	activeCriteriaFilter *config.SavedFilter
 }
 
 // initFilterMixin wires the mixin to the view's pending prefix and config.
@@ -271,8 +274,23 @@ func newFilterState() CommonFilterState {
 func (fm *FilterMixin) getFilter() *CommonFilterState   { return &fm.filter }
 func (fm *FilterMixin) getConfig() *config.Config       { return fm.filterCfg }
 func (fm *FilterMixin) setFilterPendingPrefix(p string) { *fm.prefixPtr = p }
-func (fm *FilterMixin) HasActiveFilters() bool          { return hasActiveCommonFilters(&fm.filter) }
-func (fm *FilterMixin) ClearAllFilters()                { clearCommonFilters(&fm.filter) }
+func (fm *FilterMixin) HasActiveFilters() bool {
+	return hasActiveCommonFilters(&fm.filter) || fm.activeCriteriaFilter != nil
+}
+func (fm *FilterMixin) ClearAllFilters() {
+	clearCommonFilters(&fm.filter)
+	fm.activeCriteriaFilter = nil
+}
 func (fm *FilterMixin) renderActiveFilterIndicator() string {
 	return renderCommonFilterIndicator(&fm.filter)
+}
+
+// SetCriteriaFilter sets a criteria-mode SavedFilter for per-task matching.
+func (fm *FilterMixin) SetCriteriaFilter(sf *config.SavedFilter) {
+	fm.activeCriteriaFilter = sf
+}
+
+// ClearCriteriaFilter removes the active criteria filter.
+func (fm *FilterMixin) ClearCriteriaFilter() {
+	fm.activeCriteriaFilter = nil
 }

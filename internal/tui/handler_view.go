@@ -18,8 +18,8 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		return handled, cmd
 	}
 
-	// Delegate saved view messages to dedicated handler
-	if handled, cmd := m.handleSavedViewMessages(msg); handled {
+	// Delegate saved filter messages to dedicated handler
+	if handled, cmd := m.handleSavedFilterMessages(msg); handled {
 		return handled, cmd
 	}
 
@@ -208,29 +208,19 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewWorkflowDryRun, dryRun)
 		return true, dryRun.Init()
 
-	case ShowSmartListBuilderMsg:
-		builder := NewSmartListBuilderModel(m.config, m.configManager)
-		m.showView(ViewSmartListBuilder, builder)
+	case ShowFilterBuilderMsg:
+		builder := NewFilterBuilderModel(m.config, m.configManager)
+		m.showView(ViewFilterBuilder, builder)
 		return true, builder.Init()
 
-	case ShowSmartListEditorMsg:
-		builder := NewSmartListEditorModel(m.config, m.configManager, msg.SmartList)
-		m.showView(ViewSmartListBuilder, builder)
+	case ShowFilterEditorMsg:
+		builder := NewFilterEditorModel(m.config, m.configManager, msg.Filter)
+		m.showView(ViewFilterBuilder, builder)
 		return true, builder.Init()
 
-	case SmartListSavedMsg:
+	case FilterBuilderSavedMsg:
 		m.popView()
 		// Rebuild AllTasks tab entries if it's on the stack
-		if m.allTasksView != nil {
-			m.allTasksView.buildTabEntries()
-			m.allTasksView.loadAllTasks()
-		}
-		return true, nil
-
-	case SmartListDeletedMsg:
-		m.config.RemoveSmartList(msg.ID)
-		_ = m.configManager.Save(m.config)
-		// Rebuild AllTasks tab entries
 		if m.allTasksView != nil {
 			m.allTasksView.buildTabEntries()
 			m.allTasksView.loadAllTasks()

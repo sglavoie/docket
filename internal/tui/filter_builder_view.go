@@ -7,11 +7,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// View renders the smart list builder interface.
-func (m *SmartListBuilderModel) View() string {
-	title := "Edit Smart List"
+// View renders the filter builder interface.
+func (m *FilterBuilderModel) View() string {
+	title := "Edit Criteria Filter"
 	if m.editingID == "" {
-		title = "Create Smart List"
+		title = "Create Criteria Filter"
 	}
 
 	// Tab bar
@@ -39,7 +39,7 @@ func (m *SmartListBuilderModel) View() string {
 }
 
 // renderHelpText renders the help footer.
-func (m *SmartListBuilderModel) renderHelpText() string {
+func (m *FilterBuilderModel) renderHelpText() string {
 	parts := []string{
 		"[ ]: tabs",
 		"Tab: nav",
@@ -62,7 +62,7 @@ func (m *SmartListBuilderModel) renderHelpText() string {
 }
 
 // applyEditorScroll applies vertical scrolling to the editor content.
-func (m *SmartListBuilderModel) applyEditorScroll(content string, availableHeight int) string {
+func (m *FilterBuilderModel) applyEditorScroll(content string, availableHeight int) string {
 	lines := strings.Split(content, "\n")
 	totalLines := len(lines)
 
@@ -85,7 +85,7 @@ func (m *SmartListBuilderModel) applyEditorScroll(content string, availableHeigh
 }
 
 // renderEditorPane renders the editor content based on active tab.
-func (m *SmartListBuilderModel) renderEditorPane() string {
+func (m *FilterBuilderModel) renderEditorPane() string {
 	var b strings.Builder
 
 	switch m.activeTab {
@@ -104,7 +104,7 @@ func (m *SmartListBuilderModel) renderEditorPane() string {
 }
 
 // renderCriteriaSection renders the criteria form fields.
-func (m *SmartListBuilderModel) renderCriteriaSection() string {
+func (m *FilterBuilderModel) renderCriteriaSection() string {
 	var b strings.Builder
 	section, itemIdx, fieldIdx := m.getFocusSection()
 
@@ -206,7 +206,7 @@ func (m *SmartListBuilderModel) renderCriteriaSection() string {
 }
 
 // renderOptionsSection renders the options form fields.
-func (m *SmartListBuilderModel) renderOptionsSection() string {
+func (m *FilterBuilderModel) renderOptionsSection() string {
 	var b strings.Builder
 	section, _, _ := m.getFocusSection()
 
@@ -266,13 +266,36 @@ func (m *SmartListBuilderModel) renderOptionsSection() string {
 			b.WriteString(BoldStyle.Render("[No]"))
 		}
 	}
+	b.WriteString("\n\n")
+
+	// Show as tab
+	tabLabel := "  Show as tab: "
+	if section == "show_as_tab" {
+		tabLabel = "  " + FieldLabelFocusedStyle.Render("Show as tab: ")
+	}
+	b.WriteString(tabLabel)
+	if m.showAsTab {
+		if section == "show_as_tab" {
+			b.WriteString(SelectorOptionSelectedStyle.Render("[Yes]"))
+		} else {
+			b.WriteString(BoldStyle.Render("[Yes]"))
+		}
+		b.WriteString(SelectorOptionStyle.Render(" No "))
+	} else {
+		b.WriteString(SelectorOptionStyle.Render(" Yes "))
+		if section == "show_as_tab" {
+			b.WriteString(SelectorOptionSelectedStyle.Render("[No]"))
+		} else {
+			b.WriteString(BoldStyle.Render("[No]"))
+		}
+	}
 	b.WriteString("\n")
 
 	return b.String()
 }
 
 // renderFieldSelector renders a scrollable field name selector.
-func (m *SmartListBuilderModel) renderFieldSelector(cursor int, focused bool) string {
+func (m *FilterBuilderModel) renderFieldSelector(cursor int, focused bool) string {
 	var b strings.Builder
 
 	visible := 3
@@ -314,7 +337,7 @@ func (m *SmartListBuilderModel) renderFieldSelector(cursor int, focused bool) st
 }
 
 // renderOpSelector renders the operation selector for a given set of operations.
-func (m *SmartListBuilderModel) renderOpSelector(ops []string, cursor int, focused bool) string {
+func (m *FilterBuilderModel) renderOpSelector(ops []string, cursor int, focused bool) string {
 	var b strings.Builder
 
 	opSymbols := map[string]string{
@@ -346,7 +369,7 @@ func (m *SmartListBuilderModel) renderOpSelector(ops []string, cursor int, focus
 }
 
 // renderEnumSelector renders a scrollable enum value selector.
-func (m *SmartListBuilderModel) renderEnumSelector(values []string, cursor int, focused bool) string {
+func (m *FilterBuilderModel) renderEnumSelector(values []string, cursor int, focused bool) string {
 	var b strings.Builder
 
 	visible := 4

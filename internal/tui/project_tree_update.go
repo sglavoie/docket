@@ -342,8 +342,8 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		return m.handleFilterSubPrefix(prefix, key)
 
 	case "Fv":
-		// Saved views sub-prefix
-		return m.handleSavedViewPrefix(key)
+		// Saved filters sub-prefix
+		return m.handleSavedFilterPrefix(key)
 
 	case "s":
 		if cmd, ok := handleSnoozePrefix(key, m); ok {

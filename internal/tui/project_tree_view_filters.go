@@ -142,9 +142,9 @@ func (m *ProjectTreeModel) renderFilterBar() string {
 func (m *ProjectTreeModel) activeFilterParts() []string {
 	var parts []string
 
-	// Show saved view badge if active
-	if m.activeSavedView != "" {
-		parts = append(parts, SavedViewBadgeStyle.Render("View: "+m.activeSavedView))
+	// Show saved filter badge if active
+	if m.activeSavedFilter != "" {
+		parts = append(parts, SavedFilterBadgeStyle.Render("View: "+m.activeSavedFilter))
 	}
 
 	if m.viewMode == ViewModeCompleted {
@@ -228,7 +228,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
 			"FS":  BuildFilterScorePrefixHints(m.config),
-			"Fv":  SavedViewPrefixHints,
+			"Fv":  SavedFilterPrefixHints,
 		},
 	}
 }
@@ -304,7 +304,7 @@ func (m *ProjectTreeModel) buildFilterPrefixHints() []PrefixHint {
 		{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(m.filter.Attrs) > 0},
 		{Key: "S", Description: "score", Detail: scoreDetail, Active: m.filter.ScoreMin > 0},
 		{Key: "r", Description: "ready", Detail: readyDetail, Active: m.filter.Actionable},
-		{Key: "v", Description: "saved views"},
+		{Key: "v", Description: "saved filters"},
 		{Key: "D", Description: "columns"},
 		{Key: "x", Description: "clear-all"},
 	}
