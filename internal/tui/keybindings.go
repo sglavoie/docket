@@ -1,8 +1,9 @@
 package tui
 
-import "slices"
-
-import "sync"
+import (
+	"slices"
+	"sync"
+)
 
 // Keybinding represents a single keyboard shortcut with metadata.
 type Keybinding struct {

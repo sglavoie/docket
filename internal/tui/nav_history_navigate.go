@@ -71,6 +71,7 @@ func (m *AppModel) navigateToEntry(entry NavEntry) tea.Cmd {
 	defer m.navHistory.Unlock()
 
 	m.saveProjectTreeState()
+	m.saveCurrentViewFilterState()
 
 	// Reset view stack and project stack
 	m.projectStack = nil
@@ -144,6 +145,16 @@ func (m *AppModel) reconstructGlobalView(entry NavEntry) tea.Cmd {
 			m.metricsDashboard = NewMetricsDashboardModel(m.config)
 			m.showView(ViewMetricsDashboard, m.metricsDashboard)
 		}
+	case ViewAllTasks:
+		atv := NewAllTasksViewModel(m.config, m.configManager)
+		if m.allTasksFilterCache != nil {
+			atv.filter = *copyCommonFilterState(&m.allTasksFilterCache.Filter)
+			atv.groupBy = m.allTasksFilterCache.GroupBy
+			atv.tabs.Active = m.allTasksFilterCache.TabActive
+			atv.loadAllTasks()
+		}
+		m.allTasksView = atv
+		m.showView(ViewAllTasks, atv)
 	}
 	return nil
 }
@@ -164,7 +175,13 @@ func (m *AppModel) reconstructProjectView(entry NavEntry) tea.Cmd {
 	// Push the target view on top of the project tree
 	switch entry.ViewType {
 	case ViewPriorityView:
-		m.showView(ViewPriorityView, NewPriorityViewModel(project, m.config, m.configManager))
+		pv := NewPriorityViewModel(project, m.config, m.configManager)
+		if cached, ok := m.priorityViewFilterCache[project.ID]; ok {
+			pv.filter = *copyCommonFilterState(&cached.Filter)
+			pv.tabs.Active = cached.TabActive
+			pv.loadActionableTasks()
+		}
+		m.showView(ViewPriorityView, pv)
 	case ViewNotes:
 		m.showView(ViewNotes, NewNotesViewModel(project, m.config))
 	case ViewBlockers:

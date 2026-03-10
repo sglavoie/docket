@@ -1,7 +1,5 @@
 package tui
 
-import "slices"
-
 import tea "github.com/charmbracelet/bubbletea"
 
 // dailyReviewTabNames are the tab labels for the daily review view.
@@ -16,56 +14,45 @@ var dailyReviewTabSections = [][]DailyReviewSection{
 	{SectionCompleted},                                                                // Done
 }
 
-// sectionInTab returns true if the given section belongs to the active tab.
-func (m *DailyReviewModel) sectionInTab(section DailyReviewSection) bool {
-	if m.tabs.Active < 0 || m.tabs.Active >= len(dailyReviewTabSections) {
-		return true
-	}
-	return slices.Contains(dailyReviewTabSections[m.tabs.Active], section)
-}
-
 // calculateNavigation builds navigation indices including section headers.
 // Each section header is a navigable item, followed by its tasks (if expanded).
 func (m *DailyReviewModel) calculateNavigation() {
-	m.sectionOrder = nil
-	m.sectionStarts = nil
-	m.totalTasks = 0
-
-	sections := []struct {
-		section DailyReviewSection
-		tasks   []CrossProjectTask
-	}{
-		{SectionOverdue, m.overdue},
-		{SectionDueToday, m.dueToday},
-		{SectionDueSoon, m.dueSoon},
-		{SectionDueLater, m.dueLater},
-		{SectionFuture, m.future},
-		{SectionInProgress, m.inProgress},
-		{SectionBlocked, m.blocked},
-		{SectionInReview, m.inReview},
-		{SectionOnStandby, m.inStandby},
-		{SectionOld, m.old},
-		{SectionCompleted, m.completed},
+	entries := []SectionEntry{
+		{int(SectionOverdue), len(m.overdue)},
+		{int(SectionDueToday), len(m.dueToday)},
+		{int(SectionDueSoon), len(m.dueSoon)},
+		{int(SectionDueLater), len(m.dueLater)},
+		{int(SectionFuture), len(m.future)},
+		{int(SectionInProgress), len(m.inProgress)},
+		{int(SectionBlocked), len(m.blocked)},
+		{int(SectionInReview), len(m.inReview)},
+		{int(SectionOnStandby), len(m.inStandby)},
+		{int(SectionOld), len(m.old)},
+		{int(SectionCompleted), len(m.completed)},
 	}
 
-	for _, s := range sections {
-		if len(s.tasks) > 0 {
-			// Filter by tab
-			if !m.sectionInTab(s.section) {
-				continue
-			}
-			// If focused on a section, only show that section
-			if m.focusedSection != nil && *m.focusedSection != s.section {
-				continue
-			}
-			m.sectionOrder = append(m.sectionOrder, s.section)
-			m.sectionStarts = append(m.sectionStarts, m.totalTasks)
-			m.totalTasks++ // Count header as navigable item
-			if !m.collapsedSections[int(s.section)] {
-				m.totalTasks += len(s.tasks)
-			}
+	var visibleSet map[int]bool
+	if m.tabs.Active >= 0 && m.tabs.Active < len(dailyReviewTabSections) {
+		visibleSet = make(map[int]bool)
+		for _, s := range dailyReviewTabSections[m.tabs.Active] {
+			visibleSet[int(s)] = true
 		}
 	}
+
+	var focusedID *int
+	if m.focusedSection != nil {
+		id := int(*m.focusedSection)
+		focusedID = &id
+	}
+
+	result := CalculateSectionNav(entries, m.collapsedSections, visibleSet, focusedID)
+
+	m.sectionOrder = make([]DailyReviewSection, len(result.SectionOrder))
+	for i, id := range result.SectionOrder {
+		m.sectionOrder[i] = DailyReviewSection(id)
+	}
+	m.sectionStarts = result.SectionStarts
+	m.totalTasks = result.TotalItems
 }
 
 // getSectionTasks returns the tasks for a given section.
@@ -134,20 +121,12 @@ func (m *DailyReviewModel) getTaskAtCursor() *CrossProjectTask {
 
 // goToNextSection moves cursor to next section header (with wrap).
 func (m *DailyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToNext(m.sectionStarts)
 }
 
 // goToPrevSection moves cursor to previous section header (with wrap).
 func (m *DailyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToPrev(m.sectionStarts)
 }
 
 // clampCursor ensures cursor is within valid range.

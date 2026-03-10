@@ -169,18 +169,10 @@ func (m *NotificationCenterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "n":
-			old := m.cursor
-			if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
-				m.cursor = pos
-			}
-			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+			return m, m.SectionGoToNext(m.sectionStarts)
 
 		case "N":
-			old := m.cursor
-			if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
-				m.cursor = pos
-			}
-			return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+			return m, m.SectionGoToPrev(m.sectionStarts)
 
 		case "tab":
 			if m.cursor >= 0 && m.cursor < len(m.items) && !m.items[m.cursor].isHeader {

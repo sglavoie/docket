@@ -91,15 +91,10 @@ func (m *DueDateOverviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if ct := m.getTaskAtCursor(); ct != nil {
 		currentStage = ct.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"g": DueDateOverviewNavigationPrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"z": {
-			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-		},
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = DueDateOverviewNavigationPrefixHints
+	hints["z"] = []PrefixHint{
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (no DueDate category — the view IS organized by due date)
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true))

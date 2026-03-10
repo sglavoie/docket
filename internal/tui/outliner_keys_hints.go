@@ -1,8 +1,9 @@
 package tui
 
-import "maps"
-
-import "fmt"
+import (
+	"fmt"
+	"maps"
+)
 
 // GetPrefixPopupInfo returns prefix popup data for overlay rendering.
 func (m *OutlinerModel) GetPrefixPopupInfo() *PrefixPopupInfo {
@@ -42,19 +43,12 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	if len(m.rows) > 0 && m.cursor < len(m.rows) {
 		currentStage = m.rows[m.cursor].task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		"t": TaskPrefixHints,
-		"s": SnoozePrefixHints,
-		"!": PriorityPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"b": BlockerPrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"g": OutlinerNavigationPrefixHints,
-		"m": ProjectTreeMovePrefixHints,
-		"z": OutlinerFoldPrefixHints,
-	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["t"] = TaskPrefixHints
+	hints["b"] = BlockerPrefixHints
+	hints["g"] = OutlinerNavigationPrefixHints
+	hints["m"] = ProjectTreeMovePrefixHints // override: outliner uses tree moves
+	hints["z"] = OutlinerFoldPrefixHints
 
 	// Add perspective hints with active annotation
 	if m.pendingPrefix == "P" {
@@ -81,7 +75,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	// Add view-specific filter hints to F prefix
 	if fHints, ok := hints["F"]; ok {
 		completedDetail := "off"
-		if m.activePerspective == 8 {
+		if m.activePerspective == PerspectiveCompleted {
 			completedDetail = "on"
 		}
 		actionableDetail := "off"
@@ -89,7 +83,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 			actionableDetail = "on"
 		}
 		fHints = append(fHints,
-			PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == 8},
+			PrefixHint{Key: "c", Description: "completed", Detail: completedDetail, Active: m.activePerspective == PerspectiveCompleted},
 			PrefixHint{Key: "r", Description: "actionable", Detail: actionableDetail, Active: m.filter.Actionable},
 			PrefixHint{Key: "@", Description: "section", Detail: "selector"},
 			PrefixHint{Key: "v", Description: "saved filters"},

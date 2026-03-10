@@ -185,10 +185,10 @@ func (m *AppModel) filterCommands() []Command {
 			Views:       projectTreeAndOutlinerViews(),
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					if m.outliner.activePerspective == 8 {
-						m.outliner.activePerspective = 0
+					if m.outliner.activePerspective == PerspectiveCompleted {
+						m.outliner.activePerspective = PerspectiveSnoozed
 					} else {
-						m.outliner.activePerspective = 8
+						m.outliner.activePerspective = PerspectiveCompleted
 					}
 					m.outliner.rebuildRows()
 					return nil

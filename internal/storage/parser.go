@@ -176,19 +176,21 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 	}
 
-	// Validate parent references - clear any that reference non-existent tasks
+	// Validate parent references - preserve orphaned refs and clear ParentID
 	taskByID := make(map[string]bool, len(tasks))
 	for _, t := range tasks {
 		taskByID[t.ID] = true
 	}
 	for _, t := range tasks {
 		if t.ParentID != nil && !taskByID[*t.ParentID] {
+			orphanedID := *t.ParentID
 			metadataWarnings = append(metadataWarnings, ParseWarning{
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "parent",
-				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference", t.ID, *t.ParentID),
+				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference (preserved in orphaned_parent)", t.ID, orphanedID),
 			})
+			t.OrphanedParentID = &orphanedID
 			t.ParentID = nil
 		}
 	}

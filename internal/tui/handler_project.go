@@ -79,7 +79,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if !msg.Project.Pinned {
 			statusMsg = "Unpinned"
 		}
-		m.statusMessage = statusMsg
+		m.setSuccessStatus(statusMsg)
 		return true, defaultStatusTimeout()
 
 	case ProjectDeletedMsg:
@@ -127,11 +127,11 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		switch mode {
 		case config.InfoPanelOff:
-			m.statusMessage = "Info panel hidden"
+			m.setInfoStatus("Info panel hidden")
 		case config.InfoPanelInfoCards:
-			m.statusMessage = "Info panel: info cards"
+			m.setInfoStatus("Info panel: info cards")
 		case config.InfoPanelProjectSummary:
-			m.statusMessage = "Info panel: project summary"
+			m.setInfoStatus("Info panel: project summary")
 		}
 		return true, defaultStatusTimeout()
 
@@ -141,7 +141,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.err = err
 			return true, nil
 		}
-		m.statusMessage = "Tutor prompt dismissed"
+		m.setSuccessStatus("Tutor prompt dismissed")
 		return true, defaultStatusTimeout()
 
 	case ShowTrashedProjectsMsg:
@@ -164,7 +164,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		m.statusMessage = fmt.Sprintf("Restored: %s", msg.Project.Name)
+		m.setSuccessStatus(fmt.Sprintf("Restored: %s", msg.Project.Name))
 		return true, defaultStatusTimeout()
 
 	case PurgeFromTrashMsg:
@@ -179,7 +179,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		newModel := NewTrashedProjectsModel(m.config.DataDir)
 		newModel.SetSize(m.width, m.height-2)
 		m.views.Register(ViewTrashedProjects, newModel)
-		m.statusMessage = fmt.Sprintf("Permanently deleted: %s", msg.Slug)
+		m.setSuccessStatus(fmt.Sprintf("Permanently deleted: %s", msg.Slug))
 		return true, defaultStatusTimeout()
 
 	case ShowProjectPickerMsg:
@@ -219,7 +219,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case SandboxResetRequestMsg:
 		sandbox := m.config.GetSandboxProject()
 		if sandbox == nil {
-			m.statusMessage = "Sandbox project not found"
+			m.setInfoStatus("Sandbox project not found")
 			return true, defaultStatusTimeout()
 		}
 		if err := storage.LoadProject(sandbox); err != nil {
@@ -233,7 +233,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		sectionCount := len(customSections)
 
 		if taskCount == 0 && noteCount == 0 && sectionCount == 0 {
-			m.statusMessage = "Sandbox is already empty"
+			m.setInfoStatus("Sandbox is already empty")
 			return true, defaultStatusTimeout()
 		}
 
@@ -241,13 +241,13 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 		totalItems := taskCount + noteCount + sectionCount
 		m.pendingSandboxReset = true
 		m.pendingSandboxTaskCount = totalItems
-		m.statusMessage = fmt.Sprintf("Reset sandbox? Delete %d item(s)?", totalItems)
+		m.setInfoStatus(fmt.Sprintf("Reset sandbox? Delete %d item(s)?", totalItems))
 		return true, nil
 
 	case SandboxResetDoneMsg:
 		m.pendingSandboxReset = false
 		m.pendingSandboxTaskCount = 0
-		m.statusMessage = fmt.Sprintf("Cleared %d item(s) from sandbox", msg.TaskCount)
+		m.setSuccessStatus(fmt.Sprintf("Cleared %d item(s) from sandbox", msg.TaskCount))
 		// Refresh views if sandbox is currently displayed
 		if m.currentProject != nil && m.currentProject.Sandbox {
 			m.refreshProjectTree()

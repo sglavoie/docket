@@ -96,7 +96,7 @@ func (m *MetricsDashboardModel) renderCompletionCard(width, height int) string {
 	c := m.metrics.Completion
 	rateStr := fmt.Sprintf("%.0f%%", c.Rate*100)
 	stat := fmt.Sprintf("%s (%d/%d)", rateStr, c.Completed, c.Total)
-	chart := miniChart(c.Trend, width-12, height-4)
+	chart := miniChart(c.Trend, max(width-12, 1), max(height-4, 1))
 	content := stat + "\n" + chart
 	cfg := DashboardCardConfig()
 	cfg.Height = height
@@ -107,7 +107,7 @@ func (m *MetricsDashboardModel) renderCycleTimeCard(width, height int) string {
 	c := m.metrics.CycleTime
 	line1 := fmt.Sprintf("Avg: %s  Med: %s", formatDuration(c.Average), formatDuration(c.Median))
 	line2 := fmt.Sprintf("P90: %s  (%d tasks)", formatDuration(c.P90), c.Count)
-	chart := miniChart(c.Trend, width-12, height-5)
+	chart := miniChart(c.Trend, max(width-12, 1), max(height-5, 1))
 	content := line1 + "\n" + line2 + "\n" + chart
 	cfg := DashboardCardConfig()
 	cfg.Height = height
@@ -117,7 +117,7 @@ func (m *MetricsDashboardModel) renderCycleTimeCard(width, height int) string {
 func (m *MetricsDashboardModel) renderThroughputCard(width, height int) string {
 	c := m.metrics.Throughput
 	stat := fmt.Sprintf("%d tasks · %.1f/day", c.Total, c.AvgPerDay)
-	chart := miniChart(c.PerBucket, width-12, height-4)
+	chart := miniChart(c.PerBucket, max(width-12, 1), max(height-4, 1))
 	content := stat + "\n" + chart
 	cfg := DashboardCardConfig()
 	cfg.Height = height

@@ -554,6 +554,8 @@ $start                     # Set status ($start, $blocked, $done, $canceled, $re
 
 #### Prefix Commands (Vim-style)
 
+> **Note:** `,` behaves differently on the Dashboard (opens Settings) vs task views (status prefix).
+
 - `,s`, `,d`, `,b`, `,o`, `,x`: Status changes
 - `!1`-`!5`: Priority
 - `dt`, `dm`, `dw`, `dn`, `d0`, `dd`: Due dates

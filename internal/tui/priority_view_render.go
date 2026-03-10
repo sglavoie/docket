@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -29,16 +30,10 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if pt := m.getTaskAtCursor(); pt != nil {
 		currentStage = pt.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"g": PriorityViewNavigationPrefixHints,
-		"d": DueDatePrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"z": {
-			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-		},
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = PriorityViewNavigationPrefixHints
+	hints["z"] = []PrefixHint{
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (due date + status both included)
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
@@ -68,7 +63,7 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 
 	// Calculate available title width
 	// Star + cursor + status + type + priority + spacing takes about 15-20 chars
-	titleWidth := boxWidth - 22
+	titleWidth := max(boxWidth-22, 10)
 
 	// Due date
 	dueStr := ""

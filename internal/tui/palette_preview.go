@@ -280,7 +280,7 @@ func (m *CommandPaletteModel) renderCommandPreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(cmd.Description))
+		b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(cmd.Description))
 		b.WriteString("\n")
 	}
 
@@ -288,7 +288,7 @@ func (m *CommandPaletteModel) renderCommandPreview(item PaletteItem) string {
 	if len(cmd.Aliases) > 0 {
 		b.WriteString("\n")
 		aliasText := "Also searchable as: " + strings.Join(cmd.Aliases, ", ")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(MutedStyle.Render(aliasText)))
+		b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(MutedStyle.Render(aliasText)))
 		b.WriteString("\n")
 	}
 
@@ -317,7 +317,7 @@ func (m *CommandPaletteModel) renderTaskPreview(item PaletteItem) string {
 		task.ShortID,
 		task.Title)
 	styledHeader := TaskJumperPreviewHeaderStyle.Render(header)
-	b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(styledHeader))
+	b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(styledHeader))
 	b.WriteString("\n\n")
 
 	// Status
@@ -491,7 +491,7 @@ func (m *CommandPaletteModel) renderProjectPreview(item PaletteItem) string {
 		b.WriteString("\n")
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(project.Description))
+		b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(project.Description))
 		b.WriteString("\n")
 	}
 
@@ -620,7 +620,7 @@ func (m *CommandPaletteModel) renderTagPreview(item PaletteItem) string {
 
 	// Show up to 5 tasks
 	maxShow := min(len(tasksWithTag), 5)
-	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
+	wrapStyle := lipgloss.NewStyle().Width(max(m.previewWidth-2, 1))
 	for i := range maxShow {
 		task := tasksWithTag[i].Task
 		line := fmt.Sprintf("  %s #%d: %s",
@@ -669,7 +669,7 @@ func (m *CommandPaletteModel) renderSectionPreview(item PaletteItem) string {
 
 	// Show up to 5 tasks
 	maxShow := min(len(tasksInSection), 5)
-	wrapStyle := lipgloss.NewStyle().Width(m.previewWidth - 2)
+	wrapStyle := lipgloss.NewStyle().Width(max(m.previewWidth-2, 1))
 	for i := range maxShow {
 		task := tasksInSection[i].Task
 		line := fmt.Sprintf("  %s #%d: %s",
@@ -783,7 +783,7 @@ func (m *CommandPaletteModel) renderSavedFilterPreview(item PaletteItem) string 
 
 	b.WriteString(SubtitleStyle.Render("Filters"))
 	b.WriteString("\n")
-	b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(desc))
+	b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(desc))
 	b.WriteString("\n\n")
 
 	b.WriteString(HelpStyle.Render("Press Enter to apply · Tab for actions"))
@@ -856,7 +856,7 @@ func (m *CommandPaletteModel) renderViewPreview(item PaletteItem) string {
 	if item.Description != "" {
 		b.WriteString(SubtitleStyle.Render("Description"))
 		b.WriteString("\n")
-		b.WriteString(lipgloss.NewStyle().Width(m.previewWidth - 2).Render(item.Description))
+		b.WriteString(lipgloss.NewStyle().Width(max(m.previewWidth-2, 1)).Render(item.Description))
 		b.WriteString("\n")
 	}
 

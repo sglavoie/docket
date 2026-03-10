@@ -99,7 +99,10 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	title, inlinePriority, inlineTags := parseInlineMetadata(rawTitle)
 
 	if title == "" {
-		return fmt.Errorf("task title is required")
+		return fmt.Errorf("task title is required (title was empty after extracting inline priority/tags from %q)", rawTitle)
+	}
+	if err := models.ValidateTaskTitle(title); err != nil {
+		return err
 	}
 
 	// Determine task type

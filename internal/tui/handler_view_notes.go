@@ -41,7 +41,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) {
 		// Open a project picker for moving the note
 		projects := m.config.GetActiveProjects()
 		if len(projects) == 0 {
-			m.statusMessage = "No projects available"
+			m.setInfoStatus("No projects available")
 			return true, nil
 		}
 		m.pendingGlobalNoteMove = &pendingNoteMove{Note: msg.Note, SourceDir: msg.SourceDir}

@@ -357,10 +357,10 @@ func (m *AppModel) renderProjectCyclePopup() string {
 		popupWidth = maxTreePopup
 	}
 	if popupWidth > m.width-4 {
-		popupWidth = m.width - 4
+		popupWidth = max(m.width-4, minWidth)
 	}
 
-	innerWidth := popupWidth - 4
+	innerWidth := max(popupWidth-4, 1)
 
 	var contentLines []string
 	contentLines = append(contentLines, subtitle)

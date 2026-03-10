@@ -127,6 +127,26 @@ func (s *InteractiveViewState) JumpToTop() tea.Cmd {
 	return flashIfJumped(old, s.cursor, &s.cursorFlash)
 }
 
+// SectionGoToNext moves the cursor to the next section header (with wrap)
+// using the provided section start positions. Returns a flash cmd on jump.
+func (s *InteractiveViewState) SectionGoToNext(sectionStarts []int) tea.Cmd {
+	old := s.cursor
+	if pos := navigateToNextSection(s.cursor, sectionStarts); pos >= 0 {
+		s.cursor = pos
+	}
+	return flashIfJumped(old, s.cursor, &s.cursorFlash)
+}
+
+// SectionGoToPrev moves the cursor to the previous section header (with wrap)
+// using the provided section start positions. Returns a flash cmd on jump.
+func (s *InteractiveViewState) SectionGoToPrev(sectionStarts []int) tea.Cmd {
+	old := s.cursor
+	if pos := navigateToPrevSection(s.cursor, sectionStarts); pos >= 0 {
+		s.cursor = pos
+	}
+	return flashIfJumped(old, s.cursor, &s.cursorFlash)
+}
+
 // GetConfirmDialog returns a pointer to the embedded confirm dialog.
 func (s *InteractiveViewState) GetConfirmDialog() *ConfirmDialog {
 	return &s.confirm

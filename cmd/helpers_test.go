@@ -146,10 +146,10 @@ func TestParseTaskTypeFlags(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "boolean flag takes precedence over type flag",
+			name:     "conflicting boolean flag and type flag",
 			epic:     true,
 			typeFlag: "bug",
-			want:     models.TaskTypeEpic,
+			wantErr:  true,
 		},
 	}
 

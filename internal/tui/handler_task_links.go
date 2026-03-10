@@ -18,7 +18,7 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	// Get target project
 	targetProject := m.config.GetProject(ref.ProjectID)
 	if targetProject == nil {
-		m.statusMessage = "Project not found (link may be broken)"
+		m.setInfoStatus("Project not found (link may be broken)")
 		return true, defaultStatusTimeout()
 	}
 
@@ -30,7 +30,7 @@ func (m *AppModel) handleCrossProjectNavigation(taskRef string) (bool, tea.Cmd) 
 	// Find the task
 	task := targetProject.GetTaskByID(ref.TaskID)
 	if task == nil {
-		m.statusMessage = fmt.Sprintf("Task not found in %s (link may be broken)", targetProject.Name)
+		m.setInfoStatus(fmt.Sprintf("Task not found in %s (link may be broken)", targetProject.Name))
 		return true, defaultStatusTimeout()
 	}
 
@@ -43,7 +43,7 @@ func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models
 	if m.currentView() == ViewProjectTree && m.currentProject != nil && m.currentProject.ID == project.ID {
 		if m.projectTree != nil {
 			m.projectTree.JumpToTask(task)
-			m.statusMessage = fmt.Sprintf("Jumped to #%d", task.ShortID)
+			m.setSuccessStatus(fmt.Sprintf("Jumped to #%d", task.ShortID))
 		}
 		return true, defaultStatusTimeout()
 	}
@@ -53,7 +53,7 @@ func (m *AppModel) handleLinkedTaskNavigation(task *models.Task, project *models
 	m.pushView(ViewProjectTree)
 	if m.projectTree != nil {
 		m.projectTree.JumpToTask(task)
-		m.statusMessage = fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name)
+		m.setSuccessStatus(fmt.Sprintf("Jumped to #%d in %s", task.ShortID, project.Name))
 	}
 	return true, defaultStatusTimeout()
 }

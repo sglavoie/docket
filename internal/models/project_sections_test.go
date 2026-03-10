@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestProjectGetSections(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
@@ -78,6 +81,19 @@ func TestProjectEnsureSection(t *testing.T) {
 	if len(project.Sections) != prevLen {
 		t.Error("EnsureSection should not add empty string")
 	}
+
+	// Adding whitespace-only string should do nothing
+	project.EnsureSection("   ")
+	if len(project.Sections) != prevLen {
+		t.Error("EnsureSection should not add whitespace-only string")
+	}
+
+	// Adding a very long name should do nothing
+	longName := strings.Repeat("a", MaxSectionNameLength+1)
+	project.EnsureSection(longName)
+	if len(project.Sections) != prevLen {
+		t.Error("EnsureSection should not add excessively long name")
+	}
 }
 
 func TestProjectRemoveSection(t *testing.T) {
@@ -133,23 +149,23 @@ func TestProjectRenameSection(t *testing.T) {
 	project.Tasks = []*Task{task1, task2}
 
 	// Cannot rename Next
-	if project.RenameSection(SectionNext, "NewName") {
+	if err := project.RenameSection(SectionNext, "NewName"); err == nil {
 		t.Error("should not be able to rename Next")
 	}
 
 	// Cannot rename to empty string
-	if project.RenameSection("Active", "") {
+	if err := project.RenameSection("Active", ""); err == nil {
 		t.Error("should not be able to rename to empty string")
 	}
 
 	// Cannot rename to existing section name
-	if project.RenameSection("Active", "Done") {
+	if err := project.RenameSection("Active", "Done"); err == nil {
 		t.Error("should not be able to rename to existing section name")
 	}
 
 	// Rename Active to InProgress
-	if !project.RenameSection("Active", "InProgress") {
-		t.Error("should be able to rename Active to InProgress")
+	if err := project.RenameSection("Active", "InProgress"); err != nil {
+		t.Errorf("should be able to rename Active to InProgress: %v", err)
 	}
 	if project.HasSection("Active") {
 		t.Error("Active should no longer exist")
@@ -164,9 +180,9 @@ func TestProjectRenameSection(t *testing.T) {
 		t.Errorf("task2 section should still be Done, got %s", task2.Section)
 	}
 
-	// Renaming non-existent section returns false
-	if project.RenameSection("Nonexistent", "NewName") {
-		t.Error("should return false for non-existent section")
+	// Renaming non-existent section returns error
+	if err := project.RenameSection("Nonexistent", "NewName"); err == nil {
+		t.Error("should return error for non-existent section")
 	}
 }
 

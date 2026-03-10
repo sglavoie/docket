@@ -154,7 +154,7 @@ func (m *FocusViewModel) View() string {
 // renderQueueLines renders the Queue tab with numbered items.
 func (m *FocusViewModel) renderQueueLines() []string {
 	var lines []string
-	maxTitleLen := m.width - 50
+	maxTitleLen := max(m.width-50, 10)
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
@@ -169,7 +169,7 @@ func (m *FocusViewModel) renderQueueLines() []string {
 // renderSuggestedLines renders the Suggested tab with two-line format (task + reason).
 func (m *FocusViewModel) renderSuggestedLines() []string {
 	var lines []string
-	maxTitleLen := m.width - 50
+	maxTitleLen := max(m.width-50, 10)
 
 	// Build reason lookup map to avoid O(n) scan per filtered task
 	reasonByID := make(map[string]string, len(m.ranked))
@@ -210,7 +210,7 @@ func (m *FocusViewModel) renderSuggestedLines() []string {
 // renderStandardLines renders the By Project and By Due Date tabs.
 func (m *FocusViewModel) renderStandardLines() []string {
 	var lines []string
-	maxTitleLen := m.width - 45
+	maxTitleLen := max(m.width-45, 10)
 
 	for i, ft := range m.filtered {
 		isSelected := i == m.cursor
@@ -239,16 +239,10 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if ft := m.getTaskAtCursor(); ft != nil {
 		currentStage = ft.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"g": FocusViewNavigationPrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"z": {
-			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-		},
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = FocusViewNavigationPrefixHints
+	hints["z"] = []PrefixHint{
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	// Merge filter prefix hints (no DueDate category -- view has "By Due Date" tab)
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, true))

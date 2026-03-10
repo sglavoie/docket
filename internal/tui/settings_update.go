@@ -94,11 +94,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (64 fields total: 0-63)
+			// Move focus across all settings fields
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 64
+				m.focusIndex = (m.focusIndex + 1) % settingsFieldCount
 			} else {
-				m.focusIndex = (m.focusIndex + 63) % 64 // +63 is -1 mod 64
+				m.focusIndex = (m.focusIndex + settingsFieldCount - 1) % settingsFieldCount
 			}
 
 			// Auto-switch tab to follow focus

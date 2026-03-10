@@ -687,6 +687,22 @@ var (
 	}
 )
 
+// CommonTaskActionPrefixHints returns the prefix hints shared across most
+// task-operating views: status (,), priority (!), stage (.), due date (d),
+// snooze (s), create-linked (c), and move (m). Views extend the returned
+// map with their view-specific entries (e.g. "g" navigation, "z" folds).
+func CommonTaskActionPrefixHints(stages []string, currentStage string) PrefixHints {
+	return PrefixHints{
+		",": StatusPrefixHints,
+		"!": PriorityPrefixHints,
+		".": BuildStagePrefixHints(stages, currentStage),
+		"d": DueDatePrefixHints,
+		"s": SnoozePrefixHints,
+		"c": CreateLinkedPrefixHints,
+		"m": SecondaryViewMovePrefixHints,
+	}
+}
+
 // BuildFilterScorePrefixHints builds dynamic filter score hints showing the
 // current custom value from config. Used by project tree and outliner views.
 func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {

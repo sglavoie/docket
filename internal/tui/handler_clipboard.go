@@ -29,7 +29,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, nil
 		}
 		if msg.Task.Description == "" {
-			m.statusMessage = "No description to copy"
+			m.setInfoStatus("No description to copy")
 			return true, defaultStatusTimeout()
 		}
 		_, err := external.CopyTaskDetails(msg.Task)
@@ -48,7 +48,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if err != nil {
 			return true, errorCmd("copy failed: %w", err)
 		}
-		m.statusMessage = fmt.Sprintf("Copied \"%s\" to clipboard", ref)
+		m.setSuccessStatus(fmt.Sprintf("Copied \"%s\" to clipboard", ref))
 		return true, defaultStatusTimeout()
 
 	case CopyTasksTitleMsg:
@@ -76,7 +76,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 		}
 		if !hasDescription {
-			m.statusMessage = "No descriptions to copy"
+			m.setInfoStatus("No descriptions to copy")
 			return true, defaultStatusTimeout()
 		}
 		_, err := external.CopyTasksDetails(msg.Tasks)
@@ -123,9 +123,9 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 			what = "title"
 		}
 		if msg.Count == 1 {
-			m.statusMessage = fmt.Sprintf("Copied %s to clipboard", what)
+			m.setSuccessStatus(fmt.Sprintf("Copied %s to clipboard", what))
 		} else {
-			m.statusMessage = fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count)
+			m.setSuccessStatus(fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count))
 		}
 		return true, defaultStatusTimeout()
 	}

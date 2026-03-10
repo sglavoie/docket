@@ -53,8 +53,35 @@ func ValidatePriority(value int, allowZero bool) error {
 }
 
 // ParseTaskTypeFlags determines the task type from boolean flags or a string flag.
-// Returns an error if the type flag is invalid.
+// Returns an error if the type flag is invalid or if multiple type flags are set.
 func ParseTaskTypeFlags(epic, story, bug, idea bool, typeFlag string) (models.TaskType, error) {
+	// Count how many boolean type flags are set
+	flagCount := 0
+	var flags []string
+	if epic {
+		flagCount++
+		flags = append(flags, "--epic")
+	}
+	if story {
+		flagCount++
+		flags = append(flags, "--story")
+	}
+	if bug {
+		flagCount++
+		flags = append(flags, "--bug")
+	}
+	if idea {
+		flagCount++
+		flags = append(flags, "--idea")
+	}
+	if typeFlag != "" {
+		flagCount++
+		flags = append(flags, "--type="+typeFlag)
+	}
+	if flagCount > 1 {
+		return "", fmt.Errorf("conflicting type flags: %s (specify only one)", strings.Join(flags, ", "))
+	}
+
 	if epic {
 		return models.TaskTypeEpic, nil
 	}

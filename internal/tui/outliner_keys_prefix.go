@@ -243,7 +243,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "z":
 			// Jump directly to Snoozed perspective (P0)
-			m.activePerspective = 0
+			m.activePerspective = PerspectiveSnoozed
 			m.rebuildRows()
 			return m, nil
 		case "l":
@@ -275,10 +275,10 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = "Fd"
 		return m, nil
 	case "c":
-		if m.activePerspective == 8 {
-			m.activePerspective = 0
+		if m.activePerspective == PerspectiveCompleted {
+			m.activePerspective = PerspectiveSnoozed
 		} else {
-			m.activePerspective = 8
+			m.activePerspective = PerspectiveCompleted
 		}
 		m.rebuildRows()
 		return m, nil

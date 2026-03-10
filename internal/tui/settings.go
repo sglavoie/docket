@@ -14,8 +14,14 @@ import (
 var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-12, tab 3 → fields 13-14, tab 4 → fields 15-27, tab 5 → fields 28-47, tab 6 → fields 48-62, tab 7 → field 63
-	tabFieldStart = []int{0, 4, 8, 13, 15, 28, 48, 63}
+	// tabFieldCount declares how many focusable fields each tab has.
+	tabFieldCount = []int{4, 4, 5, 2, 13, 20, 15, 1}
+
+	// tabFieldStart holds the starting focus index for each tab (computed in init).
+	tabFieldStart []int
+
+	// settingsFieldCount is the total number of focusable fields across all tabs (computed in init).
+	settingsFieldCount int
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
 	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -39,6 +45,16 @@ var (
 	// priorityModeValues maps cursor index to config string value.
 	priorityModeValues = []string{PriorityModeAll, PriorityModeConditional, PriorityModeHidden}
 )
+
+func init() {
+	tabFieldStart = make([]int, len(tabFieldCount))
+	offset := 0
+	for i, count := range tabFieldCount {
+		tabFieldStart[i] = offset
+		offset += count
+	}
+	settingsFieldCount = offset
+}
 
 // tabForField returns which tab a given focusIndex belongs to.
 func tabForField(focusIndex int) int {
@@ -480,7 +496,7 @@ func boolPtr(b bool) *bool { return &b }
 func (m *SettingsModel) HasTextInput() bool     { return true }
 func (m *SettingsModel) ShouldCaptureEsc() bool { return true }
 func (m *SettingsModel) IsFullHeight() bool     { return false }
-func (m *SettingsModel) StatusBarLabel() string  { return "Settings" }
+func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
 
 // GetConfirmDialog implements ConfirmDialogProvider for the settings view.
 func (m *SettingsModel) GetConfirmDialog() *ConfirmDialog {

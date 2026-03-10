@@ -121,17 +121,17 @@ func (m *FocusBoardModel) View() string {
 	if len(m.filtered) == 0 {
 		b.WriteString("\n")
 		if m.HasActiveFilters() {
-			b.WriteString(MutedStyle.Render("  No items match the active filters."))
+			b.WriteString(MutedStyle.Render("  " + EmptyStateFiltered))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press Fx to clear filters, or Esc to dismiss."))
 		} else if m.tabs.Active == boardTabClosed {
-			b.WriteString(MutedStyle.Render("  No closed items."))
+			b.WriteString(MutedStyle.Render("  No closed tasks."))
 		} else if len(m.rows) == 0 {
-			b.WriteString(MutedStyle.Render("  No items on the board."))
+			b.WriteString(MutedStyle.Render("  " + EmptyStateNoTasks))
 			b.WriteString("\n\n")
 			b.WriteString(HelpStyle.Render("  Press a to add an action, or mark tasks as active in a project."))
 		} else {
-			b.WriteString(MutedStyle.Render("  No items match this tab."))
+			b.WriteString(MutedStyle.Render("  No tasks match this tab."))
 		}
 		b.WriteString("\n\n")
 		b.WriteString(renderStatusMessages(m.statusMessage, m.err))

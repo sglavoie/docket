@@ -133,19 +133,29 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []s
 }
 
 // processDeferredMoves handles move_to_project actions by transferring tasks
-// from the source project to destination projects. If a destination project
-// cannot be found, the entire operation fails.
+// from the source project to destination projects.
+// Validates all destinations exist and are loadable before making any changes,
+// so that a missing destination doesn't leave the source project partially modified.
 func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, cfgManager *config.Manager) error {
+	// Phase 1: Validate and load all destination projects upfront.
+	destProjects := make(map[string]*models.Project, len(moves))
 	for _, move := range moves {
+		if _, ok := destProjects[move.Destination]; ok {
+			continue // already validated
+		}
 		destProject := cfg.GetProject(move.Destination)
 		if destProject == nil {
 			return fmt.Errorf("destination project %q not found", move.Destination)
 		}
-
-		// Load destination project tasks
 		if err := storage.LoadProject(destProject); err != nil {
 			return fmt.Errorf("failed to load destination project %q: %w", move.Destination, err)
 		}
+		destProjects[move.Destination] = destProject
+	}
+
+	// Phase 2: All destinations valid — perform the moves.
+	for _, move := range moves {
+		destProject := destProjects[move.Destination]
 
 		// Find and remove the task from source
 		var movedTask *models.Task

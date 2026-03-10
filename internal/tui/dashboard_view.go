@@ -137,7 +137,7 @@ func (m *DashboardModel) renderInfoSection(width int, selected *models.Project) 
 	if hasRecent {
 		var recentContent string
 		if len(selected.Tasks) == 0 {
-			recentContent = MutedStyle.Render("No tasks yet.")
+			recentContent = MutedStyle.Render(EmptyStateNoTasks)
 		} else {
 			recentContent = m.renderRecentTasksContentWithWidth(selected, otherContentW)
 		}
@@ -258,9 +258,9 @@ func (m *DashboardModel) renderProjectSummaryContent(project *models.Project) st
 
 	if len(project.Tasks) == 0 {
 		if statusLine != "" {
-			return MutedStyle.Render(statusLine) + "\n\n" + MutedStyle.Render("No tasks yet.")
+			return MutedStyle.Render(statusLine) + "\n\n" + MutedStyle.Render(EmptyStateNoTasks)
 		}
-		return MutedStyle.Render("No tasks yet.")
+		return MutedStyle.Render(EmptyStateNoTasks)
 	}
 
 	var lines []string
@@ -818,7 +818,7 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, contentWidth int) string {
 	recentTasks := storage.GetRecentTasks(project.Tasks, 5)
 	if len(recentTasks) == 0 {
-		return MutedStyle.Render("No tasks yet.")
+		return MutedStyle.Render(EmptyStateNoTasks)
 	}
 
 	// Type badge + status badge + spaces = ~5 visible columns

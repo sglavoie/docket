@@ -42,6 +42,8 @@ func (r *KeybindingRegistry) registerDashboardBindings() {
 		Keybinding{Key: "S", Description: "Set status icon & note", Category: "Actions", Views: views},
 		Keybinding{Key: "R", Description: "Cycle info panel", Category: "Actions", Views: views},
 		Keybinding{Key: "ctrl+R", Description: "Refresh", Category: "Actions", Views: views},
+		// On dashboard, "," opens Settings. In task views, "," is a status prefix key.
+		// Dashboard shows projects (not tasks), so status prefix doesn't apply here.
 		Keybinding{Key: ",", Description: "Settings", Category: "Actions", Views: views},
 	)
 }

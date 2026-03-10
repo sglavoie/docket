@@ -12,7 +12,7 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowInboxProcessorMsg:
 		processor := NewInboxProcessorModel(msg.Project, m.config, m.configManager)
 		if len(processor.inboxTasks) == 0 {
-			m.statusMessage = "No inbox items to process"
+			m.setInfoStatus("No inbox items to process")
 			return true, defaultStatusTimeout()
 		}
 		m.showView(ViewInboxProcessor, processor)
@@ -28,15 +28,15 @@ func (m *AppModel) handleInboxMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		m.refreshProjectTree()
 		if msg.ProcessedCount > 0 || msg.SkippedCount > 0 {
-			m.statusMessage = fmt.Sprintf("Inbox processing complete: %d processed, %d skipped",
-				msg.ProcessedCount, msg.SkippedCount)
+			m.setSuccessStatus(fmt.Sprintf("Inbox processing complete: %d processed, %d skipped",
+				msg.ProcessedCount, msg.SkippedCount))
 		}
 		return true, nil
 
 	case ShowGlobalInboxProcessorMsg:
 		processor := NewGlobalInboxProcessorModel(m.config, m.configManager)
 		if len(processor.inboxTasks) == 0 {
-			m.statusMessage = "No inbox items across all projects"
+			m.setInfoStatus("No inbox items across all projects")
 			return true, defaultStatusTimeout()
 		}
 		m.globalInboxProcessor = processor

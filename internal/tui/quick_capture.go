@@ -214,6 +214,12 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 	}
 
 	result, err := parseQuickCapture(input, m.project, m.allProjects)
+	if err == nil {
+		if valErr := models.ValidateTaskTitle(result.title); valErr != nil {
+			m.err = valErr
+			return nil
+		}
+	}
 	if err != nil {
 		m.err = err
 		return nil

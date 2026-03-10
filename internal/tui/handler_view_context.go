@@ -73,7 +73,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.dashboard.filterCustomContext = ""
 			m.dashboard.Refresh(m.config)
 		}
-		m.statusMessage = "Deleted custom context: " + msg.Name
+		m.setSuccessStatus("Deleted custom context: " + msg.Name)
 		return true, defaultStatusTimeout()
 
 	case CustomContextSavedMsg:
@@ -90,9 +90,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		// Show status message
 		if msg.IsNew {
-			m.statusMessage = fmt.Sprintf("Created custom context '%s' with %d projects", msg.Name, msg.ProjectCount)
+			m.setSuccessStatus(fmt.Sprintf("Created custom context '%s' with %d projects", msg.Name, msg.ProjectCount))
 		} else {
-			m.statusMessage = fmt.Sprintf("Updated custom context '%s' with %d projects", msg.Name, msg.ProjectCount)
+			m.setSuccessStatus(fmt.Sprintf("Updated custom context '%s' with %d projects", msg.Name, msg.ProjectCount))
 		}
 		return true, defaultStatusTimeout()
 
@@ -103,7 +103,7 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 		}
-		m.statusMessage = fmt.Sprintf("Renamed '%s' to '%s' (%d projects)", msg.OldName, msg.NewName, msg.ProjectCount)
+		m.setSuccessStatus(fmt.Sprintf("Renamed '%s' to '%s' (%d projects)", msg.OldName, msg.NewName, msg.ProjectCount))
 		return true, defaultStatusTimeout()
 	}
 	return false, nil

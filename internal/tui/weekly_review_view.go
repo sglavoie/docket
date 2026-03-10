@@ -47,7 +47,7 @@ func (m *WeeklyReviewModel) View() string {
 	contentHeight := fullscreenContentHeight(m.height, chromeLines)
 
 	if m.totalItems == 0 {
-		emptyMsg := "No items in this tab."
+		emptyMsg := "No tasks in this tab."
 		if m.tabs.Active == 2 {
 			emptyMsg = "No tasks due in the upcoming week. Use this tab to review and confirm tasks scheduled for the coming week."
 		}
@@ -129,19 +129,12 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if wt := m.getTaskAtCursor(); wt != nil {
 		currentStage = wt.Task.Stage
 	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = WeeklyReviewNavigationPrefixHints
+	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",": StatusPrefixHints,
-			"!": PriorityPrefixHints,
-			".": BuildStagePrefixHints(m.config.Stages, currentStage),
-			"d": DueDatePrefixHints,
-			"g": WeeklyReviewNavigationPrefixHints,
-			"s": SnoozePrefixHints,
-			"c": CreateLinkedPrefixHints,
-			"m": SecondaryViewMovePrefixHints,
-			"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
-		},
+		Hints:  hints,
 	}
 }
 
@@ -229,13 +222,13 @@ func (m *WeeklyReviewModel) renderSectionItem(section WeeklyReviewSection, index
 	case WeeklySectionOvercommitted:
 		return m.renderProjectLine(m.overcommitted[index], section, isSelected)
 	case WeeklySectionStaleTasks:
-		return m.renderTaskLine(m.staleTasks[index], section, isSelected, m.width-40)
+		return m.renderTaskLine(m.staleTasks[index], section, isSelected, max(m.width-40, 10))
 	case WeeklySectionPriorityMismatch:
-		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, m.width-40)
+		return m.renderTaskLine(m.priorityMismatch[index], section, isSelected, max(m.width-40, 10))
 	case WeeklySectionUpcomingWeek:
-		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, m.width-40)
+		return m.renderTaskLine(m.upcomingWeek[index], section, isSelected, max(m.width-40, 10))
 	case WeeklySectionRecurringOverview:
-		return m.renderTaskLine(m.recurringOverview[index], section, isSelected, m.width-40)
+		return m.renderTaskLine(m.recurringOverview[index], section, isSelected, max(m.width-40, 10))
 	}
 	return ""
 }

@@ -331,7 +331,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.dashboard != nil {
 			m.dashboard.loadProjects()
 		}
-		m.statusMessage = "Status updated"
+		m.setSuccessStatus("Status updated")
 		return true, defaultStatusTimeout()
 
 	case ShowDueDateOverviewMsg:
@@ -374,28 +374,28 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.config.SetLastDailyReviewAt(time.Now())
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
-		m.statusMessage = "Daily review completed"
+		m.setSuccessStatus("Daily review completed")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:
 		m.config.SetLastWeeklyReviewAt(time.Now())
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
-		m.statusMessage = "Weekly review completed"
+		m.setSuccessStatus("Weekly review completed")
 		return true, nil
 
 	case ResetDailyReviewMsg:
 		m.config.ClearLastDailyReviewAt()
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
-		m.statusMessage = "Daily review reset"
+		m.setSuccessStatus("Daily review reset")
 		return true, nil
 
 	case ResetWeeklyReviewMsg:
 		m.config.ClearLastWeeklyReviewAt()
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
-		m.statusMessage = "Weekly review reset"
+		m.setSuccessStatus("Weekly review reset")
 		return true, nil
 
 	case ShowTutorMsg:
@@ -540,14 +540,22 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case StatusClearMsg:
 		m.statusMessage = ""
+		m.statusIsInfo = false
 		return true, nil
 
 	case StatusMsg:
 		m.statusMessage = string(msg)
+		m.statusIsInfo = false
+		return true, defaultStatusTimeout()
+
+	case InfoStatusMsg:
+		m.statusMessage = string(msg)
+		m.statusIsInfo = true
 		return true, defaultStatusTimeout()
 
 	case MoveBlockedMsg:
 		m.statusMessage = msg.Reason
+		m.statusIsInfo = true
 		return true, defaultStatusTimeout()
 
 	case ShowPriorityViewMsg:
@@ -782,7 +790,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()
-		m.statusMessage = "Alert dismissed"
+		m.setSuccessStatus("Alert dismissed")
 		return true, defaultStatusTimeout()
 
 	case UndismissAlertMsg:
@@ -790,7 +798,7 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		_ = m.configManager.Save(m.config)
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()
-		m.statusMessage = "Alert restored"
+		m.setSuccessStatus("Alert restored")
 		return true, defaultStatusTimeout()
 
 	case CloseNotificationCenterMsg:

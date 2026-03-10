@@ -39,7 +39,7 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			if editor != nil {
 				m.showView(ViewScoreEditor, editor)
 			} else {
-				m.statusMessage = "No scoring profile assigned — opening profile manager"
+				m.setInfoStatus("No scoring profile assigned — opening profile manager")
 				return true, func() tea.Msg {
 					return ShowScoreProfileManagerMsg{}
 				}

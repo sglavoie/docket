@@ -196,8 +196,9 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}
 	colors := map[string]string{
-		"Active": "green",
-		"Done":   "blue",
+		"Active":  "green",
+		"Done":    "blue",
+		"Backlog": "gray",
 	}
 
 	// Write to markdown with colors
@@ -210,9 +211,9 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	if !strings.Contains(content, "Done:blue") {
 		t.Error("content should contain Done:blue")
 	}
-	// Backlog should not have a color (default gray is not written)
-	if strings.Contains(content, "Backlog:") {
-		t.Error("Backlog should not have a color suffix")
+	// Gray should now be preserved in the output
+	if !strings.Contains(content, "Backlog:gray") {
+		t.Error("content should contain Backlog:gray (gray color should be preserved)")
 	}
 
 	// Parse back
@@ -228,7 +229,7 @@ func TestSectionColorsRoundTrip(t *testing.T) {
 	if result.SectionColors["Done"] != "blue" {
 		t.Errorf("Done color should be blue, got %s", result.SectionColors["Done"])
 	}
-	if _, ok := result.SectionColors["Backlog"]; ok {
-		t.Error("Backlog should not have a color in the map")
+	if result.SectionColors["Backlog"] != "gray" {
+		t.Errorf("Backlog color should be gray, got %s", result.SectionColors["Backlog"])
 	}
 }

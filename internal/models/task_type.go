@@ -1,8 +1,9 @@
 package models
 
-import "slices"
-
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // TaskType represents the kind of task item.
 type TaskType string

@@ -157,7 +157,7 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 		var sectionParts []string
 		for _, name := range sections {
 			if sectionColors != nil {
-				if color, ok := sectionColors[name]; ok && color != "" && color != "gray" {
+				if color, ok := sectionColors[name]; ok && color != "" {
 					sectionParts = append(sectionParts, name+":"+color)
 				} else {
 					sectionParts = append(sectionParts, name)

@@ -39,11 +39,11 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 
 	if len(cycleProjects) == 0 {
 		if m.config.FilterCustomContext != "" {
-			m.statusMessage = fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext)
+			m.setInfoStatus(fmt.Sprintf("No projects in cycle for +%s. Press @ to configure.", m.config.FilterCustomContext))
 		} else if m.config.FilterContext != "" {
-			m.statusMessage = fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext)
+			m.setInfoStatus(fmt.Sprintf("No projects in cycle for context: %s. Press @ to configure.", m.config.FilterContext))
 		} else {
-			m.statusMessage = "No projects in cycle. Press @ to configure."
+			m.setInfoStatus("No projects in cycle. Press @ to configure.")
 		}
 		return true, defaultStatusTimeout()
 	}
@@ -53,7 +53,7 @@ func (m *AppModel) handleCycleProject(forward bool) (bool, tea.Cmd) {
 		if m.currentProject == nil || m.currentProject.ID != cycleProjects[0].ID {
 			return m.switchToCycleProject(cycleProjects[0])
 		}
-		m.statusMessage = "Only one project in cycle"
+		m.setInfoStatus("Only one project in cycle")
 		return true, defaultStatusTimeout()
 	}
 

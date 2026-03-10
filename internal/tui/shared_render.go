@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -284,7 +285,7 @@ func (tl TaskLine) Render() string {
 
 	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, stageSegment, prioritySegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
-		line = fmt.Sprintf("%-*s %s", tl.ViewWidth-15, line, tl.DueStr)
+		line = fmt.Sprintf("%-*s %s", max(tl.ViewWidth-15, 0), line, tl.DueStr)
 	}
 
 	if tl.IsSelected {

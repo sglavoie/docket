@@ -19,9 +19,7 @@ func (m *AllTasksViewModel) View() string {
 
 	if len(m.allTasks) == 0 {
 		b.WriteString("\n")
-		b.WriteString(MutedStyle.Render("No tasks found across projects."))
-		b.WriteString("\n\n")
-		b.WriteString(HelpStyle.Render("Press q to return to dashboard."))
+		b.WriteString(renderEmptyState("No tasks found across projects.", "Press q to return to dashboard."))
 		return b.String()
 	}
 
@@ -131,16 +129,9 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if ct := m.getTaskAtCursor(); ct != nil {
 		currentStage = ct.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		"!": PriorityPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"g": AllTasksNavigationPrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
-	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = AllTasksNavigationPrefixHints
+	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	// Merge filter prefix hints
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	// Add project filter hint to the F prefix (before the clear-all entry)

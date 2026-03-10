@@ -30,14 +30,6 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 	oldName := args[0]
 	newName := args[1]
 
-	if oldName == models.SectionNext {
-		return fmt.Errorf("cannot rename the Next section")
-	}
-
-	if newName == "" {
-		return fmt.Errorf("new section name cannot be empty")
-	}
-
 	if err := models.ValidateSectionName(newName); err != nil {
 		return err
 	}
@@ -47,16 +39,8 @@ func runSectionRename(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !project.HasSection(oldName) {
-		return fmt.Errorf("section '%s' does not exist", oldName)
-	}
-
-	if project.HasSection(newName) {
-		return fmt.Errorf("section '%s' already exists", newName)
-	}
-
-	if !project.RenameSection(oldName, newName) {
-		return fmt.Errorf("failed to rename section '%s'", oldName)
+	if err := project.RenameSection(oldName, newName); err != nil {
+		return err
 	}
 
 	if err := SaveProject(project, nil); err != nil {

@@ -33,6 +33,9 @@ type CursorFlashClearMsg struct{}
 // StatusMsg sets a temporary status message (used by command palette handlers).
 type StatusMsg string
 
+// InfoStatusMsg sets a temporary informational status message (neutral styling, no checkmark).
+type InfoStatusMsg string
+
 // =============================================================================
 // Project CRUD Messages
 // =============================================================================

@@ -1,7 +1,5 @@
 package tui
 
-import "slices"
-
 import tea "github.com/charmbracelet/bubbletea"
 
 // weeklyReviewTabNames are the tab labels for the weekly review view.
@@ -14,50 +12,41 @@ var weeklyReviewTabSections = [][]WeeklyReviewSection{
 	{WeeklySectionUpcomingWeek, WeeklySectionRecurringOverview},
 }
 
-// sectionInTab returns true if the given section belongs to the active tab.
-func (m *WeeklyReviewModel) sectionInTab(section WeeklyReviewSection) bool {
-	if m.tabs.Active < 0 || m.tabs.Active >= len(weeklyReviewTabSections) {
-		return true
-	}
-	return slices.Contains(weeklyReviewTabSections[m.tabs.Active], section)
-}
-
 // calculateNavigation builds navigation indices including section headers.
 func (m *WeeklyReviewModel) calculateNavigation() {
-	m.sectionOrder = nil
-	m.sectionStarts = nil
-	m.totalItems = 0
-
-	sections := []struct {
-		section WeeklyReviewSection
-		count   int
-	}{
-		{WeeklySectionStaleProjects, len(m.staleProjects)},
-		{WeeklySectionInboxBacklog, len(m.inboxBacklog)},
-		{WeeklySectionBlockedWork, len(m.blockedWork)},
-		{WeeklySectionOvercommitted, len(m.overcommitted)},
-		{WeeklySectionStaleTasks, len(m.staleTasks)},
-		{WeeklySectionPriorityMismatch, len(m.priorityMismatch)},
-		{WeeklySectionUpcomingWeek, len(m.upcomingWeek)},
-		{WeeklySectionRecurringOverview, len(m.recurringOverview)},
+	entries := []SectionEntry{
+		{int(WeeklySectionStaleProjects), len(m.staleProjects)},
+		{int(WeeklySectionInboxBacklog), len(m.inboxBacklog)},
+		{int(WeeklySectionBlockedWork), len(m.blockedWork)},
+		{int(WeeklySectionOvercommitted), len(m.overcommitted)},
+		{int(WeeklySectionStaleTasks), len(m.staleTasks)},
+		{int(WeeklySectionPriorityMismatch), len(m.priorityMismatch)},
+		{int(WeeklySectionUpcomingWeek), len(m.upcomingWeek)},
+		{int(WeeklySectionRecurringOverview), len(m.recurringOverview)},
 	}
 
-	for _, s := range sections {
-		if s.count > 0 {
-			if !m.sectionInTab(s.section) {
-				continue
-			}
-			if m.focusedSection != nil && *m.focusedSection != s.section {
-				continue
-			}
-			m.sectionOrder = append(m.sectionOrder, s.section)
-			m.sectionStarts = append(m.sectionStarts, m.totalItems)
-			m.totalItems++ // header
-			if !m.collapsedSections[int(s.section)] {
-				m.totalItems += s.count
-			}
+	var visibleSet map[int]bool
+	if m.tabs.Active >= 0 && m.tabs.Active < len(weeklyReviewTabSections) {
+		visibleSet = make(map[int]bool)
+		for _, s := range weeklyReviewTabSections[m.tabs.Active] {
+			visibleSet[int(s)] = true
 		}
 	}
+
+	var focusedID *int
+	if m.focusedSection != nil {
+		id := int(*m.focusedSection)
+		focusedID = &id
+	}
+
+	result := CalculateSectionNav(entries, m.collapsedSections, visibleSet, focusedID)
+
+	m.sectionOrder = make([]WeeklyReviewSection, len(result.SectionOrder))
+	for i, id := range result.SectionOrder {
+		m.sectionOrder[i] = WeeklyReviewSection(id)
+	}
+	m.sectionStarts = result.SectionStarts
+	m.totalItems = result.TotalItems
 }
 
 // getSectionItemCount returns the number of items in a section.
@@ -184,20 +173,12 @@ func (m *WeeklyReviewModel) getCurrentSectionIndex() int {
 
 // goToNextSection moves cursor to next section header (with wrap).
 func (m *WeeklyReviewModel) goToNextSection() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToNextSection(m.cursor, m.sectionStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToNext(m.sectionStarts)
 }
 
 // goToPrevSection moves cursor to previous section header (with wrap).
 func (m *WeeklyReviewModel) goToPrevSection() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToPrevSection(m.cursor, m.sectionStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToPrev(m.sectionStarts)
 }
 
 // goToNextUnreviewed jumps to the next unreviewed section with items, crossing tabs.

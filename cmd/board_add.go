@@ -50,6 +50,9 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		return fmt.Errorf("action title is required")
 	}
+	if err := models.ValidateTaskTitle(title); err != nil {
+		return err
+	}
 
 	cfg, mgr, err := LoadConfig()
 	if err != nil {

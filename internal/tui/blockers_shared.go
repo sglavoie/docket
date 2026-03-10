@@ -85,8 +85,8 @@ func (s *blockerViewState) GetConfirmDialog() *ConfirmDialog { return &s.confirm
 func (s *blockerViewState) setSize(width, height int) {
 	s.width = width
 	s.height = height
-	s.textInput.SetWidth(width - 4)
-	s.editTextInput.SetWidth(width - 4)
+	s.textInput.SetWidth(max(width-4, 1))
+	s.editTextInput.SetWidth(max(width-4, 1))
 }
 
 func (s *blockerViewState) hasTextInput() bool {

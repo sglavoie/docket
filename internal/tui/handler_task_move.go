@@ -104,6 +104,6 @@ func (m *AppModel) handleTaskMovedToProject(msg TaskMovedToProjectMsg) (bool, te
 	if msg.ClearedDeps > 0 {
 		statusMsg += fmt.Sprintf(" (%d deps cleared)", msg.ClearedDeps)
 	}
-	m.statusMessage = statusMsg
+	m.setSuccessStatus(statusMsg)
 	return true, statusTimeout(3 * time.Second)
 }

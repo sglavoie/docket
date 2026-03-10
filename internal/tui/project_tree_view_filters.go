@@ -205,37 +205,31 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if task := m.getCursorTask(); task != nil {
 		currentStage = task.Stage
 	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["z"] = FoldPrefixHints
+	hints["g"] = ProjectTreeNavigationPrefixHints
+	hints["m"] = ProjectTreeMovePrefixHints // override: tree uses tree moves
+	hints["t"] = TaskPrefixHints
+	hints["b"] = BlockerPrefixHints
+	hints["F"] = m.buildFilterPrefixHints()
+	hints["Ft"] = FilterTypePrefixHints
+	hints["Fs"] = FilterStatusPrefixHints
+	hints["Fd"] = FilterDuePrefixHints
+	hints["Fa"] = FilterAttrPrefixHints
+	hints["Fas"] = FilterAttrSeverityPrefixHints
+	hints["Far"] = FilterAttrReproduciblePrefixHints
+	hints["Fae"] = FilterAttrEffortPrefixHints
+	hints["Fac"] = FilterAttrCategoryPrefixHints
+	hints["Fav"] = FilterAttrValuePrefixHints
+	hints["Faw"] = FilterAttrWorktypePrefixHints
+	hints["Fao"] = FilterAttrScopePrefixHints
+	hints["Fap"] = FilterAttrPointsPrefixHints
+	hints["FS"] = BuildFilterScorePrefixHints(m.config)
+	hints["F."] = BuildFilterStagePrefixHints(m.config.Stages, m.filter.Stage)
+	hints["Fv"] = SavedFilterPrefixHints
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
-		Hints: PrefixHints{
-			",":   StatusPrefixHints,
-			"z":   FoldPrefixHints,
-			"g":   ProjectTreeNavigationPrefixHints,
-			"m":   ProjectTreeMovePrefixHints,
-			"!":   PriorityPrefixHints,
-			".":   BuildStagePrefixHints(m.config.Stages, currentStage),
-			"d":   DueDatePrefixHints,
-			"s":   SnoozePrefixHints,
-			"c":   CreateLinkedPrefixHints,
-			"t":   TaskPrefixHints,
-			"b":   BlockerPrefixHints,
-			"F":   m.buildFilterPrefixHints(),
-			"Ft":  FilterTypePrefixHints,
-			"Fs":  FilterStatusPrefixHints,
-			"Fd":  FilterDuePrefixHints,
-			"Fa":  FilterAttrPrefixHints,
-			"Fas": FilterAttrSeverityPrefixHints,
-			"Far": FilterAttrReproduciblePrefixHints,
-			"Fae": FilterAttrEffortPrefixHints,
-			"Fac": FilterAttrCategoryPrefixHints,
-			"Fav": FilterAttrValuePrefixHints,
-			"Faw": FilterAttrWorktypePrefixHints,
-			"Fao": FilterAttrScopePrefixHints,
-			"Fap": FilterAttrPointsPrefixHints,
-			"FS":  BuildFilterScorePrefixHints(m.config),
-			"F.":  BuildFilterStagePrefixHints(m.config.Stages, m.filter.Stage),
-			"Fv":  SavedFilterPrefixHints,
-		},
+		Hints:  hints,
 	}
 }
 

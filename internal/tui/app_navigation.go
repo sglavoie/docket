@@ -195,6 +195,8 @@ func defaultProjectViewType(cfg *config.Config) ViewType {
 	}
 }
 
+const maxProjectLastViewEntries = 50
+
 // saveCurrentProjectView records the current project-level view for the active project.
 func (m *AppModel) saveCurrentProjectView() {
 	if m.currentProject == nil {
@@ -203,6 +205,15 @@ func (m *AppModel) saveCurrentProjectView() {
 	cv := m.currentView()
 	if cv == ViewProjectTree || cv == ViewOutliner {
 		m.projectLastView[m.currentProject.ID] = cv
+		// Evict oldest entries when over cap (simple eviction: delete arbitrary entries)
+		for len(m.projectLastView) > maxProjectLastViewEntries {
+			for id := range m.projectLastView {
+				if id != m.currentProject.ID {
+					delete(m.projectLastView, id)
+					break
+				}
+			}
+		}
 	}
 }
 

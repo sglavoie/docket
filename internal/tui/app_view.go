@@ -172,7 +172,12 @@ func (m *AppModel) renderStatusBar() string {
 
 	// Show temporary status message if present
 	if m.statusMessage != "" {
-		msg := SuccessStyle.Render("✓ " + m.statusMessage)
+		var msg string
+		if m.statusIsInfo {
+			msg = InfoStatusStyle.Render("· " + m.statusMessage)
+		} else {
+			msg = SuccessStyle.Render("✓ " + m.statusMessage)
+		}
 		return separator + "\n" + renderLeftAlignedMsg(msg)
 	}
 

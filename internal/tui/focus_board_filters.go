@@ -64,18 +64,10 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if row := m.getRowAtCursor(); row != nil {
 		currentStage = row.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		"!": PriorityPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"s": SnoozePrefixHints,
-		"g": FocusBoardNavigationPrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"z": {
-			{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
-		},
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = FocusBoardNavigationPrefixHints
+	hints["z"] = []PrefixHint{
+		{Key: "p", Description: "preview", Detail: "Toggle inline preview"},
 	}
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, true, true))
 	return &PrefixPopupInfo{

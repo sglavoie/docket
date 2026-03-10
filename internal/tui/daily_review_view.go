@@ -112,17 +112,9 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if ct := m.getTaskAtCursor(); ct != nil {
 		currentStage = ct.Task.Stage
 	}
-	hints := PrefixHints{
-		",": StatusPrefixHints,
-		".": BuildStagePrefixHints(m.config.Stages, currentStage),
-		"d": DueDatePrefixHints,
-		"g": DailyReviewNavigationPrefixHints,
-		"!": PriorityPrefixHints,
-		"s": SnoozePrefixHints,
-		"c": CreateLinkedPrefixHints,
-		"m": SecondaryViewMovePrefixHints,
-		"z": append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"}),
-	}
+	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
+	hints["g"] = DailyReviewNavigationPrefixHints
+	hints["z"] = append(SectionFoldPrefixHints, PrefixHint{Key: "p", Description: "preview", Detail: "Toggle inline preview"})
 	// Merge filter prefix hints (no DueDate or Status — sections group by these)
 	maps.Copy(hints, buildCommonFilterPrefixPopupHints(&m.filter, m.config, false, false))
 	return &PrefixPopupInfo{
@@ -176,7 +168,7 @@ func (m *DailyReviewModel) renderAllSections() ([]string, int) {
 				if isSelected {
 					cursorLineIndex = len(lines)
 				}
-				line := m.renderTaskLine(dt, section, isSelected, m.width-40)
+				line := m.renderTaskLine(dt, section, isSelected, max(m.width-40, 10))
 				lines = append(lines, line)
 				currentIndex++
 			}

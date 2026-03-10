@@ -1,10 +1,15 @@
 package models
 
 import (
+	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 )
+
+// ErrSectionAlreadyExists is returned when a section rename targets an existing name.
+var ErrSectionAlreadyExists = fmt.Errorf("section already exists")
 
 // GetSections returns the project's sections, ensuring Next is always first.
 func (p *Project) GetSections() []string {
@@ -35,9 +40,16 @@ func (p *Project) HasSection(name string) bool {
 	return slices.Contains(p.Sections, name)
 }
 
+// MaxSectionNameLength is the maximum allowed length for a section name.
+const MaxSectionNameLength = 256
+
 // EnsureSection adds a section if it does not already exist.
+// Silently rejects empty, whitespace-only, or excessively long names.
 func (p *Project) EnsureSection(name string) {
-	if name == "" {
+	if strings.TrimSpace(name) == "" {
+		return
+	}
+	if len(name) > MaxSectionNameLength {
 		return
 	}
 	if !p.HasSection(name) {
@@ -79,13 +91,16 @@ func (p *Project) RemoveSection(name string) bool {
 }
 
 // RenameSection renames a section and updates all tasks with that section.
-// Returns false if trying to rename Next or if the section doesn't exist.
-func (p *Project) RenameSection(oldName, newName string) bool {
-	if oldName == SectionNext || newName == "" {
-		return false
+// Returns an error if the rename cannot be performed.
+func (p *Project) RenameSection(oldName, newName string) error {
+	if oldName == SectionNext {
+		return fmt.Errorf("cannot rename the Next section")
+	}
+	if newName == "" {
+		return fmt.Errorf("new section name cannot be empty")
 	}
 	if p.HasSection(newName) {
-		return false // New name already exists
+		return fmt.Errorf("cannot rename section: target name %q already exists", newName)
 	}
 	for i, s := range p.Sections {
 		if s == oldName {
@@ -105,10 +120,10 @@ func (p *Project) RenameSection(oldName, newName string) bool {
 				}
 			}
 			p.UpdatedAt = time.Now()
-			return true
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf("section %q not found", oldName)
 }
 
 // GetTasksBySection returns tasks filtered by section.

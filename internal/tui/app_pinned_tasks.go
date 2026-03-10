@@ -137,7 +137,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 			}
 			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
 			result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
-			m.statusMessage = result.StatusMessage
+			m.setSuccessStatus(result.StatusMessage)
 
 			m.pinnedPopupItems = m.collectPinnedTasks()
 			if len(m.pinnedPopupItems) == 0 {
@@ -157,7 +157,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 			}
 			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
 			result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
-			m.statusMessage = result.StatusMessage
+			m.setSuccessStatus(result.StatusMessage)
 
 			// Rebuild list (task may have been completed and filtered out)
 			m.pinnedPopupItems = m.collectPinnedTasks()

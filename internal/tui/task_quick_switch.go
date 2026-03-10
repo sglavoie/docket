@@ -219,7 +219,7 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 			return m, nil
 		}
 		result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
-		m.statusMessage = result.StatusMessage
+		m.setSuccessStatus(result.StatusMessage)
 	}
 
 	if prefix == "!" {
@@ -228,7 +228,7 @@ func (m *AppModel) handleQuickSwitchPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 			return m, nil
 		}
 		result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
-		m.statusMessage = result.StatusMessage
+		m.setSuccessStatus(result.StatusMessage)
 	}
 
 	// Re-hydrate and rebuild after mutation
@@ -374,7 +374,7 @@ func (m *AppModel) quickSwitchTogglePin() {
 			}
 		}
 		if pinnedCount >= maxPinnedTaskVisits {
-			m.statusMessage = fmt.Sprintf("Maximum %d pinned tasks reached", maxPinnedTaskVisits)
+			m.setInfoStatus(fmt.Sprintf("Maximum %d pinned tasks reached", maxPinnedTaskVisits))
 			return
 		}
 	}

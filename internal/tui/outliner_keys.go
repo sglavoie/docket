@@ -351,7 +351,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "A":
 		// Archive completed tasks when in Completed perspective (p8)
-		if m.activePerspective == 8 {
+		if m.activePerspective == PerspectiveCompleted {
 			completedCount := m.project.CountCompletedTasks()
 			if completedCount > 0 {
 				m.confirm.Show("archive-tasks",

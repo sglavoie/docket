@@ -204,9 +204,9 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			total := len(msg.Notes)
 			if failed > 0 {
-				m.statusMessage = fmt.Sprintf("Tagged %d notes (%d failed)", total, failed)
+				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes (%d failed)", total, failed))
 			} else {
-				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
+				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes", total))
 			}
 			// Store undo state on notes view
 			if nv := m.getActiveNotesView(); nv != nil {
@@ -252,9 +252,9 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) {
 			}
 			total := len(m.pendingBulkNotes)
 			if failed > 0 {
-				m.statusMessage = fmt.Sprintf("Tagged %d notes (%d failed)", total, failed)
+				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes (%d failed)", total, failed))
 			} else {
-				m.statusMessage = fmt.Sprintf("Tagged %d notes", total)
+				m.setSuccessStatus(fmt.Sprintf("Tagged %d notes", total))
 			}
 			// Store undo state on notes view
 			if nv := m.getActiveNotesView(); nv != nil {

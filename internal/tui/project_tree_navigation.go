@@ -28,17 +28,9 @@ func (m *ProjectTreeModel) handleNavigationKeys(key string, visible []*TreeNode)
 		}
 		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
 	case "n":
-		old := m.cursor
-		if pos := navigateToNextSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
-			m.cursor = pos
-		}
-		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		return true, m.SectionGoToNext(rootNodeIndices(visible))
 	case "N":
-		old := m.cursor
-		if pos := navigateToPrevSection(m.cursor, rootNodeIndices(visible)); pos >= 0 {
-			m.cursor = pos
-		}
-		return true, flashIfJumped(old, m.cursor, &m.cursorFlash)
+		return true, m.SectionGoToPrev(rootNodeIndices(visible))
 	case "h":
 		if !m.sidebar.IsFocused() {
 			m.clearActiveSavedFilter()

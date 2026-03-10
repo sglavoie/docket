@@ -212,8 +212,8 @@ func (m *SectionManagerModel) renameSection(oldName, newName string) tea.Cmd {
 			return ErrorMsg{Err: fmt.Errorf("section '%s' already exists", newName)}
 		}
 
-		if !proj.RenameSection(oldName, newName) {
-			return ErrorMsg{Err: fmt.Errorf("failed to rename section")}
+		if err := proj.RenameSection(oldName, newName); err != nil {
+			return ErrorMsg{Err: err}
 		}
 
 		// Apply global color if one exists for the new section name

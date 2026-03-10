@@ -109,7 +109,7 @@ func (m *RecentActivityPreviewModel) renderContent() string {
 		task.ShortID,
 		task.Title)
 	styledHeader := TaskJumperPreviewHeaderStyle.Render(header)
-	b.WriteString(lipgloss.NewStyle().Width(m.width - 2).Render(styledHeader))
+	b.WriteString(lipgloss.NewStyle().Width(max(m.width-2, 1)).Render(styledHeader))
 	b.WriteString("\n\n")
 
 	// Status

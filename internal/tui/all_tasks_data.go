@@ -141,20 +141,12 @@ func (m *AllTasksViewModel) totalVisibleTaskCount() int {
 
 // goToNextGroup moves cursor to next group header (with wrap).
 func (m *AllTasksViewModel) goToNextGroup() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToNextSection(m.cursor, m.groupStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToNext(m.groupStarts)
 }
 
 // goToPrevGroup moves cursor to previous group header (with wrap).
 func (m *AllTasksViewModel) goToPrevGroup() (tea.Model, tea.Cmd) {
-	old := m.cursor
-	if pos := navigateToPrevSection(m.cursor, m.groupStarts); pos >= 0 {
-		m.cursor = pos
-	}
-	return m, flashIfJumped(old, m.cursor, &m.cursorFlash)
+	return m, m.SectionGoToPrev(m.groupStarts)
 }
 
 // projectCount returns the number of unique projects loaded.

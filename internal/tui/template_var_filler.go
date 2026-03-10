@@ -116,7 +116,7 @@ func (m *TemplateVarFillerModel) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		Padding(1, 2).
-		Width(m.width - 4)
+		Width(max(m.width-4, 1))
 
 	return boxStyle.Render(b.String())
 }

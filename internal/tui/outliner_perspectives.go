@@ -13,6 +13,13 @@ type Perspective struct {
 	Filter func(t *models.Task) bool
 }
 
+// Perspective key constants for commonly referenced perspectives.
+const (
+	PerspectiveSnoozed   = 0
+	PerspectiveAll       = 1
+	PerspectiveCompleted = 8
+)
+
 // perspectives holds the ten hardcoded perspective presets, indexed 0-9.
 // Access via PerspectivePresets().
 var perspectives = [10]Perspective{

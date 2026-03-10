@@ -110,6 +110,19 @@ type ProjectTreeSpatialState struct {
 	FoldState    map[string]bool // collapsed node IDs (Expanded == false)
 }
 
+// PriorityViewCache stores session-only filter + tab state for PriorityView.
+type PriorityViewCache struct {
+	Filter    CommonFilterState
+	TabActive int
+}
+
+// AllTasksCache stores session-only filter + groupBy + tab state for AllTasks.
+type AllTasksCache struct {
+	Filter    CommonFilterState
+	GroupBy   AllTasksGroupBy
+	TabActive int
+}
+
 // AppModel is the main TUI model with a view stack.
 type AppModel struct {
 	config        *config.Config
@@ -149,6 +162,10 @@ type AppModel struct {
 	// Survive view recreation within a session (in-memory only for cursor).
 	projectTreeSpatialStates map[string]*ProjectTreeSpatialState
 
+	// Session-only filter caches for views reconstructed during history navigation.
+	priorityViewFilterCache map[string]*PriorityViewCache // keyed by projectID
+	allTasksFilterCache     *AllTasksCache                // single global entry
+
 	// Focus view session state (persists across view navigation within a session)
 	focusQueue        []FocusTask
 	focusQueueIDs     map[string]bool
@@ -166,6 +183,7 @@ type AppModel struct {
 	err           error
 	quitting      bool
 	statusMessage string // Temporary status message (auto-clears after timeout)
+	statusIsInfo  bool   // When true, render status with InfoStatusStyle instead of SuccessStyle
 
 	// Loading state for async operations
 	isLoading      bool

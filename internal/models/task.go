@@ -1,8 +1,12 @@
 package models
 
 import (
+	"fmt"
 	"time"
 )
+
+// MaxTaskTitleLength is the maximum allowed length for a task title.
+const MaxTaskTitleLength = 700
 
 // Attachment represents a file or URL attached to a task.
 type Attachment struct {
@@ -22,35 +26,36 @@ type ChecklistItem struct {
 
 // Task represents a single task, story, epic, bug, or idea.
 type Task struct {
-	ID            string             `json:"id"`
-	ShortID       int                `json:"short_id"`
-	Type          TaskType           `json:"type"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Status        TaskStatus         `json:"status"`
-	Priority      int                `json:"priority"`
-	ParentID      *string            `json:"parent_id,omitempty"`
-	Tags          []string           `json:"tags,omitempty"`
-	Section       string             `json:"section,omitempty"`        // GTD section (e.g., "Next", "Inbox", "Waiting", "Someday")
-	CustomSection string             `json:"custom_section,omitempty"` // User-defined section orthogonal to GTD sections
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
-	CompletedAt   *time.Time         `json:"completed_at,omitempty"`
-	DueDate       *time.Time         `json:"due_date,omitempty"`
-	DependsOn     []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
-	RelatedTo     []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
-	Pinned        bool               `json:"pinned,omitempty"`     // Whether the task is pinned
-	PinnedAt      *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
-	Active        bool               `json:"active,omitempty"`     // Whether the task is flagged as active
-	Comments      []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
-	Recurrence    *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
-	Attachments   []Attachment       `json:"attachments,omitempty"`
-	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
-	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
-	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
-	Stage         string             `json:"stage,omitempty"`         // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
-	Source        string             `json:"source,omitempty"`        // Origin of the task (e.g., "github", "jira")
-	URL           string             `json:"url,omitempty"`           // External reference URL
+	ID               string             `json:"id"`
+	ShortID          int                `json:"short_id"`
+	Type             TaskType           `json:"type"`
+	Title            string             `json:"title"`
+	Description      string             `json:"description"`
+	Status           TaskStatus         `json:"status"`
+	Priority         int                `json:"priority"`
+	ParentID         *string            `json:"parent_id,omitempty"`
+	Tags             []string           `json:"tags,omitempty"`
+	Section          string             `json:"section,omitempty"`        // GTD section (e.g., "Next", "Inbox", "Waiting", "Someday")
+	CustomSection    string             `json:"custom_section,omitempty"` // User-defined section orthogonal to GTD sections
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	CompletedAt      *time.Time         `json:"completed_at,omitempty"`
+	DueDate          *time.Time         `json:"due_date,omitempty"`
+	DependsOn        []string           `json:"depends_on,omitempty"` // IDs of tasks this task depends on
+	RelatedTo        []string           `json:"related_to,omitempty"` // IDs of related tasks (bidirectional)
+	Pinned           bool               `json:"pinned,omitempty"`     // Whether the task is pinned
+	PinnedAt         *time.Time         `json:"pinned_at,omitempty"`  // When the task was pinned
+	Active           bool               `json:"active,omitempty"`     // Whether the task is flagged as active
+	Comments         []*Comment         `json:"comments,omitempty"`   // Timestamped comments/notes
+	Recurrence       *RecurrencePattern `json:"recurrence,omitempty"` // Recurrence pattern (nil = non-recurring)
+	Attachments      []Attachment       `json:"attachments,omitempty"`
+	SnoozedUntil     *time.Time         `json:"snoozed_until,omitempty"`   // Task hidden until this date
+	Activity         []*ActivityEntry   `json:"activity,omitempty"`        // Persistent changelog of field changes
+	Checklist        []ChecklistItem    `json:"checklist,omitempty"`       // Checklist items for subtasks
+	Stage            string             `json:"stage,omitempty"`           // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
+	Source           string             `json:"source,omitempty"`          // Origin of the task (e.g., "github", "jira")
+	URL              string             `json:"url,omitempty"`             // External reference URL
+	OrphanedParentID *string            `json:"orphaned_parent,omitempty"` // Preserved parent ID when original parent was not found
 
 	// Scoring dimensions: manual overrides for scoring profile dimensions (e.g., "impact": 4)
 	ScoreDimensions map[string]int `json:"score_dimensions,omitempty"`
@@ -67,6 +72,14 @@ type Task struct {
 	Parent   *Task    `json:"-"`
 	Project  *Project `json:"-"`
 	Level    int      `json:"-"` // Depth in hierarchy (0 for root)
+}
+
+// ValidateTaskTitle returns an error if the title exceeds MaxTaskTitleLength.
+func ValidateTaskTitle(title string) error {
+	if len(title) > MaxTaskTitleLength {
+		return fmt.Errorf("task title too long (%d chars, max %d)", len(title), MaxTaskTitleLength)
+	}
+	return nil
 }
 
 // NewTask creates a new task with default values.

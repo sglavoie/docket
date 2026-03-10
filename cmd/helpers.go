@@ -58,7 +58,10 @@ func ConfirmYN(prompt string, force bool) bool {
 	}
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false // safe default: abort on I/O error
+	}
 	response = strings.TrimSpace(strings.ToLower(response))
 	return response == "y" || response == "yes"
 }
@@ -73,7 +76,10 @@ func ConfirmStrict(prompt string, force bool) bool {
 	fmt.Println(prompt)
 	fmt.Print("Type 'yes' to confirm: ")
 	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false // safe default: abort on I/O error
+	}
 	return strings.TrimSpace(strings.ToLower(response)) == "yes"
 }
 

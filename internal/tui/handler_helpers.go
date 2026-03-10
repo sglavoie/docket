@@ -25,10 +25,22 @@ func (m *AppModel) handleWithRefresh(popView, reload bool, statusMsg string) tea
 		m.outliner.rebuildRows()
 	}
 	if statusMsg != "" {
-		m.statusMessage = statusMsg
+		m.setSuccessStatus(statusMsg)
 		return defaultStatusTimeout()
 	}
 	return nil
+}
+
+// setSuccessStatus sets a status message with success styling (green checkmark).
+func (m *AppModel) setSuccessStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsInfo = false
+}
+
+// setInfoStatus sets a status message with informational styling (neutral color, no checkmark).
+func (m *AppModel) setInfoStatus(msg string) {
+	m.statusMessage = msg
+	m.statusIsInfo = true
 }
 
 // syncInboxProcessor updates the typed inboxProcessor pointer after view updates.

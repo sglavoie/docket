@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -24,6 +25,28 @@ type CommonFilterState struct {
 	ScoreMin   float64           // minimum score threshold (0 = no filter)
 	Actionable bool              // only show tasks ready to work on (no blockers)
 	Stage      string            // filter by workflow stage
+}
+
+// copyCommonFilterState returns a deep copy of a CommonFilterState.
+func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
+	dst := &CommonFilterState{
+		Type:       src.Type,
+		Status:     src.Status,
+		Priority:   src.Priority,
+		DueDate:    src.DueDate,
+		ScoreMin:   src.ScoreMin,
+		Actionable: src.Actionable,
+		Stage:      src.Stage,
+	}
+	if len(src.Tags) > 0 {
+		dst.Tags = make(map[string]bool, len(src.Tags))
+		maps.Copy(dst.Tags, src.Tags)
+	}
+	if len(src.Attrs) > 0 {
+		dst.Attrs = make(map[string]string, len(src.Attrs))
+		maps.Copy(dst.Attrs, src.Attrs)
+	}
+	return dst
 }
 
 // passesCommonFilters checks if a task passes the shared filter criteria.

@@ -6,7 +6,12 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
+
+// maxLockAge is the maximum age for a lock file before it's considered stale,
+// regardless of whether the PID appears alive (handles zombie/orphaned locks).
+const maxLockAge = 24 * time.Hour
 
 // AcquirePIDLock creates a lock file containing the current PID. If the file
 // already exists and the recorded PID is still alive, it returns an error.
@@ -16,7 +21,7 @@ func AcquirePIDLock(path string) error {
 	if err == nil {
 		pidStr := strings.TrimSpace(string(data))
 		if pid, parseErr := strconv.Atoi(pidStr); parseErr == nil {
-			if isProcessAlive(pid) {
+			if isProcessAlive(pid) && !isLockStale(path) {
 				return fmt.Errorf("tt TUI already running (PID %d)", pid)
 			}
 		}
@@ -28,6 +33,15 @@ func AcquirePIDLock(path string) error {
 // ReleasePIDLock removes the lock file.
 func ReleasePIDLock(path string) {
 	_ = os.Remove(path)
+}
+
+// isLockStale returns true if the lock file is older than maxLockAge.
+func isLockStale(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return time.Since(info.ModTime()) > maxLockAge
 }
 
 func isProcessAlive(pid int) bool {

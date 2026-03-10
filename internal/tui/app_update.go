@@ -110,6 +110,11 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.showQuickSwitch = false
 				} else {
 					m.openQuickSwitch()
+					if len(m.recentTaskVisits) == 0 {
+						m.showQuickSwitch = false
+						m.setInfoStatus("No recent tasks for quick-switch")
+						return m, defaultStatusTimeout()
+					}
 				}
 				return m, nil
 			}
@@ -117,7 +122,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.hasActiveTextInput() {
 				m.pinnedPopupItems = m.collectPinnedTasks()
 				if len(m.pinnedPopupItems) == 0 {
-					m.statusMessage = "No pinned tasks"
+					m.setInfoStatus("No pinned tasks — press p on a task to pin it")
 					return m, defaultStatusTimeout()
 				}
 				m.showPinnedPopup = !m.showPinnedPopup

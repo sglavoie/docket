@@ -1,8 +1,10 @@
 package tui
 
-import "strings"
+import (
+	"strings"
 
-import "github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss"
+)
 
 // makeBadgeStyle creates a badge style with the given foreground and background ANSI colors.
 func makeBadgeStyle(fg, bg string) lipgloss.Style {
@@ -308,6 +310,10 @@ var (
 	// Success message style
 	SuccessStyle = lipgloss.NewStyle().
 			Foreground(ColorSuccess)
+
+	// Info status bar style (neutral blue for transient informational messages)
+	InfoStatusStyle = lipgloss.NewStyle().
+			Foreground(ColorPrimary)
 
 	// Loading message style (amber/yellow for in-progress operations)
 	LoadingStyle = lipgloss.NewStyle().

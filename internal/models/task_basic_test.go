@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,6 +29,27 @@ func TestNewTask(t *testing.T) {
 	}
 	if task.CreatedAt.IsZero() {
 		t.Error("expected CreatedAt to be set")
+	}
+}
+
+func TestValidateTaskTitle(t *testing.T) {
+	// Valid titles
+	if err := ValidateTaskTitle("Short title"); err != nil {
+		t.Errorf("expected no error for short title, got: %v", err)
+	}
+	if err := ValidateTaskTitle(strings.Repeat("a", MaxTaskTitleLength)); err != nil {
+		t.Errorf("expected no error for max-length title, got: %v", err)
+	}
+	if err := ValidateTaskTitle(""); err != nil {
+		t.Errorf("expected no error for empty title, got: %v", err)
+	}
+
+	// Too long
+	if err := ValidateTaskTitle(strings.Repeat("a", MaxTaskTitleLength+1)); err == nil {
+		t.Error("expected error for title exceeding max length")
+	}
+	if err := ValidateTaskTitle(strings.Repeat("x", 1000)); err == nil {
+		t.Error("expected error for 1000-char title")
 	}
 }
 

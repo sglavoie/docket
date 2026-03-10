@@ -331,7 +331,7 @@ func (m *AppModel) handleTaskMessages(msg tea.Msg) (bool, tea.Cmd) {
 			selector := NewLinkedTaskSelectorModelWithConfig(msg.Task, msg.Project, m.config)
 			// If no linked tasks, do nothing
 			if !selector.HasLinkedTasks() {
-				m.statusMessage = "No linked tasks"
+				m.setInfoStatus("No linked tasks")
 				return true, defaultStatusTimeout()
 			}
 			// If single linked task with same project, jump directly (unless unlinking)

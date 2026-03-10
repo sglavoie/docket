@@ -111,6 +111,13 @@ func TestParseInlineMetadata(t *testing.T) {
 			wantTags:     nil,
 		},
 		{
+			name:         "only metadata leaves empty title",
+			input:        "!1 #tag",
+			wantTitle:    "",
+			wantPriority: 1,
+			wantTags:     []string{"tag"},
+		},
+		{
 			name:         "hash without word not a tag",
 			input:        "Fix bug # comment",
 			wantTitle:    "Fix bug # comment",

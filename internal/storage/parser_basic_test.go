@@ -160,6 +160,81 @@ func TestParseTasksMarkdown_Hierarchy(t *testing.T) {
 	}
 }
 
+func TestParseTasksMarkdown_OrphanedParentPreserved(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Child Task
+<!-- id: child1, status: todo, priority: 3, parent: nonexistent-parent-id -->
+
+Description of child.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	task := result.Tasks[0]
+
+	// ParentID should be cleared
+	if task.ParentID != nil {
+		t.Error("ParentID should be nil for orphaned reference")
+	}
+
+	// OrphanedParentID should preserve the original parent ID
+	if task.OrphanedParentID == nil {
+		t.Fatal("OrphanedParentID should not be nil")
+	}
+	if *task.OrphanedParentID != "nonexistent-parent-id" {
+		t.Errorf("OrphanedParentID = %q, want %q", *task.OrphanedParentID, "nonexistent-parent-id")
+	}
+
+	// Warning should mention orphaned_parent
+	if len(result.Warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d", len(result.Warnings))
+	}
+	if !strings.Contains(result.Warnings[0].Message, "orphaned_parent") {
+		t.Errorf("warning should mention orphaned_parent, got: %s", result.Warnings[0].Message)
+	}
+}
+
+func TestParseTasksMarkdown_OrphanedParentRoundTrip(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Child Task
+<!-- id: child1, status: todo, priority: 3, orphaned_parent: old-parent-id -->
+
+Description of child.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	task := result.Tasks[0]
+	if task.OrphanedParentID == nil || *task.OrphanedParentID != "old-parent-id" {
+		t.Fatalf("OrphanedParentID should be preserved from metadata, got %v", task.OrphanedParentID)
+	}
+
+	// Write back and re-parse to verify round-trip
+	output := WriteTasksMarkdownWithSections("Test", result.Tasks, result.Sections, nil)
+	if !strings.Contains(output, "orphaned_parent: old-parent-id") {
+		t.Error("round-tripped output should contain orphaned_parent field")
+	}
+
+	result2, err := ParseTasksMarkdownWithSections(output)
+	if err != nil {
+		t.Fatalf("unexpected error on re-parse: %v", err)
+	}
+	task2 := result2.Tasks[0]
+	if task2.OrphanedParentID == nil || *task2.OrphanedParentID != "old-parent-id" {
+		t.Errorf("OrphanedParentID should survive round-trip, got %v", task2.OrphanedParentID)
+	}
+}
+
 func TestParseTasksMarkdown_MultilineDescription(t *testing.T) {
 	content := `# Project: Test
 
