@@ -125,11 +125,16 @@ func (m *WeeklyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if wt := m.getTaskAtCursor(); wt != nil {
+		currentStage = wt.Task.Stage
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
 			",": StatusPrefixHints,
 			"!": PriorityPrefixHints,
+			".": BuildStagePrefixHints(m.config.Stages, currentStage),
 			"d": DueDatePrefixHints,
 			"g": WeeklyReviewNavigationPrefixHints,
 			"s": SnoozePrefixHints,

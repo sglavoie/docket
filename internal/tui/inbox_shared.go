@@ -123,11 +123,16 @@ func renderInboxTaskDisplay(task *models.Task, width int, willLeave bool, projec
 		b.WriteString("\n")
 	}
 
-	// Type badge, status badge, created date, priority, due date
+	// Type badge, stage badge, status badge, created date, priority, due date
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
+	stageBadge := GetStageBadge(task.Stage)
+	stageSegment := ""
+	if stageBadge != "" {
+		stageSegment = stageBadge + " "
+	}
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
-	metadata := fmt.Sprintf("%s %s  Created %s  Priority %s",
-		typeIcon, statusIcon,
+	metadata := fmt.Sprintf("%s %s%s  Created %s  Priority %s",
+		typeIcon, stageSegment, statusIcon,
 		MutedStyle.Render(task.CreatedAt.Format("Jan 2")),
 		GetPriorityStyle(task.Priority).Render(renderPriorityStarsShared(task.Priority)),
 	)

@@ -424,6 +424,7 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 		IsSelected:  selected,
 		MaxTitle:    maxTitleLen,
 		PreBadges:   preBadges,
+		StageBadge:  GetStageBadge(task.Stage),
 		PostTitle:   relTime,
 		ViewWidth:   m.Width(),
 		Flash:       m.cursorFlash,

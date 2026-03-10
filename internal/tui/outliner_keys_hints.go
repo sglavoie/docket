@@ -38,11 +38,16 @@ var OutlinerPerspectivePrefixHints = []PrefixHint{
 
 // buildPrefixHints returns the hints map for all supported prefix keys.
 func (m *OutlinerModel) buildPrefixHints() PrefixHints {
+	var currentStage string
+	if len(m.rows) > 0 && m.cursor < len(m.rows) {
+		currentStage = m.rows[m.cursor].task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
 		"t": TaskPrefixHints,
 		"s": SnoozePrefixHints,
 		"!": PriorityPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"d": DueDatePrefixHints,
 		"b": BlockerPrefixHints,
 		"c": CreateLinkedPrefixHints,

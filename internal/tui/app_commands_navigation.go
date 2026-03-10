@@ -77,6 +77,15 @@ func (m *AppModel) globalCommands() []Command {
 			},
 		},
 		{
+			Name:        "stages settings",
+			Description: "Open stages configuration",
+			Category:    CategoryNavigation,
+			Aliases:     []string{"manage stages", "workflow stages"},
+			Handler: func() tea.Msg {
+				return SettingsStagesMsg{}
+			},
+		},
+		{
 			Name:        "back",
 			Description: "Go back to previous view",
 			Shortcut:    "esc",

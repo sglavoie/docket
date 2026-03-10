@@ -47,6 +47,7 @@ func (r *KeybindingRegistry) registerFocusBoardBindings() {
 	)
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
+	r.addForViews(views, stageBindings())
 	r.addForViews(views, dueDateBindings())
 	r.addForViews(views, snoozeBindings())
 	r.addForViews(views, linkedTaskBindings())

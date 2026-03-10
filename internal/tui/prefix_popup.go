@@ -59,7 +59,9 @@ var prefixCategoryNames = map[string]string{
 	"Fao": "scope",
 	"Fap": "points",
 	"FS":  "filter-score",
+	"F.":  "filter-stage",
 	"Fv":  "saved-filters",
+	".":   "stage",
 	";":   "tt",
 }
 
@@ -707,4 +709,42 @@ func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 		{Key: "C", Description: "set value", Detail: "inline input"},
 		{Key: "0", Description: "clear"},
 	}
+}
+
+// BuildStagePrefixHints builds dynamic stage hints for the "." (stage) prefix.
+// Keys 1-9 map to the first 9 configured stages, 0 clears.
+func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
+	hints := make([]PrefixHint, 0, len(stages)+1)
+	for i, stage := range stages {
+		if i >= 9 {
+			hints = append(hints, PrefixHint{Description: stage, Active: stage == currentStage})
+			continue
+		}
+		hints = append(hints, PrefixHint{
+			Key:         fmt.Sprintf("%d", i+1),
+			Description: stage,
+			Active:      stage == currentStage,
+		})
+	}
+	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
+	return hints
+}
+
+// BuildFilterStagePrefixHints builds dynamic filter stage hints for the "F." prefix.
+// Keys 1-9 map to the first 9 configured stages, 0 clears.
+func BuildFilterStagePrefixHints(stages []string, currentFilter string) []PrefixHint {
+	hints := make([]PrefixHint, 0, len(stages)+1)
+	for i, stage := range stages {
+		if i >= 9 {
+			hints = append(hints, PrefixHint{Description: stage, Active: stage == currentFilter})
+			continue
+		}
+		hints = append(hints, PrefixHint{
+			Key:         fmt.Sprintf("%d", i+1),
+			Description: stage,
+			Active:      stage == currentFilter,
+		})
+	}
+	hints = append(hints, PrefixHint{Key: "0", Description: "clear"})
+	return hints
 }

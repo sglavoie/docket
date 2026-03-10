@@ -209,13 +209,13 @@ type AppModel struct {
 	lastNavigatedTaskID string
 
 	// Recent task visits for quick-switch (Alt+R)
-	recentTaskVisits         []RecentTaskVisitEntry
-	showQuickSwitch          bool
-	quickSwitchCursor        int
-	quickSwitchFilter        string
-	quickSwitchFiltering     bool
-	quickSwitchFiltered        []int    // indices into sortedQuickSwitchEntries
-	quickSwitchTitlePositions [][]int  // parallel to quickSwitchFiltered: fuzzy match positions in title
+	recentTaskVisits          []RecentTaskVisitEntry
+	showQuickSwitch           bool
+	quickSwitchCursor         int
+	quickSwitchFilter         string
+	quickSwitchFiltering      bool
+	quickSwitchFiltered       []int   // indices into sortedQuickSwitchEntries
+	quickSwitchTitlePositions [][]int // parallel to quickSwitchFiltered: fuzzy match positions in title
 	quickSwitchPendingPrefix  string
 
 	// Pinned tasks popup state

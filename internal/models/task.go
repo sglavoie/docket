@@ -48,6 +48,7 @@ type Task struct {
 	SnoozedUntil  *time.Time         `json:"snoozed_until,omitempty"` // Task hidden until this date
 	Activity      []*ActivityEntry   `json:"activity,omitempty"`      // Persistent changelog of field changes
 	Checklist     []ChecklistItem    `json:"checklist,omitempty"`     // Checklist items for subtasks
+	Stage         string             `json:"stage,omitempty"`         // Workflow stage (e.g., "Brainstorm", "Design", "Implement")
 	Source        string             `json:"source,omitempty"`        // Origin of the task (e.g., "github", "jira")
 	URL           string             `json:"url,omitempty"`           // External reference URL
 

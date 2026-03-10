@@ -54,7 +54,7 @@ var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "recur",
 	"recur.skipped", "recur.streak", "recur.max_streak",
-	"attachments", "snoozed", "checklist", "source", "url",
+	"attachments", "snoozed", "checklist", "stage", "source", "url",
 	// Type-specific attribute keys
 	"bug.reproducible", "bug.severity", "bug.workaround",
 	"idea.category", "idea.effort", "idea.value", "idea.validated",
@@ -278,6 +278,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				}
 			}
 
+		case "stage":
+			task.Stage = value
 		case "source":
 			task.Source = value
 		case "url":
@@ -568,6 +570,10 @@ func WriteMetadata(task *models.Task) string {
 			checklistStrings = append(checklistStrings, item.Text+marker)
 		}
 		parts = append(parts, fmt.Sprintf("checklist: %s", strings.Join(checklistStrings, ";")))
+	}
+
+	if task.Stage != "" {
+		parts = append(parts, fmt.Sprintf("stage: %s", task.Stage))
 	}
 
 	if task.Source != "" {

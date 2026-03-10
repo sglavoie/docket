@@ -127,9 +127,14 @@ func (m *AllTasksViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if ct := m.getTaskAtCursor(); ct != nil {
+		currentStage = ct.Task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
 		"!": PriorityPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"d": DueDatePrefixHints,
 		"g": AllTasksNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,

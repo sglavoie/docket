@@ -161,6 +161,14 @@ func dispatchCommonPrefix(
 			return v.(tea.Model), cmd, true
 		}
 		return v.(tea.Model), nil, true
+
+	case ".":
+		stage := StageForPrefixKey(key, v.getConfig().Stages)
+		if stage != nil {
+			model, cmd := taskOpsChangeStage(v, *stage)
+			return model, cmd, true
+		}
+		return v.(tea.Model), nil, true
 	}
 
 	return nil, nil, false
@@ -213,8 +221,25 @@ func handleSectionMovePrefix(key string, cb SectionMoveCallbacks) (tea.Model, te
 // isFilterSubPrefix returns true if the prefix is a filter sub-prefix (Ft, Fs, etc).
 func isFilterSubPrefix(prefix string) bool {
 	switch prefix {
-	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS", "F.":
 		return true
 	}
 	return false
+}
+
+// StageForPrefixKey maps a key press to a stage name from the configured stages.
+// Keys 1-9 map to stages[0..8], key 0 clears (empty string).
+// Returns nil if the key is not recognized.
+func StageForPrefixKey(key string, stages []string) *string {
+	if key == "0" {
+		s := ""
+		return &s
+	}
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+		idx := int(key[0] - '1')
+		if idx < len(stages) {
+			return &stages[idx]
+		}
+	}
+	return nil
 }

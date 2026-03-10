@@ -805,9 +805,14 @@ func (m *DashboardModel) renderTopScoredContent(project *models.Project, profile
 	titleWidth := max(contentWidth-15, 10)
 	title := util.Truncate(bestTask.Title, titleWidth)
 	typeIcon := GetTypeBadge(string(bestTask.Type), bestTask.Type.Icon())
+	stageBadge := GetStageBadge(bestTask.Stage)
+	stageSegment := ""
+	if stageBadge != "" {
+		stageSegment = stageBadge + " "
+	}
 	statusIcon := GetStatusBadge(string(bestTask.Status), bestTask.Status.Icon())
 
-	return fmt.Sprintf("%s %s %s %s %s", bar, badge, typeIcon, statusIcon, title)
+	return fmt.Sprintf("%s %s %s %s%s %s", bar, badge, typeIcon, stageSegment, statusIcon, title)
 }
 
 func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Project, contentWidth int) string {
@@ -822,21 +827,28 @@ func (m *DashboardModel) renderRecentTasksContentWithWidth(project *models.Proje
 	var lines []string
 	for _, task := range recentTasks {
 		timeStr := storage.FormatRelativeTime(task.UpdatedAt)
+		stageBadge := GetStageBadge(task.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
 		// Check if title + 2-space gap + time fits on one line
 		fitsOnOneLine := len(task.Title)+2+len(timeStr) <= titleWidth
 
 		if fitsOnOneLine {
 			gap := max(titleWidth-len(task.Title)-len(timeStr), 2)
-			line1 := fmt.Sprintf("%s %s %s%s%s",
+			line1 := fmt.Sprintf("%s %s%s %s%s%s",
 				GetTypeBadge(string(task.Type), task.Type.Icon()),
+				stageSegment,
 				GetStatusBadge(string(task.Status), task.Status.Icon()),
 				task.Title,
 				strings.Repeat(" ", gap),
 				MutedStyle.Render(timeStr))
 			lines = append(lines, line1, "")
 		} else {
-			line1 := fmt.Sprintf("%s %s %s",
+			line1 := fmt.Sprintf("%s %s%s %s",
 				GetTypeBadge(string(task.Type), task.Type.Icon()),
+				stageSegment,
 				GetStatusBadge(string(task.Status), task.Status.Icon()),
 				util.Truncate(task.Title, titleWidth))
 

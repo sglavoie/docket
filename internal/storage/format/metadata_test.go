@@ -155,6 +155,17 @@ func TestParseMetadata(t *testing.T) {
 			warnings: 0,
 		},
 		{
+			name:    "task with stage",
+			metaStr: "id: t11, status: todo, priority: 2, stage: Design",
+			want: &models.Task{
+				ID:       "t11",
+				Status:   models.StatusTodo,
+				Priority: 2,
+				Stage:    "Design",
+			},
+			warnings: 0,
+		},
+		{
 			name:    "whitespace handling in tags and dependencies",
 			metaStr: "id: t10, status: todo, priority: 1, tags:  work ; urgent  , depends:  dep1 ; dep2  ",
 			want: &models.Task{
@@ -344,6 +355,17 @@ func TestWriteMetadata(t *testing.T) {
 			want: "<!-- id: task-6, status: todo, priority: 2, recur: 2w:mon,wed,fri -->",
 		},
 		{
+			name: "task with stage",
+			task: &models.Task{
+				ID:       "task-stage",
+				Type:     models.TaskTypeTask,
+				Status:   models.StatusTodo,
+				Priority: 2,
+				Stage:    "Implement",
+			},
+			want: "<!-- id: task-stage, status: todo, priority: 2, stage: Implement -->",
+		},
+		{
 			name: "task with updated same as created",
 			task: &models.Task{
 				ID:        "task-7",
@@ -401,6 +423,16 @@ func TestParseWriteMetadata_RoundTrip(t *testing.T) {
 				Type:     models.TaskTypeTask,
 				Status:   models.StatusTodo,
 				Priority: 3,
+			},
+		},
+		{
+			name: "task with stage",
+			task: &models.Task{
+				ID:       "task-round-3",
+				Type:     models.TaskTypeTask,
+				Status:   models.StatusInProgress,
+				Priority: 2,
+				Stage:    "Design",
 			},
 		},
 	}

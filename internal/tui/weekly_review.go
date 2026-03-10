@@ -200,7 +200,7 @@ func (m *WeeklyReviewModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix mode
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getTaskAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc.", m.getTaskAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}

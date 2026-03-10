@@ -138,6 +138,7 @@ func (r *KeybindingRegistry) registerProjectTreeBindings() {
 	r.addForViews(views, statusBindings())
 	r.addForViews(views, priorityBindings())
 	r.addForViews(views, dueDateBindings())
+	r.addForViews(views, stageBindings())
 	r.addForViews(views, clipboardBindings())
 	r.addForViews(views, linkedTaskBindings())
 	r.addForViews(views, projectCyclingBindings())

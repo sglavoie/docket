@@ -60,9 +60,14 @@ func (m *FocusBoardModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if row := m.getRowAtCursor(); row != nil {
+		currentStage = row.Task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
 		"!": PriorityPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"d": DueDatePrefixHints,
 		"s": SnoozePrefixHints,
 		"g": FocusBoardNavigationPrefixHints,

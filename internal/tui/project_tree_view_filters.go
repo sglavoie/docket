@@ -201,6 +201,10 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if task := m.getCursorTask(); task != nil {
+		currentStage = task.Stage
+	}
 	return &PrefixPopupInfo{
 		Prefix: m.pendingPrefix,
 		Hints: PrefixHints{
@@ -209,6 +213,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"g":   ProjectTreeNavigationPrefixHints,
 			"m":   ProjectTreeMovePrefixHints,
 			"!":   PriorityPrefixHints,
+			".":   BuildStagePrefixHints(m.config.Stages, currentStage),
 			"d":   DueDatePrefixHints,
 			"s":   SnoozePrefixHints,
 			"c":   CreateLinkedPrefixHints,
@@ -228,6 +233,7 @@ func (m *ProjectTreeModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 			"Fao": FilterAttrScopePrefixHints,
 			"Fap": FilterAttrPointsPrefixHints,
 			"FS":  BuildFilterScorePrefixHints(m.config),
+			"F.":  BuildFilterStagePrefixHints(m.config.Stages, m.filter.Stage),
 			"Fv":  SavedFilterPrefixHints,
 		},
 	}

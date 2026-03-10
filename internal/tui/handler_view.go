@@ -67,6 +67,15 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.showView(ViewSettings, NewSettingsModel(m.config, m.configManager))
 		return true, nil
 
+	case SettingsStagesMsg:
+		sm := NewSettingsModel(m.config, m.configManager)
+		sm.blurCurrentField()
+		sm.tabs.Active = 7
+		sm.focusIndex = tabFieldStart[7]
+		sm.focusCurrentField()
+		m.showView(ViewSettings, sm)
+		return true, nil
+
 	case SettingsSavedMsg:
 		m.popView()
 		if m.dashboard != nil {

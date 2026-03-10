@@ -240,9 +240,15 @@ func (m *ProjectPreviewModel) renderContent() string {
 			b.WriteString("\n")
 
 			for _, task := range recentTasks {
-				line := fmt.Sprintf("  %s %s %s %s  %s",
+				stageBadge := GetStageBadge(task.Stage)
+				stageSegment := ""
+				if stageBadge != "" {
+					stageSegment = stageBadge + " "
+				}
+				line := fmt.Sprintf("  %s %s %s%s %s  %s",
 					MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)),
 					GetTypeBadge(string(task.Type), task.Type.Icon()),
+					stageSegment,
 					GetStatusBadge(string(task.Status), task.Status.Icon()),
 					util.Truncate(task.Title, 40),
 					MutedStyle.Render(storage.FormatRelativeTime(task.UpdatedAt)))

@@ -220,6 +220,34 @@ can receive tasks, be renamed, or be removed. Assigning a task
 to a section that does not exist yet creates it automatically.`,
 		},
 		{
+			Title:    "Stages",
+			Category: "Concepts",
+			Content: `# What Are Stages
+
+Stages track workflow progress within a task, independent of
+its section or status. A task in the Active section with
+in_progress status might be in the Design stage.
+
+# How Stages Work
+
+Stages are a free-text field. Default stages are Brainstorm,
+Design, Implement, Test, Review, and Deploy, but you can
+configure any stages you want in Settings.
+
+# Stages vs Sections vs Status
+
+Sections (Active, Next, Inbox) organize where tasks live in
+your workflow. Status (todo, in_progress, done) tracks the
+lifecycle state. Stages add a third dimension: what phase of
+work the task is in. All three are independent.
+
+# Configuration
+
+Stages are global (not per-project). Manage them in Settings
+under the Stages tab, or use the command palette to navigate
+there directly.`,
+		},
+		{
 			Title:    "Scoring",
 			Category: "Concepts",
 			Content: `# What Is Scoring
@@ -500,6 +528,24 @@ priority, tag, or section.
   tt task list --priority 1`,
 		},
 		{
+			Title:    "Stages",
+			Category: "CLI",
+			Content: `# Setting a Stage
+
+  tt task stage 5 Brainstorm
+  tt task stage 12 Design
+  tt task stage 3 Implement
+
+# Clearing a Stage
+
+  tt task stage 5 ""
+
+# Creating Tasks with a Stage
+
+  tt task add "Design login flow" --stage Design
+  tt task add "Research caching !2 #perf" --stage Brainstorm`,
+		},
+		{
 			Title:    "Task Management",
 			Category: "CLI",
 			Content: `# Creating Tasks
@@ -616,6 +662,31 @@ Use ! followed by a number to set priority on the selected task:
 Press t then s on a selected task (ts) to open the section picker. Choose
 from Active, Next, Inbox, Waiting, or Someday to reassign
 the task quickly.`,
+		},
+		{
+			Title:    "Stages",
+			Category: "TUI",
+			Content: `# Setting Stages with . Prefix
+
+Press . (dot) on a selected task to open the stage overlay.
+Keys 1-9 map to your configured stages. Press 0 to clear
+the stage.
+
+  .1  Set first stage (e.g., Brainstorm)
+  .2  Set second stage (e.g., Design)
+  .0  Clear stage
+
+# Filtering by Stage
+
+Press F then . to filter tasks by stage. The same 1-9 and
+0 keys apply: select a stage to show only matching tasks,
+or press 0 to clear the filter.
+
+# Managing Stages
+
+Open Settings and navigate to the Stages tab to add, edit,
+delete, or reorder stages. You can also reach it from the
+command palette by typing "stages".`,
 		},
 		{
 			Title:    "Scoring",

@@ -371,6 +371,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			statusIcon = BlockedByDepsStyle.Render(task.Status.Icon())
 		}
 
+		stageBadge := GetStageBadge(task.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
+
 		// Title with priority coloring
 		titleStyle := NormalStyle
 		if task.Status == models.StatusCanceled {
@@ -509,12 +515,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			title = titleStyle.Render(truncatedTitle)
 		}
 
-		line := fmt.Sprintf("%s%s%s%s%s %s %s%s",
+		line := fmt.Sprintf("%s%s%s%s%s %s%s %s%s",
 			cursorPrefix,
 			checkbox,
 			MutedStyle.Render(row.prefix),
 			foldIndicator,
-			typeIcon, statusIcon, title, indicators)
+			typeIcon, stageSegment, statusIcon, title, indicators)
 
 		if selected {
 			rowStyle := SelectionRowStyle

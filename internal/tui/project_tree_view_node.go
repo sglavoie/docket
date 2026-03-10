@@ -70,6 +70,12 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		statusIcon = GetStatusBadge(string(task.Status), task.Status.Icon())
 	}
 
+	stageBadge := GetStageBadge(task.Stage)
+	stageSegment := ""
+	if stageBadge != "" {
+		stageSegment = stageBadge + " "
+	}
+
 	// Task ID (includes trailing space when visible for spacing in the format string)
 	idStr := ""
 	if m.columnConfig.IsVisible(ColShortID) {
@@ -231,8 +237,8 @@ func (m *ProjectTreeModel) renderNodeWithWidth(node *TreeNode, selected bool, in
 		title = titleStyle.Render(truncatedTitle)
 	}
 
-	content := fmt.Sprintf("%s%s%s%s %s %s%s%s%s",
-		checkbox, indent, expandIcon, typeIcon, statusIcon, idStr, title, progress, indicators)
+	content := fmt.Sprintf("%s%s%s%s %s%s %s%s%s%s",
+		checkbox, indent, expandIcon, typeIcon, stageSegment, statusIcon, idStr, title, progress, indicators)
 	return RenderSelectableRow(selected, task.Active, task.Pinned, m.cursorFlash, content, maxWidth)
 }
 
@@ -246,6 +252,12 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	// Type and status icons
 	typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 	statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
+
+	stageBadge := GetStageBadge(task.Stage)
+	stageSegment := ""
+	if stageBadge != "" {
+		stageSegment = stageBadge + " "
+	}
 
 	// Task ID
 	idStr := MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID))
@@ -261,7 +273,7 @@ func (m *ProjectTreeModel) renderQuickEditNode(node *TreeNode, maxWidth int) str
 	inputView := m.quickEdit.GetInput().View()
 
 	// Build prefix
-	prefix := fmt.Sprintf("%s%s %s %s ", indent, typeIcon, statusIcon, idStr)
+	prefix := fmt.Sprintf("%s%s %s%s %s ", indent, typeIcon, stageSegment, statusIcon, idStr)
 
 	// Build the edit line
 	editLine := prefix + inputView

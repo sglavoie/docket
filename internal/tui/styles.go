@@ -184,6 +184,7 @@ var (
 	BlockedBadgeStyle    = makeBadgeStyle("196", "52")                  // Red
 	StandbyBadgeStyle    = makeBadgeStyle("141", "53")                  // Violet
 	CanceledBadgeStyle   = makeBadgeStyle("241", "236")                 // Gray
+	StageBadgeStyle      = makeBadgeStyle("183", "236")                 // Lavender on dark gray
 
 	// Container styles
 	BoxStyle = lipgloss.NewStyle().
@@ -651,6 +652,15 @@ func GetStatusBadge(status string, icon string) string {
 	default:
 		return NormalStyle.Render(icon)
 	}
+}
+
+// GetStageBadge returns the stage name rendered as a styled badge.
+// Returns an empty string when stage is empty.
+func GetStageBadge(stage string) string {
+	if stage == "" {
+		return ""
+	}
+	return StageBadgeStyle.Render(stage)
 }
 
 // RenderProgressBar renders a simple progress bar.

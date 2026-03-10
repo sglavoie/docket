@@ -148,6 +148,7 @@ type Config struct {
 	OutlinerDefaultColumns    map[string]bool              `json:"outliner_default_columns,omitempty"`     // Global default column visibility for outliner view
 	TreePriorityMode          string                       `json:"tree_priority_mode,omitempty"`           // Global priority display mode for tree view
 	OutlinerPriorityMode      string                       `json:"outliner_priority_mode,omitempty"`       // Global priority display mode for outliner view
+	Stages                    []string                     `json:"stages,omitempty"`                       // Workflow stages (e.g., Brainstorm, Design, Implement)
 	SmartLists                []SmartList                  `json:"smart_lists,omitempty"`                  // User-defined smart list tabs for AllTasks view
 	AllTasksTabOrder          []string                     `json:"all_tasks_tab_order,omitempty"`          // Built-in tab names + smart list UUIDs
 	// Proactive alert system: review tracking

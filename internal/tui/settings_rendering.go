@@ -475,6 +475,48 @@ func (m *SettingsModel) renderNotificationsTab() string {
 	return b.String()
 }
 
+func (m *SettingsModel) renderStagesTab() string {
+	var b strings.Builder
+
+	b.WriteString(SubtitleStyle.Render("Workflow Stages"))
+	b.WriteString("\n\n")
+
+	if len(m.stages) == 0 {
+		b.WriteString(MutedStyle.Render("  No stages configured. Press 'a' to add one."))
+		b.WriteString("\n")
+	} else {
+		for i, stage := range m.stages {
+			if i == m.stageCursor {
+				b.WriteString(BoldStyle.Foreground(ColorPrimary).Render("  ▸ "))
+				b.WriteString(StageBadgeStyle.Render(stage))
+			} else {
+				b.WriteString(MutedStyle.Render("    "))
+				b.WriteString(StageBadgeStyle.Render(stage))
+			}
+			b.WriteString("\n")
+		}
+	}
+
+	if m.stageEditMode {
+		b.WriteString("\n")
+		if m.stageAddMode {
+			b.WriteString(BoldStyle.Render("  New stage: "))
+		} else {
+			b.WriteString(BoldStyle.Render("  Edit stage: "))
+		}
+		b.WriteString(m.stageInput.View())
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
+	b.WriteString("\n\n")
+	b.WriteString(HelpStyle.Render("  a=add  Enter=edit  d=delete  J/K=reorder  Enter(save)/Esc(cancel)"))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 // settingsContentHeight returns the number of lines available for tab content,
 // accounting for the title, tab bar, blank line, and footer.
 func (m *SettingsModel) settingsContentHeight() int {
@@ -558,6 +600,8 @@ func (m *SettingsModel) focusLineInContent() int {
 			return 54 // project stale days
 		}
 		return localIdx * 4
+	case 7: // Stages: subtitle+blank (3) then cursor is at list position
+		return 3
 	}
 	return 0
 }
@@ -580,6 +624,8 @@ func (m *SettingsModel) View() string {
 		content = m.renderOutlinerTab()
 	case 6:
 		content = m.renderNotificationsTab()
+	case 7:
+		content = m.renderStagesTab()
 	}
 
 	// Split content into lines and apply scroll

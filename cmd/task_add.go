@@ -18,6 +18,7 @@ var (
 	taskPriority     int
 	taskTags         []string
 	taskSectionFlag  string
+	taskStageFlag    string
 	taskRecurFlag    string
 	taskTemplateFlag string
 	isEpic           bool
@@ -67,6 +68,7 @@ func init() {
 	taskAddCmd.Flags().BoolVar(&isBug, "bug", false, "create a bug")
 	taskAddCmd.Flags().BoolVar(&isIdea, "idea", false, "create an idea")
 	taskAddCmd.Flags().StringVarP(&taskSectionFlag, "section", "s", "", "section for the task (default: project's first section)")
+	taskAddCmd.Flags().StringVar(&taskStageFlag, "stage", "", "workflow stage (e.g., Brainstorm, Design, Implement)")
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
 
@@ -146,6 +148,11 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	} else if tmpl != nil && tmpl.Section != "" {
 		project.EnsureSection(tmpl.Section)
 		task.Section = tmpl.Section
+	}
+
+	// Handle stage
+	if taskStageFlag != "" {
+		task.Stage = taskStageFlag
 	}
 
 	// Add description from template

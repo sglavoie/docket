@@ -104,6 +104,18 @@ func init() {
 		{`:sv\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
 		// "by s", "then l", "then d" — color the single key after by/then
 		{`(?:by|then) ([sld]) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		// Stage prefix bindings: .0-.9
+		{`^\.[0-9]\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// "Press . " and "F then ." patterns
+		{`Press (\.) `, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		{`then (\.) to`, lipgloss.NewStyle().Foreground(ColorWarning), 1},
+		// F. prefix
+		{`\bF\.\b`, lipgloss.NewStyle().Foreground(ColorWarning), 0},
+		// Default stage names rendered with badge style
+		{`\bBrainstorm\b`, StageBadgeStyle, 0},
+		{`\bDesign\b`, StageBadgeStyle, 0},
+		{`\bImplement\b`, StageBadgeStyle, 0},
+		{`\bDeploy\b`, StageBadgeStyle, 0},
 	}
 
 	for _, r := range rules {

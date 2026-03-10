@@ -69,6 +69,14 @@ func taskOpsChangePriority(v taskOpsView, key string) (tea.Model, tea.Cmd) {
 	return v.(tea.Model), cmd
 }
 
+// taskOpsChangeStage changes the workflow stage of the task at cursor.
+func taskOpsChangeStage(v taskOpsView, stage string) (tea.Model, tea.Cmd) {
+	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {
+		return applyStageChange(pf, project, taskID, stage)
+	})
+	return v.(tea.Model), cmd
+}
+
 // taskOpsSetQuickDueDate sets the due date to a relative number of days from today.
 func taskOpsSetQuickDueDate(v taskOpsView, daysFromNow int) (tea.Model, tea.Cmd) {
 	cmd := taskOpsApply(v, func(pf persistFn, project *models.Project, taskID string) TaskOpResult {

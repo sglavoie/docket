@@ -79,6 +79,15 @@ func diffTask(old, new *models.Task) {
 		}
 	}
 
+	if old.Stage != new.Stage {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "stage",
+			OldValue:  old.Stage,
+			NewValue:  new.Stage,
+		})
+	}
+
 	if old.Title != new.Title {
 		new.Activity = append(new.Activity, &models.ActivityEntry{
 			Timestamp: now,

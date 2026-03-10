@@ -72,6 +72,58 @@ func handlePriorityPrefix(key string, v prefixableView) (tea.Cmd, bool) {
 	return result.Cmd, true
 }
 
+// handleStagePrefix handles the . prefix key for setting workflow stage.
+// Returns (cmd, handled). When handled is false the key was not recognized.
+func handleStagePrefix(key string, v prefixableView, stages []string) (tea.Cmd, bool) {
+	stage := StageForPrefixKey(key, stages)
+	if stage == nil {
+		return nil, false
+	}
+
+	project := v.getProject()
+
+	if tasks := v.getMultiSelectedTasks(); tasks != nil {
+		prevStates := captureTaskStates(project.Tasks)
+		count := 0
+		for _, t := range tasks {
+			if t.Stage != *stage {
+				project.MutateTask(t.ID, func(mt *models.Task) {
+					mt.Stage = *stage
+				})
+				count++
+			}
+		}
+		v.clearMultiSelect()
+		label := *stage
+		if label == "" {
+			label = "cleared"
+		}
+		msg := fmt.Sprintf("Set stage %s on %d tasks", label, count)
+		v.setUndoContext("Set Stage", msg)
+		v.setStatusMessage(msg)
+		return v.saveAndRefreshBulk(prevStates), true
+	}
+
+	task := v.getCursorTask()
+	if task == nil {
+		return nil, true
+	}
+	label := *stage
+	if label == "" {
+		label = "(cleared)"
+	}
+	v.setUndoContext("Set Stage", fmt.Sprintf("%s: %s", label, task.Title))
+	result := applyStageChange(v.workflowPersistFn(), project, task.ID, *stage)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		v.setStatusMessage(result.StatusMessage)
+	}
+	v.refreshView()
+	return result.Cmd, true
+}
+
 // handleDueDatePrefix handles the d prefix key for setting due dates.
 // Returns (cmd, handled). When handled is false the key was not recognized.
 func handleDueDatePrefix(key string, v prefixableView) (tea.Cmd, bool) {
@@ -446,11 +498,11 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 // (e.g. section header) and task-specific prefixes should be skipped.
 func activatePrefixKey(key string, cursorOnTask bool) (string, bool) {
 	switch key {
-	case ",", "z", "g", "m", "!", "d", "s", "t", "b", "F":
+	case ",", "z", "g", "m", "!", "d", "s", "t", "b", "F", ".":
 		// Task-specific prefixes require a cursor task
 		if !cursorOnTask {
 			switch key {
-			case ",", "!", "d", "s", "t", "b", "m":
+			case ",", "!", "d", "s", "t", "b", "m", ".":
 				return "", false
 			}
 		}

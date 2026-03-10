@@ -111,6 +111,9 @@ func assertTaskFields(t *testing.T, task, want *models.Task) {
 	if task.Active != want.Active {
 		t.Errorf("Active = %v, want %v", task.Active, want.Active)
 	}
+	if task.Stage != want.Stage {
+		t.Errorf("Stage = %q, want %q", task.Stage, want.Stage)
+	}
 
 	if !stringSlicesEqual(task.Tags, want.Tags) {
 		t.Errorf("Tags = %v, want %v", task.Tags, want.Tags)

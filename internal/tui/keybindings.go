@@ -156,6 +156,14 @@ func priorityBindings() []Keybinding {
 	}
 }
 
+func stageBindings() []Keybinding {
+	return []Keybinding{
+		{Key: ".1-.9", Description: "Set stage (by position)", Category: "Stage (. prefix)"},
+		{Key: ".0", Description: "Clear stage", Category: "Stage (. prefix)"},
+		{Key: "F.", Description: "Filter by stage", Category: "Filters"},
+	}
+}
+
 func dueDateBindings() []Keybinding {
 	return []Keybinding{
 		{Key: "dt", Description: "Due today", Category: "Due Date"},

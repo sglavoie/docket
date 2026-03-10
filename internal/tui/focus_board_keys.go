@@ -27,7 +27,7 @@ func (m *FocusBoardModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Activate prefix keys: F always, ,!g gated on item, mc gated on item
-	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc", m.getRowAtCursor() != nil); ok {
+	if prefix, ok := activateSecondaryPrefix(key, "gzF", ",!dsmc.", m.getRowAtCursor() != nil); ok {
 		m.pendingPrefix = prefix
 		return m, nil
 	}

@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -9,21 +12,93 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Stages tab: handle confirm dialog first
+		if m.tabs.Active == 7 && m.stageConfirmDelete.IsActive() {
+			confirmed, handled := m.stageConfirmDelete.HandleKey(msg.String())
+			if handled {
+				if confirmed && len(m.stages) > 0 {
+					m.stages = append(m.stages[:m.stageCursor], m.stages[m.stageCursor+1:]...)
+					if m.stageCursor >= len(m.stages) && m.stageCursor > 0 {
+						m.stageCursor--
+					}
+				}
+				return m, nil
+			}
+		}
+
+		// Stages tab: handle all keys when on tab 7
+		if m.tabs.Active == 7 && !m.stageEditMode {
+			switch msg.String() {
+			case "j", "down":
+				if len(m.stages) > 0 && m.stageCursor < len(m.stages)-1 {
+					m.stageCursor++
+				}
+				return m, nil
+			case "k", "up":
+				if len(m.stages) > 0 && m.stageCursor > 0 {
+					m.stageCursor--
+				}
+				return m, nil
+			case "a":
+				m.stageEditMode = true
+				m.stageAddMode = true
+				m.stageInput.SetValue("")
+				m.stageInput.Focus()
+				return m, nil
+			case "d", "delete", "backspace":
+				if len(m.stages) > 0 {
+					m.stageConfirmDelete.Show("delete", fmt.Sprintf("Delete stage '%s'?", m.stages[m.stageCursor]))
+				}
+				return m, nil
+			case "J":
+				if len(m.stages) > 1 && m.stageCursor < len(m.stages)-1 {
+					m.stages[m.stageCursor], m.stages[m.stageCursor+1] = m.stages[m.stageCursor+1], m.stages[m.stageCursor]
+					m.stageCursor++
+				}
+				return m, nil
+			case "K":
+				if len(m.stages) > 1 && m.stageCursor > 0 {
+					m.stages[m.stageCursor], m.stages[m.stageCursor-1] = m.stages[m.stageCursor-1], m.stages[m.stageCursor]
+					m.stageCursor--
+				}
+				return m, nil
+			case "enter":
+				if len(m.stages) > 0 {
+					m.stageEditMode = true
+					m.stageAddMode = false
+					m.stageInput.SetValue(m.stages[m.stageCursor])
+					m.stageInput.Focus()
+				}
+				return m, nil
+			}
+		}
+
 		switch msg.String() {
 		case "esc":
+			if m.stageEditMode {
+				m.stageEditMode = false
+				m.stageAddMode = false
+				m.stageInput.Blur()
+				return m, nil
+			}
 			return m, func() tea.Msg {
 				return BackMsg{}
 			}
 
 		case "tab", "shift+tab":
+			// Don't cycle tabs while editing a stage
+			if m.stageEditMode {
+				break
+			}
+
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (63 fields total: 0-62)
+			// Move focus (64 fields total: 0-63)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 63
+				m.focusIndex = (m.focusIndex + 1) % 64
 			} else {
-				m.focusIndex = (m.focusIndex + 62) % 63 // +62 is -1 mod 63
+				m.focusIndex = (m.focusIndex + 63) % 64 // +63 is -1 mod 64
 			}
 
 			// Auto-switch tab to follow focus
@@ -96,6 +171,22 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
+			// Stages tab: submit edit input
+			if m.tabs.Active == 7 && m.stageEditMode {
+				val := strings.TrimSpace(m.stageInput.Value())
+				if val != "" {
+					if m.stageAddMode {
+						m.stages = append(m.stages, val)
+						m.stageCursor = len(m.stages) - 1
+					} else {
+						m.stages[m.stageCursor] = val
+					}
+				}
+				m.stageEditMode = false
+				m.stageAddMode = false
+				m.stageInput.Blur()
+				return m, nil
+			}
 			if err := m.validateEditor(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
@@ -255,6 +346,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.alertBlockedDaysInput, cmd = m.alertBlockedDaysInput.Update(msg)
 	case 62:
 		m.alertProjectStaleDaysInput, cmd = m.alertProjectStaleDaysInput.Update(msg)
+	case 63:
+		if m.stageEditMode {
+			m.stageInput, cmd = m.stageInput.Update(msg)
+		}
 	}
 
 	// Validate on each keystroke

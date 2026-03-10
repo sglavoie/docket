@@ -108,8 +108,13 @@ func (m *DailyReviewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if ct := m.getTaskAtCursor(); ct != nil {
+		currentStage = ct.Task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"d": DueDatePrefixHints,
 		"g": DailyReviewNavigationPrefixHints,
 		"!": PriorityPrefixHints,

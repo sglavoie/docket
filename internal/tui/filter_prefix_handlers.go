@@ -77,6 +77,23 @@ func handleFilterDueDateKey(key string, f *CommonFilterState) bool {
 	return true
 }
 
+// handleFilterStageKey applies a stage filter based on the key pressed.
+// Keys 1-9 map to stages[0..8], 0 clears. Returns true if the key was handled.
+func handleFilterStageKey(key string, f *CommonFilterState, stages []string) bool {
+	if key == "0" {
+		f.Stage = ""
+		return true
+	}
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
+		idx := int(key[0] - '1')
+		if idx < len(stages) {
+			f.Stage = stages[idx]
+			return true
+		}
+	}
+	return false
+}
+
 // handleFilterAttrKey handles the attribute sub-prefix selection. Returns the
 // new pendingPrefix if a sub-menu was opened, or "" if the key was handled
 // directly (validated toggle, clear). Returns handled=false for unknown keys.
@@ -361,6 +378,8 @@ func dispatchFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *conf
 		return handleFilterStatusKey(key, f)
 	case "Fd":
 		return handleFilterDueDateKey(key, f)
+	case "F.":
+		return handleFilterStageKey(key, f, cfg.Stages)
 	case "Fa":
 		newPrefix, handled := handleFilterAttrKey(key, f)
 		if !handled {
@@ -411,6 +430,8 @@ func handleCommonFilterPrefix(key string, f *CommonFilterState, buildTagCmd func
 		return FilterPrefixResult{Handled: true, NewPrefix: "Fa"}
 	case "S":
 		return FilterPrefixResult{Handled: true, NewPrefix: "FS"}
+	case ".":
+		return FilterPrefixResult{Handled: true, NewPrefix: "F."}
 	case "x":
 		clearCommonFilters(f)
 		return FilterPrefixResult{Handled: true, Changed: true}
@@ -477,8 +498,14 @@ func buildCommonFilterPrefixHints(f *CommonFilterState, includeDueDate, includeS
 		hints = append(hints, PrefixHint{Key: "d", Description: "due-date", Detail: dueDetail, Active: f.DueDate != DueDateAll})
 	}
 
+	stageDetail := "(all)"
+	if f.Stage != "" {
+		stageDetail = f.Stage
+	}
+
 	hints = append(hints,
 		PrefixHint{Key: "a", Description: "attribute", Detail: attrDetail, Active: len(f.Attrs) > 0},
+		PrefixHint{Key: ".", Description: "stage", Detail: stageDetail, Active: f.Stage != ""},
 		PrefixHint{Key: "S", Description: "score", Detail: scoreDetail, Active: f.ScoreMin > 0},
 		PrefixHint{Key: "D", Description: "columns"},
 		PrefixHint{Key: "x", Description: "clear-all"},
@@ -522,6 +549,10 @@ func applyFilterSubPrefix(prefix, key string, f *CommonFilterState, cfg *config.
 // and its sub-prefixes. Set includeDueDate and includeStatus to control which
 // categories are available.
 func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config, includeDueDate, includeStatus bool) PrefixHints {
+	var stages []string
+	if cfg != nil {
+		stages = cfg.Stages
+	}
 	hints := PrefixHints{
 		"F":   buildCommonFilterPrefixHints(f, includeDueDate, includeStatus),
 		"Ft":  FilterTypePrefixHints,
@@ -535,6 +566,7 @@ func buildCommonFilterPrefixPopupHints(f *CommonFilterState, cfg *config.Config,
 		"Fao": FilterAttrScopePrefixHints,
 		"Fap": FilterAttrPointsPrefixHints,
 		"FS":  BuildFilterScorePrefixHints(cfg),
+		"F.":  BuildFilterStagePrefixHints(stages, f.Stage),
 	}
 	if includeStatus {
 		hints["Fs"] = FilterStatusPrefixHints

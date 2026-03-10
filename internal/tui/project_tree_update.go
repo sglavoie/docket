@@ -338,12 +338,17 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 		// Filter prefix - first level
 		return m.handleFilterPrefix(key)
 
-	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS", "F.":
 		return m.handleFilterSubPrefix(prefix, key)
 
 	case "Fv":
 		// Saved filters sub-prefix
 		return m.handleSavedFilterPrefix(key)
+
+	case ".":
+		if cmd, ok := handleStagePrefix(key, m, m.config.Stages); ok {
+			return m, cmd
+		}
 
 	case "s":
 		if cmd, ok := handleSnoozePrefix(key, m); ok {

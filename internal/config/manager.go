@@ -78,6 +78,10 @@ func (m *Manager) Load() (*Config, error) {
 		config.UndoHistoryDepth = &defaultUndoDepth
 	}
 
+	if config.Stages == nil {
+		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
+	}
+
 	// Backfill new fields on builtin scoring profiles from presets
 	presets := scoring.PresetProfiles()
 	for i := range config.ScoringProfiles {

@@ -553,6 +553,13 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 	statusIcon := GetStatusBadge(string(rel.Task.Status), rel.Task.Status.Icon())
 	typeIcon := GetTypeBadge(string(rel.Task.Type), rel.Task.Type.Icon())
 
+	// Stage badge (after type icon)
+	stageBadge := GetStageBadge(rel.Task.Stage)
+	stageSegment := ""
+	if stageBadge != "" {
+		stageSegment = stageBadge + " "
+	}
+
 	maxTitleLen := max(m.width-35, 20)
 
 	// Show project name for cross-project links
@@ -566,7 +573,7 @@ func (m *LinkedTaskSelectorModel) renderRelationLine(rel LinkedTaskRelation, isS
 	}
 
 	title := util.Truncate(rel.Task.Title, maxTitleLen)
-	line := fmt.Sprintf("%s %s %s#%d %s", statusIcon, typeIcon, projectLabel, rel.Task.ShortID, title)
+	line := fmt.Sprintf("%s %s %s%s#%d %s", statusIcon, typeIcon, stageSegment, projectLabel, rel.Task.ShortID, title)
 	if isSelected {
 		line = SelectedStyle.Render(line)
 	}

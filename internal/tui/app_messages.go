@@ -210,6 +210,9 @@ type SettingsMsg struct{}
 // SettingsSavedMsg signals settings were saved.
 type SettingsSavedMsg struct{}
 
+// SettingsStagesMsg opens the settings view on the Stages tab.
+type SettingsStagesMsg struct{}
+
 // =============================================================================
 // Due Date Messages
 // =============================================================================

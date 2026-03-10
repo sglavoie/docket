@@ -17,7 +17,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	// Handle filter sub-prefixes (Ft, Fs, Fd, Fa, Fas-Fap, FS, Fv)
 	switch prefix {
-	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS":
+	case "Ft", "Fs", "Fd", "Fa", "Fas", "Far", "Fae", "Fac", "Fav", "Faw", "Fao", "Fap", "FS", "F.":
 		if prefix == "FS" && key == "C" {
 			var custom *float64
 			if m.config != nil {
@@ -91,6 +91,11 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.activePerspective = perspKey
 			m.rebuildRows()
 			return m, nil
+		}
+
+	case ".":
+		if cmd, ok := handleStagePrefix(key, m, m.config.Stages); ok {
+			return m, cmd
 		}
 
 	case "!":

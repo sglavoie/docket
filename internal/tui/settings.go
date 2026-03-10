@@ -12,10 +12,10 @@ import (
 )
 
 var (
-	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications"}
+	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications", "Stages"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-12, tab 3 → fields 13-14, tab 4 → fields 15-27, tab 5 → fields 28-47, tab 6 → fields 48-62
-	tabFieldStart = []int{0, 4, 8, 13, 15, 28, 48}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-12, tab 3 → fields 13-14, tab 4 → fields 15-27, tab 5 → fields 28-47, tab 6 → fields 48-62, tab 7 → field 63
+	tabFieldStart = []int{0, 4, 8, 13, 15, 28, 48, 63}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
 	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -55,28 +55,36 @@ type SettingsModel struct {
 	config        *config.Config
 	configManager *config.Manager
 
-	editorInput            textinput.Model
-	contextInput           textinput.Model
-	undoDepthInput         textinput.Model
-	dueSoonInput           textinput.Model
-	futureInput            textinput.Model
-	oldDaysInput           textinput.Model
-	completedHoursInput    textinput.Model
-	recentActivityInput    textinput.Model
-	recentActivityShowAll  bool // Whether to show completed tasks in recent activity by default
-	linkedTaskJump         bool // Whether to jump to new task after linked creation
-	maxPinnedInput             textinput.Model
-	maxRecentTaskVisitsInput   textinput.Model
-	attachmentEditorInput      textinput.Model
-	codeEditorInput        textinput.Model
-	defaultViewCursor      int      // Index into defaultProjectViewOptions
-	outlinerCollapsed      [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
-	treeColumnDefaults     [13]bool // Global default column visibility for tree view
-	outlinerColumnDefaults [13]bool // Global default column visibility for outliner view
-	treePriorityMode       int      // 0=All, 1=Conditional, 2=Hidden
-	outlinerPriorityMode   int      // 0=All, 1=Conditional, 2=Hidden
-	contexts               []string
-	contextCursor          int // -1 for custom mode, 0+ for selecting from list
+	editorInput              textinput.Model
+	contextInput             textinput.Model
+	undoDepthInput           textinput.Model
+	dueSoonInput             textinput.Model
+	futureInput              textinput.Model
+	oldDaysInput             textinput.Model
+	completedHoursInput      textinput.Model
+	recentActivityInput      textinput.Model
+	recentActivityShowAll    bool // Whether to show completed tasks in recent activity by default
+	linkedTaskJump           bool // Whether to jump to new task after linked creation
+	maxPinnedInput           textinput.Model
+	maxRecentTaskVisitsInput textinput.Model
+	attachmentEditorInput    textinput.Model
+	codeEditorInput          textinput.Model
+	defaultViewCursor        int      // Index into defaultProjectViewOptions
+	outlinerCollapsed        [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
+	treeColumnDefaults       [13]bool // Global default column visibility for tree view
+	outlinerColumnDefaults   [13]bool // Global default column visibility for outliner view
+	treePriorityMode         int      // 0=All, 1=Conditional, 2=Hidden
+	outlinerPriorityMode     int      // 0=All, 1=Conditional, 2=Hidden
+	contexts                 []string
+	contextCursor            int // -1 for custom mode, 0+ for selecting from list
+
+	// Stages settings (Stages tab, index 63)
+	stages             []string
+	stageInput         textinput.Model
+	stageCursor        int
+	stageEditMode      bool // true when adding or editing a stage
+	stageAddMode       bool // true when adding (vs editing)
+	stageConfirmDelete ConfirmDialog
 
 	// Alert settings (Notifications tab, indices 47-61)
 	alertDailyReviewEnabled    bool
@@ -216,6 +224,16 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		outlinerCollapsed[i] = collapsedMap[sectionName]
 	}
 
+	// Stage input
+	stageInput := textinput.New()
+	stageInput.Placeholder = "Stage name"
+	stageInput.CharLimit = 30
+	stageInput.Width = 30
+
+	// Copy stages from config
+	stages := make([]string, len(cfg.Stages))
+	copy(stages, cfg.Stages)
+
 	// Alert setting inputs
 	alertDailyReviewHourInput := textinput.New()
 	alertDailyReviewHourInput.Placeholder = strconv.Itoa(config.DefaultAlertDailyReviewHour)
@@ -276,6 +294,8 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		outlinerColumnDefaults:     outlinerColumnDefaults,
 		treePriorityMode:           priorityModeToCursor(cfg.TreePriorityMode),
 		outlinerPriorityMode:       priorityModeToCursor(cfg.OutlinerPriorityMode),
+		stages:                     stages,
+		stageInput:                 stageInput,
 		alertDailyReviewEnabled:    cfg.GetAlertDailyReviewEnabled(),
 		alertDailyReviewHourInput:  alertDailyReviewHourInput,
 		alertWeeklyReviewEnabled:   cfg.GetAlertWeeklyReviewEnabled(),
@@ -354,6 +374,10 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		if m.config.OutlinerPriorityMode == PriorityModeConditional {
 			m.config.OutlinerPriorityMode = ""
 		}
+
+		// Persist stages
+		m.config.Stages = make([]string, len(m.stages))
+		copy(m.config.Stages, m.stages)
 
 		// Persist alert settings
 		m.config.AlertDailyReviewEnabled = boolPtr(m.alertDailyReviewEnabled)
@@ -456,4 +480,9 @@ func boolPtr(b bool) *bool { return &b }
 func (m *SettingsModel) HasTextInput() bool     { return true }
 func (m *SettingsModel) ShouldCaptureEsc() bool { return true }
 func (m *SettingsModel) IsFullHeight() bool     { return false }
-func (m *SettingsModel) StatusBarLabel() string { return "Settings" }
+func (m *SettingsModel) StatusBarLabel() string  { return "Settings" }
+
+// GetConfirmDialog implements ConfirmDialogProvider for the settings view.
+func (m *SettingsModel) GetConfirmDialog() *ConfirmDialog {
+	return &m.stageConfirmDelete
+}

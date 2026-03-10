@@ -25,8 +25,13 @@ func (m *PriorityViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if pt := m.getTaskAtCursor(); pt != nil {
+		currentStage = pt.Task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"g": PriorityViewNavigationPrefixHints,
 		"d": DueDatePrefixHints,
 		"m": SecondaryViewMovePrefixHints,
@@ -76,12 +81,13 @@ func (m *PriorityViewModel) renderSuggestionSection() string {
 
 	// Build the task line
 	taskLine := TaskLine{
-		Task:      task,
-		MaxTitle:  titleWidth,
-		Prefix:    star,
-		DueStr:    dueStr,
-		ViewWidth: boxWidth,
-		Flash:     m.cursorFlash,
+		Task:       task,
+		MaxTitle:   titleWidth,
+		Prefix:     star,
+		StageBadge: GetStageBadge(task.Stage),
+		DueStr:     dueStr,
+		ViewWidth:  boxWidth,
+		Flash:      m.cursorFlash,
 	}.Render()
 
 	// Reason line (muted, indented)
@@ -217,6 +223,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 			IsSelected:  isSelected,
 			MaxTitle:    maxTitleLen,
 			PreBadges:   fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
+			StageBadge:  GetStageBadge(pt.Task.Stage),
 			PostTitle:   postTitle,
 			Flash:       m.cursorFlash,
 			SearchQuery: m.searchQuery,
@@ -315,6 +322,7 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 		IsSelected:  isSelected,
 		MaxTitle:    adjustedMaxTitleLen,
 		Prefix:      starPrefix,
+		StageBadge:  GetStageBadge(task.Stage),
 		PostTitle:   postTitle,
 		DueStr:      dueStr,
 		ViewWidth:   m.Width(),

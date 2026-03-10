@@ -156,6 +156,7 @@ type TaskLine struct {
 	DueStr          string // right-aligned due date string (pre-styled by caller)
 	ViewWidth       int    // total view width for due date right-alignment
 	StatusBadge     string // override computed status badge (pre-styled by caller)
+	StageBadge      string // pre-styled stage badge (from GetStageBadge)
 	HideLowPriority bool   // only show priority badge for priority ≤ 2
 	Flash           bool   // cursor flash highlight active
 	SearchQuery     string // when set, highlight matching substring in title
@@ -237,6 +238,7 @@ func RenderCrossProjectTaskLine(
 		PreBadges:       preBadges,
 		PostTitle:       postTitle,
 		StatusBadge:     opts.StatusBadge,
+		StageBadge:      GetStageBadge(task.Stage),
 		DueStr:          opts.DueStr,
 		ViewWidth:       width,
 		HideLowPriority: opts.HideLowPriority,
@@ -274,7 +276,13 @@ func (tl TaskLine) Render() string {
 		prioritySegment = priorityBadge + " "
 	}
 
-	line := fmt.Sprintf("%s%s%s%s %s %s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, prioritySegment, title, tl.PostTitle)
+	// Build stage segment: "badge " when present, "" when empty
+	stageSegment := ""
+	if tl.StageBadge != "" {
+		stageSegment = tl.StageBadge + " "
+	}
+
+	line := fmt.Sprintf("%s%s%s%s %s %s%s%s%s", tl.Prefix, cursor, tl.PreBadges, statusIcon, typeIcon, stageSegment, prioritySegment, title, tl.PostTitle)
 	if tl.DueStr != "" {
 		line = fmt.Sprintf("%-*s %s", tl.ViewWidth-15, line, tl.DueStr)
 	}

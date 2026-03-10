@@ -221,6 +221,16 @@ func (m *DependencySelectorModel) renderTaskList() string {
 		// Status icon with badge style
 		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 
+		// Type icon with badge style
+		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
+
+		// Stage badge (after type icon)
+		stageBadge := GetStageBadge(t.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
+
 		// Task info
 		idStr := MutedStyle.Render(fmt.Sprintf("#%d", t.ShortID))
 		title := t.Title
@@ -228,7 +238,7 @@ func (m *DependencySelectorModel) renderTaskList() string {
 			title = title[:47] + "..."
 		}
 
-		line := fmt.Sprintf("%s%s %s %s %s", cursor, checkbox, statusIcon, idStr, title)
+		line := fmt.Sprintf("%s%s %s %s%s %s %s", cursor, checkbox, typeIcon, stageSegment, statusIcon, idStr, title)
 		if i == m.Cursor {
 			line = BoldStyle.Render(line)
 		}

@@ -160,7 +160,7 @@ func (m *CommandPaletteModel) buildFooter() string {
 
 	// Build count summary (only non-zero categories)
 	type catLabel struct {
-		cat            ItemCategory
+		cat              ItemCategory
 		singular, plural string
 	}
 	catLabels := []catLabel{
@@ -722,11 +722,17 @@ func (m *CommandPaletteModel) renderItemContentWithHighlight(item PaletteItem, n
 			totalLen += dueLen
 		}
 
-		icons := fmt.Sprintf("%s %s ",
+		stageBadge := GetStageBadge(item.Task.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
+		icons := fmt.Sprintf("%s %s%s ",
 			GetTypeBadge(string(item.Task.Type), item.Task.Type.Icon()),
+			stageSegment,
 			GetStatusBadge(string(item.Task.Status), item.Task.Status.Icon()))
 		content.WriteString(icons)
-		totalLen += 4
+		totalLen += 4 + lipgloss.Width(stageSegment)
 	}
 
 	// Give the name its full length; description gets whatever space remains

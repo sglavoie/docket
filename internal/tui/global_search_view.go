@@ -246,6 +246,13 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
+		// Stage badge (after type icon)
+		stageBadge := GetStageBadge(task.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
+
 		// Status icon with badge style
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
@@ -257,7 +264,7 @@ func (m *GlobalSearchModel) renderTaskList(paneHeight int) string {
 		shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", task.ShortID))
 
 		// Build prefix to measure its actual visual width
-		prefix := fmt.Sprintf("%s%s %s %s %s ", cursor, typeIcon, statusIcon, shortID, projectName)
+		prefix := fmt.Sprintf("%s%s %s%s %s %s ", cursor, typeIcon, stageSegment, statusIcon, shortID, projectName)
 		prefixWidth := lipgloss.Width(prefix)
 
 		// Title (truncated) - use measured prefix width for accuracy

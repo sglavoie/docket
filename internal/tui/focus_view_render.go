@@ -235,8 +235,13 @@ func (m *FocusViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
+	var currentStage string
+	if ft := m.getTaskAtCursor(); ft != nil {
+		currentStage = ft.Task.Stage
+	}
 	hints := PrefixHints{
 		",": StatusPrefixHints,
+		".": BuildStagePrefixHints(m.config.Stages, currentStage),
 		"d": DueDatePrefixHints,
 		"g": FocusViewNavigationPrefixHints,
 		"m": SecondaryViewMovePrefixHints,

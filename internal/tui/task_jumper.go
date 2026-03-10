@@ -292,6 +292,13 @@ func (m *TaskJumperModel) renderTaskList() string {
 		// Type icon with badge style
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 
+		// Stage badge (after type icon)
+		stageBadge := GetStageBadge(task.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
+
 		// Status icon with badge style
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
@@ -320,7 +327,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 		}
 
 		// Build line
-		line := fmt.Sprintf("%s%s %s %s %s", cursor, typeIcon, statusIcon, shortID, titleRendered)
+		line := fmt.Sprintf("%s%s %s%s %s %s", cursor, typeIcon, stageSegment, statusIcon, shortID, titleRendered)
 
 		if i == m.cursor {
 			line = TaskJumperSelectedStyle.Render(line)

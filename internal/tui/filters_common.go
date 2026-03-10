@@ -23,6 +23,7 @@ type CommonFilterState struct {
 	Attrs      map[string]string // type.attribute -> value
 	ScoreMin   float64           // minimum score threshold (0 = no filter)
 	Actionable bool              // only show tasks ready to work on (no blockers)
+	Stage      string            // filter by workflow stage
 }
 
 // passesCommonFilters checks if a task passes the shared filter criteria.
@@ -65,6 +66,9 @@ func passesCommonFilters(task *models.Task, f *CommonFilterState, projectID stri
 			}
 		}
 	}
+	if f.Stage != "" && task.Stage != f.Stage {
+		return false
+	}
 	if !passesAttrFilters(task, f.Attrs) {
 		return false
 	}
@@ -87,7 +91,8 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.DueDate != DueDateAll ||
 		len(f.Attrs) > 0 ||
 		f.ScoreMin > 0 ||
-		f.Actionable
+		f.Actionable ||
+		f.Stage != ""
 }
 
 // clearCommonFilters resets all common filters to defaults.
@@ -100,6 +105,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.Attrs = make(map[string]string)
 	f.ScoreMin = 0
 	f.Actionable = false
+	f.Stage = ""
 }
 
 // commonFilterParts returns the list of active filter description strings.
@@ -144,6 +150,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.Actionable {
 		parts = append(parts, "ready")
+	}
+	if f.Stage != "" {
+		parts = append(parts, "stage:"+f.Stage)
 	}
 
 	return parts

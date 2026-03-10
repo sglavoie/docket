@@ -77,6 +77,31 @@ func applyPriorityChange(pf persistFn, project *models.Project, taskID string, p
 	return result
 }
 
+// applyStageChange sets the workflow stage on a task.
+func applyStageChange(pf persistFn, project *models.Project, taskID string, stage string) TaskOpResult {
+	task := project.GetTaskByID(taskID)
+	if task == nil {
+		return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+	}
+	if task.Stage == stage {
+		return TaskOpResult{}
+	}
+
+	result := pf(project, taskID, func(t *models.Task) {
+		t.Stage = stage
+	})
+	if result.Err != nil || result.StatusMessage != "" {
+		return result
+	}
+
+	if stage == "" {
+		result.StatusMessage = "Stage cleared"
+	} else {
+		result.StatusMessage = fmt.Sprintf("Stage set to %s", stage)
+	}
+	return result
+}
+
 // applyQuickDueDate sets the due date relative to today.
 func applyQuickDueDate(pf persistFn, project *models.Project, taskID string, daysFromNow int) TaskOpResult {
 	newDate := time.Now().AddDate(0, 0, daysFromNow)

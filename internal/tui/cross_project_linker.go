@@ -545,8 +545,13 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 		}
 		statusIcon := GetStatusBadge(string(t.Status), t.Status.Icon())
 		typeIcon := GetTypeBadge(string(t.Type), t.Type.Icon())
+		stageBadge := GetStageBadge(t.Stage)
+		stageSegment := ""
+		if stageBadge != "" {
+			stageSegment = stageBadge + " "
+		}
 		title := util.Truncate(t.Title, m.Width()-35)
-		line := fmt.Sprintf("%s%s %s #%d %s", cursor, statusIcon, typeIcon, t.ShortID, title)
+		line := fmt.Sprintf("%s%s %s %s#%d %s", cursor, statusIcon, typeIcon, stageSegment, t.ShortID, title)
 		if i == m.taskCursor {
 			line = BoldStyle.Render(line)
 		}
