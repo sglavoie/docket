@@ -420,12 +420,13 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 	}
 	relTime := MutedStyle.Render("  " + storage.FormatRelativeTime(task.UpdatedAt))
 	return TaskLine{
-		Task:       task,
-		IsSelected: selected,
-		MaxTitle:   maxTitleLen,
-		PreBadges:  preBadges,
-		PostTitle:  relTime,
-		ViewWidth:  m.Width(),
-		Flash:      m.cursorFlash,
+		Task:        task,
+		IsSelected:  selected,
+		MaxTitle:    maxTitleLen,
+		PreBadges:   preBadges,
+		PostTitle:   relTime,
+		ViewWidth:   m.Width(),
+		Flash:       m.cursorFlash,
+		SearchQuery: m.SearchQuery(),
 	}.Render()
 }

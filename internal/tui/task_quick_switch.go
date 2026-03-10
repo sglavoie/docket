@@ -127,6 +127,7 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 	if m.quickSwitchFilter == "" {
 		// No filter: show all entries in order
 		m.quickSwitchFiltered = make([]int, len(entries))
+		m.quickSwitchTitlePositions = make([][]int, len(entries))
 		for i := range entries {
 			m.quickSwitchFiltered[i] = i
 		}
@@ -135,8 +136,9 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 
 	// Score each entry against the filter
 	type scored struct {
-		idx   int
-		score int
+		idx            int
+		score          int
+		titlePositions []int
 	}
 	var pinned, unpinned []scored
 	for i, entry := range entries {
@@ -145,7 +147,9 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 		if score <= 0 {
 			continue
 		}
-		s := scored{idx: i, score: score}
+		// Get match positions for just the title (not the combined text)
+		_, titlePos := fuzzy.ScoreTermsWithPositions(entry.Task.Title, m.quickSwitchFilter)
+		s := scored{idx: i, score: score, titlePositions: titlePos}
 		if entry.Pinned {
 			pinned = append(pinned, s)
 		} else {
@@ -157,12 +161,12 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 	sort.Slice(pinned, func(i, j int) bool { return pinned[i].score > pinned[j].score })
 	sort.Slice(unpinned, func(i, j int) bool { return unpinned[i].score > unpinned[j].score })
 
-	m.quickSwitchFiltered = make([]int, 0, len(pinned)+len(unpinned))
-	for _, s := range pinned {
+	all := append(pinned, unpinned...)
+	m.quickSwitchFiltered = make([]int, 0, len(all))
+	m.quickSwitchTitlePositions = make([][]int, 0, len(all))
+	for _, s := range all {
 		m.quickSwitchFiltered = append(m.quickSwitchFiltered, s.idx)
-	}
-	for _, s := range unpinned {
-		m.quickSwitchFiltered = append(m.quickSwitchFiltered, s.idx)
+		m.quickSwitchTitlePositions = append(m.quickSwitchTitlePositions, s.titlePositions)
 	}
 }
 
@@ -545,13 +549,41 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 
 			// Truncate title if needed
 			taskTitle := entry.Task.Title
-			if len(taskTitle) > adjustedTitleWidth {
-				taskTitle = taskTitle[:adjustedTitleWidth-3] + "..."
+			titleRunes := []rune(taskTitle)
+			truncated := false
+			if len(titleRunes) > adjustedTitleWidth {
+				titleRunes = titleRunes[:adjustedTitleWidth-3]
+				truncated = true
 			}
 
-			// Pad title to fixed width for alignment
-			if len(taskTitle) < adjustedTitleWidth {
-				taskTitle += strings.Repeat(" ", adjustedTitleWidth-len(taskTitle))
+			// Apply fuzzy match highlighting to title
+			if i < len(m.quickSwitchTitlePositions) && len(m.quickSwitchTitlePositions[i]) > 0 {
+				// Filter positions to only those within the visible (possibly truncated) range
+				maxPos := len(titleRunes)
+				var validPositions []int
+				for _, p := range m.quickSwitchTitlePositions[i] {
+					if p < maxPos {
+						validPositions = append(validPositions, p)
+					}
+				}
+				taskTitle = HighlightText(string(titleRunes), validPositions, lipgloss.NewStyle())
+				if truncated {
+					taskTitle += "..."
+				}
+				// Pad to fixed width using visual width (ANSI codes don't count)
+				visualWidth := lipgloss.Width(taskTitle)
+				if visualWidth < adjustedTitleWidth {
+					taskTitle += strings.Repeat(" ", adjustedTitleWidth-visualWidth)
+				}
+			} else {
+				taskTitle = string(titleRunes)
+				if truncated {
+					taskTitle += "..."
+				}
+				// Pad title to fixed width for alignment
+				if len([]rune(taskTitle)) < adjustedTitleWidth {
+					taskTitle += strings.Repeat(" ", adjustedTitleWidth-len([]rune(taskTitle)))
+				}
 			}
 
 			// Right-align project name within its column

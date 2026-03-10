@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
@@ -157,6 +158,7 @@ type TaskLine struct {
 	StatusBadge     string // override computed status badge (pre-styled by caller)
 	HideLowPriority bool   // only show priority badge for priority ≤ 2
 	Flash           bool   // cursor flash highlight active
+	SearchQuery     string // when set, highlight matching substring in title
 }
 
 // CrossProjectTaskLineOpts configures optional elements for a cross-project task line.
@@ -172,6 +174,7 @@ type CrossProjectTaskLineOpts struct {
 	DueStr          string // right-aligned context string, already styled by caller
 	HideLowPriority bool   // omit priority badge when priority > 2
 	Flash           bool   // cursor flash highlight active
+	SearchQuery     string // when set, highlight matching substring in title
 }
 
 // RenderCrossProjectTaskLine renders a standard task line for views that aggregate
@@ -238,6 +241,7 @@ func RenderCrossProjectTaskLine(
 		ViewWidth:       width,
 		HideLowPriority: opts.HideLowPriority,
 		Flash:           opts.Flash,
+		SearchQuery:     opts.SearchQuery,
 	}.Render()
 }
 
@@ -260,6 +264,9 @@ func (tl TaskLine) Render() string {
 
 	maxTitleLen := max(tl.MaxTitle, 10)
 	title := util.Truncate(tl.Task.Title, maxTitleLen)
+	if tl.SearchQuery != "" {
+		title = HighlightSubstring(title, tl.SearchQuery, lipgloss.NewStyle())
+	}
 
 	// Build priority segment: "badge " when present, "" when hidden
 	prioritySegment := ""

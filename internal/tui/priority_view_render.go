@@ -5,6 +5,7 @@ import (
 	"maps"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -212,12 +213,13 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 		}
 
 		line := TaskLine{
-			Task:       pt.Task,
-			IsSelected: isSelected,
-			MaxTitle:   maxTitleLen,
-			PreBadges:  fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
-			PostTitle:  postTitle,
-			Flash:      m.cursorFlash,
+			Task:        pt.Task,
+			IsSelected:  isSelected,
+			MaxTitle:    maxTitleLen,
+			PreBadges:   fmt.Sprintf("%d. %s ", rank+1, scoreBadge),
+			PostTitle:   postTitle,
+			Flash:       m.cursorFlash,
+			SearchQuery: m.searchQuery,
 		}.Render()
 		lines = append(lines, line)
 		*currentIndex++
@@ -309,14 +311,15 @@ func (m *PriorityViewModel) renderTaskLine(pt *PriorityTask, isOverdue bool, isS
 	}
 
 	return TaskLine{
-		Task:       task,
-		IsSelected: isSelected,
-		MaxTitle:   adjustedMaxTitleLen,
-		Prefix:     starPrefix,
-		PostTitle:  postTitle,
-		DueStr:     dueStr,
-		ViewWidth:  m.Width(),
-		Flash:      m.cursorFlash,
+		Task:        task,
+		IsSelected:  isSelected,
+		MaxTitle:    adjustedMaxTitleLen,
+		Prefix:      starPrefix,
+		PostTitle:   postTitle,
+		DueStr:      dueStr,
+		ViewWidth:   m.Width(),
+		Flash:       m.cursorFlash,
+		SearchQuery: m.searchQuery,
 	}.Render()
 }
 
@@ -336,6 +339,9 @@ func (m *PriorityViewModel) renderWaitingOnTask(pt *PriorityTask) string {
 		maxTitleLen = 10
 	}
 	title := util.Truncate(task.Title, maxTitleLen)
+	if m.searchQuery != "" {
+		title = HighlightSubstring(title, m.searchQuery, lipgloss.NewStyle())
+	}
 
 	// Blocking reason
 	blockingReason := m.getBlockingReason(task)

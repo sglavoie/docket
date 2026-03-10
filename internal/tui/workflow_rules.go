@@ -504,8 +504,14 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 		}
 
 		if i == m.cursor {
-			line := SelectedItemTextStyle.Render(fmt.Sprintf("▸ %s %s%s", status, defaultMarker, name))
-			rowBuilder.WriteString(line)
+			prefix := fmt.Sprintf("▸ %s %s", status, defaultMarker)
+			var nameHighlighted string
+			if m.searchQuery != "" {
+				nameHighlighted = HighlightSubstring(name, m.searchQuery, SelectedItemTextStyle)
+			} else {
+				nameHighlighted = SelectedItemTextStyle.Render(name)
+			}
+			rowBuilder.WriteString(SelectedItemTextStyle.Render(prefix) + nameHighlighted)
 			rowBuilder.WriteString("\n")
 			// Show summary for selected rule on narrow screens only
 			if !m.isWideScreen() {
@@ -514,11 +520,23 @@ func (m *WorkflowRulesModel) renderRulesList(paneHeight int) string {
 				if len(summary) > maxSummaryLen {
 					summary = summary[:maxSummaryLen-3] + "..."
 				}
-				rowBuilder.WriteString(MutedStyle.Render(fmt.Sprintf("    %s", summary)))
+				var summaryRendered string
+				if m.searchQuery != "" {
+					summaryRendered = HighlightSubstring(summary, m.searchQuery, MutedStyle)
+				} else {
+					summaryRendered = MutedStyle.Render(summary)
+				}
+				fmt.Fprintf(&rowBuilder, "    %s", summaryRendered)
 				rowBuilder.WriteString("\n")
 			}
 		} else {
-			fmt.Fprintf(&rowBuilder, "  %s %s%s", status, defaultMarker, name)
+			var nameHighlighted string
+			if m.searchQuery != "" {
+				nameHighlighted = HighlightSubstring(name, m.searchQuery, lipgloss.NewStyle())
+			} else {
+				nameHighlighted = name
+			}
+			fmt.Fprintf(&rowBuilder, "  %s %s%s", status, defaultMarker, nameHighlighted)
 			rowBuilder.WriteString("\n")
 		}
 	}

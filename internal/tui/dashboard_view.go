@@ -525,7 +525,13 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 			displayName = p.Name[:maxNameWidth-1] + "…"
 		}
 		namePadding := max(maxNameWidth-len(displayName), 0)
-		nameRendered := iconRendered + style.Render(displayName) + strings.Repeat(" ", namePadding)
+		var nameStr string
+		if m.SearchQuery() != "" {
+			nameStr = HighlightSubstring(displayName, m.SearchQuery(), style)
+		} else {
+			nameStr = style.Render(displayName)
+		}
+		nameRendered := iconRendered + nameStr + strings.Repeat(" ", namePadding)
 
 		// Context badge, padded/truncated
 		contextRendered := ""
@@ -538,7 +544,11 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 					ctxStr = ctxStr[:maxContextWidth]
 				}
 				ctxPadding := max(maxContextWidth-len(ctxStr), 0)
-				contextRendered = MutedStyle.Render(ctxStr) + strings.Repeat(" ", ctxPadding)
+				if m.SearchQuery() != "" {
+					contextRendered = HighlightSubstring(ctxStr, m.SearchQuery(), MutedStyle) + strings.Repeat(" ", ctxPadding)
+				} else {
+					contextRendered = MutedStyle.Render(ctxStr) + strings.Repeat(" ", ctxPadding)
+				}
 			} else {
 				contextRendered = strings.Repeat(" ", maxContextWidth)
 			}
