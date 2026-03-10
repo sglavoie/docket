@@ -192,6 +192,7 @@ type FocusQueueItem struct {
 type RecentTaskVisit struct {
 	TaskID    string `json:"task_id"`
 	ProjectID string `json:"project_id"`
+	Pinned    bool   `json:"pinned,omitempty"`
 }
 
 // NewConfig creates a new configuration with default values.

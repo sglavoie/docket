@@ -106,10 +106,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return TutorDismissedMsg{}
 					}
 				}
-				m.showQuickSwitch = !m.showQuickSwitch
-				m.quickSwitchCursor = 0
 				if m.showQuickSwitch {
-					m.refreshRecentTaskVisits()
+					m.showQuickSwitch = false
+				} else {
+					m.openQuickSwitch()
 				}
 				return m, nil
 			}

@@ -599,9 +599,7 @@ func (m *AppModel) navCommands() []Command {
 			Category:    CategoryNavigation,
 			Aliases:     []string{"quick switch", "task switcher", "recent visits"},
 			Handler: func() tea.Msg {
-				m.showQuickSwitch = true
-				m.quickSwitchCursor = 0
-				m.refreshRecentTaskVisits()
+				m.openQuickSwitch()
 				return nil
 			},
 		},

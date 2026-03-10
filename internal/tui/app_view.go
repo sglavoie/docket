@@ -64,6 +64,11 @@ func (m *AppModel) View() string {
 	// Overlay quick-switch popup if active
 	if popup := m.renderQuickSwitchPopup(); popup != "" {
 		content = OverlayPopup(content, popup, m.width, targetContentHeight)
+		// Overlay prefix hints on top of quick-switch popup when prefix is pending
+		if m.quickSwitchPendingPrefix != "" {
+			prefixPopup := RenderPrefixPopup(m.quickSwitchPendingPrefix, PrefixHints{",": StatusPrefixHints, "!": PriorityPrefixHints}, m.width, targetContentHeight)
+			content = OverlayPopup(content, prefixPopup, m.width, targetContentHeight)
+		}
 	}
 
 	// Overlay project cycle popup if active (bottom-left to avoid covering sidebar)

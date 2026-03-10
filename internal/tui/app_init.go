@@ -81,7 +81,7 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil {
-				app.recentTaskVisits = append(app.recentTaskVisits, RecentTaskVisitEntry{Task: task, Project: p})
+				app.recentTaskVisits = append(app.recentTaskVisits, RecentTaskVisitEntry{Task: task, Project: p, Pinned: item.Pinned})
 			}
 			break
 		}
