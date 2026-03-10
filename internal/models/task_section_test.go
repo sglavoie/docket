@@ -3,7 +3,10 @@ package models
 import "testing"
 
 func TestNewTaskHasEmptySection(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// New tasks start in Active view (empty section)
 	if task.Section != "" {
@@ -12,7 +15,10 @@ func TestNewTaskHasEmptySection(t *testing.T) {
 }
 
 func TestTaskCompleteMovesToCompletedFromNext(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext // Explicitly place in Next
 
 	if task.Section != SectionNext {
@@ -30,7 +36,10 @@ func TestTaskCompleteMovesToCompletedFromNext(t *testing.T) {
 }
 
 func TestTaskCompleteMovesToCompletedFromActive(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "" // Active section
 
 	task.Complete()
@@ -41,7 +50,10 @@ func TestTaskCompleteMovesToCompletedFromActive(t *testing.T) {
 }
 
 func TestTaskStartAutoTriageFromNext(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext // Explicitly place in Next
 
 	if task.Section != SectionNext {
@@ -59,7 +71,10 @@ func TestTaskStartAutoTriageFromNext(t *testing.T) {
 }
 
 func TestTaskStartPreservesNonNextSection(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "Active"
 
 	task.Start()
@@ -70,7 +85,10 @@ func TestTaskStartPreservesNonNextSection(t *testing.T) {
 }
 
 func TestTaskCancelMovesToCompletedFromNext(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext // Explicitly place in Next
 
 	if task.Section != SectionNext {
@@ -88,7 +106,10 @@ func TestTaskCancelMovesToCompletedFromNext(t *testing.T) {
 }
 
 func TestTaskCancelMovesToCompletedFromCustomSection(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "CustomSection"
 
 	task.Cancel()
@@ -99,7 +120,10 @@ func TestTaskCancelMovesToCompletedFromCustomSection(t *testing.T) {
 }
 
 func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext // Explicitly place in Next
 
 	if task.Section != SectionNext {
@@ -118,7 +142,10 @@ func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 }
 
 func TestTaskReopenMovesToInbox(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "" // Already triaged out of Next
 	task.Status = StatusDone
 
@@ -134,7 +161,10 @@ func TestTaskReopenMovesToInbox(t *testing.T) {
 }
 
 func TestTaskWithEmptySectionMovesToCompleted(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "" // Active section
 
 	task.Complete()
@@ -145,7 +175,10 @@ func TestTaskWithEmptySectionMovesToCompleted(t *testing.T) {
 }
 
 func TestTaskCompleteFromWaitingMovesToCompleted(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionWaiting
 
 	task.Complete()
@@ -156,7 +189,10 @@ func TestTaskCompleteFromWaitingMovesToCompleted(t *testing.T) {
 }
 
 func TestTaskCompleteFromSomedayMovesToCompleted(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionSomeday
 
 	task.Complete()
@@ -167,7 +203,10 @@ func TestTaskCompleteFromSomedayMovesToCompleted(t *testing.T) {
 }
 
 func TestTaskStartAutoTriageFromWaiting(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionWaiting
 
 	task.Start()
@@ -178,7 +217,10 @@ func TestTaskStartAutoTriageFromWaiting(t *testing.T) {
 }
 
 func TestTaskStartAutoTriageFromSomeday(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionSomeday
 
 	task.Start()

@@ -75,7 +75,10 @@ func TestSaveProject_WithSections(t *testing.T) {
 		"Done":   "blue",
 	}
 
-	task := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.CustomSection = "Active"
 	project.Tasks = []*models.Task{task}
 
@@ -213,7 +216,10 @@ func TestRestoreFromBackup(t *testing.T) {
 	}
 
 	// Modify project - add a task
-	newTask := models.NewTask("new-task", project.NextShortID, models.TaskTypeTask, "New Task")
+	newTask, err := models.NewTask("new-task", project.NextShortID, models.TaskTypeTask, "New Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, newTask)
 	project.NextShortID++
 	if err := SaveProject(project); err != nil {
@@ -246,7 +252,10 @@ func TestRestoreFromBackup_Reversible(t *testing.T) {
 	project.Path = filepath.Join(dir, "reversible-test")
 
 	// Create initial state with 1 task
-	task1 := models.NewTask("task-1", 1, models.TaskTypeTask, "Task One")
+	task1, err := models.NewTask("task-1", 1, models.TaskTypeTask, "Task One")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = []*models.Task{task1}
 	project.NextShortID = 2
 	if err := SaveProject(project); err != nil {
@@ -257,7 +266,10 @@ func TestRestoreFromBackup_Reversible(t *testing.T) {
 	}
 
 	// Modify to 2 tasks
-	task2 := models.NewTask("task-2", 2, models.TaskTypeTask, "Task Two")
+	task2, err := models.NewTask("task-2", 2, models.TaskTypeTask, "Task Two")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task2)
 	if err := SaveProject(project); err != nil {
 		t.Fatalf("SaveProject failed: %v", err)

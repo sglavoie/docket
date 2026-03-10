@@ -84,7 +84,10 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	task := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeAction, title)
+	task, err := models.NewTask(uuid.New().String(), targetProject.GetNextShortID(), models.TaskTypeAction, title)
+	if err != nil {
+		return err
+	}
 	if boardAddURL != "" {
 		task.URL = boardAddURL
 	}

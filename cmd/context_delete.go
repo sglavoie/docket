@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
+var contextDeleteForce bool
+
 var contextDeleteCmd = &cobra.Command{
 	Use:     "delete <name>",
 	Aliases: []string{"del", "rm"},
@@ -23,6 +25,7 @@ Examples:
 
 func init() {
 	contextCmd.AddCommand(contextDeleteCmd)
+	contextDeleteCmd.Flags().BoolVarP(&contextDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runContextDelete(cmd *cobra.Command, args []string) error {
@@ -31,6 +34,11 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err
+	}
+
+	if !ConfirmYN(fmt.Sprintf("Delete context '%s'? [y/N]: ", name), contextDeleteForce) {
+		fmt.Println("Canceled.")
+		return nil
 	}
 
 	if !cfg.DeleteCustomContext(name) {

@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
+var templateDeleteForce bool
+
 var templateDeleteCmd = &cobra.Command{
 	Use:     "delete <id>",
 	Aliases: []string{"rm", "remove"},
@@ -24,6 +26,7 @@ Example:
 
 func init() {
 	templateCmd.AddCommand(templateDeleteCmd)
+	templateDeleteCmd.Flags().BoolVarP(&templateDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runTemplateDelete(cmd *cobra.Command, args []string) error {
@@ -40,6 +43,12 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	templateName := t.Name
+
+	if !ConfirmYN(fmt.Sprintf("Delete template '%s'? [y/N]: ", templateName), templateDeleteForce) {
+		fmt.Println("Canceled.")
+		return nil
+	}
+
 	if !cfg.DeleteTaskTemplate(templateID) {
 		return fmt.Errorf("failed to delete task template: %s", templateID)
 	}

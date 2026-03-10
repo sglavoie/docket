@@ -131,7 +131,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	// Create task
 	taskID := uuid.New().String()
 	shortID := project.GetNextShortID()
-	task := models.NewTask(taskID, shortID, taskType, title)
+	task, err := models.NewTask(taskID, shortID, taskType, title)
+	if err != nil {
+		return err
+	}
 	task.Priority = priority
 
 	// Add tags from template first, then flags

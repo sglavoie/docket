@@ -7,7 +7,10 @@ import (
 )
 
 func TestNewTask(t *testing.T) {
-	task := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if task.ID != "test-id" {
 		t.Errorf("expected ID 'test-id', got '%s'", task.ID)
@@ -40,8 +43,8 @@ func TestValidateTaskTitle(t *testing.T) {
 	if err := ValidateTaskTitle(strings.Repeat("a", MaxTaskTitleLength)); err != nil {
 		t.Errorf("expected no error for max-length title, got: %v", err)
 	}
-	if err := ValidateTaskTitle(""); err != nil {
-		t.Errorf("expected no error for empty title, got: %v", err)
+	if err := ValidateTaskTitle(""); err == nil {
+		t.Error("expected error for empty title")
 	}
 
 	// Too long
@@ -83,7 +86,10 @@ func TestTaskStatus(t *testing.T) {
 }
 
 func TestTaskStatusTransitions(t *testing.T) {
-	task := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Start
 	task.Start()
@@ -126,7 +132,10 @@ func TestTaskStatusTransitions(t *testing.T) {
 }
 
 func TestTaskTags(t *testing.T) {
-	task := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add tag
 	task.AddTag("backend")
@@ -194,7 +203,10 @@ func TestParseTaskStatus(t *testing.T) {
 }
 
 func TestTaskUpdatedAt(t *testing.T) {
-	task := NewTask("test", 1, TaskTypeTask, "Test")
+	task, err := NewTask("test", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalUpdate := task.UpdatedAt
 
 	// Wait a tiny bit to ensure time difference

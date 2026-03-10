@@ -148,7 +148,10 @@ func TestProjectAddTask(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Add a task
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 
 	testutil.AssertTaskCount(t, project, 1)
@@ -159,8 +162,14 @@ func TestProjectRemoveTask(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Add tasks
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2)
 	project.BuildTaskTree()
 
@@ -181,7 +190,10 @@ func TestProjectRemoveTask(t *testing.T) {
 func TestProjectGetTaskByID(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task := models.NewTask("unique-id", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("unique-id", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 
 	found := project.GetTaskByID("unique-id")
@@ -200,7 +212,10 @@ func TestProjectGetTaskByID(t *testing.T) {
 func TestProjectGetTaskByShortID(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task := models.NewTask("some-id", 42, models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("some-id", 42, models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 
 	found := project.GetTaskByShortID(42)

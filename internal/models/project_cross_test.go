@@ -6,8 +6,14 @@ func TestMoveTaskToProjectBasic(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	sourceProj.Tasks = []*Task{task1, task2}
 	sourceProj.BuildTaskTree()
@@ -55,10 +61,22 @@ func TestMoveTaskToProjectWithChildren(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	parent := NewTask("parent", 1, TaskTypeEpic, "Parent")
-	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
-	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
-	other := NewTask("other", 4, TaskTypeTask, "Other Task")
+	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := NewTask("other", 4, TaskTypeTask, "Other Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	parentID := parent.ID
 	child1.ParentID = &parentID
@@ -109,10 +127,22 @@ func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	parent := NewTask("parent", 1, TaskTypeEpic, "Parent")
-	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
-	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
-	other := NewTask("other", 4, TaskTypeTask, "Other Task")
+	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := NewTask("other", 4, TaskTypeTask, "Other Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	parentID := parent.ID
 	child1.ParentID = &parentID
@@ -151,10 +181,16 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 	sourceProj.Sections = []string{SectionNext, "InProgress", "CustomSection"}
 	destProj.Sections = []string{SectionNext, "InProgress"}
 
-	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Section = "InProgress"
 
-	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Section = "CustomSection" // Only in source
 
 	sourceProj.Tasks = []*Task{task1, task2}
@@ -187,7 +223,10 @@ func TestMoveTaskToProjectPreservesSectionsIfExist(t *testing.T) {
 func TestMoveTaskToProjectNilInputs(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
-	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Nil task
 	result, err := sourceProj.MoveTaskToProject(nil, destProj)
@@ -204,7 +243,10 @@ func TestMoveTaskToProjectNilInputs(t *testing.T) {
 
 func TestMoveTaskToProjectSameProject(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
-	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	sourceProj.Tasks = []*Task{task}
 
 	// Move to same project (should be no-op)
@@ -223,8 +265,14 @@ func TestMoveTaskToProjectRegeneratesShortIDs(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	task1 := NewTask("task1", 5, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 10, TaskTypeTask, "Task 2")
+	task1, err := NewTask("task1", 5, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 10, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	sourceProj.Tasks = []*Task{task1, task2}
 	sourceProj.BuildTaskTree()
@@ -250,9 +298,18 @@ func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	task1 := NewTask("task1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("task3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("task3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task 3 depends on task1 and task2
 	task3.AddDependency(task1.ID)
@@ -262,7 +319,7 @@ func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
 	sourceProj.BuildTaskTree()
 
 	// Move task1 to destination
-	_, err := sourceProj.MoveTaskToProject(task1, destProj)
+	_, err = sourceProj.MoveTaskToProject(task1, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
 	}
@@ -280,7 +337,10 @@ func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
 	sourceProj := NewProject("source", "Source Project", "/tmp/source")
 	destProj := NewProject("dest", "Dest Project", "/tmp/dest")
 
-	task := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	sourceProj.Tasks = []*Task{task}
 	sourceProj.BuildTaskTree()
 
@@ -289,7 +349,7 @@ func TestMoveTaskToProjectUpdatesTimestamps(t *testing.T) {
 	oldDestTime := destProj.UpdatedAt
 
 	// Move task
-	_, err := sourceProj.MoveTaskToProject(task, destProj)
+	_, err = sourceProj.MoveTaskToProject(task, destProj)
 	if err != nil {
 		t.Fatalf("MoveTaskToProject failed: %v", err)
 	}

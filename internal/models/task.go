@@ -74,8 +74,11 @@ type Task struct {
 	Level    int      `json:"-"` // Depth in hierarchy (0 for root)
 }
 
-// ValidateTaskTitle returns an error if the title exceeds MaxTaskTitleLength.
+// ValidateTaskTitle returns an error if the title is empty or exceeds MaxTaskTitleLength.
 func ValidateTaskTitle(title string) error {
+	if title == "" {
+		return fmt.Errorf("task title cannot be empty")
+	}
 	if len(title) > MaxTaskTitleLength {
 		return fmt.Errorf("task title too long (%d chars, max %d)", len(title), MaxTaskTitleLength)
 	}
@@ -83,7 +86,11 @@ func ValidateTaskTitle(title string) error {
 }
 
 // NewTask creates a new task with default values.
-func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
+// Returns an error if the title is invalid.
+func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, error) {
+	if err := ValidateTaskTitle(title); err != nil {
+		return nil, err
+	}
 	now := time.Now()
 	return &Task{
 		ID:        id,
@@ -99,7 +106,7 @@ func NewTask(id string, shortID int, taskType TaskType, title string) *Task {
 		CreatedAt: now,
 		UpdatedAt: now,
 		Children:  []*Task{},
-	}
+	}, nil
 }
 
 // ClearTypeAttrs clears all type-specific attribute pointers.

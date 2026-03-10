@@ -26,7 +26,7 @@ Examples:
 
 func init() {
 	blockerCmd.AddCommand(blockerDeleteCmd)
-	blockerDeleteCmd.Flags().BoolVarP(&blockerDeleteForce, "force", "f", false, "skip confirmation")
+	blockerDeleteCmd.Flags().BoolVarP(&blockerDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runBlockerDelete(cmd *cobra.Command, args []string) error {

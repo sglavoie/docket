@@ -11,14 +11,23 @@ func TestMoveTaskUp(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create three sibling tasks at root level
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
-	task3 := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Third Task")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Third Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2, task3)
 	project.BuildTaskTree()
 
 	// Move task2 up - should swap with task1
-	err := project.MoveTaskUp(task2)
+	err = project.MoveTaskUp(task2)
 	testutil.AssertNoError(t, err)
 
 	siblings := project.GetSiblings(task1)
@@ -37,14 +46,23 @@ func TestMoveTaskDown(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create three sibling tasks at root level
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
-	task3 := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Third Task")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Third Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2, task3)
 	project.BuildTaskTree()
 
 	// Move task1 down - should swap with task2
-	err := project.MoveTaskDown(task1)
+	err = project.MoveTaskDown(task1)
 	testutil.AssertNoError(t, err)
 
 	siblings := project.GetSiblings(task1)
@@ -62,8 +80,14 @@ func TestMoveTaskDown(t *testing.T) {
 func TestMoveTaskUpAtTop(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2)
 	project.BuildTaskTree()
 
@@ -71,7 +95,7 @@ func TestMoveTaskUpAtTop(t *testing.T) {
 	siblingsBefore := project.GetSiblings(task1)
 
 	// Trying to move the first task up is a no-op
-	err := project.MoveTaskUp(task1)
+	err = project.MoveTaskUp(task1)
 	testutil.AssertNoError(t, err)
 
 	// Order should be unchanged
@@ -84,8 +108,14 @@ func TestMoveTaskUpAtTop(t *testing.T) {
 func TestMoveTaskDownAtBottom(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2)
 	project.BuildTaskTree()
 
@@ -93,7 +123,7 @@ func TestMoveTaskDownAtBottom(t *testing.T) {
 	siblingsBefore := project.GetSiblings(task1)
 
 	// Trying to move the last task down is a no-op
-	err := project.MoveTaskDown(task2)
+	err = project.MoveTaskDown(task2)
 	testutil.AssertNoError(t, err)
 
 	// Order should be unchanged
@@ -107,18 +137,27 @@ func TestMoveTaskUpWithinParent(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic with child tasks
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	child1 := models.NewTask("child-1", project.GetNextShortID(), models.TaskTypeTask, "Child 1")
+	child1, err := models.NewTask("child-1", project.GetNextShortID(), models.TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	child1.ParentID = &epic.ID
-	child2 := models.NewTask("child-2", project.GetNextShortID(), models.TaskTypeTask, "Child 2")
+	child2, err := models.NewTask("child-2", project.GetNextShortID(), models.TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	child2.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, child1, child2)
 	project.BuildTaskTree()
 
 	// Move child2 up within the epic
-	err := project.MoveTaskUp(child2)
+	err = project.MoveTaskUp(child2)
 	testutil.AssertNoError(t, err)
 
 	siblings := project.GetSiblings(child1)
@@ -134,8 +173,14 @@ func TestIndentTask(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic and a task that can be indented under it
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Indent")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Indent")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic, task)
 	project.BuildTaskTree()
 
@@ -145,7 +190,7 @@ func TestIndentTask(t *testing.T) {
 	}
 
 	// Indent task under epic
-	err := project.IndentTask(task)
+	err = project.IndentTask(task)
 	testutil.AssertNoError(t, err)
 
 	// Verify task is now under epic
@@ -158,8 +203,14 @@ func TestIndentTaskCannotIndentUnderInvalidParent(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create two tasks - tasks cannot be parents of other tasks
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1, task2)
 	project.BuildTaskTree()
 
@@ -174,14 +225,23 @@ func TestOutdentTask(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic with a story that has a task
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	story.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, story)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
@@ -192,7 +252,7 @@ func TestOutdentTask(t *testing.T) {
 	}
 
 	// Outdent task - should move to be sibling of story (under epic)
-	err := project.OutdentTask(task)
+	err = project.OutdentTask(task)
 	testutil.AssertNoError(t, err)
 
 	// Verify task is now under epic
@@ -205,16 +265,22 @@ func TestOutdentTaskToRoot(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic with a task
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	// Outdent task - should become root
-	err := project.OutdentTask(task)
+	err = project.OutdentTask(task)
 	testutil.AssertNoError(t, err)
 
 	// Verify task is now at root
@@ -227,7 +293,10 @@ func TestOutdentRootTaskFails(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create a task at root level
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Root Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Root Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
@@ -242,8 +311,14 @@ func TestIndentStoryUnderEpic(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic and a story
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic, story)
 	project.BuildTaskTree()
 
@@ -253,7 +328,7 @@ func TestIndentStoryUnderEpic(t *testing.T) {
 		t.Error("story should be able to indent under epic")
 	}
 
-	err := project.IndentTask(story)
+	err = project.IndentTask(story)
 	testutil.AssertNoError(t, err)
 
 	if story.ParentID == nil || *story.ParentID != epic.ID {
@@ -265,8 +340,14 @@ func TestCannotIndentEpicUnderAnything(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create two epics
-	epic1 := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic 1")
-	epic2 := models.NewTask("epic-2", project.GetNextShortID(), models.TaskTypeEpic, "Epic 2")
+	epic1, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	epic2, err := models.NewTask("epic-2", project.GetNextShortID(), models.TaskTypeEpic, "Epic 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic1, epic2)
 	project.BuildTaskTree()
 
@@ -280,7 +361,10 @@ func TestCannotIndentEpicUnderAnything(t *testing.T) {
 func TestSelectTaskForMove_WithDirectID(t *testing.T) {
 	project := testutil.NewTestProject("Select Move Test")
 
-	task := models.NewTask("known-id-123", project.GetNextShortID(), models.TaskTypeTask, "Task to Find")
+	task, err := models.NewTask("known-id-123", project.GetNextShortID(), models.TaskTypeTask, "Task to Find")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
@@ -305,12 +389,15 @@ func TestSelectTaskForMove_TaskNotFound(t *testing.T) {
 func TestSelectTaskForMove_FilterUp_NoCandidates(t *testing.T) {
 	project := testutil.NewTestProject("Filter Up Test")
 
-	task := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	task, err := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	_, err := selectTaskForMove(project, nil, "up")
+	_, err = selectTaskForMove(project, nil, "up")
 	if err == nil {
 		t.Error("expected error when no candidates for move up")
 	}
@@ -319,12 +406,15 @@ func TestSelectTaskForMove_FilterUp_NoCandidates(t *testing.T) {
 func TestSelectTaskForMove_FilterDown_NoCandidates(t *testing.T) {
 	project := testutil.NewTestProject("Filter Down Test")
 
-	task := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	task, err := models.NewTask("single-task", project.GetNextShortID(), models.TaskTypeTask, "Only Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	_, err := selectTaskForMove(project, nil, "down")
+	_, err = selectTaskForMove(project, nil, "down")
 	if err == nil {
 		t.Error("expected error when no candidates for move down")
 	}
@@ -333,12 +423,15 @@ func TestSelectTaskForMove_FilterDown_NoCandidates(t *testing.T) {
 func TestSelectTaskForMove_FilterOutdent_NoCandidates(t *testing.T) {
 	project := testutil.NewTestProject("Filter Outdent Test")
 
-	task := models.NewTask("root-task", project.GetNextShortID(), models.TaskTypeTask, "Root Task")
+	task, err := models.NewTask("root-task", project.GetNextShortID(), models.TaskTypeTask, "Root Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	_, err := selectTaskForMove(project, nil, "outdent")
+	_, err = selectTaskForMove(project, nil, "outdent")
 	if err == nil {
 		t.Error("expected error when no candidates for outdent")
 	}
@@ -347,12 +440,15 @@ func TestSelectTaskForMove_FilterOutdent_NoCandidates(t *testing.T) {
 func TestSelectTaskForMove_FilterIndent_NoCandidates(t *testing.T) {
 	project := testutil.NewTestProject("Filter Indent Test")
 
-	task := models.NewTask("only-task", project.GetNextShortID(), models.TaskTypeIdea, "Lonely Idea")
+	task, err := models.NewTask("only-task", project.GetNextShortID(), models.TaskTypeIdea, "Lonely Idea")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	_, err := selectTaskForMove(project, nil, "indent")
+	_, err = selectTaskForMove(project, nil, "indent")
 	if err == nil {
 		t.Error("expected error when no candidates for indent")
 	}
@@ -361,12 +457,18 @@ func TestSelectTaskForMove_FilterIndent_NoCandidates(t *testing.T) {
 func TestMoveUp_CompletionBoundaryBlocked(t *testing.T) {
 	project := testutil.NewTestProject("Completion Boundary Test")
 
-	incompleteTask := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	incompleteTask, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	if err != nil {
+		t.Fatal(err)
+	}
 	incompleteTask.Status = models.StatusTodo
 	project.Tasks = append(project.Tasks, incompleteTask)
 	project.NextShortID++
 
-	completedTask := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	completedTask, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	if err != nil {
+		t.Fatal(err)
+	}
 	completedTask.Complete()
 	project.Tasks = append(project.Tasks, completedTask)
 	project.NextShortID++
@@ -391,12 +493,18 @@ func TestMoveUp_CompletionBoundaryBlocked(t *testing.T) {
 func TestMoveDown_CompletionBoundaryBlocked(t *testing.T) {
 	project := testutil.NewTestProject("Completion Down Boundary Test")
 
-	incompleteTask := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	incompleteTask, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Incomplete")
+	if err != nil {
+		t.Fatal(err)
+	}
 	incompleteTask.Status = models.StatusInProgress
 	project.Tasks = append(project.Tasks, incompleteTask)
 	project.NextShortID++
 
-	completedTask := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	completedTask, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Completed")
+	if err != nil {
+		t.Fatal(err)
+	}
 	completedTask.Complete()
 	project.Tasks = append(project.Tasks, completedTask)
 	project.NextShortID++
@@ -421,7 +529,10 @@ func TestMoveDown_CompletionBoundaryBlocked(t *testing.T) {
 func TestIndent_NoTaskAbove(t *testing.T) {
 	project := testutil.NewTestProject("Indent No Task Above Test")
 
-	task := models.NewTask("lonely-task", project.GetNextShortID(), models.TaskTypeTask, "Lonely Task")
+	task, err := models.NewTask("lonely-task", project.GetNextShortID(), models.TaskTypeTask, "Lonely Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 	project.BuildTaskTree()
@@ -435,11 +546,17 @@ func TestIndent_NoTaskAbove(t *testing.T) {
 func TestIndent_ValidParent(t *testing.T) {
 	project := testutil.NewTestProject("Indent Valid Parent Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.NextShortID++
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.NextShortID++
 
@@ -460,16 +577,25 @@ func TestIndent_ValidParent(t *testing.T) {
 func TestOutdent_ToNewParent(t *testing.T) {
 	project := testutil.NewTestProject("Outdent New Parent Test")
 
-	grandparent := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Grandparent")
+	grandparent, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Grandparent")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, grandparent)
 	project.NextShortID++
 
-	parent := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	parent, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	parent.ParentID = &grandparent.ID
 	project.Tasks = append(project.Tasks, parent)
 	project.NextShortID++
 
-	child := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	child, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	child.ParentID = &parent.ID
 	project.Tasks = append(project.Tasks, child)
 	project.NextShortID++
@@ -478,7 +604,7 @@ func TestOutdent_ToNewParent(t *testing.T) {
 
 	testutil.AssertEqual(t, *child.ParentID, parent.ID)
 
-	err := project.OutdentTask(child)
+	err = project.OutdentTask(child)
 	testutil.AssertNoError(t, err)
 
 	if child.ParentID == nil {

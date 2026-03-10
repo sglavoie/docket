@@ -10,8 +10,12 @@ import (
 )
 
 // Helper to create a task with a due date relative to today.
-func newTestTaskWithDueDate(title string, daysOffset int) *models.Task {
-	task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+func newTestTaskWithDueDate(t *testing.T, title string, daysOffset int) *models.Task {
+	t.Helper()
+	task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, title)
+	if err != nil {
+		t.Fatal(err)
+	}
 	due := time.Now().AddDate(0, 0, daysOffset)
 	task.DueDate = &due
 	return task
@@ -36,7 +40,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "priority 1 base score",
 			task: func() *models.Task {
-				task := models.NewTask("1", 1, models.TaskTypeTask, "High priority")
+				task, err := models.NewTask("1", 1, models.TaskTypeTask, "High priority")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 1
 				return task
 			}(),
@@ -46,7 +53,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "priority 5 base score",
 			task: func() *models.Task {
-				task := models.NewTask("2", 2, models.TaskTypeTask, "Low priority")
+				task, err := models.NewTask("2", 2, models.TaskTypeTask, "Low priority")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 5
 				return task
 			}(),
@@ -56,7 +66,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "priority 3 base score",
 			task: func() *models.Task {
-				task := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+				task, err := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 3
 				return task
 			}(),
@@ -66,7 +79,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "in progress bonus",
 			task: func() *models.Task {
-				task := models.NewTask("4", 4, models.TaskTypeTask, "In progress task")
+				task, err := models.NewTask("4", 4, models.TaskTypeTask, "In progress task")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 3
 				task.Status = models.StatusInProgress
 				return task
@@ -77,7 +93,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "active flag bonus",
 			task: func() *models.Task {
-				task := models.NewTask("5", 5, models.TaskTypeTask, "Active task")
+				task, err := models.NewTask("5", 5, models.TaskTypeTask, "Active task")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 3
 				task.Active = true
 				return task
@@ -88,7 +107,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "combined bonuses",
 			task: func() *models.Task {
-				task := models.NewTask("6", 6, models.TaskTypeTask, "Active in progress")
+				task, err := models.NewTask("6", 6, models.TaskTypeTask, "Active in progress")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 1
 				task.Status = models.StatusInProgress
 				task.Active = true
@@ -100,7 +122,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "bug type bonus",
 			task: func() *models.Task {
-				task := models.NewTask("7", 7, models.TaskTypeBug, "Bug task")
+				task, err := models.NewTask("7", 7, models.TaskTypeBug, "Bug task")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 3
 				return task
 			}(),
@@ -110,7 +135,10 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "bug outranks task at same priority",
 			task: func() *models.Task {
-				task := models.NewTask("8", 8, models.TaskTypeBug, "Bug at priority 3")
+				task, err := models.NewTask("8", 8, models.TaskTypeBug, "Bug at priority 3")
+				if err != nil {
+					t.Fatal(err)
+				}
 				task.Priority = 3
 				return task
 			}(),
@@ -120,7 +148,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "overdue adds points",
 			task: func() *models.Task {
-				task := newTestTaskWithDueDate("Overdue task", -2)
+				task := newTestTaskWithDueDate(t, "Overdue task", -2)
 				task.Priority = 3
 				return task
 			}(),
@@ -130,7 +158,7 @@ func TestComputeUrgencyScore(t *testing.T) {
 		{
 			name: "future due subtracts points",
 			task: func() *models.Task {
-				task := newTestTaskWithDueDate("Future task", 2)
+				task := newTestTaskWithDueDate(t, "Future task", 2)
 				task.Priority = 3
 				return task
 			}(),
@@ -171,7 +199,10 @@ func TestCategorizeByDueDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			if err != nil {
+				t.Fatal(err)
+			}
 			if tt.daysOffset != nil {
 				due := time.Now().AddDate(0, 0, *tt.daysOffset)
 				task.DueDate = &due
@@ -193,13 +224,22 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add completed tasks
-		done := models.NewTask("1", 1, models.TaskTypeTask, "Done task")
+		done, err := models.NewTask("1", 1, models.TaskTypeTask, "Done task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		done.Status = models.StatusDone
-		canceled := models.NewTask("2", 2, models.TaskTypeTask, "Canceled task")
+		canceled, err := models.NewTask("2", 2, models.TaskTypeTask, "Canceled task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		canceled.Status = models.StatusCanceled
 
 		// Add active task
-		active := models.NewTask("3", 3, models.TaskTypeTask, "Active task")
+		active, err := models.NewTask("3", 3, models.TaskTypeTask, "Active task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		active.Status = models.StatusTodo
 
 		project.Tasks = []*models.Task{done, canceled, active}
@@ -215,11 +255,17 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add blocked task
-		blocked := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		blocked, err := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocked.Status = models.StatusBlocked
 
 		// Add active task
-		active := models.NewTask("2", 2, models.TaskTypeTask, "Active task")
+		active, err := models.NewTask("2", 2, models.TaskTypeTask, "Active task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		active.Status = models.StatusTodo
 
 		project.Tasks = []*models.Task{blocked, active}
@@ -238,11 +284,17 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add blocker task
-		blocker := models.NewTask("1", 1, models.TaskTypeTask, "Blocker")
+		blocker, err := models.NewTask("1", 1, models.TaskTypeTask, "Blocker")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocker.Status = models.StatusTodo
 
 		// Add dependent task
-		dependent := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		dependent, err := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		if err != nil {
+			t.Fatal(err)
+		}
 		dependent.Status = models.StatusTodo
 		dependent.DependsOn = []string{blocker.ID}
 
@@ -263,13 +315,22 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add tasks with different priorities (no due dates -> backlog)
-		low := models.NewTask("1", 1, models.TaskTypeTask, "Low priority")
+		low, err := models.NewTask("1", 1, models.TaskTypeTask, "Low priority")
+		if err != nil {
+			t.Fatal(err)
+		}
 		low.Priority = 5
 
-		high := models.NewTask("2", 2, models.TaskTypeTask, "High priority")
+		high, err := models.NewTask("2", 2, models.TaskTypeTask, "High priority")
+		if err != nil {
+			t.Fatal(err)
+		}
 		high.Priority = 1
 
-		medium := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+		medium, err := models.NewTask("3", 3, models.TaskTypeTask, "Medium priority")
+		if err != nil {
+			t.Fatal(err)
+		}
 		medium.Priority = 3
 
 		project.Tasks = []*models.Task{low, high, medium}
@@ -296,10 +357,16 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add a task and a bug with the same priority (no due dates -> backlog)
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Regular task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Regular task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 
-		bug := models.NewTask("2", 2, models.TaskTypeBug, "Bug task")
+		bug, err := models.NewTask("2", 2, models.TaskTypeBug, "Bug task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		bug.Priority = 3
 
 		// Add task first to ensure sorting changes the order
@@ -324,10 +391,16 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Priority 2 task should beat priority 3 bug
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Priority 2 task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Priority 2 task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 2
 
-		bug := models.NewTask("2", 2, models.TaskTypeBug, "Priority 3 bug")
+		bug, err := models.NewTask("2", 2, models.TaskTypeBug, "Priority 3 bug")
+		if err != nil {
+			t.Fatal(err)
+		}
 		bug.Priority = 3
 
 		project.Tasks = []*models.Task{bug, task}
@@ -351,11 +424,20 @@ func TestLoadActionableTasks(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add 2 active tasks
-		active1 := models.NewTask("1", 1, models.TaskTypeTask, "Active 1")
-		active2 := models.NewTask("2", 2, models.TaskTypeTask, "Active 2")
+		active1, err := models.NewTask("1", 1, models.TaskTypeTask, "Active 1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		active2, err := models.NewTask("2", 2, models.TaskTypeTask, "Active 2")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// Add 1 blocked task
-		blocked := models.NewTask("3", 3, models.TaskTypeTask, "Blocked")
+		blocked, err := models.NewTask("3", 3, models.TaskTypeTask, "Blocked")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocked.Status = models.StatusBlocked
 
 		project.Tasks = []*models.Task{active1, active2, blocked}
@@ -373,9 +455,9 @@ func TestGetTaskAtCursor(t *testing.T) {
 		project := newTestPriorityProject()
 
 		// Add tasks to different groups
-		overdue := newTestTaskWithDueDate("Overdue", -1)
-		today := newTestTaskWithDueDate("Today", 0)
-		thisWeek := newTestTaskWithDueDate("This week", 3)
+		overdue := newTestTaskWithDueDate(t, "Overdue", -1)
+		today := newTestTaskWithDueDate(t, "Today", 0)
+		thisWeek := newTestTaskWithDueDate(t, "This week", 3)
 
 		project.Tasks = []*models.Task{overdue, today, thisWeek}
 
@@ -405,7 +487,10 @@ func TestGetTaskAtCursor(t *testing.T) {
 
 	t.Run("returns nil for out of bounds cursor", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Only task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Only task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		project.Tasks = []*models.Task{task}
 
 		m := NewPriorityViewModel(project, nil, nil)
@@ -447,7 +532,10 @@ func TestPriorityViewClampCursor(t *testing.T) {
 
 			// Add tasks to match totalTasks
 			for i := 0; i < tt.totalTasks; i++ {
-				task := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, "Task")
+				task, err := models.NewTask(uuid.New().String(), i+1, models.TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
 				project.Tasks = append(project.Tasks, task)
 			}
 
@@ -478,7 +566,10 @@ func TestFormatRelativeDue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+			if err != nil {
+				t.Fatal(err)
+			}
 			if tt.daysOffset != nil {
 				due := time.Now().AddDate(0, 0, *tt.daysOffset)
 				task.DueDate = &due
@@ -513,7 +604,10 @@ func findSubstring(s, substr string) bool {
 func TestGetParentTitle(t *testing.T) {
 	t.Run("no parent returns empty", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Orphan task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Orphan task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		project.Tasks = []*models.Task{task}
 
 		m := NewPriorityViewModel(project, nil, nil)
@@ -526,8 +620,14 @@ func TestGetParentTitle(t *testing.T) {
 
 	t.Run("valid parent returns title", func(t *testing.T) {
 		project := newTestPriorityProject()
-		parent := models.NewTask("1", 1, models.TaskTypeEpic, "Parent Epic")
-		child := models.NewTask("2", 2, models.TaskTypeTask, "Child Task")
+		parent, err := models.NewTask("1", 1, models.TaskTypeEpic, "Parent Epic")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child, err := models.NewTask("2", 2, models.TaskTypeTask, "Child Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		child.ParentID = &parent.ID
 
 		project.Tasks = []*models.Task{parent, child}
@@ -543,7 +643,10 @@ func TestGetParentTitle(t *testing.T) {
 
 	t.Run("missing parent returns empty", func(t *testing.T) {
 		project := newTestPriorityProject()
-		child := models.NewTask("1", 1, models.TaskTypeTask, "Orphan with invalid parent")
+		child, err := models.NewTask("1", 1, models.TaskTypeTask, "Orphan with invalid parent")
+		if err != nil {
+			t.Fatal(err)
+		}
 		invalidID := "non-existent-id"
 		child.ParentID = &invalidID
 
@@ -561,7 +664,10 @@ func TestGetParentTitle(t *testing.T) {
 func TestGetBlockingReason(t *testing.T) {
 	t.Run("explicitly blocked returns blocked", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Blocked task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Status = models.StatusBlocked
 
 		project.Tasks = []*models.Task{task}
@@ -576,10 +682,16 @@ func TestGetBlockingReason(t *testing.T) {
 
 	t.Run("incomplete dependency shows dependency title", func(t *testing.T) {
 		project := newTestPriorityProject()
-		blocker := models.NewTask("1", 1, models.TaskTypeTask, "Blocker Task")
+		blocker, err := models.NewTask("1", 1, models.TaskTypeTask, "Blocker Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocker.Status = models.StatusTodo
 
-		dependent := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		dependent, err := models.NewTask("2", 2, models.TaskTypeTask, "Dependent")
+		if err != nil {
+			t.Fatal(err)
+		}
 		dependent.DependsOn = []string{blocker.ID}
 
 		project.Tasks = []*models.Task{blocker, dependent}
@@ -610,9 +722,15 @@ func TestEdgeCases(t *testing.T) {
 	t.Run("all tasks completed", func(t *testing.T) {
 		project := newTestPriorityProject()
 
-		done1 := models.NewTask("1", 1, models.TaskTypeTask, "Done 1")
+		done1, err := models.NewTask("1", 1, models.TaskTypeTask, "Done 1")
+		if err != nil {
+			t.Fatal(err)
+		}
 		done1.Status = models.StatusDone
-		done2 := models.NewTask("2", 2, models.TaskTypeTask, "Done 2")
+		done2, err := models.NewTask("2", 2, models.TaskTypeTask, "Done 2")
+		if err != nil {
+			t.Fatal(err)
+		}
 		done2.Status = models.StatusCanceled
 
 		project.Tasks = []*models.Task{done1, done2}
@@ -627,9 +745,15 @@ func TestEdgeCases(t *testing.T) {
 	t.Run("all tasks blocked", func(t *testing.T) {
 		project := newTestPriorityProject()
 
-		blocked1 := models.NewTask("1", 1, models.TaskTypeTask, "Blocked 1")
+		blocked1, err := models.NewTask("1", 1, models.TaskTypeTask, "Blocked 1")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocked1.Status = models.StatusBlocked
-		blocked2 := models.NewTask("2", 2, models.TaskTypeTask, "Blocked 2")
+		blocked2, err := models.NewTask("2", 2, models.TaskTypeTask, "Blocked 2")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocked2.Status = models.StatusBlocked
 
 		project.Tasks = []*models.Task{blocked1, blocked2}
@@ -673,7 +797,10 @@ func TestWaitingOnCollapsed(t *testing.T) {
 func TestChangeTaskPriority(t *testing.T) {
 	t.Run("changes priority of selected task", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3 // Default medium priority
 		project.Tasks = []*models.Task{task}
 
@@ -690,7 +817,10 @@ func TestChangeTaskPriority(t *testing.T) {
 
 	t.Run("does nothing when priority unchanged", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 2
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}
@@ -722,7 +852,10 @@ func TestChangeTaskPriority(t *testing.T) {
 
 	t.Run("updates UpdatedAt timestamp", func(t *testing.T) {
 		project := newTestPriorityProject()
-		task := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		task, err := models.NewTask("1", 1, models.TaskTypeTask, "Test task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 		originalUpdatedAt := task.UpdatedAt
 		project.Tasks = []*models.Task{task}

@@ -5,12 +5,23 @@ import "testing"
 func TestProjectGetRootTasks(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	task := NewTask("task", 2, TaskTypeTask, "Task")
-	childTask := NewTask("child", 3, TaskTypeTask, "Child")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childTask, err := NewTask("child", 3, TaskTypeTask, "Child")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{epic, task, childTask}
-	epic.AddChild(childTask)
+	if err := epic.AddChild(childTask); err != nil {
+		t.Fatal(err)
+	}
 
 	roots := project.GetRootTasks()
 
@@ -29,8 +40,14 @@ func TestProjectGetRootTasks(t *testing.T) {
 func TestProjectGetTaskByID(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2}
 
@@ -53,8 +70,14 @@ func TestProjectGetTaskByID(t *testing.T) {
 func TestProjectGetTaskByShortID(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("task-2", 42, TaskTypeTask, "Task 2")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task-2", 42, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2}
 
@@ -77,9 +100,18 @@ func TestProjectGetTaskByShortID(t *testing.T) {
 func TestProjectBuildTaskTree(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epicID := epic.ID
 	storyID := story.ID
@@ -134,10 +166,22 @@ func TestProjectGetNextShortID(t *testing.T) {
 func TestProjectGetTaskAbove(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
-	task2 := NewTask("task2", 4, TaskTypeTask, "Task 2")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 4, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epicID := epic.ID
 	storyID := story.ID
@@ -176,16 +220,28 @@ func TestProjectGetTaskAbove(t *testing.T) {
 func TestProjectFilterTasks_WithPredicates(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "High priority task")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "High priority task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Priority = 1
 
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Medium priority task")
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Medium priority task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Priority = 2
 
-	task3 := NewTask("task-3", 3, TaskTypeTask, "Low priority task")
+	task3, err := NewTask("task-3", 3, TaskTypeTask, "Low priority task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Priority = 3
 
-	task4 := NewTask("task-4", 4, TaskTypeBug, "Bug fix")
+	task4, err := NewTask("task-4", 4, TaskTypeBug, "Bug fix")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task4.Priority = 1
 
 	project.Tasks = []*Task{task1, task2, task3, task4}
@@ -232,19 +288,34 @@ func TestProjectFilterTasks_WithPredicates(t *testing.T) {
 func TestProjectGetTasksByStatus_AllStatuses(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	todoTask := NewTask("todo", 1, TaskTypeTask, "Todo task")
+	todoTask, err := NewTask("todo", 1, TaskTypeTask, "Todo task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	todoTask.Status = StatusTodo
 
-	inProgressTask := NewTask("in-progress", 2, TaskTypeTask, "In progress task")
+	inProgressTask, err := NewTask("in-progress", 2, TaskTypeTask, "In progress task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	inProgressTask.Status = StatusInProgress
 
-	doneTask := NewTask("done", 3, TaskTypeTask, "Done task")
+	doneTask, err := NewTask("done", 3, TaskTypeTask, "Done task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	doneTask.Status = StatusDone
 
-	blockedTask := NewTask("blocked", 4, TaskTypeTask, "Blocked task")
+	blockedTask, err := NewTask("blocked", 4, TaskTypeTask, "Blocked task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	blockedTask.Status = StatusBlocked
 
-	canceledTask := NewTask("canceled", 5, TaskTypeTask, "Canceled task")
+	canceledTask, err := NewTask("canceled", 5, TaskTypeTask, "Canceled task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	canceledTask.Status = StatusCanceled
 
 	project.Tasks = []*Task{todoTask, inProgressTask, doneTask, blockedTask, canceledTask}
@@ -276,13 +347,22 @@ func TestProjectGetTasksByStatus_AllStatuses(t *testing.T) {
 func TestProjectGetTasksByStatus_MultipleMatches(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Status = StatusTodo
 
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Status = StatusTodo
 
-	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Status = StatusDone
 
 	project.Tasks = []*Task{task1, task2, task3}
@@ -296,11 +376,26 @@ func TestProjectGetTasksByStatus_MultipleMatches(t *testing.T) {
 func TestProjectGetTasksByType_AllTypes(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
-	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
-	idea := NewTask("idea", 5, TaskTypeIdea, "Idea")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("bug", 4, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idea, err := NewTask("idea", 5, TaskTypeIdea, "Idea")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{epic, story, task, bug, idea}
 
@@ -331,10 +426,22 @@ func TestProjectGetTasksByType_AllTypes(t *testing.T) {
 func TestProjectGetTasksByType_MultipleMatches(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
-	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("bug", 4, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2, task3, bug}
 
@@ -347,13 +454,22 @@ func TestProjectGetTasksByType_MultipleMatches(t *testing.T) {
 func TestProjectGetTasksByTag_SingleTag(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Backend task")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Backend task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Tags = []string{"backend", "api"}
 
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Frontend task")
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Frontend task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Tags = []string{"frontend", "ui"}
 
-	task3 := NewTask("task-3", 3, TaskTypeTask, "Full stack task")
+	task3, err := NewTask("task-3", 3, TaskTypeTask, "Full stack task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Tags = []string{"backend", "frontend"}
 
 	project.Tasks = []*Task{task1, task2, task3}
@@ -377,10 +493,16 @@ func TestProjectGetTasksByTag_SingleTag(t *testing.T) {
 func TestProjectGetTasksByTag_NoMatches(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Tags = []string{"backend"}
 
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Tags = []string{"frontend"}
 
 	project.Tasks = []*Task{task1, task2}
@@ -394,13 +516,22 @@ func TestProjectGetTasksByTag_NoMatches(t *testing.T) {
 func TestProjectGetTasksByTag_TasksWithNoTags(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewTask("task-1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Tags = []string{"backend"}
 
-	task2 := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewTask("task-2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// task2 has no tags (empty slice from NewTask)
 
-	task3 := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewTask("task-3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Tags = nil // explicit nil
 
 	project.Tasks = []*Task{task1, task2, task3}
@@ -414,19 +545,34 @@ func TestProjectGetTasksByTag_TasksWithNoTags(t *testing.T) {
 func TestProjectGetCompletedTasks(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	todoTask := NewTask("todo", 1, TaskTypeTask, "Todo")
+	todoTask, err := NewTask("todo", 1, TaskTypeTask, "Todo")
+	if err != nil {
+		t.Fatal(err)
+	}
 	todoTask.Status = StatusTodo
 
-	inProgressTask := NewTask("in-progress", 2, TaskTypeTask, "In Progress")
+	inProgressTask, err := NewTask("in-progress", 2, TaskTypeTask, "In Progress")
+	if err != nil {
+		t.Fatal(err)
+	}
 	inProgressTask.Status = StatusInProgress
 
-	doneTask := NewTask("done", 3, TaskTypeTask, "Done")
+	doneTask, err := NewTask("done", 3, TaskTypeTask, "Done")
+	if err != nil {
+		t.Fatal(err)
+	}
 	doneTask.Status = StatusDone
 
-	canceledTask := NewTask("canceled", 4, TaskTypeTask, "Canceled")
+	canceledTask, err := NewTask("canceled", 4, TaskTypeTask, "Canceled")
+	if err != nil {
+		t.Fatal(err)
+	}
 	canceledTask.Status = StatusCanceled
 
-	blockedTask := NewTask("blocked", 5, TaskTypeTask, "Blocked")
+	blockedTask, err := NewTask("blocked", 5, TaskTypeTask, "Blocked")
+	if err != nil {
+		t.Fatal(err)
+	}
 	blockedTask.Status = StatusBlocked
 
 	project.Tasks = []*Task{todoTask, inProgressTask, doneTask, canceledTask, blockedTask}

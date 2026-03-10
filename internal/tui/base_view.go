@@ -77,12 +77,12 @@ func (v *BaseView) IsFullHeight() bool {
 
 // ContentWidth returns width minus standard padding (2 on each side).
 func (v *BaseView) ContentWidth() int {
-	return max(v.width-4, 20)
+	return max(v.width-4, 0)
 }
 
 // ContentHeight returns height minus standard padding (1 on each side).
 func (v *BaseView) ContentHeight() int {
-	return max(v.height-2, 5)
+	return max(v.height-2, 0)
 }
 
 // InteractiveViewState provides common interactive state for views that

@@ -675,6 +675,64 @@ func TestConfig_NewConfigHasSectionColors(t *testing.T) {
 	}
 }
 
+func TestNewConfig_HasVersion(t *testing.T) {
+	cfg := NewConfig()
+	if cfg.Version != 1 {
+		t.Errorf("expected Version 1, got %d", cfg.Version)
+	}
+}
+
+func TestConfigManager_MigratesVersionZero(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// Write a config without version field (simulates old config)
+	data := []byte(`{"data_dir": "/tmp/test", "editor": "vim"}`)
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.Version != 1 {
+		t.Errorf("expected Version 1 after migration, got %d", cfg.Version)
+	}
+
+	// Verify it was persisted
+	cfg2, err := manager.Load()
+	if err != nil {
+		t.Fatalf("second Load failed: %v", err)
+	}
+	if cfg2.Version != 1 {
+		t.Errorf("expected Version 1 on reload, got %d", cfg2.Version)
+	}
+}
+
+func TestConfigManager_PreservesExistingVersion(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// Write config with version already set
+	data := []byte(`{"version": 1, "data_dir": "/tmp/test", "editor": "vim"}`)
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.Version != 1 {
+		t.Errorf("expected Version 1, got %d", cfg.Version)
+	}
+}
+
 func TestConfig_LoadInitializesSectionColors(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test-config.json")

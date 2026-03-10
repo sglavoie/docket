@@ -13,7 +13,7 @@ import (
 
 // ClaudeAvailable checks if the claude CLI is installed and available.
 func ClaudeAvailable() bool {
-	_, err := exec.LookPath("claude")
+	_, err := CachedClaudePath()
 	return err == nil
 }
 

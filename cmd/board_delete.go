@@ -26,7 +26,7 @@ Examples:
 
 func init() {
 	boardCmd.AddCommand(boardDeleteCmd)
-	boardDeleteCmd.Flags().BoolVarP(&boardDeleteForce, "force", "f", false, "skip confirmation")
+	boardDeleteCmd.Flags().BoolVarP(&boardDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runBoardDelete(cmd *cobra.Command, args []string) error {
@@ -43,6 +43,10 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
 		fmt.Println("Canceled.")
 		return nil
+	}
+
+	if backupErr := storage.BackupProject(project); backupErr != nil {
+		return fmt.Errorf("failed to create backup: %w", backupErr)
 	}
 
 	_ = storage.CleanupTaskAttachments(project, task)

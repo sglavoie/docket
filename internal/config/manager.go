@@ -104,6 +104,14 @@ func (m *Manager) Load() (*Config, error) {
 		}
 	}
 
+	// Config version migration
+	if config.Version == 0 {
+		config.Version = 1
+		if err := m.Save(&config); err != nil {
+			return nil, fmt.Errorf("failed to save config after version migration: %w", err)
+		}
+	}
+
 	return &config, nil
 }
 

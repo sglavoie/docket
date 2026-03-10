@@ -8,9 +8,18 @@ import (
 func TestProjectGetBlockingTasks(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task 3 depends on Task 1 and Task 2
 	task3.AddDependency(task1.ID)
@@ -33,9 +42,18 @@ func TestProjectGetBlockingTasks(t *testing.T) {
 func TestProjectGetBlockedByTasks(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task 2 and Task 3 depend on Task 1
 	task2.AddDependency(task1.ID)
@@ -58,9 +76,18 @@ func TestProjectGetBlockedByTasks(t *testing.T) {
 func TestProjectHasCircularDependency(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2, task3}
 
@@ -92,9 +119,18 @@ func TestProjectHasCircularDependency(t *testing.T) {
 func TestProjectCheckAndAutoUnblock(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	blocker1 := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
-	blocker2 := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
-	blocked := NewTask("blocked", 3, TaskTypeTask, "Blocked Task")
+	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker2, err := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := NewTask("blocked", 3, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Blocked task depends on both blockers
 	blocked.AddDependency(blocker1.ID)
@@ -127,8 +163,14 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	blocker := NewTask("blocker", 1, TaskTypeTask, "Blocker")
-	blocked := NewTask("blocked", 2, TaskTypeTask, "Blocked Task")
+	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := NewTask("blocked", 2, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blocked.AddDependency(blocker.ID)
 	blocked.Status = StatusBlocked
@@ -147,7 +189,10 @@ func TestProjectCheckAndAutoUnblockNoDependencies(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
 	// Blocked task with no dependencies should not be auto-unblocked
-	blocked := NewTask("blocked", 1, TaskTypeTask, "Blocked Task")
+	blocked, err := NewTask("blocked", 1, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	blocked.Status = StatusBlocked
 
 	project.Tasks = []*Task{blocked}
@@ -161,9 +206,18 @@ func TestProjectCheckAndAutoUnblockNoDependencies(t *testing.T) {
 func TestHasIncompleteDependencies(t *testing.T) {
 	project := NewProject("test-project", "Test Project", "/tmp/test")
 
-	blocker1 := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
-	blocker2 := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
-	dependent := NewTask("dependent", 3, TaskTypeTask, "Dependent Task")
+	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker2, err := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := NewTask("dependent", 3, TaskTypeTask, "Dependent Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{blocker1, blocker2, dependent}
 
@@ -206,10 +260,22 @@ func TestHasIncompleteDependencies(t *testing.T) {
 func TestGetIncompleteDependencies(t *testing.T) {
 	project := NewProject("test-project", "Test Project", "/tmp/test")
 
-	blocker1 := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
-	blocker2 := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
-	blocker3 := NewTask("blocker3", 3, TaskTypeTask, "Blocker 3")
-	dependent := NewTask("dependent", 4, TaskTypeTask, "Dependent Task")
+	blocker1, err := NewTask("blocker1", 1, TaskTypeTask, "Blocker 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker2, err := NewTask("blocker2", 2, TaskTypeTask, "Blocker 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker3, err := NewTask("blocker3", 3, TaskTypeTask, "Blocker 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := NewTask("dependent", 4, TaskTypeTask, "Dependent Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{blocker1, blocker2, blocker3, dependent}
 
@@ -261,7 +327,11 @@ func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
 
 	tasks := make([]*Task, 5)
 	for i := range 5 {
-		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+		var err error
+		tasks[i], err = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	project.Tasks = tasks
 
@@ -300,7 +370,11 @@ func TestProjectHasCircularDependencyBranching(t *testing.T) {
 	//     0 -> 2 -> 3
 	tasks := make([]*Task, 4)
 	for i := range 4 {
-		tasks[i] = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+		var err error
+		tasks[i], err = NewTask(fmt.Sprintf("%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task %d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	project.Tasks = tasks
 

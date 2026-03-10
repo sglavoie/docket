@@ -43,12 +43,30 @@ func TestFlattenTaskTree(t *testing.T) {
 	//       task2
 	//     story2
 	//   epic2
-	epic1 := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
-	story1 := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
-	task1 := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
-	task2 := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
-	story2 := models.NewTask("s2", 5, models.TaskTypeStory, "Story 2")
-	epic2 := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
+	epic1, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story1, err := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story2, err := models.NewTask("s2", 5, models.TaskTypeStory, "Story 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	epic2, err := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	story1.Children = []*models.Task{task1, task2}
 	epic1.Children = []*models.Task{story1, story2}
@@ -88,9 +106,13 @@ func TestFlattenTaskTreeDeep(t *testing.T) {
 	// Build a 6-level deep chain where each node is the last child.
 	tasks := make([]*models.Task, 6)
 	for i := range tasks {
-		tasks[i] = models.NewTask(
+		var err error
+		tasks[i], err = models.NewTask(
 			"id"+string(rune('0'+i)), i+1, models.TaskTypeTask, "Level "+string(rune('1'+i)),
 		)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	for i := range 5 {
 		tasks[i].Children = []*models.Task{tasks[i+1]}
@@ -134,15 +156,42 @@ func TestFlattenTaskTreeLeafAndParentConnectors(t *testing.T) {
 	//       task3 (leaf, only/last child of story2)
 	//     leaf2 (leaf, last child of epic2)
 
-	epic1 := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
-	story1 := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
-	task1 := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
-	task2 := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
-	leaf1 := models.NewTask("l1", 5, models.TaskTypeTask, "Leaf 1")
-	epic2 := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
-	story2 := models.NewTask("s2", 7, models.TaskTypeStory, "Story 2")
-	task3 := models.NewTask("t3", 8, models.TaskTypeTask, "Task 3")
-	leaf2 := models.NewTask("l2", 9, models.TaskTypeTask, "Leaf 2")
+	epic1, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story1, err := models.NewTask("s1", 2, models.TaskTypeStory, "Story 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := models.NewTask("t1", 3, models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("t2", 4, models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf1, err := models.NewTask("l1", 5, models.TaskTypeTask, "Leaf 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	epic2, err := models.NewTask("e2", 6, models.TaskTypeEpic, "Epic 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story2, err := models.NewTask("s2", 7, models.TaskTypeStory, "Story 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("t3", 8, models.TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaf2, err := models.NewTask("l2", 9, models.TaskTypeTask, "Leaf 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	story1.Children = []*models.Task{task1, task2}
 	epic1.Children = []*models.Task{story1, leaf1}
@@ -193,9 +242,18 @@ func TestFlattenTaskTreeLeafAndParentConnectors(t *testing.T) {
 func TestFlattenTaskTreeNoState(t *testing.T) {
 	// Verify no connector state stored on tree nodes: run flatten twice
 	// and confirm identical results.
-	epic := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic")
-	child1 := models.NewTask("c1", 2, models.TaskTypeTask, "Child 1")
-	child2 := models.NewTask("c2", 3, models.TaskTypeTask, "Child 2")
+	epic, err := models.NewTask("e1", 1, models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := models.NewTask("c1", 2, models.TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := models.NewTask("c2", 3, models.TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	epic.Children = []*models.Task{child1, child2}
 
 	var rows1, rows2 []outlinerRow

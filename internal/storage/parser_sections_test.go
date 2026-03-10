@@ -97,7 +97,10 @@ Description here.
 }
 
 func TestWriteTasksMarkdownWithSections(t *testing.T) {
-	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.CustomSection = "Active"
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}
@@ -121,7 +124,10 @@ func TestWriteTasksMarkdownWithSections(t *testing.T) {
 }
 
 func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
-	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tasks := []*models.Task{task}
 
 	content := WriteTasksMarkdownWithSections("Test Project", tasks, nil, nil)
@@ -140,11 +146,20 @@ func TestWriteTasksMarkdownWithSections_EmptySections(t *testing.T) {
 }
 
 func TestSectionsRoundTrip(t *testing.T) {
-	task1 := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Active")
+	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task in Active")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.CustomSection = "Active"
-	task2 := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Backlog")
+	task2, err := models.NewTask("task2", 2, models.TaskTypeTask, "Task in Backlog")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.CustomSection = "Backlog"
-	task3 := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Done")
+	task3, err := models.NewTask("task3", 3, models.TaskTypeTask, "Task in Done")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.CustomSection = "Done"
 
 	tasks := []*models.Task{task1, task2, task3}
@@ -191,7 +206,10 @@ func TestSectionsRoundTrip(t *testing.T) {
 }
 
 func TestSectionColorsRoundTrip(t *testing.T) {
-	task := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.CustomSection = "Active"
 	tasks := []*models.Task{task}
 	sections := []string{"Backlog", "Active", "Done"}

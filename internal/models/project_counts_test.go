@@ -5,14 +5,29 @@ import "testing"
 func TestProjectTaskCounts(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1") // todo
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1") // todo
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Start() // in_progress
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Complete() // done
-	task4 := NewTask("4", 4, TaskTypeTask, "Task 4")
+	task4, err := NewTask("4", 4, TaskTypeTask, "Task 4")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task4.Block() // blocked
-	task5 := NewTask("5", 5, TaskTypeTask, "Task 5")
+	task5, err := NewTask("5", 5, TaskTypeTask, "Task 5")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task5.Cancel() // canceled
 
 	project.Tasks = []*Task{task1, task2, task3, task4, task5}
@@ -35,10 +50,19 @@ func TestProjectTaskCounts(t *testing.T) {
 func TestProjectGetTasksByStatus(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.Start()
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2, task3}
 
@@ -56,10 +80,22 @@ func TestProjectGetTasksByStatus(t *testing.T) {
 func TestProjectGetTasksByType(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("1", 1, TaskTypeEpic, "Epic")
-	task1 := NewTask("2", 2, TaskTypeTask, "Task 1")
-	task2 := NewTask("3", 3, TaskTypeTask, "Task 2")
-	bug := NewTask("4", 4, TaskTypeBug, "Bug")
+	epic, err := NewTask("1", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("2", 2, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("3", 3, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("4", 4, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{epic, task1, task2, bug}
 
@@ -77,14 +113,23 @@ func TestProjectGetTasksByType(t *testing.T) {
 func TestProjectGetTasksByTag(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.AddTag("backend")
 	task1.AddTag("urgent")
 
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.AddTag("backend")
 
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.AddTag("frontend")
 
 	project.Tasks = []*Task{task1, task2, task3}

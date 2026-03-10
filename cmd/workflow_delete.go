@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
+var workflowDeleteForce bool
+
 var workflowDeleteCmd = &cobra.Command{
 	Use:     "delete <id>",
 	Aliases: []string{"rm", "remove"},
@@ -24,6 +26,7 @@ Example:
 
 func init() {
 	workflowCmd.AddCommand(workflowDeleteCmd)
+	workflowDeleteCmd.Flags().BoolVarP(&workflowDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runWorkflowDelete(cmd *cobra.Command, args []string) error {
@@ -40,6 +43,12 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	ruleName := rule.Name
+
+	if !ConfirmYN(fmt.Sprintf("Delete workflow rule '%s'? [y/N]: ", ruleName), workflowDeleteForce) {
+		fmt.Println("Canceled.")
+		return nil
+	}
+
 	if !cfg.DeleteWorkflowRule(ruleID) {
 		return fmt.Errorf("failed to delete workflow rule: %s", ruleID)
 	}

@@ -15,16 +15,28 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "root task with no children can promote",
 			setup: func() *Task {
-				return NewTask("task", 1, TaskTypeTask, "Task")
+				task, err := NewTask("task", 1, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return task
 			},
 			allowed: true,
 		},
 		{
 			name: "root story with task children can promote to epic",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				story.AddChild(task)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return story
 			},
 			allowed: true,
@@ -32,7 +44,11 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "epic cannot promote further",
 			setup: func() *Task {
-				return NewTask("epic", 1, TaskTypeEpic, "Epic")
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return epic
 			},
 			allowed: false,
 			reason:  "already at top of hierarchy",
@@ -40,9 +56,17 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "task under story cannot promote to story",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				story.AddChild(task)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return task
 			},
 			allowed: false,
@@ -51,9 +75,17 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "story under epic cannot promote to epic",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				story := NewTask("story", 2, TaskTypeStory, "Story")
-				epic.AddChild(story)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				story, err := NewTask("story", 2, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(story); err != nil {
+					t.Fatal(err)
+				}
 				return story
 			},
 			allowed: false,
@@ -62,11 +94,24 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "bug under story can promote to story under epic grandparent",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				story := NewTask("story", 2, TaskTypeStory, "Story")
-				bug := NewTask("bug", 3, TaskTypeBug, "Bug")
-				epic.AddChild(story)
-				story.AddChild(bug)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				story, err := NewTask("story", 2, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				bug, err := NewTask("bug", 3, TaskTypeBug, "Bug")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(story); err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(bug); err != nil {
+					t.Fatal(err)
+				}
 				return bug
 			},
 			allowed: false,
@@ -75,9 +120,17 @@ func TestTaskCanPromote(t *testing.T) {
 		{
 			name: "task under epic can promote to story",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				epic.AddChild(task)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return task
 			},
 			allowed: true,
@@ -108,21 +161,33 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "epic with no children can demote",
 			setup: func() *Task {
-				return NewTask("epic", 1, TaskTypeEpic, "Epic")
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return epic
 			},
 			allowed: true,
 		},
 		{
 			name: "story with no children can demote",
 			setup: func() *Task {
-				return NewTask("story", 1, TaskTypeStory, "Story")
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return story
 			},
 			allowed: true,
 		},
 		{
 			name: "task cannot demote further",
 			setup: func() *Task {
-				return NewTask("task", 1, TaskTypeTask, "Task")
+				task, err := NewTask("task", 1, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return task
 			},
 			allowed: false,
 			reason:  "already at bottom of hierarchy",
@@ -130,7 +195,11 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "bug cannot demote further",
 			setup: func() *Task {
-				return NewTask("bug", 1, TaskTypeBug, "Bug")
+				bug, err := NewTask("bug", 1, TaskTypeBug, "Bug")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bug
 			},
 			allowed: false,
 			reason:  "already at bottom of hierarchy",
@@ -138,9 +207,17 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "epic with story children cannot demote",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				story := NewTask("story", 2, TaskTypeStory, "Story")
-				epic.AddChild(story)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				story, err := NewTask("story", 2, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(story); err != nil {
+					t.Fatal(err)
+				}
 				return epic
 			},
 			allowed: false,
@@ -149,9 +226,17 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "epic with task children can demote to story",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				epic.AddChild(task)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return epic
 			},
 			allowed: true,
@@ -159,9 +244,17 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "story with task children cannot demote to task",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				story.AddChild(task)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return story
 			},
 			allowed: false,
@@ -170,9 +263,17 @@ func TestTaskCanDemote(t *testing.T) {
 		{
 			name: "epic with idea children can demote",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
-				epic.AddChild(idea)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				idea, err := NewTask("idea", 2, TaskTypeIdea, "Idea")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(idea); err != nil {
+					t.Fatal(err)
+				}
 				return epic
 			},
 			allowed: true,
@@ -204,7 +305,11 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "root task can cycle right to bug",
 			setup: func() *Task {
-				return NewTask("task", 1, TaskTypeTask, "Task")
+				task, err := NewTask("task", 1, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return task
 			},
 			left:    false,
 			allowed: true,
@@ -212,7 +317,11 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "root task can cycle left to idea",
 			setup: func() *Task {
-				return NewTask("task", 1, TaskTypeTask, "Task")
+				task, err := NewTask("task", 1, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return task
 			},
 			left:    true,
 			allowed: true,
@@ -220,9 +329,17 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "task under story can cycle to bug",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				story.AddChild(task)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return task
 			},
 			left:    false,
@@ -231,9 +348,17 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "task under story can cycle to idea",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				task := NewTask("task", 2, TaskTypeTask, "Task")
-				story.AddChild(task)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				task, err := NewTask("task", 2, TaskTypeTask, "Task")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(task); err != nil {
+					t.Fatal(err)
+				}
 				return task
 			},
 			left:    true,
@@ -242,9 +367,17 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "bug under story can cycle to task",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				bug := NewTask("bug", 2, TaskTypeBug, "Bug")
-				story.AddChild(bug)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				bug, err := NewTask("bug", 2, TaskTypeBug, "Bug")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(bug); err != nil {
+					t.Fatal(err)
+				}
 				return bug
 			},
 			left:    true,
@@ -253,9 +386,17 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "bug under story can cycle right to idea",
 			setup: func() *Task {
-				story := NewTask("story", 1, TaskTypeStory, "Story")
-				bug := NewTask("bug", 2, TaskTypeBug, "Bug")
-				story.AddChild(bug)
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				bug, err := NewTask("bug", 2, TaskTypeBug, "Bug")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := story.AddChild(bug); err != nil {
+					t.Fatal(err)
+				}
 				return bug
 			},
 			left:    false,
@@ -264,9 +405,17 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "idea under epic can cycle to any leaf type",
 			setup: func() *Task {
-				epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-				idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
-				epic.AddChild(idea)
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				idea, err := NewTask("idea", 2, TaskTypeIdea, "Idea")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := epic.AddChild(idea); err != nil {
+					t.Fatal(err)
+				}
 				return idea
 			},
 			left:    true,
@@ -275,7 +424,11 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "epic cannot cycle leaf types",
 			setup: func() *Task {
-				return NewTask("epic", 1, TaskTypeEpic, "Epic")
+				epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return epic
 			},
 			left:    false,
 			allowed: false,
@@ -284,7 +437,11 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 		{
 			name: "story cannot cycle leaf types",
 			setup: func() *Task {
-				return NewTask("story", 1, TaskTypeStory, "Story")
+				story, err := NewTask("story", 1, TaskTypeStory, "Story")
+				if err != nil {
+					t.Fatal(err)
+				}
+				return story
 			},
 			left:    true,
 			allowed: false,
@@ -307,15 +464,19 @@ func TestTaskCanCycleLeafType(t *testing.T) {
 }
 
 func TestTaskPromote(t *testing.T) {
-	task := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalUpdate := task.UpdatedAt
 	time.Sleep(time.Millisecond)
 
-	err := task.Promote()
+	err = task.Promote()
 	if err != nil {
 		t.Errorf("Promote() returned error: %v", err)
 	}
 	if task.Type != TaskTypeStory {
+
 		t.Errorf("after Promote(), Type = %s, want story", task.Type)
 	}
 	if !task.UpdatedAt.After(originalUpdate) {
@@ -339,11 +500,14 @@ func TestTaskPromote(t *testing.T) {
 }
 
 func TestTaskDemote(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalUpdate := epic.UpdatedAt
 	time.Sleep(time.Millisecond)
 
-	err := epic.Demote()
+	err = epic.Demote()
 	if err != nil {
 		t.Errorf("Demote() returned error: %v", err)
 	}
@@ -371,12 +535,15 @@ func TestTaskDemote(t *testing.T) {
 }
 
 func TestTaskCycleLeafType(t *testing.T) {
-	task := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalUpdate := task.UpdatedAt
 	time.Sleep(time.Millisecond)
 
 	// Cycle right: Task -> Bug
-	err := task.CycleLeafType(false)
+	err = task.CycleLeafType(false)
 	if err != nil {
 		t.Errorf("CycleLeafType(false) returned error: %v", err)
 	}
@@ -408,18 +575,31 @@ func TestTaskCycleLeafType(t *testing.T) {
 
 func TestTaskPromoteWithInvalidHierarchy(t *testing.T) {
 	// Story under epic with story child - cannot demote epic
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	epic.AddChild(story)
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(story); err != nil {
+		t.Fatal(err)
+	}
 
-	err := epic.Demote()
+	err = epic.Demote()
 	if err == nil {
 		t.Error("Demote() epic with story child should return error")
 	}
 
 	// But task under story cannot promote because result would be invalid
-	task := NewTask("task", 3, TaskTypeTask, "Task")
-	story.AddChild(task)
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := story.AddChild(task); err != nil {
+		t.Fatal(err)
+	}
 
 	err = task.Promote()
 	if err == nil {

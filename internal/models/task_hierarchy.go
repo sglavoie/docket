@@ -74,11 +74,16 @@ func (t *Task) CanAddChild(childType TaskType) bool {
 }
 
 // AddChild adds a task as a child, setting the parent reference.
-func (t *Task) AddChild(child *Task) {
+// Returns an error if the child type is not allowed under this task's type.
+func (t *Task) AddChild(child *Task) error {
+	if !t.CanAddChild(child.Type) {
+		return fmt.Errorf("cannot add %s as child of %s", child.Type, t.Type)
+	}
 	child.ParentID = &t.ID
 	child.Parent = t
 	child.Level = t.Level + 1
 	t.Children = append(t.Children, child)
+	return nil
 }
 
 // CanPromote checks if this task can be promoted to the next higher type.

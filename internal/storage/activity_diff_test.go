@@ -8,8 +8,14 @@ import (
 )
 
 func TestDiffTaskComments(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add a comment to new
 	new.Comments = []*models.Comment{{Text: "hello", CreatedAt: time.Now()}}
@@ -26,9 +32,15 @@ func TestDiffTaskComments(t *testing.T) {
 }
 
 func TestDiffTaskCommentsRemoved(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	old.Comments = []*models.Comment{{Text: "a", CreatedAt: time.Now()}, {Text: "b", CreatedAt: time.Now()}}
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	new.Comments = []*models.Comment{{Text: "a", CreatedAt: time.Now()}}
 
 	diffTask(old, new)
@@ -43,8 +55,14 @@ func TestDiffTaskCommentsRemoved(t *testing.T) {
 }
 
 func TestDiffTaskDependencies(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	new.DependsOn = []string{"dep-1"}
 
 	diffTask(old, new)
@@ -56,9 +74,15 @@ func TestDiffTaskDependencies(t *testing.T) {
 }
 
 func TestDiffTaskDependenciesUnchanged(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	old.DependsOn = []string{"dep-1"}
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	new.DependsOn = []string{"dep-1"}
 
 	diffTask(old, new)
@@ -69,8 +93,14 @@ func TestDiffTaskDependenciesUnchanged(t *testing.T) {
 }
 
 func TestDiffTaskRelated(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	new.RelatedTo = []string{"rel-1"}
 
 	diffTask(old, new)
@@ -82,8 +112,14 @@ func TestDiffTaskRelated(t *testing.T) {
 }
 
 func TestDiffTaskAttachments(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	new.Attachments = []models.Attachment{{Filename: "file.txt", AddedAt: time.Now()}}
 
 	diffTask(old, new)
@@ -98,8 +134,14 @@ func TestDiffTaskAttachments(t *testing.T) {
 }
 
 func TestDiffTaskParentID(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	parentID := "parent-1"
 	new.ParentID = &parentID
 
@@ -116,9 +158,15 @@ func TestDiffTaskParentID(t *testing.T) {
 
 func TestDiffTaskParentIDUnchanged(t *testing.T) {
 	parentID := "parent-1"
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	old.ParentID = &parentID
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	newParentID := "parent-1"
 	new.ParentID = &newParentID
 
@@ -130,8 +178,14 @@ func TestDiffTaskParentIDUnchanged(t *testing.T) {
 }
 
 func TestDiffTaskNoChanges(t *testing.T) {
-	old := models.NewTask("1", 1, models.TaskTypeTask, "Test")
-	new := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	old, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	new, err := models.NewTask("1", 1, models.TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	diffTask(old, new)
 

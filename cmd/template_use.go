@@ -120,7 +120,10 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	// Create main task
 	taskID := uuid.New().String()
 	shortID := project.GetNextShortID()
-	task := models.NewTask(taskID, shortID, t.Type, title)
+	task, err := models.NewTask(taskID, shortID, t.Type, title)
+	if err != nil {
+		return err
+	}
 
 	// Apply template settings
 	task.Priority = t.GetEffectivePriority()
@@ -167,7 +170,10 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 			childID := uuid.New().String()
 			childShortID := project.GetNextShortID()
 			childType := child.GetChildType()
-			childTask := models.NewTask(childID, childShortID, childType, child.Title)
+			childTask, childErr := models.NewTask(childID, childShortID, childType, child.Title)
+			if childErr != nil {
+				return fmt.Errorf("invalid child task %q: %w", child.Title, childErr)
+			}
 			childTask.ParentID = &task.ID
 			childTask.Priority = task.Priority
 			childTask.Section = task.Section

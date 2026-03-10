@@ -28,7 +28,10 @@ func TestIntegration_CreateTaskAndComplete(t *testing.T) {
 	}
 
 	// Create a new task
-	newTask := models.NewTask("new-task-1", project.GetNextShortID(), models.TaskTypeTask, "New Integration Task")
+	newTask, err := models.NewTask("new-task-1", project.GetNextShortID(), models.TaskTypeTask, "New Integration Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, newTask)
 	project.BuildTaskTree()
 
@@ -51,7 +54,7 @@ func TestIntegration_CreateTaskAndComplete(t *testing.T) {
 	}
 
 	// Save to mock repository
-	err := deps.Repository.Save(project)
+	err = deps.Repository.Save(project)
 	testutil.AssertNoError(t, err)
 
 	// Verify project was saved
@@ -77,20 +80,32 @@ func TestIntegration_TaskHierarchy(t *testing.T) {
 	defer func() { Deps = origDeps }()
 
 	// Create an epic
-	epic := models.NewTask("epic-int-1", project.GetNextShortID(), models.TaskTypeEpic, "Integration Epic")
+	epic, err := models.NewTask("epic-int-1", project.GetNextShortID(), models.TaskTypeEpic, "Integration Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
 	// Create a story under the epic
-	story := models.NewTask("story-int-1", project.GetNextShortID(), models.TaskTypeStory, "Integration Story")
+	story, err := models.NewTask("story-int-1", project.GetNextShortID(), models.TaskTypeStory, "Integration Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	story.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, story)
 
 	// Create tasks under the story
-	task1 := models.NewTask("task-int-1", project.GetNextShortID(), models.TaskTypeTask, "Integration Task 1")
+	task1, err := models.NewTask("task-int-1", project.GetNextShortID(), models.TaskTypeTask, "Integration Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task1)
 
-	task2 := models.NewTask("task-int-2", project.GetNextShortID(), models.TaskTypeTask, "Integration Task 2")
+	task2, err := models.NewTask("task-int-2", project.GetNextShortID(), models.TaskTypeTask, "Integration Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task2)
 
@@ -128,7 +143,10 @@ func TestIntegration_FindTaskByIdentifier(t *testing.T) {
 	defer deps.Cleanup()
 
 	// Add a task with known values
-	task := models.NewTask("find-me-uuid", project.GetNextShortID(), models.TaskTypeTask, "Findable Task")
+	task, err := models.NewTask("find-me-uuid", project.GetNextShortID(), models.TaskTypeTask, "Findable Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
@@ -182,11 +200,14 @@ func TestIntegration_MockRepositorySaveAndLoad(t *testing.T) {
 	defer deps.Cleanup()
 
 	// Add a new task
-	newTask := models.NewTask("repo-test-1", project.GetNextShortID(), models.TaskTypeTask, "Repository Test Task")
+	newTask, err := models.NewTask("repo-test-1", project.GetNextShortID(), models.TaskTypeTask, "Repository Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, newTask)
 
 	// Save the project
-	err := deps.Repository.Save(project)
+	err = deps.Repository.Save(project)
 	testutil.AssertNoError(t, err)
 
 	// Create a new project reference and load

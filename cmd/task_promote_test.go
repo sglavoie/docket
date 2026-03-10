@@ -10,13 +10,16 @@ import (
 func TestPromoteTaskToStory(t *testing.T) {
 	project := testutil.NewTestProject("Promote Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Promote")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Promote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 
-	err := task.Promote()
+	err = task.Promote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeStory)
@@ -25,13 +28,16 @@ func TestPromoteTaskToStory(t *testing.T) {
 func TestPromoteStoryToEpic(t *testing.T) {
 	project := testutil.NewTestProject("Promote Test")
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story to Promote")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story to Promote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, story)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, story.Type, models.TaskTypeStory)
 
-	err := story.Promote()
+	err = story.Promote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, story.Type, models.TaskTypeEpic)
@@ -40,13 +46,16 @@ func TestPromoteStoryToEpic(t *testing.T) {
 func TestPromoteBugToStory(t *testing.T) {
 	project := testutil.NewTestProject("Promote Test")
 
-	bug := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Promote")
+	bug, err := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Promote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, bug)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeBug)
 
-	err := bug.Promote()
+	err = bug.Promote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeStory)
@@ -55,13 +64,16 @@ func TestPromoteBugToStory(t *testing.T) {
 func TestPromoteIdeaToStory(t *testing.T) {
 	project := testutil.NewTestProject("Promote Test")
 
-	idea := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Promote")
+	idea, err := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Promote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, idea)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeIdea)
 
-	err := idea.Promote()
+	err = idea.Promote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeStory)
@@ -70,11 +82,14 @@ func TestPromoteIdeaToStory(t *testing.T) {
 func TestPromoteEpicAlreadyAtTop(t *testing.T) {
 	project := testutil.NewTestProject("Promote Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Already at Top")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Already at Top")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
-	err := epic.Promote()
+	err = epic.Promote()
 	if err == nil {
 		t.Error("expected error when promoting epic")
 	}
@@ -85,7 +100,10 @@ func TestPromoteEpicAlreadyAtTop(t *testing.T) {
 func TestCanPromoteReturnsReason(t *testing.T) {
 	project := testutil.NewTestProject("CanPromote Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
@@ -101,10 +119,16 @@ func TestCanPromoteReturnsReason(t *testing.T) {
 func TestPromoteTaskUnderStoryBlockedByHierarchy(t *testing.T) {
 	project := testutil.NewTestProject("Hierarchy Block Test")
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Parent Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, story)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
@@ -122,13 +146,16 @@ func TestPromoteTaskUnderStoryBlockedByHierarchy(t *testing.T) {
 func TestDemoteEpicToStory(t *testing.T) {
 	project := testutil.NewTestProject("Demote Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic to Demote")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic to Demote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, epic.Type, models.TaskTypeEpic)
 
-	err := epic.Demote()
+	err = epic.Demote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, epic.Type, models.TaskTypeStory)
@@ -137,13 +164,16 @@ func TestDemoteEpicToStory(t *testing.T) {
 func TestDemoteStoryToTask(t *testing.T) {
 	project := testutil.NewTestProject("Demote Test")
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story to Demote")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story to Demote")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, story)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, story.Type, models.TaskTypeStory)
 
-	err := story.Demote()
+	err = story.Demote()
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, story.Type, models.TaskTypeTask)
@@ -152,11 +182,14 @@ func TestDemoteStoryToTask(t *testing.T) {
 func TestDemoteTaskAlreadyAtBottom(t *testing.T) {
 	project := testutil.NewTestProject("Demote Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task Already at Bottom")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task Already at Bottom")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
-	err := task.Demote()
+	err = task.Demote()
 	if err == nil {
 		t.Error("expected error when demoting task (already at bottom)")
 	}
@@ -167,11 +200,14 @@ func TestDemoteTaskAlreadyAtBottom(t *testing.T) {
 func TestDemoteBugAlreadyAtBottom(t *testing.T) {
 	project := testutil.NewTestProject("Demote Test")
 
-	bug := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug Already at Bottom")
+	bug, err := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug Already at Bottom")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, bug)
 	project.BuildTaskTree()
 
-	err := bug.Demote()
+	err = bug.Demote()
 	if err == nil {
 		t.Error("expected error when demoting bug (already at bottom)")
 	}
@@ -182,11 +218,14 @@ func TestDemoteBugAlreadyAtBottom(t *testing.T) {
 func TestDemoteIdeaAlreadyAtBottom(t *testing.T) {
 	project := testutil.NewTestProject("Demote Test")
 
-	idea := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea Already at Bottom")
+	idea, err := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea Already at Bottom")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, idea)
 	project.BuildTaskTree()
 
-	err := idea.Demote()
+	err = idea.Demote()
 	if err == nil {
 		t.Error("expected error when demoting idea (already at bottom)")
 	}
@@ -197,7 +236,10 @@ func TestDemoteIdeaAlreadyAtBottom(t *testing.T) {
 func TestCanDemoteReturnsReason(t *testing.T) {
 	project := testutil.NewTestProject("CanDemote Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
@@ -213,10 +255,16 @@ func TestCanDemoteReturnsReason(t *testing.T) {
 func TestDemoteStoryWithChildrenBlockedByHierarchy(t *testing.T) {
 	project := testutil.NewTestProject("Demote With Children Test")
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story with Child")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story with Child")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, story)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
@@ -234,13 +282,16 @@ func TestDemoteStoryWithChildrenBlockedByHierarchy(t *testing.T) {
 func TestCycleLeafTypeRightTaskToBug(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Cycle")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 
-	err := task.CycleLeafType(false) // right
+	err = task.CycleLeafType(false) // right
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeBug)
@@ -249,13 +300,16 @@ func TestCycleLeafTypeRightTaskToBug(t *testing.T) {
 func TestCycleLeafTypeRightBugToIdea(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	bug := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Cycle")
+	bug, err := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, bug)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeBug)
 
-	err := bug.CycleLeafType(false) // right
+	err = bug.CycleLeafType(false) // right
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeIdea)
@@ -264,13 +318,16 @@ func TestCycleLeafTypeRightBugToIdea(t *testing.T) {
 func TestCycleLeafTypeRightIdeaToTask(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	idea := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Cycle")
+	idea, err := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, idea)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeIdea)
 
-	err := idea.CycleLeafType(false) // right
+	err = idea.CycleLeafType(false) // right
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeTask)
@@ -279,13 +336,16 @@ func TestCycleLeafTypeRightIdeaToTask(t *testing.T) {
 func TestCycleLeafTypeLeftTaskToIdea(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Cycle Left")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task to Cycle Left")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeTask)
 
-	err := task.CycleLeafType(true) // left
+	err = task.CycleLeafType(true) // left
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, task.Type, models.TaskTypeIdea)
@@ -294,13 +354,16 @@ func TestCycleLeafTypeLeftTaskToIdea(t *testing.T) {
 func TestCycleLeafTypeLeftIdeaToBug(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	idea := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Cycle Left")
+	idea, err := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea to Cycle Left")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, idea)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeIdea)
 
-	err := idea.CycleLeafType(true) // left
+	err = idea.CycleLeafType(true) // left
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeBug)
@@ -309,13 +372,16 @@ func TestCycleLeafTypeLeftIdeaToBug(t *testing.T) {
 func TestCycleLeafTypeLeftBugToTask(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Test")
 
-	bug := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Cycle Left")
+	bug, err := models.NewTask("bug-1", project.GetNextShortID(), models.TaskTypeBug, "Bug to Cycle Left")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, bug)
 	project.BuildTaskTree()
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeBug)
 
-	err := bug.CycleLeafType(true) // left
+	err = bug.CycleLeafType(true) // left
 	testutil.AssertNoError(t, err)
 
 	testutil.AssertEqual(t, bug.Type, models.TaskTypeTask)
@@ -324,12 +390,15 @@ func TestCycleLeafTypeLeftBugToTask(t *testing.T) {
 func TestCycleLeafTypeFullCycleRight(t *testing.T) {
 	project := testutil.NewTestProject("Full Cycle Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task Full Cycle")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task Full Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	// Task -> Bug -> Idea -> Task
-	err := task.CycleLeafType(false)
+	err = task.CycleLeafType(false)
 	testutil.AssertNoError(t, err)
 	testutil.AssertEqual(t, task.Type, models.TaskTypeBug)
 
@@ -345,11 +414,14 @@ func TestCycleLeafTypeFullCycleRight(t *testing.T) {
 func TestCycleLeafTypeEpicFails(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Epic Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Cannot Cycle")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Cannot Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
-	err := epic.CycleLeafType(false)
+	err = epic.CycleLeafType(false)
 	if err == nil {
 		t.Error("expected error when cycling non-leaf type")
 	}
@@ -360,11 +432,14 @@ func TestCycleLeafTypeEpicFails(t *testing.T) {
 func TestCycleLeafTypeStoryFails(t *testing.T) {
 	project := testutil.NewTestProject("Cycle Story Test")
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story Cannot Cycle")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story Cannot Cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, story)
 	project.BuildTaskTree()
 
-	err := story.CycleLeafType(false)
+	err = story.CycleLeafType(false)
 	if err == nil {
 		t.Error("expected error when cycling non-leaf type")
 	}
@@ -375,7 +450,10 @@ func TestCycleLeafTypeStoryFails(t *testing.T) {
 func TestCanCycleLeafTypeReturnsReason(t *testing.T) {
 	project := testutil.NewTestProject("CanCycle Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
@@ -391,13 +469,16 @@ func TestCanCycleLeafTypeReturnsReason(t *testing.T) {
 func TestPromoteUpdatesTimestamp(t *testing.T) {
 	project := testutil.NewTestProject("Timestamp Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	originalTime := task.UpdatedAt
 
-	err := task.Promote()
+	err = task.Promote()
 	testutil.AssertNoError(t, err)
 
 	if !task.UpdatedAt.After(originalTime) && task.UpdatedAt != originalTime {
@@ -409,13 +490,16 @@ func TestPromoteUpdatesTimestamp(t *testing.T) {
 func TestDemoteUpdatesTimestamp(t *testing.T) {
 	project := testutil.NewTestProject("Timestamp Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 	project.BuildTaskTree()
 
 	originalTime := epic.UpdatedAt
 
-	err := epic.Demote()
+	err = epic.Demote()
 	testutil.AssertNoError(t, err)
 
 	if !epic.UpdatedAt.After(originalTime) && epic.UpdatedAt != originalTime {
@@ -426,13 +510,16 @@ func TestDemoteUpdatesTimestamp(t *testing.T) {
 func TestCycleLeafTypeUpdatesTimestamp(t *testing.T) {
 	project := testutil.NewTestProject("Timestamp Test")
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
 
 	originalTime := task.UpdatedAt
 
-	err := task.CycleLeafType(false)
+	err = task.CycleLeafType(false)
 	testutil.AssertNoError(t, err)
 
 	if !task.UpdatedAt.After(originalTime) && task.UpdatedAt != originalTime {
@@ -443,10 +530,16 @@ func TestCycleLeafTypeUpdatesTimestamp(t *testing.T) {
 func TestPromoteTaskUnderEpicToStory(t *testing.T) {
 	project := testutil.NewTestProject("Hierarchy Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task under Epic")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task under Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
@@ -457,7 +550,7 @@ func TestPromoteTaskUnderEpicToStory(t *testing.T) {
 		t.Error("task under epic should be promotable to story")
 	}
 
-	err := task.Promote()
+	err = task.Promote()
 	testutil.AssertNoError(t, err)
 	testutil.AssertEqual(t, task.Type, models.TaskTypeStory)
 }
@@ -465,10 +558,16 @@ func TestPromoteTaskUnderEpicToStory(t *testing.T) {
 func TestDemoteStoryUnderEpicToTask(t *testing.T) {
 	project := testutil.NewTestProject("Hierarchy Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story under Epic")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story under Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	story.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, story)
 	project.BuildTaskTree()
@@ -479,7 +578,7 @@ func TestDemoteStoryUnderEpicToTask(t *testing.T) {
 		t.Error("story under epic should be demotable to task")
 	}
 
-	err := story.Demote()
+	err = story.Demote()
 	testutil.AssertNoError(t, err)
 	testutil.AssertEqual(t, story.Type, models.TaskTypeTask)
 }
@@ -487,16 +586,22 @@ func TestDemoteStoryUnderEpicToTask(t *testing.T) {
 func TestCycleIdeaUnderEpicToTaskToBug(t *testing.T) {
 	project := testutil.NewTestProject("Hierarchy Cycle Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	idea := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea under Epic")
+	idea, err := models.NewTask("idea-1", project.GetNextShortID(), models.TaskTypeIdea, "Idea under Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	idea.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, idea)
 	project.BuildTaskTree()
 
 	// Idea -> Task (right cycle)
-	err := idea.CycleLeafType(false)
+	err = idea.CycleLeafType(false)
 	testutil.AssertNoError(t, err)
 	testutil.AssertEqual(t, idea.Type, models.TaskTypeTask)
 
@@ -509,10 +614,16 @@ func TestCycleIdeaUnderEpicToTaskToBug(t *testing.T) {
 func TestEpicWithStoryChildrenCannotDemote(t *testing.T) {
 	project := testutil.NewTestProject("Epic Demote Block Test")
 
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic with Story Child")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic with Story Child")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story Child")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story Child")
+	if err != nil {
+		t.Fatal(err)
+	}
 	story.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, story)
 	project.BuildTaskTree()

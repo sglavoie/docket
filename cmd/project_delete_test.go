@@ -185,10 +185,16 @@ func TestProjectRemoveTaskClearsReferences(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create parent and child
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, task)
 	project.BuildTaskTree()
@@ -219,14 +225,23 @@ func TestProjectRemoveTaskPreservesOthers(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create hierarchy: epic -> story -> task
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
-	story := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	story, err := models.NewTask("story-1", project.GetNextShortID(), models.TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
 	story.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, story)
 
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &story.ID
 	project.Tasks = append(project.Tasks, task)
 

@@ -16,9 +16,15 @@ func TestComputeCrossProjectScore(t *testing.T) {
 	project := models.NewProject(uuid.New().String(), "Test", "")
 
 	t.Run("higher priority scores higher", func(t *testing.T) {
-		p1 := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
+		p1, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
+		if err != nil {
+			t.Fatal(err)
+		}
 		p1.Priority = 1
-		p5 := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Low")
+		p5, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Low")
+		if err != nil {
+			t.Fatal(err)
+		}
 		p5.Priority = 5
 
 		s1 := computeCrossProjectScore(p1, project, nil, now)
@@ -29,10 +35,16 @@ func TestComputeCrossProjectScore(t *testing.T) {
 	})
 
 	t.Run("in-progress bonus", func(t *testing.T) {
-		todo := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Todo")
+		todo, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Todo")
+		if err != nil {
+			t.Fatal(err)
+		}
 		todo.Priority = 3
 
-		inProgress := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "In Progress")
+		inProgress, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "In Progress")
+		if err != nil {
+			t.Fatal(err)
+		}
 		inProgress.Priority = 3
 		inProgress.Status = models.StatusInProgress
 
@@ -44,10 +56,16 @@ func TestComputeCrossProjectScore(t *testing.T) {
 	})
 
 	t.Run("overdue due date boosts score", func(t *testing.T) {
-		noDue := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "No due")
+		noDue, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "No due")
+		if err != nil {
+			t.Fatal(err)
+		}
 		noDue.Priority = 3
 
-		overdue := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Overdue")
+		overdue, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Overdue")
+		if err != nil {
+			t.Fatal(err)
+		}
 		overdue.Priority = 3
 		yesterday := time.Now().AddDate(0, 0, -1)
 		overdue.DueDate = &yesterday
@@ -60,10 +78,16 @@ func TestComputeCrossProjectScore(t *testing.T) {
 	})
 
 	t.Run("bug type bonus", func(t *testing.T) {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 
-		bug := models.NewTask(uuid.New().String(), 2, models.TaskTypeBug, "Bug")
+		bug, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeBug, "Bug")
+		if err != nil {
+			t.Fatal(err)
+		}
 		bug.Priority = 3
 
 		sTask := computeCrossProjectScore(task, project, nil, now)
@@ -77,8 +101,14 @@ func TestComputeCrossProjectScore(t *testing.T) {
 func TestRankCrossProjectTasks(t *testing.T) {
 	t.Run("excludes dismissed tasks", func(t *testing.T) {
 		project := models.NewProject(uuid.New().String(), "Test", "")
-		t1 := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task 1")
-		t2 := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Task 2")
+		t1, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Task 1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t2, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Task 2")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		tasks := []FocusTask{
 			{Task: t1, Project: project},
@@ -100,13 +130,25 @@ func TestRankCrossProjectTasks(t *testing.T) {
 		p2 := models.NewProject(uuid.New().String(), "Project B", "")
 
 		// Create 3 same-priority tasks from p1 and 1 from p2
-		t1a := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "P1 Task A")
+		t1a, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "P1 Task A")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t1a.Priority = 2
-		t1b := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "P1 Task B")
+		t1b, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "P1 Task B")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t1b.Priority = 2
-		t1c := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "P1 Task C")
+		t1c, err := models.NewTask(uuid.New().String(), 3, models.TaskTypeTask, "P1 Task C")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t1c.Priority = 2
-		t2a := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "P2 Task A")
+		t2a, err := models.NewTask(uuid.New().String(), 4, models.TaskTypeTask, "P2 Task A")
+		if err != nil {
+			t.Fatal(err)
+		}
 		t2a.Priority = 2
 
 		tasks := []FocusTask{
@@ -136,9 +178,15 @@ func TestRankCrossProjectTasks(t *testing.T) {
 
 	t.Run("sorted descending by score", func(t *testing.T) {
 		project := models.NewProject(uuid.New().String(), "Test", "")
-		high := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "High")
+		high, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "High")
+		if err != nil {
+			t.Fatal(err)
+		}
 		high.Priority = 1
-		low := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Low")
+		low, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Low")
+		if err != nil {
+			t.Fatal(err)
+		}
 		low.Priority = 5
 
 		tasks := []FocusTask{
@@ -161,7 +209,10 @@ func TestGetSuggestionReason(t *testing.T) {
 	project := models.NewProject(uuid.New().String(), "Test", "")
 
 	t.Run("critical priority", func(t *testing.T) {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Critical")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 1
 		reason := getSuggestionReason(task, project, nil, now)
 		if !containsSubstring(reason, "ritical priority") {
@@ -170,7 +221,10 @@ func TestGetSuggestionReason(t *testing.T) {
 	})
 
 	t.Run("overdue", func(t *testing.T) {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Overdue")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Overdue")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 		yesterday := time.Now().AddDate(0, 0, -1)
 		task.DueDate = &yesterday
@@ -181,7 +235,10 @@ func TestGetSuggestionReason(t *testing.T) {
 	})
 
 	t.Run("default reason for generic task", func(t *testing.T) {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Generic")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Generic")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 		task.CreatedAt = time.Now().AddDate(0, -1, 0)
 		task.UpdatedAt = time.Now().AddDate(0, -1, 0)
@@ -194,15 +251,24 @@ func TestGetSuggestionReason(t *testing.T) {
 
 func TestAllChildrenComplete(t *testing.T) {
 	t.Run("no children returns true", func(t *testing.T) {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Leaf")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Leaf")
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !allChildrenComplete(task) {
 			t.Error("expected true for task with no children")
 		}
 	})
 
 	t.Run("all done returns true", func(t *testing.T) {
-		parent := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Parent")
-		child := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		parent, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Parent")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		if err != nil {
+			t.Fatal(err)
+		}
 		child.Status = models.StatusDone
 		parent.Children = []*models.Task{child}
 		if !allChildrenComplete(parent) {
@@ -211,8 +277,14 @@ func TestAllChildrenComplete(t *testing.T) {
 	})
 
 	t.Run("incomplete child returns false", func(t *testing.T) {
-		parent := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Parent")
-		child := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		parent, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Parent")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		if err != nil {
+			t.Fatal(err)
+		}
 		parent.Children = []*models.Task{child}
 		if allChildrenComplete(parent) {
 			t.Error("expected false when child is not complete")
@@ -225,7 +297,10 @@ func TestScoringFactors(t *testing.T) {
 	project := models.NewProject(uuid.New().String(), "Test", "")
 
 	baseTask := func() *models.Task {
-		task := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Base")
+		task, err := models.NewTask(uuid.New().String(), 1, models.TaskTypeTask, "Base")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Priority = 3
 		task.CreatedAt = time.Now().Add(-48 * time.Hour)
 		task.UpdatedAt = time.Now().Add(-48 * time.Hour)
@@ -238,7 +313,10 @@ func TestScoringFactors(t *testing.T) {
 		leaf := baseTask()
 		leafScore := computeCrossProjectScore(leaf, project, nil, now)
 		container := baseTask()
-		child := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		child, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		if err != nil {
+			t.Fatal(err)
+		}
 		container.Children = []*models.Task{child}
 		containerScore := computeCrossProjectScore(container, project, nil, now)
 		if leafScore <= containerScore {
@@ -248,7 +326,10 @@ func TestScoringFactors(t *testing.T) {
 
 	t.Run("container penalty with incomplete children", func(t *testing.T) {
 		container := baseTask()
-		child := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		child, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Child")
+		if err != nil {
+			t.Fatal(err)
+		}
 		container.Children = []*models.Task{child}
 		containerScore := computeCrossProjectScore(container, project, nil, now)
 		if containerScore >= baseScore {
@@ -287,7 +368,10 @@ func TestScoringFactors(t *testing.T) {
 		blocker := baseTask()
 		project.Tasks = []*models.Task{blocker}
 
-		blocked := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Blocked")
+		blocked, err := models.NewTask(uuid.New().String(), 2, models.TaskTypeTask, "Blocked")
+		if err != nil {
+			t.Fatal(err)
+		}
 		blocked.DependsOn = []string{blocker.ID}
 		project.Tasks = append(project.Tasks, blocked)
 		project.BuildTaskTree()

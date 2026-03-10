@@ -26,7 +26,7 @@ Examples:
 
 func init() {
 	noteCmd.AddCommand(noteDeleteCmd)
-	noteDeleteCmd.Flags().BoolVarP(&noteDeleteForce, "force", "f", false, "skip confirmation")
+	noteDeleteCmd.Flags().BoolVarP(&noteDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runNoteDelete(cmd *cobra.Command, args []string) error {

@@ -112,12 +112,21 @@ func TestWriteTasksMarkdown_Hierarchy(t *testing.T) {
 }
 
 func TestWriteTasksMarkdown_WithDependencies(t *testing.T) {
-	task1 := models.NewTask("task1", 1, models.TaskTypeTask, "Blocked Task")
+	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.Status = models.StatusBlocked
 	task1.DependsOn = []string{"blocker1", "blocker2"}
 
-	task2 := models.NewTask("blocker1", 2, models.TaskTypeTask, "Blocker 1")
-	task3 := models.NewTask("blocker2", 3, models.TaskTypeTask, "Blocker 2")
+	task2, err := models.NewTask("blocker1", 2, models.TaskTypeTask, "Blocker 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("blocker2", 3, models.TaskTypeTask, "Blocker 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	content := WriteTasksMarkdown("Test", []*models.Task{task1, task2, task3})
 
@@ -192,7 +201,10 @@ func TestRoundTrip(t *testing.T) {
 }
 
 func TestDependenciesRoundTrip(t *testing.T) {
-	original := models.NewTask("task1", 1, models.TaskTypeTask, "Task with deps")
+	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with deps")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original.DependsOn = []string{"dep1", "dep2", "dep3"}
 
 	content := WriteTasksMarkdown("Test", []*models.Task{original})

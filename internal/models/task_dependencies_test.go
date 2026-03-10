@@ -6,9 +6,18 @@ import (
 )
 
 func TestTaskDependencies(t *testing.T) {
-	task := NewTask("task", 1, TaskTypeTask, "Task")
-	blocker1 := NewTask("blocker1", 2, TaskTypeTask, "Blocker 1")
-	blocker2 := NewTask("blocker2", 3, TaskTypeTask, "Blocker 2")
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker1, err := NewTask("blocker1", 2, TaskTypeTask, "Blocker 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocker2, err := NewTask("blocker2", 3, TaskTypeTask, "Blocker 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Initially no dependencies
 	if len(task.DependsOn) != 0 {
@@ -65,7 +74,10 @@ func TestTaskDependencies(t *testing.T) {
 }
 
 func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
-	task := NewTask("task", 1, TaskTypeTask, "Task")
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	originalUpdate := task.UpdatedAt
 	time.Sleep(time.Millisecond)
 

@@ -6,7 +6,10 @@ import (
 )
 
 func TestComplete(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Complete()
 
 	if task.Status != StatusDone {
@@ -21,7 +24,10 @@ func TestComplete(t *testing.T) {
 }
 
 func TestCompleteMovesToCompletedSection(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext
 	task.Complete()
 
@@ -31,7 +37,10 @@ func TestCompleteMovesToCompletedSection(t *testing.T) {
 }
 
 func TestCompleteMovesToCompletedFromWaiting(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionWaiting
 	task.Complete()
 
@@ -41,7 +50,10 @@ func TestCompleteMovesToCompletedFromWaiting(t *testing.T) {
 }
 
 func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionSomeday
 	task.Complete()
 
@@ -51,7 +63,10 @@ func TestCompleteMovesToCompletedFromSomeday(t *testing.T) {
 }
 
 func TestCompleteKeepsCustomSection(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.CustomSection = "CustomSection"
 	task.Complete()
 
@@ -61,7 +76,10 @@ func TestCompleteKeepsCustomSection(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Start()
 
 	if task.Status != StatusInProgress {
@@ -70,7 +88,10 @@ func TestStart(t *testing.T) {
 }
 
 func TestStartAutoTriagesFromInbox(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionInbox
 	task.Start()
 
@@ -80,7 +101,10 @@ func TestStartAutoTriagesFromInbox(t *testing.T) {
 }
 
 func TestStartAutoTriagesFromNext(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext
 	task.Start()
 
@@ -90,7 +114,10 @@ func TestStartAutoTriagesFromNext(t *testing.T) {
 }
 
 func TestStartAutoTriagesFromReview(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionReview
 	task.Start()
 
@@ -100,7 +127,10 @@ func TestStartAutoTriagesFromReview(t *testing.T) {
 }
 
 func TestBlock(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Block()
 
 	if task.Status != StatusBlocked {
@@ -109,7 +139,10 @@ func TestBlock(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Cancel()
 
 	if task.Status != StatusCanceled {
@@ -121,7 +154,10 @@ func TestCancel(t *testing.T) {
 }
 
 func TestCancelMovesToCompletedSection(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionNext
 	task.Cancel()
 
@@ -131,7 +167,10 @@ func TestCancelMovesToCompletedSection(t *testing.T) {
 }
 
 func TestReview(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Start()
 	task.Review()
 
@@ -144,7 +183,10 @@ func TestReview(t *testing.T) {
 }
 
 func TestReviewFromTodo(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionInbox
 	task.Review()
 
@@ -157,7 +199,10 @@ func TestReviewFromTodo(t *testing.T) {
 }
 
 func TestStandby(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Start()
 	before := task.UpdatedAt
 	task.Standby()
@@ -174,7 +219,10 @@ func TestStandby(t *testing.T) {
 }
 
 func TestStandbyFromTodo(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionInbox
 	task.Standby()
 
@@ -187,7 +235,10 @@ func TestStandbyFromTodo(t *testing.T) {
 }
 
 func TestStartAutoTriagesFromStandby(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionStandby
 	task.Start()
 
@@ -197,7 +248,10 @@ func TestStartAutoTriagesFromStandby(t *testing.T) {
 }
 
 func TestReopen(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Complete()
 	task.Reopen()
 
@@ -283,7 +337,10 @@ func TestCanTransitionTo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := NewTask("t1", 1, TaskTypeTask, "Test")
+			task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+			if err != nil {
+				t.Fatal(err)
+			}
 			task.Status = tt.from
 			msg := task.CanTransitionTo(tt.to)
 			if tt.wantAllow && msg != "" {
@@ -313,7 +370,10 @@ func TestApplyTransition(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := NewTask("t1", 1, TaskTypeTask, "Test")
+			task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+			if err != nil {
+				t.Fatal(err)
+			}
 			task.ApplyTransition(tt.target)
 			if task.Status != tt.wantStatus {
 				t.Errorf("expected %s, got %s", tt.wantStatus, task.Status)
@@ -324,7 +384,10 @@ func TestApplyTransition(t *testing.T) {
 
 func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 	// Verify ApplyTransition delegates to Start() which auto-triages
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = SectionReview
 	task.ApplyTransition(StatusInProgress)
 	if task.Section != "" {
@@ -332,7 +395,10 @@ func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 	}
 
 	// Verify ApplyTransition delegates to Complete() which sets CompletedAt
-	task2 := NewTask("t2", 2, TaskTypeTask, "Test")
+	task2, err := NewTask("t2", 2, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.ApplyTransition(StatusDone)
 	if task2.CompletedAt == nil {
 		t.Error("expected CompletedAt set (Complete lifecycle), got nil")
@@ -342,7 +408,10 @@ func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 	}
 
 	// Verify ApplyTransition delegates to Reopen() which moves to Inbox
-	task3 := NewTask("t3", 3, TaskTypeTask, "Test")
+	task3, err := NewTask("t3", 3, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.Complete()
 	task3.ApplyTransition(StatusTodo)
 	if task3.Section != SectionInbox {
@@ -354,7 +423,10 @@ func TestApplyTransitionUsesLifecycleMethods(t *testing.T) {
 }
 
 func TestPinUnpin(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task.Pin()
 	if !task.Pinned {
@@ -374,7 +446,10 @@ func TestPinUnpin(t *testing.T) {
 }
 
 func TestTogglePinned(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task.TogglePinned()
 	if !task.Pinned {
@@ -388,7 +463,10 @@ func TestTogglePinned(t *testing.T) {
 }
 
 func TestActivateDeactivate(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task.Activate()
 	if !task.Active {
@@ -402,7 +480,10 @@ func TestActivateDeactivate(t *testing.T) {
 }
 
 func TestToggleActive(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task.ToggleActive()
 	if !task.Active {
@@ -416,7 +497,10 @@ func TestToggleActive(t *testing.T) {
 }
 
 func TestIsSnoozed(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if task.IsSnoozed() {
 		t.Error("expected not snoozed when SnoozedUntil is nil")
@@ -436,7 +520,10 @@ func TestIsSnoozed(t *testing.T) {
 }
 
 func TestIsOverdue(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if task.IsOverdue() {
 		t.Error("expected not overdue when no due date")
@@ -463,7 +550,10 @@ func TestIsOverdue(t *testing.T) {
 }
 
 func TestIsDueSoon(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if task.IsDueSoon(7) {
 		t.Error("expected not due soon when no due date")
@@ -489,7 +579,10 @@ func TestIsDueSoon(t *testing.T) {
 
 func TestNextNDueDates(t *testing.T) {
 	t.Run("nil when not recurring", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		dates := task.NextNDueDates(3)
 		if dates != nil {
 			t.Errorf("expected nil, got %v", dates)
@@ -497,7 +590,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("nil when n <= 0", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
 		dates := task.NextNDueDates(0)
 		if dates != nil {
@@ -506,7 +602,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("daily with due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
@@ -528,7 +627,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("weekly with due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local) // Sunday
 		task.DueDate = &base
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 1})
@@ -550,7 +652,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("monthly with due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 1, 31, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceMonthly, Interval: 1})
@@ -572,7 +677,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("yearly with due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 3, 15, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceYearly, Interval: 1})
@@ -594,7 +702,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("weekly with specific weekdays", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		// Wednesday June 4, 2025
 		base := time.Date(2025, 6, 4, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
@@ -621,7 +732,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("no due date uses today as base", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 2})
 
 		dates := task.NextNDueDates(2)
@@ -641,7 +755,10 @@ func TestNextNDueDates(t *testing.T) {
 	})
 
 	t.Run("every 2 weeks", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 2})
@@ -665,7 +782,10 @@ func TestNextNDueDates(t *testing.T) {
 
 func TestSkipRecurrence(t *testing.T) {
 	t.Run("advances due date and resets streak", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.Recurrence = &RecurrencePattern{
@@ -689,7 +809,10 @@ func TestSkipRecurrence(t *testing.T) {
 	})
 
 	t.Run("no-op when not recurring", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		before := task.UpdatedAt
 		task.SkipRecurrence()
 		if task.UpdatedAt != before {
@@ -698,7 +821,10 @@ func TestSkipRecurrence(t *testing.T) {
 	})
 
 	t.Run("increments skipped counter", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.Recurrence = &RecurrencePattern{
@@ -716,7 +842,10 @@ func TestSkipRecurrence(t *testing.T) {
 
 func TestDeferRecurrence(t *testing.T) {
 	t.Run("adds days to existing due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		base := time.Date(2025, 6, 10, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
 		task.Recurrence = &RecurrencePattern{
@@ -741,7 +870,10 @@ func TestDeferRecurrence(t *testing.T) {
 	})
 
 	t.Run("falls back to today when no due date", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Recurrence = &RecurrencePattern{
 			Unit:     RecurrenceWeekly,
 			Interval: 1,
@@ -760,7 +892,10 @@ func TestDeferRecurrence(t *testing.T) {
 	})
 
 	t.Run("no-op when not recurring", func(t *testing.T) {
-		task := NewTask("t1", 1, TaskTypeTask, "Test")
+		task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+		if err != nil {
+			t.Fatal(err)
+		}
 		before := task.UpdatedAt
 		task.DeferRecurrence(5)
 		if task.UpdatedAt != before {
@@ -770,7 +905,10 @@ func TestDeferRecurrence(t *testing.T) {
 }
 
 func TestIsRecurring(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if task.IsRecurring() {
 		t.Error("expected not recurring when nil")
 	}

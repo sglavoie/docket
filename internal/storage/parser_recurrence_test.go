@@ -104,7 +104,10 @@ func TestRecurrenceRoundTrip(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
-			original := models.NewTask("task1", 1, models.TaskTypeTask, "Recurring Task")
+			original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Recurring Task")
+			if err != nil {
+				t.Fatal(err)
+			}
 			original.DueDate = &dueDate
 			original.Recurrence = tc.recurrence
 
@@ -146,11 +149,17 @@ func TestRecurrenceRoundTrip(t *testing.T) {
 func TestWriteTasksMarkdown_WithRecurrence(t *testing.T) {
 	dueDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
-	task1 := models.NewTask("task1", 1, models.TaskTypeTask, "Daily Task")
+	task1, err := models.NewTask("task1", 1, models.TaskTypeTask, "Daily Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task1.DueDate = &dueDate
 	task1.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceDaily}
 
-	task2 := models.NewTask("task2", 2, models.TaskTypeTask, "Weekly MWF Task")
+	task2, err := models.NewTask("task2", 2, models.TaskTypeTask, "Weekly MWF Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task2.DueDate = &dueDate
 	task2.Recurrence = &models.RecurrencePattern{Interval: 1, Unit: models.RecurrenceWeekly, Weekdays: []int{1, 3, 5}}
 

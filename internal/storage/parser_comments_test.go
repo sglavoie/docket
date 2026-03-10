@@ -56,7 +56,10 @@ Second comment text.
 }
 
 func TestWriteTasksMarkdown_WithComments(t *testing.T) {
-	task := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	task, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Comments = []*models.Comment{
 		{Text: "First comment", CreatedAt: time.Date(2024, 12, 27, 10, 30, 0, 0, time.Local)},
 		{Text: "Second comment", CreatedAt: time.Date(2024, 12, 27, 14, 45, 0, 0, time.Local)},
@@ -88,7 +91,10 @@ func TestWriteTasksMarkdown_WithComments(t *testing.T) {
 }
 
 func TestCommentsRoundTrip(t *testing.T) {
-	original := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task with Comments")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original.Description = "Task description."
 	original.Comments = []*models.Comment{
 		{Text: "First comment", CreatedAt: time.Date(2024, 12, 27, 10, 30, 0, 0, time.Local)},
@@ -200,7 +206,10 @@ Comment with code: func() { return &lt;!-- test --&gt; }
 
 func TestCommentsRoundTrip_WithHTMLMarkers(t *testing.T) {
 	// This tests that comments containing HTML comment markers survive round trip
-	original := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original.Comments = []*models.Comment{
 		{Text: "Code example: <!-- this is a comment -->", CreatedAt: time.Date(2024, 12, 27, 10, 30, 0, 0, time.Local)},
 	}
@@ -229,7 +238,10 @@ func TestCommentsRoundTrip_WithHTMLMarkers(t *testing.T) {
 
 func TestCommentsRoundTrip_WithEndMarker(t *testing.T) {
 	// Test the edge case where comment text contains the end marker
-	original := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original.Comments = []*models.Comment{
 		{Text: "Here is an example: <!-- /COMMENTS --> which should be escaped", CreatedAt: time.Date(2024, 12, 27, 10, 30, 0, 0, time.Local)},
 		{Text: "Second comment should still appear", CreatedAt: time.Date(2024, 12, 27, 11, 0, 0, 0, time.Local)},
@@ -263,7 +275,10 @@ func TestCommentsRoundTrip_WithEndMarker(t *testing.T) {
 
 func TestCommentsRoundTrip_WithEndMarkerOnItsOwnLine(t *testing.T) {
 	// Test the edge case where comment text is exactly the end marker on its own line
-	original := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	original, err := models.NewTask("task1", 1, models.TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original.Comments = []*models.Comment{
 		{Text: "Line 1\n<!-- /COMMENTS -->\nLine 3", CreatedAt: time.Date(2024, 12, 27, 10, 30, 0, 0, time.Local)},
 		{Text: "Second comment", CreatedAt: time.Date(2024, 12, 27, 11, 0, 0, 0, time.Local)},

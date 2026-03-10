@@ -5,7 +5,10 @@ import (
 )
 
 func TestTaskProgress(t *testing.T) {
-	parent := NewTask("parent", 1, TaskTypeEpic, "Parent Epic")
+	parent, err := NewTask("parent", 1, TaskTypeEpic, "Parent Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Leaf task returns 0 or 100
 	if parent.GetProgress() != 0 {
@@ -19,11 +22,21 @@ func TestTaskProgress(t *testing.T) {
 	parent.Reopen()
 
 	// Add children
-	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
-	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	parent.AddChild(child1)
-	parent.AddChild(child2)
+	if err := parent.AddChild(child1); err != nil {
+		t.Fatal(err)
+	}
+	if err := parent.AddChild(child2); err != nil {
+		t.Fatal(err)
+	}
 
 	// 0% complete
 	if parent.GetProgress() != 0 {
@@ -44,9 +57,18 @@ func TestTaskProgress(t *testing.T) {
 }
 
 func TestTaskHierarchy(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Test IsRoot and IsLeaf
 	if !epic.IsRoot() {
@@ -57,7 +79,9 @@ func TestTaskHierarchy(t *testing.T) {
 	}
 
 	// Add child
-	epic.AddChild(story)
+	if err := epic.AddChild(story); err != nil {
+		t.Fatal(err)
+	}
 	if story.Parent == nil || story.Parent.ID != epic.ID {
 		t.Error("story's parent should be epic")
 	}
@@ -72,18 +96,35 @@ func TestTaskHierarchy(t *testing.T) {
 	}
 
 	// Add grandchild
-	story.AddChild(task)
+	if err := story.AddChild(task); err != nil {
+		t.Fatal(err)
+	}
 	if task.Level != 2 {
 		t.Errorf("task level should be 2, got %d", task.Level)
 	}
 }
 
 func TestTaskCanAddChild(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
-	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
-	idea := NewTask("idea", 5, TaskTypeIdea, "Idea")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("bug", 4, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idea, err := NewTask("idea", 5, TaskTypeIdea, "Idea")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Epic can have story, task, bug, idea
 	if !epic.CanAddChild(TaskTypeStory) {
@@ -129,16 +170,39 @@ func TestTaskCanAddChild(t *testing.T) {
 }
 
 func TestTaskCountChildren(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story1 := NewTask("story1", 2, TaskTypeStory, "Story 1")
-	story2 := NewTask("story2", 3, TaskTypeStory, "Story 2")
-	task1 := NewTask("task1", 4, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 5, TaskTypeTask, "Task 2")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story1, err := NewTask("story1", 2, TaskTypeStory, "Story 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story2, err := NewTask("story2", 3, TaskTypeStory, "Story 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("task1", 4, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 5, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	epic.AddChild(story1)
-	epic.AddChild(story2)
-	story1.AddChild(task1)
-	story1.AddChild(task2)
+	if err := epic.AddChild(story1); err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(story2); err != nil {
+		t.Fatal(err)
+	}
+	if err := story1.AddChild(task1); err != nil {
+		t.Fatal(err)
+	}
+	if err := story1.AddChild(task2); err != nil {
+		t.Fatal(err)
+	}
 
 	// Epic has 2 direct + 2 nested = 4 descendants
 	if epic.CountChildren() != 4 {
@@ -157,14 +221,32 @@ func TestTaskCountChildren(t *testing.T) {
 }
 
 func TestTaskCountCompletedChildren(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 3, TaskTypeTask, "Task 2")
-	task3 := NewTask("task3", 4, TaskTypeTask, "Task 3")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 3, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("task3", 4, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	epic.AddChild(task1)
-	epic.AddChild(task2)
-	epic.AddChild(task3)
+	if err := epic.AddChild(task1); err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(task2); err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(task3); err != nil {
+		t.Fatal(err)
+	}
 
 	if epic.CountCompletedChildren() != 0 {
 		t.Errorf("expected 0 completed, got %d", epic.CountCompletedChildren())
@@ -183,10 +265,22 @@ func TestTaskCountCompletedChildren(t *testing.T) {
 }
 
 func TestCanIndent(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
-	bug := NewTask("bug", 4, TaskTypeBug, "Bug")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("bug", 4, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Task can indent under Epic
 	ok, reason := task.CanIndent(epic)
@@ -213,7 +307,10 @@ func TestCanIndent(t *testing.T) {
 	}
 
 	// Story cannot indent under another Story
-	story2 := NewTask("story2", 5, TaskTypeStory, "Story 2")
+	story2, err := NewTask("story2", 5, TaskTypeStory, "Story 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	ok, _ = story.CanIndent(story2)
 	if ok {
 		t.Error("story should not be able to indent under another story")
@@ -233,13 +330,26 @@ func TestCanIndent(t *testing.T) {
 }
 
 func TestCanOutdent(t *testing.T) {
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Set up hierarchy: epic -> story -> task
-	epic.AddChild(story)
-	story.AddChild(task)
+	if err := epic.AddChild(story); err != nil {
+		t.Fatal(err)
+	}
+	if err := story.AddChild(task); err != nil {
+		t.Fatal(err)
+	}
 
 	// Task can outdent (would become child of epic)
 	ok, reason := task.CanOutdent()
@@ -260,11 +370,24 @@ func TestCanOutdent(t *testing.T) {
 	}
 
 	// Story under Epic with Bug child - Bug can outdent to become Epic child
-	epic2 := NewTask("epic2", 10, TaskTypeEpic, "Epic 2")
-	story2 := NewTask("story2", 11, TaskTypeStory, "Story 2")
-	bugUnderStory := NewTask("bug", 12, TaskTypeBug, "Bug")
-	epic2.AddChild(story2)
-	story2.AddChild(bugUnderStory)
+	epic2, err := NewTask("epic2", 10, TaskTypeEpic, "Epic 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story2, err := NewTask("story2", 11, TaskTypeStory, "Story 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bugUnderStory, err := NewTask("bug", 12, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := epic2.AddChild(story2); err != nil {
+		t.Fatal(err)
+	}
+	if err := story2.AddChild(bugUnderStory); err != nil {
+		t.Fatal(err)
+	}
 
 	ok, reason = bugUnderStory.CanOutdent()
 	if !ok {
@@ -275,9 +398,17 @@ func TestCanOutdent(t *testing.T) {
 func TestCanOutdentInvalidHierarchy(t *testing.T) {
 	// Create hierarchy where outdent would be invalid
 	// Story -> Task, but Task promotes to Story, cannot be root Story's sibling
-	story := NewTask("story", 1, TaskTypeStory, "Story")
-	task := NewTask("task", 2, TaskTypeTask, "Task")
-	story.AddChild(task)
+	story, err := NewTask("story", 1, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := story.AddChild(task); err != nil {
+		t.Fatal(err)
+	}
 
 	// Task under Story with no grandparent can outdent to root
 	ok, _ := task.CanOutdent()
@@ -288,13 +419,26 @@ func TestCanOutdentInvalidHierarchy(t *testing.T) {
 
 func TestPromoteWithNestedChildren(t *testing.T) {
 	// Story with task children can promote to epic (tasks valid under epic)
-	story := NewTask("story", 1, TaskTypeStory, "Story")
-	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
-	task2 := NewTask("task2", 3, TaskTypeTask, "Task 2")
-	story.AddChild(task1)
-	story.AddChild(task2)
+	story, err := NewTask("story", 1, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 3, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := story.AddChild(task1); err != nil {
+		t.Fatal(err)
+	}
+	if err := story.AddChild(task2); err != nil {
+		t.Fatal(err)
+	}
 
-	err := story.Promote()
+	err = story.Promote()
 	if err != nil {
 		t.Errorf("Promote() story with task children should succeed: %v", err)
 	}
@@ -309,13 +453,26 @@ func TestPromoteWithNestedChildren(t *testing.T) {
 
 func TestDemoteWithNestedChildren(t *testing.T) {
 	// Epic with task children can demote to story (tasks valid under story)
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	task1 := NewTask("task1", 2, TaskTypeTask, "Task 1")
-	bug := NewTask("bug", 3, TaskTypeBug, "Bug")
-	epic.AddChild(task1)
-	epic.AddChild(bug)
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task1, err := NewTask("task1", 2, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bug, err := NewTask("bug", 3, TaskTypeBug, "Bug")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(task1); err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(bug); err != nil {
+		t.Fatal(err)
+	}
 
-	err := epic.Demote()
+	err = epic.Demote()
 	if err != nil {
 		t.Errorf("Demote() epic with task/bug children should succeed: %v", err)
 	}
@@ -330,11 +487,19 @@ func TestDemoteWithNestedChildren(t *testing.T) {
 
 func TestDemoteEpicWithIdeaChildren(t *testing.T) {
 	// Epic with idea children can demote (idea can be child of story)
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	idea := NewTask("idea", 2, TaskTypeIdea, "Idea")
-	epic.AddChild(idea)
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idea, err := NewTask("idea", 2, TaskTypeIdea, "Idea")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := epic.AddChild(idea); err != nil {
+		t.Fatal(err)
+	}
 
-	err := epic.Demote()
+	err = epic.Demote()
 	if err != nil {
 		t.Errorf("Demote() epic with idea child should succeed, got: %v", err)
 	}

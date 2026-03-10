@@ -12,9 +12,18 @@ import (
 func TestFindTaskByIdentifier(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task1 := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
-	task2 := models.NewTask("uuid-2", 42, models.TaskTypeTask, "Second Task")
-	task3 := models.NewTask("uuid-3", 100, models.TaskTypeBug, "Bug Report")
+	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("uuid-2", 42, models.TaskTypeTask, "Second Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := models.NewTask("uuid-3", 100, models.TaskTypeBug, "Bug Report")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = []*models.Task{task1, task2, task3}
 
 	tests := []struct {
@@ -181,8 +190,14 @@ func TestFindTaskByIdentifierEmptyProject(t *testing.T) {
 func TestFindTaskByIdentifierTitleMatchOrder(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task1 := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Apple Pie Recipe")
-	task2 := models.NewTask("uuid-2", 2, models.TaskTypeTask, "Apple Crumble Recipe")
+	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Apple Pie Recipe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := models.NewTask("uuid-2", 2, models.TaskTypeTask, "Apple Crumble Recipe")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = []*models.Task{task1, task2}
 
 	// Should find the first matching task
@@ -201,9 +216,15 @@ func TestTasksToSelectorItems(t *testing.T) {
 	})
 
 	t.Run("tasks produce correct structure", func(t *testing.T) {
-		task1 := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
+		task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "First Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task1.Status = models.StatusTodo
-		task2 := models.NewTask("uuid-2", 42, models.TaskTypeBug, "Bug Report")
+		task2, err := models.NewTask("uuid-2", 42, models.TaskTypeBug, "Bug Report")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task2.Status = models.StatusInProgress
 
 		items := TasksToSelectorItems([]*models.Task{task1, task2})
@@ -240,7 +261,10 @@ func TestTasksToSelectorItems(t *testing.T) {
 	})
 
 	t.Run("headers are consistent", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		items := TasksToSelectorItems([]*models.Task{task})
 
 		expectedHeaders := []string{"ID", "Type", "Status", "Title"}

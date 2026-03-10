@@ -12,7 +12,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	now := time.Now()
 
 	t.Run("basic task format", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 42, models.TaskTypeTask, "My Task")
+		task, err := models.NewTask("uuid-1", 42, models.TaskTypeTask, "My Task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Status = models.StatusTodo
 		task.Priority = 2
 		task.CreatedAt = now
@@ -34,7 +37,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task with description", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with desc")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with desc")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Description = "This is a detailed description."
 
 		result := FormatTaskAsMarkdown(task)
@@ -48,7 +54,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task without description", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "No description task")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "No description task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Description = ""
 
 		result := FormatTaskAsMarkdown(task)
@@ -59,7 +68,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task with tags", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Tagged task")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Tagged task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Tags = []string{"backend", "urgent"}
 
 		result := FormatTaskAsMarkdown(task)
@@ -70,7 +82,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task without tags", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Untagged task")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Untagged task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Tags = nil
 
 		result := FormatTaskAsMarkdown(task)
@@ -81,7 +96,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task with due date", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with due date")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Task with due date")
+		if err != nil {
+			t.Fatal(err)
+		}
 		dueDate := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 		task.DueDate = &dueDate
 
@@ -96,7 +114,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("completed task", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Completed task")
+		task, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Completed task")
+		if err != nil {
+			t.Fatal(err)
+		}
 		task.Status = models.StatusDone
 		completedAt := now
 		task.CompletedAt = &completedAt
@@ -109,13 +130,26 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("task with children shows subtasks section", func(t *testing.T) {
-		parent := models.NewTask("parent-uuid", 1, models.TaskTypeStory, "Parent Story")
-		child1 := models.NewTask("child1-uuid", 2, models.TaskTypeTask, "Child Task 1")
-		child2 := models.NewTask("child2-uuid", 3, models.TaskTypeTask, "Child Task 2")
+		parent, err := models.NewTask("parent-uuid", 1, models.TaskTypeStory, "Parent Story")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child1, err := models.NewTask("child1-uuid", 2, models.TaskTypeTask, "Child Task 1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		child2, err := models.NewTask("child2-uuid", 3, models.TaskTypeTask, "Child Task 2")
+		if err != nil {
+			t.Fatal(err)
+		}
 		child2.Status = models.StatusDone
 
-		parent.AddChild(child1)
-		parent.AddChild(child2)
+		if err := parent.AddChild(child1); err != nil {
+			t.Fatal(err)
+		}
+		if err := parent.AddChild(child2); err != nil {
+			t.Fatal(err)
+		}
 
 		result := FormatTaskAsMarkdown(parent)
 
@@ -137,7 +171,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("epic type header format", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 5, models.TaskTypeEpic, "My Epic")
+		task, err := models.NewTask("uuid-1", 5, models.TaskTypeEpic, "My Epic")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		result := FormatTaskAsMarkdown(task)
 
@@ -147,7 +184,10 @@ func TestFormatTaskAsMarkdown(t *testing.T) {
 	})
 
 	t.Run("bug type header format", func(t *testing.T) {
-		task := models.NewTask("uuid-1", 10, models.TaskTypeBug, "Critical Bug")
+		task, err := models.NewTask("uuid-1", 10, models.TaskTypeBug, "Critical Bug")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		result := FormatTaskAsMarkdown(task)
 

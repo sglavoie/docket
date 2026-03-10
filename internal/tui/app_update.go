@@ -84,10 +84,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Clear temporary status/error messages on any keypress
-		m.statusMessage = ""
-		m.err = nil
-
 		switch msg.String() {
 		case "ctrl+c":
 			m.saveProjectTreeState()

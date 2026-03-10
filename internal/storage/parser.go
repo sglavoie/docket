@@ -114,7 +114,26 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 				taskType = models.TaskTypeTask
 			}
 
-			task := models.NewTask("", nextShortID, taskType, title)
+			task, taskErr := models.NewTask("", nextShortID, taskType, title)
+			if taskErr != nil {
+				// Preserve tasks with invalid titles (e.g. empty) to avoid data loss
+				metadataWarnings = append(metadataWarnings, ParseWarning{
+					Type:    format.WarningDataCorrection,
+					Field:   "title",
+					Message: fmt.Sprintf("task #%d has invalid title: %v", nextShortID, taskErr),
+				})
+				task = &models.Task{
+					ShortID:   nextShortID,
+					Type:      taskType,
+					Title:     title,
+					Status:    models.StatusTodo,
+					Priority:  models.PriorityDefault,
+					Tags:      []string{},
+					DependsOn: []string{},
+					RelatedTo: []string{},
+					Children:  []*models.Task{},
+				}
+			}
 			// Zero out timestamps so they come from metadata parsing.
 			// NewTask sets these to time.Now(), which is wrong for tasks
 			// loaded from disk — their real timestamps are in the metadata.

@@ -13,7 +13,7 @@ import (
 
 // FzfAvailable checks if fzf is installed and available.
 func FzfAvailable() bool {
-	_, err := exec.LookPath("fzf")
+	_, err := CachedFzfPath()
 	return err == nil
 }
 

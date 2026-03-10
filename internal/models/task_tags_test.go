@@ -3,7 +3,10 @@ package models
 import "testing"
 
 func TestAddTag(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	task.AddTag("backend")
 	if !task.HasTag("backend") {
@@ -21,7 +24,10 @@ func TestAddTag(t *testing.T) {
 }
 
 func TestAddMultipleTags(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.AddTag("backend")
 	task.AddTag("frontend")
 	task.AddTag("urgent")
@@ -37,7 +43,10 @@ func TestAddMultipleTags(t *testing.T) {
 }
 
 func TestRemoveTag(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.AddTag("backend")
 	task.AddTag("frontend")
 
@@ -54,7 +63,10 @@ func TestRemoveTag(t *testing.T) {
 }
 
 func TestRemoveNonexistentTag(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.AddTag("backend")
 	initialUpdatedAt := task.UpdatedAt
 
@@ -69,7 +81,10 @@ func TestRemoveNonexistentTag(t *testing.T) {
 }
 
 func TestHasTag(t *testing.T) {
-	task := NewTask("t1", 1, TaskTypeTask, "Test")
+	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if task.HasTag("anything") {
 		t.Error("expected HasTag to return false for empty tags")

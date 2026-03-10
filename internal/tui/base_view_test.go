@@ -117,11 +117,23 @@ func TestBaseView_ContentDimensionsMinimum(t *testing.T) {
 	v := &BaseView{}
 	v.SetSize(10, 5)
 
-	if got := v.ContentWidth(); got != 20 {
-		t.Errorf("ContentWidth() = %d, want minimum 20", got)
+	if got := v.ContentWidth(); got != 6 {
+		t.Errorf("ContentWidth() = %d, want 6", got)
 	}
-	if got := v.ContentHeight(); got != 5 {
-		t.Errorf("ContentHeight() = %d, want minimum 5", got)
+	if got := v.ContentHeight(); got != 3 {
+		t.Errorf("ContentHeight() = %d, want 3", got)
+	}
+}
+
+func TestBaseView_ContentDimensionsZeroFloor(t *testing.T) {
+	v := &BaseView{}
+	v.SetSize(2, 1)
+
+	if got := v.ContentWidth(); got != 0 {
+		t.Errorf("ContentWidth() = %d, want 0", got)
+	}
+	if got := v.ContentHeight(); got != 0 {
+		t.Errorf("ContentHeight() = %d, want 0", got)
 	}
 }
 

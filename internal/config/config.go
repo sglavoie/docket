@@ -85,6 +85,7 @@ type SavedView struct {
 
 // Config holds the application configuration.
 type Config struct {
+	Version                   int                          `json:"version"`
 	DataDir                   string                       `json:"data_dir"`
 	CurrentProject            string                       `json:"current_project,omitempty"`
 	Editor                    string                       `json:"editor"`
@@ -203,6 +204,7 @@ func NewConfig() *Config {
 	homeDir, _ := os.UserHomeDir()
 	defaultUndoDepth := 50
 	return &Config{
+		Version:           1,
 		DataDir:           filepath.Join(homeDir, ".tt"),
 		CurrentProject:    "",
 		Editor:            "code",

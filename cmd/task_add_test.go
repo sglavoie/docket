@@ -11,11 +11,17 @@ func TestTaskCreationWithParent(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	// Create an epic as potential parent
-	epic := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Parent")
+	epic, err := models.NewTask("epic-1", project.GetNextShortID(), models.TaskTypeEpic, "Epic Parent")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, epic)
 
 	// Create a task that will be a child of the epic
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Child Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.ParentID = &epic.ID
 	project.Tasks = append(project.Tasks, task)
 
@@ -122,7 +128,10 @@ func TestTaskTagManagement(t *testing.T) {
 
 func TestTaskSectionAssignment(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
-	task := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	task, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Test Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Default section should be empty (Active view)
 	testutil.AssertEqual(t, task.Section, "")
@@ -156,7 +165,10 @@ func TestTaskShortIDAssignment(t *testing.T) {
 }
 
 func TestNewTaskDefaults(t *testing.T) {
-	task := models.NewTask("test-id", 42, models.TaskTypeTask, "Test Title")
+	task, err := models.NewTask("test-id", 42, models.TaskTypeTask, "Test Title")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	testutil.AssertEqual(t, task.ID, "test-id")
 	testutil.AssertEqual(t, task.ShortID, 42)

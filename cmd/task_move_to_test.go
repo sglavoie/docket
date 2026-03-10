@@ -111,11 +111,17 @@ func countNestedChildren(task *models.Task) int {
 func TestMoveTaskToProject_ChecksDependencies(t *testing.T) {
 	project := testutil.NewTestProjectWithTasks("Test Project")
 
-	task1 := models.NewTask("task-dep-1", project.GetNextShortID(), models.TaskTypeTask, "Task With Dep")
+	task1, err := models.NewTask("task-dep-1", project.GetNextShortID(), models.TaskTypeTask, "Task With Dep")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1)
 	project.NextShortID++
 
-	task2 := models.NewTask("task-dep-2", project.GetNextShortID(), models.TaskTypeTask, "Blocking Task")
+	task2, err := models.NewTask("task-dep-2", project.GetNextShortID(), models.TaskTypeTask, "Blocking Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task2)
 	project.NextShortID++
 
@@ -138,15 +144,24 @@ func TestMoveTaskToProject_ChecksDependencies(t *testing.T) {
 func TestMoveTaskToProject_ClearedDepsTracking(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	task1 := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	task1, err := models.NewTask("task-1", project.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task1)
 	project.NextShortID++
 
-	task2 := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	task2, err := models.NewTask("task-2", project.GetNextShortID(), models.TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	project.Tasks = append(project.Tasks, task2)
 	project.NextShortID++
 
-	task3 := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Task 3")
+	task3, err := models.NewTask("task-3", project.GetNextShortID(), models.TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task3.DependsOn = []string{task1.ID, task2.ID}
 	project.Tasks = append(project.Tasks, task3)
 	project.NextShortID++
@@ -207,7 +222,10 @@ func TestMoveTaskToProject_ShortIDRegeneration(t *testing.T) {
 func TestMoveTaskToProject_SectionPreservation(t *testing.T) {
 	sourceProject := testutil.NewTestProject("Source")
 
-	task := models.NewTask("task-1", sourceProject.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	task, err := models.NewTask("task-1", sourceProject.GetNextShortID(), models.TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
 	task.Section = "Active"
 	sourceProject.Tasks = append(sourceProject.Tasks, task)
 	sourceProject.NextShortID++

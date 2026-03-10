@@ -77,8 +77,14 @@ func TestUpdateTaskStatusReopen(t *testing.T) {
 func TestCompleteBlockedByDependencies(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	blocker := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
-	dependent := models.NewTask("dependent-1", 2, models.TaskTypeTask, "Dependent Task")
+	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := models.NewTask("dependent-1", 2, models.TaskTypeTask, "Dependent Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	dependent.AddDependency(blocker.ID)
 
 	project.Tasks = []*models.Task{blocker, dependent}
@@ -108,8 +114,14 @@ func TestCompleteBlockedByDependencies(t *testing.T) {
 func TestAutoUnblockAfterComplete(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	blocker := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
-	blocked := models.NewTask("blocked-1", 2, models.TaskTypeTask, "Blocked Task")
+	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := models.NewTask("blocked-1", 2, models.TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	blocked.AddDependency(blocker.ID)
 	blocked.Status = models.StatusBlocked
 
@@ -130,8 +142,14 @@ func TestAutoUnblockAfterComplete(t *testing.T) {
 func TestAutoUnblockAfterCancel(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
-	blocker := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
-	blocked := models.NewTask("blocked-1", 2, models.TaskTypeTask, "Blocked Task")
+	blocker, err := models.NewTask("blocker-1", 1, models.TaskTypeTask, "Blocker Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := models.NewTask("blocked-1", 2, models.TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 	blocked.AddDependency(blocker.ID)
 	blocked.Status = models.StatusBlocked
 

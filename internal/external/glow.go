@@ -6,13 +6,14 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // GlowAvailable checks if glow is installed and available.
 func GlowAvailable() bool {
-	_, err := exec.LookPath("glow")
+	_, err := CachedGlowPath()
 	return err == nil
 }
 
@@ -30,7 +31,7 @@ func RenderMarkdown(content string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		// Glow failed at runtime - fall back to plain text
+		logging.Warn("glow render failed, falling back to plain text: %v", err)
 		fmt.Println(content)
 	}
 	return nil
@@ -53,7 +54,7 @@ func RenderFile(path string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		// Glow failed at runtime - fall back to plain text
+		logging.Warn("glow render failed for %s, falling back to plain text: %v", path, err)
 		content, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
@@ -179,7 +180,7 @@ func PageMarkdown(content string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		// Glow failed at runtime - fall back to plain text
+		logging.Warn("glow pager failed, falling back to plain text: %v", err)
 		fmt.Println(content)
 	}
 	return nil

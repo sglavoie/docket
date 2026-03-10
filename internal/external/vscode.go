@@ -8,7 +8,7 @@ import (
 
 // VSCodeAvailable checks if VS Code is installed and available.
 func VSCodeAvailable() bool {
-	_, err := exec.LookPath("code")
+	_, err := CachedCodePath()
 	return err == nil
 }
 

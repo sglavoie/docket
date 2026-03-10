@@ -6,13 +6,31 @@ func TestProjectGetSiblings(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
 	// Create tasks: two root tasks, one with children
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	epic := NewTask("epic", 10, TaskTypeEpic, "Epic")
-	child1 := NewTask("child1", 11, TaskTypeTask, "Child 1")
-	child2 := NewTask("child2", 12, TaskTypeTask, "Child 2")
+	epic, err := NewTask("epic", 10, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := NewTask("child1", 11, TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := NewTask("child2", 12, TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epicID := epic.ID
 	child1.ParentID = &epicID
@@ -36,14 +54,23 @@ func TestProjectGetSiblings(t *testing.T) {
 func TestProjectMoveTaskUp(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Move task2 up (should swap with task1)
-	err := project.MoveTaskUp(task2)
+	err = project.MoveTaskUp(task2)
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -69,14 +96,23 @@ func TestProjectMoveTaskUp(t *testing.T) {
 func TestProjectMoveTaskDown(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	task1 := NewTask("1", 1, TaskTypeTask, "Task 1")
-	task2 := NewTask("2", 2, TaskTypeTask, "Task 2")
-	task3 := NewTask("3", 3, TaskTypeTask, "Task 3")
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{task1, task2, task3}
 
 	// Move task2 down (should swap with task3)
-	err := project.MoveTaskDown(task2)
+	err = project.MoveTaskDown(task2)
 	if err != nil {
 		t.Errorf("MoveTaskDown returned error: %v", err)
 	}
@@ -102,9 +138,18 @@ func TestProjectMoveTaskDown(t *testing.T) {
 func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	child1 := NewTask("child1", 2, TaskTypeTask, "Child 1")
-	child2 := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child1, err := NewTask("child1", 2, TaskTypeTask, "Child 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child2, err := NewTask("child2", 3, TaskTypeTask, "Child 2")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epicID := epic.ID
 	child1.ParentID = &epicID
@@ -114,7 +159,7 @@ func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Move child2 up (swap with child1)
-	err := project.MoveTaskUp(child2)
+	err = project.MoveTaskUp(child2)
 	if err != nil {
 		t.Errorf("MoveTaskUp returned error: %v", err)
 	}
@@ -129,14 +174,20 @@ func TestProjectMoveTaskUpWithChildren(t *testing.T) {
 func TestProjectIndentTask(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	task := NewTask("task", 2, TaskTypeTask, "Task")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 2, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	project.Tasks = []*Task{epic, task}
 	project.BuildTaskTree()
 
 	// Indent task under epic
-	err := project.IndentTask(task)
+	err = project.IndentTask(task)
 	if err != nil {
 		t.Errorf("IndentTask returned error: %v", err)
 	}
@@ -149,9 +200,18 @@ func TestProjectIndentTask(t *testing.T) {
 func TestProjectOutdentTask(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
-	epic := NewTask("epic", 1, TaskTypeEpic, "Epic")
-	story := NewTask("story", 2, TaskTypeStory, "Story")
-	task := NewTask("task", 3, TaskTypeTask, "Task")
+	epic, err := NewTask("epic", 1, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	story, err := NewTask("story", 2, TaskTypeStory, "Story")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task", 3, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	epicID := epic.ID
 	storyID := story.ID
@@ -162,7 +222,7 @@ func TestProjectOutdentTask(t *testing.T) {
 	project.BuildTaskTree()
 
 	// Outdent task (should become child of epic)
-	err := project.OutdentTask(task)
+	err = project.OutdentTask(task)
 	if err != nil {
 		t.Errorf("OutdentTask returned error: %v", err)
 	}

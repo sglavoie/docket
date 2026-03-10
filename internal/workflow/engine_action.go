@@ -70,7 +70,10 @@ func applyHierarchicalAction(task *models.Task, action RuleAction, evalCtx *Eval
 // applyCreateFollowup creates a new follow-up task linked to the original.
 // The task is appended to result.NewFollowupTasks for the caller to persist.
 func applyCreateFollowup(task *models.Task, action RuleAction, result *EvaluationResult) bool {
-	followup := models.NewTask(uuid.New().String(), 0, models.TaskTypeTask, action.Value)
+	followup, err := models.NewTask(uuid.New().String(), 0, models.TaskTypeTask, action.Value)
+	if err != nil {
+		return false
+	}
 	followup.Priority = models.PriorityDefault
 	followup.AddTag("followup")
 	followup.AddRelatedTo(task.ID)
