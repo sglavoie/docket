@@ -68,17 +68,17 @@ func TestRecordTaskVisit(t *testing.T) {
 		}
 	})
 
-	t.Run("caps at maxRecentTaskVisits", func(t *testing.T) {
+	t.Run("caps at config.DefaultMaxRecentTaskVisits", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 
-		for i := range maxRecentTaskVisits + 5 {
+		for i := range config.DefaultMaxRecentTaskVisits + 5 {
 			task := &models.Task{ID: fmt.Sprintf("t%d", i), Title: fmt.Sprintf("Task %d", i)}
 			app.recordTaskVisit(task, p)
 		}
 
-		if len(app.recentTaskVisits) != maxRecentTaskVisits {
-			t.Fatalf("expected %d visits, got %d", maxRecentTaskVisits, len(app.recentTaskVisits))
+		if len(app.recentTaskVisits) != config.DefaultMaxRecentTaskVisits {
+			t.Fatalf("expected %d visits, got %d", config.DefaultMaxRecentTaskVisits, len(app.recentTaskVisits))
 		}
 	})
 
@@ -125,7 +125,7 @@ func TestRecordTaskVisit(t *testing.T) {
 		app.recentTaskVisits[0].Pinned = true
 
 		// Fill remaining slots with unpinned tasks
-		for i := range maxRecentTaskVisits + 5 {
+		for i := range config.DefaultMaxRecentTaskVisits + 5 {
 			task := &models.Task{ID: fmt.Sprintf("t%d", i), Title: fmt.Sprintf("Task %d", i)}
 			app.recordTaskVisit(task, p)
 		}

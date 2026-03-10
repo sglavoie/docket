@@ -15,8 +15,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-const maxRecentTaskVisits = 15
-
 // RecentTaskVisitEntry holds a hydrated task+project pair for the quick-switch list.
 type RecentTaskVisitEntry struct {
 	Task    *models.Task
@@ -27,7 +25,7 @@ type RecentTaskVisitEntry struct {
 const maxPinnedTaskVisits = 9
 
 // recordTaskVisit records a task visit for the quick-switch list.
-// It deduplicates by task ID (moving revisits to the front), trims to maxRecentTaskVisits,
+// It deduplicates by task ID (moving revisits to the front), trims to m.config.GetMaxRecentTaskVisits(),
 // and persists the ID-only form to config.
 func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 	if task == nil || project == nil {
@@ -49,7 +47,7 @@ func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 	m.recentTaskVisits = append([]RecentTaskVisitEntry{{Task: task, Project: project, Pinned: wasPinned}}, filtered...)
 
 	// Trim: pinned entries are exempt from eviction
-	if len(m.recentTaskVisits) > maxRecentTaskVisits {
+	if len(m.recentTaskVisits) > m.config.GetMaxRecentTaskVisits() {
 		var pinned, unpinned []RecentTaskVisitEntry
 		for _, entry := range m.recentTaskVisits {
 			if entry.Pinned {
@@ -58,7 +56,7 @@ func (m *AppModel) recordTaskVisit(task *models.Task, project *models.Project) {
 				unpinned = append(unpinned, entry)
 			}
 		}
-		remaining := max(maxRecentTaskVisits-len(pinned), 0)
+		remaining := max(m.config.GetMaxRecentTaskVisits()-len(pinned), 0)
 		if len(unpinned) > remaining {
 			unpinned = unpinned[:remaining]
 		}

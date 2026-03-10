@@ -14,8 +14,8 @@ import (
 var (
 	settingsTabNames = []string{"General", "Review", "Behavior", "Attachments", "Project Tree", "Outliner", "Notifications"}
 
-	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-11, tab 3 → fields 12-13, tab 4 → fields 14-26, tab 5 → fields 27-46, tab 6 → fields 47-61
-	tabFieldStart = []int{0, 4, 8, 12, 14, 27, 47}
+	// Focus index ranges per tab: tab 0 → fields 0-3, tab 1 → fields 4-7, tab 2 → fields 8-12, tab 3 → fields 13-14, tab 4 → fields 15-27, tab 5 → fields 28-47, tab 6 → fields 48-62
+	tabFieldStart = []int{0, 4, 8, 13, 15, 28, 48}
 
 	// weeklyReviewDayOptions lists the display labels for weekly review day selector.
 	weeklyReviewDayOptions = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -65,8 +65,9 @@ type SettingsModel struct {
 	recentActivityInput    textinput.Model
 	recentActivityShowAll  bool // Whether to show completed tasks in recent activity by default
 	linkedTaskJump         bool // Whether to jump to new task after linked creation
-	maxPinnedInput         textinput.Model
-	attachmentEditorInput  textinput.Model
+	maxPinnedInput             textinput.Model
+	maxRecentTaskVisitsInput   textinput.Model
+	attachmentEditorInput      textinput.Model
 	codeEditorInput        textinput.Model
 	defaultViewCursor      int      // Index into defaultProjectViewOptions
 	outlinerCollapsed      [7]bool  // Per-section default collapse state (indexed by outlinerSectionNames)
@@ -95,7 +96,7 @@ type SettingsModel struct {
 	alertProjectStaleDaysInput textinput.Model
 
 	tabs          TabState
-	focusIndex    int // 0=editor .. 46=outlinerColumnDefaults, 47-61=alert settings
+	focusIndex    int // 0=editor .. 47=outlinerColumnDefaults, 48-62=alert settings
 	scrollOffset  int // vertical scroll offset within current tab content
 	validationErr string
 
@@ -163,6 +164,12 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 	maxPinnedInput.CharLimit = 2
 	maxPinnedInput.Width = 6
 	maxPinnedInput.SetValue(strconv.Itoa(cfg.GetMaxPinnedBarItems()))
+
+	maxRecentTaskVisitsInput := textinput.New()
+	maxRecentTaskVisitsInput.Placeholder = strconv.Itoa(config.DefaultMaxRecentTaskVisits)
+	maxRecentTaskVisitsInput.CharLimit = 2
+	maxRecentTaskVisitsInput.Width = 6
+	maxRecentTaskVisitsInput.SetValue(strconv.Itoa(cfg.GetMaxRecentTaskVisits()))
 
 	attachmentEditorInput := textinput.New()
 	attachmentEditorInput.Placeholder = "(OS default)"
@@ -261,6 +268,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		defaultViewCursor:          defaultViewCursor,
 		linkedTaskJump:             cfg.GetLinkedTaskJumpToNew(),
 		maxPinnedInput:             maxPinnedInput,
+		maxRecentTaskVisitsInput:   maxRecentTaskVisitsInput,
 		attachmentEditorInput:      attachmentEditorInput,
 		codeEditorInput:            codeEditorInput,
 		outlinerCollapsed:          outlinerCollapsed,
@@ -328,6 +336,8 @@ func (m *SettingsModel) saveSettings() tea.Cmd {
 		m.config.LinkedTaskJumpToNew = &m.linkedTaskJump
 		maxPinned, _ := strconv.Atoi(strings.TrimSpace(m.maxPinnedInput.Value()))
 		m.config.MaxPinnedBarItems = &maxPinned
+		maxRecentVisits, _ := strconv.Atoi(strings.TrimSpace(m.maxRecentTaskVisitsInput.Value()))
+		m.config.MaxRecentTaskVisits = &maxRecentVisits
 		m.config.AttachmentEditor = strings.TrimSpace(m.attachmentEditorInput.Value())
 		m.config.CodeEditor = strings.TrimSpace(m.codeEditorInput.Value())
 		// Persist column default visibility

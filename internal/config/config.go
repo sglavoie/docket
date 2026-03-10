@@ -136,6 +136,7 @@ type Config struct {
 	SavedViews                []SavedView                  `json:"saved_views,omitempty"`                  // Legacy: migrated to SavedFilters
 	SavedFilters              []SavedFilter                `json:"saved_filters,omitempty"`                // Unified filter presets (snapshot + criteria)
 	MaxPinnedBarItems         *int                         `json:"max_pinned_bar_items,omitempty"`         // nil=5, max pinned tasks in status bar
+	MaxRecentTaskVisits       *int                         `json:"max_recent_task_visits,omitempty"`       // nil=15, max tasks in quick-switch overlay
 	ActionInboxProjectID      string                       `json:"action_inbox_project_id,omitempty"`      // Project ID for focus board action inbox
 	DefaultProjectView        string                       `json:"default_project_view,omitempty"`         // Default view when opening a project: outliner, project_tree
 	FocusQueue                []FocusQueueItem             `json:"focus_queue,omitempty"`                  // Persisted focus board work queue

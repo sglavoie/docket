@@ -165,6 +165,21 @@ func (m *SettingsModel) validateCodeEditor() error {
 	return m.validateEditorCommand(editor)
 }
 
+func (m *SettingsModel) validateMaxRecentTaskVisits() error {
+	value := strings.TrimSpace(m.maxRecentTaskVisitsInput.Value())
+	if value == "" {
+		return fmt.Errorf("task limit is required")
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return fmt.Errorf("must be a number")
+	}
+	if n < 1 || n > 50 {
+		return fmt.Errorf("must be 1-50")
+	}
+	return nil
+}
+
 func (m *SettingsModel) validateMaxPinnedBarItems() error {
 	value := strings.TrimSpace(m.maxPinnedInput.Value())
 	if value == "" {

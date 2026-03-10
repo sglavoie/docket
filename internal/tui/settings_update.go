@@ -19,11 +19,11 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Blur current field
 			m.blurCurrentField()
 
-			// Move focus (62 fields total: 0-61)
+			// Move focus (63 fields total: 0-62)
 			if msg.String() == "tab" {
-				m.focusIndex = (m.focusIndex + 1) % 62
+				m.focusIndex = (m.focusIndex + 1) % 63
 			} else {
-				m.focusIndex = (m.focusIndex + 61) % 62 // +61 is -1 mod 62
+				m.focusIndex = (m.focusIndex + 62) % 63 // +62 is -1 mod 63
 			}
 
 			// Auto-switch tab to follow focus
@@ -51,46 +51,46 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusIndex == 10 {
 				m.linkedTaskJump = !m.linkedTaskJump
 			}
-			// Tree column defaults (indices 14-26)
-			if m.focusIndex >= 14 && m.focusIndex <= 26 {
-				idx := m.focusIndex - 14
-				if m.focusIndex == 15 { // Priority: cycle 3-way
+			// Tree column defaults (indices 15-27)
+			if m.focusIndex >= 15 && m.focusIndex <= 27 {
+				idx := m.focusIndex - 15
+				if m.focusIndex == 16 { // Priority: cycle 3-way
 					m.treePriorityMode = (m.treePriorityMode + 1) % 3
 				} else {
 					m.treeColumnDefaults[idx] = !m.treeColumnDefaults[idx]
 				}
 			}
-			// Outliner section toggles (indices 27-33)
-			if m.focusIndex >= 27 && m.focusIndex <= 33 {
-				idx := m.focusIndex - 27
+			// Outliner section toggles (indices 28-34)
+			if m.focusIndex >= 28 && m.focusIndex <= 34 {
+				idx := m.focusIndex - 28
 				m.outlinerCollapsed[idx] = !m.outlinerCollapsed[idx]
 			}
-			// Outliner column defaults (indices 34-46)
-			if m.focusIndex >= 34 && m.focusIndex <= 46 {
-				if m.focusIndex == 35 { // Priority: cycle 3-way
+			// Outliner column defaults (indices 35-47)
+			if m.focusIndex >= 35 && m.focusIndex <= 47 {
+				if m.focusIndex == 36 { // Priority: cycle 3-way
 					m.outlinerPriorityMode = (m.outlinerPriorityMode + 1) % 3
 				} else {
-					idx := m.focusIndex - 34
+					idx := m.focusIndex - 35
 					m.outlinerColumnDefaults[idx] = !m.outlinerColumnDefaults[idx]
 				}
 			}
-			// Alert toggles (indices 47, 49, 51, 52, 54, 56, 58, 60)
+			// Alert toggles (indices 48, 50, 52, 53, 55, 57, 59, 61)
 			switch m.focusIndex {
-			case 47:
+			case 48:
 				m.alertDailyReviewEnabled = !m.alertDailyReviewEnabled
-			case 49:
+			case 50:
 				m.alertWeeklyReviewEnabled = !m.alertWeeklyReviewEnabled
-			case 51:
-				m.alertOverdueEnabled = !m.alertOverdueEnabled
 			case 52:
+				m.alertOverdueEnabled = !m.alertOverdueEnabled
+			case 53:
 				m.alertDueSoonEnabled = !m.alertDueSoonEnabled
-			case 54:
+			case 55:
 				m.alertStaleEnabled = !m.alertStaleEnabled
-			case 56:
+			case 57:
 				m.alertInboxEnabled = !m.alertInboxEnabled
-			case 58:
+			case 59:
 				m.alertBlockedEnabled = !m.alertBlockedEnabled
-			case 60:
+			case 61:
 				m.alertProjectHealthEnabled = !m.alertProjectHealthEnabled
 			}
 			return m, nil
@@ -117,6 +117,10 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if err := m.validateMaxPinnedBarItems(); err != nil {
+				m.validationErr = err.Error()
+				return m, nil
+			}
+			if err := m.validateMaxRecentTaskVisits(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}
@@ -154,17 +158,17 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Cycle priority mode left
 			switch m.focusIndex {
-			case 15:
+			case 16:
 				if m.treePriorityMode > 0 {
 					m.treePriorityMode--
 				}
-			case 35:
+			case 36:
 				if m.outlinerPriorityMode > 0 {
 					m.outlinerPriorityMode--
 				}
 			}
 			// Weekly review day left
-			if m.focusIndex == 50 && m.alertWeeklyReviewDay > 0 {
+			if m.focusIndex == 51 && m.alertWeeklyReviewDay > 0 {
 				m.alertWeeklyReviewDay--
 			}
 
@@ -184,17 +188,17 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Cycle priority mode right
 			switch m.focusIndex {
-			case 15:
+			case 16:
 				if m.treePriorityMode < 2 {
 					m.treePriorityMode++
 				}
-			case 35:
+			case 36:
 				if m.outlinerPriorityMode < 2 {
 					m.outlinerPriorityMode++
 				}
 			}
 			// Weekly review day right
-			if m.focusIndex == 50 && m.alertWeeklyReviewDay < 6 {
+			if m.focusIndex == 51 && m.alertWeeklyReviewDay < 6 {
 				m.alertWeeklyReviewDay++
 			}
 		}
@@ -234,20 +238,22 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case 11:
 		m.maxPinnedInput, cmd = m.maxPinnedInput.Update(msg)
 	case 12:
-		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
+		m.maxRecentTaskVisitsInput, cmd = m.maxRecentTaskVisitsInput.Update(msg)
 	case 13:
+		m.attachmentEditorInput, cmd = m.attachmentEditorInput.Update(msg)
+	case 14:
 		m.codeEditorInput, cmd = m.codeEditorInput.Update(msg)
-	case 48:
+	case 49:
 		m.alertDailyReviewHourInput, cmd = m.alertDailyReviewHourInput.Update(msg)
-	case 53:
+	case 54:
 		m.alertDueSoonDaysInput, cmd = m.alertDueSoonDaysInput.Update(msg)
-	case 55:
+	case 56:
 		m.alertStaleDaysInput, cmd = m.alertStaleDaysInput.Update(msg)
-	case 57:
+	case 58:
 		m.alertInboxThresholdInput, cmd = m.alertInboxThresholdInput.Update(msg)
-	case 59:
+	case 60:
 		m.alertBlockedDaysInput, cmd = m.alertBlockedDaysInput.Update(msg)
-	case 61:
+	case 62:
 		m.alertProjectStaleDaysInput, cmd = m.alertProjectStaleDaysInput.Update(msg)
 	}
 
@@ -280,14 +286,18 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.validationErr = err.Error()
 		}
 	case 12:
-		if err := m.validateAttachmentEditor(); err != nil {
+		if err := m.validateMaxRecentTaskVisits(); err != nil {
 			m.validationErr = err.Error()
 		}
 	case 13:
+		if err := m.validateAttachmentEditor(); err != nil {
+			m.validationErr = err.Error()
+		}
+	case 14:
 		if err := m.validateCodeEditor(); err != nil {
 			m.validationErr = err.Error()
 		}
-	case 48, 53, 55, 57, 59, 61:
+	case 49, 54, 56, 58, 60, 62:
 		if err := m.validateAlertSettings(); err != nil {
 			m.validationErr = err.Error()
 		}
@@ -322,25 +332,27 @@ func (m *SettingsModel) blurCurrentField() {
 	case 11:
 		m.maxPinnedInput.Blur()
 	case 12:
-		m.attachmentEditorInput.Blur()
+		m.maxRecentTaskVisitsInput.Blur()
 	case 13:
+		m.attachmentEditorInput.Blur()
+	case 14:
 		m.codeEditorInput.Blur()
-	case 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26:
+	case 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27:
 		// Tree column toggle fields - no blur needed
-	case 48:
+	case 49:
 		m.alertDailyReviewHourInput.Blur()
-	case 53:
+	case 54:
 		m.alertDueSoonDaysInput.Blur()
-	case 55:
+	case 56:
 		m.alertStaleDaysInput.Blur()
-	case 57:
+	case 58:
 		m.alertInboxThresholdInput.Blur()
-	case 59:
+	case 60:
 		m.alertBlockedDaysInput.Blur()
-	case 61:
+	case 62:
 		m.alertProjectStaleDaysInput.Blur()
 	default:
-		// Outliner section toggles (27-33), outliner column toggles (34-46),
+		// Outliner section toggles (28-34), outliner column toggles (35-47),
 		// alert toggles/enums - no blur needed
 	}
 }
@@ -371,25 +383,27 @@ func (m *SettingsModel) focusCurrentField() {
 	case 11:
 		m.maxPinnedInput.Focus()
 	case 12:
-		m.attachmentEditorInput.Focus()
+		m.maxRecentTaskVisitsInput.Focus()
 	case 13:
+		m.attachmentEditorInput.Focus()
+	case 14:
 		m.codeEditorInput.Focus()
-	case 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26:
+	case 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27:
 		// Tree column toggle fields - no focus needed
-	case 48:
+	case 49:
 		m.alertDailyReviewHourInput.Focus()
-	case 53:
+	case 54:
 		m.alertDueSoonDaysInput.Focus()
-	case 55:
+	case 56:
 		m.alertStaleDaysInput.Focus()
-	case 57:
+	case 58:
 		m.alertInboxThresholdInput.Focus()
-	case 59:
+	case 60:
 		m.alertBlockedDaysInput.Focus()
-	case 61:
+	case 62:
 		m.alertProjectStaleDaysInput.Focus()
 	default:
-		// Outliner section toggles (27-33), outliner column toggles (34-46),
+		// Outliner section toggles (28-34), outliner column toggles (35-47),
 		// alert toggles/enums - no focus needed
 	}
 }
