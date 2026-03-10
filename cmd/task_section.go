@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -9,17 +10,17 @@ import (
 )
 
 var taskSectionCmd = &cobra.Command{
-	Use:   "section <task-id> <section>",
-	Short: "Assign a task to a section",
-	Long: `Assign a task to a section for organization.
+	Use:   "section <task-id>... <section>",
+	Short: "Assign task(s) to a section",
+	Long: `Assign one or more tasks to a section for organization.
 
-Use an empty string "" to clear the section assignment.
+The last argument is the section name. Use an empty string "" to clear.
 
 Examples:
   tt task section 5 "In Progress"
-  tt task section 12 Review
+  tt task section 1 2 3 Review
   tt task section 3 ""`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.MinimumNArgs(2),
 	RunE: runTaskSection,
 }
 
@@ -28,37 +29,49 @@ func init() {
 }
 
 func runTaskSection(cmd *cobra.Command, args []string) error {
-	taskID := args[0]
-	sectionName := args[1]
+	// Last argument is the section name, everything before is task IDs
+	taskIDs := args[:len(args)-1]
+	sectionName := args[len(args)-1]
 
-	var oldSection string
+	var errs []string
+	succeeded := 0
+	for _, taskID := range taskIDs {
+		var oldSection string
 
-	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-		// If section name is provided and non-empty, ensure it exists
-		if sectionName != "" {
-			project.EnsureSection(sectionName)
+		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+			if sectionName != "" {
+				project.EnsureSection(sectionName)
+			}
+
+			oldSection = task.Section
+			task.Section = sectionName
+			return nil
+		})
+
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
+			continue
 		}
 
-		oldSection = task.Section
-		task.Section = sectionName
-		return nil
-	})
-
-	if err != nil {
-		return err
+		succeeded++
+		if sectionName == "" {
+			if oldSection != "" {
+				fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
+			} else {
+				fmt.Printf("Task #%d has no section\n", task.ShortID)
+			}
+		} else if oldSection == "" {
+			fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
+		} else {
+			fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
+		}
 	}
 
-	// Output feedback
-	if sectionName == "" {
-		if oldSection != "" {
-			fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
-		} else {
-			fmt.Printf("Task #%d has no section\n", task.ShortID)
+	if len(errs) > 0 {
+		if succeeded > 0 {
+			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
 		}
-	} else if oldSection == "" {
-		fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
-	} else {
-		fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
+		return fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}
 
 	return nil

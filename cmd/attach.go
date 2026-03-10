@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var attachURL string
@@ -56,9 +55,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 		return errLoad
 	}
 
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
+	task, findErr := FindTaskByIdentifier(project, args[0])
+	if findErr != nil {
+		return findErr
 	}
 
 	// Handle URL attachment

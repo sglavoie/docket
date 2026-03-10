@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 )
 
@@ -98,9 +97,10 @@ func updateTaskType(args []string, action string, update func(*models.Task) erro
 	var task *models.Task
 
 	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return tterrors.NewTaskNotFoundError(args[0])
+		var findErr error
+		task, findErr = FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
 		}
 	} else {
 		// Interactive selection - filter based on action

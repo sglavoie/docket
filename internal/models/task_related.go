@@ -1,17 +1,23 @@
 package models
 
 import (
+	"fmt"
 	"slices"
 	"time"
 )
 
 // AddRelatedTo adds a related task ID if not already present.
-func (t *Task) AddRelatedTo(relatedID string) {
+// Returns an error if relatedID is the task's own ID (self-reference).
+func (t *Task) AddRelatedTo(relatedID string) error {
+	if relatedID == t.ID {
+		return fmt.Errorf("task cannot be related to itself")
+	}
 	if slices.Contains(t.RelatedTo, relatedID) {
-		return
+		return nil
 	}
 	t.RelatedTo = append(t.RelatedTo, relatedID)
 	t.UpdatedAt = time.Now()
+	return nil
 }
 
 // RemoveRelatedTo removes a related task ID if present.

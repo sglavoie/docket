@@ -130,7 +130,7 @@ func TestTaskDependsAddDependency(t *testing.T) {
 		taskA := project.Tasks[0]
 		taskB := project.Tasks[1]
 
-		taskB.AddDependency(taskA.ID)
+		_ = taskB.AddDependency(taskA.ID)
 		deps.Repository.Projects[project.ID] = project
 
 		dependsOnFlag = fmt.Sprintf("%d", taskB.ShortID)
@@ -164,7 +164,7 @@ func TestTaskDependsRemoveDependency(t *testing.T) {
 		task1 := project.Tasks[0]
 		task2 := project.Tasks[1]
 
-		task1.AddDependency(task2.ID)
+		_ = task1.AddDependency(task2.ID)
 		deps.Repository.Projects[project.ID] = project
 
 		dependsOnFlag = ""
@@ -242,8 +242,8 @@ func TestTaskDependsClear(t *testing.T) {
 		task2 := project.Tasks[1]
 		task3 := project.Tasks[2]
 
-		task1.AddDependency(task2.ID)
-		task1.AddDependency(task3.ID)
+		_ = task1.AddDependency(task2.ID)
+		_ = task1.AddDependency(task3.ID)
 		deps.Repository.Projects[project.ID] = project
 
 		dependsOnFlag = ""

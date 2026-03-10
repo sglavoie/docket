@@ -12,8 +12,8 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// maxContentWidth is the maximum width for the content area.
-const maxContentWidth = 100
+// maxContentWidth aliases the layout constant for local use.
+const maxContentWidth = MaxContentWidth
 
 func (m *TaskDetailModel) View() string {
 	if m.task == nil {

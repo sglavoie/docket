@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -44,12 +43,9 @@ func (p *Project) HasSection(name string) bool {
 const MaxSectionNameLength = 256
 
 // EnsureSection adds a section if it does not already exist.
-// Silently rejects empty, whitespace-only, or excessively long names.
+// Silently rejects names that fail validation.
 func (p *Project) EnsureSection(name string) {
-	if strings.TrimSpace(name) == "" {
-		return
-	}
-	if len(name) > MaxSectionNameLength {
+	if err := ValidateSectionName(name); err != nil {
 		return
 	}
 	if !p.HasSection(name) {

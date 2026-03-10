@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 func TestFindTaskByIdentifier(t *testing.T) {
@@ -75,13 +77,15 @@ func TestFindTaskByIdentifier(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FindTaskByIdentifier(project, tt.identifier)
-			if got != tt.wantTask {
-				if tt.wantTask == nil {
-					t.Errorf("FindTaskByIdentifier(%q) = %v, want nil", tt.identifier, got)
-				} else if got == nil {
-					t.Errorf("FindTaskByIdentifier(%q) = nil, want task %q", tt.identifier, tt.wantTask.Title)
-				} else {
+			got, err := FindTaskByIdentifier(project, tt.identifier)
+			if tt.wantTask == nil {
+				if err == nil {
+					t.Errorf("FindTaskByIdentifier(%q) = %v, want error", tt.identifier, got)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("FindTaskByIdentifier(%q) returned unexpected error: %v", tt.identifier, err)
+				} else if got != tt.wantTask {
 					t.Errorf("FindTaskByIdentifier(%q) = %q, want %q", tt.identifier, got.Title, tt.wantTask.Title)
 				}
 			}
@@ -181,13 +185,13 @@ func TestParseTaskTypeFlags(t *testing.T) {
 func TestFindTaskByIdentifierEmptyProject(t *testing.T) {
 	project := testutil.NewTestProject("Empty Project")
 
-	got := FindTaskByIdentifier(project, "1")
-	if got != nil {
-		t.Errorf("FindTaskByIdentifier on empty project should return nil, got %v", got)
+	got, err := FindTaskByIdentifier(project, "1")
+	if err == nil {
+		t.Errorf("FindTaskByIdentifier on empty project should return error, got %v", got)
 	}
 }
 
-func TestFindTaskByIdentifierTitleMatchOrder(t *testing.T) {
+func TestFindTaskByIdentifierTitleMatchAmbiguous(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
 
 	task1, err := models.NewTask("uuid-1", 1, models.TaskTypeTask, "Apple Pie Recipe")
@@ -200,10 +204,22 @@ func TestFindTaskByIdentifierTitleMatchOrder(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task1, task2}
 
-	// Should find the first matching task
-	got := FindTaskByIdentifier(project, "apple")
+	// "apple" matches both tasks — should return ambiguity error
+	_, findErr := FindTaskByIdentifier(project, "apple")
+	if findErr == nil {
+		t.Error("FindTaskByIdentifier should return error for ambiguous prefix")
+	}
+	if !errors.Is(findErr, tterrors.ErrAmbiguousIdentifier) {
+		t.Errorf("expected ErrAmbiguousIdentifier, got: %v", findErr)
+	}
+
+	// Unique prefix should still work
+	got, findErr := FindTaskByIdentifier(project, "Apple Pie")
+	if findErr != nil {
+		t.Errorf("FindTaskByIdentifier returned unexpected error: %v", findErr)
+	}
 	if got != task1 {
-		t.Errorf("FindTaskByIdentifier should return first matching task, got %v", got.Title)
+		t.Errorf("FindTaskByIdentifier should return task1, got %v", got)
 	}
 }
 

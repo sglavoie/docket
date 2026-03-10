@@ -39,8 +39,9 @@ var (
 
 // Validation errors
 var (
-	ErrRequiredField = errors.New("required field missing")
-	ErrInvalidValue  = errors.New("invalid value")
+	ErrRequiredField       = errors.New("required field missing")
+	ErrInvalidValue        = errors.New("invalid value")
+	ErrAmbiguousIdentifier = errors.New("ambiguous identifier")
 )
 
 // NewTaskNotFoundError creates a task not found error with the specified task identifier.
@@ -98,6 +99,17 @@ func NewSaveProjectError(name string, err error) error {
 // Use this for consistent task type validation error messaging.
 func NewInvalidTaskTypeError(taskType string) error {
 	return fmt.Errorf("%w: '%s'", ErrInvalidTaskType, taskType)
+}
+
+// NewAmbiguousIdentifierError creates an error when an identifier matches multiple items.
+// candidates should be formatted strings like "#1 Login, #3 Logout".
+func NewAmbiguousIdentifierError(identifier string, candidates string) error {
+	return fmt.Errorf("%w %q: matches %s (use task short ID)", ErrAmbiguousIdentifier, identifier, candidates)
+}
+
+// NewNotFoundError creates a generic not-found error for any entity type.
+func NewNotFoundError(entityType, identifier string) error {
+	return fmt.Errorf("%s not found: %s", entityType, identifier)
 }
 
 // NewSaveConfigError creates an error for failing to save the config file.

@@ -68,6 +68,16 @@ var metadataKeys = []string{
 func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 	var warnings []ParseWarning
 
+	// Buffer recurrence sub-fields so they work regardless of key order.
+	// If "recur" appears before its sub-fields, they're applied immediately.
+	// If sub-fields appear first, they're buffered and applied after all keys are parsed.
+	var recurSubFields struct {
+		skipped   int
+		streak    int
+		maxStreak int
+		hasAny    bool
+	}
+
 	// Parse key-value pairs, handling values that may contain commas (like recur: 1w:mon,wed,fri)
 	// Format: "key1: value1, key2: value2, ..."
 	// Strategy: find known keys and extract their values until the next known key
@@ -164,21 +174,22 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			if pattern := models.ParseRecurrence(value); pattern != nil {
 				task.Recurrence = pattern
 			}
-		// NOTE: recur.* sub-fields require the "recur" key to have been parsed first
-		// (task.Recurrence must be non-nil). WriteMetadata always emits "recur" before
-		// its sub-fields, so roundtrips are safe. Hand-edited metadata with reordered
-		// keys will silently lose these values.
+		// Buffer recurrence sub-fields for order-independent parsing.
+		// Applied to task.Recurrence after all keys are processed.
 		case "recur.skipped":
-			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
-				task.Recurrence.Skipped = v
+			if v, err := strconv.Atoi(value); err == nil {
+				recurSubFields.skipped = v
+				recurSubFields.hasAny = true
 			}
 		case "recur.streak":
-			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
-				task.Recurrence.Streak = v
+			if v, err := strconv.Atoi(value); err == nil {
+				recurSubFields.streak = v
+				recurSubFields.hasAny = true
 			}
 		case "recur.max_streak":
-			if v, err := strconv.Atoi(value); err == nil && task.Recurrence != nil {
-				task.Recurrence.MaxStreak = v
+			if v, err := strconv.Atoi(value); err == nil {
+				recurSubFields.maxStreak = v
+				recurSubFields.hasAny = true
 			}
 		case "snoozed":
 			if t, err := time.ParseInLocation(util.DateFormat, value, time.Local); err == nil {
@@ -253,7 +264,8 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			}
 		case "checklist":
 			// Format: "text1[x];text2[ ];text3[x]" where [x] = done, [ ] = not done
-			items := strings.Split(value, ";")
+			// Semicolons and [x]/[ ] in text are escaped as \; and \[x\]/\[ \]
+			items := splitChecklistItems(value)
 			for _, item := range items {
 				item = strings.TrimSpace(item)
 				if item == "" {
@@ -269,7 +281,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					done = false
 					text = strings.TrimSuffix(item, "[ ]")
 				}
-				text = strings.TrimSpace(text)
+				text = unescapeChecklistText(strings.TrimSpace(text))
 				if text != "" {
 					task.Checklist = append(task.Checklist, models.ChecklistItem{
 						Text: text,
@@ -342,6 +354,13 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			}
 		}
 	}
+	// Apply buffered recurrence sub-fields now that all keys are parsed
+	if recurSubFields.hasAny && task.Recurrence != nil {
+		task.Recurrence.Skipped = recurSubFields.skipped
+		task.Recurrence.Streak = recurSubFields.streak
+		task.Recurrence.MaxStreak = recurSubFields.maxStreak
+	}
+
 	// Migration: move non-GTD section values to CustomSection
 	if task.Section != "" && !models.IsGTDSection(task.Section) && task.CustomSection == "" {
 		task.CustomSection = task.Section
@@ -449,6 +468,46 @@ func escapeNewlines(s string) string {
 // unescapeNewlines replaces literal \n with actual newlines when reading from metadata.
 func unescapeNewlines(s string) string {
 	return strings.ReplaceAll(s, `\n`, "\n")
+}
+
+// escapeChecklistText escapes semicolons and done/undone markers in checklist item text
+// so they don't interfere with the storage format delimiters.
+func escapeChecklistText(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, ";", `\;`)
+	s = strings.ReplaceAll(s, "[x]", `\[x\]`)
+	s = strings.ReplaceAll(s, "[ ]", `\[ \]`)
+	return s
+}
+
+// unescapeChecklistText reverses the escaping done by escapeChecklistText.
+func unescapeChecklistText(s string) string {
+	s = strings.ReplaceAll(s, `\;`, ";")
+	s = strings.ReplaceAll(s, `\[x\]`, "[x]")
+	s = strings.ReplaceAll(s, `\[ \]`, "[ ]")
+	s = strings.ReplaceAll(s, `\\`, `\`)
+	return s
+}
+
+// splitChecklistItems splits a checklist value string by unescaped semicolons.
+func splitChecklistItems(s string) []string {
+	var items []string
+	var current strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			// Escaped character — keep both the backslash and the next char
+			current.WriteByte(s[i])
+			i++
+			current.WriteByte(s[i])
+		} else if s[i] == ';' {
+			items = append(items, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(s[i])
+		}
+	}
+	items = append(items, current.String())
+	return items
 }
 
 // sortedKeys returns the keys of an int map in sorted order.
@@ -569,7 +628,7 @@ func WriteMetadata(task *models.Task) string {
 			if item.Done {
 				marker = "[x]"
 			}
-			checklistStrings = append(checklistStrings, item.Text+marker)
+			checklistStrings = append(checklistStrings, escapeChecklistText(item.Text)+marker)
 		}
 		parts = append(parts, fmt.Sprintf("checklist: %s", strings.Join(checklistStrings, ";")))
 	}

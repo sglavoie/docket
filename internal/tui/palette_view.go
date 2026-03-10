@@ -430,8 +430,7 @@ func (m *CommandPaletteModel) renderItemList() string {
 		b.WriteString("\n\n")
 	}
 
-	// Calculate pane height (must match View's paneHeight calculation: m.height - 8)
-	paneHeight := max(m.height-8, 5)
+	paneHeight := max(m.height-OverlayListChrome, 5)
 
 	// maxVisible accounts for hints and category headers within the pane
 	maxVisible := paneHeight

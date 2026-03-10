@@ -161,13 +161,7 @@ func (m *FilterViewModel) buildFilterList() {
 		})
 	}
 
-	// Clamp cursor to valid range
-	if m.cursor >= len(m.items) {
-		m.cursor = len(m.items) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.items))
 }
 
 // clearFilter clears a specific filter type.

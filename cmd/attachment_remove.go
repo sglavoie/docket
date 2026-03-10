@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var keepFile bool
@@ -39,9 +38,9 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	task := FindTaskByIdentifier(project, args[0])
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(args[0])
+	task, findErr := FindTaskByIdentifier(project, args[0])
+	if findErr != nil {
+		return findErr
 	}
 
 	if len(task.Attachments) == 0 {

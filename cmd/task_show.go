@@ -9,7 +9,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tterrors"
 	"github.com/sglavoie/tt/internal/tui"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -47,9 +46,10 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 	var task *models.Task
 
 	if len(args) > 0 {
-		task = FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return tterrors.NewTaskNotFoundError(args[0])
+		var findErr error
+		task, findErr = FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
 		}
 	} else {
 		// Interactive selection

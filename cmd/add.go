@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var addCmd = &cobra.Command{
@@ -99,7 +100,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	title, inlinePriority, inlineTags := parseInlineMetadata(rawTitle)
 
 	if title == "" {
-		return fmt.Errorf("task title is required (title was empty after extracting inline priority/tags from %q)", rawTitle)
+		return tterrors.NewRequiredFieldError(fmt.Sprintf("task title (title was empty after extracting inline priority/tags from %q)", rawTitle))
 	}
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return err

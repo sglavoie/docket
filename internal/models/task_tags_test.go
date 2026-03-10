@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAddTag(t *testing.T) {
 	task, err := NewTask("t1", 1, TaskTypeTask, "Test")
@@ -77,6 +80,33 @@ func TestRemoveNonexistentTag(t *testing.T) {
 	// UpdatedAt should not change when removing a tag that doesn't exist
 	if !task.UpdatedAt.Equal(initialUpdatedAt) {
 		t.Error("expected UpdatedAt to not change when removing nonexistent tag")
+	}
+}
+
+func TestValidateTag(t *testing.T) {
+	tests := []struct {
+		name    string
+		tag     string
+		wantErr bool
+	}{
+		{"valid tag", "backend", false},
+		{"valid with hyphens", "high-priority", false},
+		{"empty string", "", true},
+		{"whitespace only", "   ", true},
+		{"contains comma", "a,b", true},
+		{"contains semicolon", "a;b", true},
+		{"contains newline", "a\nb", true},
+		{"too long", strings.Repeat("a", MaxTagLength+1), true},
+		{"at max length", strings.Repeat("a", MaxTagLength), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateTag(tt.tag)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateTag(%q) error = %v, wantErr %v", tt.tag, err, tt.wantErr)
+			}
+		})
 	}
 }
 

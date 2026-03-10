@@ -149,9 +149,9 @@ func TestMoveTaskToProjectClearsCrossProjectDependencies(t *testing.T) {
 	child2.ParentID = &parentID
 
 	// child1 depends on child2 (both will be moved together with parent)
-	child1.AddDependency(child2.ID)
+	_ = child1.AddDependency(child2.ID)
 	// child1 also depends on "other" task (which stays in source -> should be cleared)
-	child1.AddDependency(other.ID)
+	_ = child1.AddDependency(other.ID)
 
 	sourceProj.Tasks = []*Task{parent, child1, child2, other}
 	sourceProj.BuildTaskTree()
@@ -312,8 +312,8 @@ func TestMoveTaskToProjectClearsDependenciesInSource(t *testing.T) {
 	}
 
 	// Task 3 depends on task1 and task2
-	task3.AddDependency(task1.ID)
-	task3.AddDependency(task2.ID)
+	_ = task3.AddDependency(task1.ID)
+	_ = task3.AddDependency(task2.ID)
 
 	sourceProj.Tasks = []*Task{task1, task2, task3}
 	sourceProj.BuildTaskTree()

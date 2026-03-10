@@ -253,9 +253,7 @@ func (m *NotesViewModel) loadNotes() {
 	// Apply sort mode (pinned notes always first)
 	m.sortNotes(notes)
 	m.notes = notes
-	if m.cursor >= len(m.notes) {
-		m.cursor = max(0, len(m.notes)-1)
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.notes))
 }
 
 func (m *NotesViewModel) sortNotes(notes []*models.Note) {

@@ -520,8 +520,8 @@ func (m *SettingsModel) renderStagesTab() string {
 // settingsContentHeight returns the number of lines available for tab content,
 // accounting for the title, tab bar, blank line, and footer.
 func (m *SettingsModel) settingsContentHeight() int {
-	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1) = 6 lines of chrome
-	h := m.height - 6
+	// Title (1) + tab bar with border (2) + blank line (1) + footer (1) + padding (1)
+	h := m.height - TabbedViewChrome
 	if h < 3 {
 		return 3
 	}

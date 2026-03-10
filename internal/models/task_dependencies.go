@@ -1,17 +1,23 @@
 package models
 
 import (
+	"fmt"
 	"slices"
 	"time"
 )
 
 // AddDependency adds a dependency on another task if not already present.
-func (t *Task) AddDependency(blockerID string) {
+// Returns an error if blockerID is the task's own ID (self-dependency).
+func (t *Task) AddDependency(blockerID string) error {
+	if blockerID == t.ID {
+		return fmt.Errorf("task cannot depend on itself")
+	}
 	if slices.Contains(t.DependsOn, blockerID) {
-		return
+		return nil
 	}
 	t.DependsOn = append(t.DependsOn, blockerID)
 	t.UpdatedAt = time.Now()
+	return nil
 }
 
 // RemoveDependency removes a dependency if present.

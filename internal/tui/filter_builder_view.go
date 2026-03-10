@@ -18,8 +18,7 @@ func (m *FilterBuilderModel) View() string {
 	tabs := []string{"Criteria", "Options"}
 	tabBar := RenderTabBar(tabs, m.activeTab, m.width, 1)
 
-	// Calculate available height for editor content
-	availableHeight := m.height - 7
+	availableHeight := max(m.height-7, 1)
 
 	editorContent := m.renderEditorPane()
 	editorContent = m.applyEditorScroll(editorContent, availableHeight)

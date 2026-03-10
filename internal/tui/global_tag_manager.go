@@ -141,13 +141,7 @@ func (m *GlobalTagManagerModel) buildGlobalTagList() {
 		return m.tags[i].Name < m.tags[j].Name
 	})
 
-	// Clamp cursor
-	if m.cursor >= len(m.tags) {
-		m.cursor = len(m.tags) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.tags))
 }
 
 // renameGlobalTag renames a tag across all projects that use it.

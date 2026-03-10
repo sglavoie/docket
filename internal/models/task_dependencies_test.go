@@ -28,7 +28,7 @@ func TestTaskDependencies(t *testing.T) {
 	}
 
 	// Add dependency
-	task.AddDependency(blocker1.ID)
+	_ = task.AddDependency(blocker1.ID)
 	if len(task.DependsOn) != 1 {
 		t.Errorf("expected 1 dependency after add, got %d", len(task.DependsOn))
 	}
@@ -37,13 +37,13 @@ func TestTaskDependencies(t *testing.T) {
 	}
 
 	// Add duplicate dependency (should not add)
-	task.AddDependency(blocker1.ID)
+	_ = task.AddDependency(blocker1.ID)
 	if len(task.DependsOn) != 1 {
 		t.Errorf("expected 1 dependency after duplicate add, got %d", len(task.DependsOn))
 	}
 
 	// Add second dependency
-	task.AddDependency(blocker2.ID)
+	_ = task.AddDependency(blocker2.ID)
 	if len(task.DependsOn) != 2 {
 		t.Errorf("expected 2 dependencies, got %d", len(task.DependsOn))
 	}
@@ -73,6 +73,21 @@ func TestTaskDependencies(t *testing.T) {
 	}
 }
 
+func TestAddDependencyRejectsSelfDependency(t *testing.T) {
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = task.AddDependency(task.ID)
+	if err == nil {
+		t.Error("expected error when adding self-dependency, got nil")
+	}
+	if len(task.DependsOn) != 0 {
+		t.Errorf("expected 0 dependencies after self-dependency rejection, got %d", len(task.DependsOn))
+	}
+}
+
 func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 	task, err := NewTask("task", 1, TaskTypeTask, "Task")
 	if err != nil {
@@ -81,7 +96,7 @@ func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 	originalUpdate := task.UpdatedAt
 	time.Sleep(time.Millisecond)
 
-	task.AddDependency("blocker-id")
+	_ = task.AddDependency("blocker-id")
 	if !task.UpdatedAt.After(originalUpdate) {
 		t.Error("UpdatedAt should be updated after AddDependency()")
 	}
@@ -94,7 +109,7 @@ func TestTaskDependencyUpdatesTimestamp(t *testing.T) {
 		t.Error("UpdatedAt should be updated after RemoveDependency()")
 	}
 
-	task.AddDependency("another-blocker")
+	_ = task.AddDependency("another-blocker")
 	originalUpdate = task.UpdatedAt
 	time.Sleep(time.Millisecond)
 

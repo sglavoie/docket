@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var noteAddTags []string
@@ -36,7 +37,7 @@ func init() {
 func runNoteAdd(cmd *cobra.Command, args []string) error {
 	title := strings.Join(args, " ")
 	if title == "" {
-		return fmt.Errorf("note title is required")
+		return tterrors.NewRequiredFieldError("note title")
 	}
 
 	note := models.NewNote(title)

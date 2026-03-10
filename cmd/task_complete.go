@@ -12,85 +12,84 @@ import (
 )
 
 var taskCompleteCmd = &cobra.Command{
-	Use:     "complete [id]",
+	Use:     "complete [id...]",
 	Aliases: []string{"done", "c"},
-	Short:   "Mark a task as complete",
-	Long: `Mark a task as done.
+	Short:   "Mark task(s) as complete",
+	Long: `Mark one or more tasks as done.
 
 If no ID is specified, opens an interactive selector.
 
 Examples:
   tt task complete 5
+  tt task complete 1 2 3
   tt task done 3
   tt t c`,
-	Args: cobra.MaximumNArgs(1),
 	RunE: runTaskComplete,
 }
 
 var taskStartCmd = &cobra.Command{
-	Use:   "start [id]",
-	Short: "Mark a task as in progress",
-	Long: `Mark a task as in progress.
+	Use:   "start [id...]",
+	Short: "Mark task(s) as in progress",
+	Long: `Mark one or more tasks as in progress.
 
 Examples:
   tt task start 5
-  tt t start`,
-	Args: cobra.MaximumNArgs(1),
+  tt task start 1 2 3`,
 	RunE: runTaskStart,
 }
 
 var taskBlockCmd = &cobra.Command{
-	Use:   "block [id]",
-	Short: "Mark a task as blocked",
-	Long: `Mark a task as blocked.
+	Use:   "block [id...]",
+	Short: "Mark task(s) as blocked",
+	Long: `Mark one or more tasks as blocked.
 
 Examples:
-  tt task block 5`,
-	Args: cobra.MaximumNArgs(1),
+  tt task block 5
+  tt task block 1 2 3`,
 	RunE: runTaskBlock,
 }
 
 var taskCancelCmd = &cobra.Command{
-	Use:   "cancel [id]",
-	Short: "Cancel a task",
-	Long: `Mark a task as canceled.
+	Use:   "cancel [id...]",
+	Short: "Cancel task(s)",
+	Long: `Mark one or more tasks as canceled.
 
 Examples:
-  tt task cancel 5`,
-	Args: cobra.MaximumNArgs(1),
+  tt task cancel 5
+  tt task cancel 1 2 3`,
 	RunE: runTaskCancel,
 }
 
 var taskReopenCmd = &cobra.Command{
-	Use:   "reopen [id]",
-	Short: "Reopen a completed task",
-	Long: `Set a task back to todo status.
+	Use:   "reopen [id...]",
+	Short: "Reopen completed task(s)",
+	Long: `Set one or more tasks back to todo status.
 
 Examples:
-  tt task reopen 5`,
-	Args: cobra.MaximumNArgs(1),
+  tt task reopen 5
+  tt task reopen 1 2 3`,
 	RunE: runTaskReopen,
 }
 
 var taskReviewCmd = &cobra.Command{
-	Use:   "review [id]",
-	Short: "Send a task to review",
-	Long: `Mark a task as in review (code review, QA, approval).
+	Use:   "review [id...]",
+	Short: "Send task(s) to review",
+	Long: `Mark one or more tasks as in review (code review, QA, approval).
 
 Examples:
-  tt task review 5`,
-	Args: cobra.MaximumNArgs(1),
+  tt task review 5
+  tt task review 1 2 3`,
 	RunE: runTaskReview,
 }
 
 var taskStandbyCmd = &cobra.Command{
-	Use:   "standby [id]",
-	Short: "Put a task on standby",
-	Long: `Put a task on standby (paused, on hold).
+	Use:   "standby [id...]",
+	Short: "Put task(s) on standby",
+	Long: `Put one or more tasks on standby (paused, on hold).
 
 Examples:
-  tt task standby 5`,
-	Args: cobra.MaximumNArgs(1),
+  tt task standby 5
+  tt task standby 1 2 3`,
 	RunE: runTaskStandby,
 }
 
@@ -148,9 +147,9 @@ func runTaskStandby(cmd *cobra.Command, args []string) error {
 
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
-	var taskID string
+	var taskIDs []string
 	if len(args) > 0 {
-		taskID = args[0]
+		taskIDs = args
 	} else {
 		// Load project for interactive selection
 		project, _, _, err := LoadCurrentProject()
@@ -188,56 +187,76 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		if err != nil {
 			return err
 		}
-		taskID = task.ID
+		taskIDs = []string{task.ID}
 	}
 
-	// Track if we generated recurring instances
-	var generated int
+	// Map action to past-tense verb for output
+	actionVerbs := map[string]string{
+		"complete": "Completed",
+		"start":    "Started",
+		"block":    "Blocked",
+		"cancel":   "Canceled",
+		"reopen":   "Reopened",
+		"review":   "Set to review",
+		"standby":  "Set to standby",
+	}
+	verb := actionVerbs[action]
+	if verb == "" {
+		verb = strings.ToUpper(action[:1]) + action[1:] + "d"
+	}
 
-	// Use WithTaskUpdateInProject since we need project context
-	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-		// Block completion if task has incomplete dependencies
-		if action == "complete" {
-			if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
-				var msg strings.Builder
-				msg.WriteString(fmt.Sprintf("cannot complete task #%d: has %d incomplete dependencies:\n",
-					task.ShortID, len(incompleteDeps)))
-				for _, dep := range incompleteDeps {
-					msg.WriteString(fmt.Sprintf("  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status))
+	var errs []string
+	succeeded := 0
+	for _, taskID := range taskIDs {
+		var generated int
+		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+			// Block completion if task has incomplete dependencies
+			if action == "complete" {
+				if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
+					var msg strings.Builder
+					fmt.Fprintf(&msg, "cannot complete task #%d: has %d incomplete dependencies:\n",
+						task.ShortID, len(incompleteDeps))
+					for _, dep := range incompleteDeps {
+						fmt.Fprintf(&msg, "  - #%d %s (%s)\n", dep.ShortID, dep.Title, dep.Status)
+					}
+					return errors.New(msg.String())
 				}
-				return errors.New(msg.String())
 			}
+
+			// Update status
+			update(task)
+
+			// Check for auto-unblocking
+			if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
+				project.CheckAndAutoUnblock()
+			}
+
+			// Generate recurring task instances for completed recurring tasks
+			if action == "complete" {
+				generated = project.GenerateRecurringInstances()
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
+			continue
 		}
 
-		// Update status
-		update(task)
+		succeeded++
+		fmt.Printf("%s %s #%d: %s\n", verb, task.Type.HeadingPrefix(), task.ShortID, task.Title)
 
-		// Check for auto-unblocking (when task is completed/canceled, its dependents may unblock)
-		if task.Status == models.StatusDone || task.Status == models.StatusCanceled {
-			project.CheckAndAutoUnblock()
+		if generated > 0 {
+			fmt.Printf("Created %d recurring task instance(s) in Inbox\n", generated)
 		}
-
-		// Generate recurring task instances for completed recurring tasks
-		if action == "complete" {
-			generated = project.GenerateRecurringInstances()
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
 	}
 
-	fmt.Printf("%s #%d: %s -> %s\n",
-		task.Type.HeadingPrefix(),
-		task.ShortID,
-		task.Title,
-		task.Status)
-
-	// Notify user about generated recurring instances
-	if generated > 0 {
-		fmt.Printf("Created %d recurring task instance(s) in Inbox\n", generated)
+	if len(errs) > 0 {
+		if succeeded > 0 {
+			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
+		}
+		return fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}
 
 	return nil

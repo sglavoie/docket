@@ -87,6 +87,25 @@ func TestWriteMetadata_RecurrenceStreakFieldsOmittedWhenZero(t *testing.T) {
 	}
 }
 
+func TestParseMetadata_RecurrenceSubFieldsBeforeRecurKey(t *testing.T) {
+	task := &models.Task{}
+	// Sub-fields appear BEFORE the recur key — should still be applied
+	ParseMetadata(task, "id: abc, status: todo, priority: 1, recur.skipped: 2, recur.streak: 4, recur.max_streak: 9, recur: 1w")
+
+	if task.Recurrence == nil {
+		t.Fatal("Recurrence should not be nil")
+	}
+	if task.Recurrence.Skipped != 2 {
+		t.Errorf("Skipped = %d, want 2", task.Recurrence.Skipped)
+	}
+	if task.Recurrence.Streak != 4 {
+		t.Errorf("Streak = %d, want 4", task.Recurrence.Streak)
+	}
+	if task.Recurrence.MaxStreak != 9 {
+		t.Errorf("MaxStreak = %d, want 9", task.Recurrence.MaxStreak)
+	}
+}
+
 func TestMetadata_RecurrenceStreakRoundtrip(t *testing.T) {
 	original := &models.Task{
 		ID:       "abc",

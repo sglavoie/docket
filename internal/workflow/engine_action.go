@@ -76,8 +76,8 @@ func applyCreateFollowup(task *models.Task, action RuleAction, result *Evaluatio
 	}
 	followup.Priority = models.PriorityDefault
 	followup.AddTag("followup")
-	followup.AddRelatedTo(task.ID)
-	task.AddRelatedTo(followup.ID)
+	_ = followup.AddRelatedTo(task.ID)
+	_ = task.AddRelatedTo(followup.ID)
 	result.NewFollowupTasks = append(result.NewFollowupTasks, followup)
 	return true
 }

@@ -275,7 +275,7 @@ func (m *TaskJumperModel) renderTaskList() string {
 	}
 
 	var b strings.Builder
-	maxVisible := m.height - 8 // Account for chrome
+	maxVisible := max(m.height-OverlayListChrome, 1)
 
 	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
 

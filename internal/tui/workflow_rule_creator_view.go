@@ -33,9 +33,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	tabs := []string{"Triggers", "Actions", "Scope"}
 	tabBar := RenderTabBar(tabs, m.activeTab, m.width, 1)
 
-	// Calculate available height for editor content
-	// Title(1) + blank(1) + tabBar(1) + blank(2) + footer(2) = 7 lines overhead
-	availableHeight := m.height - 7
+	availableHeight := max(m.height-7, 1)
 
 	// Editor content with scrolling
 	editorContent := m.renderEditorPane()
@@ -45,7 +43,7 @@ func (m *WorkflowRuleCreatorModel) View() string {
 	if m.isWideScreen() {
 		// Split layout: editor left, preview right
 		editorWidth := m.width * 55 / 100
-		previewWidth := m.width - editorWidth - 3 // 3 for separator
+		previewWidth := m.width - editorWidth - SeparatorWidth
 
 		// Calculate pane height
 		paneHeight := max(availableHeight, 5)

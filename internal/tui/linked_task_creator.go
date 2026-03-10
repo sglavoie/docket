@@ -252,11 +252,17 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 	switch m.linkType {
 	case LinkTypeBlocker:
 		// New task blocks source: source depends on new task
-		m.sourceTask.AddDependency(newTask.ID)
+		if err := m.sourceTask.AddDependency(newTask.ID); err != nil {
+			m.err = err
+			return nil
+		}
 
 	case LinkTypeDependent:
 		// New task depends on source
-		newTask.AddDependency(m.sourceTask.ID)
+		if err := newTask.AddDependency(m.sourceTask.ID); err != nil {
+			m.err = err
+			return nil
+		}
 
 	case LinkTypeSubtask:
 		// Promote leaf types to Story so they can have subtasks
@@ -270,8 +276,8 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 
 	case LinkTypeFollowUp:
 		// Bidirectional relationship + inherit tags
-		m.sourceTask.AddRelatedTo(newTask.ID)
-		newTask.AddRelatedTo(m.sourceTask.ID)
+		_ = m.sourceTask.AddRelatedTo(newTask.ID)
+		_ = newTask.AddRelatedTo(m.sourceTask.ID)
 		// Copy tags from source task (in addition to any parsed tags)
 		for _, tag := range m.sourceTask.Tags {
 			newTask.AddTag(tag)

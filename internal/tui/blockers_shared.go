@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -426,17 +427,8 @@ func blockerToggleResolve(s *blockerViewState, ds blockerDataSource, item blocke
 
 // blockerBuildEditorCmd creates an exec.Cmd for the configured editor.
 func blockerBuildEditorCmd(editor, tmpPath string) *exec.Cmd {
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	if editor == "code" {
-		return exec.Command(editor, "--wait", tmpPath)
-	}
-	return exec.Command(editor, tmpPath)
+	editor = external.ResolveEditor(editor)
+	return external.EditorCommand(editor, tmpPath)
 }
 
 func blockerEditInExternalEditor(s *blockerViewState, ds blockerDataSource, fromEditMode bool) tea.Cmd {

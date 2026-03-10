@@ -237,9 +237,7 @@ func (m *WorkflowRulesModel) filterRules() {
 	query := strings.ToLower(m.searchQuery)
 	if query == "" {
 		m.filteredRules = m.allRules
-		if m.cursor >= len(m.filteredRules) && len(m.filteredRules) > 0 {
-			m.cursor = len(m.filteredRules) - 1
-		}
+		m.cursor = ClampCursor(m.cursor, len(m.filteredRules))
 		return
 	}
 
@@ -252,14 +250,7 @@ func (m *WorkflowRulesModel) filterRules() {
 		}
 	}
 
-	// Clamp cursor to filtered results
-	if m.cursor >= len(m.filteredRules) {
-		if len(m.filteredRules) > 0 {
-			m.cursor = len(m.filteredRules) - 1
-		} else {
-			m.cursor = 0
-		}
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.filteredRules))
 }
 
 func (m *WorkflowRulesModel) toggleCurrentRule() tea.Cmd {
@@ -378,9 +369,7 @@ func (m *WorkflowRulesModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Calculate available height for content
-	// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
-	availableHeight := m.Height() - 6
+	availableHeight := max(m.Height()-TabbedViewChrome, 1)
 	if m.searchActive || m.searchQuery != "" {
 		availableHeight -= 2
 	}
@@ -394,7 +383,7 @@ func (m *WorkflowRulesModel) View() string {
 	// Wide screen: split layout with preview
 	if m.isWideScreen() {
 		listWidth := m.Width() * 45 / 100
-		previewWidth := m.Width() - listWidth - 3 // 3 for separator
+		previewWidth := m.Width() - listWidth - SeparatorWidth
 
 		listPane := lipgloss.NewStyle().
 			Width(listWidth).

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -53,6 +54,17 @@ func RunApp(cfg *config.Config, manager *config.Manager, opts ...AppOption) erro
 	}
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
+
+	// Recover from panics to restore terminal state before crashing.
+	defer func() {
+		if r := recover(); r != nil {
+			p.Kill()
+			_ = p.ReleaseTerminal()
+			fmt.Fprintf(os.Stderr, "\ntt: unexpected panic: %v\n", r)
+			fmt.Fprintf(os.Stderr, "Please report this at https://github.com/sglavoie/tt/issues\n")
+			os.Exit(1)
+		}
+	}()
 
 	_, err := p.Run()
 	return err

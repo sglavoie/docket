@@ -55,9 +55,9 @@ func runWorkflowTest(cmd *cobra.Command, args []string) error {
 
 	var tasks []*models.Task
 	if len(args) > 0 {
-		task := FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return fmt.Errorf("task not found: %s", args[0])
+		task, findErr := FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
 		}
 		tasks = []*models.Task{task}
 	} else {

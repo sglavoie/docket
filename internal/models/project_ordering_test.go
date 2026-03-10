@@ -14,7 +14,7 @@ func TestReorderRootTasksByCompletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	task2.Complete()                                       // completed
+	task2.Complete()                                      // completed
 	task3, err := NewTask("3", 3, TaskTypeTask, "Task 3") // uncompleted
 	if err != nil {
 		t.Fatal(err)

@@ -66,12 +66,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.defaultCount = len(defaultTemplates)
 		m.filterTemplates()
 		// Clamp cursor after deletion
-		if m.cursor >= len(m.filteredTemplates) && len(m.filteredTemplates) > 0 {
-			m.cursor = len(m.filteredTemplates) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		m.cursor = ClampCursor(m.cursor, len(m.filteredTemplates))
 		return m, func() tea.Msg { return TaskTemplatesUpdatedMsg{} }
 
 	case tea.KeyMsg:
@@ -255,9 +250,7 @@ func (m *TaskTemplatesModel) filterTemplates() {
 	query := strings.ToLower(m.searchQuery)
 	if query == "" {
 		m.filteredTemplates = m.allTemplates
-		if m.cursor >= len(m.filteredTemplates) && len(m.filteredTemplates) > 0 {
-			m.cursor = len(m.filteredTemplates) - 1
-		}
+		m.cursor = ClampCursor(m.cursor, len(m.filteredTemplates))
 		return
 	}
 
@@ -271,14 +264,7 @@ func (m *TaskTemplatesModel) filterTemplates() {
 		}
 	}
 
-	// Clamp cursor to filtered results
-	if m.cursor >= len(m.filteredTemplates) {
-		if len(m.filteredTemplates) > 0 {
-			m.cursor = len(m.filteredTemplates) - 1
-		} else {
-			m.cursor = 0
-		}
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.filteredTemplates))
 }
 
 func (m *TaskTemplatesModel) toggleCurrentTemplate() tea.Cmd {
@@ -358,9 +344,7 @@ func (m *TaskTemplatesModel) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Calculate available height for content
-	// Title(1) + blank(1) + search(2 if active) + footer(2) = ~6 lines overhead
-	availableHeight := m.Height() - 6
+	availableHeight := max(m.Height()-TabbedViewChrome, 1)
 	if m.searchActive || m.searchQuery != "" {
 		availableHeight -= 2
 	}
@@ -374,7 +358,7 @@ func (m *TaskTemplatesModel) View() string {
 	// Wide screen: split layout with preview
 	if m.isWideScreen() {
 		listWidth := m.Width() * 45 / 100
-		previewWidth := m.Width() - listWidth - 3 // 3 for separator
+		previewWidth := m.Width() - listWidth - SeparatorWidth
 
 		listPane := lipgloss.NewStyle().
 			Width(listWidth).

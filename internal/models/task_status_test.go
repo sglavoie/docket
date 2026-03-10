@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestTaskStatusIsValid(t *testing.T) {
 	valid := []TaskStatus{StatusTodo, StatusInProgress, StatusReview, StatusStandby, StatusDone, StatusBlocked, StatusCanceled}
@@ -122,7 +125,12 @@ func TestValidateSectionName(t *testing.T) {
 		}
 	}
 
-	invalid := []string{"In Progress", "My Section", "has\ttab", "has\nnewline"}
+	invalid := []string{
+		"In Progress", "My Section", "has\ttab", "has\nnewline",
+		"",    // empty
+		"   ", // whitespace only
+		strings.Repeat("a", MaxSectionNameLength+1), // too long
+	}
 	for _, name := range invalid {
 		if err := ValidateSectionName(name); err == nil {
 			t.Errorf("ValidateSectionName(%q) should have returned error", name)

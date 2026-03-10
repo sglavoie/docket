@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // BuildTaskTree organizes flat tasks into a tree structure.
 // Sets Parent, Children, and Level for each task.
@@ -111,12 +114,12 @@ func (p *Project) IndentTask(task *Task) error {
 	// Get the task above in visual order
 	targetParent := p.GetTaskAbove(task)
 	if targetParent == nil {
-		return nil // No task above
+		return fmt.Errorf("cannot indent: no task above to become parent")
 	}
 
 	// Validate the indent operation
-	if ok, _ := task.CanIndent(targetParent); !ok {
-		return nil
+	if ok, reason := task.CanIndent(targetParent); !ok {
+		return fmt.Errorf("cannot indent: %s", reason)
 	}
 
 	// Update the parent reference
@@ -133,14 +136,14 @@ func (p *Project) IndentTask(task *Task) error {
 // Returns an error if the operation is not valid.
 func (p *Project) OutdentTask(task *Task) error {
 	// Validate the outdent operation
-	if ok, _ := task.CanOutdent(); !ok {
-		return nil
+	if ok, reason := task.CanOutdent(); !ok {
+		return fmt.Errorf("cannot outdent: %s", reason)
 	}
 
 	// Get current parent before modifying
 	currentParent := task.Parent
 	if currentParent == nil {
-		return nil // Already at root
+		return fmt.Errorf("cannot outdent: already at root level")
 	}
 
 	// Set new parent to grandparent (or nil if parent is root)

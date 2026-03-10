@@ -111,6 +111,14 @@ const DefaultMaxActivityEntries = 50
 var MaxActivityEntries = DefaultMaxActivityEntries
 
 // SaveProject saves a project's tasks to its tasks.md file.
+//
+// Note: There is a TOCTOU (time-of-check-time-of-use) race between the
+// old-content read (for activity diffing) and the atomic write. If another
+// process modifies tasks.md between those two operations, the diff may be
+// inaccurate and the write will silently overwrite those changes. This is
+// acceptable because tt is a single-user CLI tool — concurrent writes to
+// the same project are not an expected use case. If multi-process access
+// is ever needed, advisory file locking (e.g., flock) should be added.
 func SaveProject(project *models.Project) error {
 	// If using a non-filesystem repository (e.g., mock), delegate to it
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {

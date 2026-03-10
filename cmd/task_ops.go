@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
@@ -14,30 +15,56 @@ import (
 )
 
 // FindTaskByIdentifier finds a task by short ID, UUID, or title prefix.
-// Returns nil if no matching task is found.
-func FindTaskByIdentifier(project *models.Project, identifier string) *models.Task {
+// Returns an error if no match is found or if a title prefix matches multiple tasks.
+func FindTaskByIdentifier(project *models.Project, identifier string) (*models.Task, error) {
 	// Try as short ID first
 	var shortID int
 	if _, err := fmt.Sscanf(identifier, "%d", &shortID); err == nil {
 		if task := project.GetTaskByShortID(shortID); task != nil {
-			return task
+			return task, nil
 		}
 	}
 
 	// Try as UUID
 	if task := project.GetTaskByID(identifier); task != nil {
-		return task
+		return task, nil
 	}
 
 	// Try as title prefix (case-insensitive)
 	lowerID := strings.ToLower(identifier)
+	var matches []*models.Task
 	for _, task := range project.Tasks {
 		if strings.HasPrefix(strings.ToLower(task.Title), lowerID) {
-			return task
+			matches = append(matches, task)
 		}
 	}
 
-	return nil
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	if len(matches) > 1 {
+		// Build candidate list (show up to 5)
+		limit := len(matches)
+		if limit > 5 {
+			limit = 5
+		}
+		parts := make([]string, limit)
+		for i := 0; i < limit; i++ {
+			parts[i] = fmt.Sprintf("#%d %s", matches[i].ShortID, matches[i].Title)
+		}
+		candidates := strings.Join(parts, ", ")
+		if len(matches) > 5 {
+			candidates += fmt.Sprintf(", ... (%d more)", len(matches)-5)
+		}
+		return nil, tterrors.NewAmbiguousIdentifierError(identifier, candidates)
+	}
+
+	// No match found — suggest similar tasks using fuzzy matching
+	if suggestions := suggestSimilarTasks(project.Tasks, identifier, 3); len(suggestions) > 0 {
+		return nil, fmt.Errorf("%w: '%s'. Did you mean: %s", tterrors.ErrTaskNotFound, identifier, strings.Join(suggestions, ", "))
+	}
+
+	return nil, tterrors.NewTaskNotFoundError(identifier)
 }
 
 // ValidatePriority checks that a priority value is in the valid range.
@@ -189,9 +216,9 @@ func CanOutdentFilter() TaskFilter {
 // Returns an error if no task is found or selection is canceled.
 func SelectTask(project *models.Project, args []string, filter TaskFilter, prompt, emptyMsg string) (*models.Task, error) {
 	if len(args) > 0 {
-		task := FindTaskByIdentifier(project, args[0])
-		if task == nil {
-			return nil, fmt.Errorf("task '%s': %w", args[0], tterrors.ErrTaskNotFound)
+		task, err := FindTaskByIdentifier(project, args[0])
+		if err != nil {
+			return nil, err
 		}
 		return task, nil
 	}
@@ -227,9 +254,9 @@ func WithTaskUpdate(taskIdentifier string, updateFn func(*models.Task) error) (*
 		return nil, err
 	}
 
-	task := FindTaskByIdentifier(project, taskIdentifier)
-	if task == nil {
-		return nil, tterrors.NewTaskNotFoundError(taskIdentifier)
+	task, findErr := FindTaskByIdentifier(project, taskIdentifier)
+	if findErr != nil {
+		return nil, findErr
 	}
 
 	// Capture task states before changes for event-based workflow triggers
@@ -262,9 +289,9 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 		return nil, err
 	}
 
-	task := FindTaskByIdentifier(project, taskIdentifier)
-	if task == nil {
-		return nil, tterrors.NewTaskNotFoundError(taskIdentifier)
+	task, findErr := FindTaskByIdentifier(project, taskIdentifier)
+	if findErr != nil {
+		return nil, findErr
 	}
 
 	// Capture task states before changes for event-based workflow triggers
@@ -295,9 +322,9 @@ func WithTaskRead(taskIdentifier string, readFn func(*models.Project, *models.Ta
 		return err
 	}
 
-	task := FindTaskByIdentifier(project, taskIdentifier)
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(taskIdentifier)
+	task, findErr := FindTaskByIdentifier(project, taskIdentifier)
+	if findErr != nil {
+		return findErr
 	}
 
 	return readFn(project, task)
@@ -387,9 +414,9 @@ func WithBlockerCreate(createFn func() (*models.Blocker, error)) (*models.Blocke
 // ValidateParentTask finds a parent task by identifier and validates that the child type
 // can be nested under it. Returns the parent task or an error.
 func ValidateParentTask(project *models.Project, parentIdentifier string, childType models.TaskType) (*models.Task, error) {
-	parent := FindTaskByIdentifier(project, parentIdentifier)
-	if parent == nil {
-		return nil, tterrors.NewParentTaskNotFoundError(parentIdentifier)
+	parent, findErr := FindTaskByIdentifier(project, parentIdentifier)
+	if findErr != nil {
+		return nil, findErr
 	}
 
 	if !childType.CanBeChildOf(parent.Type) {
@@ -398,4 +425,35 @@ func ValidateParentTask(project *models.Project, parentIdentifier string, childT
 	}
 
 	return parent, nil
+}
+
+// suggestSimilarTasks returns formatted suggestions for tasks whose titles
+// fuzzy-match the given identifier, sorted by score descending.
+func suggestSimilarTasks(tasks []*models.Task, identifier string, limit int) []string {
+	type scored struct {
+		task  *models.Task
+		score int
+	}
+	var candidates []scored
+	for _, t := range tasks {
+		if s := fuzzy.Score(t.Title, identifier); s > 0 {
+			candidates = append(candidates, scored{task: t, score: s})
+		}
+	}
+	// Sort by score descending
+	for i := 0; i < len(candidates)-1; i++ {
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[j].score > candidates[i].score {
+				candidates[i], candidates[j] = candidates[j], candidates[i]
+			}
+		}
+	}
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	suggestions := make([]string, len(candidates))
+	for i, c := range candidates {
+		suggestions[i] = fmt.Sprintf("#%d %s", c.task.ShortID, c.task.Title)
+	}
+	return suggestions
 }

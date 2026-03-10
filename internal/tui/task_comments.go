@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -366,22 +367,8 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	// Determine editor
-	editor := m.editor
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	// Build command
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		c = exec.Command(editor, tmpPath)
-	}
+	editor := external.ResolveEditor(m.editor)
+	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
 	project := m.project
@@ -445,22 +432,8 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	// Determine editor
-	editor := m.editor
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	// Build command
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		c = exec.Command(editor, tmpPath)
-	}
+	editor := external.ResolveEditor(m.editor)
+	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
 	project := m.project
@@ -543,22 +516,8 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	_, _ = tmpFile.WriteString(content)
 	_ = tmpFile.Close()
 
-	// Determine editor
-	editor := m.editor
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "code"
-	}
-
-	// Build command
-	var c *exec.Cmd
-	if editor == "code" {
-		c = exec.Command(editor, "--wait", tmpPath)
-	} else {
-		c = exec.Command(editor, tmpPath)
-	}
+	editor := external.ResolveEditor(m.editor)
+	c := external.EditorCommand(editor, tmpPath)
 
 	task := m.task
 	project := m.project

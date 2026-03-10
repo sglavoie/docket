@@ -2,11 +2,51 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 )
+
+// validateIntInRange parses a required integer input and checks it is within [min, max].
+func validateIntInRange(input, fieldName string, min, max int) (int, error) {
+	value := strings.TrimSpace(input)
+	if value == "" {
+		return 0, fmt.Errorf("%s is required", fieldName)
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a number", fieldName)
+	}
+	if n < min || n > max {
+		if max == math.MaxInt {
+			return 0, fmt.Errorf("%s must be %d or greater", fieldName, min)
+		}
+		return 0, fmt.Errorf("%s must be %d-%d", fieldName, min, max)
+	}
+	return n, nil
+}
+
+// validateIntOptionalInRange parses an optional integer input.
+// Returns (0, false, nil) if empty. Returns (n, true, nil) if valid.
+func validateIntOptionalInRange(input, fieldName string, min, max int) (int, bool, error) {
+	value := strings.TrimSpace(input)
+	if value == "" {
+		return 0, false, nil
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, false, fmt.Errorf("%s must be a number", fieldName)
+	}
+	if n < min || n > max {
+		if max == math.MaxInt {
+			return 0, false, fmt.Errorf("%s must be %d or greater", fieldName, min)
+		}
+		return 0, false, fmt.Errorf("%s must be %d-%d", fieldName, min, max)
+	}
+	return n, true, nil
+}
 
 func (m *SettingsModel) validateEditor() error {
 	editor := strings.TrimSpace(m.editorInput.Value())
@@ -52,52 +92,19 @@ func (m *SettingsModel) validateContext() error {
 }
 
 func (m *SettingsModel) validateUndoDepth() error {
-	value := strings.TrimSpace(m.undoDepthInput.Value())
-	if value == "" {
-		return fmt.Errorf("undo history depth is required")
-	}
-
-	depth, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("must be a number")
-	}
-
-	if depth < 0 {
-		return fmt.Errorf("must be 0 or greater")
-	}
-
-	if depth > 1000 {
-		return fmt.Errorf("maximum is 1000")
-	}
-
-	return nil
+	_, err := validateIntInRange(m.undoDepthInput.Value(), "undo history depth", 0, 1000)
+	return err
 }
 
 func (m *SettingsModel) validateReviewSettings() error {
-	// Validate Due Soon Days
-	dueSoonStr := strings.TrimSpace(m.dueSoonInput.Value())
-	if dueSoonStr == "" {
-		return fmt.Errorf("due soon days is required")
-	}
-	dueSoon, err := strconv.Atoi(dueSoonStr)
+	dueSoon, err := validateIntInRange(m.dueSoonInput.Value(), "due soon days", 0, math.MaxInt)
 	if err != nil {
-		return fmt.Errorf("due soon days must be a number")
-	}
-	if dueSoon < 0 {
-		return fmt.Errorf("due soon days must be 0 or greater")
+		return err
 	}
 
-	// Validate Future Days
-	futureStr := strings.TrimSpace(m.futureInput.Value())
-	if futureStr == "" {
-		return fmt.Errorf("future days is required")
-	}
-	futureDays, err := strconv.Atoi(futureStr)
+	futureDays, err := validateIntInRange(m.futureInput.Value(), "future days", 0, math.MaxInt)
 	if err != nil {
-		return fmt.Errorf("future days must be a number")
-	}
-	if futureDays < 0 {
-		return fmt.Errorf("future days must be 0 or greater")
+		return err
 	}
 
 	// Future must be > Due Soon when both are non-zero
@@ -105,48 +112,20 @@ func (m *SettingsModel) validateReviewSettings() error {
 		return fmt.Errorf("future must be greater than due soon")
 	}
 
-	// Validate Old Days
-	oldDaysStr := strings.TrimSpace(m.oldDaysInput.Value())
-	if oldDaysStr == "" {
-		return fmt.Errorf("old days is required")
-	}
-	oldDays, err := strconv.Atoi(oldDaysStr)
-	if err != nil {
-		return fmt.Errorf("old days must be a number")
-	}
-	if oldDays < 0 {
-		return fmt.Errorf("old days must be 0 or greater")
+	if _, err := validateIntInRange(m.oldDaysInput.Value(), "old days", 0, math.MaxInt); err != nil {
+		return err
 	}
 
-	// Validate Completed Hours
-	completedHoursStr := strings.TrimSpace(m.completedHoursInput.Value())
-	if completedHoursStr == "" {
-		return fmt.Errorf("completed hours is required")
-	}
-	completedHours, err := strconv.Atoi(completedHoursStr)
-	if err != nil {
-		return fmt.Errorf("completed hours must be a number")
-	}
-	if completedHours < 0 {
-		return fmt.Errorf("completed hours must be 0 or greater")
+	if _, err := validateIntInRange(m.completedHoursInput.Value(), "completed hours", 0, math.MaxInt); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (m *SettingsModel) validateRecentActivityLimit() error {
-	value := strings.TrimSpace(m.recentActivityInput.Value())
-	if value == "" {
-		return fmt.Errorf("recent activity limit is required")
-	}
-	limit, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("must be a number")
-	}
-	if limit < 0 {
-		return fmt.Errorf("must be 0 or greater")
-	}
-	return nil
+	_, err := validateIntInRange(m.recentActivityInput.Value(), "recent activity limit", 0, math.MaxInt)
+	return err
 }
 
 func (m *SettingsModel) validateAttachmentEditor() error {
@@ -166,101 +145,38 @@ func (m *SettingsModel) validateCodeEditor() error {
 }
 
 func (m *SettingsModel) validateMaxRecentTaskVisits() error {
-	value := strings.TrimSpace(m.maxRecentTaskVisitsInput.Value())
-	if value == "" {
-		return fmt.Errorf("task limit is required")
-	}
-	n, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("must be a number")
-	}
-	if n < 1 || n > 50 {
-		return fmt.Errorf("must be 1-50")
-	}
-	return nil
+	_, err := validateIntInRange(m.maxRecentTaskVisitsInput.Value(), "task limit", 1, 50)
+	return err
 }
 
 func (m *SettingsModel) validateMaxPinnedBarItems() error {
-	value := strings.TrimSpace(m.maxPinnedInput.Value())
-	if value == "" {
-		return fmt.Errorf("bar limit is required")
-	}
-	n, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("must be a number")
-	}
-	if n < 0 || n > 20 {
-		return fmt.Errorf("must be 0-20")
-	}
-	return nil
+	_, err := validateIntInRange(m.maxPinnedInput.Value(), "bar limit", 0, 20)
+	return err
 }
 
 func (m *SettingsModel) validateAlertSettings() error {
-	// Daily review hour (0-23)
-	hourStr := strings.TrimSpace(m.alertDailyReviewHourInput.Value())
-	if hourStr != "" {
-		hour, err := strconv.Atoi(hourStr)
-		if err != nil {
-			return fmt.Errorf("review hour must be a number")
-		}
-		if hour < 0 || hour > 23 {
-			return fmt.Errorf("review hour must be 0-23")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertDailyReviewHourInput.Value(), "review hour", 0, 23); err != nil {
+		return err
 	}
 
-	// Due soon days (positive)
-	if v := strings.TrimSpace(m.alertDueSoonDaysInput.Value()); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("due soon days must be a number")
-		}
-		if n < 1 {
-			return fmt.Errorf("due soon days must be at least 1")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertDueSoonDaysInput.Value(), "due soon days", 1, math.MaxInt); err != nil {
+		return err
 	}
 
-	// Stale days (positive)
-	if v := strings.TrimSpace(m.alertStaleDaysInput.Value()); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("stale days must be a number")
-		}
-		if n < 1 {
-			return fmt.Errorf("stale days must be at least 1")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertStaleDaysInput.Value(), "stale days", 1, math.MaxInt); err != nil {
+		return err
 	}
 
-	// Inbox threshold (positive)
-	if v := strings.TrimSpace(m.alertInboxThresholdInput.Value()); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("inbox threshold must be a number")
-		}
-		if n < 1 {
-			return fmt.Errorf("inbox threshold must be at least 1")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertInboxThresholdInput.Value(), "inbox threshold", 1, math.MaxInt); err != nil {
+		return err
 	}
 
-	// Blocked days (positive)
-	if v := strings.TrimSpace(m.alertBlockedDaysInput.Value()); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("blocked days must be a number")
-		}
-		if n < 1 {
-			return fmt.Errorf("blocked days must be at least 1")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertBlockedDaysInput.Value(), "blocked days", 1, math.MaxInt); err != nil {
+		return err
 	}
 
-	// Project stale days (positive)
-	if v := strings.TrimSpace(m.alertProjectStaleDaysInput.Value()); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("project stale days must be a number")
-		}
-		if n < 1 {
-			return fmt.Errorf("project stale days must be at least 1")
-		}
+	if _, _, err := validateIntOptionalInRange(m.alertProjectStaleDaysInput.Value(), "project stale days", 1, math.MaxInt); err != nil {
+		return err
 	}
 
 	return nil

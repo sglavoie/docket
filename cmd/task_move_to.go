@@ -36,7 +36,7 @@ Examples:
 
 func init() {
 	taskCmd.AddCommand(taskMoveToCmd)
-	taskMoveToCmd.Flags().BoolVarP(&taskMoveToForce, "force", "f", false, "Skip confirmation when clearing dependencies")
+	taskMoveToCmd.Flags().BoolVarP(&taskMoveToForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runTaskMoveTo(cmd *cobra.Command, args []string) error {
@@ -75,9 +75,9 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 		taskID = fmt.Sprintf("%d", task.ShortID)
 	}
 
-	task := FindTaskByIdentifier(sourceProject, taskID)
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(taskID)
+	task, findErr := FindTaskByIdentifier(sourceProject, taskID)
+	if findErr != nil {
+		return findErr
 	}
 
 	// Select destination project

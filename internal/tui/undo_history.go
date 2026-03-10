@@ -205,7 +205,7 @@ func (m *UndoHistoryModel) ShouldCaptureEsc() bool {
 
 // ensureDiffCursorVisible adjusts diffScroll to keep the cursor visible.
 func (m *UndoHistoryModel) ensureDiffCursorVisible() {
-	availableHeight := m.Height() - 6
+	availableHeight := max(m.Height()-TabbedViewChrome, 1)
 	visibleLines := max(availableHeight-5, 1)
 
 	// If cursor is above visible area, scroll up
@@ -297,9 +297,9 @@ func (m *UndoHistoryModel) View() string {
 
 	// Calculate layout
 	listWidth := max(m.Width()*35/100, 30)
-	diffWidth := m.Width() - listWidth - 3 // 3 for separator
+	diffWidth := m.Width() - listWidth - SeparatorWidth
 
-	availableHeight := m.Height() - 6 // Title, help, padding
+	availableHeight := max(m.Height()-TabbedViewChrome, 1)
 
 	// Render entry list
 	listContent := m.renderEntryList(listWidth, availableHeight)

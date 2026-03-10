@@ -349,8 +349,7 @@ func (m *ProjectFocusViewModel) View() string {
 		return b.String()
 	}
 
-	// Calculate available height for task list
-	contentHeight := m.Height() - 8
+	contentHeight := max(m.Height()-OverlayListChrome, 1)
 
 	// Sub-tab bar
 	subTabBar := m.renderSubTabBar()

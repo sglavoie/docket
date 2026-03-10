@@ -85,7 +85,7 @@ func TestCompleteBlockedByDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dependent.AddDependency(blocker.ID)
+	_ = dependent.AddDependency(blocker.ID)
 
 	project.Tasks = []*models.Task{blocker, dependent}
 
@@ -122,7 +122,7 @@ func TestAutoUnblockAfterComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocked.AddDependency(blocker.ID)
+	_ = blocked.AddDependency(blocker.ID)
 	blocked.Status = models.StatusBlocked
 
 	project.Tasks = []*models.Task{blocker, blocked}
@@ -150,7 +150,7 @@ func TestAutoUnblockAfterCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocked.AddDependency(blocker.ID)
+	_ = blocked.AddDependency(blocker.ID)
 	blocked.Status = models.StatusBlocked
 
 	project.Tasks = []*models.Task{blocker, blocked}

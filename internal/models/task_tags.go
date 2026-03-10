@@ -1,9 +1,28 @@
 package models
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 )
+
+// MaxTagLength is the maximum allowed length for a tag.
+const MaxTagLength = 100
+
+// ValidateTag checks that a tag is non-empty, not too long, and contains no invalid characters.
+func ValidateTag(tag string) error {
+	if strings.TrimSpace(tag) == "" {
+		return fmt.Errorf("tag cannot be empty")
+	}
+	if len(tag) > MaxTagLength {
+		return fmt.Errorf("tag %q exceeds maximum length of %d characters", tag, MaxTagLength)
+	}
+	if strings.ContainsAny(tag, ",;\n\r") {
+		return fmt.Errorf("tag %q contains invalid characters (cannot contain commas, semicolons, or newlines)", tag)
+	}
+	return nil
+}
 
 // AddTag adds a tag if not already present.
 func (t *Task) AddTag(tag string) {

@@ -368,14 +368,18 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 		switch linkType {
 		case LinkTypeBlocker:
 			// Target blocks source: source depends on target
-			m.sourceTask.AddDependency(targetRef)
+			if err := m.sourceTask.AddDependency(targetRef); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)}
+			}
 		case LinkTypeDependent:
 			// Source blocks target: target depends on source
-			m.targetTask.AddDependency(sourceRef)
+			if err := m.targetTask.AddDependency(sourceRef); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to add dependency: %w", err)}
+			}
 		case LinkTypeFollowUp:
 			// Bidirectional relationship
-			m.sourceTask.AddRelatedTo(targetRef)
-			m.targetTask.AddRelatedTo(sourceRef)
+			_ = m.sourceTask.AddRelatedTo(targetRef)
+			_ = m.targetTask.AddRelatedTo(sourceRef)
 		}
 
 		// Update timestamps

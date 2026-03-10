@@ -22,8 +22,8 @@ func TestProjectGetBlockingTasks(t *testing.T) {
 	}
 
 	// Task 3 depends on Task 1 and Task 2
-	task3.AddDependency(task1.ID)
-	task3.AddDependency(task2.ID)
+	_ = task3.AddDependency(task1.ID)
+	_ = task3.AddDependency(task2.ID)
 
 	project.Tasks = []*Task{task1, task2, task3}
 
@@ -56,8 +56,8 @@ func TestProjectGetBlockedByTasks(t *testing.T) {
 	}
 
 	// Task 2 and Task 3 depend on Task 1
-	task2.AddDependency(task1.ID)
-	task3.AddDependency(task1.ID)
+	_ = task2.AddDependency(task1.ID)
+	_ = task3.AddDependency(task1.ID)
 
 	project.Tasks = []*Task{task1, task2, task3}
 
@@ -97,7 +97,7 @@ func TestProjectHasCircularDependency(t *testing.T) {
 	}
 
 	// Task 1 depends on Task 2
-	task1.AddDependency(task2.ID)
+	_ = task1.AddDependency(task2.ID)
 
 	// Adding Task 2 -> Task 1 would create cycle
 	if !project.HasCircularDependency(task2.ID, task1.ID) {
@@ -110,7 +110,7 @@ func TestProjectHasCircularDependency(t *testing.T) {
 	}
 
 	// Test transitive: Task 1 -> Task 2, Task 2 -> Task 3, adding Task 3 -> Task 1 creates cycle
-	task2.AddDependency(task3.ID)
+	_ = task2.AddDependency(task3.ID)
 	if !project.HasCircularDependency(task3.ID, task1.ID) {
 		t.Error("should detect transitive circular dependency: task3 -> task1 -> task2 -> task3")
 	}
@@ -133,8 +133,8 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 	}
 
 	// Blocked task depends on both blockers
-	blocked.AddDependency(blocker1.ID)
-	blocked.AddDependency(blocker2.ID)
+	_ = blocked.AddDependency(blocker1.ID)
+	_ = blocked.AddDependency(blocker2.ID)
 	blocked.Status = StatusBlocked
 
 	project.Tasks = []*Task{blocker1, blocker2, blocked}
@@ -172,7 +172,7 @@ func TestProjectCheckAndAutoUnblockWithCanceled(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blocked.AddDependency(blocker.ID)
+	_ = blocked.AddDependency(blocker.ID)
 	blocked.Status = StatusBlocked
 
 	project.Tasks = []*Task{blocker, blocked}
@@ -227,8 +227,8 @@ func TestHasIncompleteDependencies(t *testing.T) {
 	}
 
 	// Add dependencies - both incomplete
-	dependent.AddDependency(blocker1.ID)
-	dependent.AddDependency(blocker2.ID)
+	_ = dependent.AddDependency(blocker1.ID)
+	_ = dependent.AddDependency(blocker2.ID)
 
 	if !project.HasIncompleteDependencies(dependent) {
 		t.Error("task with incomplete dependencies should return true")
@@ -286,9 +286,9 @@ func TestGetIncompleteDependencies(t *testing.T) {
 	}
 
 	// Add three dependencies
-	dependent.AddDependency(blocker1.ID)
-	dependent.AddDependency(blocker2.ID)
-	dependent.AddDependency(blocker3.ID)
+	_ = dependent.AddDependency(blocker1.ID)
+	_ = dependent.AddDependency(blocker2.ID)
+	_ = dependent.AddDependency(blocker3.ID)
 
 	incomplete = project.GetIncompleteDependencies(dependent)
 	if len(incomplete) != 3 {
@@ -336,10 +336,10 @@ func TestProjectHasCircularDependencyDeepChain(t *testing.T) {
 	project.Tasks = tasks
 
 	// Chain: 0 -> 1 -> 2 -> 3 -> 4 (task 0 depends on 1, which depends on 2, etc.)
-	tasks[0].AddDependency(tasks[1].ID)
-	tasks[1].AddDependency(tasks[2].ID)
-	tasks[2].AddDependency(tasks[3].ID)
-	tasks[3].AddDependency(tasks[4].ID)
+	_ = tasks[0].AddDependency(tasks[1].ID)
+	_ = tasks[1].AddDependency(tasks[2].ID)
+	_ = tasks[2].AddDependency(tasks[3].ID)
+	_ = tasks[3].AddDependency(tasks[4].ID)
 
 	// Adding 4 -> 0 would create 5-node cycle: 0 -> 1 -> 2 -> 3 -> 4 -> 0
 	if !project.HasCircularDependency(tasks[4].ID, tasks[0].ID) {
@@ -378,10 +378,10 @@ func TestProjectHasCircularDependencyBranching(t *testing.T) {
 	}
 	project.Tasks = tasks
 
-	tasks[0].AddDependency(tasks[1].ID)
-	tasks[0].AddDependency(tasks[2].ID)
-	tasks[1].AddDependency(tasks[3].ID)
-	tasks[2].AddDependency(tasks[3].ID)
+	_ = tasks[0].AddDependency(tasks[1].ID)
+	_ = tasks[0].AddDependency(tasks[2].ID)
+	_ = tasks[1].AddDependency(tasks[3].ID)
+	_ = tasks[2].AddDependency(tasks[3].ID)
 
 	// Adding 3 -> 0 would create cycle through either branch
 	if !project.HasCircularDependency(tasks[3].ID, tasks[0].ID) {

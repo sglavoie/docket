@@ -412,14 +412,14 @@ func (m *DashboardModel) renderProjectList(visible []*models.Project, chromeHeig
 	}
 
 	// Calculate max visible projects (needed early to know if scrollbar appears).
-	cardOverhead := 2
+	cardOverhead := CardVerticalBorderOverhead
 	headerLines := 1
 	maxVisible := m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines
 	if narrowMode {
 		maxVisible = (m.height - chromeHeight - bottomHeight - cardOverhead - 1 - headerLines) / 2
 	}
 	if maxVisible < DashboardMinVisibleProjects {
-		maxVisible = 3
+		maxVisible = DashboardMinVisibleProjects
 	}
 
 	// Clamp column widths to fit available row width (wide mode only).

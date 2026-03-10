@@ -186,9 +186,9 @@ func TestMoveTaskToProject_ClearedDepsTracking(t *testing.T) {
 
 func TestMoveTaskToProject_TaskNotFound(t *testing.T) {
 	project := testutil.NewTestProject("Test Project")
-	task := FindTaskByIdentifier(project, "nonexistent")
-	if task != nil {
-		t.Error("expected nil for nonexistent task")
+	_, findErr := FindTaskByIdentifier(project, "nonexistent")
+	if findErr == nil {
+		t.Error("expected error for nonexistent task")
 	}
 }
 

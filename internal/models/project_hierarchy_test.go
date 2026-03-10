@@ -241,3 +241,60 @@ func TestProjectOutdentTask(t *testing.T) {
 		t.Error("story should now be root")
 	}
 }
+
+func TestIndentTaskReturnsErrorWhenNoTaskAbove(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*Task{task}
+	project.BuildTaskTree()
+
+	// First task has nothing above it
+	err = project.IndentTask(task)
+	if err == nil {
+		t.Error("expected error when indenting first task, got nil")
+	}
+}
+
+func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("task2", 2, TaskTypeEpic, "Epic")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*Task{task1, task2}
+	project.BuildTaskTree()
+
+	// Epic cannot be child of Task
+	err = project.IndentTask(task2)
+	if err == nil {
+		t.Error("expected error when indenting epic under task, got nil")
+	}
+}
+
+func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task, err := NewTask("task", 1, TaskTypeTask, "Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	project.Tasks = []*Task{task}
+	project.BuildTaskTree()
+
+	err = project.OutdentTask(task)
+	if err == nil {
+		t.Error("expected error when outdenting root task, got nil")
+	}
+}

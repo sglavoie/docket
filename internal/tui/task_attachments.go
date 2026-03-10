@@ -438,14 +438,8 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 		return nil
 	}
 
-	// Use configured attachment editor, fall back to $EDITOR, then vi
-	editor := m.config.GetAttachmentEditor()
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "vi"
-	}
+	// Use configured attachment editor, fall back to $EDITOR, then default
+	editor := external.ResolveEditor(m.config.GetAttachmentEditor())
 
 	openCmd := exec.Command(editor, target)
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {

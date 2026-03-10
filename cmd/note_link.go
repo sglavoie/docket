@@ -43,9 +43,9 @@ func runNoteLink(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	task := FindTaskByIdentifier(project, args[1])
-	if task == nil {
-		return fmt.Errorf("task not found: %s", args[1])
+	task, findErr := FindTaskByIdentifier(project, args[1])
+	if findErr != nil {
+		return findErr
 	}
 
 	if noteLinkRemove {

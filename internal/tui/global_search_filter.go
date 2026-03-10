@@ -123,13 +123,7 @@ func (m *GlobalSearchModel) filterTasks() {
 		}
 	}
 
-	// Reset cursor if out of bounds
-	if m.cursor >= len(m.filtered) {
-		m.cursor = len(m.filtered) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.filtered))
 }
 
 // scoreNote returns a fuzzy match score for a note against the query.

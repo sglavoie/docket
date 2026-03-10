@@ -91,7 +91,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	// Validate name
 	name := strings.TrimSpace(templateAddName)
 	if name == "" {
-		return fmt.Errorf("template name is required")
+		return tterrors.NewRequiredFieldError("template name")
 	}
 
 	// Parse task type
@@ -104,7 +104,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 		models.TaskTypeIdea:  true,
 	}
 	if !validTypes[taskType] {
-		return fmt.Errorf("invalid task type: %s (valid: epic, story, task, bug, idea)", templateAddType)
+		return tterrors.NewInvalidValueError("task type", templateAddType, "valid: epic, story, task, bug, idea")
 	}
 
 	// Validate priority
@@ -116,7 +116,7 @@ func runTemplateAdd(cmd *cobra.Command, args []string) error {
 	if templateAddCategory != "" {
 		validCats := map[string]bool{"bug": true, "feature": true, "process": true}
 		if !validCats[templateAddCategory] {
-			return fmt.Errorf("invalid category: %s (valid: bug, feature, process)", templateAddCategory)
+			return tterrors.NewInvalidValueError("category", templateAddCategory, "valid: bug, feature, process")
 		}
 	}
 

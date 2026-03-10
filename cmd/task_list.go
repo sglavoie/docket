@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -20,6 +21,7 @@ var (
 	listShowAll    bool
 	listTreeView   bool
 	listSnoozed    bool
+	listSort       string
 )
 
 var taskListCmd = &cobra.Command{
@@ -36,6 +38,7 @@ Examples:
   tt task list --tag backend
   tt task list --all        # Include completed tasks
   tt task list --tree       # Show hierarchical tree view
+  tt task list --sort priority
   tt t ls`,
 	RunE: runTaskList,
 }
@@ -50,6 +53,7 @@ func init() {
 	taskListCmd.Flags().BoolVarP(&listShowAll, "all", "a", false, "include completed/canceled tasks")
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
 	taskListCmd.Flags().BoolVar(&listSnoozed, "snoozed", false, "include snoozed tasks (hidden by default)")
+	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
@@ -69,6 +73,13 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 	if len(tasks) == 0 {
 		fmt.Println("No tasks match the filters.")
 		return nil
+	}
+
+	// Apply sorting if requested
+	if listSort != "" {
+		if err := sortTasks(tasks, listSort); err != nil {
+			return err
+		}
 	}
 
 	if listTreeView {
@@ -124,6 +135,45 @@ func filterTasks(tasks []*models.Task) []*models.Task {
 	}
 
 	return result
+}
+
+// statusOrder maps statuses to sort order (active statuses first, then complete).
+var statusOrder = map[models.TaskStatus]int{
+	models.StatusInProgress: 0,
+	models.StatusReview:     1,
+	models.StatusBlocked:    2,
+	models.StatusTodo:       3,
+	models.StatusStandby:    4,
+	models.StatusDone:       5,
+	models.StatusCanceled:   6,
+}
+
+func sortTasks(tasks []*models.Task, field string) error {
+	switch field {
+	case "priority":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return tasks[i].Priority < tasks[j].Priority
+		})
+	case "created":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
+		})
+	case "updated":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return tasks[i].UpdatedAt.After(tasks[j].UpdatedAt)
+		})
+	case "status":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return statusOrder[tasks[i].Status] < statusOrder[tasks[j].Status]
+		})
+	case "title":
+		sort.SliceStable(tasks, func(i, j int) bool {
+			return strings.ToLower(tasks[i].Title) < strings.ToLower(tasks[j].Title)
+		})
+	default:
+		return fmt.Errorf("unknown sort field %q (valid: priority, created, updated, status, title)", field)
+	}
+	return nil
 }
 
 func displayTaskTable(tasks []*models.Task) {

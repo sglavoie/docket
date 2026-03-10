@@ -58,4 +58,23 @@ const (
 
 	// FocusTitleMaxWidth is the maximum width for truncated titles in focus mode indicators.
 	FocusTitleMaxWidth = 40
+
+	// TitleFooterOverhead is the vertical space consumed by a title bar and
+	// a footer bar in fullscreen detail views.
+	TitleFooterOverhead = 2
+
+	// TabbedViewChrome is the vertical chrome for views with a title, tab
+	// bar (with border), blank line, footer, and padding.
+	TabbedViewChrome = 6
+
+	// OverlayListChrome is the vertical chrome for overlay/picker views
+	// that have a title, search bar, borders, help line, and footer.
+	OverlayListChrome = 8
+
+	// MaxContentWidth is the maximum width for centered content areas
+	// (e.g., task detail view).
+	MaxContentWidth = 100
+
+	// SeparatorWidth is the width of a vertical separator between panes.
+	SeparatorWidth = 3
 )

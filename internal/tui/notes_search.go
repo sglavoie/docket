@@ -179,12 +179,7 @@ func (m *NotesSearchModel) filterNotes() {
 		for i, note := range m.notes {
 			m.filtered[i] = notesSearchResult{note: note, score: 1}
 		}
-		if m.cursor >= len(m.filtered) {
-			m.cursor = len(m.filtered) - 1
-		}
-		if m.cursor < 0 {
-			m.cursor = 0
-		}
+		m.cursor = ClampCursor(m.cursor, len(m.filtered))
 		return
 	}
 
@@ -235,12 +230,7 @@ func (m *NotesSearchModel) filterNotes() {
 	})
 
 	m.filtered = scored
-	if m.cursor >= len(m.filtered) {
-		m.cursor = len(m.filtered) - 1
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
+	m.cursor = ClampCursor(m.cursor, len(m.filtered))
 }
 
 // scoreBodyTerms scores body text against a multi-term query using substring

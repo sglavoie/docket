@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -48,7 +49,7 @@ func init() {
 func runBoardAdd(cmd *cobra.Command, args []string) error {
 	title := strings.Join(args, " ")
 	if title == "" {
-		return fmt.Errorf("action title is required")
+		return tterrors.NewRequiredFieldError("action title")
 	}
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return err

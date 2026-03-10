@@ -167,14 +167,14 @@ func TestIntegration_FindTaskByIdentifier(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			found := FindTaskByIdentifier(project, tt.identifier)
-			if tt.wantFound && found == nil {
-				t.Errorf("expected to find task with identifier %q", tt.identifier)
+			found, findErr := FindTaskByIdentifier(project, tt.identifier)
+			if tt.wantFound && findErr != nil {
+				t.Errorf("expected to find task with identifier %q, got error: %v", tt.identifier, findErr)
 			}
-			if !tt.wantFound && found != nil {
+			if !tt.wantFound && findErr == nil {
 				t.Errorf("did not expect to find task with identifier %q", tt.identifier)
 			}
-			if tt.wantFound && found != nil && found.ID != task.ID {
+			if tt.wantFound && findErr == nil && found.ID != task.ID {
 				t.Errorf("found wrong task: got %s, want %s", found.ID, task.ID)
 			}
 		})

@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -49,9 +48,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		task := FindTaskByIdentifier(project, taskID)
-		if task == nil {
-			return tterrors.NewTaskNotFoundError(taskID)
+		task, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
 		}
 		showTaskDependencies(project, task)
 		return nil
@@ -79,9 +78,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 	// Handle --remove
 	if dependsRemoveFlag != "" {
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
-			blocker := FindTaskByIdentifier(project, dependsRemoveFlag)
-			if blocker == nil {
-				return tterrors.NewBlockerTaskNotFoundError(dependsRemoveFlag)
+			blocker, blockerErr := FindTaskByIdentifier(project, dependsRemoveFlag)
+			if blockerErr != nil {
+				return blockerErr
 			}
 			if !t.HasDependency(blocker.ID) {
 				return fmt.Errorf("task #%d does not depend on #%d", t.ShortID, blocker.ShortID)
@@ -101,9 +100,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 	// Handle --on
 	if dependsOnFlag != "" {
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, t *models.Task) error {
-			blocker := FindTaskByIdentifier(project, dependsOnFlag)
-			if blocker == nil {
-				return tterrors.NewBlockerTaskNotFoundError(dependsOnFlag)
+			blocker, blockerErr := FindTaskByIdentifier(project, dependsOnFlag)
+			if blockerErr != nil {
+				return blockerErr
 			}
 			if blocker.ID == t.ID {
 				return fmt.Errorf("a task cannot depend on itself")
@@ -114,7 +113,9 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 			if project.HasCircularDependency(t.ID, blocker.ID) {
 				return fmt.Errorf("cannot add dependency: would create circular dependency")
 			}
-			t.AddDependency(blocker.ID)
+			if err := t.AddDependency(blocker.ID); err != nil {
+				return err
+			}
 			fmt.Printf("Added dependency: #%d now depends on #%d (%s)\n",
 				t.ShortID, blocker.ShortID, blocker.Title)
 			return nil

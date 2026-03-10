@@ -97,14 +97,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			path = m.config.DataDir
 		}
 
-		editor := m.config.Editor
-		if editor == "" {
-			editor = os.Getenv("EDITOR")
-		}
-		if editor == "" {
-			editor = "code"
-		}
-
+		editor := external.ResolveEditor(m.config.Editor)
 		c := exec.Command(editor, path)
 		return true, tea.ExecProcess(c, func(err error) tea.Msg {
 			if err != nil {

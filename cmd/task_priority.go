@@ -3,16 +3,18 @@ package cmd
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var taskPriorityCmd = &cobra.Command{
-	Use:   "priority <task-id> <priority>",
+	Use:   "priority <task-id>... <priority>",
 	Short: "Set task priority (1=highest, 5=lowest)",
-	Long: `Set the priority of a task.
+	Long: `Set the priority of one or more tasks. The last argument is the priority value.
 
 Priority levels:
   1 - Critical/Urgent
@@ -22,9 +24,9 @@ Priority levels:
   5 - Minimal
 
 Examples:
-  tt task priority 5 1     # Set task #5 to highest priority
-  tt task priority 12 3    # Set task #12 to medium priority`,
-	Args: cobra.ExactArgs(2),
+  tt task priority 5 1       # Set task #5 to highest priority
+  tt task priority 1 2 3 2   # Set tasks #1, #2, #3 to high priority`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: runTaskPriority,
 }
 
@@ -33,37 +35,52 @@ func init() {
 }
 
 func runTaskPriority(cmd *cobra.Command, args []string) error {
-	taskID := args[0]
+	// Last argument is the priority value, everything before is task IDs
+	taskIDs := args[:len(args)-1]
+	priorityArg := args[len(args)-1]
 
-	priority, err := strconv.Atoi(args[1])
+	priority, err := strconv.Atoi(priorityArg)
 	if err != nil {
-		return fmt.Errorf("invalid priority: %s (must be %d-%d)", args[1], models.PriorityMin, models.PriorityMax)
+		return tterrors.NewInvalidValueError("priority", priorityArg, fmt.Sprintf("must be %d-%d", models.PriorityMin, models.PriorityMax))
 	}
 
 	if errValidate := ValidatePriority(priority, false); errValidate != nil {
 		return errValidate
 	}
 
-	var oldPriority int
+	var errs []string
+	succeeded := 0
+	for _, taskID := range taskIDs {
+		var oldPriority int
 
-	task, err := WithTaskUpdate(taskID, func(task *models.Task) error {
-		oldPriority = task.Priority
+		task, err := WithTaskUpdate(taskID, func(task *models.Task) error {
+			oldPriority = task.Priority
 
-		if oldPriority == priority {
-			fmt.Printf("Task #%d already has priority %d\n", task.ShortID, priority)
+			if oldPriority == priority {
+				fmt.Printf("Task #%d already has priority %d\n", task.ShortID, priority)
+				return nil
+			}
+
+			task.Priority = priority
 			return nil
+		})
+
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, err))
+			continue
 		}
 
-		task.Priority = priority
-		return nil
-	})
-
-	if err != nil {
-		return err
+		if oldPriority != priority {
+			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
+		}
+		succeeded++
 	}
 
-	if oldPriority != priority {
-		fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
+	if len(errs) > 0 {
+		if succeeded > 0 {
+			fmt.Printf("\n%d succeeded, %d failed:\n", succeeded, len(errs))
+		}
+		return fmt.Errorf("%s", strings.Join(errs, "\n"))
 	}
 
 	return nil

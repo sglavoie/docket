@@ -90,10 +90,16 @@ func (s TaskStatus) String() string {
 	return string(s)
 }
 
-// ValidateSectionName returns an error if the section name contains whitespace.
-// Section names must not contain spaces because the /SectionName quick-capture
-// syntax uses whitespace as a delimiter.
+// ValidateSectionName returns an error if the section name is empty, too long,
+// or contains whitespace. Section names must not contain spaces because the
+// /SectionName quick-capture syntax uses whitespace as a delimiter.
 func ValidateSectionName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return fmt.Errorf("section name cannot be empty")
+	}
+	if len(name) > MaxSectionNameLength {
+		return fmt.Errorf("section name %q exceeds maximum length of %d characters", name, MaxSectionNameLength)
+	}
 	if strings.ContainsAny(name, " \t\n\r") {
 		return fmt.Errorf("section name %q must not contain spaces (use hyphens or camelCase instead)", name)
 	}

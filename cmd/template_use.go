@@ -252,7 +252,10 @@ func resolveTemplateVars(vars []template.TemplateVariable, flags []string) (map[
 			prompt += fmt.Sprintf(" [%s]", v.Default)
 		}
 		fmt.Fprintf(os.Stderr, "%s: ", prompt)
-		line, _ := reader.ReadString('\n')
+		line, readErr := reader.ReadString('\n')
+		if readErr != nil && line == "" {
+			return nil, fmt.Errorf("failed to read input for variable %q: %w", v.Name, readErr)
+		}
 		line = strings.TrimSpace(line)
 		if line == "" {
 			line = v.Default
