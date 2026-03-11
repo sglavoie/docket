@@ -285,6 +285,10 @@ var (
 				Foreground(ColorError).
 				MarginTop(1)
 
+	// Warning message style (e.g. unsaved changes)
+	WarningMessageStyle = lipgloss.NewStyle().
+				Foreground(ColorWarning)
+
 	// Field label styles
 	FieldLabelStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted)

@@ -2,15 +2,21 @@ package tui
 
 import (
 	"fmt"
-	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// stageValidationClearMsg is sent after a timeout to clear the stage validation error.
+type stageValidationClearMsg struct{}
 
 func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case stageValidationClearMsg:
+		m.stageValidationErr = ""
+		return m, nil
 	case tea.KeyMsg:
 		// Stages tab: handle confirm dialog first
 		if m.tabs.Active == 7 && m.stageConfirmDelete.IsActive() {
@@ -62,7 +68,7 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.stageCursor--
 				}
 				return m, nil
-			case "enter":
+			case "e":
 				if len(m.stages) > 0 {
 					m.stageEditMode = true
 					m.stageAddMode = false
@@ -173,57 +179,31 @@ func (m *SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			// Stages tab: submit edit input
 			if m.tabs.Active == 7 && m.stageEditMode {
-				val := strings.TrimSpace(m.stageInput.Value())
-				if val != "" {
-					if m.stageAddMode {
-						m.stages = append(m.stages, val)
-						m.stageCursor = len(m.stages) - 1
-					} else {
-						m.stages[m.stageCursor] = val
-					}
+				if err := m.commitStageEdit(); err != nil {
+					m.stageValidationErr = err.Error()
+					return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+						return stageValidationClearMsg{}
+					})
 				}
-				m.stageEditMode = false
-				m.stageAddMode = false
-				m.stageInput.Blur()
 				return m, nil
 			}
-			if err := m.validateEditor(); err != nil {
+			if err := m.validateAll(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}
-			if err := m.validateContext(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
+			return m, m.saveSettings()
+
+		case "ctrl+s":
+			// Commit any in-progress stage edit before saving
+			if m.stageEditMode {
+				if err := m.commitStageEdit(); err != nil {
+					m.stageValidationErr = err.Error()
+					return m, tea.Tick(2*time.Second, func(time.Time) tea.Msg {
+						return stageValidationClearMsg{}
+					})
+				}
 			}
-			if err := m.validateUndoDepth(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateReviewSettings(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateRecentActivityLimit(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateMaxPinnedBarItems(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateMaxRecentTaskVisits(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateAttachmentEditor(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateCodeEditor(); err != nil {
-				m.validationErr = err.Error()
-				return m, nil
-			}
-			if err := m.validateAlertSettings(); err != nil {
+			if err := m.validateAll(); err != nil {
 				m.validationErr = err.Error()
 				return m, nil
 			}

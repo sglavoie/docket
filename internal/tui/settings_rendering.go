@@ -506,12 +506,23 @@ func (m *SettingsModel) renderStagesTab() string {
 		}
 		b.WriteString(m.stageInput.View())
 		b.WriteString("\n")
+		if m.stageValidationErr != "" {
+			b.WriteString("  ")
+			b.WriteString(ValidationErrorStyle.Render(m.stageValidationErr))
+			b.WriteString("\n")
+		}
+	}
+
+	if !m.stageEditMode && m.hasUnsavedStages() {
+		b.WriteString("\n")
+		b.WriteString(WarningMessageStyle.Render("  Unsaved changes — press Enter to save"))
+		b.WriteString("\n")
 	}
 
 	b.WriteString("\n")
 	b.WriteString(MutedStyle.Render("  ───────────────────────────────"))
 	b.WriteString("\n\n")
-	b.WriteString(HelpStyle.Render("  a=add  Enter=edit  d=delete  J/K=reorder  Enter(save)/Esc(cancel)"))
+	b.WriteString(HelpStyle.Render("  a=add  e=edit  d=delete  J/K=reorder  Enter(save)/Esc(cancel)"))
 	b.WriteString("\n")
 
 	return b.String()

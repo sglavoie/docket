@@ -264,3 +264,90 @@ func TestOverlayPopup_PlacesAtBottom(t *testing.T) {
 		t.Errorf("expected popup in line 3, lines: %v", lines)
 	}
 }
+
+func TestStageKeyForIndex(t *testing.T) {
+	tests := []struct {
+		index int
+		want  string
+	}{
+		{0, "1"}, {8, "9"},
+		{9, "a"}, {10, "b"}, {34, "z"},
+		{-1, ""}, {35, ""},
+	}
+	for _, tt := range tests {
+		got := stageKeyForIndex(tt.index)
+		if got != tt.want {
+			t.Errorf("stageKeyForIndex(%d) = %q, want %q", tt.index, got, tt.want)
+		}
+	}
+}
+
+func TestStageIndexForKey(t *testing.T) {
+	tests := []struct {
+		key  string
+		want int
+	}{
+		{"1", 0}, {"9", 8},
+		{"a", 9}, {"b", 10}, {"z", 34},
+		{"0", -1}, {"A", -1}, {"", -1}, {"ab", -1},
+	}
+	for _, tt := range tests {
+		got := stageIndexForKey(tt.key)
+		if got != tt.want {
+			t.Errorf("stageIndexForKey(%q) = %d, want %d", tt.key, got, tt.want)
+		}
+	}
+}
+
+func TestStageForPrefixKey_Extended(t *testing.T) {
+	stages := make([]string, 12)
+	for i := range stages {
+		stages[i] = strings.Repeat("s", i+1) // "s", "ss", "sss", ...
+	}
+
+	// Key "a" should map to stages[9] (10th stage)
+	got := StageForPrefixKey("a", stages)
+	if got == nil || *got != stages[9] {
+		t.Errorf("StageForPrefixKey(\"a\") = %v, want %q", got, stages[9])
+	}
+
+	// Key "c" should map to stages[11] (12th stage)
+	got = StageForPrefixKey("c", stages)
+	if got == nil || *got != stages[11] {
+		t.Errorf("StageForPrefixKey(\"c\") = %v, want %q", got, stages[11])
+	}
+
+	// Key "d" is out of range (only 12 stages)
+	got = StageForPrefixKey("d", stages)
+	if got != nil {
+		t.Errorf("StageForPrefixKey(\"d\") should be nil for 12 stages, got %q", *got)
+	}
+}
+
+func TestBuildStagePrefixHints_Extended(t *testing.T) {
+	stages := make([]string, 11)
+	for i := range stages {
+		stages[i] = strings.Repeat("s", i+1)
+	}
+	hints := BuildStagePrefixHints(stages, "")
+
+	// 11 stage hints + 1 clear hint
+	if len(hints) != 12 {
+		t.Fatalf("expected 12 hints, got %d", len(hints))
+	}
+	if hints[0].Key != "1" {
+		t.Errorf("hint[0].Key = %q, want \"1\"", hints[0].Key)
+	}
+	if hints[8].Key != "9" {
+		t.Errorf("hint[8].Key = %q, want \"9\"", hints[8].Key)
+	}
+	if hints[9].Key != "a" {
+		t.Errorf("hint[9].Key = %q, want \"a\"", hints[9].Key)
+	}
+	if hints[10].Key != "b" {
+		t.Errorf("hint[10].Key = %q, want \"b\"", hints[10].Key)
+	}
+	if hints[11].Key != "0" {
+		t.Errorf("last hint Key = %q, want \"0\"", hints[11].Key)
+	}
+}

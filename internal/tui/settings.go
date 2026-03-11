@@ -95,6 +95,7 @@ type SettingsModel struct {
 	contextCursor            int // -1 for custom mode, 0+ for selecting from list
 
 	// Stages settings (Stages tab, index 63)
+	savedStages        []string // snapshot at load time, for dirty detection
 	stages             []string
 	stageInput         textinput.Model
 	stageCursor        int
@@ -122,7 +123,8 @@ type SettingsModel struct {
 	tabs          TabState
 	focusIndex    int // 0=editor .. 47=outlinerColumnDefaults, 48-62=alert settings
 	scrollOffset  int // vertical scroll offset within current tab content
-	validationErr string
+	validationErr      string
+	stageValidationErr string // timed error shown in stages tab (auto-clears)
 
 	width  int
 	height int
@@ -310,6 +312,7 @@ func NewSettingsModel(cfg *config.Config, manager *config.Manager) *SettingsMode
 		outlinerColumnDefaults:     outlinerColumnDefaults,
 		treePriorityMode:           priorityModeToCursor(cfg.TreePriorityMode),
 		outlinerPriorityMode:       priorityModeToCursor(cfg.OutlinerPriorityMode),
+		savedStages:                append([]string{}, stages...),
 		stages:                     stages,
 		stageInput:                 stageInput,
 		alertDailyReviewEnabled:    cfg.GetAlertDailyReviewEnabled(),

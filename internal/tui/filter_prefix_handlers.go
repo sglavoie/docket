@@ -78,18 +78,17 @@ func handleFilterDueDateKey(key string, f *CommonFilterState) bool {
 }
 
 // handleFilterStageKey applies a stage filter based on the key pressed.
-// Keys 1-9 map to stages[0..8], 0 clears. Returns true if the key was handled.
+// Keys 1-9 map to stages[0..8], a-z map to stages[9..34], 0 clears.
+// Returns true if the key was handled.
 func handleFilterStageKey(key string, f *CommonFilterState, stages []string) bool {
 	if key == "0" {
 		f.Stage = ""
 		return true
 	}
-	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
-		idx := int(key[0] - '1')
-		if idx < len(stages) {
-			f.Stage = stages[idx]
-			return true
-		}
+	idx := stageIndexForKey(key)
+	if idx >= 0 && idx < len(stages) {
+		f.Stage = stages[idx]
+		return true
 	}
 	return false
 }

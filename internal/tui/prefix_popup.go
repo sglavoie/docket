@@ -732,12 +732,8 @@ func BuildFilterScorePrefixHints(cfg *config.Config) []PrefixHint {
 func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
 	hints := make([]PrefixHint, 0, len(stages)+1)
 	for i, stage := range stages {
-		if i >= 9 {
-			hints = append(hints, PrefixHint{Description: stage, Active: stage == currentStage})
-			continue
-		}
 		hints = append(hints, PrefixHint{
-			Key:         fmt.Sprintf("%d", i+1),
+			Key:         stageKeyForIndex(i),
 			Description: stage,
 			Active:      stage == currentStage,
 		})
@@ -751,12 +747,8 @@ func BuildStagePrefixHints(stages []string, currentStage string) []PrefixHint {
 func BuildFilterStagePrefixHints(stages []string, currentFilter string) []PrefixHint {
 	hints := make([]PrefixHint, 0, len(stages)+1)
 	for i, stage := range stages {
-		if i >= 9 {
-			hints = append(hints, PrefixHint{Description: stage, Active: stage == currentFilter})
-			continue
-		}
 		hints = append(hints, PrefixHint{
-			Key:         fmt.Sprintf("%d", i+1),
+			Key:         stageKeyForIndex(i),
 			Description: stage,
 			Active:      stage == currentFilter,
 		})
