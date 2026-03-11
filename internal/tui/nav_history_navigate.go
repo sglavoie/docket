@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -57,7 +58,9 @@ func (m *AppModel) isNavEntryValid(entry NavEntry) bool {
 		if project == nil {
 			return false
 		}
-		_ = m.persister.Load(project)
+		if err := m.persister.Load(project); err != nil {
+			logging.Warn("failed to load project %s: %v", project.Name, err)
+		}
 		if project.GetTaskByID(entry.TaskID) == nil {
 			return false
 		}

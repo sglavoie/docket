@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -107,7 +108,9 @@ func (m *FocusBoardModel) deleteItem() (tea.Model, tea.Cmd) {
 	project := row.Project
 
 	// Clean up attachments
-	_ = storage.CleanupTaskAttachments(project, task)
+	if err := storage.CleanupTaskAttachments(project, task); err != nil {
+		logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
+	}
 
 	// Remove task from project
 	var remaining []*models.Task

@@ -276,8 +276,14 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 
 	case LinkTypeFollowUp:
 		// Bidirectional relationship + inherit tags
-		_ = m.sourceTask.AddRelatedTo(newTask.ID)
-		_ = newTask.AddRelatedTo(m.sourceTask.ID)
+		if err := m.sourceTask.AddRelatedTo(newTask.ID); err != nil {
+			m.err = err
+			return nil
+		}
+		if err := newTask.AddRelatedTo(m.sourceTask.ID); err != nil {
+			m.err = err
+			return nil
+		}
 		// Copy tags from source task (in addition to any parsed tags)
 		for _, tag := range m.sourceTask.Tags {
 			newTask.AddTag(tag)

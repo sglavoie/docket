@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/alerts"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/template"
 )
@@ -320,7 +321,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 				msg.Project.StatusIconSource = ""
 			}
 			msg.Project.UpdatedAt = time.Now()
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 		}
 		// Proceed to text input regardless (cancel skips icon change, not text input)
 		m.showView(ViewStatusInput, NewStatusInputModel(msg.Project, m.config, m.configManager))
@@ -372,28 +375,36 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case MarkDailyReviewDoneMsg:
 		m.config.SetLastDailyReviewAt(time.Now())
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.setSuccessStatus("Daily review completed")
 		return true, nil
 
 	case MarkWeeklyReviewDoneMsg:
 		m.config.SetLastWeeklyReviewAt(time.Now())
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.setSuccessStatus("Weekly review completed")
 		return true, nil
 
 	case ResetDailyReviewMsg:
 		m.config.ClearLastDailyReviewAt()
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.setSuccessStatus("Daily review reset")
 		return true, nil
 
 	case ResetWeeklyReviewMsg:
 		m.config.ClearLastWeeklyReviewAt()
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.setSuccessStatus("Weekly review reset")
 		return true, nil
@@ -787,7 +798,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case DismissAlertMsg:
 		m.config.DismissAlert(msg.Key, msg.Category)
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()
 		m.setSuccessStatus("Alert dismissed")
@@ -795,7 +808,9 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case UndismissAlertMsg:
 		m.config.UndismissAlert(msg.Key)
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.reevaluateAlerts()
 		m.refreshNotificationCenter()
 		m.setSuccessStatus("Alert restored")

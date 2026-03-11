@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -116,7 +117,9 @@ func (m *DashboardModel) loadProjects() {
 		m.projects = m.config.GetActiveProjects()
 	}
 	for _, p := range m.projects {
-		_ = storage.LoadProject(p)
+		if err := storage.LoadProject(p); err != nil {
+			logging.Warn("failed to load project %s: %v", p.Name, err)
+		}
 	}
 
 	// Evaluate project-level workflow rules for all loaded projects
@@ -139,7 +142,9 @@ func (m *DashboardModel) loadProjects() {
 			}
 		}
 		if changed && m.configManager != nil {
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 		}
 	}
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // handleContextMessages handles context picker and custom context messages.
@@ -33,7 +35,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.config.FilterContext = msg.SelectedContext
 				m.config.FilterCustomContext = ""
 			}
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 
 			if msg.FromCycle {
 				// Reopen the popup with refreshed items
@@ -67,7 +71,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CustomContextDeletedMsg:
 		// Save config after deletion
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		// If the deleted context was active, clear the dashboard filter
 		if msg.WasActive && m.dashboard != nil {
 			m.dashboard.filterCustomContext = ""
@@ -78,7 +84,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case CustomContextSavedMsg:
 		// Save config and go back to context picker
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		m.popView() // Pop editor view
 		// Refresh context picker if it's the current view
 		if m.currentView() == ViewContextPicker {
@@ -98,7 +106,9 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ContextRenamedMsg:
 		// Save config after renaming a context
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		// Refresh dashboard if needed
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)

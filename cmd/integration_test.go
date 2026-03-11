@@ -218,3 +218,77 @@ func TestIntegration_MockRepositorySaveAndLoad(t *testing.T) {
 	// Verify loaded project has the new task
 	testutil.AssertEqual(t, len(loadedProject.Tasks), len(project.Tasks))
 }
+
+func TestIntegration_DependencyLifecycle(t *testing.T) {
+	deps, project := testutil.SetupTestDepsWithProject(t, "Dependency Test")
+	defer deps.Cleanup()
+
+	origDeps := Deps
+	Deps = Dependencies{
+		Selector:   deps.Selector,
+		Renderer:   deps.Renderer,
+		Editor:     deps.Editor,
+		Repository: deps.Repository,
+	}
+	defer func() { Deps = origDeps }()
+
+	// Create two tasks
+	task1, err := models.NewTask("dep-task-1", project.GetNextShortID(), models.TaskTypeTask, "Task With Dependency")
+	testutil.AssertNoError(t, err)
+	project.Tasks = append(project.Tasks, task1)
+
+	task2, err := models.NewTask("dep-task-2", project.GetNextShortID(), models.TaskTypeTask, "Dependency Task")
+	testutil.AssertNoError(t, err)
+	project.Tasks = append(project.Tasks, task2)
+	project.BuildTaskTree()
+
+	// Add task2 as dependency of task1
+	err = task1.AddDependency(task2.ID)
+	testutil.AssertNoError(t, err)
+	testutil.AssertEqual(t, task1.HasDependency(task2.ID), true)
+
+	// Complete task2
+	task2.Complete()
+	testutil.AssertEqual(t, task2.Status, models.StatusDone)
+
+	// Remove dependency from task1
+	task1.RemoveDependency(task2.ID)
+	testutil.AssertEqual(t, task1.HasDependency(task2.ID), false)
+}
+
+func TestIntegration_RecurrenceLifecycle(t *testing.T) {
+	// Create a task
+	task := testutil.NewTestTask("Recurring Task", models.TaskTypeTask)
+
+	// Set recurrence to weekly
+	pattern := models.ParseRecurrence("weekly")
+	if pattern == nil {
+		t.Fatal("ParseRecurrence(\"weekly\") returned nil")
+	}
+	task.SetRecurrence(pattern)
+
+	// Verify recurrence is set
+	if task.Recurrence == nil {
+		t.Fatal("task.Recurrence should not be nil after SetRecurrence")
+	}
+	testutil.AssertEqual(t, task.Recurrence.String(), "weekly")
+
+	// Clear recurrence
+	task.ClearRecurrence()
+	if task.Recurrence != nil {
+		t.Error("task.Recurrence should be nil after ClearRecurrence")
+	}
+}
+
+func TestIntegration_BlockerWorkflow(t *testing.T) {
+	// Create a blocker
+	blocker := models.NewBlocker("Test Blocker")
+	testutil.AssertEqual(t, blocker.IsResolved(), false)
+
+	// Resolve it
+	blocker.Resolve()
+	testutil.AssertEqual(t, blocker.IsResolved(), true)
+	if blocker.ResolvedAt == nil {
+		t.Error("ResolvedAt should be set after Resolve()")
+	}
+}

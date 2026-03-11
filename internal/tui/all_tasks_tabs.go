@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
@@ -220,7 +221,9 @@ func (m *AllTasksViewModel) moveTabLeft() {
 	m.config.AllTasksTabOrder[i-1], m.config.AllTasksTabOrder[i] = m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i-1]
 	m.tabs.Active--
 	m.buildTabEntries()
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 	m.statusMessage = "Tab moved left"
 }
 
@@ -234,7 +237,9 @@ func (m *AllTasksViewModel) moveTabRight() {
 	m.config.AllTasksTabOrder[i], m.config.AllTasksTabOrder[i+1] = m.config.AllTasksTabOrder[i+1], m.config.AllTasksTabOrder[i]
 	m.tabs.Active++
 	m.buildTabEntries()
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 	m.statusMessage = "Tab moved right"
 }
 

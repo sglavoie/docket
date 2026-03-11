@@ -69,24 +69,10 @@ func lockPath(project *models.Project) string {
 // On failure, it returns SaveErrorMsg with the error.
 func (s *ProjectService) SaveWithBackup(project *models.Project, successMsg string) tea.Cmd {
 	return func() tea.Msg {
-		var result tea.Msg
-		err := util.WithFileLock(lockPath(project), true, func() error {
-			if err := storage.BackupProject(project); err != nil {
-				return err
-			}
-			if err := storage.SaveProject(project); err != nil {
-				return err
-			}
-			if err := storage.LoadProject(project); err != nil {
-				return err
-			}
-			result = SaveCompleteMsg{SuccessMessage: successMsg}
-			return nil
-		})
-		if err != nil {
+		if err := saveProjectCore(project, true); err != nil {
 			return SaveErrorMsg{Err: err}
 		}
-		return result
+		return SaveCompleteMsg{SuccessMessage: successMsg}
 	}
 }
 
@@ -96,17 +82,7 @@ func (s *ProjectService) SaveWithBackup(project *models.Project, successMsg stri
 func (s *ProjectService) SaveMultiple(projects []*models.Project, successMsg string) tea.Cmd {
 	return func() tea.Msg {
 		for _, project := range projects {
-			p := project
-			err := util.WithFileLock(lockPath(p), true, func() error {
-				if err := storage.BackupProject(p); err != nil {
-					return err
-				}
-				if err := storage.SaveProject(p); err != nil {
-					return err
-				}
-				return storage.LoadProject(p)
-			})
-			if err != nil {
+			if err := saveProjectCore(project, true); err != nil {
 				return SaveErrorMsg{Err: err}
 			}
 		}
@@ -118,32 +94,14 @@ func (s *ProjectService) SaveMultiple(projects []*models.Project, successMsg str
 // Returns an error if backup or save fails. Use this when you need
 // to continue processing after save within the same handler.
 func (s *ProjectService) SaveWithBackupSync(project *models.Project) error {
-	return util.WithFileLock(lockPath(project), true, func() error {
-		if err := storage.BackupProject(project); err != nil {
-			return err
-		}
-		if err := storage.SaveProject(project); err != nil {
-			return err
-		}
-		return storage.LoadProject(project)
-	})
+	return saveProjectCore(project, true)
 }
 
 // SaveMultipleSync saves multiple projects synchronously with backup.
 // Returns an error if any backup or save fails.
 func (s *ProjectService) SaveMultipleSync(projects []*models.Project) error {
 	for _, project := range projects {
-		p := project
-		err := util.WithFileLock(lockPath(p), true, func() error {
-			if err := storage.BackupProject(p); err != nil {
-				return err
-			}
-			if err := storage.SaveProject(p); err != nil {
-				return err
-			}
-			return storage.LoadProject(p)
-		})
-		if err != nil {
+		if err := saveProjectCore(project, true); err != nil {
 			return err
 		}
 	}
@@ -191,11 +149,10 @@ func (s *ProjectService) Save(project *models.Project) error {
 // their own ProjectService instance (e.g. daily/weekly review views).
 var defaultPersister Persister = &ProjectService{}
 
-// Package-level convenience functions for common use cases
-
-// saveProjectSync saves a project synchronously with backup and reload.
-// Use when you need to continue processing after save.
-func saveProjectSync(project *models.Project) error {
+// saveProjectCore is the single implementation of the backup-save-reload pattern.
+// All save functions delegate to this. When reload is true, the project is
+// reloaded from disk after saving to ensure fresh state.
+func saveProjectCore(project *models.Project, reload bool) error {
 	return util.WithFileLock(lockPath(project), true, func() error {
 		if err := storage.BackupProject(project); err != nil {
 			return err
@@ -203,18 +160,24 @@ func saveProjectSync(project *models.Project) error {
 		if err := storage.SaveProject(project); err != nil {
 			return err
 		}
-		return storage.LoadProject(project)
+		if reload {
+			return storage.LoadProject(project)
+		}
+		return nil
 	})
+}
+
+// Package-level convenience functions for common use cases
+
+// saveProjectSync saves a project synchronously with backup and reload.
+// Use when you need to continue processing after save.
+func saveProjectSync(project *models.Project) error {
+	return saveProjectCore(project, true)
 }
 
 // saveProjectNoReload saves a project with backup and file locking but without
 // reloading from disk. Safe to call from tea.Cmd goroutines since it does not
 // replace the in-memory task objects.
 func saveProjectNoReload(project *models.Project) error {
-	return util.WithFileLock(lockPath(project), true, func() error {
-		if err := storage.BackupProject(project); err != nil {
-			return err
-		}
-		return storage.SaveProject(project)
-	})
+	return saveProjectCore(project, false)
 }

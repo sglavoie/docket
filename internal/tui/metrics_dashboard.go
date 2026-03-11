@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/metrics"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -88,12 +89,16 @@ func (m *MetricsDashboardModel) computeMetrics() {
 
 	if m.isGlobal {
 		for _, p := range m.config.GetActiveProjects() {
-			_ = storage.LoadProject(p)
+			if err := storage.LoadProject(p); err != nil {
+				logging.Warn("failed to load project %s: %v", p.Name, err)
+			}
 			projects = append(projects, p)
 			allArchived = append(allArchived, storage.LoadArchivedTasks(p)...)
 		}
 	} else if m.project != nil {
-		_ = storage.LoadProject(m.project)
+		if err := storage.LoadProject(m.project); err != nil {
+			logging.Warn("failed to load project %s: %v", m.project.Name, err)
+		}
 		projects = []*models.Project{m.project}
 		allArchived = append(allArchived, storage.LoadArchivedTasks(m.project)...)
 	}

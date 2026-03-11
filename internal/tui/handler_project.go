@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -185,7 +186,9 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case ShowProjectPickerMsg:
 		projects := m.config.GetActiveProjects()
 		for _, p := range projects {
-			_ = storage.LoadProject(p)
+			if err := storage.LoadProject(p); err != nil {
+				logging.Warn("failed to load project %s: %v", p.Name, err)
+			}
 		}
 		picker := NewProjectPickerModel(projects)
 		m.showView(ViewProjectPicker, picker)

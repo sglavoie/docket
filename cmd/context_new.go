@@ -48,7 +48,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 
 	projects := cfg.GetActiveProjects()
 	if len(projects) == 0 {
-		return fmt.Errorf("no active projects available to add to custom context")
+		return fmt.Errorf("no active projects available. Create one first with: tt project new <name>")
 	}
 
 	var selectedIDs []string

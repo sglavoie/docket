@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -85,7 +86,9 @@ func (m *AppModel) saveOutlinerFilterState() {
 	state.OutlinerFilterBarEnabled = m.outliner.filterBar.IsEnabled()
 
 	m.config.ProjectViewStates[m.outliner.project.ID] = state
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }
 
 // restoreOutlinerFilterState applies saved outliner filter state from config.

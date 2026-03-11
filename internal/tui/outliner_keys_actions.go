@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -193,7 +194,9 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 	// Clean up attachments for all tasks being deleted
 	for _, t := range m.project.Tasks {
 		if idsToDelete[t.ID] {
-			_ = storage.CleanupTaskAttachments(m.project, t)
+			if err := storage.CleanupTaskAttachments(m.project, t); err != nil {
+				logging.Warn("failed to clean up attachments for task %s: %v", t.ID, err)
+			}
 		}
 	}
 

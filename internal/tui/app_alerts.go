@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/alerts"
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -65,7 +66,9 @@ func (m *AppModel) reevaluateAlerts() {
 	// Persist if dismissal list changed
 	if len(surviving) != len(dismissals) {
 		m.config.SetAlertDismissals(surviving)
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 	}
 
 	m.dismissedSet = dismissedSet

@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -189,7 +190,9 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 					delete(m.pinnedCommands, name)
 				}
 				if m.configManager != nil {
-					_ = m.configManager.Save(m.config)
+					if err := m.configManager.Save(m.config); err != nil {
+						logging.Warn("failed to save config: %v", err)
+					}
 				}
 				// Re-filter to update sort order
 				m.filterItems()
@@ -265,7 +268,9 @@ func (m *CommandPaletteModel) updateSearchMode(msg tea.KeyMsg) (tea.Model, tea.C
 		m.searchInput.SetValue("")
 		m.config.SetLastPaletteCategory("")
 		if m.configManager != nil {
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 		}
 		m.filterItems()
 		return m, nil

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -45,7 +46,9 @@ func buildProjectInfoListFiltered(cfg *config.Config, filterContext, filterCusto
 		} else if filterContext != "" && p.Context != filterContext {
 			continue
 		}
-		_ = storage.LoadProject(p)
+		if err := storage.LoadProject(p); err != nil {
+			logging.Warn("failed to load project %s: %v", p.Name, err)
+		}
 		projects = append(projects, ProjectInfo{
 			Project:        p,
 			TaskCount:      p.CountActiveTasks(),
@@ -148,7 +151,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 				newIDs = append(newIDs, item.Project.ID)
 			}
 			m.config.SetCycleProjectsForContext(contextKey, newIDs)
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 		}
 		return m, nil
 
@@ -168,7 +173,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		if m.projectCycleCursor < len(m.projectCycleItems) {
 			item := m.projectCycleItems[m.projectCycleCursor]
 			item.Project.TogglePinned()
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 			currentID := item.Project.ID
 			m.refreshProjectCycleItems()
 			// Restore cursor to same project
@@ -193,7 +200,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		if m.config.FilterContext != "" || m.config.FilterCustomContext != "" {
 			m.config.FilterContext = ""
 			m.config.FilterCustomContext = ""
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 			m.refreshProjectCycleItems()
 			m.projectCycleCursor = 0
 		}
@@ -203,7 +212,9 @@ func (m *AppModel) handleProjectCycleKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		// Clear all cycle selections for current context
 		contextKey := getContextKey(m.config.FilterContext, m.config.FilterCustomContext)
 		m.config.SetCycleProjectsForContext(contextKey, nil)
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 		return m, nil
 
 	case "ctrl+j":

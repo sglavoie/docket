@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -457,7 +458,9 @@ func (m *CommandPaletteModel) persistRecentSelections() {
 		})
 	}
 	m.config.SetRecentPaletteItems(configItems)
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }
 
 // recordSearchHistory adds the current search query to history if meaningful.
@@ -505,7 +508,9 @@ func (m *CommandPaletteModel) recordSearchHistory() {
 
 	m.searchHistory = newHistory
 	m.config.SetPaletteSearchHistory(newHistory)
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }
 
 // parseInlineTask extracts metadata from inline task creation input.
@@ -653,7 +658,9 @@ func (m *CommandPaletteModel) executeItem(item PaletteItem) (tea.Model, tea.Cmd)
 			// Record command execution in history
 			m.config.AddCommandToHistory(item.Command.Name)
 			if m.configManager != nil {
-				_ = m.configManager.Save(m.config)
+				if err := m.configManager.Save(m.config); err != nil {
+					logging.Warn("failed to save config: %v", err)
+				}
 			}
 
 			handler := item.Command.Handler

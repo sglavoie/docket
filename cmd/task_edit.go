@@ -57,7 +57,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 
 		task, selectErr := SelectTask(project, args,
 			func(t *models.Task) bool { return true },
-			"Select task to edit:", "no tasks available")
+			"Select task to edit:", "no tasks available. Add one with: tt task add <title>")
 		if selectErr != nil {
 			return selectErr
 		}

@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -27,12 +28,16 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(ShowMetricsDashboardMsg{})
 	case ViewPriorityView:
 		if project != nil {
-			_ = storage.LoadProject(project)
+			if err := storage.LoadProject(project); err != nil {
+				logging.Warn("failed to load project %s: %v", project.Name, err)
+			}
 			return m.handleViewMessages(ShowPriorityViewMsg{Project: project})
 		}
 	case ViewBlockers:
 		if project != nil {
-			_ = storage.LoadProject(project)
+			if err := storage.LoadProject(project); err != nil {
+				logging.Warn("failed to load project %s: %v", project.Name, err)
+			}
 			return m.handleViewMessages(ShowBlockersMsg{Project: project})
 		}
 	case ViewGlobalInboxProcessor:
@@ -51,12 +56,16 @@ func (m *AppModel) handleNavigateToView(msg NavigateToViewMsg) (bool, tea.Cmd) {
 		return m.handleViewMessages(SettingsMsg{})
 	case ViewUndoHistory:
 		if project != nil {
-			_ = storage.LoadProject(project)
+			if err := storage.LoadProject(project); err != nil {
+				logging.Warn("failed to load project %s: %v", project.Name, err)
+			}
 			return m.handleViewMessages(ShowUndoHistoryMsg{Project: project})
 		}
 	case ViewOutliner:
 		if project != nil {
-			_ = storage.LoadProject(project)
+			if err := storage.LoadProject(project); err != nil {
+				logging.Warn("failed to load project %s: %v", project.Name, err)
+			}
 			return m.handleViewMessages(ShowOutlinerMsg{Project: project})
 		}
 	}

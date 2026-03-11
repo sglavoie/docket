@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
@@ -709,7 +710,9 @@ func (m *DashboardModel) renderGlobalAlerts(width int) string {
 	} else {
 		activeProjects = m.config.GetActiveProjects()
 		for _, p := range activeProjects {
-			_ = storage.LoadProject(p)
+			if err := storage.LoadProject(p); err != nil {
+				logging.Warn("failed to load project %s: %v", p.Name, err)
+			}
 		}
 	}
 	for _, p := range activeProjects {

@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -276,7 +277,9 @@ func applyDeleteTask(pf persistFn, project *models.Project, taskID string, dataD
 	// Clean up attachments for all tasks being deleted
 	for _, t := range project.Tasks {
 		if idsToDelete[t.ID] {
-			_ = storage.CleanupTaskAttachments(project, t)
+			if err := storage.CleanupTaskAttachments(project, t); err != nil {
+				logging.Warn("failed to clean up attachments for task %s: %v", t.ID, err)
+			}
 		}
 	}
 

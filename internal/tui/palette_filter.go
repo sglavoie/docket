@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // taskIDPattern matches queries like "#123" for direct task ID jump.
@@ -312,7 +314,9 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 				// Only update if changed
 				if m.config.GetLastPaletteCategory() != newValue {
 					m.config.SetLastPaletteCategory(newValue)
-					_ = m.configManager.Save(m.config)
+					if err := m.configManager.Save(m.config); err != nil {
+						logging.Warn("failed to save config: %v", err)
+					}
 				}
 				return
 			}
@@ -321,7 +325,9 @@ func (m *CommandPaletteModel) persistCategoryFilter(query string, categoryFilter
 		// Clear the filter when query is empty
 		if m.config.GetLastPaletteCategory() != "" {
 			m.config.SetLastPaletteCategory("")
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 		}
 	}
 }

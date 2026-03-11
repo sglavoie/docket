@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 func (m *AppModel) undoHistoryCommands() []Command {
@@ -176,7 +178,9 @@ func (m *AppModel) sidebarCommands() []Command {
 					state.SidebarEnabled = true
 					m.config.SetProjectViewState(p.ID, state)
 				}
-				_ = m.configManager.Save(m.config)
+				if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(true)
 				}
@@ -198,7 +202,9 @@ func (m *AppModel) sidebarCommands() []Command {
 					state.SidebarEnabled = false
 					m.config.SetProjectViewState(p.ID, state)
 				}
-				_ = m.configManager.Save(m.config)
+				if err := m.configManager.Save(m.config); err != nil {
+				logging.Warn("failed to save config: %v", err)
+			}
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(false)
 					m.projectTree.sidebar.Blur()

@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -77,7 +78,9 @@ func (m *AppModel) persistRecentTaskVisits() {
 		}
 	}
 	m.config.SetRecentTaskVisits(visits)
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }
 
 // refreshRecentTaskVisits re-hydrates each entry's Task pointer from current project data

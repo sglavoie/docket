@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -116,7 +117,9 @@ func (m *FocusBoardModel) createItemFromInput(input string) (tea.Model, tea.Cmd)
 				return m, nil
 			}
 			if m.configManager != nil {
-				_ = m.configManager.Save(m.config)
+				if err := m.configManager.Save(m.config); err != nil {
+					logging.Warn("failed to save config: %v", err)
+				}
 			}
 		}
 	}

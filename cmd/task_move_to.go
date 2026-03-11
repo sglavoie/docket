@@ -111,7 +111,7 @@ func runTaskMoveTo(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if len(candidates) == 0 {
-			return fmt.Errorf("no other projects available")
+			return fmt.Errorf("no other projects available. Create one with: tt project new <name>")
 		}
 
 		// Build selector items

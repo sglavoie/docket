@@ -85,7 +85,9 @@ func ArchiveTasks(project *models.Project) (int, error) {
 
 	// Clean up attachment files for completed tasks
 	for _, task := range completedTasks {
-		_ = CleanupTaskAttachments(project, task)
+		if err := CleanupTaskAttachments(project, task); err != nil {
+			logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
+		}
 	}
 
 	// Generate markdown content for archived tasks

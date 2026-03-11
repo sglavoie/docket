@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -317,7 +318,9 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 	// Also reload the current project if it's different from the target
 	// (so that the view refreshes correctly)
 	if result.targetProjectID != nil && m.project.ID != *result.targetProjectID {
-		_ = storage.LoadProject(m.project)
+		if err := storage.LoadProject(m.project); err != nil {
+			logging.Warn("failed to reload project %s: %v", m.project.Name, err)
+		}
 	}
 
 	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter} }

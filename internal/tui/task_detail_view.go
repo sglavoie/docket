@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/storage"
@@ -281,7 +282,9 @@ func (m *TaskDetailModel) formatLinkedTask(ref string, maxWidth int) string {
 		return "  " + ValidationErrorStyle.Render(fmt.Sprintf("[%s] (missing)", taskRef.ProjectID))
 	}
 	if len(targetProject.Tasks) == 0 {
-		_ = storage.LoadProject(targetProject)
+		if err := storage.LoadProject(targetProject); err != nil {
+			logging.Warn("failed to load project %s: %v", targetProject.Name, err)
+		}
 	}
 	task := targetProject.GetTaskByID(taskRef.TaskID)
 	if task == nil {

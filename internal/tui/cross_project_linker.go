@@ -378,8 +378,12 @@ func (m *CrossProjectLinkerModel) createLink() tea.Cmd {
 			}
 		case LinkTypeFollowUp:
 			// Bidirectional relationship
-			_ = m.sourceTask.AddRelatedTo(targetRef)
-			_ = m.targetTask.AddRelatedTo(sourceRef)
+			if err := m.sourceTask.AddRelatedTo(targetRef); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)}
+			}
+			if err := m.targetTask.AddRelatedTo(sourceRef); err != nil {
+				return ErrorMsg{Err: fmt.Errorf("failed to add related link: %w", err)}
+			}
 		}
 
 		// Update timestamps

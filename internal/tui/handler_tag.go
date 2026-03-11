@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -332,5 +333,7 @@ func (m *AppModel) applyColumnToggles(source ViewType, toggles map[string]bool) 
 		}
 	}
 
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }

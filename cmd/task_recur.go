@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -56,25 +54,20 @@ func init() {
 }
 
 func runTaskRecur(cmd *cobra.Command, args []string) error {
-	taskID, err := strconv.Atoi(args[0])
-	if err != nil {
-		return fmt.Errorf("invalid task ID: %s", args[0])
-	}
-
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
-	task := project.GetTaskByShortID(taskID)
-	if task == nil {
-		return tterrors.NewTaskNotFoundError(taskID)
+	task, err := FindTaskByIdentifier(project, args[0])
+	if err != nil {
+		return err
 	}
 
 	// Handle --skip flag
 	if taskRecurSkip {
 		if task.Recurrence == nil {
-			return fmt.Errorf("task #%d is not recurring", taskID)
+			return fmt.Errorf("task #%d is not recurring", task.ShortID)
 		}
 		task.SkipRecurrence()
 		if err := SaveProject(project, nil); err != nil {
@@ -94,7 +87,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 	}
 	if taskRecurDefer > 0 {
 		if task.Recurrence == nil {
-			return fmt.Errorf("task #%d is not recurring", taskID)
+			return fmt.Errorf("task #%d is not recurring", task.ShortID)
 		}
 		task.DeferRecurrence(taskRecurDefer)
 		if err := SaveProject(project, nil); err != nil {
@@ -111,21 +104,21 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 	// Handle --clear flag
 	if taskRecurClear {
 		if task.Recurrence == nil {
-			fmt.Printf("Task #%d has no recurrence pattern\n", taskID)
+			fmt.Printf("Task #%d has no recurrence pattern\n", task.ShortID)
 			return nil
 		}
 		task.ClearRecurrence()
 		if err := SaveProject(project, nil); err != nil {
 			return fmt.Errorf("failed to save project: %w", err)
 		}
-		fmt.Printf("Removed recurrence from task #%d (%s)\n", taskID, task.Title)
+		fmt.Printf("Removed recurrence from task #%d (%s)\n", task.ShortID, task.Title)
 		return nil
 	}
 
 	// Require pattern argument when not clearing/skipping/deferring
 	if len(args) < 2 {
 		if task.Recurrence != nil {
-			fmt.Printf("Task #%d recurs %s\n", taskID, task.Recurrence.String())
+			fmt.Printf("Task #%d recurs %s\n", task.ShortID, task.Recurrence.String())
 			if task.Recurrence.Streak > 0 || task.Recurrence.MaxStreak > 0 {
 				fmt.Printf("Streak: %d (best: %d)\n", task.Recurrence.Streak, task.Recurrence.MaxStreak)
 			}
@@ -140,7 +133,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
-			fmt.Printf("Task #%d has no recurrence pattern\n", taskID)
+			fmt.Printf("Task #%d has no recurrence pattern\n", task.ShortID)
 		}
 		return nil
 	}
@@ -162,9 +155,9 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 	}
 
 	if oldPattern != "" {
-		fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", taskID, oldPattern, pattern.String(), task.Title)
+		fmt.Printf("Updated recurrence for task #%d: %s -> %s (%s)\n", task.ShortID, oldPattern, pattern.String(), task.Title)
 	} else {
-		fmt.Printf("Set recurrence for task #%d: %s (%s)\n", taskID, pattern.String(), task.Title)
+		fmt.Printf("Set recurrence for task #%d: %s (%s)\n", task.ShortID, pattern.String(), task.Title)
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -198,7 +199,9 @@ func (m *ProjectTreeModel) getCursorTask() *models.Task {
 }
 func (m *ProjectTreeModel) reloadFromDisk() tea.Cmd {
 	m.clearSelection()
-	_ = storage.LoadProject(m.project)
+	if err := storage.LoadProject(m.project); err != nil {
+		logging.Warn("failed to load project %s: %v", m.project.Name, err)
+	}
 	m.buildTree()
 	return nil
 }

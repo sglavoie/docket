@@ -4,6 +4,7 @@ import (
 	"maps"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -97,7 +98,9 @@ func (m *AppModel) saveProjectTreeState() {
 	}
 
 	m.config.SetProjectViewState(m.currentProject.ID, state)
-	_ = m.configManager.Save(m.config)
+	if err := m.configManager.Save(m.config); err != nil {
+		logging.Warn("failed to save config: %v", err)
+	}
 }
 
 // switchToProject handles switching to a different project, loading it and creating the tree view.

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // handleScoringMessages handles scoring-related view messages.
@@ -23,7 +25,9 @@ func (m *AppModel) handleScoringMessages(msg tea.Msg) (bool, tea.Cmd) {
 			} else {
 				m.config.SetProjectScoringProfile(msg.ProjectID, msg.ProfileID)
 			}
-			_ = m.configManager.Save(m.config)
+			if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 			// Refresh the preview viewport content if it's visible
 			if v := m.views.Get(ViewProjectPreview); v != nil {
 				if preview, ok := v.(*ProjectPreviewModel); ok {

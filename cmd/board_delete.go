@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -37,7 +38,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 
 	task, project := FindActionTaskByID(cfg, args[0])
 	if task == nil {
-		return fmt.Errorf("action not found: %s", args[0])
+		return fmt.Errorf("action not found: %s. Use 'tt board list' to see available actions", args[0])
 	}
 
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
@@ -49,7 +50,9 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create backup: %w", backupErr)
 	}
 
-	_ = storage.CleanupTaskAttachments(project, task)
+	if err := storage.CleanupTaskAttachments(project, task); err != nil {
+		logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
+	}
 
 	var remaining []*models.Task
 	for _, t := range project.Tasks {

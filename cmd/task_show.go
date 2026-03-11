@@ -55,7 +55,7 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		// Interactive selection
 		activeTasks := filterTasks(project.Tasks)
 		if len(activeTasks) == 0 {
-			return fmt.Errorf("no tasks available")
+			return fmt.Errorf("no tasks available. Add one with: tt task add <title>")
 		}
 
 		items := TasksToSelectorItems(activeTasks)

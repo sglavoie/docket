@@ -51,7 +51,7 @@ func runProjectOpen(cmd *cobra.Command, args []string) error {
 		// Interactive selection
 		projects := cfg.GetActiveProjects()
 		if len(projects) == 0 {
-			return fmt.Errorf("no projects available")
+			return fmt.Errorf("no projects available. Create one with: tt project new <name>")
 		}
 
 		// Use fzf if available

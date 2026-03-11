@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -145,13 +146,17 @@ func (m *AppModel) otherCommands() []Command {
 			Aliases:     []string{"refresh", "reload data", "sync"},
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
-					_ = storage.LoadProject(m.outliner.project)
+					if err := storage.LoadProject(m.outliner.project); err != nil {
+					logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
+				}
 					m.outliner.rebuildRows()
 					return nil
 				}
 				if m.projectTree != nil {
 					m.projectTree.clearSelection()
-					_ = storage.LoadProject(m.projectTree.project)
+					if err := storage.LoadProject(m.projectTree.project); err != nil {
+					logging.Warn("failed to load project %s: %v", m.projectTree.project.Name, err)
+				}
 					m.projectTree.buildTree()
 				}
 				return nil

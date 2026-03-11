@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
 
@@ -202,7 +203,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Refresh outliner if open (async save reloads project from disk)
 		if m.outliner != nil {
-			_ = storage.LoadProject(m.outliner.project)
+			if err := storage.LoadProject(m.outliner.project); err != nil {
+				logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
+			}
 			m.outliner.rebuildRows()
 		}
 		return m, defaultStatusTimeout()

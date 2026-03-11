@@ -7,6 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/util"
@@ -134,7 +135,9 @@ func (m *LinkedTaskSelectorModel) resolveTaskRef(ref, relationType, direction st
 
 	// Load the project if not already loaded
 	if len(targetProject.Tasks) == 0 {
-		_ = storage.LoadProject(targetProject)
+		if err := storage.LoadProject(targetProject); err != nil {
+			logging.Warn("failed to load project %s: %v", targetProject.Name, err)
+		}
 	}
 
 	task := targetProject.GetTaskByID(taskRef.TaskID)
@@ -343,7 +346,9 @@ func (m *LinkedTaskSelectorModel) unlinkTask(idx int) tea.Cmd {
 		}
 
 		// Reload and close
-		_ = storage.LoadProject(m.project)
+		if err := storage.LoadProject(m.project); err != nil {
+			logging.Warn("failed to reload project %s: %v", m.project.Name, err)
+		}
 		return CloseLinkedTaskSelectorMsg{}
 	}
 }

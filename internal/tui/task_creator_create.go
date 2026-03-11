@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -121,7 +122,9 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 	// Increment template use count if from template
 	if m.fromTemplate != nil && m.config != nil && m.configManager != nil {
 		m.config.IncrementTemplateUseCount(m.fromTemplate.ID)
-		_ = m.configManager.Save(m.config)
+		if err := m.configManager.Save(m.config); err != nil {
+			logging.Warn("failed to save config: %v", err)
+		}
 	}
 
 	m.project.BuildTaskTree()

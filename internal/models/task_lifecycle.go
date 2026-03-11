@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sglavoie/tt/internal/util"
@@ -77,24 +78,24 @@ func (t *Task) Reopen() {
 // incomplete dependencies blocking completion) must be performed by the caller.
 func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 	if t.Status.IsComplete() && newStatus != StatusTodo {
-		return "cannot change status of completed task"
+		return fmt.Sprintf("cannot change status of completed task (reopen it first with 'todo'), current status: '%s'", t.Status)
 	}
 	switch newStatus {
 	case StatusInProgress:
 		if t.Status != StatusTodo && t.Status != StatusBlocked && t.Status != StatusReview && t.Status != StatusStandby {
-			return "task must be todo, blocked, in review, or on standby to start"
+			return fmt.Sprintf("cannot start task from '%s' status", t.Status)
 		}
 	case StatusDone:
 		if !t.Status.IsActive() {
-			return "task is not active"
+			return fmt.Sprintf("cannot complete task from '%s' status", t.Status)
 		}
 	case StatusBlocked:
 		if !t.Status.IsActive() || t.Status == StatusBlocked {
-			return "task must be active and not already blocked"
+			return fmt.Sprintf("cannot block task from '%s' status", t.Status)
 		}
 	case StatusCanceled:
 		if !t.Status.IsActive() {
-			return "task is not active"
+			return fmt.Sprintf("cannot cancel task from '%s' status", t.Status)
 		}
 	case StatusTodo:
 		if t.Status == StatusTodo {
@@ -102,11 +103,11 @@ func (t *Task) CanTransitionTo(newStatus TaskStatus) string {
 		}
 	case StatusReview:
 		if !t.Status.IsActive() || t.Status == StatusReview {
-			return "task must be active and not already in review"
+			return fmt.Sprintf("cannot move task to review from '%s' status", t.Status)
 		}
 	case StatusStandby:
 		if !t.Status.IsActive() || t.Status == StatusStandby {
-			return "task must be active and not already on standby"
+			return fmt.Sprintf("cannot put task on standby from '%s' status", t.Status)
 		}
 	}
 	return ""
