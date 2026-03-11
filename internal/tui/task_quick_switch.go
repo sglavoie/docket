@@ -256,7 +256,17 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 		return m, nil
 	case "enter":
 		return m.quickSwitchSelectFiltered(m.quickSwitchCursor)
-	case "esc", "|":
+	case "esc":
+		if m.quickSwitchFilter != "" {
+			// Filter active: clear it, stay in popup
+			m.quickSwitchFilter = ""
+			m.quickSwitchCursor = 0
+			m.rebuildQuickSwitchFilter()
+			return m, nil
+		}
+		m.showQuickSwitch = false
+		return m, nil
+	case "|":
 		m.showQuickSwitch = false
 		return m, nil
 	case "p":
@@ -274,18 +284,14 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(key[0]-'0') - 1
 		return m.quickSwitchSelectFiltered(idx)
+	case "/":
+		m.quickSwitchFiltering = true
+		m.quickSwitchFilter = ""
+		m.quickSwitchCursor = 0
+		m.rebuildQuickSwitchFilter()
+		return m, nil
 	default:
-		// Any printable key starts filter mode
-		runes := msg.Runes
-		if len(runes) == 1 && unicode.IsPrint(runes[0]) {
-			m.quickSwitchFiltering = true
-			m.quickSwitchFilter = string(runes[0])
-			m.quickSwitchCursor = 0
-			m.rebuildQuickSwitchFilter()
-			return m, nil
-		}
-		// Non-printable: close popup
-		m.showQuickSwitch = false
+		// Ignore unbound keys (don't close popup)
 		return m, nil
 	}
 }
@@ -294,12 +300,6 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	key := msg.String()
 	switch key {
-	case ",":
-		m.quickSwitchPendingPrefix = ","
-		return m, nil
-	case "!":
-		m.quickSwitchPendingPrefix = "!"
-		return m, nil
 	case "up":
 		if m.quickSwitchCursor > 0 {
 			m.quickSwitchCursor--
@@ -311,18 +311,15 @@ func (m *AppModel) handleQuickSwitchFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 		}
 		return m, nil
 	case "enter":
-		return m.quickSwitchSelectFiltered(m.quickSwitchCursor)
+		// Exit filter mode but keep filter text for navigation
+		m.quickSwitchFiltering = false
+		return m, nil
 	case "esc":
-		if m.quickSwitchFilter != "" {
-			// First esc: clear filter
-			m.quickSwitchFilter = ""
-			m.quickSwitchFiltering = false
-			m.quickSwitchCursor = 0
-			m.rebuildQuickSwitchFilter()
-			return m, nil
-		}
-		// Second esc (filter already empty): close popup
-		m.showQuickSwitch = false
+		// Clear filter and exit filter mode
+		m.quickSwitchFilter = ""
+		m.quickSwitchFiltering = false
+		m.quickSwitchCursor = 0
+		m.rebuildQuickSwitchFilter()
 		return m, nil
 	case "backspace":
 		if len(m.quickSwitchFilter) > 0 {
@@ -464,6 +461,10 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 	// Filter input line
 	if m.quickSwitchFiltering {
 		filterLine := filterStyle.Render("> "+m.quickSwitchFilter) + MutedStyle.Render("_")
+		contentLines = append(contentLines, filterLine)
+	} else if m.quickSwitchFilter != "" {
+		// Show locked-in filter (no cursor)
+		filterLine := filterStyle.Render("> " + m.quickSwitchFilter)
 		contentLines = append(contentLines, filterLine)
 	}
 
@@ -620,9 +621,11 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
 		var footer string
 		if m.quickSwitchFiltering {
-			footer = MutedStyle.Render("↑↓ nav  enter select  ,status  !pri  esc clear")
+			footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+		} else if m.quickSwitchFilter != "" {
+			footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
 		} else {
-			footer = MutedStyle.Render("j/k nav  1-9 jump  p pin  ,status  !pri  x remove  esc close")
+			footer = MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  ,status  !pri  x remove  esc close")
 		}
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}

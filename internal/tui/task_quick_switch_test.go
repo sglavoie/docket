@@ -495,7 +495,7 @@ func TestQuickSwitchFilter(t *testing.T) {
 }
 
 func TestQuickSwitchFilterKeyHandling(t *testing.T) {
-	t.Run("typing letter enters filter mode", func(t *testing.T) {
+	t.Run("typing letter in normal mode is a no-op", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 		app.recentTaskVisits = []RecentTaskVisitEntry{
@@ -507,11 +507,31 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
 		app.handleQuickSwitchKey(msg)
 
+		if app.quickSwitchFiltering {
+			t.Error("expected filter mode to be inactive")
+		}
+		if !app.showQuickSwitch {
+			t.Error("expected popup to remain open")
+		}
+	})
+
+	t.Run("slash enters filter mode", func(t *testing.T) {
+		app := newTestAppForQuickSwitch()
+		p := &models.Project{ID: "p1", Name: "Project 1"}
+		app.recentTaskVisits = []RecentTaskVisitEntry{
+			{Task: &models.Task{ID: "t1", Title: "Task 1"}, Project: p},
+		}
+		initQuickSwitchFilter(app)
+		app.showQuickSwitch = true
+
+		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}}
+		app.handleQuickSwitchKey(msg)
+
 		if !app.quickSwitchFiltering {
 			t.Error("expected filter mode to be active")
 		}
-		if app.quickSwitchFilter != "a" {
-			t.Errorf("expected filter 'a', got %q", app.quickSwitchFilter)
+		if app.quickSwitchFilter != "" {
+			t.Errorf("expected empty filter, got %q", app.quickSwitchFilter)
 		}
 	})
 
@@ -570,7 +590,7 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		}
 	})
 
-	t.Run("comma in filter mode enters status prefix", func(t *testing.T) {
+	t.Run("comma in filter mode is typed as filter text", func(t *testing.T) {
 		app := newTestAppForQuickSwitch()
 		p := &models.Project{ID: "p1", Name: "Project 1"}
 		app.recentTaskVisits = []RecentTaskVisitEntry{
@@ -584,8 +604,11 @@ func TestQuickSwitchFilterKeyHandling(t *testing.T) {
 		msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}}
 		app.handleQuickSwitchKey(msg)
 
-		if app.quickSwitchPendingPrefix != "," {
-			t.Errorf("expected pending prefix ',', got %q", app.quickSwitchPendingPrefix)
+		if app.quickSwitchPendingPrefix != "" {
+			t.Errorf("expected no pending prefix, got %q", app.quickSwitchPendingPrefix)
+		}
+		if app.quickSwitchFilter != "task," {
+			t.Errorf("expected filter 'task,', got %q", app.quickSwitchFilter)
 		}
 	})
 

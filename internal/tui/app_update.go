@@ -123,6 +123,9 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.showPinnedPopup = !m.showPinnedPopup
 				m.pinnedPopupCursor = 0
+				m.pinnedPopupFilter = ""
+				m.pinnedPopupFiltering = false
+				m.rebuildPinnedPopupFilter()
 				return m, nil
 			}
 		case "esc":

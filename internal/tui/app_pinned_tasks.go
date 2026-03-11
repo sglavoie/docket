@@ -5,11 +5,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -58,6 +60,59 @@ func (m *AppModel) collectPinnedTasks() []pinnedTaskInfo {
 	})
 
 	return pinned
+}
+
+// rebuildPinnedPopupFilter rebuilds the filtered indices based on current filter text.
+func (m *AppModel) rebuildPinnedPopupFilter() {
+	items := m.pinnedPopupItems
+	if m.pinnedPopupFilter == "" {
+		m.pinnedPopupFiltered = make([]int, len(items))
+		m.pinnedPopupTitlePos = make([][]int, len(items))
+		for i := range items {
+			m.pinnedPopupFiltered[i] = i
+		}
+		return
+	}
+
+	type scored struct {
+		idx            int
+		score          int
+		titlePositions []int
+	}
+	var results []scored
+	for i, entry := range items {
+		text := entry.Title + " " + entry.ProjectName
+		score := fuzzy.ScoreTerms(text, m.pinnedPopupFilter)
+		if score <= 0 {
+			continue
+		}
+		_, titlePos := fuzzy.ScoreTermsWithPositions(entry.Title, m.pinnedPopupFilter)
+		results = append(results, scored{idx: i, score: score, titlePositions: titlePos})
+	}
+
+	sort.Slice(results, func(i, j int) bool { return results[i].score > results[j].score })
+
+	m.pinnedPopupFiltered = make([]int, 0, len(results))
+	m.pinnedPopupTitlePos = make([][]int, 0, len(results))
+	for _, s := range results {
+		m.pinnedPopupFiltered = append(m.pinnedPopupFiltered, s.idx)
+		m.pinnedPopupTitlePos = append(m.pinnedPopupTitlePos, s.titlePositions)
+	}
+}
+
+// pinnedPopupFilteredLen returns the number of visible (filtered) entries.
+func (m *AppModel) pinnedPopupFilteredLen() int {
+	return len(m.pinnedPopupFiltered)
+}
+
+// pinnedPopupClampCursor clamps the cursor to the filtered list bounds.
+func (m *AppModel) pinnedPopupClampCursor() {
+	n := m.pinnedPopupFilteredLen()
+	if n == 0 {
+		m.pinnedPopupCursor = 0
+	} else if m.pinnedPopupCursor >= n {
+		m.pinnedPopupCursor = n - 1
+	}
 }
 
 func (m *AppModel) renderPinnedTasksBar(width int) string {
@@ -119,57 +174,63 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	// Handle second key of a pending prefix
 	if m.pinnedPendingPrefix != "" {
-		prefix := m.pinnedPendingPrefix
-		m.pinnedPendingPrefix = ""
-		key := msg.String()
+		return m.handlePinnedPopupPrefixKey(msg)
+	}
+	if m.pinnedPopupFiltering {
+		return m.handlePinnedPopupFilterKey(msg)
+	}
+	return m.handlePinnedPopupNormalKey(msg)
+}
 
-		if key == "esc" {
-			return m, nil
-		}
+// handlePinnedPopupPrefixKey dispatches the second key of a `,` or `!` prefix.
+func (m *AppModel) handlePinnedPopupPrefixKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+	prefix := m.pinnedPendingPrefix
+	m.pinnedPendingPrefix = ""
+	key := msg.String()
 
-		if prefix == "!" {
-			priority, ok := PriorityForPrefixKey(key)
-			if !ok {
-				return m, nil
-			}
-			if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
-				return m, nil
-			}
-			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
-			result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
-			m.setSuccessStatus(result.StatusMessage)
-
-			m.pinnedPopupItems = m.collectPinnedTasks()
-			if len(m.pinnedPopupItems) == 0 {
-				m.showPinnedPopup = false
-			} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
-				m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
-			}
-		}
-
-		if prefix == "," {
-			status, ok := StatusForPrefixKey(key)
-			if !ok {
-				return m, nil
-			}
-			if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
-				return m, nil
-			}
-			entry := m.pinnedPopupItems[m.pinnedPopupCursor]
-			result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
-			m.setSuccessStatus(result.StatusMessage)
-
-			// Rebuild list (task may have been completed and filtered out)
-			m.pinnedPopupItems = m.collectPinnedTasks()
-			if len(m.pinnedPopupItems) == 0 {
-				m.showPinnedPopup = false
-			} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
-				m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
-			}
-		}
+	if key == "esc" {
 		return m, nil
 	}
 
+	// Resolve the real index from filtered list
+	if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= m.pinnedPopupFilteredLen() {
+		return m, nil
+	}
+	realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
+	entry := m.pinnedPopupItems[realIdx]
+
+	if prefix == "!" {
+		priority, ok := PriorityForPrefixKey(key)
+		if !ok {
+			return m, nil
+		}
+		result := applyPriorityChange(simplePersist(m.persister), entry.Project, entry.Task.ID, priority)
+		m.setSuccessStatus(result.StatusMessage)
+	}
+
+	if prefix == "," {
+		status, ok := StatusForPrefixKey(key)
+		if !ok {
+			return m, nil
+		}
+		result := applyStatusChange(simplePersist(m.persister), entry.Project, entry.Task.ID, status)
+		m.setSuccessStatus(result.StatusMessage)
+	}
+
+	// Rebuild list (task may have been completed and filtered out)
+	m.pinnedPopupItems = m.collectPinnedTasks()
+	if len(m.pinnedPopupItems) == 0 {
+		m.showPinnedPopup = false
+	} else {
+		m.rebuildPinnedPopupFilter()
+		m.pinnedPopupClampCursor()
+	}
+
+	return m, nil
+}
+
+// handlePinnedPopupNormalKey handles keys in normal (non-filtering) mode.
+func (m *AppModel) handlePinnedPopupNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 	switch msg.String() {
 	case ",":
 		m.pinnedPendingPrefix = ","
@@ -178,7 +239,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		m.pinnedPendingPrefix = "!"
 		return m, nil
 	case "j", "down":
-		if m.pinnedPopupCursor < len(m.pinnedPopupItems)-1 {
+		if m.pinnedPopupCursor < m.pinnedPopupFilteredLen()-1 {
 			m.pinnedPopupCursor++
 		}
 		return m, nil
@@ -188,7 +249,7 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		}
 		return m, nil
 	case "enter":
-		return m.pinnedPopupSelect(m.pinnedPopupCursor)
+		return m.pinnedPopupSelectFiltered(m.pinnedPopupCursor)
 	case "u":
 		return m.unpinFromPopup()
 	case "r":
@@ -236,7 +297,20 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 			m.pinnedPreview.clampCursor()
 		}
 		return m, nil
-	case "esc", "#":
+	case "esc":
+		if m.pinnedPopupFilter != "" {
+			// Filter active: clear it, stay in popup
+			m.pinnedPopupFilter = ""
+			m.pinnedPopupCursor = 0
+			m.rebuildPinnedPopupFilter()
+			return m, nil
+		}
+		m.showPinnedPopup = false
+		m.pinnedPendingPrefix = ""
+		m.pinnedLastUnpinned = nil
+		m.invalidatePinnedPreview()
+		return m, nil
+	case "#":
 		m.showPinnedPopup = false
 		m.pinnedPendingPrefix = ""
 		m.pinnedLastUnpinned = nil
@@ -244,13 +318,75 @@ func (m *AppModel) handlePinnedPopupKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
 		return m, nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		idx := int(msg.String()[0]-'0') - 1
-		return m.pinnedPopupSelect(idx)
+		return m.pinnedPopupSelectFiltered(idx)
+	case "/":
+		m.pinnedPopupFiltering = true
+		m.pinnedPopupFilter = ""
+		m.pinnedPopupCursor = 0
+		m.rebuildPinnedPopupFilter()
+		return m, nil
 	default:
+		// Ignore unbound keys (don't close popup)
+		return m, nil
+	}
+}
+
+// handlePinnedPopupFilterKey handles keys in filter (type-to-search) mode.
+func (m *AppModel) handlePinnedPopupFilterKey(msg tea.KeyMsg) (*AppModel, tea.Cmd) {
+	key := msg.String()
+	switch key {
+	case "up":
+		if m.pinnedPopupCursor > 0 {
+			m.pinnedPopupCursor--
+		}
+		return m, nil
+	case "down":
+		if m.pinnedPopupCursor < m.pinnedPopupFilteredLen()-1 {
+			m.pinnedPopupCursor++
+		}
+		return m, nil
+	case "enter":
+		// Exit filter mode but keep filter text for navigation
+		m.pinnedPopupFiltering = false
+		return m, nil
+	case "esc":
+		// Clear filter and exit filter mode
+		m.pinnedPopupFilter = ""
+		m.pinnedPopupFiltering = false
+		m.pinnedPopupCursor = 0
+		m.rebuildPinnedPopupFilter()
+		return m, nil
+	case "backspace":
+		if len(m.pinnedPopupFilter) > 0 {
+			m.pinnedPopupFilter = m.pinnedPopupFilter[:len(m.pinnedPopupFilter)-1]
+			if m.pinnedPopupFilter == "" {
+				m.pinnedPopupFiltering = false
+			}
+			m.pinnedPopupCursor = 0
+			m.rebuildPinnedPopupFilter()
+		}
+		return m, nil
+	default:
+		runes := msg.Runes
+		if len(runes) == 1 && unicode.IsPrint(runes[0]) {
+			m.pinnedPopupFilter += string(runes[0])
+			m.pinnedPopupCursor = 0
+			m.rebuildPinnedPopupFilter()
+			return m, nil
+		}
+		return m, nil
+	}
+}
+
+// pinnedPopupSelectFiltered selects the entry at the given filtered index.
+func (m *AppModel) pinnedPopupSelectFiltered(filteredIdx int) (*AppModel, tea.Cmd) {
+	if filteredIdx < 0 || filteredIdx >= m.pinnedPopupFilteredLen() {
 		m.showPinnedPopup = false
-		m.pinnedLastUnpinned = nil
 		m.invalidatePinnedPreview()
 		return m, nil
 	}
+	realIdx := m.pinnedPopupFiltered[filteredIdx]
+	return m.pinnedPopupSelect(realIdx)
 }
 
 // pinnedPopupSelect navigates to the entry at the given index and closes the popup.
@@ -271,12 +407,14 @@ func (m *AppModel) pinnedPopupSelect(idx int) (*AppModel, tea.Cmd) {
 // by swapping PinnedAt timestamps and persisting the affected projects.
 func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 	target := m.pinnedPopupCursor + delta
-	if target < 0 || target >= len(m.pinnedPopupItems) {
+	if target < 0 || target >= m.pinnedPopupFilteredLen() {
 		return m, nil
 	}
 
-	a := m.pinnedPopupItems[m.pinnedPopupCursor]
-	b := m.pinnedPopupItems[target]
+	realA := m.pinnedPopupFiltered[m.pinnedPopupCursor]
+	realB := m.pinnedPopupFiltered[target]
+	a := m.pinnedPopupItems[realA]
+	b := m.pinnedPopupItems[realB]
 
 	// Swap PinnedAt timestamps. If they are equal (e.g. both pinned in the
 	// same second, or truncated on a previous save), nudge one by a second
@@ -302,6 +440,7 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 
 	// Rebuild the list and follow the cursor to the moved item
 	m.pinnedPopupItems = m.collectPinnedTasks()
+	m.rebuildPinnedPopupFilter()
 	m.pinnedPopupCursor = target
 
 	return m, nil
@@ -309,11 +448,12 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 
 // unpinFromPopup unpins the currently selected task and removes it from the popup.
 func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
-	if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
+	if m.pinnedPopupCursor < 0 || m.pinnedPopupCursor >= m.pinnedPopupFilteredLen() {
 		return m, nil
 	}
 
-	entry := m.pinnedPopupItems[m.pinnedPopupCursor]
+	realIdx := m.pinnedPopupFiltered[m.pinnedPopupCursor]
+	entry := m.pinnedPopupItems[realIdx]
 	saved := entry
 	m.pinnedLastUnpinned = &saved
 	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
@@ -324,8 +464,15 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 	m.pinnedPopupItems = m.collectPinnedTasks()
 	if len(m.pinnedPopupItems) == 0 {
 		m.showPinnedPopup = false
-	} else if m.pinnedPopupCursor >= len(m.pinnedPopupItems) {
-		m.pinnedPopupCursor = len(m.pinnedPopupItems) - 1
+	} else {
+		m.rebuildPinnedPopupFilter()
+		if m.pinnedPopupFilteredLen() == 0 {
+			// Filter matches nothing after removal
+			m.pinnedPopupFilter = ""
+			m.pinnedPopupFiltering = false
+			m.rebuildPinnedPopupFilter()
+		}
+		m.pinnedPopupClampCursor()
 	}
 
 	return m, nil
@@ -345,6 +492,8 @@ func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
 
 	m.pinnedLastUnpinned = nil
 	m.pinnedPopupItems = m.collectPinnedTasks()
+	m.rebuildPinnedPopupFilter()
+	m.pinnedPopupClampCursor()
 
 	return m, nil
 }
@@ -358,6 +507,7 @@ func (m *AppModel) renderPinnedPopup() string {
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
 	title := titleStyle.Render("Pinned Tasks")
+	filterStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 
 	popupWidth := max(m.width-4, 30)
 
@@ -366,53 +516,100 @@ func (m *AppModel) renderPinnedPopup() string {
 	dimBadgeStyle := MutedStyle
 	projectStyle := MutedStyle
 
+	filtered := m.pinnedPopupFiltered
+	innerWidth := popupWidth - 4
+
 	maxProjLen := 0
-	for _, entry := range m.pinnedPopupItems {
+	for _, realIdx := range filtered {
+		entry := m.pinnedPopupItems[realIdx]
 		if len(entry.ProjectName) > maxProjLen {
 			maxProjLen = len(entry.ProjectName)
 		}
 	}
 
-	innerWidth := popupWidth - 4
 	projColWidth := maxProjLen
 	fixedWidth := 1 + 1 + 1 + 1 + 3 + 1 + 2 + projColWidth // badge, space, icon, space, priority(3), space, gap, project
 	titleWidth := max(innerWidth-fixedWidth, 10)
 
 	var contentLines []string
-	for i, entry := range m.pinnedPopupItems {
-		var badge string
-		if i < 9 {
-			badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
-		} else {
-			badge = dimBadgeStyle.Render("·")
-		}
 
-		statusIcon := entry.Task.Status.Icon()
-		priorityBadge := renderPriorityBadge(entry.Task.Priority)
-		projectName := entry.ProjectName
+	// Filter input line
+	if m.pinnedPopupFiltering {
+		filterLine := filterStyle.Render("> "+m.pinnedPopupFilter) + MutedStyle.Render("_")
+		contentLines = append(contentLines, filterLine)
+	} else if m.pinnedPopupFilter != "" {
+		// Show locked-in filter (no cursor)
+		filterLine := filterStyle.Render("> " + m.pinnedPopupFilter)
+		contentLines = append(contentLines, filterLine)
+	}
 
-		taskTitle := entry.Title
-		if len(taskTitle) > titleWidth {
-			taskTitle = taskTitle[:titleWidth-3] + "..."
-		}
+	if len(filtered) == 0 {
+		noMatch := MutedStyle.Render("No matching tasks")
+		contentLines = append(contentLines, noMatch)
+	} else {
+		for i, realIdx := range filtered {
+			entry := m.pinnedPopupItems[realIdx]
 
-		if len(taskTitle) < titleWidth {
-			taskTitle += strings.Repeat(" ", titleWidth-len(taskTitle))
-		}
-
-		paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
-
-		line := badge + " " + statusIcon + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
-
-		if i == m.pinnedPopupCursor {
-			lineWidth := lipgloss.Width(line)
-			if lineWidth < innerWidth {
-				line += strings.Repeat(" ", innerWidth-lineWidth)
+			var badge string
+			if !m.pinnedPopupFiltering && m.pinnedPopupFilter == "" && i < 9 {
+				badge = badgeStyle.Render(fmt.Sprintf("%d", i+1))
+			} else {
+				badge = dimBadgeStyle.Render("·")
 			}
-			line = cursorStyle.Render(ansi.Truncate(line, innerWidth, ""))
-		}
 
-		contentLines = append(contentLines, line)
+			statusIcon := entry.Task.Status.Icon()
+			priorityBadge := renderPriorityBadge(entry.Task.Priority)
+			projectName := entry.ProjectName
+
+			taskTitle := entry.Title
+			titleRunes := []rune(taskTitle)
+			truncated := false
+			if len(titleRunes) > titleWidth {
+				titleRunes = titleRunes[:titleWidth-3]
+				truncated = true
+			}
+
+			// Apply fuzzy match highlighting to title
+			if i < len(m.pinnedPopupTitlePos) && len(m.pinnedPopupTitlePos[i]) > 0 {
+				maxPos := len(titleRunes)
+				var validPositions []int
+				for _, p := range m.pinnedPopupTitlePos[i] {
+					if p < maxPos {
+						validPositions = append(validPositions, p)
+					}
+				}
+				taskTitle = HighlightText(string(titleRunes), validPositions, lipgloss.NewStyle())
+				if truncated {
+					taskTitle += "..."
+				}
+				visualWidth := lipgloss.Width(taskTitle)
+				if visualWidth < titleWidth {
+					taskTitle += strings.Repeat(" ", titleWidth-visualWidth)
+				}
+			} else {
+				taskTitle = string(titleRunes)
+				if truncated {
+					taskTitle += "..."
+				}
+				if len([]rune(taskTitle)) < titleWidth {
+					taskTitle += strings.Repeat(" ", titleWidth-len([]rune(taskTitle)))
+				}
+			}
+
+			paddedProject := fmt.Sprintf("%*s", projColWidth, projectName)
+
+			line := badge + " " + statusIcon + " " + priorityBadge + " " + taskTitle + "  " + projectStyle.Render(paddedProject)
+
+			if i == m.pinnedPopupCursor {
+				lineWidth := lipgloss.Width(line)
+				if lineWidth < innerWidth {
+					line += strings.Repeat(" ", innerWidth-lineWidth)
+				}
+				line = cursorStyle.Render(ansi.Truncate(line, innerWidth, ""))
+			}
+
+			contentLines = append(contentLines, line)
+		}
 	}
 
 	content := strings.Join(contentLines, "\n")
@@ -429,7 +626,14 @@ func (m *AppModel) renderPinnedPopup() string {
 	if len(lines) >= 2 {
 		actualWidth := lipgloss.Width(lines[0])
 		lines[0] = renderTitledTopBorder(title, actualWidth, borderStyle)
-		footer := MutedStyle.Render("j/k navigate  J/K reorder  ,status  !priority  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
+		var footer string
+		if m.pinnedPopupFiltering {
+			footer = MutedStyle.Render("↑↓ nav  enter confirm  esc clear")
+		} else if m.pinnedPopupFilter != "" {
+			footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
+		} else {
+			footer = MutedStyle.Render("j/k nav  / filter  J/K reorder  ,status  !pri  u unpin  r repin  ctrl+j/k scroll  ctrl+h/l section  esc close")
+		}
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
 
