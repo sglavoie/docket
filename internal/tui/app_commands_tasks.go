@@ -191,6 +191,26 @@ func (m *AppModel) projectCommands() []Command {
 			},
 		},
 		{
+			Name:        "rename project",
+			Description: "Rename the selected project",
+			Category:    CategoryProjects,
+			Views:       []ViewType{ViewDashboard, ViewProjectTree, ViewOutliner},
+			Aliases:     []string{"edit project", "rename"},
+			Handler: func() tea.Msg {
+				if m.currentView() == ViewDashboard {
+					if m.dashboard != nil {
+						visible := m.dashboard.visibleProjects()
+						if CursorInBounds(m.dashboard.cursor, len(visible)) {
+							return EditProjectMsg{Project: visible[m.dashboard.cursor]}
+						}
+					}
+				} else if m.currentProject != nil {
+					return EditProjectMsg{Project: m.currentProject}
+				}
+				return nil
+			},
+		},
+		{
 			Name:        "restore from trash",
 			Description: "View and restore deleted projects",
 			Shortcut:    "T",
