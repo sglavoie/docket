@@ -269,6 +269,10 @@ func matchesHierarchicalTrigger(task *models.Task, trigger RuleTrigger, evalCtx 
 	case FieldBlockerCount:
 		count := countIncompleteBlockers(task, evalCtx.TaskMap)
 		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
+
+	case FieldDependencyCount:
+		count := len(task.DependsOn)
+		return compareValues(strconv.Itoa(count), trigger.Operation, trigger.Value)
 	}
 
 	return false

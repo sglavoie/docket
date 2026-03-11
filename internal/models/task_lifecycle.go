@@ -48,6 +48,7 @@ func (t *Task) Standby() {
 func (t *Task) Block() {
 	t.Status = StatusBlocked
 	t.UpdatedAt = time.Now()
+	t.Section = SectionWaiting
 }
 
 // Cancel marks the task as canceled.

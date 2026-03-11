@@ -127,6 +127,42 @@ func TestMatchesHierarchicalTrigger_IsBlocked(t *testing.T) {
 			trigger:  RuleTrigger{Field: FieldBlockerCount, Operation: OpEquals, Value: "1"},
 			expected: true,
 		},
+		{
+			name:     "dependency_count > 0 with deps",
+			trigger:  RuleTrigger{Field: FieldDependencyCount, Operation: OpGreaterThan, Value: "0"},
+			expected: true,
+		},
+		{
+			name:     "dependency_count = 2 with two deps",
+			trigger:  RuleTrigger{Field: FieldDependencyCount, Operation: OpEquals, Value: "2"},
+			expected: true,
+		},
+	}
+
+	// Test dependency_count with a task that has no dependencies
+	noDepsTask := &models.Task{ID: "nodeps"}
+	noDepsTests := []struct {
+		name     string
+		trigger  RuleTrigger
+		expected bool
+	}{
+		{
+			name:     "dependency_count = 0 with no deps",
+			trigger:  RuleTrigger{Field: FieldDependencyCount, Operation: OpEquals, Value: "0"},
+			expected: true,
+		},
+		{
+			name:     "dependency_count > 0 with no deps",
+			trigger:  RuleTrigger{Field: FieldDependencyCount, Operation: OpGreaterThan, Value: "0"},
+			expected: false,
+		},
+	}
+	for _, tt := range noDepsTests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesHierarchicalTrigger(noDepsTask, tt.trigger, evalCtx); got != tt.expected {
+				t.Errorf("matchesHierarchicalTrigger() = %v, want %v", got, tt.expected)
+			}
+		})
 	}
 
 	for _, tt := range tests {

@@ -52,6 +52,7 @@ const (
 	FieldAllChildrenDone  TriggerField = "all_children_done" // "true" when 100% complete
 	FieldIsBlocked        TriggerField = "is_blocked"        // Has incomplete dependencies
 	FieldBlockerCount     TriggerField = "blocker_count"     // Number of incomplete blockers
+	FieldDependencyCount  TriggerField = "dependency_count"  // Total number of dependencies (DependsOn)
 	// Boolean state triggers (absence/presence checks)
 	FieldHasDueDate       TriggerField = "has_due_date"      // Value: "true"/"false"
 	FieldHasTags          TriggerField = "has_tags"          // Value: "true"/"false"
@@ -516,6 +517,7 @@ func (t RuleTrigger) Validate() error {
 		FieldAllChildrenDone:  true,
 		FieldIsBlocked:        true,
 		FieldBlockerCount:     true,
+		FieldDependencyCount:  true,
 		// Project-level triggers
 		FieldHasInProgressTasks: true,
 		FieldActiveTaskCount:    true,
@@ -687,7 +689,7 @@ func ValidTriggerFields() []TriggerField {
 		// Hierarchical triggers
 		FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
-		FieldIsBlocked, FieldBlockerCount,
+		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount,
 		// Project-level triggers
 		FieldHasInProgressTasks, FieldActiveTaskCount, FieldAllTasksStatus,
 		FieldMajorityTaskType, FieldMajorityTaskStatus, FieldCompletionRatio,
@@ -734,7 +736,7 @@ func IsHierarchicalTrigger(field TriggerField) bool {
 	switch field {
 	case FieldParentStatus, FieldParentType, FieldParentTags, FieldLevel,
 		FieldHasChildren, FieldChildrenProgress, FieldAllChildrenDone,
-		FieldIsBlocked, FieldBlockerCount:
+		FieldIsBlocked, FieldBlockerCount, FieldDependencyCount:
 		return true
 	}
 	return false

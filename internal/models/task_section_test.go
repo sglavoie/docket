@@ -119,7 +119,7 @@ func TestTaskCancelMovesToCompletedFromCustomSection(t *testing.T) {
 	}
 }
 
-func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
+func TestTaskBlockMovesToWaiting(t *testing.T) {
 	task, err := NewTask("test-id", 1, TaskTypeTask, "Test Task")
 	if err != nil {
 		t.Fatal(err)
@@ -132,9 +132,8 @@ func TestTaskBlockDoesNotAutoTriage(t *testing.T) {
 
 	task.Block()
 
-	// Block does not auto-triage - task stays in Next
-	if task.Section != SectionNext {
-		t.Errorf("expected section to remain Next after Block(), got %s", task.Section)
+	if task.Section != SectionWaiting {
+		t.Errorf("expected section to be Waiting after Block(), got %s", task.Section)
 	}
 	if task.Status != StatusBlocked {
 		t.Errorf("expected status to be blocked, got %s", task.Status)

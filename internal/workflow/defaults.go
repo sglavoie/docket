@@ -161,6 +161,7 @@ func GetDefaultRules() []WorkflowRule {
 			Triggers: []RuleTrigger{
 				{Field: FieldIsBlocked, Operation: OpEquals, Value: "false"},
 				{Field: FieldStatus, Operation: OpEquals, Value: "blocked"},
+				{Field: FieldDependencyCount, Operation: OpGreaterThan, Value: "0"},
 			},
 			TriggerLogic: LogicAnd,
 			Actions: []RuleAction{

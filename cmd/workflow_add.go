@@ -45,7 +45,7 @@ EVENT TRIGGER FIELDS (detect transitions):
 HIERARCHICAL TRIGGER FIELDS:
   parent_status, parent_type, parent_tags, level
   has_children, children_progress, all_children_done
-  is_blocked, blocker_count
+  is_blocked, blocker_count, dependency_count
 
 TRIGGER OPERATIONS:
   equals, not_equals, contains, greater_than, less_than
