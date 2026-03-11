@@ -248,7 +248,7 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		fmt.Printf("%s %s #%d: %s\n", verb, task.Type.HeadingPrefix(), task.ShortID, task.Title)
 
 		if generated > 0 {
-			fmt.Printf("Created %d recurring task instance(s) in Inbox\n", generated)
+			fmt.Printf("Created %s in Inbox\n", Pluralize(generated, "recurring task instance", "recurring task instances"))
 		}
 	}
 

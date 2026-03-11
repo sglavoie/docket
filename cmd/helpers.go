@@ -41,6 +41,14 @@ func Debugf(format string, args ...any) {
 	}
 }
 
+// Pluralize returns "1 task" or "3 tasks" based on count.
+func Pluralize(count int, singular, plural string) string {
+	if count == 1 {
+		return fmt.Sprintf("%d %s", count, singular)
+	}
+	return fmt.Sprintf("%d %s", count, plural)
+}
+
 // CommandContext bundles the commonly-needed config and project data for commands.
 // This reduces duplicate loading code and makes it easier to pass context around.
 type CommandContext struct {
@@ -162,6 +170,7 @@ func FindActionTaskByID(cfg *config.Config, query string) (*models.Task, *models
 
 	for _, project := range cfg.GetAllLoadableProjects() {
 		if err := storage.LoadProject(project); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping project %s: %v\n", project.Name, err)
 			continue
 		}
 		for _, task := range project.Tasks {

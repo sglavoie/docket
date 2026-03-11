@@ -16,7 +16,7 @@ import (
 
 var focusCmd = &cobra.Command{
 	Use:   "focus",
-	Short: "Show actionable tasks across projects (What's Next)",
+	Short: "Show actionable tasks across projects",
 	Long: `Show all actionable tasks across active projects, sorted by priority.
 
 By default, lists all non-completed, non-snoozed, non-blocked tasks.
@@ -137,9 +137,9 @@ func displayFocusTable(tasks []focus.FocusTask) {
 
 	fmt.Println(t.Render())
 	if focusActiveOnly {
-		fmt.Printf("\n%d task(s) in focus\n", len(tasks))
+		fmt.Printf("\n%s in focus\n", Pluralize(len(tasks), "task", "tasks"))
 	} else {
-		fmt.Printf("\n%d actionable task(s)\n", len(tasks))
+		fmt.Printf("\n%s\n", Pluralize(len(tasks), "actionable task", "actionable tasks"))
 	}
 }
 
@@ -265,6 +265,6 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println(t.Render())
-	fmt.Printf("\n%d task(s) in queue\n", len(activeItems))
+	fmt.Printf("\n%s in queue\n", Pluralize(len(activeItems), "task", "tasks"))
 	return nil
 }

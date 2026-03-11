@@ -114,6 +114,6 @@ func displaySearchResults(results []models.SearchResult, query string) {
 		})
 	}
 
-	fmt.Printf("Found %d task(s) matching \"%s\":\n\n", len(results), query)
+	fmt.Printf("Found %s matching \"%s\":\n\n", Pluralize(len(results), "task", "tasks"), query)
 	fmt.Println(t.Render())
 }

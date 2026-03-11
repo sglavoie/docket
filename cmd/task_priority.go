@@ -13,7 +13,7 @@ import (
 
 var taskPriorityCmd = &cobra.Command{
 	Use:   "priority <task-id>... <priority>",
-	Short: "Set task priority (1=highest, 5=lowest)",
+	Short: "Set task priority",
 	Long: `Set the priority of one or more tasks. The last argument is the priority value.
 
 Priority levels:

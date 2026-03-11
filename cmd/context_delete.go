@@ -37,7 +37,7 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ConfirmYN(fmt.Sprintf("Delete context '%s'? [y/N]: ", name), contextDeleteForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 

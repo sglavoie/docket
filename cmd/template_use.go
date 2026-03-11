@@ -205,10 +205,10 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Created %s #%d: %s (from template %q)\n", task.Type.HeadingPrefix(), shortID, title, t.Name)
 	if checklistCreated > 0 {
-		fmt.Printf("  Added %d checklist item(s)\n", checklistCreated)
+		fmt.Printf("  Added %s\n", Pluralize(checklistCreated, "checklist item", "checklist items"))
 	}
 	if subtasksCreated > 0 {
-		fmt.Printf("  Created %d subtask(s)\n", subtasksCreated)
+		fmt.Printf("  Created %s\n", Pluralize(subtasksCreated, "subtask", "subtasks"))
 	}
 
 	return nil

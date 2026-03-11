@@ -51,8 +51,8 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	}
 
 	// Confirmation unless --force
-	if !ConfirmStrict(fmt.Sprintf("Archive %d completed task(s) to completed.md?", len(completedTasks)), archiveForce) {
-		fmt.Println("Canceled.")
+	if !ConfirmStrict(fmt.Sprintf("Archive %s to completed.md?", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
+		fmt.Println("Canceled")
 		return nil
 	}
 
@@ -67,7 +67,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to archive tasks: %w", err)
 	}
 
-	fmt.Printf("Archived %d task(s) to completed.md\n", count)
+	fmt.Printf("Archived %s to completed.md\n", Pluralize(count, "task", "tasks"))
 	return nil
 }
 
@@ -90,7 +90,7 @@ func runTaskArchiveAll() error {
 			continue
 		}
 
-		if !ConfirmStrict(fmt.Sprintf("[%s] Archive %d completed task(s)?", project.Name, len(completedTasks)), archiveForce) {
+		if !ConfirmStrict(fmt.Sprintf("[%s] Archive %s?", project.Name, Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
 			fmt.Printf("[%s] Skipped.\n", project.Name)
 			continue
 		}
@@ -106,10 +106,10 @@ func runTaskArchiveAll() error {
 			continue
 		}
 
-		fmt.Printf("[%s] Archived %d task(s)\n", project.Name, count)
+		fmt.Printf("[%s] Archived %s\n", project.Name, Pluralize(count, "task", "tasks"))
 		totalArchived += count
 	}
 
-	fmt.Printf("\nTotal: archived %d task(s) across all projects\n", totalArchived)
+	fmt.Printf("\nTotal: archived %s across all projects\n", Pluralize(totalArchived, "task", "tasks"))
 	return nil
 }

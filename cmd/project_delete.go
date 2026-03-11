@@ -11,7 +11,7 @@ import (
 
 var projectDeleteCmd = &cobra.Command{
 	Use:   "delete [name|id]",
-	Short: "Delete a project (moves to trash)",
+	Short: "Delete a project",
 	Long: `Delete a project by moving it to the trash folder.
 
 The project directory is moved to ~/.tt-data/.trash/ and can be restored later.

@@ -72,6 +72,11 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Validate context (free-form string; common values: personal, work)
+	if strings.TrimSpace(projectContext) == "" {
+		return tterrors.NewInvalidValueError("context", projectContext, "cannot be empty")
+	}
+
 	// Create project
 	projectID := uuid.New().String()
 	projectPath := cfg.GetProjectPath(slug)

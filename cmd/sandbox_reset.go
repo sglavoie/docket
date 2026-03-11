@@ -66,18 +66,18 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	// Build confirmation message
 	var parts []string
 	if taskCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d task(s)", taskCount))
+		parts = append(parts, Pluralize(taskCount, "task", "tasks"))
 	}
 	if noteCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d note(s)", noteCount))
+		parts = append(parts, Pluralize(noteCount, "note", "notes"))
 	}
 	if sectionCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d custom section(s)", sectionCount))
+		parts = append(parts, Pluralize(sectionCount, "custom section", "custom sections"))
 	}
 	confirmMsg := fmt.Sprintf("Clear %s from sandbox? [y/N] ", joinWithAnd(parts))
 
 	if !ConfirmYN(confirmMsg, sandboxResetForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 
@@ -118,13 +118,13 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	// Build output message
 	var cleared []string
 	if taskCount > 0 {
-		cleared = append(cleared, fmt.Sprintf("%d task(s)", taskCount))
+		cleared = append(cleared, Pluralize(taskCount, "task", "tasks"))
 	}
 	if noteCount > 0 {
-		cleared = append(cleared, fmt.Sprintf("%d note(s)", noteCount))
+		cleared = append(cleared, Pluralize(noteCount, "note", "notes"))
 	}
 	if sectionCount > 0 {
-		cleared = append(cleared, fmt.Sprintf("%d custom section(s)", sectionCount))
+		cleared = append(cleared, Pluralize(sectionCount, "custom section", "custom sections"))
 	}
 	fmt.Printf("Cleared %s from sandbox.\n", joinWithAnd(cleared))
 	return nil

@@ -45,7 +45,7 @@ func runWorkflowDelete(cmd *cobra.Command, args []string) error {
 	ruleName := rule.Name
 
 	if !ConfirmYN(fmt.Sprintf("Delete workflow rule '%s'? [y/N]: ", ruleName), workflowDeleteForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 

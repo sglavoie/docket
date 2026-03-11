@@ -364,8 +364,17 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
+	if _, err := tmpFile.WriteString(content); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to write temp file: %w", err)
+		return nil
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to close temp file: %w", err)
+		return nil
+	}
 
 	editor := external.ResolveEditor(m.editor)
 	c := external.EditorCommand(editor, tmpPath)
@@ -429,8 +438,17 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
+	if _, err := tmpFile.WriteString(content); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to write temp file: %w", err)
+		return nil
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to close temp file: %w", err)
+		return nil
+	}
 
 	editor := external.ResolveEditor(m.editor)
 	c := external.EditorCommand(editor, tmpPath)
@@ -513,8 +531,17 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		return nil
 	}
 	tmpPath := tmpFile.Name()
-	_, _ = tmpFile.WriteString(content)
-	_ = tmpFile.Close()
+	if _, err := tmpFile.WriteString(content); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to write temp file: %w", err)
+		return nil
+	}
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		m.err = fmt.Errorf("failed to close temp file: %w", err)
+		return nil
+	}
 
 	editor := external.ResolveEditor(m.editor)
 	c := external.EditorCommand(editor, tmpPath)

@@ -127,8 +127,9 @@ func TestValidateSectionName(t *testing.T) {
 
 	invalid := []string{
 		"In Progress", "My Section", "has\ttab", "has\nnewline",
-		"",    // empty
-		"   ", // whitespace only
+		"",              // empty
+		"   ",           // whitespace only
+		"has;semicolon", // semicolon
 		strings.Repeat("a", MaxSectionNameLength+1), // too long
 	}
 	for _, name := range invalid {

@@ -55,22 +55,25 @@ func (m *Manager) Load() (*Config, error) {
 		backupData, backupErr := os.ReadFile(backupPath)
 		if backupErr == nil {
 			if json.Unmarshal(backupData, &config) == nil {
-				logging.Warn("config file corrupted, restored from backup")
+				fmt.Fprintf(os.Stderr, "warning: config file was corrupted, restored from backup %s\n", backupPath)
 				// Persist the recovered config
 				if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
 					logging.Warn("failed to write recovered config: %v", writeErr)
 				}
 			} else {
-				return nil, fmt.Errorf("failed to parse config file: %w", err)
+				return nil, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", err, backupPath)
 			}
 		} else {
-			return nil, fmt.Errorf("failed to parse config file: %w", err)
+			return nil, fmt.Errorf("failed to parse config file (no backup available): %w", err)
 		}
 	}
 
 	// Ensure defaults for missing fields
 	if config.DataDir == "" {
-		homeDir, _ := os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to determine home directory for data dir: %w", err)
+		}
 		config.DataDir = filepath.Join(homeDir, ".tt")
 	}
 	if config.Editor == "" {

@@ -110,11 +110,11 @@ func ListNotesFrom(dir string) ([]*models.Note, error) {
 		}
 		note, err := LoadNoteFrom(dir, entry.Name())
 		if err != nil {
-			logging.Warn("skipping unreadable note %s: %v", entry.Name(), err)
+			fmt.Fprintf(os.Stderr, "warning: skipping unreadable note %s: %v\n", entry.Name(), err)
 			continue
 		}
 		if note.ParseError != "" {
-			logging.Warn("note %s has parse error: %s", entry.Name(), note.ParseError)
+			fmt.Fprintf(os.Stderr, "warning: note %s has parse error: %s\n", entry.Name(), note.ParseError)
 		}
 		notes = append(notes, note)
 	}

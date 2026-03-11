@@ -132,8 +132,10 @@ func SaveProject(project *models.Project) error {
 	// Diff activity: load old state and compare to detect field changes
 	tasksPath := filepath.Join(project.Path, tasksFileName)
 	if oldContent, err := os.ReadFile(tasksPath); err == nil {
-		if oldResult, err := ParseTasksMarkdownWithSections(string(oldContent)); err == nil {
+		if oldResult, parseErr := ParseTasksMarkdownWithSections(string(oldContent)); parseErr == nil {
 			DiffAndRecordActivity(oldResult.Tasks, project.Tasks, MaxActivityEntries)
+		} else {
+			fmt.Fprintf(os.Stderr, "warning: could not diff activity for %s: %v\n", project.Name, parseErr)
 		}
 	}
 

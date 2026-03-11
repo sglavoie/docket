@@ -103,6 +103,9 @@ func ValidateSectionName(name string) error {
 	if strings.ContainsAny(name, " \t\n\r") {
 		return fmt.Errorf("section name %q must not contain spaces (use hyphens or camelCase instead)", name)
 	}
+	if strings.Contains(name, ";") {
+		return fmt.Errorf("section name %q must not contain semicolons (used as internal delimiter)", name)
+	}
 	return nil
 }
 

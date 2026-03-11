@@ -43,7 +43,7 @@ func LoadArchivedTasks(project *models.Project) []*models.Task {
 	for _, p := range paths {
 		tasks, err := parseArchiveFile(p)
 		if err != nil {
-			logging.Warn("failed to parse archive %s: %v", p, err)
+			fmt.Fprintf(os.Stderr, "warning: skipping corrupt archive %s: %v\n", p, err)
 			continue
 		}
 		allTasks = append(allTasks, tasks...)
@@ -83,11 +83,10 @@ func ArchiveTasks(project *models.Project) (int, error) {
 		return 0, fmt.Errorf("failed to rotate archive: %w", err)
 	}
 
-	// Clean up attachment files for completed tasks
-	for _, task := range completedTasks {
-		if err := CleanupTaskAttachments(project, task); err != nil {
-			logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
-		}
+	// Record archive size before appending so we can rollback on failure
+	var archiveSizeBefore int64
+	if info, err := os.Stat(archivePath); err == nil {
+		archiveSizeBefore = info.Size()
 	}
 
 	// Generate markdown content for archived tasks
@@ -101,9 +100,22 @@ func ArchiveTasks(project *models.Project) (int, error) {
 	// Remove completed tasks from project
 	removeCompletedTasks(project)
 
-	// Save the modified project
+	// Save the modified project; rollback archive append on failure
 	if err := SaveProject(project); err != nil {
+		// Restore tasks in memory
+		project.Tasks = append(project.Tasks, completedTasks...)
+		// Truncate archive back to pre-append size
+		if truncErr := os.Truncate(archivePath, archiveSizeBefore); truncErr != nil {
+			logging.Warn("failed to rollback archive after save failure: %v", truncErr)
+		}
 		return 0, fmt.Errorf("failed to save project after archiving: %w", err)
+	}
+
+	// Clean up attachment files only after both archive and save succeeded
+	for _, task := range completedTasks {
+		if err := CleanupTaskAttachments(project, task); err != nil {
+			logging.Warn("failed to clean up attachments for task %s: %v", task.ID, err)
+		}
 	}
 
 	return len(completedTasks), nil

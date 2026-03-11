@@ -33,7 +33,7 @@ func runBlockerDelete(cmd *cobra.Command, args []string) error {
 	return WithBlockerUpdate(args[0], func(blockers []*models.Blocker, blocker *models.Blocker) ([]*models.Blocker, error) {
 		// Confirmation
 		if !ConfirmYN(fmt.Sprintf("Delete blocker '%s'? [y/N]: ", blocker.Title), blockerDeleteForce) {
-			fmt.Println("Canceled.")
+			fmt.Println("Canceled")
 			return blockers, nil
 		}
 

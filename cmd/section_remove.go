@@ -55,7 +55,7 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 		prompt = fmt.Sprintf("Remove section '%s'? %d tasks will become unsectioned.", sectionName, taskCount)
 	}
 	if !ConfirmYN(prompt+" [y/N]: ", sectionRemoveForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 

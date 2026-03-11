@@ -198,7 +198,7 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 			} else {
 				if r.modified > 0 {
 					ruleCount := len(r.rulesApplied)
-					fmt.Printf("  %s: %d task(s) modified by %d rule(s)\n", name, r.modified, ruleCount)
+					fmt.Printf("  %s: %s modified by %s\n", name, Pluralize(r.modified, "task", "tasks"), Pluralize(ruleCount, "rule", "rules"))
 				}
 				if r.projectStatusSet {
 					if icon := models.ProjectStatusIconByKey(r.projectStatusIcon); icon != nil {
@@ -210,9 +210,9 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 
 		fmt.Println()
 		if totalErrors > 0 {
-			fmt.Printf("Summary: %d error(s), %d skipped, %d task(s) modified\n", totalErrors, totalSkipped, totalModified)
+			fmt.Printf("Summary: %s, %d skipped, %s modified\n", Pluralize(totalErrors, "error", "errors"), totalSkipped, Pluralize(totalModified, "task", "tasks"))
 		} else if totalModified > 0 {
-			fmt.Printf("Summary: %d task(s) modified across %d project(s)\n", totalModified, len(projects)-totalSkipped)
+			fmt.Printf("Summary: %s modified across %s\n", Pluralize(totalModified, "task", "tasks"), Pluralize(len(projects)-totalSkipped, "project", "projects"))
 		} else if totalSkipped == len(projects) {
 			fmt.Println("All projects were recently evaluated. Use --force to re-evaluate.")
 		} else {
@@ -221,7 +221,7 @@ func runWorkflowEval(cmd *cobra.Command, args []string) error {
 	}
 
 	if totalErrors > 0 {
-		return fmt.Errorf("%d project(s) had errors", totalErrors)
+		return fmt.Errorf("%s had errors", Pluralize(totalErrors, "project", "projects"))
 	}
 
 	return nil

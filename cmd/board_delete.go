@@ -42,7 +42,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 

@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // MaxTagLength is the maximum allowed length for a tag.
@@ -26,17 +28,18 @@ func ValidateTag(tag string) error {
 
 // AddTag adds a tag if not already present.
 func (t *Task) AddTag(tag string) {
-	if slices.Contains(t.Tags, tag) {
-		return
+	var added bool
+	t.Tags, added = util.SliceAdd(t.Tags, tag)
+	if added {
+		t.UpdatedAt = time.Now()
 	}
-	t.Tags = append(t.Tags, tag)
-	t.UpdatedAt = time.Now()
 }
 
 // RemoveTag removes a tag if present.
 func (t *Task) RemoveTag(tag string) {
-	if i := slices.Index(t.Tags, tag); i >= 0 {
-		t.Tags = slices.Delete(t.Tags, i, i+1)
+	var removed bool
+	t.Tags, removed = util.SliceRemove(t.Tags, tag)
+	if removed {
 		t.UpdatedAt = time.Now()
 	}
 }

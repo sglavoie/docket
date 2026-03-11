@@ -95,6 +95,9 @@ func (p *Project) RenameSection(oldName, newName string) error {
 	if newName == "" {
 		return fmt.Errorf("new section name cannot be empty")
 	}
+	if err := ValidateSectionName(newName); err != nil {
+		return err
+	}
 	if p.HasSection(newName) {
 		return fmt.Errorf("cannot rename section: target name %q already exists", newName)
 	}

@@ -398,3 +398,106 @@ func TestProjectHasCircularDependencyBranching(t *testing.T) {
 		t.Error("should not detect cycle for 1 -> 2")
 	}
 }
+
+func TestProjectHasCircularDependencyWithNonExistentTask(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task1, err := NewTask("1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task2, err := NewTask("2", 2, TaskTypeTask, "Task 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task 1 depends on Task 2, Task 2 depends on non-existent task
+	_ = task1.AddDependency(task2.ID)
+	task2.DependsOn = append(task2.DependsOn, "non-existent-id")
+
+	project.Tasks = []*Task{task1, task2}
+
+	// task2 -> task1 -> task2 is a real cycle, should still be detected
+	// even though task2 also has a non-existent dependency
+	if !project.HasCircularDependency(task2.ID, task1.ID) {
+		t.Error("should detect cycle task2 -> task1 -> task2 despite non-existent dep in chain")
+	}
+
+	// HasCircularDependency("non-existent-id", task1.ID) checks if adding
+	// non-existent-id -> task1 would create a cycle. It calls
+	// dependsOnTransitive(task1.ID, "non-existent-id", ...) which traverses
+	// task1 -> task2 -> "non-existent-id" and finds sourceID == targetID, so
+	// it correctly detects a potential cycle (the non-existent ID is in the chain).
+	// This should not panic.
+	_ = project.HasCircularDependency("non-existent-id", task1.ID)
+
+	// Adding a dep from a real task to non-existent should not detect a cycle
+	if project.HasCircularDependency(task1.ID, "non-existent-id") {
+		t.Error("should not detect cycle when target dependency does not exist")
+	}
+}
+
+func TestHasIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := NewTask("dependent", 2, TaskTypeTask, "Dependent Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Dependent depends on a real blocker and a non-existent task
+	_ = dependent.AddDependency(blocker.ID)
+	dependent.DependsOn = append(dependent.DependsOn, "non-existent-id")
+
+	project.Tasks = []*Task{blocker, dependent}
+
+	// Non-existent dep should be skipped; only the real incomplete blocker counts
+	if !project.HasIncompleteDependencies(dependent) {
+		t.Error("task with incomplete real dependency should return true")
+	}
+
+	// Complete the real blocker - non-existent dep should not count as incomplete
+	blocker.Complete()
+	if project.HasIncompleteDependencies(dependent) {
+		t.Error("task should not have incomplete deps when real blocker is done and other dep is non-existent")
+	}
+}
+
+func TestGetIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dependent, err := NewTask("dependent", 2, TaskTypeTask, "Dependent Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Dependent depends on a real blocker and a non-existent task
+	_ = dependent.AddDependency(blocker.ID)
+	dependent.DependsOn = append(dependent.DependsOn, "non-existent-id")
+
+	project.Tasks = []*Task{blocker, dependent}
+
+	// Should return only the real incomplete dependency, skipping non-existent
+	incomplete := project.GetIncompleteDependencies(dependent)
+	if len(incomplete) != 1 {
+		t.Errorf("expected 1 incomplete dep (non-existent skipped), got %d", len(incomplete))
+	}
+	if len(incomplete) > 0 && incomplete[0].ID != blocker.ID {
+		t.Errorf("expected incomplete dep to be blocker, got %s", incomplete[0].ID)
+	}
+
+	// Complete the blocker - should return empty (non-existent still skipped)
+	blocker.Complete()
+	incomplete = project.GetIncompleteDependencies(dependent)
+	if len(incomplete) != 0 {
+		t.Errorf("expected 0 incomplete deps after completing blocker, got %d", len(incomplete))
+	}
+}

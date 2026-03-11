@@ -45,7 +45,7 @@ func runTemplateDelete(cmd *cobra.Command, args []string) error {
 	templateName := t.Name
 
 	if !ConfirmYN(fmt.Sprintf("Delete template '%s'? [y/N]: ", templateName), templateDeleteForce) {
-		fmt.Println("Canceled.")
+		fmt.Println("Canceled")
 		return nil
 	}
 

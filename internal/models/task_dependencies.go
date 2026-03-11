@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // AddDependency adds a dependency on another task if not already present.
@@ -12,18 +14,19 @@ func (t *Task) AddDependency(blockerID string) error {
 	if blockerID == t.ID {
 		return fmt.Errorf("task cannot depend on itself")
 	}
-	if slices.Contains(t.DependsOn, blockerID) {
-		return nil
+	var added bool
+	t.DependsOn, added = util.SliceAdd(t.DependsOn, blockerID)
+	if added {
+		t.UpdatedAt = time.Now()
 	}
-	t.DependsOn = append(t.DependsOn, blockerID)
-	t.UpdatedAt = time.Now()
 	return nil
 }
 
 // RemoveDependency removes a dependency if present.
 func (t *Task) RemoveDependency(blockerID string) {
-	if i := slices.Index(t.DependsOn, blockerID); i >= 0 {
-		t.DependsOn = slices.Delete(t.DependsOn, i, i+1)
+	var removed bool
+	t.DependsOn, removed = util.SliceRemove(t.DependsOn, blockerID)
+	if removed {
 		t.UpdatedAt = time.Now()
 	}
 }

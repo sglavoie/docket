@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"time"
+
+	"github.com/sglavoie/tt/internal/logging"
 )
 
 // BuildTaskTree organizes flat tasks into a tree structure.
@@ -21,6 +23,8 @@ func (p *Project) BuildTaskTree() {
 			if parent, ok := taskMap[*task.ParentID]; ok {
 				task.Parent = parent
 				parent.Children = append(parent.Children, task)
+			} else {
+				logging.Warn("task %q (#%d) references non-existent parent %s, treating as root", task.Title, task.ShortID, *task.ParentID)
 			}
 		}
 	}
