@@ -14,6 +14,7 @@ import (
 
 // CustomContextEditorModel handles creating/editing custom contexts.
 type CustomContextEditorModel struct {
+	BaseSearchableView
 	config *config.Config
 
 	// Editing state
@@ -24,16 +25,12 @@ type CustomContextEditorModel struct {
 	nameInput textinput.Model
 
 	// Project selection
-	projects        []*models.Project
-	selectedIDs     map[string]bool // Project IDs that are selected
-	cursor          int             // Cursor position in project list
-	scrollOffset    int             // Scroll offset for project list
-	projectListMode bool            // true when focus is on project list
-
-	// View state
-	width  int
-	height int
-	err    error
+	projects         []*models.Project
+	filteredProjects []*models.Project
+	selectedIDs      map[string]bool // Project IDs that are selected
+	cursor           int             // Cursor position in project list
+	scrollOffset     int             // Scroll offset for project list
+	projectListMode  bool            // true when focus is on project list
 
 	// Discard confirmation
 	confirmDiscard     bool
@@ -73,24 +70,25 @@ func NewCustomContextEditorModel(cfg *config.Config, editName string) *CustomCon
 	initialSelectedIDs := make(map[string]bool, len(selectedIDs))
 	maps.Copy(initialSelectedIDs, selectedIDs)
 
-	return &CustomContextEditorModel{
+	m := &CustomContextEditorModel{
 		config:             cfg,
 		editMode:           editMode,
 		originalName:       editName,
 		nameInput:          nameInput,
 		projects:           projects,
+		filteredProjects:   projects,
 		selectedIDs:        selectedIDs,
 		cursor:             0,
-		width:              80,
-		height:             24,
 		initialSelectedIDs: initialSelectedIDs,
 	}
+	m.BaseSearchableView.SetSize(80, 24)
+	m.InitSearchInput("Search projects...", 50, 80)
+	return m
 }
 
 // SetSize sets the view dimensions.
 func (m *CustomContextEditorModel) SetSize(width, height int) {
-	m.width = width
-	m.height = height
+	m.BaseSearchableView.SetSize(width, height)
 	formFactory.ResizeTextInput(&m.nameInput, width)
 }
 
@@ -136,6 +134,15 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Handle search mode input first
+		if m.IsSearchMode() {
+			_, cmd, valueChanged := m.HandleSearchInput(msg)
+			if valueChanged {
+				m.filterProjects()
+			}
+			return m, cmd
+		}
+
 		switch msg.String() {
 		case "esc":
 			if m.projectListMode {
@@ -163,11 +170,16 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case "/":
+			if m.projectListMode {
+				return m, m.ActivateSearch()
+			}
+
 		case "enter":
 			if m.projectListMode {
 				// Toggle selection of current project
-				if m.cursor < len(m.projects) {
-					id := m.projects[m.cursor].ID
+				if m.cursor < len(m.filteredProjects) {
+					id := m.filteredProjects[m.cursor].ID
 					m.selectedIDs[id] = !m.selectedIDs[id]
 					if !m.selectedIDs[id] {
 						delete(m.selectedIDs, id)
@@ -182,8 +194,8 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case " ":
 			// Space toggles selection in project list mode
-			if m.projectListMode && m.cursor < len(m.projects) {
-				id := m.projects[m.cursor].ID
+			if m.projectListMode && m.cursor < len(m.filteredProjects) {
+				id := m.filteredProjects[m.cursor].ID
 				m.selectedIDs[id] = !m.selectedIDs[id]
 				if !m.selectedIDs[id] {
 					delete(m.selectedIDs, id)
@@ -205,7 +217,7 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "down", "j":
 			if m.projectListMode {
-				if m.cursor < len(m.projects)-1 {
+				if m.cursor < len(m.filteredProjects)-1 {
 					m.cursor++
 					// Adjust scroll offset
 					maxVisible := m.maxVisibleProjects()
@@ -220,18 +232,20 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.save()
 
 		case "a":
-			// Select all projects
+			// Select all visible (filtered) projects
 			if m.projectListMode {
-				for _, p := range m.projects {
+				for _, p := range m.filteredProjects {
 					m.selectedIDs[p.ID] = true
 				}
 				return m, nil
 			}
 
 		case "A":
-			// Deselect all projects
+			// Deselect all visible (filtered) projects
 			if m.projectListMode {
-				m.selectedIDs = make(map[string]bool)
+				for _, p := range m.filteredProjects {
+					delete(m.selectedIDs, p.ID)
+				}
 				return m, nil
 			}
 		}
@@ -245,10 +259,30 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *CustomContextEditorModel) filterProjects() {
+	query := strings.ToLower(m.SearchQuery())
+	if query == "" {
+		m.filteredProjects = m.projects
+	} else {
+		m.filteredProjects = nil
+		for _, p := range m.projects {
+			if strings.Contains(strings.ToLower(p.Name), query) ||
+				strings.Contains(strings.ToLower(p.Context), query) {
+				m.filteredProjects = append(m.filteredProjects, p)
+			}
+		}
+	}
+	m.cursor = 0
+	m.scrollOffset = 0
+}
+
 func (m *CustomContextEditorModel) maxVisibleProjects() int {
 	// Reserve space for header, name input, help, etc.
-	available := max(m.height-15, 5)
-	return available
+	reserved := 15
+	if m.IsSearchMode() || m.SearchQuery() != "" {
+		reserved++ // Extra line for search input/filter indicator
+	}
+	return max(m.height-reserved, 5)
 }
 
 func (m *CustomContextEditorModel) save() tea.Cmd {
@@ -337,9 +371,9 @@ func (m *CustomContextEditorModel) save() tea.Cmd {
 	}
 }
 
-// HasTextInput returns true when the name input is focused.
+// HasTextInput returns true when the name input or search input is focused.
 func (m *CustomContextEditorModel) HasTextInput() bool {
-	return !m.projectListMode
+	return !m.projectListMode || m.IsSearchMode()
 }
 
 // ShouldCaptureEsc returns true to let the editor handle esc internally.
@@ -382,17 +416,30 @@ func (m *CustomContextEditorModel) View() string {
 	b.WriteString(projectsLabel)
 	b.WriteString("\n")
 
+	// Search input (shown when search is active or has a query)
+	if m.IsSearchMode() {
+		b.WriteString("  " + m.SearchInputView())
+		b.WriteString("\n")
+	} else if m.SearchQuery() != "" {
+		b.WriteString(MutedStyle.Render(fmt.Sprintf("  Filter: %s (%d/%d)", m.SearchQuery(), len(m.filteredProjects), len(m.projects))))
+		b.WriteString("\n")
+	}
+
 	// Project list
-	if len(m.projects) == 0 {
-		b.WriteString(MutedStyle.Render("  No projects available"))
+	if len(m.filteredProjects) == 0 {
+		if m.SearchQuery() != "" {
+			b.WriteString(MutedStyle.Render("  No matching projects"))
+		} else {
+			b.WriteString(MutedStyle.Render("  No projects available"))
+		}
 		b.WriteString("\n")
 	} else {
 		maxVisible := m.maxVisibleProjects()
-		end := min(m.scrollOffset+maxVisible, len(m.projects))
+		end := min(m.scrollOffset+maxVisible, len(m.filteredProjects))
 
 		var rowBuilder strings.Builder
 		for i := m.scrollOffset; i < end; i++ {
-			p := m.projects[i]
+			p := m.filteredProjects[i]
 
 			// Cursor
 			cursor := "  "
@@ -420,7 +467,7 @@ func (m *CustomContextEditorModel) View() string {
 			rowBuilder.WriteString("\n")
 		}
 
-		scrollbar := RenderScrollbar(len(m.projects), maxVisible, m.scrollOffset)
+		scrollbar := RenderScrollbar(len(m.filteredProjects), maxVisible, m.scrollOffset)
 		b.WriteString(AttachScrollbar(rowBuilder.String(), scrollbar))
 	}
 	b.WriteString("\n")
@@ -433,8 +480,11 @@ func (m *CustomContextEditorModel) View() string {
 
 	// Footer
 	var footerLeft, footerRight string
-	if m.projectListMode {
-		footerLeft = HelpStyle.Render("j/k: move · Space: toggle · a/A: all/none · Tab: name")
+	if m.IsSearchMode() {
+		footerLeft = HelpStyle.Render("Type to filter · Enter: confirm · Esc: clear")
+		footerRight = HelpStyle.Render("")
+	} else if m.projectListMode {
+		footerLeft = HelpStyle.Render("j/k: move · Space: toggle · /: search · a/A: all/none · Tab: name")
 		footerRight = HelpStyle.Render("Ctrl+S: save · Esc: cancel")
 	} else {
 		footerLeft = HelpStyle.Render("Tab/Enter: project list")
