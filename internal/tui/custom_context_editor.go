@@ -295,10 +295,39 @@ func (m *CustomContextEditorModel) save() tea.Cmd {
 		// Save custom context
 		m.config.SetCustomContext(name, projectIDs)
 
-		// Auto-set cycle projects to match the custom context
-		// This ensures cycling works immediately after creating/editing
+		// Update cycle projects for this context
 		contextKey := "+" + name
-		m.config.SetCycleProjectsForContext(contextKey, projectIDs)
+		if m.editMode {
+			// Preserve existing cycle selections, adjusting for added/removed projects
+			existingCycleIDs := m.config.GetCycleProjectIDsForContext(contextKey)
+			newProjectSet := make(map[string]bool, len(projectIDs))
+			for _, id := range projectIDs {
+				newProjectSet[id] = true
+			}
+			oldProjectSet := make(map[string]bool, len(m.initialSelectedIDs))
+			for id, sel := range m.initialSelectedIDs {
+				if sel {
+					oldProjectSet[id] = true
+				}
+			}
+			// Keep existing cycle IDs that are still in the context
+			var updatedCycleIDs []string
+			for _, id := range existingCycleIDs {
+				if newProjectSet[id] {
+					updatedCycleIDs = append(updatedCycleIDs, id)
+				}
+			}
+			// Add newly added projects (not in old context) to cycle
+			for _, id := range projectIDs {
+				if !oldProjectSet[id] {
+					updatedCycleIDs = append(updatedCycleIDs, id)
+				}
+			}
+			m.config.SetCycleProjectsForContext(contextKey, updatedCycleIDs)
+		} else {
+			// New context: select all projects by default
+			m.config.SetCycleProjectsForContext(contextKey, projectIDs)
+		}
 
 		return CustomContextSavedMsg{
 			Name:         name,
