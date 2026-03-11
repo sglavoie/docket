@@ -102,7 +102,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		return tterrors.NewRequiredFieldError(fmt.Sprintf("task title (title was empty after extracting inline priority/tags from %q)", rawTitle))
 	}
-	if err := models.ValidateTaskTitle(title); err != nil {
+	if err = models.ValidateTaskTitle(title); err != nil {
 		return err
 	}
 
@@ -121,7 +121,7 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate priority
-	if err := ValidatePriority(priority, false); err != nil {
+	if err = ValidatePriority(priority, false); err != nil {
 		return err
 	}
 

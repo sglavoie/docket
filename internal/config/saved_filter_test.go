@@ -384,7 +384,9 @@ func TestManager_MigrationOnLoad(t *testing.T) {
 		t.Fatalf("re-read: %v", err)
 	}
 	var raw map[string]json.RawMessage
-	json.Unmarshal(reloaded, &raw)
+	if err = json.Unmarshal(reloaded, &raw); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
 	if _, ok := raw["saved_filters"]; !ok {
 		t.Error("expected saved_filters key in persisted config")
 	}

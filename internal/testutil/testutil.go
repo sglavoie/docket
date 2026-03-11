@@ -127,16 +127,6 @@ func TempProjectDir(t *testing.T) (string, func()) {
 	return dir, cleanup
 }
 
-// MustNewTask wraps models.NewTask and calls t.Fatal on error.
-func MustNewTask(t *testing.T, id string, shortID int, taskType models.TaskType, title string) *models.Task {
-	t.Helper()
-	task, err := models.NewTask(id, shortID, taskType, title)
-	if err != nil {
-		t.Fatalf("MustNewTask(%q): %v", title, err)
-	}
-	return task
-}
-
 // NewTestTask creates a simple task for testing.
 func NewTestTask(title string, taskType models.TaskType) *models.Task {
 	task, err := models.NewTask(uuid.New().String(), 1, taskType, title)

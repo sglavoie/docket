@@ -22,7 +22,7 @@ func Init() {
 	}
 	logDirPath = filepath.Join(home, ".tt", "logs")
 
-	if err := os.MkdirAll(logDirPath, 0o755); err != nil {
+	if err = os.MkdirAll(logDirPath, 0o755); err != nil {
 		return
 	}
 	name := fmt.Sprintf("tt-%s.log", time.Now().Format("2006-01-02-150405"))
@@ -59,14 +59,6 @@ func pruneOldLogs() {
 
 // LogDir returns the log directory path.
 func LogDir() string { return logDirPath }
-
-// File returns the current log file path, or empty if not initialized.
-func File() string {
-	if logFile == nil {
-		return ""
-	}
-	return logFile.Name()
-}
 
 // Warn writes a formatted warning to the log file.
 func Warn(format string, args ...any) {

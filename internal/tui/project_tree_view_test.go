@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )

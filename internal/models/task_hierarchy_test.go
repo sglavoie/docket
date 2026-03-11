@@ -344,10 +344,10 @@ func TestCanOutdent(t *testing.T) {
 	}
 
 	// Set up hierarchy: epic -> story -> task
-	if err := epic.AddChild(story); err != nil {
+	if err = epic.AddChild(story); err != nil {
 		t.Fatal(err)
 	}
-	if err := story.AddChild(task); err != nil {
+	if err = story.AddChild(task); err != nil {
 		t.Fatal(err)
 	}
 
@@ -431,10 +431,10 @@ func TestPromoteWithNestedChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := story.AddChild(task1); err != nil {
+	if err = story.AddChild(task1); err != nil {
 		t.Fatal(err)
 	}
-	if err := story.AddChild(task2); err != nil {
+	if err = story.AddChild(task2); err != nil {
 		t.Fatal(err)
 	}
 
@@ -465,10 +465,10 @@ func TestDemoteWithNestedChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := epic.AddChild(task1); err != nil {
+	if err = epic.AddChild(task1); err != nil {
 		t.Fatal(err)
 	}
-	if err := epic.AddChild(bug); err != nil {
+	if err = epic.AddChild(bug); err != nil {
 		t.Fatal(err)
 	}
 
@@ -495,7 +495,7 @@ func TestDemoteEpicWithIdeaChildren(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := epic.AddChild(idea); err != nil {
+	if err = epic.AddChild(idea); err != nil {
 		t.Fatal(err)
 	}
 

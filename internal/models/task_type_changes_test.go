@@ -583,7 +583,7 @@ func TestTaskPromoteWithInvalidHierarchy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := epic.AddChild(story); err != nil {
+	if err = epic.AddChild(story); err != nil {
 		t.Fatal(err)
 	}
 
@@ -597,7 +597,7 @@ func TestTaskPromoteWithInvalidHierarchy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := story.AddChild(task); err != nil {
+	if err = story.AddChild(task); err != nil {
 		t.Fatal(err)
 	}
 

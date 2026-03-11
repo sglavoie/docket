@@ -237,18 +237,18 @@ type AppModel struct {
 	quickSwitchPendingPrefix  string
 
 	// Pinned tasks popup state
-	showPinnedPopup          bool
-	pinnedPopupCursor        int
-	pinnedPopupItems         []pinnedTaskInfo
-	pinnedPendingPrefix      string
-	pinnedLastUnpinned       *pinnedTaskInfo
-	pinnedPopupFiltering     bool
-	pinnedPopupFilter        string
-	pinnedPopupFiltered      []int   // indices into pinnedPopupItems
-	pinnedPopupTitlePos      [][]int // parallel to pinnedPopupFiltered: fuzzy match positions
-	pinnedPreview       *ProjectTreeModel // cached preview tree for highlighted pinned task's project
-	pinnedPreviewID     string            // project ID the preview was built for
-	pinnedPreviewTaskID string            // task ID the preview cursor was set for
+	showPinnedPopup      bool
+	pinnedPopupCursor    int
+	pinnedPopupItems     []pinnedTaskInfo
+	pinnedPendingPrefix  string
+	pinnedLastUnpinned   *pinnedTaskInfo
+	pinnedPopupFiltering bool
+	pinnedPopupFilter    string
+	pinnedPopupFiltered  []int             // indices into pinnedPopupItems
+	pinnedPopupTitlePos  [][]int           // parallel to pinnedPopupFiltered: fuzzy match positions
+	pinnedPreview        *ProjectTreeModel // cached preview tree for highlighted pinned task's project
+	pinnedPreviewID      string            // project ID the preview was built for
+	pinnedPreviewTaskID  string            // task ID the preview cursor was set for
 
 	// Project cycle popup state
 	showProjectCycle      bool

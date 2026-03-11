@@ -258,10 +258,10 @@ func TestRestoreFromBackup_Reversible(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task1}
 	project.NextShortID = 2
-	if err := SaveProject(project); err != nil {
+	if err = SaveProject(project); err != nil {
 		t.Fatalf("SaveProject failed: %v", err)
 	}
-	if err := BackupProject(project); err != nil {
+	if err = BackupProject(project); err != nil {
 		t.Fatalf("BackupProject failed: %v", err)
 	}
 

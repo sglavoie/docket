@@ -107,11 +107,6 @@ func NewAmbiguousIdentifierError(identifier string, candidates string) error {
 	return fmt.Errorf("%w %q: matches %s (use task short ID)", ErrAmbiguousIdentifier, identifier, candidates)
 }
 
-// NewNotFoundError creates a generic not-found error for any entity type.
-func NewNotFoundError(entityType, identifier string) error {
-	return fmt.Errorf("%s not found: %s", entityType, identifier)
-}
-
 // NewSaveConfigError creates an error for failing to save the config file.
 func NewSaveConfigError(err error) error {
 	return fmt.Errorf("%w: %w", ErrConfigSaveFailed, err)

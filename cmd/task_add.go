@@ -86,7 +86,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		return tterrors.NewRequiredFieldError("title")
 	}
-	if err := models.ValidateTaskTitle(title); err != nil {
+	if err = models.ValidateTaskTitle(title); err != nil {
 		return err
 	}
 

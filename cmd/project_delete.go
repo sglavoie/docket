@@ -60,7 +60,7 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 	if err := configManager.Save(cfg); err != nil {
 		// Try to restore from trash on failure
 		if restoreErr := storage.RestoreProjectFromTrash(project.Slug, cfg.DataDir); restoreErr != nil {
-			return fmt.Errorf("config save failed and restore from trash also failed: %w (restore error: %v)", err, restoreErr)
+			return fmt.Errorf("config save failed and restore from trash also failed: %w (restore error: %w)", err, restoreErr)
 		}
 		return tterrors.NewSaveConfigError(err)
 	}
