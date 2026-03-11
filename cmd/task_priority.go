@@ -50,6 +50,7 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 
 	var errs []string
 	succeeded := 0
+	skipped := 0
 	for _, taskID := range taskIDs {
 		var oldPriority int
 
@@ -57,7 +58,6 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 			oldPriority = task.Priority
 
 			if oldPriority == priority {
-				fmt.Printf("Task #%d already has priority %d\n", task.ShortID, priority)
 				return nil
 			}
 
@@ -72,8 +72,14 @@ func runTaskPriority(cmd *cobra.Command, args []string) error {
 
 		if oldPriority != priority {
 			fmt.Printf("Updated priority for task #%d: %d -> %d (%s)\n", task.ShortID, oldPriority, priority, task.Title)
+			succeeded++
+		} else {
+			skipped++
 		}
-		succeeded++
+	}
+
+	if skipped > 0 {
+		fmt.Printf("%d updated, %d already at priority %d\n", succeeded, skipped, priority)
 	}
 
 	if len(errs) > 0 {

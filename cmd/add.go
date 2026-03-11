@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -70,6 +71,14 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 	if len(priorityMatch) > 1 {
 		priority, _ = strconv.Atoi(priorityMatch[1])
 		input = priorityRe.ReplaceAllString(input, " ")
+	} else {
+		// Check for out-of-range priority (e.g., !0, !6, !99)
+		invalidRe := regexp.MustCompile(`\s*!([0-9]+)\s*`)
+		invalidMatch := invalidRe.FindStringSubmatch(input)
+		if len(invalidMatch) > 1 {
+			fmt.Fprintf(os.Stderr, "Warning: !%s ignored (priority must be 1-5)\n", invalidMatch[1])
+			input = invalidRe.ReplaceAllString(input, " ")
+		}
 	}
 
 	// Match tag pattern: #word

@@ -8,6 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+var sectionRemoveForce bool
+
 var sectionRemoveCmd = &cobra.Command{
 	Use:     "remove <name>",
 	Aliases: []string{"rm", "delete"},
@@ -27,6 +29,7 @@ Examples:
 
 func init() {
 	sectionCmd.AddCommand(sectionRemoveCmd)
+	sectionRemoveCmd.Flags().BoolVarP(&sectionRemoveForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runSectionRemove(cmd *cobra.Command, args []string) error {
@@ -46,6 +49,16 @@ func runSectionRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	taskCount := len(project.GetTasksBySection(sectionName))
+
+	prompt := fmt.Sprintf("Remove section '%s'?", sectionName)
+	if taskCount > 0 {
+		prompt = fmt.Sprintf("Remove section '%s'? %d tasks will become unsectioned.", sectionName, taskCount)
+	}
+	if !ConfirmYN(prompt+" [y/N]: ", sectionRemoveForce) {
+		fmt.Println("Canceled.")
+		return nil
+	}
+
 	if !project.RemoveSection(sectionName) {
 		return fmt.Errorf("failed to remove section '%s'", sectionName)
 	}

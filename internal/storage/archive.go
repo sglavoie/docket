@@ -136,18 +136,35 @@ func rotateArchiveIfNeeded(projectPath string, threshold int64) error {
 		maxRotation = i
 	}
 
+	// Track completed renames for rollback on failure
+	type rename struct{ from, to string }
+	var completed []rename
+
+	rollback := func() {
+		// Reverse renames in LIFO order (best-effort)
+		for i := len(completed) - 1; i >= 0; i-- {
+			r := completed[i]
+			if rbErr := os.Rename(r.to, r.from); rbErr != nil {
+				logging.Warn("archive rotation rollback failed: %s -> %s: %v", r.to, r.from, rbErr)
+			}
+		}
+	}
+
 	// Shift existing rotated files up by one
 	for i := maxRotation; i >= 1; i-- {
 		oldPath := filepath.Join(projectPath, fmt.Sprintf("completed.%d.md", i))
 		newPath := filepath.Join(projectPath, fmt.Sprintf("completed.%d.md", i+1))
 		if err := os.Rename(oldPath, newPath); err != nil {
+			rollback()
 			return fmt.Errorf("failed to rotate %s to %s: %w", oldPath, newPath, err)
 		}
+		completed = append(completed, rename{from: oldPath, to: newPath})
 	}
 
 	// Move current archive to completed.1.md
 	rotatedPath := filepath.Join(projectPath, "completed.1.md")
 	if err := os.Rename(archivePath, rotatedPath); err != nil {
+		rollback()
 		return fmt.Errorf("failed to rotate archive to %s: %w", rotatedPath, err)
 	}
 

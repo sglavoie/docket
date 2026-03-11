@@ -132,6 +132,9 @@ func TestSectionRemove(t *testing.T) {
 		project.EnsureSection("ToRemove")
 		deps.Repository.Projects[project.ID] = project
 
+		sectionRemoveForce = true
+		defer func() { sectionRemoveForce = false }()
+
 		err = runSectionRemove(nil, []string{"ToRemove"})
 		testutil.AssertNoError(t, err)
 
@@ -205,6 +208,9 @@ func TestSectionRemove(t *testing.T) {
 		task.Section = "ToRemove"
 		project.Tasks = append(project.Tasks, task)
 		deps.Repository.Projects[project.ID] = project
+
+		sectionRemoveForce = true
+		defer func() { sectionRemoveForce = false }()
 
 		err = runSectionRemove(nil, []string{"ToRemove"})
 		testutil.AssertNoError(t, err)

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/scoring"
 	"github.com/sglavoie/tt/internal/util"
@@ -49,7 +50,22 @@ func (m *Manager) Load() (*Config, error) {
 
 	var config Config
 	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+		// Try to recover from backup
+		backupPath := m.configPath + ".bak"
+		backupData, backupErr := os.ReadFile(backupPath)
+		if backupErr == nil {
+			if json.Unmarshal(backupData, &config) == nil {
+				logging.Warn("config file corrupted, restored from backup")
+				// Persist the recovered config
+				if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
+					logging.Warn("failed to write recovered config: %v", writeErr)
+				}
+			} else {
+				return nil, fmt.Errorf("failed to parse config file: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to parse config file: %w", err)
+		}
 	}
 
 	// Ensure defaults for missing fields
@@ -80,6 +96,19 @@ func (m *Manager) Load() (*Config, error) {
 
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
+	}
+
+	// Filter out projects with missing required fields
+	validProjects := make([]*models.Project, 0, len(config.Projects))
+	for _, p := range config.Projects {
+		if p.ID == "" || p.Name == "" {
+			logging.Warn("skipping invalid project (missing ID or Name): ID=%q Name=%q", p.ID, p.Name)
+			continue
+		}
+		validProjects = append(validProjects, p)
+	}
+	if len(validProjects) != len(config.Projects) {
+		config.Projects = validProjects
 	}
 
 	// Backfill new fields on builtin scoring profiles from presets

@@ -109,8 +109,7 @@ func runTaskMoveAction(
 	}
 
 	if err := validate(project, task); err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
 
 	if err := move(project, task); err != nil {

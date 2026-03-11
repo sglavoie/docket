@@ -50,7 +50,7 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 		if oldStage != "" {
 			fmt.Printf("Cleared stage from task #%d (was: %s)\n", task.ShortID, oldStage)
 		} else {
-			fmt.Printf("Task #%d has no stage\n", task.ShortID)
+			fmt.Printf("Task #%d already has no stage\n", task.ShortID)
 		}
 	} else if oldStage == "" {
 		fmt.Printf("Set stage for task #%d: %s\n", task.ShortID, stageName)

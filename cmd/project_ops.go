@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/selector"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/util"
 	"github.com/sglavoie/tt/internal/workflow"
 )
 
@@ -86,10 +89,16 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	project.ReorderRootTasksByCompletion()
 
 	Debugf("saving project: %s", project.Name)
-	if err := storage.BackupProject(project); err != nil {
-		return fmt.Errorf("failed to create backup: %w", err)
+	if err := os.MkdirAll(project.Path, 0o755); err != nil {
+		return fmt.Errorf("failed to ensure project directory: %w", err)
 	}
-	return storage.SaveProject(project)
+	lockPath := filepath.Join(project.Path, "tasks.md.lock")
+	return util.WithFileLock(lockPath, true, func() error {
+		if err := storage.BackupProject(project); err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+		return storage.SaveProject(project)
+	})
 }
 
 // GetProjectFromSelector safely extracts a Project from a selector.Item.

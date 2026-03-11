@@ -147,16 +147,16 @@ func (m *AppModel) otherCommands() []Command {
 			Handler: func() tea.Msg {
 				if m.baseProjectView() == ViewOutliner && m.outliner != nil {
 					if err := storage.LoadProject(m.outliner.project); err != nil {
-					logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
-				}
+						logging.Warn("failed to load project %s: %v", m.outliner.project.Name, err)
+					}
 					m.outliner.rebuildRows()
 					return nil
 				}
 				if m.projectTree != nil {
 					m.projectTree.clearSelection()
 					if err := storage.LoadProject(m.projectTree.project); err != nil {
-					logging.Warn("failed to load project %s: %v", m.projectTree.project.Name, err)
-				}
+						logging.Warn("failed to load project %s: %v", m.projectTree.project.Name, err)
+					}
 					m.projectTree.buildTree()
 				}
 				return nil

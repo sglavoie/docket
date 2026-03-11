@@ -36,8 +36,8 @@ func (m *AppModel) handleContextMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.config.FilterCustomContext = ""
 			}
 			if err := m.configManager.Save(m.config); err != nil {
-			logging.Warn("failed to save config: %v", err)
-		}
+				logging.Warn("failed to save config: %v", err)
+			}
 
 			if msg.FromCycle {
 				// Reopen the popup with refreshed items

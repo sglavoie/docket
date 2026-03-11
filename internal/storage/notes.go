@@ -196,7 +196,9 @@ func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
 
 	if note.Filename != oldFilename {
 		oldPath := filepath.Join(dir, oldFilename)
-		_ = os.Remove(oldPath)
+		if err := os.Remove(oldPath); err != nil && !os.IsNotExist(err) {
+			logging.Warn("note rename: old file remains at %s: %v", oldPath, err)
+		}
 	}
 
 	return note, nil

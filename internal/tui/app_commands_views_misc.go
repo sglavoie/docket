@@ -179,8 +179,8 @@ func (m *AppModel) sidebarCommands() []Command {
 					m.config.SetProjectViewState(p.ID, state)
 				}
 				if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
-			}
+					logging.Warn("failed to save config: %v", err)
+				}
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(true)
 				}
@@ -203,8 +203,8 @@ func (m *AppModel) sidebarCommands() []Command {
 					m.config.SetProjectViewState(p.ID, state)
 				}
 				if err := m.configManager.Save(m.config); err != nil {
-				logging.Warn("failed to save config: %v", err)
-			}
+					logging.Warn("failed to save config: %v", err)
+				}
 				if m.projectTree != nil {
 					m.projectTree.sidebar.SetEnabled(false)
 					m.projectTree.sidebar.Blur()

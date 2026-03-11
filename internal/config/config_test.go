@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -730,6 +731,127 @@ func TestConfigManager_PreservesExistingVersion(t *testing.T) {
 
 	if cfg.Version != 1 {
 		t.Errorf("expected Version 1, got %d", cfg.Version)
+	}
+}
+
+func TestConfigManager_LoadRecoversFromBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+	backupPath := configPath + ".bak"
+
+	// Write valid backup
+	backupData := `{"editor": "vim", "version": 1}`
+	if err := os.WriteFile(backupPath, []byte(backupData), 0644); err != nil {
+		t.Fatalf("failed to write backup: %v", err)
+	}
+
+	// Write corrupted main config
+	if err := os.WriteFile(configPath, []byte("{corrupted"), 0644); err != nil {
+		t.Fatalf("failed to write corrupted config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load should recover from backup, got error: %v", err)
+	}
+
+	if cfg.Editor != "vim" {
+		t.Errorf("expected Editor 'vim' from backup, got '%s'", cfg.Editor)
+	}
+
+	// Main config should now be valid (recovered)
+	raw, _ := os.ReadFile(configPath)
+	var check Config
+	if err := json.Unmarshal(raw, &check); err != nil {
+		t.Errorf("recovered config file should be valid JSON: %v", err)
+	}
+}
+
+func TestConfigManager_LoadFailsWhenBothCorrupted(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+	backupPath := configPath + ".bak"
+
+	// Both corrupted
+	_ = os.WriteFile(configPath, []byte("{bad"), 0644)
+	_ = os.WriteFile(backupPath, []byte("{also bad"), 0644)
+
+	manager := NewManager(configPath)
+	_, err := manager.Load()
+	if err == nil {
+		t.Error("Load should fail when both config and backup are corrupted")
+	}
+}
+
+func TestConfigManager_LoadFailsWhenNoBackup(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// Corrupted config, no backup
+	_ = os.WriteFile(configPath, []byte("{bad"), 0644)
+
+	manager := NewManager(configPath)
+	_, err := manager.Load()
+	if err == nil {
+		t.Error("Load should fail when config is corrupted and no backup exists")
+	}
+}
+
+func TestConfigManager_LoadFiltersInvalidProjects(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	// Config with one valid and two invalid projects
+	data := `{
+		"version": 1,
+		"projects": [
+			{"id": "p1", "slug": "valid", "name": "Valid Project", "path": "/tmp/valid"},
+			{"id": "", "slug": "no-id", "name": "No ID", "path": "/tmp/noid"},
+			{"id": "p3", "slug": "no-name", "name": "", "path": "/tmp/noname"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if len(cfg.Projects) != 1 {
+		t.Errorf("expected 1 valid project, got %d", len(cfg.Projects))
+	}
+	if cfg.Projects[0].ID != "p1" {
+		t.Errorf("expected project ID 'p1', got '%s'", cfg.Projects[0].ID)
+	}
+}
+
+func TestConfigManager_LoadKeepsAllValidProjects(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "test-config.json")
+
+	data := `{
+		"version": 1,
+		"projects": [
+			{"id": "p1", "slug": "one", "name": "One", "path": "/tmp/one"},
+			{"id": "p2", "slug": "two", "name": "Two", "path": "/tmp/two"}
+		]
+	}`
+	if err := os.WriteFile(configPath, []byte(data), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	manager := NewManager(configPath)
+	cfg, err := manager.Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if len(cfg.Projects) != 2 {
+		t.Errorf("expected 2 projects, got %d", len(cfg.Projects))
 	}
 }
 

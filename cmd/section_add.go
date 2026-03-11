@@ -29,9 +29,6 @@ func init() {
 
 func runSectionAdd(cmd *cobra.Command, args []string) error {
 	sectionName := args[0]
-	if sectionName == "" {
-		return fmt.Errorf("section name cannot be empty")
-	}
 
 	if err := models.ValidateSectionName(sectionName); err != nil {
 		return err
