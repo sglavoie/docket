@@ -129,7 +129,7 @@ func (m *AppModel) projectCommands() []Command {
 			Description: "Create a new project",
 			Shortcut:    "n",
 			Category:    CategoryProjects,
-			Views:       []ViewType{ViewDashboard},
+			Views:       nil,
 			Aliases:     []string{"create project", "add project"},
 			Handler: func() tea.Msg {
 				return CreateProjectMsg{}
