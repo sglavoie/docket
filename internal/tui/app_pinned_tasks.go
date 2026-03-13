@@ -557,7 +557,7 @@ func (m *AppModel) renderPinnedPopup() string {
 				badge = dimBadgeStyle.Render("·")
 			}
 
-			statusIcon := entry.Task.Status.Icon()
+			statusIcon := GetStatusStyle(string(entry.Task.Status)).Render(entry.Task.Status.Icon())
 			priorityBadge := renderPriorityBadge(entry.Task.Priority)
 			projectName := entry.ProjectName
 
