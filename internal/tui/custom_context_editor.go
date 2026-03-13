@@ -136,11 +136,11 @@ func (m *CustomContextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		// Handle search mode input first
 		if m.IsSearchMode() {
-			_, cmd, valueChanged := m.HandleSearchInput(msg)
+			_, cmdHandleSearch, valueChanged := m.HandleSearchInput(msg)
 			if valueChanged {
 				m.filterProjects()
 			}
-			return m, cmd
+			return m, cmdHandleSearch
 		}
 
 		switch msg.String() {

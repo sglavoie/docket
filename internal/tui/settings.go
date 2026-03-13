@@ -120,9 +120,9 @@ type SettingsModel struct {
 	alertProjectHealthEnabled  bool
 	alertProjectStaleDaysInput textinput.Model
 
-	tabs          TabState
-	focusIndex    int // 0=editor .. 47=outlinerColumnDefaults, 48-62=alert settings
-	scrollOffset  int // vertical scroll offset within current tab content
+	tabs               TabState
+	focusIndex         int // 0=editor .. 47=outlinerColumnDefaults, 48-62=alert settings
+	scrollOffset       int // vertical scroll offset within current tab content
 	validationErr      string
 	stageValidationErr string // timed error shown in stages tab (auto-clears)
 

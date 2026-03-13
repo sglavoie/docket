@@ -330,10 +330,11 @@ func TestGenerateRecurringInstances_NewInstanceProperties(t *testing.T) {
 	}
 	// Weekdays should be a deep copy
 	newTask.Recurrence.Weekdays[0] = 99
-	if task.Recurrence != nil {
-		// Original recurrence was cleared, so this check is about the copy
-		// Just verify the new weekdays slice is independent
-	}
+
+	// Original recurrence was cleared, so this check is about the copy
+	// Just verify the new weekdays slice is independent
+	// if task.Recurrence != nil {}
+
 	if newTask.Recurrence.Skipped != 4 {
 		t.Errorf("recurrence skipped = %d, want 4", newTask.Recurrence.Skipped)
 	}
