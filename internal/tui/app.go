@@ -235,6 +235,7 @@ type AppModel struct {
 	quickSwitchFiltered       []int   // indices into sortedQuickSwitchEntries
 	quickSwitchTitlePositions [][]int // parallel to quickSwitchFiltered: fuzzy match positions in title
 	quickSwitchPendingPrefix  string
+	quickSwitchShowCompleted  bool
 
 	// Pinned tasks popup state
 	showPinnedPopup      bool

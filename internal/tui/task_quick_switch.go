@@ -118,6 +118,7 @@ func (m *AppModel) openQuickSwitch() {
 	m.quickSwitchFiltering = false
 	m.quickSwitchFiltered = nil
 	m.quickSwitchPendingPrefix = ""
+	m.quickSwitchShowCompleted = false
 	m.refreshRecentTaskVisits()
 	// Re-sort so pinned entries come first
 	m.recentTaskVisits = m.sortedQuickSwitchEntries()
@@ -128,11 +129,15 @@ func (m *AppModel) openQuickSwitch() {
 func (m *AppModel) rebuildQuickSwitchFilter() {
 	entries := m.recentTaskVisits
 	if m.quickSwitchFilter == "" {
-		// No filter: show all entries in order
-		m.quickSwitchFiltered = make([]int, len(entries))
-		m.quickSwitchTitlePositions = make([][]int, len(entries))
-		for i := range entries {
-			m.quickSwitchFiltered[i] = i
+		// No filter: show entries matching completion toggle
+		m.quickSwitchFiltered = make([]int, 0, len(entries))
+		m.quickSwitchTitlePositions = make([][]int, 0, len(entries))
+		for i, entry := range entries {
+			if entry.Task.Status.IsComplete() != m.quickSwitchShowCompleted {
+				continue
+			}
+			m.quickSwitchFiltered = append(m.quickSwitchFiltered, i)
+			m.quickSwitchTitlePositions = append(m.quickSwitchTitlePositions, nil)
 		}
 		return
 	}
@@ -145,6 +150,9 @@ func (m *AppModel) rebuildQuickSwitchFilter() {
 	}
 	var pinned, unpinned []scored
 	for i, entry := range entries {
+		if entry.Task.Status.IsComplete() != m.quickSwitchShowCompleted {
+			continue
+		}
 		text := entry.Task.Title + " " + entry.Project.Name
 		score := fuzzy.ScoreTerms(text, m.quickSwitchFilter)
 		if score <= 0 {
@@ -280,6 +288,12 @@ func (m *AppModel) handleQuickSwitchNormalKey(msg tea.KeyMsg) (*AppModel, tea.Cm
 		return m, nil
 	case "!":
 		m.quickSwitchPendingPrefix = "!"
+		return m, nil
+	case "c":
+		m.quickSwitchShowCompleted = !m.quickSwitchShowCompleted
+		m.quickSwitchCursor = 0
+		m.rebuildQuickSwitchFilter()
+		m.quickSwitchClampCursor()
 		return m, nil
 	case "x":
 		m.quickSwitchRemoveEntry()
@@ -442,7 +456,11 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 
 	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
 	titleStyle := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
-	title := titleStyle.Render("Recent Tasks")
+	titleText := "Recent Tasks"
+	if m.quickSwitchShowCompleted {
+		titleText += " (Completed)"
+	}
+	title := titleStyle.Render(titleText)
 
 	// Determine popup width: full terminal width minus small margin
 	popupWidth := max(m.width-4, 30)
@@ -628,7 +646,7 @@ func (m *AppModel) renderQuickSwitchPopup() string {
 		} else if m.quickSwitchFilter != "" {
 			footer = MutedStyle.Render("j/k nav  enter select  ,status  !pri  / filter  esc clear")
 		} else {
-			footer = MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  ,status  !pri  x remove  esc close")
+			footer = MutedStyle.Render("j/k nav  / filter  1-9 jump  p pin  c toggle  ,status  !pri  x remove  esc close")
 		}
 		lines[len(lines)-1] = renderTitledBottomBorder(footer, actualWidth, borderStyle)
 	}
