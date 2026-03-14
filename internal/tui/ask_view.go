@@ -134,6 +134,21 @@ func (m *AskViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 		return m, nil
 
+	case AskCommandBatchMsg:
+		for _, result := range msg.Results {
+			status := "ok"
+			if result.Err != nil {
+				status = fmt.Sprintf("error: %v", result.Err)
+			}
+			m.response += fmt.Sprintf("\n\n> %s\n%s", result.Command, status)
+			if result.Output != "" {
+				m.response += "\n" + result.Output
+			}
+		}
+		m.viewport.SetContent(m.renderResponse())
+		m.viewport.GotoBottom()
+		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -172,6 +187,15 @@ func (m *AskViewModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if msg.String() == "esc" {
 			if m.cancelFn != nil {
 				m.cancelFn()
+			}
+			// Close the reader pipe and reap the child process to prevent
+			// zombie processes. The context cancellation kills the subprocess,
+			// but Wait() is still needed to release OS resources.
+			if m.streamReader != nil {
+				_ = m.streamReader.Close()
+			}
+			if m.streamCmd != nil {
+				_ = m.streamCmd.Wait()
 			}
 			m.state = askStateInput
 			m.streamReader = nil
@@ -272,6 +296,7 @@ func (m *AskViewModel) applyCommands() tea.Cmd {
 	m.commands = nil
 
 	return func() tea.Msg {
+		var results []AskCommandResultMsg
 		for _, c := range commands {
 			parts := strings.Fields(c)
 			if len(parts) < 2 {
@@ -279,9 +304,12 @@ func (m *AskViewModel) applyCommands() tea.Cmd {
 			}
 			cmd := exec.Command(parts[0], parts[1:]...)
 			out, err := cmd.CombinedOutput()
-			return AskCommandResultMsg{Command: c, Output: string(out), Err: err}
+			results = append(results, AskCommandResultMsg{Command: c, Output: string(out), Err: err})
 		}
-		return nil
+		if len(results) == 0 {
+			return nil
+		}
+		return AskCommandBatchMsg{Results: results}
 	}
 }
 

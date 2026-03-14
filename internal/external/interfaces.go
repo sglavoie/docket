@@ -160,7 +160,11 @@ func (e *VSCodeEditor) OpenFile(path string) error {
 	cmd := exec.Command("code", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }
 
 // OpenFileAtLine implements Editor.
@@ -169,7 +173,11 @@ func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
 	cmd := exec.Command("code", "--goto", arg)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }
 
 // OpenFolder implements Editor.
@@ -177,7 +185,11 @@ func (e *VSCodeEditor) OpenFolder(path string) error {
 	cmd := exec.Command("code", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }
 
 // OpenNewWindow implements Editor.
@@ -185,7 +197,11 @@ func (e *VSCodeEditor) OpenNewWindow(path string) error {
 	cmd := exec.Command("code", "--new-window", path)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }
 
 // EditContent implements Editor.

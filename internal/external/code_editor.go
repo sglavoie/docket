@@ -87,5 +87,11 @@ func OpenCodeReference(editor, path string, line int) error {
 		cmd.Stdin = os.Stdin
 		return cmd.Run()
 	}
-	return cmd.Start()
+	// GUI editors run in the background; reap the child process in a
+	// goroutine to prevent zombie processes.
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
 }

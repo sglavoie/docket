@@ -197,7 +197,9 @@ func openBrowserCmd(url string) tea.Cmd {
 		} else {
 			cmd = exec.Command("xdg-open", url)
 		}
-		_ = cmd.Start()
+		if err := cmd.Start(); err == nil {
+			go func() { _ = cmd.Wait() }()
+		}
 		return nil
 	}
 }

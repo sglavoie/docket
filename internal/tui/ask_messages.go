@@ -25,3 +25,8 @@ type AskCommandResultMsg struct {
 	Output  string
 	Err     error
 }
+
+// AskCommandBatchMsg reports the results of executing all tt commands.
+type AskCommandBatchMsg struct {
+	Results []AskCommandResultMsg
+}
