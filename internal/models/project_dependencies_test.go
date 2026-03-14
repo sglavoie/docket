@@ -508,3 +508,50 @@ func TestGetIncompleteDependenciesWithNonExistentDependency(t *testing.T) {
 		t.Errorf("expected 0 incomplete deps after completing blocker, got %d", len(incomplete))
 	}
 }
+
+func TestHasIncompleteDependenciesCrossProjectRef(t *testing.T) {
+	project := NewProject("test-proj", "Test", "/tmp/test")
+
+	task, err := NewTask("task1", 1, TaskTypeTask, "Task 1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a cross-project qualified reference directly (bypasses AddDependency self-check)
+	task.DependsOn = []string{"other-project-id:remote-task-id"}
+	project.Tasks = []*Task{task}
+
+	// Cross-project deps cannot be resolved locally and should be treated as incomplete
+	if !project.HasIncompleteDependencies(task) {
+		t.Error("expected HasIncompleteDependencies to return true for cross-project dep")
+	}
+}
+
+func TestCheckAndAutoUnblockSkipsCrossProjectDeps(t *testing.T) {
+	project := NewProject("test-proj", "Test", "/tmp/test")
+
+	blocker, err := NewTask("blocker", 1, TaskTypeTask, "Local Blocker")
+	if err != nil {
+		t.Fatal(err)
+	}
+	task, err := NewTask("task1", 2, TaskTypeTask, "Blocked Task")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Task depends on a local blocker and a cross-project dep
+	_ = task.AddDependency(blocker.ID)
+	task.DependsOn = append(task.DependsOn, "other-project-id:remote-task-id")
+	task.Status = StatusBlocked
+
+	project.Tasks = []*Task{blocker, task}
+
+	// Complete local blocker
+	blocker.Complete()
+
+	// Auto-unblock should NOT unblock because cross-project dep is unresolvable
+	project.CheckAndAutoUnblock()
+	if task.Status != StatusBlocked {
+		t.Errorf("expected task to remain blocked due to cross-project dep, got %s", task.Status)
+	}
+}

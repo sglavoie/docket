@@ -58,12 +58,16 @@ func (p *Project) BuildTaskTree() {
 		}
 	}
 
-	// Remove orphaned dependency IDs (references to deleted tasks)
+	// Remove orphaned dependency IDs (references to deleted tasks).
+	// Cross-project qualified references (format "projectID:taskID") are preserved
+	// since they point to tasks in other projects not present in this task map.
 	for _, task := range p.Tasks {
 		if len(task.DependsOn) > 0 {
 			valid := task.DependsOn[:0]
 			for _, depID := range task.DependsOn {
-				if _, ok := taskMap[depID]; ok {
+				if ParseTaskRef(depID).IsCrossProject() {
+					valid = append(valid, depID)
+				} else if _, ok := taskMap[depID]; ok {
 					valid = append(valid, depID)
 				} else {
 					logging.Warn("task %q (#%d) depends on non-existent task %s, removing orphaned dependency", task.Title, task.ShortID, depID)

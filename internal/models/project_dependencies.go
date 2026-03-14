@@ -79,11 +79,18 @@ func (p *Project) CheckAndAutoUnblock() {
 
 // HasIncompleteDependencies returns true if the task has any dependencies
 // that are not yet complete (done or canceled).
+// Cross-project qualified references (format "projectID:taskID") that cannot
+// be resolved locally are conservatively treated as incomplete.
 func (p *Project) HasIncompleteDependencies(task *Task) bool {
 	if len(task.DependsOn) == 0 {
 		return false
 	}
 	for _, depID := range task.DependsOn {
+		if ParseTaskRef(depID).IsCrossProject() {
+			// Cross-project dep cannot be resolved locally; treat as incomplete
+			// to prevent premature completion.
+			return true
+		}
 		dep := p.GetTaskByID(depID)
 		if dep != nil && !dep.IsComplete() {
 			return true

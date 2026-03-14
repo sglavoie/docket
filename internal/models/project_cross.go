@@ -49,10 +49,11 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	for i, t := range movedTasks {
 		oldShortIDs[i] = t.ShortID
 
-		// Clear dependencies pointing to tasks not in moved set
+		// Clear same-project dependencies pointing to tasks not in moved set.
+		// Preserve cross-project qualified references (format "projectID:taskID").
 		newDeps := make([]string, 0, len(t.DependsOn))
 		for _, depID := range t.DependsOn {
-			if movedIDs[depID] {
+			if ParseTaskRef(depID).IsCrossProject() || movedIDs[depID] {
 				newDeps = append(newDeps, depID)
 			} else {
 				clearedDeps = append(clearedDeps, depID)
@@ -60,10 +61,11 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		}
 		t.DependsOn = newDeps
 
-		// Clear RelatedTo references pointing to tasks not in moved set
+		// Clear same-project RelatedTo references pointing to tasks not in moved set.
+		// Preserve cross-project qualified references.
 		newRelated := make([]string, 0, len(t.RelatedTo))
 		for _, relID := range t.RelatedTo {
-			if movedIDs[relID] {
+			if ParseTaskRef(relID).IsCrossProject() || movedIDs[relID] {
 				newRelated = append(newRelated, relID)
 			}
 		}
@@ -98,7 +100,9 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	p.Tasks = newTasks
 	p.UpdatedAt = now
 
-	// Clear dependencies and RelatedTo in source project that pointed to moved tasks
+	// Clear same-project dependencies and RelatedTo in source project that pointed to moved tasks.
+	// Cross-project qualified references are never affected here since movedIDs only contains
+	// plain task UUIDs.
 	for _, t := range p.Tasks {
 		newDeps := make([]string, 0, len(t.DependsOn))
 		for _, depID := range t.DependsOn {
