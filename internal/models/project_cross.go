@@ -60,6 +60,15 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		}
 		t.DependsOn = newDeps
 
+		// Clear RelatedTo references pointing to tasks not in moved set
+		var newRelated []string
+		for _, relID := range t.RelatedTo {
+			if movedIDs[relID] {
+				newRelated = append(newRelated, relID)
+			}
+		}
+		t.RelatedTo = newRelated
+
 		// Reset section if it doesn't exist in destination
 		if t.Section != "" && !destSectionSet[t.Section] {
 			t.Section = SectionNext
@@ -89,7 +98,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 	p.Tasks = newTasks
 	p.UpdatedAt = now
 
-	// Clear dependencies in source project that pointed to moved tasks
+	// Clear dependencies and RelatedTo in source project that pointed to moved tasks
 	for _, t := range p.Tasks {
 		var newDeps []string
 		for _, depID := range t.DependsOn {
@@ -99,6 +108,17 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		}
 		if len(newDeps) != len(t.DependsOn) {
 			t.DependsOn = newDeps
+			t.UpdatedAt = now
+		}
+
+		var newRelated []string
+		for _, relID := range t.RelatedTo {
+			if !movedIDs[relID] {
+				newRelated = append(newRelated, relID)
+			}
+		}
+		if len(newRelated) != len(t.RelatedTo) {
+			t.RelatedTo = newRelated
 			t.UpdatedAt = now
 		}
 	}

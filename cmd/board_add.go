@@ -95,11 +95,14 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 	if boardAddSource != "" {
 		task.Source = boardAddSource
 	}
-	if boardAddPriority >= 1 && boardAddPriority <= 5 {
+	if cmd.Flags().Changed("priority") {
+		if boardAddPriority < models.PriorityMin || boardAddPriority > models.PriorityMax {
+			return fmt.Errorf("priority must be between %d and %d", models.PriorityMin, models.PriorityMax)
+		}
 		task.Priority = boardAddPriority
 	}
-	if len(boardAddTags) > 0 {
-		task.Tags = boardAddTags
+	for _, tag := range boardAddTags {
+		task.AddTag(tag)
 	}
 
 	targetProject.Tasks = append(targetProject.Tasks, task)

@@ -33,6 +33,13 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 	taskIDs := args[:len(args)-1]
 	sectionName := args[len(args)-1]
 
+	// Validate section name upfront (not per-task)
+	if sectionName != "" {
+		if err := models.ValidateSectionName(sectionName); err != nil {
+			return err
+		}
+	}
+
 	var errs []string
 	succeeded := 0
 	for _, taskID := range taskIDs {

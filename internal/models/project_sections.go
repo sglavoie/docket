@@ -166,6 +166,8 @@ func (p *Project) GetCustomSections() []string {
 		SectionNext:      true,
 		SectionWaiting:   true,
 		SectionSomeday:   true,
+		SectionReview:    true,
+		SectionStandby:   true,
 		SectionCompleted: true,
 	}
 	var custom []string

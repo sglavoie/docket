@@ -183,6 +183,16 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 		srcProject.Tasks = remaining
 		srcProject.BuildTaskTree()
 
+		// Clear cross-project references on the moved task
+		movedTask.DependsOn = nil
+		movedTask.RelatedTo = nil
+
+		// Clear references in source project that point to the moved task
+		for _, t := range srcProject.Tasks {
+			t.RemoveDependency(movedTask.ID)
+			t.RemoveRelatedTo(movedTask.ID)
+		}
+
 		// Add to destination with a new short ID
 		movedTask.ShortID = destProject.GetNextShortID()
 		movedTask.ParentID = nil // clear parent since it's in a new project
