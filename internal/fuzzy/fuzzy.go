@@ -2,6 +2,7 @@
 package fuzzy
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -125,14 +126,7 @@ func ScoreTermsWithPositions(text, query string) (int, []int) {
 	for pos := range positionSet {
 		allPositions = append(allPositions, pos)
 	}
-	// Sort positions
-	for i := 0; i < len(allPositions)-1; i++ {
-		for j := i + 1; j < len(allPositions); j++ {
-			if allPositions[i] > allPositions[j] {
-				allPositions[i], allPositions[j] = allPositions[j], allPositions[i]
-			}
-		}
-	}
+	slices.Sort(allPositions)
 
 	return totalScore, allPositions
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -30,7 +31,7 @@ EXAMPLES
   # Update tags
   tt template edit abc123 --tags backend,api
 
-  # Add an item
+  # Add an item (child subtask)
   tt template edit abc123 --add-item "New Step"
 
   # Add an optional item
@@ -40,24 +41,36 @@ EXAMPLES
   tt template edit abc123 --remove-item 2
 
   # Clear all items
-  tt template edit abc123 --clear-items`,
+  tt template edit abc123 --clear-items
+
+  # Add a checklist item
+  tt template edit abc123 --add-checklist "Verify output"
+
+  # Remove a checklist item by index (1-based, use 'tt template show')
+  tt template edit abc123 --remove-checklist 2
+
+  # Clear all checklist items
+  tt template edit abc123 --clear-checklist`,
 	Args: cobra.ExactArgs(1),
 	RunE: runTemplateEdit,
 }
 
 var (
-	templateEditName        string
-	templateEditType        string
-	templateEditPriority    int
-	templateEditTags        string
-	templateEditSection     string
-	templateEditDescription string
-	templateEditCategory    string
-	templateEditAddChildren []string
-	templateEditAddOptChild []string
-	templateEditRemoveChild []int
-	templateEditClearChild  bool
-	templateEditEnabled     bool
+	templateEditName            string
+	templateEditType            string
+	templateEditPriority        int
+	templateEditTags            string
+	templateEditSection         string
+	templateEditDescription     string
+	templateEditCategory        string
+	templateEditAddChildren     []string
+	templateEditAddOptChild     []string
+	templateEditRemoveChild     []int
+	templateEditClearChild      bool
+	templateEditEnabled         bool
+	templateEditAddChecklist    []string
+	templateEditRemoveChecklist []int
+	templateEditClearChecklist  bool
 )
 
 func init() {
@@ -75,6 +88,9 @@ func init() {
 	templateEditCmd.Flags().IntSliceVar(&templateEditRemoveChild, "remove-item", nil, "remove item by index (can specify multiple)")
 	templateEditCmd.Flags().BoolVar(&templateEditClearChild, "clear-items", false, "remove all items")
 	templateEditCmd.Flags().BoolVar(&templateEditEnabled, "enabled", false, "enable or disable template")
+	templateEditCmd.Flags().StringArrayVar(&templateEditAddChecklist, "add-checklist", nil, "add checklist item (can specify multiple)")
+	templateEditCmd.Flags().IntSliceVar(&templateEditRemoveChecklist, "remove-checklist", nil, "remove checklist item by index (1-based, can specify multiple)")
+	templateEditCmd.Flags().BoolVar(&templateEditClearChecklist, "clear-checklist", false, "remove all checklist items")
 
 	_ = templateEditCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = templateEditCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
@@ -172,26 +188,20 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 
 	// Handle children modifications
 	if templateEditClearChild {
-		// Allow clearing without adding new ones:
-		// if len(templateEditAddChildren) == 0 && len(templateEditAddOptChild) == 0 {}
 		t.Children = []template.TemplateChild{}
 		hasChanges = true
 	}
 
 	if len(templateEditRemoveChild) > 0 {
-		// Sort indices in reverse order to remove from end first
-		indices := make([]int, len(templateEditRemoveChild))
-		copy(indices, templateEditRemoveChild)
-		for i := range indices {
-			for j := i + 1; j < len(indices); j++ {
-				if indices[j] > indices[i] {
-					indices[i], indices[j] = indices[j], indices[i]
-				}
-			}
+		if len(t.Children) == 0 {
+			return fmt.Errorf("template has no items to remove")
 		}
+		// Deduplicate and sort indices in descending order to remove from end first
+		indices := slices.Compact(slices.Sorted(slices.Values(templateEditRemoveChild)))
+		slices.Reverse(indices)
 		for _, idx := range indices {
 			if idx < 0 || idx >= len(t.Children) {
-				return fmt.Errorf("child index %d out of range (0-%d)", idx, len(t.Children)-1)
+				return fmt.Errorf("item index %d out of range (0-%d)", idx, len(t.Children)-1)
 			}
 			t.Children = append(t.Children[:idx], t.Children[idx+1:]...)
 		}
@@ -220,6 +230,40 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Handle checklist modifications
+	if templateEditClearChecklist {
+		t.Checklist = []string{}
+		hasChanges = true
+	}
+
+	if len(templateEditRemoveChecklist) > 0 {
+		if len(t.Checklist) == 0 {
+			return fmt.Errorf("template has no checklist items to remove")
+		}
+		// Convert 1-based user indices to 0-based, deduplicate, sort descending
+		indices := make([]int, 0, len(templateEditRemoveChecklist))
+		for _, idx := range templateEditRemoveChecklist {
+			indices = append(indices, idx-1) // convert to 0-based
+		}
+		indices = slices.Compact(slices.Sorted(slices.Values(indices)))
+		slices.Reverse(indices)
+		for _, idx := range indices {
+			if idx < 0 || idx >= len(t.Checklist) {
+				return fmt.Errorf("checklist index %d out of range (1-%d)", idx+1, len(t.Checklist))
+			}
+			t.Checklist = append(t.Checklist[:idx], t.Checklist[idx+1:]...)
+		}
+		hasChanges = true
+	}
+
+	for _, item := range templateEditAddChecklist {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			t.Checklist = append(t.Checklist, item)
+			hasChanges = true
+		}
+	}
+
 	if !hasChanges {
 		return fmt.Errorf("no changes specified; use --name, --type, --priority, --tags, etc")
 	}
@@ -240,6 +284,9 @@ func runTemplateEdit(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Updated task template: %s [%s]\n", t.Name, t.ID)
 	fmt.Printf("  %s\n", t.Summary())
+	if len(t.Checklist) > 0 {
+		fmt.Printf("  Checklist: %d\n", len(t.Checklist))
+	}
 	if len(t.Children) > 0 {
 		fmt.Printf("  Items: %d\n", len(t.Children))
 	}

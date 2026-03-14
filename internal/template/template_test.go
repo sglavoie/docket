@@ -327,10 +327,10 @@ func TestSummary_ChecklistTakesPrecedenceOverChildren(t *testing.T) {
 	tmpl.Checklist = []string{"X"}
 	tmpl.Children = []TemplateChild{{Title: "Y"}}
 	got := tmpl.Summary()
-	if !strings.Contains(got, "1 checklist items") {
+	if !strings.Contains(got, "1 checklist item") {
 		t.Errorf("Summary should show checklist count, got %q", got)
 	}
-	if strings.Contains(got, "1 items") {
+	if strings.Contains(got, "1 item") && !strings.Contains(got, "checklist") {
 		t.Errorf("Summary should not show children count when checklist present, got %q", got)
 	}
 }
@@ -343,8 +343,8 @@ func TestSummary_AllParts(t *testing.T) {
 	tmpl.Children = []TemplateChild{{Title: "Child"}}
 
 	got := tmpl.Summary()
-	if got != "epic, P1, #urgent, →Now, 1 items" {
-		t.Errorf("Summary: got %q, want %q", got, "epic, P1, #urgent, →Now, 1 items")
+	if got != "epic, P1, #urgent, →Now, 1 item" {
+		t.Errorf("Summary: got %q, want %q", got, "epic, P1, #urgent, →Now, 1 item")
 	}
 }
 

@@ -103,9 +103,17 @@ func (t *TaskTemplate) Summary() string {
 
 	// Show checklist count (prefer checklist over children)
 	if len(t.Checklist) > 0 {
-		parts = append(parts, fmt.Sprintf("%d checklist items", len(t.Checklist)))
+		if len(t.Checklist) == 1 {
+			parts = append(parts, "1 checklist item")
+		} else {
+			parts = append(parts, fmt.Sprintf("%d checklist items", len(t.Checklist)))
+		}
 	} else if len(t.Children) > 0 {
-		parts = append(parts, fmt.Sprintf("%d items", len(t.Children)))
+		if len(t.Children) == 1 {
+			parts = append(parts, "1 item")
+		} else {
+			parts = append(parts, fmt.Sprintf("%d items", len(t.Children)))
+		}
 	}
 
 	return strings.Join(parts, ", ")
