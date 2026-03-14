@@ -223,6 +223,95 @@ func diffTask(old, new *models.Task) {
 			NewValue:  newParent,
 		})
 	}
+
+	// Recurrence
+	oldRecur := recurrenceString(old.Recurrence)
+	newRecur := recurrenceString(new.Recurrence)
+	if oldRecur != newRecur {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "recurrence",
+			OldValue:  oldRecur,
+			NewValue:  newRecur,
+		})
+	}
+
+	// Checklist
+	oldChecklist := len(old.Checklist)
+	newChecklist := len(new.Checklist)
+	oldDone := countChecklistDone(old.Checklist)
+	newDone := countChecklistDone(new.Checklist)
+	if oldChecklist != newChecklist || oldDone != newDone {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "checklist",
+			OldValue:  fmt.Sprintf("%d/%d", oldDone, oldChecklist),
+			NewValue:  fmt.Sprintf("%d/%d", newDone, newChecklist),
+		})
+	}
+
+	// ScoreDimensions
+	if !scoreDimensionsEqual(old.ScoreDimensions, new.ScoreDimensions) {
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "score",
+			NewValue:  "updated",
+		})
+	}
+
+	// CustomSection
+	if old.CustomSection != new.CustomSection {
+		oldCS := old.CustomSection
+		if oldCS == "" {
+			oldCS = "none"
+		}
+		newCS := new.CustomSection
+		if newCS == "" {
+			newCS = "none"
+		}
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "custom_section",
+			OldValue:  oldCS,
+			NewValue:  newCS,
+		})
+	}
+
+	// URL
+	if old.URL != new.URL {
+		oldURL := old.URL
+		if oldURL == "" {
+			oldURL = "none"
+		}
+		newURL := new.URL
+		if newURL == "" {
+			newURL = "none"
+		}
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "url",
+			OldValue:  oldURL,
+			NewValue:  newURL,
+		})
+	}
+
+	// Source
+	if old.Source != new.Source {
+		oldSource := old.Source
+		if oldSource == "" {
+			oldSource = "none"
+		}
+		newSource := new.Source
+		if newSource == "" {
+			newSource = "none"
+		}
+		new.Activity = append(new.Activity, &models.ActivityEntry{
+			Timestamp: now,
+			Field:     "source",
+			OldValue:  oldSource,
+			NewValue:  newSource,
+		})
+	}
 }
 
 // diffTags returns a string like "+backend +api -frontend" for tag changes.
@@ -310,4 +399,36 @@ func ptrStringVal(p *string) string {
 		return "none"
 	}
 	return *p
+}
+
+// recurrenceString returns a human-readable string for a recurrence pattern, or "none".
+func recurrenceString(r *models.RecurrencePattern) string {
+	if r == nil {
+		return "none"
+	}
+	return r.String()
+}
+
+// countChecklistDone returns the number of completed checklist items.
+func countChecklistDone(items []models.ChecklistItem) int {
+	n := 0
+	for _, item := range items {
+		if item.Done {
+			n++
+		}
+	}
+	return n
+}
+
+// scoreDimensionsEqual compares two score dimension maps for equality.
+func scoreDimensionsEqual(a, b map[string]int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if bv, ok := b[k]; !ok || bv != v {
+			return false
+		}
+	}
+	return true
 }
