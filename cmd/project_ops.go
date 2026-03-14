@@ -184,8 +184,8 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 		srcProject.BuildTaskTree()
 
 		// Clear cross-project references on the moved task
-		movedTask.DependsOn = nil
-		movedTask.RelatedTo = nil
+		movedTask.DependsOn = []string{}
+		movedTask.RelatedTo = []string{}
 
 		// Clear references in source project that point to the moved task
 		for _, t := range srcProject.Tasks {

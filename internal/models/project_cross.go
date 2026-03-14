@@ -50,7 +50,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		oldShortIDs[i] = t.ShortID
 
 		// Clear dependencies pointing to tasks not in moved set
-		var newDeps []string
+		newDeps := make([]string, 0, len(t.DependsOn))
 		for _, depID := range t.DependsOn {
 			if movedIDs[depID] {
 				newDeps = append(newDeps, depID)
@@ -61,7 +61,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 		t.DependsOn = newDeps
 
 		// Clear RelatedTo references pointing to tasks not in moved set
-		var newRelated []string
+		newRelated := make([]string, 0, len(t.RelatedTo))
 		for _, relID := range t.RelatedTo {
 			if movedIDs[relID] {
 				newRelated = append(newRelated, relID)
@@ -100,7 +100,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 
 	// Clear dependencies and RelatedTo in source project that pointed to moved tasks
 	for _, t := range p.Tasks {
-		var newDeps []string
+		newDeps := make([]string, 0, len(t.DependsOn))
 		for _, depID := range t.DependsOn {
 			if !movedIDs[depID] {
 				newDeps = append(newDeps, depID)
@@ -111,7 +111,7 @@ func (p *Project) MoveTaskToProject(task *Task, dest *Project) (*MoveTaskToProje
 			t.UpdatedAt = now
 		}
 
-		var newRelated []string
+		newRelated := make([]string, 0, len(t.RelatedTo))
 		for _, relID := range t.RelatedTo {
 			if !movedIDs[relID] {
 				newRelated = append(newRelated, relID)

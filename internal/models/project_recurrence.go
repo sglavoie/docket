@@ -1,6 +1,13 @@
 package models
 
-import "time"
+import (
+	"crypto/rand"
+	"fmt"
+	"sync/atomic"
+	"time"
+
+	"github.com/sglavoie/tt/internal/util"
+)
 
 // GenerateRecurringInstances checks for completed recurring tasks and creates
 // their next instances. Returns the number of instances generated.
@@ -23,8 +30,8 @@ func (p *Project) GenerateRecurringInstances() int {
 		if task.Recurrence != nil {
 			onTime := true
 			if task.DueDate != nil && task.CompletedAt != nil {
-				completedDay := task.CompletedAt.Truncate(24 * time.Hour)
-				dueDay := task.DueDate.Truncate(24 * time.Hour)
+				completedDay := util.StartOfDay(*task.CompletedAt)
+				dueDay := util.StartOfDay(*task.DueDate)
 				onTime = !completedDay.After(dueDay)
 			}
 			// No DueDate counts as on-time
@@ -52,18 +59,22 @@ func (p *Project) GenerateRecurringInstances() int {
 		}
 
 		newTask := &Task{
-			ID:         generateUUID(),
-			ShortID:    p.GetNextShortID(),
-			Type:       task.Type,
-			Title:      task.Title,
-			Status:     StatusTodo,
-			Priority:   task.Priority,
-			Section:    SectionInbox, // New instances go to Inbox for triage
-			Tags:       append([]string{}, task.Tags...),
-			DueDate:    nextDue,
-			Recurrence: newRecurrence,
-			CreatedAt:  now,
-			UpdatedAt:  now,
+			ID:              generateUUID(),
+			ShortID:         p.GetNextShortID(),
+			Type:            task.Type,
+			Title:           task.Title,
+			Status:          StatusTodo,
+			Priority:        task.Priority,
+			Section:         SectionInbox, // New instances go to Inbox for triage
+			Tags:            append([]string{}, task.Tags...),
+			DependsOn:       []string{},
+			RelatedTo:       []string{},
+			ScoreDimensions: map[string]int{},
+			Children:        []*Task{},
+			DueDate:         nextDue,
+			Recurrence:      newRecurrence,
+			CreatedAt:       now,
+			UpdatedAt:       now,
 		}
 
 		// Clear recurrence from completed task (pattern moves to new instance)
@@ -83,12 +94,16 @@ func (p *Project) GenerateRecurringInstances() int {
 	return generated
 }
 
-// generateUUID creates a new UUID string. This is a simple implementation
-// that relies on the uuid package being imported in files that use Project.
-// For the model package, we use a simple time-based approach.
+// uuidCounter is an atomic counter to ensure uniqueness when generateUUID
+// is called multiple times within the same nanosecond (e.g., in a loop).
+var uuidCounter atomic.Uint64
+
+// generateUUID creates a new unique ID string using timestamp, random bytes,
+// and an atomic counter. This avoids collisions when called rapidly in a loop
+// (e.g., generating multiple recurring task instances).
 func generateUUID() string {
-	// Use timestamp + counter approach for unique IDs within model package
-	// The actual UUID generation happens in the calling code (TUI/CLI)
-	// This is a fallback that should rarely be used
-	return time.Now().Format("20060102150405.000000000")
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	seq := uuidCounter.Add(1)
+	return fmt.Sprintf("%s-%x-%d", time.Now().Format("20060102150405.000000000"), b, seq)
 }
