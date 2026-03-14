@@ -85,6 +85,9 @@ func init() {
 	templateAddCmd.Flags().BoolVar(&templateAddDisabled, "disabled", false, "create template in disabled state")
 
 	_ = templateAddCmd.MarkFlagRequired("name")
+
+	_ = templateAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
+	_ = templateAddCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
 }
 
 func runTemplateAdd(cmd *cobra.Command, args []string) error {

@@ -75,6 +75,9 @@ func init() {
 	templateEditCmd.Flags().IntSliceVar(&templateEditRemoveChild, "remove-item", nil, "remove item by index (can specify multiple)")
 	templateEditCmd.Flags().BoolVar(&templateEditClearChild, "clear-items", false, "remove all items")
 	templateEditCmd.Flags().BoolVar(&templateEditEnabled, "enabled", false, "enable or disable template")
+
+	_ = templateEditCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
+	_ = templateEditCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
 }
 
 func runTemplateEdit(cmd *cobra.Command, args []string) error {

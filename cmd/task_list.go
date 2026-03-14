@@ -59,6 +59,10 @@ func init() {
 	taskListCmd.Flags().BoolVar(&listSnoozed, "snoozed", false, "include snoozed tasks (hidden by default)")
 	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
 	taskListCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
+
+	_ = taskListCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
+	_ = taskListCmd.RegisterFlagCompletionFunc("status", completeEnum(statusCompletions))
+	_ = taskListCmd.RegisterFlagCompletionFunc("sort", completeEnum(sortCompletions))
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {

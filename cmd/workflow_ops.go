@@ -180,7 +180,7 @@ type projectRuleResult struct {
 
 // evaluateAndApplyProjectRules evaluates project-level rules and applies the result
 // if the project's status was not manually set by the user.
-func evaluateAndApplyProjectRules(project *models.Project, cfg *config.Config, rules []workflow.WorkflowRule) projectRuleResult {
+func evaluateAndApplyProjectRules(project *models.Project, _ *config.Config, rules []workflow.WorkflowRule) projectRuleResult {
 	var res projectRuleResult
 
 	ctx := &workflow.ProjectEvaluationContext{

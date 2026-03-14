@@ -28,7 +28,7 @@ Examples:
 
 func init() {
 	projectCmd.AddCommand(projectDeleteCmd)
-	projectDeleteCmd.Flags().BoolVarP(&projectDeleteForce, "force", "f", false, "skip confirmation prompt")
+	projectDeleteCmd.Flags().BoolVarP(&projectDeleteForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runProjectDelete(cmd *cobra.Command, args []string) error {

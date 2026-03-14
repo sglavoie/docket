@@ -145,7 +145,7 @@ func ProjectsToSelectorItems(projects []*models.Project, includeActive bool) []s
 // from the source project to destination projects.
 // Validates all destinations exist and are loadable before making any changes,
 // so that a missing destination doesn't leave the source project partially modified.
-func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, cfgManager *config.Manager) error {
+func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config, _ *config.Manager) error {
 	// Phase 1: Validate and load all destination projects upfront.
 	destProjects := make(map[string]*models.Project, len(moves))
 	for _, move := range moves {

@@ -60,6 +60,8 @@ func init() {
 	addCmd.Flags().BoolVar(&addIsStory, "story", false, "create a story")
 	addCmd.Flags().BoolVar(&addIsBug, "bug", false, "create a bug")
 	addCmd.Flags().BoolVar(&addIsIdea, "idea", false, "create an idea")
+
+	_ = addCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 }
 
 // parseInlineMetadata extracts priority (!N) and tags (#tag) from the title.

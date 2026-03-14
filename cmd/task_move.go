@@ -210,6 +210,9 @@ func runTaskOutdent(cmd *cobra.Command, args []string) error {
 					t.ShortID, t.Title, oldParentShortID, oldParentTitle)
 			}
 			newParent := p.GetTaskByID(*t.ParentID)
+			if newParent == nil {
+				return fmt.Sprintf("Outdented #%d: %s", t.ShortID, t.Title)
+			}
 			return fmt.Sprintf("Outdented #%d: %s (now under #%d: %s)",
 				t.ShortID, t.Title, newParent.ShortID, newParent.Title)
 		},

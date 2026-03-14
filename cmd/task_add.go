@@ -79,6 +79,8 @@ func init() {
 
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
+
+	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {

@@ -381,7 +381,7 @@ func runWorkflowEdit(cmd *cobra.Command, args []string) error {
 }
 
 // detectMutuallyExclusiveEditFlags checks for conflicting flag combinations.
-func detectMutuallyExclusiveEditFlags(cmd *cobra.Command) error {
+func detectMutuallyExclusiveEditFlags(_ *cobra.Command) error {
 	if workflowEditClearTriggers && workflowEditRemoveTriggers != "" {
 		return fmt.Errorf("cannot use --clear-triggers with --remove-trigger")
 	}
