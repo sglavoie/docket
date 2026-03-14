@@ -125,6 +125,10 @@ func getTaskFieldValue(task *models.Task, field string) string {
 		if task.BugAttrs != nil {
 			return string(task.BugAttrs.Reproducible)
 		}
+	case "bug.workaround":
+		if task.BugAttrs != nil {
+			return task.BugAttrs.Workaround
+		}
 	case "task.effort":
 		if task.TaskAttrs != nil {
 			return string(task.TaskAttrs.Effort)
@@ -148,6 +152,10 @@ func getTaskFieldValue(task *models.Task, field string) string {
 	case "story.points":
 		if task.StoryAttrs != nil {
 			return strconv.Itoa(task.StoryAttrs.StoryPoints)
+		}
+	case "story.persona":
+		if task.StoryAttrs != nil {
+			return task.StoryAttrs.Persona
 		}
 	case "epic.scope":
 		if task.EpicAttrs != nil {

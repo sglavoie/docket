@@ -63,12 +63,16 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 		ranked = ranked[:limit]
 	}
 
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+
 	if len(ranked) == 0 {
+		if jsonOutput {
+			fmt.Println("[]")
+			return nil
+		}
 		fmt.Println("No tasks to rank.")
 		return nil
 	}
-
-	jsonOutput, _ := cmd.Flags().GetBool("json")
 	if jsonOutput {
 		type rankedJSON struct {
 			Rank         int     `json:"rank"`

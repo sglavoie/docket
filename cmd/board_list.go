@@ -101,6 +101,10 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 		}
 		entries := make([]actionJSONEntry, len(actions))
 		for i, a := range actions {
+			tags := a.task.Tags
+			if tags == nil {
+				tags = []string{}
+			}
 			entries[i] = actionJSONEntry{
 				ID:        a.task.ID,
 				ShortID:   a.task.ShortID,
@@ -109,7 +113,7 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 				Priority:  a.task.Priority,
 				Source:    a.task.Source,
 				URL:       a.task.URL,
-				Tags:      a.task.Tags,
+				Tags:      tags,
 				Project:   a.project,
 				CreatedAt: a.task.CreatedAt,
 				UpdatedAt: a.task.UpdatedAt,

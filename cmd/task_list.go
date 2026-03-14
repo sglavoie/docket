@@ -122,6 +122,10 @@ type taskJSONEntry struct {
 func displayTaskJSON(tasks []*models.Task) error {
 	entries := make([]taskJSONEntry, len(tasks))
 	for i, t := range tasks {
+		tags := t.Tags
+		if tags == nil {
+			tags = []string{}
+		}
 		entries[i] = taskJSONEntry{
 			ID:        t.ID,
 			ShortID:   t.ShortID,
@@ -129,7 +133,7 @@ func displayTaskJSON(tasks []*models.Task) error {
 			Title:     t.Title,
 			Status:    t.Status.String(),
 			Priority:  t.Priority,
-			Tags:      t.Tags,
+			Tags:      tags,
 			Section:   t.Section,
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: t.UpdatedAt,

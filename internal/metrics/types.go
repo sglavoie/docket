@@ -151,15 +151,21 @@ type AggregateMetrics struct {
 // for completion, cycle time, and throughput metrics. They are excluded from
 // blocked metrics since archived tasks without project association aren't actionable.
 func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extraTasks ...[]*models.Task) *AggregateMetrics {
-	var allTasks []*models.Task
+	// projectTasks are the live project tasks (used for blocked metrics).
+	var projectTasks []*models.Task
 	taskProject := make(map[*models.Task]*models.Project)
 	for _, p := range projects {
 		for _, t := range p.Tasks {
 			taskProject[t] = p
 		}
-		allTasks = append(allTasks, p.Tasks...)
+		projectTasks = append(projectTasks, p.Tasks...)
 	}
 
+	// allTasks includes extra (e.g. archived) tasks for completion, cycle time,
+	// and throughput metrics. Extra tasks are excluded from blocked metrics since
+	// archived tasks without project association aren't actionable.
+	allTasks := make([]*models.Task, len(projectTasks))
+	copy(allTasks, projectTasks)
 	for _, extra := range extraTasks {
 		allTasks = append(allTasks, extra...)
 	}
@@ -171,7 +177,7 @@ func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extra
 		Completion: computeCompletion(allTasks, cutoff, now, buckets),
 		CycleTime:  computeCycleTime(allTasks, cutoff, now, buckets),
 		Throughput: computeThroughput(allTasks, cutoff, now, buckets),
-		Blocked:    computeBlocked(allTasks, now, taskProject),
+		Blocked:    computeBlocked(projectTasks, now, taskProject),
 		TimeRange:  tr,
 		IsGlobal:   len(projects) > 1,
 	}
