@@ -399,8 +399,7 @@ func (m *AppModel) pinnedPopupSelect(idx int) (*AppModel, tea.Cmd) {
 	entry := m.pinnedPopupItems[idx]
 	m.showPinnedPopup = false
 	m.invalidatePinnedPreview()
-	m.navigateToTaskInProject(entry.Task, entry.Project)
-	return m, nil
+	return m, m.navigateToTaskInProject(entry.Task, entry.Project)
 }
 
 // reorderPinnedTask moves the current pinned item by delta (+1 = down, -1 = up)

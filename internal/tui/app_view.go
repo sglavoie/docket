@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -9,6 +10,16 @@ import (
 func (m *AppModel) View() string {
 	if m.quitting {
 		return ""
+	}
+
+	if m.tooNarrow {
+		msg := fmt.Sprintf("Terminal too narrow (min %d columns)", minTerminalWidth)
+		style := lipgloss.NewStyle().
+			Width(m.width).
+			Height(m.height).
+			Align(lipgloss.Center, lipgloss.Center).
+			Foreground(lipgloss.Color("241"))
+		return style.Render(msg)
 	}
 
 	content := m.views.View(m.currentView())

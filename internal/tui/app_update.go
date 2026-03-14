@@ -318,10 +318,14 @@ func (m *AppModel) handleEscKey() bool {
 	return false
 }
 
+// minTerminalWidth is the minimum terminal width required to render the TUI.
+const minTerminalWidth = 60
+
 // handleWindowSize updates dimensions for all views.
 func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	m.width = msg.Width
 	m.height = msg.Height
+	m.tooNarrow = msg.Width < minTerminalWidth
 	m.views.SetSize(msg.Width, msg.Height-2)
 	// Re-apply full terminal height for views that render their own footer
 	for _, vt := range m.views.Types() {

@@ -253,8 +253,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 						}
 					}
 					m.buildTree()
-					m.NavigateToTask(task)
-					return m, nil
+					return m, m.NavigateToTask(task)
 				}
 			}
 			return m, nil

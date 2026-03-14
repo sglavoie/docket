@@ -480,5 +480,6 @@ func (m *WorkflowRuleCreatorModel) GetConfirmDialog() *ConfirmDialog {
 	return &m.confirmOverlay
 }
 
-func (m *WorkflowRuleCreatorModel) HasTextInput() bool { return true }
-func (m *WorkflowRuleCreatorModel) IsFullHeight() bool { return false }
+func (m *WorkflowRuleCreatorModel) HasTextInput() bool     { return true }
+func (m *WorkflowRuleCreatorModel) IsFullHeight() bool     { return false }
+func (m *WorkflowRuleCreatorModel) StatusBarLabel() string { return "Workflow: New Rule" }

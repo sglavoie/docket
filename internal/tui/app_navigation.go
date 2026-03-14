@@ -1,6 +1,8 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -249,7 +251,8 @@ func (m *AppModel) getProjectLastView(projectID string) ViewType {
 // navigateToTaskInProject switches to the given project using the user's
 // configured default view (or last-used view) and positions the cursor on
 // the specified task. When task is nil it just opens the project view.
-func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) {
+// Returns a tea.Cmd if any notification needs to be shown (e.g. filters cleared).
+func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Project) tea.Cmd {
 	m.saveCurrentProjectView()
 	m.switchToProject(project, true)
 
@@ -263,10 +266,12 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 	targetView := m.getProjectLastView(project.ID)
 	switch targetView {
 	case ViewProjectTree:
+		var navCmd tea.Cmd
 		if task != nil {
-			m.projectTree.NavigateToTask(task)
+			navCmd = m.projectTree.NavigateToTask(task)
 		}
 		m.showView(ViewProjectTree, m.projectTree)
+		return navCmd
 	default:
 		m.saveOutlinerToggleState()
 		m.saveOutlinerFilterState()
@@ -277,5 +282,6 @@ func (m *AppModel) navigateToTaskInProject(task *models.Task, project *models.Pr
 			m.outliner.NavigateToSidebarTask(task)
 		}
 		m.showView(ViewOutliner, m.outliner)
+		return nil
 	}
 }

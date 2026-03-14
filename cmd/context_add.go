@@ -43,7 +43,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	// Find project by slug
 	project := cfg.GetProject(projectSlug)
 	if project == nil {
-		return fmt.Errorf("project '%s' not found", projectSlug)
+		return tterrors.NewProjectNotFoundError(projectSlug)
 	}
 
 	// Check if already in context

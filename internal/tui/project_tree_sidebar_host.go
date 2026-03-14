@@ -39,7 +39,7 @@ func (m *ProjectTreeModel) SidebarSelectedTask() *models.Task {
 
 // NavigateToSidebarTask navigates to a task from the sidebar.
 func (m *ProjectTreeModel) NavigateToSidebarTask(task *models.Task) {
-	m.NavigateToTask(task)
+	_ = m.NavigateToTask(task)
 }
 
 // UnlinkSelectedSidebarTask removes the currently selected link from the sidebar.

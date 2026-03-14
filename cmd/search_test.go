@@ -232,7 +232,12 @@ func TestSearchEdgeCases(t *testing.T) {
 		searchLimit = 0
 
 		err = runSearch(nil, []string{"   "})
-		testutil.AssertNoError(t, err)
+		if err == nil {
+			t.Fatal("expected error for empty query, got nil")
+		}
+		if err.Error() != "search query cannot be empty" {
+			t.Fatalf("unexpected error message: %s", err.Error())
+		}
 	})
 
 	t.Run("no matches returns appropriate message", func(t *testing.T) {

@@ -28,9 +28,9 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s\t%d tasks", p.Name, p.Context, p.CountTasks())
+		line := fmt.Sprintf("%s (%s)\t%s\t%d tasks", p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
-		projectMap[p.Name] = p
+		projectMap[p.Slug] = p
 	}
 
 	input := strings.Join(lines, "\n")
@@ -66,11 +66,17 @@ func FzfSelectProject(projects []*models.Project, prompt string) (*models.Projec
 		return nil, fmt.Errorf("canceled")
 	}
 
-	// Parse the selection - get project name from first field
+	// Parse the selection - extract slug from "Name (slug)" format in first field
 	parts := strings.Split(selected, "\t")
 	if len(parts) > 0 {
-		if project, ok := projectMap[parts[0]]; ok {
-			return project, nil
+		field := parts[0]
+		if start := strings.LastIndex(field, "("); start > 0 {
+			if end := strings.LastIndex(field, ")"); end > start {
+				slug := field[start+1 : end]
+				if project, ok := projectMap[slug]; ok {
+					return project, nil
+				}
+			}
 		}
 	}
 
@@ -164,9 +170,9 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 	projectMap := make(map[string]*models.Project)
 
 	for _, p := range projects {
-		line := fmt.Sprintf("%s\t%s\t%d tasks", p.ID, p.Name, p.CountTasks())
+		line := fmt.Sprintf("%s (%s)\t%s\t%d tasks", p.Name, p.Slug, p.Context, p.CountTasks())
 		lines = append(lines, line)
-		projectMap[p.ID] = p
+		projectMap[p.Slug] = p
 	}
 
 	input := strings.Join(lines, "\n")
@@ -177,7 +183,7 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		"--reverse",
 		"--multi",
 		"--delimiter", "\t",
-		"--with-nth", "2,3",
+		"--with-nth", "1,2,3",
 	)
 
 	cmd.Stdin = strings.NewReader(input)
@@ -201,14 +207,19 @@ func FzfMultiSelectProjects(projects []*models.Project, prompt string, preselect
 		return nil, fmt.Errorf("canceled")
 	}
 
-	// Parse selections
+	// Parse selections - extract slug from "Name (slug)" format in first field
 	var selectedProjects []*models.Project
 	for line := range strings.SplitSeq(output, "\n") {
 		parts := strings.Split(line, "\t")
 		if len(parts) > 0 {
-			id := parts[0]
-			if project, ok := projectMap[id]; ok {
-				selectedProjects = append(selectedProjects, project)
+			field := parts[0]
+			if start := strings.LastIndex(field, "("); start > 0 {
+				if end := strings.LastIndex(field, ")"); end > start {
+					slug := field[start+1 : end]
+					if project, ok := projectMap[slug]; ok {
+						selectedProjects = append(selectedProjects, project)
+					}
+				}
 			}
 		}
 	}

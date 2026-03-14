@@ -96,7 +96,7 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		}
 		project = cfg.GetProject(slug)
 		if project == nil {
-			return fmt.Errorf("project not found: %s", slug)
+			return tterrors.NewProjectNotFoundError(slug)
 		}
 		if err = storage.LoadProject(project); err != nil {
 			return fmt.Errorf("failed to load project %s: %w", slug, err)

@@ -1,9 +1,33 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+// attachmentDelimiter is used to separate the filename from the original path
+// in serialized attachment metadata. Filenames and paths must not contain this
+// sequence — see ValidateAttachmentPath.
+const attachmentDelimiter = "||"
+
+// ValidateAttachmentPath returns an error if the path contains the internal
+// attachment delimiter ("||"), which would corrupt the storage format.
+func ValidateAttachmentPath(path string) error {
+	if strings.Contains(path, attachmentDelimiter) {
+		return fmt.Errorf("path %q contains reserved delimiter %q", path, attachmentDelimiter)
+	}
+	return nil
+}
 
 // AddAttachment adds a file attachment to the task.
-func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) {
+func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) error {
+	if err := ValidateAttachmentPath(filename); err != nil {
+		return err
+	}
+	if err := ValidateAttachmentPath(originalPath); err != nil {
+		return err
+	}
 	attachment := Attachment{
 		Filename:     filename,
 		IsURL:        isURL,
@@ -12,11 +36,15 @@ func (t *Task) AddAttachment(filename string, isURL bool, originalPath string) {
 	}
 	t.Attachments = append(t.Attachments, attachment)
 	t.UpdatedAt = time.Now()
+	return nil
 }
 
 // AddCodeReference adds a code reference attachment to the task.
 // Code references are stored without copying the file.
-func (t *Task) AddCodeReference(path string, lineNumber int) {
+func (t *Task) AddCodeReference(path string, lineNumber int) error {
+	if err := ValidateAttachmentPath(path); err != nil {
+		return err
+	}
 	attachment := Attachment{
 		Filename:     path,
 		IsURL:        false,
@@ -27,6 +55,7 @@ func (t *Task) AddCodeReference(path string, lineNumber int) {
 	}
 	t.Attachments = append(t.Attachments, attachment)
 	t.UpdatedAt = time.Now()
+	return nil
 }
 
 // RemoveAttachment removes the attachment at the given index.

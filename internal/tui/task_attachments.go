@@ -237,13 +237,19 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 		if isURL {
 			// Add URL attachment
-			m.task.AddAttachment(input, true, input)
+			if err := m.task.AddAttachment(input, true, input); err != nil {
+				m.err = err
+				return nil
+			}
 		} else {
 			// Check if it's a code reference (file:line format)
 			codePath, lineNum, isCodeRef := storage.ParseCodeReference(input)
 			if isCodeRef {
 				// Store code reference without copying
-				m.task.AddCodeReference(codePath, lineNum)
+				if err := m.task.AddCodeReference(codePath, lineNum); err != nil {
+					m.err = err
+					return nil
+				}
 
 				// Check if file exists and show info message if not
 				if !storage.CodeReferenceFileExists(codePath) {
@@ -283,7 +289,10 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 					return nil
 				}
 
-				m.task.AddAttachment(filename, false, absPath)
+				if err := m.task.AddAttachment(filename, false, absPath); err != nil {
+					m.err = err
+					return nil
+				}
 			}
 		}
 

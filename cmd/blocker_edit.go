@@ -60,8 +60,7 @@ func runBlockerEdit(cmd *cobra.Command, args []string) error {
 		}
 
 		if !modified {
-			fmt.Println("No changes specified. Use --title, --description, or --unresolve flags.")
-			return blockers, nil
+			return blockers, fmt.Errorf("no changes specified; use --title, --description, or --unresolve flags")
 		}
 
 		fmt.Printf("Updated blocker: %s\n", blocker.Title)

@@ -141,6 +141,9 @@ func (m *TemplateVarFillerModel) ShouldCaptureEsc() bool {
 	return true
 }
 
+// StatusBarLabel returns the label for the status bar.
+func (m *TemplateVarFillerModel) StatusBarLabel() string { return "Template: Fill Variables" }
+
 // TemplateVarFillerDoneMsg is sent when the variable filler completes or is canceled.
 type TemplateVarFillerDoneMsg struct {
 	Canceled bool

@@ -444,8 +444,7 @@ func (m *AppModel) quickSwitchSelect(idx int) (*AppModel, tea.Cmd) {
 	}
 	entry := m.recentTaskVisits[idx]
 	m.showQuickSwitch = false
-	m.navigateToTaskInProject(entry.Task, entry.Project)
-	return m, nil
+	return m, m.navigateToTaskInProject(entry.Task, entry.Project)
 }
 
 // renderQuickSwitchPopup renders the quick-switch overlay popup.

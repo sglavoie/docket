@@ -12,6 +12,10 @@ import (
 // MaxNormalizedScoreValue is the upper bound for normalized scores (0 to MaxNormalizedScoreValue).
 const MaxNormalizedScoreValue = 300
 
+// MaxScoreSentinel is returned when a formula's denominator is zero,
+// ensuring zero-effort items sort to top.
+const MaxScoreSentinel = 9999.0
+
 // MaxNormalizedScore returns the maximum possible normalized score for a profile.
 func MaxNormalizedScore(profile *ScoringProfile) int {
 	_ = profile // reserved for future per-profile max
@@ -213,7 +217,7 @@ func formulaRICE(results []DimensionResult) float64 {
 		}
 	}
 	if den == 0 {
-		return 9999
+		return MaxScoreSentinel
 	}
 	return num / den
 }
@@ -233,7 +237,7 @@ func formulaWSJF(results []DimensionResult) float64 {
 		}
 	}
 	if den == 0 {
-		return 9999
+		return MaxScoreSentinel
 	}
 	return num / den
 }

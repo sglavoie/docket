@@ -43,8 +43,7 @@ func init() {
 func runSearch(cmd *cobra.Command, args []string) error {
 	query := strings.TrimSpace(args[0])
 	if query == "" {
-		fmt.Println("Search query cannot be empty.")
-		return nil
+		return fmt.Errorf("search query cannot be empty")
 	}
 
 	cfg, _, err := LoadConfig()

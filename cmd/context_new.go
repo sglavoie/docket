@@ -78,8 +78,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 		if input == "" {
-			fmt.Println("No projects selected.")
-			return nil
+			return fmt.Errorf("no projects selected")
 		}
 		slugs := strings.SplitSeq(input, ",")
 		for slug := range slugs {

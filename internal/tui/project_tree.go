@@ -201,6 +201,8 @@ func (m *ProjectTreeModel) reloadFromDisk() tea.Cmd {
 	m.clearSelection()
 	if err := storage.LoadProject(m.project); err != nil {
 		logging.Warn("failed to load project %s: %v", m.project.Name, err)
+		m.buildTree()
+		return func() tea.Msg { return StatusMsg(fmt.Sprintf("Failed to reload project: %v", err)) }
 	}
 	m.buildTree()
 	return nil

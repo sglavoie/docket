@@ -80,6 +80,8 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 func (m *OutlinerModel) reloadFromDisk() tea.Cmd {
 	if err := storage.LoadProject(m.project); err != nil {
 		logging.Warn("failed to load project %s: %v", m.project.Name, err)
+		m.rebuildRows()
+		return func() tea.Msg { return StatusMsg(fmt.Sprintf("Failed to reload project: %v", err)) }
 	}
 	m.rebuildRows()
 	return nil

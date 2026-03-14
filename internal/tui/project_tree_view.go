@@ -1,6 +1,8 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -28,9 +30,10 @@ func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 
 // NavigateToTask expands parent nodes and positions cursor on the given task.
 // If the task is filtered out, it clears filters and switches view modes as needed.
-func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
+// Returns a tea.Cmd that sends a status message if filters were cleared.
+func (m *ProjectTreeModel) NavigateToTask(task *models.Task) tea.Cmd {
 	if task == nil {
-		return
+		return nil
 	}
 
 	// First, try to find in current nodes (task may exist but be collapsed)
@@ -43,13 +46,18 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
 			for i, n := range visible {
 				if n.Task.ID == task.ID {
 					m.cursor = i
-					return
+					return nil
 				}
 			}
 		}
 	}
 
 	// Task not in current tree - need to adjust view to show it
+	// Check if any filters are active before clearing
+	hadFilters := m.filter.Type != "" || m.filter.Status != "" || m.filter.Priority != 0 ||
+		len(m.filter.Tags) > 0 || len(m.filter.Sections) > 0 || m.filter.DueDate != DueDateAll ||
+		m.SearchQuery() != "" || m.focusedTask != nil
+
 	// Clear focus mode first
 	if m.focusedTask != nil {
 		m.focusedTask = nil
@@ -94,9 +102,13 @@ func (m *ProjectTreeModel) NavigateToTask(task *models.Task) {
 	for i, node := range visible {
 		if node.Task.ID == task.ID {
 			m.cursor = i
-			return
+			if hadFilters {
+				return func() tea.Msg { return InfoStatusMsg("Filters cleared to reveal task") }
+			}
+			return nil
 		}
 	}
+	return nil
 }
 
 // expandAncestors marks all ancestor nodes as expanded.

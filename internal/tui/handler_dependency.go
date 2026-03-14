@@ -49,7 +49,7 @@ func (m *AppModel) handleDependencyMessages(msg tea.Msg) (bool, tea.Cmd) {
 				m.projectTree.viewMode = ViewModeCompleted
 				m.projectTree.updateVisibility()
 			}
-			m.projectTree.NavigateToTask(msg.Task)
+			return true, m.projectTree.NavigateToTask(msg.Task)
 		}
 		return true, nil
 

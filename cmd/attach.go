@@ -67,7 +67,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("URL cannot be empty")
 		}
 
-		task.AddAttachment(url, true, url)
+		if err := task.AddAttachment(url, true, url); err != nil {
+			return err
+		}
 
 		if err := SaveProject(project, nil); err != nil {
 			return err
@@ -89,7 +91,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	codePath, lineNum, isCodeRef := storage.ParseCodeReference(filePath)
 	if isCodeRef {
 		// Store code reference without copying
-		task.AddCodeReference(codePath, lineNum)
+		if err := task.AddCodeReference(codePath, lineNum); err != nil {
+			return err
+		}
 
 		if err := SaveProject(project, nil); err != nil {
 			return err
@@ -133,7 +137,9 @@ func runAttach(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add attachment to task metadata
-	task.AddAttachment(filename, false, absPath)
+	if err := task.AddAttachment(filename, false, absPath); err != nil {
+		return err
+	}
 
 	if err := SaveProject(project, nil); err != nil {
 		return err

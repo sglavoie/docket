@@ -308,6 +308,9 @@ const (
 // DefaultUndoHistoryDepth is the default number of undo snapshots to keep.
 const DefaultUndoHistoryDepth = 50
 
+// CurrentConfigVersion is the latest config schema version supported by this build.
+const CurrentConfigVersion = 1
+
 // GetEditor returns the configured editor.
 func (c *Config) GetEditor() string {
 	return c.Editor

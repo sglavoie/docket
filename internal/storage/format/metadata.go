@@ -220,8 +220,10 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 					addedAt = time.Now()
 				}
 
-				// Then, extract original path from the timestamp-stripped string
-				// For code refs, format is: code:filename||originalPath:lineNumber
+				// Then, extract original path from the timestamp-stripped string.
+				// The "||" delimiter separates filename from original path;
+				// filenames/paths containing "||" are rejected at write time
+				// (see models.ValidateAttachmentPath).
 				if origIdx := strings.Index(att, "||"); origIdx > 0 {
 					originalPath = att[origIdx+2:]
 					att = att[:origIdx]
@@ -355,6 +357,12 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 							Message: fmt.Sprintf("invalid score value '%s' for dimension '%s', skipping", value, dimID),
 						})
 					}
+				} else {
+					warnings = append(warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   key,
+						Message: "empty score dimension ID in key 'score.', skipping",
+					})
 				}
 			}
 		}
@@ -708,11 +716,14 @@ func WriteMetadata(task *models.Task) string {
 		}
 	}
 
-	// Score dimensions
+	// Score dimensions (skip empty keys to prevent malformed metadata)
 	if len(task.ScoreDimensions) > 0 {
 		// Sort keys for deterministic output
 		keys := sortedKeys(task.ScoreDimensions)
 		for _, k := range keys {
+			if k == "" {
+				continue
+			}
 			parts = append(parts, fmt.Sprintf("score.%s: %d", k, task.ScoreDimensions[k]))
 		}
 	}

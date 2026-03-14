@@ -57,7 +57,7 @@ func (r *KeybindingRegistry) registerInboxProcessorBindings() {
 		Keybinding{Key: "q", Description: "Quit inbox processing", Category: "Navigation", Views: views},
 
 		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
 		Keybinding{Key: ",d", Description: "Mark done (creates next for recurring)", Category: "Status", Views: views},
 		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},
@@ -91,7 +91,7 @@ func (r *KeybindingRegistry) registerGlobalInboxProcessorBindings() {
 		Keybinding{Key: "q", Description: "Quit inbox processing", Category: "Navigation", Views: views},
 
 		// Status
-		Keybinding{Key: ",s", Description: "Start task (in progress)", Category: "Status", Views: views},
+		Keybinding{Key: ",s", Description: "Start (in progress)", Category: "Status", Views: views},
 		Keybinding{Key: ",d", Description: "Mark done", Category: "Status", Views: views},
 		Keybinding{Key: ",b", Description: "Block task", Category: "Status", Views: views},
 		Keybinding{Key: ",x", Description: "Cancel task", Category: "Status", Views: views},

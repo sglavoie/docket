@@ -65,7 +65,7 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 	if boardAddProject != "" {
 		targetProject = cfg.GetProject(boardAddProject)
 		if targetProject == nil {
-			return fmt.Errorf("project not found: %s", boardAddProject)
+			return tterrors.NewProjectNotFoundError(boardAddProject)
 		}
 	} else {
 		project, created := cfg.EnsureActionInboxProject()

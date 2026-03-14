@@ -47,8 +47,6 @@ type CrossProjectLinkerModel struct {
 	// Link type selection
 	targetTask     *models.Task
 	linkTypeCursor int
-
-	err error
 }
 
 // NewCrossProjectLinkerModel creates a new cross-project linker.
@@ -200,8 +198,7 @@ func (m *CrossProjectLinkerModel) handleEnter() (tea.Model, tea.Cmd) {
 		m.targetProject = m.filteredProjects[m.projectCursor]
 		// Load the target project's tasks
 		if err := storage.LoadProject(m.targetProject); err != nil {
-			m.err = fmt.Errorf("failed to load project: %w", err)
-			return m, nil
+			return m, func() tea.Msg { return StatusMsg(fmt.Sprintf("Failed to load project: %v", err)) }
 		}
 		m.allTasks = m.getSelectableTasks()
 		m.filteredTasks = m.allTasks
