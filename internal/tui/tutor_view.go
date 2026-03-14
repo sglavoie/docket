@@ -261,6 +261,10 @@ func (m *TutorModel) contentWidth() int {
 	return m.innerWidth() - m.listWidth() - 1 // -1 for divider
 }
 
+func (m *TutorModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewTutor)
+}
+
 func (m *TutorModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height

@@ -117,8 +117,8 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%w: %w", tterrors.ErrConfigSaveFailed, err)
 	}
 
-	fmt.Printf("Created project '%s' (%s)\n", name, slug)
-	fmt.Printf("Project path: %s\n", projectPath)
+	fmt.Printf("Created project %s: %s\n", slug, name)
+	fmt.Printf("  Path: %s\n", projectPath)
 
 	return nil
 }

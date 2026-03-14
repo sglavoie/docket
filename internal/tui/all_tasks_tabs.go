@@ -16,7 +16,6 @@ import (
 var defaultBuiltInTabNames = []string{"All", "Active", "Due Soon", "High Pri", "Blocked", "By Score"}
 
 const (
-	builtInTabAll     = 0
 	builtInTabActive  = 1
 	builtInTabDueSoon = 2
 	builtInTabHighPri = 3

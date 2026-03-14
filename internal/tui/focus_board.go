@@ -11,7 +11,6 @@ import (
 var focusBoardTabNames = []string{"All", "Actions", "Active/Due", "Next", "By Source", "By Priority", "By Score", "Closed"}
 
 const (
-	boardTabAll        = 0
 	boardTabActions    = 1
 	boardTabActiveDue  = 2
 	boardTabNext       = 3

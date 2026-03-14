@@ -74,6 +74,10 @@ func NewCrossProjectLinkerModel(sourceTask *models.Task, sourceProject *models.P
 	return m
 }
 
+func (m *CrossProjectLinkerModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewCrossProjectLinker)
+}
+
 // SetSize sets the view dimensions.
 func (m *CrossProjectLinkerModel) SetSize(width, height int) {
 	m.BaseSearchableView.SetSize(width, height)

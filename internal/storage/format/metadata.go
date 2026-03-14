@@ -115,7 +115,9 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 				task.Priority = p
 			}
 		case "parent":
-			task.ParentID = &value
+			if value != "" {
+				task.ParentID = &value
+			}
 		case "tags":
 			tags := strings.Split(value, ";")
 			for _, tag := range tags {

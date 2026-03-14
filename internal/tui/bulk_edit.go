@@ -573,6 +573,10 @@ func (m *BulkEditModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *BulkEditModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewBulkEdit)
+}
+
 // View renders the bulk edit panel.
 func (m *BulkEditModel) View() string {
 	boxWidth := 60

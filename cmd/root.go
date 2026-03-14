@@ -11,6 +11,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui"
 )
 
+var noColor bool
+
 var (
 	configPath string
 	verbose    bool
@@ -55,12 +57,13 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
+	cobra.OnInitialize(initConfig, initNoColor)
 	logging.Init()
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file path (default: ~/.tt.json)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
 	rootCmd.Flags().Bool("version", false, "show version information")
 
 	_ = viper.BindPFlag("config", rootCmd.PersistentFlags().Lookup("config"))
@@ -70,6 +73,12 @@ func init() {
 func initConfig() {
 	if configPath != "" {
 		viper.Set("config", configPath)
+	}
+}
+
+func initNoColor() {
+	if noColor || os.Getenv("NO_COLOR") != "" {
+		os.Setenv("NO_COLOR", "1")
 	}
 }
 

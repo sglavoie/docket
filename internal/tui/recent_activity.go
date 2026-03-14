@@ -16,7 +16,6 @@ import (
 var recentActivityTabNames = []string{"All", "Active", "Completed"}
 
 const (
-	recentActivityTabAll       = 0
 	recentActivityTabActive    = 1
 	recentActivityTabCompleted = 2
 )

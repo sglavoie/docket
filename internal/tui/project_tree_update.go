@@ -369,7 +369,7 @@ func (m *ProjectTreeModel) handlePrefixKey(key string, visible []*TreeNode) (tea
 }
 
 // handleTaskPrefix handles the second key after pressing t (task action prefix).
-func (m *ProjectTreeModel) handleTaskPrefix(key string, visible []*TreeNode) (tea.Model, tea.Cmd) {
+func (m *ProjectTreeModel) handleTaskPrefix(key string, _ []*TreeNode) (tea.Model, tea.Cmd) {
 	// tm is blocked for multi-select in ProjectTree
 	if key == "m" && m.multiSelectMode && len(m.selectedTasks) > 1 {
 		return m, nil

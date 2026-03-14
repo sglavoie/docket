@@ -63,6 +63,11 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerTaskTemplatesBindings()
 	r.registerFilterBuilderBindings()
 	r.registerNotificationCenterBindings()
+	r.registerAskViewBindings()
+	r.registerBulkEditBindings()
+	r.registerBlockersBindings()
+	r.registerCrossProjectLinkerBindings()
+	r.registerTutorBindings()
 	return r
 }
 

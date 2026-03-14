@@ -198,7 +198,7 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 
 // processTUIDeferredMoves handles move_to_project actions in the TUI context.
 // It transfers tasks from the source project to destination projects.
-func processTUIDeferredMoves(p Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config) error {
+func processTUIDeferredMoves(_ Persister, srcProject *models.Project, moves []workflow.DeferredMove, cfg *config.Config) error {
 	for _, move := range moves {
 		destProject := cfg.GetProject(move.Destination)
 		if destProject == nil {

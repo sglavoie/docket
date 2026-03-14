@@ -12,7 +12,6 @@ import (
 var globalSearchTabNames = []string{"All", "Tasks", "Notes"}
 
 const (
-	globalSearchTabAll   = 0
 	globalSearchTabTasks = 1
 	globalSearchTabNotes = 2
 )

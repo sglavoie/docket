@@ -129,7 +129,7 @@ func (m *TaskDetailModel) renderFooter() string {
 	}
 
 	left := StatusBarStyle.Render(fmt.Sprintf("#%d %s", m.task.ShortID, util.Truncate(m.task.Title, 40)))
-	right := HelpStyle.Render("j/k: scroll · ,: status · !: priority · q: close  " + scrollInfo)
+	right := HelpStyle.Render("j/k: scroll · ,: status · !: priority · e: edit · c: comments · d: due · h: history · q: close  " + scrollInfo)
 	return renderStatusBarFooter(left, right, m.width)
 }
 
@@ -260,7 +260,7 @@ func (m *TaskDetailModel) renderDependenciesSection(width int) string {
 }
 
 // formatLinkedTask formats a task reference for display.
-func (m *TaskDetailModel) formatLinkedTask(ref string, maxWidth int) string {
+func (m *TaskDetailModel) formatLinkedTask(ref string, _ int) string {
 	taskRef := models.ParseTaskRef(ref)
 
 	if !taskRef.IsCrossProject() {

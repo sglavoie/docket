@@ -102,11 +102,14 @@ func ArchiveTasks(project *models.Project) (int, error) {
 
 	// Save the modified project; rollback archive append on failure
 	if err := SaveProject(project); err != nil {
-		// Restore tasks in memory
-		project.Tasks = append(project.Tasks, completedTasks...)
 		// Truncate archive back to pre-append size
 		if truncErr := os.Truncate(archivePath, archiveSizeBefore); truncErr != nil {
 			logging.Warn("failed to rollback archive after save failure: %v", truncErr)
+		}
+		// Reload project from disk to avoid in-memory/on-disk divergence
+		if loadErr := LoadProject(project); loadErr != nil {
+			logging.Warn("failed to reload project after save failure, restoring in-memory tasks: %v", loadErr)
+			project.Tasks = append(project.Tasks, completedTasks...)
 		}
 		return 0, fmt.Errorf("failed to save project after archiving: %w", err)
 	}

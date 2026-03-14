@@ -152,6 +152,9 @@ func (m *AskViewModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case askStateInput:
 		switch msg.String() {
 		case "esc":
+			if strings.TrimSpace(m.textarea.Value()) != "" {
+				return m, nil
+			}
 			return m, func() tea.Msg { return BackMsg{} }
 		case "ctrl+s":
 			query := strings.TrimSpace(m.textarea.Value())
@@ -353,6 +356,10 @@ func (m *AskViewModel) renderResponse() string {
 	}
 
 	return b.String()
+}
+
+func (m *AskViewModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewAsk)
 }
 
 // SetSize implements View.

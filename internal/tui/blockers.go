@@ -28,6 +28,10 @@ func (m *BlockersModel) GetConfirmDialog() *ConfirmDialog { return m.state.GetCo
 
 func (m *BlockersModel) Init() tea.Cmd { return nil }
 
+func (m *BlockersModel) GetHelpItems() []HelpItem {
+	return GetKeybindingRegistry().GetForView(ViewBlockers)
+}
+
 func (m *BlockersModel) SetSize(width, height int) {
 	m.state.setSize(width, height)
 }

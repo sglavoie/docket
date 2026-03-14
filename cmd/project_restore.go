@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -73,7 +74,9 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	project, err := reconstructProjectFromDir(slug, projectPath)
 	if err != nil {
 		// Move back to trash on failure (best effort)
-		_ = storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, cfg.DataDir)
+		if trashErr := storage.MoveProjectToTrash(&models.Project{Slug: slug, Path: projectPath}, cfg.DataDir); trashErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to move project back to trash after reconstruction failure: %v\n", trashErr)
+		}
 		return fmt.Errorf("failed to reconstruct project metadata: %w", err)
 	}
 
@@ -83,7 +86,9 @@ func runProjectRestore(cmd *cobra.Command, args []string) error {
 	// Save config
 	if err := configManager.Save(cfg); err != nil {
 		// Move back to trash on failure (best effort)
-		_ = storage.MoveProjectToTrash(project, cfg.DataDir)
+		if trashErr := storage.MoveProjectToTrash(project, cfg.DataDir); trashErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to move project back to trash after config save failure: %v\n", trashErr)
+		}
 		return tterrors.NewSaveConfigError(err)
 	}
 

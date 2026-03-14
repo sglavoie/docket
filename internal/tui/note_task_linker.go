@@ -40,7 +40,7 @@ func NewNoteTaskLinkerModel(project *models.Project, note *models.Note) *NoteTas
 		items = append(items, noteTaskItem{task: t})
 	}
 
-	picker := NewBasePicker[noteTaskItem](items, PickerConfig{
+	picker := NewBasePicker(items, PickerConfig{
 		Title:          "Link Note to Task",
 		Subtitle:       note.Title,
 		EmptyMessage:   "No tasks in project.",

@@ -24,7 +24,6 @@ const (
 var dueDateTabNames = []string{"All", "Overdue", "Today", "This Week", "Later"}
 
 const (
-	dueDateTabAll      = 0
 	dueDateTabOverdue  = 1
 	dueDateTabToday    = 2
 	dueDateTabThisWeek = 3

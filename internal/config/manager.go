@@ -56,9 +56,9 @@ func (m *Manager) Load() (*Config, error) {
 		if backupErr == nil {
 			if json.Unmarshal(backupData, &config) == nil {
 				fmt.Fprintf(os.Stderr, "warning: config file was corrupted, restored from backup %s\n", backupPath)
-				// Persist the recovered config
+				// Persist the recovered config so next load doesn't hit corruption again
 				if writeErr := util.AtomicWriteFile(m.configPath, backupData, FilePermissions); writeErr != nil {
-					logging.Warn("failed to write recovered config: %v", writeErr)
+					return nil, fmt.Errorf("recovered config from backup but failed to persist it: %w", writeErr)
 				}
 			} else {
 				return nil, fmt.Errorf("failed to parse config file and backup is also corrupted: config error: %w; backup path: %s", err, backupPath)
@@ -77,7 +77,13 @@ func (m *Manager) Load() (*Config, error) {
 		config.DataDir = filepath.Join(homeDir, ".tt")
 	}
 	if config.Editor == "" {
-		config.Editor = "code"
+		if ed := os.Getenv("EDITOR"); ed != "" {
+			config.Editor = ed
+		} else if vis := os.Getenv("VISUAL"); vis != "" {
+			config.Editor = vis
+		} else {
+			config.Editor = "vi"
+		}
 	}
 	if config.DefaultContext == "" {
 		config.DefaultContext = "personal"

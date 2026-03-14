@@ -10,7 +10,7 @@ import (
 
 // handleFilterBarKeys handles F - filter prefix popup activation.
 // Returns true if the key was handled.
-func (m *ProjectTreeModel) handleFilterBarKeys(key string) (bool, tea.Cmd) {
+func (m *ProjectTreeModel) handleFilterBarKeys(_ string) (bool, tea.Cmd) {
 	// F is now handled as a prefix key in handleKeyMsg
 	return false, nil
 }
@@ -260,7 +260,7 @@ func (m *ProjectTreeModel) handleFilterOverlayKeys(key string) (bool, tea.Cmd) {
 
 // handleTaskAttributeKeys handles *, ctrl+l - task attribute modification.
 // Returns true if the key was handled.
-func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, _ []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "*":
 		cmd, _ := handleToggleActiveKey(m)
@@ -273,7 +273,7 @@ func (m *ProjectTreeModel) handleTaskAttributeKeys(key string, visible []*TreeNo
 // Keys shared across primary views (u, ctrl+z, \, {, }, ctrl+r, p, S, B, w,
 // ctrl+p, ctrl+k, ctrl+o, i, I, `, ~, @) are handled by handleCommonPrimaryViewKey.
 // Returns true if the key was handled.
-func (m *ProjectTreeModel) handleMiscActionKeys(key string, visible []*TreeNode) (bool, tea.Cmd) {
+func (m *ProjectTreeModel) handleMiscActionKeys(key string, _ []*TreeNode) (bool, tea.Cmd) {
 	switch key {
 	case "?":
 		return true, helpCmd(ViewProjectTree, "Project Tree", m.GetHelpItems())

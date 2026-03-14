@@ -105,7 +105,6 @@ func (m *NotesViewModel) handleConfirmKey(key string) (confirmed, handled bool) 
 var noteTabNames = []string{"All", "Pinned", "Recent", "Tagged"}
 
 const (
-	noteTabAll    = 0
 	noteTabPinned = 1
 	noteTabRecent = 2
 	noteTabTagged = 3

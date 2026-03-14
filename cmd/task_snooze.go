@@ -50,7 +50,7 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	} else {
 		parsed, err := util.ParseRelativeDate(dateStr)
 		if err != nil {
-			return fmt.Errorf("invalid date: %w", err)
+			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, mon-sun, next week/month, in N days/weeks/months", dateStr, err)
 		}
 		snoozeDate = &parsed
 		desc = parsed.Format(util.DateFormat)

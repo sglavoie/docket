@@ -8,7 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/template"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
@@ -73,14 +75,37 @@ func init() {
 	taskAddCmd.Flags().StringVar(&taskRecurFlag, "recur", "", "recurrence pattern (daily, weekly, monthly, yearly, Nd, Nw, Nm, Ny)")
 	taskAddCmd.Flags().StringVar(&taskTemplateFlag, "template", "", "create from template (ID or name)")
 
+	taskAddCmd.Flags().StringP("project", "P", "", "target project slug (default: current project)")
+
 	// Type-specific attribute flags
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {
-	project, cfg, configManager, err := LoadCurrentProject()
-	if err != nil {
-		return err
+	var (
+		project       *models.Project
+		cfg           *config.Config
+		configManager *config.Manager
+		err           error
+	)
+
+	if slug, _ := cmd.Flags().GetString("project"); slug != "" {
+		cfg, configManager, err = LoadConfig()
+		if err != nil {
+			return err
+		}
+		project = cfg.GetProject(slug)
+		if project == nil {
+			return fmt.Errorf("project not found: %s", slug)
+		}
+		if err = storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to load project %s: %w", slug, err)
+		}
+	} else {
+		project, cfg, configManager, err = LoadCurrentProject()
+		if err != nil {
+			return err
+		}
 	}
 
 	title := strings.Join(args, " ")

@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	alertUrgentDot  = lipgloss.NewStyle().Foreground(ColorError).Render("● ")
-	alertWarningDot = lipgloss.NewStyle().Foreground(ColorWarning).Render("● ")
-	alertInfoDot    = MutedStyle.Render("○ ")
+	alertUrgentDot  = lipgloss.NewStyle().Foreground(ColorError).Render("✖ ")
+	alertWarningDot = lipgloss.NewStyle().Foreground(ColorWarning).Render("▲ ")
+	alertInfoDot    = MutedStyle.Render("● ")
 )
 
 // alertCenterItem is a flattened item for cursor-based navigation.

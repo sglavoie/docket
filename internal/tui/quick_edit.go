@@ -38,7 +38,7 @@ type quickEditResult struct {
 // Syntax supports: !1-5 (priority), #tag (add tag), -#tag (remove tag),
 // @date (due date), @0 (clear due), /section, $status
 // Everything else becomes the title.
-func parseQuickEdit(input string, task *models.Task, project *models.Project) (*quickEditResult, error) {
+func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*quickEditResult, error) {
 	result := &quickEditResult{}
 
 	// Extract priority: !1 through !5
@@ -153,7 +153,7 @@ func parseQuickEdit(input string, task *models.Task, project *models.Project) (*
 }
 
 // parseQuickEditForPreview parses input without failing, for live preview.
-func parseQuickEditForPreview(input string, task *models.Task, project *models.Project) (*quickEditResult, string) {
+func parseQuickEditForPreview(input string, _ *models.Task, project *models.Project) (*quickEditResult, string) {
 	result := &quickEditResult{}
 	var errMsg string
 

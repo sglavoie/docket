@@ -696,7 +696,7 @@ func (m *DashboardModel) projectStatusWidth(p *models.Project, dueSoonDays int) 
 }
 
 // renderGlobalAlerts aggregates alert counts across all active projects.
-func (m *DashboardModel) renderGlobalAlerts(width int) string {
+func (m *DashboardModel) renderGlobalAlerts(_ int) string {
 	var totalOverdue, totalDueToday, totalBlocked, totalBlockers, totalCompletedThisWeek int
 	var inboxProjects []string
 

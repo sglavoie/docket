@@ -263,7 +263,7 @@ func applySectionChange(pf persistFn, project *models.Project, taskID string, se
 
 // applyDeleteTask removes a task and its descendants from a project.
 // It handles attachment cleanup, descendant collection, and dangling parent references.
-func applyDeleteTask(pf persistFn, project *models.Project, taskID string, dataDir string) TaskOpResult {
+func applyDeleteTask(pf persistFn, project *models.Project, taskID string, _ string) TaskOpResult {
 	task := project.GetTaskByID(taskID)
 	if task == nil {
 		return TaskOpResult{StatusMessage: "Task no longer exists in project"}

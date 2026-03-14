@@ -327,7 +327,7 @@ func (m *FocusViewModel) activeSubTabFilter() string {
 }
 
 // dueBucket categorizes a task into a due date bucket.
-func (m *FocusViewModel) dueBucket(task *models.Task, now, today time.Time) string {
+func (m *FocusViewModel) dueBucket(task *models.Task, _, today time.Time) string {
 	if task.DueDate == nil {
 		return "Later"
 	}
