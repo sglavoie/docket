@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -40,7 +41,7 @@ func init() {
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// Load project and config once
-	project, cfg, _, err := LoadCurrentProject()
+	project, cfg, configManager, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -85,21 +86,20 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Use WithTaskUpdate to apply changes
-	updatedTask, err := WithTaskUpdate(task.ID, func(t *models.Task) error {
-		t.Title = newTitle
-		t.Description = newDesc
-		return nil
-	})
+	// Apply changes directly to the already-loaded task and save
+	prevStates := CaptureTaskStates(project.Tasks)
+	task.Title = newTitle
+	task.Description = newDesc
+	task.UpdatedAt = time.Now()
 
-	if err != nil {
+	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
 		return err
 	}
 
 	fmt.Printf("Updated %s #%d: %s\n",
-		updatedTask.Type.HeadingPrefix(),
-		updatedTask.ShortID,
-		updatedTask.Title)
+		task.Type.HeadingPrefix(),
+		task.ShortID,
+		task.Title)
 
 	return nil
 }
