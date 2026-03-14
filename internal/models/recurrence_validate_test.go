@@ -22,6 +22,9 @@ func TestRecurrencePatternValidate(t *testing.T) {
 		{"weekday too high", &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{7}}, true},
 		{"mixed valid and invalid weekday", &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{1, 8}}, true},
 		{"empty weekdays ok", &RecurrencePattern{Interval: 1, Unit: RecurrenceWeekly, Weekdays: []int{}}, false},
+		{"at max interval", &RecurrencePattern{Interval: MaxRecurrenceInterval, Unit: RecurrenceDaily}, false},
+		{"over max interval", &RecurrencePattern{Interval: MaxRecurrenceInterval + 1, Unit: RecurrenceDaily}, true},
+		{"huge interval", &RecurrencePattern{Interval: 999999, Unit: RecurrenceYearly}, true},
 	}
 
 	for _, tt := range tests {

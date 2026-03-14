@@ -54,6 +54,29 @@ func init() {
 }
 
 func runTaskRecur(cmd *cobra.Command, args []string) error {
+	// Reject conflicting action flags
+	actionCount := 0
+	var actionFlags []string
+	if taskRecurClear {
+		actionCount++
+		actionFlags = append(actionFlags, "--clear")
+	}
+	if taskRecurSkip {
+		actionCount++
+		actionFlags = append(actionFlags, "--skip")
+	}
+	if taskRecurDefer != 0 {
+		actionCount++
+		actionFlags = append(actionFlags, "--defer")
+	}
+	if actionCount > 1 {
+		return fmt.Errorf("conflicting flags: %v (specify only one)", actionFlags)
+	}
+	// Setting a pattern and an action flag is also conflicting
+	if actionCount > 0 && len(args) >= 2 {
+		return fmt.Errorf("cannot combine %s with a recurrence pattern argument", actionFlags[0])
+	}
+
 	project, _, _, err := LoadCurrentProject()
 	if err != nil {
 		return err

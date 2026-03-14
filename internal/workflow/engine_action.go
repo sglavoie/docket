@@ -179,11 +179,27 @@ func applyAction(task *models.Task, action RuleAction) bool {
 		return true
 	case ActionSetType:
 		newType := models.TaskType(action.Value)
-		if newType.IsValid() && task.Type != newType {
-			task.Type = newType
-			task.UpdatedAt = time.Now()
-			return true
+		if !newType.IsValid() || task.Type == newType {
+			return false
 		}
+		// Validate hierarchy: new type must be valid under current parent
+		if task.Parent != nil && !newType.CanBeChildOf(task.Parent.Type) {
+			return false
+		}
+		// Validate hierarchy: all children must be valid under the new type
+		for _, child := range task.Children {
+			if !child.Type.CanBeChildOf(newType) {
+				return false
+			}
+		}
+		// If new type cannot have children but task has children, reject
+		if len(task.Children) > 0 && !newType.CanHaveChildren() {
+			return false
+		}
+		task.Type = newType
+		task.ClearTypeAttrs()
+		task.UpdatedAt = time.Now()
+		return true
 	case ActionSetSnooze:
 		days, err := ParseRelativeDuration(action.Value)
 		if err != nil {

@@ -35,6 +35,10 @@ var validRecurrenceUnits = map[RecurrenceUnit]bool{
 	RecurrenceYearly:  true,
 }
 
+// MaxRecurrenceInterval is the maximum allowed recurrence interval.
+// 3650 covers ~10 years for daily recurrence, which is a reasonable upper bound.
+const MaxRecurrenceInterval = 3650
+
 // Validate checks that the RecurrencePattern has valid field values.
 // Returns an error describing the first invalid field found, or nil if valid.
 func (r *RecurrencePattern) Validate() error {
@@ -43,6 +47,9 @@ func (r *RecurrencePattern) Validate() error {
 	}
 	if r.Interval <= 0 {
 		return fmt.Errorf("recurrence interval must be > 0, got %d", r.Interval)
+	}
+	if r.Interval > MaxRecurrenceInterval {
+		return fmt.Errorf("recurrence interval too large (%d), maximum is %d", r.Interval, MaxRecurrenceInterval)
 	}
 	if !validRecurrenceUnits[r.Unit] {
 		return fmt.Errorf("invalid recurrence unit %q, must be one of: day, week, month, year", r.Unit)
@@ -266,6 +273,9 @@ func parseIntervalUnit(s string) *RecurrencePattern {
 			return nil
 		}
 		interval = interval*10 + int(c-'0')
+		if interval > MaxRecurrenceInterval {
+			return nil // Reject absurdly large intervals early
+		}
 	}
 	if interval <= 0 {
 		return nil

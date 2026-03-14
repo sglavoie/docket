@@ -122,13 +122,15 @@ func TestParseRecurrenceMoreEdgeCases(t *testing.T) {
 	}{
 		{"large interval 999d", "999d", false, 999},
 		{"large interval 100y", "100y", false, 100},
+		{"at max interval", "3650d", false, 3650},
+		{"over max interval", "3651d", true, 0},
 		{"leading space", " daily", true, 0},
 		{"trailing space", "daily ", true, 0},
 		{"colon with no days", "1w:", true, 0},
 		{"weekly colon no days", "weekly:", true, 0},
 		{"just colon", ":", true, 0},
 		{"number only", "123", true, 0},
-		{"very long number", "99999999d", false, 99999999},
+		{"very long number", "99999999d", true, 0},
 	}
 
 	for _, tc := range tests {
