@@ -71,6 +71,9 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 
 		// Generate new slug and check for uniqueness
 		newSlug := models.Slugify(newName)
+		if newSlug == "" {
+			return fmt.Errorf("project name %q produces an empty slug (must contain at least one ASCII letter or digit)", newName)
+		}
 		for _, p := range cfg.Projects {
 			if p.ID != project.ID && p.Slug == newSlug {
 				return fmt.Errorf("project with slug '%s' already exists", newSlug)

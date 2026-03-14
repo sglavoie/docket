@@ -264,6 +264,9 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 
 		// Generate new slug if name changed
 		newSlug := models.Slugify(name)
+		if newSlug == "" {
+			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
+		}
 		if name != m.originalName {
 			// Check for duplicate slug (excluding self)
 			for _, p := range m.config.Projects {

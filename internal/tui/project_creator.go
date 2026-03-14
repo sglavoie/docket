@@ -191,6 +191,9 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 
 		// Check for duplicate slug
 		slug := models.Slugify(name)
+		if slug == "" {
+			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
+		}
 		for _, p := range m.config.Projects {
 			if p.Slug == slug {
 				return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}

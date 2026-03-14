@@ -63,6 +63,9 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 
 	// Check for duplicate slug
 	slug := models.Slugify(name)
+	if slug == "" {
+		return fmt.Errorf("project name %q produces an empty slug (must contain at least one ASCII letter or digit)", name)
+	}
 
 	// Reject reserved slugs
 	if slug == ".tt" || slug == "projects" {

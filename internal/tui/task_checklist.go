@@ -118,7 +118,7 @@ func (m *TaskChecklistModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc":
-				if m.cursor < len(m.task.Checklist) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Checklist[m.editIndex].Text {
+				if m.editIndex < len(m.task.Checklist) && strings.TrimSpace(m.editTextInput.Value()) != m.task.Checklist[m.editIndex].Text {
 					m.confirm.Show("discard-edit", "Discard changes?")
 					return m, nil
 				}
@@ -304,6 +304,11 @@ func (m *TaskChecklistModel) saveEditedItem() tea.Cmd {
 
 		// Update the item text (preserve done state)
 		m.resolveTask()
+		if m.editIndex < 0 || m.editIndex >= len(m.task.Checklist) {
+			m.editMode = false
+			m.editTextInput.Reset()
+			return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")}
+		}
 		m.task.Checklist[m.editIndex].Text = text
 
 		if err := saveProjectNoReload(m.project); err != nil {
@@ -388,6 +393,11 @@ func (m *TaskChecklistModel) editInExternalEditor() tea.Cmd {
 		// Re-resolve task in case an async save replaced project.Tasks
 		if t := project.GetTaskByID(task.ID); t != nil {
 			task = t
+		}
+
+		// Bounds check after re-resolve (checklist may have changed)
+		if editIndex < 0 || editIndex >= len(task.Checklist) {
+			return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")}
 		}
 
 		// Update item (preserve done state)
@@ -528,6 +538,11 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 		// Re-resolve task in case an async save replaced project.Tasks
 		if t := project.GetTaskByID(task.ID); t != nil {
 			task = t
+		}
+
+		// Bounds check after re-resolve (checklist may have changed)
+		if editIndex < 0 || editIndex >= len(task.Checklist) {
+			return ErrorMsg{Err: fmt.Errorf("checklist item no longer exists")}
 		}
 
 		// Update item (preserve done state)
