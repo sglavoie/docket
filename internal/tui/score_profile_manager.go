@@ -568,3 +568,5 @@ func (m *ScoreProfileManagerModel) HasActiveSearch() bool {
 func (m *ScoreProfileManagerModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewScoreProfileManager)
 }
+
+func (m *ScoreProfileManagerModel) StatusBarLabel() string { return "Score Profiles" }

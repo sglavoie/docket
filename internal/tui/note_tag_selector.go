@@ -160,3 +160,5 @@ func (m *NoteTagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *NoteTagSelectorModel) View() string {
 	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
 }
+
+func (m *NoteTagSelectorModel) StatusBarLabel() string { return "Tag Note" }

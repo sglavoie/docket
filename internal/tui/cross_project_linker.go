@@ -645,3 +645,5 @@ func clamp(value, min, max int) int {
 	}
 	return value
 }
+
+func (m *CrossProjectLinkerModel) StatusBarLabel() string { return "Cross-Project Link" }

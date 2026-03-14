@@ -115,3 +115,5 @@ func (m *StatusInputModel) HasTextInput() bool { return true }
 func (m *StatusInputModel) ShouldCaptureEsc() bool { return true }
 
 func (m *StatusInputModel) IsFullHeight() bool { return false }
+
+func (m *StatusInputModel) StatusBarLabel() string { return "Set Status" }

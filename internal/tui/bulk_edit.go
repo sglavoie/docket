@@ -669,3 +669,5 @@ func (m *BulkEditModel) View() string {
 
 	return out.String()
 }
+
+func (m *BulkEditModel) StatusBarLabel() string { return "Bulk Edit" }

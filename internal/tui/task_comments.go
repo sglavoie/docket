@@ -797,3 +797,5 @@ func (m *TaskCommentsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		},
 	}
 }
+
+func (m *TaskCommentsModel) StatusBarLabel() string { return "Comments" }

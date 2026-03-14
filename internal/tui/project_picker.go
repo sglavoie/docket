@@ -190,3 +190,5 @@ func (m *ProjectPickerModel) selectCurrent() tea.Cmd {
 		}
 	}
 }
+
+func (m *ProjectPickerModel) StatusBarLabel() string { return "Switch Project" }

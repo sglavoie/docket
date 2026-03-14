@@ -518,3 +518,5 @@ func (m *TutorModel) View() string {
 
 	return b.String()
 }
+
+func (m *TutorModel) StatusBarLabel() string { return "Tutorial" }

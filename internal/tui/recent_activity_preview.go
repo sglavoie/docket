@@ -258,3 +258,5 @@ func (m *RecentActivityPreviewModel) View() string {
 
 	return b.String()
 }
+
+func (m *RecentActivityPreviewModel) StatusBarLabel() string { return "Recent Activity" }

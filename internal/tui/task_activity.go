@@ -266,3 +266,5 @@ func fieldColorStyle(field string) lipgloss.Style {
 		return lipgloss.NewStyle()
 	}
 }
+
+func (m *TaskActivityModel) StatusBarLabel() string { return "Activity" }

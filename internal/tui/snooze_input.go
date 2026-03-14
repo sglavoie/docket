@@ -191,3 +191,5 @@ func (m *SnoozeInputModel) IsFullHeight() bool { return false }
 type SnoozeDateChangedMsg struct {
 	Task *models.Task
 }
+
+func (m *SnoozeInputModel) StatusBarLabel() string { return "Snooze" }

@@ -219,3 +219,5 @@ func (m *GlobalNoteMoveProjectSelectorModel) renderList() string {
 
 	return b.String()
 }
+
+func (m *GlobalNoteMoveProjectSelectorModel) StatusBarLabel() string { return "Move Note" }

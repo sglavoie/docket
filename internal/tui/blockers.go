@@ -178,3 +178,5 @@ type BlockerDeletedMsg struct {
 type BlockerGoToProjectMsg struct {
 	Project *models.Project
 }
+
+func (m *BlockersModel) StatusBarLabel() string { return "Blockers" }

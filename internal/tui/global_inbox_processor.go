@@ -146,3 +146,5 @@ func (m *GlobalInboxProcessorModel) emptyInboxText() string {
 func (m *GlobalInboxProcessorModel) returnHint() string   { return "return to dashboard" }
 func (m *GlobalInboxProcessorModel) viewType() ViewType   { return ViewGlobalInboxProcessor }
 func (m *GlobalInboxProcessorModel) helpViewName() string { return "Global Inbox Processor" }
+
+func (m *GlobalInboxProcessorModel) StatusBarLabel() string { return "Global Inbox" }

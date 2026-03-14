@@ -325,3 +325,5 @@ func (m *QuickCaptureModel) createTask(openAfter bool) tea.Cmd {
 
 	return func() tea.Msg { return TaskCreatedMsg{Task: task, Project: targetProject, OpenContent: openAfter} }
 }
+
+func (m *QuickCaptureModel) StatusBarLabel() string { return "Quick Capture" }

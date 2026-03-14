@@ -278,3 +278,5 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TagSelectorModel) View() string {
 	return RenderTagSelectorView(m.BasePicker, &m.TagAdder, m.Config.Title, m.Width(), m.Height())
 }
+
+func (m *TagSelectorModel) StatusBarLabel() string { return "Select Tags" }

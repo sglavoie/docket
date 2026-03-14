@@ -282,3 +282,5 @@ func (m *ScoreEditorModel) View() string {
 func (m *ScoreEditorModel) ShouldCaptureEsc() bool {
 	return true
 }
+
+func (m *ScoreEditorModel) StatusBarLabel() string { return "Edit Score" }

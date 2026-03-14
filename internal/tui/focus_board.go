@@ -167,3 +167,5 @@ func (m *FocusBoardModel) ShouldCaptureEsc() bool {
 func (m *FocusBoardModel) HasTextInput() bool {
 	return m.addMode || m.editMode || m.searchActive
 }
+
+func (m *FocusBoardModel) StatusBarLabel() string { return "Focus Board" }

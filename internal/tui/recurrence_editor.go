@@ -470,3 +470,5 @@ type RecurrenceEditorDoneMsg struct {
 	Pattern  *models.RecurrencePattern
 	Canceled bool
 }
+
+func (m *RecurrenceEditorModel) StatusBarLabel() string { return "Recurrence" }

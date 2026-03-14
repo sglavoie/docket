@@ -253,3 +253,5 @@ func (m *DependencySelectorModel) renderTaskList() string {
 
 	return b.String()
 }
+
+func (m *DependencySelectorModel) StatusBarLabel() string { return "Dependencies" }

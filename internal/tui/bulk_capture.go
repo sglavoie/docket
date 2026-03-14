@@ -244,3 +244,5 @@ func (m *BulkCaptureModel) createTasks() tea.Cmd {
 	// All succeeded, close the view
 	return func() tea.Msg { return TaskCreatedMsg{Task: nil} }
 }
+
+func (m *BulkCaptureModel) StatusBarLabel() string { return "Bulk Capture" }

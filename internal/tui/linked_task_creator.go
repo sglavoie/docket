@@ -308,3 +308,5 @@ func (m *LinkedTaskCreatorModel) createTask() tea.Cmd {
 		}
 	}
 }
+
+func (m *LinkedTaskCreatorModel) StatusBarLabel() string { return "New Linked Task" }

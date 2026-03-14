@@ -110,3 +110,5 @@ func NewAllTasksViewModel(cfg *config.Config, mgr *config.Manager) *AllTasksView
 	m.loadAllTasks()
 	return m
 }
+
+func (m *AllTasksViewModel) StatusBarLabel() string { return "All Tasks" }

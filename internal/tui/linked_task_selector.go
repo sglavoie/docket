@@ -599,3 +599,5 @@ func (m *LinkedTaskSelectorModel) HasTextInput() bool {
 func (m *LinkedTaskSelectorModel) ShouldCaptureEsc() bool {
 	return m.HasActiveSearch()
 }
+
+func (m *LinkedTaskSelectorModel) StatusBarLabel() string { return "Linked Tasks" }

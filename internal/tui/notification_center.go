@@ -538,3 +538,5 @@ type AlertCenterNavigateMsg struct {
 	ProjectID string
 	Category  alerts.AlertCategory
 }
+
+func (m *NotificationCenterModel) StatusBarLabel() string { return "Notifications" }

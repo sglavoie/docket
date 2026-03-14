@@ -114,3 +114,5 @@ func (m *InboxProcessorModel) emptyInboxText() string {
 func (m *InboxProcessorModel) returnHint() string   { return "return to project tree" }
 func (m *InboxProcessorModel) viewType() ViewType   { return ViewInboxProcessor }
 func (m *InboxProcessorModel) helpViewName() string { return "Inbox Processor" }
+
+func (m *InboxProcessorModel) StatusBarLabel() string { return "Inbox" }

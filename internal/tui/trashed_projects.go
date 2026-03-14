@@ -159,3 +159,5 @@ func (m *TrashedProjectsModel) View() string {
 
 	return out.String()
 }
+
+func (m *TrashedProjectsModel) StatusBarLabel() string { return "Trash" }

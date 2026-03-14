@@ -259,3 +259,5 @@ func (m *DependencyViewerModel) renderSection(sectionIdx int, title, arrow strin
 
 	return b.String()
 }
+
+func (m *DependencyViewerModel) StatusBarLabel() string { return "Dependencies" }

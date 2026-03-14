@@ -646,3 +646,5 @@ func (m *UndoHistoryModel) renderDiffPreview(width, height int) string {
 
 	return b.String()
 }
+
+func (m *UndoHistoryModel) StatusBarLabel() string { return "Undo History" }

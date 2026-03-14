@@ -430,3 +430,5 @@ func (m *RecentActivityModel) renderTaskLine(dt CrossProjectTask, selected bool)
 		SearchQuery: m.SearchQuery(),
 	}.Render()
 }
+
+func (m *RecentActivityModel) StatusBarLabel() string { return "Recent Activity" }

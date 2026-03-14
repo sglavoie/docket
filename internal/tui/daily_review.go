@@ -335,3 +335,5 @@ func isToday(t time.Time) bool {
 	now := time.Now()
 	return t.Year() == now.Year() && t.YearDay() == now.YearDay()
 }
+
+func (m *DailyReviewModel) StatusBarLabel() string { return "Daily Review" }

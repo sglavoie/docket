@@ -780,3 +780,5 @@ type TemplateDeletedMsg struct {
 	DeletedID string
 	Error     error
 }
+
+func (m *TaskTemplatesModel) StatusBarLabel() string { return "Task Templates" }

@@ -702,3 +702,5 @@ func (m *FocusViewModel) viewName() string { return "What's Next" }
 func (m *FocusViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewFocusView)
 }
+
+func (m *FocusViewModel) StatusBarLabel() string { return "What's Next" }

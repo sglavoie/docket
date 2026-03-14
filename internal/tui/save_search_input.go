@@ -138,3 +138,5 @@ func (m *SaveSearchInputModel) GetConfirmDialog() *ConfirmDialog {
 }
 
 func (m *SaveSearchInputModel) IsFullHeight() bool { return false }
+
+func (m *SaveSearchInputModel) StatusBarLabel() string { return "Save Search" }

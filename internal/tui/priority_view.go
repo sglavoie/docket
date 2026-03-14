@@ -315,3 +315,5 @@ func (m *PriorityViewModel) View() string {
 func (m *PriorityViewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewPriorityView)
 }
+
+func (m *PriorityViewModel) StatusBarLabel() string { return "Priority" }

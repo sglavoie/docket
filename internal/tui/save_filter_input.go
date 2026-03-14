@@ -241,3 +241,5 @@ func describeSnapshotFilters(filterType string, filterStatus string, filterPrior
 	}
 	return strings.Join(parts, " | ")
 }
+
+func (m *SaveFilterInputModel) StatusBarLabel() string { return "Save Filter" }

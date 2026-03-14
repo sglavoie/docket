@@ -303,3 +303,5 @@ func (m *ProjectSelectorModel) renderList() string {
 
 	return b.String()
 }
+
+func (m *ProjectSelectorModel) StatusBarLabel() string { return "Select Project" }

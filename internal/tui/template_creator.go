@@ -538,3 +538,5 @@ func (m *TaskTemplateCreatorModel) showAllTagSuggestions() {
 		m.suggestionCursor = 0
 	}
 }
+
+func (m *TaskTemplateCreatorModel) StatusBarLabel() string { return "New Template" }

@@ -503,3 +503,5 @@ type ShowTaskCreatorWithTemplateMsg struct {
 	Project  *models.Project
 	Template *template.TaskTemplate
 }
+
+func (m *TemplatePickerModel) StatusBarLabel() string { return "Choose Template" }

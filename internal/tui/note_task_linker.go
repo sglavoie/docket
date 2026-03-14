@@ -182,3 +182,5 @@ func (m *NoteTaskLinkerModel) View() string {
 
 	return out.String()
 }
+
+func (m *NoteTaskLinkerModel) StatusBarLabel() string { return "Link to Task" }

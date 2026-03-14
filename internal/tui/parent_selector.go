@@ -356,3 +356,5 @@ func (m *ParentSelectorModel) renderList() string {
 
 	return b.String()
 }
+
+func (m *ParentSelectorModel) StatusBarLabel() string { return "Select Parent" }

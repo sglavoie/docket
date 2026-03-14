@@ -181,3 +181,5 @@ func (m *MetricsDashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
+func (m *MetricsDashboardModel) StatusBarLabel() string { return "Metrics" }

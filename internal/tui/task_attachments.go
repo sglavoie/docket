@@ -871,3 +871,5 @@ func (m *TaskAttachmentsModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 func (m *TaskAttachmentsModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewTaskAttachments)
 }
+
+func (m *TaskAttachmentsModel) StatusBarLabel() string { return "Attachments" }

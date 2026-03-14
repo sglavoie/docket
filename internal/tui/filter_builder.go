@@ -337,3 +337,5 @@ func (m *FilterBuilderModel) buildSavedFilter() config.SavedFilter {
 		ShowAsTab:        m.showAsTab,
 	}
 }
+
+func (m *FilterBuilderModel) StatusBarLabel() string { return "Smart List" }

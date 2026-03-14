@@ -682,3 +682,5 @@ func (m *TaskChecklistModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 		},
 	}
 }
+
+func (m *TaskChecklistModel) StatusBarLabel() string { return "Checklist" }

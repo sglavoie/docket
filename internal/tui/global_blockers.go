@@ -195,3 +195,5 @@ type ShowGlobalBlockersMsg struct{}
 
 // CloseGlobalBlockersMsg requests closing the global blockers view.
 type CloseGlobalBlockersMsg struct{}
+
+func (m *GlobalBlockersModel) StatusBarLabel() string { return "Global Blockers" }

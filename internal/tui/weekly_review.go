@@ -429,3 +429,5 @@ func (m *WeeklyReviewModel) viewName() string { return "Weekly Review" }
 func (m *WeeklyReviewModel) GetHelpItems() []HelpItem {
 	return GetKeybindingRegistry().GetForView(ViewWeeklyReview)
 }
+
+func (m *WeeklyReviewModel) StatusBarLabel() string { return "Weekly Review" }

@@ -209,3 +209,5 @@ type DescriptionEditorDoneMsg struct {
 	NewDescription string
 	Canceled       bool
 }
+
+func (m *TextEditorModel) StatusBarLabel() string { return "Edit Text" }

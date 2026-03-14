@@ -466,3 +466,5 @@ func (m *ProjectFocusViewModel) renderTaskLine(task *models.Task, isSelected boo
 		Flash:      m.cursorFlash,
 	}.Render()
 }
+
+func (m *ProjectFocusViewModel) StatusBarLabel() string { return "Active Tasks" }
