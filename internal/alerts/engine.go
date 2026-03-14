@@ -248,23 +248,22 @@ func checkInboxBacklog(cfg AlertConfig, projects []ProjectData, _ time.Time) []A
 }
 
 func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
-	blockedThreshold := now.AddDate(0, 0, -cfg.BlockedDays)
 	var alerts []Alert
 
 	for _, pd := range projects {
 		for _, task := range pd.Tasks {
-			if !task.Status.IsActive() {
+			if task.Status != models.StatusBlocked {
 				continue
 			}
-			isBlocked := task.Status == models.StatusBlocked
-			if !isBlocked {
-				continue
-			}
-			if task.UpdatedAt.Before(blockedThreshold) {
+			// Use the activity log to find when the task last became blocked,
+			// rather than UpdatedAt which resets on any metadata edit.
+			blockedSince := findLastBlockedTransition(task)
+			daysSinceBlocked := int(now.Sub(blockedSince).Hours() / 24)
+			if daysSinceBlocked >= cfg.BlockedDays {
 				alerts = append(alerts, Alert{
 					Category:  CategoryBlocked,
 					Title:     task.Title,
-					Details:   fmt.Sprintf("Blocked for %d days in %s", int(now.Sub(task.UpdatedAt).Hours()/24), pd.Project.Name),
+					Details:   fmt.Sprintf("Blocked for %d days in %s", daysSinceBlocked, pd.Project.Name),
 					TaskID:    task.ID,
 					ProjectID: pd.Project.ID,
 					Severity:  SeverityWarning,
@@ -274,6 +273,21 @@ func checkBlockedTasks(cfg AlertConfig, projects []ProjectData, now time.Time) [
 	}
 
 	return alerts
+}
+
+// findLastBlockedTransition scans the task's activity log backwards to find
+// the most recent transition to "blocked" status. Falls back to UpdatedAt
+// if the activity log doesn't contain the transition (e.g., pruned).
+func findLastBlockedTransition(task *models.Task) time.Time {
+	// Scan backwards to find the most recent transition *to* blocked
+	for i := len(task.Activity) - 1; i >= 0; i-- {
+		entry := task.Activity[i]
+		if entry.Field == "status" && entry.NewValue == string(models.StatusBlocked) {
+			return entry.Timestamp
+		}
+	}
+	// Fallback: activity log was pruned or task was created as blocked
+	return task.UpdatedAt
 }
 
 func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) []Alert {
@@ -287,19 +301,9 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 
 		// Find most recent task update
 		var latestUpdate time.Time
-		blockedCount := 0
-		inboxCount := 0
 		for _, task := range pd.Tasks {
 			if task.UpdatedAt.After(latestUpdate) {
 				latestUpdate = task.UpdatedAt
-			}
-			if task.Status.IsActive() {
-				if task.Status == models.StatusBlocked {
-					blockedCount++
-				}
-				if task.Section == models.SectionInbox {
-					inboxCount++
-				}
 			}
 		}
 

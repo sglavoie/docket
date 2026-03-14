@@ -241,6 +241,7 @@ func buildTriggersFromFlags(fields, ops, values []string) ([]workflow.RuleTrigge
 		workflow.FieldParentStatus: true, workflow.FieldParentType: true, workflow.FieldParentTags: true,
 		workflow.FieldLevel: true, workflow.FieldHasChildren: true, workflow.FieldChildrenProgress: true,
 		workflow.FieldAllChildrenDone: true, workflow.FieldIsBlocked: true, workflow.FieldBlockerCount: true,
+		workflow.FieldDependencyCount: true,
 		// Project-level triggers
 		workflow.FieldHasInProgressTasks: true, workflow.FieldActiveTaskCount: true,
 		workflow.FieldAllTasksStatus: true, workflow.FieldMajorityTaskType: true,

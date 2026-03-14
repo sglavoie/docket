@@ -205,6 +205,7 @@ func runWorkflowAdd(cmd *cobra.Command, args []string) error {
 		workflow.FieldAllChildrenDone:  true,
 		workflow.FieldIsBlocked:        true,
 		workflow.FieldBlockerCount:     true,
+		workflow.FieldDependencyCount:  true,
 		// Project-level triggers
 		workflow.FieldHasInProgressTasks: true,
 		workflow.FieldActiveTaskCount:    true,

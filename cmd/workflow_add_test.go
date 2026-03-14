@@ -33,6 +33,7 @@ func TestWorkflowAdd_TriggerFieldValidation(t *testing.T) {
 		workflow.FieldAllChildrenDone:  true,
 		workflow.FieldIsBlocked:        true,
 		workflow.FieldBlockerCount:     true,
+		workflow.FieldDependencyCount:  true,
 	}
 
 	for field := range validFields {

@@ -454,6 +454,49 @@ func TestCheckBlockedTasks_NonBlockedIgnored(t *testing.T) {
 	}
 }
 
+func TestCheckBlockedTasks_UsesActivityLogNotUpdatedAt(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	// Task became blocked 10 days ago but UpdatedAt was refreshed 2 days ago
+	// (e.g., tag was edited). The alert should still fire based on the
+	// activity log blocked transition, not the recent UpdatedAt.
+	task := testTask("blocked-edited", models.StatusBlocked, now.AddDate(0, 0, -2))
+	task.Activity = []*models.ActivityEntry{
+		{
+			Timestamp: now.AddDate(0, 0, -10),
+			Field:     "status",
+			OldValue:  string(models.StatusInProgress),
+			NewValue:  string(models.StatusBlocked),
+		},
+	}
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkBlockedTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 1 {
+		t.Fatalf("expected 1 alert (blocked 10 days per activity log), got %d", len(alerts))
+	}
+}
+
+func TestCheckBlockedTasks_RecentActivityLogBlockedNoAlert(t *testing.T) {
+	now := time.Date(2026, 2, 28, 10, 0, 0, 0, time.UTC)
+	// Task became blocked 3 days ago (below threshold) but UpdatedAt is old.
+	// The alert should NOT fire because the activity log shows recent blocking.
+	task := testTask("blocked-recent-log", models.StatusBlocked, now.AddDate(0, 0, -20))
+	task.Activity = []*models.ActivityEntry{
+		{
+			Timestamp: now.AddDate(0, 0, -3),
+			Field:     "status",
+			OldValue:  string(models.StatusTodo),
+			NewValue:  string(models.StatusBlocked),
+		},
+	}
+
+	projects := []ProjectData{testProject("proj1", task)}
+	alerts := checkBlockedTasks(DefaultAlertConfig(), projects, now)
+	if len(alerts) != 0 {
+		t.Fatalf("expected 0 alerts (blocked only 3 days per activity log), got %d", len(alerts))
+	}
+}
+
 // --- checkProjectHealth ---
 
 func TestCheckProjectHealth_StaleProject(t *testing.T) {
