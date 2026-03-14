@@ -99,31 +99,31 @@ func dispatchCommonPrefix(
 		if key == "d" {
 			task, project := v.getTaskAndProject()
 			if task != nil {
-				return v.(tea.Model), func() tea.Msg {
+				return v, func() tea.Msg {
 					return SetDueDateMsg{Task: task, Project: project}
 				}, true
 			}
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 
 	case "g":
 		switch key {
 		case "g":
 			cmd := v.JumpToTop()
-			return v.(tea.Model), cmd, true
+			return v, cmd, true
 		case "p":
 			task, project := v.getTaskAndProject()
 			if task != nil {
 				msg := v.selectMsg(task, project)
-				return v.(tea.Model), func() tea.Msg { return msg }, true
+				return v, func() tea.Msg { return msg }, true
 			}
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 
 	case "m":
 		section, ok := sectionForMoveKey(key)
 		if !ok {
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 		model, cmd := taskOpsSectionMove(v, section)
 		return model, cmd, true
@@ -133,21 +133,21 @@ func dispatchCommonPrefix(
 			model, cmd := taskOpsChangePriority(v, key)
 			return model, cmd, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "s":
 		if key == "d" {
 			task, project := v.getTaskAndProject()
 			if task != nil {
-				return v.(tea.Model), func() tea.Msg {
+				return v, func() tea.Msg {
 					return SetSnoozeDateMsg{Task: task, Project: project}
 				}, true
 			}
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 		snoozeDate, _, ok := resolveQuickSnoozeDate(key)
 		if !ok {
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 		model, cmd := taskOpsQuickSnooze(v, snoozeDate)
 		return model, cmd, true
@@ -155,12 +155,12 @@ func dispatchCommonPrefix(
 	case "c":
 		task, project := v.getTaskAndProject()
 		if task == nil {
-			return v.(tea.Model), nil, true
+			return v, nil, true
 		}
 		if handled, cmd := handleLinkedTaskPrefixKey(key, task, project, false, false); handled {
-			return v.(tea.Model), cmd, true
+			return v, cmd, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case ".":
 		stage := StageForPrefixKey(key, v.getConfig().Stages)
@@ -168,7 +168,7 @@ func dispatchCommonPrefix(
 			model, cmd := taskOpsChangeStage(v, *stage)
 			return model, cmd, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 	}
 
 	return nil, nil, false

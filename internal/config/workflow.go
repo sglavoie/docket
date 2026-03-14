@@ -286,8 +286,12 @@ func rulesAreDifferent(a, b *workflow.WorkflowRule) bool {
 		return true
 	}
 	if aTG != nil && bTG != nil {
-		aTGJSON, _ := json.Marshal(aTG)
-		bTGJSON, _ := json.Marshal(bTG)
+		aTGJSON, aErr := json.Marshal(aTG)
+		bTGJSON, bErr := json.Marshal(bTG)
+		if aErr != nil || bErr != nil {
+			// If marshaling fails, assume the groups differ to be safe.
+			return true
+		}
 		if string(aTGJSON) != string(bTGJSON) {
 			return true
 		}

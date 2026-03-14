@@ -103,52 +103,52 @@ func handleCommonTaskAction(key string, v commonActionView) (tea.Model, tea.Cmd,
 	case "t":
 		task, project := v.getTaskRef()
 		if task != nil {
-			return v.(tea.Model), func() tea.Msg {
+			return v, func() tea.Msg {
 				return ShowTagSelectorMsg{Task: task, Project: project, CurrentTags: append([]string{}, task.Tags...)}
 			}, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "Z":
 		task, project := v.getTaskRef()
 		if task != nil {
-			return v.(tea.Model), func() tea.Msg {
+			return v, func() tea.Msg {
 				return SetSnoozeDateMsg{Task: task, Project: project}
 			}, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "D":
 		task, _ := v.getTaskRef()
 		if task != nil {
 			v.showDeleteConfirm(task.ShortID)
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "e":
 		task, project := v.getTaskRef()
 		if task != nil {
-			return v.(tea.Model), func() tea.Msg {
+			return v, func() tea.Msg {
 				return EditTaskMsg{Task: task, Project: project}
 			}, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "r":
 		v.reloadData()
 		v.clampCursor()
 		v.setStatus("Refreshed")
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "y", "Y", "ctrl+y":
 		task, _ := v.getTaskRef()
 		if cmd, handled := clipboardCmd(key, task); handled {
-			return v.(tea.Model), cmd, true
+			return v, cmd, true
 		}
-		return v.(tea.Model), nil, true
+		return v, nil, true
 
 	case "?":
-		return v.(tea.Model), helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
+		return v, helpCmd(v.viewID(), v.viewName(), v.GetHelpItems()), true
 	}
 
 	return nil, nil, false

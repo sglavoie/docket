@@ -309,7 +309,10 @@ func RunSelector(title string, items []SelectorItem) (*SelectorItem, error) {
 		return nil, fmt.Errorf("failed to run selector: %w", err)
 	}
 
-	selectorModel := finalModel.(SelectorModel)
+	selectorModel, ok := finalModel.(SelectorModel)
+	if !ok {
+		return nil, fmt.Errorf("unexpected model type from selector: %T", finalModel)
+	}
 	if selectorModel.GetError() != nil {
 		return nil, selectorModel.GetError()
 	}
