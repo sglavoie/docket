@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
@@ -73,6 +74,14 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 		for _, p := range cfg.Projects {
 			if p.ID != project.ID && p.Slug == newSlug {
 				return fmt.Errorf("project with slug '%s' already exists", newSlug)
+			}
+		}
+
+		// Rename project directory if slug changed (must happen before updating project fields)
+		oldSlug := project.Slug
+		if oldSlug != newSlug {
+			if err := storage.RenameProjectDir(project, oldSlug, newSlug, cfg.DataDir); err != nil {
+				return fmt.Errorf("failed to rename project directory: %w", err)
 			}
 		}
 

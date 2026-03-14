@@ -50,6 +50,10 @@ func ParseTasksMarkdown(content string) (string, []*models.Task, error) {
 // Returns a ParseResult containing the project name, tasks, and sections.
 func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
+	// Increase buffer to 1MB to handle files with long lines (e.g., base64
+	// content in descriptions, very long metadata comments). The default 64KB
+	// limit would cause silent truncation via scanner.Err().
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var projectName string
 	var sections []string
 	sectionColors := make(map[string]string)

@@ -72,6 +72,7 @@ func GetActiveBlockerCount(project *models.Project) int {
 // parseBlockersMarkdown parses blockers.md content into Blocker structs.
 func parseBlockersMarkdown(content string) ([]*models.Blocker, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var blockers []*models.Blocker
 	var currentBlocker *models.Blocker
 	var descBuilder strings.Builder

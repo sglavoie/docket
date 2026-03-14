@@ -78,6 +78,11 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	// Parse modified content
 	newTitle, newDesc := parseEditedContent(modified, task)
 
+	// Validate edited title
+	if err := models.ValidateTaskTitle(newTitle); err != nil {
+		return fmt.Errorf("invalid title: %w", err)
+	}
+
 	// Check if changed
 	titleChanged := newTitle != task.Title
 	descChanged := newDesc != task.Description

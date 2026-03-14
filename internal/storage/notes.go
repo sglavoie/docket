@@ -68,14 +68,20 @@ func SaveNoteTo(dir string, note *models.Note) error {
 		existing, loadErr := LoadNoteFrom(dir, note.Filename)
 		if loadErr == nil && !existing.CreatedAt.Equal(note.CreatedAt) {
 			base := strings.TrimSuffix(note.Filename, ".md")
-			for i := 2; ; i++ {
+			const maxDedup = 1000
+			found := false
+			for i := 2; i <= maxDedup; i++ {
 				candidate := fmt.Sprintf("%s-%d.md", base, i)
 				candidatePath := filepath.Join(dir, candidate)
 				if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
 					note.Filename = candidate
 					path = candidatePath
+					found = true
 					break
 				}
+			}
+			if !found {
+				return fmt.Errorf("too many notes with base name %q (tried %d variants)", base, maxDedup)
 			}
 		}
 	}
@@ -179,7 +185,8 @@ func RenameNoteIn(dir, oldFilename, newTitle string) (*models.Note, error) {
 	if newFilename != oldFilename {
 		base := strings.TrimSuffix(newFilename, ".md")
 		candidate := newFilename
-		for i := 2; ; i++ {
+		const maxDedup = 1000
+		for i := 2; i <= maxDedup; i++ {
 			candidatePath := filepath.Join(dir, candidate)
 			if _, statErr := os.Stat(candidatePath); os.IsNotExist(statErr) {
 				break

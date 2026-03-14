@@ -299,6 +299,12 @@ func appendToArchiveFile(path, content string) error {
 		return fmt.Errorf("failed to write to archive file: %w", err)
 	}
 
+	// Sync to disk before returning so that a subsequent crash doesn't
+	// lose the archived data (the caller truncates on save failure).
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("failed to sync archive file: %w", err)
+	}
+
 	return nil
 }
 
