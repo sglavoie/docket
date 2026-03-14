@@ -151,7 +151,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 	for _, w := range result.Warnings {
 		switch w.Type {
 		case format.WarningDataCorrection, format.WarningDeprecation:
-			fmt.Fprintf(os.Stderr, "Warning: %s\n", w.Message)
+			fmt.Fprintf(os.Stderr, "warning: %s\n", w.Message)
 		default:
 			Debugf("parser warning: %s", w.Message)
 		}

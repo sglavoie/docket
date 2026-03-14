@@ -1,6 +1,10 @@
 package external
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -147,27 +151,41 @@ func NewVSCodeEditor() *VSCodeEditor {
 
 // Available implements Editor.
 func (e *VSCodeEditor) Available() bool {
-	return VSCodeAvailable()
+	_, err := CachedCodePath()
+	return err == nil
 }
 
 // OpenFile implements Editor.
 func (e *VSCodeEditor) OpenFile(path string) error {
-	return OpenFile(path)
+	cmd := exec.Command("code", path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 // OpenFileAtLine implements Editor.
 func (e *VSCodeEditor) OpenFileAtLine(path string, line int) error {
-	return OpenFileAtLine(path, line)
+	arg := fmt.Sprintf("%s:%d", path, line)
+	cmd := exec.Command("code", "--goto", arg)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 // OpenFolder implements Editor.
 func (e *VSCodeEditor) OpenFolder(path string) error {
-	return OpenFolder(path)
+	cmd := exec.Command("code", path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 // OpenNewWindow implements Editor.
 func (e *VSCodeEditor) OpenNewWindow(path string) error {
-	return OpenNewWindow(path)
+	cmd := exec.Command("code", "--new-window", path)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Start()
 }
 
 // EditContent implements Editor.

@@ -6,50 +6,6 @@ import (
 	"os/exec"
 )
 
-// VSCodeAvailable checks if VS Code is installed and available.
-func VSCodeAvailable() bool {
-	_, err := CachedCodePath()
-	return err == nil
-}
-
-// OpenFile opens a file in VS Code.
-func OpenFile(path string) error {
-	cmd := exec.Command("code", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Start()
-}
-
-// OpenFileAtLine opens a file in VS Code at a specific line.
-func OpenFileAtLine(path string, line int) error {
-	// VS Code uses --goto flag for line:column
-	arg := fmt.Sprintf("%s:%d", path, line)
-	cmd := exec.Command("code", "--goto", arg)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Start()
-}
-
-// OpenFolder opens a folder in VS Code.
-func OpenFolder(path string) error {
-	cmd := exec.Command("code", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Start()
-}
-
-// OpenNewWindow opens a path in a new VS Code window.
-func OpenNewWindow(path string) error {
-	cmd := exec.Command("code", "--new-window", path)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Start()
-}
-
 // CreateTempFileWithContent creates a temporary file with the given content.
 // Useful for editing task descriptions in external editors.
 func CreateTempFileWithContent(content string, prefix string, suffix string) (string, error) {

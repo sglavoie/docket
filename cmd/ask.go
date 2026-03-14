@@ -54,7 +54,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		project, _, _, err := LoadCurrentProject()
 		if err == nil {
 			if loadErr := storage.LoadProject(project); loadErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to load project tasks: %v\n", loadErr)
+				fmt.Fprintf(os.Stderr, "warning: failed to load project tasks: %v\n", loadErr)
 			} else {
 				systemPrompt = external.BuildTaskContext(project)
 			}
@@ -96,7 +96,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 					continue
 				}
 				if parts[0] != "tt" {
-					fmt.Fprintf(os.Stderr, "Warning: skipping non-tt command: %s\n", c)
+					fmt.Fprintf(os.Stderr, "warning: skipping non-tt command: %s\n", c)
 					continue
 				}
 				fmt.Printf("\n> %s\n", c)

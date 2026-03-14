@@ -40,7 +40,7 @@ var OutlinerPerspectivePrefixHints = []PrefixHint{
 // buildPrefixHints returns the hints map for all supported prefix keys.
 func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	var currentStage string
-	if len(m.rows) > 0 && m.cursor < len(m.rows) {
+	if len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
 		currentStage = m.rows[m.cursor].task.Stage
 	}
 	hints := CommonTaskActionPrefixHints(m.config.Stages, currentStage)
@@ -95,7 +95,7 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 	hints["Fv"] = SavedFilterPrefixHints
 
 	// Annotate current task's status as active in status hints
-	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) {
+	if m.pendingPrefix == "," && len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
 		task := m.rows[m.cursor].task
 		currentStatus := string(task.Status)
 		annotated := make([]PrefixHint, len(StatusPrefixHints))

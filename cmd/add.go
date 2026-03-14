@@ -78,7 +78,7 @@ func parseInlineMetadata(input string) (title string, priority int, tags []strin
 		invalidRe := regexp.MustCompile(`\s*!([0-9]+)\s*`)
 		invalidMatch := invalidRe.FindStringSubmatch(input)
 		if len(invalidMatch) > 1 {
-			fmt.Fprintf(os.Stderr, "Warning: !%s ignored (priority must be 1-5)\n", invalidMatch[1])
+			fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", invalidMatch[1])
 			input = invalidRe.ReplaceAllString(input, " ")
 		}
 	}
