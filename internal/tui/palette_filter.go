@@ -349,7 +349,7 @@ func (m *CommandPaletteModel) isNumberJumpEnabled() bool {
 // Saves the current cursor position for the current category to restore later.
 // Returns -1 if there are no items or only one category exists.
 func (m *CommandPaletteModel) findNextSectionStart() int {
-	if len(m.filteredItems) == 0 {
+	if len(m.filteredItems) == 0 || m.cursor >= len(m.filteredItems) {
 		return -1
 	}
 

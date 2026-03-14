@@ -192,7 +192,7 @@ func (m *CrossProjectLinkerModel) handleKeypress(msg tea.KeyMsg) (tea.Model, tea
 func (m *CrossProjectLinkerModel) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
 	case StepSelectProject:
-		if len(m.filteredProjects) == 0 {
+		if len(m.filteredProjects) == 0 || m.projectCursor >= len(m.filteredProjects) {
 			return m, nil
 		}
 		m.targetProject = m.filteredProjects[m.projectCursor]
@@ -208,7 +208,7 @@ func (m *CrossProjectLinkerModel) handleEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case StepSelectTask:
-		if len(m.filteredTasks) == 0 {
+		if len(m.filteredTasks) == 0 || m.taskCursor >= len(m.filteredTasks) {
 			return m, nil
 		}
 		m.targetTask = m.filteredTasks[m.taskCursor]

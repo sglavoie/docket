@@ -79,7 +79,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case " ":
 				// Toggle enabled/disabled from preview
-				if len(m.filteredTemplates) > 0 {
+				if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 					return m, m.toggleCurrentTemplate()
 				}
 				return m, nil
@@ -96,7 +96,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "d", "D":
 				// Delete from preview
-				if len(m.filteredTemplates) > 0 {
+				if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 					m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'?", m.filteredTemplates[m.cursor].Name))
 				}
 				return m, nil
@@ -187,7 +187,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "G":
-			if len(m.filteredTemplates) > 0 {
+			if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 				m.cursor = len(m.filteredTemplates) - 1
 				m.previewScroll = 0
 			}
@@ -195,7 +195,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case " ":
 			// Toggle enabled/disabled
-			if len(m.filteredTemplates) > 0 {
+			if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 				return m, m.toggleCurrentTemplate()
 			}
 			return m, nil
@@ -209,7 +209,7 @@ func (m *TaskTemplatesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d", "D":
 			// Delete template (with confirmation)
-			if len(m.filteredTemplates) > 0 {
+			if len(m.filteredTemplates) > 0 && m.cursor < len(m.filteredTemplates) {
 				m.confirm.Show("delete", fmt.Sprintf("Delete template '%s'?", m.filteredTemplates[m.cursor].Name))
 			}
 			return m, nil
@@ -599,6 +599,9 @@ func (m *TaskTemplatesModel) renderPreviewPane(width, height int) string {
 
 // renderFullscreenPreview renders the preview as a fullscreen view for narrow screens.
 func (m *TaskTemplatesModel) renderFullscreenPreview() string {
+	if m.cursor >= len(m.filteredTemplates) {
+		return ""
+	}
 	t := m.filteredTemplates[m.cursor]
 	isDefault := m.isDefaultTemplate(t.ID)
 

@@ -280,7 +280,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Enter: zoom into parent tasks or open detail for leaf tasks
 	case "enter":
-		if len(m.rows) == 0 {
+		if len(m.rows) == 0 || m.cursor >= len(m.rows) {
 			return m, nil
 		}
 		row := m.rows[m.cursor]

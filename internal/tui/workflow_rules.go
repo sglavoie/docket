@@ -166,7 +166,7 @@ func (m *WorkflowRulesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d", "D":
 			// Delete rule (with confirmation)
-			if len(m.filteredRules) > 0 {
+			if len(m.filteredRules) > 0 && m.cursor < len(m.filteredRules) {
 				m.confirm.Show("delete", fmt.Sprintf("Delete rule '%s'?", m.filteredRules[m.cursor].Name))
 			}
 			return m, nil
