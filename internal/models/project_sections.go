@@ -117,10 +117,14 @@ func (p *Project) RenameSection(oldName, newName string) error {
 	for i, s := range p.Sections {
 		if s == oldName {
 			p.Sections[i] = newName
-			// Update tasks with this section
+			// Update tasks with this section (both GTD and custom section references)
 			for _, task := range p.Tasks {
 				if task.Section == oldName {
 					task.Section = newName
+					task.UpdatedAt = time.Now()
+				}
+				if task.CustomSection == oldName {
+					task.CustomSection = newName
 					task.UpdatedAt = time.Now()
 				}
 			}

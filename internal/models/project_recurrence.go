@@ -58,21 +58,39 @@ func (p *Project) GenerateRecurringInstances() int {
 			MaxStreak: task.Recurrence.MaxStreak,
 		}
 
+		// Copy score dimensions from the completed task
+		scoreDims := make(map[string]int, len(task.ScoreDimensions))
+		for k, v := range task.ScoreDimensions {
+			scoreDims[k] = v
+		}
+
+		// Copy checklist items (reset all to unchecked for the new instance)
+		var checklist []ChecklistItem
+		if len(task.Checklist) > 0 {
+			checklist = make([]ChecklistItem, len(task.Checklist))
+			for i, item := range task.Checklist {
+				checklist[i] = ChecklistItem{Text: item.Text, Done: false}
+			}
+		}
+
 		newTask := &Task{
 			ID:              generateUUID(),
 			ShortID:         p.GetNextShortID(),
 			Type:            task.Type,
 			Title:           task.Title,
+			Description:     task.Description, // Carry forward description for context
 			Status:          StatusTodo,
 			Priority:        task.Priority,
 			Section:         SectionInbox, // New instances go to Inbox for triage
 			Tags:            append([]string{}, task.Tags...),
 			DependsOn:       []string{},
 			RelatedTo:       []string{},
-			ScoreDimensions: map[string]int{},
+			ScoreDimensions: scoreDims,
 			Children:        []*Task{},
 			DueDate:         nextDue,
 			Recurrence:      newRecurrence,
+			Checklist:       checklist,
+			Stage:           task.Stage,
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		}

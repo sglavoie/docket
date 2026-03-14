@@ -251,7 +251,12 @@ func formulaWSJF(results []DimensionResult) float64 {
 }
 
 // clamp constrains a value to the [min, max] range.
+// If min > max (misconfigured), they are swapped to avoid returning
+// contradictory results.
 func clamp(v, min, max int) int {
+	if min > max {
+		min, max = max, min
+	}
 	if v < min {
 		return min
 	}
