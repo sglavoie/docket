@@ -97,10 +97,14 @@ func applyAction(task *models.Task, action RuleAction) bool {
 	switch action.ActionType {
 	case ActionSetStatus:
 		newStatus := models.TaskStatus(action.Value)
-		if newStatus.IsValid() && task.Status != newStatus {
-			task.Status = newStatus
-			return true
+		if !newStatus.IsValid() || task.Status == newStatus {
+			return false
 		}
+		// Use lifecycle methods to ensure side effects (timestamps, sections, flags)
+		// are applied consistently. Skip CanTransitionTo check since workflow rules
+		// are intentional overrides (e.g., force-completing a blocked task).
+		task.ApplyTransition(newStatus)
+		return true
 	case ActionSetPriority:
 		newPriority, err := strconv.Atoi(action.Value)
 		if err == nil && newPriority >= models.PriorityMin && newPriority <= models.PriorityMax && task.Priority != newPriority {

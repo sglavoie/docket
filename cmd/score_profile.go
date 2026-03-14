@@ -116,7 +116,7 @@ func runScoreProfileAdd(cmd *cobra.Command, args []string) error {
 			return addErr
 		}
 		if saveErr := configManager.Save(cfg); saveErr != nil {
-			return fmt.Errorf("failed to save config: %w", err)
+			return fmt.Errorf("failed to save config: %w", saveErr)
 		}
 		fmt.Printf("Added scoring profile: %s\n", scoring.FormatProfileSummary(&profile))
 		return nil
