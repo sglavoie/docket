@@ -36,10 +36,6 @@ func runContextList(cmd *cobra.Command, args []string) error {
 	}
 
 	names := cfg.GetCustomContextNames()
-	if len(names) == 0 {
-		fmt.Println("No custom contexts found. Create one with: tt context new <name>")
-		return nil
-	}
 
 	if contextListJSON {
 		type contextEntry struct {
@@ -55,6 +51,11 @@ func runContextList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("marshal contexts to JSON: %w", err)
 		}
 		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(names) == 0 {
+		fmt.Println("No custom contexts found. Create one with: tt context new <name>")
 		return nil
 	}
 

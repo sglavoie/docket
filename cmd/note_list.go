@@ -59,11 +59,6 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list notes: %w", err)
 	}
 
-	if len(notes) == 0 {
-		fmt.Println("No notes found. Create one with: tt note add \"Title\"")
-		return nil
-	}
-
 	// Apply tag filter
 	var filtered []*models.Note
 	for _, note := range notes {
@@ -71,11 +66,6 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		filtered = append(filtered, note)
-	}
-
-	if len(filtered) == 0 {
-		fmt.Println("No notes match the filters.")
-		return nil
 	}
 
 	if noteListJSON {
@@ -105,6 +95,16 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("marshal notes to JSON: %w", err)
 		}
 		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(notes) == 0 {
+		fmt.Println("No notes found. Create one with: tt note add \"Title\"")
+		return nil
+	}
+
+	if len(filtered) == 0 {
+		fmt.Println("No notes match the filters.")
 		return nil
 	}
 

@@ -71,18 +71,8 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(project.Tasks) == 0 {
-		fmt.Println("No tasks yet. Add one with: tt task add <title>")
-		return nil
-	}
-
 	// Apply filters
 	tasks := filterTasks(project.Tasks)
-
-	if len(tasks) == 0 {
-		fmt.Println("No tasks match the filters.")
-		return nil
-	}
 
 	// Apply sorting if requested
 	if listSort != "" {
@@ -93,6 +83,16 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 
 	if listJSON {
 		return displayTaskJSON(tasks)
+	}
+
+	if len(project.Tasks) == 0 {
+		fmt.Println("No tasks yet. Add one with: tt task add <title>")
+		return nil
+	}
+
+	if len(tasks) == 0 {
+		fmt.Println("No tasks match the filters.")
+		return nil
 	}
 
 	if listTreeView {

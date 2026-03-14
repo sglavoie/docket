@@ -55,11 +55,6 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load blockers: %w", err)
 	}
 
-	if len(blockers) == 0 {
-		fmt.Println("No blockers found. Add one with: tt blocker add <title>")
-		return nil
-	}
-
 	// Apply visibility filters to the original blocker list
 	var visibleBlockers []*models.Blocker
 	for _, b := range blockers {
@@ -73,21 +68,29 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		visibleBlockers = append(visibleBlockers, b)
 	}
 
+	if blockerListJSON {
+		if visibleBlockers == nil {
+			visibleBlockers = []*models.Blocker{}
+		}
+		data, err := json.MarshalIndent(visibleBlockers, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal blockers to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(blockers) == 0 {
+		fmt.Println("No blockers found. Add one with: tt blocker add <title>")
+		return nil
+	}
+
 	if len(visibleBlockers) == 0 {
 		if showResolvedBlockers {
 			fmt.Println("No resolved blockers found.")
 		} else {
 			fmt.Println("No active blockers.")
 		}
-		return nil
-	}
-
-	if blockerListJSON {
-		data, err := json.MarshalIndent(visibleBlockers, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal blockers to JSON: %w", err)
-		}
-		fmt.Println(string(data))
 		return nil
 	}
 
@@ -143,4 +146,3 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-

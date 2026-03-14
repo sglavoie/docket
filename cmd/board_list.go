@@ -84,17 +84,6 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if len(actions) == 0 {
-		if boardListDone {
-			fmt.Println("No completed actions.")
-		} else if boardListSource != "" {
-			fmt.Printf("No actions from source '%s'.\n", boardListSource)
-		} else {
-			fmt.Println("No open actions. Add one with: tt board add \"Title\"")
-		}
-		return nil
-	}
-
 	if boardListJSON {
 		type actionJSONEntry struct {
 			ID        string     `json:"id"`
@@ -132,6 +121,17 @@ func runBoardList(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("marshal actions to JSON: %w", err)
 		}
 		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(actions) == 0 {
+		if boardListDone {
+			fmt.Println("No completed actions.")
+		} else if boardListSource != "" {
+			fmt.Printf("No actions from source '%s'.\n", boardListSource)
+		} else {
+			fmt.Println("No open actions. Add one with: tt board add \"Title\"")
+		}
 		return nil
 	}
 

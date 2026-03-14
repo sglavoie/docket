@@ -51,11 +51,6 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	if len(projects) == 0 {
-		fmt.Println("No projects found. Create one with: tt project new <name>")
-		return nil
-	}
-
 	if listProjectJSON {
 		type projectJSON struct {
 			ID             string `json:"id"`
@@ -85,11 +80,19 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			result = append(result, entry)
 		}
 
+		if result == nil {
+			result = []projectJSON{}
+		}
 		data, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
 		fmt.Println(string(data))
+		return nil
+	}
+
+	if len(projects) == 0 {
+		fmt.Println("No projects found. Create one with: tt project new <name>")
 		return nil
 	}
 
