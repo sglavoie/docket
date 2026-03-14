@@ -57,6 +57,10 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 	}
 
 	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+		// Prevent snoozing completed/canceled tasks (it makes no sense to hide them)
+		if snoozeDate != nil && task.Status.IsComplete() {
+			return fmt.Errorf("cannot snooze a %s task", task.Status)
+		}
 		task.SnoozedUntil = snoozeDate
 		return nil
 	})

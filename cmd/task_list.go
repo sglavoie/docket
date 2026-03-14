@@ -85,13 +85,12 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		return displayTaskJSON(tasks)
 	}
 
-	if len(project.Tasks) == 0 {
-		fmt.Println("No tasks yet. Add one with: tt task add <title>")
-		return nil
-	}
-
 	if len(tasks) == 0 {
-		fmt.Println("No tasks match the filters.")
+		if len(project.Tasks) == 0 {
+			fmt.Println("No tasks yet. Add one with: tt task add <title>")
+		} else {
+			fmt.Println("No tasks match the filters.")
+		}
 		return nil
 	}
 

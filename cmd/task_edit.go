@@ -39,42 +39,31 @@ func init() {
 }
 
 func runTaskEdit(cmd *cobra.Command, args []string) error {
-	// Load config to get editor preference
-	cfg, _, err := LoadConfig()
+	// Load project and config once
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
 
 	// Handle interactive selection if no ID provided
-	var taskID string
+	var task *models.Task
 	if len(args) > 0 {
-		taskID = args[0]
-	} else {
-		project, _, _, loadErr := LoadCurrentProject()
-		if loadErr != nil {
-			return loadErr
+		var findErr error
+		task, findErr = FindTaskByIdentifier(project, args[0])
+		if findErr != nil {
+			return findErr
 		}
-
-		task, selectErr := SelectTask(project, args,
+	} else {
+		var selectErr error
+		task, selectErr = SelectTask(project, args,
 			func(t *models.Task) bool { return true },
 			"Select task to edit:", "no tasks available. Add one with: tt task add <title>")
 		if selectErr != nil {
 			return selectErr
 		}
-		taskID = task.ID
 	}
 
 	editor := resolveEditor(editEditor, cfg.Editor)
-
-	// We need to load the task first to build edit content
-	project, _, _, err := LoadCurrentProject()
-	if err != nil {
-		return err
-	}
-	task, findErr := FindTaskByIdentifier(project, taskID)
-	if findErr != nil {
-		return findErr
-	}
 
 	// Build content for editing
 	content := buildEditContent(task)
@@ -97,7 +86,7 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Use WithTaskUpdate to apply changes
-	updatedTask, err := WithTaskUpdate(taskID, func(t *models.Task) error {
+	updatedTask, err := WithTaskUpdate(task.ID, func(t *models.Task) error {
 		t.Title = newTitle
 		t.Description = newDesc
 		return nil

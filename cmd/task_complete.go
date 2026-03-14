@@ -145,6 +145,17 @@ func runTaskStandby(cmd *cobra.Command, args []string) error {
 	})
 }
 
+// actionToTargetStatus maps CLI action names to the target TaskStatus.
+var actionToTargetStatus = map[string]models.TaskStatus{
+	"complete": models.StatusDone,
+	"start":    models.StatusInProgress,
+	"block":    models.StatusBlocked,
+	"cancel":   models.StatusCanceled,
+	"reopen":   models.StatusTodo,
+	"review":   models.StatusReview,
+	"standby":  models.StatusStandby,
+}
+
 func updateTaskStatus(args []string, action string, update func(*models.Task)) error {
 	// Handle interactive selection if no ID provided
 	var taskIDs []string
@@ -157,18 +168,13 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 			return err
 		}
 
-		// Filter candidates based on action
+		targetStatus := actionToTargetStatus[action]
+
+		// Filter candidates based on whether the transition is valid
 		var candidates []*models.Task
 		for _, t := range project.Tasks {
-			switch action {
-			case "complete", "start", "block", "cancel", "review", "standby":
-				if t.Status.IsActive() {
-					candidates = append(candidates, t)
-				}
-			case "reopen":
-				if t.Status.IsComplete() {
-					candidates = append(candidates, t)
-				}
+			if t.CanTransitionTo(targetStatus) == "" {
+				candidates = append(candidates, t)
 			}
 		}
 
@@ -213,6 +219,12 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 	for _, taskID := range taskIDs {
 		var generated int
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+			// Validate that the status transition is allowed
+			targetStatus := actionToTargetStatus[action]
+			if msg := task.CanTransitionTo(targetStatus); msg != "" {
+				return fmt.Errorf("%s", msg)
+			}
+
 			// Block completion if task has incomplete dependencies
 			if action == "complete" {
 				if incompleteDeps := project.GetIncompleteDependencies(task); len(incompleteDeps) > 0 {
