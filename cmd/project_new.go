@@ -57,6 +57,9 @@ func runProjectNew(cmd *cobra.Command, args []string) error {
 	if name == "" {
 		return tterrors.NewInvalidValueError("name", name, "cannot be empty")
 	}
+	if len(name) > 100 {
+		return fmt.Errorf("project name too long (%d chars, max 100)", len(name))
+	}
 
 	// Check for duplicate slug
 	slug := models.Slugify(name)

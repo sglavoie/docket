@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -13,7 +14,10 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-var noteListTag string
+var (
+	noteListTag  string
+	noteListJSON bool
+)
 
 var noteListCmd = &cobra.Command{
 	Use:     "list",
@@ -30,6 +34,7 @@ Examples:
 func init() {
 	noteCmd.AddCommand(noteListCmd)
 	noteListCmd.Flags().StringVarP(&noteListTag, "tag", "t", "", "filter by tag")
+	noteListCmd.Flags().BoolVar(&noteListJSON, "json", false, "output as JSON")
 }
 
 func runNoteList(cmd *cobra.Command, args []string) error {
@@ -59,14 +64,51 @@ func runNoteList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Apply tag filter
+	var filtered []*models.Note
 	for _, note := range notes {
-		if noteListTag != "" {
-			found := slices.Contains(note.Tags, noteListTag)
-			if !found {
-				continue
+		if noteListTag != "" && !slices.Contains(note.Tags, noteListTag) {
+			continue
+		}
+		filtered = append(filtered, note)
+	}
+
+	if len(filtered) == 0 {
+		fmt.Println("No notes match the filters.")
+		return nil
+	}
+
+	if noteListJSON {
+		type noteJSONEntry struct {
+			Title       string    `json:"title"`
+			Filename    string    `json:"filename"`
+			Tags        []string  `json:"tags"`
+			CreatedAt   time.Time `json:"created_at"`
+			ModifiedAt  time.Time `json:"modified_at"`
+			LinkedTasks []string  `json:"linked_tasks"`
+			Pinned      bool      `json:"pinned"`
+		}
+		entries := make([]noteJSONEntry, len(filtered))
+		for i, n := range filtered {
+			entries[i] = noteJSONEntry{
+				Title:       n.Title,
+				Filename:    n.Filename,
+				Tags:        n.Tags,
+				CreatedAt:   n.CreatedAt,
+				ModifiedAt:  n.ModifiedAt,
+				LinkedTasks: n.LinkedTasks,
+				Pinned:      n.Pinned,
 			}
 		}
+		data, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal notes to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
 
+	for _, note := range filtered {
 		pinIcon := " "
 		if note.Pinned {
 			pinIcon = "P"

@@ -39,6 +39,9 @@ func runNoteAdd(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		return tterrors.NewRequiredFieldError("note title")
 	}
+	if len(title) > 200 {
+		return fmt.Errorf("note title too long (%d chars, max 200)", len(title))
+	}
 
 	note := models.NewNote(title)
 	if len(noteAddTags) > 0 {

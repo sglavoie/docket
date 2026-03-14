@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
+
+var contextListJSON bool
 
 var contextListCmd = &cobra.Command{
 	Use:     "list",
@@ -16,12 +19,14 @@ var contextListCmd = &cobra.Command{
 Examples:
   tt context list
   tt context ls
-  tt ctx l`,
+  tt ctx l
+  tt context list --json`,
 	RunE: runContextList,
 }
 
 func init() {
 	contextCmd.AddCommand(contextListCmd)
+	contextListCmd.Flags().BoolVar(&contextListJSON, "json", false, "output as JSON")
 }
 
 func runContextList(cmd *cobra.Command, args []string) error {
@@ -33,6 +38,23 @@ func runContextList(cmd *cobra.Command, args []string) error {
 	names := cfg.GetCustomContextNames()
 	if len(names) == 0 {
 		fmt.Println("No custom contexts found. Create one with: tt context new <name>")
+		return nil
+	}
+
+	if contextListJSON {
+		type contextEntry struct {
+			Name         string `json:"name"`
+			ProjectCount int    `json:"project_count"`
+		}
+		entries := make([]contextEntry, len(names))
+		for i, name := range names {
+			entries[i] = contextEntry{Name: name, ProjectCount: cfg.GetCustomContextProjectCount(name)}
+		}
+		data, err := json.MarshalIndent(entries, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal contexts to JSON: %w", err)
+		}
+		fmt.Println(string(data))
 		return nil
 	}
 

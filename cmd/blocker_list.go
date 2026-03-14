@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
@@ -15,6 +16,7 @@ var (
 	showAllBlockers      bool
 	showResolvedBlockers bool
 	showActiveBlockers   bool
+	blockerListJSON      bool
 )
 
 var blockerListCmd = &cobra.Command{
@@ -39,6 +41,7 @@ func init() {
 	blockerListCmd.Flags().BoolVarP(&showAllBlockers, "all", "a", false, "show all blockers")
 	blockerListCmd.Flags().BoolVar(&showResolvedBlockers, "resolved", false, "show only resolved blockers")
 	blockerListCmd.Flags().BoolVar(&showActiveBlockers, "active", false, "show only active blockers (default)")
+	blockerListCmd.Flags().BoolVar(&blockerListJSON, "json", false, "output as JSON")
 }
 
 func runBlockerList(cmd *cobra.Command, args []string) error {
@@ -57,55 +60,20 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Filter blockers based on flags
-	var filtered []*struct {
-		id          string
-		title       string
-		created     string
-		resolved    string
-		description string
-	}
-
-	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
-	resolvedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("242"))
-
+	// Apply visibility filters to the original blocker list
+	var visibleBlockers []*models.Blocker
 	for _, b := range blockers {
 		isResolved := b.IsResolved()
-
-		// Apply filters
 		if showResolvedBlockers && !isResolved {
 			continue
 		}
 		if !showAllBlockers && !showResolvedBlockers && isResolved {
 			continue
 		}
-
-		resolved := ""
-		if b.ResolvedAt != nil {
-			resolved = storage.FormatRelativeTime(*b.ResolvedAt)
-		}
-
-		desc := b.Description
-		if len(desc) > 50 {
-			desc = desc[:47] + "..."
-		}
-
-		filtered = append(filtered, &struct {
-			id          string
-			title       string
-			created     string
-			resolved    string
-			description string
-		}{
-			id:          b.ID[:8],
-			title:       b.Title,
-			created:     storage.FormatRelativeTime(b.CreatedAt),
-			resolved:    resolved,
-			description: desc,
-		})
+		visibleBlockers = append(visibleBlockers, b)
 	}
 
-	if len(filtered) == 0 {
+	if len(visibleBlockers) == 0 {
 		if showResolvedBlockers {
 			fmt.Println("No resolved blockers found.")
 		} else {
@@ -113,6 +81,19 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
+
+	if blockerListJSON {
+		data, err := json.MarshalIndent(visibleBlockers, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal blockers to JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	// Build display-formatted rows for table output
+	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+	resolvedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("242"))
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
@@ -123,27 +104,35 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 		t.AppendHeader(table.Row{"ID", "Title", "Created", "Description"})
 	}
 
-	for i, b := range filtered {
-		// Check if this is resolved (by checking the original blocker)
-		isResolved := blockers[findBlockerIndex(blockers, b.id)].IsResolved()
+	for i, b := range visibleBlockers {
+		isResolved := b.IsResolved()
 
-		title := b.title
+		title := b.Title
 		if isResolved {
 			title = resolvedStyle.Render(title)
 		} else {
 			title = activeStyle.Render(title)
 		}
 
+		desc := b.Description
+		if len(desc) > 50 {
+			desc = desc[:47] + "..."
+		}
+
+		resolved := ""
+		if b.ResolvedAt != nil {
+			resolved = storage.FormatRelativeTime(*b.ResolvedAt)
+		}
+
 		if showAllBlockers || showResolvedBlockers {
-			t.AppendRow(table.Row{b.id, title, b.created, b.resolved, b.description})
+			t.AppendRow(table.Row{b.ID[:8], title, storage.FormatRelativeTime(b.CreatedAt), resolved, desc})
 		} else {
-			t.AppendRow(table.Row{b.id, title, b.created, b.description})
+			t.AppendRow(table.Row{b.ID[:8], title, storage.FormatRelativeTime(b.CreatedAt), desc})
 		}
 
 		// Add a separator between active and resolved in --all mode
-		if showAllBlockers && i < len(filtered)-1 {
-			nextIsResolved := blockers[findBlockerIndex(blockers, filtered[i+1].id)].IsResolved()
-			if !isResolved && nextIsResolved {
+		if showAllBlockers && i < len(visibleBlockers)-1 {
+			if !isResolved && visibleBlockers[i+1].IsResolved() {
 				t.AppendSeparator()
 			}
 		}
@@ -155,11 +144,3 @@ func runBlockerList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func findBlockerIndex(blockers []*models.Blocker, idPrefix string) int {
-	for i, b := range blockers {
-		if b.ID[:8] == idPrefix {
-			return i
-		}
-	}
-	return 0
-}

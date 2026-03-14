@@ -37,6 +37,9 @@ func runBlockerAdd(cmd *cobra.Command, args []string) error {
 	if title == "" {
 		return tterrors.NewRequiredFieldError("title")
 	}
+	if len(title) > 500 {
+		return fmt.Errorf("blocker title too long (%d chars, max 500)", len(title))
+	}
 
 	blocker, err := WithBlockerCreate(func() (*models.Blocker, error) {
 		b := models.NewBlocker(title)

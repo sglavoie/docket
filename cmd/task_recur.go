@@ -67,7 +67,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 	// Handle --skip flag
 	if taskRecurSkip {
 		if task.Recurrence == nil {
-			return fmt.Errorf("task #%d is not recurring", task.ShortID)
+			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		task.SkipRecurrence()
 		if err := SaveProject(project, nil); err != nil {
@@ -87,7 +87,7 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 	}
 	if taskRecurDefer > 0 {
 		if task.Recurrence == nil {
-			return fmt.Errorf("task #%d is not recurring", task.ShortID)
+			return fmt.Errorf("task #%d is not recurring; set recurrence first with: tt task recur %d <pattern>", task.ShortID, task.ShortID)
 		}
 		task.DeferRecurrence(taskRecurDefer)
 		if err := SaveProject(project, nil); err != nil {
