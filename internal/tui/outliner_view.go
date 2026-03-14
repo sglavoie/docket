@@ -213,11 +213,19 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	perspective := m.currentPerspective()
 
-	// Show perspective label only for non-All perspectives.
-	perspectiveLabel := ""
-	if perspective.Name != "All" {
-		perspectiveLabel = "  " + MutedStyle.Render("["+perspective.Name+"]")
-	}
+	presets := PerspectivePresets()
+	perspCount := len(presets)
+	prevIdx := (m.activePerspective + perspCount - 1) % perspCount
+	nextIdx := (m.activePerspective + 1) % perspCount
+
+	currentStyle := GetViewModeStyleForSection(perspective.Name)
+	prevName := presets[prevIdx].Name
+	nextName := presets[nextIdx].Name
+
+	perspectiveLabel := "  " +
+		MutedStyle.Render("‹ "+prevName) + " " +
+		currentStyle.Render("@ "+perspective.Name) + " " +
+		MutedStyle.Render(nextName+" ›")
 
 	bc := m.breadcrumb(width)
 
