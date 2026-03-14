@@ -209,8 +209,10 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 	}
 
 	// Write each root task and its children (children fetched in slice order)
+	// Use a visited set to prevent infinite loops on circular parent references
+	visited := make(map[string]bool, len(tasks))
 	for i, task := range rootTasks {
-		writeTaskPreservingOrder(&b, task, tasks, 2)
+		writeTaskPreservingOrder(&b, task, tasks, 2, visited)
 		if i < len(rootTasks)-1 {
 			b.WriteString("\n")
 		}
@@ -221,7 +223,13 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 
 // writeTaskPreservingOrder writes a single task and its children to the builder,
 // preserving the original slice order for children.
-func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []*models.Task, level int) {
+// The visited set prevents infinite loops on circular parent references.
+func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool) {
+	if visited[task.ID] {
+		return
+	}
+	visited[task.ID] = true
+
 	// Write heading
 	hashes := strings.Repeat("#", level)
 	fmt.Fprintf(b, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title)
@@ -254,7 +262,7 @@ func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []
 	// Write children
 	for _, child := range children {
 		b.WriteString("\n")
-		writeTaskPreservingOrder(b, child, allTasks, level+1)
+		writeTaskPreservingOrder(b, child, allTasks, level+1, visited)
 	}
 }
 

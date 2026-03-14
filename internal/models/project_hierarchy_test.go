@@ -333,6 +333,98 @@ func TestBuildTaskTree_MaxNestingDepth(t *testing.T) {
 	}
 }
 
+func TestBuildTaskTree_CircularParentSelfReference(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	task, err := NewTask("task-1", 1, TaskTypeTask, "Self-referencing task")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Set task as its own parent (corrupt data)
+	selfID := task.ID
+	task.ParentID = &selfID
+
+	project.Tasks = []*Task{task}
+	// Should not panic or infinite-loop
+	project.BuildTaskTree()
+
+	// Task should have been detached to root
+	if task.ParentID != nil {
+		t.Error("self-referencing task should have ParentID cleared")
+	}
+	if task.Parent != nil {
+		t.Error("self-referencing task should have nil Parent")
+	}
+}
+
+func TestBuildTaskTree_CircularParentMutualReference(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a mutual parent cycle: A -> B -> A
+	idA := taskA.ID
+	idB := taskB.ID
+	taskA.ParentID = &idB
+	taskB.ParentID = &idA
+
+	project.Tasks = []*Task{taskA, taskB}
+	// Should not panic or infinite-loop
+	project.BuildTaskTree()
+
+	// At least one of the tasks must have had its parent cleared to break the cycle
+	if taskA.ParentID != nil && taskB.ParentID != nil {
+		t.Error("circular parent chain should have been broken (at least one ParentID should be nil)")
+	}
+}
+
+func TestBuildTaskTree_CircularParentLongChain(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	taskA, err := NewTask("a", 1, TaskTypeTask, "Task A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskB, err := NewTask("b", 2, TaskTypeTask, "Task B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskC, err := NewTask("c", 3, TaskTypeTask, "Task C")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a 3-node cycle: A -> B -> C -> A
+	idA := taskA.ID
+	idB := taskB.ID
+	idC := taskC.ID
+	taskA.ParentID = &idB
+	taskB.ParentID = &idC
+	taskC.ParentID = &idA
+
+	project.Tasks = []*Task{taskA, taskB, taskC}
+	// Should not panic or infinite-loop
+	project.BuildTaskTree()
+
+	// At least one of the tasks must have had its parent cleared
+	nilCount := 0
+	for _, task := range project.Tasks {
+		if task.ParentID == nil {
+			nilCount++
+		}
+	}
+	if nilCount == 0 {
+		t.Error("circular parent chain should have been broken (at least one ParentID should be nil)")
+	}
+}
+
 func TestOutdentTaskReturnsErrorAtRoot(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 

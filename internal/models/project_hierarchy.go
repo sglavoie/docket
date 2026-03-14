@@ -21,6 +21,32 @@ func (p *Project) BuildTaskTree() {
 		taskMap[task.ID] = task
 	}
 
+	// Detect and break circular parent references before building parent-child links.
+	// A cycle exists when following ParentID pointers leads back to the starting task.
+	// This can happen from corrupt data (e.g., manual edits, interrupted saves).
+	for _, task := range p.Tasks {
+		if task.ParentID == nil {
+			continue
+		}
+		visited := make(map[string]bool)
+		visited[task.ID] = true
+		current := *task.ParentID
+		for current != "" {
+			if visited[current] {
+				// Cycle detected — break it by clearing this task's parent
+				logging.Warn("task %q (#%d) is part of a circular parent chain, clearing parent reference", task.Title, task.ShortID)
+				task.ParentID = nil
+				break
+			}
+			visited[current] = true
+			if parent, ok := taskMap[current]; ok && parent.ParentID != nil {
+				current = *parent.ParentID
+			} else {
+				break
+			}
+		}
+	}
+
 	for _, task := range p.Tasks {
 		if task.ParentID != nil {
 			if parent, ok := taskMap[*task.ParentID]; ok {
@@ -47,9 +73,14 @@ func (p *Project) BuildTaskTree() {
 		}
 	}
 
-	// Set levels via DFS
+	// Set levels via DFS (with visited set to guard against any remaining cycles)
+	visited := make(map[string]bool, len(p.Tasks))
 	var setLevels func(task *Task, level int)
 	setLevels = func(task *Task, level int) {
+		if visited[task.ID] {
+			return
+		}
+		visited[task.ID] = true
 		task.Level = level
 		for _, child := range task.Children {
 			setLevels(child, level+1)
@@ -122,8 +153,13 @@ func (p *Project) findTaskIndex(task *Task) int {
 func (p *Project) GetTaskAbove(task *Task) *Task {
 	// Build the visual order by doing a depth-first traversal
 	var visualOrder []*Task
+	visited := make(map[string]bool)
 	var traverse func(t *Task)
 	traverse = func(t *Task) {
+		if visited[t.ID] {
+			return
+		}
+		visited[t.ID] = true
 		visualOrder = append(visualOrder, t)
 		for _, child := range t.Children {
 			traverse(child)
@@ -219,9 +255,12 @@ func (p *Project) ReorderRootTasksByCompletion() {
 		tasks []*Task // root + all descendants in original slice order
 	}
 
-	// Collect all descendants of a root task
+	// Collect all descendants of a root task (visited check prevents cycles)
 	var collectDescendants func(task *Task, collected map[string]bool)
 	collectDescendants = func(task *Task, collected map[string]bool) {
+		if collected[task.ID] {
+			return
+		}
 		collected[task.ID] = true
 		for _, child := range task.Children {
 			collectDescendants(child, collected)
@@ -272,10 +311,16 @@ func (p *Project) ReorderRootTasksByCompletion() {
 }
 
 // collectSubtree collects a task and all its descendants in depth-first order.
+// Uses a visited set to prevent infinite loops on circular references.
 func collectSubtree(task *Task) []*Task {
 	var result []*Task
+	visited := make(map[string]bool)
 	var traverse func(t *Task)
 	traverse = func(t *Task) {
+		if visited[t.ID] {
+			return
+		}
+		visited[t.ID] = true
 		result = append(result, t)
 		for _, child := range t.Children {
 			traverse(child)
