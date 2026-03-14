@@ -194,7 +194,7 @@ func (m *PriorityViewModel) renderScoreRanking(currentIndex *int, cursorLineIdx 
 
 	scored := m.visibleScoredTasks()
 	if len(scored) == 0 {
-		return []string{MutedStyle.Render("No tasks to rank.")}
+		return []string{MutedStyle.Render("No tasks to rank. Set score dimensions with Shift+S on tasks.")}
 	}
 
 	var lines []string

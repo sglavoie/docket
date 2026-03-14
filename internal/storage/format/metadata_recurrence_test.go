@@ -28,11 +28,22 @@ func TestParseMetadata_RecurrenceStreakFields(t *testing.T) {
 
 func TestParseMetadata_RecurrenceStreakFieldsIgnoredWithoutRecur(t *testing.T) {
 	task := &models.Task{}
-	ParseMetadata(task, "id: abc, status: todo, priority: 1, recur.streak: 5")
+	warnings := ParseMetadata(task, "id: abc, status: todo, priority: 1, recur.streak: 5")
 
-	// Without a recur field, Recurrence is nil so the streak fields are silently ignored
+	// Without a recur field, Recurrence is nil so the streak fields are ignored
 	if task.Recurrence != nil {
 		t.Errorf("Recurrence should be nil when recur key is absent")
+	}
+	// Should produce an orphaned sub-fields warning
+	found := false
+	for _, w := range warnings {
+		if w.Field == "recur" && strings.Contains(w.Message, "sub-fields") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected warning about orphaned recurrence sub-fields")
 	}
 }
 

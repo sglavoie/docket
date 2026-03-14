@@ -267,9 +267,16 @@ func (t *Task) IsDueThisWeek() bool {
 }
 
 // SetRecurrence sets the recurrence pattern for the task.
-func (t *Task) SetRecurrence(pattern *RecurrencePattern) {
+// Returns an error if the pattern is non-nil and fails validation.
+func (t *Task) SetRecurrence(pattern *RecurrencePattern) error {
+	if pattern != nil {
+		if err := pattern.Validate(); err != nil {
+			return err
+		}
+	}
 	t.Recurrence = pattern
 	t.UpdatedAt = time.Now()
+	return nil
 }
 
 // ClearRecurrence removes the recurrence pattern from the task.

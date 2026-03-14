@@ -148,7 +148,9 @@ func runTaskRecur(cmd *cobra.Command, args []string) error {
 		oldPattern = task.Recurrence.String()
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		return fmt.Errorf("invalid recurrence pattern: %w", err)
+	}
 
 	if err := SaveProject(project, nil); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)

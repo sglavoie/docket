@@ -594,7 +594,9 @@ func TestNextNDueDates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 		dates := task.NextNDueDates(0)
 		if dates != nil {
 			t.Errorf("expected nil for n=0, got %v", dates)
@@ -608,7 +610,9 @@ func TestNextNDueDates(t *testing.T) {
 		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -633,7 +637,9 @@ func TestNextNDueDates(t *testing.T) {
 		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local) // Sunday
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 1})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 1}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -658,7 +664,9 @@ func TestNextNDueDates(t *testing.T) {
 		}
 		base := time.Date(2025, 1, 31, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceMonthly, Interval: 1})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceMonthly, Interval: 1}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -683,7 +691,9 @@ func TestNextNDueDates(t *testing.T) {
 		}
 		base := time.Date(2025, 3, 15, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceYearly, Interval: 1})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceYearly, Interval: 1}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -709,11 +719,13 @@ func TestNextNDueDates(t *testing.T) {
 		// Wednesday June 4, 2025
 		base := time.Date(2025, 6, 4, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{
+		if err := task.SetRecurrence(&RecurrencePattern{
 			Unit:     RecurrenceWeekly,
 			Interval: 1,
 			Weekdays: []int{1, 3, 5}, // Mon, Wed, Fri
-		})
+		}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -736,7 +748,9 @@ func TestNextNDueDates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 2})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 2}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(2)
 		if len(dates) != 2 {
@@ -761,7 +775,9 @@ func TestNextNDueDates(t *testing.T) {
 		}
 		base := time.Date(2025, 6, 1, 0, 0, 0, 0, time.Local)
 		task.DueDate = &base
-		task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 2})
+		if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceWeekly, Interval: 2}); err != nil {
+			t.Fatalf("SetRecurrence failed: %v", err)
+		}
 
 		dates := task.NextNDueDates(3)
 		if len(dates) != 3 {
@@ -913,7 +929,9 @@ func TestIsRecurring(t *testing.T) {
 		t.Error("expected not recurring when nil")
 	}
 
-	task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1})
+	if err := task.SetRecurrence(&RecurrencePattern{Unit: RecurrenceDaily, Interval: 1}); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 	if !task.IsRecurring() {
 		t.Error("expected recurring after SetRecurrence")
 	}

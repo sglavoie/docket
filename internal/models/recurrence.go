@@ -27,6 +27,34 @@ type RecurrencePattern struct {
 	MaxStreak int            `json:"max_streak,omitempty"` // Best streak achieved
 }
 
+// validRecurrenceUnits is the set of recognized recurrence time units.
+var validRecurrenceUnits = map[RecurrenceUnit]bool{
+	RecurrenceDaily:   true,
+	RecurrenceWeekly:  true,
+	RecurrenceMonthly: true,
+	RecurrenceYearly:  true,
+}
+
+// Validate checks that the RecurrencePattern has valid field values.
+// Returns an error describing the first invalid field found, or nil if valid.
+func (r *RecurrencePattern) Validate() error {
+	if r == nil {
+		return fmt.Errorf("recurrence pattern is nil")
+	}
+	if r.Interval <= 0 {
+		return fmt.Errorf("recurrence interval must be > 0, got %d", r.Interval)
+	}
+	if !validRecurrenceUnits[r.Unit] {
+		return fmt.Errorf("invalid recurrence unit %q, must be one of: day, week, month, year", r.Unit)
+	}
+	for _, wd := range r.Weekdays {
+		if wd < 0 || wd > 6 {
+			return fmt.Errorf("invalid weekday %d, must be 0-6 (Sun-Sat)", wd)
+		}
+	}
+	return nil
+}
+
 // String returns a human-readable representation of the recurrence pattern.
 func (r *RecurrencePattern) String() string {
 	if r == nil {

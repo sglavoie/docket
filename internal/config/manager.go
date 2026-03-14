@@ -151,7 +151,11 @@ func (m *Manager) Load() (*Config, error) {
 		}
 	}
 
-	// Config version migration and validation
+	// Config version migration and validation.
+	// Strategy: each version bump gets a dedicated migration block below.
+	// When adding version 2, add a `if config.Version == 1 { ... }` block
+	// that transforms the data, then set config.Version = 2 and save.
+	// Bump CurrentConfigVersion in config.go to match.
 	if config.Version == 0 {
 		config.Version = 1
 		if err := m.Save(&config); err != nil {

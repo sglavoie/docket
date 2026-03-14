@@ -19,7 +19,9 @@ func TestSetRecurrenceWeekly(t *testing.T) {
 		t.Fatal("failed to parse 'weekly' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -35,7 +37,9 @@ func TestSetRecurrenceDaily(t *testing.T) {
 		t.Fatal("failed to parse 'daily' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -51,7 +55,9 @@ func TestSetRecurrenceMonthly(t *testing.T) {
 		t.Fatal("failed to parse 'monthly' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -67,7 +73,9 @@ func TestSetRecurrenceYearly(t *testing.T) {
 		t.Fatal("failed to parse 'yearly' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -83,7 +91,9 @@ func TestSetRecurrenceBiweekly(t *testing.T) {
 		t.Fatal("failed to parse 'biweekly' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -99,7 +109,9 @@ func TestSetRecurrenceIntervalDays(t *testing.T) {
 		t.Fatal("failed to parse '3d' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -115,7 +127,9 @@ func TestSetRecurrenceIntervalWeeks(t *testing.T) {
 		t.Fatal("failed to parse '2w' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -131,7 +145,9 @@ func TestSetRecurrenceIntervalMonths(t *testing.T) {
 		t.Fatal("failed to parse '6m' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -147,7 +163,9 @@ func TestSetRecurrenceIntervalYears(t *testing.T) {
 		t.Fatal("failed to parse '2y' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -163,7 +181,9 @@ func TestSetRecurrenceWeeklyWithDays(t *testing.T) {
 		t.Fatal("failed to parse 'weekly:mon,fri' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -179,7 +199,9 @@ func TestSetRecurrenceWeeklyWithMultipleDays(t *testing.T) {
 		t.Fatal("failed to parse 'weekly:mon,wed,fri' pattern")
 	}
 
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set")
@@ -191,7 +213,9 @@ func TestClearRecurrence(t *testing.T) {
 	task := testutil.NewTestTask("Recurring Task", models.TaskTypeTask)
 
 	pattern := models.ParseRecurrence("weekly")
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if task.Recurrence == nil {
 		t.Fatal("recurrence should be set before clearing")
@@ -274,12 +298,16 @@ func TestUpdateRecurrence(t *testing.T) {
 
 	// Set initial pattern
 	pattern1 := models.ParseRecurrence("weekly")
-	task.SetRecurrence(pattern1)
+	if err := task.SetRecurrence(pattern1); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 	testutil.AssertEqual(t, task.Recurrence.String(), "weekly")
 
 	// Update to new pattern
 	pattern2 := models.ParseRecurrence("monthly")
-	task.SetRecurrence(pattern2)
+	if err := task.SetRecurrence(pattern2); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 	testutil.AssertEqual(t, task.Recurrence.String(), "monthly")
 }
 
@@ -301,7 +329,9 @@ func TestRecurrenceOnDifferentTaskTypes(t *testing.T) {
 		t.Run(string(taskType), func(t *testing.T) {
 			task := testutil.NewTestTask("Test", taskType)
 			pattern := models.ParseRecurrence("weekly")
-			task.SetRecurrence(pattern)
+			if err := task.SetRecurrence(pattern); err != nil {
+				t.Fatalf("SetRecurrence failed: %v", err)
+			}
 
 			if task.Recurrence == nil {
 				t.Errorf("recurrence should be settable on %s", taskType)
@@ -316,7 +346,9 @@ func TestSetRecurrenceUpdatesTimestamp(t *testing.T) {
 	originalTime := task.UpdatedAt
 
 	pattern := models.ParseRecurrence("weekly")
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	if !task.UpdatedAt.After(originalTime) && task.UpdatedAt != originalTime {
 		t.Error("expected UpdatedAt to be updated")
@@ -326,7 +358,9 @@ func TestSetRecurrenceUpdatesTimestamp(t *testing.T) {
 func TestClearRecurrenceUpdatesTimestamp(t *testing.T) {
 	task := testutil.NewTestTask("Task", models.TaskTypeTask)
 	pattern := models.ParseRecurrence("weekly")
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	originalTime := task.UpdatedAt
 

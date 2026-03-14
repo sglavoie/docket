@@ -91,19 +91,20 @@ func NewTask(id string, shortID int, taskType TaskType, title string) (*Task, er
 	}
 	now := time.Now()
 	return &Task{
-		ID:        id,
-		ShortID:   shortID,
-		Type:      taskType,
-		Title:     title,
-		Status:    StatusTodo,
-		Priority:  PriorityDefault, // Medium priority
-		Tags:      []string{},
-		Section:   "", // Empty section = Active view (default for new tasks)
-		DependsOn: []string{},
-		RelatedTo: []string{},
-		CreatedAt: now,
-		UpdatedAt: now,
-		Children:  []*Task{},
+		ID:              id,
+		ShortID:         shortID,
+		Type:            taskType,
+		Title:           title,
+		Status:          StatusTodo,
+		Priority:        PriorityDefault, // Medium priority
+		Tags:            []string{},
+		Section:         "", // Empty section = Active view (default for new tasks)
+		DependsOn:       []string{},
+		RelatedTo:       []string{},
+		ScoreDimensions: map[string]int{},
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		Children:        []*Task{},
 	}, nil
 }
 

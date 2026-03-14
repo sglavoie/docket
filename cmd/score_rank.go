@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -23,6 +24,7 @@ func init() {
 
 	scoreRankCmd.Flags().IntP("limit", "n", 0, "limit number of results (0 = all)")
 	scoreRankCmd.Flags().Bool("all", false, "include completed tasks")
+	scoreRankCmd.Flags().Bool("json", false, "output as JSON")
 }
 
 type rankedTask struct {
@@ -63,6 +65,40 @@ func runScoreRank(cmd *cobra.Command, args []string) error {
 
 	if len(ranked) == 0 {
 		fmt.Println("No tasks to rank.")
+		return nil
+	}
+
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	if jsonOutput {
+		type rankedJSON struct {
+			Rank         int     `json:"rank"`
+			ShortID      int     `json:"short_id"`
+			Type         string  `json:"type"`
+			Status       string  `json:"status"`
+			Title        string  `json:"title"`
+			Score        float64 `json:"score"`
+			ScorePercent int     `json:"score_percent"`
+		}
+
+		items := make([]rankedJSON, len(ranked))
+		for i, r := range ranked {
+			pct := scoring.ScorePercent(r.score, profile)
+			items[i] = rankedJSON{
+				Rank:         i + 1,
+				ShortID:      r.task.ShortID,
+				Type:         string(r.task.Type),
+				Status:       string(r.task.Status),
+				Title:        r.task.Title,
+				Score:        r.score,
+				ScorePercent: int(pct),
+			}
+		}
+
+		data, err := json.MarshalIndent(items, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal JSON: %w", err)
+		}
+		fmt.Println(string(data))
 		return nil
 	}
 

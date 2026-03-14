@@ -47,7 +47,7 @@ func (m *WeeklyReviewModel) View() string {
 	contentHeight := fullscreenContentHeight(m.height, chromeLines)
 
 	if m.totalItems == 0 {
-		emptyMsg := "No tasks in this tab."
+		emptyMsg := "No tasks in this tab. Use [/] to switch tabs."
 		if m.tabs.Active == 2 {
 			emptyMsg = "No tasks due in the upcoming week. Use this tab to review and confirm tasks scheduled for the coming week."
 		}

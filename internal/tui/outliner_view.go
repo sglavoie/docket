@@ -245,16 +245,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			Width:         width,
 		}
 		header := renderProjectTitle(m.project, m.config, titleParams) + perspectiveLabel + searchIndicator
-		emptyMsg := EmptyStateNoTasks
+		emptyMsg := EmptyStateNoTasks + " Press a to add one."
 		if perspective.Name != "All" && len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
 			if t := m.project.GetTaskByID(topID); t != nil {
-				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q.", perspective.Name, t.Title)
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective within %q. Try switching perspectives with [/].", perspective.Name, t.Title)
 			} else {
-				emptyMsg = fmt.Sprintf("No tasks match the %s perspective.", perspective.Name)
+				emptyMsg = fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with [/].", perspective.Name)
 			}
 		} else if perspective.Name != "All" {
-			emptyMsg = fmt.Sprintf("No tasks match the %s perspective.", perspective.Name)
+			emptyMsg = fmt.Sprintf("No tasks match the %s perspective. Try switching perspectives with [/].", perspective.Name)
 		}
 		result := header + "\n"
 		if tabs := m.customSectionTabs(); tabs != nil {

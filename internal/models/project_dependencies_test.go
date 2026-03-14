@@ -152,11 +152,18 @@ func TestProjectCheckAndAutoUnblock(t *testing.T) {
 		t.Errorf("blocked task should remain blocked (one dep incomplete), got %s", blocked.Status)
 	}
 
-	// Complete blocker2 - now blocked should auto-unblock to todo
+	// Complete blocker2 - now blocked should auto-unblock to todo via Reopen()
 	blocker2.Complete()
 	project.CheckAndAutoUnblock()
 	if blocked.Status != StatusTodo {
 		t.Errorf("blocked task should be unblocked to todo, got %s", blocked.Status)
+	}
+	// Verify Reopen() lifecycle side-effects fired
+	if blocked.Section != SectionInbox {
+		t.Errorf("auto-unblocked task should be in Inbox for re-triage, got %q", blocked.Section)
+	}
+	if blocked.CompletedAt != nil {
+		t.Error("auto-unblocked task should have CompletedAt cleared")
 	}
 }
 

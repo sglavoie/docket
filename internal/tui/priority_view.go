@@ -179,7 +179,7 @@ func (m *PriorityViewModel) View() string {
 	if m.totalTasks == 0 && len(filteredWaiting) == 0 {
 		b.WriteString(m.renderPriorityTabBar())
 		b.WriteString("\n\n")
-		msg := EmptyStateNoTasks
+		msg := EmptyStateNoTasks + " Press a to add a task."
 		if m.searchQuery != "" {
 			msg = EmptyStateFiltered
 		}

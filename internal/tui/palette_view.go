@@ -14,6 +14,9 @@ import (
 // Note: HighlightStyle and HighlightText are defined in highlight.go
 
 // View implements tea.Model.
+// StatusBarLabel implements StatusBarLabeler.
+func (m *CommandPaletteModel) StatusBarLabel() string { return "Command Palette" }
+
 func (m *CommandPaletteModel) View() string {
 	var content strings.Builder
 

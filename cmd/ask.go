@@ -53,8 +53,11 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	if !askNoContext {
 		project, _, _, err := LoadCurrentProject()
 		if err == nil {
-			_ = storage.LoadProject(project)
-			systemPrompt = external.BuildTaskContext(project)
+			if loadErr := storage.LoadProject(project); loadErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to load project tasks: %v\n", loadErr)
+			} else {
+				systemPrompt = external.BuildTaskContext(project)
+			}
 		}
 	}
 
@@ -90,6 +93,10 @@ func runAsk(cmd *cobra.Command, args []string) error {
 			for _, c := range commands {
 				parts := strings.Fields(c)
 				if len(parts) < 2 {
+					continue
+				}
+				if parts[0] != "tt" {
+					fmt.Fprintf(os.Stderr, "Warning: skipping non-tt command: %s\n", c)
 					continue
 				}
 				fmt.Printf("\n> %s\n", c)

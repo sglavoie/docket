@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,6 +14,7 @@ import (
 )
 
 var showArchived bool
+var listProjectJSON bool
 
 var projectListCmd = &cobra.Command{
 	Use:     "list",
@@ -23,6 +25,7 @@ var projectListCmd = &cobra.Command{
 Examples:
   tt project list
   tt project list --archived
+  tt project list --json
   tt p ls`,
 	RunE: runProjectList,
 }
@@ -31,6 +34,7 @@ func init() {
 	projectCmd.AddCommand(projectListCmd)
 
 	projectListCmd.Flags().BoolVarP(&showArchived, "archived", "a", false, "include archived projects")
+	projectListCmd.Flags().BoolVar(&listProjectJSON, "json", false, "output as JSON")
 }
 
 func runProjectList(cmd *cobra.Command, args []string) error {
@@ -49,6 +53,43 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 
 	if len(projects) == 0 {
 		fmt.Println("No projects found. Create one with: tt project new <name>")
+		return nil
+	}
+
+	if listProjectJSON {
+		type projectJSON struct {
+			ID             string `json:"id"`
+			Name           string `json:"name"`
+			Context        string `json:"context"`
+			Archived       bool   `json:"archived"`
+			Pinned         bool   `json:"pinned"`
+			TaskCount      int    `json:"task_count,omitempty"`
+			ActiveCount    int    `json:"active_count,omitempty"`
+			CompletedCount int    `json:"completed_count,omitempty"`
+		}
+
+		var result []projectJSON
+		for _, p := range projects {
+			entry := projectJSON{
+				ID:       p.ID,
+				Name:     p.Name,
+				Context:  p.Context,
+				Archived: p.Archived,
+				Pinned:   p.Pinned,
+			}
+			if err := storage.LoadProject(p); err == nil {
+				entry.TaskCount = p.CountTasks()
+				entry.ActiveCount = p.CountActiveTasks()
+				entry.CompletedCount = p.CountCompletedTasks()
+			}
+			result = append(result, entry)
+		}
+
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		fmt.Println(string(data))
 		return nil
 	}
 

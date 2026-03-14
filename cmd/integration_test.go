@@ -265,7 +265,9 @@ func TestIntegration_RecurrenceLifecycle(t *testing.T) {
 	if pattern == nil {
 		t.Fatal("ParseRecurrence(\"weekly\") returned nil")
 	}
-	task.SetRecurrence(pattern)
+	if err := task.SetRecurrence(pattern); err != nil {
+		t.Fatalf("SetRecurrence failed: %v", err)
+	}
 
 	// Verify recurrence is set
 	if task.Recurrence == nil {

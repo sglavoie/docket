@@ -527,9 +527,9 @@ func (m *CrossProjectLinkerModel) viewTaskSelection() string {
 
 	if len(m.filteredTasks) == 0 {
 		if len(m.allTasks) == 0 {
-			b.WriteString(MutedStyle.Render("No tasks in this project."))
+			b.WriteString(MutedStyle.Render("No tasks in this project. Add tasks first, then link them here."))
 		} else {
-			b.WriteString(MutedStyle.Render("No matching tasks."))
+			b.WriteString(MutedStyle.Render("No matching tasks. Try a different search term."))
 		}
 		b.WriteString("\n\n")
 		if m.SearchQuery() != "" {

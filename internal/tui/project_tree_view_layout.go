@@ -340,7 +340,7 @@ func (m *ProjectTreeModel) renderTreeContent(width int) string {
 
 	if len(visible) == 0 {
 		if len(m.project.Tasks) == 0 {
-			cardContent.WriteString(MutedStyle.Render("No tasks yet."))
+			cardContent.WriteString(MutedStyle.Render("No tasks yet. Press a to add one."))
 		} else {
 			cardContent.WriteString(MutedStyle.Render(EmptyStateFiltered))
 		}

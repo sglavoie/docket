@@ -103,6 +103,23 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	// Build the tree structure
 	project.BuildTaskTree()
 
+	// Warn on tasks whose section doesn't match any project-defined section
+	sections := project.GetSections()
+	sectionSet := make(map[string]bool, len(sections))
+	for _, s := range sections {
+		sectionSet[s] = true
+	}
+	for _, task := range project.Tasks {
+		if task.Section != "" && !sectionSet[task.Section] {
+			result.Warnings = append(result.Warnings, ParseWarning{
+				Type:    format.WarningValidation,
+				TaskID:  task.ID,
+				Field:   "section",
+				Message: fmt.Sprintf("task #%d section %q not in project sections", task.ShortID, task.Section),
+			})
+		}
+	}
+
 	return &ProjectLoadResult{Warnings: result.Warnings}, nil
 }
 

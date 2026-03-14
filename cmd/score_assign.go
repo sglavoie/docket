@@ -11,14 +11,28 @@ import (
 var scoreAssignCmd = &cobra.Command{
 	Use:   "assign <profile-id>",
 	Short: "Assign a scoring profile to the current project",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runScoreAssign,
+	Long: `Assign a scoring profile to the current project. Once assigned,
+tasks can be scored and ranked using the profile's formula and dimensions.
+
+Use 'tt score profile list' to see available profiles.
+
+Examples:
+  tt score assign rice
+  tt score assign my-custom-profile`,
+	Args: cobra.ExactArgs(1),
+	RunE: runScoreAssign,
 }
 
 var scoreUnassignCmd = &cobra.Command{
 	Use:   "unassign",
 	Short: "Remove scoring profile from the current project",
-	RunE:  runScoreUnassign,
+	Long: `Remove the scoring profile assignment from the current project.
+Existing dimension values on tasks are preserved but scoring/ranking
+will not be available until a profile is reassigned.
+
+Examples:
+  tt score unassign`,
+	RunE: runScoreUnassign,
 }
 
 func init() {

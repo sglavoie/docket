@@ -137,7 +137,7 @@ func (m *TaskActivityModel) View() string {
 	b.WriteString("\n\n")
 
 	if len(entries) == 0 {
-		b.WriteString(MutedStyle.Render("No activity recorded yet."))
+		b.WriteString(MutedStyle.Render("No activity recorded yet. Activity is logged as you work on this task."))
 		b.WriteString("\n")
 	} else {
 		headerLines := 5

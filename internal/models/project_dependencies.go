@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // GetBlockingTasks returns the tasks that the given task depends on.
 func (p *Project) GetBlockingTasks(task *Task) []*Task {
 	var blockers []*Task
@@ -74,8 +72,7 @@ func (p *Project) CheckAndAutoUnblock() {
 		}
 
 		if allComplete {
-			task.Status = StatusTodo
-			task.UpdatedAt = time.Now()
+			task.Reopen()
 		}
 	}
 }

@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -22,6 +24,7 @@ var (
 	listTreeView   bool
 	listSnoozed    bool
 	listSort       string
+	listJSON       bool
 )
 
 var taskListCmd = &cobra.Command{
@@ -39,6 +42,7 @@ Examples:
   tt task list --all        # Include completed tasks
   tt task list --tree       # Show hierarchical tree view
   tt task list --sort priority
+  tt task list --json       # Output as JSON
   tt t ls`,
 	RunE: runTaskList,
 }
@@ -54,6 +58,7 @@ func init() {
 	taskListCmd.Flags().BoolVar(&listTreeView, "tree", false, "show hierarchical tree view")
 	taskListCmd.Flags().BoolVar(&listSnoozed, "snoozed", false, "include snoozed tasks (hidden by default)")
 	taskListCmd.Flags().StringVar(&listSort, "sort", "", "sort by: priority, created, updated, status, title")
+	taskListCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
 }
 
 func runTaskList(cmd *cobra.Command, args []string) error {
@@ -82,12 +87,57 @@ func runTaskList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if listJSON {
+		return displayTaskJSON(tasks)
+	}
+
 	if listTreeView {
 		displayTaskTree(project)
 	} else {
 		displayTaskTable(tasks)
 	}
 
+	return nil
+}
+
+// taskJSONEntry is a slim representation of a task for JSON output,
+// avoiding circular references from Children/Parent/Project.
+type taskJSONEntry struct {
+	ID        string     `json:"id"`
+	ShortID   int        `json:"short_id"`
+	Type      string     `json:"type"`
+	Title     string     `json:"title"`
+	Status    string     `json:"status"`
+	Priority  int        `json:"priority"`
+	Tags      []string   `json:"tags"`
+	Section   string     `json:"section"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	DueDate   *time.Time `json:"due_date"`
+}
+
+func displayTaskJSON(tasks []*models.Task) error {
+	entries := make([]taskJSONEntry, len(tasks))
+	for i, t := range tasks {
+		entries[i] = taskJSONEntry{
+			ID:        t.ID,
+			ShortID:   t.ShortID,
+			Type:      t.Type.String(),
+			Title:     t.Title,
+			Status:    t.Status.String(),
+			Priority:  t.Priority,
+			Tags:      t.Tags,
+			Section:   t.Section,
+			CreatedAt: t.CreatedAt,
+			UpdatedAt: t.UpdatedAt,
+			DueDate:   t.DueDate,
+		}
+	}
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tasks to JSON: %w", err)
+	}
+	fmt.Println(string(data))
 	return nil
 }
 

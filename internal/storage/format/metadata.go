@@ -344,24 +344,22 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			// Handle score.* dimension keys
 			if strings.HasPrefix(key, "score.") {
 				dimID := key[6:] // strip "score." prefix
-				if dimID != "" {
-					if v, err := strconv.Atoi(value); err == nil {
-						if task.ScoreDimensions == nil {
-							task.ScoreDimensions = make(map[string]int)
-						}
-						task.ScoreDimensions[dimID] = v
-					} else {
-						warnings = append(warnings, ParseWarning{
-							Type:    WarningValidation,
-							Field:   key,
-							Message: fmt.Sprintf("invalid score value '%s' for dimension '%s', skipping", value, dimID),
-						})
+				if !isValidDimensionID(dimID) {
+					warnings = append(warnings, ParseWarning{
+						Type:    WarningValidation,
+						Field:   key,
+						Message: fmt.Sprintf("invalid score dimension ID '%s' (must be 1-%d alphanumeric/underscore chars), skipping", dimID, MaxDimensionIDLength),
+					})
+				} else if v, err := strconv.Atoi(value); err == nil {
+					if task.ScoreDimensions == nil {
+						task.ScoreDimensions = make(map[string]int)
 					}
+					task.ScoreDimensions[dimID] = v
 				} else {
 					warnings = append(warnings, ParseWarning{
 						Type:    WarningValidation,
 						Field:   key,
-						Message: "empty score dimension ID in key 'score.', skipping",
+						Message: fmt.Sprintf("invalid score value '%s' for dimension '%s', skipping", value, dimID),
 					})
 				}
 			}
@@ -372,6 +370,26 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 		task.Recurrence.Skipped = recurSubFields.skipped
 		task.Recurrence.Streak = recurSubFields.streak
 		task.Recurrence.MaxStreak = recurSubFields.maxStreak
+	}
+
+	// Validate recurrence pattern if present
+	if task.Recurrence != nil {
+		if err := task.Recurrence.Validate(); err != nil {
+			warnings = append(warnings, ParseWarning{
+				Type:    WarningValidation,
+				Field:   "recur",
+				Message: fmt.Sprintf("invalid recurrence pattern: %v", err),
+			})
+		}
+	}
+
+	// Warn on orphaned recurrence sub-fields (recur.skipped/streak/max_streak without recur)
+	if recurSubFields.hasAny && task.Recurrence == nil {
+		warnings = append(warnings, ParseWarning{
+			Type:    WarningValidation,
+			Field:   "recur",
+			Message: "recurrence sub-fields (recur.skipped/streak/max_streak) found without a recur field; ignoring",
+		})
 	}
 
 	// Migration: move non-GTD section values to CustomSection
@@ -448,9 +466,13 @@ func findScoreKeyIndex(s string) int {
 	}
 }
 
-// isValidDimensionID checks that a dimension ID contains only [a-zA-Z0-9_].
+// MaxDimensionIDLength is the maximum allowed length for a score dimension ID.
+const MaxDimensionIDLength = 32
+
+// isValidDimensionID checks that a dimension ID contains only [a-zA-Z0-9_]
+// and does not exceed MaxDimensionIDLength.
 func isValidDimensionID(id string) bool {
-	if id == "" {
+	if id == "" || len(id) > MaxDimensionIDLength {
 		return false
 	}
 	for _, c := range id {
