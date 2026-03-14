@@ -139,9 +139,9 @@ func runProjectEdit(cmd *cobra.Command, args []string) error {
 	}
 	if descriptionChanged {
 		if project.Description != "" {
-			fmt.Printf("  Status: %s\n", project.Description)
+			fmt.Printf("  Description: %s\n", project.Description)
 		} else {
-			fmt.Printf("  Status: (cleared)\n")
+			fmt.Printf("  Description: (cleared)\n")
 		}
 	}
 	if statusIconChanged {

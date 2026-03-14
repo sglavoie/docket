@@ -18,7 +18,7 @@ var noteDeleteCmd = &cobra.Command{
 
 Examples:
   tt note delete meeting
-  tt note delete 2025-01-28-meeting-notes.md
+  tt note delete 2026-01-28-meeting-notes.md
   tt note delete meeting --force`,
 	Args: cobra.ExactArgs(1),
 	RunE: runNoteDelete,

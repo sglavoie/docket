@@ -19,7 +19,7 @@ Examples:
   tt context new Work           # Create a new context
   tt ctx new "Side Projects"    # Create using alias
   tt context delete Work        # Remove a context
-  tt context switch Work        # Switch active context`,
+  tt context show Work          # Show context details`,
 	RunE: runContextList, // Default to listing custom contexts
 }
 

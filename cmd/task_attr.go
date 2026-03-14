@@ -48,7 +48,7 @@ Examples:
   tt task attr 3 --idea.category=feature --idea.value=high
   tt task attr 7 --task.effort=small --task.worktype=development
   tt task attr 2 --story.points=5 --story.persona="Admin user"
-  tt task attr 1 --epic.scope=defined --epic.milestone="Q1 2025"
+  tt task attr 1 --epic.scope=defined --epic.milestone="Q1 2026"
   tt task attr 5 --clear`,
 	Args: cobra.ExactArgs(1),
 	RunE: runTaskAttr,

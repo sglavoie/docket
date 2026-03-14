@@ -24,7 +24,7 @@ The editor can be configured via:
 
 Examples:
   tt note edit meeting
-  tt note edit 2025-01-28-meeting-notes.md
+  tt note edit 2026-01-28-meeting-notes.md
   tt note edit meeting --editor vim`,
 	Args: cobra.ExactArgs(1),
 	RunE: runNoteEdit,

@@ -21,13 +21,13 @@ Accepted formats:
   +1d, +3d       Relative days from now
   +1w, +2w       Relative weeks from now
   +1m            Relative months from now
-  2025-03-01     Exact date (YYYY-MM-DD)
+  2026-06-01     Exact date (YYYY-MM-DD)
   clear          Remove snooze (make task visible again)
 
 Examples:
   tt task snooze 5 tomorrow
   tt task snooze 12 +1w
-  tt task snooze 3 2025-03-01
+  tt task snooze 3 2026-06-01
   tt task snooze 7 clear`,
 	Args: cobra.ExactArgs(2),
 	RunE: runTaskSnooze,

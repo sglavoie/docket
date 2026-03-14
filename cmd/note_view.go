@@ -17,7 +17,7 @@ var noteViewCmd = &cobra.Command{
 	Long: `Display a note using glow for markdown rendering (if available).
 
 Examples:
-  tt note view 2025-01-28-meeting-notes.md
+  tt note view 2026-01-28-meeting-notes.md
   tt note view meeting
   tt note view --no-glow meeting`,
 	Args: cobra.ExactArgs(1),
