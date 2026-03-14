@@ -203,7 +203,12 @@ func formulaMultiply(results []DimensionResult) float64 {
 		if r.Weight == 1 {
 			product *= float64(r.Value)
 		} else {
-			product *= math.Pow(float64(r.Value), r.Weight)
+			val := math.Pow(float64(r.Value), r.Weight)
+			// Guard against Inf/NaN from edge cases like Pow(0, negative)
+			if math.IsInf(val, 0) || math.IsNaN(val) {
+				return MaxScoreSentinel
+			}
+			product *= val
 		}
 	}
 	return product

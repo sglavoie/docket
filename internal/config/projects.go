@@ -30,18 +30,101 @@ func (c *Config) AddProject(project *models.Project) {
 	c.Projects = append(c.Projects, project)
 }
 
-// RemoveProject removes a project by ID.
+// RemoveProject removes a project by ID and cleans up all config references
+// (scoring profiles, view states, focus queue, recent visits, cycle lists, etc.).
 func (c *Config) RemoveProject(id string) bool {
+	found := false
 	for i, p := range c.Projects {
 		if p.ID == id {
 			c.Projects = append(c.Projects[:i], c.Projects[i+1:]...)
-			if c.CurrentProject == id {
-				c.CurrentProject = ""
-			}
-			return true
+			found = true
+			break
 		}
 	}
-	return false
+	if !found {
+		return false
+	}
+
+	if c.CurrentProject == id {
+		c.CurrentProject = ""
+	}
+
+	// Clean up scoring profile assignment
+	if c.ProjectScoringProfile != nil {
+		delete(c.ProjectScoringProfile, id)
+	}
+
+	// Clean up per-project view state
+	if c.ProjectViewStates != nil {
+		delete(c.ProjectViewStates, id)
+	}
+
+	// Clean up workflow evaluation state
+	if c.WorkflowEvalStates != nil {
+		delete(c.WorkflowEvalStates, id)
+	}
+
+	// Clean up focus queue entries referencing this project
+	if len(c.FocusQueue) > 0 {
+		filtered := c.FocusQueue[:0]
+		for _, item := range c.FocusQueue {
+			if item.ProjectID != id {
+				filtered = append(filtered, item)
+			}
+		}
+		c.FocusQueue = filtered
+	}
+
+	// Clean up recent task visits referencing this project
+	if len(c.RecentTaskVisits) > 0 {
+		filtered := c.RecentTaskVisits[:0]
+		for _, visit := range c.RecentTaskVisits {
+			if visit.ProjectID != id {
+				filtered = append(filtered, visit)
+			}
+		}
+		c.RecentTaskVisits = filtered
+	}
+
+	// Clean up cycle projects (global)
+	if len(c.CycleProjects) > 0 {
+		filtered := c.CycleProjects[:0]
+		for _, pid := range c.CycleProjects {
+			if pid != id {
+				filtered = append(filtered, pid)
+			}
+		}
+		c.CycleProjects = filtered
+	}
+
+	// Clean up per-context cycle projects
+	for ctx, pids := range c.ContextCycleProjects {
+		filtered := pids[:0]
+		for _, pid := range pids {
+			if pid != id {
+				filtered = append(filtered, pid)
+			}
+		}
+		c.ContextCycleProjects[ctx] = filtered
+	}
+
+	// Clean up custom contexts referencing this project
+	for ctx, pids := range c.CustomContexts {
+		filtered := pids[:0]
+		for _, pid := range pids {
+			if pid != id {
+				filtered = append(filtered, pid)
+			}
+		}
+		c.CustomContexts[ctx] = filtered
+	}
+
+	// Clean up action inbox reference if it points to this project
+	if c.ActionInboxProjectID == id {
+		c.ActionInboxProjectID = ""
+	}
+
+	return true
 }
 
 // sortProjectsByName sorts projects alphabetically by name (case-insensitive).

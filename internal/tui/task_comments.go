@@ -333,6 +333,9 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		if t := resolveTaskInProject(m.project, m.task.ID); t != nil {
 			m.task = t
 		}
+		if m.editIndex >= len(m.task.Comments) {
+			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
+		}
 		m.task.Comments[m.editIndex].Text = text
 
 		if err := saveProjectNoReload(m.project); err != nil {
@@ -409,6 +412,11 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		// Re-resolve task in case an async save replaced project.Tasks
 		if t := project.GetTaskByID(task.ID); t != nil {
 			task = t
+		}
+
+		// Verify comment still exists at the expected index
+		if editIndex >= len(task.Comments) {
+			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
 		}
 
 		// Update comment (preserve timestamp)
@@ -581,6 +589,11 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		// Re-resolve task in case an async save replaced project.Tasks
 		if t := project.GetTaskByID(task.ID); t != nil {
 			task = t
+		}
+
+		// Verify comment still exists at the expected index
+		if editIndex >= len(task.Comments) {
+			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
 		}
 
 		// Update comment (preserve timestamp)

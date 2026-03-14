@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 )
@@ -22,6 +23,86 @@ func TestConfigRemoveProject(t *testing.T) {
 
 	testutil.AssertEqual(t, len(cfg.Projects), 0)
 	testutil.AssertEqual(t, cfg.CurrentProject, "") // Should be cleared
+}
+
+func TestConfigRemoveProjectCleansUpReferences(t *testing.T) {
+	cfg, project := testutil.NewTestConfigWithProject("Test Project")
+
+	// Set up various references to the project
+	cfg.ProjectScoringProfile = map[string]string{project.ID: "profile-1", "other-id": "profile-2"}
+	cfg.ProjectViewStates = map[string]config.ProjectViewState{
+		project.ID: {ShowCompleted: true},
+		"other-id": {ShowCompleted: false},
+	}
+	cfg.WorkflowEvalStates = map[string]config.WorkflowEvalState{
+		project.ID: {},
+		"other-id": {},
+	}
+	cfg.FocusQueue = []config.FocusQueueItem{
+		{TaskID: "t1", ProjectID: project.ID},
+		{TaskID: "t2", ProjectID: "other-id"},
+	}
+	cfg.RecentTaskVisits = []config.RecentTaskVisit{
+		{TaskID: "t1", ProjectID: project.ID},
+		{TaskID: "t2", ProjectID: "other-id"},
+	}
+	cfg.CycleProjects = []string{project.ID, "other-id"}
+	cfg.ContextCycleProjects = map[string][]string{
+		"work": {project.ID, "other-id"},
+	}
+	cfg.CustomContexts = map[string][]string{
+		"custom": {project.ID, "other-id"},
+	}
+	cfg.ActionInboxProjectID = project.ID
+
+	// Remove the project
+	removed := cfg.RemoveProject(project.ID)
+	if !removed {
+		t.Fatal("project should have been removed")
+	}
+
+	// Verify all references are cleaned up
+	if _, ok := cfg.ProjectScoringProfile[project.ID]; ok {
+		t.Error("scoring profile reference should be removed")
+	}
+	if len(cfg.ProjectScoringProfile) != 1 {
+		t.Error("other scoring profile should be preserved")
+	}
+
+	if _, ok := cfg.ProjectViewStates[project.ID]; ok {
+		t.Error("view state should be removed")
+	}
+	if len(cfg.ProjectViewStates) != 1 {
+		t.Error("other view state should be preserved")
+	}
+
+	if _, ok := cfg.WorkflowEvalStates[project.ID]; ok {
+		t.Error("workflow eval state should be removed")
+	}
+
+	if len(cfg.FocusQueue) != 1 || cfg.FocusQueue[0].ProjectID != "other-id" {
+		t.Error("focus queue should only contain other project's entry")
+	}
+
+	if len(cfg.RecentTaskVisits) != 1 || cfg.RecentTaskVisits[0].ProjectID != "other-id" {
+		t.Error("recent visits should only contain other project's entry")
+	}
+
+	if len(cfg.CycleProjects) != 1 || cfg.CycleProjects[0] != "other-id" {
+		t.Error("cycle projects should only contain other project")
+	}
+
+	if len(cfg.ContextCycleProjects["work"]) != 1 || cfg.ContextCycleProjects["work"][0] != "other-id" {
+		t.Error("context cycle projects should only contain other project")
+	}
+
+	if len(cfg.CustomContexts["custom"]) != 1 || cfg.CustomContexts["custom"][0] != "other-id" {
+		t.Error("custom contexts should only contain other project")
+	}
+
+	if cfg.ActionInboxProjectID != "" {
+		t.Error("action inbox project ID should be cleared")
+	}
 }
 
 func TestConfigRemoveNonexistentProject(t *testing.T) {
