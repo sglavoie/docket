@@ -258,6 +258,16 @@ func templatesAreDifferent(a, b *template.TaskTemplate) bool {
 		}
 	}
 
+	// Compare checklist
+	if len(a.Checklist) != len(b.Checklist) {
+		return true
+	}
+	for i := range a.Checklist {
+		if a.Checklist[i] != b.Checklist[i] {
+			return true
+		}
+	}
+
 	// Compare children
 	if len(a.Children) != len(b.Children) {
 		return true

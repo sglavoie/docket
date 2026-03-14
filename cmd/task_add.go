@@ -244,12 +244,10 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if checklistCreated > 0 {
-			// Increment template use count
-			cfg.IncrementTemplateUseCount(tmpl.ID)
-			if err := configManager.Save(cfg); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: task created but failed to save template use count: %v\n", err)
-			}
+		// Increment template use count (template was used regardless of checklist)
+		cfg.IncrementTemplateUseCount(tmpl.ID)
+		if err := configManager.Save(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: task created but failed to save template use count: %v\n", err)
 		}
 	}
 

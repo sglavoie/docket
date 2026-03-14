@@ -321,6 +321,8 @@ func checkProjectHealth(cfg AlertConfig, projects []ProjectData, now time.Time) 
 func formatTimeAgo(now, t time.Time) string {
 	d := now.Sub(t)
 	switch {
+	case d < time.Minute:
+		return "just now"
 	case d < time.Hour:
 		return fmt.Sprintf("%d minutes ago", int(d.Minutes()))
 	case d < 24*time.Hour:

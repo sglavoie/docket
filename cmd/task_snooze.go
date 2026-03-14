@@ -52,6 +52,11 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("invalid date %q: %w\nAccepted formats: YYYY-MM-DD, +Nd/+Nw/+Nm, today, tomorrow, mon-sun, next week/month, in N days/weeks/months", dateStr, err)
 		}
+		// Reject snoozing to today or the past since the task would be immediately visible
+		today := util.StartOfDay(time.Now())
+		if !parsed.After(today) {
+			return fmt.Errorf("snooze date must be in the future (got %s)", parsed.Format(util.DateFormat))
+		}
 		snoozeDate = &parsed
 		desc = parsed.Format(util.DateFormat)
 	}

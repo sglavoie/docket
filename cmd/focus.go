@@ -159,6 +159,10 @@ func loadActiveProjects(cfg *config.Config) []*models.Project {
 }
 
 func runFocusSuggest(cmd *cobra.Command, args []string) error {
+	if focusSuggestLimit < 1 {
+		return fmt.Errorf("number of suggestions must be at least 1")
+	}
+
 	cfg, _, err := LoadConfigStrict()
 	if err != nil {
 		return err

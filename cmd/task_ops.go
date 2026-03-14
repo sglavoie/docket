@@ -337,6 +337,9 @@ func parseItemIndex(arg string, count int, itemName string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid %s index: %s", itemName, arg)
 	}
+	if count == 0 {
+		return 0, fmt.Errorf("no %ss to index", itemName)
+	}
 	if index < 0 || index >= count {
 		return 0, fmt.Errorf("%s index %d out of range (0-%d)", itemName, index, count-1)
 	}
