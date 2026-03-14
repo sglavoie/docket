@@ -86,7 +86,10 @@ func runAsk(cmd *cobra.Command, args []string) error {
 
 		fmt.Print("\nRun these commands? [y/N] ")
 		reader := bufio.NewReader(os.Stdin)
-		answer, _ := reader.ReadString('\n')
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return nil
+		}
 		answer = strings.TrimSpace(strings.ToLower(answer))
 
 		if answer == "y" || answer == "yes" {

@@ -28,7 +28,7 @@ func fallbackSelectOne(items []string, prompt string) (int, error) {
 	line = strings.TrimSpace(line)
 	n, err := strconv.Atoi(line)
 	if err != nil || n < 1 || n > len(items) {
-		return 0, fmt.Errorf("invalid selection: %s", line)
+		return 0, fmt.Errorf("invalid selection: %s (enter a number between 1 and %d)", line, len(items))
 	}
 	return n - 1, nil
 }
@@ -92,7 +92,7 @@ func FallbackMultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Ta
 		part = strings.TrimSpace(part)
 		n, err := strconv.Atoi(part)
 		if err != nil || n < 1 || n > len(tasks) {
-			return nil, fmt.Errorf("invalid selection: %s", part)
+			return nil, fmt.Errorf("invalid selection: %s (enter a number between 1 and %d)", part, len(tasks))
 		}
 		selected = append(selected, tasks[n-1])
 	}

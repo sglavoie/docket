@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -69,7 +70,7 @@ func runAttachmentRemove(cmd *cobra.Command, args []string) error {
 	// Delete file from disk if not a URL and not keeping file
 	if !isURL && !keepFile {
 		if err := storage.RemoveAttachmentFile(project, task, removed.Filename); err != nil {
-			fmt.Printf("Warning: failed to delete file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "warning: failed to delete file: %v\n", err)
 		}
 	}
 

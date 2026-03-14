@@ -31,7 +31,7 @@ func init() {
 }
 
 func runContextNew(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	name := strings.TrimSpace(args[0])
 	if name == "" {
 		return fmt.Errorf("custom context name cannot be empty")
 	}
@@ -75,7 +75,10 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 		fmt.Print("Enter project slugs (comma-separated): ")
 		reader := bufio.NewReader(os.Stdin)
-		input, _ := reader.ReadString('\n')
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
 		input = strings.TrimSpace(input)
 		if input == "" {
 			return fmt.Errorf("no projects selected")
@@ -86,7 +89,7 @@ func runContextNew(cmd *cobra.Command, args []string) error {
 			if p := cfg.GetProject(slug); p != nil {
 				selectedIDs = append(selectedIDs, p.ID)
 			} else {
-				fmt.Printf("Warning: project '%s' not found, skipping\n", slug)
+				fmt.Fprintf(os.Stderr, "warning: project '%s' not found, skipping\n", slug)
 			}
 		}
 	}
