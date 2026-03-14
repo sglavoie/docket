@@ -332,7 +332,7 @@ func (m *ProjectTreeModel) applyBulkChanges(changes PendingChanges, tasks []*mod
 
 			m.project.MutateTask(task.ID, func(t *models.Task) {
 				if changes.SetStatus != nil {
-					t.Status = *changes.SetStatus
+					t.ApplyTransition(*changes.SetStatus)
 				}
 				if changes.SetPriority != nil {
 					t.Priority = *changes.SetPriority

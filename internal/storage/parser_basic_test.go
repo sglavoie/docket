@@ -428,6 +428,60 @@ Normal description.
 	}
 }
 
+func TestParseTasksMarkdown_HeadingWithoutMetadata(t *testing.T) {
+	content := `# Project: Test
+
+## Task: No Metadata Task
+
+Description without any metadata comment.
+
+## Task: Normal Task
+<!-- id: t2, status: todo, priority: 3 -->
+
+Normal description.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(result.Tasks))
+	}
+
+	// First task had no metadata - should get a generated UUID
+	noMeta := result.Tasks[0]
+	if noMeta.ID == "" {
+		t.Error("task without metadata should have a generated UUID, got empty ID")
+	}
+	if noMeta.Title != "No Metadata Task" {
+		t.Errorf("expected title 'No Metadata Task', got %q", noMeta.Title)
+	}
+	if noMeta.CreatedAt.IsZero() {
+		t.Error("task without metadata should have CreatedAt set")
+	}
+	if noMeta.UpdatedAt.IsZero() {
+		t.Error("task without metadata should have UpdatedAt set")
+	}
+	// Should have a warning about the generated ID
+	foundWarning := false
+	for _, w := range result.Warnings {
+		if w.Field == "id" && w.TaskID == noMeta.ID {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Error("expected a warning about the generated ID")
+	}
+
+	// Second task should be normal
+	normal := result.Tasks[1]
+	if normal.ID != "t2" {
+		t.Errorf("expected ID 't2', got %q", normal.ID)
+	}
+}
+
 func TestParseTasksMarkdown_MultilineDescription(t *testing.T) {
 	content := `# Project: Test
 

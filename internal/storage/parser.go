@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage/format"
 	"github.com/sglavoie/tt/internal/tterrors"
@@ -184,6 +186,25 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 
 	// Build parent-child relationships using levels captured during initial parse
 	tasks := format.BuildHierarchy(parsedTasks)
+
+	// Assign UUIDs and timestamps to tasks that had no metadata comment.
+	// This happens when a user manually adds a heading without an HTML comment line.
+	// Without this, such tasks would have ID == "" which breaks lookups, tree building, etc.
+	now := time.Now()
+	for _, t := range tasks {
+		if t.ID == "" {
+			t.ID = uuid.New().String()
+			metadataWarnings = append(metadataWarnings, ParseWarning{
+				Type:    format.WarningDataCorrection,
+				TaskID:  t.ID,
+				Field:   "id",
+				Message: fmt.Sprintf("task #%d had no metadata comment, generated ID %s", t.ShortID, t.ID),
+			})
+		}
+		if t.CreatedAt.IsZero() {
+			t.CreatedAt = now
+		}
+	}
 
 	// Extract activity and comments from task descriptions
 	for _, t := range tasks {

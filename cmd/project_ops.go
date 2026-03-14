@@ -201,12 +201,18 @@ func processDeferredMoves(srcProject *models.Project, moves []workflow.DeferredM
 		destProject.Tasks = append(destProject.Tasks, movedTask)
 		destProject.BuildTaskTree()
 
-		// Save destination project
-		if err := storage.BackupProject(destProject); err != nil {
-			return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
-		}
-		if err := storage.SaveProject(destProject); err != nil {
-			return fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
+		// Save destination project with file locking to prevent corruption
+		destLockPath := filepath.Join(destProject.Path, "tasks.md.lock")
+		if err := util.WithFileLock(destLockPath, true, func() error {
+			if err := storage.BackupProject(destProject); err != nil {
+				return fmt.Errorf("failed to backup destination project %q: %w", move.Destination, err)
+			}
+			if err := storage.SaveProject(destProject); err != nil {
+				return fmt.Errorf("failed to save destination project %q: %w", move.Destination, err)
+			}
+			return nil
+		}); err != nil {
+			return err
 		}
 
 		Debugf("moved task %s to project %s", move.TaskID, move.Destination)
