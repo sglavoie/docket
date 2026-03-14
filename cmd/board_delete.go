@@ -31,7 +31,7 @@ func init() {
 }
 
 func runBoardDelete(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err
 	}
@@ -44,10 +44,6 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	if !ConfirmYN(fmt.Sprintf("Delete action #%d '%s'? [y/N] ", task.ShortID, task.Title), boardDeleteForce) {
 		fmt.Println("Canceled")
 		return nil
-	}
-
-	if backupErr := storage.BackupProject(project); backupErr != nil {
-		return fmt.Errorf("failed to create backup: %w", backupErr)
 	}
 
 	if err := storage.CleanupTaskAttachments(project, task); err != nil {
@@ -63,7 +59,7 @@ func runBoardDelete(cmd *cobra.Command, args []string) error {
 	project.Tasks = remaining
 	project.BuildTaskTree()
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProject(project, &SaveOptions{Config: cfg, ConfigManager: mgr}); err != nil {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
 

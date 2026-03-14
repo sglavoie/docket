@@ -54,7 +54,7 @@ var metadataKeys = []string{
 	"id", "status", "priority", "parent", "tags", "created", "updated",
 	"completed", "due", "depends", "related", "section", "custom_section", "pinned", "pinned_at", "active", "recur",
 	"recur.skipped", "recur.streak", "recur.max_streak",
-	"attachments", "snoozed", "checklist", "stage", "source", "url", "orphaned_parent",
+	"attachments", "snoozed", "checklist", "stage", "source", "url",
 	// Type-specific attribute keys
 	"bug.reproducible", "bug.severity", "bug.workaround",
 	"idea.category", "idea.effort", "idea.value", "idea.validated",
@@ -296,10 +296,7 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 			task.Source = value
 		case "url":
 			task.URL = value
-		case "orphaned_parent":
-			task.OrphanedParentID = &value
-
-		// Bug attributes
+			// Bug attributes
 		case "bug.reproducible":
 			task.EnsureBugAttrs().Reproducible = models.BugReproducible(value)
 		case "bug.severity":
@@ -643,10 +640,6 @@ func WriteMetadata(task *models.Task) string {
 
 	if task.URL != "" {
 		parts = append(parts, fmt.Sprintf("url: %s", task.URL))
-	}
-
-	if task.OrphanedParentID != nil {
-		parts = append(parts, fmt.Sprintf("orphaned_parent: %s", *task.OrphanedParentID))
 	}
 
 	// Type-specific attributes

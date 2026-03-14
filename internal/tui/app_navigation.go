@@ -52,6 +52,26 @@ func (m *AppModel) getActiveNotesView() *NotesViewModel {
 	return nil
 }
 
+// validateCurrentProject checks that the current project still exists in config.
+// If the project was deleted (e.g., by an external CLI command), it clears the
+// stale pointer and pops back to the dashboard with a status message.
+// Returns true if the project was invalidated.
+func (m *AppModel) validateCurrentProject() bool {
+	if m.currentProject == nil {
+		return false
+	}
+	if m.config.GetProject(m.currentProject.ID) != nil {
+		return false
+	}
+	m.currentProject = nil
+	m.viewStack = m.viewStack[:1]
+	m.statusMessage = "Project no longer exists, returned to dashboard"
+	if m.dashboard != nil {
+		m.dashboard.Refresh(m.config)
+	}
+	return true
+}
+
 // currentView returns the current view type.
 func (m *AppModel) currentView() ViewType {
 	if len(m.viewStack) == 0 {

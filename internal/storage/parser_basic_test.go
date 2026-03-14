@@ -184,24 +184,16 @@ Description of child.
 		t.Error("ParentID should be nil for orphaned reference")
 	}
 
-	// OrphanedParentID should preserve the original parent ID
-	if task.OrphanedParentID == nil {
-		t.Fatal("OrphanedParentID should not be nil")
-	}
-	if *task.OrphanedParentID != "nonexistent-parent-id" {
-		t.Errorf("OrphanedParentID = %q, want %q", *task.OrphanedParentID, "nonexistent-parent-id")
-	}
-
-	// Warning should mention orphaned_parent
+	// Warning should mention clearing parent reference
 	if len(result.Warnings) != 1 {
 		t.Fatalf("expected 1 warning, got %d", len(result.Warnings))
 	}
-	if !strings.Contains(result.Warnings[0].Message, "orphaned_parent") {
-		t.Errorf("warning should mention orphaned_parent, got: %s", result.Warnings[0].Message)
+	if !strings.Contains(result.Warnings[0].Message, "clearing parent reference") {
+		t.Errorf("warning should mention clearing parent reference, got: %s", result.Warnings[0].Message)
 	}
 }
 
-func TestParseTasksMarkdown_OrphanedParentRoundTrip(t *testing.T) {
+func TestParseTasksMarkdown_OrphanedParentIgnored(t *testing.T) {
 	content := `# Project: Test
 
 ## Task: Child Task
@@ -214,24 +206,225 @@ Description of child.
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	task := result.Tasks[0]
-	if task.OrphanedParentID == nil || *task.OrphanedParentID != "old-parent-id" {
-		t.Fatalf("OrphanedParentID should be preserved from metadata, got %v", task.OrphanedParentID)
+	// Should parse without error, orphaned_parent key is simply ignored
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
 	}
-
-	// Write back and re-parse to verify round-trip
-	output := WriteTasksMarkdownWithSections("Test", result.Tasks, result.Sections, nil)
-	if !strings.Contains(output, "orphaned_parent: old-parent-id") {
-		t.Error("round-tripped output should contain orphaned_parent field")
+	if result.Tasks[0].ID != "child1" {
+		t.Errorf("task ID = %q, want %q", result.Tasks[0].ID, "child1")
 	}
+}
 
-	result2, err := ParseTasksMarkdownWithSections(output)
+func TestParseTasksMarkdown_MissingMetadataComment(t *testing.T) {
+	content := `# Project: Test
+
+## Task: No Metadata Task
+
+Some description here.
+
+## Task: Normal Task
+<!-- id: t1, status: todo, priority: 2 -->
+
+Normal description.
+`
+	_, tasks, err := ParseTasksMarkdown(content)
 	if err != nil {
-		t.Fatalf("unexpected error on re-parse: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	task2 := result2.Tasks[0]
-	if task2.OrphanedParentID == nil || *task2.OrphanedParentID != "old-parent-id" {
-		t.Errorf("OrphanedParentID should survive round-trip, got %v", task2.OrphanedParentID)
+
+	// Parser should not crash; it should produce tasks even without metadata
+	if len(tasks) < 1 {
+		t.Fatal("expected at least 1 task, got 0")
+	}
+
+	// The task without metadata should still exist (with defaults)
+	// and the normal task should parse correctly
+	var foundNormal bool
+	for _, task := range tasks {
+		if task.ID == "t1" {
+			foundNormal = true
+			if task.Title != "Normal Task" {
+				t.Errorf("expected title 'Normal Task', got %q", task.Title)
+			}
+		}
+	}
+	if !foundNormal {
+		t.Error("expected to find task with id 't1'")
+	}
+}
+
+func TestParseTasksMarkdown_BrokenHeadingFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{
+			name: "missing title after type colon",
+			content: `# Project: Test
+
+## Task: Normal Before
+<!-- id: t0, status: todo, priority: 2 -->
+
+## Task:
+<!-- id: t1, status: todo, priority: 2 -->
+
+## Task: Normal After
+<!-- id: t2, status: todo, priority: 3 -->
+`,
+		},
+		{
+			name: "colon with missing title prefix",
+			content: `# Project: Test
+
+## : Missing Title
+<!-- id: t1, status: todo, priority: 2 -->
+
+## Task: Valid Task
+<!-- id: t2, status: todo, priority: 3 -->
+`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Should not panic
+			_, tasks, err := ParseTasksMarkdown(tc.content)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Should parse at least the valid tasks without crashing
+			if tasks == nil {
+				t.Fatal("tasks should not be nil")
+			}
+		})
+	}
+}
+
+func TestParseTasksMarkdown_IncompleteMetadata(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Only ID
+<!-- id: t1 -->
+
+Description for task with only ID.
+
+## Task: ID and Status
+<!-- id: t2, status: in_progress -->
+
+Description here.
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(tasks))
+	}
+
+	// Task with only ID should have defaults for status and priority
+	t1 := tasks[0]
+	if t1.ID != "t1" {
+		t.Errorf("expected ID 't1', got %q", t1.ID)
+	}
+	if t1.Title != "Only ID" {
+		t.Errorf("expected title 'Only ID', got %q", t1.Title)
+	}
+
+	// Task with ID and status but no priority
+	t2 := tasks[1]
+	if t2.ID != "t2" {
+		t.Errorf("expected ID 't2', got %q", t2.ID)
+	}
+	if t2.Status != models.StatusInProgress {
+		t.Errorf("expected status in_progress, got %q", t2.Status)
+	}
+}
+
+func TestParseTasksMarkdown_CorruptedMetadataValues(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Bad Priority
+<!-- id: t1, status: todo, priority: abc -->
+
+## Task: Invalid Status
+<!-- id: t2, status: invalid_status, priority: 2 -->
+
+## Task: Both Bad
+<!-- id: t3, status: nonexistent, priority: xyz -->
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 3 {
+		t.Fatalf("expected 3 tasks, got %d", len(result.Tasks))
+	}
+
+	// Bad priority should fall back to 0 and produce a warning
+	t1 := result.Tasks[0]
+	if t1.ID != "t1" {
+		t.Errorf("expected ID 't1', got %q", t1.ID)
+	}
+	if t1.Status != models.StatusTodo {
+		t.Errorf("expected status todo, got %q", t1.Status)
+	}
+
+	// Invalid status should keep the zero-value default
+	t2 := result.Tasks[1]
+	if t2.ID != "t2" {
+		t.Errorf("expected ID 't2', got %q", t2.ID)
+	}
+	if t2.Priority != 2 {
+		t.Errorf("expected priority 2, got %d", t2.Priority)
+	}
+
+	// Should have warnings for corrupted values
+	if len(result.Warnings) == 0 {
+		t.Error("expected warnings for corrupted metadata values")
+	}
+}
+
+func TestParseTasksMarkdown_EmptyMetadataComment(t *testing.T) {
+	content := `# Project: Test
+
+## Task: Empty Meta
+<!-- -->
+
+Description for empty meta task.
+
+## Task: Normal Task
+<!-- id: t2, status: todo, priority: 3 -->
+
+Normal description.
+`
+	_, tasks, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should not panic; should parse at least the normal task
+	if len(tasks) < 1 {
+		t.Fatal("expected at least 1 task")
+	}
+
+	// The normal task should be parseable
+	var foundNormal bool
+	for _, task := range tasks {
+		if task.ID == "t2" {
+			foundNormal = true
+			if task.Title != "Normal Task" {
+				t.Errorf("expected title 'Normal Task', got %q", task.Title)
+			}
+			if task.Priority != 3 {
+				t.Errorf("expected priority 3, got %d", task.Priority)
+			}
+		}
+	}
+	if !foundNormal {
+		t.Error("expected to find task with id 't2'")
 	}
 }
 

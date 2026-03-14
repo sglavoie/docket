@@ -98,7 +98,7 @@ func runSandboxReset(cmd *cobra.Command, args []string) error {
 	sandbox.Sections = []string{models.SectionNext}
 	sandbox.SectionColors = make(map[string]string)
 
-	if err := storage.SaveProject(sandbox); err != nil {
+	if err := SaveProject(sandbox, &SaveOptions{Config: cfg, ConfigManager: configManager}); err != nil {
 		return fmt.Errorf("failed to save sandbox: %w", err)
 	}
 

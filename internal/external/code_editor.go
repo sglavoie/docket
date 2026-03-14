@@ -82,5 +82,10 @@ func OpenCodeReference(editor, path string, line int) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Terminal editors need stdin and must block until exit
+	if pattern == patternPlusLine {
+		cmd.Stdin = os.Stdin
+		return cmd.Run()
+	}
 	return cmd.Start()
 }

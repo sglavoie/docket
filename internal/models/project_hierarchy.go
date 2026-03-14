@@ -7,6 +7,9 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 )
 
+// MaxNestingDepth is the maximum allowed nesting depth for tasks in a tree.
+const MaxNestingDepth = 6
+
 // BuildTaskTree organizes flat tasks into a tree structure.
 // Sets Parent, Children, and Level for each task.
 func (p *Project) BuildTaskTree() {
@@ -29,7 +32,22 @@ func (p *Project) BuildTaskTree() {
 		}
 	}
 
-	// Set levels via BFS
+	// Remove orphaned dependency IDs (references to deleted tasks)
+	for _, task := range p.Tasks {
+		if len(task.DependsOn) > 0 {
+			valid := task.DependsOn[:0]
+			for _, depID := range task.DependsOn {
+				if _, ok := taskMap[depID]; ok {
+					valid = append(valid, depID)
+				} else {
+					logging.Warn("task %q (#%d) depends on non-existent task %s, removing orphaned dependency", task.Title, task.ShortID, depID)
+				}
+			}
+			task.DependsOn = valid
+		}
+	}
+
+	// Set levels via DFS
 	var setLevels func(task *Task, level int)
 	setLevels = func(task *Task, level int) {
 		task.Level = level
@@ -40,6 +58,26 @@ func (p *Project) BuildTaskTree() {
 
 	for _, task := range p.Tasks {
 		if task.IsRoot() {
+			setLevels(task, 0)
+		}
+	}
+
+	// Cap nesting depth: detach tasks that exceed MaxNestingDepth
+	for _, task := range p.Tasks {
+		if task.Level > MaxNestingDepth && task.Parent != nil {
+			logging.Warn("task %q (#%d) exceeds max nesting depth %d, treating as root", task.Title, task.ShortID, MaxNestingDepth)
+			// Remove from parent's children
+			parent := task.Parent
+			for i, child := range parent.Children {
+				if child.ID == task.ID {
+					parent.Children = append(parent.Children[:i], parent.Children[i+1:]...)
+					break
+				}
+			}
+			task.Parent = nil
+			task.ParentID = nil
+			task.Level = 0
+			// Re-level this task's subtree from 0
 			setLevels(task, 0)
 		}
 	}

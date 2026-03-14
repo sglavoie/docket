@@ -337,7 +337,12 @@ func ScorePercent(score float64, profile *ScoringProfile) float64 {
 			// No above-default range
 			pct = maxN
 		} else if isMultiplicativeFormula(profile.Formula) && defS > 0 && score > 0 {
-			// Log scaling for product formulas
+			// Log scaling for product formulas: multiplicative scores grow
+			// exponentially, so log-transform gives a perceptually linear bar.
+			// When defS == 0 this branch is skipped and linear scaling is used
+			// instead, because log(score/0) is undefined. That maps any positive
+			// score to the linear upper half [mid, maxN], which is a reasonable
+			// fallback ("infinitely above a zero default").
 			pct = mid + math.Log(score/defS)/math.Log(maxS/defS)*mid
 		} else {
 			// Linear scaling for additive formulas

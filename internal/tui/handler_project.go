@@ -85,9 +85,14 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ProjectDeletedMsg:
 		m.config.RemoveProject(msg.Project.ID)
+		if m.currentProject != nil && m.currentProject.ID == msg.Project.ID {
+			m.currentProject = nil
+		}
 		if err := m.configManager.Save(m.config); err != nil {
 			m.err = err
 		}
+		// Pop back to dashboard since the project no longer exists
+		m.viewStack = m.viewStack[:1]
 		if m.dashboard != nil {
 			m.dashboard.Refresh(m.config)
 			m.dashboard.ResetCursor()

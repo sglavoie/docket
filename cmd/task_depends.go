@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tterrors"
 )
 
 var (
@@ -105,13 +106,13 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 				return blockerErr
 			}
 			if blocker.ID == t.ID {
-				return fmt.Errorf("a task cannot depend on itself")
+				return tterrors.ErrSelfDependency
 			}
 			if t.HasDependency(blocker.ID) {
-				return fmt.Errorf("task #%d already depends on #%d", t.ShortID, blocker.ShortID)
+				return fmt.Errorf("%w: #%d already depends on #%d", tterrors.ErrDuplicateDep, t.ShortID, blocker.ShortID)
 			}
 			if project.HasCircularDependency(t.ID, blocker.ID) {
-				return fmt.Errorf("cannot add dependency: would create circular dependency")
+				return fmt.Errorf("cannot add dependency: %w", tterrors.ErrCircularDep)
 			}
 			if err := t.AddDependency(blocker.ID); err != nil {
 				return err

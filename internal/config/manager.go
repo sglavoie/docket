@@ -154,16 +154,19 @@ func (m *Manager) Save(config *Config) error {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	data, err := json.MarshalIndent(config, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
+	lockPath := m.configPath + ".lock"
+	return util.WithFileLock(lockPath, true, func() error {
+		data, err := json.MarshalIndent(config, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal config: %w", err)
+		}
 
-	if err := util.AtomicWriteFile(m.configPath, data, FilePermissions); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
+		if err := util.AtomicWriteFile(m.configPath, data, FilePermissions); err != nil {
+			return fmt.Errorf("failed to write config file: %w", err)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // GetConfigPath returns the current config file path.

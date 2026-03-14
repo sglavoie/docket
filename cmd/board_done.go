@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 )
 
 var boardDoneCmd = &cobra.Command{
@@ -26,7 +25,7 @@ func init() {
 }
 
 func runBoardDone(cmd *cobra.Command, args []string) error {
-	cfg, _, err := LoadConfig()
+	cfg, mgr, err := LoadConfig()
 	if err != nil {
 		return err
 	}
@@ -44,7 +43,7 @@ func runBoardDone(cmd *cobra.Command, args []string) error {
 		t.ApplyTransition(models.StatusDone)
 	})
 
-	if err := storage.SaveProject(project); err != nil {
+	if err := SaveProject(project, &SaveOptions{Config: cfg, ConfigManager: mgr}); err != nil {
 		return fmt.Errorf("failed to save: %w", err)
 	}
 

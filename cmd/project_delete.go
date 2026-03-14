@@ -9,6 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/tterrors"
 )
 
+var projectDeleteForce bool
+
 var projectDeleteCmd = &cobra.Command{
 	Use:   "delete [name|id]",
 	Short: "Delete a project",
@@ -26,6 +28,7 @@ Examples:
 
 func init() {
 	projectCmd.AddCommand(projectDeleteCmd)
+	projectDeleteCmd.Flags().BoolVarP(&projectDeleteForce, "force", "f", false, "skip confirmation prompt")
 }
 
 func runProjectDelete(cmd *cobra.Command, args []string) error {
@@ -36,6 +39,11 @@ func runProjectDelete(cmd *cobra.Command, args []string) error {
 
 	if project.Sandbox {
 		return fmt.Errorf("cannot delete the sandbox project")
+	}
+
+	if !ConfirmYN(fmt.Sprintf("Delete project '%s'? It will be moved to trash. [y/N] ", project.Name), projectDeleteForce) {
+		fmt.Println("Canceled.")
+		return nil
 	}
 
 	// Purge any existing trash entry with same slug

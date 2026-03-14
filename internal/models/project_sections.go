@@ -10,6 +10,19 @@ import (
 // ErrSectionAlreadyExists is returned when a section rename targets an existing name.
 var ErrSectionAlreadyExists = fmt.Errorf("section already exists")
 
+// EnsureDefaultSections guarantees that all built-in sections used by lifecycle
+// methods (Complete, Block, Reopen, etc.) exist in the project's section list.
+// Call this during project load so that status transitions never assign a task
+// to a section the project doesn't know about.
+func (p *Project) EnsureDefaultSections() {
+	defaults := []string{SectionNext, SectionInbox, SectionWaiting, SectionSomeday, SectionReview, SectionStandby, SectionCompleted}
+	for _, s := range defaults {
+		if !slices.Contains(p.Sections, s) {
+			p.Sections = append(p.Sections, s)
+		}
+	}
+}
+
 // GetSections returns the project's sections, ensuring Next is always first.
 func (p *Project) GetSections() []string {
 	if len(p.Sections) == 0 {

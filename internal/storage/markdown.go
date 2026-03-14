@@ -97,6 +97,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 	}
 	project.NextShortID = maxShortID + 1
 
+	// Ensure all built-in sections exist before any lifecycle methods run
+	project.EnsureDefaultSections()
+
 	// Build the tree structure
 	project.BuildTaskTree()
 

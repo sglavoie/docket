@@ -76,17 +76,29 @@ func (s *FzfSelector) Available() bool {
 }
 
 // SelectProject implements FuzzySelector.
+// Falls back to a numbered-list stdin selector when fzf is unavailable.
 func (s *FzfSelector) SelectProject(projects []*models.Project, prompt string) (*models.Project, error) {
+	if !s.Available() {
+		return FallbackSelectProject(projects, prompt)
+	}
 	return FzfSelectProject(projects, prompt)
 }
 
 // SelectTask implements FuzzySelector.
+// Falls back to a numbered-list stdin selector when fzf is unavailable.
 func (s *FzfSelector) SelectTask(tasks []*models.Task, prompt string, previewCmd string) (*models.Task, error) {
+	if !s.Available() {
+		return FallbackSelectTask(tasks, prompt)
+	}
 	return FzfSelectTask(tasks, prompt, previewCmd)
 }
 
 // MultiSelectTasks implements FuzzySelector.
+// Falls back to a numbered-list stdin selector when fzf is unavailable.
 func (s *FzfSelector) MultiSelectTasks(tasks []*models.Task, prompt string) ([]*models.Task, error) {
+	if !s.Available() {
+		return FallbackMultiSelectTasks(tasks, prompt)
+	}
 	return FzfMultiSelectTasks(tasks, prompt)
 }
 

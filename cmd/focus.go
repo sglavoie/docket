@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -149,6 +150,7 @@ func loadActiveProjects(cfg *config.Config) []*models.Project {
 	var loaded []*models.Project
 	for _, project := range cfg.GetActiveProjects() {
 		if err := storage.LoadProject(project); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", project.Slug, err)
 			continue
 		}
 		loaded = append(loaded, project)
@@ -215,6 +217,7 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	taskMap := make(map[string]*models.Task)
 	for _, p := range cfg.GetActiveProjects() {
 		if err := storage.LoadProject(p); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to load project %q: %v\n", p.Slug, err)
 			continue
 		}
 		projectMap[p.ID] = p

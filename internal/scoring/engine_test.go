@@ -613,6 +613,104 @@ func TestPresetWSJFScore(t *testing.T) {
 	}
 }
 
+func TestScorePercent_EdgeCases(t *testing.T) {
+	t.Run("defS==0 with positive score uses linear fallback", func(t *testing.T) {
+		// Multiplicative formula where default=0 but score>0.
+		// DefaultScore will be 0*5=0, so log(score/0) is undefined.
+		// ScorePercent should use linear fallback, not crash.
+		profile := ScoringProfile{
+			ID: "zero-def", Name: "ZeroDef", Formula: FormulaMultiply,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 0, Max: 10, Default: 0, Weight: 1, Source: SourceManual},
+				{ID: "b", Name: "B", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual},
+			},
+		}
+		// defS = 0*5 = 0, minS uses val=1 (multiplicative avoids 0) so minS = 1*1 = 1
+		// maxS = 10*10 = 100, score = 5*5 = 25
+		pct := ScorePercent(25, &profile)
+		// Should not panic and should be in (mid, maxN] since 25 > defS=0
+		if math.IsNaN(pct) || math.IsInf(pct, 0) {
+			t.Fatalf("ScorePercent returned NaN or Inf: %f", pct)
+		}
+		maxN := float64(MaxNormalizedScoreValue)
+		mid := maxN / 2
+		if pct < mid || pct > maxN {
+			t.Errorf("expected pct in [%f, %f], got %f", mid, maxN, pct)
+		}
+	})
+
+	t.Run("all scores equal (minS==defS==maxS)", func(t *testing.T) {
+		// When all dimensions have the same min/max/default, every score
+		// is identical and ScorePercent should return mid (150).
+		profile := ScoringProfile{
+			ID: "flat", Name: "Flat", Formula: FormulaWeightedSum,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 7, Max: 7, Default: 7, Weight: 1, Source: SourceManual},
+				{ID: "b", Name: "B", Min: 3, Max: 3, Default: 3, Weight: 2, Source: SourceManual},
+			},
+		}
+		// minS = maxS = defS = 7*1 + 3*2 = 13
+		pct := ScorePercent(13, &profile)
+		mid := float64(MaxNormalizedScoreValue) / 2
+		if math.Abs(pct-mid) > 0.01 {
+			t.Errorf("expected %f when all scores equal, got %f", mid, pct)
+		}
+	})
+
+	t.Run("score below minS clamps to 0", func(t *testing.T) {
+		profile := ScoringProfile{
+			ID: "clamp-low", Name: "ClampLow", Formula: FormulaWeightedSum,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual},
+			},
+		}
+		// minS = 1, defS = 5, maxS = 10
+		// A score below minS should clamp to 0.
+		pct := ScorePercent(-10, &profile)
+		if pct != 0 {
+			t.Errorf("expected 0 for score far below minS, got %f", pct)
+		}
+	})
+
+	t.Run("score above maxS clamps to maxN", func(t *testing.T) {
+		profile := ScoringProfile{
+			ID: "clamp-high", Name: "ClampHigh", Formula: FormulaWeightedSum,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual},
+			},
+		}
+		// minS = 1, defS = 5, maxS = 10
+		// A score way above maxS should clamp to MaxNormalizedScoreValue.
+		pct := ScorePercent(9999, &profile)
+		maxN := float64(MaxNormalizedScoreValue)
+		if pct != maxN {
+			t.Errorf("expected %f for score far above maxS, got %f", maxN, pct)
+		}
+	})
+
+	t.Run("zero score with multiplicative formula", func(t *testing.T) {
+		// Score == 0 with a multiplicative formula. Since defS > 0,
+		// score <= defS triggers the linear below-default branch.
+		profile := ScoringProfile{
+			ID: "mult-zero", Name: "MultZero", Formula: FormulaMultiply,
+			Dimensions: []ScoringDimension{
+				{ID: "a", Name: "A", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual},
+				{ID: "b", Name: "B", Min: 1, Max: 10, Default: 5, Weight: 1, Source: SourceManual},
+			},
+		}
+		// minS = 1*1 = 1, defS = 5*5 = 25, maxS = 10*10 = 100
+		// score = 0, which is below minS, so pct should clamp to 0.
+		pct := ScorePercent(0, &profile)
+		if pct < 0 {
+			t.Errorf("expected pct >= 0, got %f", pct)
+		}
+		mid := float64(MaxNormalizedScoreValue) / 2
+		if pct > mid {
+			t.Errorf("expected pct <= %f (mid) for zero score, got %f", mid, pct)
+		}
+	})
+}
+
 func TestIdeaEffortDerived(t *testing.T) {
 	profile := ScoringProfile{
 		ID: "test", Name: "Test", Formula: FormulaWeightedSum,

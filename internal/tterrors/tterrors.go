@@ -20,6 +20,8 @@ var (
 	ErrInvalidTaskType = errors.New("invalid task type")
 	ErrInvalidParent   = errors.New("invalid parent task")
 	ErrCircularDep     = errors.New("circular dependency detected")
+	ErrSelfDependency  = errors.New("a task cannot depend on itself")
+	ErrDuplicateDep    = errors.New("duplicate dependency")
 )
 
 // Config-related errors

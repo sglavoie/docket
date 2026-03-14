@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestProjectGetSiblings(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
@@ -279,6 +282,54 @@ func TestIndentTaskReturnsErrorWhenTypeInvalid(t *testing.T) {
 	err = project.IndentTask(task2)
 	if err == nil {
 		t.Error("expected error when indenting epic under task, got nil")
+	}
+}
+
+func TestBuildTaskTree_MaxNestingDepth(t *testing.T) {
+	project := NewProject("test", "Test", "/tmp/test")
+
+	// Create a chain of 8 tasks nested sequentially: depth 0 → 1 → ... → 7
+	const chainLen = 8
+	tasks := make([]*Task, chainLen)
+	for i := range chainLen {
+		task, err := NewTask(fmt.Sprintf("task-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Task depth %d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i > 0 {
+			parentID := tasks[i-1].ID
+			task.ParentID = &parentID
+		}
+		tasks[i] = task
+	}
+
+	project.Tasks = tasks
+	project.BuildTaskTree()
+
+	// Tasks at depth 0 through MaxNestingDepth (6) should keep their hierarchy
+	for i := 0; i <= MaxNestingDepth; i++ {
+		if tasks[i].Level != i {
+			t.Errorf("task at intended depth %d: got Level=%d, want %d", i, tasks[i].Level, i)
+		}
+		if i == 0 {
+			if tasks[i].ParentID != nil {
+				t.Errorf("root task should have nil ParentID")
+			}
+		} else {
+			if tasks[i].ParentID == nil || *tasks[i].ParentID != tasks[i-1].ID {
+				t.Errorf("task at depth %d should still have parent %s", i, tasks[i-1].ID)
+			}
+		}
+	}
+
+	// Tasks beyond MaxNestingDepth should be detached to root
+	for i := MaxNestingDepth + 1; i < chainLen; i++ {
+		if tasks[i].Level != 0 {
+			t.Errorf("task at intended depth %d: got Level=%d, want 0 (should be detached)", i, tasks[i].Level)
+		}
+		if tasks[i].ParentID != nil {
+			t.Errorf("task at intended depth %d: ParentID should be nil after detach, got %s", i, *tasks[i].ParentID)
+		}
 	}
 }
 

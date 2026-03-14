@@ -207,9 +207,8 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 				Type:    format.WarningDataCorrection,
 				TaskID:  t.ID,
 				Field:   "parent",
-				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference (preserved in orphaned_parent)", t.ID, orphanedID),
+				Message: fmt.Sprintf("task %s references non-existent parent %s, clearing parent reference", t.ID, orphanedID),
 			})
-			t.OrphanedParentID = &orphanedID
 			t.ParentID = nil
 		}
 	}

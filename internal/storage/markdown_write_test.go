@@ -94,8 +94,9 @@ func TestSaveProject_WithSections(t *testing.T) {
 		t.Fatalf("LoadProject failed: %v", err)
 	}
 
-	if len(loadedProject.Sections) != 3 {
-		t.Errorf("expected 3 sections, got %d", len(loadedProject.Sections))
+	// Original 3 sections + built-in defaults added by EnsureDefaultSections
+	if len(loadedProject.Sections) < 3 {
+		t.Errorf("expected at least 3 sections, got %d", len(loadedProject.Sections))
 	}
 
 	if loadedProject.SectionColors["Active"] != "green" {
