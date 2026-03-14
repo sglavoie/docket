@@ -37,7 +37,7 @@ func init() {
 
 	projectNewCmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "project context (personal or work)")
 	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
-	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (e.g., wip, active, paused)")
+	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived)")
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {

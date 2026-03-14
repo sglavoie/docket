@@ -100,6 +100,15 @@ func (m *Manager) Load() (*Config, error) {
 	if config.Stages == nil {
 		config.Stages = []string{"Brainstorm", "Design", "Implement", "Test", "Review", "Deploy"}
 	}
+	if config.CustomContexts == nil {
+		config.CustomContexts = make(map[string][]string)
+	}
+	if config.ProjectScoringProfile == nil {
+		config.ProjectScoringProfile = make(map[string]string)
+	}
+	if config.SavedFilters == nil {
+		config.SavedFilters = []SavedFilter{}
+	}
 
 	// Filter out projects with missing required fields
 	validProjects := make([]*models.Project, 0, len(config.Projects))
@@ -148,6 +157,8 @@ func (m *Manager) Load() (*Config, error) {
 }
 
 // Save saves the configuration to file.
+// A backup of the existing config is created before writing, enabling
+// recovery if the new file is corrupted.
 func (m *Manager) Save(config *Config) error {
 	dir := filepath.Dir(m.configPath)
 	if err := os.MkdirAll(dir, DirPermissions); err != nil {
@@ -156,6 +167,11 @@ func (m *Manager) Save(config *Config) error {
 
 	lockPath := m.configPath + ".lock"
 	return util.WithFileLock(lockPath, true, func() error {
+		// Backup current config before overwriting (best-effort)
+		if err := m.BackupConfig(); err != nil {
+			logging.Warn("failed to backup config before save: %v", err)
+		}
+
 		data, err := json.MarshalIndent(config, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal config: %w", err)

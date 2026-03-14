@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/google/uuid"
@@ -219,7 +220,9 @@ func runTaskAdd(cmd *cobra.Command, args []string) error {
 		if checklistCreated > 0 {
 			// Increment template use count
 			cfg.IncrementTemplateUseCount(tmpl.ID)
-			_ = configManager.Save(cfg)
+			if err := configManager.Save(cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: task created but failed to save template use count: %v\n", err)
+			}
 		}
 	}
 

@@ -83,6 +83,10 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingPrefix = prefix
 		return m, nil
 	}
+	if isPrefixKeySkippedOnHeader(key, !onHeader) {
+		m.statusMessage = "Move cursor to a task first"
+		return m, nil
+	}
 	// Outliner-specific: P prefix for perspectives
 	if key == "P" {
 		m.pendingPrefix = "P"

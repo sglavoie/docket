@@ -491,6 +491,11 @@ func handleCommonPrimaryViewKey(key string, v primaryProjectView) (tea.Cmd, bool
 	return nil, false
 }
 
+// taskSpecificPrefixKeys lists prefix keys that require the cursor to be on a task.
+var taskSpecificPrefixKeys = map[string]bool{
+	",": true, "!": true, "d": true, "s": true, "t": true, "b": true, "m": true, ".": true, "c": true,
+}
+
 // activatePrefixKey checks whether the given key activates a prefix key
 // sequence shared across primary views. Returns the prefix string and true
 // if the key is a recognized prefix activator, or ("", false) otherwise.
@@ -514,6 +519,15 @@ func activatePrefixKey(key string, cursorOnTask bool) (string, bool) {
 		return "", false
 	}
 	return "", false
+}
+
+// isPrefixKeySkippedOnHeader returns true if the key is a recognized prefix
+// key that was skipped because the cursor is on a section header.
+func isPrefixKeySkippedOnHeader(key string, cursorOnTask bool) bool {
+	if cursorOnTask {
+		return false
+	}
+	return taskSpecificPrefixKeys[key]
 }
 
 // handleSortKey handles shared sort key presses (1-5, 0). It calls

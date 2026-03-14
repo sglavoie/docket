@@ -343,26 +343,23 @@ func TestConfigManager_BackupConfig(t *testing.T) {
 		t.Fatalf("Save failed: %v", err)
 	}
 
-	// Backup should not exist yet
-	if manager.ConfigBackupExists() {
-		t.Error("backup should not exist initially")
-	}
-
-	// Create backup
-	if err := manager.BackupConfig(); err != nil {
-		t.Fatalf("BackupConfig failed: %v", err)
-	}
-
-	// Backup should now exist
+	// Save() now auto-creates backup, so backup should exist after second save
+	// (LoadOrCreate does one save, then we do another — the second one backs up the first)
 	if !manager.ConfigBackupExists() {
-		t.Error("backup should exist after BackupConfig")
+		t.Error("backup should exist after Save (auto-backup)")
 	}
 
-	// Backup content should match original
-	originalContent, _ := os.ReadFile(configPath)
+	// Save a modified config, then verify backup matches pre-modification state
+	preModContent, _ := os.ReadFile(configPath)
+	cfg.Editor = "nano"
+	if err := manager.Save(cfg); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Backup should contain the pre-modification content
 	backupContent, _ := os.ReadFile(backupPath)
-	if string(originalContent) != string(backupContent) {
-		t.Error("backup content should match original")
+	if string(preModContent) != string(backupContent) {
+		t.Error("backup content should match the config state before the last save")
 	}
 }
 

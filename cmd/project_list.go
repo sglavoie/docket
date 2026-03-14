@@ -64,10 +64,10 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	currentStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 	pinnedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true)
 
+	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+
 	for _, p := range projects {
-		if err := storage.LoadProject(p); err != nil {
-			continue
-		}
+		loadErr := storage.LoadProject(p)
 
 		// Current project indicator
 		indicator := " "
@@ -82,13 +82,28 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 			name = pinnedStyle.Render(name)
 		}
 
-		row := table.Row{
-			indicator,
-			name,
-			p.Context,
-			p.CountTasks(),
-			p.CountActiveTasks(),
-			p.CountCompletedTasks(),
+		var row table.Row
+		if loadErr != nil {
+			if p.ID == cfg.CurrentProject {
+				indicator = "*"
+			}
+			row = table.Row{
+				indicator,
+				name,
+				p.Context,
+				errorStyle.Render("error"),
+				errorStyle.Render("-"),
+				errorStyle.Render("-"),
+			}
+		} else {
+			row = table.Row{
+				indicator,
+				name,
+				p.Context,
+				p.CountTasks(),
+				p.CountActiveTasks(),
+				p.CountCompletedTasks(),
+			}
 		}
 
 		if showArchived {

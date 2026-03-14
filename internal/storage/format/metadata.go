@@ -346,6 +346,12 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 							task.ScoreDimensions = make(map[string]int)
 						}
 						task.ScoreDimensions[dimID] = v
+					} else {
+						warnings = append(warnings, ParseWarning{
+							Type:    WarningValidation,
+							Field:   key,
+							Message: fmt.Sprintf("invalid score value '%s' for dimension '%s', skipping", value, dimID),
+						})
 					}
 				}
 			}

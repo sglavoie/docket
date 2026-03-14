@@ -132,7 +132,7 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	project := cfg.GetCurrentProject()
 	if project == nil {
-		return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select", tterrors.ErrNoCurrentProject)
+		return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select, or specify with --project", tterrors.ErrNoCurrentProject)
 	}
 
 	Debugf("loading project: %s (%s)", project.Name, project.Path)
@@ -147,11 +147,12 @@ func LoadCurrentProject() (*models.Project, *config.Config, *config.Manager, err
 
 	Debugf("loaded %d tasks", len(project.Tasks))
 
-	// Print warnings - always show data correction warnings, others only in verbose mode
+	// Print warnings to stderr (data corrections always, deprecations always, validation in verbose mode)
 	for _, w := range result.Warnings {
-		if w.Type == format.WarningDataCorrection {
+		switch w.Type {
+		case format.WarningDataCorrection, format.WarningDeprecation:
 			fmt.Fprintf(os.Stderr, "Warning: %s\n", w.Message)
-		} else {
+		default:
 			Debugf("parser warning: %s", w.Message)
 		}
 	}
@@ -218,7 +219,7 @@ func LoadConfigAndProjectOrCurrent(args []string) (*models.Project, *config.Conf
 	} else {
 		project = cfg.GetCurrentProject()
 		if project == nil {
-			return nil, nil, nil, fmt.Errorf("%w. Specify a project or select one with: tt select", tterrors.ErrNoCurrentProject)
+			return nil, nil, nil, fmt.Errorf("%w. Select one with: tt select, or specify with --project", tterrors.ErrNoCurrentProject)
 		}
 	}
 	return project, cfg, mgr, nil

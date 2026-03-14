@@ -173,7 +173,10 @@ func updateTaskStatus(args []string, action string, update func(*models.Task)) e
 		}
 
 		if len(candidates) == 0 {
-			return fmt.Errorf("no tasks available for this action")
+			if action == "reopen" {
+				return fmt.Errorf("no completed tasks available to %s", action)
+			}
+			return fmt.Errorf("no active tasks available to %s", action)
 		}
 
 		items := TasksToSelectorItems(candidates)

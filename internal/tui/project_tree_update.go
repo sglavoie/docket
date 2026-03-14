@@ -413,8 +413,13 @@ func (m *ProjectTreeModel) handleKeyMsg(msg tea.KeyMsg, visible []*TreeNode) (te
 	}
 
 	// Prefix key activation (shared across primary views)
-	if prefix, ok := activatePrefixKey(key, CursorInBounds(m.cursor, len(visible))); ok {
+	cursorOnTask := CursorInBounds(m.cursor, len(visible))
+	if prefix, ok := activatePrefixKey(key, cursorOnTask); ok {
 		m.pendingPrefix = prefix
+		return m, nil
+	}
+	if isPrefixKeySkippedOnHeader(key, cursorOnTask) {
+		m.statusMessage = "Move cursor to a task first"
 		return m, nil
 	}
 
