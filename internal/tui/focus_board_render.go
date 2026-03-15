@@ -228,7 +228,7 @@ func (m *FocusBoardModel) renderRow(row boardRow, isSelected bool, maxTitleLen i
 
 	if row.isAction() {
 		// Action item rendering
-		sourceBadge := ""
+		var sourceBadge string
 		if task.Source != "" {
 			sourceBadge = DependencyStyle.Render(fmt.Sprintf("[%s]", util.Truncate(task.Source, 10)))
 		} else {

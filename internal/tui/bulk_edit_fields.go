@@ -442,7 +442,7 @@ func (m *BulkEditModel) renderRecurrenceField() string {
 			prefix = "    "
 		}
 
-		selected := false
+		var selected bool
 		switch {
 		case i == 0:
 			selected = m.recurrenceValue == nil && !m.clearRecurrence

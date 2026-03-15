@@ -88,7 +88,7 @@ func runAsk(cmd *cobra.Command, args []string) error {
 		reader := bufio.NewReader(os.Stdin)
 		answer, err := reader.ReadString('\n')
 		if err != nil {
-			return nil
+			return fmt.Errorf("failed to read input: %w", err)
 		}
 		answer = strings.TrimSpace(strings.ToLower(answer))
 

@@ -285,7 +285,7 @@ func printTaskNode(task *models.Task, depth int) {
 	}
 
 	// Build prefix with expand indicator
-	prefix := ""
+	var prefix string
 	if len(task.Children) > 0 {
 		prefix = "▼ "
 	} else {

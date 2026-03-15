@@ -164,8 +164,8 @@ func ComputeAllAt(projects []*models.Project, tr TimeRange, now time.Time, extra
 	// allTasks includes extra (e.g. archived) tasks for completion, cycle time,
 	// and throughput metrics. Extra tasks are excluded from blocked metrics since
 	// archived tasks without project association aren't actionable.
-	allTasks := make([]*models.Task, len(projectTasks))
-	copy(allTasks, projectTasks)
+	allTasks := make([]*models.Task, 0, len(projectTasks))
+	allTasks = append(allTasks, projectTasks...)
 	for _, extra := range extraTasks {
 		allTasks = append(allTasks, extra...)
 	}

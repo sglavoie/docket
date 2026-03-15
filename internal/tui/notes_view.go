@@ -317,8 +317,8 @@ func (m *NotesViewModel) GetPrefixPopupInfo() *PrefixPopupInfo {
 	if m.pendingPrefix == "" {
 		return nil
 	}
-	gHints := make([]PrefixHint, len(NavigationPrefixHints))
-	copy(gHints, NavigationPrefixHints)
+	gHints := make([]PrefixHint, 0, len(NavigationPrefixHints)+1)
+	gHints = append(gHints, NavigationPrefixHints...)
 	if m.multiSelectMode {
 		gHints = append(gHints, PrefixHint{Key: "X", Description: "deselect-all", Detail: "Clear all selections"})
 	}

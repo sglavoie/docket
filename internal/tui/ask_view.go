@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -283,7 +284,7 @@ func (m *AskViewModel) readNextChunk() tea.Cmd {
 		if cmd != nil {
 			_ = cmd.Wait()
 		}
-		if err == io.EOF || err == nil {
+		if errors.Is(err, io.EOF) || err == nil {
 			return AskStreamDoneMsg{}
 		}
 		return AskStreamDoneMsg{Err: err}

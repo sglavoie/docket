@@ -302,7 +302,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	visibleRows := m.contentHeight()
 
 	// Reserve space for inline preview lines when preview mode is on
-	previewLines := 0
+	var previewLines int
 	if m.previewMode && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		previewLines = inlinePreviewLineCount(m.rows[m.cursor].task)
 		visibleRows -= previewLines
