@@ -34,10 +34,27 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 		stageName = args[1]
 	}
 
-	var oldStage string
+	// Pre-check: skip the save if the stage is already the requested value
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+	task, findErr := FindTaskByIdentifier(project, taskID)
+	if findErr != nil {
+		return findErr
+	}
+	if task.Stage == stageName {
+		if stageName == "" {
+			fmt.Printf("Task #%d already has no stage.\n", task.ShortID)
+		} else {
+			fmt.Printf("Task #%d is already at stage '%s'.\n", task.ShortID, stageName)
+		}
+		return nil
+	}
 
-	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
-		oldStage = task.Stage
+	oldStage := task.Stage
+
+	_, err = WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
 		task.Stage = stageName
 		return nil
 	})
@@ -47,11 +64,7 @@ func runTaskStage(cmd *cobra.Command, args []string) error {
 	}
 
 	if stageName == "" {
-		if oldStage != "" {
-			fmt.Printf("Cleared stage from task #%d (was: %s)\n", task.ShortID, oldStage)
-		} else {
-			fmt.Printf("Task #%d already has no stage\n", task.ShortID)
-		}
+		fmt.Printf("Cleared stage from task #%d (was: %s)\n", task.ShortID, oldStage)
 	} else if oldStage == "" {
 		fmt.Printf("Set stage for task #%d: %s\n", task.ShortID, stageName)
 	} else {

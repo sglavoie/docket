@@ -40,17 +40,41 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Pre-load project to check for no-ops before saving
+	project, _, _, err := LoadCurrentProject()
+	if err != nil {
+		return err
+	}
+
 	var errs []string
 	succeeded := 0
+	skipped := 0
 	for _, taskID := range taskIDs {
+		// Check if the section is already the requested value
+		preTask, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			errs = append(errs, fmt.Sprintf("task %s: %s", taskID, findErr))
+			continue
+		}
+		if preTask.Section == sectionName {
+			skipped++
+			if sectionName == "" {
+				fmt.Printf("Task #%d already has no section.\n", preTask.ShortID)
+			} else {
+				fmt.Printf("Task #%d is already in section '%s'.\n", preTask.ShortID, sectionName)
+			}
+			continue
+		}
+
 		var oldSection string
 
 		task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
+			oldSection = task.Section
+
 			if sectionName != "" {
 				project.EnsureSection(sectionName)
 			}
 
-			oldSection = task.Section
 			task.Section = sectionName
 			return nil
 		})
@@ -62,16 +86,16 @@ func runTaskSection(cmd *cobra.Command, args []string) error {
 
 		succeeded++
 		if sectionName == "" {
-			if oldSection != "" {
-				fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
-			} else {
-				fmt.Printf("Task #%d has no section\n", task.ShortID)
-			}
+			fmt.Printf("Cleared section from task #%d (was: %s)\n", task.ShortID, oldSection)
 		} else if oldSection == "" {
 			fmt.Printf("Assigned task #%d to section: %s\n", task.ShortID, sectionName)
 		} else {
 			fmt.Printf("Moved task #%d from '%s' to '%s'\n", task.ShortID, oldSection, sectionName)
 		}
+	}
+
+	if skipped > 0 && succeeded > 0 {
+		fmt.Printf("%d updated, %d already in the requested section\n", succeeded, skipped)
 	}
 
 	if len(errs) > 0 {

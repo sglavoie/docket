@@ -59,20 +59,28 @@ func runTaskDepends(cmd *cobra.Command, args []string) error {
 
 	// Handle --clear
 	if dependsClearFlag {
+		// Pre-check: skip the save if there are no dependencies to clear
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		preTask, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
+		}
+		if len(preTask.DependsOn) == 0 {
+			fmt.Printf("Task #%d has no dependencies to clear.\n", preTask.ShortID)
+			return nil
+		}
+
 		task, err := WithTaskUpdate(taskID, func(t *models.Task) error {
-			if len(t.DependsOn) == 0 {
-				fmt.Printf("Task #%d has no dependencies to clear\n", t.ShortID)
-				return nil
-			}
 			t.ClearDependencies()
 			return nil
 		})
 		if err != nil {
 			return err
 		}
-		if len(task.DependsOn) == 0 {
-			fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
-		}
+		fmt.Printf("Cleared all dependencies for #%d: %s\n", task.ShortID, task.Title)
 		return nil
 	}
 

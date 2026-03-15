@@ -61,8 +61,8 @@ func init() {
 
 	addCmd.Flags().StringVarP(&addTypeFlag, "type", "t", "", "task type (epic, story, task, bug, idea)")
 	addCmd.Flags().StringVarP(&addParentFlag, "parent", "p", "", "parent task ID or short ID")
-	addCmd.Flags().IntVar(&addPriority, "priority", 0, "priority (1=highest, 5=lowest)")
-	addCmd.Flags().StringSliceVar(&addTags, "tags", nil, "tags for the task")
+	addCmd.Flags().IntVarP(&addPriority, "priority", "P", 0, "priority (1=highest, 5=lowest)")
+	addCmd.Flags().StringSliceVarP(&addTags, "tags", "T", nil, "tags for the task")
 
 	addCmd.Flags().BoolVar(&addIsEpic, "epic", false, "create an epic")
 	addCmd.Flags().BoolVar(&addIsStory, "story", false, "create a story")

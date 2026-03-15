@@ -61,6 +61,22 @@ func runTaskSnooze(cmd *cobra.Command, args []string) error {
 		desc = parsed.Format(util.DateFormat)
 	}
 
+	// Pre-check: skip the save if clearing snooze on a non-snoozed task
+	if snoozeDate == nil {
+		project, _, _, err := LoadCurrentProject()
+		if err != nil {
+			return err
+		}
+		preTask, findErr := FindTaskByIdentifier(project, taskID)
+		if findErr != nil {
+			return findErr
+		}
+		if preTask.SnoozedUntil == nil {
+			fmt.Printf("Task #%d is not snoozed.\n", preTask.ShortID)
+			return nil
+		}
+	}
+
 	task, err := WithTaskUpdateInProject(taskID, func(project *models.Project, task *models.Task) error {
 		// Prevent snoozing completed/canceled tasks (it makes no sense to hide them)
 		if snoozeDate != nil && task.Status.IsComplete() {
