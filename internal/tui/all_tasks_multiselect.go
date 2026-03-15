@@ -64,7 +64,7 @@ func (m *AllTasksViewModel) getSelectedItemsByProject() map[string][]CrossProjec
 
 // bulkApply iterates selected tasks grouped by project, backs up each project,
 // calls mutate for each item, and saves. Returns the count from mutate calls,
-// or -1 if a backup failed (with statusMessage already set).
+// or -1 if a backup or save failed (with statusMessage already set).
 func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item CrossProjectTask) bool) int {
 	byProject := m.getSelectedItemsByProject()
 	count := 0
@@ -82,7 +82,10 @@ func (m *AllTasksViewModel) bulkApply(mutate func(project *models.Project, item 
 				count++
 			}
 		}
-		_ = m.projectService.Save(project)
+		if err := m.projectService.Save(project); err != nil {
+			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", project.Name, err)
+			return -1
+		}
 	}
 	return count
 }
@@ -227,7 +230,10 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 		totalDeleted += len(project.Tasks) - len(remaining)
 		project.Tasks = remaining
 		project.BuildTaskTree()
-		_ = m.projectService.Save(project)
+		if err := m.projectService.Save(project); err != nil {
+			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", project.Name, err)
+			return m, nil
+		}
 	}
 
 	m.finishBulk(fmt.Sprintf("Deleted %d tasks", totalDeleted))

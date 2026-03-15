@@ -432,9 +432,15 @@ func (m *AppModel) reorderPinnedTask(delta int) (*AppModel, tea.Cmd) {
 	})
 
 	// Persist affected projects (may be the same project)
-	_ = m.persister.SaveWithBackupSync(a.Project)
+	if err := m.persister.SaveWithBackupSync(a.Project); err != nil {
+		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", a.Project.Name, err)
+		return m, nil
+	}
 	if b.Project.Name != a.Project.Name {
-		_ = m.persister.SaveWithBackupSync(b.Project)
+		if err := m.persister.SaveWithBackupSync(b.Project); err != nil {
+			m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", b.Project.Name, err)
+			return m, nil
+		}
 	}
 
 	// Rebuild the list and follow the cursor to the moved item
@@ -458,7 +464,10 @@ func (m *AppModel) unpinFromPopup() (*AppModel, tea.Cmd) {
 	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
 		t.Unpin()
 	})
-	_ = m.persister.SaveWithBackupSync(entry.Project)
+	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
+		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err)
+		return m, nil
+	}
 
 	m.pinnedPopupItems = m.collectPinnedTasks()
 	if len(m.pinnedPopupItems) == 0 {
@@ -487,7 +496,10 @@ func (m *AppModel) repinFromPopup() (*AppModel, tea.Cmd) {
 	entry.Project.MutateTask(entry.Task.ID, func(t *models.Task) {
 		t.Pin()
 	})
-	_ = m.persister.SaveWithBackupSync(entry.Project)
+	if err := m.persister.SaveWithBackupSync(entry.Project); err != nil {
+		m.statusMessage = fmt.Sprintf("Failed to save project %s: %v", entry.Project.Name, err)
+		return m, nil
+	}
 
 	m.pinnedLastUnpinned = nil
 	m.pinnedPopupItems = m.collectPinnedTasks()

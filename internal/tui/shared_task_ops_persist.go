@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/workflow"
@@ -152,7 +153,9 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 
 			if len(result.RuleTriggerCounts) > 0 && opts.ConfigManager != nil {
 				opts.Config.IncrementRuleTriggerCounts(result.RuleTriggerCounts)
-				_ = opts.ConfigManager.Save(opts.Config)
+				if err := opts.ConfigManager.Save(opts.Config); err != nil {
+					logging.Warn("failed to save rule trigger counts: %v", err)
+				}
 			}
 
 			// Evaluate project-level rules against aggregate task data
@@ -171,7 +174,9 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 							counts[id]++
 						}
 						opts.Config.IncrementRuleTriggerCounts(counts)
-						_ = opts.ConfigManager.Save(opts.Config)
+						if err := opts.ConfigManager.Save(opts.Config); err != nil {
+							logging.Warn("failed to save project rule trigger counts: %v", err)
+						}
 					}
 				}
 			}

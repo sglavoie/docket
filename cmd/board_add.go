@@ -77,7 +77,9 @@ func runBoardAdd(cmd *cobra.Command, args []string) error {
 			if err = storage.SaveProject(targetProject); err != nil {
 				return fmt.Errorf("failed to save action inbox: %w", err)
 			}
-			_ = mgr.Save(cfg)
+			if err = mgr.Save(cfg); err != nil {
+				return fmt.Errorf("failed to save config after creating action inbox: %w", err)
+			}
 		}
 	}
 

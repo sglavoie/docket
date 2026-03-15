@@ -263,7 +263,9 @@ func runFocusQueue(cmd *cobra.Command, args []string) error {
 	// Prune stale entries from config if any were skipped
 	if len(activeItems) < len(queueItems) {
 		cfg.SetFocusQueue(activeItems)
-		_ = cfgMgr.Save(cfg)
+		if err := cfgMgr.Save(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to save pruned focus queue: %v\n", err)
+		}
 	}
 
 	if len(activeItems) == 0 {

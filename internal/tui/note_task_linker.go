@@ -24,13 +24,14 @@ func (i noteTaskItem) ItemID() string  { return i.task.ID }
 
 // NoteTaskLinkerModel is a task picker for linking notes to tasks.
 type NoteTaskLinkerModel struct {
-	picker      *BasePicker[noteTaskItem]
-	project     *models.Project
-	note        *models.Note
-	changed     bool
-	lastToggled string // ID of the last toggled task
-	width       int
-	height      int
+	picker        *BasePicker[noteTaskItem]
+	project       *models.Project
+	note          *models.Note
+	changed       bool
+	lastToggled   string // ID of the last toggled task
+	statusMessage string // error message shown on save failure
+	width         int
+	height        int
 }
 
 // NewNoteTaskLinkerModel creates a new note-to-task linker.
@@ -96,7 +97,11 @@ func (m *NoteTaskLinkerModel) toggleLink(task *models.Task) {
 	} else {
 		m.note.AddLink(task.ID)
 	}
-	_ = storage.SaveNote(m.project, m.note)
+	if err := storage.SaveNote(m.project, m.note); err != nil {
+		m.statusMessage = fmt.Sprintf("Failed to save note: %v", err)
+		return
+	}
+	m.statusMessage = ""
 	m.changed = true
 	m.lastToggled = task.ID
 }
@@ -178,7 +183,12 @@ func (m *NoteTaskLinkerModel) View() string {
 	out.WriteString("\n\n")
 	out.WriteString(content.String())
 	out.WriteString("\n")
-	out.WriteString(renderStatusBarFooter(HelpStyle.Render(helpText), "", m.width))
+
+	statusLeft := HelpStyle.Render(helpText)
+	if m.statusMessage != "" {
+		statusLeft = ValidationErrorStyle.Render(m.statusMessage)
+	}
+	out.WriteString(renderStatusBarFooter(statusLeft, "", m.width))
 
 	return out.String()
 }

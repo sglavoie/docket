@@ -4,6 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -90,7 +91,9 @@ func NewAppModel(cfg *config.Config, manager *config.Manager, opts ...AppOption)
 
 	// Ensure sandbox project exists
 	if cfg.EnsureSandboxProject() {
-		_ = manager.Save(cfg)
+		if err := manager.Save(cfg); err != nil {
+			logging.Warn("failed to save config after creating sandbox project: %v", err)
+		}
 	}
 
 	// Initialize dashboard and register it
