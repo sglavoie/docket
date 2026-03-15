@@ -216,14 +216,41 @@ func (m *AllTasksViewModel) handleBulkDelete() (tea.Model, tea.Cmd) {
 			m.statusMessage = fmt.Sprintf("Failed to backup project %s: %v", project.Name, err)
 			return m, nil
 		}
-		deleteIDs := make(map[string]bool)
-		for _, item := range items {
-			deleteIDs[item.Task.ID] = true
-		}
 
+		// Collect root IDs and expand to include all descendants
+		rootIDs := make(map[string]bool, len(items))
+		for _, item := range items {
+			rootIDs[item.Task.ID] = true
+		}
+		idsToDelete := collectDescendantIDs(project.Tasks, rootIDs)
+
+		// Filter out deleted tasks and clean up dangling references
 		var remaining []*models.Task
 		for _, t := range project.Tasks {
-			if !deleteIDs[t.ID] {
+			if !idsToDelete[t.ID] {
+				if t.ParentID != nil && idsToDelete[*t.ParentID] {
+					t.ParentID = nil
+				}
+				// Clear dangling DependsOn references to deleted tasks
+				if len(t.DependsOn) > 0 {
+					cleaned := t.DependsOn[:0]
+					for _, depID := range t.DependsOn {
+						if !idsToDelete[depID] {
+							cleaned = append(cleaned, depID)
+						}
+					}
+					t.DependsOn = cleaned
+				}
+				// Clear dangling RelatedTo references to deleted tasks
+				if len(t.RelatedTo) > 0 {
+					cleaned := t.RelatedTo[:0]
+					for _, relID := range t.RelatedTo {
+						if !idsToDelete[relID] {
+							cleaned = append(cleaned, relID)
+						}
+					}
+					t.RelatedTo = cleaned
+				}
 				remaining = append(remaining, t)
 			}
 		}

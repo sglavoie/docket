@@ -200,12 +200,32 @@ func (m *OutlinerModel) executeBulkDelete() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Filter out deleted tasks and clear dangling parent references
+	// Filter out deleted tasks and clear dangling references
 	var remaining []*models.Task
 	for _, t := range m.project.Tasks {
 		if !idsToDelete[t.ID] {
 			if t.ParentID != nil && idsToDelete[*t.ParentID] {
 				t.ParentID = nil
+			}
+			// Clear dangling DependsOn references to deleted tasks
+			if len(t.DependsOn) > 0 {
+				cleaned := t.DependsOn[:0]
+				for _, depID := range t.DependsOn {
+					if !idsToDelete[depID] {
+						cleaned = append(cleaned, depID)
+					}
+				}
+				t.DependsOn = cleaned
+			}
+			// Clear dangling RelatedTo references to deleted tasks
+			if len(t.RelatedTo) > 0 {
+				cleaned := t.RelatedTo[:0]
+				for _, relID := range t.RelatedTo {
+					if !idsToDelete[relID] {
+						cleaned = append(cleaned, relID)
+					}
+				}
+				t.RelatedTo = cleaned
 			}
 			remaining = append(remaining, t)
 		}
