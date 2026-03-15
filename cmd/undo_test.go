@@ -147,8 +147,8 @@ func TestRunUndo(t *testing.T) {
 			t.Fatal("expected error when no backup exists")
 		}
 
-		if !strings.Contains(err.Error(), "no backup available") {
-			t.Errorf("error should mention 'no backup available', got: %v", err)
+		if !strings.Contains(err.Error(), "no undo history available") {
+			t.Errorf("error should mention 'no undo history available', got: %v", err)
 		}
 	})
 

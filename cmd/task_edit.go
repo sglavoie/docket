@@ -97,7 +97,10 @@ func runTaskEdit(cmd *cobra.Command, args []string) error {
 	task.Description = newDesc
 	task.UpdatedAt = time.Now()
 
-	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates,
+		UndoAction: "Edit Task", UndoContext: fmt.Sprintf("#%d %s", task.ShortID, task.Title),
+	}); err != nil {
 		return err
 	}
 

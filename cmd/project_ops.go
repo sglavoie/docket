@@ -21,10 +21,15 @@ type SaveOptions struct {
 	// PrevStates provides previous task states for event-based triggers.
 	// If nil, event triggers are disabled.
 	PrevStates map[string]*models.Task
-	// Config is required when EvaluateRules is true.
+	// Config is required when EvaluateRules is true (and for undo depth).
 	Config *config.Config
 	// ConfigManager is required when EvaluateRules is true.
 	ConfigManager *config.Manager
+	// UndoAction describes the action for undo history (e.g., "Add Task").
+	// If empty, no undo snapshot is recorded.
+	UndoAction string
+	// UndoContext provides additional context for the undo entry (e.g., task title).
+	UndoContext string
 }
 
 // SaveProject saves the project with optional workflow rule evaluation.
@@ -87,6 +92,13 @@ func SaveProject(project *models.Project, opts *SaveOptions) error {
 	}
 
 	project.ReorderRootTasksByCompletion()
+
+	// Record undo snapshot before backup+save so it captures the pre-mutation state
+	if opts != nil && opts.UndoAction != "" && opts.Config != nil && opts.Config.UndoHistoryDepth != nil && *opts.Config.UndoHistoryDepth > 0 {
+		if err := storage.RecordUndoSnapshot(project, opts.UndoAction, opts.UndoContext, *opts.Config.UndoHistoryDepth); err != nil {
+			logging.Warn("failed to record undo snapshot: %v", err)
+		}
+	}
 
 	Debugf("saving project: %s", project.Name)
 	if err := os.MkdirAll(project.Path, 0o755); err != nil {

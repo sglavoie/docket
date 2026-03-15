@@ -166,7 +166,10 @@ func runQuickAdd(cmd *cobra.Command, args []string) error {
 	project.Tasks = append(project.Tasks, task)
 
 	// Save with workflow rules evaluation (state-based rules will fire for new tasks)
-	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager}); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
+		UndoAction: "Add Task", UndoContext: fmt.Sprintf("#%d %s", shortID, title),
+	}); err != nil {
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 

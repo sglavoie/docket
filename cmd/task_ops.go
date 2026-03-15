@@ -270,8 +270,12 @@ func WithTaskUpdate(taskIdentifier string, updateFn func(*models.Task) error) (*
 	// Update timestamp
 	task.UpdatedAt = time.Now()
 
-	// Save with workflow rules evaluation
-	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
+	// Save with workflow rules evaluation and undo recording
+	undoContext := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
+		PrevStates: prevStates, UndoAction: "Edit Task", UndoContext: undoContext,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -305,8 +309,12 @@ func WithTaskUpdateInProject(taskIdentifier string, updateFn func(*models.Projec
 	// Update timestamp
 	task.UpdatedAt = time.Now()
 
-	// Save with workflow rules evaluation
-	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: configManager, PrevStates: prevStates}); err != nil {
+	// Save with workflow rules evaluation and undo recording
+	undoContext := fmt.Sprintf("#%d %s", task.ShortID, task.Title)
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: configManager,
+		PrevStates: prevStates, UndoAction: "Edit Task", UndoContext: undoContext,
+	}); err != nil {
 		return nil, err
 	}
 

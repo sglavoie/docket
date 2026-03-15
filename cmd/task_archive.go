@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -39,7 +40,7 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 		return runTaskArchiveAll()
 	}
 
-	project, _, _, err := LoadCurrentProject()
+	project, cfg, _, err := LoadCurrentProject()
 	if err != nil {
 		return err
 	}
@@ -54,6 +55,14 @@ func runTaskArchive(cmd *cobra.Command, args []string) error {
 	if !ConfirmStrict(fmt.Sprintf("Archive %s to completed.md?", Pluralize(len(completedTasks), "completed task", "completed tasks")), archiveForce) {
 		fmt.Println("Canceled")
 		return nil
+	}
+
+	// Record undo snapshot before archiving (this is destructive and important to undo)
+	if cfg.UndoHistoryDepth != nil && *cfg.UndoHistoryDepth > 0 {
+		if snapshotErr := storage.RecordUndoSnapshot(project, "Archive Tasks",
+			fmt.Sprintf("%d tasks", len(completedTasks)), *cfg.UndoHistoryDepth); snapshotErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to record undo snapshot: %v\n", snapshotErr)
+		}
 	}
 
 	// Create backup before archiving

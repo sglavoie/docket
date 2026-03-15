@@ -185,16 +185,16 @@ func persistWithWorkflow(opts WorkflowSaveOptions) error {
 
 	opts.Project.ReorderRootTasksByCompletion()
 
+	// Record undo snapshot BEFORE backup+save so it captures the pre-mutation state
+	if opts.UndoDepth > 0 && opts.UndoAction != "" {
+		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth)
+	}
+
 	if err := opts.Persister.Backup(opts.Project); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 	if err := opts.Persister.Save(opts.Project); err != nil {
 		return fmt.Errorf("failed to save project: %w", err)
-	}
-
-	// Record undo snapshot only after successful save to avoid stale entries
-	if opts.UndoDepth > 0 && opts.UndoAction != "" {
-		_ = opts.Persister.RecordUndoSnapshot(opts.Project, opts.UndoAction, opts.UndoContext, opts.UndoDepth)
 	}
 
 	_ = opts.Persister.Load(opts.Project)

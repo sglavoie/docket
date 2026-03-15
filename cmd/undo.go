@@ -13,9 +13,11 @@ var undoCmd = &cobra.Command{
 	Short: "Undo the last change to tasks",
 	Long: `Restore the previous state of the tasks file.
 
-Each mutating operation (add, complete, edit, etc.) creates a backup.
-Running undo swaps the current state with the backup, making it reversible.
-Running undo again will restore the state before the undo.
+Each mutating operation (add, complete, edit, etc.) creates an undo snapshot.
+Running undo restores the most recent snapshot.
+Multiple levels of undo are supported (configurable via undo_history_depth).
+
+If no multi-level undo history is available, falls back to legacy single-step backup.
 
 Examples:
   tt undo              # Restore previous state`,
@@ -33,8 +35,31 @@ func runUndo(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Try multi-level undo system first
+	if storage.UndoHistoryExists(project) {
+		actionDesc, err := storage.PerformUndo(project)
+		if err != nil {
+			return fmt.Errorf("undo failed: %w", err)
+		}
+
+		// Reload project to get the restored state
+		if err := storage.LoadProject(project); err != nil {
+			return fmt.Errorf("failed to reload project after undo: %w", err)
+		}
+
+		fmt.Printf("Undone: %s\n", actionDesc)
+
+		// Check remaining undo history
+		entries, _ := storage.LoadUndoHistory(project)
+		if len(entries) > 0 {
+			fmt.Printf("%d more undo step(s) available.\n", len(entries))
+		}
+		return nil
+	}
+
+	// Fall back to legacy single-step backup
 	if !storage.BackupExists(project) {
-		return fmt.Errorf("no backup available for project '%s'", project.Name)
+		return fmt.Errorf("no undo history available for project '%s'", project.Name)
 	}
 
 	// Count tasks before restore
@@ -52,7 +77,7 @@ func runUndo(cmd *cobra.Command, args []string) error {
 
 	tasksAfter := len(project.Tasks)
 
-	fmt.Printf("Restored project '%s'\n", project.Name)
+	fmt.Printf("Restored project '%s' (legacy backup)\n", project.Name)
 	fmt.Printf("Tasks: %d -> %d\n", tasksBefore, tasksAfter)
 	fmt.Println("Run 'tt undo' again to reverse this operation.")
 

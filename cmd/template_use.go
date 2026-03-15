@@ -199,7 +199,10 @@ func runTemplateUse(cmd *cobra.Command, args []string) error {
 	project.UpdatedAt = time.Now()
 
 	// Save project
-	if err := SaveProject(project, &SaveOptions{EvaluateRules: true, Config: cfg, ConfigManager: projectConfigManager}); err != nil {
+	if err := SaveProject(project, &SaveOptions{
+		EvaluateRules: true, Config: cfg, ConfigManager: projectConfigManager,
+		UndoAction: "Use Template", UndoContext: fmt.Sprintf("%s -> #%d %s", t.Name, shortID, title),
+	}); err != nil {
 		return tterrors.NewSaveProjectError(project.Name, err)
 	}
 
