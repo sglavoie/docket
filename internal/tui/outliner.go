@@ -536,7 +536,7 @@ func (m *OutlinerModel) setUndoContext(action, context string) {
 
 // performUndo restores the project from backup.
 func (m *OutlinerModel) performUndo() tea.Cmd {
-	return performUndoCmd(m.projectService, m.project, m.rebuildRows)
+	return performUndoCmd(m.projectService, m.project)
 }
 
 // OutlinerToggleState captures section/fold state so it can survive outliner

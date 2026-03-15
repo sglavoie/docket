@@ -40,7 +40,7 @@ func (m *ProjectTreeModel) unarchiveProject() tea.Cmd {
 
 // performUndo restores the project from backup.
 func (m *ProjectTreeModel) performUndo() tea.Cmd {
-	return performUndoCmd(m.projectService, m.project, m.buildTree)
+	return performUndoCmd(m.projectService, m.project)
 }
 
 // buildWorkflowOpts constructs a WorkflowSaveOptions from the current model

@@ -264,15 +264,14 @@ func performUndoFromBackup(p Persister, project *models.Project) error {
 }
 
 // performUndoCmd returns a tea.Cmd that restores the project from backup.
-// The optional postUndo callback runs after a successful undo to let each view
-// refresh its own data structures (e.g. rebuildRows, buildTree).
-func performUndoCmd(persister Persister, project *models.Project, postUndo func()) tea.Cmd {
+// View-level rebuild (buildTree, rebuildRows) is handled by handleWithRefresh
+// on the main goroutine when UndoPerformedMsg is received, so no callback is
+// needed here — calling view-mutating methods inside a tea.Cmd goroutine would
+// race with BubbleTea's View() calls.
+func performUndoCmd(persister Persister, project *models.Project) tea.Cmd {
 	return func() tea.Msg {
 		if err := performUndoFromBackup(persister, project); err != nil {
 			return ErrorMsg{Err: err}
-		}
-		if postUndo != nil {
-			postUndo()
 		}
 		return UndoPerformedMsg{Action: "Undo"}
 	}
