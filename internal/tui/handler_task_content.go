@@ -60,6 +60,12 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		titleChanged := msg.NewTitle != msg.Task.Title
 		descChanged := msg.NewDescription != msg.Task.Description
 		if titleChanged || descChanged {
+			// Validate the new title (matches CLI task edit behavior)
+			if titleChanged {
+				if err := models.ValidateTaskTitle(msg.NewTitle); err != nil {
+					return true, errorCmd("invalid title: %w", err)
+				}
+			}
 			if msg.Project != nil {
 				// Re-lookup task in project to avoid stale pointer after concurrent reload
 				if !msg.Project.MutateTask(msg.Task.ID, func(t *models.Task) {

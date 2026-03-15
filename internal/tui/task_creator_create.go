@@ -19,8 +19,8 @@ func (m *TaskCreatorModel) createTask() tea.Cmd {
 	// Replace newlines with spaces since titles should be single logical lines
 	title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
 	title = strings.TrimSpace(title)
-	if title == "" {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("task title cannot be empty")} }
+	if err := models.ValidateTaskTitle(title); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
 	// Parse due date before saving

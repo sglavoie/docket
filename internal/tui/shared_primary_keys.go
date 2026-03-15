@@ -632,6 +632,10 @@ func handleQuickEditKey(
 		}
 
 		if qe.IsRenameOnly() {
+			if err := models.ValidateTaskTitle(input); err != nil {
+				qe.Exit()
+				return nil, nil
+			}
 			project.MutateTask(task.ID, func(t *models.Task) {
 				t.Title = input
 			})
@@ -643,7 +647,10 @@ func handleQuickEditKey(
 			if err != nil {
 				return nil, nil
 			}
-			applyQuickEdit(task, project, result)
+			if statusErr := applyQuickEdit(task, project, result); statusErr != "" {
+				qe.Exit()
+				return nil, nil
+			}
 			if onUndo != nil {
 				onUndo("Quick Edit", task.Title)
 			}

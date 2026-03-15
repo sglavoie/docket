@@ -61,6 +61,10 @@ func (m *FocusBoardModel) handleEditInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if value == "" {
 			return m, nil
 		}
+		if err := models.ValidateTaskTitle(value); err != nil {
+			m.statusMessage = err.Error()
+			return m, nil
+		}
 		if m.editIdx >= 0 && m.editIdx < len(m.filtered) {
 			row := m.filtered[m.editIdx]
 			row.Project.MutateTask(row.Task.ID, func(t *models.Task) {

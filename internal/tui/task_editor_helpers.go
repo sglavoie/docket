@@ -701,8 +701,8 @@ func (m *TaskEditorModel) saveTask() error {
 	// Replace newlines with spaces since titles should be single logical lines
 	title := strings.ReplaceAll(m.titleInput.Value(), "\n", " ")
 	title = strings.TrimSpace(title)
-	if title == "" {
-		return fmt.Errorf("task title cannot be empty")
+	if err := models.ValidateTaskTitle(title); err != nil {
+		return err
 	}
 
 	// Parse due date before saving

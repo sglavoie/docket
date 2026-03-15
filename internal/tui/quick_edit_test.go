@@ -183,7 +183,9 @@ func TestApplyQuickEdit(t *testing.T) {
 		statusSet:    true,
 	}
 
-	applyQuickEdit(task, project, result)
+	if statusErr := applyQuickEdit(task, project, result); statusErr != "" {
+		t.Fatalf("unexpected status error: %s", statusErr)
+	}
 
 	if task.Title != "Updated" {
 		t.Errorf("expected title 'Updated', got '%s'", task.Title)

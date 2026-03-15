@@ -271,10 +271,14 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 }
 
 // applyQuickEdit applies the parsed changes to the task.
-func applyQuickEdit(task *models.Task, project *models.Project, result *quickEditResult) {
+// Returns an error message if a status transition is invalid, empty string on success.
+func applyQuickEdit(task *models.Task, project *models.Project, result *quickEditResult) string {
+	var statusErr string
 	project.MutateTask(task.ID, func(t *models.Task) {
 		if result.titleSet && result.title != "" {
-			t.Title = result.title
+			if models.ValidateTaskTitle(result.title) == nil {
+				t.Title = result.title
+			}
 		}
 
 		if result.prioritySet {
@@ -306,9 +310,14 @@ func applyQuickEdit(task *models.Task, project *models.Project, result *quickEdi
 		}
 
 		if result.statusSet {
-			t.Status = result.status
+			if msg := t.CanTransitionTo(result.status); msg != "" {
+				statusErr = msg
+			} else {
+				t.ApplyTransition(result.status)
+			}
 		}
 	})
+	return statusErr
 }
 
 // hasChanges returns true if the edit result differs from the original.
