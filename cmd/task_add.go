@@ -81,6 +81,8 @@ func init() {
 	registerTypeAttrFlags(taskAddCmd, &addTypeAttrs)
 
 	_ = taskAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
+	_ = taskAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
+	_ = taskAddCmd.RegisterFlagCompletionFunc("stage", completeConfigStages())
 }
 
 func runTaskAdd(cmd *cobra.Command, args []string) error {

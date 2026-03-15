@@ -88,6 +88,7 @@ func init() {
 
 	_ = templateAddCmd.RegisterFlagCompletionFunc("type", completeEnum(taskTypeCompletions))
 	_ = templateAddCmd.RegisterFlagCompletionFunc("category", completeEnum(categoryCompletions))
+	_ = templateAddCmd.RegisterFlagCompletionFunc("section", completeProjectSections())
 }
 
 func runTemplateAdd(cmd *cobra.Command, args []string) error {

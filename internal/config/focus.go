@@ -19,3 +19,17 @@ func (c *Config) GetFocusDismissedIDs() []string {
 func (c *Config) SetFocusDismissedIDs(ids []string) {
 	c.FocusDismissedIDs = ids
 }
+
+// maxFocusDismissedIDs is the maximum number of dismissed suggestion IDs to persist.
+// When exceeded, the oldest entries (at the end of the slice) are dropped.
+const maxFocusDismissedIDs = 200
+
+// PruneFocusDismissedIDs trims the dismissed IDs list to the maximum allowed size.
+// Returns true if any IDs were removed.
+func (c *Config) PruneFocusDismissedIDs() bool {
+	if len(c.FocusDismissedIDs) <= maxFocusDismissedIDs {
+		return false
+	}
+	c.FocusDismissedIDs = c.FocusDismissedIDs[:maxFocusDismissedIDs]
+	return true
+}

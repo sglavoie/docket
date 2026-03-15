@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestAlertDismissalHelpers(t *testing.T) {
 	t.Run("DismissAlert adds new entry", func(t *testing.T) {
@@ -98,6 +101,53 @@ func TestAlertDismissalHelpers(t *testing.T) {
 		}
 		if len(cfg.GetAlertDismissals()) != 3 {
 			t.Errorf("expected 3 dismissals, got %d", len(cfg.GetAlertDismissals()))
+		}
+	})
+
+	t.Run("PruneExpiredAlertDismissals removes old entries", func(t *testing.T) {
+		cfg := NewConfig()
+		// Add a recent dismissal
+		cfg.DismissAlert("recent:t1", "overdue")
+		// Add an old dismissal (31 days ago)
+		cfg.AlertDismissals = append(cfg.AlertDismissals, AlertDismissal{
+			Key:         "old:t2",
+			Category:    "stale",
+			DismissedAt: time.Now().Add(-31 * 24 * time.Hour),
+		})
+
+		pruned := cfg.PruneExpiredAlertDismissals()
+		if !pruned {
+			t.Error("expected pruning to return true")
+		}
+		if len(cfg.AlertDismissals) != 1 {
+			t.Errorf("expected 1 dismissal after prune, got %d", len(cfg.AlertDismissals))
+		}
+		if !cfg.IsAlertDismissed("recent:t1") {
+			t.Error("recent dismissal should be kept")
+		}
+		if cfg.IsAlertDismissed("old:t2") {
+			t.Error("old dismissal should be pruned")
+		}
+	})
+
+	t.Run("PruneExpiredAlertDismissals noop when nothing expired", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.DismissAlert("recent:t1", "overdue")
+
+		pruned := cfg.PruneExpiredAlertDismissals()
+		if pruned {
+			t.Error("expected pruning to return false when nothing expired")
+		}
+		if len(cfg.AlertDismissals) != 1 {
+			t.Errorf("expected 1 dismissal unchanged, got %d", len(cfg.AlertDismissals))
+		}
+	})
+
+	t.Run("PruneExpiredAlertDismissals noop on empty list", func(t *testing.T) {
+		cfg := NewConfig()
+		pruned := cfg.PruneExpiredAlertDismissals()
+		if pruned {
+			t.Error("expected pruning to return false on empty list")
 		}
 	})
 }

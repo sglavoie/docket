@@ -38,6 +38,9 @@ func init() {
 	projectNewCmd.Flags().StringVarP(&projectContext, "context", "c", "personal", "project context (personal or work)")
 	projectNewCmd.Flags().StringVarP(&projectDescription, "description", "d", "", "project status note")
 	projectNewCmd.Flags().StringVarP(&projectStatusIcon, "status-icon", "i", "", "project status icon (planning, wip, active, review, testing, stabilizing, maintenance, bugfix, paused, archived)")
+
+	_ = projectNewCmd.RegisterFlagCompletionFunc("context", completeEnum(contextCompletions))
+	_ = projectNewCmd.RegisterFlagCompletionFunc("status-icon", completeEnum(statusIconCompletions))
 }
 
 func runProjectNew(cmd *cobra.Command, args []string) error {

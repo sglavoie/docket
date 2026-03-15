@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestFocusQueueHelpers(t *testing.T) {
 	t.Run("SetFocusQueue replaces entire queue", func(t *testing.T) {
@@ -54,6 +57,41 @@ func TestFocusDismissedHelpers(t *testing.T) {
 		ids := cfg.GetFocusDismissedIDs()
 		if len(ids) != 2 || ids[0] != "d3" || ids[1] != "d4" {
 			t.Errorf("expected [d3, d4], got %v", ids)
+		}
+	})
+
+	t.Run("PruneFocusDismissedIDs trims excess entries", func(t *testing.T) {
+		cfg := NewConfig()
+		// Create a list exceeding maxFocusDismissedIDs
+		ids := make([]string, maxFocusDismissedIDs+50)
+		for i := range ids {
+			ids[i] = fmt.Sprintf("task-%d", i)
+		}
+		cfg.SetFocusDismissedIDs(ids)
+
+		pruned := cfg.PruneFocusDismissedIDs()
+		if !pruned {
+			t.Error("expected pruning to return true")
+		}
+		if len(cfg.FocusDismissedIDs) != maxFocusDismissedIDs {
+			t.Errorf("expected %d IDs after prune, got %d", maxFocusDismissedIDs, len(cfg.FocusDismissedIDs))
+		}
+		// First entries should be preserved (most recent are at the front)
+		if cfg.FocusDismissedIDs[0] != "task-0" {
+			t.Errorf("expected first entry to be task-0, got %s", cfg.FocusDismissedIDs[0])
+		}
+	})
+
+	t.Run("PruneFocusDismissedIDs noop when under limit", func(t *testing.T) {
+		cfg := NewConfig()
+		cfg.SetFocusDismissedIDs([]string{"d1", "d2", "d3"})
+
+		pruned := cfg.PruneFocusDismissedIDs()
+		if pruned {
+			t.Error("expected pruning to return false when under limit")
+		}
+		if len(cfg.FocusDismissedIDs) != 3 {
+			t.Errorf("expected 3 IDs unchanged, got %d", len(cfg.FocusDismissedIDs))
 		}
 	})
 }

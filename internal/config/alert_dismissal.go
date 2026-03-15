@@ -1,6 +1,31 @@
 package config
 
-import "time"
+import (
+	"time"
+)
+
+// alertDismissalMaxAge is the maximum age for an alert dismissal before it is pruned.
+const alertDismissalMaxAge = 30 * 24 * time.Hour
+
+// PruneExpiredAlertDismissals removes alert dismissals older than alertDismissalMaxAge.
+// Returns true if any dismissals were removed.
+func (c *Config) PruneExpiredAlertDismissals() bool {
+	if len(c.AlertDismissals) == 0 {
+		return false
+	}
+	cutoff := time.Now().Add(-alertDismissalMaxAge)
+	kept := make([]AlertDismissal, 0, len(c.AlertDismissals))
+	for _, d := range c.AlertDismissals {
+		if d.DismissedAt.After(cutoff) {
+			kept = append(kept, d)
+		}
+	}
+	if len(kept) == len(c.AlertDismissals) {
+		return false
+	}
+	c.AlertDismissals = kept
+	return true
+}
 
 // GetAlertDismissals returns the persisted alert dismissals.
 func (c *Config) GetAlertDismissals() []AlertDismissal {

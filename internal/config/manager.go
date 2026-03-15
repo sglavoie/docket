@@ -151,6 +151,15 @@ func (m *Manager) Load() (*Config, error) {
 		}
 	}
 
+	// Prune stale data that accumulates over time.
+	pruned := config.PruneExpiredAlertDismissals()
+	pruned = config.PruneFocusDismissedIDs() || pruned
+	if pruned {
+		if err := m.Save(&config); err != nil {
+			logging.Warn("failed to save config after pruning stale data: %v", err)
+		}
+	}
+
 	// Config version migration and validation.
 	// Strategy: each version bump gets a dedicated migration block below.
 	// When adding version 2, add a `if config.Version == 1 { ... }` block
