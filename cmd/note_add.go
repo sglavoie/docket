@@ -35,7 +35,7 @@ func init() {
 }
 
 func runNoteAdd(cmd *cobra.Command, args []string) error {
-	title := strings.Join(args, " ")
+	title := strings.TrimSpace(strings.Join(args, " "))
 	if title == "" {
 		return tterrors.NewRequiredFieldError("note title")
 	}

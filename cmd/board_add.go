@@ -47,7 +47,7 @@ func init() {
 }
 
 func runBoardAdd(cmd *cobra.Command, args []string) error {
-	title := strings.Join(args, " ")
+	title := strings.TrimSpace(strings.Join(args, " "))
 	if title == "" {
 		return tterrors.NewRequiredFieldError("action title")
 	}

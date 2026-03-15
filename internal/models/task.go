@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -74,7 +75,7 @@ type Task struct {
 
 // ValidateTaskTitle returns an error if the title is empty or exceeds MaxTaskTitleLength.
 func ValidateTaskTitle(title string) error {
-	if title == "" {
+	if strings.TrimSpace(title) == "" {
 		return fmt.Errorf("task title cannot be empty")
 	}
 	if len(title) > MaxTaskTitleLength {
