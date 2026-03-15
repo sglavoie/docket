@@ -239,6 +239,73 @@ func TestFlattenTaskTreeLeafAndParentConnectors(t *testing.T) {
 	}
 }
 
+func TestFlattenTaskTreeSliceAliasing(t *testing.T) {
+	// Regression test for slice aliasing in tree flattening.
+	// When sibling nodes at depth >= 2 each have children, the recursive
+	// append(ancestorIsLast, isLast) could share a backing array if the
+	// slice had spare capacity, corrupting connector prefixes.
+	//
+	// Tree structure:
+	//   root (non-last root)
+	//     parent1 (non-last child of root)
+	//       sibling1 (non-last child of parent1) — has child
+	//         grandchild1
+	//       sibling2 (last child of parent1) — has child
+	//         grandchild2
+	//     parent2 (last child of root)
+	//   root2 (last root)
+	//
+	// The bug would cause grandchild2's prefix to reflect sibling1's
+	// "non-last" state as "last" because the second sibling's append
+	// overwrote the first sibling's ancestor trail in the shared array.
+
+	root, _ := models.NewTask("r", 1, models.TaskTypeEpic, "Root")
+	parent1, _ := models.NewTask("p1", 2, models.TaskTypeStory, "Parent 1")
+	parent2, _ := models.NewTask("p2", 3, models.TaskTypeTask, "Parent 2")
+	sibling1, _ := models.NewTask("s1", 4, models.TaskTypeTask, "Sibling 1")
+	sibling2, _ := models.NewTask("s2", 5, models.TaskTypeTask, "Sibling 2")
+	grandchild1, _ := models.NewTask("gc1", 6, models.TaskTypeTask, "Grandchild 1")
+	grandchild2, _ := models.NewTask("gc2", 7, models.TaskTypeTask, "Grandchild 2")
+	root2, _ := models.NewTask("r2", 8, models.TaskTypeEpic, "Root 2")
+
+	sibling1.Children = []*models.Task{grandchild1}
+	sibling2.Children = []*models.Task{grandchild2}
+	parent1.Children = []*models.Task{sibling1, sibling2}
+	root.Children = []*models.Task{parent1, parent2}
+
+	roots := []*models.Task{root, root2}
+
+	var rows []outlinerRow
+	flattenTaskTree(roots, nil, &rows)
+
+	expected := []struct {
+		title  string
+		prefix string
+	}{
+		{"Root", "├── "},
+		{"Parent 1", "│   ├── "},
+		{"Sibling 1", "│   │   ├── "},
+		{"Grandchild 1", "│   │   │   └── "},
+		{"Sibling 2", "│   │   └── "},
+		{"Grandchild 2", "│   │       └── "},
+		{"Parent 2", "│   └── "},
+		{"Root 2", "└── "},
+	}
+
+	if len(rows) != len(expected) {
+		t.Fatalf("expected %d rows, got %d", len(expected), len(rows))
+	}
+
+	for i, exp := range expected {
+		if rows[i].task.Title != exp.title {
+			t.Errorf("row %d: expected title %q, got %q", i, exp.title, rows[i].task.Title)
+		}
+		if rows[i].prefix != exp.prefix {
+			t.Errorf("row %d (%s): expected prefix %q, got %q", i, exp.title, exp.prefix, rows[i].prefix)
+		}
+	}
+}
+
 func TestFlattenTaskTreeNoState(t *testing.T) {
 	// Verify no connector state stored on tree nodes: run flatten twice
 	// and confirm identical results.

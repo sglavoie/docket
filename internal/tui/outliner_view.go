@@ -64,7 +64,14 @@ func flattenTaskTree(tasks []*models.Task, ancestorIsLast []bool, rows *[]outlin
 		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
 
 		if len(task.Children) > 0 {
-			flattenTaskTree(task.Children, append(ancestorIsLast, isLast), rows)
+			// Copy before appending to prevent slice aliasing: without the
+			// copy, siblings that recurse into children could share the same
+			// backing array, corrupting each other's ancestor trail when the
+			// capacity isn't exhausted.
+			child := make([]bool, len(ancestorIsLast)+1)
+			copy(child, ancestorIsLast)
+			child[len(ancestorIsLast)] = isLast
+			flattenTaskTree(task.Children, child, rows)
 		}
 	}
 }
@@ -89,7 +96,11 @@ func (m *OutlinerModel) flattenTaskTreeWithFolds(tasks []*models.Task, ancestorI
 		*rows = append(*rows, outlinerRow{task: task, prefix: prefix})
 
 		if len(task.Children) > 0 && m.isExpanded(task.ID) {
-			m.flattenTaskTreeWithFolds(task.Children, append(ancestorIsLast, isLast), rows)
+			// Copy before appending to prevent slice aliasing (see flattenTaskTree).
+			child := make([]bool, len(ancestorIsLast)+1)
+			copy(child, ancestorIsLast)
+			child[len(ancestorIsLast)] = isLast
+			m.flattenTaskTreeWithFolds(task.Children, child, rows)
 		}
 	}
 }

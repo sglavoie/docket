@@ -112,9 +112,20 @@ func (p *Project) BuildTaskTree() {
 			task.Parent = nil
 			task.ParentID = nil
 			task.Level = 0
-			// Re-level this task's subtree from 0
+			// Re-level this task's subtree from 0.
+			// Clear visited entries first so setLevels will traverse them.
+			clearVisited(task, visited)
 			setLevels(task, 0)
 		}
+	}
+}
+
+// clearVisited removes a task and all its descendants from the visited map
+// so setLevels can re-traverse them after detachment.
+func clearVisited(task *Task, visited map[string]bool) {
+	delete(visited, task.ID)
+	for _, child := range task.Children {
+		clearVisited(child, visited)
 	}
 }
 

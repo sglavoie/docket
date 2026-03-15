@@ -333,6 +333,57 @@ func TestBuildTaskTree_MaxNestingDepth(t *testing.T) {
 	}
 }
 
+func TestBuildTaskTree_MaxNestingDepthRelevelSubtree(t *testing.T) {
+	// Regression: when a deeply nested task with children is detached to root,
+	// its children must be re-leveled relative to the new root (level 0),
+	// not retain their original (stale) levels.
+	project := NewProject("test", "Test", "/tmp/test")
+
+	// Create chain: 0 -> 1 -> ... -> MaxNestingDepth+1 -> child_a, child_b
+	chainLen := MaxNestingDepth + 2 // one past the cap
+	tasks := make([]*Task, chainLen)
+	for i := range chainLen {
+		task, err := NewTask(fmt.Sprintf("chain-%d", i), i+1, TaskTypeTask, fmt.Sprintf("Chain %d", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i > 0 {
+			parentID := tasks[i-1].ID
+			task.ParentID = &parentID
+		}
+		tasks[i] = task
+	}
+
+	// Add two children to the task that will be detached
+	detachedRoot := tasks[chainLen-1]
+	childA, err := NewTask("child-a", 100, TaskTypeTask, "Child A")
+	if err != nil {
+		t.Fatal(err)
+	}
+	childB, err := NewTask("child-b", 101, TaskTypeTask, "Child B")
+	if err != nil {
+		t.Fatal(err)
+	}
+	detachedID := detachedRoot.ID
+	childA.ParentID = &detachedID
+	childB.ParentID = &detachedID
+
+	project.Tasks = append(tasks, childA, childB)
+	project.BuildTaskTree()
+
+	// The detached root should be at level 0
+	if detachedRoot.Level != 0 {
+		t.Errorf("detached root: got Level=%d, want 0", detachedRoot.Level)
+	}
+	// Its children should be at level 1 (not the original deep level)
+	if childA.Level != 1 {
+		t.Errorf("child A of detached root: got Level=%d, want 1", childA.Level)
+	}
+	if childB.Level != 1 {
+		t.Errorf("child B of detached root: got Level=%d, want 1", childB.Level)
+	}
+}
+
 func TestBuildTaskTree_CircularParentSelfReference(t *testing.T) {
 	project := NewProject("test", "Test", "/tmp/test")
 
