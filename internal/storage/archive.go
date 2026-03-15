@@ -215,8 +215,10 @@ func writeArchivedTask(task *models.Task) string {
 	// Write heading (always level 3 for archived tasks)
 	fmt.Fprintf(&b, "### %s: %s\n", task.Type.HeadingPrefix(), task.Title)
 
-	// Write metadata
-	b.WriteString(writeArchivedMetadata(task))
+	// Write metadata — use the canonical WriteMetadata to preserve ALL fields
+	// (custom_section, depends, related, checklist, stage, source, url,
+	// score dimensions, type-specific attrs, code ref attachments, etc.)
+	b.WriteString(format.WriteMetadata(task))
 	b.WriteString("\n")
 
 	// Write description if present
@@ -238,57 +240,6 @@ func writeArchivedTask(task *models.Task) string {
 	}
 
 	return b.String()
-}
-
-// writeArchivedMetadata generates the metadata comment for an archived task.
-func writeArchivedMetadata(task *models.Task) string {
-	var parts []string
-
-	if task.ID != "" {
-		parts = append(parts, fmt.Sprintf("id: %s", task.ID))
-	}
-
-	parts = append(parts, fmt.Sprintf("status: %s", task.Status))
-	parts = append(parts, fmt.Sprintf("priority: %d", task.Priority))
-
-	if len(task.Tags) > 0 {
-		parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
-	}
-
-	if task.Section != "" {
-		parts = append(parts, fmt.Sprintf("section: %s", task.Section))
-	}
-
-	if !task.CreatedAt.IsZero() {
-		parts = append(parts, fmt.Sprintf("created: %s", task.CreatedAt.Format(util.DateTimeFormat)))
-	}
-
-	if !task.UpdatedAt.IsZero() && !task.UpdatedAt.Equal(task.CreatedAt) {
-		parts = append(parts, fmt.Sprintf("updated: %s", task.UpdatedAt.Format(util.DateTimeFormat)))
-	}
-
-	if task.CompletedAt != nil {
-		parts = append(parts, fmt.Sprintf("completed: %s", task.CompletedAt.Format(util.DateTimeFormat)))
-	}
-
-	if task.DueDate != nil {
-		parts = append(parts, fmt.Sprintf("due: %s", task.DueDate.Format(util.DateFormat)))
-	}
-
-	if len(task.Attachments) > 0 {
-		var attStrings []string
-		for _, att := range task.Attachments {
-			timestamp := fmt.Sprintf("@%d", att.AddedAt.Unix())
-			if att.IsURL {
-				attStrings = append(attStrings, "url:"+att.Filename+timestamp)
-			} else {
-				attStrings = append(attStrings, att.Filename+timestamp)
-			}
-		}
-		parts = append(parts, fmt.Sprintf("attachments: %s", strings.Join(attStrings, ";")))
-	}
-
-	return fmt.Sprintf("<!-- %s -->", strings.Join(parts, ", "))
 }
 
 // appendToArchiveFile appends content to the archive file, creating it if necessary.

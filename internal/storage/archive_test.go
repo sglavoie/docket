@@ -671,6 +671,152 @@ Some description.
 	})
 }
 
+func TestArchivePreservesAllMetadataFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	project := &models.Project{Path: tmpDir, Name: "TestProj"}
+
+	now := time.Date(2025, 6, 10, 14, 30, 0, 0, time.Local)
+	snoozed := time.Date(2025, 7, 1, 0, 0, 0, 0, time.Local)
+
+	task := &models.Task{
+		ID:            "full-task-1",
+		Title:         "Task with all fields",
+		Type:          models.TaskTypeBug,
+		Status:        models.StatusDone,
+		Priority:      1,
+		Tags:          []string{"backend", "critical"},
+		Section:       "Next",
+		CustomSection: "Sprint-1",
+		CreatedAt:     now.Add(-48 * time.Hour),
+		UpdatedAt:     now.Add(-1 * time.Hour),
+		CompletedAt:   &now,
+		DependsOn:     []string{"dep-1", "dep-2"},
+		RelatedTo:     []string{"rel-1"},
+		SnoozedUntil:  &snoozed,
+		Stage:         "Review",
+		Source:        "github",
+		URL:           "https://github.com/example/issue/42",
+		Checklist: []models.ChecklistItem{
+			{Text: "Step one", Done: true},
+			{Text: "Step two", Done: false},
+		},
+		ScoreDimensions: map[string]int{
+			"impact": 4,
+			"effort": 2,
+		},
+		BugAttrs: &models.BugAttrs{
+			Severity:     models.BugSeverityCritical,
+			Reproducible: models.BugReproducibleYes,
+			Workaround:   "Restart the service",
+		},
+		Attachments: []models.Attachment{
+			{
+				Filename:     "screenshot.png",
+				OriginalPath: "/home/user/screenshot.png",
+				AddedAt:      now.Add(-24 * time.Hour),
+			},
+			{
+				Filename:     "https://example.com/doc",
+				IsURL:        true,
+				OriginalPath: "https://example.com/doc",
+				AddedAt:      now.Add(-12 * time.Hour),
+			},
+			{
+				Filename:     "main.go",
+				IsCodeRef:    true,
+				LineNumber:   42,
+				OriginalPath: "/home/user/project/main.go",
+				AddedAt:      now.Add(-6 * time.Hour),
+			},
+		},
+	}
+
+	content := WriteArchivedTasks(project.Name, []*models.Task{task})
+	archivePath := filepath.Join(tmpDir, "completed.md")
+	if err := os.WriteFile(archivePath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write archive: %v", err)
+	}
+
+	tasks := LoadArchivedTasks(project)
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(tasks))
+	}
+	loaded := tasks[0]
+
+	// Fields that were previously lost by the old writeArchivedMetadata
+	if loaded.CustomSection != "Sprint-1" {
+		t.Errorf("custom_section: got %q, want %q", loaded.CustomSection, "Sprint-1")
+	}
+	if len(loaded.DependsOn) != 2 || loaded.DependsOn[0] != "dep-1" || loaded.DependsOn[1] != "dep-2" {
+		t.Errorf("depends_on: got %v, want [dep-1 dep-2]", loaded.DependsOn)
+	}
+	if len(loaded.RelatedTo) != 1 || loaded.RelatedTo[0] != "rel-1" {
+		t.Errorf("related_to: got %v, want [rel-1]", loaded.RelatedTo)
+	}
+	if loaded.SnoozedUntil == nil {
+		t.Error("snoozed_until: should not be nil")
+	}
+	if loaded.Stage != "Review" {
+		t.Errorf("stage: got %q, want %q", loaded.Stage, "Review")
+	}
+	if loaded.Source != "github" {
+		t.Errorf("source: got %q, want %q", loaded.Source, "github")
+	}
+	if loaded.URL != "https://github.com/example/issue/42" {
+		t.Errorf("url: got %q, want %q", loaded.URL, "https://github.com/example/issue/42")
+	}
+	if len(loaded.Checklist) != 2 {
+		t.Fatalf("checklist: got %d items, want 2", len(loaded.Checklist))
+	}
+	if !loaded.Checklist[0].Done || loaded.Checklist[0].Text != "Step one" {
+		t.Errorf("checklist[0]: got %+v, want done=true text='Step one'", loaded.Checklist[0])
+	}
+	if loaded.Checklist[1].Done || loaded.Checklist[1].Text != "Step two" {
+		t.Errorf("checklist[1]: got %+v, want done=false text='Step two'", loaded.Checklist[1])
+	}
+	if len(loaded.ScoreDimensions) != 2 {
+		t.Fatalf("score_dimensions: got %d, want 2", len(loaded.ScoreDimensions))
+	}
+	if loaded.ScoreDimensions["impact"] != 4 || loaded.ScoreDimensions["effort"] != 2 {
+		t.Errorf("score_dimensions: got %v, want impact=4 effort=2", loaded.ScoreDimensions)
+	}
+	if loaded.BugAttrs == nil {
+		t.Fatal("bug_attrs: should not be nil")
+	}
+	if loaded.BugAttrs.Severity != models.BugSeverityCritical {
+		t.Errorf("bug.severity: got %q, want %q", loaded.BugAttrs.Severity, models.BugSeverityCritical)
+	}
+	if loaded.BugAttrs.Reproducible != models.BugReproducibleYes {
+		t.Errorf("bug.reproducible: got %q, want %q", loaded.BugAttrs.Reproducible, models.BugReproducibleYes)
+	}
+	if loaded.BugAttrs.Workaround != "Restart the service" {
+		t.Errorf("bug.workaround: got %q, want %q", loaded.BugAttrs.Workaround, "Restart the service")
+	}
+
+	// Verify attachment fields including code refs and original paths
+	if len(loaded.Attachments) != 3 {
+		t.Fatalf("attachments: got %d, want 3", len(loaded.Attachments))
+	}
+	// File attachment with original path
+	if loaded.Attachments[0].OriginalPath != "/home/user/screenshot.png" {
+		t.Errorf("attachment[0].OriginalPath: got %q, want %q", loaded.Attachments[0].OriginalPath, "/home/user/screenshot.png")
+	}
+	// URL attachment
+	if !loaded.Attachments[1].IsURL {
+		t.Error("attachment[1]: should be URL")
+	}
+	// Code ref attachment with line number
+	if !loaded.Attachments[2].IsCodeRef {
+		t.Error("attachment[2]: should be code ref")
+	}
+	if loaded.Attachments[2].LineNumber != 42 {
+		t.Errorf("attachment[2].LineNumber: got %d, want 42", loaded.Attachments[2].LineNumber)
+	}
+	if loaded.Attachments[2].OriginalPath != "/home/user/project/main.go" {
+		t.Errorf("attachment[2].OriginalPath: got %q, want %q", loaded.Attachments[2].OriginalPath, "/home/user/project/main.go")
+	}
+}
+
 func TestGetArchiveFilePath(t *testing.T) {
 	project := &models.Project{
 		Path: "/home/user/projects/my-project",
