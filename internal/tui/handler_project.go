@@ -417,15 +417,17 @@ func reconstructProjectFromDir(slug, projectPath string) (*models.Project, error
 
 	// Create the project with a new ID (since we don't store ID in tasks.md)
 	project := &models.Project{
-		ID:          uuid.New().String(),
-		Slug:        slug,
-		Name:        projectName,
-		Path:        projectPath,
-		Context:     "personal", // Default context
-		CreatedAt:   time.Now(), // We don't preserve original creation time
-		UpdatedAt:   time.Now(),
-		Tasks:       tempProject.Tasks,
-		NextShortID: tempProject.NextShortID,
+		ID:            uuid.New().String(),
+		Slug:          slug,
+		Name:          projectName,
+		Path:          projectPath,
+		Context:       "personal", // Default context
+		CreatedAt:     time.Now(), // We don't preserve original creation time
+		UpdatedAt:     time.Now(),
+		Tasks:         tempProject.Tasks,
+		NextShortID:   tempProject.NextShortID,
+		Sections:      tempProject.Sections,
+		SectionColors: tempProject.SectionColors,
 	}
 
 	return project, nil
