@@ -97,8 +97,13 @@ func ArchiveTasks(project *models.Project) (int, error) {
 		return 0, fmt.Errorf("failed to append to archive: %w", err)
 	}
 
-	// Remove completed tasks from project
+	// Remove completed tasks from project and fix orphaned children
+	archivedIDs := make(map[string]bool, len(completedTasks))
+	for _, t := range completedTasks {
+		archivedIDs[t.ID] = true
+	}
 	removeCompletedTasks(project)
+	clearOrphanedParentRefs(project, archivedIDs)
 
 	// Save the modified project; rollback archive append on failure
 	if err := SaveProject(project); err != nil {
@@ -272,4 +277,34 @@ func removeCompletedTasks(project *models.Project) {
 		}
 	}
 	project.Tasks = remaining
+}
+
+// clearOrphanedParentRefs clears ParentID on any remaining task whose parent
+// was archived (removed). Without this, children of archived parents would have
+// dangling ParentID references and be silently promoted to root by BuildTaskTree.
+// Also removes DependsOn and RelatedTo references to archived tasks.
+func clearOrphanedParentRefs(project *models.Project, removedIDs map[string]bool) {
+	for _, task := range project.Tasks {
+		if task.ParentID != nil && removedIDs[*task.ParentID] {
+			task.ParentID = nil
+		}
+		if len(task.DependsOn) > 0 {
+			clean := task.DependsOn[:0]
+			for _, depID := range task.DependsOn {
+				if !removedIDs[depID] {
+					clean = append(clean, depID)
+				}
+			}
+			task.DependsOn = clean
+		}
+		if len(task.RelatedTo) > 0 {
+			clean := task.RelatedTo[:0]
+			for _, relID := range task.RelatedTo {
+				if !removedIDs[relID] {
+					clean = append(clean, relID)
+				}
+			}
+			task.RelatedTo = clean
+		}
+	}
 }

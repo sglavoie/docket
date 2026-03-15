@@ -817,6 +817,72 @@ func TestArchivePreservesAllMetadataFields(t *testing.T) {
 	}
 }
 
+func TestClearOrphanedParentRefs(t *testing.T) {
+	t.Run("clears parent refs pointing to removed tasks", func(t *testing.T) {
+		parentID := "parent-1"
+		project := &models.Project{
+			ID:   "proj-1",
+			Name: "Test",
+			Tasks: []*models.Task{
+				{ID: "child-1", Title: "Child 1", ParentID: &parentID, Status: models.StatusTodo},
+				{ID: "child-2", Title: "Child 2", ParentID: &parentID, Status: models.StatusInProgress},
+				{ID: "unrelated", Title: "Unrelated", Status: models.StatusTodo},
+			},
+		}
+		removedIDs := map[string]bool{"parent-1": true}
+
+		clearOrphanedParentRefs(project, removedIDs)
+
+		for _, task := range project.Tasks {
+			if task.ParentID != nil {
+				t.Errorf("task %s should have nil ParentID after parent was removed, got %s", task.ID, *task.ParentID)
+			}
+		}
+	})
+
+	t.Run("clears deps and related refs pointing to removed tasks", func(t *testing.T) {
+		project := &models.Project{
+			ID:   "proj-1",
+			Name: "Test",
+			Tasks: []*models.Task{
+				{ID: "t1", Title: "Task 1", DependsOn: []string{"removed-1", "remaining-1"}, RelatedTo: []string{"removed-1"}, Status: models.StatusTodo},
+				{ID: "t2", Title: "Task 2", DependsOn: []string{"remaining-1"}, Status: models.StatusTodo},
+			},
+		}
+		removedIDs := map[string]bool{"removed-1": true}
+
+		clearOrphanedParentRefs(project, removedIDs)
+
+		if len(project.Tasks[0].DependsOn) != 1 || project.Tasks[0].DependsOn[0] != "remaining-1" {
+			t.Errorf("expected DependsOn=[remaining-1], got %v", project.Tasks[0].DependsOn)
+		}
+		if len(project.Tasks[0].RelatedTo) != 0 {
+			t.Errorf("expected RelatedTo=[], got %v", project.Tasks[0].RelatedTo)
+		}
+		if len(project.Tasks[1].DependsOn) != 1 || project.Tasks[1].DependsOn[0] != "remaining-1" {
+			t.Errorf("expected DependsOn=[remaining-1], got %v", project.Tasks[1].DependsOn)
+		}
+	})
+
+	t.Run("preserves refs to non-removed tasks", func(t *testing.T) {
+		keepParentID := "keep-parent"
+		project := &models.Project{
+			ID:   "proj-1",
+			Name: "Test",
+			Tasks: []*models.Task{
+				{ID: "child-1", Title: "Child", ParentID: &keepParentID, Status: models.StatusTodo},
+			},
+		}
+		removedIDs := map[string]bool{"other-parent": true}
+
+		clearOrphanedParentRefs(project, removedIDs)
+
+		if project.Tasks[0].ParentID == nil || *project.Tasks[0].ParentID != "keep-parent" {
+			t.Error("ParentID pointing to non-removed task should be preserved")
+		}
+	})
+}
+
 func TestGetArchiveFilePath(t *testing.T) {
 	project := &models.Project{
 		Path: "/home/user/projects/my-project",
