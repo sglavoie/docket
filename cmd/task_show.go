@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -30,11 +32,15 @@ Examples:
 	RunE: runTaskShow,
 }
 
-var noGlow bool
+var (
+	noGlow       bool
+	taskShowJSON bool
+)
 
 func init() {
 	taskCmd.AddCommand(taskShowCmd)
 	taskShowCmd.Flags().BoolVar(&noGlow, "no-glow", false, "disable glow rendering")
+	taskShowCmd.Flags().BoolVar(&taskShowJSON, "json", false, "output as JSON")
 }
 
 func runTaskShow(cmd *cobra.Command, args []string) error {
@@ -68,6 +74,10 @@ func runTaskShow(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if taskShowJSON {
+		return displayTaskShowJSON(task)
 	}
 
 	// Use glow if available and enabled
@@ -153,4 +163,125 @@ func displayTaskDetail(task *models.Task) {
 			completed, total,
 			task.GetProgress())
 	}
+}
+
+// taskShowJSONEntry is the full representation of a task for JSON output.
+type taskShowJSONEntry struct {
+	ID              string                    `json:"id"`
+	ShortID         int                       `json:"short_id"`
+	Type            string                    `json:"type"`
+	Title           string                    `json:"title"`
+	Description     string                    `json:"description"`
+	Status          string                    `json:"status"`
+	Priority        int                       `json:"priority"`
+	ParentID        *string                   `json:"parent_id"`
+	Tags            []string                  `json:"tags"`
+	Section         string                    `json:"section"`
+	CustomSection   string                    `json:"custom_section,omitempty"`
+	CreatedAt       time.Time                 `json:"created_at"`
+	UpdatedAt       time.Time                 `json:"updated_at"`
+	CompletedAt     *time.Time                `json:"completed_at"`
+	DueDate         *time.Time                `json:"due_date"`
+	DependsOn       []string                  `json:"depends_on"`
+	RelatedTo       []string                  `json:"related_to"`
+	Pinned          bool                      `json:"pinned"`
+	Active          bool                      `json:"active"`
+	SnoozedUntil    *time.Time                `json:"snoozed_until"`
+	Stage           string                    `json:"stage,omitempty"`
+	Source          string                    `json:"source,omitempty"`
+	URL             string                    `json:"url,omitempty"`
+	Recurrence      *models.RecurrencePattern `json:"recurrence"`
+	Checklist       []models.ChecklistItem    `json:"checklist"`
+	Attachments     []models.Attachment       `json:"attachments"`
+	Comments        []*models.Comment         `json:"comments"`
+	ScoreDimensions map[string]int            `json:"score_dimensions"`
+	ChildIDs        []string                  `json:"child_ids"`
+	BugAttrs        *models.BugAttrs          `json:"bug_attrs,omitempty"`
+	IdeaAttrs       *models.IdeaAttrs         `json:"idea_attrs,omitempty"`
+	TaskAttrs       *models.TaskAttrs         `json:"task_attrs,omitempty"`
+	StoryAttrs      *models.StoryAttrs        `json:"story_attrs,omitempty"`
+	EpicAttrs       *models.EpicAttrs         `json:"epic_attrs,omitempty"`
+}
+
+func displayTaskShowJSON(task *models.Task) error {
+	tags := task.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	dependsOn := task.DependsOn
+	if dependsOn == nil {
+		dependsOn = []string{}
+	}
+	relatedTo := task.RelatedTo
+	if relatedTo == nil {
+		relatedTo = []string{}
+	}
+	checklist := task.Checklist
+	if checklist == nil {
+		checklist = []models.ChecklistItem{}
+	}
+	attachments := task.Attachments
+	if attachments == nil {
+		attachments = []models.Attachment{}
+	}
+	comments := task.Comments
+	if comments == nil {
+		comments = []*models.Comment{}
+	}
+	scoreDims := task.ScoreDimensions
+	if scoreDims == nil {
+		scoreDims = map[string]int{}
+	}
+
+	var childIDs []string
+	for _, child := range task.Children {
+		childIDs = append(childIDs, child.ID)
+	}
+	if childIDs == nil {
+		childIDs = []string{}
+	}
+
+	entry := taskShowJSONEntry{
+		ID:              task.ID,
+		ShortID:         task.ShortID,
+		Type:            task.Type.String(),
+		Title:           task.Title,
+		Description:     task.Description,
+		Status:          task.Status.String(),
+		Priority:        task.Priority,
+		ParentID:        task.ParentID,
+		Tags:            tags,
+		Section:         task.Section,
+		CustomSection:   task.CustomSection,
+		CreatedAt:       task.CreatedAt,
+		UpdatedAt:       task.UpdatedAt,
+		CompletedAt:     task.CompletedAt,
+		DueDate:         task.DueDate,
+		DependsOn:       dependsOn,
+		RelatedTo:       relatedTo,
+		Pinned:          task.Pinned,
+		Active:          task.Active,
+		SnoozedUntil:    task.SnoozedUntil,
+		Stage:           task.Stage,
+		Source:          task.Source,
+		URL:             task.URL,
+		Recurrence:      task.Recurrence,
+		Checklist:       checklist,
+		Attachments:     attachments,
+		Comments:        comments,
+		ScoreDimensions: scoreDims,
+		ChildIDs:        childIDs,
+		BugAttrs:        task.BugAttrs,
+		IdeaAttrs:       task.IdeaAttrs,
+		TaskAttrs:       task.TaskAttrs,
+		StoryAttrs:      task.StoryAttrs,
+		EpicAttrs:       task.EpicAttrs,
+	}
+
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal task to JSON: %w", err)
+	}
+	fmt.Println(string(data))
+	return nil
 }

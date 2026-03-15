@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ FLAGS
 var (
 	templateListEnabled  bool
 	templateListCategory string
+	templateListJSON     bool
 )
 
 func init() {
@@ -31,6 +33,7 @@ func init() {
 
 	templateListCmd.Flags().BoolVar(&templateListEnabled, "enabled", false, "show only enabled templates")
 	templateListCmd.Flags().StringVar(&templateListCategory, "category", "", "filter by category (bug, feature, process)")
+	templateListCmd.Flags().BoolVar(&templateListJSON, "json", false, "output as JSON")
 }
 
 func runTemplateList(cmd *cobra.Command, args []string) error {
@@ -67,6 +70,10 @@ func runTemplateList(cmd *cobra.Command, args []string) error {
 	filteredDefaults := filterTemplates(defaultTemplates)
 	filteredCustom := filterTemplates(customTemplates)
 	filteredTotal := len(filteredDefaults) + len(filteredCustom)
+
+	if templateListJSON {
+		return displayTemplateListJSON(filteredDefaults, filteredCustom)
+	}
 
 	if filteredTotal == 0 {
 		fmt.Println("No templates match the filter criteria.")
@@ -113,5 +120,61 @@ func runTemplateList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	return nil
+}
+
+func displayTemplateListJSON(defaultTemplates, customTemplates []template.TaskTemplate) error {
+	type templateJSONEntry struct {
+		ID       string   `json:"id"`
+		Name     string   `json:"name"`
+		Source   string   `json:"source"`
+		Category string   `json:"category,omitempty"`
+		Enabled  bool     `json:"enabled"`
+		Type     string   `json:"type"`
+		Priority int      `json:"priority"`
+		Tags     []string `json:"tags"`
+		Section  string   `json:"section,omitempty"`
+		UseCount int64    `json:"use_count"`
+		Summary  string   `json:"summary"`
+	}
+
+	var entries []templateJSONEntry
+	addEntries := func(templates []template.TaskTemplate) {
+		for _, t := range templates {
+			source := "custom"
+			if t.Source == "default" {
+				source = "default"
+			}
+			tags := t.Tags
+			if tags == nil {
+				tags = []string{}
+			}
+			entries = append(entries, templateJSONEntry{
+				ID:       t.ID,
+				Name:     t.Name,
+				Source:   source,
+				Category: t.Category,
+				Enabled:  t.Enabled,
+				Type:     t.Type.String(),
+				Priority: t.Priority,
+				Tags:     tags,
+				Section:  t.Section,
+				UseCount: t.UseCount,
+				Summary:  t.Summary(),
+			})
+		}
+	}
+	addEntries(defaultTemplates)
+	addEntries(customTemplates)
+
+	if entries == nil {
+		entries = []templateJSONEntry{}
+	}
+
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal templates to JSON: %w", err)
+	}
+	fmt.Println(string(data))
 	return nil
 }

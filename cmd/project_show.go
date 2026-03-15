@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -27,8 +29,11 @@ Examples:
 	RunE: runProjectShow,
 }
 
+var projectShowJSON bool
+
 func init() {
 	projectCmd.AddCommand(projectShowCmd)
+	projectShowCmd.Flags().BoolVar(&projectShowJSON, "json", false, "output as JSON")
 }
 
 func runProjectShow(cmd *cobra.Command, args []string) error {
@@ -40,6 +45,10 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 	// Load tasks
 	if err := storage.LoadProject(project); err != nil {
 		return fmt.Errorf("failed to load project: %w", err)
+	}
+
+	if projectShowJSON {
+		return displayProjectShowJSON(project)
 	}
 
 	// Display project info
@@ -103,5 +112,92 @@ func runProjectShow(cmd *cobra.Command, args []string) error {
 
 	fmt.Println(t.Render())
 
+	return nil
+}
+
+func displayProjectShowJSON(project *models.Project) error {
+	type typeStats struct {
+		Type   string `json:"type"`
+		Total  int    `json:"total"`
+		Active int    `json:"active"`
+		Done   int    `json:"done"`
+	}
+
+	type projectShowJSONEntry struct {
+		ID          string      `json:"id"`
+		Slug        string      `json:"slug"`
+		Name        string      `json:"name"`
+		Description string      `json:"description"`
+		Context     string      `json:"context"`
+		Path        string      `json:"path"`
+		StatusIcon  string      `json:"status_icon,omitempty"`
+		CreatedAt   time.Time   `json:"created_at"`
+		UpdatedAt   time.Time   `json:"updated_at"`
+		Archived    bool        `json:"archived"`
+		ArchivedAt  *time.Time  `json:"archived_at"`
+		Pinned      bool        `json:"pinned"`
+		Sections    []string    `json:"sections"`
+		TaskCount   int         `json:"task_count"`
+		ActiveCount int         `json:"active_count"`
+		DoneCount   int         `json:"done_count"`
+		TasksByType []typeStats `json:"tasks_by_type"`
+	}
+
+	sections := project.GetSections()
+	if sections == nil {
+		sections = []string{}
+	}
+
+	var tasksByType []typeStats
+	for _, taskType := range models.AllTaskTypes() {
+		tasks := project.GetTasksByType(taskType)
+		if len(tasks) == 0 {
+			continue
+		}
+		active := 0
+		done := 0
+		for _, task := range tasks {
+			if task.Status.IsActive() {
+				active++
+			} else if task.IsComplete() {
+				done++
+			}
+		}
+		tasksByType = append(tasksByType, typeStats{
+			Type:   taskType.String(),
+			Total:  len(tasks),
+			Active: active,
+			Done:   done,
+		})
+	}
+	if tasksByType == nil {
+		tasksByType = []typeStats{}
+	}
+
+	entry := projectShowJSONEntry{
+		ID:          project.ID,
+		Slug:        project.Slug,
+		Name:        project.Name,
+		Description: project.Description,
+		Context:     project.Context,
+		Path:        project.Path,
+		StatusIcon:  project.StatusIcon,
+		CreatedAt:   project.CreatedAt,
+		UpdatedAt:   project.UpdatedAt,
+		Archived:    project.Archived,
+		ArchivedAt:  project.ArchivedAt,
+		Pinned:      project.Pinned,
+		Sections:    sections,
+		TaskCount:   project.CountTasks(),
+		ActiveCount: project.CountActiveTasks(),
+		DoneCount:   project.CountCompletedTasks(),
+		TasksByType: tasksByType,
+	}
+
+	data, err := json.MarshalIndent(entry, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal project to JSON: %w", err)
+	}
+	fmt.Println(string(data))
 	return nil
 }

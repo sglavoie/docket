@@ -54,8 +54,10 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 	if listProjectJSON {
 		type projectJSON struct {
 			ID             string `json:"id"`
+			Slug           string `json:"slug"`
 			Name           string `json:"name"`
 			Context        string `json:"context"`
+			Path           string `json:"path"`
 			Archived       bool   `json:"archived"`
 			Pinned         bool   `json:"pinned"`
 			TaskCount      int    `json:"task_count,omitempty"`
@@ -67,8 +69,10 @@ func runProjectList(cmd *cobra.Command, args []string) error {
 		for _, p := range projects {
 			entry := projectJSON{
 				ID:       p.ID,
+				Slug:     p.Slug,
 				Name:     p.Name,
 				Context:  p.Context,
+				Path:     p.Path,
 				Archived: p.Archived,
 				Pinned:   p.Pinned,
 			}

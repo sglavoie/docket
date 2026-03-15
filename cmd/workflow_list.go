@@ -1,10 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/sglavoie/tt/internal/workflow"
 )
+
+var workflowListJSON bool
 
 var workflowListCmd = &cobra.Command{
 	Use:   "list",
@@ -17,6 +22,7 @@ Shows rule ID, name, enabled status, trigger conditions, and actions.`,
 
 func init() {
 	workflowCmd.AddCommand(workflowListCmd)
+	workflowListCmd.Flags().BoolVar(&workflowListJSON, "json", false, "output as JSON")
 }
 
 func runWorkflowList(cmd *cobra.Command, args []string) error {
@@ -27,6 +33,11 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 
 	defaultRules, customRules := cfg.GetWorkflowRulesSorted()
 	total := len(defaultRules) + len(customRules)
+
+	if workflowListJSON {
+		return displayWorkflowListJSON(defaultRules, customRules)
+	}
+
 	if total == 0 {
 		fmt.Println("No workflow rules configured.")
 		fmt.Println()
@@ -91,5 +102,70 @@ func runWorkflowList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	return nil
+}
+
+func displayWorkflowListJSON(defaultRules, customRules []workflow.WorkflowRule) error {
+	type ruleJSONEntry struct {
+		ID           string `json:"id"`
+		Name         string `json:"name"`
+		Source       string `json:"source"`
+		Enabled      bool   `json:"enabled"`
+		Level        string `json:"level"`
+		Priority     int    `json:"priority"`
+		TriggerCount int64  `json:"trigger_count"`
+		Summary      string `json:"summary"`
+	}
+
+	var entries []ruleJSONEntry
+	for _, rule := range defaultRules {
+		level := "task"
+		if rule.IsProjectLevel() {
+			level = "project"
+		}
+		source := "custom"
+		if rule.Source == "default" {
+			source = "default"
+		}
+		entries = append(entries, ruleJSONEntry{
+			ID:           rule.ID,
+			Name:         rule.Name,
+			Source:       source,
+			Enabled:      rule.Enabled,
+			Level:        level,
+			Priority:     rule.Priority,
+			TriggerCount: rule.TriggerCount,
+			Summary:      rule.Summary(),
+		})
+	}
+	for _, rule := range customRules {
+		level := "task"
+		if rule.IsProjectLevel() {
+			level = "project"
+		}
+		source := "custom"
+		if rule.Source == "default" {
+			source = "default"
+		}
+		entries = append(entries, ruleJSONEntry{
+			ID:           rule.ID,
+			Name:         rule.Name,
+			Source:       source,
+			Enabled:      rule.Enabled,
+			Level:        level,
+			Priority:     rule.Priority,
+			TriggerCount: rule.TriggerCount,
+			Summary:      rule.Summary(),
+		})
+	}
+	if entries == nil {
+		entries = []ruleJSONEntry{}
+	}
+
+	data, err := json.MarshalIndent(entries, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal workflow rules to JSON: %w", err)
+	}
+	fmt.Println(string(data))
 	return nil
 }
