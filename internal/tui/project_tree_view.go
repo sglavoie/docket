@@ -7,6 +7,10 @@ import (
 )
 
 func (m *ProjectTreeModel) View() string {
+	if m.project == nil {
+		return "No project loaded"
+	}
+
 	// If sidebar is enabled, render split-pane layout
 	if m.sidebar.IsEnabled() {
 		return m.renderWithSidebar()
@@ -19,7 +23,7 @@ func (m *ProjectTreeModel) View() string {
 // GetHelpItems returns the help items for the project tree view.
 func (m *ProjectTreeModel) GetHelpItems() []HelpItem {
 	archiveDesc := "Archive project"
-	if m.project.Archived {
+	if m.project != nil && m.project.Archived {
 		archiveDesc = "Unarchive project"
 	}
 	overrides := map[string]string{

@@ -679,6 +679,10 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	// Title

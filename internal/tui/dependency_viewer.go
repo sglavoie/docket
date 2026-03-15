@@ -146,6 +146,10 @@ func (m *DependencyViewerModel) switchSection() {
 }
 
 func (m *DependencyViewerModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	// Title

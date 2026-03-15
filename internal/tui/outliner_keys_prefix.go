@@ -36,7 +36,7 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	// Get cursor task (may be nil if cursor is out of bounds)
 	var cursorTask *models.Task
-	if len(m.rows) > 0 && m.cursor < len(m.rows) {
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
 		cursorTask = m.rows[m.cursor].task
 	}
 

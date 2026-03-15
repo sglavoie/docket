@@ -189,6 +189,10 @@ func (m *ScoreEditorModel) computeLiveScore() float64 {
 
 // View implements tea.Model.
 func (m *ScoreEditorModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	// Compute live score from in-progress editor values
 	totalScore := m.computeLiveScore()
 

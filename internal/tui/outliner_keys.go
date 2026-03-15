@@ -50,7 +50,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.toggleMultiSelectMode()
 			return m, nil
 		case " ":
-			if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+			if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 				m.ToggleSelection(m.rows[m.cursor].task.ID)
 			}
 			return m, nil
@@ -78,7 +78,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Prefix key activation (shared across primary views)
-	onHeader := len(m.rows) > 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader
+	onHeader := len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader
 	if prefix, ok := activatePrefixKey(key, !onHeader); ok {
 		m.pendingPrefix = prefix
 		return m, nil

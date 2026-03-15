@@ -149,6 +149,10 @@ func mapsEqual(a, b map[string]bool) bool {
 
 // View renders the dependency selector.
 func (m *DependencySelectorModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	subtitle := fmt.Sprintf("Task #%d: %s", m.task.ShortID, util.Truncate(m.task.Title, 40))

@@ -122,6 +122,10 @@ func (m *TaskActivityModel) ShouldCaptureEsc() bool {
 func (m *TaskActivityModel) SupportsHelpShortcut() bool { return false }
 
 func (m *TaskActivityModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	entries := m.getEntries()

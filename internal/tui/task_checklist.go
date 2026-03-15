@@ -557,6 +557,10 @@ func (m *TaskChecklistModel) editItemInExternalEditorFromEditMode() tea.Cmd {
 }
 
 func (m *TaskChecklistModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	// Count completed

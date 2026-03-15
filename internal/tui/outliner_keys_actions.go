@@ -265,7 +265,7 @@ func (m *OutlinerModel) handleCutKey() (tea.Model, tea.Cmd) {
 		m.confirm.Show("bulk-delete", fmt.Sprintf("Cut %d selected tasks?", len(tasks)))
 		return m, copyCmd
 	}
-	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		task := m.rows[m.cursor].task
 		copyCmd := func() tea.Msg { return CopyTaskTitleMsg{Task: task} }
 		m.confirm.Show("delete", fmt.Sprintf("Cut task #%d?", task.ShortID))

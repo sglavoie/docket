@@ -72,7 +72,7 @@ func (m *OutlinerModel) getProject() *models.Project       { return m.project }
 func (m *OutlinerModel) getConfig() *config.Config         { return m.config }
 func (m *OutlinerModel) getConfigManager() *config.Manager { return m.configManager }
 func (m *OutlinerModel) getCursorTask() *models.Task {
-	if len(m.rows) > 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
+	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) && !m.rows[m.cursor].IsSectionHeader {
 		return m.rows[m.cursor].task
 	}
 	return nil
@@ -415,7 +415,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // taskOpsView implementation for OutlinerModel.
 
 func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
-	if len(m.rows) == 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].IsSectionHeader {
+	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].IsSectionHeader {
 		return nil, nil
 	}
 	return m.rows[m.cursor].task, m.project

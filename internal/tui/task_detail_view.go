@@ -17,7 +17,7 @@ import (
 const maxContentWidth = MaxContentWidth
 
 func (m *TaskDetailModel) View() string {
-	if m.task == nil {
+	if m.task == nil || m.project == nil {
 		return "No task selected"
 	}
 

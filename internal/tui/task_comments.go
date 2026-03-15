@@ -634,6 +634,10 @@ func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) View() string {
+	if m.task == nil {
+		return "No task selected"
+	}
+
 	var b strings.Builder
 
 	commentsTitle := fmt.Sprintf("Comments · #%d: %s", m.task.ShortID, m.task.Title)
