@@ -10,6 +10,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
+// Pre-compiled regexps for quick edit parsing to avoid recompilation on each call.
+var (
+	qePriorityRe  = regexp.MustCompile(`\s*!([1-5])\s*`)
+	qeRemoveTagRe = regexp.MustCompile(`\s*-#(\w+)\s*`)
+	qeAddTagRe    = regexp.MustCompile(`\s*#(\w+)\s*`)
+	qeDueDateRe   = regexp.MustCompile(`\s*@(\S+)\s*`)
+	qeSectionRe   = regexp.MustCompile(`\s*/(\S+)\s*`)
+	qeStatusRe    = regexp.MustCompile(`\s*\$(\w+)\s*`)
+	qeMultiSpace  = regexp.MustCompile(`\s+`)
+)
+
 // quickEditResult holds the parsed result of inline task editing.
 // Unlike quickCaptureResult (for new tasks), this tracks which fields
 // were explicitly specified so we only update those fields.
@@ -42,36 +53,32 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 	result := &quickEditResult{}
 
 	// Extract priority: !1 through !5
-	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
-	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qePriorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority, _ = strconv.Atoi(match[1])
 		result.prioritySet = true
-		input = priorityRe.ReplaceAllString(input, " ")
+		input = qePriorityRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags to remove: -#word
-	removeTagRe := regexp.MustCompile(`\s*-#(\w+)\s*`)
-	removeTagMatches := removeTagRe.FindAllStringSubmatch(input, -1)
+	removeTagMatches := qeRemoveTagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range removeTagMatches {
 		if len(match) > 1 {
 			result.tagsToRemove = append(result.tagsToRemove, match[1])
 		}
 	}
-	input = removeTagRe.ReplaceAllString(input, " ")
+	input = qeRemoveTagRe.ReplaceAllString(input, " ")
 
 	// Extract tags to add: #word
-	addTagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
-	addTagMatches := addTagRe.FindAllStringSubmatch(input, -1)
+	addTagMatches := qeAddTagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range addTagMatches {
 		if len(match) > 1 {
 			result.tagsToAdd = append(result.tagsToAdd, match[1])
 		}
 	}
-	input = addTagRe.ReplaceAllString(input, " ")
+	input = qeAddTagRe.ReplaceAllString(input, " ")
 
 	// Extract due date: @value or @0 to clear
-	dueDateRe := regexp.MustCompile(`\s*@(\S+)\s*`)
-	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeDueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		if match[1] == "0" {
 			result.dueDateClear = true
 			result.dueDateSet = true
@@ -83,12 +90,11 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 			result.dueDate = &date
 			result.dueDateSet = true
 		}
-		input = dueDateRe.ReplaceAllString(input, " ")
+		input = qeDueDateRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract section: /SectionName (case-insensitive matching)
-	sectionRe := regexp.MustCompile(`\s*/(\S+)\s*`)
-	if match := sectionRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeSectionRe.FindStringSubmatch(input); len(match) > 1 {
 		sectionName := match[1]
 		// Handle special "0" or "active" to clear section
 		if sectionName == "0" || strings.EqualFold(sectionName, "active") {
@@ -108,12 +114,11 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 				return nil, fmt.Errorf("section not found: %s", sectionName)
 			}
 		}
-		input = sectionRe.ReplaceAllString(input, " ")
+		input = qeSectionRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract status: $start, $blocked, $done, $canceled, $todo
-	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
-	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeStatusRe.FindStringSubmatch(input); len(match) > 1 {
 		statusStr := strings.ToLower(match[1])
 		switch statusStr {
 		case "start", "started", "progress":
@@ -137,12 +142,12 @@ func parseQuickEdit(input string, _ *models.Task, project *models.Project) (*qui
 		default:
 			return nil, fmt.Errorf("invalid status: $%s", match[1])
 		}
-		input = statusRe.ReplaceAllString(input, " ")
+		input = qeStatusRe.ReplaceAllString(input, " ")
 	}
 
 	// Clean up title (everything remaining)
 	result.title = strings.TrimSpace(input)
-	result.title = regexp.MustCompile(`\s+`).ReplaceAllString(result.title, " ")
+	result.title = qeMultiSpace.ReplaceAllString(result.title, " ")
 	result.titleSet = true
 
 	if result.title == "" {
@@ -158,36 +163,32 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 	var errMsg string
 
 	// Extract priority
-	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
-	if match := priorityRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qePriorityRe.FindStringSubmatch(input); len(match) > 1 {
 		result.priority, _ = strconv.Atoi(match[1])
 		result.prioritySet = true
-		input = priorityRe.ReplaceAllString(input, " ")
+		input = qePriorityRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract tags to remove
-	removeTagRe := regexp.MustCompile(`\s*-#(\w+)\s*`)
-	removeTagMatches := removeTagRe.FindAllStringSubmatch(input, -1)
+	removeTagMatches := qeRemoveTagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range removeTagMatches {
 		if len(match) > 1 {
 			result.tagsToRemove = append(result.tagsToRemove, match[1])
 		}
 	}
-	input = removeTagRe.ReplaceAllString(input, " ")
+	input = qeRemoveTagRe.ReplaceAllString(input, " ")
 
 	// Extract tags to add
-	addTagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
-	addTagMatches := addTagRe.FindAllStringSubmatch(input, -1)
+	addTagMatches := qeAddTagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range addTagMatches {
 		if len(match) > 1 {
 			result.tagsToAdd = append(result.tagsToAdd, match[1])
 		}
 	}
-	input = addTagRe.ReplaceAllString(input, " ")
+	input = qeAddTagRe.ReplaceAllString(input, " ")
 
 	// Extract due date
-	dueDateRe := regexp.MustCompile(`\s*@(\S+)\s*`)
-	if match := dueDateRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeDueDateRe.FindStringSubmatch(input); len(match) > 1 {
 		if match[1] == "0" {
 			result.dueDateClear = true
 			result.dueDateSet = true
@@ -200,12 +201,11 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 				result.dueDateSet = true
 			}
 		}
-		input = dueDateRe.ReplaceAllString(input, " ")
+		input = qeDueDateRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract section
-	sectionRe := regexp.MustCompile(`\s*/(\S+)\s*`)
-	if match := sectionRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeSectionRe.FindStringSubmatch(input); len(match) > 1 {
 		sectionName := match[1]
 		if sectionName == "0" || strings.EqualFold(sectionName, "active") {
 			result.section = ""
@@ -224,12 +224,11 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 				errMsg = fmt.Sprintf("section not found: %s", sectionName)
 			}
 		}
-		input = sectionRe.ReplaceAllString(input, " ")
+		input = qeSectionRe.ReplaceAllString(input, " ")
 	}
 
 	// Extract status
-	statusRe := regexp.MustCompile(`\s*\$(\w+)\s*`)
-	if match := statusRe.FindStringSubmatch(input); len(match) > 1 {
+	if match := qeStatusRe.FindStringSubmatch(input); len(match) > 1 {
 		statusStr := strings.ToLower(match[1])
 		switch statusStr {
 		case "start", "started", "progress":
@@ -255,12 +254,12 @@ func parseQuickEditForPreview(input string, _ *models.Task, project *models.Proj
 				errMsg = fmt.Sprintf("invalid status: $%s", match[1])
 			}
 		}
-		input = statusRe.ReplaceAllString(input, " ")
+		input = qeStatusRe.ReplaceAllString(input, " ")
 	}
 
 	// Clean up title
 	result.title = strings.TrimSpace(input)
-	result.title = regexp.MustCompile(`\s+`).ReplaceAllString(result.title, " ")
+	result.title = qeMultiSpace.ReplaceAllString(result.title, " ")
 	result.titleSet = true
 
 	if result.title == "" && errMsg == "" {

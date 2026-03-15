@@ -48,6 +48,14 @@ var (
 	addIsIdea     bool
 )
 
+// Pre-compiled regexps for parseInlineMetadata to avoid recompilation on each call.
+var (
+	inlinePriorityRe  = regexp.MustCompile(`\s*!([1-5])\s*`)
+	invalidPriorityRe = regexp.MustCompile(`\s*!([0-9]+)\s*`)
+	inlineTagRe       = regexp.MustCompile(`\s*#(\w+)\s*`)
+	multiSpaceRe      = regexp.MustCompile(`\s+`)
+)
+
 func init() {
 	rootCmd.AddCommand(addCmd)
 
@@ -68,34 +76,31 @@ func init() {
 // Returns the cleaned title, extracted priority (0 if not found), and tags.
 func parseInlineMetadata(input string) (title string, priority int, tags []string) {
 	// Match priority pattern: !1 through !5
-	priorityRe := regexp.MustCompile(`\s*!([1-5])\s*`)
-	priorityMatch := priorityRe.FindStringSubmatch(input)
+	priorityMatch := inlinePriorityRe.FindStringSubmatch(input)
 	if len(priorityMatch) > 1 {
 		priority, _ = strconv.Atoi(priorityMatch[1])
-		input = priorityRe.ReplaceAllString(input, " ")
+		input = inlinePriorityRe.ReplaceAllString(input, " ")
 	} else {
 		// Check for out-of-range priority (e.g., !0, !6, !99)
-		invalidRe := regexp.MustCompile(`\s*!([0-9]+)\s*`)
-		invalidMatch := invalidRe.FindStringSubmatch(input)
+		invalidMatch := invalidPriorityRe.FindStringSubmatch(input)
 		if len(invalidMatch) > 1 {
 			fmt.Fprintf(os.Stderr, "warning: !%s ignored (priority must be 1-5)\n", invalidMatch[1])
-			input = invalidRe.ReplaceAllString(input, " ")
+			input = invalidPriorityRe.ReplaceAllString(input, " ")
 		}
 	}
 
 	// Match tag pattern: #word
-	tagRe := regexp.MustCompile(`\s*#(\w+)\s*`)
-	tagMatches := tagRe.FindAllStringSubmatch(input, -1)
+	tagMatches := inlineTagRe.FindAllStringSubmatch(input, -1)
 	for _, match := range tagMatches {
 		if len(match) > 1 {
 			tags = append(tags, match[1])
 		}
 	}
-	input = tagRe.ReplaceAllString(input, " ")
+	input = inlineTagRe.ReplaceAllString(input, " ")
 
 	// Clean up extra whitespace
 	title = strings.TrimSpace(input)
-	title = regexp.MustCompile(`\s+`).ReplaceAllString(title, " ")
+	title = multiSpaceRe.ReplaceAllString(title, " ")
 
 	return title, priority, tags
 }

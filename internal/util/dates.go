@@ -59,6 +59,15 @@ func ParseDate(value string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// Pre-compiled regexps for ParseRelativeDate to avoid recompilation on each call.
+var (
+	relativeDaysRe   = regexp.MustCompile(`^\+(\d+)d$`)
+	relativeWeeksRe  = regexp.MustCompile(`^\+(\d+)w$`)
+	relativeMonthsRe = regexp.MustCompile(`^\+(\d+)m$`)
+	nextWeekdayRe    = regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`)
+	inDurationRe     = regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`)
+)
+
 // weekdays maps weekday name variations to time.Weekday values.
 var weekdays = map[string]time.Weekday{
 	"sun": time.Sunday, "sunday": time.Sunday,
@@ -112,19 +121,19 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	}
 
 	// Relative: +Nd (days)
-	if match := regexp.MustCompile(`^\+(\d+)d$`).FindStringSubmatch(input); len(match) == 2 {
+	if match := relativeDaysRe.FindStringSubmatch(input); len(match) == 2 {
 		days, _ := strconv.Atoi(match[1])
 		return today.AddDate(0, 0, days), nil
 	}
 
 	// Relative: +Nw (weeks)
-	if match := regexp.MustCompile(`^\+(\d+)w$`).FindStringSubmatch(input); len(match) == 2 {
+	if match := relativeWeeksRe.FindStringSubmatch(input); len(match) == 2 {
 		weeks, _ := strconv.Atoi(match[1])
 		return today.AddDate(0, 0, weeks*7), nil
 	}
 
 	// Relative: +Nm (months)
-	if match := regexp.MustCompile(`^\+(\d+)m$`).FindStringSubmatch(input); len(match) == 2 {
+	if match := relativeMonthsRe.FindStringSubmatch(input); len(match) == 2 {
 		months, _ := strconv.Atoi(match[1])
 		return today.AddDate(0, months, 0), nil
 	}
@@ -147,7 +156,7 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	}
 
 	// "next <weekday>" - always at least 7 days away (skips this week)
-	if match := regexp.MustCompile(`^next\s+(sun|sunday|mon|monday|tue|tuesday|wed|wednesday|thu|thursday|fri|friday|sat|saturday)$`).FindStringSubmatch(input); len(match) == 2 {
+	if match := nextWeekdayRe.FindStringSubmatch(input); len(match) == 2 {
 		targetDay := weekdays[match[1]]
 		daysUntil := int(targetDay) - int(today.Weekday())
 		if daysUntil <= 0 {
@@ -158,7 +167,7 @@ func ParseRelativeDate(input string) (time.Time, error) {
 	}
 
 	// "in N days/weeks/months"
-	if match := regexp.MustCompile(`^in\s+(\d+)\s+(day|days|week|weeks|month|months)$`).FindStringSubmatch(input); len(match) == 3 {
+	if match := inDurationRe.FindStringSubmatch(input); len(match) == 3 {
 		n, _ := strconv.Atoi(match[1])
 		switch match[2] {
 		case "day", "days":

@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// Pre-compiled regexps for Slugify to avoid recompilation on each call.
+var (
+	slugNonAlnumRe  = regexp.MustCompile("[^a-z0-9-]")
+	slugMultiDashRe = regexp.MustCompile("-+")
+)
+
 // Project represents a collection of tasks.
 type Project struct {
 	ID               string     `json:"id"`
@@ -62,10 +68,8 @@ func NewProject(id, name, path string) *Project {
 func Slugify(name string) string {
 	slug := strings.ToLower(name)
 	slug = strings.ReplaceAll(slug, " ", "-")
-	reg := regexp.MustCompile("[^a-z0-9-]")
-	slug = reg.ReplaceAllString(slug, "")
-	reg = regexp.MustCompile("-+")
-	slug = reg.ReplaceAllString(slug, "-")
+	slug = slugNonAlnumRe.ReplaceAllString(slug, "")
+	slug = slugMultiDashRe.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
 	return slug
 }

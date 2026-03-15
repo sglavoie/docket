@@ -9,6 +9,9 @@ import (
 	"unicode"
 )
 
+// Pre-compiled regexp for note slugify to avoid recompilation on each call.
+var noteMultiDashRe = regexp.MustCompile(`-{2,}`)
+
 // Note represents a project-level markdown document.
 type Note struct {
 	Title       string    `yaml:"title"`
@@ -126,8 +129,7 @@ func slugify(s string) string {
 
 	// Collapse multiple dashes
 	result := b.String()
-	re := regexp.MustCompile(`-{2,}`)
-	result = re.ReplaceAllString(result, "-")
+	result = noteMultiDashRe.ReplaceAllString(result, "-")
 	result = strings.Trim(result, "-")
 
 	if result == "" {
