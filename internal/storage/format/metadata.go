@@ -566,6 +566,10 @@ func WriteMetadata(task *models.Task) string {
 	parts = append(parts, fmt.Sprintf("status: %s", task.Status))
 	parts = append(parts, fmt.Sprintf("priority: %d", task.Priority))
 
+	if task.ParentID != nil && *task.ParentID != "" {
+		parts = append(parts, fmt.Sprintf("parent: %s", *task.ParentID))
+	}
+
 	if len(task.Tags) > 0 {
 		parts = append(parts, fmt.Sprintf("tags: %s", strings.Join(task.Tags, ";")))
 	}

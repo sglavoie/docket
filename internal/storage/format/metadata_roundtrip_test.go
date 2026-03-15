@@ -1,6 +1,7 @@
 package format
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -557,5 +558,66 @@ func TestRoundTrip_KitchenSink(t *testing.T) {
 	}
 	if parsed.BugAttrs.Workaround != "use the old endpoint" {
 		t.Errorf("bug.Workaround = %q, want %q", parsed.BugAttrs.Workaround, "use the old endpoint")
+	}
+}
+
+func TestRoundTrip_ParentID(t *testing.T) {
+	parentID := "parent-abc-123"
+	task := &models.Task{
+		ID:       "child-xyz-456",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 2,
+		ParentID: &parentID,
+	}
+
+	metaStr := WriteMetadata(task)
+
+	// Verify parent: appears in output
+	if !strings.Contains(metaStr, "parent: parent-abc-123") {
+		t.Errorf("WriteMetadata should include parent field, got: %s", metaStr)
+	}
+
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+
+	if parsed.ParentID == nil {
+		t.Fatal("ParentID is nil after round-trip")
+	}
+	if *parsed.ParentID != parentID {
+		t.Errorf("ParentID = %q, want %q", *parsed.ParentID, parentID)
+	}
+}
+
+func TestRoundTrip_NilParentID(t *testing.T) {
+	task := &models.Task{
+		ID:       "root-task-1",
+		Type:     models.TaskTypeTask,
+		Status:   models.StatusTodo,
+		Priority: 1,
+	}
+
+	metaStr := WriteMetadata(task)
+
+	// Verify parent: does NOT appear for root tasks
+	if strings.Contains(metaStr, "parent:") {
+		t.Errorf("WriteMetadata should not include parent field for nil ParentID, got: %s", metaStr)
+	}
+
+	content := metaStr[5 : len(metaStr)-4]
+	parsed := &models.Task{}
+	warnings := ParseMetadata(parsed, content)
+
+	if len(warnings) != 0 {
+		t.Errorf("got %d warnings, want 0: %v", len(warnings), warnings)
+	}
+
+	if parsed.ParentID != nil {
+		t.Errorf("ParentID should be nil, got %q", *parsed.ParentID)
 	}
 }

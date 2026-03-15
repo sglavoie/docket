@@ -220,11 +220,24 @@ func ParseTasksMarkdownWithSections(content string) (*ParseResult, error) {
 		}
 	}
 
-	// Validate parent references - preserve orphaned refs and clear ParentID
+	// Detect duplicate task IDs — these corrupt lookups, parent refs, and dependency graphs.
+	// Reassign new UUIDs to duplicates so every task has a unique ID.
 	taskByID := make(map[string]bool, len(tasks))
 	for _, t := range tasks {
+		if taskByID[t.ID] {
+			oldID := t.ID
+			t.ID = uuid.New().String()
+			metadataWarnings = append(metadataWarnings, ParseWarning{
+				Type:    format.WarningDataCorrection,
+				TaskID:  t.ID,
+				Field:   "id",
+				Message: fmt.Sprintf("task #%d has duplicate ID %q, reassigned to %s", t.ShortID, oldID, t.ID),
+			})
+		}
 		taskByID[t.ID] = true
 	}
+
+	// Validate parent references - preserve orphaned refs and clear ParentID
 	for _, t := range tasks {
 		if t.ParentID != nil && !taskByID[*t.ParentID] {
 			orphanedID := *t.ParentID

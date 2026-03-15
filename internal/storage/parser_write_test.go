@@ -229,3 +229,203 @@ func TestDependenciesRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestParentIDRoundTrip(t *testing.T) {
+	parentID := "epic1"
+	storyID := "story1"
+
+	tasks := []*models.Task{
+		{
+			ID:        "epic1",
+			ShortID:   1,
+			Type:      models.TaskTypeEpic,
+			Title:     "Parent Epic",
+			Status:    models.StatusInProgress,
+			Priority:  1,
+			CreatedAt: time.Now(),
+		},
+		{
+			ID:        "story1",
+			ShortID:   2,
+			Type:      models.TaskTypeStory,
+			Title:     "Child Story",
+			Status:    models.StatusTodo,
+			Priority:  2,
+			ParentID:  &parentID,
+			CreatedAt: time.Now(),
+		},
+		{
+			ID:        "task1",
+			ShortID:   3,
+			Type:      models.TaskTypeTask,
+			Title:     "Grandchild Task",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			ParentID:  &storyID,
+			CreatedAt: time.Now(),
+		},
+	}
+
+	content := WriteTasksMarkdown("Test", tasks)
+
+	// Verify parent: metadata is written
+	if !strings.Contains(content, "parent: epic1") {
+		t.Error("expected metadata to contain 'parent: epic1' for story")
+	}
+	if !strings.Contains(content, "parent: story1") {
+		t.Error("expected metadata to contain 'parent: story1' for task")
+	}
+
+	// Parse back and verify parent IDs are preserved
+	_, parsed, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(parsed) != 3 {
+		t.Fatalf("expected 3 tasks, got %d", len(parsed))
+	}
+
+	story := parsed[1]
+	if story.ParentID == nil || *story.ParentID != "epic1" {
+		t.Error("story should have epic1 as parent after round trip")
+	}
+
+	task := parsed[2]
+	if task.ParentID == nil || *task.ParentID != "story1" {
+		t.Error("task should have story1 as parent after round trip")
+	}
+}
+
+func TestDuplicateTaskIDsDetected(t *testing.T) {
+	content := `# Project: Test
+
+## Task: First Task
+<!-- id: dup-id, status: todo, priority: 1 -->
+
+First description.
+
+## Task: Second Task
+<!-- id: dup-id, status: in_progress, priority: 2 -->
+
+Second description.
+`
+	result, err := ParseTasksMarkdownWithSections(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(result.Tasks))
+	}
+
+	// Both tasks should exist with unique IDs
+	if result.Tasks[0].ID == result.Tasks[1].ID {
+		t.Errorf("duplicate task IDs should be reassigned, but both have %q", result.Tasks[0].ID)
+	}
+
+	// The first task keeps the original ID
+	if result.Tasks[0].ID != "dup-id" {
+		t.Errorf("first task should keep original ID 'dup-id', got %q", result.Tasks[0].ID)
+	}
+
+	// A warning should be emitted for the duplicate
+	foundDupWarning := false
+	for _, w := range result.Warnings {
+		if w.Field == "id" && strings.Contains(w.Message, "duplicate") {
+			foundDupWarning = true
+			break
+		}
+	}
+	if !foundDupWarning {
+		t.Error("expected a warning about duplicate task ID")
+	}
+}
+
+func TestHeadingLevelCappedAtSix(t *testing.T) {
+	// Create a deeply nested structure using explicit parent IDs
+	// that would exceed heading level 6 if uncapped
+	epicID := "epic1"
+	storyID := "story1"
+
+	tasks := []*models.Task{
+		{
+			ID:        "epic1",
+			ShortID:   1,
+			Type:      models.TaskTypeEpic,
+			Title:     "Root Epic",
+			Status:    models.StatusTodo,
+			Priority:  1,
+			CreatedAt: time.Now(),
+		},
+		{
+			ID:        "story1",
+			ShortID:   2,
+			Type:      models.TaskTypeStory,
+			Title:     "Child Story",
+			Status:    models.StatusTodo,
+			Priority:  2,
+			ParentID:  &epicID,
+			CreatedAt: time.Now(),
+		},
+		{
+			ID:        "task1",
+			ShortID:   3,
+			Type:      models.TaskTypeTask,
+			Title:     "Deep Task",
+			Status:    models.StatusTodo,
+			Priority:  3,
+			ParentID:  &storyID,
+			CreatedAt: time.Now(),
+		},
+	}
+
+	content := WriteTasksMarkdown("Test", tasks)
+
+	// All headings should use at most 6 # characters
+	for _, line := range strings.Split(content, "\n") {
+		if strings.HasPrefix(line, "#") {
+			hashes := 0
+			for _, c := range line {
+				if c == '#' {
+					hashes++
+				} else {
+					break
+				}
+			}
+			if hashes > 6 {
+				t.Errorf("heading has %d # characters (max 6): %s", hashes, line)
+			}
+		}
+	}
+
+	// Verify the content round-trips correctly
+	_, parsed, err := ParseTasksMarkdown(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(parsed) != len(tasks) {
+		t.Fatalf("expected %d tasks after round trip, got %d", len(tasks), len(parsed))
+	}
+
+	// Verify parent relationships are preserved via parent: metadata
+	for _, p := range parsed {
+		original := findTaskByID(tasks, p.ID)
+		if original == nil {
+			t.Errorf("task %s not found in original", p.ID)
+			continue
+		}
+		origParent := ""
+		if original.ParentID != nil {
+			origParent = *original.ParentID
+		}
+		parsedParent := ""
+		if p.ParentID != nil {
+			parsedParent = *p.ParentID
+		}
+		if origParent != parsedParent {
+			t.Errorf("task %s: parent mismatch: original=%q parsed=%q", p.ID, origParent, parsedParent)
+		}
+	}
+}

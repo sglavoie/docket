@@ -224,14 +224,28 @@ func WriteTasksMarkdownWithSections(projectName string, tasks []*models.Task, se
 // writeTaskPreservingOrder writes a single task and its children to the builder,
 // preserving the original slice order for children.
 // The visited set prevents infinite loops on circular parent references.
+// maxHeadingLevel is the maximum markdown heading depth (######).
+// Tasks nested deeper are clamped to this level to prevent writing headings
+// that the parser's regex (#{2,6}) cannot read back, which would cause data loss.
+// The parent: metadata field preserves the true parent relationship even when
+// the heading level is capped.
+const maxHeadingLevel = 6
+
 func writeTaskPreservingOrder(b *strings.Builder, task *models.Task, allTasks []*models.Task, level int, visited map[string]bool) {
 	if visited[task.ID] {
 		return
 	}
 	visited[task.ID] = true
 
+	// Clamp heading level to the maximum supported by the parser regex.
+	// The parent: metadata key preserves the true hierarchy even when headings are flat.
+	writeLevel := level
+	if writeLevel > maxHeadingLevel {
+		writeLevel = maxHeadingLevel
+	}
+
 	// Write heading
-	hashes := strings.Repeat("#", level)
+	hashes := strings.Repeat("#", writeLevel)
 	fmt.Fprintf(b, "%s %s: %s\n", hashes, task.Type.HeadingPrefix(), task.Title)
 
 	// Write metadata
