@@ -404,14 +404,30 @@ func ParseMetadata(task *models.Task, metaStr string) []ParseWarning {
 // splitMetadataPairs splits metadata string into key-value pairs, handling values
 // that may contain commas (e.g., "recur: 1w:mon,wed,fri").
 // It looks for ", key:" patterns where key is a known metadata key or a "score.*" prefix.
+// To prevent free-text values (URLs, descriptions) that happen to contain ", key:"
+// patterns from being mis-split, it tracks already-seen keys and only splits on
+// keys that haven't appeared yet (since each key appears at most once in metadata).
 func splitMetadataPairs(metaStr string) []string {
 	var pairs []string
 	remaining := metaStr
+	seenKeys := make(map[string]bool)
 
 	for len(remaining) > 0 {
-		// Find the earliest occurrence of ", knownKey:" in the remaining string
+		// Extract the key from the current pair so we can track seen keys.
+		// The current pair starts with "key: value" or is just "key:" with no value.
+		currentKey := extractMetadataKey(remaining)
+		if currentKey != "" {
+			seenKeys[currentKey] = true
+		}
+
+		// Find the earliest occurrence of ", knownKey:" in the remaining string,
+		// but only for keys we haven't already seen (to avoid mis-splitting on
+		// key-like patterns inside free-text values).
 		splitIdx := -1
 		for _, key := range metadataKeys {
+			if seenKeys[key] {
+				continue
+			}
 			pattern := ", " + key + ":"
 			idx := strings.Index(remaining, pattern)
 			if idx != -1 && (splitIdx == -1 || idx < splitIdx) {
@@ -421,7 +437,11 @@ func splitMetadataPairs(metaStr string) []string {
 
 		// Also check for ", score.<id>:" wildcard prefix pattern
 		if idx := findScoreKeyIndex(remaining); idx != -1 && (splitIdx == -1 || idx < splitIdx) {
-			splitIdx = idx
+			// Extract the score key to check if we've seen it
+			scoreKey := extractScoreKey(remaining[idx+2:])
+			if !seenKeys[scoreKey] {
+				splitIdx = idx
+			}
 		}
 
 		if splitIdx == -1 {
@@ -437,6 +457,30 @@ func splitMetadataPairs(metaStr string) []string {
 	}
 
 	return pairs
+}
+
+// extractMetadataKey returns the key portion from a "key: value" string,
+// or empty string if no valid key is found.
+func extractMetadataKey(s string) string {
+	s = strings.TrimSpace(s)
+	colonIdx := strings.Index(s, ":")
+	if colonIdx <= 0 {
+		return ""
+	}
+	return strings.TrimSpace(s[:colonIdx])
+}
+
+// extractScoreKey returns the full "score.<id>" key from a string starting with "score.<id>:".
+func extractScoreKey(s string) string {
+	if !strings.HasPrefix(s, "score.") {
+		return ""
+	}
+	rest := s[6:]
+	colonIdx := strings.Index(rest, ":")
+	if colonIdx <= 0 {
+		return ""
+	}
+	return "score." + rest[:colonIdx]
 }
 
 // findScoreKeyIndex finds the index of the first ", score.<id>:" pattern in s.
