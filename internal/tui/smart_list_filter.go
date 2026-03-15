@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -147,10 +146,7 @@ func evalDaysDelta(t time.Time, op, value string) bool {
 	if err != nil {
 		return false
 	}
-	now := time.Now()
-	dayStart := util.StartOfDay(t)
-	nowStart := util.StartOfDay(now)
-	daysDelta := int(math.Round(nowStart.Sub(dayStart).Hours() / 24))
+	daysDelta := util.DaysBetween(t, time.Now())
 
 	switch op {
 	case "less_than":

@@ -68,7 +68,7 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	}
 
 	// Task age: older tasks get a small boost to avoid stagnation
-	daysSinceCreated := int(time.Since(task.CreatedAt).Hours() / 24)
+	daysSinceCreated := util.DaysBetween(task.CreatedAt, time.Now())
 	ageBonus := min(
 		// 30 points per week
 		daysSinceCreated/7,
@@ -77,7 +77,7 @@ func (m *PriorityViewModel) computeSuggestionScore(task *models.Task) int {
 	score += ageBonus * 30
 
 	// Recent momentum: boost tasks with recent activity
-	daysSinceUpdated := int(time.Since(task.UpdatedAt).Hours() / 24)
+	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, time.Now())
 	if daysSinceUpdated == 0 {
 		score += 400 // Updated today
 	} else if daysSinceUpdated <= 3 {
@@ -205,7 +205,7 @@ func (m *PriorityViewModel) getSuggestionReason(task *models.Task) string {
 	}
 
 	// Momentum
-	daysSinceUpdated := int(time.Since(task.UpdatedAt).Hours() / 24)
+	daysSinceUpdated := util.DaysBetween(task.UpdatedAt, time.Now())
 	if daysSinceUpdated == 0 && task.Status != models.StatusInProgress {
 		reasons = append(reasons, "recent activity")
 	}

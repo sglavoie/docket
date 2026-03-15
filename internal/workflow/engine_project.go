@@ -235,9 +235,7 @@ func matchProjectTrigger(ctx *ProjectEvaluationContext, trigger RuleTrigger) boo
 		if latest.IsZero() {
 			return false
 		}
-		nowDate := util.StartOfDay(time.Now())
-		targetDate := util.StartOfDay(latest)
-		days := max(int(nowDate.Sub(targetDate).Hours()/24), 0)
+		days := max(util.DaysBetween(latest, time.Now()), 0)
 		return compareValues(strconv.Itoa(days), trigger.Operation, trigger.Value)
 
 	case FieldProjectStatus:
