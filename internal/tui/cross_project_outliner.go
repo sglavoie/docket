@@ -435,6 +435,21 @@ func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	return m.startCrossProjectLoad()
 }
 
+// crossMergedTaskSlice returns a single flat slice of all tasks from every
+// loaded project. Callers use this to call BuildTagList once on the union of
+// all visible projects' tasks rather than merging per-project results.
+func (m *OutlinerModel) crossMergedTaskSlice() []*models.Task {
+	var total int
+	for _, p := range m.loadedProjects {
+		total += len(p.Tasks)
+	}
+	merged := make([]*models.Task, 0, total)
+	for _, p := range m.loadedProjects {
+		merged = append(merged, p.Tasks...)
+	}
+	return merged
+}
+
 // crossStatusBarLabel returns the status bar label for cross-project mode,
 // formatted as 'Cross-Outliner · [context-name] · N tasks'.
 // N counts only task rows, excluding section headers and separators.

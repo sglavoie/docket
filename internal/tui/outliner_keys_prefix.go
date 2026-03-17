@@ -359,7 +359,13 @@ func (m *OutlinerModel) handleFilterPrefix(key string) (tea.Model, tea.Cmd) {
 
 	// Common filter prefix keys
 	result := handleCommonFilterPrefix(key, &m.filter.CommonFilterState, func() tea.Cmd {
-		tags := BuildTagList(m.project.Tasks, false)
+		var taskSlice []*models.Task
+		if m.project != nil {
+			taskSlice = m.project.Tasks
+		} else {
+			taskSlice = m.crossMergedTaskSlice()
+		}
+		tags := BuildTagList(taskSlice, false)
 		return func() tea.Msg {
 			return ShowTagFilterMsg{Tags: tags, Selected: m.filter.Tags, Source: ViewOutliner, Title: "Filter by Tags"}
 		}
