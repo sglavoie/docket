@@ -276,12 +276,22 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 	b.WriteString(searchIndicator)
 	b.WriteString("\n")
 
+	bc := m.crossProjectBreadcrumb(m.width)
+	if bc != "" {
+		b.WriteString(bc)
+		b.WriteString("\n")
+	}
+
 	if len(m.rows) == 0 {
 		b.WriteString(MutedStyle.Render("No tasks found."))
 		return b.String()
 	}
 
-	visibleRows := max(m.height-1, 1) // 1 line for header
+	headerLines := 1 // title/perspective line
+	if bc != "" {
+		headerLines++ // breadcrumb line
+	}
+	visibleRows := max(m.height-headerLines, 1)
 	startIdx := calcScrollOffset(m.cursor, visibleRows)
 	endIdx := min(startIdx+visibleRows, len(m.rows))
 

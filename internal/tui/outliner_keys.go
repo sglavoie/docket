@@ -124,6 +124,13 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch key {
 	case "q":
+		// Cross-project zoom-out: pop one level from the cross zoom stack.
+		if m.project == nil && len(m.crossZoomStack) > 0 {
+			top := m.crossZoomStack[len(m.crossZoomStack)-1]
+			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
+			m.cursor = top.CursorIndex
+			return m, nil
+		}
 		if len(m.zoomStack) == 0 {
 			return m, func() tea.Msg {
 				return CloseOutlinerMsg{}
@@ -313,6 +320,12 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Backspace: zoom out one level (no-op at root)
 	case "backspace":
+		if m.project == nil && len(m.crossZoomStack) > 0 {
+			top := m.crossZoomStack[len(m.crossZoomStack)-1]
+			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
+			m.cursor = top.CursorIndex
+			return m, nil
+		}
 		if len(m.zoomStack) > 0 {
 			top := m.zoomStack[len(m.zoomStack)-1]
 			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
@@ -443,7 +456,7 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.KeyMsg) (tea.Model, tea.Cmd)
 }
 
 // escSteps defines the Esc dismissal cascade for Outliner:
-// multi-select → search query → zoom stack.
+// multi-select → search query → zoom stack (single-project or cross-project).
 func (m *OutlinerModel) escSteps() []EscStep {
 	return []EscStep{
 		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
@@ -456,6 +469,11 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		{Active: func() bool { return len(m.zoomStack) > 0 }, Clear: func() {
 			top := m.zoomStack[len(m.zoomStack)-1]
 			m.zoomStack = m.zoomStack[:len(m.zoomStack)-1]
+			m.cursor = top.CursorIndex
+		}},
+		{Active: func() bool { return len(m.crossZoomStack) > 0 }, Clear: func() {
+			top := m.crossZoomStack[len(m.crossZoomStack)-1]
+			m.crossZoomStack = m.crossZoomStack[:len(m.crossZoomStack)-1]
 			m.cursor = top.CursorIndex
 		}},
 	}

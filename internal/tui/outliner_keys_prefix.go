@@ -159,13 +159,26 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			m.rebuildRows()
 			return m, nil
 		case "v":
-			// Zoom into current task (reuse existing zoom)
+			// Zoom into current task.
 			if cursorTask != nil && len(cursorTask.Children) > 0 {
-				m.zoomStack = append(m.zoomStack, ZoomEntry{
-					TaskID:      cursorTask.ID,
-					CursorIndex: m.cursor,
-				})
-				m.cursor = 0
+				if m.project == nil {
+					// Cross-project mode: push CrossProjectZoomEntry scoped to the
+					// owning project so UUID collisions across projects cannot cause
+					// incorrect zoom resolution.
+					projectID := m.rows[m.cursor].ProjectID
+					m.crossZoomStack = append(m.crossZoomStack, CrossProjectZoomEntry{
+						TaskID:      cursorTask.ID,
+						ProjectID:   projectID,
+						CursorIndex: m.cursor,
+					})
+					m.cursor = 0
+				} else {
+					m.zoomStack = append(m.zoomStack, ZoomEntry{
+						TaskID:      cursorTask.ID,
+						CursorIndex: m.cursor,
+					})
+					m.cursor = 0
+				}
 			}
 			return m, nil
 		case "p":
