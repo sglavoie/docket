@@ -131,8 +131,10 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 	p := m.currentPerspective()
 
-	// Collect all tasks across projects, applying perspective filter.
-	var allTasks []*models.Task
+	// Collect per-project task groups, applying per-project perspective filter.
+	// Grouping preserves project identity so ProjectID can be set on task rows.
+	var groups []projectTasksGroup
+	var allTasks []*models.Task // used only for non-All perspectives
 	for _, proj := range m.loadedProjects {
 		roots := proj.GetRootTasks()
 
@@ -158,39 +160,19 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			})
 		}
 
+		if len(tasks) == 0 {
+			continue
+		}
+		groups = append(groups, projectTasksGroup{projectID: proj.ID, tasks: tasks})
 		allTasks = append(allTasks, tasks...)
 	}
 
 	if p.Name == "All" {
-		m.buildCrossProjectRowsWithSectionHeaders(allTasks)
+		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
 		m.flattenTaskTreeWithFolds(allTasks, nil, &m.rows)
 	}
 	m.clampCursor()
-}
-
-// buildCrossProjectRowsWithSectionHeaders groups aggregated cross-project tasks
-// by GTD section and inserts collapsible section headers, matching the
-// single-project All perspective layout.
-func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(tasks []*models.Task) {
-	tasksBySection := m.groupTasksBySection(tasks)
-	sectionOrder := []string{"", models.SectionInbox, models.SectionNext, models.SectionWaiting, models.SectionReview, models.SectionStandby, models.SectionSomeday}
-
-	for _, sectionName := range sectionOrder {
-		sectionTasks := tasksBySection[sectionName]
-		if len(sectionTasks) == 0 {
-			continue
-		}
-		count := m.countTasksRecursive(sectionTasks)
-		m.rows = append(m.rows, outlinerRow{
-			IsSectionHeader: true,
-			SectionName:     sectionName,
-			SectionCount:    count,
-		})
-		if !m.collapsedSections[sectionName] {
-			m.flattenTaskTreeWithFolds(sectionTasks, nil, &m.rows)
-		}
-	}
 }
 
 // crossProjectView renders the cross-project outliner. It shows a centered
