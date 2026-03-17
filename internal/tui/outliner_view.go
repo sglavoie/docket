@@ -165,7 +165,7 @@ func (m *OutlinerModel) breadcrumb(maxWidth int) string {
 // prefixes computed on each render pass from the project's task hierarchy.
 func (m *OutlinerModel) View() string {
 	if m.project == nil {
-		return "No project loaded"
+		return m.crossProjectView()
 	}
 
 	// Rebuild flat row list with perspective filter and clamp cursor.

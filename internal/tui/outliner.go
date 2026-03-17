@@ -42,8 +42,9 @@ type OutlinerModel struct {
 
 	project *models.Project
 
-	zoomStack  []ZoomEntry
-	zoomNotice string // Transient message shown when zoom target is removed
+	zoomStack      []ZoomEntry            // Zoom stack for single-project mode
+	crossZoomStack []CrossProjectZoomEntry // Zoom stack for cross-project mode (m.project == nil)
+	zoomNotice     string                  // Transient message shown when zoom target is removed
 
 	rows              []outlinerRow // Flattened rows, rebuilt on each render
 	activePerspective int           // 0-9 index into PerspectivePresets; defaults to "All" (key 1)
@@ -75,6 +76,14 @@ type OutlinerModel struct {
 
 	// Inline preview mode: show description/checklist below cursor task
 	previewMode bool
+
+	// Cross-project mode fields (used when m.project == nil)
+	loadedProjects     []*models.Project // Successfully loaded projects
+	crossLoading       bool              // True while cross-project load is in progress
+	crossSpinnerVisible bool             // True once the 200ms delay has elapsed during load
+	crossLoadGen       int               // Generation counter; discards stale load results
+	crossUndoCtx       UndoContext       // Undo context scoped to cross-project operations
+	crossSpinner       SpinnerModel      // View-local spinner, independent of global save spinner
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -138,6 +147,53 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 	return m
 }
 
+// validateCrossZoomStack walks the cross-project zoom stack from top to bottom,
+// popping entries whose task no longer exists in their owning project. It
+// branches on CrossProjectZoomEntry.ProjectID to scope each lookup to the
+// correct project, preventing UUID collisions across projects from causing
+// incorrect resolution (per ac-d348683eb1a3e343887e804dbc6a719c).
+func (m *OutlinerModel) validateCrossZoomStack() {
+	if len(m.crossZoomStack) == 0 {
+		return
+	}
+
+	taskExists := func(entry CrossProjectZoomEntry) bool {
+		if m.config == nil {
+			return false
+		}
+		proj := m.config.GetProject(entry.ProjectID)
+		if proj == nil {
+			return false
+		}
+		return proj.GetTaskByID(entry.TaskID) != nil
+	}
+
+	// Find the deepest valid entry (walking from the top).
+	validDepth := -1
+	for i := len(m.crossZoomStack) - 1; i >= 0; i-- {
+		if taskExists(m.crossZoomStack[i]) {
+			validDepth = i
+			break
+		}
+	}
+
+	if validDepth == len(m.crossZoomStack)-1 {
+		return // Stack is fully valid, nothing to do.
+	}
+
+	if validDepth < 0 {
+		// No valid ancestor — reset to root.
+		m.crossZoomStack = m.crossZoomStack[:0]
+		m.cursor = 0
+		m.zoomNotice = "Zoom target was removed — returned to root"
+	} else {
+		// Pop to nearest valid ancestor, restore its cursor.
+		m.cursor = m.crossZoomStack[validDepth].CursorIndex
+		m.crossZoomStack = m.crossZoomStack[:validDepth+1]
+		m.zoomNotice = "Zoom target was removed — returned to parent"
+	}
+}
+
 // validateZoomStack walks the zoom stack from top to bottom, popping entries
 // whose task no longer exists in the project. If any entries were removed, it
 // sets a transient notice so the user knows their zoom target was deleted.
@@ -177,7 +233,7 @@ func (m *OutlinerModel) validateZoomStack() {
 func (m *OutlinerModel) rebuildRows() {
 	m.rows = m.rows[:0]
 	if m.project == nil {
-		m.clampCursor()
+		m.crossProjectRebuildRows()
 		return
 	}
 
@@ -404,6 +460,9 @@ func (m *OutlinerModel) contentHeight() int {
 
 // Init implements tea.Model.
 func (m *OutlinerModel) Init() tea.Cmd {
+	if m.project == nil {
+		return m.startCrossProjectLoad()
+	}
 	return nil
 }
 
@@ -417,6 +476,22 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKeyMsg(msg)
 	case outlinerRefreshMsg:
 		m.rebuildRows()
+		return m, nil
+	case crossProjectsLoadedMsg:
+		return m, m.handleCrossProjectsLoaded(msg)
+	case crossSpinnerDelayMsg:
+		if m.crossLoading {
+			m.crossSpinnerVisible = true
+			m.crossSpinner = NewSpinner()
+			return m, m.crossSpinner.Tick()
+		}
+		return m, nil
+	case crossSpinnerTickMsg:
+		if m.crossSpinnerVisible {
+			var cmd tea.Cmd
+			m.crossSpinner, cmd = m.crossSpinner.Update(msg.inner)
+			return m, crossSpinnerTickFwd(cmd)
+		}
 		return m, nil
 	}
 	return m, nil

@@ -738,10 +738,23 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		if m.crossOutliner == nil {
 			m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
 		}
+		// If already viewing the cross-project outliner, reload in-place without
+		// pushing a duplicate onto the view stack.
+		if m.currentView() == ViewCrossProjectOutliner {
+			return true, m.crossOutliner.reloadCrossProjects()
+		}
 		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
 		return true, nil
 
 	case CloseGlobalOutlinerMsg:
+		m.popToAnchorView()
+		return true, nil
+
+	// CloseCrossOutlinerMsg produces identical runtime behaviour to
+	// CloseGlobalOutlinerMsg (pop to anchor, preserve m.crossOutliner) but
+	// is a semantically distinct message so callers can target the
+	// cross-project outliner specifically without coupling to the global one.
+	case CloseCrossOutlinerMsg:
 		m.popToAnchorView()
 		return true, nil
 
