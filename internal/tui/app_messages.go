@@ -848,6 +848,12 @@ type ShowOutlinerMsg struct {
 // CloseOutlinerMsg closes the outliner view.
 type CloseOutlinerMsg struct{}
 
+// ShowGlobalOutlinerMsg opens the cross-project outliner view.
+type ShowGlobalOutlinerMsg struct{}
+
+// CloseGlobalOutlinerMsg closes the cross-project outliner and pops to the previous anchor.
+type CloseGlobalOutlinerMsg struct{}
+
 // =============================================================================
 // Status Input Messages
 // =============================================================================

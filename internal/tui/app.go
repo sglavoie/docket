@@ -94,6 +94,7 @@ const (
 	ViewScoringProfilePicker
 	ViewFocusBoard
 	ViewOutliner
+	ViewCrossProjectOutliner
 	ViewColumnPicker
 	ViewFilterBuilder
 	ViewWorkflowDryRun
@@ -153,6 +154,7 @@ type AppModel struct {
 	metricsDashboard     *MetricsDashboardModel
 	allTasksView         *AllTasksViewModel
 	outliner             *OutlinerModel
+	crossOutliner        *OutlinerModel
 
 	// Per-project outliner toggle state (section collapse + node fold),
 	// keyed by project ID. Survives outliner recreation within a session.

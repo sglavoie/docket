@@ -81,6 +81,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg { return ShowGlobalSearchMsg{} }
 			case "W":
 				return m, func() tea.Msg { return ShowWorkflowRulesMsg{} }
+			case "o":
+				return m, func() tea.Msg { return ShowGlobalOutlinerMsg{} }
 			}
 			return m, nil
 		}
@@ -383,6 +385,10 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd {
 	case ViewOutliner:
 		if v := m.views.Get(ViewOutliner); v != nil {
 			m.outliner = v.(*OutlinerModel)
+		}
+	case ViewCrossProjectOutliner:
+		if v := m.views.Get(ViewCrossProjectOutliner); v != nil {
+			m.crossOutliner = v.(*OutlinerModel)
 		}
 	}
 

@@ -734,6 +734,17 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 		m.outliner = nil
 		return true, nil
 
+	case ShowGlobalOutlinerMsg:
+		if m.crossOutliner == nil {
+			m.crossOutliner = NewOutlinerModel(nil, m.config, m.configManager)
+		}
+		m.showView(ViewCrossProjectOutliner, m.crossOutliner)
+		return true, nil
+
+	case CloseGlobalOutlinerMsg:
+		m.popToAnchorView()
+		return true, nil
+
 	case ShowProjectTreeMsg:
 		if msg.Project != nil {
 			replacing := m.isOnProjectView()
