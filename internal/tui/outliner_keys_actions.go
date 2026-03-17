@@ -21,11 +21,17 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 		case "d", "D":
 			m.confirm.Cancel()
 			m.statusMessage = ""
+			if m.project == nil {
+				return m.crossExecuteDelete()
+			}
 			return m.executeDelete()
 		case "s", "S":
 			m.deleteTarget.ClearRecurrence()
 			m.confirm.Cancel()
 			m.statusMessage = ""
+			if m.project == nil {
+				return m.crossExecuteDelete()
+			}
 			return m.executeDelete()
 		case "n", "N", "esc":
 			m.confirm.Cancel()
@@ -41,6 +47,9 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 		if confirmed {
 			switch action {
 			case "delete":
+				if m.project == nil {
+					return m.crossExecuteDelete()
+				}
 				return m.executeDelete()
 			case "bulk-delete":
 				return m.executeBulkDelete()

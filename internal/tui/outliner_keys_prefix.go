@@ -42,6 +42,13 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 
 	switch prefix {
 	case ",":
+		// Cross-project: route to resolved project; recurrence ops need single-project context.
+		if m.project == nil {
+			if model, cmd, handled := m.crossHandleStatusMutation(key); handled {
+				return model, cmd
+			}
+			return m, nil
+		}
 		if key == "k" {
 			cmd, _ := handleSkipRecurrence(m)
 			return m, cmd
@@ -68,11 +75,24 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case ",D":
+		if m.project == nil {
+			return m, nil
+		}
 		if cmd, ok := handleDeferRecurrence(key, m); ok {
 			return m, cmd
 		}
 
 	case "t":
+		// Cross-project: intercept tt (tag selector) with the resolved project;
+		// other t-prefix operations are not supported in cross-project mode.
+		if m.project == nil {
+			if key == "t" {
+				if cmd, ok := m.crossHandleTagsMutation(); ok {
+					return m, cmd
+				}
+			}
+			return m, nil
+		}
 		var focusedTask *models.Task
 		if len(m.zoomStack) > 0 {
 			topID := m.zoomStack[len(m.zoomStack)-1].TaskID
@@ -102,6 +122,12 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "!":
+		if m.project == nil {
+			if cmd, ok := m.crossHandlePriorityMutation(key); ok {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cmd, ok := handlePriorityPrefix(key, m); ok {
 			return m, cmd
 		}
@@ -112,6 +138,12 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		}
 
 	case "s":
+		if m.project == nil {
+			if cmd, ok := m.crossHandleSnoozeMutation(key); ok {
+				return m, cmd
+			}
+			return m, nil
+		}
 		if cmd, ok := handleSnoozePrefix(key, m); ok {
 			return m, cmd
 		}

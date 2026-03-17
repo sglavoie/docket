@@ -1,0 +1,228 @@
+package tui
+
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// crossResolveProject returns the loaded project matching the given ID by
+// scanning m.loadedProjects. Returns nil when not found.
+func (m *OutlinerModel) crossResolveProject(projectID string) *models.Project {
+	for _, p := range m.loadedProjects {
+		if p.ID == projectID {
+			return p
+		}
+	}
+	return nil
+}
+
+// crossGetMutationTarget returns the cursor row, its resolved owning project,
+// and ok=true when a valid single-task mutation target exists:
+//   - cross-project mode (m.project == nil)
+//   - cursor within bounds
+//   - row is not a separator or section header
+//   - row has a non-nil task
+//   - ProjectID resolves to a loaded project
+func (m *OutlinerModel) crossGetMutationTarget() (row outlinerRow, proj *models.Project, ok bool) {
+	if m.project != nil || len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return outlinerRow{}, nil, false
+	}
+	row = m.rows[m.cursor]
+	if row.IsSeparator || row.IsSectionHeader || row.task == nil {
+		return outlinerRow{}, nil, false
+	}
+	proj = m.crossResolveProject(row.ProjectID)
+	if proj == nil {
+		return outlinerRow{}, nil, false
+	}
+	return row, proj, true
+}
+
+// crossPersistFn returns a persistFn scoped to the given project. It calls
+// Backup() on the project before the mutation and Save() after, ensuring only
+// the owning project is written to disk.
+func (m *OutlinerModel) crossPersistFn(proj *models.Project) persistFn {
+	svc := m.projectService
+	return func(project *models.Project, taskID string, mutate func(*models.Task)) TaskOpResult {
+		if project.GetTaskByID(taskID) == nil {
+			return TaskOpResult{StatusMessage: "Task no longer exists in project"}
+		}
+		if err := svc.Backup(project); err != nil {
+			return TaskOpResult{Err: fmt.Errorf("backup failed: %w", err)}
+		}
+		project.MutateTask(taskID, mutate)
+		if err := svc.Save(project); err != nil {
+			return TaskOpResult{Err: fmt.Errorf("save failed: %w", err)}
+		}
+		_ = svc.Load(project)
+		return TaskOpResult{}
+	}
+}
+
+// crossHandleStatusMutation resolves the owning project from the cursor row,
+// applies a status transition, and forces a row rebuild via rebuildRows.
+// It is called from handlePrefixKey when prefix="," and m.project==nil.
+//
+// Returns (model, cmd, true) when the key maps to a status and was consumed.
+// Returns (nil, nil, false) when not in cross-project mode or no status mapping.
+func (m *OutlinerModel) crossHandleStatusMutation(key string) (tea.Model, tea.Cmd, bool) {
+	if m.project != nil {
+		return nil, nil, false
+	}
+	status, ok := StatusForPrefixKey(key)
+	if !ok {
+		return nil, nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return m, nil, true
+	}
+	pf := m.crossPersistFn(proj)
+	result := applyStatusChange(pf, proj, row.task.ID, status)
+	if result.Err != nil {
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return m, result.Cmd, true
+}
+
+// crossHandlePriorityMutation resolves the owning project from the cursor row,
+// applies a priority change, and forces a row rebuild via rebuildRows.
+// It is called from handlePrefixKey when prefix="!" and m.project==nil.
+//
+// Returns (cmd, true) when key maps to a priority level and was consumed.
+// Returns (nil, false) when no priority mapping exists for the key.
+func (m *OutlinerModel) crossHandlePriorityMutation(key string) (tea.Cmd, bool) {
+	priority, ok := PriorityForPrefixKey(key)
+	if !ok {
+		return nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+	pf := m.crossPersistFn(proj)
+	result := applyPriorityChange(pf, proj, row.task.ID, priority)
+	if result.Err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: result.Err} }, true
+	}
+	if result.StatusMessage != "" {
+		m.statusMessage = result.StatusMessage
+	}
+	m.rebuildRows()
+	return result.Cmd, true
+}
+
+// crossHandleSnoozeMutation resolves the owning project from the cursor row,
+// applies a snooze date mutation, and forces a row rebuild via rebuildRows.
+// It is called from handlePrefixKey when prefix="s" and m.project==nil.
+//
+// "sd" emits SetSnoozeDateMsg (date picker). All other recognised snooze keys
+// mutate in-place, call Backup() then Save(), and rebuild rows synchronously.
+//
+// Returns (cmd, true) when the key was consumed.
+// Returns (nil, false) when the key is not a recognised snooze sub-key.
+func (m *OutlinerModel) crossHandleSnoozeMutation(key string) (tea.Cmd, bool) {
+	if key == "d" {
+		row, proj, valid := m.crossGetMutationTarget()
+		if !valid {
+			return nil, true
+		}
+		task := row.task
+		return func() tea.Msg {
+			return SetSnoozeDateMsg{Task: task, Project: proj}
+		}, true
+	}
+
+	snoozeDate, desc, ok := resolveQuickSnoozeDate(key)
+	if !ok {
+		return nil, false
+	}
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, true
+	}
+
+	if err := m.projectService.Backup(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)} }, true
+	}
+	proj.MutateTask(row.task.ID, func(t *models.Task) {
+		t.SnoozedUntil = snoozeDate
+	})
+	if err := m.projectService.Save(proj); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)} }, true
+	}
+	_ = m.projectService.Load(proj)
+
+	if snoozeDate == nil {
+		m.statusMessage = "Snooze cleared"
+	} else {
+		m.statusMessage = fmt.Sprintf("Snoozed until %s (%s)", snoozeDate.Format("Mon Jan 2"), desc)
+	}
+	m.rebuildRows()
+	return nil, true
+}
+
+// crossHandleTagsMutation emits ShowTagSelectorMsg with the resolved owning
+// project so the tag selector can save changes to the correct project file.
+// It is called from handlePrefixKey when prefix="t", key="t" and m.project==nil.
+//
+// Returns (cmd, true) when a valid target exists, (nil, false) otherwise.
+func (m *OutlinerModel) crossHandleTagsMutation() (tea.Cmd, bool) {
+	row, proj, valid := m.crossGetMutationTarget()
+	if !valid {
+		return nil, false
+	}
+	task := row.task
+	tags := append([]string{}, task.Tags...)
+	return func() tea.Msg {
+		return ShowTagSelectorMsg{Task: task, Project: proj, CurrentTags: tags}
+	}, true
+}
+
+// crossFindProjectForTask scans m.loadedProjects to find the project that
+// contains the task with the given ID. Returns nil when not found.
+func (m *OutlinerModel) crossFindProjectForTask(taskID string) *models.Project {
+	for _, p := range m.loadedProjects {
+		if p.GetTaskByID(taskID) != nil {
+			return p
+		}
+	}
+	return nil
+}
+
+// crossExecuteDelete performs a delete of m.deleteTarget in cross-project mode.
+// It resolves the owning project via crossFindProjectForTask, calls Backup()
+// and Save() on that project only, and forces a row rebuild via rebuildRows.
+//
+// Called from handleConfirmDialog when m.project==nil and the confirmed action
+// is "delete" or "delete-recurring".
+func (m *OutlinerModel) crossExecuteDelete() (tea.Model, tea.Cmd) {
+	if m.deleteTarget == nil {
+		return m, nil
+	}
+	task := m.deleteTarget
+	m.deleteTarget = nil
+	m.statusMessage = ""
+
+	proj := m.crossFindProjectForTask(task.ID)
+	if proj == nil {
+		m.statusMessage = "Project for task not found"
+		return m, nil
+	}
+
+	pf := m.crossPersistFn(proj)
+	result := applyDeleteTask(pf, proj, task.ID, m.config.DataDir)
+	if result.Err != nil {
+		m.err = result.Err
+		return m, func() tea.Msg { return ErrorMsg{Err: result.Err} }
+	}
+	m.rebuildRows()
+	return m, result.Cmd
+}
