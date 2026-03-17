@@ -220,7 +220,7 @@ func (m *OutlinerModel) crossProjectView() string {
 	}
 	if m.crossLoading {
 		// Load started but 200ms hasn't elapsed yet — render empty frame.
-		return "Cross-project outliner: loading…"
+		return ""
 	}
 	return m.renderCrossProjectContent()
 }
@@ -283,7 +283,11 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 	}
 
 	if len(m.rows) == 0 {
-		b.WriteString(MutedStyle.Render("No tasks found."))
+		if len(m.loadedProjects) == 0 {
+			b.WriteString(MutedStyle.Render("No projects in current context. Press C to switch context."))
+		} else {
+			b.WriteString(MutedStyle.Render("No tasks found."))
+		}
 		return b.String()
 	}
 
