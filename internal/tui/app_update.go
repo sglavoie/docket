@@ -300,6 +300,9 @@ func (m *AppModel) handleEscKey() bool {
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
 		return false
 	}
+	if m.currentView() == ViewCrossProjectOutliner {
+		return false
+	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
 		if isGlobalOverlayView(closingView) {
