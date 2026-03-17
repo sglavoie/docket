@@ -2,6 +2,33 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
+// crossHandlePerspectiveCycle handles h/l perspective cycling for the
+// cross-project outliner. It changes activePerspective, sets forceRebuild via
+// rebuildRows, rebuilds rows, then skips past any separator the cursor may
+// have landed on after the row list is reconstructed.
+func (m *OutlinerModel) crossHandlePerspectiveCycle(key string) (tea.Model, tea.Cmd) {
+	perspCount := len(PerspectivePresets())
+	prevCursor := m.cursor
+	switch key {
+	case "h":
+		m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
+	case "l":
+		m.activePerspective = (m.activePerspective + 1) % perspCount
+	}
+	m.rebuildRows()
+	return m.crossSkipSeparators(prevCursor, nil)
+}
+
+// crossHandlePerspectiveJump handles P0-P9 direct perspective jumps for the
+// cross-project outliner. It sets activePerspective, forces a rebuild via
+// rebuildRows, then skips past any separator the cursor may have landed on.
+func (m *OutlinerModel) crossHandlePerspectiveJump(perspKey int) (tea.Model, tea.Cmd) {
+	prevCursor := m.cursor
+	m.activePerspective = perspKey
+	m.rebuildRows()
+	return m.crossSkipSeparators(prevCursor, nil)
+}
+
 // crossSkipSeparators advances the cursor past any contiguous IsSeparator rows
 // after a cursor movement, ensuring the cursor never lands on a separator.
 //

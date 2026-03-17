@@ -88,6 +88,9 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 		// Perspective switching (P-prefix: P0-P9)
 		if key >= "0" && key <= "9" {
 			perspKey := int(key[0] - '0')
+			if m.project == nil {
+				return m.crossHandlePerspectiveJump(perspKey)
+			}
 			m.activePerspective = perspKey
 			m.rebuildRows()
 			return m, nil

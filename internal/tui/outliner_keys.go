@@ -106,14 +106,17 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Perspective cycling (h/l) — analogous to ProjectTree's view-mode cycling
 	if !m.sidebar.IsFocused() {
-		perspCount := len(PerspectivePresets())
 		switch key {
-		case "h":
-			m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
-			m.rebuildRows()
-			return m, nil
-		case "l":
-			m.activePerspective = (m.activePerspective + 1) % perspCount
+		case "h", "l":
+			if m.project == nil {
+				return m.crossHandlePerspectiveCycle(key)
+			}
+			perspCount := len(PerspectivePresets())
+			if key == "h" {
+				m.activePerspective = (m.activePerspective + perspCount - 1) % perspCount
+			} else {
+				m.activePerspective = (m.activePerspective + 1) % perspCount
+			}
 			m.rebuildRows()
 			return m, nil
 		}
