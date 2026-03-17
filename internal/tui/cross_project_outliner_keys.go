@@ -2,6 +2,25 @@ package tui
 
 import tea "github.com/charmbracelet/bubbletea"
 
+// crossInterceptCreationKeys intercepts 'a' (normal mode only), 'i', and 'I'
+// in the cross-project outliner and shows a status message directing the user
+// to use 'go' to open the single-project outliner for task creation.
+//
+// Returns (model, cmd, true) when the key is consumed, (nil, nil, false)
+// otherwise. The caller must place this check after the multi-select block so
+// that 'a' in multi-select mode still triggers select-all.
+func (m *OutlinerModel) crossInterceptCreationKeys(key string) (tea.Model, tea.Cmd, bool) {
+	if m.project != nil {
+		return nil, nil, false
+	}
+	switch key {
+	case "a", "i", "I":
+		m.statusMessage = "use go to open project outliner for task creation"
+		return m, nil, true
+	}
+	return nil, nil, false
+}
+
 // crossHandlePerspectiveCycle handles h/l perspective cycling for the
 // cross-project outliner. It changes activePerspective, sets forceRebuild via
 // rebuildRows, rebuilds rows, then skips past any separator the cursor may

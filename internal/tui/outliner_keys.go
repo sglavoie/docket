@@ -63,6 +63,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Cross-project mode: intercept creation keys before they reach the shared handler.
+	if model, cmd, handled := m.crossInterceptCreationKeys(key); handled {
+		return model, cmd
+	}
+
 	// Sidebar toggle
 	if key == "tab" {
 		task := m.SidebarSelectedTask()
