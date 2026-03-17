@@ -54,6 +54,9 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 			case "bulk-delete":
 				return m.executeBulkDelete()
 			case "bulk-status":
+				if m.project == nil {
+					return m.crossExecutePendingBulkStatus()
+				}
 				return m.executePendingBulkStatus()
 			case "archive-tasks":
 				return m.archiveCompletedTasks()
