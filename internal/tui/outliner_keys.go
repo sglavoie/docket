@@ -68,6 +68,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	// Cross-project mode: C opens the context picker, including from the empty state.
+	if model, cmd, handled := m.crossHandleContextPickerKey(key); handled {
+		return model, cmd
+	}
+
 	// Sidebar toggle
 	if key == "tab" {
 		task := m.SidebarSelectedTask()
