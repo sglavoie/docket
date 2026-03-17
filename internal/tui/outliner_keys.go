@@ -291,7 +291,8 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		// Handle section header toggle
 		if row.IsSectionHeader {
-			m.collapsedSections[row.SectionName] = !m.collapsedSections[row.SectionName]
+			key := row.effectiveCollapseKey()
+			m.collapsedSections[key] = !m.collapsedSections[key]
 			m.rebuildRows()
 			return m, nil
 		}
@@ -393,7 +394,9 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Custom section tabs
 	case "[", "]":
 		if tabs := m.customSectionTabs(); tabs != nil {
-			cycleCustomSectionTab(key, &m.customSectionTab, len(tabs), func() {
+			tab := m.customSectionTabIndex()
+			cycleCustomSectionTab(key, &tab, len(tabs), func() {
+				m.setCustomSectionTabIndex(tab)
 				m.rebuildRows()
 			})
 		}

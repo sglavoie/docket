@@ -202,8 +202,8 @@ func (m *AppModel) captureOutlinerFilter(name, id string) config.SavedFilter {
 	}
 
 	// Capture custom section tab name
-	if tabs := ol.customSectionTabs(); tabs != nil && ol.customSectionTab < len(tabs) {
-		sf.CustomSectionTab = tabs[ol.customSectionTab]
+	if tabs := ol.customSectionTabs(); tabs != nil && ol.customSectionTabIndex() < len(tabs) {
+		sf.CustomSectionTab = tabs[ol.customSectionTabIndex()]
 	}
 
 	return sf
@@ -327,7 +327,7 @@ func (m *AppModel) applySavedFilterToOutliner(sf config.SavedFilter) {
 			if tabs := ol.customSectionTabs(); tabs != nil {
 				for i, tab := range tabs {
 					if tab == sf.CustomSectionTab {
-						ol.customSectionTab = i
+						ol.setCustomSectionTabIndex(i)
 						break
 					}
 				}

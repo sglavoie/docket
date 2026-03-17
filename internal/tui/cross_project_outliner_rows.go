@@ -11,10 +11,11 @@ type projectTasksGroup struct {
 }
 
 // buildCrossProjectRowsWithSectionHeaders groups tasks from multiple projects
-// under shared canonical GTD section headers. Each project's tasks are filtered
-// independently before being merged into section buckets. Empty sections are
-// skipped. Task rows carry the ProjectID of their owning project; header rows
-// leave ProjectID empty.
+// under canonical GTD section headers. Each project gets its own section header
+// per section so that collapse state is tracked independently per project using
+// composite "projectID:sectionName" keys. Empty sections are skipped. Task rows
+// carry the ProjectID of their owning project; header rows carry the ProjectID
+// of the owning project for context rendering.
 func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []projectTasksGroup) {
 	// sectionOrder defines the canonical display order for the All perspective.
 	sectionOrder := []string{
@@ -27,39 +28,45 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 		models.SectionSomeday,
 	}
 
-	// Collect tasks per section across all projects, preserving project identity.
-	type taggedTask struct {
-		task      *models.Task
+	// Bucket tasks by section within each project, preserving project identity.
+	type sectionGroup struct {
 		projectID string
+		tasks     []*models.Task
 	}
-	tasksBySection := make(map[string][]taggedTask)
+	sectionsPerProject := make(map[string][]sectionGroup)
 	for _, g := range groups {
+		bySection := make(map[string][]*models.Task)
 		for _, t := range g.tasks {
-			tasksBySection[t.Section] = append(tasksBySection[t.Section], taggedTask{task: t, projectID: g.projectID})
+			bySection[t.Section] = append(bySection[t.Section], t)
+		}
+		for section, tasks := range bySection {
+			sectionsPerProject[section] = append(sectionsPerProject[section], sectionGroup{
+				projectID: g.projectID,
+				tasks:     tasks,
+			})
 		}
 	}
 
 	for _, sectionName := range sectionOrder {
-		tagged := tasksBySection[sectionName]
-		if len(tagged) == 0 {
+		projGroups := sectionsPerProject[sectionName]
+		if len(projGroups) == 0 {
 			continue
 		}
 
-		// Count total tasks in this section (including children).
-		count := 0
-		for _, tt := range tagged {
-			count += m.countTasksRecursive([]*models.Task{tt.task})
-		}
+		for _, pg := range projGroups {
+			collapseKey := pg.projectID + ":" + sectionName
 
-		m.rows = append(m.rows, outlinerRow{
-			IsSectionHeader: true,
-			SectionName:     sectionName,
-			SectionCount:    count,
-		})
+			count := m.countTasksRecursive(pg.tasks)
+			m.rows = append(m.rows, outlinerRow{
+				IsSectionHeader: true,
+				SectionName:     sectionName,
+				SectionCount:    count,
+				CollapseKey:     collapseKey,
+				ProjectID:       pg.projectID,
+			})
 
-		if !m.collapsedSections[sectionName] {
-			for _, tt := range tagged {
-				m.flattenTaskTreeWithFoldsAndProjectID([]*models.Task{tt.task}, nil, tt.projectID, &m.rows)
+			if !m.collapsedSections[collapseKey] {
+				m.flattenTaskTreeWithFoldsAndProjectID(pg.tasks, nil, pg.projectID, &m.rows)
 			}
 		}
 	}

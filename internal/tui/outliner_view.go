@@ -27,8 +27,30 @@ type outlinerRow struct {
 	IsSectionHeader bool   // True if this row is a section header (not a task)
 	SectionName     string // Section name for header rows
 	SectionCount    int    // Number of tasks in this section
-	ProjectID       string // Project that owns this task row; empty for headers/separators
+	CollapseKey     string // Key for collapsedSections map; composite "projectID:sectionName" in cross-project mode, empty in single-project mode
+	ProjectID       string // Project that owns this row; set on task rows and cross-project section headers
 	IsSeparator     bool   // True if this row is a visual separator between projects
+}
+
+// collapseKey returns the effective key for collapsedSections lookups.
+// Cross-project headers set CollapseKey to "projectID:sectionName"; single-project
+// headers leave it empty and fall back to SectionName.
+func (r outlinerRow) effectiveCollapseKey() string {
+	if r.CollapseKey != "" {
+		return r.CollapseKey
+	}
+	return r.SectionName
+}
+
+// projectNameByID looks up a project name from m.loadedProjects by ID.
+// Returns the ID itself as a fallback if the project is not found.
+func (m *OutlinerModel) projectNameByID(id string) string {
+	for _, p := range m.loadedProjects {
+		if p.ID == id {
+			return p.Name
+		}
+	}
+	return id
 }
 
 // buildTreePrefix computes the connector prefix string from the ancestor
@@ -271,7 +293,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 		result := header + "\n"
 		if tabs := m.customSectionTabs(); tabs != nil {
-			result += RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors) + "\n"
+			result += RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors) + "\n"
 		}
 		if bc != "" {
 			result += bc + "\n"
@@ -302,7 +324,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 	// Custom section tab bar
 	if tabs := m.customSectionTabs(); tabs != nil {
-		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTab, width, 1, m.project.SectionColors))
+		b.WriteString(RenderColoredTabBar(tabs, m.customSectionTabIndex(), width, 1, m.project.SectionColors))
 		b.WriteString("\n")
 	}
 
@@ -345,7 +367,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 
 			// Triangle indicator (▾ expanded, ▸ collapsed)
 			indicator := "▾"
-			if m.collapsedSections[row.SectionName] {
+			if m.collapsedSections[row.effectiveCollapseKey()] {
 				indicator = "▸"
 			}
 
@@ -358,6 +380,13 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			// Render colored badge with @ symbol at the very left
 			badge := sectionStyle.Render(fmt.Sprintf("@ %s", displayName))
 			line := fmt.Sprintf("%s%s %s (%d)", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount)
+
+			// In cross-project mode, append a project name badge to distinguish
+			// identically-named sections from different projects.
+			if row.ProjectID != "" {
+				projName := m.projectNameByID(row.ProjectID)
+				line += "  " + MutedStyle.Render("["+projName+"]")
+			}
 
 			if selected {
 				rowStyle := SelectionRowStyle

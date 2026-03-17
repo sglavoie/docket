@@ -298,7 +298,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 			}
 			sectionStyle := GetViewModeStyleForSection(row.SectionName)
 			indicator := "▾"
-			if m.collapsedSections[row.SectionName] {
+			if m.collapsedSections[row.effectiveCollapseKey()] {
 				indicator = "▸"
 			}
 			cursorPrefix := "  "
@@ -306,7 +306,11 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 				cursorPrefix = SelectionCursorStyle.Render(">") + " "
 			}
 			badge := sectionStyle.Render(fmt.Sprintf("@ %s", displayName))
-			line := fmt.Sprintf("%s%s %s (%d)", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount)
+			projectLabel := ""
+			if row.ProjectID != "" {
+				projectLabel = "  " + MutedStyle.Render("["+m.projectNameByID(row.ProjectID)+"]")
+			}
+			line := fmt.Sprintf("%s%s %s (%d)%s", cursorPrefix, MutedStyle.Render(indicator), badge, row.SectionCount, projectLabel)
 			if selected {
 				rowStyle := SelectionRowStyle
 				if m.cursorFlash {

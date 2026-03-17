@@ -54,7 +54,7 @@ type OutlinerModel struct {
 	filter           FilterState      // Unified filter state (common + sections + actionable)
 	scoreFilterInput ScoreFilterInput // Inline score filter threshold input
 
-	customSectionTab  int             // Active custom section tab index (0 = All)
+	customSectionTab  map[string]int  // Active custom section tab index per projectID (0 = All)
 	expandedNodes     map[string]bool // Fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool // Section collapse state for All perspective
 
@@ -136,6 +136,7 @@ func NewOutlinerModel(project *models.Project, cfg *config.Config, cfgManager *c
 		filterBar:         NewFilterBarComponent(),
 		expandedNodes:     make(map[string]bool),
 		collapsedSections: make(map[string]bool),
+		customSectionTab:  make(map[string]int),
 		filter:            NewFilterState(),
 		sort:              NewSortState(),
 		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
@@ -448,9 +449,20 @@ func (m *OutlinerModel) customSectionTabs() []string {
 	return CustomSectionTabs(m.project)
 }
 
+// customSectionTabIndex returns the active tab index for m.project.
+// Must only be called when m.project != nil (i.e. customSectionTabs() != nil).
+func (m *OutlinerModel) customSectionTabIndex() int {
+	return m.customSectionTab[m.project.ID]
+}
+
+// setCustomSectionTabIndex sets the active tab index for m.project.
+func (m *OutlinerModel) setCustomSectionTabIndex(i int) {
+	m.customSectionTab[m.project.ID] = i
+}
+
 // activeCustomSectionFilter returns the custom section name being filtered, or "" for "All".
 func (m *OutlinerModel) activeCustomSectionFilter() string {
-	return ActiveCustomSectionFilter(m.project, m.customSectionTab)
+	return ActiveCustomSectionFilter(m.project, m.customSectionTabIndex())
 }
 
 // contentHeight returns the number of task rows visible on screen,
@@ -769,7 +781,10 @@ func (m *OutlinerModel) NavigateToSidebarTask(task *models.Task) {
 
 	// Task not found — it may be inside a collapsed section or parent.
 	// Uncollapse the task's section and expand all ancestor nodes, then rebuild.
-	if task.Section != "" {
+	// In cross-project mode (m.project == nil) collapsedSections keys are
+	// composite "projectID:sectionName", so a bare-section delete would be a
+	// no-op. Skip it and rely on the cursor-search fallback below.
+	if task.Section != "" && m.project != nil {
 		delete(m.collapsedSections, task.Section)
 	}
 	m.ensureExpandedNodes()
