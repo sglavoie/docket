@@ -340,11 +340,70 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 				}
 			}
 
+			projBadge := ""
+			if row.ProjectID != "" {
+				projName := m.projectNameByID(row.ProjectID)
+				badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
+				projBadge = badgeStyle.Render("["+projName+"]") + " "
+			}
+
 			typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 			statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
-			line := fmt.Sprintf("  %s%s%s %s%s",
-				row.prefix, foldIndicator, typeIcon, statusIcon, task.Title)
+			// Build indicators block: shortID and safe metadata columns that
+			// don't require m.project (which is nil in cross-project mode).
+			var orgParts []string
+			if m.columnConfig.IsVisible(ColShortID) {
+				orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+			}
+			orgGroup := JoinGroupParts(orgParts...)
+
+			var lifecycleParts []string
+			if m.columnConfig.ShouldShowPriority(task.Priority) {
+				lifecycleParts = append(lifecycleParts, renderPriorityBadge(task.Priority))
+			}
+			if m.columnConfig.IsVisible(ColDueDate) {
+				if dueStr := formatDueDate(task); dueStr != "" {
+					lifecycleParts = append(lifecycleParts, dueStr)
+				}
+			}
+			if m.columnConfig.IsVisible(ColSnooze) && task.SnoozedUntil != nil {
+				snoozeStr := task.SnoozedUntil.Format("Jan 2")
+				if task.SnoozedUntil.Year() != time.Now().Year() {
+					snoozeStr = task.SnoozedUntil.Format("Jan 2 '06")
+				}
+				lifecycleParts = append(lifecycleParts, MutedStyle.Render("zzz "+snoozeStr))
+			}
+			if m.columnConfig.IsVisible(ColRecurrence) && task.IsRecurring() {
+				recurStr := "↻"
+				if task.Recurrence.Streak > 0 {
+					recurStr = fmt.Sprintf("↻%d", task.Recurrence.Streak)
+				}
+				lifecycleParts = append(lifecycleParts, MutedStyle.Render(recurStr))
+			}
+			lifecycleGroup := JoinGroupParts(lifecycleParts...)
+
+			var contentParts []string
+			if m.columnConfig.IsVisible(ColTags) {
+				if s := renderTruncatedTags(task.Tags, 2, 8); s != "" {
+					contentParts = append(contentParts, s)
+				}
+			}
+			if m.columnConfig.IsVisible(ColComments) {
+				if s := renderCommentIndicator(task); s != "" {
+					contentParts = append(contentParts, s)
+				}
+			}
+			contentGroup := JoinGroupParts(contentParts...)
+
+			indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, contentGroup)
+			indicators := indicatorStr
+			if indicators != "" {
+				indicators = " " + indicators
+			}
+
+			line := fmt.Sprintf("  %s%s%s%s %s%s%s",
+				row.prefix, foldIndicator, projBadge, typeIcon, statusIcon, task.Title, indicators)
 
 			if selected {
 				rowStyle := SelectionRowStyle

@@ -415,6 +415,20 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			}
 		}
 
+		// Project badge scaffolding — always empty in single-project mode.
+		// When m.project == nil, View() routes to crossProjectView() →
+		// renderCrossProjectContent, so this function is only reached when
+		// m.project != nil. In that case flattenTaskTreeWithFolds never sets
+		// row.ProjectID, so projBadge is always "". Badge rendering for
+		// cross-project rows lives in renderCrossProjectContent
+		// (cross_project_outliner.go).
+		projBadge := ""
+		if row.ProjectID != "" {
+			projName := m.projectNameByID(row.ProjectID)
+			badgeStyle := lipgloss.NewStyle().Foreground(projectBadgeColor(projName))
+			projBadge = badgeStyle.Render("["+projName+"]") + " "
+		}
+
 		typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 		statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 		if m.project.HasIncompleteDependencies(task) {
@@ -550,7 +564,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 		}
 
 		// Truncate title to fit available width
-		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-12-lipgloss.Width(indicators), 10)
+		availableWidth := max(width-lipgloss.Width(row.prefix)-lipgloss.Width(cursorPrefix)-lipgloss.Width(checkbox)-lipgloss.Width(projBadge)-12-lipgloss.Width(indicators), 10)
 		truncatedTitle := util.Truncate(task.Title, availableWidth)
 		var title string
 		query := strings.TrimSpace(m.SearchQuery())
@@ -565,11 +579,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 			title = titleStyle.Render(truncatedTitle)
 		}
 
-		line := fmt.Sprintf("%s%s%s%s%s %s%s %s%s",
+		line := fmt.Sprintf("%s%s%s%s%s%s %s%s %s%s",
 			cursorPrefix,
 			checkbox,
 			MutedStyle.Render(row.prefix),
 			foldIndicator,
+			projBadge,
 			typeIcon, stageSegment, statusIcon, title, indicators)
 
 		if selected {
