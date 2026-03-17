@@ -101,24 +101,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Cursor movement
 	prevCursor := m.cursor
 	if handled, cmd := handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash); handled {
-		// Skip separator rows in the direction of travel so the cursor never
-		// lands on a taskless row, and so both adjacent project groups remain
-		// reachable from either direction.
-		if m.cursor < prevCursor {
-			// Moving upward: skip backward past any separators.
-			for m.cursor > 0 && m.rows[m.cursor].IsSeparator {
-				m.cursor--
-			}
-		} else {
-			// Moving downward (or no change): skip forward past any separators.
-			for m.cursor < len(m.rows) && m.rows[m.cursor].IsSeparator {
-				m.cursor++
-			}
-			if m.cursor >= len(m.rows) && len(m.rows) > 0 {
-				m.cursor = len(m.rows) - 1
-			}
-		}
-		return m, cmd
+		return m.crossSkipSeparators(prevCursor, cmd)
 	}
 
 	// Perspective cycling (h/l) — analogous to ProjectTree's view-mode cycling
