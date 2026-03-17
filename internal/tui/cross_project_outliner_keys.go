@@ -148,6 +148,36 @@ func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// crossHandleEnterKey handles the Enter key in cross-project mode. For leaf
+// task rows it resolves the owning project from row.ProjectID and emits
+// ShowTaskDetailMsg to open the task detail via glow. Section headers and
+// separators are silently ignored.
+//
+// Returns (model, cmd, true) when in cross-project mode (m.project == nil),
+// (nil, nil, false) otherwise.
+func (m *OutlinerModel) crossHandleEnterKey() (tea.Model, tea.Cmd, bool) {
+	if m.project != nil {
+		return nil, nil, false
+	}
+	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return m, nil, true
+	}
+	row := m.rows[m.cursor]
+	if row.IsSeparator || row.IsSectionHeader {
+		return m, nil, true
+	}
+	task := row.task
+	for _, p := range m.loadedProjects {
+		if p.ID == row.ProjectID {
+			proj := p
+			return m, func() tea.Msg {
+				return ShowTaskDetailMsg{Task: task, Project: proj}
+			}, true
+		}
+	}
+	return m, nil, true
+}
+
 // crossHandleUndo handles the 'u' key in cross-project mode by restoring all
 // backed-up projects from m.crossUndoCtx in reverse order. Each project is
 // restored via RestoreFromBackup; failures are recorded but do not abort
