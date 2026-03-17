@@ -1,9 +1,14 @@
 package tui
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 // minimalOutliner returns a bare OutlinerModel suitable for unit tests that
@@ -397,4 +402,191 @@ func TestSectionCountAccuracy(t *testing.T) {
 			}
 		}
 	}
+}
+
+// ── Multi-project undo orchestration (integration, real disk I/O) ─────────────
+
+// TestCrossProjectUndoOrchestration is an integration-level test that uses real
+// disk I/O (t.TempDir()) to verify the full multi-project undo lifecycle:
+//
+//  1. Two projects are created with mixed task hierarchies (3-level epic→story→task
+//     for Alpha, 2-level parent→children for Beta).
+//  2. Both projects are saved to and reloaded from disk.
+//  3. A bulk status mutation is staged and executed across both projects.
+//  4. Backup files are verified on disk; tasks.md mutation is confirmed.
+//  5. Undo restores each project; per-project outcome is verified in the status
+//     message in the format "Undo: restored <name>, <name>".
+func TestCrossProjectUndoOrchestration(t *testing.T) {
+	strPtr := func(s string) *string { return &s }
+
+	// ── Project directories ───────────────────────────────────────────────────
+	alphaDir := t.TempDir()
+	betaDir := t.TempDir()
+
+	// ── Alpha: 3-level hierarchy (Epic → Story → leaf Task) + standalone Task ─
+	const (
+		alphaEpicID       = "alpha-epic-001"
+		alphaStoryID      = "alpha-story-001"
+		alphaLeafID       = "alpha-task-001"
+		alphaStandaloneID = "alpha-task-002"
+	)
+
+	alphaEpic, _ := models.NewTask(alphaEpicID, 1, models.TaskTypeEpic, "Epic: Authentication")
+	alphaStory, _ := models.NewTask(alphaStoryID, 2, models.TaskTypeStory, "Story: Login Flow")
+	alphaStory.ParentID = strPtr(alphaEpicID)
+	alphaLeaf, _ := models.NewTask(alphaLeafID, 3, models.TaskTypeTask, "Implement login endpoint")
+	alphaLeaf.ParentID = strPtr(alphaStoryID)
+	alphaStandalone, _ := models.NewTask(alphaStandaloneID, 4, models.TaskTypeTask, "Fix typo in readme")
+
+	alpha := &models.Project{ID: "alpha-proj", Name: "Alpha", Path: alphaDir}
+	alpha.Tasks = []*models.Task{alphaEpic, alphaStory, alphaLeaf, alphaStandalone}
+	alpha.BuildTaskTree()
+	if err := storage.SaveProject(alpha); err != nil {
+		t.Fatalf("save alpha: %v", err)
+	}
+
+	// ── Beta: 2-level hierarchy (Parent → 2 children) + standalone Task ───────
+	const (
+		betaParentID     = "beta-task-001"
+		betaChild1ID     = "beta-task-002"
+		betaChild2ID     = "beta-task-003"
+		betaStandaloneID = "beta-task-004"
+	)
+
+	betaParent, _ := models.NewTask(betaParentID, 1, models.TaskTypeTask, "Setup CI pipeline")
+	betaChild1, _ := models.NewTask(betaChild1ID, 2, models.TaskTypeTask, "Configure lint")
+	betaChild1.ParentID = strPtr(betaParentID)
+	betaChild2, _ := models.NewTask(betaChild2ID, 3, models.TaskTypeTask, "Configure tests")
+	betaChild2.ParentID = strPtr(betaParentID)
+	betaStandalone, _ := models.NewTask(betaStandaloneID, 4, models.TaskTypeTask, "Write API docs")
+
+	beta := &models.Project{ID: "beta-proj", Name: "Beta", Path: betaDir}
+	beta.Tasks = []*models.Task{betaParent, betaChild1, betaChild2, betaStandalone}
+	beta.BuildTaskTree()
+	if err := storage.SaveProject(beta); err != nil {
+		t.Fatalf("save beta: %v", err)
+	}
+
+	// Reload both projects from disk so Tasks slice reflects parsed state.
+	if err := storage.LoadProject(alpha); err != nil {
+		t.Fatalf("load alpha: %v", err)
+	}
+	if err := storage.LoadProject(beta); err != nil {
+		t.Fatalf("load beta: %v", err)
+	}
+
+	// Record pre-mutation tasks.md content for comparison after undo.
+	originalAlpha := readCrossTestFile(t, filepath.Join(alphaDir, "tasks.md"))
+	originalBeta := readCrossTestFile(t, filepath.Join(betaDir, "tasks.md"))
+
+	// ── Create cross-project outliner (project==nil → cross-project mode) ─────
+	m := &OutlinerModel{
+		PrimaryViewBundle: PrimaryViewBundle{
+			projectService: NewProjectService(),
+			bulkOp:         NewBulkOperationComponent(),
+			quickEdit:       NewQuickEditComponent(),
+		},
+		collapsedSections: make(map[string]bool),
+		expandedNodes:     make(map[string]bool),
+		MultiSelectState:  MultiSelectState{selectedTasks: make(map[string]bool)},
+		activePerspective: 1, // All perspective
+		loadedProjects:    []*models.Project{alpha, beta},
+	}
+
+	// Stage bulk status change: one task from each project → in_progress.
+	selectedAlpha := alpha.GetTaskByID(alphaLeafID)
+	selectedBeta := beta.GetTaskByID(betaChild1ID)
+	if selectedAlpha == nil || selectedBeta == nil {
+		t.Fatal("could not find selected tasks in loaded projects after reload")
+	}
+	bulkTasks := []*models.Task{selectedAlpha, selectedBeta}
+	m.bulkOp.SetOperation(models.StatusInProgress, bulkTasks, 0, nil)
+
+	// ── Execute bulk mutation ─────────────────────────────────────────────────
+	resultModel, _ := m.crossExecutePendingBulkStatus()
+	m = resultModel.(*OutlinerModel)
+
+	// ── Verify backup files created for both projects ─────────────────────────
+	alphaBackupPath := storage.GetBackupFilePath(alpha)
+	betaBackupPath := storage.GetBackupFilePath(beta)
+
+	if _, err := os.Stat(alphaBackupPath); os.IsNotExist(err) {
+		t.Error("Alpha backup file should exist after bulk mutation")
+	}
+	if _, err := os.Stat(betaBackupPath); os.IsNotExist(err) {
+		t.Error("Beta backup file should exist after bulk mutation")
+	}
+
+	// Backup content must match the pre-mutation snapshot.
+	if got := readCrossTestFile(t, alphaBackupPath); got != originalAlpha {
+		t.Error("Alpha backup should contain pre-mutation tasks.md content")
+	}
+	if got := readCrossTestFile(t, betaBackupPath); got != originalBeta {
+		t.Error("Beta backup should contain pre-mutation tasks.md content")
+	}
+
+	// tasks.md must now differ from the original (mutation persisted to disk).
+	if got := readCrossTestFile(t, filepath.Join(alphaDir, "tasks.md")); got == originalAlpha {
+		t.Error("Alpha tasks.md should be mutated after bulk status change")
+	}
+	if got := readCrossTestFile(t, filepath.Join(betaDir, "tasks.md")); got == originalBeta {
+		t.Error("Beta tasks.md should be mutated after bulk status change")
+	}
+
+	// Status message after mutation: "Changed N tasks to in_progress".
+	wantMutMsg := fmt.Sprintf("Changed %d tasks to %s", len(bulkTasks), models.StatusInProgress)
+	if m.statusMessage != wantMutMsg {
+		t.Errorf("status after mutation: want %q, got %q", wantMutMsg, m.statusMessage)
+	}
+
+	// Undo context must record both project IDs.
+	if got := len(m.crossUndoCtx.ProjectIDs); got != 2 {
+		t.Errorf("undo context: want 2 project IDs, got %d", got)
+	}
+
+	// ── Execute undo ──────────────────────────────────────────────────────────
+	undoResult, _, ok := m.crossHandleUndo("u")
+	if !ok {
+		t.Fatal("crossHandleUndo returned ok=false in cross-project mode")
+	}
+	m = undoResult.(*OutlinerModel)
+
+	// Status message format: "Undo: restored <name>[, <name>]"
+	// Projects are restored in reverse ID order, so both must appear.
+	undoMsg := m.statusMessage
+	if !strings.HasPrefix(undoMsg, "Undo: restored ") {
+		t.Errorf("undo status should start with 'Undo: restored ', got %q", undoMsg)
+	}
+	if !strings.Contains(undoMsg, "Alpha") {
+		t.Errorf("undo status should contain project name 'Alpha', got %q", undoMsg)
+	}
+	if !strings.Contains(undoMsg, "Beta") {
+		t.Errorf("undo status should contain project name 'Beta', got %q", undoMsg)
+	}
+	if strings.Contains(undoMsg, "FAILED") {
+		t.Errorf("undo status should not contain 'FAILED', got %q", undoMsg)
+	}
+
+	// tasks.md for both projects must be restored to pre-mutation content.
+	if got := readCrossTestFile(t, filepath.Join(alphaDir, "tasks.md")); got != originalAlpha {
+		t.Error("Alpha tasks.md should be restored to pre-mutation content after undo")
+	}
+	if got := readCrossTestFile(t, filepath.Join(betaDir, "tasks.md")); got != originalBeta {
+		t.Error("Beta tasks.md should be restored to pre-mutation content after undo")
+	}
+
+	// Undo context should be cleared after a successful undo.
+	if got := len(m.crossUndoCtx.ProjectIDs); got != 0 {
+		t.Errorf("undo context should be cleared after undo, got %d IDs", got)
+	}
+}
+
+// readCrossTestFile reads a file's contents for integration test assertions.
+func readCrossTestFile(t *testing.T, path string) string {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(content)
 }
