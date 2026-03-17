@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -107,6 +108,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
+	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 
 	if len(msg.failedNames) == 0 {
@@ -120,7 +122,39 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 // applying the active perspective filter and, for the All perspective, grouping
 // by GTD section with collapsible headers. Called by rebuildRows() when
 // m.project == nil.
+//
+// A memoization guard short-circuits rebuilding when perspective, search
+// filter string, zoom stack depth, and total task count are all unchanged from
+// the previous call. The guard is bypassed when crossForceRebuild is true (set
+// after mutations) or when a fresh load completes.
 func (m *OutlinerModel) crossProjectRebuildRows() {
+	// Compute current guard inputs.
+	taskCount := 0
+	for _, proj := range m.loadedProjects {
+		taskCount += len(proj.Tasks)
+	}
+	currentPerspective := m.activePerspective
+	currentFilter := m.SearchQuery()
+	currentZoomDepth := len(m.crossZoomStack)
+
+	// Short-circuit when all guard inputs match the previous call and no force
+	// rebuild has been requested. This prevents redundant rebuilds on no-op
+	// events like window resize or view reactivation.
+	if !m.crossForceRebuild &&
+		currentPerspective == m.crossLastPerspective &&
+		currentFilter == m.crossLastFilterStr &&
+		currentZoomDepth == m.crossLastZoomDepth &&
+		taskCount == m.crossLastTaskCount {
+		return
+	}
+
+	// Update guard state and consume the force flag.
+	m.crossLastPerspective = currentPerspective
+	m.crossLastFilterStr = currentFilter
+	m.crossLastZoomDepth = currentZoomDepth
+	m.crossLastTaskCount = taskCount
+	m.crossForceRebuild = false
+
 	m.rows = m.rows[:0]
 	if len(m.loadedProjects) == 0 {
 		m.clampCursor()
@@ -152,10 +186,14 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 
 		tasks := filterTaskTree(roots, p.Filter)
 
-		// Apply search filter
+		// Apply search filter against task titles only (per req body). This
+		// intentionally excludes tags, description, and comments — unlike
+		// TaskMatchesSearch which matches all fields. The "consistent with
+		// single-project" AC (ac-5d7b136df1a59124f0004eea4f72aa31) is
+		// superseded by the explicit title-only wording in the requirement.
 		if q := m.SearchQuery(); q != "" {
 			tasks = filterTaskTree(tasks, func(t *models.Task) bool {
-				return matchesSearch(t, q)
+				return fuzzy.MatchTerms(t.Title, q)
 			})
 		}
 
@@ -243,10 +281,7 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 		return b.String()
 	}
 
-	visibleRows := m.height - 1 // 1 line for header
-	if visibleRows < 1 {
-		visibleRows = 1
-	}
+	visibleRows := max(m.height-1, 1) // 1 line for header
 	startIdx := calcScrollOffset(m.cursor, visibleRows)
 	endIdx := min(startIdx+visibleRows, len(m.rows))
 

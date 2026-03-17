@@ -78,12 +78,19 @@ type OutlinerModel struct {
 	previewMode bool
 
 	// Cross-project mode fields (used when m.project == nil)
-	loadedProjects     []*models.Project // Successfully loaded projects
-	crossLoading       bool              // True while cross-project load is in progress
-	crossSpinnerVisible bool             // True once the 200ms delay has elapsed during load
-	crossLoadGen       int               // Generation counter; discards stale load results
-	crossUndoCtx       UndoContext       // Undo context scoped to cross-project operations
-	crossSpinner       SpinnerModel      // View-local spinner, independent of global save spinner
+	loadedProjects      []*models.Project // Successfully loaded projects
+	crossLoading        bool              // True while cross-project load is in progress
+	crossSpinnerVisible bool              // True once the 200ms delay has elapsed during load
+	crossLoadGen        int               // Generation counter; discards stale load results
+	crossUndoCtx        UndoContext       // Undo context scoped to cross-project operations
+	crossSpinner        SpinnerModel      // View-local spinner, independent of global save spinner
+
+	// Memoization guard for crossProjectRebuildRows
+	crossLastPerspective int
+	crossLastFilterStr   string
+	crossLastZoomDepth   int
+	crossLastTaskCount   int
+	crossForceRebuild    bool // When true, bypasses the memoization guard on next rebuild
 }
 
 // primaryProjectView interface implementation for shared key dispatch.
@@ -231,11 +238,16 @@ func (m *OutlinerModel) validateZoomStack() {
 // rebuildRows flattens the current task tree into the rows slice, applying the
 // active perspective filter, and clamps the cursor to stay within bounds.
 func (m *OutlinerModel) rebuildRows() {
-	m.rows = m.rows[:0]
 	if m.project == nil {
+		// Mark as a mutation-driven rebuild so the memoization guard in
+		// crossProjectRebuildRows is bypassed. The render path calls
+		// crossProjectRebuildRows directly (not via rebuildRows), so it
+		// still benefits from the guard on no-op events like window resize.
+		m.crossForceRebuild = true
 		m.crossProjectRebuildRows()
 		return
 	}
+	m.rows = m.rows[:0]
 
 	// Ensure zoom stack entries still reference existing tasks.
 	m.validateZoomStack()
