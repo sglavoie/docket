@@ -116,15 +116,22 @@ func (m *AppModel) pushView(view ViewType) {
 	}
 }
 
-// popView removes the top view from the stack.
-func (m *AppModel) popView() {
+// popView removes the top view from the stack. It returns a Cmd when popping
+// TO ViewCrossProjectOutliner so the outliner can trigger an eager reload.
+func (m *AppModel) popView() tea.Cmd {
 	if len(m.viewStack) > 1 {
 		m.viewStack = m.viewStack[:len(m.viewStack)-1]
 	}
+	cv := m.currentView()
 	// Re-evaluate alerts when returning to dashboard
-	if m.currentView() == ViewDashboard {
+	if cv == ViewDashboard {
 		m.reevaluateAlerts()
 	}
+	// Notify the cross-project outliner that it has become visible again.
+	if cv == ViewCrossProjectOutliner {
+		return func() tea.Msg { return ViewDidAppearMsg{} }
+	}
+	return nil
 }
 
 // isGlobalOverlayView returns true for views launched via the global ";" overlay prefix.

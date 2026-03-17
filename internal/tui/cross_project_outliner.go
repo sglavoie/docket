@@ -81,6 +81,21 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	}
 }
 
+// handleViewDidAppear is called when the cross-project outliner becomes the
+// top view again (e.g., after returning from a drill-down). It triggers an
+// eager reload from disk while preserving the current cursor position; the
+// cursor is clamped to the new row count once the load completes.
+func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
+	if m.project != nil {
+		// Only applies in cross-project mode.
+		return nil
+	}
+	savedCursor := m.cursor
+	cmd := m.reloadCrossProjects()
+	m.cursor = savedCursor
+	return cmd
+}
+
 // handleCrossProjectsLoaded processes a completed load. Stale results
 // (generation mismatch) are discarded. Successful results populate
 // loadedProjects and rebuild rows. A status bar warning is returned for any

@@ -477,6 +477,8 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case outlinerRefreshMsg:
 		m.rebuildRows()
 		return m, nil
+	case ViewDidAppearMsg:
+		return m, m.handleViewDidAppear()
 	case crossProjectsLoadedMsg:
 		return m, m.handleCrossProjectsLoaded(msg)
 	case crossSpinnerDelayMsg:

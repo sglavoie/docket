@@ -94,3 +94,9 @@ package tui
 // This is needed because tea.ExecProcess suspends the TUI, and views may need
 // to re-render their layout after returning from an external process.
 type GlowViewDoneMsg struct{}
+
+// ViewDidAppearMsg is dispatched by popView() when the view being revealed is
+// ViewCrossProjectOutliner. The outliner handles this by triggering an eager
+// reload from disk so that tasks modified during a drill-down are reflected
+// immediately on return.
+type ViewDidAppearMsg struct{}

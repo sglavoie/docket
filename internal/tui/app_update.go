@@ -137,8 +137,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "esc":
-			if handled := m.handleEscKey(); handled {
-				return m, nil
+			if handled, cmd := m.handleEscKey(); handled {
+				return m, cmd
 			}
 		case "q":
 			// Don't intercept q if there's an active text input
@@ -152,8 +152,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
-			if handled := m.handleEscKey(); handled {
-				return m, nil
+			if handled, cmd := m.handleEscKey(); handled {
+				return m, cmd
 			}
 		case "ctrl+x":
 			// Open project picker if no view has an active text input
@@ -291,24 +291,27 @@ func (m *AppModel) hasActiveTextInput() bool {
 }
 
 // handleEscKey handles the escape/q key for view navigation.
-// Returns true if the key was handled (should not propagate to views).
-func (m *AppModel) handleEscKey() bool {
+// Returns (handled, cmd): handled=true if the key was consumed (should not
+// propagate to views); cmd is non-nil when the pop triggers a side-effect
+// (e.g. ViewDidAppearMsg for the cross-project outliner).
+func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	if m.pendingSemicolonPrefix {
 		m.pendingSemicolonPrefix = false
-		return true
+		return true, nil
 	}
 	if caps := m.currentViewCapabilities(); caps != nil && caps.ShouldCaptureEsc() {
-		return false
+		return false, nil
 	}
 	if m.currentView() == ViewCrossProjectOutliner {
-		return false
+		return false, nil
 	}
 	if m.currentView() != ViewDashboard {
 		closingView := m.currentView()
+		var cmd tea.Cmd
 		if isGlobalOverlayView(closingView) {
 			m.popToAnchorView()
 		} else {
-			m.popView()
+			cmd = m.popView()
 		}
 		// Restore previous project when popping a stacked project tree
 		if closingView == ViewProjectTree && m.currentView() == ViewProjectTree && len(m.projectStack) > 0 {
@@ -318,9 +321,9 @@ func (m *AppModel) handleEscKey() bool {
 				m.switchToProject(prev, true)
 			}
 		}
-		return true
+		return true, cmd
 	}
-	return false
+	return false, nil
 }
 
 // minTerminalWidth is the minimum terminal width required to render the TUI.
