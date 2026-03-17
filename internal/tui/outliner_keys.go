@@ -392,6 +392,9 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Help
 	case "?":
+		if m.project == nil {
+			return m, helpCmd(ViewCrossProjectOutliner, "Cross-Project Outliner", m.GetHelpItems())
+		}
 		return m, helpCmd(ViewOutliner, "Outliner", m.GetHelpItems())
 
 	// Type change keys

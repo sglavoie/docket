@@ -56,6 +56,7 @@ func NewKeybindingRegistry() *KeybindingRegistry {
 	r.registerAllTasksBindings()
 	r.registerFocusBoardBindings()
 	r.registerOutlinerBindings()
+	r.registerCrossProjectOutlinerBindings()
 	r.registerTaskChecklistBindings()
 	r.registerTaskCommentsBindings()
 	r.registerWorkflowRulesBindings()

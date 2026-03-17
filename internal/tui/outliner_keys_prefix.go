@@ -268,6 +268,22 @@ func (m *OutlinerModel) handlePrefixKey(key string) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return ShowProjectRecentActivityMsg{Project: project}
 			}
+		case "o":
+			// Drill down to the single-project outliner for the cursor task's project
+			if m.project == nil && m.cursor >= 0 && m.cursor < len(m.rows) {
+				row := m.rows[m.cursor]
+				if !row.IsSeparator && !row.IsSectionHeader {
+					for _, p := range m.loadedProjects {
+						if p.ID == row.ProjectID {
+							proj := p
+							return m, func() tea.Msg {
+								return ShowOutlinerMsg{Project: proj}
+							}
+						}
+					}
+				}
+			}
+			return m, nil
 		}
 	}
 

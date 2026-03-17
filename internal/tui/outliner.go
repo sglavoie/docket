@@ -884,5 +884,5 @@ func (m *OutlinerModel) StatusBarLabel() string {
 		}
 		return status
 	}
-	return "Outliner"
+	return m.crossStatusBarLabel()
 }

@@ -435,6 +435,27 @@ func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
 	return m.startCrossProjectLoad()
 }
 
+// crossStatusBarLabel returns the status bar label for cross-project mode,
+// formatted as 'Cross-Outliner · [context-name] · N tasks'.
+// N counts only task rows, excluding section headers and separators.
+func (m *OutlinerModel) crossStatusBarLabel() string {
+	ctxName := "All"
+	if m.config != nil {
+		if m.config.FilterCustomContext != "" {
+			ctxName = "+" + m.config.FilterCustomContext
+		} else if m.config.FilterContext != "" {
+			ctxName = m.config.FilterContext
+		}
+	}
+	taskCount := 0
+	for _, row := range m.rows {
+		if !row.IsSeparator && !row.IsSectionHeader {
+			taskCount++
+		}
+	}
+	return fmt.Sprintf("Cross-Outliner · %s · %d tasks", ctxName, taskCount)
+}
+
 // Ensure spinner package is used (crossSpinner field type is SpinnerModel which
 // wraps bubbles/spinner; the Dot spinner style is selected in NewSpinner).
 var _ = spinner.Dot

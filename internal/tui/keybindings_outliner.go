@@ -131,3 +131,11 @@ func (r *KeybindingRegistry) registerOutlinerBindings() {
 		Keybinding{Key: "sd", Description: "Snooze date picker", Category: "Snooze (s prefix)", Views: views},
 	)
 }
+
+func (r *KeybindingRegistry) registerCrossProjectOutlinerBindings() {
+	views := []ViewType{ViewCrossProjectOutliner}
+	r.add(
+		Keybinding{Key: "C", Description: "Open context picker", Category: "Filters", Views: views},
+		Keybinding{Key: "go", Description: "Drill down to project outliner", Category: "Navigation", Views: views},
+	)
+}

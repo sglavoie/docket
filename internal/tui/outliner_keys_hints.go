@@ -114,6 +114,10 @@ func (m *OutlinerModel) buildPrefixHints() PrefixHints {
 }
 
 // GetHelpItems returns help items for the outliner view.
+// In cross-project mode (project == nil), returns bindings for ViewCrossProjectOutliner.
 func (m *OutlinerModel) GetHelpItems() []HelpItem {
+	if m.project == nil {
+		return GetKeybindingRegistry().GetForView(ViewCrossProjectOutliner)
+	}
 	return GetKeybindingRegistry().GetForView(ViewOutliner)
 }
