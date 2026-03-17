@@ -103,6 +103,11 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Cross-project mode: u performs multi-project undo from crossUndoCtx.
+	if model, cmd, handled := m.crossHandleUndo(key); handled {
+		return model, cmd
+	}
+
 	// Shared primary view keys (view switching, project cycling, secondary views, capture, etc.)
 	if cmd, handled := handleCommonPrimaryViewKey(key, m); handled {
 		return m, cmd

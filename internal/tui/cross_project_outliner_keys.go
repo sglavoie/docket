@@ -1,6 +1,11 @@
 package tui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	"fmt"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
 
 // crossHandleContextPickerKey handles the C key in cross-project mode,
 // emitting ShowContextPickerMsg{} to open the context picker. It is called
@@ -116,4 +121,57 @@ func (m *OutlinerModel) crossSkipSeparators(prevCursor int, cmd tea.Cmd) (tea.Mo
 	}
 
 	return m, cmd
+}
+
+// crossHandleUndo handles the 'u' key in cross-project mode by restoring all
+// backed-up projects from m.crossUndoCtx in reverse order. Each project is
+// restored via RestoreFromBackup; failures are recorded but do not abort
+// remaining restores. A single non-blocking status bar message is set listing
+// per-project outcomes in the format "Undo: restored A, B; FAILED: C (reason)".
+//
+// Returns (model, cmd, true) when in cross-project mode (m.project == nil),
+// (nil, nil, false) otherwise.
+func (m *OutlinerModel) crossHandleUndo(key string) (tea.Model, tea.Cmd, bool) {
+	if m.project != nil || key != "u" {
+		return nil, nil, false
+	}
+
+	ids := m.crossUndoCtx.ProjectIDs
+	if len(ids) == 0 {
+		return m, nil, true
+	}
+
+	var restored []string
+	var failed []string
+
+	// Restore in reverse order.
+	for i := len(ids) - 1; i >= 0; i-- {
+		proj := m.crossResolveProject(ids[i])
+		if proj == nil {
+			failed = append(failed, fmt.Sprintf("%s (project not found)", ids[i]))
+			continue
+		}
+		if err := m.projectService.RestoreFromBackup(proj); err != nil {
+			failed = append(failed, fmt.Sprintf("%s (%s)", proj.Name, err.Error()))
+			continue
+		}
+		_ = m.projectService.Load(proj)
+		restored = append(restored, proj.Name)
+	}
+
+	m.crossUndoCtx.Clear()
+
+	var parts []string
+	if len(restored) > 0 {
+		parts = append(parts, "Undo: restored "+strings.Join(restored, ", "))
+	}
+	if len(failed) > 0 {
+		parts = append(parts, "FAILED: "+strings.Join(failed, ", "))
+	}
+	if len(parts) > 0 {
+		m.statusMessage = strings.Join(parts, "; ")
+	}
+
+	m.rebuildRows()
+	return m, nil, true
 }
