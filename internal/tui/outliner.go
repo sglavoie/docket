@@ -20,6 +20,16 @@ type ZoomEntry struct {
 	CursorIndex int    // Cursor position at the moment of zoom-in
 }
 
+// CrossProjectZoomEntry records the state at a single zoom level for the
+// cross-project outliner. It extends ZoomEntry with a ProjectID field to
+// scope zoom resolution to the correct project, preventing UUID collisions
+// across projects from causing incorrect zoom resolution.
+type CrossProjectZoomEntry struct {
+	TaskID      string // UUID of the task that was zoomed into
+	ProjectID   string // ID of the project owning the task
+	CursorIndex int    // Cursor position at the moment of zoom-in
+}
+
 // OutlinerModel is the outliner view for navigating tasks in a hierarchical,
 // zoomable tree. It implements the View interface as a standalone struct
 // (not extending ProjectTreeModel) to allow independent evolution of
