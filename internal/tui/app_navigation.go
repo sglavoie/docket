@@ -133,8 +133,7 @@ func isGlobalOverlayView(v ViewType) bool {
 	switch v {
 	case ViewFocusView, ViewFocusBoard, ViewGlobalInboxProcessor,
 		ViewGlobalNotes, ViewRecentActivity, ViewGlobalBlockers,
-		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules,
-		ViewCrossProjectOutliner:
+		ViewMetricsDashboard, ViewAllTasks, ViewWorkflowRules:
 		return true
 	}
 	return false
@@ -146,7 +145,7 @@ func (m *AppModel) popToAnchorView() {
 	for len(m.viewStack) > 1 {
 		top := m.viewStack[len(m.viewStack)-1]
 		switch top {
-		case ViewDashboard, ViewProjectTree, ViewOutliner:
+		case ViewDashboard, ViewProjectTree, ViewOutliner, ViewCrossProjectOutliner:
 			if top == ViewDashboard {
 				m.reevaluateAlerts()
 			}
