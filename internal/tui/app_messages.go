@@ -841,8 +841,14 @@ type ScoreProfileChangedMsg struct{}
 // =============================================================================
 
 // ShowOutlinerMsg opens the outliner view for a project.
+// When Temporary is true, the handler pushes a fresh OutlinerModel via
+// showView() without assigning it to AppModel.outliner, so the existing
+// single-project outliner session is preserved. OpenAtTask, when non-nil,
+// positions the cursor on that task once the row list is first built.
 type ShowOutlinerMsg struct {
-	Project *models.Project
+	Project    *models.Project
+	OpenAtTask *models.Task
+	Temporary  bool
 }
 
 // CloseOutlinerMsg closes the outliner view.

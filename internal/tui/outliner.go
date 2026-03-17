@@ -42,7 +42,7 @@ type OutlinerModel struct {
 
 	project *models.Project
 
-	zoomStack      []ZoomEntry            // Zoom stack for single-project mode
+	zoomStack      []ZoomEntry             // Zoom stack for single-project mode
 	crossZoomStack []CrossProjectZoomEntry // Zoom stack for cross-project mode (m.project == nil)
 	zoomNotice     string                  // Transient message shown when zoom target is removed
 
@@ -76,6 +76,10 @@ type OutlinerModel struct {
 
 	// Inline preview mode: show description/checklist below cursor task
 	previewMode bool
+
+	// OpenAtTask, when set, positions the cursor on the given task the first
+	// time rebuildRows produces a non-empty row list. Cleared after first use.
+	OpenAtTask *models.Task
 
 	// Cross-project mode fields (used when m.project == nil)
 	loadedProjects      []*models.Project // Successfully loaded projects
@@ -332,6 +336,12 @@ func (m *OutlinerModel) rebuildRows() {
 		m.flattenTaskTreeWithFolds(tasks, nil, &m.rows)
 	}
 	m.clampCursor()
+
+	// Position cursor on OpenAtTask the first time rows are available, then clear.
+	if m.OpenAtTask != nil && len(m.rows) > 0 {
+		m.NavigateToSidebarTask(m.OpenAtTask)
+		m.OpenAtTask = nil
+	}
 }
 
 // buildRowsWithSectionHeaders groups tasks by GTD section and inserts collapsible

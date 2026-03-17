@@ -704,6 +704,15 @@ func (m *AppModel) handleViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 	case ShowOutlinerMsg:
 		if msg.Project != nil {
+			if msg.Temporary {
+				// Drill-down from cross-project outliner: push a fresh temporary
+				// OutlinerModel without touching m.outliner so the existing
+				// single-project session is preserved.
+				fresh := NewOutlinerModel(msg.Project, m.config, m.configManager)
+				fresh.OpenAtTask = msg.OpenAtTask
+				m.showView(ViewOutliner, fresh)
+				return true, nil
+			}
 			replacing := m.isOnProjectView()
 			// Extract shared state from tree before creating new outliner
 			var shared *sharedViewState

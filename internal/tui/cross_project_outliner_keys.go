@@ -123,6 +123,31 @@ func (m *OutlinerModel) crossSkipSeparators(prevCursor int, cmd tea.Cmd) (tea.Mo
 	return m, cmd
 }
 
+// crossHandleGoDrillDown handles the 'go' (g→o) two-key sequence in cross-project
+// mode. When the cursor is on a task row it pushes a fresh temporary OutlinerModel
+// for the row's owning project, initialized with OpenAtTask set to the selected
+// task, via ShowOutlinerMsg{Temporary: true}. This leaves m.outliner untouched.
+// Non-task rows (section headers, separators) are silently ignored.
+func (m *OutlinerModel) crossHandleGoDrillDown() (tea.Model, tea.Cmd) {
+	if m.project != nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return m, nil
+	}
+	row := m.rows[m.cursor]
+	if row.IsSeparator || row.IsSectionHeader {
+		return m, nil
+	}
+	for _, p := range m.loadedProjects {
+		if p.ID == row.ProjectID {
+			proj := p
+			task := row.task
+			return m, func() tea.Msg {
+				return ShowOutlinerMsg{Project: proj, OpenAtTask: task, Temporary: true}
+			}
+		}
+	}
+	return m, nil
+}
+
 // crossHandleUndo handles the 'u' key in cross-project mode by restoring all
 // backed-up projects from m.crossUndoCtx in reverse order. Each project is
 // restored via RestoreFromBackup; failures are recorded but do not abort
