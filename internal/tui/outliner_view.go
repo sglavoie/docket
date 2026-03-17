@@ -27,6 +27,8 @@ type outlinerRow struct {
 	IsSectionHeader bool   // True if this row is a section header (not a task)
 	SectionName     string // Section name for header rows
 	SectionCount    int    // Number of tasks in this section
+	ProjectID       string // Project that owns this task row; empty for headers/separators
+	IsSeparator     bool   // True if this row is a visual separator between projects
 }
 
 // buildTreePrefix computes the connector prefix string from the ancestor
