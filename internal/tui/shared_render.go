@@ -167,16 +167,17 @@ type TaskLine struct {
 // Views that aggregate tasks from multiple projects use this to render a standard
 // [project-name] badge plus optional tags/score in a consistent format.
 type CrossProjectTaskLineOpts struct {
-	ShowScore       bool   // show composite score badge (requires cfg != nil)
-	ShowTags        bool   // show inline tag string
-	ShowRecurrence  bool   // show ↻ indicator with streak count for recurring tasks
-	MaxProjectLen   int    // project name truncation; 0 defaults to 12
-	Prefix          string // prepended before the project badge (e.g. checkbox, date string)
-	StatusBadge     string // pre-styled status badge override
-	DueStr          string // right-aligned context string, already styled by caller
-	HideLowPriority bool   // omit priority badge when priority > 2
-	Flash           bool   // cursor flash highlight active
-	SearchQuery     string // when set, highlight matching substring in title
+	ShowScore       bool          // show composite score badge (requires cfg != nil)
+	ShowTags        bool          // show inline tag string
+	ShowRecurrence  bool          // show ↻ indicator with streak count for recurring tasks
+	MaxProjectLen   int           // project name truncation; 0 defaults to 12
+	Prefix          string        // prepended before the project badge (e.g. checkbox, date string)
+	StatusBadge     string        // pre-styled status badge override
+	DueStr          string        // right-aligned context string, already styled by caller
+	HideLowPriority bool          // omit priority badge when priority > 2
+	Flash           bool          // cursor flash highlight active
+	SearchQuery     string        // when set, highlight matching substring in title
+	BadgeColor      lipgloss.Color // when set, overrides MutedStyle on the [project-name] badge
 }
 
 // RenderCrossProjectTaskLine renders a standard task line for views that aggregate
@@ -199,7 +200,11 @@ func RenderCrossProjectTaskLine(
 		maxProjLen = 12
 	}
 
-	projectBadge := MutedStyle.Render(fmt.Sprintf("[%s]", util.Truncate(proj.Name, maxProjLen)))
+	badgeStyle := MutedStyle
+	if opts.BadgeColor != "" {
+		badgeStyle = lipgloss.NewStyle().Foreground(opts.BadgeColor)
+	}
+	projectBadge := badgeStyle.Render(fmt.Sprintf("[%s]", util.Truncate(proj.Name, maxProjLen)))
 	preBadges := opts.Prefix + projectBadge + " "
 
 	// Build indicator groups
