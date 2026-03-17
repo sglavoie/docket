@@ -65,6 +65,19 @@ func (m *OutlinerModel) buildCrossProjectRowsWithSectionHeaders(groups []project
 	}
 }
 
+// buildProjectGroupedRows builds m.rows for non-All perspectives: each
+// project's tasks are flattened independently with project identity preserved,
+// and a single IsSeparator row is inserted between consecutive project groups.
+// No section headers or horizontal rules are used.
+func (m *OutlinerModel) buildProjectGroupedRows(groups []projectTasksGroup) {
+	for i, g := range groups {
+		if i > 0 {
+			m.rows = append(m.rows, outlinerRow{IsSeparator: true})
+		}
+		m.flattenTaskTreeWithFoldsAndProjectID(g.tasks, nil, g.projectID, &m.rows)
+	}
+}
+
 // flattenTaskTreeWithFoldsAndProjectID is like flattenTaskTreeWithFolds but
 // sets ProjectID on every emitted task row. This preserves project identity
 // through tree recursion so color badges and navigation can resolve the owning

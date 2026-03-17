@@ -134,7 +134,6 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	// Collect per-project task groups, applying per-project perspective filter.
 	// Grouping preserves project identity so ProjectID can be set on task rows.
 	var groups []projectTasksGroup
-	var allTasks []*models.Task // used only for non-All perspectives
 	for _, proj := range m.loadedProjects {
 		roots := proj.GetRootTasks()
 
@@ -164,13 +163,12 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 			continue
 		}
 		groups = append(groups, projectTasksGroup{projectID: proj.ID, tasks: tasks})
-		allTasks = append(allTasks, tasks...)
 	}
 
 	if p.Name == "All" {
 		m.buildCrossProjectRowsWithSectionHeaders(groups)
 	} else {
-		m.flattenTaskTreeWithFolds(allTasks, nil, &m.rows)
+		m.buildProjectGroupedRows(groups)
 	}
 	m.clampCursor()
 }
@@ -256,7 +254,9 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 		row := m.rows[i]
 		selected := i == m.cursor
 
-		if row.IsSectionHeader {
+		if row.IsSeparator {
+			b.WriteString("")
+		} else if row.IsSectionHeader {
 			displayName := row.SectionName
 			if displayName == "" {
 				displayName = "Active"
