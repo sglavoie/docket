@@ -285,6 +285,22 @@ func (m *OutlinerModel) crossHandleTagsMutation() (tea.Cmd, bool) {
 	}, true
 }
 
+// crossSaveProject returns a tea.Cmd that performs backup → save → reload for
+// a single project. Used by J/K/right/left in cross-project mode.
+func (m *OutlinerModel) crossSaveProject(proj *models.Project) tea.Cmd {
+	svc := m.projectService
+	return func() tea.Msg {
+		if err := svc.Backup(proj); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("backup failed: %w", err)}
+		}
+		if err := svc.Save(proj); err != nil {
+			return ErrorMsg{Err: fmt.Errorf("save failed: %w", err)}
+		}
+		_ = svc.Load(proj)
+		return outlinerRefreshMsg{}
+	}
+}
+
 // crossFindProjectForTask scans m.loadedProjects to find the project that
 // contains the task with the given ID. Returns nil when not found.
 func (m *OutlinerModel) crossFindProjectForTask(taskID string) *models.Project {

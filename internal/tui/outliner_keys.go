@@ -174,7 +174,31 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Move task down (swap with sibling below)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
-			siblings := m.getSiblings(task)
+			if m.project == nil {
+				row, proj, ok := m.crossGetMutationTarget()
+				if !ok {
+					return m, nil
+				}
+				task = row.task
+				siblings := m.getSiblings(task, proj)
+				idx := -1
+				for i, s := range siblings {
+					if s.ID == task.ID {
+						idx = i
+						break
+					}
+				}
+				if idx >= 0 && idx < len(siblings)-1 {
+					proj.SwapTasks(task, siblings[idx+1])
+					m.crossUndoCtx.Set("Move Down", task.Title)
+					m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+					m.rebuildRows()
+					m.moveCursorToTask(task.ID)
+					return m, m.crossSaveProject(proj)
+				}
+				return m, nil
+			}
+			siblings := m.getSiblings(task, m.project)
 			idx := -1
 			for i, s := range siblings {
 				if s.ID == task.ID {
@@ -196,7 +220,31 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Move task up (swap with sibling above)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
 			task := m.rows[m.cursor].task
-			siblings := m.getSiblings(task)
+			if m.project == nil {
+				row, proj, ok := m.crossGetMutationTarget()
+				if !ok {
+					return m, nil
+				}
+				task = row.task
+				siblings := m.getSiblings(task, proj)
+				idx := -1
+				for i, s := range siblings {
+					if s.ID == task.ID {
+						idx = i
+						break
+					}
+				}
+				if idx > 0 {
+					proj.SwapTasks(task, siblings[idx-1])
+					m.crossUndoCtx.Set("Move Up", task.Title)
+					m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+					m.rebuildRows()
+					m.moveCursorToTask(task.ID)
+					return m, m.crossSaveProject(proj)
+				}
+				return m, nil
+			}
+			siblings := m.getSiblings(task, m.project)
 			idx := -1
 			for i, s := range siblings {
 				if s.ID == task.ID {
@@ -221,6 +269,30 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.rows[m.cursor-1].task == nil {
 				return m, nil
 			}
+			if m.project == nil {
+				curRow := m.rows[m.cursor]
+				aboveRow := m.rows[m.cursor-1]
+				// Can't indent across projects
+				if curRow.ProjectID != aboveRow.ProjectID {
+					return m, nil
+				}
+				proj := m.crossResolveProject(curRow.ProjectID)
+				if proj == nil {
+					return m, nil
+				}
+				task := proj.GetTaskByID(curRow.task.ID)
+				candidate := proj.GetTaskByID(aboveRow.task.ID)
+				if task == nil || candidate == nil {
+					return m, nil
+				}
+				if IndentTask(proj, task, candidate) {
+					m.crossUndoCtx.Set("Indent", task.Title)
+					m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+					m.rebuildRows()
+					return m, m.crossSaveProject(proj)
+				}
+				return m, nil
+			}
 			// Resolve cloned row tasks back to originals in project
 			task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 			candidate := m.project.GetTaskByID(m.rows[m.cursor-1].task.ID)
@@ -238,6 +310,24 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "left":
 		// Outdent task (to parent level)
 		if len(m.rows) > 0 && m.cursor < len(m.rows) && !onHeader {
+			if m.project == nil {
+				curRow := m.rows[m.cursor]
+				proj := m.crossResolveProject(curRow.ProjectID)
+				if proj == nil {
+					return m, nil
+				}
+				task := proj.GetTaskByID(curRow.task.ID)
+				if task == nil {
+					return m, nil
+				}
+				if OutdentTask(proj, task) {
+					m.crossUndoCtx.Set("Outdent", task.Title)
+					m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+					m.rebuildRows()
+					return m, m.crossSaveProject(proj)
+				}
+				return m, nil
+			}
 			// Resolve cloned row task back to original in project
 			task := m.project.GetTaskByID(m.rows[m.cursor].task.ID)
 			if task == nil {

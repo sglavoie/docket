@@ -90,7 +90,10 @@ func (m *OutlinerModel) sendTasksToSectionBulk(section string) (tea.Model, tea.C
 
 // moveTaskToPosition moves the cursor task to the top or bottom of its siblings.
 func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.Model, tea.Cmd) {
-	siblings := m.getSiblings(task)
+	if m.project == nil {
+		return m.crossMoveTaskToPosition(task, toTop)
+	}
+	siblings := m.getSiblings(task, m.project)
 	idx := -1
 	for i, s := range siblings {
 		if s.ID == task.ID {
@@ -126,6 +129,49 @@ func (m *OutlinerModel) moveTaskToPosition(task *models.Task, toTop bool) (tea.M
 	m.setUndoContext(label, task.Title)
 	m.rebuildRows()
 	return m, m.saveWithWorkflow()
+}
+
+// crossMoveTaskToPosition handles moveTaskToPosition in cross-project mode.
+func (m *OutlinerModel) crossMoveTaskToPosition(task *models.Task, toTop bool) (tea.Model, tea.Cmd) {
+	row, proj, ok := m.crossGetMutationTarget()
+	if !ok || row.task.ID != task.ID {
+		return m, nil
+	}
+	siblings := m.getSiblings(task, proj)
+	idx := -1
+	for i, s := range siblings {
+		if s.ID == task.ID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return m, nil
+	}
+	if toTop && idx == 0 {
+		return m, nil
+	}
+	if !toTop && idx == len(siblings)-1 {
+		return m, nil
+	}
+	if toTop {
+		for i := idx - 1; i >= 0; i-- {
+			proj.SwapTasks(task, siblings[i])
+		}
+	} else {
+		for i := idx + 1; i < len(siblings); i++ {
+			proj.SwapTasks(task, siblings[i])
+		}
+	}
+	label := "Move to Top"
+	if !toTop {
+		label = "Move to Bottom"
+	}
+	m.crossUndoCtx.Set(label, task.Title)
+	m.crossUndoCtx.ProjectIDs = []string{proj.ID}
+	m.rebuildRows()
+	m.moveCursorToTask(task.ID)
+	return m, m.crossSaveProject(proj)
 }
 
 // jumpToNextSection moves the cursor to the next (direction=1) or previous
@@ -180,18 +226,22 @@ func (m *OutlinerModel) jumpToNextSection(direction int) tea.Cmd {
 }
 
 // getSiblings returns the sibling list for a task at the current zoom level.
-func (m *OutlinerModel) getSiblings(task *models.Task) []*models.Task {
+// proj must be non-nil; callers in cross-project mode resolve it from the row.
+func (m *OutlinerModel) getSiblings(task *models.Task, proj *models.Project) []*models.Task {
+	if proj == nil {
+		return nil
+	}
 	if task.Parent != nil {
 		return task.Parent.Children
 	}
 	// Root level or zoomed level
 	if len(m.zoomStack) > 0 {
 		topID := m.zoomStack[len(m.zoomStack)-1].TaskID
-		if t := m.project.GetTaskByID(topID); t != nil {
+		if t := proj.GetTaskByID(topID); t != nil {
 			return t.Children
 		}
 	}
-	return m.project.GetRootTasks()
+	return proj.GetRootTasks()
 }
 
 // moveCursorToTask positions the cursor on the row matching the given task ID.
