@@ -19,7 +19,9 @@ func TestProjectBadgeColorNoPaletteCollision(t *testing.T) {
 	// Colors used by score_badge.go and shared_render.go that must not appear.
 	forbidden := map[string]bool{
 		"196": true,
+		"208": true,
 		"226": true,
+		"118": true,
 		"42":  true,
 	}
 	for _, c := range projectColorPalette {
