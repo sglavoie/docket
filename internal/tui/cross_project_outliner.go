@@ -348,13 +348,11 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 			typeIcon := GetTypeBadge(string(task.Type), task.Type.Icon())
 			statusIcon := GetStatusBadge(string(task.Status), task.Status.Icon())
 
-			// Build indicators block: shortID and safe metadata columns that
-			// don't require m.project (which is nil in cross-project mode).
-			var orgParts []string
+			// shortID is rendered inline between projBadge and typeIcon.
+			shortIDStr := ""
 			if m.columnConfig.IsVisible(ColShortID) {
-				orgParts = append(orgParts, MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)))
+				shortIDStr = MutedStyle.Render(fmt.Sprintf("#%d", task.ShortID)) + " "
 			}
-			orgGroup := JoinGroupParts(orgParts...)
 
 			var lifecycleParts []string
 			if m.columnConfig.ShouldShowPriority(task.Priority) {
@@ -394,14 +392,14 @@ func (m *OutlinerModel) renderCrossProjectContent() string {
 			}
 			contentGroup := JoinGroupParts(contentParts...)
 
-			indicatorStr := JoinIndicatorGroups(orgGroup, lifecycleGroup, contentGroup)
+			indicatorStr := JoinIndicatorGroups(lifecycleGroup, contentGroup)
 			indicators := indicatorStr
 			if indicators != "" {
 				indicators = " " + indicators
 			}
 
-			line := fmt.Sprintf("  %s%s%s%s %s%s%s",
-				row.prefix, foldIndicator, projBadge, typeIcon, statusIcon, task.Title, indicators)
+			line := fmt.Sprintf("  %s%s%s%s%s%s %s%s",
+				row.prefix, foldIndicator, projBadge, shortIDStr, typeIcon, statusIcon, task.Title, indicators)
 
 			if selected {
 				rowStyle := SelectionRowStyle
